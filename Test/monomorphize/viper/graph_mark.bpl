@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -490,7 +492,7 @@ function MultiSet#Disjoint<T>(MultiSet T, MultiSet T): bool;
 axiom (forall<T> a: MultiSet T, b: MultiSet T :: { MultiSet#Disjoint(a,b) }
   MultiSet#Disjoint(a,b) <==> (forall o: T :: {MultiSet#Select(a,o)} {MultiSet#Select(b,o)} MultiSet#Select(a,o) == 0 || MultiSet#Select(b,o) == 0));
 
-    
+
 
 // ==================================================
 // Translation of domain Edge
@@ -652,7 +654,7 @@ function  $$#condqp1(Heap: HeapType, refs_1_1: (Set Ref)): int;
 axiom (forall Heap2Heap: HeapType, Heap1Heap: HeapType, refs: (Set Ref) ::
   { $$#condqp1(Heap2Heap, refs), $$#condqp1(Heap1Heap, refs), succHeapTrans(Heap2Heap, Heap1Heap) }
   (forall n: Ref ::
-    
+
     (refs[n] && NoPerm < FullPerm <==> refs[n] && NoPerm < FullPerm) && (refs[n] && NoPerm < FullPerm ==> Heap2Heap[n, car] == Heap1Heap[n, car])
   ) ==> $$#condqp1(Heap2Heap, refs) == $$#condqp1(Heap1Heap, refs)
 );
@@ -664,7 +666,7 @@ function  $$#condqp2(Heap: HeapType, refs_1_1: (Set Ref)): int;
 axiom (forall Heap2Heap: HeapType, Heap1Heap: HeapType, refs: (Set Ref) ::
   { $$#condqp2(Heap2Heap, refs), $$#condqp2(Heap1Heap, refs), succHeapTrans(Heap2Heap, Heap1Heap) }
   (forall n$0: Ref ::
-    
+
     (refs[n$0] && NoPerm < FullPerm <==> refs[n$0] && NoPerm < FullPerm) && (refs[n$0] && NoPerm < FullPerm ==> Heap2Heap[n$0, cdr] == Heap1Heap[n$0, cdr])
   ) ==> $$#condqp2(Heap2Heap, refs) == $$#condqp2(Heap1Heap, refs)
 );
@@ -691,18 +693,18 @@ procedure $$#definedness(refs: (Set Ref)) returns (Result: (Set EdgeDomainType))
   var QPMask: MaskType;
   var p_3: Ref;
   var s_2: Ref;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 1;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
-    
+
     // -- Check definedness of (forall n: Ref :: { n.car } (n in refs) ==> acc(n.car, write))
       if (*) {
         assume false;
@@ -710,10 +712,10 @@ procedure $$#definedness(refs: (Set Ref)) returns (Result: (Set EdgeDomainType))
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource n.car might not be injective. (graph_mark.vpr@158.14--158.25) [544]"}
       (forall n_3: Ref, n_3_1: Ref ::
-      
+
       (((n_3 != n_3_1 && refs[n_3]) && refs[n_3_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_3 != n_3_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall n_3: Ref ::
         { Heap[n_3, car] } { QPMask[n_3, car] } { Heap[n_3, car] }
@@ -723,13 +725,13 @@ procedure $$#definedness(refs: (Set Ref)) returns (Result: (Set EdgeDomainType))
         { invRecv1(o_3) }
         (refs[invRecv1(o_3)] && NoPerm < FullPerm) && qpRange1(o_3) ==> invRecv1(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall n_3: Ref ::
         { Heap[n_3, car] } { QPMask[n_3, car] } { Heap[n_3, car] }
         refs[n_3] ==> n_3 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, car] }
@@ -741,7 +743,7 @@ procedure $$#definedness(refs: (Set Ref)) returns (Result: (Set EdgeDomainType))
       );
     Mask := QPMask;
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall n$0: Ref :: { n$0.cdr } (n$0 in refs) ==> acc(n$0.cdr, write))
       if (*) {
         assume false;
@@ -749,10 +751,10 @@ procedure $$#definedness(refs: (Set Ref)) returns (Result: (Set EdgeDomainType))
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@158.14--158.25) [545]"}
       (forall n$0_3: Ref, n$0_3_1: Ref ::
-      
+
       (((n$0_3 != n$0_3_1 && refs[n$0_3]) && refs[n$0_3_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_3 != n$0_3_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall n$0_3: Ref ::
         { Heap[n$0_3, cdr] } { QPMask[n$0_3, cdr] } { Heap[n$0_3, cdr] }
@@ -762,13 +764,13 @@ procedure $$#definedness(refs: (Set Ref)) returns (Result: (Set EdgeDomainType))
         { invRecv2(o_3) }
         (refs[invRecv2(o_3)] && NoPerm < FullPerm) && qpRange2(o_3) ==> invRecv2(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall n$0_3: Ref ::
         { Heap[n$0_3, cdr] } { QPMask[n$0_3, cdr] } { Heap[n$0_3, cdr] }
         refs[n$0_3] ==> n$0_3 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, cdr] }
@@ -781,9 +783,9 @@ procedure $$#definedness(refs: (Set Ref)) returns (Result: (Set EdgeDomainType))
     Mask := QPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
-    
+
     // -- Check definedness of (forall p: Ref, s: Ref :: { (create_edge(p, s) in result) } ((p in refs) && ((s in refs) && (p.car == s || p.cdr == s))) == (create_edge(p, s) in result))
       if (*) {
         if (refs[p_3]) {
@@ -844,20 +846,20 @@ function  get#triggerStateless(s_1: (Set Ref)): Ref;
 procedure get#definedness(s_1: (Set Ref)) returns (Result: Ref)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 0;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume Set#Card(s_1) > 0;
     assume state(Heap, Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume s_1[Result];
     assume state(Heap, Mask);
@@ -897,17 +899,17 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
   var n$5_2: Ref;
   var v_4_1: Ref;
   var v_6: Ref;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Checked inhaling of precondition
     assume Set#Card(roots) > 0;
     assume state(Heap, Mask);
     assume !g[null];
-    
+
     // -- Check definedness of (forall n$2: Ref :: { n$2.car } (n$2 in g) ==> acc(n$2.car, write))
       if (*) {
         assume false;
@@ -915,10 +917,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource n$2.car might not be injective. (graph_mark.vpr@191.14--191.22) [548]"}
       (forall n$2_1: Ref, n$2_1_1: Ref ::
-      
+
       (((n$2_1 != n$2_1_1 && g[n$2_1]) && g[n$2_1_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$2_1 != n$2_1_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall n$2_1: Ref ::
         { Heap[n$2_1, car] } { QPMask[n$2_1, car] } { Heap[n$2_1, car] }
@@ -928,13 +930,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         { invRecv3(o_3) }
         (g[invRecv3(o_3)] && NoPerm < FullPerm) && qpRange3(o_3) ==> invRecv3(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall n$2_1: Ref ::
         { Heap[n$2_1, car] } { QPMask[n$2_1, car] } { Heap[n$2_1, car] }
         g[n$2_1] ==> n$2_1 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, car] }
@@ -946,7 +948,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       );
     Mask := QPMask;
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall n$3: Ref :: { n$3.cdr } (n$3 in g) ==> acc(n$3.cdr, write))
       if (*) {
         assume false;
@@ -954,10 +956,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource n$3.cdr might not be injective. (graph_mark.vpr@191.14--191.22) [549]"}
       (forall n$3_1: Ref, n$3_1_1: Ref ::
-      
+
       (((n$3_1 != n$3_1_1 && g[n$3_1]) && g[n$3_1_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$3_1 != n$3_1_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall n$3_1: Ref ::
         { Heap[n$3_1, cdr] } { QPMask[n$3_1, cdr] } { Heap[n$3_1, cdr] }
@@ -967,13 +969,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         { invRecv4(o_3) }
         (g[invRecv4(o_3)] && NoPerm < FullPerm) && qpRange4(o_3) ==> invRecv4(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall n$3_1: Ref ::
         { Heap[n$3_1, cdr] } { QPMask[n$3_1, cdr] } { Heap[n$3_1, cdr] }
         g[n$3_1] ==> n$3_1 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, cdr] }
@@ -985,7 +987,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       );
     Mask := QPMask;
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall n$0: Ref :: { (n$0.car in g) } { (n$0 in g), n$0.car } (n$0 in g) ==> (n$0.car in g))
       if (*) {
         if (g[n$0_1]) {
@@ -998,7 +1000,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       { g[Heap[n$0_1_1, car]] } { g[n$0_1_1], Heap[n$0_1_1, car] }
       g[n$0_1_1] ==> g[Heap[n$0_1_1, car]]
     );
-    
+
     // -- Check definedness of (forall n$1: Ref :: { (n$1.cdr in g) } { (n$1 in g), n$1.cdr } (n$1 in g) ==> (n$1.cdr in g))
       if (*) {
         if (g[n$1]) {
@@ -1014,9 +1016,9 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     assume state(Heap, Mask);
     assume Set#Subset(roots, g);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -1032,7 +1034,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     assume Set#Subset(marked, g);
     assume state(PostHeap, PostMask);
     assume !g[null];
-    
+
     // -- Check definedness of (forall n$6: Ref :: { n$6.car } (n$6 in g) ==> acc(n$6.car, write))
       if (*) {
         assume false;
@@ -1040,10 +1042,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource n$6.car might not be injective. (graph_mark.vpr@195.13--195.21) [552]"}
       (forall n$6_1: Ref, n$6_1_1: Ref ::
-      
+
       (((n$6_1 != n$6_1_1 && g[n$6_1]) && g[n$6_1_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$6_1 != n$6_1_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall n$6_1: Ref ::
         { PostHeap[n$6_1, car] } { QPMask[n$6_1, car] } { PostHeap[n$6_1, car] }
@@ -1053,13 +1055,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         { invRecv5(o_3) }
         (g[invRecv5(o_3)] && NoPerm < FullPerm) && qpRange5(o_3) ==> invRecv5(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall n$6_1: Ref ::
         { PostHeap[n$6_1, car] } { QPMask[n$6_1, car] } { PostHeap[n$6_1, car] }
         g[n$6_1] ==> n$6_1 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, car] }
@@ -1071,7 +1073,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       );
     PostMask := QPMask;
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall n$7: Ref :: { n$7.cdr } (n$7 in g) ==> acc(n$7.cdr, write))
       if (*) {
         assume false;
@@ -1079,10 +1081,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource n$7.cdr might not be injective. (graph_mark.vpr@195.13--195.21) [553]"}
       (forall n$7_1: Ref, n$7_1_1: Ref ::
-      
+
       (((n$7_1 != n$7_1_1 && g[n$7_1]) && g[n$7_1_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$7_1 != n$7_1_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall n$7_1: Ref ::
         { PostHeap[n$7_1, cdr] } { QPMask[n$7_1, cdr] } { PostHeap[n$7_1, cdr] }
@@ -1092,13 +1094,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         { invRecv6(o_3) }
         (g[invRecv6(o_3)] && NoPerm < FullPerm) && qpRange6(o_3) ==> invRecv6(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall n$7_1: Ref ::
         { PostHeap[n$7_1, cdr] } { QPMask[n$7_1, cdr] } { PostHeap[n$7_1, cdr] }
         g[n$7_1] ==> n$7_1 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, cdr] }
@@ -1110,7 +1112,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       );
     PostMask := QPMask;
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall n$4: Ref :: { (n$4.car in g) } { (n$4 in g), n$4.car } (n$4 in g) ==> (n$4.car in g))
       if (*) {
         if (g[n$4]) {
@@ -1123,7 +1125,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       { g[PostHeap[n$4_1, car]] } { g[n$4_1], PostHeap[n$4_1, car] }
       g[n$4_1] ==> g[PostHeap[n$4_1, car]]
     );
-    
+
     // -- Check definedness of (forall n$5: Ref :: { (n$5.cdr in g) } { (n$5 in g), n$5.cdr } (n$5 in g) ==> (n$5.cdr in g))
       if (*) {
         if (g[n$5]) {
@@ -1138,7 +1140,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     );
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall v: Ref :: { (v in marked) } { exists_spath($$(g), roots, v) } (v in g) ==> (v in marked) ==> exists_spath($$(g), roots, v))
       if (*) {
         if (g[v_3]) {
@@ -1146,24 +1148,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             if (*) {
               // Exhale precondition of function application
               havoc QPMask;
-              
+
               // -- check that the permission amount is positive
-                
-              
+
+
               // -- check if receiver n is injective
                 assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@196.114--196.119) [556]"}
                   (forall n: Ref, n_2: Ref ::
                   { neverTriggered7(n), neverTriggered7(n_2) }
                   (((n != n_2 && g[n]) && g[n_2]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n != n_2
                 );
-              
+
               // -- check if sufficient permission is held
                 assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@196.114--196.119) [557]"}
                   (forall n: Ref ::
                   { PostHeap[n, car] } { QPMask[n, car] } { PostHeap[n, car] }
                   g[n] ==> PostMask[n, car] >= FullPerm
                 );
-              
+
               // -- assumptions for inverse of receiver n
                 assume (forall n: Ref ::
                   { PostHeap[n, car] } { QPMask[n, car] } { PostHeap[n, car] }
@@ -1173,13 +1175,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   { invRecv7(o_3) }
                   g[invRecv7(o_3)] && (NoPerm < FullPerm && qpRange7(o_3)) ==> invRecv7(o_3) == o_3
                 );
-              
+
               // -- assume permission updates for field car
                 assume (forall o_3: Ref ::
                   { QPMask[o_3, car] }
                   (g[invRecv7(o_3)] && (NoPerm < FullPerm && qpRange7(o_3)) ==> invRecv7(o_3) == o_3 && QPMask[o_3, car] == PostMask[o_3, car] - FullPerm) && (!(g[invRecv7(o_3)] && (NoPerm < FullPerm && qpRange7(o_3))) ==> QPMask[o_3, car] == PostMask[o_3, car])
                 );
-              
+
               // -- assume permission updates for independent locations
                 assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                   { QPMask[o_3, f_5] }
@@ -1187,24 +1189,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                 );
               PostMask := QPMask;
               havoc QPMask;
-              
+
               // -- check that the permission amount is positive
-                
-              
+
+
               // -- check if receiver n$0 is injective
                 assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@196.114--196.119) [558]"}
                   (forall n$0_2: Ref, n$0_2_1: Ref ::
                   { neverTriggered8(n$0_2), neverTriggered8(n$0_2_1) }
                   (((n$0_2 != n$0_2_1 && g[n$0_2]) && g[n$0_2_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_2 != n$0_2_1
                 );
-              
+
               // -- check if sufficient permission is held
                 assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@196.114--196.119) [559]"}
                   (forall n$0_2: Ref ::
                   { PostHeap[n$0_2, cdr] } { QPMask[n$0_2, cdr] } { PostHeap[n$0_2, cdr] }
                   g[n$0_2] ==> PostMask[n$0_2, cdr] >= FullPerm
                 );
-              
+
               // -- assumptions for inverse of receiver n$0
                 assume (forall n$0_2: Ref ::
                   { PostHeap[n$0_2, cdr] } { QPMask[n$0_2, cdr] } { PostHeap[n$0_2, cdr] }
@@ -1214,13 +1216,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   { invRecv8(o_3) }
                   g[invRecv8(o_3)] && (NoPerm < FullPerm && qpRange8(o_3)) ==> invRecv8(o_3) == o_3
                 );
-              
+
               // -- assume permission updates for field cdr
                 assume (forall o_3: Ref ::
                   { QPMask[o_3, cdr] }
                   (g[invRecv8(o_3)] && (NoPerm < FullPerm && qpRange8(o_3)) ==> invRecv8(o_3) == o_3 && QPMask[o_3, cdr] == PostMask[o_3, cdr] - FullPerm) && (!(g[invRecv8(o_3)] && (NoPerm < FullPerm && qpRange8(o_3))) ==> QPMask[o_3, cdr] == PostMask[o_3, cdr])
                 );
-              
+
               // -- assume permission updates for independent locations
                 assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                   { QPMask[o_3, f_5] }
@@ -1244,31 +1246,31 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     );
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall v: Ref :: { (v in marked) } { exists_spath($$(g), roots, v) } (v in g) ==> exists_spath($$(g), roots, v) ==> (v in marked))
       if (*) {
         if (g[v_4]) {
           if (*) {
             // Exhale precondition of function application
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver n is injective
               assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@197.98--197.103) [560]"}
                 (forall n_1: Ref, n_1_1: Ref ::
                 { neverTriggered9(n_1), neverTriggered9(n_1_1) }
                 (((n_1 != n_1_1 && g[n_1]) && g[n_1_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_1 != n_1_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@197.98--197.103) [561]"}
                 (forall n_1: Ref ::
                 { PostHeap[n_1, car] } { QPMask[n_1, car] } { PostHeap[n_1, car] }
                 g[n_1] ==> PostMask[n_1, car] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver n
               assume (forall n_1: Ref ::
                 { PostHeap[n_1, car] } { QPMask[n_1, car] } { PostHeap[n_1, car] }
@@ -1278,13 +1280,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                 { invRecv9(o_3) }
                 g[invRecv9(o_3)] && (NoPerm < FullPerm && qpRange9(o_3)) ==> invRecv9(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field car
               assume (forall o_3: Ref ::
                 { QPMask[o_3, car] }
                 (g[invRecv9(o_3)] && (NoPerm < FullPerm && qpRange9(o_3)) ==> invRecv9(o_3) == o_3 && QPMask[o_3, car] == PostMask[o_3, car] - FullPerm) && (!(g[invRecv9(o_3)] && (NoPerm < FullPerm && qpRange9(o_3))) ==> QPMask[o_3, car] == PostMask[o_3, car])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -1292,24 +1294,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
               );
             PostMask := QPMask;
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver n$0 is injective
               assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@197.98--197.103) [562]"}
                 (forall n$0_3: Ref, n$0_3_1: Ref ::
                 { neverTriggered10(n$0_3), neverTriggered10(n$0_3_1) }
                 (((n$0_3 != n$0_3_1 && g[n$0_3]) && g[n$0_3_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_3 != n$0_3_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@197.98--197.103) [563]"}
                 (forall n$0_3: Ref ::
                 { PostHeap[n$0_3, cdr] } { QPMask[n$0_3, cdr] } { PostHeap[n$0_3, cdr] }
                 g[n$0_3] ==> PostMask[n$0_3, cdr] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver n$0
               assume (forall n$0_3: Ref ::
                 { PostHeap[n$0_3, cdr] } { QPMask[n$0_3, cdr] } { PostHeap[n$0_3, cdr] }
@@ -1319,13 +1321,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                 { invRecv10(o_3) }
                 g[invRecv10(o_3)] && (NoPerm < FullPerm && qpRange10(o_3)) ==> invRecv10(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field cdr
               assume (forall o_3: Ref ::
                 { QPMask[o_3, cdr] }
                 (g[invRecv10(o_3)] && (NoPerm < FullPerm && qpRange10(o_3)) ==> invRecv10(o_3) == o_3 && QPMask[o_3, cdr] == PostMask[o_3, cdr] - FullPerm) && (!(g[invRecv10(o_3)] && (NoPerm < FullPerm && qpRange10(o_3))) ==> QPMask[o_3, cdr] == PostMask[o_3, cdr])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -1350,12 +1352,12 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     // Stop execution
     assume false;
   }
-  
+
   // -- Assumptions about local variables
     assume Heap[x_1, $allocated];
-  
+
   // -- Translating statement: x := get(roots) -- graph_mark.vpr@199.5--199.28
-    
+
     // -- Check definedness of get(roots)
       if (*) {
         // Exhale precondition of function application
@@ -1366,41 +1368,41 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       }
     x_1 := get(Heap, roots);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: pending := roots -- graph_mark.vpr@200.5--200.34
     pending := roots;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: marked := Set[Ref]() -- graph_mark.vpr@201.5--201.20
     marked := (Set#Empty(): Set Ref);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: while (|pending| > 0) -- graph_mark.vpr@203.5--238.6
-    
+
     // -- Before loop head
-      
+
       // -- Exhale loop invariant before loop
         assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not hold on entry. Assertion !((null in g)) might not hold. (graph_mark.vpr@205.19--205.27) [565]"}
           !g[null];
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver n$10 is injective
           assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not hold on entry. Quantified resource n$10.car might not be injective. (graph_mark.vpr@205.19--205.27) [566]"}
             (forall n$10: Ref, n$10_1: Ref ::
             { neverTriggered13(n$10), neverTriggered13(n$10_1) }
             (((n$10 != n$10_1 && g[n$10]) && g[n$10_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$10 != n$10_1
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not hold on entry. There might be insufficient permission to access n$10.car (graph_mark.vpr@205.19--205.27) [567]"}
             (forall n$10: Ref ::
             { Heap[n$10, car] } { QPMask[n$10, car] } { Heap[n$10, car] }
             g[n$10] ==> Mask[n$10, car] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver n$10
           assume (forall n$10: Ref ::
             { Heap[n$10, car] } { QPMask[n$10, car] } { Heap[n$10, car] }
@@ -1410,13 +1412,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv13(o_3) }
             g[invRecv13(o_3)] && (NoPerm < FullPerm && qpRange13(o_3)) ==> invRecv13(o_3) == o_3
           );
-        
+
         // -- assume permission updates for field car
           assume (forall o_3: Ref ::
             { QPMask[o_3, car] }
             (g[invRecv13(o_3)] && (NoPerm < FullPerm && qpRange13(o_3)) ==> invRecv13(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv13(o_3)] && (NoPerm < FullPerm && qpRange13(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -1424,24 +1426,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
           );
         Mask := QPMask;
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver n$11 is injective
           assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not hold on entry. Quantified resource n$11.cdr might not be injective. (graph_mark.vpr@205.19--205.27) [568]"}
             (forall n$11: Ref, n$11_1: Ref ::
             { neverTriggered14(n$11), neverTriggered14(n$11_1) }
             (((n$11 != n$11_1 && g[n$11]) && g[n$11_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$11 != n$11_1
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not hold on entry. There might be insufficient permission to access n$11.cdr (graph_mark.vpr@205.19--205.27) [569]"}
             (forall n$11: Ref ::
             { Heap[n$11, cdr] } { QPMask[n$11, cdr] } { Heap[n$11, cdr] }
             g[n$11] ==> Mask[n$11, cdr] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver n$11
           assume (forall n$11: Ref ::
             { Heap[n$11, cdr] } { QPMask[n$11, cdr] } { Heap[n$11, cdr] }
@@ -1451,13 +1453,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv14(o_3) }
             g[invRecv14(o_3)] && (NoPerm < FullPerm && qpRange14(o_3)) ==> invRecv14(o_3) == o_3
           );
-        
+
         // -- assume permission updates for field cdr
           assume (forall o_3: Ref ::
             { QPMask[o_3, cdr] }
             (g[invRecv14(o_3)] && (NoPerm < FullPerm && qpRange14(o_3)) ==> invRecv14(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv14(o_3)] && (NoPerm < FullPerm && qpRange14(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -1530,15 +1532,15 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         havoc ExhaleHeap;
         assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
         Heap := ExhaleHeap;
-    
+
     // -- Havoc loop written variables (except locals)
       havoc pending, marked, x_1;
       assume Heap[x_1, $allocated];
-    
+
     // -- Check definedness of invariant
       if (*) {
         assume !g[null];
-        
+
         // -- Check definedness of (forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write))
           if (*) {
             assume false;
@@ -1546,10 +1548,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         havoc QPMask;
         assert {:msg "  Contract might not be well-formed. Quantified resource n$10.car might not be injective. (graph_mark.vpr@205.19--205.27) [579]"}
           (forall n$10_2: Ref, n$10_2_1: Ref ::
-          
+
           (((n$10_2 != n$10_2_1 && g[n$10_2]) && g[n$10_2_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$10_2 != n$10_2_1
         );
-        
+
         // -- Define Inverse Function
           assume (forall n$10_2: Ref ::
             { Heap[n$10_2, car] } { QPMask[n$10_2, car] } { Heap[n$10_2, car] }
@@ -1559,13 +1561,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv15(o_3) }
             (g[invRecv15(o_3)] && NoPerm < FullPerm) && qpRange15(o_3) ==> invRecv15(o_3) == o_3
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall n$10_2: Ref ::
             { Heap[n$10_2, car] } { QPMask[n$10_2, car] } { Heap[n$10_2, car] }
             g[n$10_2] ==> n$10_2 != null
           );
-        
+
         // -- Define permissions
           assume (forall o_3: Ref ::
             { QPMask[o_3, car] }
@@ -1577,7 +1579,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
           );
         Mask := QPMask;
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))
           if (*) {
             assume false;
@@ -1585,10 +1587,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         havoc QPMask;
         assert {:msg "  Contract might not be well-formed. Quantified resource n$11.cdr might not be injective. (graph_mark.vpr@205.19--205.27) [580]"}
           (forall n$11_2: Ref, n$11_2_1: Ref ::
-          
+
           (((n$11_2 != n$11_2_1 && g[n$11_2]) && g[n$11_2_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$11_2 != n$11_2_1
         );
-        
+
         // -- Define Inverse Function
           assume (forall n$11_2: Ref ::
             { Heap[n$11_2, cdr] } { QPMask[n$11_2, cdr] } { Heap[n$11_2, cdr] }
@@ -1598,13 +1600,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv16(o_3) }
             (g[invRecv16(o_3)] && NoPerm < FullPerm) && qpRange16(o_3) ==> invRecv16(o_3) == o_3
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall n$11_2: Ref ::
             { Heap[n$11_2, cdr] } { QPMask[n$11_2, cdr] } { Heap[n$11_2, cdr] }
             g[n$11_2] ==> n$11_2 != null
           );
-        
+
         // -- Define permissions
           assume (forall o_3: Ref ::
             { QPMask[o_3, cdr] }
@@ -1616,7 +1618,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
           );
         Mask := QPMask;
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g))
           if (*) {
             if (g[n$8_1]) {
@@ -1629,7 +1631,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
           { g[Heap[n$8_3, car]] } { g[n$8_3], Heap[n$8_3, car] }
           g[n$8_3] ==> g[Heap[n$8_3, car]]
         );
-        
+
         // -- Check definedness of (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g))
           if (*) {
             if (g[n$9_1]) {
@@ -1650,29 +1652,29 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         assume Set#Subset(marked, g);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of exists_spath($$(g), roots, x)
           if (*) {
             // Exhale precondition of function application
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver n is injective
               assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@212.32--212.37) [583]"}
                 (forall n_7: Ref, n_7_1: Ref ::
                 { neverTriggered17(n_7), neverTriggered17(n_7_1) }
                 (((n_7 != n_7_1 && g[n_7]) && g[n_7_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_7 != n_7_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@212.32--212.37) [584]"}
                 (forall n_7: Ref ::
                 { Heap[n_7, car] } { QPMask[n_7, car] } { Heap[n_7, car] }
                 g[n_7] ==> Mask[n_7, car] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver n
               assume (forall n_7: Ref ::
                 { Heap[n_7, car] } { QPMask[n_7, car] } { Heap[n_7, car] }
@@ -1682,13 +1684,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                 { invRecv17(o_3) }
                 g[invRecv17(o_3)] && (NoPerm < FullPerm && qpRange17(o_3)) ==> invRecv17(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field car
               assume (forall o_3: Ref ::
                 { QPMask[o_3, car] }
                 (g[invRecv17(o_3)] && (NoPerm < FullPerm && qpRange17(o_3)) ==> invRecv17(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv17(o_3)] && (NoPerm < FullPerm && qpRange17(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -1696,24 +1698,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
               );
             Mask := QPMask;
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver n$0 is injective
               assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@212.32--212.37) [585]"}
                 (forall n$0_4: Ref, n$0_4_1: Ref ::
                 { neverTriggered18(n$0_4), neverTriggered18(n$0_4_1) }
                 (((n$0_4 != n$0_4_1 && g[n$0_4]) && g[n$0_4_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_4 != n$0_4_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@212.32--212.37) [586]"}
                 (forall n$0_4: Ref ::
                 { Heap[n$0_4, cdr] } { QPMask[n$0_4, cdr] } { Heap[n$0_4, cdr] }
                 g[n$0_4] ==> Mask[n$0_4, cdr] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver n$0
               assume (forall n$0_4: Ref ::
                 { Heap[n$0_4, cdr] } { QPMask[n$0_4, cdr] } { Heap[n$0_4, cdr] }
@@ -1723,13 +1725,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                 { invRecv18(o_3) }
                 g[invRecv18(o_3)] && (NoPerm < FullPerm && qpRange18(o_3)) ==> invRecv18(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field cdr
               assume (forall o_3: Ref ::
                 { QPMask[o_3, cdr] }
                 (g[invRecv18(o_3)] && (NoPerm < FullPerm && qpRange18(o_3)) ==> invRecv18(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv18(o_3)] && (NoPerm < FullPerm && qpRange18(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -1744,36 +1746,36 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             assume false;
           }
         assume (exists_spath($$(Heap, g), roots, x_1): bool);
-        
+
         // -- Check definedness of x.cdr != null
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access x.cdr (graph_mark.vpr@212.19--214.118) [587]"}
             HasDirectPerm(Mask, x_1, cdr);
         if (Heap[x_1, cdr] != null) {
-          
+
           // -- Check definedness of (create_edge(x, x.cdr) in $$(g)) && exists_path($$(g), x.cdr, x.cdr)
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access x.cdr (graph_mark.vpr@212.19--214.118) [588]"}
               HasDirectPerm(Mask, x_1, cdr);
             if (*) {
               // Exhale precondition of function application
               havoc QPMask;
-              
+
               // -- check that the permission amount is positive
-                
-              
+
+
               // -- check if receiver n is injective
                 assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@213.32--213.51) [589]"}
                   (forall n_8: Ref, n_8_1: Ref ::
                   { neverTriggered19(n_8), neverTriggered19(n_8_1) }
                   (((n_8 != n_8_1 && g[n_8]) && g[n_8_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_8 != n_8_1
                 );
-              
+
               // -- check if sufficient permission is held
                 assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@213.32--213.51) [590]"}
                   (forall n_8: Ref ::
                   { Heap[n_8, car] } { QPMask[n_8, car] } { Heap[n_8, car] }
                   g[n_8] ==> Mask[n_8, car] >= FullPerm
                 );
-              
+
               // -- assumptions for inverse of receiver n
                 assume (forall n_8: Ref ::
                   { Heap[n_8, car] } { QPMask[n_8, car] } { Heap[n_8, car] }
@@ -1783,13 +1785,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   { invRecv19(o_3) }
                   g[invRecv19(o_3)] && (NoPerm < FullPerm && qpRange19(o_3)) ==> invRecv19(o_3) == o_3
                 );
-              
+
               // -- assume permission updates for field car
                 assume (forall o_3: Ref ::
                   { QPMask[o_3, car] }
                   (g[invRecv19(o_3)] && (NoPerm < FullPerm && qpRange19(o_3)) ==> invRecv19(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv19(o_3)] && (NoPerm < FullPerm && qpRange19(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
                 );
-              
+
               // -- assume permission updates for independent locations
                 assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                   { QPMask[o_3, f_5] }
@@ -1797,24 +1799,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                 );
               Mask := QPMask;
               havoc QPMask;
-              
+
               // -- check that the permission amount is positive
-                
-              
+
+
               // -- check if receiver n$0 is injective
                 assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@213.32--213.51) [591]"}
                   (forall n$0_5: Ref, n$0_5_1: Ref ::
                   { neverTriggered20(n$0_5), neverTriggered20(n$0_5_1) }
                   (((n$0_5 != n$0_5_1 && g[n$0_5]) && g[n$0_5_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_5 != n$0_5_1
                 );
-              
+
               // -- check if sufficient permission is held
                 assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@213.32--213.51) [592]"}
                   (forall n$0_5: Ref ::
                   { Heap[n$0_5, cdr] } { QPMask[n$0_5, cdr] } { Heap[n$0_5, cdr] }
                   g[n$0_5] ==> Mask[n$0_5, cdr] >= FullPerm
                 );
-              
+
               // -- assumptions for inverse of receiver n$0
                 assume (forall n$0_5: Ref ::
                   { Heap[n$0_5, cdr] } { QPMask[n$0_5, cdr] } { Heap[n$0_5, cdr] }
@@ -1824,13 +1826,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   { invRecv20(o_3) }
                   g[invRecv20(o_3)] && (NoPerm < FullPerm && qpRange20(o_3)) ==> invRecv20(o_3) == o_3
                 );
-              
+
               // -- assume permission updates for field cdr
                 assume (forall o_3: Ref ::
                   { QPMask[o_3, cdr] }
                   (g[invRecv20(o_3)] && (NoPerm < FullPerm && qpRange20(o_3)) ==> invRecv20(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv20(o_3)] && (NoPerm < FullPerm && qpRange20(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
                 );
-              
+
               // -- assume permission updates for independent locations
                 assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                   { QPMask[o_3, f_5] }
@@ -1848,24 +1850,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
               if (*) {
                 // Exhale precondition of function application
                 havoc QPMask;
-                
+
                 // -- check that the permission amount is positive
-                  
-                
+
+
                 // -- check if receiver n is injective
                   assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@213.67--213.72) [593]"}
                     (forall n_9: Ref, n_9_1: Ref ::
                     { neverTriggered21(n_9), neverTriggered21(n_9_1) }
                     (((n_9 != n_9_1 && g[n_9]) && g[n_9_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_9 != n_9_1
                   );
-                
+
                 // -- check if sufficient permission is held
                   assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@213.67--213.72) [594]"}
                     (forall n_9: Ref ::
                     { Heap[n_9, car] } { QPMask[n_9, car] } { Heap[n_9, car] }
                     g[n_9] ==> Mask[n_9, car] >= FullPerm
                   );
-                
+
                 // -- assumptions for inverse of receiver n
                   assume (forall n_9: Ref ::
                     { Heap[n_9, car] } { QPMask[n_9, car] } { Heap[n_9, car] }
@@ -1875,13 +1877,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                     { invRecv21(o_3) }
                     g[invRecv21(o_3)] && (NoPerm < FullPerm && qpRange21(o_3)) ==> invRecv21(o_3) == o_3
                   );
-                
+
                 // -- assume permission updates for field car
                   assume (forall o_3: Ref ::
                     { QPMask[o_3, car] }
                     (g[invRecv21(o_3)] && (NoPerm < FullPerm && qpRange21(o_3)) ==> invRecv21(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv21(o_3)] && (NoPerm < FullPerm && qpRange21(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
                   );
-                
+
                 // -- assume permission updates for independent locations
                   assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                     { QPMask[o_3, f_5] }
@@ -1889,24 +1891,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   );
                 Mask := QPMask;
                 havoc QPMask;
-                
+
                 // -- check that the permission amount is positive
-                  
-                
+
+
                 // -- check if receiver n$0 is injective
                   assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@213.67--213.72) [595]"}
                     (forall n$0_6: Ref, n$0_6_1: Ref ::
                     { neverTriggered22(n$0_6), neverTriggered22(n$0_6_1) }
                     (((n$0_6 != n$0_6_1 && g[n$0_6]) && g[n$0_6_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_6 != n$0_6_1
                   );
-                
+
                 // -- check if sufficient permission is held
                   assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@213.67--213.72) [596]"}
                     (forall n$0_6: Ref ::
                     { Heap[n$0_6, cdr] } { QPMask[n$0_6, cdr] } { Heap[n$0_6, cdr] }
                     g[n$0_6] ==> Mask[n$0_6, cdr] >= FullPerm
                   );
-                
+
                 // -- assumptions for inverse of receiver n$0
                   assume (forall n$0_6: Ref ::
                     { Heap[n$0_6, cdr] } { QPMask[n$0_6, cdr] } { Heap[n$0_6, cdr] }
@@ -1916,13 +1918,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                     { invRecv22(o_3) }
                     g[invRecv22(o_3)] && (NoPerm < FullPerm && qpRange22(o_3)) ==> invRecv22(o_3) == o_3
                   );
-                
+
                 // -- assume permission updates for field cdr
                   assume (forall o_3: Ref ::
                     { QPMask[o_3, cdr] }
                     (g[invRecv22(o_3)] && (NoPerm < FullPerm && qpRange22(o_3)) ==> invRecv22(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv22(o_3)] && (NoPerm < FullPerm && qpRange22(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
                   );
-                
+
                 // -- assume permission updates for independent locations
                   assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                     { QPMask[o_3, f_5] }
@@ -1943,29 +1945,29 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             }
           if ($$(Heap, g)[(create_edge(x_1, Heap[x_1, cdr]): EdgeDomainType)] && (exists_path($$(Heap, g), Heap[x_1, cdr], Heap[x_1, cdr]): bool)) {
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of exists_path($$(g), x, x.cdr)
               if (*) {
                 // Exhale precondition of function application
                 havoc QPMask;
-                
+
                 // -- check that the permission amount is positive
-                  
-                
+
+
                 // -- check if receiver n is injective
                   assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@213.102--213.107) [599]"}
                     (forall n_10: Ref, n_10_1: Ref ::
                     { neverTriggered23(n_10), neverTriggered23(n_10_1) }
                     (((n_10 != n_10_1 && g[n_10]) && g[n_10_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_10 != n_10_1
                   );
-                
+
                 // -- check if sufficient permission is held
                   assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@213.102--213.107) [600]"}
                     (forall n_10: Ref ::
                     { Heap[n_10, car] } { QPMask[n_10, car] } { Heap[n_10, car] }
                     g[n_10] ==> Mask[n_10, car] >= FullPerm
                   );
-                
+
                 // -- assumptions for inverse of receiver n
                   assume (forall n_10: Ref ::
                     { Heap[n_10, car] } { QPMask[n_10, car] } { Heap[n_10, car] }
@@ -1975,13 +1977,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                     { invRecv23(o_3) }
                     g[invRecv23(o_3)] && (NoPerm < FullPerm && qpRange23(o_3)) ==> invRecv23(o_3) == o_3
                   );
-                
+
                 // -- assume permission updates for field car
                   assume (forall o_3: Ref ::
                     { QPMask[o_3, car] }
                     (g[invRecv23(o_3)] && (NoPerm < FullPerm && qpRange23(o_3)) ==> invRecv23(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv23(o_3)] && (NoPerm < FullPerm && qpRange23(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
                   );
-                
+
                 // -- assume permission updates for independent locations
                   assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                     { QPMask[o_3, f_5] }
@@ -1989,24 +1991,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   );
                 Mask := QPMask;
                 havoc QPMask;
-                
+
                 // -- check that the permission amount is positive
-                  
-                
+
+
                 // -- check if receiver n$0 is injective
                   assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@213.102--213.107) [601]"}
                     (forall n$0_7: Ref, n$0_7_1: Ref ::
                     { neverTriggered24(n$0_7), neverTriggered24(n$0_7_1) }
                     (((n$0_7 != n$0_7_1 && g[n$0_7]) && g[n$0_7_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_7 != n$0_7_1
                   );
-                
+
                 // -- check if sufficient permission is held
                   assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@213.102--213.107) [602]"}
                     (forall n$0_7: Ref ::
                     { Heap[n$0_7, cdr] } { QPMask[n$0_7, cdr] } { Heap[n$0_7, cdr] }
                     g[n$0_7] ==> Mask[n$0_7, cdr] >= FullPerm
                   );
-                
+
                 // -- assumptions for inverse of receiver n$0
                   assume (forall n$0_7: Ref ::
                     { Heap[n$0_7, cdr] } { QPMask[n$0_7, cdr] } { Heap[n$0_7, cdr] }
@@ -2016,13 +2018,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                     { invRecv24(o_3) }
                     g[invRecv24(o_3)] && (NoPerm < FullPerm && qpRange24(o_3)) ==> invRecv24(o_3) == o_3
                   );
-                
+
                 // -- assume permission updates for field cdr
                   assume (forall o_3: Ref ::
                     { QPMask[o_3, cdr] }
                     (g[invRecv24(o_3)] && (NoPerm < FullPerm && qpRange24(o_3)) ==> invRecv24(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv24(o_3)] && (NoPerm < FullPerm && qpRange24(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
                   );
-                
+
                 // -- assume permission updates for independent locations
                   assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                     { QPMask[o_3, f_5] }
@@ -2041,36 +2043,36 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             assume (exists_path($$(Heap, g), x_1, Heap[x_1, cdr]): bool);
           }
         }
-        
+
         // -- Check definedness of x.car != null
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access x.car (graph_mark.vpr@212.19--214.118) [604]"}
             HasDirectPerm(Mask, x_1, car);
         if (Heap[x_1, car] != null) {
-          
+
           // -- Check definedness of (create_edge(x, x.car) in $$(g)) && exists_path($$(g), x.car, x.car)
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access x.car (graph_mark.vpr@212.19--214.118) [605]"}
               HasDirectPerm(Mask, x_1, car);
             if (*) {
               // Exhale precondition of function application
               havoc QPMask;
-              
+
               // -- check that the permission amount is positive
-                
-              
+
+
               // -- check if receiver n is injective
                 assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@214.32--214.51) [606]"}
                   (forall n_11: Ref, n_11_1: Ref ::
                   { neverTriggered25(n_11), neverTriggered25(n_11_1) }
                   (((n_11 != n_11_1 && g[n_11]) && g[n_11_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_11 != n_11_1
                 );
-              
+
               // -- check if sufficient permission is held
                 assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@214.32--214.51) [607]"}
                   (forall n_11: Ref ::
                   { Heap[n_11, car] } { QPMask[n_11, car] } { Heap[n_11, car] }
                   g[n_11] ==> Mask[n_11, car] >= FullPerm
                 );
-              
+
               // -- assumptions for inverse of receiver n
                 assume (forall n_11: Ref ::
                   { Heap[n_11, car] } { QPMask[n_11, car] } { Heap[n_11, car] }
@@ -2080,13 +2082,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   { invRecv25(o_3) }
                   g[invRecv25(o_3)] && (NoPerm < FullPerm && qpRange25(o_3)) ==> invRecv25(o_3) == o_3
                 );
-              
+
               // -- assume permission updates for field car
                 assume (forall o_3: Ref ::
                   { QPMask[o_3, car] }
                   (g[invRecv25(o_3)] && (NoPerm < FullPerm && qpRange25(o_3)) ==> invRecv25(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv25(o_3)] && (NoPerm < FullPerm && qpRange25(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
                 );
-              
+
               // -- assume permission updates for independent locations
                 assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                   { QPMask[o_3, f_5] }
@@ -2094,24 +2096,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                 );
               Mask := QPMask;
               havoc QPMask;
-              
+
               // -- check that the permission amount is positive
-                
-              
+
+
               // -- check if receiver n$0 is injective
                 assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@214.32--214.51) [608]"}
                   (forall n$0_8: Ref, n$0_8_1: Ref ::
                   { neverTriggered26(n$0_8), neverTriggered26(n$0_8_1) }
                   (((n$0_8 != n$0_8_1 && g[n$0_8]) && g[n$0_8_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_8 != n$0_8_1
                 );
-              
+
               // -- check if sufficient permission is held
                 assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@214.32--214.51) [609]"}
                   (forall n$0_8: Ref ::
                   { Heap[n$0_8, cdr] } { QPMask[n$0_8, cdr] } { Heap[n$0_8, cdr] }
                   g[n$0_8] ==> Mask[n$0_8, cdr] >= FullPerm
                 );
-              
+
               // -- assumptions for inverse of receiver n$0
                 assume (forall n$0_8: Ref ::
                   { Heap[n$0_8, cdr] } { QPMask[n$0_8, cdr] } { Heap[n$0_8, cdr] }
@@ -2121,13 +2123,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   { invRecv26(o_3) }
                   g[invRecv26(o_3)] && (NoPerm < FullPerm && qpRange26(o_3)) ==> invRecv26(o_3) == o_3
                 );
-              
+
               // -- assume permission updates for field cdr
                 assume (forall o_3: Ref ::
                   { QPMask[o_3, cdr] }
                   (g[invRecv26(o_3)] && (NoPerm < FullPerm && qpRange26(o_3)) ==> invRecv26(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv26(o_3)] && (NoPerm < FullPerm && qpRange26(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
                 );
-              
+
               // -- assume permission updates for independent locations
                 assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                   { QPMask[o_3, f_5] }
@@ -2145,24 +2147,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
               if (*) {
                 // Exhale precondition of function application
                 havoc QPMask;
-                
+
                 // -- check that the permission amount is positive
-                  
-                
+
+
                 // -- check if receiver n is injective
                   assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@214.67--214.72) [610]"}
                     (forall n_12: Ref, n_12_1: Ref ::
                     { neverTriggered27(n_12), neverTriggered27(n_12_1) }
                     (((n_12 != n_12_1 && g[n_12]) && g[n_12_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_12 != n_12_1
                   );
-                
+
                 // -- check if sufficient permission is held
                   assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@214.67--214.72) [611]"}
                     (forall n_12: Ref ::
                     { Heap[n_12, car] } { QPMask[n_12, car] } { Heap[n_12, car] }
                     g[n_12] ==> Mask[n_12, car] >= FullPerm
                   );
-                
+
                 // -- assumptions for inverse of receiver n
                   assume (forall n_12: Ref ::
                     { Heap[n_12, car] } { QPMask[n_12, car] } { Heap[n_12, car] }
@@ -2172,13 +2174,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                     { invRecv27(o_3) }
                     g[invRecv27(o_3)] && (NoPerm < FullPerm && qpRange27(o_3)) ==> invRecv27(o_3) == o_3
                   );
-                
+
                 // -- assume permission updates for field car
                   assume (forall o_3: Ref ::
                     { QPMask[o_3, car] }
                     (g[invRecv27(o_3)] && (NoPerm < FullPerm && qpRange27(o_3)) ==> invRecv27(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv27(o_3)] && (NoPerm < FullPerm && qpRange27(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
                   );
-                
+
                 // -- assume permission updates for independent locations
                   assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                     { QPMask[o_3, f_5] }
@@ -2186,24 +2188,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   );
                 Mask := QPMask;
                 havoc QPMask;
-                
+
                 // -- check that the permission amount is positive
-                  
-                
+
+
                 // -- check if receiver n$0 is injective
                   assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@214.67--214.72) [612]"}
                     (forall n$0_9: Ref, n$0_9_1: Ref ::
                     { neverTriggered28(n$0_9), neverTriggered28(n$0_9_1) }
                     (((n$0_9 != n$0_9_1 && g[n$0_9]) && g[n$0_9_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_9 != n$0_9_1
                   );
-                
+
                 // -- check if sufficient permission is held
                   assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@214.67--214.72) [613]"}
                     (forall n$0_9: Ref ::
                     { Heap[n$0_9, cdr] } { QPMask[n$0_9, cdr] } { Heap[n$0_9, cdr] }
                     g[n$0_9] ==> Mask[n$0_9, cdr] >= FullPerm
                   );
-                
+
                 // -- assumptions for inverse of receiver n$0
                   assume (forall n$0_9: Ref ::
                     { Heap[n$0_9, cdr] } { QPMask[n$0_9, cdr] } { Heap[n$0_9, cdr] }
@@ -2213,13 +2215,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                     { invRecv28(o_3) }
                     g[invRecv28(o_3)] && (NoPerm < FullPerm && qpRange28(o_3)) ==> invRecv28(o_3) == o_3
                   );
-                
+
                 // -- assume permission updates for field cdr
                   assume (forall o_3: Ref ::
                     { QPMask[o_3, cdr] }
                     (g[invRecv28(o_3)] && (NoPerm < FullPerm && qpRange28(o_3)) ==> invRecv28(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv28(o_3)] && (NoPerm < FullPerm && qpRange28(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
                   );
-                
+
                 // -- assume permission updates for independent locations
                   assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                     { QPMask[o_3, f_5] }
@@ -2240,29 +2242,29 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             }
           if ($$(Heap, g)[(create_edge(x_1, Heap[x_1, car]): EdgeDomainType)] && (exists_path($$(Heap, g), Heap[x_1, car], Heap[x_1, car]): bool)) {
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of exists_path($$(g), x, x.car)
               if (*) {
                 // Exhale precondition of function application
                 havoc QPMask;
-                
+
                 // -- check that the permission amount is positive
-                  
-                
+
+
                 // -- check if receiver n is injective
                   assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@214.102--214.107) [616]"}
                     (forall n_13: Ref, n_13_1: Ref ::
                     { neverTriggered29(n_13), neverTriggered29(n_13_1) }
                     (((n_13 != n_13_1 && g[n_13]) && g[n_13_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_13 != n_13_1
                   );
-                
+
                 // -- check if sufficient permission is held
                   assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@214.102--214.107) [617]"}
                     (forall n_13: Ref ::
                     { Heap[n_13, car] } { QPMask[n_13, car] } { Heap[n_13, car] }
                     g[n_13] ==> Mask[n_13, car] >= FullPerm
                   );
-                
+
                 // -- assumptions for inverse of receiver n
                   assume (forall n_13: Ref ::
                     { Heap[n_13, car] } { QPMask[n_13, car] } { Heap[n_13, car] }
@@ -2272,13 +2274,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                     { invRecv29(o_3) }
                     g[invRecv29(o_3)] && (NoPerm < FullPerm && qpRange29(o_3)) ==> invRecv29(o_3) == o_3
                   );
-                
+
                 // -- assume permission updates for field car
                   assume (forall o_3: Ref ::
                     { QPMask[o_3, car] }
                     (g[invRecv29(o_3)] && (NoPerm < FullPerm && qpRange29(o_3)) ==> invRecv29(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv29(o_3)] && (NoPerm < FullPerm && qpRange29(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
                   );
-                
+
                 // -- assume permission updates for independent locations
                   assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                     { QPMask[o_3, f_5] }
@@ -2286,24 +2288,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   );
                 Mask := QPMask;
                 havoc QPMask;
-                
+
                 // -- check that the permission amount is positive
-                  
-                
+
+
                 // -- check if receiver n$0 is injective
                   assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@214.102--214.107) [618]"}
                     (forall n$0_10: Ref, n$0_10_1: Ref ::
                     { neverTriggered30(n$0_10), neverTriggered30(n$0_10_1) }
                     (((n$0_10 != n$0_10_1 && g[n$0_10]) && g[n$0_10_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_10 != n$0_10_1
                   );
-                
+
                 // -- check if sufficient permission is held
                   assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@214.102--214.107) [619]"}
                     (forall n$0_10: Ref ::
                     { Heap[n$0_10, cdr] } { QPMask[n$0_10, cdr] } { Heap[n$0_10, cdr] }
                     g[n$0_10] ==> Mask[n$0_10, cdr] >= FullPerm
                   );
-                
+
                 // -- assumptions for inverse of receiver n$0
                   assume (forall n$0_10: Ref ::
                     { Heap[n$0_10, cdr] } { QPMask[n$0_10, cdr] } { Heap[n$0_10, cdr] }
@@ -2313,13 +2315,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                     { invRecv30(o_3) }
                     g[invRecv30(o_3)] && (NoPerm < FullPerm && qpRange30(o_3)) ==> invRecv30(o_3) == o_3
                   );
-                
+
                 // -- assume permission updates for field cdr
                   assume (forall o_3: Ref ::
                     { QPMask[o_3, cdr] }
                     (g[invRecv30(o_3)] && (NoPerm < FullPerm && qpRange30(o_3)) ==> invRecv30(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv30(o_3)] && (NoPerm < FullPerm && qpRange30(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
                   );
-                
+
                 // -- assume permission updates for independent locations
                   assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                     { QPMask[o_3, f_5] }
@@ -2340,7 +2342,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         }
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forall n: Ref :: { (n in pending) } { (n in roots) } (n in roots) == (n in pending)) && (forall n: Ref :: { (n in marked) } (n in g) ==> !((n in marked))) || (forall n: Ref :: { (n in pending) } { (n in marked) } (n in roots) ==> (n in marked) || (n in pending)) && ((forall n: Ref :: { (n in pending) } (n in g) ==> !((n in marked) && (n in pending))) && ((forall n: Ref :: { exists_spath($$(g), roots, n) } (n in pending) || (n in marked) ==> exists_spath($$(g), roots, n)) && (forall n1: Ref, n2: Ref :: { (n1 in marked), (n2 in marked) } (n1 in marked) && ((n2 in g) && (!((n2 in marked)) && !((n2 in pending)))) ==> !((create_edge(n1, n2) in $$(g))))))
           if (*) {
             assume false;
@@ -2379,24 +2381,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                     if (*) {
                       // Exhale precondition of function application
                       havoc QPMask;
-                      
+
                       // -- check that the permission amount is positive
-                        
-                      
+
+
                       // -- check if receiver n$0 is injective
                         assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.car might not be injective. (graph_mark.vpr@222.102--222.107) [621]"}
                           (forall n$0_11: Ref, n$0_11_1: Ref ::
                           { neverTriggered31(n$0_11), neverTriggered31(n$0_11_1) }
                           (((n$0_11 != n$0_11_1 && g[n$0_11]) && g[n$0_11_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_11 != n$0_11_1
                         );
-                      
+
                       // -- check if sufficient permission is held
                         assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.car (graph_mark.vpr@222.102--222.107) [622]"}
                           (forall n$0_11: Ref ::
                           { Heap[n$0_11, car] } { QPMask[n$0_11, car] } { Heap[n$0_11, car] }
                           g[n$0_11] ==> Mask[n$0_11, car] >= FullPerm
                         );
-                      
+
                       // -- assumptions for inverse of receiver n$0
                         assume (forall n$0_11: Ref ::
                           { Heap[n$0_11, car] } { QPMask[n$0_11, car] } { Heap[n$0_11, car] }
@@ -2406,13 +2408,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                           { invRecv31(o_3) }
                           g[invRecv31(o_3)] && (NoPerm < FullPerm && qpRange31(o_3)) ==> invRecv31(o_3) == o_3
                         );
-                      
+
                       // -- assume permission updates for field car
                         assume (forall o_3: Ref ::
                           { QPMask[o_3, car] }
                           (g[invRecv31(o_3)] && (NoPerm < FullPerm && qpRange31(o_3)) ==> invRecv31(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv31(o_3)] && (NoPerm < FullPerm && qpRange31(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
                         );
-                      
+
                       // -- assume permission updates for independent locations
                         assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                           { QPMask[o_3, f_5] }
@@ -2420,24 +2422,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                         );
                       Mask := QPMask;
                       havoc QPMask;
-                      
+
                       // -- check that the permission amount is positive
-                        
-                      
+
+
                       // -- check if receiver n$0 is injective
                         assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@222.102--222.107) [623]"}
                           (forall n$0_12: Ref, n$0_12_1: Ref ::
                           { neverTriggered32(n$0_12), neverTriggered32(n$0_12_1) }
                           (((n$0_12 != n$0_12_1 && g[n$0_12]) && g[n$0_12_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_12 != n$0_12_1
                         );
-                      
+
                       // -- check if sufficient permission is held
                         assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@222.102--222.107) [624]"}
                           (forall n$0_12: Ref ::
                           { Heap[n$0_12, cdr] } { QPMask[n$0_12, cdr] } { Heap[n$0_12, cdr] }
                           g[n$0_12] ==> Mask[n$0_12, cdr] >= FullPerm
                         );
-                      
+
                       // -- assumptions for inverse of receiver n$0
                         assume (forall n$0_12: Ref ::
                           { Heap[n$0_12, cdr] } { QPMask[n$0_12, cdr] } { Heap[n$0_12, cdr] }
@@ -2447,13 +2449,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                           { invRecv32(o_3) }
                           g[invRecv32(o_3)] && (NoPerm < FullPerm && qpRange32(o_3)) ==> invRecv32(o_3) == o_3
                         );
-                      
+
                       // -- assume permission updates for field cdr
                         assume (forall o_3: Ref ::
                           { QPMask[o_3, cdr] }
                           (g[invRecv32(o_3)] && (NoPerm < FullPerm && qpRange32(o_3)) ==> invRecv32(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv32(o_3)] && (NoPerm < FullPerm && qpRange32(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
                         );
-                      
+
                       // -- assume permission updates for independent locations
                         assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                           { QPMask[o_3, f_5] }
@@ -2479,24 +2481,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                       if (*) {
                         // Exhale precondition of function application
                         havoc QPMask;
-                        
+
                         // -- check that the permission amount is positive
-                          
-                        
+
+
                         // -- check if receiver n is injective
                           assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@223.133--223.150) [625]"}
                             (forall n_25: Ref, n_25_1: Ref ::
                             { neverTriggered33(n_25), neverTriggered33(n_25_1) }
                             (((n_25 != n_25_1 && g[n_25]) && g[n_25_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_25 != n_25_1
                           );
-                        
+
                         // -- check if sufficient permission is held
                           assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@223.133--223.150) [626]"}
                             (forall n_25: Ref ::
                             { Heap[n_25, car] } { QPMask[n_25, car] } { Heap[n_25, car] }
                             g[n_25] ==> Mask[n_25, car] >= FullPerm
                           );
-                        
+
                         // -- assumptions for inverse of receiver n
                           assume (forall n_25: Ref ::
                             { Heap[n_25, car] } { QPMask[n_25, car] } { Heap[n_25, car] }
@@ -2506,13 +2508,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                             { invRecv33(o_3) }
                             g[invRecv33(o_3)] && (NoPerm < FullPerm && qpRange33(o_3)) ==> invRecv33(o_3) == o_3
                           );
-                        
+
                         // -- assume permission updates for field car
                           assume (forall o_3: Ref ::
                             { QPMask[o_3, car] }
                             (g[invRecv33(o_3)] && (NoPerm < FullPerm && qpRange33(o_3)) ==> invRecv33(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv33(o_3)] && (NoPerm < FullPerm && qpRange33(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
                           );
-                        
+
                         // -- assume permission updates for independent locations
                           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                             { QPMask[o_3, f_5] }
@@ -2520,24 +2522,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                           );
                         Mask := QPMask;
                         havoc QPMask;
-                        
+
                         // -- check that the permission amount is positive
-                          
-                        
+
+
                         // -- check if receiver n$0 is injective
                           assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@223.133--223.150) [627]"}
                             (forall n$0_13: Ref, n$0_13_1: Ref ::
                             { neverTriggered34(n$0_13), neverTriggered34(n$0_13_1) }
                             (((n$0_13 != n$0_13_1 && g[n$0_13]) && g[n$0_13_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_13 != n$0_13_1
                           );
-                        
+
                         // -- check if sufficient permission is held
                           assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@223.133--223.150) [628]"}
                             (forall n$0_13: Ref ::
                             { Heap[n$0_13, cdr] } { QPMask[n$0_13, cdr] } { Heap[n$0_13, cdr] }
                             g[n$0_13] ==> Mask[n$0_13, cdr] >= FullPerm
                           );
-                        
+
                         // -- assumptions for inverse of receiver n$0
                           assume (forall n$0_13: Ref ::
                             { Heap[n$0_13, cdr] } { QPMask[n$0_13, cdr] } { Heap[n$0_13, cdr] }
@@ -2547,13 +2549,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                             { invRecv34(o_3) }
                             g[invRecv34(o_3)] && (NoPerm < FullPerm && qpRange34(o_3)) ==> invRecv34(o_3) == o_3
                           );
-                        
+
                         // -- assume permission updates for field cdr
                           assume (forall o_3: Ref ::
                             { QPMask[o_3, cdr] }
                             (g[invRecv34(o_3)] && (NoPerm < FullPerm && qpRange34(o_3)) ==> invRecv34(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv34(o_3)] && (NoPerm < FullPerm && qpRange34(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
                           );
-                        
+
                         // -- assume permission updates for independent locations
                           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                             { QPMask[o_3, f_5] }
@@ -2596,7 +2598,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Check the loop body
       if (*) {
         // Reset state
@@ -2609,10 +2611,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         havoc QPMask;
         assert {:msg "  While statement might fail. Quantified resource n$10.car might not be injective. (graph_mark.vpr@205.19--205.27) [629]"}
           (forall n$10_3: Ref, n$10_3_1: Ref ::
-          
+
           (((n$10_3 != n$10_3_1 && g[n$10_3]) && g[n$10_3_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$10_3 != n$10_3_1
         );
-        
+
         // -- Define Inverse Function
           assume (forall n$10_3: Ref ::
             { Heap[n$10_3, car] } { QPMask[n$10_3, car] } { Heap[n$10_3, car] }
@@ -2622,13 +2624,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv35(o_3) }
             (g[invRecv35(o_3)] && NoPerm < FullPerm) && qpRange35(o_3) ==> invRecv35(o_3) == o_3
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall n$10_3: Ref ::
             { Heap[n$10_3, car] } { QPMask[n$10_3, car] } { Heap[n$10_3, car] }
             g[n$10_3] ==> n$10_3 != null
           );
-        
+
         // -- Define permissions
           assume (forall o_3: Ref ::
             { QPMask[o_3, car] }
@@ -2643,10 +2645,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         havoc QPMask;
         assert {:msg "  While statement might fail. Quantified resource n$11.cdr might not be injective. (graph_mark.vpr@205.19--205.27) [630]"}
           (forall n$11_3: Ref, n$11_3_1: Ref ::
-          
+
           (((n$11_3 != n$11_3_1 && g[n$11_3]) && g[n$11_3_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$11_3 != n$11_3_1
         );
-        
+
         // -- Define Inverse Function
           assume (forall n$11_3: Ref ::
             { Heap[n$11_3, cdr] } { QPMask[n$11_3, cdr] } { Heap[n$11_3, cdr] }
@@ -2656,13 +2658,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv36(o_3) }
             (g[invRecv36(o_3)] && NoPerm < FullPerm) && qpRange36(o_3) ==> invRecv36(o_3) == o_3
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall n$11_3: Ref ::
             { Heap[n$11_3, cdr] } { QPMask[n$11_3, cdr] } { Heap[n$11_3, cdr] }
             g[n$11_3] ==> n$11_3 != null
           );
-        
+
         // -- Define permissions
           assume (forall o_3: Ref ::
             { QPMask[o_3, cdr] }
@@ -2723,11 +2725,11 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         // Check and assume guard
         assume Set#Card(pending) > 0;
         assume state(Heap, Mask);
-        
+
         // -- Translate loop body
-          
+
           // -- Translating statement: x := get(pending) -- graph_mark.vpr@226.9--226.26
-            
+
             // -- Check definedness of get(pending)
               if (*) {
                 // Exhale precondition of function application
@@ -2738,17 +2740,17 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
               }
             x_1 := get(Heap, pending);
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: pending := (pending setminus Set(x)) -- graph_mark.vpr@227.9--227.43
             pending := Set#Difference(pending, Set#Singleton(x_1));
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: marked := (marked union Set(x)) -- graph_mark.vpr@230.9--230.38
             marked := Set#Union(marked, Set#Singleton(x_1));
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: if (x.car != null && !((x.car in marked))) -- graph_mark.vpr@232.9--234.10
-            
+
             // -- Check definedness of x.car != null && !((x.car in marked))
               assert {:msg "  Conditional statement might fail. There might be insufficient permission to access x.car (graph_mark.vpr@232.14--232.49) [632]"}
                 HasDirectPerm(Mask, x_1, car);
@@ -2757,9 +2759,9 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   HasDirectPerm(Mask, x_1, car);
               }
             if (Heap[x_1, car] != null && !marked[Heap[x_1, car]]) {
-              
+
               // -- Translating statement: pending := (pending union Set(x.car)) -- graph_mark.vpr@233.13--233.48
-                
+
                 // -- Check definedness of (pending union Set(x.car))
                   assert {:msg "  Assignment might fail. There might be insufficient permission to access x.car (graph_mark.vpr@233.13--233.48) [634]"}
                     HasDirectPerm(Mask, x_1, car);
@@ -2767,9 +2769,9 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                 assume state(Heap, Mask);
             }
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: if (x.cdr != null && !((x.cdr in marked))) -- graph_mark.vpr@235.9--237.10
-            
+
             // -- Check definedness of x.cdr != null && !((x.cdr in marked))
               assert {:msg "  Conditional statement might fail. There might be insufficient permission to access x.cdr (graph_mark.vpr@235.14--235.49) [635]"}
                 HasDirectPerm(Mask, x_1, cdr);
@@ -2778,9 +2780,9 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
                   HasDirectPerm(Mask, x_1, cdr);
               }
             if (Heap[x_1, cdr] != null && !marked[Heap[x_1, cdr]]) {
-              
+
               // -- Translating statement: pending := (pending union Set(x.cdr)) -- graph_mark.vpr@236.13--236.48
-                
+
                 // -- Check definedness of (pending union Set(x.cdr))
                   assert {:msg "  Assignment might fail. There might be insufficient permission to access x.cdr (graph_mark.vpr@236.13--236.48) [637]"}
                     HasDirectPerm(Mask, x_1, cdr);
@@ -2792,24 +2794,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not be preserved. Assertion !((null in g)) might not hold. (graph_mark.vpr@205.19--205.27) [638]"}
           !g[null];
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver n$10 is injective
           assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not be preserved. Quantified resource n$10.car might not be injective. (graph_mark.vpr@205.19--205.27) [639]"}
             (forall n$10_4: Ref, n$10_4_1: Ref ::
             { neverTriggered37(n$10_4), neverTriggered37(n$10_4_1) }
             (((n$10_4 != n$10_4_1 && g[n$10_4]) && g[n$10_4_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$10_4 != n$10_4_1
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not be preserved. There might be insufficient permission to access n$10.car (graph_mark.vpr@205.19--205.27) [640]"}
             (forall n$10_4: Ref ::
             { Heap[n$10_4, car] } { QPMask[n$10_4, car] } { Heap[n$10_4, car] }
             g[n$10_4] ==> Mask[n$10_4, car] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver n$10
           assume (forall n$10_4: Ref ::
             { Heap[n$10_4, car] } { QPMask[n$10_4, car] } { Heap[n$10_4, car] }
@@ -2819,13 +2821,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv37(o_3) }
             g[invRecv37(o_3)] && (NoPerm < FullPerm && qpRange37(o_3)) ==> invRecv37(o_3) == o_3
           );
-        
+
         // -- assume permission updates for field car
           assume (forall o_3: Ref ::
             { QPMask[o_3, car] }
             (g[invRecv37(o_3)] && (NoPerm < FullPerm && qpRange37(o_3)) ==> invRecv37(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv37(o_3)] && (NoPerm < FullPerm && qpRange37(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -2833,24 +2835,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
           );
         Mask := QPMask;
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver n$11 is injective
           assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not be preserved. Quantified resource n$11.cdr might not be injective. (graph_mark.vpr@205.19--205.27) [641]"}
             (forall n$11_4: Ref, n$11_4_1: Ref ::
             { neverTriggered38(n$11_4), neverTriggered38(n$11_4_1) }
             (((n$11_4 != n$11_4_1 && g[n$11_4]) && g[n$11_4_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$11_4 != n$11_4_1
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant !((null in g)) && (true && ((forall n$10: Ref :: { n$10.car } (n$10 in g) ==> acc(n$10.car, write)) && (forall n$11: Ref :: { n$11.cdr } (n$11 in g) ==> acc(n$11.cdr, write))) && ((forall n$8: Ref :: { (n$8.car in g) } { (n$8 in g), n$8.car } (n$8 in g) ==> (n$8.car in g)) && (forall n$9: Ref :: { (n$9.cdr in g) } { (n$9 in g), n$9.cdr } (n$9 in g) ==> (n$9.cdr in g)))) might not be preserved. There might be insufficient permission to access n$11.cdr (graph_mark.vpr@205.19--205.27) [642]"}
             (forall n$11_4: Ref ::
             { Heap[n$11_4, cdr] } { QPMask[n$11_4, cdr] } { Heap[n$11_4, cdr] }
             g[n$11_4] ==> Mask[n$11_4, cdr] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver n$11
           assume (forall n$11_4: Ref ::
             { Heap[n$11_4, cdr] } { QPMask[n$11_4, cdr] } { Heap[n$11_4, cdr] }
@@ -2860,13 +2862,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv38(o_3) }
             g[invRecv38(o_3)] && (NoPerm < FullPerm && qpRange38(o_3)) ==> invRecv38(o_3) == o_3
           );
-        
+
         // -- assume permission updates for field cdr
           assume (forall o_3: Ref ::
             { QPMask[o_3, cdr] }
             (g[invRecv38(o_3)] && (NoPerm < FullPerm && qpRange38(o_3)) ==> invRecv38(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv38(o_3)] && (NoPerm < FullPerm && qpRange38(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -2942,7 +2944,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         // Terminate execution
         assume false;
       }
-    
+
     // -- Inhale loop invariant after loop, and assume guard
       assume !(Set#Card(pending) > 0);
       assume state(Heap, Mask);
@@ -2950,10 +2952,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       havoc QPMask;
       assert {:msg "  While statement might fail. Quantified resource n$10.car might not be injective. (graph_mark.vpr@205.19--205.27) [652]"}
         (forall n$10_5: Ref, n$10_5_1: Ref ::
-        
+
         (((n$10_5 != n$10_5_1 && g[n$10_5]) && g[n$10_5_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$10_5 != n$10_5_1
       );
-      
+
       // -- Define Inverse Function
         assume (forall n$10_5: Ref ::
           { Heap[n$10_5, car] } { QPMask[n$10_5, car] } { Heap[n$10_5, car] }
@@ -2963,13 +2965,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
           { invRecv39(o_3) }
           (g[invRecv39(o_3)] && NoPerm < FullPerm) && qpRange39(o_3) ==> invRecv39(o_3) == o_3
         );
-      
+
       // -- Assume set of fields is nonNull
         assume (forall n$10_5: Ref ::
           { Heap[n$10_5, car] } { QPMask[n$10_5, car] } { Heap[n$10_5, car] }
           g[n$10_5] ==> n$10_5 != null
         );
-      
+
       // -- Define permissions
         assume (forall o_3: Ref ::
           { QPMask[o_3, car] }
@@ -2984,10 +2986,10 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       havoc QPMask;
       assert {:msg "  While statement might fail. Quantified resource n$11.cdr might not be injective. (graph_mark.vpr@205.19--205.27) [653]"}
         (forall n$11_5: Ref, n$11_5_1: Ref ::
-        
+
         (((n$11_5 != n$11_5_1 && g[n$11_5]) && g[n$11_5_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$11_5 != n$11_5_1
       );
-      
+
       // -- Define Inverse Function
         assume (forall n$11_5: Ref ::
           { Heap[n$11_5, cdr] } { QPMask[n$11_5, cdr] } { Heap[n$11_5, cdr] }
@@ -2997,13 +2999,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
           { invRecv40(o_3) }
           (g[invRecv40(o_3)] && NoPerm < FullPerm) && qpRange40(o_3) ==> invRecv40(o_3) == o_3
         );
-      
+
       // -- Assume set of fields is nonNull
         assume (forall n$11_5: Ref ::
           { Heap[n$11_5, cdr] } { QPMask[n$11_5, cdr] } { Heap[n$11_5, cdr] }
           g[n$11_5] ==> n$11_5 != null
         );
-      
+
       // -- Define permissions
         assume (forall o_3: Ref ::
           { QPMask[o_3, cdr] }
@@ -3062,32 +3064,32 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       ))));
       assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale apply_noExit($$(g), g, marked) -- graph_mark.vpr@243.12--243.42
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of apply_noExit($$(g), g, marked)
       if (*) {
         // Exhale precondition of function application
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver n is injective
           assert {:msg "  Precondition of function $$ might not hold. Quantified resource n.car might not be injective. (graph_mark.vpr@243.25--243.30) [654]"}
             (forall n_46: Ref, n_46_1: Ref ::
             { neverTriggered41(n_46), neverTriggered41(n_46_1) }
             (((n_46 != n_46_1 && g[n_46]) && g[n_46_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n_46 != n_46_1
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n.car (graph_mark.vpr@243.25--243.30) [655]"}
             (forall n_46: Ref ::
             { Heap[n_46, car] } { QPMask[n_46, car] } { Heap[n_46, car] }
             g[n_46] ==> Mask[n_46, car] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver n
           assume (forall n_46: Ref ::
             { Heap[n_46, car] } { QPMask[n_46, car] } { Heap[n_46, car] }
@@ -3097,13 +3099,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv41(o_3) }
             g[invRecv41(o_3)] && (NoPerm < FullPerm && qpRange41(o_3)) ==> invRecv41(o_3) == o_3
           );
-        
+
         // -- assume permission updates for field car
           assume (forall o_3: Ref ::
             { QPMask[o_3, car] }
             (g[invRecv41(o_3)] && (NoPerm < FullPerm && qpRange41(o_3)) ==> invRecv41(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv41(o_3)] && (NoPerm < FullPerm && qpRange41(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -3111,24 +3113,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
           );
         Mask := QPMask;
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver n$0 is injective
           assert {:msg "  Precondition of function $$ might not hold. Quantified resource n$0.cdr might not be injective. (graph_mark.vpr@243.25--243.30) [656]"}
             (forall n$0_14: Ref, n$0_14_1: Ref ::
             { neverTriggered42(n$0_14), neverTriggered42(n$0_14_1) }
             (((n$0_14 != n$0_14_1 && g[n$0_14]) && g[n$0_14_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$0_14 != n$0_14_1
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Precondition of function $$ might not hold. There might be insufficient permission to access n$0.cdr (graph_mark.vpr@243.25--243.30) [657]"}
             (forall n$0_14: Ref ::
             { Heap[n$0_14, cdr] } { QPMask[n$0_14, cdr] } { Heap[n$0_14, cdr] }
             g[n$0_14] ==> Mask[n$0_14, cdr] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver n$0
           assume (forall n$0_14: Ref ::
             { Heap[n$0_14, cdr] } { QPMask[n$0_14, cdr] } { Heap[n$0_14, cdr] }
@@ -3138,13 +3140,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
             { invRecv42(o_3) }
             g[invRecv42(o_3)] && (NoPerm < FullPerm && qpRange42(o_3)) ==> invRecv42(o_3) == o_3
           );
-        
+
         // -- assume permission updates for field cdr
           assume (forall o_3: Ref ::
             { QPMask[o_3, cdr] }
             (g[invRecv42(o_3)] && (NoPerm < FullPerm && qpRange42(o_3)) ==> invRecv42(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv42(o_3)] && (NoPerm < FullPerm && qpRange42(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -3161,7 +3163,7 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     assume (apply_noExit($$(Heap, g), g, marked): bool);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of mark might not hold. Assertion (roots subset marked) might not hold. (graph_mark.vpr@193.19--193.32) [658]"}
       Set#Subset(roots, marked);
@@ -3170,24 +3172,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
     assert {:msg "  Postcondition of mark might not hold. Assertion !((null in g)) might not hold. (graph_mark.vpr@195.13--195.21) [660]"}
       !g[null];
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
-      
-    
+
+
     // -- check if receiver n$6 is injective
       assert {:msg "  Contract might not be well-formed. Quantified resource n$6.car might not be injective. (graph_mark.vpr@195.13--195.21) [661]"}
         (forall n$6_2: Ref, n$6_2_1: Ref ::
         { neverTriggered11(n$6_2), neverTriggered11(n$6_2_1) }
         (((n$6_2 != n$6_2_1 && g[n$6_2]) && g[n$6_2_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$6_2 != n$6_2_1
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Postcondition of mark might not hold. There might be insufficient permission to access n$6.car (graph_mark.vpr@195.13--195.21) [662]"}
         (forall n$6_2: Ref ::
         { Heap[n$6_2, car] } { QPMask[n$6_2, car] } { Heap[n$6_2, car] }
         g[n$6_2] ==> Mask[n$6_2, car] >= FullPerm
       );
-    
+
     // -- assumptions for inverse of receiver n$6
       assume (forall n$6_2: Ref ::
         { Heap[n$6_2, car] } { QPMask[n$6_2, car] } { Heap[n$6_2, car] }
@@ -3197,13 +3199,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         { invRecv11(o_3) }
         g[invRecv11(o_3)] && (NoPerm < FullPerm && qpRange11(o_3)) ==> invRecv11(o_3) == o_3
       );
-    
+
     // -- assume permission updates for field car
       assume (forall o_3: Ref ::
         { QPMask[o_3, car] }
         (g[invRecv11(o_3)] && (NoPerm < FullPerm && qpRange11(o_3)) ==> invRecv11(o_3) == o_3 && QPMask[o_3, car] == Mask[o_3, car] - FullPerm) && (!(g[invRecv11(o_3)] && (NoPerm < FullPerm && qpRange11(o_3))) ==> QPMask[o_3, car] == Mask[o_3, car])
       );
-    
+
     // -- assume permission updates for independent locations
       assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
         { QPMask[o_3, f_5] }
@@ -3211,24 +3213,24 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
       );
     Mask := QPMask;
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
-      
-    
+
+
     // -- check if receiver n$7 is injective
       assert {:msg "  Contract might not be well-formed. Quantified resource n$7.cdr might not be injective. (graph_mark.vpr@195.13--195.21) [663]"}
         (forall n$7_2: Ref, n$7_2_1: Ref ::
         { neverTriggered12(n$7_2), neverTriggered12(n$7_2_1) }
         (((n$7_2 != n$7_2_1 && g[n$7_2]) && g[n$7_2_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> n$7_2 != n$7_2_1
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Postcondition of mark might not hold. There might be insufficient permission to access n$7.cdr (graph_mark.vpr@195.13--195.21) [664]"}
         (forall n$7_2: Ref ::
         { Heap[n$7_2, cdr] } { QPMask[n$7_2, cdr] } { Heap[n$7_2, cdr] }
         g[n$7_2] ==> Mask[n$7_2, cdr] >= FullPerm
       );
-    
+
     // -- assumptions for inverse of receiver n$7
       assume (forall n$7_2: Ref ::
         { Heap[n$7_2, cdr] } { QPMask[n$7_2, cdr] } { Heap[n$7_2, cdr] }
@@ -3238,13 +3240,13 @@ procedure mark(g: (Set Ref), roots: (Set Ref)) returns (marked: (Set Ref))
         { invRecv12(o_3) }
         g[invRecv12(o_3)] && (NoPerm < FullPerm && qpRange12(o_3)) ==> invRecv12(o_3) == o_3
       );
-    
+
     // -- assume permission updates for field cdr
       assume (forall o_3: Ref ::
         { QPMask[o_3, cdr] }
         (g[invRecv12(o_3)] && (NoPerm < FullPerm && qpRange12(o_3)) ==> invRecv12(o_3) == o_3 && QPMask[o_3, cdr] == Mask[o_3, cdr] - FullPerm) && (!(g[invRecv12(o_3)] && (NoPerm < FullPerm && qpRange12(o_3))) ==> QPMask[o_3, cdr] == Mask[o_3, cdr])
       );
-    
+
     // -- assume permission updates for independent locations
       assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
         { QPMask[o_3, f_5] }

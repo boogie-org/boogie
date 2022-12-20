@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -842,7 +844,7 @@ function MultiSet#Disjoint<T>(MultiSet T, MultiSet T): bool;
 axiom (forall<T> a: MultiSet T, b: MultiSet T :: { MultiSet#Disjoint(a,b) }
   MultiSet#Disjoint(a,b) <==> (forall o: T :: {MultiSet#Select(a,o)} {MultiSet#Select(b,o)} MultiSet#Select(a,o) == 0 || MultiSet#Select(b,o) == 0));
 
-    
+
 
 // ==================================================
 // Translation of domain IEdges
@@ -1026,14 +1028,14 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
   var x_34: Ref;
   var i_4: int;
   var x_36: Ref;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Assumptions about method arguments
     assume Heap[this, $allocated];
-  
+
   // -- Checked inhaling of precondition
     assume NoPerm < rd;
     assume state(Heap, Mask);
@@ -1043,7 +1045,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     assume state(Heap, Mask);
     assume Set#Card(Set#Intersection(setOfRef, node_map_image)) == 0;
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.val, rd))
       if (*) {
         assume false;
@@ -1051,10 +1053,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource x.val might not be injective. (graph-copy.vpr@96.12--96.61) [443]"}
       (forall x_1: Ref, x_1_1: Ref ::
-      
+
       (((x_1 != x_1_1 && setOfRef[x_1]) && setOfRef[x_1_1]) && NoPerm < rd) && NoPerm < rd ==> x_1 != x_1_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall x_1: Ref ::
         { Heap[x_1, val] } { QPMask[x_1, val] } { setOfRef[x_1] }
@@ -1070,13 +1072,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       { Heap[x_1, val] } { QPMask[x_1, val] } { setOfRef[x_1] }
       setOfRef[x_1] ==> rd >= NoPerm
     );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall x_1: Ref ::
         { Heap[x_1, val] } { QPMask[x_1, val] } { setOfRef[x_1] }
         setOfRef[x_1] && rd > NoPerm ==> x_1 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -1089,7 +1091,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     Mask := QPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.edges, rd))
       if (*) {
         assume false;
@@ -1097,10 +1099,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource x.edges might not be injective. (graph-copy.vpr@97.12--97.63) [445]"}
       (forall x_3: Ref, x_3_1: Ref ::
-      
+
       (((x_3 != x_3_1 && setOfRef[x_3]) && setOfRef[x_3_1]) && NoPerm < rd) && NoPerm < rd ==> x_3 != x_3_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall x_3: Ref ::
         { Heap[x_3, edges] } { QPMask[x_3, edges] } { setOfRef[x_3] }
@@ -1116,13 +1118,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       { Heap[x_3, edges] } { QPMask[x_3, edges] } { setOfRef[x_3] }
       setOfRef[x_3] ==> rd >= NoPerm
     );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall x_3: Ref ::
         { Heap[x_3, edges] } { QPMask[x_3, edges] } { setOfRef[x_3] }
         setOfRef[x_3] && rd > NoPerm ==> x_3 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, edges] }
@@ -1135,7 +1137,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     Mask := QPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall x: Ref, i: Int :: { (x in setOfRef), (i in edges_domain(x.edges)) } { (x in setOfRef), edge_lookup(x.edges, i) } { (x in setOfRef), (edge_lookup(x.edges, i) in setOfRef) } { edges_domain(x.edges), edge_lookup(x.edges, i) } { edges_domain(x.edges), (edge_lookup(x.edges, i) in setOfRef) } { (i in edges_domain(x.edges)) } { (edge_lookup(x.edges, i) in setOfRef) } (x in setOfRef) && (i in edges_domain(x.edges)) ==> (edge_lookup(x.edges, i) in setOfRef))
       if (*) {
         if (setOfRef[x]) {
@@ -1153,7 +1155,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       setOfRef[x_5] && (edges_domain(Heap[x_5, edges]): Set int)[i_1_1] ==> setOfRef[(edge_lookup(Heap[x_5, edges], i_1_1): Ref)]
     );
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in map_domain(node_map)) } { (lookup(node_map, x) in node_map_image) } (x in map_domain(node_map)) ==> (lookup(node_map, x) in node_map_image))
       if (*) {
         assume false;
@@ -1163,7 +1165,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       Seq#Contains((map_domain(node_map_1): Seq Ref), x_7) ==> node_map_image[(lookup(node_map_1, x_7): Ref)]
     );
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in node_map_image) } (x in node_map_image) ==> acc(x.val, write))
       if (*) {
         assume false;
@@ -1171,10 +1173,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource x.val might not be injective. (graph-copy.vpr@101.12--101.63) [449]"}
       (forall x_9: Ref, x_9_1: Ref ::
-      
+
       (((x_9 != x_9_1 && node_map_image[x_9]) && node_map_image[x_9_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_9 != x_9_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall x_9: Ref ::
         { Heap[x_9, val] } { QPMask[x_9, val] } { node_map_image[x_9] }
@@ -1184,13 +1186,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         { invRecv3(o_3) }
         (node_map_image[invRecv3(o_3)] && NoPerm < FullPerm) && qpRange3(o_3) ==> invRecv3(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall x_9: Ref ::
         { Heap[x_9, val] } { QPMask[x_9, val] } { node_map_image[x_9] }
         node_map_image[x_9] ==> x_9 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -1203,7 +1205,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     Mask := QPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in node_map_image) } (x in node_map_image) ==> acc(x.edges, write))
       if (*) {
         assume false;
@@ -1211,10 +1213,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource x.edges might not be injective. (graph-copy.vpr@102.12--102.65) [450]"}
       (forall x_11: Ref, x_11_1: Ref ::
-      
+
       (((x_11 != x_11_1 && node_map_image[x_11]) && node_map_image[x_11_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_11 != x_11_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall x_11: Ref ::
         { Heap[x_11, edges] } { QPMask[x_11, edges] } { node_map_image[x_11] }
@@ -1224,13 +1226,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         { invRecv4(o_3) }
         (node_map_image[invRecv4(o_3)] && NoPerm < FullPerm) && qpRange4(o_3) ==> invRecv4(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall x_11: Ref ::
         { Heap[x_11, edges] } { QPMask[x_11, edges] } { node_map_image[x_11] }
         node_map_image[x_11] ==> x_11 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, edges] }
@@ -1243,9 +1245,9 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     Mask := QPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -1261,7 +1263,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     assume state(PostHeap, PostMask);
     assume Set#Card(Set#Intersection(setOfRef, res_copy_nodes)) == 0;
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.val, rd))
       if (*) {
         assume false;
@@ -1269,10 +1271,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource x.val might not be injective. (graph-copy.vpr@106.11--106.60) [451]"}
       (forall x_13: Ref, x_13_1: Ref ::
-      
+
       (((x_13 != x_13_1 && setOfRef[x_13]) && setOfRef[x_13_1]) && NoPerm < rd) && NoPerm < rd ==> x_13 != x_13_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall x_13: Ref ::
         { PostHeap[x_13, val] } { QPMask[x_13, val] } { setOfRef[x_13] }
@@ -1288,13 +1290,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       { PostHeap[x_13, val] } { QPMask[x_13, val] } { setOfRef[x_13] }
       setOfRef[x_13] ==> rd >= NoPerm
     );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall x_13: Ref ::
         { PostHeap[x_13, val] } { QPMask[x_13, val] } { setOfRef[x_13] }
         setOfRef[x_13] && rd > NoPerm ==> x_13 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -1307,7 +1309,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     PostMask := QPMask;
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> x.val == old(x.val))
       if (*) {
         if (setOfRef[x_2]) {
@@ -1323,7 +1325,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       setOfRef[x_15] ==> PostHeap[x_15, val] == old(Heap)[x_15, val]
     );
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.edges, rd))
       if (*) {
         assume false;
@@ -1331,10 +1333,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource x.edges might not be injective. (graph-copy.vpr@108.11--108.62) [455]"}
       (forall x_17: Ref, x_17_1: Ref ::
-      
+
       (((x_17 != x_17_1 && setOfRef[x_17]) && setOfRef[x_17_1]) && NoPerm < rd) && NoPerm < rd ==> x_17 != x_17_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall x_17: Ref ::
         { PostHeap[x_17, edges] } { QPMask[x_17, edges] } { setOfRef[x_17] }
@@ -1350,13 +1352,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       { PostHeap[x_17, edges] } { QPMask[x_17, edges] } { setOfRef[x_17] }
       setOfRef[x_17] ==> rd >= NoPerm
     );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall x_17: Ref ::
         { PostHeap[x_17, edges] } { QPMask[x_17, edges] } { setOfRef[x_17] }
         setOfRef[x_17] && rd > NoPerm ==> x_17 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, edges] }
@@ -1369,7 +1371,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     PostMask := QPMask;
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> x.edges == old(x.edges))
       if (*) {
         if (setOfRef[x_4]) {
@@ -1385,7 +1387,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       setOfRef[x_19] ==> PostHeap[x_19, edges] == old(Heap)[x_19, edges]
     );
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall x: Ref, i: Int :: { (x in setOfRef), (i in edges_domain(x.edges)) } { (x in setOfRef), edge_lookup(x.edges, i) } { (x in setOfRef), (edge_lookup(x.edges, i) in setOfRef) } { edges_domain(x.edges), edge_lookup(x.edges, i) } { edges_domain(x.edges), (edge_lookup(x.edges, i) in setOfRef) } { (i in edges_domain(x.edges)) } { (edge_lookup(x.edges, i) in setOfRef) } (x in setOfRef) && (i in edges_domain(x.edges)) ==> (edge_lookup(x.edges, i) in setOfRef))
       if (*) {
         if (setOfRef[x_6]) {
@@ -1405,7 +1407,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     assume state(PostHeap, PostMask);
     assume Set#Equal(res_copy_nodes, Set#Union(res_copy_nodes, node_map_image));
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in map_domain(res_node_map)) } { (lookup(res_node_map, x) in res_copy_nodes) } (x in map_domain(res_node_map)) ==> (lookup(res_node_map, x) in res_copy_nodes))
       if (*) {
         assume false;
@@ -1415,7 +1417,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       Seq#Contains((map_domain(res_node_map): Seq Ref), x_23) ==> res_copy_nodes[(lookup(res_node_map, x_23): Ref)]
     );
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in res_copy_nodes) } (x in res_copy_nodes) ==> acc(x.val, write))
       if (*) {
         assume false;
@@ -1423,10 +1425,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource x.val might not be injective. (graph-copy.vpr@113.11--113.62) [461]"}
       (forall x_25: Ref, x_25_1: Ref ::
-      
+
       (((x_25 != x_25_1 && res_copy_nodes[x_25]) && res_copy_nodes[x_25_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_25 != x_25_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall x_25: Ref ::
         { PostHeap[x_25, val] } { QPMask[x_25, val] } { res_copy_nodes[x_25] }
@@ -1436,13 +1438,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         { invRecv7(o_3) }
         (res_copy_nodes[invRecv7(o_3)] && NoPerm < FullPerm) && qpRange7(o_3) ==> invRecv7(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall x_25: Ref ::
         { PostHeap[x_25, val] } { QPMask[x_25, val] } { res_copy_nodes[x_25] }
         res_copy_nodes[x_25] ==> x_25 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -1455,7 +1457,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     PostMask := QPMask;
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall x: Ref :: { (x in res_copy_nodes) } (x in res_copy_nodes) ==> acc(x.edges, write))
       if (*) {
         assume false;
@@ -1463,10 +1465,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource x.edges might not be injective. (graph-copy.vpr@114.11--114.64) [462]"}
       (forall x_27: Ref, x_27_1: Ref ::
-      
+
       (((x_27 != x_27_1 && res_copy_nodes[x_27]) && res_copy_nodes[x_27_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_27 != x_27_1
     );
-    
+
     // -- Define Inverse Function
       assume (forall x_27: Ref ::
         { PostHeap[x_27, edges] } { QPMask[x_27, edges] } { res_copy_nodes[x_27] }
@@ -1476,13 +1478,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         { invRecv8(o_3) }
         (res_copy_nodes[invRecv8(o_3)] && NoPerm < FullPerm) && qpRange8(o_3) ==> invRecv8(o_3) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall x_27: Ref ::
         { PostHeap[x_27, edges] } { QPMask[x_27, edges] } { res_copy_nodes[x_27] }
         res_copy_nodes[x_27] ==> x_27 != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, edges] }
@@ -1498,23 +1500,23 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: if (has_node(node_map, this)) -- graph-copy.vpr@119.3--169.4
     if ((has_node(node_map_1, this): bool)) {
-      
+
       // -- Translating statement: nodeCopy := lookup(node_map, this) -- graph-copy.vpr@120.5--120.39
         nodeCopy := (lookup(node_map_1, this): Ref);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: res_node_map := node_map -- graph-copy.vpr@121.5--121.29
         res_node_map := node_map_1;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: res_copy_nodes := node_map_image -- graph-copy.vpr@122.5--122.37
         res_copy_nodes := node_map_image;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: nodeCopy := new(val, edges) -- graph-copy.vpr@124.5--124.32
         havoc freshObj;
         assume freshObj != null && !Heap[freshObj, $allocated];
@@ -1523,9 +1525,9 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         Mask[nodeCopy, val] := Mask[nodeCopy, val] + FullPerm;
         Mask[nodeCopy, edges] := Mask[nodeCopy, edges] + FullPerm;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: nodeCopy.val := this.val -- graph-copy.vpr@125.5--125.29
-        
+
         // -- Check definedness of this.val
           assert {:msg "  Assignment might fail. There might be insufficient permission to access this.val (graph-copy.vpr@125.5--125.29) [463]"}
             HasDirectPerm(Mask, this, val);
@@ -1533,62 +1535,62 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
           FullPerm == Mask[nodeCopy, val];
         Heap[nodeCopy, val] := Heap[this, val];
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: res_node_map := insert(node_map, this, nodeCopy) -- graph-copy.vpr@127.5--127.53
         res_node_map := (insert(node_map_1, this, nodeCopy): INodeMapDomainType);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: res_copy_nodes := (node_map_image union Set(nodeCopy)) -- graph-copy.vpr@129.5--129.57
         res_copy_nodes := Set#Union(node_map_image, Set#Singleton(nodeCopy));
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: assert ((setOfRef intersection node_map_image) union
   //   (setOfRef intersection Set(nodeCopy))) ==
   //   (setOfRef intersection res_copy_nodes) -- graph-copy.vpr@137.5--138.51
         assert {:msg "  Assert might fail. Assertion ((setOfRef intersection node_map_image) union (setOfRef intersection Set(nodeCopy))) == (setOfRef intersection res_copy_nodes) might not hold. (graph-copy.vpr@137.12--138.51) [465]"}
           Set#Equal(Set#Union(Set#Intersection(setOfRef, node_map_image), Set#Intersection(setOfRef, Set#Singleton(nodeCopy))), Set#Intersection(setOfRef, res_copy_nodes));
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: S := edges_domain(this.edges) -- graph-copy.vpr@140.5--140.34
-        
+
         // -- Check definedness of edges_domain(this.edges)
           assert {:msg "  Assignment might fail. There might be insufficient permission to access this.edges (graph-copy.vpr@140.5--140.34) [466]"}
             HasDirectPerm(Mask, this, edges);
         S := (edges_domain(Heap[this, edges]): Set int);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: while (|S| > 0) -- graph-copy.vpr@142.5--168.6
-        
+
         // -- Before loop head
-          
+
           // -- Exhale loop invariant before loop
             assert {:msg "  Loop invariant (nodeCopy in res_copy_nodes) might not hold on entry. Assertion (nodeCopy in res_copy_nodes) might not hold. (graph-copy.vpr@143.17--143.43) [467]"}
               res_copy_nodes[nodeCopy];
             assert {:msg "  Loop invariant (this in setOfRef) might not hold on entry. Assertion (this in setOfRef) might not hold. (graph-copy.vpr@144.17--144.33) [468]"}
               setOfRef[this];
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.val, rd)) might not hold on entry. Fraction rd might be negative. (graph-copy.vpr@145.17--145.66) [469]"}
                 (forall x_40: Ref ::
                 { Heap[x_40, val] } { QPMask[x_40, val] } { setOfRef[x_40] }
                 setOfRef[x_40] && dummyFunction(Heap[x_40, val]) ==> rd >= NoPerm
               );
-            
+
             // -- check if receiver x is injective
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.val, rd)) might not hold on entry. Quantified resource x.val might not be injective. (graph-copy.vpr@145.17--145.66) [470]"}
                 (forall x_40: Ref, x_40_1: Ref ::
                 { neverTriggered13(x_40), neverTriggered13(x_40_1) }
                 (((x_40 != x_40_1 && setOfRef[x_40]) && setOfRef[x_40_1]) && NoPerm < rd) && NoPerm < rd ==> x_40 != x_40_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.val, rd)) might not hold on entry. There might be insufficient permission to access x.val (graph-copy.vpr@145.17--145.66) [471]"}
                 (forall x_40: Ref ::
                 { Heap[x_40, val] } { QPMask[x_40, val] } { setOfRef[x_40] }
                 setOfRef[x_40] ==> Mask[x_40, val] >= rd
               );
-            
+
             // -- assumptions for inverse of receiver x
               assume (forall x_40: Ref ::
                 { Heap[x_40, val] } { QPMask[x_40, val] } { setOfRef[x_40] }
@@ -1598,13 +1600,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv13(o_3) }
                 setOfRef[invRecv13(o_3)] && (NoPerm < rd && qpRange13(o_3)) ==> invRecv13(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field val
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
                 (setOfRef[invRecv13(o_3)] && (NoPerm < rd && qpRange13(o_3)) ==> invRecv13(o_3) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - rd) && (!(setOfRef[invRecv13(o_3)] && (NoPerm < rd && qpRange13(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -1623,28 +1625,28 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               setOfRef[x_42_1] ==> Heap[x_42_1, val] == old(Heap)[x_42_1, val]
             );
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.edges, rd)) might not hold on entry. Fraction rd might be negative. (graph-copy.vpr@147.17--147.68) [473]"}
                 (forall x_43: Ref ::
                 { Heap[x_43, edges] } { QPMask[x_43, edges] } { setOfRef[x_43] }
                 setOfRef[x_43] && dummyFunction(Heap[x_43, edges]) ==> rd >= NoPerm
               );
-            
+
             // -- check if receiver x is injective
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.edges, rd)) might not hold on entry. Quantified resource x.edges might not be injective. (graph-copy.vpr@147.17--147.68) [474]"}
                 (forall x_43: Ref, x_43_1: Ref ::
                 { neverTriggered14(x_43), neverTriggered14(x_43_1) }
                 (((x_43 != x_43_1 && setOfRef[x_43]) && setOfRef[x_43_1]) && NoPerm < rd) && NoPerm < rd ==> x_43 != x_43_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.edges, rd)) might not hold on entry. There might be insufficient permission to access x.edges (graph-copy.vpr@147.17--147.68) [475]"}
                 (forall x_43: Ref ::
                 { Heap[x_43, edges] } { QPMask[x_43, edges] } { setOfRef[x_43] }
                 setOfRef[x_43] ==> Mask[x_43, edges] >= rd
               );
-            
+
             // -- assumptions for inverse of receiver x
               assume (forall x_43: Ref ::
                 { Heap[x_43, edges] } { QPMask[x_43, edges] } { setOfRef[x_43] }
@@ -1654,13 +1656,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv14(o_3) }
                 setOfRef[invRecv14(o_3)] && (NoPerm < rd && qpRange14(o_3)) ==> invRecv14(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field edges
               assume (forall o_3: Ref ::
                 { QPMask[o_3, edges] }
                 (setOfRef[invRecv14(o_3)] && (NoPerm < rd && qpRange14(o_3)) ==> invRecv14(o_3) == o_3 && QPMask[o_3, edges] == Mask[o_3, edges] - rd) && (!(setOfRef[invRecv14(o_3)] && (NoPerm < rd && qpRange14(o_3))) ==> QPMask[o_3, edges] == Mask[o_3, edges])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -1716,24 +1718,24 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               Seq#Contains((map_domain(res_node_map): Seq Ref), r_3_1) ==> res_copy_nodes[(lookup(res_node_map, r_3_1): Ref)]
             );
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver r is injective
               assert {:msg "  Loop invariant (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.val, write)) might not hold on entry. Quantified resource r.val might not be injective. (graph-copy.vpr@154.17--154.68) [482]"}
                 (forall r_4: Ref, r_4_1: Ref ::
                 { neverTriggered15(r_4), neverTriggered15(r_4_1) }
                 (((r_4 != r_4_1 && res_copy_nodes[r_4]) && res_copy_nodes[r_4_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_4 != r_4_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.val, write)) might not hold on entry. There might be insufficient permission to access r.val (graph-copy.vpr@154.17--154.68) [483]"}
                 (forall r_4: Ref ::
                 { Heap[r_4, val] } { QPMask[r_4, val] } { res_copy_nodes[r_4] }
                 res_copy_nodes[r_4] ==> Mask[r_4, val] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver r
               assume (forall r_4: Ref ::
                 { Heap[r_4, val] } { QPMask[r_4, val] } { res_copy_nodes[r_4] }
@@ -1743,13 +1745,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv15(o_3) }
                 res_copy_nodes[invRecv15(o_3)] && (NoPerm < FullPerm && qpRange15(o_3)) ==> invRecv15(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field val
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
                 (res_copy_nodes[invRecv15(o_3)] && (NoPerm < FullPerm && qpRange15(o_3)) ==> invRecv15(o_3) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!(res_copy_nodes[invRecv15(o_3)] && (NoPerm < FullPerm && qpRange15(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -1757,24 +1759,24 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               );
             Mask := QPMask;
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver r is injective
               assert {:msg "  Loop invariant (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.edges, write)) might not hold on entry. Quantified resource r.edges might not be injective. (graph-copy.vpr@155.17--155.70) [484]"}
                 (forall r_5: Ref, r_5_1: Ref ::
                 { neverTriggered16(r_5), neverTriggered16(r_5_1) }
                 (((r_5 != r_5_1 && res_copy_nodes[r_5]) && res_copy_nodes[r_5_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_5 != r_5_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.edges, write)) might not hold on entry. There might be insufficient permission to access r.edges (graph-copy.vpr@155.17--155.70) [485]"}
                 (forall r_5: Ref ::
                 { Heap[r_5, edges] } { QPMask[r_5, edges] } { res_copy_nodes[r_5] }
                 res_copy_nodes[r_5] ==> Mask[r_5, edges] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver r
               assume (forall r_5: Ref ::
                 { Heap[r_5, edges] } { QPMask[r_5, edges] } { res_copy_nodes[r_5] }
@@ -1784,13 +1786,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv16(o_3) }
                 res_copy_nodes[invRecv16(o_3)] && (NoPerm < FullPerm && qpRange16(o_3)) ==> invRecv16(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field edges
               assume (forall o_3: Ref ::
                 { QPMask[o_3, edges] }
                 (res_copy_nodes[invRecv16(o_3)] && (NoPerm < FullPerm && qpRange16(o_3)) ==> invRecv16(o_3) == o_3 && QPMask[o_3, edges] == Mask[o_3, edges] - FullPerm) && (!(res_copy_nodes[invRecv16(o_3)] && (NoPerm < FullPerm && qpRange16(o_3))) ==> QPMask[o_3, edges] == Mask[o_3, edges])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -1801,17 +1803,17 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             havoc ExhaleHeap;
             assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
             Heap := ExhaleHeap;
-        
+
         // -- Havoc loop written variables (except locals)
           havoc S, i_6, res_node_map, res_copy_nodes;
-        
+
         // -- Check definedness of invariant
           if (*) {
             assume res_copy_nodes[nodeCopy];
             assume state(Heap, Mask);
             assume setOfRef[this];
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.val, rd))
               if (*) {
                 assume false;
@@ -1819,10 +1821,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             havoc QPMask;
             assert {:msg "  Contract might not be well-formed. Quantified resource x.val might not be injective. (graph-copy.vpr@145.17--145.66) [486]"}
               (forall x_47: Ref, x_47_1: Ref ::
-              
+
               (((x_47 != x_47_1 && setOfRef[x_47]) && setOfRef[x_47_1]) && NoPerm < rd) && NoPerm < rd ==> x_47 != x_47_1
             );
-            
+
             // -- Define Inverse Function
               assume (forall x_47: Ref ::
                 { Heap[x_47, val] } { QPMask[x_47, val] } { setOfRef[x_47] }
@@ -1838,13 +1840,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               { Heap[x_47, val] } { QPMask[x_47, val] } { setOfRef[x_47] }
               setOfRef[x_47] ==> rd >= NoPerm
             );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall x_47: Ref ::
                 { Heap[x_47, val] } { QPMask[x_47, val] } { setOfRef[x_47] }
                 setOfRef[x_47] && rd > NoPerm ==> x_47 != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
@@ -1857,7 +1859,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             Mask := QPMask;
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> x.val == old(x.val))
               if (*) {
                 if (setOfRef[x_8]) {
@@ -1873,7 +1875,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               setOfRef[x_49] ==> Heap[x_49, val] == old(Heap)[x_49, val]
             );
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.edges, rd))
               if (*) {
                 assume false;
@@ -1881,10 +1883,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             havoc QPMask;
             assert {:msg "  Contract might not be well-formed. Quantified resource x.edges might not be injective. (graph-copy.vpr@147.17--147.68) [490]"}
               (forall x_51: Ref, x_51_1: Ref ::
-              
+
               (((x_51 != x_51_1 && setOfRef[x_51]) && setOfRef[x_51_1]) && NoPerm < rd) && NoPerm < rd ==> x_51 != x_51_1
             );
-            
+
             // -- Define Inverse Function
               assume (forall x_51: Ref ::
                 { Heap[x_51, edges] } { QPMask[x_51, edges] } { setOfRef[x_51] }
@@ -1900,13 +1902,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               { Heap[x_51, edges] } { QPMask[x_51, edges] } { setOfRef[x_51] }
               setOfRef[x_51] ==> rd >= NoPerm
             );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall x_51: Ref ::
                 { Heap[x_51, edges] } { QPMask[x_51, edges] } { setOfRef[x_51] }
                 setOfRef[x_51] && rd > NoPerm ==> x_51 != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, edges] }
@@ -1919,7 +1921,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             Mask := QPMask;
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> x.edges == old(x.edges))
               if (*) {
                 if (setOfRef[x_10]) {
@@ -1935,7 +1937,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               setOfRef[x_53] ==> Heap[x_53, edges] == old(Heap)[x_53, edges]
             );
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall j: Int :: { (j in S) } { (edge_lookup(this.edges, j) in setOfRef) } (j in S) ==> (edge_lookup(this.edges, j) in setOfRef))
               if (*) {
                 if (S[j_1]) {
@@ -1949,7 +1951,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               S[j_5] ==> setOfRef[(edge_lookup(Heap[this, edges], j_5): Ref)]
             );
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall r: Ref, j: Int :: { (r in setOfRef), (j in edges_domain(r.edges)) } { (r in setOfRef), edge_lookup(r.edges, j) } { (r in setOfRef), (edge_lookup(r.edges, j) in setOfRef) } { edges_domain(r.edges), edge_lookup(r.edges, j) } { edges_domain(r.edges), (edge_lookup(r.edges, j) in setOfRef) } { (j in edges_domain(r.edges)) } { (edge_lookup(r.edges, j) in setOfRef) } (r in setOfRef) && (j in edges_domain(r.edges)) ==> (edge_lookup(r.edges, j) in setOfRef))
               if (*) {
                 if (setOfRef[r_3]) {
@@ -1971,7 +1973,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             assume state(Heap, Mask);
             assume Set#Card(Set#Intersection(setOfRef, res_copy_nodes)) == 0;
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall r: Ref :: { (r in map_domain(res_node_map)) } { (lookup(res_node_map, r) in res_copy_nodes) } (r in map_domain(res_node_map)) ==> (lookup(res_node_map, r) in res_copy_nodes))
               if (*) {
                 assume false;
@@ -1981,7 +1983,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               Seq#Contains((map_domain(res_node_map): Seq Ref), r_9) ==> res_copy_nodes[(lookup(res_node_map, r_9): Ref)]
             );
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.val, write))
               if (*) {
                 assume false;
@@ -1989,10 +1991,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             havoc QPMask;
             assert {:msg "  Contract might not be well-formed. Quantified resource r.val might not be injective. (graph-copy.vpr@154.17--154.68) [497]"}
               (forall r_11: Ref, r_11_1: Ref ::
-              
+
               (((r_11 != r_11_1 && res_copy_nodes[r_11]) && res_copy_nodes[r_11_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_11 != r_11_1
             );
-            
+
             // -- Define Inverse Function
               assume (forall r_11: Ref ::
                 { Heap[r_11, val] } { QPMask[r_11, val] } { res_copy_nodes[r_11] }
@@ -2002,13 +2004,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv19(o_3) }
                 (res_copy_nodes[invRecv19(o_3)] && NoPerm < FullPerm) && qpRange19(o_3) ==> invRecv19(o_3) == o_3
               );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall r_11: Ref ::
                 { Heap[r_11, val] } { QPMask[r_11, val] } { res_copy_nodes[r_11] }
                 res_copy_nodes[r_11] ==> r_11 != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
@@ -2021,7 +2023,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             Mask := QPMask;
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.edges, write))
               if (*) {
                 assume false;
@@ -2029,10 +2031,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             havoc QPMask;
             assert {:msg "  Contract might not be well-formed. Quantified resource r.edges might not be injective. (graph-copy.vpr@155.17--155.70) [498]"}
               (forall r_13: Ref, r_13_1: Ref ::
-              
+
               (((r_13 != r_13_1 && res_copy_nodes[r_13]) && res_copy_nodes[r_13_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_13 != r_13_1
             );
-            
+
             // -- Define Inverse Function
               assume (forall r_13: Ref ::
                 { Heap[r_13, edges] } { QPMask[r_13, edges] } { res_copy_nodes[r_13] }
@@ -2042,13 +2044,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv20(o_3) }
                 (res_copy_nodes[invRecv20(o_3)] && NoPerm < FullPerm) && qpRange20(o_3) ==> invRecv20(o_3) == o_3
               );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall r_13: Ref ::
                 { Heap[r_13, edges] } { QPMask[r_13, edges] } { res_copy_nodes[r_13] }
                 res_copy_nodes[r_13] ==> r_13 != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, edges] }
@@ -2063,7 +2065,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             assume state(Heap, Mask);
             assume false;
           }
-        
+
         // -- Check the loop body
           if (*) {
             // Reset state
@@ -2077,10 +2079,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             havoc QPMask;
             assert {:msg "  While statement might fail. Quantified resource x.val might not be injective. (graph-copy.vpr@145.17--145.66) [499]"}
               (forall x_54: Ref, x_54_1: Ref ::
-              
+
               (((x_54 != x_54_1 && setOfRef[x_54]) && setOfRef[x_54_1]) && NoPerm < rd) && NoPerm < rd ==> x_54 != x_54_1
             );
-            
+
             // -- Define Inverse Function
               assume (forall x_54: Ref ::
                 { Heap[x_54, val] } { QPMask[x_54, val] } { setOfRef[x_54] }
@@ -2096,13 +2098,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               { Heap[x_54, val] } { QPMask[x_54, val] } { setOfRef[x_54] }
               setOfRef[x_54] ==> rd >= NoPerm
             );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall x_54: Ref ::
                 { Heap[x_54, val] } { QPMask[x_54, val] } { setOfRef[x_54] }
                 setOfRef[x_54] && rd > NoPerm ==> x_54 != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
@@ -2121,10 +2123,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             havoc QPMask;
             assert {:msg "  While statement might fail. Quantified resource x.edges might not be injective. (graph-copy.vpr@147.17--147.68) [501]"}
               (forall x_56: Ref, x_56_1: Ref ::
-              
+
               (((x_56 != x_56_1 && setOfRef[x_56]) && setOfRef[x_56_1]) && NoPerm < rd) && NoPerm < rd ==> x_56 != x_56_1
             );
-            
+
             // -- Define Inverse Function
               assume (forall x_56: Ref ::
                 { Heap[x_56, edges] } { QPMask[x_56, edges] } { setOfRef[x_56] }
@@ -2140,13 +2142,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               { Heap[x_56, edges] } { QPMask[x_56, edges] } { setOfRef[x_56] }
               setOfRef[x_56] ==> rd >= NoPerm
             );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall x_56: Ref ::
                 { Heap[x_56, edges] } { QPMask[x_56, edges] } { setOfRef[x_56] }
                 setOfRef[x_56] && rd > NoPerm ==> x_56 != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, edges] }
@@ -2179,10 +2181,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             havoc QPMask;
             assert {:msg "  While statement might fail. Quantified resource r.val might not be injective. (graph-copy.vpr@154.17--154.68) [503]"}
               (forall r_16: Ref, r_16_1: Ref ::
-              
+
               (((r_16 != r_16_1 && res_copy_nodes[r_16]) && res_copy_nodes[r_16_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_16 != r_16_1
             );
-            
+
             // -- Define Inverse Function
               assume (forall r_16: Ref ::
                 { Heap[r_16, val] } { QPMask[r_16, val] } { res_copy_nodes[r_16] }
@@ -2192,13 +2194,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv23(o_3) }
                 (res_copy_nodes[invRecv23(o_3)] && NoPerm < FullPerm) && qpRange23(o_3) ==> invRecv23(o_3) == o_3
               );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall r_16: Ref ::
                 { Heap[r_16, val] } { QPMask[r_16, val] } { res_copy_nodes[r_16] }
                 res_copy_nodes[r_16] ==> r_16 != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
@@ -2213,10 +2215,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             havoc QPMask;
             assert {:msg "  While statement might fail. Quantified resource r.edges might not be injective. (graph-copy.vpr@155.17--155.70) [504]"}
               (forall r_17: Ref, r_17_1: Ref ::
-              
+
               (((r_17 != r_17_1 && res_copy_nodes[r_17]) && res_copy_nodes[r_17_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_17 != r_17_1
             );
-            
+
             // -- Define Inverse Function
               assume (forall r_17: Ref ::
                 { Heap[r_17, edges] } { QPMask[r_17, edges] } { res_copy_nodes[r_17] }
@@ -2226,13 +2228,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv24(o_3) }
                 (res_copy_nodes[invRecv24(o_3)] && NoPerm < FullPerm) && qpRange24(o_3) ==> invRecv24(o_3) == o_3
               );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall r_17: Ref ::
                 { Heap[r_17, edges] } { QPMask[r_17, edges] } { res_copy_nodes[r_17] }
                 res_copy_nodes[r_17] ==> r_17 != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, edges] }
@@ -2248,37 +2250,37 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             // Check and assume guard
             assume Set#Card(S) > 0;
             assume state(Heap, Mask);
-            
+
             // -- Translate loop body
-              
+
               // -- Assumptions about local variables
                 assume Heap[newNode, $allocated];
                 assume Heap[nodeForId, $allocated];
-              
+
               // -- Translating statement: S, i := pop(S) -- graph-copy.vpr@157.7--157.21
                 PreCallHeap := Heap;
                 PreCallMask := Mask;
                 arg_s1 := S;
                 havoc S, i_6;
-                
+
                 // -- Exhaling precondition
                   assert {:msg "  The precondition of method pop might not hold. Assertion 0 < |S| might not hold. (graph-copy.vpr@157.7--157.21) [505]"}
                     0 < Set#Card(arg_s1);
-                
+
                 // -- Inhaling postcondition
                   assume arg_s1[i_6];
                   assume Set#Equal(S, Set#Difference(arg_s1, Set#Singleton(i_6)));
                   assume state(Heap, Mask);
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: nodeForId := edge_lookup(this.edges, i) -- graph-copy.vpr@163.7--163.46
-                
+
                 // -- Check definedness of edge_lookup(this.edges, i)
                   assert {:msg "  Assignment might fail. There might be insufficient permission to access this.edges (graph-copy.vpr@163.7--163.46) [506]"}
                     HasDirectPerm(Mask, this, edges);
                 nodeForId := (edge_lookup(Heap[this, edges], i_6): Ref);
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: newNode, res_node_map, res_copy_nodes := graph_copy_rec(nodeForId, res_node_map,
   //   setOfRef, res_copy_nodes, rd / 2) -- graph-copy.vpr@165.7--165.119
                 PreCallHeap := Heap;
@@ -2287,7 +2289,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 arg_node_map_image := res_copy_nodes;
                 arg_rd := rd / 2;
                 havoc newNode, res_node_map, res_copy_nodes;
-                
+
                 // -- Exhaling precondition
                   assert {:msg "  The precondition of method graph_copy_rec might not hold. Assertion none < rd / 2 might not hold. (graph-copy.vpr@165.7--165.119) [507]"}
                     NoPerm < arg_rd;
@@ -2298,28 +2300,28 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                   assert {:msg "  The precondition of method graph_copy_rec might not hold. Assertion |(setOfRef intersection res_copy_nodes)| == 0 might not hold. (graph-copy.vpr@165.7--165.119) [510]"}
                     Set#Card(Set#Intersection(setOfRef, arg_node_map_image)) == 0;
                   havoc QPMask;
-                  
+
                   // -- check that the permission amount is positive
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. Fraction rd / 2 might be negative. (graph-copy.vpr@165.7--165.119) [511]"}
                       (forall x_58: Ref ::
                       { Heap[x_58, val] } { QPMask[x_58, val] } { setOfRef[x_58] }
                       setOfRef[x_58] && dummyFunction(Heap[x_58, val]) ==> arg_rd >= NoPerm
                     );
-                  
+
                   // -- check if receiver x is injective
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. Quantified resource x.val might not be injective. (graph-copy.vpr@165.7--165.119) [512]"}
                       (forall x_58: Ref, x_58_1: Ref ::
                       { neverTriggered25(x_58), neverTriggered25(x_58_1) }
                       (((x_58 != x_58_1 && setOfRef[x_58]) && setOfRef[x_58_1]) && NoPerm < arg_rd) && NoPerm < arg_rd ==> x_58 != x_58_1
                     );
-                  
+
                   // -- check if sufficient permission is held
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. There might be insufficient permission to access x.val (graph-copy.vpr@165.7--165.119) [513]"}
                       (forall x_58: Ref ::
                       { Heap[x_58, val] } { QPMask[x_58, val] } { setOfRef[x_58] }
                       setOfRef[x_58] ==> Mask[x_58, val] >= arg_rd
                     );
-                  
+
                   // -- assumptions for inverse of receiver x
                     assume (forall x_58: Ref ::
                       { Heap[x_58, val] } { QPMask[x_58, val] } { setOfRef[x_58] }
@@ -2329,13 +2331,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                       { invRecv25(o_3) }
                       setOfRef[invRecv25(o_3)] && (NoPerm < arg_rd && qpRange25(o_3)) ==> invRecv25(o_3) == o_3
                     );
-                  
+
                   // -- assume permission updates for field val
                     assume (forall o_3: Ref ::
                       { QPMask[o_3, val] }
                       (setOfRef[invRecv25(o_3)] && (NoPerm < arg_rd && qpRange25(o_3)) ==> invRecv25(o_3) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - arg_rd) && (!(setOfRef[invRecv25(o_3)] && (NoPerm < arg_rd && qpRange25(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
                     );
-                  
+
                   // -- assume permission updates for independent locations
                     assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                       { QPMask[o_3, f_5] }
@@ -2343,28 +2345,28 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                     );
                   Mask := QPMask;
                   havoc QPMask;
-                  
+
                   // -- check that the permission amount is positive
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. Fraction rd / 2 might be negative. (graph-copy.vpr@165.7--165.119) [514]"}
                       (forall x_59: Ref ::
                       { Heap[x_59, edges] } { QPMask[x_59, edges] } { setOfRef[x_59] }
                       setOfRef[x_59] && dummyFunction(Heap[x_59, edges]) ==> arg_rd >= NoPerm
                     );
-                  
+
                   // -- check if receiver x is injective
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. Quantified resource x.edges might not be injective. (graph-copy.vpr@165.7--165.119) [515]"}
                       (forall x_59: Ref, x_59_1: Ref ::
                       { neverTriggered26(x_59), neverTriggered26(x_59_1) }
                       (((x_59 != x_59_1 && setOfRef[x_59]) && setOfRef[x_59_1]) && NoPerm < arg_rd) && NoPerm < arg_rd ==> x_59 != x_59_1
                     );
-                  
+
                   // -- check if sufficient permission is held
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. There might be insufficient permission to access x.edges (graph-copy.vpr@165.7--165.119) [516]"}
                       (forall x_59: Ref ::
                       { Heap[x_59, edges] } { QPMask[x_59, edges] } { setOfRef[x_59] }
                       setOfRef[x_59] ==> Mask[x_59, edges] >= arg_rd
                     );
-                  
+
                   // -- assumptions for inverse of receiver x
                     assume (forall x_59: Ref ::
                       { Heap[x_59, edges] } { QPMask[x_59, edges] } { setOfRef[x_59] }
@@ -2374,13 +2376,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                       { invRecv26(o_3) }
                       setOfRef[invRecv26(o_3)] && (NoPerm < arg_rd && qpRange26(o_3)) ==> invRecv26(o_3) == o_3
                     );
-                  
+
                   // -- assume permission updates for field edges
                     assume (forall o_3: Ref ::
                       { QPMask[o_3, edges] }
                       (setOfRef[invRecv26(o_3)] && (NoPerm < arg_rd && qpRange26(o_3)) ==> invRecv26(o_3) == o_3 && QPMask[o_3, edges] == Mask[o_3, edges] - arg_rd) && (!(setOfRef[invRecv26(o_3)] && (NoPerm < arg_rd && qpRange26(o_3))) ==> QPMask[o_3, edges] == Mask[o_3, edges])
                     );
-                  
+
                   // -- assume permission updates for independent locations
                     assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                       { QPMask[o_3, f_5] }
@@ -2410,24 +2412,24 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                     Seq#Contains((map_domain(arg_node_map): Seq Ref), x_63_1) ==> arg_node_map_image[(lookup(arg_node_map, x_63_1): Ref)]
                   );
                   havoc QPMask;
-                  
+
                   // -- check that the permission amount is positive
-                    
-                  
+
+
                   // -- check if receiver x is injective
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. Quantified resource x.val might not be injective. (graph-copy.vpr@165.7--165.119) [519]"}
                       (forall x_64: Ref, x_64_1: Ref ::
                       { neverTriggered27(x_64), neverTriggered27(x_64_1) }
                       (((x_64 != x_64_1 && arg_node_map_image[x_64]) && arg_node_map_image[x_64_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_64 != x_64_1
                     );
-                  
+
                   // -- check if sufficient permission is held
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. There might be insufficient permission to access x.val (graph-copy.vpr@165.7--165.119) [520]"}
                       (forall x_64: Ref ::
                       { Heap[x_64, val] } { QPMask[x_64, val] } { arg_node_map_image[x_64] }
                       arg_node_map_image[x_64] ==> Mask[x_64, val] >= FullPerm
                     );
-                  
+
                   // -- assumptions for inverse of receiver x
                     assume (forall x_64: Ref ::
                       { Heap[x_64, val] } { QPMask[x_64, val] } { arg_node_map_image[x_64] }
@@ -2437,13 +2439,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                       { invRecv27(o_3) }
                       arg_node_map_image[invRecv27(o_3)] && (NoPerm < FullPerm && qpRange27(o_3)) ==> invRecv27(o_3) == o_3
                     );
-                  
+
                   // -- assume permission updates for field val
                     assume (forall o_3: Ref ::
                       { QPMask[o_3, val] }
                       (arg_node_map_image[invRecv27(o_3)] && (NoPerm < FullPerm && qpRange27(o_3)) ==> invRecv27(o_3) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!(arg_node_map_image[invRecv27(o_3)] && (NoPerm < FullPerm && qpRange27(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
                     );
-                  
+
                   // -- assume permission updates for independent locations
                     assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                       { QPMask[o_3, f_5] }
@@ -2451,24 +2453,24 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                     );
                   Mask := QPMask;
                   havoc QPMask;
-                  
+
                   // -- check that the permission amount is positive
-                    
-                  
+
+
                   // -- check if receiver x is injective
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. Quantified resource x.edges might not be injective. (graph-copy.vpr@165.7--165.119) [521]"}
                       (forall x_65: Ref, x_65_1: Ref ::
                       { neverTriggered28(x_65), neverTriggered28(x_65_1) }
                       (((x_65 != x_65_1 && arg_node_map_image[x_65]) && arg_node_map_image[x_65_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_65 != x_65_1
                     );
-                  
+
                   // -- check if sufficient permission is held
                     assert {:msg "  The precondition of method graph_copy_rec might not hold. There might be insufficient permission to access x.edges (graph-copy.vpr@165.7--165.119) [522]"}
                       (forall x_65: Ref ::
                       { Heap[x_65, edges] } { QPMask[x_65, edges] } { arg_node_map_image[x_65] }
                       arg_node_map_image[x_65] ==> Mask[x_65, edges] >= FullPerm
                     );
-                  
+
                   // -- assumptions for inverse of receiver x
                     assume (forall x_65: Ref ::
                       { Heap[x_65, edges] } { QPMask[x_65, edges] } { arg_node_map_image[x_65] }
@@ -2478,13 +2480,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                       { invRecv28(o_3) }
                       arg_node_map_image[invRecv28(o_3)] && (NoPerm < FullPerm && qpRange28(o_3)) ==> invRecv28(o_3) == o_3
                     );
-                  
+
                   // -- assume permission updates for field edges
                     assume (forall o_3: Ref ::
                       { QPMask[o_3, edges] }
                       (arg_node_map_image[invRecv28(o_3)] && (NoPerm < FullPerm && qpRange28(o_3)) ==> invRecv28(o_3) == o_3 && QPMask[o_3, edges] == Mask[o_3, edges] - FullPerm) && (!(arg_node_map_image[invRecv28(o_3)] && (NoPerm < FullPerm && qpRange28(o_3))) ==> QPMask[o_3, edges] == Mask[o_3, edges])
                     );
-                  
+
                   // -- assume permission updates for independent locations
                     assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                       { QPMask[o_3, f_5] }
@@ -2495,7 +2497,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                   havoc ExhaleHeap;
                   assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
                   Heap := ExhaleHeap;
-                
+
                 // -- Inhaling postcondition
                   assume newNode != null;
                   assume res_copy_nodes[newNode];
@@ -2503,10 +2505,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                   havoc QPMask;
                   assert {:msg "  Method call might fail. Quantified resource x.val might not be injective. (graph-copy.vpr@165.7--165.119) [523]"}
                     (forall x_66: Ref, x_66_1: Ref ::
-                    
+
                     (((x_66 != x_66_1 && setOfRef[x_66]) && setOfRef[x_66_1]) && NoPerm < arg_rd) && NoPerm < arg_rd ==> x_66 != x_66_1
                   );
-                  
+
                   // -- Define Inverse Function
                     assume (forall x_66: Ref ::
                       { Heap[x_66, val] } { QPMask[x_66, val] } { setOfRef[x_66] }
@@ -2522,13 +2524,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                     { Heap[x_66, val] } { QPMask[x_66, val] } { setOfRef[x_66] }
                     setOfRef[x_66] ==> arg_rd >= NoPerm
                   );
-                  
+
                   // -- Assume set of fields is nonNull
                     assume (forall x_66: Ref ::
                       { Heap[x_66, val] } { QPMask[x_66, val] } { setOfRef[x_66] }
                       setOfRef[x_66] && arg_rd > NoPerm ==> x_66 != null
                     );
-                  
+
                   // -- Define permissions
                     assume (forall o_3: Ref ::
                       { QPMask[o_3, val] }
@@ -2547,10 +2549,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                   havoc QPMask;
                   assert {:msg "  Method call might fail. Quantified resource x.edges might not be injective. (graph-copy.vpr@165.7--165.119) [525]"}
                     (forall x_68: Ref, x_68_1: Ref ::
-                    
+
                     (((x_68 != x_68_1 && setOfRef[x_68]) && setOfRef[x_68_1]) && NoPerm < arg_rd) && NoPerm < arg_rd ==> x_68 != x_68_1
                   );
-                  
+
                   // -- Define Inverse Function
                     assume (forall x_68: Ref ::
                       { Heap[x_68, edges] } { QPMask[x_68, edges] } { setOfRef[x_68] }
@@ -2566,13 +2568,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                     { Heap[x_68, edges] } { QPMask[x_68, edges] } { setOfRef[x_68] }
                     setOfRef[x_68] ==> arg_rd >= NoPerm
                   );
-                  
+
                   // -- Assume set of fields is nonNull
                     assume (forall x_68: Ref ::
                       { Heap[x_68, edges] } { QPMask[x_68, edges] } { setOfRef[x_68] }
                       setOfRef[x_68] && arg_rd > NoPerm ==> x_68 != null
                     );
-                  
+
                   // -- Define permissions
                     assume (forall o_3: Ref ::
                       { QPMask[o_3, edges] }
@@ -2600,10 +2602,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                   havoc QPMask;
                   assert {:msg "  Method call might fail. Quantified resource x.val might not be injective. (graph-copy.vpr@165.7--165.119) [527]"}
                     (forall x_72: Ref, x_72_1: Ref ::
-                    
+
                     (((x_72 != x_72_1 && res_copy_nodes[x_72]) && res_copy_nodes[x_72_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_72 != x_72_1
                   );
-                  
+
                   // -- Define Inverse Function
                     assume (forall x_72: Ref ::
                       { Heap[x_72, val] } { QPMask[x_72, val] } { res_copy_nodes[x_72] }
@@ -2613,13 +2615,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                       { invRecv31(o_3) }
                       (res_copy_nodes[invRecv31(o_3)] && NoPerm < FullPerm) && qpRange31(o_3) ==> invRecv31(o_3) == o_3
                     );
-                  
+
                   // -- Assume set of fields is nonNull
                     assume (forall x_72: Ref ::
                       { Heap[x_72, val] } { QPMask[x_72, val] } { res_copy_nodes[x_72] }
                       res_copy_nodes[x_72] ==> x_72 != null
                     );
-                  
+
                   // -- Define permissions
                     assume (forall o_3: Ref ::
                       { QPMask[o_3, val] }
@@ -2634,10 +2636,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                   havoc QPMask;
                   assert {:msg "  Method call might fail. Quantified resource x.edges might not be injective. (graph-copy.vpr@165.7--165.119) [528]"}
                     (forall x_73: Ref, x_73_1: Ref ::
-                    
+
                     (((x_73 != x_73_1 && res_copy_nodes[x_73]) && res_copy_nodes[x_73_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_73 != x_73_1
                   );
-                  
+
                   // -- Define Inverse Function
                     assume (forall x_73: Ref ::
                       { Heap[x_73, edges] } { QPMask[x_73, edges] } { res_copy_nodes[x_73] }
@@ -2647,13 +2649,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                       { invRecv32(o_3) }
                       (res_copy_nodes[invRecv32(o_3)] && NoPerm < FullPerm) && qpRange32(o_3) ==> invRecv32(o_3) == o_3
                     );
-                  
+
                   // -- Assume set of fields is nonNull
                     assume (forall x_73: Ref ::
                       { Heap[x_73, edges] } { QPMask[x_73, edges] } { res_copy_nodes[x_73] }
                       res_copy_nodes[x_73] ==> x_73 != null
                     );
-                  
+
                   // -- Define permissions
                     assume (forall o_3: Ref ::
                       { QPMask[o_3, edges] }
@@ -2668,9 +2670,9 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                   assume state(Heap, Mask);
                 assume Heap[newNode, $allocated];
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: nodeCopy.edges := insert_edge(nodeCopy.edges, i, newNode) -- graph-copy.vpr@167.7--167.64
-                
+
                 // -- Check definedness of insert_edge(nodeCopy.edges, i, newNode)
                   assert {:msg "  Assignment might fail. There might be insufficient permission to access nodeCopy.edges (graph-copy.vpr@167.7--167.64) [529]"}
                     HasDirectPerm(Mask, nodeCopy, edges);
@@ -2684,28 +2686,28 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             assert {:msg "  Loop invariant (this in setOfRef) might not be preserved. Assertion (this in setOfRef) might not hold. (graph-copy.vpr@144.17--144.33) [532]"}
               setOfRef[this];
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.val, rd)) might not be preserved. Fraction rd might be negative. (graph-copy.vpr@145.17--145.66) [533]"}
                 (forall x_74: Ref ::
                 { Heap[x_74, val] } { QPMask[x_74, val] } { setOfRef[x_74] }
                 setOfRef[x_74] && dummyFunction(Heap[x_74, val]) ==> rd >= NoPerm
               );
-            
+
             // -- check if receiver x is injective
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.val, rd)) might not be preserved. Quantified resource x.val might not be injective. (graph-copy.vpr@145.17--145.66) [534]"}
                 (forall x_74: Ref, x_74_1: Ref ::
                 { neverTriggered33(x_74), neverTriggered33(x_74_1) }
                 (((x_74 != x_74_1 && setOfRef[x_74]) && setOfRef[x_74_1]) && NoPerm < rd) && NoPerm < rd ==> x_74 != x_74_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.val, rd)) might not be preserved. There might be insufficient permission to access x.val (graph-copy.vpr@145.17--145.66) [535]"}
                 (forall x_74: Ref ::
                 { Heap[x_74, val] } { QPMask[x_74, val] } { setOfRef[x_74] }
                 setOfRef[x_74] ==> Mask[x_74, val] >= rd
               );
-            
+
             // -- assumptions for inverse of receiver x
               assume (forall x_74: Ref ::
                 { Heap[x_74, val] } { QPMask[x_74, val] } { setOfRef[x_74] }
@@ -2715,13 +2717,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv33(o_3) }
                 setOfRef[invRecv33(o_3)] && (NoPerm < rd && qpRange33(o_3)) ==> invRecv33(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field val
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
                 (setOfRef[invRecv33(o_3)] && (NoPerm < rd && qpRange33(o_3)) ==> invRecv33(o_3) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - rd) && (!(setOfRef[invRecv33(o_3)] && (NoPerm < rd && qpRange33(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -2740,28 +2742,28 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               setOfRef[x_76_1] ==> Heap[x_76_1, val] == old(Heap)[x_76_1, val]
             );
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.edges, rd)) might not be preserved. Fraction rd might be negative. (graph-copy.vpr@147.17--147.68) [537]"}
                 (forall x_77: Ref ::
                 { Heap[x_77, edges] } { QPMask[x_77, edges] } { setOfRef[x_77] }
                 setOfRef[x_77] && dummyFunction(Heap[x_77, edges]) ==> rd >= NoPerm
               );
-            
+
             // -- check if receiver x is injective
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.edges, rd)) might not be preserved. Quantified resource x.edges might not be injective. (graph-copy.vpr@147.17--147.68) [538]"}
                 (forall x_77: Ref, x_77_1: Ref ::
                 { neverTriggered34(x_77), neverTriggered34(x_77_1) }
                 (((x_77 != x_77_1 && setOfRef[x_77]) && setOfRef[x_77_1]) && NoPerm < rd) && NoPerm < rd ==> x_77 != x_77_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall x: Ref :: { (x in setOfRef) } (x in setOfRef) ==> acc(x.edges, rd)) might not be preserved. There might be insufficient permission to access x.edges (graph-copy.vpr@147.17--147.68) [539]"}
                 (forall x_77: Ref ::
                 { Heap[x_77, edges] } { QPMask[x_77, edges] } { setOfRef[x_77] }
                 setOfRef[x_77] ==> Mask[x_77, edges] >= rd
               );
-            
+
             // -- assumptions for inverse of receiver x
               assume (forall x_77: Ref ::
                 { Heap[x_77, edges] } { QPMask[x_77, edges] } { setOfRef[x_77] }
@@ -2771,13 +2773,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv34(o_3) }
                 setOfRef[invRecv34(o_3)] && (NoPerm < rd && qpRange34(o_3)) ==> invRecv34(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field edges
               assume (forall o_3: Ref ::
                 { QPMask[o_3, edges] }
                 (setOfRef[invRecv34(o_3)] && (NoPerm < rd && qpRange34(o_3)) ==> invRecv34(o_3) == o_3 && QPMask[o_3, edges] == Mask[o_3, edges] - rd) && (!(setOfRef[invRecv34(o_3)] && (NoPerm < rd && qpRange34(o_3))) ==> QPMask[o_3, edges] == Mask[o_3, edges])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -2833,24 +2835,24 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               Seq#Contains((map_domain(res_node_map): Seq Ref), r_21_1) ==> res_copy_nodes[(lookup(res_node_map, r_21_1): Ref)]
             );
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver r is injective
               assert {:msg "  Loop invariant (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.val, write)) might not be preserved. Quantified resource r.val might not be injective. (graph-copy.vpr@154.17--154.68) [546]"}
                 (forall r_22: Ref, r_22_1: Ref ::
                 { neverTriggered35(r_22), neverTriggered35(r_22_1) }
                 (((r_22 != r_22_1 && res_copy_nodes[r_22]) && res_copy_nodes[r_22_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_22 != r_22_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.val, write)) might not be preserved. There might be insufficient permission to access r.val (graph-copy.vpr@154.17--154.68) [547]"}
                 (forall r_22: Ref ::
                 { Heap[r_22, val] } { QPMask[r_22, val] } { res_copy_nodes[r_22] }
                 res_copy_nodes[r_22] ==> Mask[r_22, val] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver r
               assume (forall r_22: Ref ::
                 { Heap[r_22, val] } { QPMask[r_22, val] } { res_copy_nodes[r_22] }
@@ -2860,13 +2862,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv35(o_3) }
                 res_copy_nodes[invRecv35(o_3)] && (NoPerm < FullPerm && qpRange35(o_3)) ==> invRecv35(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field val
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
                 (res_copy_nodes[invRecv35(o_3)] && (NoPerm < FullPerm && qpRange35(o_3)) ==> invRecv35(o_3) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!(res_copy_nodes[invRecv35(o_3)] && (NoPerm < FullPerm && qpRange35(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -2874,24 +2876,24 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               );
             Mask := QPMask;
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver r is injective
               assert {:msg "  Loop invariant (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.edges, write)) might not be preserved. Quantified resource r.edges might not be injective. (graph-copy.vpr@155.17--155.70) [548]"}
                 (forall r_23: Ref, r_23_1: Ref ::
                 { neverTriggered36(r_23), neverTriggered36(r_23_1) }
                 (((r_23 != r_23_1 && res_copy_nodes[r_23]) && res_copy_nodes[r_23_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_23 != r_23_1
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall r: Ref :: { (r in res_copy_nodes) } (r in res_copy_nodes) ==> acc(r.edges, write)) might not be preserved. There might be insufficient permission to access r.edges (graph-copy.vpr@155.17--155.70) [549]"}
                 (forall r_23: Ref ::
                 { Heap[r_23, edges] } { QPMask[r_23, edges] } { res_copy_nodes[r_23] }
                 res_copy_nodes[r_23] ==> Mask[r_23, edges] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver r
               assume (forall r_23: Ref ::
                 { Heap[r_23, edges] } { QPMask[r_23, edges] } { res_copy_nodes[r_23] }
@@ -2901,13 +2903,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
                 { invRecv36(o_3) }
                 res_copy_nodes[invRecv36(o_3)] && (NoPerm < FullPerm && qpRange36(o_3)) ==> invRecv36(o_3) == o_3
               );
-            
+
             // -- assume permission updates for field edges
               assume (forall o_3: Ref ::
                 { QPMask[o_3, edges] }
                 (res_copy_nodes[invRecv36(o_3)] && (NoPerm < FullPerm && qpRange36(o_3)) ==> invRecv36(o_3) == o_3 && QPMask[o_3, edges] == Mask[o_3, edges] - FullPerm) && (!(res_copy_nodes[invRecv36(o_3)] && (NoPerm < FullPerm && qpRange36(o_3))) ==> QPMask[o_3, edges] == Mask[o_3, edges])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -2921,7 +2923,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             // Terminate execution
             assume false;
           }
-        
+
         // -- Inhale loop invariant after loop, and assume guard
           assume !(Set#Card(S) > 0);
           assume state(Heap, Mask);
@@ -2930,10 +2932,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
           havoc QPMask;
           assert {:msg "  While statement might fail. Quantified resource x.val might not be injective. (graph-copy.vpr@145.17--145.66) [550]"}
             (forall x_80: Ref, x_80_1: Ref ::
-            
+
             (((x_80 != x_80_1 && setOfRef[x_80]) && setOfRef[x_80_1]) && NoPerm < rd) && NoPerm < rd ==> x_80 != x_80_1
           );
-          
+
           // -- Define Inverse Function
             assume (forall x_80: Ref ::
               { Heap[x_80, val] } { QPMask[x_80, val] } { setOfRef[x_80] }
@@ -2949,13 +2951,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             { Heap[x_80, val] } { QPMask[x_80, val] } { setOfRef[x_80] }
             setOfRef[x_80] ==> rd >= NoPerm
           );
-          
+
           // -- Assume set of fields is nonNull
             assume (forall x_80: Ref ::
               { Heap[x_80, val] } { QPMask[x_80, val] } { setOfRef[x_80] }
               setOfRef[x_80] && rd > NoPerm ==> x_80 != null
             );
-          
+
           // -- Define permissions
             assume (forall o_3: Ref ::
               { QPMask[o_3, val] }
@@ -2974,10 +2976,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
           havoc QPMask;
           assert {:msg "  While statement might fail. Quantified resource x.edges might not be injective. (graph-copy.vpr@147.17--147.68) [552]"}
             (forall x_82: Ref, x_82_1: Ref ::
-            
+
             (((x_82 != x_82_1 && setOfRef[x_82]) && setOfRef[x_82_1]) && NoPerm < rd) && NoPerm < rd ==> x_82 != x_82_1
           );
-          
+
           // -- Define Inverse Function
             assume (forall x_82: Ref ::
               { Heap[x_82, edges] } { QPMask[x_82, edges] } { setOfRef[x_82] }
@@ -2993,13 +2995,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
             { Heap[x_82, edges] } { QPMask[x_82, edges] } { setOfRef[x_82] }
             setOfRef[x_82] ==> rd >= NoPerm
           );
-          
+
           // -- Assume set of fields is nonNull
             assume (forall x_82: Ref ::
               { Heap[x_82, edges] } { QPMask[x_82, edges] } { setOfRef[x_82] }
               setOfRef[x_82] && rd > NoPerm ==> x_82 != null
             );
-          
+
           // -- Define permissions
             assume (forall o_3: Ref ::
               { QPMask[o_3, edges] }
@@ -3032,10 +3034,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
           havoc QPMask;
           assert {:msg "  While statement might fail. Quantified resource r.val might not be injective. (graph-copy.vpr@154.17--154.68) [554]"}
             (forall r_26: Ref, r_26_1: Ref ::
-            
+
             (((r_26 != r_26_1 && res_copy_nodes[r_26]) && res_copy_nodes[r_26_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_26 != r_26_1
           );
-          
+
           // -- Define Inverse Function
             assume (forall r_26: Ref ::
               { Heap[r_26, val] } { QPMask[r_26, val] } { res_copy_nodes[r_26] }
@@ -3045,13 +3047,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               { invRecv39(o_3) }
               (res_copy_nodes[invRecv39(o_3)] && NoPerm < FullPerm) && qpRange39(o_3) ==> invRecv39(o_3) == o_3
             );
-          
+
           // -- Assume set of fields is nonNull
             assume (forall r_26: Ref ::
               { Heap[r_26, val] } { QPMask[r_26, val] } { res_copy_nodes[r_26] }
               res_copy_nodes[r_26] ==> r_26 != null
             );
-          
+
           // -- Define permissions
             assume (forall o_3: Ref ::
               { QPMask[o_3, val] }
@@ -3066,10 +3068,10 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
           havoc QPMask;
           assert {:msg "  While statement might fail. Quantified resource r.edges might not be injective. (graph-copy.vpr@155.17--155.70) [555]"}
             (forall r_27: Ref, r_27_1: Ref ::
-            
+
             (((r_27 != r_27_1 && res_copy_nodes[r_27]) && res_copy_nodes[r_27_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> r_27 != r_27_1
           );
-          
+
           // -- Define Inverse Function
             assume (forall r_27: Ref ::
               { Heap[r_27, edges] } { QPMask[r_27, edges] } { res_copy_nodes[r_27] }
@@ -3079,13 +3081,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
               { invRecv40(o_3) }
               (res_copy_nodes[invRecv40(o_3)] && NoPerm < FullPerm) && qpRange40(o_3) ==> invRecv40(o_3) == o_3
             );
-          
+
           // -- Assume set of fields is nonNull
             assume (forall r_27: Ref ::
               { Heap[r_27, edges] } { QPMask[r_27, edges] } { res_copy_nodes[r_27] }
               res_copy_nodes[r_27] ==> r_27 != null
             );
-          
+
           // -- Define permissions
             assume (forall o_3: Ref ::
               { QPMask[o_3, edges] }
@@ -3101,7 +3103,7 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of graph_copy_rec might not hold. Assertion nodeCopy != null might not hold. (graph-copy.vpr@104.11--104.57) [556]"}
       nodeCopy != null;
@@ -3110,28 +3112,28 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
     assert {:msg "  Postcondition of graph_copy_rec might not hold. Assertion |(setOfRef intersection res_copy_nodes)| == 0 might not hold. (graph-copy.vpr@105.11--105.54) [558]"}
       Set#Card(Set#Intersection(setOfRef, res_copy_nodes)) == 0;
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
       assert {:msg "  Postcondition of graph_copy_rec might not hold. Fraction rd might be negative. (graph-copy.vpr@106.11--106.60) [559]"}
         (forall x_28: Ref ::
         { Heap[x_28, val] } { QPMask[x_28, val] } { setOfRef[x_28] }
         setOfRef[x_28] && dummyFunction(Heap[x_28, val]) ==> rd >= NoPerm
       );
-    
+
     // -- check if receiver x is injective
       assert {:msg "  Contract might not be well-formed. Quantified resource x.val might not be injective. (graph-copy.vpr@106.11--106.60) [560]"}
         (forall x_28: Ref, x_28_1: Ref ::
         { neverTriggered9(x_28), neverTriggered9(x_28_1) }
         (((x_28 != x_28_1 && setOfRef[x_28]) && setOfRef[x_28_1]) && NoPerm < rd) && NoPerm < rd ==> x_28 != x_28_1
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Postcondition of graph_copy_rec might not hold. There might be insufficient permission to access x.val (graph-copy.vpr@106.11--106.60) [561]"}
         (forall x_28: Ref ::
         { Heap[x_28, val] } { QPMask[x_28, val] } { setOfRef[x_28] }
         setOfRef[x_28] ==> Mask[x_28, val] >= rd
       );
-    
+
     // -- assumptions for inverse of receiver x
       assume (forall x_28: Ref ::
         { Heap[x_28, val] } { QPMask[x_28, val] } { setOfRef[x_28] }
@@ -3141,13 +3143,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         { invRecv9(o_3) }
         setOfRef[invRecv9(o_3)] && (NoPerm < rd && qpRange9(o_3)) ==> invRecv9(o_3) == o_3
       );
-    
+
     // -- assume permission updates for field val
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
         (setOfRef[invRecv9(o_3)] && (NoPerm < rd && qpRange9(o_3)) ==> invRecv9(o_3) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - rd) && (!(setOfRef[invRecv9(o_3)] && (NoPerm < rd && qpRange9(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
       );
-    
+
     // -- assume permission updates for independent locations
       assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
         { QPMask[o_3, f_5] }
@@ -3166,28 +3168,28 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       setOfRef[x_30_1] ==> Heap[x_30_1, val] == old(Heap)[x_30_1, val]
     );
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
       assert {:msg "  Postcondition of graph_copy_rec might not hold. Fraction rd might be negative. (graph-copy.vpr@108.11--108.62) [563]"}
         (forall x_31: Ref ::
         { Heap[x_31, edges] } { QPMask[x_31, edges] } { setOfRef[x_31] }
         setOfRef[x_31] && dummyFunction(Heap[x_31, edges]) ==> rd >= NoPerm
       );
-    
+
     // -- check if receiver x is injective
       assert {:msg "  Contract might not be well-formed. Quantified resource x.edges might not be injective. (graph-copy.vpr@108.11--108.62) [564]"}
         (forall x_31: Ref, x_31_1: Ref ::
         { neverTriggered10(x_31), neverTriggered10(x_31_1) }
         (((x_31 != x_31_1 && setOfRef[x_31]) && setOfRef[x_31_1]) && NoPerm < rd) && NoPerm < rd ==> x_31 != x_31_1
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Postcondition of graph_copy_rec might not hold. There might be insufficient permission to access x.edges (graph-copy.vpr@108.11--108.62) [565]"}
         (forall x_31: Ref ::
         { Heap[x_31, edges] } { QPMask[x_31, edges] } { setOfRef[x_31] }
         setOfRef[x_31] ==> Mask[x_31, edges] >= rd
       );
-    
+
     // -- assumptions for inverse of receiver x
       assume (forall x_31: Ref ::
         { Heap[x_31, edges] } { QPMask[x_31, edges] } { setOfRef[x_31] }
@@ -3197,13 +3199,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         { invRecv10(o_3) }
         setOfRef[invRecv10(o_3)] && (NoPerm < rd && qpRange10(o_3)) ==> invRecv10(o_3) == o_3
       );
-    
+
     // -- assume permission updates for field edges
       assume (forall o_3: Ref ::
         { QPMask[o_3, edges] }
         (setOfRef[invRecv10(o_3)] && (NoPerm < rd && qpRange10(o_3)) ==> invRecv10(o_3) == o_3 && QPMask[o_3, edges] == Mask[o_3, edges] - rd) && (!(setOfRef[invRecv10(o_3)] && (NoPerm < rd && qpRange10(o_3))) ==> QPMask[o_3, edges] == Mask[o_3, edges])
       );
-    
+
     // -- assume permission updates for independent locations
       assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
         { QPMask[o_3, f_5] }
@@ -3246,24 +3248,24 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       Seq#Contains((map_domain(res_node_map): Seq Ref), x_37_1) ==> res_copy_nodes[(lookup(res_node_map, x_37_1): Ref)]
     );
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
-      
-    
+
+
     // -- check if receiver x is injective
       assert {:msg "  Contract might not be well-formed. Quantified resource x.val might not be injective. (graph-copy.vpr@113.11--113.62) [570]"}
         (forall x_38: Ref, x_38_1: Ref ::
         { neverTriggered11(x_38), neverTriggered11(x_38_1) }
         (((x_38 != x_38_1 && res_copy_nodes[x_38]) && res_copy_nodes[x_38_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_38 != x_38_1
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Postcondition of graph_copy_rec might not hold. There might be insufficient permission to access x.val (graph-copy.vpr@113.11--113.62) [571]"}
         (forall x_38: Ref ::
         { Heap[x_38, val] } { QPMask[x_38, val] } { res_copy_nodes[x_38] }
         res_copy_nodes[x_38] ==> Mask[x_38, val] >= FullPerm
       );
-    
+
     // -- assumptions for inverse of receiver x
       assume (forall x_38: Ref ::
         { Heap[x_38, val] } { QPMask[x_38, val] } { res_copy_nodes[x_38] }
@@ -3273,13 +3275,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         { invRecv11(o_3) }
         res_copy_nodes[invRecv11(o_3)] && (NoPerm < FullPerm && qpRange11(o_3)) ==> invRecv11(o_3) == o_3
       );
-    
+
     // -- assume permission updates for field val
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
         (res_copy_nodes[invRecv11(o_3)] && (NoPerm < FullPerm && qpRange11(o_3)) ==> invRecv11(o_3) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!(res_copy_nodes[invRecv11(o_3)] && (NoPerm < FullPerm && qpRange11(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
       );
-    
+
     // -- assume permission updates for independent locations
       assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
         { QPMask[o_3, f_5] }
@@ -3287,24 +3289,24 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
       );
     Mask := QPMask;
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
-      
-    
+
+
     // -- check if receiver x is injective
       assert {:msg "  Contract might not be well-formed. Quantified resource x.edges might not be injective. (graph-copy.vpr@114.11--114.64) [572]"}
         (forall x_39: Ref, x_39_1: Ref ::
         { neverTriggered12(x_39), neverTriggered12(x_39_1) }
         (((x_39 != x_39_1 && res_copy_nodes[x_39]) && res_copy_nodes[x_39_1]) && NoPerm < FullPerm) && NoPerm < FullPerm ==> x_39 != x_39_1
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Postcondition of graph_copy_rec might not hold. There might be insufficient permission to access x.edges (graph-copy.vpr@114.11--114.64) [573]"}
         (forall x_39: Ref ::
         { Heap[x_39, edges] } { QPMask[x_39, edges] } { res_copy_nodes[x_39] }
         res_copy_nodes[x_39] ==> Mask[x_39, edges] >= FullPerm
       );
-    
+
     // -- assumptions for inverse of receiver x
       assume (forall x_39: Ref ::
         { Heap[x_39, edges] } { QPMask[x_39, edges] } { res_copy_nodes[x_39] }
@@ -3314,13 +3316,13 @@ procedure graph_copy_rec(this: Ref, node_map_1: INodeMapDomainType, setOfRef: (S
         { invRecv12(o_3) }
         res_copy_nodes[invRecv12(o_3)] && (NoPerm < FullPerm && qpRange12(o_3)) ==> invRecv12(o_3) == o_3
       );
-    
+
     // -- assume permission updates for field edges
       assume (forall o_3: Ref ::
         { QPMask[o_3, edges] }
         (res_copy_nodes[invRecv12(o_3)] && (NoPerm < FullPerm && qpRange12(o_3)) ==> invRecv12(o_3) == o_3 && QPMask[o_3, edges] == Mask[o_3, edges] - FullPerm) && (!(res_copy_nodes[invRecv12(o_3)] && (NoPerm < FullPerm && qpRange12(o_3))) ==> QPMask[o_3, edges] == Mask[o_3, edges])
       );
-    
+
     // -- assume permission updates for independent locations
       assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
         { QPMask[o_3, f_5] }
@@ -3342,17 +3344,17 @@ procedure vpop(s1: (Set int)) returns (s2: (Set int), i_1: int)
 {
   var PostHeap: HeapType;
   var PostMask: MaskType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Checked inhaling of precondition
     assume 0 < Set#Card(s1);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -3370,12 +3372,12 @@ procedure vpop(s1: (Set int)) returns (s2: (Set int), i_1: int)
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: inhale false -- graph-copy.vpr@177.10--177.15
     assume false;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of pop might not hold. Assertion (i in s1) might not hold. (graph-copy.vpr@175.11--175.18) [574]"}
       s1[i_1];

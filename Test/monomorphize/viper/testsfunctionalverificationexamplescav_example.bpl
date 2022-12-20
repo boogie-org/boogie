@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -834,7 +836,7 @@ function MultiSet#Disjoint<T>(MultiSet T, MultiSet T): bool;
 axiom (forall<T> a: MultiSet T, b: MultiSet T :: { MultiSet#Disjoint(a,b) }
   MultiSet#Disjoint(a,b) <==> (forall o: T :: {MultiSet#Select(a,o)} {MultiSet#Select(b,o)} MultiSet#Select(a,o) == 0 || MultiSet#Select(b,o) == 0));
 
-    
+
 
 // ==================================================
 // Translation of domain PyType
@@ -1522,12 +1524,12 @@ function  _isDefined#triggerStateless(id: int): bool;
 procedure _isDefined#definedness(id: int) returns (Result: bool)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 18;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
@@ -1572,20 +1574,20 @@ function  _checkDefined#triggerStateless(val: Ref, id: int): Ref;
 procedure _checkDefined#definedness(val: Ref, id: int) returns (Result: Ref)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[val, $allocated];
     assume AssumeFunctionsAbove == 9;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of _isDefined(id)
       if (*) {
         // Stop execution
@@ -1593,7 +1595,7 @@ procedure _checkDefined#definedness(val: Ref, id: int) returns (Result: Ref)
       }
     assume _isDefined(Heap, id);
     assume state(Heap, Mask);
-  
+
   // -- Translate function body
     Result := val;
 }
@@ -1631,12 +1633,12 @@ function  __file__#triggerStateless(): Ref;
 procedure __file__#definedness() returns (Result: Ref)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 10;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
@@ -1675,12 +1677,12 @@ function  __name__#triggerStateless(): Ref;
 procedure __name__#definedness() returns (Result: Ref)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 0;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
@@ -1729,21 +1731,21 @@ function  __prim__int___box__#triggerStateless(prim: int): Ref;
 procedure __prim__int___box__#definedness(prim: int) returns (Result: Ref)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 15;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume (typeof(Result): PyTypeDomainType) == vint;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of int___unbox__(result) == prim
       if (*) {
         // Exhale precondition of function application
@@ -1799,25 +1801,25 @@ function  int___unbox__#triggerStateless(box: Ref): int;
 procedure int___unbox__#definedness(box: Ref) returns (Result: int)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[box, $allocated];
     assume AssumeFunctionsAbove == 15;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume (issubtype((typeof(box): PyTypeDomainType), vint): bool);
     assume state(Heap, Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     if (!(issubtype((typeof(box): PyTypeDomainType), vbool): bool)) {
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of __prim__int___box__(result) == box
         if (*) {
           // Stop execution
@@ -1828,7 +1830,7 @@ procedure int___unbox__#definedness(box: Ref) returns (Result: int)
     assume state(Heap, Mask);
     if ((issubtype((typeof(box): PyTypeDomainType), vbool): bool)) {
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of __prim__bool___box__(result != 0) == box
         if (*) {
           // Stop execution
@@ -1886,21 +1888,21 @@ function  __prim__bool___box__#triggerStateless(prim: bool): Ref;
 procedure __prim__bool___box__#definedness(prim: bool) returns (Result: Ref)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 15;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume (typeof(Result): PyTypeDomainType) == vbool;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of bool___unbox__(result) == prim
       if (*) {
         // Exhale precondition of function application
@@ -1912,7 +1914,7 @@ procedure __prim__bool___box__#definedness(prim: bool) returns (Result: Ref)
     assume bool___unbox__(Heap, Result) == prim;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of int___unbox__(result) == (prim ? 1 : 0)
       if (*) {
         // Exhale precondition of function application
@@ -1964,24 +1966,24 @@ function  bool___unbox__#triggerStateless(box: Ref): bool;
 procedure bool___unbox__#definedness(box: Ref) returns (Result: bool)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[box, $allocated];
     assume AssumeFunctionsAbove == 15;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume (issubtype((typeof(box): PyTypeDomainType), vbool): bool);
     assume state(Heap, Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of __prim__bool___box__(result) == box
       if (*) {
         // Stop execution
@@ -2030,26 +2032,26 @@ function  int___eq__#triggerStateless(self: Ref, other: Ref): bool;
 procedure int___eq__#definedness(self: Ref, other: Ref) returns (Result: bool)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume Heap[other, $allocated];
     assume AssumeFunctionsAbove == 1;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume (issubtype((typeof(self): PyTypeDomainType), vint): bool);
     assume state(Heap, Mask);
     assume (issubtype((typeof(other): PyTypeDomainType), vint): bool);
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of int___unbox__(self) == int___unbox__(other)
       if (*) {
         // Exhale precondition of function application
@@ -2065,7 +2067,7 @@ procedure int___eq__#definedness(self: Ref, other: Ref) returns (Result: bool)
         // Stop execution
         assume false;
       }
-  
+
   // -- Translate function body
     Result := int___unbox__(Heap, self) == int___unbox__(Heap, other);
 }
@@ -2109,16 +2111,16 @@ function  int___gt__#triggerStateless(self: int, other: int): bool;
 procedure int___gt__#definedness(self: int, other: int) returns (Result: bool)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 4;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Translate function body
     Result := self > other;
 }
@@ -2162,16 +2164,16 @@ function  int___sub__#triggerStateless(self: int, other: int): int;
 procedure int___sub__#definedness(self: int, other: int) returns (Result: int)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 3;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Translate function body
     Result := self - other;
 }
@@ -2217,17 +2219,17 @@ procedure list___len__#definedness(self: Ref) returns (Result: int)
 {
   var wildcard: real where wildcard > NoPerm;
   var perm: Perm;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume AssumeFunctionsAbove == 12;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume (issubtype((typeof(self): PyTypeDomainType), (list((list_arg((typeof(self): PyTypeDomainType), 0): PyTypeDomainType)): PyTypeDomainType)): bool);
     assume state(Heap, Mask);
@@ -2237,13 +2239,13 @@ procedure list___len__#definedness(self: Ref) returns (Result: int)
     Mask[self, list_acc] := Mask[self, list_acc] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of |self.list_acc|
       assert {:msg "  Function might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@509.1--514.2) [2239]"}
         HasDirectPerm(Mask, self, list_acc);
-  
+
   // -- Translate function body
     Result := Seq#Length(Heap[self, list_acc]);
 }
@@ -2289,17 +2291,17 @@ procedure list___sil_seq__#definedness(self: Ref) returns (Result: (Seq Ref))
 {
   var wildcard: real where wildcard > NoPerm;
   var perm: Perm;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume AssumeFunctionsAbove == 11;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     havoc wildcard;
     perm := wildcard;
@@ -2307,13 +2309,13 @@ procedure list___sil_seq__#definedness(self: Ref) returns (Result: (Seq Ref))
     Mask[self, list_acc] := Mask[self, list_acc] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of self.list_acc
       assert {:msg "  Function might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@516.1--520.2) [2240]"}
         HasDirectPerm(Mask, self, list_acc);
-  
+
   // -- Translate function body
     Result := Heap[self, list_acc];
 }
@@ -2351,13 +2353,13 @@ function  Level#triggerStateless(r_1: Ref): Perm;
 procedure Level#definedness(r_1: Ref) returns (Result: Perm)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[r_1, $allocated];
     assume AssumeFunctionsAbove == 14;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
@@ -2405,24 +2407,24 @@ function  Measure$check#triggerStateless(vmap: (Seq Measure$DomainType), key_1: 
 procedure Measure$check#definedness(vmap: (Seq Measure$DomainType), key_1: Ref, value_1: int) returns (Result: bool)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[key_1, $allocated];
     assume AssumeFunctionsAbove == 6;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of (forall m: Measure$ :: { (m in map) } (m in map) ==> Measure$guard(m) && Measure$key(m) == key ==> Measure$value(m) > value)
       if (*) {
         assume false;
       }
-  
+
   // -- Translate function body
     Result := (forall m_2: Measure$DomainType ::
       { Seq#ContainsTrigger(vmap, m_2) } { Seq#Contains(vmap, m_2) }
@@ -2473,21 +2475,21 @@ function  PSeq___create__#triggerStateless(prim: (Seq Ref), cont_type: PyTypeDom
 procedure PSeq___create__#definedness(prim: (Seq Ref), cont_type: PyTypeDomainType) returns (Result: Ref)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 8;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume (typeof(Result): PyTypeDomainType) == (PSeq(cont_type): PyTypeDomainType);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of PSeq___sil_seq__(result) == prim
       if (*) {
         // Exhale precondition of function application
@@ -2533,17 +2535,17 @@ function  PSeq___sil_seq__#triggerStateless(box: Ref): Seq Ref;
 procedure PSeq___sil_seq__#definedness(box: Ref) returns (Result: (Seq Ref))
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[box, $allocated];
     assume AssumeFunctionsAbove == 17;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume (issubtype((typeof(box): PyTypeDomainType), (PSeq((PSeq_arg((typeof(box): PyTypeDomainType), 0): PyTypeDomainType)): PyTypeDomainType)): bool);
     assume state(Heap, Mask);
@@ -2588,24 +2590,24 @@ function  PSeq___len__#triggerStateless(self: Ref): int;
 procedure PSeq___len__#definedness(self: Ref) returns (Result: int)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume AssumeFunctionsAbove == 2;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume (issubtype((typeof(self): PyTypeDomainType), (PSeq((PSeq_arg((typeof(self): PyTypeDomainType), 0): PyTypeDomainType)): PyTypeDomainType)): bool);
     assume state(Heap, Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of result == |PSeq___sil_seq__(self)|
       if (*) {
         // Exhale precondition of function application
@@ -2657,17 +2659,17 @@ function  str___len__#triggerStateless(self: Ref): int;
 procedure str___len__#definedness(self: Ref) returns (Result: int)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume AssumeFunctionsAbove == 19;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume Result >= 0;
     assume state(Heap, Mask);
@@ -2706,13 +2708,13 @@ function  str___val__#triggerStateless(self: Ref): int;
 procedure str___val__#definedness(self: Ref) returns (Result: int)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume AssumeFunctionsAbove == 20;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
@@ -2765,19 +2767,19 @@ function  str___create__#triggerStateless(len: int, value_1: int): Ref;
 procedure str___create__#definedness(len: int, value_1: int) returns (Result: Ref)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 13;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of str___len__(result) == len
       if (*) {
         // Stop execution
@@ -2786,7 +2788,7 @@ procedure str___create__#definedness(len: int, value_1: int) returns (Result: Re
     assume str___len__(Heap, Result) == len;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of str___val__(result) == value
       if (*) {
         // Stop execution
@@ -2841,25 +2843,25 @@ function  str___eq__#triggerStateless(self: Ref, other: Ref): bool;
 procedure str___eq__#definedness(self: Ref, other: Ref) returns (Result: bool)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume Heap[other, $allocated];
     assume AssumeFunctionsAbove == 5;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume (issubtype((typeof(self): PyTypeDomainType), str): bool);
     assume state(Heap, Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (str___val__(self) == str___val__(other)) == result
       if (*) {
         // Stop execution
@@ -2873,7 +2875,7 @@ procedure str___eq__#definedness(self: Ref, other: Ref) returns (Result: bool)
     assume state(Heap, Mask);
     if (Result) {
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of str___len__(self) == str___len__(other)
         if (*) {
           // Stop execution
@@ -2921,13 +2923,13 @@ function  tuple___val__#triggerStateless(self: Ref): Seq Ref;
 procedure tuple___val__#definedness(self: Ref) returns (Result: (Seq Ref))
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume AssumeFunctionsAbove == 22;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
@@ -2994,24 +2996,24 @@ procedure tuple___create2__#definedness(arg0_1: Ref, arg1_1: Ref, t0: PyTypeDoma
 {
   var ln_1: int;
   var ln_3: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[arg0_1, $allocated];
     assume Heap[arg1_1, $allocated];
     assume AssumeFunctionsAbove == 7;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume (issubtype((typeof(arg0_1): PyTypeDomainType), t0): bool);
     assume state(Heap, Mask);
     assume (issubtype((typeof(arg1_1): PyTypeDomainType), t1): bool);
     assume state(Heap, Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume Result != null;
     assume state(Heap, Mask);
@@ -3022,7 +3024,7 @@ procedure tuple___create2__#definedness(arg0_1: Ref, arg1_1: Ref, t0: PyTypeDoma
     assume Seq#Equal((tuple_args((typeof(Result): PyTypeDomainType)): Seq PyTypeDomainType), Seq#Append(Seq#Singleton(t0), Seq#Singleton(t1)));
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of tuple___val__(result) == Seq(arg0, arg1)
       if (*) {
         // Stop execution
@@ -3031,7 +3033,7 @@ procedure tuple___create2__#definedness(arg0_1: Ref, arg1_1: Ref, t0: PyTypeDoma
     assume Seq#Equal(tuple___val__(Heap, Result), Seq#Append(Seq#Singleton(arg0_1), Seq#Singleton(arg1_1)));
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of tuple___len__(result) == 2
       if (*) {
         // Stop execution
@@ -3039,13 +3041,13 @@ procedure tuple___create2__#definedness(arg0_1: Ref, arg1_1: Ref, t0: PyTypeDoma
       }
     assume tuple___len__(Heap, Result) == 2;
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of tuple___getitem__(result, 0) == arg0
       if (*) {
         // Exhale precondition of function application
         assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(result)) in (0 >= 0 ==> 0 < ln) && (0 < 0 ==> 0 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@574.42--574.70) [2243]"}
           0 < tuple___len__(Heap, Result);
-        
+
         // -- Free assumptions (exhale module)
           ln_1 := tuple___len__(Heap, Result);
         // Stop execution
@@ -3053,13 +3055,13 @@ procedure tuple___create2__#definedness(arg0_1: Ref, arg1_1: Ref, t0: PyTypeDoma
       }
     assume tuple___getitem__(Heap, Result, 0) == arg0_1;
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of tuple___getitem__(result, 1) == arg1
       if (*) {
         // Exhale precondition of function application
         assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(result)) in (1 >= 0 ==> 1 < ln) && (1 < 0 ==> 1 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@574.82--574.110) [2244]"}
           1 < tuple___len__(Heap, Result);
-        
+
         // -- Free assumptions (exhale module)
           ln_3 := tuple___len__(Heap, Result);
         // Stop execution
@@ -3112,22 +3114,22 @@ function  tuple___len__#triggerStateless(self: Ref): int;
 procedure tuple___len__#definedness(self: Ref) returns (Result: int)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume AssumeFunctionsAbove == 21;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     assume Result == Seq#Length((tuple_args((typeof(self): PyTypeDomainType)): Seq PyTypeDomainType));
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of result == |tuple___val__(self)|
       if (*) {
         // Stop execution
@@ -3189,19 +3191,19 @@ procedure tuple___getitem__#definedness(self: Ref, key_1: int) returns (Result: 
   modifies Heap, Mask;
 {
   var ln_1: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[self, $allocated];
     assume AssumeFunctionsAbove == 16;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
-    
+
     // -- Check definedness of tuple___len__(self)
       if (*) {
         // Stop execution
@@ -3215,7 +3217,7 @@ procedure tuple___getitem__#definedness(self: Ref, key_1: int) returns (Result: 
       assume key_1 >= -ln_1;
     }
     assume state(Heap, Mask);
-  
+
   // -- Checking definedness of postcondition (no body)
     if (key_1 >= 0) {
       assume (issubtype((typeof(Result): PyTypeDomainType), (tuple_arg((typeof(self): PyTypeDomainType), key_1): PyTypeDomainType)): bool);
@@ -3223,7 +3225,7 @@ procedure tuple___getitem__#definedness(self: Ref, key_1: int) returns (Result: 
     assume state(Heap, Mask);
     if (key_1 < 0) {
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of issubtype(typeof(result), tuple_arg(typeof(self), tuple___len__(self) + key))
         if (*) {
           // Stop execution
@@ -3234,7 +3236,7 @@ procedure tuple___getitem__#definedness(self: Ref, key_1: int) returns (Result: 
     assume state(Heap, Mask);
     if (key_1 >= 0) {
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of result == tuple___val__(self)[key]
         if (*) {
           // Stop execution
@@ -3249,7 +3251,7 @@ procedure tuple___getitem__#definedness(self: Ref, key_1: int) returns (Result: 
     assume state(Heap, Mask);
     if (key_1 < 0) {
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of result == tuple___val__(self)[tuple___len__(self) + key]
         if (*) {
           // Stop execution
@@ -3447,9 +3449,9 @@ procedure Ticket_state#definedness(self_1: Ref) returns ()
   modifies Heap, Mask;
 {
   var perm: Perm;
-  
+
   // -- Check definedness of predicate body of Ticket_state
-    
+
     // -- Initializing the state
       Mask := ZeroMask;
       assume state(Heap, Mask);
@@ -3461,7 +3463,7 @@ procedure Ticket_state#definedness(self_1: Ref) returns ()
       assume self_1 != null;
       Mask[self_1, Ticket_show_id] := Mask[self_1, Ticket_show_id] + perm;
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of issubtype(typeof(self_1.Ticket_show_id), int())
         assert {:msg "  Predicate might not be well-formed. There might be insufficient permission to access self_1.Ticket_show_id (testsfunctionalverificationexamplescav_example.py.vpr@598.1--600.2) [2249]"}
           HasDirectPerm(Mask, self_1, Ticket_show_id);
@@ -3470,7 +3472,7 @@ procedure Ticket_state#definedness(self_1: Ref) returns ()
       assume self_1 != null;
       Mask[self_1, Ticket_row] := Mask[self_1, Ticket_row] + perm;
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of issubtype(typeof(self_1.Ticket_row), int())
         assert {:msg "  Predicate might not be well-formed. There might be insufficient permission to access self_1.Ticket_row (testsfunctionalverificationexamplescav_example.py.vpr@598.1--600.2) [2250]"}
           HasDirectPerm(Mask, self_1, Ticket_row);
@@ -3479,7 +3481,7 @@ procedure Ticket_state#definedness(self_1: Ref) returns ()
       assume self_1 != null;
       Mask[self_1, Ticket_seat] := Mask[self_1, Ticket_seat] + perm;
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of issubtype(typeof(self_1.Ticket_seat), int())
         assert {:msg "  Predicate might not be well-formed. There might be insufficient permission to access self_1.Ticket_seat (testsfunctionalverificationexamplescav_example.py.vpr@598.1--600.2) [2251]"}
           HasDirectPerm(Mask, self_1, Ticket_seat);
@@ -3506,19 +3508,19 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
   var _r_2: Ref;
   var wildcard: real where wildcard > NoPerm;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_159, $allocated];
     assume Heap[id_0, $allocated];
     assume Heap[num_0, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_159 != null;
@@ -3530,7 +3532,7 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
         assume (issubtype((typeof(num_0): PyTypeDomainType), vint): bool);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of int___gt__(int___unbox__(num_0), 0)
           if (*) {
             // Exhale precondition of function application
@@ -3547,7 +3549,7 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_159, _cthread_159, 1) || perm(MustTerminate(_cthread_159)) == none && ((forperm _r_0: Ref [MustInvokeBounded(_r_0)] :: false) && ((forperm _r_0: Ref [MustInvokeUnbounded(_r_0)] :: false) && ((forperm _r_0: Ref [_r_0.MustReleaseBounded] :: false) && (forperm _r_0: Ref [_r_0.MustReleaseUnbounded] :: false))))
           if (*) {
             // Stop execution
@@ -3616,7 +3618,7 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_159 != null;
       assume state(Heap, Mask);
@@ -3627,7 +3629,7 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
       assume (issubtype((typeof(num_0): PyTypeDomainType), vint): bool);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of int___gt__(int___unbox__(num_0), 0)
         if (*) {
           // Exhale precondition of function application
@@ -3647,9 +3649,9 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
       assume state(Heap, Mask);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -3660,11 +3662,11 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r: Ref [_r.MustReleaseBounded] :: Level(_r) <= _current_wait_level_159)
           if (*) {
             if (HasDirectPerm(PostMask, _r, MustReleaseBounded)) {
@@ -3682,7 +3684,7 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
           HasDirectPerm(PostMask, _r_1, MustReleaseBounded) ==> Level(PostHeap, _r_1) <= _current_wait_level_159
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r: Ref [_r.MustReleaseUnbounded] :: Level(_r) <= _current_wait_level_159)
           if (*) {
             if (HasDirectPerm(PostMask, _r_2, MustReleaseUnbounded)) {
@@ -3714,7 +3716,7 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
         assume state(PostHeap, PostMask);
         if (_err == null) {
           assume state(PostHeap, PostMask);
-          
+
           // -- Check definedness of int___eq__(__prim__int___box__(list___len__(_res)), num_0)
             if (*) {
               // Exhale precondition of function application
@@ -3755,7 +3757,7 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
       if (_err == null) {
@@ -3771,7 +3773,7 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
       assume state(PostHeap, PostMask);
       if (_err == null) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of int___eq__(__prim__int___box__(list___len__(_res)), num_0)
           if (*) {
             // Exhale precondition of function application
@@ -3813,16 +3815,16 @@ procedure get_seats(_cthread_159: Ref, _caller_measures_159: (Seq Measure$Domain
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: _res := null -- testsfunctionalverificationexamplescav_example.py.vpr@618.3--618.15
     _res := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale false -- testsfunctionalverificationexamplescav_example.py.vpr@619.3--619.15
     assume false;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     if (_err == null) {
       assert {:msg "  Postcondition of get_seats might not hold. Assertion issubtype(typeof(_res), list(tuple(Seq(int(), int())))) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@611.11--611.83) [2268]"}
@@ -3929,7 +3931,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
   var Labelpost_loopHeap: HeapType;
   var Label__endMask: MaskType;
   var Label__endHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
@@ -3937,15 +3939,15 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     loop_end_lblGuard := false;
     __end_lblGuard := false;
     post_loop_lblGuard := false;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_160, $allocated];
     assume Heap[num_1, $allocated];
     assume Heap[show_id, $allocated];
     assume Heap[code_0, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_160 != null;
@@ -3959,7 +3961,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume code_0 == null || (issubtype((typeof(code_0): PyTypeDomainType), str): bool);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of int___gt__(int___unbox__(num_1), 0)
           if (*) {
             // Exhale precondition of function application
@@ -3976,7 +3978,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_160, _cthread_160, 2) || perm(MustTerminate(_cthread_160)) == none && ((forperm _r_5: Ref [MustInvokeBounded(_r_5)] :: false) && ((forperm _r_5: Ref [MustInvokeUnbounded(_r_5)] :: false) && ((forperm _r_5: Ref [_r_5.MustReleaseBounded] :: false) && (forperm _r_5: Ref [_r_5.MustReleaseUnbounded] :: false))))
           if (*) {
             // Stop execution
@@ -4045,7 +4047,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_160 != null;
       assume state(Heap, Mask);
@@ -4058,7 +4060,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       assume code_0 == null || (issubtype((typeof(code_0): PyTypeDomainType), str): bool);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of int___gt__(int___unbox__(num_1), 0)
         if (*) {
           // Exhale precondition of function application
@@ -4078,9 +4080,9 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       assume state(Heap, Mask);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -4091,11 +4093,11 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_3: Ref [_r_3.MustReleaseBounded] :: Level(_r_3) <= _current_wait_level_160)
           if (*) {
             if (HasDirectPerm(PostMask, _r_3_1, MustReleaseBounded)) {
@@ -4113,7 +4115,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           HasDirectPerm(PostMask, _r_3_1_1, MustReleaseBounded) ==> Level(PostHeap, _r_3_1_1) <= _current_wait_level_160
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_3: Ref [_r_3.MustReleaseUnbounded] :: Level(_r_3) <= _current_wait_level_160)
           if (*) {
             if (HasDirectPerm(PostMask, _r_3_2, MustReleaseUnbounded)) {
@@ -4144,7 +4146,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
       if (_err == null) {
@@ -4156,7 +4158,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume (issubtype((typeof(_err): PyTypeDomainType), SoldoutException): bool);
       }
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of (forperm _r_4: Ref [MustInvokeBounded(_r_4)] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, null, MustInvokeBounded(_r_4))) {
@@ -4169,7 +4171,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         { PostMask[null, MustInvokeBounded(_r_4_1)] }
         HasDirectPerm(PostMask, null, MustInvokeBounded(_r_4_1)) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_4: Ref [MustInvokeUnbounded(_r_4)] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, null, MustInvokeUnbounded(_r_4_2))) {
@@ -4182,7 +4184,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         { PostMask[null, MustInvokeUnbounded(_r_4_3)] }
         HasDirectPerm(PostMask, null, MustInvokeUnbounded(_r_4_3)) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_4: Ref [_r_4.MustReleaseBounded] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, _r_4_4, MustReleaseBounded)) {
@@ -4195,7 +4197,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         { PostMask[_r_4_5, MustReleaseBounded] }
         HasDirectPerm(PostMask, _r_4_5, MustReleaseBounded) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_4: Ref [_r_4.MustReleaseUnbounded] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, _r_4_6, MustReleaseUnbounded)) {
@@ -4212,7 +4214,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     // Stop execution
     assume false;
   }
-  
+
   // -- Assumptions about local variables
     assume Heap[seats, $allocated];
     assume Heap[res, $allocated];
@@ -4229,269 +4231,269 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     assume Heap[loop_target, $allocated];
     assume Heap[iter_err, $allocated];
     assume Heap[Ticket_res, $allocated];
-  
+
   // -- Translating statement: // id = 1
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 2
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 3
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 4
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 5
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 6
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 7
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 8
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 9
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 10
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 11
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 12
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 13
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 14
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 15
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 16
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 17
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 18
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 19
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 20
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 21
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 22
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 23
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 24
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 25
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 26
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 27
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 28
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 29
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 30
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 31
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 32
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 33
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 34
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 35
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 36
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 37
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 38
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 39
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 40
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 41
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 42
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 43
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 44
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 45
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 46
   // _method_measures_160 := Seq(Measure$create(true, _cthread_160, 2)) -- testsfunctionalverificationexamplescav_example.py.vpr@660.3--660.69
     _method_measures_160 := Seq#Singleton((Measure$create(true, _cthread_160, 2): Measure$DomainType));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 47
   // _res := null -- testsfunctionalverificationexamplescav_example.py.vpr@661.3--661.15
     _res := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 48
   // _err := null -- testsfunctionalverificationexamplescav_example.py.vpr@662.3--662.15
     _err := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 49
   // num_2 := num_1 -- testsfunctionalverificationexamplescav_example.py.vpr@663.3--663.17
     num_2 := num_1;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 50
   // show_id_0 := show_id -- testsfunctionalverificationexamplescav_example.py.vpr@664.3--664.23
     show_id_0 := show_id;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 51
   // code_1 := code_0 -- testsfunctionalverificationexamplescav_example.py.vpr@665.3--665.19
     code_1 := code_0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 52
   // _cwl_160, get_seats_res, _err := get_seats(_cthread_160, _method_measures_160,
   //   _residue_160, show_id_0, num_2) -- testsfunctionalverificationexamplescav_example.py.vpr@666.3--666.113
     PreCallHeap := Heap;
     PreCallMask := Mask;
     havoc _cwl_160, get_seats_res, _err;
-    
+
     // -- Exhaling precondition
       assert {:msg "  The precondition of method get_seats might not hold. Assertion _cthread_160 != null might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@666.3--666.113) [2284]"}
         _cthread_160 != null;
@@ -4521,7 +4523,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       havoc ExhaleHeap;
       assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
       Heap := ExhaleHeap;
-    
+
     // -- Inhaling postcondition
       assume state(Heap, Mask);
       assume (forall _r_6: Ref ::
@@ -4554,37 +4556,37 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     assume Heap[get_seats_res, $allocated];
     assume Heap[_err, $allocated];
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (_err != null) -- testsfunctionalverificationexamplescav_example.py.vpr@667.3--670.4
     if (_err != null) {
-      
+
       // -- Translating statement: // id = 53
   // _err := _err -- testsfunctionalverificationexamplescav_example.py.vpr@668.5--668.17
         _err := _err;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 54
   // goto __end -- testsfunctionalverificationexamplescav_example.py.vpr@669.5--669.15
         goto __end;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 55
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 56
   // seats := get_seats_res -- testsfunctionalverificationexamplescav_example.py.vpr@671.3--671.25
     seats := get_seats_res;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 57
   // inhale _isDefined(495873779059) -- testsfunctionalverificationexamplescav_example.py.vpr@672.3--672.34
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of _isDefined(495873779059)
       if (*) {
         // Stop execution
@@ -4593,13 +4595,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     assume _isDefined(Heap, 495873779059);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 58
   // _cwl_160, list_0 := list___init__(_cthread_160, _method_measures_160, _residue_160) -- testsfunctionalverificationexamplescav_example.py.vpr@673.3--673.86
     PreCallHeap := Heap;
     PreCallMask := Mask;
     havoc _cwl_160, list_0;
-    
+
     // -- Exhaling precondition
       assert {:msg "  The precondition of method list___init__ might not hold. Assertion _cthread_160 != null might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@673.3--673.86) [2290]"}
         _cthread_160 != null;
@@ -4609,7 +4611,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         (issubtype((typeof(_cthread_160): PyTypeDomainType), Thread_0): bool);
       assert {:msg "  The precondition of method list___init__ might not hold. Assertion Measure$check(_method_measures_160, _cthread_160, 1) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@673.3--673.86) [2293]"}
         Measure$check(Heap, _method_measures_160, _cthread_160, 1);
-    
+
     // -- Inhaling postcondition
       assume state(Heap, Mask);
       assume (forall _r_19: Ref ::
@@ -4632,22 +4634,22 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       assume state(Heap, Mask);
     assume Heap[list_0, $allocated];
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 59
   // inhale issubtype(typeof(list_0), list(Ticket())) -- testsfunctionalverificationexamplescav_example.py.vpr@674.3--674.51
     assume (issubtype((typeof(list_0): PyTypeDomainType), (list(Ticket): PyTypeDomainType)): bool);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 60
   // res := list_0 -- testsfunctionalverificationexamplescav_example.py.vpr@675.3--675.16
     res := list_0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 61
   // inhale _isDefined(7562610) -- testsfunctionalverificationexamplescav_example.py.vpr@676.3--676.29
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of _isDefined(7562610)
       if (*) {
         // Stop execution
@@ -4656,10 +4658,10 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     assume _isDefined(Heap, 7562610);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 62
   // iterable := _checkDefined(seats, 495873779059) -- testsfunctionalverificationexamplescav_example.py.vpr@677.3--677.49
-    
+
     // -- Check definedness of _checkDefined(seats, 495873779059)
       if (*) {
         // Exhale precondition of function application
@@ -4670,14 +4672,14 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       }
     iterable := _checkDefined(Heap, seats, 495873779059);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 63
   // _cwl_160, iter := list___iter__(_cthread_160, _method_measures_160, _residue_160,
   //   iterable) -- testsfunctionalverificationexamplescav_example.py.vpr@678.3--678.94
     PreCallHeap := Heap;
     PreCallMask := Mask;
     havoc _cwl_160, iter;
-    
+
     // -- Exhaling precondition
       assert {:msg "  The precondition of method list___iter__ might not hold. Assertion _cthread_160 != null might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@678.3--678.94) [2295]"}
         _cthread_160 != null;
@@ -4701,7 +4703,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       havoc ExhaleHeap;
       assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
       Heap := ExhaleHeap;
-    
+
     // -- Inhaling postcondition
       assume state(Heap, Mask);
       assume (forall _r_23: Ref ::
@@ -4747,14 +4749,14 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       assume state(Heap, Mask);
     assume Heap[iter, $allocated];
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 64
   // _cwl_160, loop_target, iter_err := Iterator___next__(_cthread_160, _method_measures_160,
   //   _residue_160, iter) -- testsfunctionalverificationexamplescav_example.py.vpr@679.3--679.111
     PreCallHeap := Heap;
     PreCallMask := Mask;
     havoc _cwl_160, loop_target, iter_err;
-    
+
     // -- Exhaling precondition
       assert {:msg "  The precondition of method Iterator___next__ might not hold. Assertion _cthread_160 != null might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@679.3--679.111) [2304]"}
         _cthread_160 != null;
@@ -4788,7 +4790,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       havoc ExhaleHeap;
       assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
       Heap := ExhaleHeap;
-    
+
     // -- Inhaling postcondition
       assume state(Heap, Mask);
       assume (forall _r_15: Ref ::
@@ -4851,19 +4853,19 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     assume Heap[loop_target, $allocated];
     assume Heap[iter_err, $allocated];
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (iter_err == null) -- testsfunctionalverificationexamplescav_example.py.vpr@680.3--685.4
     if (iter_err == null) {
-      
+
       // -- Translating statement: // id = 65
   // row_0 := tuple___getitem__(loop_target, 0) -- testsfunctionalverificationexamplescav_example.py.vpr@681.5--681.47
-        
+
         // -- Check definedness of tuple___getitem__(loop_target, 0)
           if (*) {
             // Exhale precondition of function application
             assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(loop_target)) in (0 >= 0 ==> 0 < ln) && (0 < 0 ==> 0 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@681.14--681.47) [2313]"}
               0 < tuple___len__(Heap, loop_target);
-            
+
             // -- Free assumptions (exhale module)
               ln_1 := tuple___len__(Heap, loop_target);
             // Stop execution
@@ -4871,11 +4873,11 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           }
         row_0 := tuple___getitem__(Heap, loop_target, 0);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 66
   // inhale _isDefined(207760093042) -- testsfunctionalverificationexamplescav_example.py.vpr@682.5--682.36
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of _isDefined(207760093042)
           if (*) {
             // Stop execution
@@ -4884,16 +4886,16 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume _isDefined(Heap, 207760093042);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 67
   // seat_0 := tuple___getitem__(loop_target, 1) -- testsfunctionalverificationexamplescav_example.py.vpr@683.5--683.48
-        
+
         // -- Check definedness of tuple___getitem__(loop_target, 1)
           if (*) {
             // Exhale precondition of function application
             assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(loop_target)) in (1 >= 0 ==> 1 < ln) && (1 < 0 ==> 1 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@683.15--683.48) [2314]"}
               1 < tuple___len__(Heap, loop_target);
-            
+
             // -- Free assumptions (exhale module)
               ln_3 := tuple___len__(Heap, loop_target);
             // Stop execution
@@ -4901,11 +4903,11 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           }
         seat_0 := tuple___getitem__(Heap, loop_target, 1);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 68
   // inhale _isDefined(53186532566387) -- testsfunctionalverificationexamplescav_example.py.vpr@684.5--684.38
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of _isDefined(53186532566387)
           if (*) {
             // Stop execution
@@ -4915,43 +4917,43 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume state(Heap, Mask);
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 69
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 70
   // seqtmp := iterable.list_acc -- testsfunctionalverificationexamplescav_example.py.vpr@686.3--686.30
-    
+
     // -- Check definedness of iterable.list_acc
       assert {:msg "  Assignment might fail. There might be insufficient permission to access iterable.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@686.3--686.30) [2315]"}
         HasDirectPerm(Mask, iterable, list_acc);
     seqtmp := Heap[iterable, list_acc];
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 71
   // _loop_original_must_terminate := perm(MustTerminate(_cthread_160)) -- testsfunctionalverificationexamplescav_example.py.vpr@688.3--688.69
     _loop_original_must_terminate := Mask[null, MustTerminate(_cthread_160)];
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 72
   // _loop_termination_flag := true -- testsfunctionalverificationexamplescav_example.py.vpr@690.3--690.33
     _loop_termination_flag := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 73
   // // LoopInfo(None,Set())
   // _loop_check_before := true -- testsfunctionalverificationexamplescav_example.py.vpr@692.3--692.29
     _loop_check_before := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: while (iter_err == null) -- testsfunctionalverificationexamplescav_example.py.vpr@693.3--751.4
-    
+
     // -- Before loop head74
-      
+
       // -- Exhale loop invariant before loop
         assert {:msg "  Loop invariant acc(iterable.list_acc, 1 / 20) might not hold on entry. Fraction 1 / 20 might be negative. (testsfunctionalverificationexamplescav_example.py.vpr@695.15--695.45) [2316]"}
           1 / 20 >= NoPerm;
@@ -5050,24 +5052,24 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assert {:msg "  Loop invariant acc(_checkDefined(res, 7562610).list_acc, write) && int___eq__(__prim__int___box__(list___len__(_checkDefined(res, 7562610))), __prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int())))) might not hold on entry. Assertion int___eq__(__prim__int___box__(list___len__(_checkDefined(res, 7562610))), __prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int())))) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@715.15--715.217) [2341]"}
           int___eq__(Heap, __prim__int___box__(Heap, list___len__(Heap, _checkDefined(Heap, res, 7562610))), __prim__int___box__(Heap, PSeq___len__(Heap, PSeq___create__(Heap, Heap[iter, __previous], vint))));
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver acc(Ticket_state(lambda46_30$t), write) is injective
           assert {:msg "  Loop invariant true && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && (lambda46_30$t in _checkDefined(res, 7562610).list_acc) ==> acc(Ticket_state(lambda46_30$t), write)) && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> acc(lambda46_30$t.Ticket_discount_code, write)) && (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> issubtype(typeof(lambda46_30$t.Ticket_discount_code), str())))) might not hold on entry. Quantified resource Ticket_state(lambda46_30$t) might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2342]"}
             (forall lambda46_30$t: Ref, lambda46_30$t_2: Ref ::
             { neverTriggered1(lambda46_30$t), neverTriggered1(lambda46_30$t_2) }
             (((lambda46_30$t != lambda46_30$t_2 && ((issubtype((typeof(lambda46_30$t): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t))) && ((issubtype((typeof(lambda46_30$t_2): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_2))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t != lambda46_30$t_2
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant true && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && (lambda46_30$t in _checkDefined(res, 7562610).list_acc) ==> acc(Ticket_state(lambda46_30$t), write)) && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> acc(lambda46_30$t.Ticket_discount_code, write)) && (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> issubtype(typeof(lambda46_30$t.Ticket_discount_code), str())))) might not hold on entry. There might be insufficient permission to access Ticket_state(lambda46_30$t) (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2343]"}
             (forall lambda46_30$t: Ref ::
             { Heap[null, Ticket_state(lambda46_30$t)] } { Mask[null, Ticket_state(lambda46_30$t)] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t) }
             (issubtype((typeof(lambda46_30$t): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t) ==> Mask[null, Ticket_state(lambda46_30$t)] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver acc(Ticket_state(lambda46_30$t), write)
           assume (forall lambda46_30$t: Ref ::
             { Heap[null, Ticket_state(lambda46_30$t)] } { Mask[null, Ticket_state(lambda46_30$t)] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t) }
@@ -5077,7 +5079,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { invRecv1(self_1) }
             (((issubtype((typeof(invRecv1(self_1)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv1(self_1))) && NoPerm < FullPerm) && qpRange1(self_1) ==> invRecv1(self_1) == self_1
           );
-        
+
         // -- assume permission updates for predicate Ticket_state
           assume (forall self_1: Ref ::
             { QPMask[null, Ticket_state(self_1)] }
@@ -5087,32 +5089,32 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { QPMask[null, Ticket_state(self_1)] }
             !((((issubtype((typeof(invRecv1(self_1)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv1(self_1))) && NoPerm < FullPerm) && qpRange1(self_1)) ==> QPMask[null, Ticket_state(self_1)] == Mask[null, Ticket_state(self_1)]
           );
-        
-        // -- assume permission updates for independent locations 
+
+        // -- assume permission updates for independent locations
           assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
             { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
             (o_4 != null || !IsPredicateField(f_6)) || getPredicateId(f_6) != 4 ==> Mask[o_4, f_6] == QPMask[o_4, f_6]
           );
         Mask := QPMask;
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver lambda46_30$t is injective
           assert {:msg "  Loop invariant true && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && (lambda46_30$t in _checkDefined(res, 7562610).list_acc) ==> acc(Ticket_state(lambda46_30$t), write)) && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> acc(lambda46_30$t.Ticket_discount_code, write)) && (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> issubtype(typeof(lambda46_30$t.Ticket_discount_code), str())))) might not hold on entry. Quantified resource lambda46_30$t.Ticket_discount_code might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2344]"}
             (forall lambda46_30$t_1: Ref, lambda46_30$t_1_1: Ref ::
             { neverTriggered2(lambda46_30$t_1), neverTriggered2(lambda46_30$t_1_1) }
             (((lambda46_30$t_1 != lambda46_30$t_1_1 && ((issubtype((typeof(lambda46_30$t_1): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_1) && code_1 != null))) && ((issubtype((typeof(lambda46_30$t_1_1): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_1_1) && code_1 != null))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t_1 != lambda46_30$t_1_1
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant true && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && (lambda46_30$t in _checkDefined(res, 7562610).list_acc) ==> acc(Ticket_state(lambda46_30$t), write)) && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> acc(lambda46_30$t.Ticket_discount_code, write)) && (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> issubtype(typeof(lambda46_30$t.Ticket_discount_code), str())))) might not hold on entry. There might be insufficient permission to access lambda46_30$t.Ticket_discount_code (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2345]"}
             (forall lambda46_30$t_1: Ref ::
             { Heap[lambda46_30$t_1, Ticket_discount_code] } { QPMask[lambda46_30$t_1, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_1) }
             (issubtype((typeof(lambda46_30$t_1): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_1) && code_1 != null) ==> Mask[lambda46_30$t_1, Ticket_discount_code] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver lambda46_30$t
           assume (forall lambda46_30$t_1: Ref ::
             { Heap[lambda46_30$t_1, Ticket_discount_code] } { QPMask[lambda46_30$t_1, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_1) }
@@ -5122,13 +5124,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { invRecv2(o_4) }
             ((issubtype((typeof(invRecv2(o_4)): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv2(o_4)) && code_1 != null)) && (NoPerm < FullPerm && qpRange2(o_4)) ==> invRecv2(o_4) == o_4
           );
-        
+
         // -- assume permission updates for field Ticket_discount_code
           assume (forall o_4: Ref ::
             { QPMask[o_4, Ticket_discount_code] }
             (((issubtype((typeof(invRecv2(o_4)): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv2(o_4)) && code_1 != null)) && (NoPerm < FullPerm && qpRange2(o_4)) ==> invRecv2(o_4) == o_4 && QPMask[o_4, Ticket_discount_code] == Mask[o_4, Ticket_discount_code] - FullPerm) && (!(((issubtype((typeof(invRecv2(o_4)): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv2(o_4)) && code_1 != null)) && (NoPerm < FullPerm && qpRange2(o_4))) ==> QPMask[o_4, Ticket_discount_code] == Mask[o_4, Ticket_discount_code])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
             { QPMask[o_4, f_6] }
@@ -5192,11 +5194,11 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         havoc ExhaleHeap;
         assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
         Heap := ExhaleHeap;
-      
+
       // -- Store frame in mask associated with loop
         frameMask74 := Mask;
         frameHeap74 := Heap;
-    
+
     // -- Havoc loop written variables (except locals)
       havoc _cwl_160, loop_target, iter_err, _loop_measures, Ticket_res, ticket, row_0, seat_0, _loop_check_before;
       assume Heap[loop_target, $allocated];
@@ -5205,11 +5207,11 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       assume Heap[ticket, $allocated];
       assume Heap[row_0, $allocated];
       assume Heap[seat_0, $allocated];
-    
+
     // -- Check definedness of invariant
       if (*) {
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forperm _r_1: Ref [_r_1.MustReleaseBounded] :: Level(_r_1) <= _residue_161)
           if (*) {
             if (HasDirectPerm(Mask, _r_1_1, MustReleaseBounded)) {
@@ -5227,7 +5229,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           HasDirectPerm(Mask, _r_1_2, MustReleaseBounded) ==> Level(Heap, _r_1_2) <= _residue_161
         );
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forperm _r_1: Ref [_r_1.MustReleaseUnbounded] :: Level(_r_1) <= _residue_161)
           if (*) {
             if (HasDirectPerm(Mask, _r_1_3, MustReleaseUnbounded)) {
@@ -5260,7 +5262,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         Mask[iter, list_acc] := Mask[iter, list_acc] + perm;
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of iter.list_acc == iterable.list_acc
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@697.15--697.49) [2357]"}
             HasDirectPerm(Mask, iter, list_acc);
@@ -5268,7 +5270,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             HasDirectPerm(Mask, iterable, list_acc);
         assume Seq#Equal(Heap[iter, list_acc], Heap[iterable, list_acc]);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of seqtmp == iterable.list_acc
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iterable.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@698.15--698.42) [2359]"}
             HasDirectPerm(Mask, iterable, list_acc);
@@ -5285,7 +5287,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         if (iter_err == null) {
-          
+
           // -- Check definedness of iter.__iter_index - 1 == |iter.__previous|
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@701.15--701.78) [2360]"}
               HasDirectPerm(Mask, iter, __iter_index);
@@ -5295,7 +5297,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         }
         assume state(Heap, Mask);
         if (iter_err != null) {
-          
+
           // -- Check definedness of iter.__iter_index == |iter.__previous|
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@702.15--702.74) [2362]"}
               HasDirectPerm(Mask, iter, __iter_index);
@@ -5305,19 +5307,19 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         }
         assume state(Heap, Mask);
         if (iter_err == null) {
-          
+
           // -- Check definedness of |iter.list_acc| > 0
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@703.15--703.55) [2364]"}
               HasDirectPerm(Mask, iter, list_acc);
           assume Seq#Length(Heap[iter, list_acc]) > 0;
         }
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of iter.__iter_index >= 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@704.15--704.77) [2365]"}
             HasDirectPerm(Mask, iter, __iter_index);
         assume Heap[iter, __iter_index] >= 0;
-        
+
         // -- Check definedness of iter.__iter_index <= |iter.list_acc|
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@704.15--704.77) [2366]"}
             HasDirectPerm(Mask, iter, __iter_index);
@@ -5325,24 +5327,24 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             HasDirectPerm(Mask, iter, list_acc);
         assume Heap[iter, __iter_index] <= Seq#Length(Heap[iter, list_acc]);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of |iter.list_acc| > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@705.15--705.60) [2368]"}
             HasDirectPerm(Mask, iter, list_acc);
         if (Seq#Length(Heap[iter, list_acc]) > 0) {
-          
+
           // -- Check definedness of iter.__iter_index > 0
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@705.15--705.60) [2369]"}
               HasDirectPerm(Mask, iter, __iter_index);
           assume Heap[iter, __iter_index] > 0;
         }
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of |iter.list_acc| > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@706.15--706.90) [2370]"}
             HasDirectPerm(Mask, iter, list_acc);
         if (Seq#Length(Heap[iter, list_acc]) > 0) {
-          
+
           // -- Check definedness of loop_target == iter.list_acc[iter.__iter_index - 1]
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@706.15--706.90) [2371]"}
               HasDirectPerm(Mask, iter, list_acc);
@@ -5355,12 +5357,12 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           assume loop_target == Seq#Index(Heap[iter, list_acc], Heap[iter, __iter_index] - 1);
         }
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of |iter.list_acc| > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@707.15--707.69) [2375]"}
             HasDirectPerm(Mask, iter, list_acc);
         if (Seq#Length(Heap[iter, list_acc]) > 0) {
-          
+
           // -- Check definedness of (loop_target in iter.list_acc)
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@707.15--707.69) [2376]"}
               HasDirectPerm(Mask, iter, list_acc);
@@ -5368,7 +5370,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         }
         assume state(Heap, Mask);
         if (iter_err == null) {
-          
+
           // -- Check definedness of iter.__previous == iter.list_acc[..iter.__iter_index - 1]
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.__previous (testsfunctionalverificationexamplescav_example.py.vpr@708.15--708.93) [2377]"}
               HasDirectPerm(Mask, iter, __previous);
@@ -5379,7 +5381,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           assume Seq#Equal(Heap[iter, __previous], Seq#Take(Heap[iter, list_acc], Heap[iter, __iter_index] - 1));
         }
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of |iter.list_acc| > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@709.15--709.95) [2380]"}
             HasDirectPerm(Mask, iter, list_acc);
@@ -5387,19 +5389,19 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           assume (issubtype((typeof(loop_target): PyTypeDomainType), (tuple(Seq#Append(Seq#Singleton(vint), Seq#Singleton(vint))): PyTypeDomainType)): bool);
         }
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of |iter.list_acc| > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@710.15--710.109) [2381]"}
             HasDirectPerm(Mask, iter, list_acc);
         if (Seq#Length(Heap[iter, list_acc]) > 0) {
           assume state(Heap, Mask);
-          
+
           // -- Check definedness of row_0 == tuple___getitem__(loop_target, 0)
             if (*) {
               // Exhale precondition of function application
               assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(loop_target)) in (0 >= 0 ==> 0 < ln) && (0 < 0 ==> 0 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@710.48--710.81) [2382]"}
                 0 < tuple___len__(Heap, loop_target);
-              
+
               // -- Free assumptions (exhale module)
                 ln_5 := tuple___len__(Heap, loop_target);
               // Stop execution
@@ -5407,7 +5409,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             }
           assume row_0 == tuple___getitem__(Heap, loop_target, 0);
           assume state(Heap, Mask);
-          
+
           // -- Check definedness of _isDefined(207760093042)
             if (*) {
               // Stop execution
@@ -5416,19 +5418,19 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           assume _isDefined(Heap, 207760093042);
         }
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of |iter.list_acc| > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@711.15--711.112) [2383]"}
             HasDirectPerm(Mask, iter, list_acc);
         if (Seq#Length(Heap[iter, list_acc]) > 0) {
           assume state(Heap, Mask);
-          
+
           // -- Check definedness of seat_0 == tuple___getitem__(loop_target, 1)
             if (*) {
               // Exhale precondition of function application
               assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(loop_target)) in (1 >= 0 ==> 1 < ln) && (1 < 0 ==> 1 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@711.49--711.82) [2384]"}
                 1 < tuple___len__(Heap, loop_target);
-              
+
               // -- Free assumptions (exhale module)
                 ln_7 := tuple___len__(Heap, loop_target);
               // Stop execution
@@ -5436,7 +5438,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             }
           assume seat_0 == tuple___getitem__(Heap, loop_target, 1);
           assume state(Heap, Mask);
-          
+
           // -- Check definedness of _isDefined(53186532566387)
             if (*) {
               // Stop execution
@@ -5446,7 +5448,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         }
         assume state(Heap, Mask);
         if (iter_err != null) {
-          
+
           // -- Check definedness of iter.__previous == iter.list_acc
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.__previous (testsfunctionalverificationexamplescav_example.py.vpr@712.15--712.68) [2385]"}
               HasDirectPerm(Mask, iter, __previous);
@@ -5455,7 +5457,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           assume Seq#Equal(Heap[iter, __previous], Heap[iter, list_acc]);
         }
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of |iter.list_acc| == 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access iter.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@713.15--713.56) [2387]"}
             HasDirectPerm(Mask, iter, list_acc);
@@ -5465,7 +5467,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of acc(_checkDefined(res, 7562610).list_acc, write)
           if (*) {
             // Exhale precondition of function application
@@ -5479,7 +5481,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         Mask[_checkDefined(Heap, res, 7562610), list_acc] := Mask[_checkDefined(Heap, res, 7562610), list_acc] + perm;
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of int___eq__(__prim__int___box__(list___len__(_checkDefined(res, 7562610))), __prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int()))))
           if (*) {
             // Exhale precondition of function application
@@ -5537,7 +5539,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume int___eq__(Heap, __prim__int___box__(Heap, list___len__(Heap, _checkDefined(Heap, res, 7562610))), __prim__int___box__(Heap, PSeq___len__(Heap, PSeq___create__(Heap, Heap[iter, __previous], vint))));
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && (lambda46_30$t in _checkDefined(res, 7562610).list_acc) ==> acc(Ticket_state(lambda46_30$t), write))
           if (*) {
             if ((issubtype((typeof(lambda46_30$t_3): PyTypeDomainType), Ticket): bool)) {
@@ -5554,14 +5556,14 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             assume false;
           }
         havoc QPMask;
-        
+
         // -- check if receiver acc(Ticket_state(lambda46_30$t), write) is injective
           assert {:msg "  Contract might not be well-formed. Quantified resource Ticket_state(lambda46_30$t) might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2398]"}
             (forall lambda46_30$t_5: Ref, lambda46_30$t_5_1: Ref ::
             { neverTriggered3(lambda46_30$t_5), neverTriggered3(lambda46_30$t_5_1) }
             (((lambda46_30$t_5 != lambda46_30$t_5_1 && ((issubtype((typeof(lambda46_30$t_5): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_5))) && ((issubtype((typeof(lambda46_30$t_5_1): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_5_1))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t_5 != lambda46_30$t_5_1
           );
-        
+
         // -- Define Inverse Function
           assume (forall lambda46_30$t_5: Ref ::
             { Heap[null, Ticket_state(lambda46_30$t_5)] } { Mask[null, Ticket_state(lambda46_30$t_5)] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_5) }
@@ -5571,13 +5573,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { invRecv3(self_1_1) }
             (((issubtype((typeof(invRecv3(self_1_1)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv3(self_1_1))) && NoPerm < FullPerm) && qpRange3(self_1_1) ==> invRecv3(self_1_1) == self_1_1
           );
-        
+
         // -- Define updated permissions
           assume (forall self_1_1: Ref ::
             { QPMask[null, Ticket_state(self_1_1)] }
             (((issubtype((typeof(invRecv3(self_1_1)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv3(self_1_1))) && NoPerm < FullPerm) && qpRange3(self_1_1) ==> (NoPerm < FullPerm ==> invRecv3(self_1_1) == self_1_1) && QPMask[null, Ticket_state(self_1_1)] == Mask[null, Ticket_state(self_1_1)] + FullPerm
           );
-        
+
         // -- Define independent locations
           assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
             { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
@@ -5590,7 +5592,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         Mask := QPMask;
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> acc(lambda46_30$t.Ticket_discount_code, write))
           if (*) {
             if ((issubtype((typeof(lambda46_30$t_4): PyTypeDomainType), Ticket): bool)) {
@@ -5609,10 +5611,10 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         havoc QPMask;
         assert {:msg "  Contract might not be well-formed. Quantified resource lambda46_30$t.Ticket_discount_code might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2401]"}
           (forall lambda46_30$t_8: Ref, lambda46_30$t_8_1: Ref ::
-          
+
           (((lambda46_30$t_8 != lambda46_30$t_8_1 && ((issubtype((typeof(lambda46_30$t_8): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_8) && code_1 != null))) && ((issubtype((typeof(lambda46_30$t_8_1): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_8_1) && code_1 != null))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t_8 != lambda46_30$t_8_1
         );
-        
+
         // -- Define Inverse Function
           assume (forall lambda46_30$t_8: Ref ::
             { Heap[lambda46_30$t_8, Ticket_discount_code] } { QPMask[lambda46_30$t_8, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_8) }
@@ -5622,13 +5624,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { invRecv4(o_4) }
             (((issubtype((typeof(invRecv4(o_4)): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv4(o_4)) && code_1 != null)) && NoPerm < FullPerm) && qpRange4(o_4) ==> invRecv4(o_4) == o_4
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall lambda46_30$t_8: Ref ::
             { Heap[lambda46_30$t_8, Ticket_discount_code] } { QPMask[lambda46_30$t_8, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_8) }
             (issubtype((typeof(lambda46_30$t_8): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_8) && code_1 != null) ==> lambda46_30$t_8 != null
           );
-        
+
         // -- Define permissions
           assume (forall o_4: Ref ::
             { QPMask[o_4, Ticket_discount_code] }
@@ -5641,7 +5643,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         Mask := QPMask;
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> issubtype(typeof(lambda46_30$t.Ticket_discount_code), str()))
           if (*) {
             if ((issubtype((typeof(lambda46_30$t_6): PyTypeDomainType), Ticket): bool)) {
@@ -5668,7 +5670,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume state(Heap, Mask);
         if (iter_err == null) {
           assume state(Heap, Mask);
-          
+
           // -- Check definedness of int___sub__(list___len__(_checkDefined(seats, 495873779059)), list___len__(_checkDefined(res, 7562610))) > 0
             if (*) {
               // Exhale precondition of function application
@@ -5730,7 +5732,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Check the loop body
       if (*) {
         // Reset state
@@ -5825,14 +5827,14 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assume int___eq__(Heap, __prim__int___box__(Heap, list___len__(Heap, _checkDefined(Heap, res, 7562610))), __prim__int___box__(Heap, PSeq___len__(Heap, PSeq___create__(Heap, Heap[iter, __previous], vint))));
         assume state(Heap, Mask);
         havoc QPMask;
-        
+
         // -- check if receiver acc(Ticket_state(lambda46_30$t), write) is injective
           assert {:msg "  While statement might fail. Quantified resource Ticket_state(lambda46_30$t) might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2413]"}
             (forall lambda46_30$t_11: Ref, lambda46_30$t_11_1: Ref ::
             { neverTriggered5(lambda46_30$t_11), neverTriggered5(lambda46_30$t_11_1) }
             (((lambda46_30$t_11 != lambda46_30$t_11_1 && ((issubtype((typeof(lambda46_30$t_11): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_11))) && ((issubtype((typeof(lambda46_30$t_11_1): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_11_1))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t_11 != lambda46_30$t_11_1
           );
-        
+
         // -- Define Inverse Function
           assume (forall lambda46_30$t_11: Ref ::
             { Heap[null, Ticket_state(lambda46_30$t_11)] } { Mask[null, Ticket_state(lambda46_30$t_11)] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_11) }
@@ -5842,13 +5844,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { invRecv5(self_1_2) }
             (((issubtype((typeof(invRecv5(self_1_2)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv5(self_1_2))) && NoPerm < FullPerm) && qpRange5(self_1_2) ==> invRecv5(self_1_2) == self_1_2
           );
-        
+
         // -- Define updated permissions
           assume (forall self_1_2: Ref ::
             { QPMask[null, Ticket_state(self_1_2)] }
             (((issubtype((typeof(invRecv5(self_1_2)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv5(self_1_2))) && NoPerm < FullPerm) && qpRange5(self_1_2) ==> (NoPerm < FullPerm ==> invRecv5(self_1_2) == self_1_2) && QPMask[null, Ticket_state(self_1_2)] == Mask[null, Ticket_state(self_1_2)] + FullPerm
           );
-        
+
         // -- Define independent locations
           assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
             { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
@@ -5864,10 +5866,10 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         havoc QPMask;
         assert {:msg "  While statement might fail. Quantified resource lambda46_30$t.Ticket_discount_code might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2414]"}
           (forall lambda46_30$t_13: Ref, lambda46_30$t_13_1: Ref ::
-          
+
           (((lambda46_30$t_13 != lambda46_30$t_13_1 && ((issubtype((typeof(lambda46_30$t_13): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_13) && code_1 != null))) && ((issubtype((typeof(lambda46_30$t_13_1): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_13_1) && code_1 != null))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t_13 != lambda46_30$t_13_1
         );
-        
+
         // -- Define Inverse Function
           assume (forall lambda46_30$t_13: Ref ::
             { Heap[lambda46_30$t_13, Ticket_discount_code] } { QPMask[lambda46_30$t_13, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_13) }
@@ -5877,13 +5879,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { invRecv6(o_4) }
             (((issubtype((typeof(invRecv6(o_4)): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv6(o_4)) && code_1 != null)) && NoPerm < FullPerm) && qpRange6(o_4) ==> invRecv6(o_4) == o_4
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall lambda46_30$t_13: Ref ::
             { Heap[lambda46_30$t_13, Ticket_discount_code] } { QPMask[lambda46_30$t_13, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_13) }
             (issubtype((typeof(lambda46_30$t_13): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_13) && code_1 != null) ==> lambda46_30$t_13 != null
           );
-        
+
         // -- Define permissions
           assume (forall o_4: Ref ::
             { QPMask[o_4, Ticket_discount_code] }
@@ -5911,13 +5913,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         // Check and assume guard
         assume iter_err == null;
         assume state(Heap, Mask);
-        
+
         // -- Translate loop body
-          
+
           // -- Translating statement: // id = 75
   // _loop_measures := Seq(Measure$create(true, _cthread_160, int___sub__(list___len__(_checkDefined(seats,
   //   495873779059)), list___len__(_checkDefined(res, 7562610))))) -- testsfunctionalverificationexamplescav_example.py.vpr@721.5--721.168
-            
+
             // -- Check definedness of Seq(Measure$create(true, _cthread_160, int___sub__(list___len__(_checkDefined(seats, 495873779059)), list___len__(_checkDefined(res, 7562610)))))
               if (*) {
                 // Exhale precondition of function application
@@ -5971,7 +5973,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
               }
             _loop_measures := Seq#Singleton((Measure$create(true, _cthread_160, int___sub__(Heap, list___len__(Heap, _checkDefined(Heap, seats, 495873779059)), list___len__(Heap, _checkDefined(Heap, res, 7562610)))): Measure$DomainType));
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 76
   // Ticket_res := new() -- testsfunctionalverificationexamplescav_example.py.vpr@722.5--722.24
             havoc freshObj;
@@ -5979,13 +5981,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             Heap[freshObj, $allocated] := true;
             Ticket_res := freshObj;
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 77
   // inhale typeof(Ticket_res) == Ticket() -- testsfunctionalverificationexamplescav_example.py.vpr@723.5--723.42
             assume (typeof(Ticket_res): PyTypeDomainType) == Ticket;
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 78
   // inhale acc(_MaySet(Ticket_res, 2036589462893379814238060391131476), write) -- testsfunctionalverificationexamplescav_example.py.vpr@724.5--724.79
             perm := FullPerm;
@@ -5993,7 +5995,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             assume state(Heap, Mask);
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 79
   // inhale acc(_MaySet(Ticket_res, 564017441487491594152276), write) -- testsfunctionalverificationexamplescav_example.py.vpr@725.5--725.69
             perm := FullPerm;
@@ -6001,7 +6003,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             assume state(Heap, Mask);
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 80
   // inhale acc(_MaySet(Ticket_res, 140695336058778200607779156), write) -- testsfunctionalverificationexamplescav_example.py.vpr@726.5--726.72
             perm := FullPerm;
@@ -6009,7 +6011,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             assume state(Heap, Mask);
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 81
   // inhale acc(_MaySet(Ticket_res, 578847845651634811226368290157834565233854867796), write) -- testsfunctionalverificationexamplescav_example.py.vpr@727.5--727.93
             perm := FullPerm;
@@ -6017,14 +6019,14 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             assume state(Heap, Mask);
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 82
   // _cwl_160 := Ticket___init__(_cthread_160, _method_measures_160, _residue_161,
   //   Ticket_res, show_id_0, _checkDefined(row_0, 207760093042), _checkDefined(seat_0,
   //   53186532566387)) -- testsfunctionalverificationexamplescav_example.py.vpr@728.5--728.180
             PreCallHeap := Heap;
             PreCallMask := Mask;
-            
+
             // -- Check definedness of _checkDefined(row_0, 207760093042)
               if (*) {
                 // Exhale precondition of function application
@@ -6033,7 +6035,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                 // Stop execution
                 assume false;
               }
-            
+
             // -- Check definedness of _checkDefined(seat_0, 53186532566387)
               if (*) {
                 // Exhale precondition of function application
@@ -6045,7 +6047,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             arg_row := _checkDefined(Heap, row_0, 207760093042);
             arg_seat := _checkDefined(Heap, seat_0, 53186532566387);
             havoc _cwl_160;
-            
+
             // -- Exhaling precondition
               assert {:msg "  The precondition of method Ticket___init__ might not hold. Assertion _cthread_160 != null might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@728.5--728.180) [2423]"}
                 _cthread_160 != null;
@@ -6105,7 +6107,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
               havoc ExhaleHeap;
               assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
               Heap := ExhaleHeap;
-            
+
             // -- Inhaling postcondition
               assume state(Heap, Mask);
               assume (forall _r_6_1: Ref ::
@@ -6126,16 +6128,16 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
               assume state(Heap, Mask);
               assume state(Heap, Mask);
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 83
   // ticket := Ticket_res -- testsfunctionalverificationexamplescav_example.py.vpr@729.5--729.25
             ticket := Ticket_res;
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 84
   // inhale _isDefined(127978942196084) -- testsfunctionalverificationexamplescav_example.py.vpr@730.5--730.39
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of _isDefined(127978942196084)
               if (*) {
                 // Stop execution
@@ -6144,17 +6146,17 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             assume _isDefined(Heap, 127978942196084);
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: if (code_1 != null) -- testsfunctionalverificationexamplescav_example.py.vpr@731.5--737.6
             if (code_1 != null) {
-              
+
               // -- Translating statement: // id = 85
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: if (perm(_MaySet(_checkDefined(ticket, 127978942196084), 578847845651634811226368290157834565233854867796)) > none) -- testsfunctionalverificationexamplescav_example.py.vpr@732.7--735.8
-                
+
                 // -- Check definedness of perm(_MaySet(_checkDefined(ticket, 127978942196084), 578847845651634811226368290157834565233854867796)) > none
                   if (*) {
                     // Exhale precondition of function application
@@ -6164,10 +6166,10 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                     assume false;
                   }
                 if (NoPerm < Mask[null, _MaySet(_checkDefined(Heap, ticket, 127978942196084), 578847845651634811226368290157834565233854867796)]) {
-                  
+
                   // -- Translating statement: // id = 86
   // exhale acc(_MaySet(_checkDefined(ticket, 127978942196084), 578847845651634811226368290157834565233854867796), write) -- testsfunctionalverificationexamplescav_example.py.vpr@733.9--733.125
-                    
+
                     // -- Check definedness of acc(_MaySet(_checkDefined(ticket, 127978942196084), 578847845651634811226368290157834565233854867796), write)
                       if (*) {
                         // Exhale precondition of function application
@@ -6187,11 +6189,11 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                     assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
                     Heap := ExhaleHeap;
                     assume state(Heap, Mask);
-                  
+
                   // -- Translating statement: // id = 87
   // inhale acc(_checkDefined(ticket, 127978942196084).Ticket_discount_code, write) -- testsfunctionalverificationexamplescav_example.py.vpr@734.9--734.87
                     assume state(Heap, Mask);
-                    
+
                     // -- Check definedness of acc(_checkDefined(ticket, 127978942196084).Ticket_discount_code, write)
                       if (*) {
                         // Exhale precondition of function application
@@ -6207,17 +6209,17 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                     assume state(Heap, Mask);
                     assume state(Heap, Mask);
                 } else {
-                  
+
                   // -- Translating statement: // id = 88
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
                     assume state(Heap, Mask);
                 }
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: // id = 89
   // _checkDefined(ticket, 127978942196084).Ticket_discount_code := code_1 -- testsfunctionalverificationexamplescav_example.py.vpr@736.7--736.76
-                
+
                 // -- Check definedness of _checkDefined(ticket, 127978942196084)
                   if (*) {
                     // Exhale precondition of function application
@@ -6231,20 +6233,20 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                 Heap[_checkDefined(Heap, ticket, 127978942196084), Ticket_discount_code] := code_1;
                 assume state(Heap, Mask);
             } else {
-              
+
               // -- Translating statement: // id = 90
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
                 assume state(Heap, Mask);
             }
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 91
   // _cwl_160 := list_append(_cthread_160, _method_measures_160, _residue_161, _checkDefined(res,
   //   7562610), _checkDefined(ticket, 127978942196084)) -- testsfunctionalverificationexamplescav_example.py.vpr@738.5--738.147
             PreCallHeap := Heap;
             PreCallMask := Mask;
-            
+
             // -- Check definedness of _checkDefined(res, 7562610)
               if (*) {
                 // Exhale precondition of function application
@@ -6253,7 +6255,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                 // Stop execution
                 assume false;
               }
-            
+
             // -- Check definedness of _checkDefined(ticket, 127978942196084)
               if (*) {
                 // Exhale precondition of function application
@@ -6265,7 +6267,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             arg_self := _checkDefined(Heap, res, 7562610);
             arg_item := _checkDefined(Heap, ticket, 127978942196084);
             havoc _cwl_160;
-            
+
             // -- Exhaling precondition
               assert {:msg "  The precondition of method list_append might not hold. Assertion _cthread_160 != null might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@738.5--738.147) [2444]"}
                 _cthread_160 != null;
@@ -6289,7 +6291,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
               havoc ExhaleHeap;
               assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
               Heap := ExhaleHeap;
-            
+
             // -- Inhaling postcondition
               assume state(Heap, Mask);
               assume (forall _r_21: Ref ::
@@ -6309,7 +6311,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
               assume Seq#Equal(Heap[arg_self, list_acc], Seq#Append(old(PreCallHeap)[arg_self, list_acc], Seq#Singleton(arg_item)));
               assume state(Heap, Mask);
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 92
   // label loop_end -- testsfunctionalverificationexamplescav_example.py.vpr@739.5--739.19
             loop_end:
@@ -6317,14 +6319,14 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             Labelloop_endHeap := Heap;
             loop_end_lblGuard := true;
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 93
   // _cwl_160, loop_target, iter_err := Iterator___next__(_cthread_160, _method_measures_160,
   //   _residue_160, iter) -- testsfunctionalverificationexamplescav_example.py.vpr@740.5--740.113
             PreCallHeap := Heap;
             PreCallMask := Mask;
             havoc _cwl_160, loop_target, iter_err;
-            
+
             // -- Exhaling precondition
               assert {:msg "  The precondition of method Iterator___next__ might not hold. Assertion _cthread_160 != null might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@740.5--740.113) [2451]"}
                 _cthread_160 != null;
@@ -6358,7 +6360,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
               havoc ExhaleHeap;
               assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
               Heap := ExhaleHeap;
-            
+
             // -- Inhaling postcondition
               assume state(Heap, Mask);
               assume (forall _r_15_2: Ref ::
@@ -6421,19 +6423,19 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             assume Heap[loop_target, $allocated];
             assume Heap[iter_err, $allocated];
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: if (iter_err == null) -- testsfunctionalverificationexamplescav_example.py.vpr@741.5--746.6
             if (iter_err == null) {
-              
+
               // -- Translating statement: // id = 94
   // row_0 := tuple___getitem__(loop_target, 0) -- testsfunctionalverificationexamplescav_example.py.vpr@742.7--742.49
-                
+
                 // -- Check definedness of tuple___getitem__(loop_target, 0)
                   if (*) {
                     // Exhale precondition of function application
                     assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(loop_target)) in (0 >= 0 ==> 0 < ln) && (0 < 0 ==> 0 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@742.16--742.49) [2460]"}
                       0 < tuple___len__(Heap, loop_target);
-                    
+
                     // -- Free assumptions (exhale module)
                       ln_9 := tuple___len__(Heap, loop_target);
                     // Stop execution
@@ -6441,11 +6443,11 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                   }
                 row_0 := tuple___getitem__(Heap, loop_target, 0);
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: // id = 95
   // inhale _isDefined(207760093042) -- testsfunctionalverificationexamplescav_example.py.vpr@743.7--743.38
                 assume state(Heap, Mask);
-                
+
                 // -- Check definedness of _isDefined(207760093042)
                   if (*) {
                     // Stop execution
@@ -6454,16 +6456,16 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                 assume _isDefined(Heap, 207760093042);
                 assume state(Heap, Mask);
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: // id = 96
   // seat_0 := tuple___getitem__(loop_target, 1) -- testsfunctionalverificationexamplescav_example.py.vpr@744.7--744.50
-                
+
                 // -- Check definedness of tuple___getitem__(loop_target, 1)
                   if (*) {
                     // Exhale precondition of function application
                     assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(loop_target)) in (1 >= 0 ==> 1 < ln) && (1 < 0 ==> 1 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@744.17--744.50) [2461]"}
                       1 < tuple___len__(Heap, loop_target);
-                    
+
                     // -- Free assumptions (exhale module)
                       ln_11 := tuple___len__(Heap, loop_target);
                     // Stop execution
@@ -6471,11 +6473,11 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                   }
                 seat_0 := tuple___getitem__(Heap, loop_target, 1);
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: // id = 97
   // inhale _isDefined(53186532566387) -- testsfunctionalverificationexamplescav_example.py.vpr@745.7--745.40
                 assume state(Heap, Mask);
-                
+
                 // -- Check definedness of _isDefined(53186532566387)
                   if (*) {
                     // Stop execution
@@ -6485,25 +6487,25 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
                 assume state(Heap, Mask);
                 assume state(Heap, Mask);
             } else {
-              
+
               // -- Translating statement: // id = 98
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
                 assume state(Heap, Mask);
             }
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 99
   // _loop_check_before := false -- testsfunctionalverificationexamplescav_example.py.vpr@748.5--748.32
             _loop_check_before := false;
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: // id = 100
   // assert _loop_termination_flag ==>
   //   !(iter_err == null) ||
   //   Measure$check(_loop_measures, _cthread_160, int___sub__(list___len__(_checkDefined(seats,
   //   495873779059)), list___len__(_checkDefined(res, 7562610)))) -- testsfunctionalverificationexamplescav_example.py.vpr@750.5--750.211
-            
+
             // -- Check definedness of _loop_termination_flag ==> !(iter_err == null) || Measure$check(_loop_measures, _cthread_160, int___sub__(list___len__(_checkDefined(seats, 495873779059)), list___len__(_checkDefined(res, 7562610))))
               if (_loop_termination_flag) {
                 if (iter_err == null) {
@@ -6666,24 +6668,24 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         assert {:msg "  Loop invariant acc(_checkDefined(res, 7562610).list_acc, write) && int___eq__(__prim__int___box__(list___len__(_checkDefined(res, 7562610))), __prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int())))) might not be preserved. Assertion int___eq__(__prim__int___box__(list___len__(_checkDefined(res, 7562610))), __prim__int___box__(PSeq___len__(PSeq___create__(iter.__previous, int())))) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@715.15--715.217) [2494]"}
           int___eq__(Heap, __prim__int___box__(Heap, list___len__(Heap, _checkDefined(Heap, res, 7562610))), __prim__int___box__(Heap, PSeq___len__(Heap, PSeq___create__(Heap, Heap[iter, __previous], vint))));
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver acc(Ticket_state(lambda46_30$t), write) is injective
           assert {:msg "  Loop invariant true && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && (lambda46_30$t in _checkDefined(res, 7562610).list_acc) ==> acc(Ticket_state(lambda46_30$t), write)) && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> acc(lambda46_30$t.Ticket_discount_code, write)) && (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> issubtype(typeof(lambda46_30$t.Ticket_discount_code), str())))) might not be preserved. Quantified resource Ticket_state(lambda46_30$t) might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2495]"}
             (forall lambda46_30$t_15: Ref, lambda46_30$t_15_1: Ref ::
             { neverTriggered7(lambda46_30$t_15), neverTriggered7(lambda46_30$t_15_1) }
             (((lambda46_30$t_15 != lambda46_30$t_15_1 && ((issubtype((typeof(lambda46_30$t_15): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_15))) && ((issubtype((typeof(lambda46_30$t_15_1): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_15_1))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t_15 != lambda46_30$t_15_1
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant true && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && (lambda46_30$t in _checkDefined(res, 7562610).list_acc) ==> acc(Ticket_state(lambda46_30$t), write)) && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> acc(lambda46_30$t.Ticket_discount_code, write)) && (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> issubtype(typeof(lambda46_30$t.Ticket_discount_code), str())))) might not be preserved. There might be insufficient permission to access Ticket_state(lambda46_30$t) (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2496]"}
             (forall lambda46_30$t_15: Ref ::
             { Heap[null, Ticket_state(lambda46_30$t_15)] } { Mask[null, Ticket_state(lambda46_30$t_15)] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_15) }
             (issubtype((typeof(lambda46_30$t_15): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_15) ==> Mask[null, Ticket_state(lambda46_30$t_15)] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver acc(Ticket_state(lambda46_30$t), write)
           assume (forall lambda46_30$t_15: Ref ::
             { Heap[null, Ticket_state(lambda46_30$t_15)] } { Mask[null, Ticket_state(lambda46_30$t_15)] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_15) }
@@ -6693,7 +6695,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { invRecv7(self_1_3) }
             (((issubtype((typeof(invRecv7(self_1_3)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv7(self_1_3))) && NoPerm < FullPerm) && qpRange7(self_1_3) ==> invRecv7(self_1_3) == self_1_3
           );
-        
+
         // -- assume permission updates for predicate Ticket_state
           assume (forall self_1_3: Ref ::
             { QPMask[null, Ticket_state(self_1_3)] }
@@ -6703,32 +6705,32 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { QPMask[null, Ticket_state(self_1_3)] }
             !((((issubtype((typeof(invRecv7(self_1_3)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv7(self_1_3))) && NoPerm < FullPerm) && qpRange7(self_1_3)) ==> QPMask[null, Ticket_state(self_1_3)] == Mask[null, Ticket_state(self_1_3)]
           );
-        
-        // -- assume permission updates for independent locations 
+
+        // -- assume permission updates for independent locations
           assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
             { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
             (o_4 != null || !IsPredicateField(f_6)) || getPredicateId(f_6) != 4 ==> Mask[o_4, f_6] == QPMask[o_4, f_6]
           );
         Mask := QPMask;
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver lambda46_30$t is injective
           assert {:msg "  Loop invariant true && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && (lambda46_30$t in _checkDefined(res, 7562610).list_acc) ==> acc(Ticket_state(lambda46_30$t), write)) && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> acc(lambda46_30$t.Ticket_discount_code, write)) && (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> issubtype(typeof(lambda46_30$t.Ticket_discount_code), str())))) might not be preserved. Quantified resource lambda46_30$t.Ticket_discount_code might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2497]"}
             (forall lambda46_30$t_16: Ref, lambda46_30$t_16_1: Ref ::
             { neverTriggered8(lambda46_30$t_16), neverTriggered8(lambda46_30$t_16_1) }
             (((lambda46_30$t_16 != lambda46_30$t_16_1 && ((issubtype((typeof(lambda46_30$t_16): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_16) && code_1 != null))) && ((issubtype((typeof(lambda46_30$t_16_1): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_16_1) && code_1 != null))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t_16 != lambda46_30$t_16_1
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant true && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && (lambda46_30$t in _checkDefined(res, 7562610).list_acc) ==> acc(Ticket_state(lambda46_30$t), write)) && ((forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> acc(lambda46_30$t.Ticket_discount_code, write)) && (forall lambda46_30$t: Ref :: { (lambda46_30$t in _checkDefined(res, 7562610).list_acc) } issubtype(typeof(lambda46_30$t), Ticket()) && ((lambda46_30$t in _checkDefined(res, 7562610).list_acc) && code_1 != null) ==> issubtype(typeof(lambda46_30$t.Ticket_discount_code), str())))) might not be preserved. There might be insufficient permission to access lambda46_30$t.Ticket_discount_code (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2498]"}
             (forall lambda46_30$t_16: Ref ::
             { Heap[lambda46_30$t_16, Ticket_discount_code] } { QPMask[lambda46_30$t_16, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_16) }
             (issubtype((typeof(lambda46_30$t_16): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_16) && code_1 != null) ==> Mask[lambda46_30$t_16, Ticket_discount_code] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver lambda46_30$t
           assume (forall lambda46_30$t_16: Ref ::
             { Heap[lambda46_30$t_16, Ticket_discount_code] } { QPMask[lambda46_30$t_16, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_16) }
@@ -6738,13 +6740,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
             { invRecv8(o_4) }
             ((issubtype((typeof(invRecv8(o_4)): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv8(o_4)) && code_1 != null)) && (NoPerm < FullPerm && qpRange8(o_4)) ==> invRecv8(o_4) == o_4
           );
-        
+
         // -- assume permission updates for field Ticket_discount_code
           assume (forall o_4: Ref ::
             { QPMask[o_4, Ticket_discount_code] }
             (((issubtype((typeof(invRecv8(o_4)): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv8(o_4)) && code_1 != null)) && (NoPerm < FullPerm && qpRange8(o_4)) ==> invRecv8(o_4) == o_4 && QPMask[o_4, Ticket_discount_code] == Mask[o_4, Ticket_discount_code] - FullPerm) && (!(((issubtype((typeof(invRecv8(o_4)): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv8(o_4)) && code_1 != null)) && (NoPerm < FullPerm && qpRange8(o_4))) ==> QPMask[o_4, Ticket_discount_code] == Mask[o_4, Ticket_discount_code])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
             { QPMask[o_4, f_6] }
@@ -6811,7 +6813,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
         // Terminate execution
         assume false;
       }
-    
+
     // -- Inhale loop invariant after loop, and assume guard
       assume !(iter_err == null);
       assume state(Heap, Mask);
@@ -6901,14 +6903,14 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       assume int___eq__(Heap, __prim__int___box__(Heap, list___len__(Heap, _checkDefined(Heap, res, 7562610))), __prim__int___box__(Heap, PSeq___len__(Heap, PSeq___create__(Heap, Heap[iter, __previous], vint))));
       assume state(Heap, Mask);
       havoc QPMask;
-      
+
       // -- check if receiver acc(Ticket_state(lambda46_30$t), write) is injective
         assert {:msg "  While statement might fail. Quantified resource Ticket_state(lambda46_30$t) might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2508]"}
           (forall lambda46_30$t_19: Ref, lambda46_30$t_19_1: Ref ::
           { neverTriggered9(lambda46_30$t_19), neverTriggered9(lambda46_30$t_19_1) }
           (((lambda46_30$t_19 != lambda46_30$t_19_1 && ((issubtype((typeof(lambda46_30$t_19): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_19))) && ((issubtype((typeof(lambda46_30$t_19_1): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_19_1))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t_19 != lambda46_30$t_19_1
         );
-      
+
       // -- Define Inverse Function
         assume (forall lambda46_30$t_19: Ref ::
           { Heap[null, Ticket_state(lambda46_30$t_19)] } { Mask[null, Ticket_state(lambda46_30$t_19)] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_19) }
@@ -6918,13 +6920,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           { invRecv9(self_1_4) }
           (((issubtype((typeof(invRecv9(self_1_4)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv9(self_1_4))) && NoPerm < FullPerm) && qpRange9(self_1_4) ==> invRecv9(self_1_4) == self_1_4
         );
-      
+
       // -- Define updated permissions
         assume (forall self_1_4: Ref ::
           { QPMask[null, Ticket_state(self_1_4)] }
           (((issubtype((typeof(invRecv9(self_1_4)): PyTypeDomainType), Ticket): bool) && Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv9(self_1_4))) && NoPerm < FullPerm) && qpRange9(self_1_4) ==> (NoPerm < FullPerm ==> invRecv9(self_1_4) == self_1_4) && QPMask[null, Ticket_state(self_1_4)] == Mask[null, Ticket_state(self_1_4)] + FullPerm
         );
-      
+
       // -- Define independent locations
         assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
           { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
@@ -6940,10 +6942,10 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       havoc QPMask;
       assert {:msg "  While statement might fail. Quantified resource lambda46_30$t.Ticket_discount_code might not be injective. (testsfunctionalverificationexamplescav_example.py.vpr@716.15--716.803) [2509]"}
         (forall lambda46_30$t_21: Ref, lambda46_30$t_21_1: Ref ::
-        
+
         (((lambda46_30$t_21 != lambda46_30$t_21_1 && ((issubtype((typeof(lambda46_30$t_21): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_21) && code_1 != null))) && ((issubtype((typeof(lambda46_30$t_21_1): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_21_1) && code_1 != null))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> lambda46_30$t_21 != lambda46_30$t_21_1
       );
-      
+
       // -- Define Inverse Function
         assume (forall lambda46_30$t_21: Ref ::
           { Heap[lambda46_30$t_21, Ticket_discount_code] } { QPMask[lambda46_30$t_21, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_21) }
@@ -6953,13 +6955,13 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
           { invRecv10(o_4) }
           (((issubtype((typeof(invRecv10(o_4)): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], invRecv10(o_4)) && code_1 != null)) && NoPerm < FullPerm) && qpRange10(o_4) ==> invRecv10(o_4) == o_4
         );
-      
+
       // -- Assume set of fields is nonNull
         assume (forall lambda46_30$t_21: Ref ::
           { Heap[lambda46_30$t_21, Ticket_discount_code] } { QPMask[lambda46_30$t_21, Ticket_discount_code] } { Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_21) }
           (issubtype((typeof(lambda46_30$t_21): PyTypeDomainType), Ticket): bool) && (Seq#Contains(Heap[_checkDefined(Heap, res, 7562610), list_acc], lambda46_30$t_21) && code_1 != null) ==> lambda46_30$t_21 != null
         );
-      
+
       // -- Define permissions
         assume (forall o_4: Ref ::
           { QPMask[o_4, Ticket_discount_code] }
@@ -6985,7 +6987,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       assume state(Heap, Mask);
       assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 101
   // // LoopInfo(None,Set())
   // exhale perm(MustTerminate(_cthread_160)) > none ==>
@@ -7006,14 +7008,14 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
     Heap := ExhaleHeap;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 102
   // _cwl_160 := Iterator___del__(_cthread_160, _method_measures_160, _residue_161,
   //   iter) -- testsfunctionalverificationexamplescav_example.py.vpr@754.3--754.87
     PreCallHeap := Heap;
     PreCallMask := Mask;
     havoc _cwl_160;
-    
+
     // -- Exhaling precondition
       assert {:msg "  The precondition of method Iterator___del__ might not hold. Assertion _cthread_160 != null might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@754.3--754.87) [2512]"}
         _cthread_160 != null;
@@ -7043,7 +7045,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       havoc ExhaleHeap;
       assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
       Heap := ExhaleHeap;
-    
+
     // -- Inhaling postcondition
       assume state(Heap, Mask);
       assume (forall _r_17: Ref ::
@@ -7094,17 +7096,17 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       }
       assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 103
   // _res := null -- testsfunctionalverificationexamplescav_example.py.vpr@755.3--755.15
     _res := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 104
   // _err := null -- testsfunctionalverificationexamplescav_example.py.vpr@756.3--756.15
     _err := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 105
   // label post_loop -- testsfunctionalverificationexamplescav_example.py.vpr@757.3--757.18
     post_loop:
@@ -7112,20 +7114,20 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     Labelpost_loopHeap := Heap;
     post_loop_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 106
   // _res := null -- testsfunctionalverificationexamplescav_example.py.vpr@758.3--758.15
     _res := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 107
   // _err := null -- testsfunctionalverificationexamplescav_example.py.vpr@759.3--759.15
     _err := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 108
   // _res := _checkDefined(res, 7562610) -- testsfunctionalverificationexamplescav_example.py.vpr@760.3--760.38
-    
+
     // -- Check definedness of _checkDefined(res, 7562610)
       if (*) {
         // Exhale precondition of function application
@@ -7136,17 +7138,17 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
       }
     _res := _checkDefined(Heap, res, 7562610);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 109
   // goto __end -- testsfunctionalverificationexamplescav_example.py.vpr@761.3--761.13
     goto __end;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 110
   // goto __end -- testsfunctionalverificationexamplescav_example.py.vpr@762.3--762.13
     goto __end;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 111
   // label __end -- testsfunctionalverificationexamplescav_example.py.vpr@763.3--763.14
     __end:
@@ -7154,7 +7156,7 @@ procedure order_tickets(_cthread_160: Ref, _caller_measures_160: (Seq Measure$Do
     Label__endHeap := Heap;
     __end_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     if (_err == null) {
       assert {:msg "  Postcondition of order_tickets might not hold. Assertion issubtype(typeof(_res), list(Ticket())) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@632.11--632.67) [2526]"}
@@ -7219,22 +7221,22 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
   var freshVersion: FrameType;
   var Label__endMask: MaskType;
   var Label__endHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
     __end_lblGuard := false;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_156, $allocated];
     assume Heap[self, $allocated];
     assume Heap[show, $allocated];
     assume Heap[row, $allocated];
     assume Heap[seat, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_156 != null;
@@ -7271,7 +7273,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_156, _cthread_156, 1) || perm(MustTerminate(_cthread_156)) == none && ((forperm _r_8: Ref [MustInvokeBounded(_r_8)] :: false) && ((forperm _r_8: Ref [MustInvokeUnbounded(_r_8)] :: false) && ((forperm _r_8: Ref [_r_8.MustReleaseBounded] :: false) && (forperm _r_8: Ref [_r_8.MustReleaseUnbounded] :: false))))
           if (*) {
             // Stop execution
@@ -7340,7 +7342,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_156 != null;
       assume state(Heap, Mask);
@@ -7379,9 +7381,9 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
       assume state(Heap, Mask);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -7392,11 +7394,11 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_6: Ref [_r_6.MustReleaseBounded] :: Level(_r_6) <= _current_wait_level_156)
           if (*) {
             if (HasDirectPerm(PostMask, _r_6_2, MustReleaseBounded)) {
@@ -7414,7 +7416,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
           HasDirectPerm(PostMask, _r_6_1_1, MustReleaseBounded) ==> Level(PostHeap, _r_6_1_1) <= _current_wait_level_156
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_6: Ref [_r_6.MustReleaseUnbounded] :: Level(_r_6) <= _current_wait_level_156)
           if (*) {
             if (HasDirectPerm(PostMask, _r_6_3, MustReleaseUnbounded)) {
@@ -7443,7 +7445,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
       perm := FullPerm;
@@ -7453,7 +7455,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
       PostMask[null, _MaySet(self, 578847845651634811226368290157834565233854867796)] := PostMask[null, _MaySet(self, 578847845651634811226368290157834565233854867796)] + perm;
       assume state(PostHeap, PostMask);
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of (forperm _r_7: Ref [MustInvokeBounded(_r_7)] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, null, MustInvokeBounded(_r_7))) {
@@ -7466,7 +7468,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         { PostMask[null, MustInvokeBounded(_r_7_1)] }
         HasDirectPerm(PostMask, null, MustInvokeBounded(_r_7_1)) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_7: Ref [MustInvokeUnbounded(_r_7)] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, null, MustInvokeUnbounded(_r_7_2))) {
@@ -7479,7 +7481,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         { PostMask[null, MustInvokeUnbounded(_r_7_3)] }
         HasDirectPerm(PostMask, null, MustInvokeUnbounded(_r_7_3)) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_7: Ref [_r_7.MustReleaseBounded] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, _r_7_4, MustReleaseBounded)) {
@@ -7492,7 +7494,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         { PostMask[_r_7_5, MustReleaseBounded] }
         HasDirectPerm(PostMask, _r_7_5, MustReleaseBounded) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_7: Ref [_r_7.MustReleaseUnbounded] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, _r_7_6, MustReleaseUnbounded)) {
@@ -7509,118 +7511,118 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
     // Stop execution
     assume false;
   }
-  
+
   // -- Assumptions about local variables
     assume Heap[_err, $allocated];
     assume Heap[self_2, $allocated];
     assume Heap[show_0, $allocated];
     assume Heap[row_1, $allocated];
     assume Heap[seat_1, $allocated];
-  
+
   // -- Translating statement: // id = 1
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 2
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 3
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 4
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 5
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 6
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 7
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 8
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 9
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 10
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 11
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 12
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 13
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 14
   // _method_measures_156 := Seq(Measure$create(true, _cthread_156, 1)) -- testsfunctionalverificationexamplescav_example.py.vpr@792.3--792.69
     _method_measures_156 := Seq#Singleton((Measure$create(true, _cthread_156, 1): Measure$DomainType));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 15
   // inhale typeof(self) == Ticket() -- testsfunctionalverificationexamplescav_example.py.vpr@793.3--793.34
     assume (typeof(self): PyTypeDomainType) == Ticket;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 16
   // _err := null -- testsfunctionalverificationexamplescav_example.py.vpr@794.3--794.15
     _err := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 17
   // self_2 := self -- testsfunctionalverificationexamplescav_example.py.vpr@795.3--795.17
     self_2 := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 18
   // show_0 := show -- testsfunctionalverificationexamplescav_example.py.vpr@796.3--796.17
     show_0 := show;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 19
   // row_1 := row -- testsfunctionalverificationexamplescav_example.py.vpr@797.3--797.15
     row_1 := row;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 20
   // seat_1 := seat -- testsfunctionalverificationexamplescav_example.py.vpr@798.3--798.17
     seat_1 := seat;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (perm(_MaySet(self_2, 2036589462893379814238060391131476)) > none) -- testsfunctionalverificationexamplescav_example.py.vpr@799.3--802.4
     if (NoPerm < Mask[null, _MaySet(self_2, 2036589462893379814238060391131476)]) {
-      
+
       // -- Translating statement: // id = 21
   // exhale acc(_MaySet(self_2, 2036589462893379814238060391131476), write) -- testsfunctionalverificationexamplescav_example.py.vpr@800.5--800.75
         perm := FullPerm;
@@ -7634,7 +7636,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
         Heap := ExhaleHeap;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 22
   // inhale acc(self_2.Ticket_show_id, write) -- testsfunctionalverificationexamplescav_example.py.vpr@801.5--801.45
         perm := FullPerm;
@@ -7644,24 +7646,24 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         assume state(Heap, Mask);
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 23
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 24
   // self_2.Ticket_show_id := show_0 -- testsfunctionalverificationexamplescav_example.py.vpr@803.3--803.34
     assert {:msg "  Assignment might fail. There might be insufficient permission to access self_2.Ticket_show_id (testsfunctionalverificationexamplescav_example.py.vpr@803.3--803.34) [2545]"}
       FullPerm == Mask[self_2, Ticket_show_id];
     Heap[self_2, Ticket_show_id] := show_0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (perm(_MaySet(self_2, 564017441487491594152276)) > none) -- testsfunctionalverificationexamplescav_example.py.vpr@804.3--807.4
     if (NoPerm < Mask[null, _MaySet(self_2, 564017441487491594152276)]) {
-      
+
       // -- Translating statement: // id = 25
   // exhale acc(_MaySet(self_2, 564017441487491594152276), write) -- testsfunctionalverificationexamplescav_example.py.vpr@805.5--805.65
         perm := FullPerm;
@@ -7675,7 +7677,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
         Heap := ExhaleHeap;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 26
   // inhale acc(self_2.Ticket_row, write) -- testsfunctionalverificationexamplescav_example.py.vpr@806.5--806.41
         perm := FullPerm;
@@ -7685,18 +7687,18 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         assume state(Heap, Mask);
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 27
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 28
   // self_2.Ticket_row := tuple___getitem__(tuple___create2__(row_1, seat_1, int(),
   //   int(), 0), 0) -- testsfunctionalverificationexamplescav_example.py.vpr@808.3--808.95
-    
+
     // -- Check definedness of tuple___getitem__(tuple___create2__(row_1, seat_1, int(), int(), 0), 0)
       if (*) {
         // Exhale precondition of function application
@@ -7711,7 +7713,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         // Exhale precondition of function application
         assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(tuple___create2__(row_1, seat_1, int(), int(), 0))) in (0 >= 0 ==> 0 < ln) && (0 < 0 ==> 0 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@808.24--808.95) [2551]"}
           0 < tuple___len__(Heap, tuple___create2__(Heap, row_1, seat_1, vint, vint, 0));
-        
+
         // -- Free assumptions (exhale module)
           ln_1 := tuple___len__(Heap, tuple___create2__(Heap, row_1, seat_1, vint, vint, 0));
         // Stop execution
@@ -7721,10 +7723,10 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
       FullPerm == Mask[self_2, Ticket_row];
     Heap[self_2, Ticket_row] := tuple___getitem__(Heap, tuple___create2__(Heap, row_1, seat_1, vint, vint, 0), 0);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (perm(_MaySet(self_2, 140695336058778200607779156)) > none) -- testsfunctionalverificationexamplescav_example.py.vpr@809.3--812.4
     if (NoPerm < Mask[null, _MaySet(self_2, 140695336058778200607779156)]) {
-      
+
       // -- Translating statement: // id = 29
   // exhale acc(_MaySet(self_2, 140695336058778200607779156), write) -- testsfunctionalverificationexamplescav_example.py.vpr@810.5--810.68
         perm := FullPerm;
@@ -7738,7 +7740,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
         Heap := ExhaleHeap;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 30
   // inhale acc(self_2.Ticket_seat, write) -- testsfunctionalverificationexamplescav_example.py.vpr@811.5--811.42
         perm := FullPerm;
@@ -7748,18 +7750,18 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         assume state(Heap, Mask);
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 31
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 32
   // self_2.Ticket_seat := tuple___getitem__(tuple___create2__(row_1, seat_1, int(),
   //   int(), 0), 1) -- testsfunctionalverificationexamplescav_example.py.vpr@813.3--813.96
-    
+
     // -- Check definedness of tuple___getitem__(tuple___create2__(row_1, seat_1, int(), int(), 0), 1)
       if (*) {
         // Exhale precondition of function application
@@ -7774,7 +7776,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
         // Exhale precondition of function application
         assert {:msg "  Precondition of function tuple___getitem__ might not hold. Assertion (let ln == (tuple___len__(tuple___create2__(row_1, seat_1, int(), int(), 0))) in (1 >= 0 ==> 1 < ln) && (1 < 0 ==> 1 >= -ln)) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@813.25--813.96) [2558]"}
           1 < tuple___len__(Heap, tuple___create2__(Heap, row_1, seat_1, vint, vint, 0));
-        
+
         // -- Free assumptions (exhale module)
           ln_3 := tuple___len__(Heap, tuple___create2__(Heap, row_1, seat_1, vint, vint, 0));
         // Stop execution
@@ -7784,7 +7786,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
       FullPerm == Mask[self_2, Ticket_seat];
     Heap[self_2, Ticket_seat] := tuple___getitem__(Heap, tuple___create2__(Heap, row_1, seat_1, vint, vint, 0), 1);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 33
   // fold acc(Ticket_state(self_2), write) -- testsfunctionalverificationexamplescav_example.py.vpr@814.3--814.40
     assert {:msg "  Folding Ticket_state(self_2) might fail. Assertion issubtype(typeof(self_2), Ticket()) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@814.3--814.40) [2561]"}
@@ -7833,12 +7835,12 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 34
   // goto __end -- testsfunctionalverificationexamplescav_example.py.vpr@815.3--815.13
     goto __end;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 35
   // label __end -- testsfunctionalverificationexamplescav_example.py.vpr@816.3--816.14
     __end:
@@ -7846,7 +7848,7 @@ procedure Ticket___init__(_cthread_156: Ref, _caller_measures_156: (Seq Measure$
     Label__endHeap := Heap;
     __end_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -7914,20 +7916,20 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
   var ExhaleHeap: HeapType;
   var Label__endMask: MaskType;
   var Label__endHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
     __end_lblGuard := false;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_157, $allocated];
     assume Heap[self_0, $allocated];
     assume Heap[code, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_157 != null;
@@ -7945,7 +7947,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume Mask[null, MustTerminate(_cthread_157)] == NoPerm;
-        
+
         // -- Check definedness of (forperm _r_11: Ref [MustInvokeBounded(_r_11)] :: false)
           if (*) {
             if (HasDirectPerm(Mask, null, MustInvokeBounded(_r_11))) {
@@ -7958,7 +7960,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
           { Mask[null, MustInvokeBounded(_r_11_1)] }
           HasDirectPerm(Mask, null, MustInvokeBounded(_r_11_1)) ==> false
         );
-        
+
         // -- Check definedness of (forperm _r_11: Ref [MustInvokeUnbounded(_r_11)] :: false)
           if (*) {
             if (HasDirectPerm(Mask, null, MustInvokeUnbounded(_r_11_2))) {
@@ -7971,7 +7973,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
           { Mask[null, MustInvokeUnbounded(_r_11_3)] }
           HasDirectPerm(Mask, null, MustInvokeUnbounded(_r_11_3)) ==> false
         );
-        
+
         // -- Check definedness of (forperm _r_11: Ref [_r_11.MustReleaseBounded] :: false)
           if (*) {
             if (HasDirectPerm(Mask, _r_11_4, MustReleaseBounded)) {
@@ -7984,7 +7986,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
           { Mask[_r_11_5, MustReleaseBounded] }
           HasDirectPerm(Mask, _r_11_5, MustReleaseBounded) ==> false
         );
-        
+
         // -- Check definedness of (forperm _r_11: Ref [_r_11.MustReleaseUnbounded] :: false)
           if (*) {
             if (HasDirectPerm(Mask, _r_11_6, MustReleaseUnbounded)) {
@@ -8000,7 +8002,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_157 != null;
       assume state(Heap, Mask);
@@ -8017,9 +8019,9 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
       assume state(Heap, Mask);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -8030,11 +8032,11 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_9: Ref [_r_9.MustReleaseBounded] :: Level(_r_9) <= _current_wait_level_157)
           if (*) {
             if (HasDirectPerm(PostMask, _r_9, MustReleaseBounded)) {
@@ -8052,7 +8054,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
           HasDirectPerm(PostMask, _r_9_1, MustReleaseBounded) ==> Level(PostHeap, _r_9_1) <= _current_wait_level_157
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_9: Ref [_r_9.MustReleaseUnbounded] :: Level(_r_9) <= _current_wait_level_157)
           if (*) {
             if (HasDirectPerm(PostMask, _r_9_2, MustReleaseUnbounded)) {
@@ -8074,10 +8076,10 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of (forperm _r_10: Ref [MustInvokeBounded(_r_10)] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, null, MustInvokeBounded(_r_10))) {
@@ -8090,7 +8092,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
         { PostMask[null, MustInvokeBounded(_r_10_1)] }
         HasDirectPerm(PostMask, null, MustInvokeBounded(_r_10_1)) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_10: Ref [MustInvokeUnbounded(_r_10)] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, null, MustInvokeUnbounded(_r_10_2))) {
@@ -8103,7 +8105,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
         { PostMask[null, MustInvokeUnbounded(_r_10_3)] }
         HasDirectPerm(PostMask, null, MustInvokeUnbounded(_r_10_3)) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_10: Ref [_r_10.MustReleaseBounded] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, _r_10_4, MustReleaseBounded)) {
@@ -8116,7 +8118,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
         { PostMask[_r_10_5, MustReleaseBounded] }
         HasDirectPerm(PostMask, _r_10_5, MustReleaseBounded) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_10: Ref [_r_10.MustReleaseUnbounded] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, _r_10_6, MustReleaseUnbounded)) {
@@ -8133,86 +8135,86 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
     // Stop execution
     assume false;
   }
-  
+
   // -- Assumptions about local variables
     assume Heap[_err, $allocated];
     assume Heap[self_3, $allocated];
     assume Heap[code_2, $allocated];
-  
+
   // -- Translating statement: // id = 1
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 2
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 3
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 4
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 5
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 6
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 7
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 8
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 9
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 10
   // _method_measures_157 := Seq[Measure$]() -- testsfunctionalverificationexamplescav_example.py.vpr@835.3--835.42
     _method_measures_157 := (Seq#Empty(): Seq Measure$DomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 11
   // inhale typeof(self_0) == Ticket() -- testsfunctionalverificationexamplescav_example.py.vpr@836.3--836.36
     assume (typeof(self_0): PyTypeDomainType) == Ticket;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 12
   // _err := null -- testsfunctionalverificationexamplescav_example.py.vpr@837.3--837.15
     _err := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 13
   // self_3 := self_0 -- testsfunctionalverificationexamplescav_example.py.vpr@838.3--838.19
     self_3 := self_0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 14
   // code_2 := code -- testsfunctionalverificationexamplescav_example.py.vpr@839.3--839.17
     code_2 := code;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (perm(_MaySet(self_3, 578847845651634811226368290157834565233854867796)) > none) -- testsfunctionalverificationexamplescav_example.py.vpr@840.3--843.4
     if (NoPerm < Mask[null, _MaySet(self_3, 578847845651634811226368290157834565233854867796)]) {
-      
+
       // -- Translating statement: // id = 15
   // exhale acc(_MaySet(self_3, 578847845651634811226368290157834565233854867796), write) -- testsfunctionalverificationexamplescav_example.py.vpr@841.5--841.89
         perm := FullPerm;
@@ -8226,7 +8228,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
         assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
         Heap := ExhaleHeap;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 16
   // inhale acc(self_3.Ticket_discount_code, write) -- testsfunctionalverificationexamplescav_example.py.vpr@842.5--842.51
         perm := FullPerm;
@@ -8236,26 +8238,26 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
         assume state(Heap, Mask);
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 17
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 18
   // self_3.Ticket_discount_code := code_2 -- testsfunctionalverificationexamplescav_example.py.vpr@844.3--844.40
     assert {:msg "  Assignment might fail. There might be insufficient permission to access self_3.Ticket_discount_code (testsfunctionalverificationexamplescav_example.py.vpr@844.3--844.40) [2591]"}
       FullPerm == Mask[self_3, Ticket_discount_code];
     Heap[self_3, Ticket_discount_code] := code_2;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 19
   // goto __end -- testsfunctionalverificationexamplescav_example.py.vpr@845.3--845.13
     goto __end;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 20
   // label __end -- testsfunctionalverificationexamplescav_example.py.vpr@846.3--846.14
     __end:
@@ -8263,7 +8265,7 @@ procedure Ticket_set_discount(_cthread_157: Ref, _caller_measures_157: (Seq Meas
     Label__endHeap := Heap;
     __end_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of Ticket_set_discount might not hold. Assertion (forperm _r_10: Ref [MustInvokeBounded(_r_10)] :: false) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@828.11--828.263) [2592]"}
       (forall _r_10_8: Ref ::
@@ -8313,18 +8315,18 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
   var perm: Perm;
   var Label__endMask: MaskType;
   var Label__endHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
     __end_lblGuard := false;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_161, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_161 != null;
@@ -8332,7 +8334,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
         assume (issubtype((typeof(_cthread_161): PyTypeDomainType), Thread_0): bool);
         assume state(Heap, Mask);
         assume Mask[null, MustTerminate(_cthread_161)] == NoPerm;
-        
+
         // -- Check definedness of (forperm _r_14: Ref [MustInvokeBounded(_r_14)] :: false)
           if (*) {
             if (HasDirectPerm(Mask, null, MustInvokeBounded(_r_14))) {
@@ -8345,7 +8347,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
           { Mask[null, MustInvokeBounded(_r_14_1)] }
           HasDirectPerm(Mask, null, MustInvokeBounded(_r_14_1)) ==> false
         );
-        
+
         // -- Check definedness of (forperm _r_14: Ref [MustInvokeUnbounded(_r_14)] :: false)
           if (*) {
             if (HasDirectPerm(Mask, null, MustInvokeUnbounded(_r_14_2))) {
@@ -8358,7 +8360,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
           { Mask[null, MustInvokeUnbounded(_r_14_3)] }
           HasDirectPerm(Mask, null, MustInvokeUnbounded(_r_14_3)) ==> false
         );
-        
+
         // -- Check definedness of (forperm _r_14: Ref [_r_14.MustReleaseBounded] :: false)
           if (*) {
             if (HasDirectPerm(Mask, _r_14_4, MustReleaseBounded)) {
@@ -8371,7 +8373,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
           { Mask[_r_14_5, MustReleaseBounded] }
           HasDirectPerm(Mask, _r_14_5, MustReleaseBounded) ==> false
         );
-        
+
         // -- Check definedness of (forperm _r_14: Ref [_r_14.MustReleaseUnbounded] :: false)
           if (*) {
             if (HasDirectPerm(Mask, _r_14_6, MustReleaseUnbounded)) {
@@ -8387,16 +8389,16 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_161 != null;
       assume state(Heap, Mask);
       assume (issubtype((typeof(_cthread_161): PyTypeDomainType), Thread_0): bool);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -8407,11 +8409,11 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_12: Ref [_r_12.MustReleaseBounded] :: Level(_r_12) <= _current_wait_level_161)
           if (*) {
             if (HasDirectPerm(PostMask, _r_12, MustReleaseBounded)) {
@@ -8429,7 +8431,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
           HasDirectPerm(PostMask, _r_12_1, MustReleaseBounded) ==> Level(PostHeap, _r_12_1) <= _current_wait_level_161
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_12: Ref [_r_12.MustReleaseUnbounded] :: Level(_r_12) <= _current_wait_level_161)
           if (*) {
             if (HasDirectPerm(PostMask, _r_12_2, MustReleaseUnbounded)) {
@@ -8451,10 +8453,10 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of (forperm _r_13: Ref [MustInvokeBounded(_r_13)] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, null, MustInvokeBounded(_r_13))) {
@@ -8467,7 +8469,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
         { PostMask[null, MustInvokeBounded(_r_13_1)] }
         HasDirectPerm(PostMask, null, MustInvokeBounded(_r_13_1)) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_13: Ref [MustInvokeUnbounded(_r_13)] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, null, MustInvokeUnbounded(_r_13_2))) {
@@ -8480,7 +8482,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
         { PostMask[null, MustInvokeUnbounded(_r_13_3)] }
         HasDirectPerm(PostMask, null, MustInvokeUnbounded(_r_13_3)) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_13: Ref [_r_13.MustReleaseBounded] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, _r_13_4, MustReleaseBounded)) {
@@ -8493,7 +8495,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
         { PostMask[_r_13_5, MustReleaseBounded] }
         HasDirectPerm(PostMask, _r_13_5, MustReleaseBounded) ==> false
       );
-      
+
       // -- Check definedness of (forperm _r_13: Ref [_r_13.MustReleaseUnbounded] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, _r_13_6, MustReleaseUnbounded)) {
@@ -8510,68 +8512,68 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: // id = 1
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 2
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 3
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 4
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 5
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 6
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 7
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 8
   // _method_measures_161 := Seq[Measure$]() -- testsfunctionalverificationexamplescav_example.py.vpr@860.3--860.42
     _method_measures_161 := (Seq#Empty(): Seq Measure$DomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 9
   // module_defined_0 := true -- testsfunctionalverificationexamplescav_example.py.vpr@861.3--861.27
     module_defined_0 := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 10
   // module_names_0 := Set[_Name]() -- testsfunctionalverificationexamplescav_example.py.vpr@862.3--862.33
     module_names_0 := (Set#Empty(): Set _NameDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 11
   // module_names_0 := (module_names_0 union Set(_single(6872323072689856351))) -- testsfunctionalverificationexamplescav_example.py.vpr@863.3--863.77
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(6872323072689856351): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 12
   // inhale acc(__file__()._val, 99 / 100) &&
   //   (issubtype(typeof(__file__()._val), str()) &&
   //   issubtype(typeof(__file__()._val), str())) -- testsfunctionalverificationexamplescav_example.py.vpr@864.3--864.130
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of acc(__file__()._val, 99 / 100)
       if (*) {
         // Stop execution
@@ -8584,7 +8586,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
     Mask[__file__(Heap), _val] := Mask[__file__(Heap), _val] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of issubtype(typeof(__file__()._val), str())
       assert {:msg "  Inhale might fail. There might be insufficient permission to access __file__()._val (testsfunctionalverificationexamplescav_example.py.vpr@864.10--864.130) [2607]"}
         HasDirectPerm(Mask, __file__(Heap), _val);
@@ -8594,7 +8596,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
       }
     assume (issubtype((typeof(Heap[__file__(Heap), _val]): PyTypeDomainType), str): bool);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of issubtype(typeof(__file__()._val), str())
       assert {:msg "  Inhale might fail. There might be insufficient permission to access __file__()._val (testsfunctionalverificationexamplescav_example.py.vpr@864.10--864.130) [2608]"}
         HasDirectPerm(Mask, __file__(Heap), _val);
@@ -8605,19 +8607,19 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
     assume (issubtype((typeof(Heap[__file__(Heap), _val]): PyTypeDomainType), str): bool);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 13
   // module_names_0 := (module_names_0 union Set(_single(6872323076851130207))) -- testsfunctionalverificationexamplescav_example.py.vpr@865.3--865.77
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(6872323076851130207): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 14
   // inhale acc(__name__()._val, 99 / 100) &&
   //   (issubtype(typeof(__name__()._val), str()) &&
   //   (issubtype(typeof(__name__()._val), str()) &&
   //   str___eq__(str___create__(8, 6872332955275845471), __name__()._val))) -- testsfunctionalverificationexamplescav_example.py.vpr@866.3--866.201
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of acc(__name__()._val, 99 / 100)
       if (*) {
         // Stop execution
@@ -8630,7 +8632,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
     Mask[__name__(Heap), _val] := Mask[__name__(Heap), _val] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of issubtype(typeof(__name__()._val), str())
       assert {:msg "  Inhale might fail. There might be insufficient permission to access __name__()._val (testsfunctionalverificationexamplescav_example.py.vpr@866.10--866.201) [2610]"}
         HasDirectPerm(Mask, __name__(Heap), _val);
@@ -8640,7 +8642,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
       }
     assume (issubtype((typeof(Heap[__name__(Heap), _val]): PyTypeDomainType), str): bool);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of issubtype(typeof(__name__()._val), str())
       assert {:msg "  Inhale might fail. There might be insufficient permission to access __name__()._val (testsfunctionalverificationexamplescav_example.py.vpr@866.10--866.201) [2611]"}
         HasDirectPerm(Mask, __name__(Heap), _val);
@@ -8650,7 +8652,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
       }
     assume (issubtype((typeof(Heap[__name__(Heap), _val]): PyTypeDomainType), str): bool);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of str___eq__(str___create__(8, 6872332955275845471), __name__()._val)
       if (*) {
         // Stop execution
@@ -8672,62 +8674,62 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
     assume str___eq__(Heap, str___create__(Heap, 8, 6872332955275845471), Heap[__name__(Heap), _val]);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 15
   // module_names_0 := (module_names_0 union
   //   Set(_single(8038062462289584464661321053517))) -- testsfunctionalverificationexamplescav_example.py.vpr@867.3--867.89
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(8038062462289584464661321053517): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 16
   // module_names_0 := (module_names_0 union Set(_single(1953720652))) -- testsfunctionalverificationexamplescav_example.py.vpr@868.3--868.68
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(1953720652): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 17
   // module_names_0 := (module_names_0 union Set(_single(435611006292))) -- testsfunctionalverificationexamplescav_example.py.vpr@869.3--869.70
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(435611006292): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 18
   // module_names_0 := (module_names_0 union
   //   Set(_single(146793563365898239306910909426909867859))) -- testsfunctionalverificationexamplescav_example.py.vpr@870.3--870.97
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(146793563365898239306910909426909867859): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 19
   // module_names_0 := (module_names_0 union
   //   Set(_single(2129761664003936118119))) -- testsfunctionalverificationexamplescav_example.py.vpr@871.3--871.80
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(2129761664003936118119): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 20
   // module_names_0 := (module_names_0 union Set(_single(6872339552563453791))) -- testsfunctionalverificationexamplescav_example.py.vpr@872.3--872.77
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(6872339552563453791): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 21
   // module_names_0 := (module_names_0 union
   //   Set(_single(36033797551066912423438214515))) -- testsfunctionalverificationexamplescav_example.py.vpr@873.3--873.87
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(36033797551066912423438214515): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 22
   // module_names_0 := (module_names_0 union Set(_single(127978942196052))) -- testsfunctionalverificationexamplescav_example.py.vpr@874.3--874.73
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(127978942196052): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 23
   // module_names_0 := (module_names_0 union
   //   Set(_single(9147261558914496062541770551919))) -- testsfunctionalverificationexamplescav_example.py.vpr@875.3--875.89
     module_names_0 := Set#Union(module_names_0, Set#Singleton((_single(9147261558914496062541770551919): _NameDomainType)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 24
   // goto __end -- testsfunctionalverificationexamplescav_example.py.vpr@876.3--876.13
     goto __end;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 25
   // label __end -- testsfunctionalverificationexamplescav_example.py.vpr@877.3--877.14
     __end:
@@ -8735,7 +8737,7 @@ procedure main(_cthread_161: Ref, _caller_measures_161: (Seq Measure$DomainType)
     Label__endHeap := Heap;
     __end_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of main might not hold. Assertion (forperm _r_13: Ref [MustInvokeBounded(_r_13)] :: false) might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@854.11--854.263) [2614]"}
       (forall _r_13_8: Ref ::
@@ -8775,24 +8777,24 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
   var r_4: Ref;
   var r_4_1: Ref;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_149, $allocated];
     assume Heap[self, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_149 != null;
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_149, _cthread_149, 1)
           if (*) {
             // Stop execution
@@ -8820,7 +8822,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_149, _cthread_149, 1)
           if (*) {
             // Stop execution
@@ -8830,12 +8832,12 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_149 != null;
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of Measure$check(_caller_measures_149, _cthread_149, 1)
         if (*) {
           // Stop execution
@@ -8863,9 +8865,9 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
       assume state(Heap, Mask);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -8876,11 +8878,11 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_15: Ref [_r_15.MustReleaseBounded] :: Level(_r_15) <= _current_wait_level_149)
           if (*) {
             if (HasDirectPerm(PostMask, _r_15_4, MustReleaseBounded)) {
@@ -8898,7 +8900,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
           HasDirectPerm(PostMask, _r_15_1, MustReleaseBounded) ==> Level(PostHeap, _r_15_1) <= _current_wait_level_149
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_15: Ref [_r_15.MustReleaseUnbounded] :: Level(_r_15) <= _current_wait_level_149)
           if (*) {
             if (HasDirectPerm(PostMask, _r_15_5, MustReleaseUnbounded)) {
@@ -8923,7 +8925,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         assume perm > NoPerm ==> self != null;
         PostMask[self, list_acc] := PostMask[self, list_acc] + perm;
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of self.list_acc == old(self.list_acc)
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@889.11--889.76) [2623]"}
             HasDirectPerm(PostMask, self, list_acc);
@@ -8936,7 +8938,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         PostMask[self, __iter_index] := PostMask[self, __iter_index] + perm;
         assume state(PostHeap, PostMask);
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of self.__iter_index <= |self.list_acc| + 1
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@891.11--891.51) [2625]"}
             HasDirectPerm(PostMask, self, __iter_index);
@@ -8944,7 +8946,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
             HasDirectPerm(PostMask, self, list_acc);
         assume PostHeap[self, __iter_index] <= Seq#Length(PostHeap[self, list_acc]) + 1;
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of old(self.__iter_index == |self.list_acc|) == (_err != null)
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@892.11--892.70) [2627]"}
             HasDirectPerm(old(Mask), self, __iter_index);
@@ -8958,7 +8960,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         assume state(PostHeap, PostMask);
         assume state(PostHeap, PostMask);
         if (_err == null) {
-          
+
           // -- Check definedness of self.__iter_index == old(self.__iter_index) + 1
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@894.11--894.75) [2629]"}
               HasDirectPerm(PostMask, self, __iter_index);
@@ -8968,7 +8970,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         }
         assume state(PostHeap, PostMask);
         if (_err == null) {
-          
+
           // -- Check definedness of self.__iter_index > 0
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@895.11--895.49) [2631]"}
               HasDirectPerm(PostMask, self, __iter_index);
@@ -8976,7 +8978,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         }
         assume state(PostHeap, PostMask);
         if (_err == null) {
-          
+
           // -- Check definedness of self.__previous == self.list_acc[..self.__iter_index - 1]
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__previous (testsfunctionalverificationexamplescav_example.py.vpr@896.11--896.85) [2632]"}
               HasDirectPerm(PostMask, self, __previous);
@@ -8987,12 +8989,12 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
           assume Seq#Equal(PostHeap[self, __previous], Seq#Take(PostHeap[self, list_acc], PostHeap[self, __iter_index] - 1));
         }
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of |self.list_acc| > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@897.11--897.56) [2635]"}
             HasDirectPerm(PostMask, self, list_acc);
         if (Seq#Length(PostHeap[self, list_acc]) > 0) {
-          
+
           // -- Check definedness of self.__iter_index > 0
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@897.11--897.56) [2636]"}
               HasDirectPerm(PostMask, self, __iter_index);
@@ -9000,7 +9002,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         }
         assume state(PostHeap, PostMask);
         if (_err != null) {
-          
+
           // -- Check definedness of self.__previous == self.list_acc
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__previous (testsfunctionalverificationexamplescav_example.py.vpr@898.11--898.60) [2637]"}
               HasDirectPerm(PostMask, self, __previous);
@@ -9010,7 +9012,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         }
         assume state(PostHeap, PostMask);
         if (_err != null) {
-          
+
           // -- Check definedness of self.__iter_index == |self.list_acc|
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@899.11--899.64) [2639]"}
               HasDirectPerm(PostMask, self, __iter_index);
@@ -9019,12 +9021,12 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
           assume PostHeap[self, __iter_index] == Seq#Length(PostHeap[self, list_acc]);
         }
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of |self.list_acc| > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@900.11--900.106) [2641]"}
             HasDirectPerm(PostMask, self, list_acc);
         if (Seq#Length(PostHeap[self, list_acc]) > 0) {
-          
+
           // -- Check definedness of _res == self.list_acc[self.__iter_index - 1]
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@900.11--900.106) [2642]"}
               HasDirectPerm(PostMask, self, list_acc);
@@ -9035,14 +9037,14 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
             assert {:msg "  Contract might not be well-formed. Index self.list_acc[self.__iter_index - 1] into self.list_acc might exceed sequence length. (testsfunctionalverificationexamplescav_example.py.vpr@900.11--900.106) [2645]"}
               PostHeap[self, __iter_index] - 1 < Seq#Length(PostHeap[self, list_acc]);
           assume _res == Seq#Index(PostHeap[self, list_acc], PostHeap[self, __iter_index] - 1);
-          
+
           // -- Check definedness of (_res in self.list_acc)
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@900.11--900.106) [2646]"}
               HasDirectPerm(PostMask, self, list_acc);
           assume Seq#Contains(PostHeap[self, list_acc], _res);
         }
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of |self.list_acc| > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@901.11--901.89) [2647]"}
             HasDirectPerm(PostMask, self, list_acc);
@@ -9050,7 +9052,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
           assume (issubtype((typeof(_res): PyTypeDomainType), (Iterator_arg((typeof(self): PyTypeDomainType), 0): PyTypeDomainType)): bool);
         }
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forall r: Ref :: { (r in self.__previous) } (r in self.__previous) == ((r in old(self.__previous)) || (self.__iter_index > 1 && (r == self.list_acc[self.__iter_index - 2] && _err == null) || self.__iter_index > 0 && (_err != null && r == self.list_acc[self.__iter_index - 1]))))
           if (*) {
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__previous (testsfunctionalverificationexamplescav_example.py.vpr@902.12--902.289) [2648]"}
@@ -9096,7 +9098,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
       perm := 1 / 40;
@@ -9105,7 +9107,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
       assume perm > NoPerm ==> self != null;
       PostMask[self, list_acc] := PostMask[self, list_acc] + perm;
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of self.list_acc == old(self.list_acc)
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@889.11--889.76) [2661]"}
           HasDirectPerm(PostMask, self, list_acc);
@@ -9118,7 +9120,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
       PostMask[self, __iter_index] := PostMask[self, __iter_index] + perm;
       assume state(PostHeap, PostMask);
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of self.__iter_index <= |self.list_acc| + 1
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@891.11--891.51) [2663]"}
           HasDirectPerm(PostMask, self, __iter_index);
@@ -9126,7 +9128,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
           HasDirectPerm(PostMask, self, list_acc);
       assume PostHeap[self, __iter_index] <= Seq#Length(PostHeap[self, list_acc]) + 1;
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of old(self.__iter_index == |self.list_acc|) == (_err != null)
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@892.11--892.70) [2665]"}
           HasDirectPerm(old(Mask), self, __iter_index);
@@ -9140,7 +9142,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
       assume state(PostHeap, PostMask);
       assume state(PostHeap, PostMask);
       if (_err == null) {
-        
+
         // -- Check definedness of self.__iter_index == old(self.__iter_index) + 1
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@894.11--894.75) [2667]"}
             HasDirectPerm(PostMask, self, __iter_index);
@@ -9150,7 +9152,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
       }
       assume state(PostHeap, PostMask);
       if (_err == null) {
-        
+
         // -- Check definedness of self.__iter_index > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@895.11--895.49) [2669]"}
             HasDirectPerm(PostMask, self, __iter_index);
@@ -9158,7 +9160,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
       }
       assume state(PostHeap, PostMask);
       if (_err == null) {
-        
+
         // -- Check definedness of self.__previous == self.list_acc[..self.__iter_index - 1]
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__previous (testsfunctionalverificationexamplescav_example.py.vpr@896.11--896.85) [2670]"}
             HasDirectPerm(PostMask, self, __previous);
@@ -9169,12 +9171,12 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         assume Seq#Equal(PostHeap[self, __previous], Seq#Take(PostHeap[self, list_acc], PostHeap[self, __iter_index] - 1));
       }
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of |self.list_acc| > 0
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@897.11--897.56) [2673]"}
           HasDirectPerm(PostMask, self, list_acc);
       if (Seq#Length(PostHeap[self, list_acc]) > 0) {
-        
+
         // -- Check definedness of self.__iter_index > 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@897.11--897.56) [2674]"}
             HasDirectPerm(PostMask, self, __iter_index);
@@ -9182,7 +9184,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
       }
       assume state(PostHeap, PostMask);
       if (_err != null) {
-        
+
         // -- Check definedness of self.__previous == self.list_acc
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__previous (testsfunctionalverificationexamplescav_example.py.vpr@898.11--898.60) [2675]"}
             HasDirectPerm(PostMask, self, __previous);
@@ -9192,7 +9194,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
       }
       assume state(PostHeap, PostMask);
       if (_err != null) {
-        
+
         // -- Check definedness of self.__iter_index == |self.list_acc|
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@899.11--899.64) [2677]"}
             HasDirectPerm(PostMask, self, __iter_index);
@@ -9201,12 +9203,12 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         assume PostHeap[self, __iter_index] == Seq#Length(PostHeap[self, list_acc]);
       }
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of |self.list_acc| > 0
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@900.11--900.106) [2679]"}
           HasDirectPerm(PostMask, self, list_acc);
       if (Seq#Length(PostHeap[self, list_acc]) > 0) {
-        
+
         // -- Check definedness of _res == self.list_acc[self.__iter_index - 1]
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@900.11--900.106) [2680]"}
             HasDirectPerm(PostMask, self, list_acc);
@@ -9217,14 +9219,14 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
           assert {:msg "  Contract might not be well-formed. Index self.list_acc[self.__iter_index - 1] into self.list_acc might exceed sequence length. (testsfunctionalverificationexamplescav_example.py.vpr@900.11--900.106) [2683]"}
             PostHeap[self, __iter_index] - 1 < Seq#Length(PostHeap[self, list_acc]);
         assume _res == Seq#Index(PostHeap[self, list_acc], PostHeap[self, __iter_index] - 1);
-        
+
         // -- Check definedness of (_res in self.list_acc)
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@900.11--900.106) [2684]"}
             HasDirectPerm(PostMask, self, list_acc);
         assume Seq#Contains(PostHeap[self, list_acc], _res);
       }
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of |self.list_acc| > 0
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@901.11--901.89) [2685]"}
           HasDirectPerm(PostMask, self, list_acc);
@@ -9232,7 +9234,7 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
         assume (issubtype((typeof(_res): PyTypeDomainType), (Iterator_arg((typeof(self): PyTypeDomainType), 0): PyTypeDomainType)): bool);
       }
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of (forall r: Ref :: { (r in self.__previous) } (r in self.__previous) == ((r in old(self.__previous)) || (self.__iter_index > 1 && (r == self.list_acc[self.__iter_index - 2] && _err == null) || self.__iter_index > 0 && (_err != null && r == self.list_acc[self.__iter_index - 1]))))
         if (*) {
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__previous (testsfunctionalverificationexamplescav_example.py.vpr@902.12--902.289) [2686]"}
@@ -9279,12 +9281,12 @@ procedure Iterator___next__(_cthread_149: Ref, _caller_measures_149: (Seq Measur
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: inhale false -- testsfunctionalverificationexamplescav_example.py.vpr@905.3--905.15
     assume false;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of Iterator___next__ might not hold. Fraction 1 / 40 might be negative. (testsfunctionalverificationexamplescav_example.py.vpr@889.11--889.76) [2698]"}
       1 / 40 >= NoPerm;
@@ -9374,24 +9376,24 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
   var _r_17_2: Ref;
   var _r_17_3: Ref;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_150, $allocated];
     assume Heap[self, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_150 != null;
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_150, _cthread_150, 1)
           if (*) {
             // Stop execution
@@ -9416,7 +9418,7 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_150, _cthread_150, 1)
           if (*) {
             // Stop execution
@@ -9426,12 +9428,12 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_150 != null;
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of Measure$check(_caller_measures_150, _cthread_150, 1)
         if (*) {
           // Stop execution
@@ -9456,9 +9458,9 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
       assume state(Heap, Mask);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -9469,11 +9471,11 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_17: Ref [_r_17.MustReleaseBounded] :: Level(_r_17) <= _current_wait_level_150)
           if (*) {
             if (HasDirectPerm(PostMask, _r_17_2, MustReleaseBounded)) {
@@ -9491,7 +9493,7 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
           HasDirectPerm(PostMask, _r_17_1, MustReleaseBounded) ==> Level(PostHeap, _r_17_1) <= _current_wait_level_150
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_17: Ref [_r_17.MustReleaseUnbounded] :: Level(_r_17) <= _current_wait_level_150)
           if (*) {
             if (HasDirectPerm(PostMask, _r_17_3, MustReleaseUnbounded)) {
@@ -9517,14 +9519,14 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
         PostMask[self, __container] := PostMask[self, __container] + perm;
         assume state(PostHeap, PostMask);
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of issubtype(typeof(self.__container), list(list_arg(typeof(self.__container), 0)))
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@917.11--917.134) [2722]"}
             HasDirectPerm(PostMask, self, __container);
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@917.11--917.134) [2723]"}
             HasDirectPerm(PostMask, self, __container);
         if ((issubtype((typeof(PostHeap[self, __container]): PyTypeDomainType), (list((list_arg((typeof(PostHeap[self, __container]): PyTypeDomainType), 0): PyTypeDomainType)): PyTypeDomainType)): bool)) {
-          
+
           // -- Check definedness of acc(self.__container.list_acc, 1 / 20)
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@917.11--917.134) [2724]"}
               HasDirectPerm(PostMask, self, __container);
@@ -9536,7 +9538,7 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
           assume state(PostHeap, PostMask);
         }
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of issubtype(typeof(self.__container), dict(dict_arg(typeof(self.__container), 0), dict_arg(typeof(self.__container), 1)))
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@918.11--918.216) [2726]"}
             HasDirectPerm(PostMask, self, __container);
@@ -9545,7 +9547,7 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@918.11--918.216) [2728]"}
             HasDirectPerm(PostMask, self, __container);
         if ((issubtype((typeof(PostHeap[self, __container]): PyTypeDomainType), (dict((dict_arg((typeof(PostHeap[self, __container]): PyTypeDomainType), 0): PyTypeDomainType), (dict_arg((typeof(PostHeap[self, __container]): PyTypeDomainType), 1): PyTypeDomainType)): PyTypeDomainType)): bool)) {
-          
+
           // -- Check definedness of acc(self.__container.dict_acc, 1 / 20)
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@918.11--918.216) [2729]"}
               HasDirectPerm(PostMask, self, __container);
@@ -9555,7 +9557,7 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
           assume perm > NoPerm ==> PostHeap[self, __container] != null;
           PostMask[PostHeap[self, __container], dict_acc] := PostMask[PostHeap[self, __container], dict_acc] + perm;
           assume state(PostHeap, PostMask);
-          
+
           // -- Check definedness of acc(self.__container.dict_acc2, 1 / 20)
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@918.11--918.216) [2731]"}
               HasDirectPerm(PostMask, self, __container);
@@ -9567,14 +9569,14 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
           assume state(PostHeap, PostMask);
         }
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of issubtype(typeof(self.__container), set(set_arg(typeof(self.__container), 0)))
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@919.11--919.131) [2733]"}
             HasDirectPerm(PostMask, self, __container);
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@919.11--919.131) [2734]"}
             HasDirectPerm(PostMask, self, __container);
         if ((issubtype((typeof(PostHeap[self, __container]): PyTypeDomainType), (set((set_arg((typeof(PostHeap[self, __container]): PyTypeDomainType), 0): PyTypeDomainType)): PyTypeDomainType)): bool)) {
-          
+
           // -- Check definedness of acc(self.__container.set_acc, 1 / 20)
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@919.11--919.131) [2735]"}
               HasDirectPerm(PostMask, self, __container);
@@ -9588,7 +9590,7 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
       perm := 1 / 20;
@@ -9598,14 +9600,14 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
       PostMask[self, __container] := PostMask[self, __container] + perm;
       assume state(PostHeap, PostMask);
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of issubtype(typeof(self.__container), list(list_arg(typeof(self.__container), 0)))
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@917.11--917.134) [2738]"}
           HasDirectPerm(PostMask, self, __container);
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@917.11--917.134) [2739]"}
           HasDirectPerm(PostMask, self, __container);
       if ((issubtype((typeof(PostHeap[self, __container]): PyTypeDomainType), (list((list_arg((typeof(PostHeap[self, __container]): PyTypeDomainType), 0): PyTypeDomainType)): PyTypeDomainType)): bool)) {
-        
+
         // -- Check definedness of acc(self.__container.list_acc, 1 / 20)
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@917.11--917.134) [2740]"}
             HasDirectPerm(PostMask, self, __container);
@@ -9617,7 +9619,7 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
         assume state(PostHeap, PostMask);
       }
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of issubtype(typeof(self.__container), dict(dict_arg(typeof(self.__container), 0), dict_arg(typeof(self.__container), 1)))
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@918.11--918.216) [2742]"}
           HasDirectPerm(PostMask, self, __container);
@@ -9626,7 +9628,7 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@918.11--918.216) [2744]"}
           HasDirectPerm(PostMask, self, __container);
       if ((issubtype((typeof(PostHeap[self, __container]): PyTypeDomainType), (dict((dict_arg((typeof(PostHeap[self, __container]): PyTypeDomainType), 0): PyTypeDomainType), (dict_arg((typeof(PostHeap[self, __container]): PyTypeDomainType), 1): PyTypeDomainType)): PyTypeDomainType)): bool)) {
-        
+
         // -- Check definedness of acc(self.__container.dict_acc, 1 / 20)
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@918.11--918.216) [2745]"}
             HasDirectPerm(PostMask, self, __container);
@@ -9636,7 +9638,7 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
         assume perm > NoPerm ==> PostHeap[self, __container] != null;
         PostMask[PostHeap[self, __container], dict_acc] := PostMask[PostHeap[self, __container], dict_acc] + perm;
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of acc(self.__container.dict_acc2, 1 / 20)
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@918.11--918.216) [2747]"}
             HasDirectPerm(PostMask, self, __container);
@@ -9648,14 +9650,14 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
         assume state(PostHeap, PostMask);
       }
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of issubtype(typeof(self.__container), set(set_arg(typeof(self.__container), 0)))
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@919.11--919.131) [2749]"}
           HasDirectPerm(PostMask, self, __container);
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@919.11--919.131) [2750]"}
           HasDirectPerm(PostMask, self, __container);
       if ((issubtype((typeof(PostHeap[self, __container]): PyTypeDomainType), (set((set_arg((typeof(PostHeap[self, __container]): PyTypeDomainType), 0): PyTypeDomainType)): PyTypeDomainType)): bool)) {
-        
+
         // -- Check definedness of acc(self.__container.set_acc, 1 / 20)
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.__container (testsfunctionalverificationexamplescav_example.py.vpr@919.11--919.131) [2751]"}
             HasDirectPerm(PostMask, self, __container);
@@ -9670,12 +9672,12 @@ procedure Iterator___del__(_cthread_150: Ref, _caller_measures_150: (Seq Measure
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: inhale false -- testsfunctionalverificationexamplescav_example.py.vpr@922.3--922.15
     assume false;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of Iterator___del__ might not hold. Fraction 1 / 20 might be negative. (testsfunctionalverificationexamplescav_example.py.vpr@916.11--916.40) [2753]"}
       1 / 20 >= NoPerm;
@@ -9742,23 +9744,23 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
   var _r_19_3: Ref;
   var perm: Perm;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_8, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_8 != null;
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_8, _cthread_8, 1)
           if (*) {
             // Stop execution
@@ -9769,7 +9771,7 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
         assume (issubtype((typeof(_cthread_8): PyTypeDomainType), Thread_0): bool);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_8, _cthread_8, 1)
           if (*) {
             // Stop execution
@@ -9779,12 +9781,12 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_8 != null;
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of Measure$check(_caller_measures_8, _cthread_8, 1)
         if (*) {
           // Stop execution
@@ -9795,9 +9797,9 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
       assume (issubtype((typeof(_cthread_8): PyTypeDomainType), Thread_0): bool);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -9808,11 +9810,11 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_19: Ref [_r_19.MustReleaseBounded] :: Level(_r_19) <= _current_wait_level_8)
           if (*) {
             if (HasDirectPerm(PostMask, _r_19_2, MustReleaseBounded)) {
@@ -9830,7 +9832,7 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
           HasDirectPerm(PostMask, _r_19_1, MustReleaseBounded) ==> Level(PostHeap, _r_19_1) <= _current_wait_level_8
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_19: Ref [_r_19.MustReleaseUnbounded] :: Level(_r_19) <= _current_wait_level_8)
           if (*) {
             if (HasDirectPerm(PostMask, _r_19_3, MustReleaseUnbounded)) {
@@ -9854,7 +9856,7 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
         PostMask[res, list_acc] := PostMask[res, list_acc] + perm;
         assume state(PostHeap, PostMask);
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of res.list_acc == Seq[Ref]()
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access res.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@932.11--932.37) [2765]"}
             HasDirectPerm(PostMask, res, list_acc);
@@ -9866,7 +9868,7 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
       perm := FullPerm;
@@ -9874,7 +9876,7 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
       PostMask[res, list_acc] := PostMask[res, list_acc] + perm;
       assume state(PostHeap, PostMask);
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of res.list_acc == Seq[Ref]()
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access res.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@932.11--932.37) [2766]"}
           HasDirectPerm(PostMask, res, list_acc);
@@ -9887,12 +9889,12 @@ procedure list___init__(_cthread_8: Ref, _caller_measures_8: (Seq Measure$Domain
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: inhale false -- testsfunctionalverificationexamplescav_example.py.vpr@937.3--937.15
     assume false;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -9925,25 +9927,25 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
   var _r_21_2: Ref;
   var _r_21_3: Ref;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_9, $allocated];
     assume Heap[self, $allocated];
     assume Heap[item, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_9 != null;
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_9, _cthread_9, 1)
           if (*) {
             // Stop execution
@@ -9963,7 +9965,7 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
         assume (issubtype((typeof(item): PyTypeDomainType), (list_arg((typeof(self): PyTypeDomainType), 0): PyTypeDomainType)): bool);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_9, _cthread_9, 1)
           if (*) {
             // Stop execution
@@ -9973,12 +9975,12 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_9 != null;
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of Measure$check(_caller_measures_9, _cthread_9, 1)
         if (*) {
           // Stop execution
@@ -9998,9 +10000,9 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
       assume (issubtype((typeof(item): PyTypeDomainType), (list_arg((typeof(self): PyTypeDomainType), 0): PyTypeDomainType)): bool);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -10011,11 +10013,11 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_21: Ref [_r_21.MustReleaseBounded] :: Level(_r_21) <= _current_wait_level_9)
           if (*) {
             if (HasDirectPerm(PostMask, _r_21_2, MustReleaseBounded)) {
@@ -10033,7 +10035,7 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
           HasDirectPerm(PostMask, _r_21_1, MustReleaseBounded) ==> Level(PostHeap, _r_21_1) <= _current_wait_level_9
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_21: Ref [_r_21.MustReleaseUnbounded] :: Level(_r_21) <= _current_wait_level_9)
           if (*) {
             if (HasDirectPerm(PostMask, _r_21_3, MustReleaseUnbounded)) {
@@ -10057,7 +10059,7 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
         PostMask[self, list_acc] := PostMask[self, list_acc] + perm;
         assume state(PostHeap, PostMask);
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of self.list_acc == old(self.list_acc) ++ Seq(item)
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@950.11--950.59) [2773]"}
             HasDirectPerm(PostMask, self, list_acc);
@@ -10067,7 +10069,7 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
       perm := FullPerm;
@@ -10075,7 +10077,7 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
       PostMask[self, list_acc] := PostMask[self, list_acc] + perm;
       assume state(PostHeap, PostMask);
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of self.list_acc == old(self.list_acc) ++ Seq(item)
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access self.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@950.11--950.59) [2775]"}
           HasDirectPerm(PostMask, self, list_acc);
@@ -10086,12 +10088,12 @@ procedure list_append(_cthread_9: Ref, _caller_measures_9: (Seq Measure$DomainTy
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: inhale false -- testsfunctionalverificationexamplescav_example.py.vpr@953.3--953.15
     assume false;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -10120,24 +10122,24 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
   var _r_23_2: Ref;
   var _r_23_3: Ref;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[_cthread_13, $allocated];
     assume Heap[self, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Do welldefinedness check of the exhale part.
       if (*) {
         assume _cthread_13 != null;
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_13, _cthread_13, 1)
           if (*) {
             // Stop execution
@@ -10157,7 +10159,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of Measure$check(_caller_measures_13, _cthread_13, 1)
           if (*) {
             // Stop execution
@@ -10167,12 +10169,12 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Normally inhale the inhale part.
       assume _cthread_13 != null;
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of Measure$check(_caller_measures_13, _cthread_13, 1)
         if (*) {
           // Stop execution
@@ -10192,9 +10194,9 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
       assume state(Heap, Mask);
       assume state(Heap, Mask);
       assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -10205,11 +10207,11 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_23: Ref [_r_23.MustReleaseBounded] :: Level(_r_23) <= _current_wait_level_13)
           if (*) {
             if (HasDirectPerm(PostMask, _r_23_2, MustReleaseBounded)) {
@@ -10227,7 +10229,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
           HasDirectPerm(PostMask, _r_23_1, MustReleaseBounded) ==> Level(PostHeap, _r_23_1) <= _current_wait_level_13
         );
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of (forperm _r_23: Ref [_r_23.MustReleaseUnbounded] :: Level(_r_23) <= _current_wait_level_13)
           if (*) {
             if (HasDirectPerm(PostMask, _r_23_3, MustReleaseUnbounded)) {
@@ -10262,7 +10264,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
         PostMask[self, list_acc] := PostMask[self, list_acc] + perm;
         assume state(PostHeap, PostMask);
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of _res.list_acc == self.list_acc
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access _res.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@967.11--967.41) [2785]"}
             HasDirectPerm(PostMask, _res, list_acc);
@@ -10274,7 +10276,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
         assume _res != null;
         PostMask[_res, __container] := PostMask[_res, __container] + perm;
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of _res.__container == self
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access _res.__container (testsfunctionalverificationexamplescav_example.py.vpr@968.11--968.67) [2787]"}
             HasDirectPerm(PostMask, _res, __container);
@@ -10284,7 +10286,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
         assume _res != null;
         PostMask[_res, __iter_index] := PostMask[_res, __iter_index] + perm;
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of _res.__iter_index == 0
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access _res.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@969.11--969.66) [2788]"}
             HasDirectPerm(PostMask, _res, __iter_index);
@@ -10294,7 +10296,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
         assume _res != null;
         PostMask[_res, __previous] := PostMask[_res, __previous] + perm;
         assume state(PostHeap, PostMask);
-        
+
         // -- Check definedness of _res.__previous == Seq[Ref]()
           assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access _res.__previous (testsfunctionalverificationexamplescav_example.py.vpr@970.11--970.71) [2789]"}
             HasDirectPerm(PostMask, _res, __previous);
@@ -10304,7 +10306,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
       assume state(PostHeap, PostMask);
       assume _res != self;
@@ -10323,7 +10325,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
       PostMask[self, list_acc] := PostMask[self, list_acc] + perm;
       assume state(PostHeap, PostMask);
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of _res.list_acc == self.list_acc
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access _res.list_acc (testsfunctionalverificationexamplescav_example.py.vpr@967.11--967.41) [2792]"}
           HasDirectPerm(PostMask, _res, list_acc);
@@ -10335,7 +10337,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
       assume _res != null;
       PostMask[_res, __container] := PostMask[_res, __container] + perm;
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of _res.__container == self
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access _res.__container (testsfunctionalverificationexamplescav_example.py.vpr@968.11--968.67) [2794]"}
           HasDirectPerm(PostMask, _res, __container);
@@ -10345,7 +10347,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
       assume _res != null;
       PostMask[_res, __iter_index] := PostMask[_res, __iter_index] + perm;
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of _res.__iter_index == 0
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access _res.__iter_index (testsfunctionalverificationexamplescav_example.py.vpr@969.11--969.66) [2795]"}
           HasDirectPerm(PostMask, _res, __iter_index);
@@ -10355,7 +10357,7 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
       assume _res != null;
       PostMask[_res, __previous] := PostMask[_res, __previous] + perm;
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of _res.__previous == Seq[Ref]()
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access _res.__previous (testsfunctionalverificationexamplescav_example.py.vpr@970.11--970.71) [2796]"}
           HasDirectPerm(PostMask, _res, __previous);
@@ -10366,12 +10368,12 @@ procedure list___iter__(_cthread_13: Ref, _caller_measures_13: (Seq Measure$Doma
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: inhale false -- testsfunctionalverificationexamplescav_example.py.vpr@974.3--974.15
     assume false;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of list___iter__ might not hold. Assertion _res != self might not hold. (testsfunctionalverificationexamplescav_example.py.vpr@964.11--964.23) [2797]"}
       _res != self;

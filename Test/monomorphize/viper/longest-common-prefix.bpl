@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -252,13 +254,13 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
   var loopMask: MaskType;
   var k_9: int;
   var k_2_1: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Check definedness of (forall k$0: Int :: { loc(a, k$0) } 0 <= k$0 && k$0 < len(a) ==> acc(loc(a, k$0).val, write))
       if (*) {
         assume false;
@@ -266,10 +268,10 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, k$0).val might not be injective. (longest-common-prefix.vpr@16.12--16.21) [105]"}
       (forall k$0_1: int, k$0_1_1: int ::
-      
+
       (((k$0_1 != k$0_1_1 && (0 <= k$0_1 && k$0_1 < (len(a_3): int))) && (0 <= k$0_1_1 && k$0_1_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, k$0_1): Ref) != (loc(a_3, k$0_1_1): Ref)
     );
-    
+
     // -- Define Inverse Function
       assume (forall k$0_1: int ::
         { (loc(a_3, k$0_1): Ref) } { (loc(a_3, k$0_1): Ref) }
@@ -279,13 +281,13 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         { invRecv1(o_3) }
         ((0 <= invRecv1(o_3) && invRecv1(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange1(o_3) ==> (loc(a_3, invRecv1(o_3)): Ref) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall k$0_1: int ::
         { (loc(a_3, k$0_1): Ref) } { (loc(a_3, k$0_1): Ref) }
         0 <= k$0_1 && k$0_1 < (len(a_3): int) ==> (loc(a_3, k$0_1): Ref) != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -303,9 +305,9 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
     assume x < (len(a_3): int);
     assume y < (len(a_3): int);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -316,7 +318,7 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Check definedness of (forall k$1: Int :: { loc(a, k$1) } 0 <= k$1 && k$1 < len(a) ==> acc(loc(a, k$1).val, write))
       if (*) {
         assume false;
@@ -324,10 +326,10 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, k$1).val might not be injective. (longest-common-prefix.vpr@18.12--18.21) [106]"}
       (forall k$1_1: int, k$1_1_1: int ::
-      
+
       (((k$1_1 != k$1_1_1 && (0 <= k$1_1 && k$1_1 < (len(a_3): int))) && (0 <= k$1_1_1 && k$1_1_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, k$1_1): Ref) != (loc(a_3, k$1_1_1): Ref)
     );
-    
+
     // -- Define Inverse Function
       assume (forall k$1_1: int ::
         { (loc(a_3, k$1_1): Ref) } { (loc(a_3, k$1_1): Ref) }
@@ -337,13 +339,13 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         { invRecv2(o_3) }
         ((0 <= invRecv2(o_3) && invRecv2(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange2(o_3) ==> (loc(a_3, invRecv2(o_3)): Ref) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall k$1_1: int ::
         { (loc(a_3, k$1_1): Ref) } { (loc(a_3, k$1_1): Ref) }
         0 <= k$1_1 && k$1_1 < (len(a_3): int) ==> (loc(a_3, k$1_1): Ref) != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -360,7 +362,7 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
     assume x + n <= (len(a_3): int);
     assume y + n <= (len(a_3): int);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall k: Int :: { loc(a, k) } x <= k && k < x + n ==> loc(a, k).val == loc(a, y + k - x).val)
       if (*) {
         if (x <= k && k < x + n) {
@@ -377,7 +379,7 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
     );
     assume state(PostHeap, PostMask);
     if (x + n < (len(a_3): int) && y + n < (len(a_3): int)) {
-      
+
       // -- Check definedness of loc(a, x + n).val != loc(a, y + n).val
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access loc(a, x + n).val (longest-common-prefix.vpr@26.12--26.87) [109]"}
           HasDirectPerm(PostMask, (loc(a_3, x + n): Ref), val);
@@ -389,37 +391,37 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: n := 0 -- longest-common-prefix.vpr@28.4--28.10
     n := 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: while (x + n < len(a) && (y + n < len(a) && loc(a, x + n).val == loc(a, y + n).val)) -- longest-common-prefix.vpr@29.4--36.5
-    
+
     // -- Before loop head
-      
+
       // -- Exhale loop invariant before loop
         assert {:msg "  Loop invariant n >= 0 might not hold on entry. Assertion n >= 0 might not hold. (longest-common-prefix.vpr@30.16--30.22) [111]"}
           n >= 0;
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver loc(a, k$2) is injective
           assert {:msg "  Loop invariant (forall k$2: Int :: { loc(a, k$2) } 0 <= k$2 && k$2 < len(a) ==> acc(loc(a, k$2).val, write)) might not hold on entry. Quantified resource loc(a, k$2).val might not be injective. (longest-common-prefix.vpr@31.16--31.25) [112]"}
             (forall k$2: int, k$2_1: int ::
             { neverTriggered4(k$2), neverTriggered4(k$2_1) }
             (((k$2 != k$2_1 && (0 <= k$2 && k$2 < (len(a_3): int))) && (0 <= k$2_1 && k$2_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, k$2): Ref) != (loc(a_3, k$2_1): Ref)
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant (forall k$2: Int :: { loc(a, k$2) } 0 <= k$2 && k$2 < len(a) ==> acc(loc(a, k$2).val, write)) might not hold on entry. There might be insufficient permission to access loc(a, k$2).val (longest-common-prefix.vpr@31.16--31.25) [113]"}
             (forall k$2: int ::
             { (loc(a_3, k$2): Ref) } { (loc(a_3, k$2): Ref) }
             0 <= k$2 && k$2 < (len(a_3): int) ==> Mask[(loc(a_3, k$2): Ref), val] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver loc(a, k$2)
           assume (forall k$2: int ::
             { (loc(a_3, k$2): Ref) } { (loc(a_3, k$2): Ref) }
@@ -429,13 +431,13 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
             { invRecv4(o_3) }
             (0 <= invRecv4(o_3) && invRecv4(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange4(o_3)) ==> (loc(a_3, invRecv4(o_3)): Ref) == o_3
           );
-        
+
         // -- assume permission updates for field val
           assume (forall o_3: Ref ::
             { QPMask[o_3, val] }
             ((0 <= invRecv4(o_3) && invRecv4(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange4(o_3)) ==> (loc(a_3, invRecv4(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv4(o_3) && invRecv4(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange4(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -461,15 +463,15 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         havoc ExhaleHeap;
         assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
         Heap := ExhaleHeap;
-    
+
     // -- Havoc loop written variables (except locals)
       havoc n;
-    
+
     // -- Check definedness of invariant
       if (*) {
         assume n >= 0;
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forall k$2: Int :: { loc(a, k$2) } 0 <= k$2 && k$2 < len(a) ==> acc(loc(a, k$2).val, write))
           if (*) {
             assume false;
@@ -477,10 +479,10 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         havoc QPMask;
         assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, k$2).val might not be injective. (longest-common-prefix.vpr@31.16--31.25) [117]"}
           (forall k$2_2: int, k$2_2_1: int ::
-          
+
           (((k$2_2 != k$2_2_1 && (0 <= k$2_2 && k$2_2 < (len(a_3): int))) && (0 <= k$2_2_1 && k$2_2_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, k$2_2): Ref) != (loc(a_3, k$2_2_1): Ref)
         );
-        
+
         // -- Define Inverse Function
           assume (forall k$2_2: int ::
             { (loc(a_3, k$2_2): Ref) } { (loc(a_3, k$2_2): Ref) }
@@ -490,13 +492,13 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
             { invRecv5(o_3) }
             ((0 <= invRecv5(o_3) && invRecv5(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange5(o_3) ==> (loc(a_3, invRecv5(o_3)): Ref) == o_3
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall k$2_2: int ::
             { (loc(a_3, k$2_2): Ref) } { (loc(a_3, k$2_2): Ref) }
             0 <= k$2_2 && k$2_2 < (len(a_3): int) ==> (loc(a_3, k$2_2): Ref) != null
           );
-        
+
         // -- Define permissions
           assume (forall o_3: Ref ::
             { QPMask[o_3, val] }
@@ -512,7 +514,7 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         assume x + n <= (len(a_3): int);
         assume y + n <= (len(a_3): int);
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forall k: Int :: { loc(a, k) } x <= k && k < x + n ==> loc(a, k).val == loc(a, y + k - x).val)
           if (*) {
             if (x <= k_2 && k_2 < x + n) {
@@ -530,7 +532,7 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Check the loop body
       if (*) {
         // Reset state
@@ -543,10 +545,10 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         havoc QPMask;
         assert {:msg "  While statement might fail. Quantified resource loc(a, k$2).val might not be injective. (longest-common-prefix.vpr@31.16--31.25) [120]"}
           (forall k$2_3: int, k$2_3_1: int ::
-          
+
           (((k$2_3 != k$2_3_1 && (0 <= k$2_3 && k$2_3 < (len(a_3): int))) && (0 <= k$2_3_1 && k$2_3_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, k$2_3): Ref) != (loc(a_3, k$2_3_1): Ref)
         );
-        
+
         // -- Define Inverse Function
           assume (forall k$2_3: int ::
             { (loc(a_3, k$2_3): Ref) } { (loc(a_3, k$2_3): Ref) }
@@ -556,13 +558,13 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
             { invRecv6(o_3) }
             ((0 <= invRecv6(o_3) && invRecv6(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange6(o_3) ==> (loc(a_3, invRecv6(o_3)): Ref) == o_3
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall k$2_3: int ::
             { (loc(a_3, k$2_3): Ref) } { (loc(a_3, k$2_3): Ref) }
             0 <= k$2_3 && k$2_3 < (len(a_3): int) ==> (loc(a_3, k$2_3): Ref) != null
           );
-        
+
         // -- Define permissions
           assume (forall o_3: Ref ::
             { QPMask[o_3, val] }
@@ -582,7 +584,7 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         );
         assume state(Heap, Mask);
         // Check and assume guard
-        
+
         // -- Check definedness of x + n < len(a) && (y + n < len(a) && loc(a, x + n).val == loc(a, y + n).val)
           if (x + n < (len(a_3): int)) {
             if (y + n < (len(a_3): int)) {
@@ -594,9 +596,9 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
           }
         assume x + n < (len(a_3): int) && (y + n < (len(a_3): int) && Heap[(loc(a_3, x + n): Ref), val] == Heap[(loc(a_3, y + n): Ref), val]);
         assume state(Heap, Mask);
-        
+
         // -- Translate loop body
-          
+
           // -- Translating statement: n := n + 1 -- longest-common-prefix.vpr@35.6--35.16
             n := n + 1;
             assume state(Heap, Mask);
@@ -604,24 +606,24 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         assert {:msg "  Loop invariant n >= 0 might not be preserved. Assertion n >= 0 might not hold. (longest-common-prefix.vpr@30.16--30.22) [123]"}
           n >= 0;
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver loc(a, k$2) is injective
           assert {:msg "  Loop invariant (forall k$2: Int :: { loc(a, k$2) } 0 <= k$2 && k$2 < len(a) ==> acc(loc(a, k$2).val, write)) might not be preserved. Quantified resource loc(a, k$2).val might not be injective. (longest-common-prefix.vpr@31.16--31.25) [124]"}
             (forall k$2_4: int, k$2_4_1: int ::
             { neverTriggered7(k$2_4), neverTriggered7(k$2_4_1) }
             (((k$2_4 != k$2_4_1 && (0 <= k$2_4 && k$2_4 < (len(a_3): int))) && (0 <= k$2_4_1 && k$2_4_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, k$2_4): Ref) != (loc(a_3, k$2_4_1): Ref)
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant (forall k$2: Int :: { loc(a, k$2) } 0 <= k$2 && k$2 < len(a) ==> acc(loc(a, k$2).val, write)) might not be preserved. There might be insufficient permission to access loc(a, k$2).val (longest-common-prefix.vpr@31.16--31.25) [125]"}
             (forall k$2_4: int ::
             { (loc(a_3, k$2_4): Ref) } { (loc(a_3, k$2_4): Ref) }
             0 <= k$2_4 && k$2_4 < (len(a_3): int) ==> Mask[(loc(a_3, k$2_4): Ref), val] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver loc(a, k$2)
           assume (forall k$2_4: int ::
             { (loc(a_3, k$2_4): Ref) } { (loc(a_3, k$2_4): Ref) }
@@ -631,13 +633,13 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
             { invRecv7(o_3) }
             (0 <= invRecv7(o_3) && invRecv7(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange7(o_3)) ==> (loc(a_3, invRecv7(o_3)): Ref) == o_3
           );
-        
+
         // -- assume permission updates for field val
           assume (forall o_3: Ref ::
             { QPMask[o_3, val] }
             ((0 <= invRecv7(o_3) && invRecv7(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange7(o_3)) ==> (loc(a_3, invRecv7(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv7(o_3) && invRecv7(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange7(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -666,7 +668,7 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         // Terminate execution
         assume false;
       }
-    
+
     // -- Inhale loop invariant after loop, and assume guard
       assume !(x + n < (len(a_3): int) && (y + n < (len(a_3): int) && Heap[(loc(a_3, x + n): Ref), val] == Heap[(loc(a_3, y + n): Ref), val]));
       assume state(Heap, Mask);
@@ -674,10 +676,10 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
       havoc QPMask;
       assert {:msg "  While statement might fail. Quantified resource loc(a, k$2).val might not be injective. (longest-common-prefix.vpr@31.16--31.25) [129]"}
         (forall k$2_5: int, k$2_5_1: int ::
-        
+
         (((k$2_5 != k$2_5_1 && (0 <= k$2_5 && k$2_5 < (len(a_3): int))) && (0 <= k$2_5_1 && k$2_5_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, k$2_5): Ref) != (loc(a_3, k$2_5_1): Ref)
       );
-      
+
       // -- Define Inverse Function
         assume (forall k$2_5: int ::
           { (loc(a_3, k$2_5): Ref) } { (loc(a_3, k$2_5): Ref) }
@@ -687,13 +689,13 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
           { invRecv8(o_3) }
           ((0 <= invRecv8(o_3) && invRecv8(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange8(o_3) ==> (loc(a_3, invRecv8(o_3)): Ref) == o_3
         );
-      
+
       // -- Assume set of fields is nonNull
         assume (forall k$2_5: int ::
           { (loc(a_3, k$2_5): Ref) } { (loc(a_3, k$2_5): Ref) }
           0 <= k$2_5 && k$2_5 < (len(a_3): int) ==> (loc(a_3, k$2_5): Ref) != null
         );
-      
+
       // -- Define permissions
         assume (forall o_3: Ref ::
           { QPMask[o_3, val] }
@@ -713,27 +715,27 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
       );
       assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
-      
-    
+
+
     // -- check if receiver loc(a, k$1) is injective
       assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, k$1).val might not be injective. (longest-common-prefix.vpr@18.12--18.21) [130]"}
         (forall k$1_2: int, k$1_2_1: int ::
         { neverTriggered3(k$1_2), neverTriggered3(k$1_2_1) }
         (((k$1_2 != k$1_2_1 && (0 <= k$1_2 && k$1_2 < (len(a_3): int))) && (0 <= k$1_2_1 && k$1_2_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, k$1_2): Ref) != (loc(a_3, k$1_2_1): Ref)
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Postcondition of lcp might not hold. There might be insufficient permission to access loc(a, k$1).val (longest-common-prefix.vpr@18.12--18.21) [131]"}
         (forall k$1_2: int ::
         { (loc(a_3, k$1_2): Ref) } { (loc(a_3, k$1_2): Ref) }
         0 <= k$1_2 && k$1_2 < (len(a_3): int) ==> Mask[(loc(a_3, k$1_2): Ref), val] >= FullPerm
       );
-    
+
     // -- assumptions for inverse of receiver loc(a, k$1)
       assume (forall k$1_2: int ::
         { (loc(a_3, k$1_2): Ref) } { (loc(a_3, k$1_2): Ref) }
@@ -743,13 +745,13 @@ procedure lcp(a_3: IArrayDomainType, x: int, y: int) returns (n: int)
         { invRecv3(o_3) }
         (0 <= invRecv3(o_3) && invRecv3(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange3(o_3)) ==> (loc(a_3, invRecv3(o_3)): Ref) == o_3
       );
-    
+
     // -- assume permission updates for field val
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
         ((0 <= invRecv3(o_3) && invRecv3(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange3(o_3)) ==> (loc(a_3, invRecv3(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv3(o_3) && invRecv3(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange3(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
       );
-    
+
     // -- assume permission updates for independent locations
       assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
         { QPMask[o_3, f_5] }

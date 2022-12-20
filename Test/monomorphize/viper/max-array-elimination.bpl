@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -266,13 +268,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
   var j$4_5: int;
   var j$1_2: int;
   var j$2_2: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Check definedness of (forall j: Int :: { loc(a, j) } 0 <= j && j < len(a) ==> acc(loc(a, j).val, write))
       if (*) {
         assume false;
@@ -280,10 +282,10 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, j).val might not be injective. (max-array-elimination.vpr@13.12--13.21) [157]"}
       (forall j_1: int, j_1_1: int ::
-      
+
       (((j_1 != j_1_1 && (0 <= j_1 && j_1 < (len(a_3): int))) && (0 <= j_1_1 && j_1_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j_1): Ref) != (loc(a_3, j_1_1): Ref)
     );
-    
+
     // -- Define Inverse Function
       assume (forall j_1: int ::
         { (loc(a_3, j_1): Ref) } { (loc(a_3, j_1): Ref) }
@@ -293,13 +295,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
         { invRecv1(o_3) }
         ((0 <= invRecv1(o_3) && invRecv1(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange1(o_3) ==> (loc(a_3, invRecv1(o_3)): Ref) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall j_1: int ::
         { (loc(a_3, j_1): Ref) } { (loc(a_3, j_1): Ref) }
         0 <= j_1 && j_1 < (len(a_3): int) ==> (loc(a_3, j_1): Ref) != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -312,9 +314,9 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
     Mask := QPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -325,7 +327,7 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Check definedness of (forall j$0: Int :: { loc(a, j$0) } 0 <= j$0 && j$0 < len(a) ==> acc(loc(a, j$0).val, write))
       if (*) {
         assume false;
@@ -333,10 +335,10 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, j$0).val might not be injective. (max-array-elimination.vpr@14.12--14.37) [158]"}
       (forall j$0_1: int, j$0_1_1: int ::
-      
+
       (((j$0_1 != j$0_1_1 && (0 <= j$0_1 && j$0_1 < (len(a_3): int))) && (0 <= j$0_1_1 && j$0_1_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$0_1): Ref) != (loc(a_3, j$0_1_1): Ref)
     );
-    
+
     // -- Define Inverse Function
       assume (forall j$0_1: int ::
         { (loc(a_3, j$0_1): Ref) } { (loc(a_3, j$0_1): Ref) }
@@ -346,13 +348,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
         { invRecv2(o_3) }
         ((0 <= invRecv2(o_3) && invRecv2(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange2(o_3) ==> (loc(a_3, invRecv2(o_3)): Ref) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall j$0_1: int ::
         { (loc(a_3, j$0_1): Ref) } { (loc(a_3, j$0_1): Ref) }
         0 <= j$0_1 && j$0_1 < (len(a_3): int) ==> (loc(a_3, j$0_1): Ref) != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -364,7 +366,7 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
       );
     PostMask := QPMask;
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall j$1: Int :: { loc(a, j$1) } 0 <= j$1 && j$1 < len(a) ==> loc(a, j$1).val == old(loc(a, j$1).val))
       if (*) {
         if (0 <= j$1 && j$1 < (len(a_3): int)) {
@@ -387,7 +389,7 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
       assume x < (len(a_3): int);
     }
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall j$2: Int :: { loc(a, j$2) } 0 <= j$2 && j$2 < len(a) ==> loc(a, j$2).val <= loc(a, x).val)
       if (*) {
         if (0 <= j$2 && j$2 < (len(a_3): int)) {
@@ -406,47 +408,47 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: if (len(a) == 0) -- max-array-elimination.vpr@18.3--41.4
     if ((len(a_3): int) == 0) {
-      
+
       // -- Translating statement: x := -1 -- max-array-elimination.vpr@19.5--19.12
         x := -1;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: x := 0 -- max-array-elimination.vpr@22.5--22.11
         x := 0;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: y := len(a) - 1 -- max-array-elimination.vpr@23.5--23.20
         y := (len(a_3): int) - 1;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: while (x != y) -- max-array-elimination.vpr@25.5--40.6
-        
+
         // -- Before loop head
-          
+
           // -- Exhale loop invariant before loop
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver loc(a, j$3) is injective
               assert {:msg "  Loop invariant (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write)) && (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val)) might not hold on entry. Quantified resource loc(a, j$3).val might not be injective. (max-array-elimination.vpr@26.17--26.42) [163]"}
                 (forall j$3: int, j$3_1: int ::
                 { neverTriggered4(j$3), neverTriggered4(j$3_1) }
                 (((j$3 != j$3_1 && (0 <= j$3 && j$3 < (len(a_3): int))) && (0 <= j$3_1 && j$3_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3): Ref) != (loc(a_3, j$3_1): Ref)
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write)) && (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val)) might not hold on entry. There might be insufficient permission to access loc(a, j$3).val (max-array-elimination.vpr@26.17--26.42) [164]"}
                 (forall j$3: int ::
                 { (loc(a_3, j$3): Ref) } { (loc(a_3, j$3): Ref) }
                 0 <= j$3 && j$3 < (len(a_3): int) ==> Mask[(loc(a_3, j$3): Ref), val] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver loc(a, j$3)
               assume (forall j$3: int ::
                 { (loc(a_3, j$3): Ref) } { (loc(a_3, j$3): Ref) }
@@ -456,13 +458,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
                 { invRecv4(o_3) }
                 (0 <= invRecv4(o_3) && invRecv4(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange4(o_3)) ==> (loc(a_3, invRecv4(o_3)): Ref) == o_3
               );
-            
+
             // -- assume permission updates for field val
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
                 ((0 <= invRecv4(o_3) && invRecv4(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange4(o_3)) ==> (loc(a_3, invRecv4(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv4(o_3) && invRecv4(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange4(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -498,13 +500,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
             havoc ExhaleHeap;
             assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
             Heap := ExhaleHeap;
-        
+
         // -- Havoc loop written variables (except locals)
           havoc y, x;
-        
+
         // -- Check definedness of invariant
           if (*) {
-            
+
             // -- Check definedness of (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write))
               if (*) {
                 assume false;
@@ -512,10 +514,10 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
             havoc QPMask;
             assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, j$3).val might not be injective. (max-array-elimination.vpr@26.17--26.42) [170]"}
               (forall j$3_2: int, j$3_2_1: int ::
-              
+
               (((j$3_2 != j$3_2_1 && (0 <= j$3_2 && j$3_2 < (len(a_3): int))) && (0 <= j$3_2_1 && j$3_2_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3_2): Ref) != (loc(a_3, j$3_2_1): Ref)
             );
-            
+
             // -- Define Inverse Function
               assume (forall j$3_2: int ::
                 { (loc(a_3, j$3_2): Ref) } { (loc(a_3, j$3_2): Ref) }
@@ -525,13 +527,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
                 { invRecv5(o_3) }
                 ((0 <= invRecv5(o_3) && invRecv5(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange5(o_3) ==> (loc(a_3, invRecv5(o_3)): Ref) == o_3
               );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall j$3_2: int ::
                 { (loc(a_3, j$3_2): Ref) } { (loc(a_3, j$3_2): Ref) }
                 0 <= j$3_2 && j$3_2 < (len(a_3): int) ==> (loc(a_3, j$3_2): Ref) != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
@@ -543,7 +545,7 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
               );
             Mask := QPMask;
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val))
               if (*) {
                 if (0 <= j$4_1 && j$4_1 < (len(a_3): int)) {
@@ -563,7 +565,7 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
             assume x <= y;
             assume y < (len(a_3): int);
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall i: Int :: { loc(a, i) } 0 <= i && i < x || y < i && i < len(a) ==> loc(a, i).val < loc(a, x).val) || (forall i: Int :: { loc(a, i) } 0 <= i && i < x || y < i && i < len(a) ==> loc(a, i).val <= loc(a, y).val)
               if (*) {
                 if ((0 <= i_2 && i_2 < x) || (y < i_2 && i_2 < (len(a_3): int))) {
@@ -598,7 +600,7 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
             assume state(Heap, Mask);
             assume false;
           }
-        
+
         // -- Check the loop body
           if (*) {
             // Reset state
@@ -610,10 +612,10 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
             havoc QPMask;
             assert {:msg "  While statement might fail. Quantified resource loc(a, j$3).val might not be injective. (max-array-elimination.vpr@26.17--26.42) [177]"}
               (forall j$3_3: int, j$3_3_1: int ::
-              
+
               (((j$3_3 != j$3_3_1 && (0 <= j$3_3 && j$3_3 < (len(a_3): int))) && (0 <= j$3_3_1 && j$3_3_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3_3): Ref) != (loc(a_3, j$3_3_1): Ref)
             );
-            
+
             // -- Define Inverse Function
               assume (forall j$3_3: int ::
                 { (loc(a_3, j$3_3): Ref) } { (loc(a_3, j$3_3): Ref) }
@@ -623,13 +625,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
                 { invRecv6(o_3) }
                 ((0 <= invRecv6(o_3) && invRecv6(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange6(o_3) ==> (loc(a_3, invRecv6(o_3)): Ref) == o_3
               );
-            
+
             // -- Assume set of fields is nonNull
               assume (forall j$3_3: int ::
                 { (loc(a_3, j$3_3): Ref) } { (loc(a_3, j$3_3): Ref) }
                 0 <= j$3_3 && j$3_3 < (len(a_3): int) ==> (loc(a_3, j$3_3): Ref) != null
               );
-            
+
             // -- Define permissions
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
@@ -659,23 +661,23 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
             // Check and assume guard
             assume x != y;
             assume state(Heap, Mask);
-            
+
             // -- Translate loop body
-              
+
               // -- Translating statement: if (loc(a, x).val <= loc(a, y).val) -- max-array-elimination.vpr@35.7--39.8
-                
+
                 // -- Check definedness of loc(a, x).val <= loc(a, y).val
                   assert {:msg "  Conditional statement might fail. There might be insufficient permission to access loc(a, x).val (max-array-elimination.vpr@35.11--35.41) [178]"}
                     HasDirectPerm(Mask, (loc(a_3, x): Ref), val);
                   assert {:msg "  Conditional statement might fail. There might be insufficient permission to access loc(a, y).val (max-array-elimination.vpr@35.11--35.41) [179]"}
                     HasDirectPerm(Mask, (loc(a_3, y): Ref), val);
                 if (Heap[(loc(a_3, x): Ref), val] <= Heap[(loc(a_3, y): Ref), val]) {
-                  
+
                   // -- Translating statement: x := x + 1 -- max-array-elimination.vpr@36.9--36.19
                     x := x + 1;
                     assume state(Heap, Mask);
                 } else {
-                  
+
                   // -- Translating statement: y := y - 1 -- max-array-elimination.vpr@38.9--38.19
                     y := y - 1;
                     assume state(Heap, Mask);
@@ -683,24 +685,24 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
                 assume state(Heap, Mask);
             // Exhale invariant
             havoc QPMask;
-            
+
             // -- check that the permission amount is positive
-              
-            
+
+
             // -- check if receiver loc(a, j$3) is injective
               assert {:msg "  Loop invariant (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write)) && (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val)) might not be preserved. Quantified resource loc(a, j$3).val might not be injective. (max-array-elimination.vpr@26.17--26.42) [180]"}
                 (forall j$3_4: int, j$3_4_1: int ::
                 { neverTriggered7(j$3_4), neverTriggered7(j$3_4_1) }
                 (((j$3_4 != j$3_4_1 && (0 <= j$3_4 && j$3_4 < (len(a_3): int))) && (0 <= j$3_4_1 && j$3_4_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3_4): Ref) != (loc(a_3, j$3_4_1): Ref)
               );
-            
+
             // -- check if sufficient permission is held
               assert {:msg "  Loop invariant (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write)) && (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val)) might not be preserved. There might be insufficient permission to access loc(a, j$3).val (max-array-elimination.vpr@26.17--26.42) [181]"}
                 (forall j$3_4: int ::
                 { (loc(a_3, j$3_4): Ref) } { (loc(a_3, j$3_4): Ref) }
                 0 <= j$3_4 && j$3_4 < (len(a_3): int) ==> Mask[(loc(a_3, j$3_4): Ref), val] >= FullPerm
               );
-            
+
             // -- assumptions for inverse of receiver loc(a, j$3)
               assume (forall j$3_4: int ::
                 { (loc(a_3, j$3_4): Ref) } { (loc(a_3, j$3_4): Ref) }
@@ -710,13 +712,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
                 { invRecv7(o_3) }
                 (0 <= invRecv7(o_3) && invRecv7(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange7(o_3)) ==> (loc(a_3, invRecv7(o_3)): Ref) == o_3
               );
-            
+
             // -- assume permission updates for field val
               assume (forall o_3: Ref ::
                 { QPMask[o_3, val] }
                 ((0 <= invRecv7(o_3) && invRecv7(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange7(o_3)) ==> (loc(a_3, invRecv7(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv7(o_3) && invRecv7(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange7(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
               );
-            
+
             // -- assume permission updates for independent locations
               assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
                 { QPMask[o_3, f_5] }
@@ -755,17 +757,17 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
             // Terminate execution
             assume false;
           }
-        
+
         // -- Inhale loop invariant after loop, and assume guard
           assume !(x != y);
           assume state(Heap, Mask);
           havoc QPMask;
           assert {:msg "  While statement might fail. Quantified resource loc(a, j$3).val might not be injective. (max-array-elimination.vpr@26.17--26.42) [187]"}
             (forall j$3_5: int, j$3_5_1: int ::
-            
+
             (((j$3_5 != j$3_5_1 && (0 <= j$3_5 && j$3_5 < (len(a_3): int))) && (0 <= j$3_5_1 && j$3_5_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3_5): Ref) != (loc(a_3, j$3_5_1): Ref)
           );
-          
+
           // -- Define Inverse Function
             assume (forall j$3_5: int ::
               { (loc(a_3, j$3_5): Ref) } { (loc(a_3, j$3_5): Ref) }
@@ -775,13 +777,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
               { invRecv8(o_3) }
               ((0 <= invRecv8(o_3) && invRecv8(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange8(o_3) ==> (loc(a_3, invRecv8(o_3)): Ref) == o_3
             );
-          
+
           // -- Assume set of fields is nonNull
             assume (forall j$3_5: int ::
               { (loc(a_3, j$3_5): Ref) } { (loc(a_3, j$3_5): Ref) }
               0 <= j$3_5 && j$3_5 < (len(a_3): int) ==> (loc(a_3, j$3_5): Ref) != null
             );
-          
+
           // -- Define permissions
             assume (forall o_3: Ref ::
               { QPMask[o_3, val] }
@@ -811,27 +813,27 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
-      
-    
+
+
     // -- check if receiver loc(a, j$0) is injective
       assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, j$0).val might not be injective. (max-array-elimination.vpr@14.12--14.21) [188]"}
         (forall j$0_2: int, j$0_2_1: int ::
         { neverTriggered3(j$0_2), neverTriggered3(j$0_2_1) }
         (((j$0_2 != j$0_2_1 && (0 <= j$0_2 && j$0_2 < (len(a_3): int))) && (0 <= j$0_2_1 && j$0_2_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$0_2): Ref) != (loc(a_3, j$0_2_1): Ref)
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Postcondition of max might not hold. There might be insufficient permission to access loc(a, j$0).val (max-array-elimination.vpr@14.12--14.37) [189]"}
         (forall j$0_2: int ::
         { (loc(a_3, j$0_2): Ref) } { (loc(a_3, j$0_2): Ref) }
         0 <= j$0_2 && j$0_2 < (len(a_3): int) ==> Mask[(loc(a_3, j$0_2): Ref), val] >= FullPerm
       );
-    
+
     // -- assumptions for inverse of receiver loc(a, j$0)
       assume (forall j$0_2: int ::
         { (loc(a_3, j$0_2): Ref) } { (loc(a_3, j$0_2): Ref) }
@@ -841,13 +843,13 @@ procedure vmax(a_3: IArrayDomainType) returns (x: int)
         { invRecv3(o_3) }
         (0 <= invRecv3(o_3) && invRecv3(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange3(o_3)) ==> (loc(a_3, invRecv3(o_3)): Ref) == o_3
       );
-    
+
     // -- assume permission updates for field val
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
         ((0 <= invRecv3(o_3) && invRecv3(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange3(o_3)) ==> (loc(a_3, invRecv3(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv3(o_3) && invRecv3(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange3(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
       );
-    
+
     // -- assume permission updates for independent locations
       assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
         { QPMask[o_3, f_5] }
@@ -905,26 +907,26 @@ procedure client() returns ()
   var PreCallMask: MaskType;
   var x: int;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: inhale len(a) == 3 -- max-array-elimination.vpr@46.3--46.21
     assume (len(a_3): int) == 3;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall j: Int ::
   //     { loc(a, j) }
   //     0 <= j && j < len(a) ==> acc(loc(a, j).val, write)) -- max-array-elimination.vpr@47.3--47.19
-    
+
     // -- Check definedness of (forall j: Int :: { loc(a, j) } 0 <= j && j < len(a) ==> acc(loc(a, j).val, write))
       if (*) {
         assume false;
@@ -932,10 +934,10 @@ procedure client() returns ()
     havoc QPMask;
     assert {:msg "  Inhale might fail. Quantified resource loc(a, j).val might not be injective. (max-array-elimination.vpr@47.10--47.19) [195]"}
       (forall j_1: int, j_1_1: int ::
-      
+
       (((j_1 != j_1_1 && (0 <= j_1 && j_1 < (len(a_3): int))) && (0 <= j_1_1 && j_1_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j_1): Ref) != (loc(a_3, j_1_1): Ref)
     );
-    
+
     // -- Define Inverse Function
       assume (forall j_1: int ::
         { (loc(a_3, j_1): Ref) } { (loc(a_3, j_1): Ref) }
@@ -945,13 +947,13 @@ procedure client() returns ()
         { invRecv9(o_3) }
         ((0 <= invRecv9(o_3) && invRecv9(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange9(o_3) ==> (loc(a_3, invRecv9(o_3)): Ref) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall j_1: int ::
         { (loc(a_3, j_1): Ref) } { (loc(a_3, j_1): Ref) }
         0 <= j_1 && j_1 < (len(a_3): int) ==> (loc(a_3, j_1): Ref) != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -965,11 +967,11 @@ procedure client() returns ()
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall i: Int ::
   //     { loc(a, i) }
   //     0 <= i && i < len(a) ==> loc(a, i).val == i) -- max-array-elimination.vpr@48.3--48.70
-    
+
     // -- Check definedness of (forall i: Int :: { loc(a, i) } 0 <= i && i < len(a) ==> loc(a, i).val == i)
       if (*) {
         if (0 <= i_13 && i_13 < (len(a_3): int)) {
@@ -984,32 +986,32 @@ procedure client() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: x := max(a) -- max-array-elimination.vpr@51.3--51.14
     PreCallHeap := Heap;
     PreCallMask := Mask;
     havoc x;
-    
+
     // -- Exhaling precondition
       havoc QPMask;
-      
+
       // -- check that the permission amount is positive
-        
-      
+
+
       // -- check if receiver loc(a, j) is injective
         assert {:msg "  The precondition of method max might not hold. Quantified resource loc(a, j).val might not be injective. (max-array-elimination.vpr@51.3--51.14) [197]"}
           (forall j_2: int, j_2_1: int ::
           { neverTriggered10(j_2), neverTriggered10(j_2_1) }
           (((j_2 != j_2_1 && (0 <= j_2 && j_2 < (len(a_3): int))) && (0 <= j_2_1 && j_2_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j_2): Ref) != (loc(a_3, j_2_1): Ref)
         );
-      
+
       // -- check if sufficient permission is held
         assert {:msg "  The precondition of method max might not hold. There might be insufficient permission to access loc(a, j).val (max-array-elimination.vpr@51.3--51.14) [198]"}
           (forall j_2: int ::
           { (loc(a_3, j_2): Ref) } { (loc(a_3, j_2): Ref) }
           0 <= j_2 && j_2 < (len(a_3): int) ==> Mask[(loc(a_3, j_2): Ref), val] >= FullPerm
         );
-      
+
       // -- assumptions for inverse of receiver loc(a, j)
         assume (forall j_2: int ::
           { (loc(a_3, j_2): Ref) } { (loc(a_3, j_2): Ref) }
@@ -1019,13 +1021,13 @@ procedure client() returns ()
           { invRecv10(o_3) }
           (0 <= invRecv10(o_3) && invRecv10(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange10(o_3)) ==> (loc(a_3, invRecv10(o_3)): Ref) == o_3
         );
-      
+
       // -- assume permission updates for field val
         assume (forall o_3: Ref ::
           { QPMask[o_3, val] }
           ((0 <= invRecv10(o_3) && invRecv10(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange10(o_3)) ==> (loc(a_3, invRecv10(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv10(o_3) && invRecv10(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange10(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
         );
-      
+
       // -- assume permission updates for independent locations
         assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
           { QPMask[o_3, f_5] }
@@ -1036,15 +1038,15 @@ procedure client() returns ()
       havoc ExhaleHeap;
       assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
       Heap := ExhaleHeap;
-    
+
     // -- Inhaling postcondition
       havoc QPMask;
       assert {:msg "  Method call might fail. Quantified resource loc(a, j$0).val might not be injective. (max-array-elimination.vpr@51.3--51.14) [199]"}
         (forall j$0: int, j$0_3: int ::
-        
+
         (((j$0 != j$0_3 && (0 <= j$0 && j$0 < (len(a_3): int))) && (0 <= j$0_3 && j$0_3 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$0): Ref) != (loc(a_3, j$0_3): Ref)
       );
-      
+
       // -- Define Inverse Function
         assume (forall j$0: int ::
           { (loc(a_3, j$0): Ref) } { (loc(a_3, j$0): Ref) }
@@ -1054,13 +1056,13 @@ procedure client() returns ()
           { invRecv11(o_3) }
           ((0 <= invRecv11(o_3) && invRecv11(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange11(o_3) ==> (loc(a_3, invRecv11(o_3)): Ref) == o_3
         );
-      
+
       // -- Assume set of fields is nonNull
         assume (forall j$0: int ::
           { (loc(a_3, j$0): Ref) } { (loc(a_3, j$0): Ref) }
           0 <= j$0 && j$0 < (len(a_3): int) ==> (loc(a_3, j$0): Ref) != null
         );
-      
+
       // -- Define permissions
         assume (forall o_3: Ref ::
           { QPMask[o_3, val] }
@@ -1088,32 +1090,32 @@ procedure client() returns ()
       );
       assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert loc(a, 0).val <= x -- max-array-elimination.vpr@53.3--53.28
-    
+
     // -- Check definedness of loc(a, 0).val <= x
       assert {:msg "  Assert might fail. There might be insufficient permission to access loc(a, 0).val (max-array-elimination.vpr@53.10--53.28) [200]"}
         HasDirectPerm(Mask, (loc(a_3, 0): Ref), val);
     assert {:msg "  Assert might fail. Assertion loc(a, 0).val <= x might not hold. (max-array-elimination.vpr@53.10--53.28) [201]"}
       Heap[(loc(a_3, 0): Ref), val] <= x;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert x == loc(a, len(a) - 1).val -- max-array-elimination.vpr@55.3--55.37
-    
+
     // -- Check definedness of x == loc(a, len(a) - 1).val
       assert {:msg "  Assert might fail. There might be insufficient permission to access loc(a, len(a) - 1).val (max-array-elimination.vpr@55.10--55.37) [202]"}
         HasDirectPerm(Mask, (loc(a_3, (len(a_3): int) - 1): Ref), val);
     assert {:msg "  Assert might fail. Assertion x == loc(a, len(a) - 1).val might not hold. (max-array-elimination.vpr@55.10--55.37) [203]"}
       x == Heap[(loc(a_3, (len(a_3): int) - 1): Ref), val];
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert x == 2 -- max-array-elimination.vpr@58.3--58.16
     assert {:msg "  Assert might fail. Assertion x == 2 might not hold. (max-array-elimination.vpr@58.10--58.16) [204]"}
       x == 2;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert loc(a, 1).val < x -- max-array-elimination.vpr@60.3--60.27
-    
+
     // -- Check definedness of loc(a, 1).val < x
       assert {:msg "  Assert might fail. There might be insufficient permission to access loc(a, 1).val (max-array-elimination.vpr@60.10--60.27) [205]"}
         HasDirectPerm(Mask, (loc(a_3, 1): Ref), val);

@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -1488,28 +1490,28 @@ procedure $range_sum#definedness($x: int, $y: int) returns (Result: int)
   var $y_ge_0_1: bool;
   var $x_exclusive_1: int;
   var $y_exclusive_1: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 0;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume $x <= $y;
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of (let $x_ge_0 == ($x >= 0) in (let $y_ge_0 == ($y >= 0) in (let $x_exclusive == (($x_ge_0 ? ($x - 1) * $x / 2 : (-$x - 1) * -$x / 2)) in (let $y_exclusive == (($y_ge_0 ? ($y - 1) * $y / 2 : (-$y - 1) * -$y / 2)) in ($x_ge_0 && $y_ge_0 ? $y_exclusive - $x_exclusive : (!$x_ge_0 && $y_ge_0 ? $y_exclusive - $x_exclusive + $x : $y_exclusive - $y - $x_exclusive + $x))))))
       $x_ge_0_1 := $x >= 0;
       $y_ge_0_1 := $y >= 0;
       $x_exclusive_1 := (if $x_ge_0_1 then ($x - 1) * $x div 2 else (-$x - 1) * -$x div 2);
       $y_exclusive_1 := (if $y_ge_0_1 then ($y - 1) * $y div 2 else (-$y - 1) * -$y div 2);
-  
+
   // -- Translate function body
     Result := (if $x >= 0 && $y >= 0 then (if $y >= 0 then ($y - 1) * $y div 2 else (-$y - 1) * -$y div 2) - (if $x >= 0 then ($x - 1) * $x div 2 else (-$x - 1) * -$x div 2) else (if !($x >= 0) && $y >= 0 then (if $y >= 0 then ($y - 1) * $y div 2 else (-$y - 1) * -$y div 2) - (if $x >= 0 then ($x - 1) * $x div 2 else (-$x - 1) * -$x div 2) + $x else (if $y >= 0 then ($y - 1) * $y div 2 else (-$y - 1) * -$y div 2) - $y - (if $x >= 0 then ($x - 1) * $x div 2 else (-$x - 1) * -$x div 2) + $x));
 }
@@ -1553,16 +1555,16 @@ function  $pure$success_get#triggerStateless(x_1: $StructDomainType): bool;
 procedure $pure$success_get#definedness(x_1: $StructDomainType) returns (Result: bool)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 2;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Translate function body
     Result := ($struct_get(($struct_loc(x_1, 0): int)): bool);
 }
@@ -1606,19 +1608,19 @@ function  $pure$return_get#triggerStateless(x_1: $StructDomainType): int;
 procedure $pure$return_get#definedness(x_1: $StructDomainType) returns (Result: int)
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == 1;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of $pure$success_get(x)
       if (*) {
         // Stop execution
@@ -1626,7 +1628,7 @@ procedure $pure$return_get#definedness(x_1: $StructDomainType) returns (Result: 
       }
     assume $pure$success_get(Heap, x_1);
     assume state(Heap, Mask);
-  
+
   // -- Translate function body
     Result := ($struct_loc(x_1, 1): int);
 }
@@ -2628,18 +2630,18 @@ procedure $transitivity_check() returns ()
   var q$a_34: int;
   var AssertHeap: HeapType;
   var AssertMask: MaskType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 0)): Int) &&
   //   ($struct_get($struct_loc($self$0, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@610.3--610.158
@@ -2647,7 +2649,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 1)): Int) &&
   //   ($struct_get($struct_loc($self$0, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@611.3--611.187
@@ -2655,7 +2657,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 2)): Int) &&
   //   ($struct_get($struct_loc($self$0, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@612.3--612.187
@@ -2663,7 +2665,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 3)): Int) &&
   //   ($struct_get($struct_loc($self$0, 3)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@613.3--613.158
@@ -2671,7 +2673,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 4)): Int) &&
   //   ($struct_get($struct_loc($self$0, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@614.3--614.187
@@ -2679,14 +2681,14 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@615.3--615.355
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -2697,12 +2699,12 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@616.3--616.263
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -2713,7 +2715,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 7)): Int) &&
   //   ($struct_get($struct_loc($self$0, 7)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@617.3--617.187
@@ -2721,7 +2723,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc($self$0, 8)): Int) &&
   //   ($struct_get($struct_loc($self$0, 8)): Int) <=
@@ -2730,14 +2732,14 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@619.3--619.358
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -2748,12 +2750,12 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@620.3--620.266
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -2764,14 +2766,14 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@621.3--621.358
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -2782,12 +2784,12 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@622.3--622.266
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -2798,13 +2800,13 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@623.3--623.89
     assume ($struct_get(($struct_loc($self$0, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 0)): Int) &&
   //   ($struct_get($struct_loc($self$1, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@624.3--624.158
@@ -2812,7 +2814,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 1)): Int) &&
   //   ($struct_get($struct_loc($self$1, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@625.3--625.187
@@ -2820,7 +2822,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 2)): Int) &&
   //   ($struct_get($struct_loc($self$1, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@626.3--626.187
@@ -2828,7 +2830,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 3)): Int) &&
   //   ($struct_get($struct_loc($self$1, 3)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@627.3--627.158
@@ -2836,7 +2838,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 4)): Int) &&
   //   ($struct_get($struct_loc($self$1, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@628.3--628.187
@@ -2844,14 +2846,14 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@629.3--629.355
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -2862,12 +2864,12 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@630.3--630.263
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -2878,7 +2880,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 7)): Int) &&
   //   ($struct_get($struct_loc($self$1, 7)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@631.3--631.187
@@ -2886,7 +2888,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc($self$1, 8)): Int) &&
   //   ($struct_get($struct_loc($self$1, 8)): Int) <=
@@ -2895,14 +2897,14 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@633.3--633.358
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -2913,12 +2915,12 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@634.3--634.266
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -2929,14 +2931,14 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@635.3--635.358
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -2947,12 +2949,12 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@636.3--636.266
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -2963,13 +2965,13 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@637.3--637.89
     assume ($struct_get(($struct_loc($self$1, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$2, 0)): Int) &&
   //   ($struct_get($struct_loc($self$2, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@638.3--638.158
@@ -2977,7 +2979,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$2, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$2, 1)): Int) &&
   //   ($struct_get($struct_loc($self$2, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@639.3--639.187
@@ -2985,7 +2987,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$2, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$2, 2)): Int) &&
   //   ($struct_get($struct_loc($self$2, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@640.3--640.187
@@ -2993,7 +2995,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$2, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$2, 3)): Int) &&
   //   ($struct_get($struct_loc($self$2, 3)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@641.3--641.158
@@ -3001,7 +3003,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$2, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$2, 4)): Int) &&
   //   ($struct_get($struct_loc($self$2, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@642.3--642.187
@@ -3009,14 +3011,14 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$2, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@643.3--643.355
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -3027,12 +3029,12 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@644.3--644.263
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -3043,7 +3045,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$2, 7)): Int) &&
   //   ($struct_get($struct_loc($self$2, 7)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@645.3--645.187
@@ -3051,7 +3053,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$2, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc($self$2, 8)): Int) &&
   //   ($struct_get($struct_loc($self$2, 8)): Int) <=
@@ -3060,14 +3062,14 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc($self$2, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@647.3--647.358
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -3078,12 +3080,12 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@648.3--648.266
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -3094,14 +3096,14 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@649.3--649.358
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -3112,12 +3114,12 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@650.3--650.266
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -3128,13 +3130,13 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$2, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@651.3--651.89
     assume ($struct_get(($struct_loc($self$2, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 0)): Int) &&
   //   ($struct_get($struct_loc(block, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@652.3--652.154
@@ -3142,7 +3144,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc(block, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 1)): Int) &&
   //   ($struct_get($struct_loc(block, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@653.3--653.183
@@ -3150,7 +3152,7 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc(block, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 2)): Int) &&
   //   ($struct_get($struct_loc(block, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@654.3--654.183
@@ -3158,12 +3160,12 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc(block, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale |($struct_get($struct_loc(block, 3)): Seq[Int])| == 32 -- testsresourcesexamplesauction.vy.vpr@655.3--655.64
     assume Seq#Length(($struct_get(($struct_loc(block, 3): int)): Seq int)) == 32;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 4)): Int) &&
   //   ($struct_get($struct_loc(block, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@656.3--656.183
@@ -3171,18 +3173,18 @@ procedure $transitivity_check() returns ()
     assume ($struct_get(($struct_loc(block, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(block, -1)): Int) ==
   //   2335365049822495359383864865678187 -- testsresourcesexamplesauction.vy.vpr@657.3--657.90
     assume ($struct_get(($struct_loc(block, -1): int)): int) == 2335365049822495359383864865678187;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@658.3--658.267
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -3193,7 +3195,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc($self$0, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@659.3--659.111
     if (($struct_get(($struct_loc($self$0, 3): int)): int) == 0) {
@@ -3201,13 +3203,13 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 0)): Int) ==
   //   ($struct_get($struct_loc($self$0, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@660.3--660.100
     assume ($struct_get(($struct_loc($self$0, 0): int)): int) == ($struct_get(($struct_loc($self$0, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$0, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@661.3--661.103
     if (($struct_get(($struct_loc($self$0, 5): int)): bool)) {
@@ -3215,7 +3217,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$0, 4)): Int) <=
@@ -3225,7 +3227,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$0, 4)): Int) ==
@@ -3236,7 +3238,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int])): Int) <=
   //   ($struct_get($struct_loc($self$0, 7)): Int) -- testsresourcesexamplesauction.vy.vpr@664.3--664.177
@@ -3245,13 +3247,13 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 4)): Int) >=
   //   ($struct_get($struct_loc($self$0, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@665.3--665.100
     assume ($struct_get(($struct_loc($self$0, 4): int)): int) >= ($struct_get(($struct_loc($self$0, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$0, 4)): Int) ==
   //   ($struct_get($struct_loc($self$0, 4)): Int) &&
@@ -3263,25 +3265,25 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@667.3--667.58
     assume ($struct_get(($struct_loc($self$0, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 3)): Int) !=
   //   ($struct_get($struct_loc($self$0, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@668.3--668.100
     assume ($struct_get(($struct_loc($self$0, 3): int)): int) != ($struct_get(($struct_loc($self$0, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$0,
   //   0)): Int)): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@669.3--669.131
     assume ($map_get(($struct_get(($struct_loc($self$0, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$0, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$0,
   //   0)): Int)): Int) ==
@@ -3291,7 +3293,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$0,
   //   0)): Int)): Int) ==
@@ -3301,7 +3303,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$0,
   //   3)): Int)): Int) +
   //   ($struct_get($struct_loc($self$0, 4)): Int) +
@@ -3312,7 +3314,7 @@ procedure $transitivity_check() returns ()
     assume ($map_get(($struct_get(($struct_loc($self$0, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$0, 3): int)): int)): int) + ($struct_get(($struct_loc($self$0, 4): int)): int) + ($map_get(($struct_get(($struct_loc($self$0, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$0, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc($self$0, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$0, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -3321,7 +3323,7 @@ procedure $transitivity_check() returns ()
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@673.3--673.532
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$0, 3)): Int) && q$a != ($struct_get($struct_loc($self$0, 0)): Int) ==> ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -3332,13 +3334,13 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@674.3--674.90
     assume ($map_get(($struct_get(($struct_loc($self$0, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -3346,7 +3348,7 @@ procedure $transitivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@675.3--675.353
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -3357,7 +3359,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -3366,7 +3368,7 @@ procedure $transitivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@676.3--676.409
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$0, 0)): Int) && ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -3377,7 +3379,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale true &&
   //   (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -3389,20 +3391,20 @@ procedure $transitivity_check() returns ()
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), q$a): Int))) ==>
   //     acc($accessible$withdraw(18, q$a, q$v), write)) -- testsresourcesexamplesauction.vy.vpr@677.3--677.397
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935 && q$v == ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), q$a): Int))) ==> acc($accessible$withdraw(18, q$a, q$v), write))
       if (*) {
         assume false;
       }
     havoc QPMask;
-    
+
     // -- check if receiver acc($accessible$withdraw(18, q$a, q$v), write) is injective
       assert {:msg "  Inhale might fail. Quantified resource $accessible$withdraw(18, q$a, q$v) might not be injective. (testsresourcesexamplesauction.vy.vpr@677.10--677.397) [203]"}
         (forall q$a_7: int, q$v_1: int, q$a_7_1: int, q$v_1_1: int ::
         { neverTriggered2(q$a_7, q$v_1), neverTriggered2(q$a_7_1, q$v_1_1) }
         ((((q$a_7 != q$a_7_1 && q$v_1 != q$v_1_1) && (0 <= q$a_7 && (q$a_7 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_1 && q$v_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_1 == ($map_get(($struct_get(($struct_loc($self$0, 6): int)): $MapDomainType int int), q$a_7): int))))) && (0 <= q$a_7_1 && (q$a_7_1 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_1_1 && q$v_1_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_1_1 == ($map_get(($struct_get(($struct_loc($self$0, 6): int)): $MapDomainType int int), q$a_7_1): int))))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> q$a_7 != q$a_7_1 || q$v_1 != q$v_1_1
       );
-    
+
     // -- Define Inverse Function
       assume (forall q$a_7: int, q$v_1: int ::
         { Heap[null, $accessible$withdraw(18, q$a_7, q$v_1)] } { Mask[null, $accessible$withdraw(18, q$a_7, q$v_1)] } { Heap[null, $accessible$withdraw(18, q$a_7, q$v_1)] }
@@ -3412,13 +3414,13 @@ procedure $transitivity_check() returns ()
         { invRecv1($tag, $to, $amount), invRecv2($tag, $to, $amount) }
         ((0 <= invRecv1($tag, $to, $amount) && (invRecv1($tag, $to, $amount) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv2($tag, $to, $amount) && invRecv2($tag, $to, $amount) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv2($tag, $to, $amount) == ($map_get(($struct_get(($struct_loc($self$0, 6): int)): $MapDomainType int int), invRecv1($tag, $to, $amount)): int)))) && NoPerm < FullPerm) && qpRange2($tag, $to, $amount) ==> (18 == $tag && invRecv1($tag, $to, $amount) == $to) && invRecv2($tag, $to, $amount) == $amount
       );
-    
+
     // -- Define updated permissions
       assume (forall $tag: int, $to: int, $amount: int ::
         { QPMask[null, $accessible$withdraw($tag, $to, $amount)] }
         ((0 <= invRecv1($tag, $to, $amount) && (invRecv1($tag, $to, $amount) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv2($tag, $to, $amount) && invRecv2($tag, $to, $amount) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv2($tag, $to, $amount) == ($map_get(($struct_get(($struct_loc($self$0, 6): int)): $MapDomainType int int), invRecv1($tag, $to, $amount)): int)))) && NoPerm < FullPerm) && qpRange2($tag, $to, $amount) ==> (NoPerm < FullPerm ==> (18 == $tag && invRecv1($tag, $to, $amount) == $to) && invRecv2($tag, $to, $amount) == $amount) && QPMask[null, $accessible$withdraw($tag, $to, $amount)] == Mask[null, $accessible$withdraw($tag, $to, $amount)] + FullPerm
       );
-    
+
     // -- Define independent locations
       assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
         { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
@@ -3432,12 +3434,12 @@ procedure $transitivity_check() returns ()
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@678.3--678.267
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -3448,7 +3450,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc($self$1, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@679.3--679.111
     if (($struct_get(($struct_loc($self$1, 3): int)): int) == 0) {
@@ -3456,13 +3458,13 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 0)): Int) ==
   //   ($struct_get($struct_loc($self$0, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@680.3--680.100
     assume ($struct_get(($struct_loc($self$1, 0): int)): int) == ($struct_get(($struct_loc($self$0, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$1, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@681.3--681.103
     if (($struct_get(($struct_loc($self$0, 5): int)): bool)) {
@@ -3470,7 +3472,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$1, 4)): Int) <=
@@ -3480,7 +3482,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$1, 4)): Int) ==
@@ -3491,7 +3493,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int) <=
   //   ($struct_get($struct_loc($self$1, 7)): Int) -- testsresourcesexamplesauction.vy.vpr@684.3--684.177
@@ -3500,13 +3502,13 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 4)): Int) >=
   //   ($struct_get($struct_loc($self$0, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@685.3--685.100
     assume ($struct_get(($struct_loc($self$1, 4): int)): int) >= ($struct_get(($struct_loc($self$0, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$1, 4)): Int) ==
   //   ($struct_get($struct_loc($self$0, 4)): Int) &&
@@ -3518,25 +3520,25 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@687.3--687.58
     assume ($struct_get(($struct_loc($self$1, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 3)): Int) !=
   //   ($struct_get($struct_loc($self$1, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@688.3--688.100
     assume ($struct_get(($struct_loc($self$1, 3): int)): int) != ($struct_get(($struct_loc($self$1, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   0)): Int)): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@689.3--689.131
     assume ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   0)): Int)): Int) ==
@@ -3546,7 +3548,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   0)): Int)): Int) ==
@@ -3556,7 +3558,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   3)): Int)): Int) +
   //   ($struct_get($struct_loc($self$1, 4)): Int) +
@@ -3567,7 +3569,7 @@ procedure $transitivity_check() returns ()
     assume ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 3): int)): int)): int) + ($struct_get(($struct_loc($self$1, 4): int)): int) + ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc($self$1, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -3576,7 +3578,7 @@ procedure $transitivity_check() returns ()
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@693.3--693.532
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$1, 3)): Int) && q$a != ($struct_get($struct_loc($self$1, 0)): Int) ==> ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -3587,13 +3589,13 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@694.3--694.90
     assume ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -3601,7 +3603,7 @@ procedure $transitivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@695.3--695.353
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -3612,7 +3614,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -3621,7 +3623,7 @@ procedure $transitivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@696.3--696.409
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$1, 0)): Int) && ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -3632,7 +3634,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale true &&
   //   (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -3644,20 +3646,20 @@ procedure $transitivity_check() returns ()
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int))) ==>
   //     acc($accessible$withdraw(18, q$a, q$v), write)) -- testsresourcesexamplesauction.vy.vpr@697.3--697.397
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935 && q$v == ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int))) ==> acc($accessible$withdraw(18, q$a, q$v), write))
       if (*) {
         assume false;
       }
     havoc QPMask;
-    
+
     // -- check if receiver acc($accessible$withdraw(18, q$a, q$v), write) is injective
       assert {:msg "  Inhale might fail. Quantified resource $accessible$withdraw(18, q$a, q$v) might not be injective. (testsresourcesexamplesauction.vy.vpr@697.10--697.397) [204]"}
         (forall q$a_16: int, q$v_4: int, q$a_16_1: int, q$v_4_1: int ::
         { neverTriggered4(q$a_16, q$v_4), neverTriggered4(q$a_16_1, q$v_4_1) }
         ((((q$a_16 != q$a_16_1 && q$v_4 != q$v_4_1) && (0 <= q$a_16 && (q$a_16 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_4 && q$v_4 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_4 == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), q$a_16): int))))) && (0 <= q$a_16_1 && (q$a_16_1 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_4_1 && q$v_4_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_4_1 == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), q$a_16_1): int))))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> q$a_16 != q$a_16_1 || q$v_4 != q$v_4_1
       );
-    
+
     // -- Define Inverse Function
       assume (forall q$a_16: int, q$v_4: int ::
         { Heap[null, $accessible$withdraw(18, q$a_16, q$v_4)] } { Mask[null, $accessible$withdraw(18, q$a_16, q$v_4)] } { Heap[null, $accessible$withdraw(18, q$a_16, q$v_4)] }
@@ -3667,13 +3669,13 @@ procedure $transitivity_check() returns ()
         { invRecv3($tag_1, $to_1, $amount_1), invRecv4($tag_1, $to_1, $amount_1) }
         ((0 <= invRecv3($tag_1, $to_1, $amount_1) && (invRecv3($tag_1, $to_1, $amount_1) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv4($tag_1, $to_1, $amount_1) && invRecv4($tag_1, $to_1, $amount_1) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv4($tag_1, $to_1, $amount_1) == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), invRecv3($tag_1, $to_1, $amount_1)): int)))) && NoPerm < FullPerm) && qpRange4($tag_1, $to_1, $amount_1) ==> (18 == $tag_1 && invRecv3($tag_1, $to_1, $amount_1) == $to_1) && invRecv4($tag_1, $to_1, $amount_1) == $amount_1
       );
-    
+
     // -- Define updated permissions
       assume (forall $tag_1: int, $to_1: int, $amount_1: int ::
         { QPMask[null, $accessible$withdraw($tag_1, $to_1, $amount_1)] }
         ((0 <= invRecv3($tag_1, $to_1, $amount_1) && (invRecv3($tag_1, $to_1, $amount_1) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv4($tag_1, $to_1, $amount_1) && invRecv4($tag_1, $to_1, $amount_1) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv4($tag_1, $to_1, $amount_1) == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), invRecv3($tag_1, $to_1, $amount_1)): int)))) && NoPerm < FullPerm) && qpRange4($tag_1, $to_1, $amount_1) ==> (NoPerm < FullPerm ==> (18 == $tag_1 && invRecv3($tag_1, $to_1, $amount_1) == $to_1) && invRecv4($tag_1, $to_1, $amount_1) == $amount_1) && QPMask[null, $accessible$withdraw($tag_1, $to_1, $amount_1)] == Mask[null, $accessible$withdraw($tag_1, $to_1, $amount_1)] + FullPerm
       );
-    
+
     // -- Define independent locations
       assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
         { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
@@ -3687,12 +3689,12 @@ procedure $transitivity_check() returns ()
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@698.3--698.267
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -3703,7 +3705,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$2, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc($self$2, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@699.3--699.111
     if (($struct_get(($struct_loc($self$2, 3): int)): int) == 0) {
@@ -3711,13 +3713,13 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$2, 0)): Int) ==
   //   ($struct_get($struct_loc($self$1, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@700.3--700.100
     assume ($struct_get(($struct_loc($self$2, 0): int)): int) == ($struct_get(($struct_loc($self$1, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$2, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@701.3--701.103
     if (($struct_get(($struct_loc($self$1, 5): int)): bool)) {
@@ -3725,7 +3727,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$2, 4)): Int) <=
@@ -3735,7 +3737,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$2, 4)): Int) ==
@@ -3746,7 +3748,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int])): Int) <=
   //   ($struct_get($struct_loc($self$2, 7)): Int) -- testsresourcesexamplesauction.vy.vpr@704.3--704.177
@@ -3755,13 +3757,13 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$2, 4)): Int) >=
   //   ($struct_get($struct_loc($self$1, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@705.3--705.100
     assume ($struct_get(($struct_loc($self$2, 4): int)): int) >= ($struct_get(($struct_loc($self$1, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$2, 4)): Int) ==
   //   ($struct_get($struct_loc($self$1, 4)): Int) &&
@@ -3773,25 +3775,25 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$2, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@707.3--707.58
     assume ($struct_get(($struct_loc($self$2, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$2, 3)): Int) !=
   //   ($struct_get($struct_loc($self$2, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@708.3--708.100
     assume ($struct_get(($struct_loc($self$2, 3): int)): int) != ($struct_get(($struct_loc($self$2, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$2,
   //   0)): Int)): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@709.3--709.131
     assume ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$2,
   //   0)): Int)): Int) ==
@@ -3801,7 +3803,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$2,
   //   0)): Int)): Int) ==
@@ -3811,7 +3813,7 @@ procedure $transitivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$2,
   //   3)): Int)): Int) +
   //   ($struct_get($struct_loc($self$2, 4)): Int) +
@@ -3822,7 +3824,7 @@ procedure $transitivity_check() returns ()
     assume ($map_get(($struct_get(($struct_loc($self$2, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 3): int)): int)): int) + ($struct_get(($struct_loc($self$2, 4): int)): int) + ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc($self$2, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -3831,7 +3833,7 @@ procedure $transitivity_check() returns ()
   //     ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@713.3--713.532
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$2, 3)): Int) && q$a != ($struct_get($struct_loc($self$2, 0)): Int) ==> ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -3842,13 +3844,13 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@714.3--714.90
     assume ($map_get(($struct_get(($struct_loc($self$2, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -3856,7 +3858,7 @@ procedure $transitivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@715.3--715.353
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -3867,7 +3869,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -3876,7 +3878,7 @@ procedure $transitivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@716.3--716.409
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$2, 0)): Int) && ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -3887,7 +3889,7 @@ procedure $transitivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale true &&
   //   (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -3899,20 +3901,20 @@ procedure $transitivity_check() returns ()
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int))) ==>
   //     acc($accessible$withdraw(18, q$a, q$v), write)) -- testsresourcesexamplesauction.vy.vpr@717.3--717.397
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935 && q$v == ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int))) ==> acc($accessible$withdraw(18, q$a, q$v), write))
       if (*) {
         assume false;
       }
     havoc QPMask;
-    
+
     // -- check if receiver acc($accessible$withdraw(18, q$a, q$v), write) is injective
       assert {:msg "  Inhale might fail. Quantified resource $accessible$withdraw(18, q$a, q$v) might not be injective. (testsresourcesexamplesauction.vy.vpr@717.10--717.397) [205]"}
         (forall q$a_25: int, q$v_7: int, q$a_25_1: int, q$v_7_1: int ::
         { neverTriggered6(q$a_25, q$v_7), neverTriggered6(q$a_25_1, q$v_7_1) }
         ((((q$a_25 != q$a_25_1 && q$v_7 != q$v_7_1) && (0 <= q$a_25 && (q$a_25 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_7 && q$v_7 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_7 == ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), q$a_25): int))))) && (0 <= q$a_25_1 && (q$a_25_1 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_7_1 && q$v_7_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_7_1 == ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), q$a_25_1): int))))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> q$a_25 != q$a_25_1 || q$v_7 != q$v_7_1
       );
-    
+
     // -- Define Inverse Function
       assume (forall q$a_25: int, q$v_7: int ::
         { Heap[null, $accessible$withdraw(18, q$a_25, q$v_7)] } { Mask[null, $accessible$withdraw(18, q$a_25, q$v_7)] } { Heap[null, $accessible$withdraw(18, q$a_25, q$v_7)] }
@@ -3922,13 +3924,13 @@ procedure $transitivity_check() returns ()
         { invRecv5($tag_2, $to_2, $amount_2), invRecv6($tag_2, $to_2, $amount_2) }
         ((0 <= invRecv5($tag_2, $to_2, $amount_2) && (invRecv5($tag_2, $to_2, $amount_2) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv6($tag_2, $to_2, $amount_2) && invRecv6($tag_2, $to_2, $amount_2) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv6($tag_2, $to_2, $amount_2) == ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), invRecv5($tag_2, $to_2, $amount_2)): int)))) && NoPerm < FullPerm) && qpRange6($tag_2, $to_2, $amount_2) ==> (18 == $tag_2 && invRecv5($tag_2, $to_2, $amount_2) == $to_2) && invRecv6($tag_2, $to_2, $amount_2) == $amount_2
       );
-    
+
     // -- Define updated permissions
       assume (forall $tag_2: int, $to_2: int, $amount_2: int ::
         { QPMask[null, $accessible$withdraw($tag_2, $to_2, $amount_2)] }
         ((0 <= invRecv5($tag_2, $to_2, $amount_2) && (invRecv5($tag_2, $to_2, $amount_2) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv6($tag_2, $to_2, $amount_2) && invRecv6($tag_2, $to_2, $amount_2) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv6($tag_2, $to_2, $amount_2) == ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), invRecv5($tag_2, $to_2, $amount_2)): int)))) && NoPerm < FullPerm) && qpRange6($tag_2, $to_2, $amount_2) ==> (NoPerm < FullPerm ==> (18 == $tag_2 && invRecv5($tag_2, $to_2, $amount_2) == $to_2) && invRecv6($tag_2, $to_2, $amount_2) == $amount_2) && QPMask[null, $accessible$withdraw($tag_2, $to_2, $amount_2)] == Mask[null, $accessible$withdraw($tag_2, $to_2, $amount_2)] + FullPerm
       );
-    
+
     // -- Define independent locations
       assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
         { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
@@ -3942,7 +3944,7 @@ procedure $transitivity_check() returns ()
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$2, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc($self$2, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@718.3--718.111
     if (($struct_get(($struct_loc($self$2, 3): int)): int) == 0) {
@@ -3950,13 +3952,13 @@ procedure $transitivity_check() returns ()
         ($struct_get(($struct_loc($self$2, 4): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$2, 0)): Int) ==
   //   ($struct_get($struct_loc($self$0, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@719.3--719.100
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc($self$2, 0)): Int) == ($struct_get($struct_loc($self$0, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@719.10--719.100) [207]"}
       ($struct_get(($struct_loc($self$2, 0): int)): int) == ($struct_get(($struct_loc($self$0, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$2, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@720.3--720.103
     if (($struct_get(($struct_loc($self$0, 5): int)): bool)) {
@@ -3964,7 +3966,7 @@ procedure $transitivity_check() returns ()
         ($struct_get(($struct_loc($self$2, 5): int)): bool);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert !($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$2, 4)): Int) <=
@@ -3974,7 +3976,7 @@ procedure $transitivity_check() returns ()
         ($map_sum(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc($self$2, 4): int)): int) <= ($struct_get(($struct_loc($self$2, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert !($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$2, 4)): Int) ==
@@ -3985,7 +3987,7 @@ procedure $transitivity_check() returns ()
         ($map_sum(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc($self$2, 4): int)): int) == ($map_sum(($struct_get(($struct_loc($self$2, 11): int)): $MapDomainType int int)): int) - ($map_sum(($struct_get(($struct_loc($self$2, 10): int)): $MapDomainType int int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int])): Int) <=
   //   ($struct_get($struct_loc($self$2, 7)): Int) -- testsresourcesexamplesauction.vy.vpr@723.3--723.177
@@ -3994,13 +3996,13 @@ procedure $transitivity_check() returns ()
         ($map_sum(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int)): int) <= ($struct_get(($struct_loc($self$2, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$2, 4)): Int) >=
   //   ($struct_get($struct_loc($self$0, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@724.3--724.100
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc($self$2, 4)): Int) >= ($struct_get($struct_loc($self$0, 4)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@724.10--724.100) [212]"}
       ($struct_get(($struct_loc($self$2, 4): int)): int) >= ($struct_get(($struct_loc($self$0, 4): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$2, 4)): Int) ==
   //   ($struct_get($struct_loc($self$0, 4)): Int) &&
@@ -4013,25 +4015,25 @@ procedure $transitivity_check() returns ()
         ($struct_get(($struct_loc($self$2, 3): int)): int) == ($struct_get(($struct_loc($self$0, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$2, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@726.3--726.58
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc($self$2, 0)): Int) != 0 might not hold. (testsresourcesexamplesauction.vy.vpr@726.10--726.58) [215]"}
       ($struct_get(($struct_loc($self$2, 0): int)): int) != 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$2, 3)): Int) !=
   //   ($struct_get($struct_loc($self$2, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@727.3--727.100
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc($self$2, 3)): Int) != ($struct_get($struct_loc($self$2, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@727.10--727.100) [216]"}
       ($struct_get(($struct_loc($self$2, 3): int)): int) != ($struct_get(($struct_loc($self$2, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$2,
   //   0)): Int)): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@728.3--728.131
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$2, 0)): Int)): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@728.10--728.131) [217]"}
       ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert !($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$2,
   //   0)): Int)): Int) ==
@@ -4041,7 +4043,7 @@ procedure $transitivity_check() returns ()
         ($map_get(($struct_get(($struct_loc($self$2, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 0): int)): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$2, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$2,
   //   0)): Int)): Int) ==
@@ -4051,7 +4053,7 @@ procedure $transitivity_check() returns ()
         ($map_get(($struct_get(($struct_loc($self$2, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 0): int)): int)): int) == ($struct_get(($struct_loc($self$2, 4): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$2,
   //   3)): Int)): Int) +
   //   ($struct_get($struct_loc($self$2, 4)): Int) +
@@ -4062,7 +4064,7 @@ procedure $transitivity_check() returns ()
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$2, 3)): Int)): Int) + ($struct_get($struct_loc($self$2, 4)): Int) + ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$2, 3)): Int)): Int) == ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), ($struct_get($struct_loc($self$2, 3)): Int)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@731.10--731.413) [220]"}
       ($map_get(($struct_get(($struct_loc($self$2, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 3): int)): int)): int) + ($struct_get(($struct_loc($self$2, 4): int)): int) + ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc($self$2, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$2, 3): int)): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -4071,7 +4073,7 @@ procedure $transitivity_check() returns ()
   //     ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@732.3--732.532
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$2, 3)): Int) && q$a != ($struct_get($struct_loc($self$2, 0)): Int) ==> ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -4090,13 +4092,13 @@ procedure $transitivity_check() returns ()
       0 <= q$a_29_1 && q$a_29_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_29_1 != ($struct_get(($struct_loc($self$2, 3): int)): int) && q$a_29_1 != ($struct_get(($struct_loc($self$2, 0): int)): int) ==> ($map_get(($struct_get(($struct_loc($self$2, 10): int)): $MapDomainType int int), q$a_29_1): int) + ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), q$a_29_1): int) == ($map_get(($struct_get(($struct_loc($self$2, 11): int)): $MapDomainType int int), q$a_29_1): int)
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@733.3--733.90
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), 0): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@733.10--733.90) [222]"}
       ($map_get(($struct_get(($struct_loc($self$2, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -4104,7 +4106,7 @@ procedure $transitivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@734.3--734.353
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -4123,7 +4125,7 @@ procedure $transitivity_check() returns ()
       0 <= q$a_32_1 && q$a_32_1 <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), q$a_32_1): int) != 0 ==> ($map_get(($struct_get(($struct_loc($self$2, 11): int)): $MapDomainType int int), q$a_32_1): int) != 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -4132,7 +4134,7 @@ procedure $transitivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@735.3--735.409
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$2, 0)): Int) && ($map_get(($struct_get($struct_loc($self$2, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc($self$2, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -4151,7 +4153,7 @@ procedure $transitivity_check() returns ()
       0 <= q$a_35_1 && q$a_35_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_35_1 != ($struct_get(($struct_loc($self$2, 0): int)): int) && ($map_get(($struct_get(($struct_loc($self$2, 11): int)): $MapDomainType int int), q$a_35_1): int) == 0 ==> ($map_get(($struct_get(($struct_loc($self$2, 10): int)): $MapDomainType int int), q$a_35_1): int) == 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true &&
   //   (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -4163,7 +4165,7 @@ procedure $transitivity_check() returns ()
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int))) ==>
   //     acc($accessible$withdraw(18, q$a, q$v), write)) -- testsresourcesexamplesauction.vy.vpr@736.3--736.397
-    
+
     // -- Check definedness of true && (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935 && q$v == ($map_get(($struct_get($struct_loc($self$2, 6)): $Map[Int, Int]), q$a): Int))) ==> acc($accessible$withdraw(18, q$a, q$v), write))
       if (*) {
         assume false;
@@ -4171,24 +4173,24 @@ procedure $transitivity_check() returns ()
     AssertHeap := Heap;
     AssertMask := Mask;
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
-      
-    
+
+
     // -- check if receiver acc($accessible$withdraw(18, q$a, q$v), write) is injective
       assert {:msg "  Assert might fail. Quantified resource $accessible$withdraw(18, q$a, q$v) might not be injective. (testsresourcesexamplesauction.vy.vpr@736.10--736.397) [227]"}
         (forall q$a_36: int, q$v_9: int, q$a_36_1: int, q$v_9_1: int ::
         { neverTriggered8(q$a_36, q$v_9), neverTriggered8(q$a_36_1, q$v_9_1) }
         ((((q$a_36 != q$a_36_1 && q$v_9 != q$v_9_1) && (0 <= q$a_36 && (q$a_36 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_9 && q$v_9 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_9 == ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), q$a_36): int))))) && (0 <= q$a_36_1 && (q$a_36_1 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_9_1 && q$v_9_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_9_1 == ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), q$a_36_1): int))))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> q$a_36 != q$a_36_1 || q$v_9 != q$v_9_1
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Assert might fail. There might be insufficient permission to access $accessible$withdraw(18, q$a, q$v) (testsresourcesexamplesauction.vy.vpr@736.10--736.397) [228]"}
         (forall q$a_36: int, q$v_9: int ::
         { AssertHeap[null, $accessible$withdraw(18, q$a_36, q$v_9)] } { AssertMask[null, $accessible$withdraw(18, q$a_36, q$v_9)] } { AssertHeap[null, $accessible$withdraw(18, q$a_36, q$v_9)] }
         0 <= q$a_36 && (q$a_36 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_9 && q$v_9 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_9 == ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), q$a_36): int))) ==> AssertMask[null, $accessible$withdraw(18, q$a_36, q$v_9)] >= FullPerm
       );
-    
+
     // -- assumptions for inverse of receiver acc($accessible$withdraw(18, q$a, q$v), write)
       assume (forall q$a_36: int, q$v_9: int ::
         { AssertHeap[null, $accessible$withdraw(18, q$a_36, q$v_9)] } { AssertMask[null, $accessible$withdraw(18, q$a_36, q$v_9)] } { AssertHeap[null, $accessible$withdraw(18, q$a_36, q$v_9)] }
@@ -4198,7 +4200,7 @@ procedure $transitivity_check() returns ()
         { invRecv7($tag_3, $to_3, $amount_3), invRecv8($tag_3, $to_3, $amount_3) }
         ((0 <= invRecv7($tag_3, $to_3, $amount_3) && (invRecv7($tag_3, $to_3, $amount_3) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv8($tag_3, $to_3, $amount_3) && invRecv8($tag_3, $to_3, $amount_3) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv8($tag_3, $to_3, $amount_3) == ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), invRecv7($tag_3, $to_3, $amount_3)): int)))) && NoPerm < FullPerm) && qpRange8($tag_3, $to_3, $amount_3) ==> (18 == $tag_3 && invRecv7($tag_3, $to_3, $amount_3) == $to_3) && invRecv8($tag_3, $to_3, $amount_3) == $amount_3
       );
-    
+
     // -- assume permission updates for predicate $accessible$withdraw
       assume (forall $tag_3: int, $to_3: int, $amount_3: int ::
         { QPMask[null, $accessible$withdraw($tag_3, $to_3, $amount_3)] }
@@ -4208,8 +4210,8 @@ procedure $transitivity_check() returns ()
         { QPMask[null, $accessible$withdraw($tag_3, $to_3, $amount_3)] }
         !(((0 <= invRecv7($tag_3, $to_3, $amount_3) && (invRecv7($tag_3, $to_3, $amount_3) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv8($tag_3, $to_3, $amount_3) && invRecv8($tag_3, $to_3, $amount_3) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv8($tag_3, $to_3, $amount_3) == ($map_get(($struct_get(($struct_loc($self$2, 6): int)): $MapDomainType int int), invRecv7($tag_3, $to_3, $amount_3)): int)))) && NoPerm < FullPerm) && qpRange8($tag_3, $to_3, $amount_3)) ==> QPMask[null, $accessible$withdraw($tag_3, $to_3, $amount_3)] == AssertMask[null, $accessible$withdraw($tag_3, $to_3, $amount_3)]
       );
-    
-    // -- assume permission updates for independent locations 
+
+    // -- assume permission updates for independent locations
       assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
         { AssertMask[o_4, f_6] } { QPMask[o_4, f_6] }
         (o_4 != null || !IsPredicateField(f_6)) || getPredicateId(f_6) != 24 ==> AssertMask[o_4, f_6] == QPMask[o_4, f_6]
@@ -4234,18 +4236,18 @@ procedure $reflexivity_check() returns ()
   var q$a_16: int;
   var AssertHeap: HeapType;
   var AssertMask: MaskType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 0)): Int) &&
   //   ($struct_get($struct_loc($self$0, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@747.3--747.158
@@ -4253,7 +4255,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 1)): Int) &&
   //   ($struct_get($struct_loc($self$0, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@748.3--748.187
@@ -4261,7 +4263,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 2)): Int) &&
   //   ($struct_get($struct_loc($self$0, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@749.3--749.187
@@ -4269,7 +4271,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 3)): Int) &&
   //   ($struct_get($struct_loc($self$0, 3)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@750.3--750.158
@@ -4277,7 +4279,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 4)): Int) &&
   //   ($struct_get($struct_loc($self$0, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@751.3--751.187
@@ -4285,14 +4287,14 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@752.3--752.355
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -4303,12 +4305,12 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@753.3--753.263
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc($self$0, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -4319,7 +4321,7 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$0, 7)): Int) &&
   //   ($struct_get($struct_loc($self$0, 7)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@754.3--754.187
@@ -4327,7 +4329,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc($self$0, 8)): Int) &&
   //   ($struct_get($struct_loc($self$0, 8)): Int) <=
@@ -4336,14 +4338,14 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$0, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@756.3--756.358
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -4354,12 +4356,12 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@757.3--757.266
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -4370,14 +4372,14 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@758.3--758.358
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -4388,12 +4390,12 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@759.3--759.266
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc($self$0, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -4404,13 +4406,13 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@760.3--760.89
     assume ($struct_get(($struct_loc($self$0, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 0)): Int) &&
   //   ($struct_get($struct_loc($self$1, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@761.3--761.158
@@ -4418,7 +4420,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 1)): Int) &&
   //   ($struct_get($struct_loc($self$1, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@762.3--762.187
@@ -4426,7 +4428,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 2)): Int) &&
   //   ($struct_get($struct_loc($self$1, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@763.3--763.187
@@ -4434,7 +4436,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 3)): Int) &&
   //   ($struct_get($struct_loc($self$1, 3)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@764.3--764.158
@@ -4442,7 +4444,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 4)): Int) &&
   //   ($struct_get($struct_loc($self$1, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@765.3--765.187
@@ -4450,14 +4452,14 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@766.3--766.355
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -4468,12 +4470,12 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@767.3--767.263
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -4484,7 +4486,7 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($self$1, 7)): Int) &&
   //   ($struct_get($struct_loc($self$1, 7)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@768.3--768.187
@@ -4492,7 +4494,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc($self$1, 8)): Int) &&
   //   ($struct_get($struct_loc($self$1, 8)): Int) <=
@@ -4501,14 +4503,14 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc($self$1, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@770.3--770.358
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -4519,12 +4521,12 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@771.3--771.266
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -4535,14 +4537,14 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@772.3--772.358
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -4553,12 +4555,12 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@773.3--773.266
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -4569,13 +4571,13 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@774.3--774.89
     assume ($struct_get(($struct_loc($self$1, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 0)): Int) &&
   //   ($struct_get($struct_loc(block, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@775.3--775.154
@@ -4583,7 +4585,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc(block, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 1)): Int) &&
   //   ($struct_get($struct_loc(block, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@776.3--776.183
@@ -4591,7 +4593,7 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc(block, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 2)): Int) &&
   //   ($struct_get($struct_loc(block, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@777.3--777.183
@@ -4599,12 +4601,12 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc(block, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale |($struct_get($struct_loc(block, 3)): Seq[Int])| == 32 -- testsresourcesexamplesauction.vy.vpr@778.3--778.64
     assume Seq#Length(($struct_get(($struct_loc(block, 3): int)): Seq int)) == 32;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 4)): Int) &&
   //   ($struct_get($struct_loc(block, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@779.3--779.183
@@ -4612,18 +4614,18 @@ procedure $reflexivity_check() returns ()
     assume ($struct_get(($struct_loc(block, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(block, -1)): Int) ==
   //   2335365049822495359383864865678187 -- testsresourcesexamplesauction.vy.vpr@780.3--780.90
     assume ($struct_get(($struct_loc(block, -1): int)): int) == 2335365049822495359383864865678187;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@781.3--781.267
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc($self$0, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -4634,7 +4636,7 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc($self$1, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@782.3--782.111
     if (($struct_get(($struct_loc($self$1, 3): int)): int) == 0) {
@@ -4642,13 +4644,13 @@ procedure $reflexivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 0)): Int) ==
   //   ($struct_get($struct_loc($self$0, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@783.3--783.100
     assume ($struct_get(($struct_loc($self$1, 0): int)): int) == ($struct_get(($struct_loc($self$0, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$1, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@784.3--784.103
     if (($struct_get(($struct_loc($self$0, 5): int)): bool)) {
@@ -4656,7 +4658,7 @@ procedure $reflexivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$1, 4)): Int) <=
@@ -4666,7 +4668,7 @@ procedure $reflexivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$1, 4)): Int) ==
@@ -4677,7 +4679,7 @@ procedure $reflexivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int) <=
   //   ($struct_get($struct_loc($self$1, 7)): Int) -- testsresourcesexamplesauction.vy.vpr@787.3--787.177
@@ -4686,13 +4688,13 @@ procedure $reflexivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 4)): Int) >=
   //   ($struct_get($struct_loc($self$0, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@788.3--788.100
     assume ($struct_get(($struct_loc($self$1, 4): int)): int) >= ($struct_get(($struct_loc($self$0, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$0, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$1, 4)): Int) ==
   //   ($struct_get($struct_loc($self$0, 4)): Int) &&
@@ -4704,25 +4706,25 @@ procedure $reflexivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@790.3--790.58
     assume ($struct_get(($struct_loc($self$1, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 3)): Int) !=
   //   ($struct_get($struct_loc($self$1, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@791.3--791.100
     assume ($struct_get(($struct_loc($self$1, 3): int)): int) != ($struct_get(($struct_loc($self$1, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   0)): Int)): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@792.3--792.131
     assume ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   0)): Int)): Int) ==
@@ -4732,7 +4734,7 @@ procedure $reflexivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   0)): Int)): Int) ==
@@ -4742,7 +4744,7 @@ procedure $reflexivity_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   3)): Int)): Int) +
   //   ($struct_get($struct_loc($self$1, 4)): Int) +
@@ -4753,7 +4755,7 @@ procedure $reflexivity_check() returns ()
     assume ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 3): int)): int)): int) + ($struct_get(($struct_loc($self$1, 4): int)): int) + ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc($self$1, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -4762,7 +4764,7 @@ procedure $reflexivity_check() returns ()
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@796.3--796.532
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$1, 3)): Int) && q$a != ($struct_get($struct_loc($self$1, 0)): Int) ==> ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -4773,13 +4775,13 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@797.3--797.90
     assume ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -4787,7 +4789,7 @@ procedure $reflexivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@798.3--798.353
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -4798,7 +4800,7 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -4807,7 +4809,7 @@ procedure $reflexivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@799.3--799.409
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$1, 0)): Int) && ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -4818,7 +4820,7 @@ procedure $reflexivity_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale true &&
   //   (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -4830,20 +4832,20 @@ procedure $reflexivity_check() returns ()
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int))) ==>
   //     acc($accessible$withdraw(18, q$a, q$v), write)) -- testsresourcesexamplesauction.vy.vpr@800.3--800.397
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935 && q$v == ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int))) ==> acc($accessible$withdraw(18, q$a, q$v), write))
       if (*) {
         assume false;
       }
     havoc QPMask;
-    
+
     // -- check if receiver acc($accessible$withdraw(18, q$a, q$v), write) is injective
       assert {:msg "  Inhale might fail. Quantified resource $accessible$withdraw(18, q$a, q$v) might not be injective. (testsresourcesexamplesauction.vy.vpr@800.10--800.397) [229]"}
         (forall q$a_7: int, q$v_1: int, q$a_7_1: int, q$v_1_1: int ::
         { neverTriggered10(q$a_7, q$v_1), neverTriggered10(q$a_7_1, q$v_1_1) }
         ((((q$a_7 != q$a_7_1 && q$v_1 != q$v_1_1) && (0 <= q$a_7 && (q$a_7 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_1 && q$v_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_1 == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), q$a_7): int))))) && (0 <= q$a_7_1 && (q$a_7_1 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_1_1 && q$v_1_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_1_1 == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), q$a_7_1): int))))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> q$a_7 != q$a_7_1 || q$v_1 != q$v_1_1
       );
-    
+
     // -- Define Inverse Function
       assume (forall q$a_7: int, q$v_1: int ::
         { Heap[null, $accessible$withdraw(18, q$a_7, q$v_1)] } { Mask[null, $accessible$withdraw(18, q$a_7, q$v_1)] } { Heap[null, $accessible$withdraw(18, q$a_7, q$v_1)] }
@@ -4853,13 +4855,13 @@ procedure $reflexivity_check() returns ()
         { invRecv9($tag, $to, $amount), invRecv10($tag, $to, $amount) }
         ((0 <= invRecv9($tag, $to, $amount) && (invRecv9($tag, $to, $amount) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv10($tag, $to, $amount) && invRecv10($tag, $to, $amount) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv10($tag, $to, $amount) == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), invRecv9($tag, $to, $amount)): int)))) && NoPerm < FullPerm) && qpRange10($tag, $to, $amount) ==> (18 == $tag && invRecv9($tag, $to, $amount) == $to) && invRecv10($tag, $to, $amount) == $amount
       );
-    
+
     // -- Define updated permissions
       assume (forall $tag: int, $to: int, $amount: int ::
         { QPMask[null, $accessible$withdraw($tag, $to, $amount)] }
         ((0 <= invRecv9($tag, $to, $amount) && (invRecv9($tag, $to, $amount) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv10($tag, $to, $amount) && invRecv10($tag, $to, $amount) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv10($tag, $to, $amount) == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), invRecv9($tag, $to, $amount)): int)))) && NoPerm < FullPerm) && qpRange10($tag, $to, $amount) ==> (NoPerm < FullPerm ==> (18 == $tag && invRecv9($tag, $to, $amount) == $to) && invRecv10($tag, $to, $amount) == $amount) && QPMask[null, $accessible$withdraw($tag, $to, $amount)] == Mask[null, $accessible$withdraw($tag, $to, $amount)] + FullPerm
       );
-    
+
     // -- Define independent locations
       assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
         { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
@@ -4873,7 +4875,7 @@ procedure $reflexivity_check() returns ()
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$1, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc($self$1, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@801.3--801.111
     if (($struct_get(($struct_loc($self$1, 3): int)): int) == 0) {
@@ -4881,13 +4883,13 @@ procedure $reflexivity_check() returns ()
         ($struct_get(($struct_loc($self$1, 4): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$1, 0)): Int) ==
   //   ($struct_get($struct_loc($self$1, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@802.3--802.100
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc($self$1, 0)): Int) == ($struct_get($struct_loc($self$1, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@802.10--802.100) [231]"}
       ($struct_get(($struct_loc($self$1, 0): int)): int) == ($struct_get(($struct_loc($self$1, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$1, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@803.3--803.103
     if (($struct_get(($struct_loc($self$1, 5): int)): bool)) {
@@ -4895,7 +4897,7 @@ procedure $reflexivity_check() returns ()
         ($struct_get(($struct_loc($self$1, 5): int)): bool);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert !($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$1, 4)): Int) <=
@@ -4905,7 +4907,7 @@ procedure $reflexivity_check() returns ()
         ($map_sum(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc($self$1, 4): int)): int) <= ($struct_get(($struct_loc($self$1, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert !($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc($self$1, 4)): Int) ==
@@ -4916,7 +4918,7 @@ procedure $reflexivity_check() returns ()
         ($map_sum(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc($self$1, 4): int)): int) == ($map_sum(($struct_get(($struct_loc($self$1, 11): int)): $MapDomainType int int)): int) - ($map_sum(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int])): Int) <=
   //   ($struct_get($struct_loc($self$1, 7)): Int) -- testsresourcesexamplesauction.vy.vpr@806.3--806.177
@@ -4925,13 +4927,13 @@ procedure $reflexivity_check() returns ()
         ($map_sum(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int)): int) <= ($struct_get(($struct_loc($self$1, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$1, 4)): Int) >=
   //   ($struct_get($struct_loc($self$1, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@807.3--807.100
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc($self$1, 4)): Int) >= ($struct_get($struct_loc($self$1, 4)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@807.10--807.100) [236]"}
       ($struct_get(($struct_loc($self$1, 4): int)): int) >= ($struct_get(($struct_loc($self$1, 4): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($struct_get($struct_loc($self$1, 4)): Int) ==
   //   ($struct_get($struct_loc($self$1, 4)): Int) &&
@@ -4944,25 +4946,25 @@ procedure $reflexivity_check() returns ()
         ($struct_get(($struct_loc($self$1, 3): int)): int) == ($struct_get(($struct_loc($self$1, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$1, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@809.3--809.58
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc($self$1, 0)): Int) != 0 might not hold. (testsresourcesexamplesauction.vy.vpr@809.10--809.58) [239]"}
       ($struct_get(($struct_loc($self$1, 0): int)): int) != 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$1, 3)): Int) !=
   //   ($struct_get($struct_loc($self$1, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@810.3--810.100
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc($self$1, 3)): Int) != ($struct_get($struct_loc($self$1, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@810.10--810.100) [240]"}
       ($struct_get(($struct_loc($self$1, 3): int)): int) != ($struct_get(($struct_loc($self$1, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   0)): Int)): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@811.3--811.131
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$1, 0)): Int)): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@811.10--811.131) [241]"}
       ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert !($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   0)): Int)): Int) ==
@@ -4972,7 +4974,7 @@ procedure $reflexivity_check() returns ()
         ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 0): int)): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($struct_get($struct_loc($self$1, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   0)): Int)): Int) ==
@@ -4982,7 +4984,7 @@ procedure $reflexivity_check() returns ()
         ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 0): int)): int)): int) == ($struct_get(($struct_loc($self$1, 4): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1,
   //   3)): Int)): Int) +
   //   ($struct_get($struct_loc($self$1, 4)): Int) +
@@ -4993,7 +4995,7 @@ procedure $reflexivity_check() returns ()
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), ($struct_get($struct_loc($self$1, 3)): Int)): Int) + ($struct_get($struct_loc($self$1, 4)): Int) + ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), ($struct_get($struct_loc($self$1, 3)): Int)): Int) == ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), ($struct_get($struct_loc($self$1, 3)): Int)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@814.10--814.413) [244]"}
       ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 3): int)): int)): int) + ($struct_get(($struct_loc($self$1, 4): int)): int) + ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc($self$1, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc($self$1, 3): int)): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -5002,7 +5004,7 @@ procedure $reflexivity_check() returns ()
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@815.3--815.532
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$1, 3)): Int) && q$a != ($struct_get($struct_loc($self$1, 0)): Int) ==> ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -5021,13 +5023,13 @@ procedure $reflexivity_check() returns ()
       0 <= q$a_11_1 && q$a_11_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_11_1 != ($struct_get(($struct_loc($self$1, 3): int)): int) && q$a_11_1 != ($struct_get(($struct_loc($self$1, 0): int)): int) ==> ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), q$a_11_1): int) + ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), q$a_11_1): int) == ($map_get(($struct_get(($struct_loc($self$1, 11): int)): $MapDomainType int int), q$a_11_1): int)
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@816.3--816.90
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), 0): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@816.10--816.90) [246]"}
       ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -5035,7 +5037,7 @@ procedure $reflexivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@817.3--817.353
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -5054,7 +5056,7 @@ procedure $reflexivity_check() returns ()
       0 <= q$a_14_1 && q$a_14_1 <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), q$a_14_1): int) != 0 ==> ($map_get(($struct_get(($struct_loc($self$1, 11): int)): $MapDomainType int int), q$a_14_1): int) != 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -5063,7 +5065,7 @@ procedure $reflexivity_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@818.3--818.409
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc($self$1, 0)): Int) && ($map_get(($struct_get($struct_loc($self$1, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc($self$1, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -5082,7 +5084,7 @@ procedure $reflexivity_check() returns ()
       0 <= q$a_17_1 && q$a_17_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_17_1 != ($struct_get(($struct_loc($self$1, 0): int)): int) && ($map_get(($struct_get(($struct_loc($self$1, 11): int)): $MapDomainType int int), q$a_17_1): int) == 0 ==> ($map_get(($struct_get(($struct_loc($self$1, 10): int)): $MapDomainType int int), q$a_17_1): int) == 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true &&
   //   (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -5094,7 +5096,7 @@ procedure $reflexivity_check() returns ()
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int))) ==>
   //     acc($accessible$withdraw(18, q$a, q$v), write)) -- testsresourcesexamplesauction.vy.vpr@819.3--819.397
-    
+
     // -- Check definedness of true && (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935 && q$v == ($map_get(($struct_get($struct_loc($self$1, 6)): $Map[Int, Int]), q$a): Int))) ==> acc($accessible$withdraw(18, q$a, q$v), write))
       if (*) {
         assume false;
@@ -5102,24 +5104,24 @@ procedure $reflexivity_check() returns ()
     AssertHeap := Heap;
     AssertMask := Mask;
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
-      
-    
+
+
     // -- check if receiver acc($accessible$withdraw(18, q$a, q$v), write) is injective
       assert {:msg "  Assert might fail. Quantified resource $accessible$withdraw(18, q$a, q$v) might not be injective. (testsresourcesexamplesauction.vy.vpr@819.10--819.397) [251]"}
         (forall q$a_18: int, q$v_3: int, q$a_18_1: int, q$v_3_1: int ::
         { neverTriggered12(q$a_18, q$v_3), neverTriggered12(q$a_18_1, q$v_3_1) }
         ((((q$a_18 != q$a_18_1 && q$v_3 != q$v_3_1) && (0 <= q$a_18 && (q$a_18 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_3 && q$v_3 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_3 == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), q$a_18): int))))) && (0 <= q$a_18_1 && (q$a_18_1 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_3_1 && q$v_3_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_3_1 == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), q$a_18_1): int))))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> q$a_18 != q$a_18_1 || q$v_3 != q$v_3_1
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Assert might fail. There might be insufficient permission to access $accessible$withdraw(18, q$a, q$v) (testsresourcesexamplesauction.vy.vpr@819.10--819.397) [252]"}
         (forall q$a_18: int, q$v_3: int ::
         { AssertHeap[null, $accessible$withdraw(18, q$a_18, q$v_3)] } { AssertMask[null, $accessible$withdraw(18, q$a_18, q$v_3)] } { AssertHeap[null, $accessible$withdraw(18, q$a_18, q$v_3)] }
         0 <= q$a_18 && (q$a_18 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_3 && q$v_3 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_3 == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), q$a_18): int))) ==> AssertMask[null, $accessible$withdraw(18, q$a_18, q$v_3)] >= FullPerm
       );
-    
+
     // -- assumptions for inverse of receiver acc($accessible$withdraw(18, q$a, q$v), write)
       assume (forall q$a_18: int, q$v_3: int ::
         { AssertHeap[null, $accessible$withdraw(18, q$a_18, q$v_3)] } { AssertMask[null, $accessible$withdraw(18, q$a_18, q$v_3)] } { AssertHeap[null, $accessible$withdraw(18, q$a_18, q$v_3)] }
@@ -5129,7 +5131,7 @@ procedure $reflexivity_check() returns ()
         { invRecv11($tag_1, $to_1, $amount_1), invRecv12($tag_1, $to_1, $amount_1) }
         ((0 <= invRecv11($tag_1, $to_1, $amount_1) && (invRecv11($tag_1, $to_1, $amount_1) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv12($tag_1, $to_1, $amount_1) && invRecv12($tag_1, $to_1, $amount_1) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv12($tag_1, $to_1, $amount_1) == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), invRecv11($tag_1, $to_1, $amount_1)): int)))) && NoPerm < FullPerm) && qpRange12($tag_1, $to_1, $amount_1) ==> (18 == $tag_1 && invRecv11($tag_1, $to_1, $amount_1) == $to_1) && invRecv12($tag_1, $to_1, $amount_1) == $amount_1
       );
-    
+
     // -- assume permission updates for predicate $accessible$withdraw
       assume (forall $tag_1: int, $to_1: int, $amount_1: int ::
         { QPMask[null, $accessible$withdraw($tag_1, $to_1, $amount_1)] }
@@ -5139,8 +5141,8 @@ procedure $reflexivity_check() returns ()
         { QPMask[null, $accessible$withdraw($tag_1, $to_1, $amount_1)] }
         !(((0 <= invRecv11($tag_1, $to_1, $amount_1) && (invRecv11($tag_1, $to_1, $amount_1) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv12($tag_1, $to_1, $amount_1) && invRecv12($tag_1, $to_1, $amount_1) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv12($tag_1, $to_1, $amount_1) == ($map_get(($struct_get(($struct_loc($self$1, 6): int)): $MapDomainType int int), invRecv11($tag_1, $to_1, $amount_1)): int)))) && NoPerm < FullPerm) && qpRange12($tag_1, $to_1, $amount_1)) ==> QPMask[null, $accessible$withdraw($tag_1, $to_1, $amount_1)] == AssertMask[null, $accessible$withdraw($tag_1, $to_1, $amount_1)]
       );
-    
-    // -- assume permission updates for independent locations 
+
+    // -- assume permission updates for independent locations
       assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
         { AssertMask[o_4, f_6] } { QPMask[o_4, f_6] }
         (o_4 != null || !IsPredicateField(f_6)) || getPredicateId(f_6) != 24 ==> AssertMask[o_4, f_6] == QPMask[o_4, f_6]
@@ -5163,18 +5165,18 @@ procedure $forced_ether_check() returns ()
   var QPMask: MaskType;
   var $pre_$contracts: ($MapDomainType int $StructDomainType);
   var $contracts: ($MapDomainType int $StructDomainType);
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(self, 0)): Int) &&
   //   ($struct_get($struct_loc(self, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@831.3--831.152
@@ -5182,7 +5184,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(self, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(self, 1)): Int) &&
   //   ($struct_get($struct_loc(self, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@832.3--832.181
@@ -5190,7 +5192,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(self, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(self, 2)): Int) &&
   //   ($struct_get($struct_loc(self, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@833.3--833.181
@@ -5198,7 +5200,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(self, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(self, 3)): Int) &&
   //   ($struct_get($struct_loc(self, 3)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@834.3--834.152
@@ -5206,7 +5208,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(self, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(self, 4)): Int) &&
   //   ($struct_get($struct_loc(self, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@835.3--835.181
@@ -5214,14 +5216,14 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(self, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@836.3--836.346
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -5232,12 +5234,12 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@837.3--837.254
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -5248,7 +5250,7 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(self, 7)): Int) &&
   //   ($struct_get($struct_loc(self, 7)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@838.3--838.181
@@ -5256,7 +5258,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(self, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc(self, 8)): Int) &&
   //   ($struct_get($struct_loc(self, 8)): Int) <=
@@ -5265,14 +5267,14 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(self, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@840.3--840.349
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -5283,12 +5285,12 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@841.3--841.257
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -5299,14 +5301,14 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@842.3--842.349
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -5317,12 +5319,12 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@843.3--843.257
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -5333,13 +5335,13 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@844.3--844.86
     assume ($struct_get(($struct_loc(self, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($pre_self, 0)): Int) &&
   //   ($struct_get($struct_loc($pre_self, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@845.3--845.162
@@ -5347,7 +5349,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc($pre_self, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($pre_self, 1)): Int) &&
   //   ($struct_get($struct_loc($pre_self, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@846.3--846.191
@@ -5355,7 +5357,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc($pre_self, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($pre_self, 2)): Int) &&
   //   ($struct_get($struct_loc($pre_self, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@847.3--847.191
@@ -5363,7 +5365,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc($pre_self, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($pre_self, 3)): Int) &&
   //   ($struct_get($struct_loc($pre_self, 3)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@848.3--848.162
@@ -5371,7 +5373,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc($pre_self, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($pre_self, 4)): Int) &&
   //   ($struct_get($struct_loc($pre_self, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@849.3--849.191
@@ -5379,14 +5381,14 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc($pre_self, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@850.3--850.361
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -5397,12 +5399,12 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@851.3--851.269
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc($pre_self, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -5413,7 +5415,7 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc($pre_self, 7)): Int) &&
   //   ($struct_get($struct_loc($pre_self, 7)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@852.3--852.191
@@ -5421,7 +5423,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc($pre_self, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc($pre_self, 8)): Int) &&
   //   ($struct_get($struct_loc($pre_self, 8)): Int) <=
@@ -5430,14 +5432,14 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc($pre_self, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@854.3--854.364
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -5448,12 +5450,12 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@855.3--855.272
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -5464,14 +5466,14 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) }
   //     0 <=
   //     ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@856.3--856.364
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -5482,12 +5484,12 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@857.3--857.272
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc($pre_self, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -5498,13 +5500,13 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc($pre_self, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@858.3--858.91
     assume ($struct_get(($struct_loc($pre_self, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 0)): Int) &&
   //   ($struct_get($struct_loc(block, 0)): Int) <=
   //   1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@859.3--859.154
@@ -5512,7 +5514,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(block, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 1)): Int) &&
   //   ($struct_get($struct_loc(block, 1)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@860.3--860.183
@@ -5520,7 +5522,7 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(block, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 2)): Int) &&
   //   ($struct_get($struct_loc(block, 2)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@861.3--861.183
@@ -5528,12 +5530,12 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(block, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale |($struct_get($struct_loc(block, 3)): Seq[Int])| == 32 -- testsresourcesexamplesauction.vy.vpr@862.3--862.64
     assume Seq#Length(($struct_get(($struct_loc(block, 3): int)): Seq int)) == 32;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale 0 <= ($struct_get($struct_loc(block, 4)): Int) &&
   //   ($struct_get($struct_loc(block, 4)): Int) <=
   //   115792089237316195423570985008687907853269984665640564039457584007913129639935 -- testsresourcesexamplesauction.vy.vpr@863.3--863.183
@@ -5541,23 +5543,23 @@ procedure $forced_ether_check() returns ()
     assume ($struct_get(($struct_loc(block, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(block, -1)): Int) ==
   //   2335365049822495359383864865678187 -- testsresourcesexamplesauction.vy.vpr@864.3--864.90
     assume ($struct_get(($struct_loc(block, -1): int)): int) == 2335365049822495359383864865678187;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale $havoc >= 0 -- testsresourcesexamplesauction.vy.vpr@865.3--865.21
     assume $havoc >= 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@866.3--866.258
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -5568,7 +5570,7 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@867.3--867.105
     if (($struct_get(($struct_loc(self, 3): int)): int) == 0) {
@@ -5576,13 +5578,13 @@ procedure $forced_ether_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@868.3--868.94
     assume ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@869.3--869.97
     if (($struct_get(($struct_loc(self, 5): int)): bool)) {
@@ -5590,7 +5592,7 @@ procedure $forced_ether_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc(self, 4)): Int) <=
@@ -5600,7 +5602,7 @@ procedure $forced_ether_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -5611,7 +5613,7 @@ procedure $forced_ether_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
   //   ($struct_get($struct_loc(self, 7)): Int) -- testsresourcesexamplesauction.vy.vpr@872.3--872.168
@@ -5620,13 +5622,13 @@ procedure $forced_ether_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc(self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@873.3--873.94
     assume ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc(self, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
   //   ($struct_get($struct_loc(self, 4)): Int) &&
@@ -5638,25 +5640,25 @@ procedure $forced_ether_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@875.3--875.55
     assume ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@876.3--876.94
     assume ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@877.3--877.125
     assume ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -5666,7 +5668,7 @@ procedure $forced_ether_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -5676,7 +5678,7 @@ procedure $forced_ether_check() returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
   //   ($struct_get($struct_loc(self, 4)): Int) +
@@ -5687,7 +5689,7 @@ procedure $forced_ether_check() returns ()
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -5696,7 +5698,7 @@ procedure $forced_ether_check() returns ()
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@881.3--881.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -5707,13 +5709,13 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@882.3--882.87
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -5721,7 +5723,7 @@ procedure $forced_ether_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@883.3--883.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -5732,7 +5734,7 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
   //     0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==>
@@ -5741,7 +5743,7 @@ procedure $forced_ether_check() returns ()
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@884.3--884.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -5752,7 +5754,7 @@ procedure $forced_ether_check() returns ()
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: inhale true &&
   //   (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -5764,20 +5766,20 @@ procedure $forced_ether_check() returns ()
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int))) ==>
   //     acc($accessible$withdraw(18, q$a, q$v), write)) -- testsresourcesexamplesauction.vy.vpr@885.3--885.394
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935 && q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int))) ==> acc($accessible$withdraw(18, q$a, q$v), write))
       if (*) {
         assume false;
       }
     havoc QPMask;
-    
+
     // -- check if receiver acc($accessible$withdraw(18, q$a, q$v), write) is injective
       assert {:msg "  Inhale might fail. Quantified resource $accessible$withdraw(18, q$a, q$v) might not be injective. (testsresourcesexamplesauction.vy.vpr@885.10--885.394) [253]"}
         (forall q$a_7: int, q$v_1: int, q$a_7_1: int, q$v_1_1: int ::
         { neverTriggered14(q$a_7, q$v_1), neverTriggered14(q$a_7_1, q$v_1_1) }
         ((((q$a_7 != q$a_7_1 && q$v_1 != q$v_1_1) && (0 <= q$a_7 && (q$a_7 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_1 && q$v_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_1 == ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_7): int))))) && (0 <= q$a_7_1 && (q$a_7_1 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_1_1 && q$v_1_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_1_1 == ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_7_1): int))))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> q$a_7 != q$a_7_1 || q$v_1 != q$v_1_1
       );
-    
+
     // -- Define Inverse Function
       assume (forall q$a_7: int, q$v_1: int ::
         { Heap[null, $accessible$withdraw(18, q$a_7, q$v_1)] } { Mask[null, $accessible$withdraw(18, q$a_7, q$v_1)] } { Heap[null, $accessible$withdraw(18, q$a_7, q$v_1)] }
@@ -5787,13 +5789,13 @@ procedure $forced_ether_check() returns ()
         { invRecv13($tag, $to, $amount), invRecv14($tag, $to, $amount) }
         ((0 <= invRecv13($tag, $to, $amount) && (invRecv13($tag, $to, $amount) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv14($tag, $to, $amount) && invRecv14($tag, $to, $amount) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv14($tag, $to, $amount) == ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), invRecv13($tag, $to, $amount)): int)))) && NoPerm < FullPerm) && qpRange14($tag, $to, $amount) ==> (18 == $tag && invRecv13($tag, $to, $amount) == $to) && invRecv14($tag, $to, $amount) == $amount
       );
-    
+
     // -- Define updated permissions
       assume (forall $tag: int, $to: int, $amount: int ::
         { QPMask[null, $accessible$withdraw($tag, $to, $amount)] }
         ((0 <= invRecv13($tag, $to, $amount) && (invRecv13($tag, $to, $amount) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv14($tag, $to, $amount) && invRecv14($tag, $to, $amount) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv14($tag, $to, $amount) == ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), invRecv13($tag, $to, $amount)): int)))) && NoPerm < FullPerm) && qpRange14($tag, $to, $amount) ==> (NoPerm < FullPerm ==> (18 == $tag && invRecv13($tag, $to, $amount) == $to) && invRecv14($tag, $to, $amount) == $amount) && QPMask[null, $accessible$withdraw($tag, $to, $amount)] == Mask[null, $accessible$withdraw($tag, $to, $amount)] + FullPerm
       );
-    
+
     // -- Define independent locations
       assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
         { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
@@ -5807,15 +5809,15 @@ procedure $forced_ether_check() returns ()
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: $pre_self := self -- testsresourcesexamplesauction.vy.vpr@887.3--887.20
     $pre_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: $pre_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@888.3--888.32
     $pre_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: self := ($struct_set(self, 7, ($struct_get($struct_loc(self, 7)): Int) +
   //   $havoc): $Struct) -- testsresourcesexamplesauction.vy.vpr@889.3--889.93
     self := ($struct_set(self, 7, ($struct_get(($struct_loc(self, 7): int)): int) + $havoc): $StructDomainType);
@@ -5855,7 +5857,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
   var q$a_1: int;
   var q$a_4: int;
   var q$a_7: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
@@ -5863,188 +5865,188 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     revert_lblGuard := false;
     end_lblGuard := false;
     return_lblGuard := false;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: // id = 1
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 2
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 3
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 4
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 5
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 6
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 7
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 8
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 9
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 10
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 11
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 12
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 13
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 14
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 15
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 16
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 17
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 18
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 19
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 20
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 21
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 22
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 23
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 24
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 25
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 26
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 27
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 28
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 29
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 30
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 31
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 32
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 33
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 34
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 35
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 36
   // inhale 0 <= ($struct_get($struct_loc(self, 0)): Int) &&
   //   ($struct_get($struct_loc(self, 0)): Int) <=
@@ -6053,7 +6055,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(self, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 37
   // inhale 0 <= ($struct_get($struct_loc(self, 1)): Int) &&
   //   ($struct_get($struct_loc(self, 1)): Int) <=
@@ -6062,7 +6064,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(self, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 38
   // inhale 0 <= ($struct_get($struct_loc(self, 2)): Int) &&
   //   ($struct_get($struct_loc(self, 2)): Int) <=
@@ -6071,7 +6073,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(self, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 39
   // inhale 0 <= ($struct_get($struct_loc(self, 3)): Int) &&
   //   ($struct_get($struct_loc(self, 3)): Int) <=
@@ -6080,7 +6082,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(self, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 40
   // inhale 0 <= ($struct_get($struct_loc(self, 4)): Int) &&
   //   ($struct_get($struct_loc(self, 4)): Int) <=
@@ -6089,7 +6091,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(self, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 41
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
@@ -6097,7 +6099,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@918.3--918.346
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -6108,13 +6110,13 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 42
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@919.3--919.254
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -6125,7 +6127,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 43
   // inhale 0 <= ($struct_get($struct_loc(self, 7)): Int) &&
   //   ($struct_get($struct_loc(self, 7)): Int) <=
@@ -6134,7 +6136,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(self, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 44
   // inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc(self, 8)): Int) &&
@@ -6144,7 +6146,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(self, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 45
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
@@ -6152,7 +6154,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@922.3--922.349
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -6163,13 +6165,13 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 46
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@923.3--923.257
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -6180,7 +6182,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 47
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
@@ -6188,7 +6190,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@924.3--924.349
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -6199,13 +6201,13 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 48
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@925.3--925.257
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -6216,14 +6218,14 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 49
   // inhale ($struct_get($struct_loc(self, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@926.3--926.86
     assume ($struct_get(($struct_loc(self, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 50
   // inhale 0 <= $self_address() &&
   //   $self_address() <= 1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@928.3--928.102
@@ -6231,7 +6233,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($self_address(): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 51
   // inhale 0 <= l$_beneficiary &&
   //   l$_beneficiary <= 1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@930.3--930.100
@@ -6239,7 +6241,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume l$_beneficiary <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 52
   // inhale 0 <= $unwrap(l$_bidding_time) &&
   //   $unwrap(l$_bidding_time) <=
@@ -6248,7 +6250,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($unwrap(l$_bidding_time): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 53
   // inhale 0 <= ($struct_get($struct_loc(block, 0)): Int) &&
   //   ($struct_get($struct_loc(block, 0)): Int) <=
@@ -6257,7 +6259,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(block, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 54
   // inhale 0 <= ($struct_get($struct_loc(block, 1)): Int) &&
   //   ($struct_get($struct_loc(block, 1)): Int) <=
@@ -6266,7 +6268,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(block, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 55
   // inhale 0 <= ($struct_get($struct_loc(block, 2)): Int) &&
   //   ($struct_get($struct_loc(block, 2)): Int) <=
@@ -6275,13 +6277,13 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(block, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 56
   // inhale |($struct_get($struct_loc(block, 3)): Seq[Int])| == 32 -- testsresourcesexamplesauction.vy.vpr@936.3--936.64
     assume Seq#Length(($struct_get(($struct_loc(block, 3): int)): Seq int)) == 32;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 57
   // inhale 0 <= ($struct_get($struct_loc(block, 4)): Int) &&
   //   ($struct_get($struct_loc(block, 4)): Int) <=
@@ -6290,14 +6292,14 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(block, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 58
   // inhale ($struct_get($struct_loc(block, -1)): Int) ==
   //   2335365049822495359383864865678187 -- testsresourcesexamplesauction.vy.vpr@938.3--938.90
     assume ($struct_get(($struct_loc(block, -1): int)): int) == 2335365049822495359383864865678187;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 59
   // inhale 0 <= ($struct_get($struct_loc(msg, 0)): Int) &&
   //   ($struct_get($struct_loc(msg, 0)): Int) <=
@@ -6306,7 +6308,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(msg, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 60
   // inhale 0 <= ($struct_get($struct_loc(msg, 1)): Int) &&
   //   ($struct_get($struct_loc(msg, 1)): Int) <=
@@ -6315,7 +6317,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(msg, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 61
   // inhale 0 <= ($struct_get($struct_loc(msg, 2)): Int) &&
   //   ($struct_get($struct_loc(msg, 2)): Int) <=
@@ -6324,155 +6326,155 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     assume ($struct_get(($struct_loc(msg, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 62
   // inhale ($struct_get($struct_loc(msg, -1)): Int) ==
   //   35634842679176259756224246631 -- testsresourcesexamplesauction.vy.vpr@943.3--943.83
     assume ($struct_get(($struct_loc(msg, -1): int)): int) == 35634842679176259756224246631;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 63
   // inhale ($struct_get($struct_loc(msg, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@944.3--944.54
     assume ($struct_get(($struct_loc(msg, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 64
   // $pre_self := self -- testsresourcesexamplesauction.vy.vpr@946.3--946.20
     $pre_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 65
   // $pre_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@947.3--947.32
     $pre_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 66
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@949.3--949.20
     $old_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 67
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@950.3--950.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 68
   // $succ := true -- testsresourcesexamplesauction.vy.vpr@951.3--951.16
     $succ := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 69
   // $overflow := false -- testsresourcesexamplesauction.vy.vpr@952.3--952.21
     $overflow := false;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 70
   // $first_public_state := true -- testsresourcesexamplesauction.vy.vpr@953.3--953.30
     $first_public_state := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 71
   // self := s$struct$self$init(0, 0, 0, 0, 0, false, ($map_init(0): $Map[Int, Int]),
   //   0, 0, false, ($map_init(0): $Map[Int, Int]), ($map_init(0): $Map[Int, Int]),
   //   false) -- testsresourcesexamplesauction.vy.vpr@954.3--954.167
     self := (s$struct$self$init(0, 0, 0, 0, 0, false, ($map_init(0): $MapDomainType int int), 0, 0, false, ($map_init(0): $MapDomainType int int), ($map_init(0): $MapDomainType int int), false): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 72
   // inhale l$havoc >= 0 -- testsresourcesexamplesauction.vy.vpr@955.3--955.22
     assume l$havoc >= 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 73
   // self := ($struct_set(self, 7, ($struct_get($struct_loc(self, 7)): Int) +
   //   l$havoc): $Struct) -- testsresourcesexamplesauction.vy.vpr@956.3--956.94
     self := ($struct_set(self, 7, ($struct_get(($struct_loc(self, 7): int)): int) + l$havoc): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 74
   // inhale ($struct_get($struct_loc(msg, 1)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@958.3--958.54
     assume ($struct_get(($struct_loc(msg, 1): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (!(l$_beneficiary != 0)) -- testsresourcesexamplesauction.vy.vpr@960.3--962.4
     if (!(l$_beneficiary != 0)) {
-      
+
       // -- Translating statement: // id = 75
   // goto revert -- testsresourcesexamplesauction.vy.vpr@961.5--961.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 76
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 77
   // self := ($struct_set(self, 0, l$_beneficiary): $Struct) -- testsresourcesexamplesauction.vy.vpr@963.3--963.58
     self := ($struct_set(self, 0, l$_beneficiary): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 78
   // self := ($struct_set(self, 1, $unwrap($wrap(($struct_get($struct_loc(block,
   //   4)): Int)))): $Struct) -- testsresourcesexamplesauction.vy.vpr@964.3--964.101
     self := ($struct_set(self, 1, ($unwrap(($wrap(($struct_get(($struct_loc(block, 4): int)): int)): $IntDomainType)): int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (($struct_get($struct_loc(self, 1)): Int) + $unwrap(l$_bidding_time) < 0) -- testsresourcesexamplesauction.vy.vpr@965.3--967.4
     if (($struct_get(($struct_loc(self, 1): int)): int) + ($unwrap(l$_bidding_time): int) < 0) {
-      
+
       // -- Translating statement: // id = 79
   // goto revert -- testsresourcesexamplesauction.vy.vpr@966.5--966.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 80
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 81
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (($struct_get($struct_loc(self, 1)): Int) + $unwrap(l$_bidding_time) > 115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@968.3--971.4
     if (($struct_get(($struct_loc(self, 1): int)): int) + ($unwrap(l$_bidding_time): int) > 115792089237316195423570985008687907853269984665640564039457584007913129639935) {
-      
+
       // -- Translating statement: // id = 82
   // $overflow := true -- testsresourcesexamplesauction.vy.vpr@969.5--969.22
         $overflow := true;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 83
   // goto revert -- testsresourcesexamplesauction.vy.vpr@970.5--970.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 84
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 85
   // self := ($struct_set(self, 2, $unwrap($wrap(($struct_get($struct_loc(self, 1)): Int) +
   //   $unwrap(l$_bidding_time)))): $Struct) -- testsresourcesexamplesauction.vy.vpr@972.3--972.127
     self := ($struct_set(self, 2, ($unwrap(($wrap(($struct_get(($struct_loc(self, 1): int)): int) + ($unwrap(l$_bidding_time): int)): $IntDomainType)): int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 86
   // label return -- testsresourcesexamplesauction.vy.vpr@973.3--973.15
     vreturn:
@@ -6480,28 +6482,28 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     LabelreturnHeap := Heap;
     return_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($out_of_gas) -- testsresourcesexamplesauction.vy.vpr@974.3--976.4
     if ($out_of_gas) {
-      
+
       // -- Translating statement: // id = 87
   // goto revert -- testsresourcesexamplesauction.vy.vpr@975.5--975.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 88
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 89
   // goto end -- testsresourcesexamplesauction.vy.vpr@977.3--977.11
     goto end;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 90
   // label revert -- testsresourcesexamplesauction.vy.vpr@978.3--978.15
     revert:
@@ -6509,32 +6511,32 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     LabelrevertHeap := Heap;
     revert_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 91
   // $succ := false -- testsresourcesexamplesauction.vy.vpr@979.3--979.17
     $succ := false;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 92
   // self := $pre_self -- testsresourcesexamplesauction.vy.vpr@981.3--981.20
     self := $pre_self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 93
   // $contracts := $pre_$contracts -- testsresourcesexamplesauction.vy.vpr@982.3--982.32
     $contracts := $pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 94
   // $old_self := $pre_self -- testsresourcesexamplesauction.vy.vpr@984.3--984.25
     $old_self := $pre_self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 95
   // $old_$contracts := $pre_$contracts -- testsresourcesexamplesauction.vy.vpr@985.3--985.37
     $old_$contracts := $pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 96
   // label end -- testsresourcesexamplesauction.vy.vpr@986.3--986.12
     end:
@@ -6542,23 +6544,23 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
     LabelendHeap := Heap;
     end_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($first_public_state) -- testsresourcesexamplesauction.vy.vpr@987.3--989.4
     if ($first_public_state) {
-      
+
       // -- Translating statement: // id = 97
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@988.5--988.22
         $old_self := self;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 98
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 99
   // assert $succ ==>
   //   $succ &&
@@ -6574,56 +6576,56 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       }
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($succ) -- testsresourcesexamplesauction.vy.vpr@993.3--995.4
     if ($succ) {
-      
+
       // -- Translating statement: // id = 100
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 101
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 102
   // inhale l$havoc$1 >= 0 -- testsresourcesexamplesauction.vy.vpr@996.3--996.24
     assume l$havoc$1 >= 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 103
   // self := ($struct_set(self, 7, ($struct_get($struct_loc(self, 7)): Int) +
   //   l$havoc$1): $Struct) -- testsresourcesexamplesauction.vy.vpr@997.3--997.96
     self := ($struct_set(self, 7, ($struct_get(($struct_loc(self, 7): int)): int) + l$havoc$1): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 104
   // $contracts := l$havoc$2 -- testsresourcesexamplesauction.vy.vpr@999.3--999.26
     $contracts := l$havoc$2;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($first_public_state) -- testsresourcesexamplesauction.vy.vpr@1000.3--1002.4
     if ($first_public_state) {
-      
+
       // -- Translating statement: // id = 105
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@1001.5--1001.22
         $old_self := self;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 106
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 107
   // assert $succ ==>
   //   ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
@@ -6635,7 +6637,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       }
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 108
   // assert $succ ==>
   //   ($struct_get($struct_loc(self, 0)): Int) ==
@@ -6645,7 +6647,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
         ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc($old_self, 0): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 109
   // assert $succ ==>
   //   ($struct_get($struct_loc($old_self, 5)): Bool) ==>
@@ -6657,7 +6659,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       }
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 110
   // assert $succ ==>
   //   !($struct_get($struct_loc(self, 5)): Bool) ==>
@@ -6671,7 +6673,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       }
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 111
   // assert $succ ==>
   //   !($struct_get($struct_loc(self, 5)): Bool) ==>
@@ -6686,7 +6688,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       }
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 112
   // assert $succ ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) ==>
@@ -6699,7 +6701,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       }
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 113
   // assert $succ ==>
   //   ($struct_get($struct_loc(self, 4)): Int) >=
@@ -6709,7 +6711,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
         ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc($old_self, 4): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 114
   // assert $succ ==>
   //   ($struct_get($struct_loc($old_self, 5)): Bool) ==>
@@ -6726,7 +6728,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       }
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 115
   // assert $succ ==> ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1012.3--1012.65
     if ($succ) {
@@ -6734,7 +6736,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
         ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 116
   // assert $succ ==>
   //   ($struct_get($struct_loc(self, 3)): Int) !=
@@ -6744,7 +6746,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
         ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 117
   // assert $succ ==>
   //   ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -6755,7 +6757,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
         ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 118
   // assert $succ ==>
   //   !($struct_get($struct_loc(self, 5)): Bool) ==>
@@ -6769,7 +6771,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       }
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 119
   // assert $succ ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) ==>
@@ -6783,7 +6785,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       }
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 120
   // assert $succ ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -6798,7 +6800,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 121
   // assert $succ ==>
   //   (forall q$a: Int ::
@@ -6809,7 +6811,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1018.3--1018.524
-    
+
     // -- Check definedness of $succ ==> (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if ($succ) {
         if (*) {
@@ -6832,7 +6834,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       );
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 122
   // assert $succ ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
@@ -6842,7 +6844,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 123
   // assert $succ ==>
   //   (forall q$a: Int ::
@@ -6852,7 +6854,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1020.3--1020.354
-    
+
     // -- Check definedness of $succ ==> (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if ($succ) {
         if (*) {
@@ -6875,7 +6877,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       );
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 124
   // assert $succ ==>
   //   (forall q$a: Int ::
@@ -6886,7 +6888,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1021.3--1021.407
-    
+
     // -- Check definedness of $succ ==> (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if ($succ) {
         if (*) {
@@ -6909,7 +6911,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
       );
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 125
   // assert $succ ==>
   //   (forall q$a: Int, q$v: Int ::
@@ -6922,7 +6924,7 @@ procedure f$__init__(l$_beneficiary: int, l$_bidding_time: $IntDomainType) retur
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1022.3--1022.355
-    
+
     // -- Check definedness of $succ ==> (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if ($succ) {
         if (*) {
@@ -6968,7 +6970,7 @@ procedure f$bid() returns ($succ: bool)
   var q$a_9: int;
   var q$a_12: int;
   var q$a_15: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
@@ -6976,168 +6978,168 @@ procedure f$bid() returns ($succ: bool)
     revert_lblGuard := false;
     end_lblGuard := false;
     return_lblGuard := false;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: // id = 1
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 2
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 3
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 4
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 5
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 6
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 7
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 8
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 9
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 10
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 11
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 12
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 13
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 14
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 15
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 16
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 17
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 18
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 19
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 20
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 21
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 22
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 23
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 24
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 25
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 26
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 27
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 28
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 29
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 30
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 31
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 32
   // inhale 0 <= ($struct_get($struct_loc(self, 0)): Int) &&
   //   ($struct_get($struct_loc(self, 0)): Int) <=
@@ -7146,7 +7148,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 33
   // inhale 0 <= ($struct_get($struct_loc(self, 1)): Int) &&
   //   ($struct_get($struct_loc(self, 1)): Int) <=
@@ -7155,7 +7157,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 34
   // inhale 0 <= ($struct_get($struct_loc(self, 2)): Int) &&
   //   ($struct_get($struct_loc(self, 2)): Int) <=
@@ -7164,7 +7166,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 35
   // inhale 0 <= ($struct_get($struct_loc(self, 3)): Int) &&
   //   ($struct_get($struct_loc(self, 3)): Int) <=
@@ -7173,7 +7175,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 36
   // inhale 0 <= ($struct_get($struct_loc(self, 4)): Int) &&
   //   ($struct_get($struct_loc(self, 4)): Int) <=
@@ -7182,7 +7184,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 37
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
@@ -7190,7 +7192,7 @@ procedure f$bid() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1049.3--1049.346
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -7201,13 +7203,13 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 38
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1050.3--1050.254
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -7218,7 +7220,7 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 39
   // inhale 0 <= ($struct_get($struct_loc(self, 7)): Int) &&
   //   ($struct_get($struct_loc(self, 7)): Int) <=
@@ -7227,7 +7229,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 40
   // inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc(self, 8)): Int) &&
@@ -7237,7 +7239,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 41
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
@@ -7245,7 +7247,7 @@ procedure f$bid() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1053.3--1053.349
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -7256,13 +7258,13 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 42
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1054.3--1054.257
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -7273,7 +7275,7 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 43
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
@@ -7281,7 +7283,7 @@ procedure f$bid() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1055.3--1055.349
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -7292,13 +7294,13 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 44
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1056.3--1056.257
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -7309,14 +7311,14 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 45
   // inhale ($struct_get($struct_loc(self, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@1057.3--1057.86
     assume ($struct_get(($struct_loc(self, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 46
   // inhale 0 <= $self_address() &&
   //   $self_address() <= 1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@1059.3--1059.102
@@ -7324,7 +7326,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($self_address(): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 47
   // inhale 0 <= ($struct_get($struct_loc(block, 0)): Int) &&
   //   ($struct_get($struct_loc(block, 0)): Int) <=
@@ -7333,7 +7335,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 48
   // inhale 0 <= ($struct_get($struct_loc(block, 1)): Int) &&
   //   ($struct_get($struct_loc(block, 1)): Int) <=
@@ -7342,7 +7344,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 49
   // inhale 0 <= ($struct_get($struct_loc(block, 2)): Int) &&
   //   ($struct_get($struct_loc(block, 2)): Int) <=
@@ -7351,13 +7353,13 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 50
   // inhale |($struct_get($struct_loc(block, 3)): Seq[Int])| == 32 -- testsresourcesexamplesauction.vy.vpr@1064.3--1064.64
     assume Seq#Length(($struct_get(($struct_loc(block, 3): int)): Seq int)) == 32;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 51
   // inhale 0 <= ($struct_get($struct_loc(block, 4)): Int) &&
   //   ($struct_get($struct_loc(block, 4)): Int) <=
@@ -7366,14 +7368,14 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 52
   // inhale ($struct_get($struct_loc(block, -1)): Int) ==
   //   2335365049822495359383864865678187 -- testsresourcesexamplesauction.vy.vpr@1066.3--1066.90
     assume ($struct_get(($struct_loc(block, -1): int)): int) == 2335365049822495359383864865678187;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 53
   // inhale 0 <= ($struct_get($struct_loc(msg, 0)): Int) &&
   //   ($struct_get($struct_loc(msg, 0)): Int) <=
@@ -7382,7 +7384,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(msg, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 54
   // inhale 0 <= ($struct_get($struct_loc(msg, 1)): Int) &&
   //   ($struct_get($struct_loc(msg, 1)): Int) <=
@@ -7391,7 +7393,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(msg, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 55
   // inhale 0 <= ($struct_get($struct_loc(msg, 2)): Int) &&
   //   ($struct_get($struct_loc(msg, 2)): Int) <=
@@ -7400,26 +7402,26 @@ procedure f$bid() returns ($succ: bool)
     assume ($struct_get(($struct_loc(msg, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 56
   // inhale ($struct_get($struct_loc(msg, -1)): Int) ==
   //   35634842679176259756224246631 -- testsresourcesexamplesauction.vy.vpr@1071.3--1071.83
     assume ($struct_get(($struct_loc(msg, -1): int)): int) == 35634842679176259756224246631;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 57
   // inhale ($struct_get($struct_loc(msg, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1072.3--1072.54
     assume ($struct_get(($struct_loc(msg, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 58
   // inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@1074.3--1074.258
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -7430,7 +7432,7 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 59
   // inhale ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1075.3--1075.105
@@ -7439,14 +7441,14 @@ procedure f$bid() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 60
   // inhale ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1076.3--1076.94
     assume ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 61
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1077.3--1077.97
@@ -7455,7 +7457,7 @@ procedure f$bid() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 62
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -7466,7 +7468,7 @@ procedure f$bid() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 63
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -7478,7 +7480,7 @@ procedure f$bid() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 64
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -7488,14 +7490,14 @@ procedure f$bid() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 65
   // inhale ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc(self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1081.3--1081.94
     assume ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc(self, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 66
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -7508,20 +7510,20 @@ procedure f$bid() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 67
   // inhale ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1083.3--1083.55
     assume ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 68
   // inhale ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1084.3--1084.94
     assume ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 69
   // inhale ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -7529,7 +7531,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 70
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -7540,7 +7542,7 @@ procedure f$bid() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 71
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -7551,7 +7553,7 @@ procedure f$bid() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 72
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -7563,7 +7565,7 @@ procedure f$bid() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 73
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -7573,7 +7575,7 @@ procedure f$bid() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1089.3--1089.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -7584,14 +7586,14 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 74
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1090.3--1090.87
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 75
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -7600,7 +7602,7 @@ procedure f$bid() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1091.3--1091.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -7611,7 +7613,7 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 76
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -7621,7 +7623,7 @@ procedure f$bid() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1092.3--1092.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -7632,7 +7634,7 @@ procedure f$bid() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 77
   // inhale (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -7644,50 +7646,50 @@ procedure f$bid() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1093.3--1093.345
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if (*) {
         assume false;
       }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 78
   // $pre_self := self -- testsresourcesexamplesauction.vy.vpr@1095.3--1095.20
     $pre_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 79
   // $pre_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1096.3--1096.32
     $pre_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 80
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@1098.3--1098.20
     $old_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 81
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1099.3--1099.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 82
   // $succ := true -- testsresourcesexamplesauction.vy.vpr@1100.3--1100.16
     $succ := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 83
   // $overflow := false -- testsresourcesexamplesauction.vy.vpr@1101.3--1101.21
     $overflow := false;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 84
   // self := ($struct_set(self, 7, ($struct_get($struct_loc(self, 7)): Int) +
   //   ($struct_get($struct_loc(msg, 1)): Int)): $Struct) -- testsresourcesexamplesauction.vy.vpr@1103.3--1103.126
     self := ($struct_set(self, 7, ($struct_get(($struct_loc(self, 7): int)): int) + ($struct_get(($struct_loc(msg, 1): int)): int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 85
   // self := ($struct_set(self, 11, ($map_set(($struct_get($struct_loc(self, 11)): $Map[Int, Int]),
   //   ($struct_get($struct_loc(msg, 0)): Int), ($map_get(($struct_get($struct_loc(self,
@@ -7695,133 +7697,133 @@ procedure f$bid() returns ($succ: bool)
   //   ($struct_get($struct_loc(msg, 1)): Int)): $Map[Int, Int])): $Struct) -- testsresourcesexamplesauction.vy.vpr@1104.3--1104.320
     self := ($struct_set(self, 11, ($map_set(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(msg, 0): int)): int), ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(msg, 0): int)): int)): int) + ($struct_get(($struct_loc(msg, 1): int)): int)): $MapDomainType int int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (!(($struct_get($struct_loc(block, 4)): Int) < ($struct_get($struct_loc(self, 2)): Int))) -- testsresourcesexamplesauction.vy.vpr@1106.3--1108.4
     if (!(($struct_get(($struct_loc(block, 4): int)): int) < ($struct_get(($struct_loc(self, 2): int)): int))) {
-      
+
       // -- Translating statement: // id = 86
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1107.5--1107.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 87
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 88
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (!!($struct_get($struct_loc(self, 5)): Bool)) -- testsresourcesexamplesauction.vy.vpr@1109.3--1111.4
     if (($struct_get(($struct_loc(self, 5): int)): bool)) {
-      
+
       // -- Translating statement: // id = 89
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1110.5--1110.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 90
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 91
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (!(($struct_get($struct_loc(msg, 1)): Int) > ($struct_get($struct_loc(self, 4)): Int))) -- testsresourcesexamplesauction.vy.vpr@1112.3--1114.4
     if (!(($struct_get(($struct_loc(msg, 1): int)): int) > ($struct_get(($struct_loc(self, 4): int)): int))) {
-      
+
       // -- Translating statement: // id = 92
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1113.5--1113.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 93
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 94
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (!(($struct_get($struct_loc(msg, 0)): Int) != ($struct_get($struct_loc(self, 0)): Int))) -- testsresourcesexamplesauction.vy.vpr@1115.3--1117.4
     if (!(($struct_get(($struct_loc(msg, 0): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int))) {
-      
+
       // -- Translating statement: // id = 95
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1116.5--1116.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 96
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 97
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($unwrap($wrap(($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int))) + $unwrap($wrap(($struct_get($struct_loc(self, 4)): Int))) < 0) -- testsresourcesexamplesauction.vy.vpr@1118.3--1120.4
     if (($unwrap(($wrap(($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int)): $IntDomainType)): int) + ($unwrap(($wrap(($struct_get(($struct_loc(self, 4): int)): int)): $IntDomainType)): int) < 0) {
-      
+
       // -- Translating statement: // id = 98
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1119.5--1119.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 99
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 100
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($unwrap($wrap(($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int))) + $unwrap($wrap(($struct_get($struct_loc(self, 4)): Int))) > 115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1121.3--1124.4
     if (($unwrap(($wrap(($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int)): $IntDomainType)): int) + ($unwrap(($wrap(($struct_get(($struct_loc(self, 4): int)): int)): $IntDomainType)): int) > 115792089237316195423570985008687907853269984665640564039457584007913129639935) {
-      
+
       // -- Translating statement: // id = 101
   // $overflow := true -- testsresourcesexamplesauction.vy.vpr@1122.5--1122.22
         $overflow := true;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 102
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1123.5--1123.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 103
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 104
   // self := ($struct_set(self, 6, ($map_set(($struct_get($struct_loc(self, 6)): $Map[Int, Int]),
   //   ($struct_get($struct_loc(self, 3)): Int), $unwrap($wrap(($map_get(($struct_get($struct_loc(self,
@@ -7829,17 +7831,17 @@ procedure f$bid() returns ($succ: bool)
   //   $unwrap($wrap(($struct_get($struct_loc(self, 4)): Int)))): $Map[Int, Int])): $Struct) -- testsresourcesexamplesauction.vy.vpr@1125.3--1125.352
     self := ($struct_set(self, 6, ($map_set(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int), ($unwrap(($wrap(($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int)): $IntDomainType)): int) + ($unwrap(($wrap(($struct_get(($struct_loc(self, 4): int)): int)): $IntDomainType)): int)): $MapDomainType int int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 105
   // self := ($struct_set(self, 3, ($struct_get($struct_loc(msg, 0)): Int)): $Struct) -- testsresourcesexamplesauction.vy.vpr@1126.3--1126.83
     self := ($struct_set(self, 3, ($struct_get(($struct_loc(msg, 0): int)): int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 106
   // self := ($struct_set(self, 4, $unwrap($wrap(($struct_get($struct_loc(msg, 1)): Int)))): $Struct) -- testsresourcesexamplesauction.vy.vpr@1127.3--1127.99
     self := ($struct_set(self, 4, ($unwrap(($wrap(($struct_get(($struct_loc(msg, 1): int)): int)): $IntDomainType)): int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 107
   // label return -- testsresourcesexamplesauction.vy.vpr@1128.3--1128.15
     vreturn:
@@ -7847,28 +7849,28 @@ procedure f$bid() returns ($succ: bool)
     LabelreturnHeap := Heap;
     return_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($out_of_gas) -- testsresourcesexamplesauction.vy.vpr@1129.3--1131.4
     if ($out_of_gas) {
-      
+
       // -- Translating statement: // id = 108
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1130.5--1130.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 109
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 110
   // goto end -- testsresourcesexamplesauction.vy.vpr@1132.3--1132.11
     goto end;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 111
   // label revert -- testsresourcesexamplesauction.vy.vpr@1133.3--1133.15
     revert:
@@ -7876,32 +7878,32 @@ procedure f$bid() returns ($succ: bool)
     LabelrevertHeap := Heap;
     revert_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 112
   // $succ := false -- testsresourcesexamplesauction.vy.vpr@1134.3--1134.17
     $succ := false;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 113
   // self := $pre_self -- testsresourcesexamplesauction.vy.vpr@1136.3--1136.20
     self := $pre_self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 114
   // $contracts := $pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1137.3--1137.32
     $contracts := $pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 115
   // $old_self := $pre_self -- testsresourcesexamplesauction.vy.vpr@1139.3--1139.25
     $old_self := $pre_self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 116
   // $old_$contracts := $pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1140.3--1140.37
     $old_$contracts := $pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 117
   // label end -- testsresourcesexamplesauction.vy.vpr@1141.3--1141.12
     end:
@@ -7909,7 +7911,7 @@ procedure f$bid() returns ($succ: bool)
     LabelendHeap := Heap;
     end_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 118
   // exhale $succ ==>
   //   ($struct_get($struct_loc(self, 4)): Int) >
@@ -7919,7 +7921,7 @@ procedure f$bid() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 4): int)): int) > ($struct_get(($struct_loc($pre_self, 4): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 119
   // assert $succ &&
   //   (($struct_get($struct_loc(msg, 1)): Int) >
@@ -7932,40 +7934,40 @@ procedure f$bid() returns ($succ: bool)
         ($struct_get(($struct_loc(msg, 0): int)): int) == ($struct_get(($struct_loc(self, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($succ) -- testsresourcesexamplesauction.vy.vpr@1146.3--1148.4
     if ($succ) {
-      
+
       // -- Translating statement: // id = 120
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 121
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 122
   // inhale l$havoc >= 0 -- testsresourcesexamplesauction.vy.vpr@1149.3--1149.22
     assume l$havoc >= 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 123
   // self := ($struct_set(self, 7, ($struct_get($struct_loc(self, 7)): Int) +
   //   l$havoc): $Struct) -- testsresourcesexamplesauction.vy.vpr@1150.3--1150.94
     self := ($struct_set(self, 7, ($struct_get(($struct_loc(self, 7): int)): int) + l$havoc): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 124
   // $contracts := l$havoc$1 -- testsresourcesexamplesauction.vy.vpr@1152.3--1152.26
     $contracts := l$havoc$1;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 125
   // assert ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1154.3--1154.105
@@ -7974,14 +7976,14 @@ procedure f$bid() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 4): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 126
   // assert ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc($old_self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1155.3--1155.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) == ($struct_get($struct_loc($old_self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1155.10--1155.99) [278]"}
       ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc($old_self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 127
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1156.3--1156.102
@@ -7990,7 +7992,7 @@ procedure f$bid() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 5): int)): bool);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 128
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -8001,7 +8003,7 @@ procedure f$bid() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 129
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -8013,7 +8015,7 @@ procedure f$bid() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) == ($map_sum(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int)): int) - ($map_sum(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 130
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -8023,14 +8025,14 @@ procedure f$bid() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 131
   // assert ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc($old_self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1160.3--1160.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 4)): Int) >= ($struct_get($struct_loc($old_self, 4)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1160.10--1160.99) [283]"}
       ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc($old_self, 4): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 132
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -8044,20 +8046,20 @@ procedure f$bid() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 3): int)): int) == ($struct_get(($struct_loc($old_self, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 133
   // assert ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1162.3--1162.55
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) != 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1162.10--1162.55) [286]"}
       ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 134
   // assert ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1163.3--1163.94
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 3)): Int) != ($struct_get($struct_loc(self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1163.10--1163.94) [287]"}
       ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 135
   // assert ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -8065,7 +8067,7 @@ procedure f$bid() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 0)): Int)): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1164.10--1164.125) [288]"}
       ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 136
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -8076,7 +8078,7 @@ procedure f$bid() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 137
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -8087,7 +8089,7 @@ procedure f$bid() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == ($struct_get(($struct_loc(self, 4): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 138
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -8099,7 +8101,7 @@ procedure f$bid() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) + ($struct_get($struct_loc(self, 4)): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1167.10--1167.392) [291]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 139
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -8109,7 +8111,7 @@ procedure f$bid() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1168.3--1168.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -8128,14 +8130,14 @@ procedure f$bid() returns ($succ: bool)
       0 <= q$a_10_1 && q$a_10_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_10_1 != ($struct_get(($struct_loc(self, 3): int)): int) && q$a_10_1 != ($struct_get(($struct_loc(self, 0): int)): int) ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_10_1): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_10_1): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_10_1): int)
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 140
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1169.3--1169.87
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1169.10--1169.87) [293]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 141
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -8144,7 +8146,7 @@ procedure f$bid() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1170.3--1170.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -8163,7 +8165,7 @@ procedure f$bid() returns ($succ: bool)
       0 <= q$a_13_1 && q$a_13_1 <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_13_1): int) != 0 ==> ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_13_1): int) != 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 142
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -8173,7 +8175,7 @@ procedure f$bid() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1171.3--1171.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -8192,7 +8194,7 @@ procedure f$bid() returns ($succ: bool)
       0 <= q$a_16_1_1 && q$a_16_1_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_16_1_1 != ($struct_get(($struct_loc(self, 0): int)): int) && ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_16_1_1): int) == 0 ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_16_1_1): int) == 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 143
   // assert (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -8204,7 +8206,7 @@ procedure f$bid() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1172.3--1172.345
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if (*) {
         assume false;
@@ -8263,7 +8265,7 @@ procedure f$withdraw() returns ($succ: bool)
   var q$a_33: int;
   var q$a_36: int;
   var $a_5: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
@@ -8271,278 +8273,278 @@ procedure f$withdraw() returns ($succ: bool)
     revert_lblGuard := false;
     end_lblGuard := false;
     return_lblGuard := false;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: // id = 1
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 2
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 3
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 4
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 5
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 6
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 7
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 8
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 9
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 10
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 11
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 12
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 13
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 14
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 15
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 16
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 17
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 18
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 19
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 20
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 21
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 22
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 23
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 24
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 25
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 26
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 27
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 28
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 29
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 30
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 31
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 32
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 33
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 34
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 35
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 36
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 37
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 38
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 39
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 40
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 41
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 42
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 43
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 44
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 45
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 46
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 47
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 48
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 49
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 50
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 51
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 52
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 53
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 54
   // inhale 0 <= ($struct_get($struct_loc(self, 0)): Int) &&
   //   ($struct_get($struct_loc(self, 0)): Int) <=
@@ -8551,7 +8553,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 55
   // inhale 0 <= ($struct_get($struct_loc(self, 1)): Int) &&
   //   ($struct_get($struct_loc(self, 1)): Int) <=
@@ -8560,7 +8562,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 56
   // inhale 0 <= ($struct_get($struct_loc(self, 2)): Int) &&
   //   ($struct_get($struct_loc(self, 2)): Int) <=
@@ -8569,7 +8571,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 57
   // inhale 0 <= ($struct_get($struct_loc(self, 3)): Int) &&
   //   ($struct_get($struct_loc(self, 3)): Int) <=
@@ -8578,7 +8580,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 58
   // inhale 0 <= ($struct_get($struct_loc(self, 4)): Int) &&
   //   ($struct_get($struct_loc(self, 4)): Int) <=
@@ -8587,7 +8589,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 59
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
@@ -8595,7 +8597,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1210.3--1210.346
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -8606,13 +8608,13 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 60
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1211.3--1211.254
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -8623,7 +8625,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 61
   // inhale 0 <= ($struct_get($struct_loc(self, 7)): Int) &&
   //   ($struct_get($struct_loc(self, 7)): Int) <=
@@ -8632,7 +8634,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 62
   // inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc(self, 8)): Int) &&
@@ -8642,7 +8644,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 63
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
@@ -8650,7 +8652,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1214.3--1214.349
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -8661,13 +8663,13 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 64
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1215.3--1215.257
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -8678,7 +8680,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 65
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
@@ -8686,7 +8688,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1216.3--1216.349
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -8697,13 +8699,13 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 66
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1217.3--1217.257
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -8714,14 +8716,14 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 67
   // inhale ($struct_get($struct_loc(self, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@1218.3--1218.86
     assume ($struct_get(($struct_loc(self, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 68
   // inhale 0 <= $self_address() &&
   //   $self_address() <= 1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@1220.3--1220.102
@@ -8729,7 +8731,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($self_address(): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 69
   // inhale 0 <= ($struct_get($struct_loc(block, 0)): Int) &&
   //   ($struct_get($struct_loc(block, 0)): Int) <=
@@ -8738,7 +8740,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 70
   // inhale 0 <= ($struct_get($struct_loc(block, 1)): Int) &&
   //   ($struct_get($struct_loc(block, 1)): Int) <=
@@ -8747,7 +8749,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 71
   // inhale 0 <= ($struct_get($struct_loc(block, 2)): Int) &&
   //   ($struct_get($struct_loc(block, 2)): Int) <=
@@ -8756,13 +8758,13 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 72
   // inhale |($struct_get($struct_loc(block, 3)): Seq[Int])| == 32 -- testsresourcesexamplesauction.vy.vpr@1225.3--1225.64
     assume Seq#Length(($struct_get(($struct_loc(block, 3): int)): Seq int)) == 32;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 73
   // inhale 0 <= ($struct_get($struct_loc(block, 4)): Int) &&
   //   ($struct_get($struct_loc(block, 4)): Int) <=
@@ -8771,14 +8773,14 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 74
   // inhale ($struct_get($struct_loc(block, -1)): Int) ==
   //   2335365049822495359383864865678187 -- testsresourcesexamplesauction.vy.vpr@1227.3--1227.90
     assume ($struct_get(($struct_loc(block, -1): int)): int) == 2335365049822495359383864865678187;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 75
   // inhale 0 <= ($struct_get($struct_loc(msg, 0)): Int) &&
   //   ($struct_get($struct_loc(msg, 0)): Int) <=
@@ -8787,7 +8789,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(msg, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 76
   // inhale 0 <= ($struct_get($struct_loc(msg, 1)): Int) &&
   //   ($struct_get($struct_loc(msg, 1)): Int) <=
@@ -8796,7 +8798,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(msg, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 77
   // inhale 0 <= ($struct_get($struct_loc(msg, 2)): Int) &&
   //   ($struct_get($struct_loc(msg, 2)): Int) <=
@@ -8805,26 +8807,26 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(msg, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 78
   // inhale ($struct_get($struct_loc(msg, -1)): Int) ==
   //   35634842679176259756224246631 -- testsresourcesexamplesauction.vy.vpr@1232.3--1232.83
     assume ($struct_get(($struct_loc(msg, -1): int)): int) == 35634842679176259756224246631;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 79
   // inhale ($struct_get($struct_loc(msg, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1233.3--1233.54
     assume ($struct_get(($struct_loc(msg, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 80
   // inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@1235.3--1235.258
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -8835,7 +8837,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 81
   // inhale ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1236.3--1236.105
@@ -8844,14 +8846,14 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 82
   // inhale ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1237.3--1237.94
     assume ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 83
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1238.3--1238.97
@@ -8860,7 +8862,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 84
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -8871,7 +8873,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 85
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -8883,7 +8885,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 86
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -8893,14 +8895,14 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 87
   // inhale ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc(self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1242.3--1242.94
     assume ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc(self, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 88
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -8913,20 +8915,20 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 89
   // inhale ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1244.3--1244.55
     assume ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 90
   // inhale ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1245.3--1245.94
     assume ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 91
   // inhale ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -8934,7 +8936,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 92
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -8945,7 +8947,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 93
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -8956,7 +8958,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 94
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -8968,7 +8970,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 95
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -8978,7 +8980,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1250.3--1250.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -8989,14 +8991,14 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 96
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1251.3--1251.87
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 97
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -9005,7 +9007,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1252.3--1252.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -9016,7 +9018,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 98
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -9026,7 +9028,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1253.3--1253.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -9037,7 +9039,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 99
   // inhale true &&
   //   (forall q$a: Int, q$v: Int ::
@@ -9050,20 +9052,20 @@ procedure f$withdraw() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int))) ==>
   //     acc($accessible$withdraw(18, q$a, q$v), write)) -- testsresourcesexamplesauction.vy.vpr@1254.3--1254.394
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935 && q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int))) ==> acc($accessible$withdraw(18, q$a, q$v), write))
       if (*) {
         assume false;
       }
     havoc QPMask;
-    
+
     // -- check if receiver acc($accessible$withdraw(18, q$a, q$v), write) is injective
       assert {:msg "  Inhale might fail. Quantified resource $accessible$withdraw(18, q$a, q$v) might not be injective. (testsresourcesexamplesauction.vy.vpr@1254.10--1254.394) [297]"}
         (forall q$a_7: int, q$v_1: int, q$a_7_1: int, q$v_1_1: int ::
         { neverTriggered16(q$a_7, q$v_1), neverTriggered16(q$a_7_1, q$v_1_1) }
         ((((q$a_7 != q$a_7_1 && q$v_1 != q$v_1_1) && (0 <= q$a_7 && (q$a_7 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_1 && q$v_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_1 == ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_7): int))))) && (0 <= q$a_7_1 && (q$a_7_1 <= 1461501637330902918203684832716283019655932542975 && ((0 <= q$v_1_1 && q$v_1_1 <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && q$v_1_1 == ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_7_1): int))))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> q$a_7 != q$a_7_1 || q$v_1 != q$v_1_1
       );
-    
+
     // -- Define Inverse Function
       assume (forall q$a_7: int, q$v_1: int ::
         { Heap[null, $accessible$withdraw(18, q$a_7, q$v_1)] } { Mask[null, $accessible$withdraw(18, q$a_7, q$v_1)] } { Heap[null, $accessible$withdraw(18, q$a_7, q$v_1)] }
@@ -9073,13 +9075,13 @@ procedure f$withdraw() returns ($succ: bool)
         { invRecv15($tag, $to, $amount), invRecv16($tag, $to, $amount) }
         ((0 <= invRecv15($tag, $to, $amount) && (invRecv15($tag, $to, $amount) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv16($tag, $to, $amount) && invRecv16($tag, $to, $amount) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv16($tag, $to, $amount) == ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), invRecv15($tag, $to, $amount)): int)))) && NoPerm < FullPerm) && qpRange16($tag, $to, $amount) ==> (18 == $tag && invRecv15($tag, $to, $amount) == $to) && invRecv16($tag, $to, $amount) == $amount
       );
-    
+
     // -- Define updated permissions
       assume (forall $tag: int, $to: int, $amount: int ::
         { QPMask[null, $accessible$withdraw($tag, $to, $amount)] }
         ((0 <= invRecv15($tag, $to, $amount) && (invRecv15($tag, $to, $amount) <= 1461501637330902918203684832716283019655932542975 && ((0 <= invRecv16($tag, $to, $amount) && invRecv16($tag, $to, $amount) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935) && invRecv16($tag, $to, $amount) == ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), invRecv15($tag, $to, $amount)): int)))) && NoPerm < FullPerm) && qpRange16($tag, $to, $amount) ==> (NoPerm < FullPerm ==> (18 == $tag && invRecv15($tag, $to, $amount) == $to) && invRecv16($tag, $to, $amount) == $amount) && QPMask[null, $accessible$withdraw($tag, $to, $amount)] == Mask[null, $accessible$withdraw($tag, $to, $amount)] + FullPerm
       );
-    
+
     // -- Define independent locations
       assume (forall <A, B> o_4: Ref, f_6: (Field A B) ::
         { Mask[o_4, f_6] } { QPMask[o_4, f_6] }
@@ -9093,71 +9095,71 @@ procedure f$withdraw() returns ($succ: bool)
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 100
   // $pre_self := self -- testsresourcesexamplesauction.vy.vpr@1256.3--1256.20
     $pre_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 101
   // $pre_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1257.3--1257.32
     $pre_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 102
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@1259.3--1259.20
     $old_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 103
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1260.3--1260.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 104
   // $succ := true -- testsresourcesexamplesauction.vy.vpr@1261.3--1261.16
     $succ := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 105
   // $overflow := false -- testsresourcesexamplesauction.vy.vpr@1262.3--1262.21
     $overflow := false;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 106
   // inhale ($struct_get($struct_loc(msg, 1)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1264.3--1264.54
     assume ($struct_get(($struct_loc(msg, 1): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 107
   // l$pending_amount := $wrap(($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]),
   //   ($struct_get($struct_loc(msg, 0)): Int)): Int)) -- testsresourcesexamplesauction.vy.vpr@1266.3--1266.139
     l$pending_amount := ($wrap(($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(msg, 0): int)): int)): int)): $IntDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 108
   // self := ($struct_set(self, 6, ($map_set(($struct_get($struct_loc(self, 6)): $Map[Int, Int]),
   //   ($struct_get($struct_loc(msg, 0)): Int), 0): $Map[Int, Int])): $Struct) -- testsresourcesexamplesauction.vy.vpr@1267.3--1267.167
     self := ($struct_set(self, 6, ($map_set(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(msg, 0): int)): int), 0): $MapDomainType int int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (($struct_get($struct_loc(self, 7)): Int) < $unwrap(l$pending_amount)) -- testsresourcesexamplesauction.vy.vpr@1268.3--1270.4
     if (($struct_get(($struct_loc(self, 7): int)): int) < ($unwrap(l$pending_amount): int)) {
-      
+
       // -- Translating statement: // id = 109
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1269.5--1269.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 110
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 111
   // self := ($struct_set(self, 10, ($map_set(($struct_get($struct_loc(self, 10)): $Map[Int, Int]),
   //   ($struct_get($struct_loc(msg, 0)): Int), ($map_get(($struct_get($struct_loc(self,
@@ -9165,23 +9167,23 @@ procedure f$withdraw() returns ($succ: bool)
   //   $unwrap(l$pending_amount)): $Map[Int, Int])): $Struct) -- testsresourcesexamplesauction.vy.vpr@1271.3--1271.306
     self := ($struct_set(self, 10, ($map_set(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(msg, 0): int)): int), ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(msg, 0): int)): int)): int) + ($unwrap(l$pending_amount): int)): $MapDomainType int int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 112
   // self := ($struct_set(self, 7, ($struct_get($struct_loc(self, 7)): Int) -
   //   $unwrap(l$pending_amount)): $Struct) -- testsresourcesexamplesauction.vy.vpr@1272.3--1272.112
     self := ($struct_set(self, 7, ($struct_get(($struct_loc(self, 7): int)): int) - ($unwrap(l$pending_amount): int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 113
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1274.3--1274.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 114
   // $contracts := l$havoc -- testsresourcesexamplesauction.vy.vpr@1276.3--1276.24
     $contracts := l$havoc;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 115
   // assert ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1278.3--1278.105
@@ -9190,14 +9192,14 @@ procedure f$withdraw() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 4): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 116
   // assert ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc($old_self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1279.3--1279.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) == ($struct_get($struct_loc($old_self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1279.10--1279.99) [299]"}
       ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc($old_self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 117
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1280.3--1280.102
@@ -9206,7 +9208,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 5): int)): bool);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 118
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -9217,7 +9219,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 119
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -9229,7 +9231,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) == ($map_sum(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int)): int) - ($map_sum(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 120
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -9239,14 +9241,14 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 121
   // assert ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc($old_self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1284.3--1284.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 4)): Int) >= ($struct_get($struct_loc($old_self, 4)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1284.10--1284.99) [304]"}
       ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc($old_self, 4): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 122
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -9260,20 +9262,20 @@ procedure f$withdraw() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 3): int)): int) == ($struct_get(($struct_loc($old_self, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 123
   // assert ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1286.3--1286.55
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) != 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1286.10--1286.55) [307]"}
       ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 124
   // assert ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1287.3--1287.94
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 3)): Int) != ($struct_get($struct_loc(self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1287.10--1287.94) [308]"}
       ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 125
   // assert ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -9281,7 +9283,7 @@ procedure f$withdraw() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 0)): Int)): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1288.10--1288.125) [309]"}
       ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 126
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -9292,7 +9294,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 127
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -9303,7 +9305,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == ($struct_get(($struct_loc(self, 4): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 128
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -9315,7 +9317,7 @@ procedure f$withdraw() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) + ($struct_get($struct_loc(self, 4)): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1291.10--1291.392) [312]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 129
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -9325,7 +9327,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1292.3--1292.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -9344,14 +9346,14 @@ procedure f$withdraw() returns ($succ: bool)
       0 <= q$a_11_1 && q$a_11_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_11_1 != ($struct_get(($struct_loc(self, 3): int)): int) && q$a_11_1 != ($struct_get(($struct_loc(self, 0): int)): int) ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_11_1): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_11_1): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_11_1): int)
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 130
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1293.3--1293.87
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1293.10--1293.87) [314]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 131
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -9360,7 +9362,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1294.3--1294.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -9379,7 +9381,7 @@ procedure f$withdraw() returns ($succ: bool)
       0 <= q$a_14_1 && q$a_14_1 <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_14_1): int) != 0 ==> ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_14_1): int) != 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 132
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -9389,7 +9391,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1295.3--1295.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -9408,7 +9410,7 @@ procedure f$withdraw() returns ($succ: bool)
       0 <= q$a_17_1 && q$a_17_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_17_1 != ($struct_get(($struct_loc(self, 0): int)): int) && ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_17_1): int) == 0 ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_17_1): int) == 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 133
   // assert (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -9420,7 +9422,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1296.3--1296.345
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if (*) {
         assume false;
@@ -9429,10 +9431,10 @@ procedure f$withdraw() returns ($succ: bool)
       assume false;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (l$send_fail) -- testsresourcesexamplesauction.vy.vpr@1297.3--1300.4
     if (l$send_fail) {
-      
+
       // -- Translating statement: // id = 134
   // inhale acc($failed(($struct_get($struct_loc(msg, 0)): Int)), write) -- testsresourcesexamplesauction.vy.vpr@1298.5--1298.72
         perm := FullPerm;
@@ -9440,65 +9442,65 @@ procedure f$withdraw() returns ($succ: bool)
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 135
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1299.5--1299.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 136
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 137
   // $contracts := $old_$contracts -- testsresourcesexamplesauction.vy.vpr@1302.3--1302.32
     $contracts := $old_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 138
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@1304.3--1304.20
     $old_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 139
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1305.3--1305.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 140
   // i0$$pre_self := self -- testsresourcesexamplesauction.vy.vpr@1307.3--1307.23
     i0$$pre_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 141
   // i0$$pre_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1308.3--1308.35
     i0$$pre_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 142
   // $contracts := l$havoc$1 -- testsresourcesexamplesauction.vy.vpr@1310.3--1310.26
     $contracts := l$havoc$1;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 143
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1312.3--1312.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 144
   // self := l$havoc$2 -- testsresourcesexamplesauction.vy.vpr@1314.3--1314.20
     self := l$havoc$2;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 145
   // $contracts := l$havoc$3 -- testsresourcesexamplesauction.vy.vpr@1315.3--1315.26
     $contracts := l$havoc$3;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 146
   // inhale 0 <= ($struct_get($struct_loc(self, 0)): Int) &&
   //   ($struct_get($struct_loc(self, 0)): Int) <=
@@ -9507,7 +9509,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 147
   // inhale 0 <= ($struct_get($struct_loc(self, 1)): Int) &&
   //   ($struct_get($struct_loc(self, 1)): Int) <=
@@ -9516,7 +9518,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 148
   // inhale 0 <= ($struct_get($struct_loc(self, 2)): Int) &&
   //   ($struct_get($struct_loc(self, 2)): Int) <=
@@ -9525,7 +9527,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 149
   // inhale 0 <= ($struct_get($struct_loc(self, 3)): Int) &&
   //   ($struct_get($struct_loc(self, 3)): Int) <=
@@ -9534,7 +9536,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 150
   // inhale 0 <= ($struct_get($struct_loc(self, 4)): Int) &&
   //   ($struct_get($struct_loc(self, 4)): Int) <=
@@ -9543,7 +9545,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 151
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
@@ -9551,7 +9553,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1322.3--1322.346
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -9562,13 +9564,13 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 152
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1323.3--1323.254
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -9579,7 +9581,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 153
   // inhale 0 <= ($struct_get($struct_loc(self, 7)): Int) &&
   //   ($struct_get($struct_loc(self, 7)): Int) <=
@@ -9588,7 +9590,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 154
   // inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc(self, 8)): Int) &&
@@ -9598,7 +9600,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 155
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
@@ -9606,7 +9608,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1326.3--1326.349
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -9617,13 +9619,13 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 156
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1327.3--1327.257
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -9634,7 +9636,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 157
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
@@ -9642,7 +9644,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1328.3--1328.349
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -9653,13 +9655,13 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 158
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1329.3--1329.257
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -9670,20 +9672,20 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 159
   // inhale ($struct_get($struct_loc(self, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@1330.3--1330.86
     assume ($struct_get(($struct_loc(self, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 160
   // inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc($old_self, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@1332.3--1332.263
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc($old_self, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -9694,7 +9696,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 161
   // inhale ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1333.3--1333.105
@@ -9703,14 +9705,14 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 162
   // inhale ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc($old_self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1334.3--1334.99
     assume ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc($old_self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 163
   // inhale ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1335.3--1335.102
@@ -9719,7 +9721,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 164
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -9730,7 +9732,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 165
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -9742,7 +9744,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 166
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -9752,14 +9754,14 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 167
   // inhale ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc($old_self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1339.3--1339.99
     assume ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc($old_self, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 168
   // inhale ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -9772,20 +9774,20 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 169
   // inhale ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1341.3--1341.55
     assume ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 170
   // inhale ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1342.3--1342.94
     assume ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 171
   // inhale ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -9793,7 +9795,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 172
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -9804,7 +9806,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 173
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -9815,7 +9817,7 @@ procedure f$withdraw() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 174
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -9827,7 +9829,7 @@ procedure f$withdraw() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 175
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -9837,7 +9839,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1347.3--1347.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -9848,14 +9850,14 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 176
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1348.3--1348.87
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 177
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -9864,7 +9866,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1349.3--1349.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -9875,7 +9877,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 178
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -9885,7 +9887,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1350.3--1350.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -9896,7 +9898,7 @@ procedure f$withdraw() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 179
   // inhale (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -9908,75 +9910,75 @@ procedure f$withdraw() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1351.3--1351.345
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if (*) {
         assume false;
       }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (l$no_reentrant_call) -- testsresourcesexamplesauction.vy.vpr@1352.3--1356.4
     if (l$no_reentrant_call) {
-      
+
       // -- Translating statement: // id = 180
   // self := $old_self -- testsresourcesexamplesauction.vy.vpr@1354.5--1354.22
         self := $old_self;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 181
   // $contracts := $old_$contracts -- testsresourcesexamplesauction.vy.vpr@1355.5--1355.34
         $contracts := $old_$contracts;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 182
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 183
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1358.3--1358.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 184
   // $contracts := l$havoc$4 -- testsresourcesexamplesauction.vy.vpr@1360.3--1360.26
     $contracts := l$havoc$4;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 185
   // $old_$contracts := i0$$pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1362.3--1362.40
     $old_$contracts := i0$$pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 186
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1364.3--1364.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 187
   // $contracts := l$havoc$5 -- testsresourcesexamplesauction.vy.vpr@1366.3--1366.26
     $contracts := l$havoc$5;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 188
   // $old_$contracts := i0$$pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1368.3--1368.40
     $old_$contracts := i0$$pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 189
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@1370.3--1370.20
     $old_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 190
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1371.3--1371.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 191
   // label return -- testsresourcesexamplesauction.vy.vpr@1372.3--1372.15
     vreturn:
@@ -9984,28 +9986,28 @@ procedure f$withdraw() returns ($succ: bool)
     LabelreturnHeap := Heap;
     return_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($out_of_gas) -- testsresourcesexamplesauction.vy.vpr@1373.3--1375.4
     if ($out_of_gas) {
-      
+
       // -- Translating statement: // id = 192
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1374.5--1374.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 193
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 194
   // goto end -- testsresourcesexamplesauction.vy.vpr@1376.3--1376.11
     goto end;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 195
   // label revert -- testsresourcesexamplesauction.vy.vpr@1377.3--1377.15
     revert:
@@ -10013,32 +10015,32 @@ procedure f$withdraw() returns ($succ: bool)
     LabelrevertHeap := Heap;
     revert_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 196
   // $succ := false -- testsresourcesexamplesauction.vy.vpr@1378.3--1378.17
     $succ := false;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 197
   // self := $pre_self -- testsresourcesexamplesauction.vy.vpr@1380.3--1380.20
     self := $pre_self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 198
   // $contracts := $pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1381.3--1381.32
     $contracts := $pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 199
   // $old_self := $pre_self -- testsresourcesexamplesauction.vy.vpr@1383.3--1383.25
     $old_self := $pre_self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 200
   // $old_$contracts := $pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1384.3--1384.37
     $old_$contracts := $pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 201
   // label end -- testsresourcesexamplesauction.vy.vpr@1385.3--1385.12
     end:
@@ -10046,7 +10048,7 @@ procedure f$withdraw() returns ($succ: bool)
     LabelendHeap := Heap;
     end_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 202
   // exhale !($out_of_gas ||
   //   ($out_of_gas ||
@@ -10057,7 +10059,7 @@ procedure f$withdraw() returns ($succ: bool)
         $succ;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 203
   // assert $succ &&
   //   (($struct_get($struct_loc(msg, 1)): Int) >
@@ -10070,40 +10072,40 @@ procedure f$withdraw() returns ($succ: bool)
         ($struct_get(($struct_loc(msg, 0): int)): int) == ($struct_get(($struct_loc(self, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($succ) -- testsresourcesexamplesauction.vy.vpr@1390.3--1392.4
     if ($succ) {
-      
+
       // -- Translating statement: // id = 204
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 205
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 206
   // inhale l$havoc$6 >= 0 -- testsresourcesexamplesauction.vy.vpr@1393.3--1393.24
     assume l$havoc$6 >= 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 207
   // self := ($struct_set(self, 7, ($struct_get($struct_loc(self, 7)): Int) +
   //   l$havoc$6): $Struct) -- testsresourcesexamplesauction.vy.vpr@1394.3--1394.96
     self := ($struct_set(self, 7, ($struct_get(($struct_loc(self, 7): int)): int) + l$havoc$6): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 208
   // $contracts := l$havoc$7 -- testsresourcesexamplesauction.vy.vpr@1396.3--1396.26
     $contracts := l$havoc$7;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 209
   // assert ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1398.3--1398.105
@@ -10112,14 +10114,14 @@ procedure f$withdraw() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 4): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 210
   // assert ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc($old_self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1399.3--1399.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) == ($struct_get($struct_loc($old_self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1399.10--1399.99) [322]"}
       ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc($old_self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 211
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1400.3--1400.102
@@ -10128,7 +10130,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 5): int)): bool);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 212
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -10139,7 +10141,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 213
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -10151,7 +10153,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) == ($map_sum(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int)): int) - ($map_sum(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 214
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -10161,14 +10163,14 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 215
   // assert ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc($old_self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1404.3--1404.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 4)): Int) >= ($struct_get($struct_loc($old_self, 4)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1404.10--1404.99) [327]"}
       ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc($old_self, 4): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 216
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -10182,20 +10184,20 @@ procedure f$withdraw() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 3): int)): int) == ($struct_get(($struct_loc($old_self, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 217
   // assert ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1406.3--1406.55
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) != 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1406.10--1406.55) [330]"}
       ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 218
   // assert ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1407.3--1407.94
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 3)): Int) != ($struct_get($struct_loc(self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1407.10--1407.94) [331]"}
       ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 219
   // assert ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -10203,7 +10205,7 @@ procedure f$withdraw() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 0)): Int)): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1408.10--1408.125) [332]"}
       ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 220
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -10214,7 +10216,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 221
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -10225,7 +10227,7 @@ procedure f$withdraw() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == ($struct_get(($struct_loc(self, 4): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 222
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -10237,7 +10239,7 @@ procedure f$withdraw() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) + ($struct_get($struct_loc(self, 4)): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1411.10--1411.392) [335]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 223
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -10247,7 +10249,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1412.3--1412.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -10266,14 +10268,14 @@ procedure f$withdraw() returns ($succ: bool)
       0 <= q$a_31_1 && q$a_31_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_31_1 != ($struct_get(($struct_loc(self, 3): int)): int) && q$a_31_1 != ($struct_get(($struct_loc(self, 0): int)): int) ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_31_1): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_31_1): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_31_1): int)
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 224
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1413.3--1413.87
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1413.10--1413.87) [337]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 225
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -10282,7 +10284,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1414.3--1414.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -10301,7 +10303,7 @@ procedure f$withdraw() returns ($succ: bool)
       0 <= q$a_34_1 && q$a_34_1 <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_34_1): int) != 0 ==> ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_34_1): int) != 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 226
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -10311,7 +10313,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1415.3--1415.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -10330,7 +10332,7 @@ procedure f$withdraw() returns ($succ: bool)
       0 <= q$a_37_1 && q$a_37_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_37_1 != ($struct_get(($struct_loc(self, 0): int)): int) && ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_37_1): int) == 0 ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_37_1): int) == 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 227
   // assert (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -10342,7 +10344,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1416.3--1416.345
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if (*) {
         assume false;
@@ -10351,7 +10353,7 @@ procedure f$withdraw() returns ($succ: bool)
       assume false;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 228
   // assert (forall $a: Int ::
   //     { $accessible$withdraw(18, ($struct_get($struct_loc(msg, 0)): Int), $a) }
@@ -10366,7 +10368,7 @@ procedure f$withdraw() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(msg,
   //     0)): Int)): Int) >=
   //     $a)) -- testsresourcesexamplesauction.vy.vpr@1418.3--1418.532
-    
+
     // -- Check definedness of (forall $a: Int :: { $accessible$withdraw(18, ($struct_get($struct_loc(msg, 0)): Int), $a) } perm($accessible$withdraw(18, ($struct_get($struct_loc(msg, 0)): Int), $a)) > none ==> (!(perm($failed(($struct_get($struct_loc(msg, 0)): Int))) > none || $out_of_gas) ==> $succ) && ($succ ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(msg, 0)): Int)): Int) - ($map_get(($struct_get($struct_loc($pre_self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(msg, 0)): Int)): Int) >= $a))
       if (*) {
         assume false;
@@ -10436,7 +10438,7 @@ procedure f$endAuction() returns ($succ: bool)
   var q$a_29: int;
   var q$a_32: int;
   var q$a_35: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
@@ -10444,268 +10446,268 @@ procedure f$endAuction() returns ($succ: bool)
     revert_lblGuard := false;
     end_lblGuard := false;
     return_lblGuard := false;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: // id = 1
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 2
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 3
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 4
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 5
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 6
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 7
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 8
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 9
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 10
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 11
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 12
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 13
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 14
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 15
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 16
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 17
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 18
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 19
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 20
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 21
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 22
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 23
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 24
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 25
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 26
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 27
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 28
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 29
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 30
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 31
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 32
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 33
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 34
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 35
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 36
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 37
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 38
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 39
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 40
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 41
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 42
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 43
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 44
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 45
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 46
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 47
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 48
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 49
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 50
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 51
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 52
   // inhale 0 <= ($struct_get($struct_loc(self, 0)): Int) &&
   //   ($struct_get($struct_loc(self, 0)): Int) <=
@@ -10714,7 +10716,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 53
   // inhale 0 <= ($struct_get($struct_loc(self, 1)): Int) &&
   //   ($struct_get($struct_loc(self, 1)): Int) <=
@@ -10723,7 +10725,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 54
   // inhale 0 <= ($struct_get($struct_loc(self, 2)): Int) &&
   //   ($struct_get($struct_loc(self, 2)): Int) <=
@@ -10732,7 +10734,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 55
   // inhale 0 <= ($struct_get($struct_loc(self, 3)): Int) &&
   //   ($struct_get($struct_loc(self, 3)): Int) <=
@@ -10741,7 +10743,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 56
   // inhale 0 <= ($struct_get($struct_loc(self, 4)): Int) &&
   //   ($struct_get($struct_loc(self, 4)): Int) <=
@@ -10750,7 +10752,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 57
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
@@ -10758,7 +10760,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1455.3--1455.346
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -10769,13 +10771,13 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 58
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1456.3--1456.254
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -10786,7 +10788,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 59
   // inhale 0 <= ($struct_get($struct_loc(self, 7)): Int) &&
   //   ($struct_get($struct_loc(self, 7)): Int) <=
@@ -10795,7 +10797,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 60
   // inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc(self, 8)): Int) &&
@@ -10805,7 +10807,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 61
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
@@ -10813,7 +10815,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1459.3--1459.349
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -10824,13 +10826,13 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 62
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1460.3--1460.257
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -10841,7 +10843,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 63
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
@@ -10849,7 +10851,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1461.3--1461.349
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -10860,13 +10862,13 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 64
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1462.3--1462.257
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -10877,14 +10879,14 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 65
   // inhale ($struct_get($struct_loc(self, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@1463.3--1463.86
     assume ($struct_get(($struct_loc(self, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 66
   // inhale 0 <= $self_address() &&
   //   $self_address() <= 1461501637330902918203684832716283019655932542975 -- testsresourcesexamplesauction.vy.vpr@1465.3--1465.102
@@ -10892,7 +10894,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($self_address(): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 67
   // inhale 0 <= ($struct_get($struct_loc(block, 0)): Int) &&
   //   ($struct_get($struct_loc(block, 0)): Int) <=
@@ -10901,7 +10903,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 68
   // inhale 0 <= ($struct_get($struct_loc(block, 1)): Int) &&
   //   ($struct_get($struct_loc(block, 1)): Int) <=
@@ -10910,7 +10912,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 69
   // inhale 0 <= ($struct_get($struct_loc(block, 2)): Int) &&
   //   ($struct_get($struct_loc(block, 2)): Int) <=
@@ -10919,13 +10921,13 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 70
   // inhale |($struct_get($struct_loc(block, 3)): Seq[Int])| == 32 -- testsresourcesexamplesauction.vy.vpr@1470.3--1470.64
     assume Seq#Length(($struct_get(($struct_loc(block, 3): int)): Seq int)) == 32;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 71
   // inhale 0 <= ($struct_get($struct_loc(block, 4)): Int) &&
   //   ($struct_get($struct_loc(block, 4)): Int) <=
@@ -10934,14 +10936,14 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(block, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 72
   // inhale ($struct_get($struct_loc(block, -1)): Int) ==
   //   2335365049822495359383864865678187 -- testsresourcesexamplesauction.vy.vpr@1472.3--1472.90
     assume ($struct_get(($struct_loc(block, -1): int)): int) == 2335365049822495359383864865678187;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 73
   // inhale 0 <= ($struct_get($struct_loc(msg, 0)): Int) &&
   //   ($struct_get($struct_loc(msg, 0)): Int) <=
@@ -10950,7 +10952,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(msg, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 74
   // inhale 0 <= ($struct_get($struct_loc(msg, 1)): Int) &&
   //   ($struct_get($struct_loc(msg, 1)): Int) <=
@@ -10959,7 +10961,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(msg, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 75
   // inhale 0 <= ($struct_get($struct_loc(msg, 2)): Int) &&
   //   ($struct_get($struct_loc(msg, 2)): Int) <=
@@ -10968,26 +10970,26 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(msg, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 76
   // inhale ($struct_get($struct_loc(msg, -1)): Int) ==
   //   35634842679176259756224246631 -- testsresourcesexamplesauction.vy.vpr@1477.3--1477.83
     assume ($struct_get(($struct_loc(msg, -1): int)): int) == 35634842679176259756224246631;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 77
   // inhale ($struct_get($struct_loc(msg, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1478.3--1478.54
     assume ($struct_get(($struct_loc(msg, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 78
   // inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@1480.3--1480.258
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -10998,7 +11000,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 79
   // inhale ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1481.3--1481.105
@@ -11007,14 +11009,14 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 80
   // inhale ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1482.3--1482.94
     assume ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 81
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1483.3--1483.97
@@ -11023,7 +11025,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 82
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -11034,7 +11036,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 83
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -11046,7 +11048,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 84
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -11056,14 +11058,14 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 85
   // inhale ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc(self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1487.3--1487.94
     assume ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc(self, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 86
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -11076,20 +11078,20 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 87
   // inhale ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1489.3--1489.55
     assume ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 88
   // inhale ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1490.3--1490.94
     assume ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 89
   // inhale ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -11097,7 +11099,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 90
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -11108,7 +11110,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 91
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -11119,7 +11121,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 92
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -11131,7 +11133,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 93
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -11141,7 +11143,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1495.3--1495.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -11152,14 +11154,14 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 94
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1496.3--1496.87
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 95
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -11168,7 +11170,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1497.3--1497.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -11179,7 +11181,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 96
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -11189,7 +11191,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1498.3--1498.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -11200,7 +11202,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 97
   // inhale (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -11212,108 +11214,108 @@ procedure f$endAuction() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1499.3--1499.345
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if (*) {
         assume false;
       }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 98
   // $pre_self := self -- testsresourcesexamplesauction.vy.vpr@1501.3--1501.20
     $pre_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 99
   // $pre_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1502.3--1502.32
     $pre_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 100
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@1504.3--1504.20
     $old_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 101
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1505.3--1505.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 102
   // $succ := true -- testsresourcesexamplesauction.vy.vpr@1506.3--1506.16
     $succ := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 103
   // $overflow := false -- testsresourcesexamplesauction.vy.vpr@1507.3--1507.21
     $overflow := false;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 104
   // inhale ($struct_get($struct_loc(msg, 1)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1509.3--1509.54
     assume ($struct_get(($struct_loc(msg, 1): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (!(($struct_get($struct_loc(block, 4)): Int) >= ($struct_get($struct_loc(self, 2)): Int))) -- testsresourcesexamplesauction.vy.vpr@1511.3--1513.4
     if (!(($struct_get(($struct_loc(block, 4): int)): int) >= ($struct_get(($struct_loc(self, 2): int)): int))) {
-      
+
       // -- Translating statement: // id = 105
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1512.5--1512.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 106
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 107
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (!!($struct_get($struct_loc(self, 5)): Bool)) -- testsresourcesexamplesauction.vy.vpr@1514.3--1516.4
     if (($struct_get(($struct_loc(self, 5): int)): bool)) {
-      
+
       // -- Translating statement: // id = 108
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1515.5--1515.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 109
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 110
   // self := ($struct_set(self, 5, true): $Struct) -- testsresourcesexamplesauction.vy.vpr@1517.3--1517.48
     self := ($struct_set(self, 5, true): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (($struct_get($struct_loc(self, 7)): Int) < ($struct_get($struct_loc(self, 4)): Int)) -- testsresourcesexamplesauction.vy.vpr@1518.3--1520.4
     if (($struct_get(($struct_loc(self, 7): int)): int) < ($struct_get(($struct_loc(self, 4): int)): int)) {
-      
+
       // -- Translating statement: // id = 111
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1519.5--1519.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 112
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 113
   // self := ($struct_set(self, 10, ($map_set(($struct_get($struct_loc(self, 10)): $Map[Int, Int]),
   //   ($struct_get($struct_loc(self, 0)): Int), ($map_get(($struct_get($struct_loc(self,
@@ -11321,23 +11323,23 @@ procedure f$endAuction() returns ($succ: bool)
   //   ($struct_get($struct_loc(self, 4)): Int)): $Map[Int, Int])): $Struct) -- testsresourcesexamplesauction.vy.vpr@1521.3--1521.323
     self := ($struct_set(self, 10, ($map_set(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int), ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int)): $MapDomainType int int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 114
   // self := ($struct_set(self, 7, ($struct_get($struct_loc(self, 7)): Int) -
   //   ($struct_get($struct_loc(self, 4)): Int)): $Struct) -- testsresourcesexamplesauction.vy.vpr@1522.3--1522.127
     self := ($struct_set(self, 7, ($struct_get(($struct_loc(self, 7): int)): int) - ($struct_get(($struct_loc(self, 4): int)): int)): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 115
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1524.3--1524.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 116
   // $contracts := l$havoc -- testsresourcesexamplesauction.vy.vpr@1526.3--1526.24
     $contracts := l$havoc;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 117
   // assert ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1528.3--1528.105
@@ -11346,14 +11348,14 @@ procedure f$endAuction() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 4): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 118
   // assert ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc($old_self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1529.3--1529.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) == ($struct_get($struct_loc($old_self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1529.10--1529.99) [344]"}
       ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc($old_self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 119
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1530.3--1530.102
@@ -11362,7 +11364,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 5): int)): bool);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 120
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -11373,7 +11375,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 121
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -11385,7 +11387,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) == ($map_sum(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int)): int) - ($map_sum(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 122
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -11395,14 +11397,14 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 123
   // assert ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc($old_self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1534.3--1534.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 4)): Int) >= ($struct_get($struct_loc($old_self, 4)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1534.10--1534.99) [349]"}
       ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc($old_self, 4): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 124
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -11416,20 +11418,20 @@ procedure f$endAuction() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 3): int)): int) == ($struct_get(($struct_loc($old_self, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 125
   // assert ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1536.3--1536.55
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) != 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1536.10--1536.55) [352]"}
       ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 126
   // assert ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1537.3--1537.94
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 3)): Int) != ($struct_get($struct_loc(self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1537.10--1537.94) [353]"}
       ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 127
   // assert ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -11437,7 +11439,7 @@ procedure f$endAuction() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 0)): Int)): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1538.10--1538.125) [354]"}
       ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 128
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -11448,7 +11450,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 129
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -11459,7 +11461,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == ($struct_get(($struct_loc(self, 4): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 130
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -11471,7 +11473,7 @@ procedure f$endAuction() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) + ($struct_get($struct_loc(self, 4)): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1541.10--1541.392) [357]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 131
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -11481,7 +11483,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1542.3--1542.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -11500,14 +11502,14 @@ procedure f$endAuction() returns ($succ: bool)
       0 <= q$a_10_1 && q$a_10_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_10_1 != ($struct_get(($struct_loc(self, 3): int)): int) && q$a_10_1 != ($struct_get(($struct_loc(self, 0): int)): int) ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_10_1): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_10_1): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_10_1): int)
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 132
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1543.3--1543.87
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1543.10--1543.87) [359]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 133
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -11516,7 +11518,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1544.3--1544.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -11535,7 +11537,7 @@ procedure f$endAuction() returns ($succ: bool)
       0 <= q$a_13_1 && q$a_13_1 <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_13_1): int) != 0 ==> ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_13_1): int) != 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 134
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -11545,7 +11547,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1545.3--1545.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -11564,7 +11566,7 @@ procedure f$endAuction() returns ($succ: bool)
       0 <= q$a_16_1_1 && q$a_16_1_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_16_1_1 != ($struct_get(($struct_loc(self, 0): int)): int) && ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_16_1_1): int) == 0 ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_16_1_1): int) == 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 135
   // assert (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -11576,7 +11578,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1546.3--1546.345
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if (*) {
         assume false;
@@ -11585,10 +11587,10 @@ procedure f$endAuction() returns ($succ: bool)
       assume false;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (l$send_fail) -- testsresourcesexamplesauction.vy.vpr@1547.3--1550.4
     if (l$send_fail) {
-      
+
       // -- Translating statement: // id = 136
   // inhale acc($failed(($struct_get($struct_loc(self, 0)): Int)), write) -- testsresourcesexamplesauction.vy.vpr@1548.5--1548.73
         perm := FullPerm;
@@ -11596,65 +11598,65 @@ procedure f$endAuction() returns ($succ: bool)
         assume state(Heap, Mask);
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 137
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1549.5--1549.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 138
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 139
   // $contracts := $old_$contracts -- testsresourcesexamplesauction.vy.vpr@1552.3--1552.32
     $contracts := $old_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 140
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@1554.3--1554.20
     $old_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 141
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1555.3--1555.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 142
   // i0$$pre_self := self -- testsresourcesexamplesauction.vy.vpr@1557.3--1557.23
     i0$$pre_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 143
   // i0$$pre_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1558.3--1558.35
     i0$$pre_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 144
   // $contracts := l$havoc$1 -- testsresourcesexamplesauction.vy.vpr@1560.3--1560.26
     $contracts := l$havoc$1;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 145
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1562.3--1562.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 146
   // self := l$havoc$2 -- testsresourcesexamplesauction.vy.vpr@1564.3--1564.20
     self := l$havoc$2;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 147
   // $contracts := l$havoc$3 -- testsresourcesexamplesauction.vy.vpr@1565.3--1565.26
     $contracts := l$havoc$3;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 148
   // inhale 0 <= ($struct_get($struct_loc(self, 0)): Int) &&
   //   ($struct_get($struct_loc(self, 0)): Int) <=
@@ -11663,7 +11665,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 0): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 149
   // inhale 0 <= ($struct_get($struct_loc(self, 1)): Int) &&
   //   ($struct_get($struct_loc(self, 1)): Int) <=
@@ -11672,7 +11674,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 1): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 150
   // inhale 0 <= ($struct_get($struct_loc(self, 2)): Int) &&
   //   ($struct_get($struct_loc(self, 2)): Int) <=
@@ -11681,7 +11683,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 2): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 151
   // inhale 0 <= ($struct_get($struct_loc(self, 3)): Int) &&
   //   ($struct_get($struct_loc(self, 3)): Int) <=
@@ -11690,7 +11692,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 3): int)): int) <= 1461501637330902918203684832716283019655932542975;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 152
   // inhale 0 <= ($struct_get($struct_loc(self, 4)): Int) &&
   //   ($struct_get($struct_loc(self, 4)): Int) <=
@@ -11699,7 +11701,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 4): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 153
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
@@ -11707,7 +11709,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1572.3--1572.346
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) && ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -11718,13 +11720,13 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 154
   // inhale (forall $q0: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1573.3--1573.254
-    
+
     // -- Check definedness of (forall $q0: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) } ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), $q0): Int) <= ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -11735,7 +11737,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 155
   // inhale 0 <= ($struct_get($struct_loc(self, 7)): Int) &&
   //   ($struct_get($struct_loc(self, 7)): Int) <=
@@ -11744,7 +11746,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 7): int)): int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 156
   // inhale -170141183460469231731687303715884105728 <=
   //   ($struct_get($struct_loc(self, 8)): Int) &&
@@ -11754,7 +11756,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($struct_get(($struct_loc(self, 8): int)): int) <= 170141183460469231731687303715884105727;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 157
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
@@ -11762,7 +11764,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1576.3--1576.349
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) && ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -11773,13 +11775,13 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 158
   // inhale (forall $q1: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1577.3--1577.257
-    
+
     // -- Check definedness of (forall $q1: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $q1): Int) <= ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -11790,7 +11792,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 159
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
@@ -11798,7 +11800,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) &&
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     115792089237316195423570985008687907853269984665640564039457584007913129639935) -- testsresourcesexamplesauction.vy.vpr@1578.3--1578.349
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } 0 <= ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)
       if (*) {
         assume false;
@@ -11809,13 +11811,13 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 160
   // inhale (forall $q2: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <=
   //     ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int)) -- testsresourcesexamplesauction.vy.vpr@1579.3--1579.257
-    
+
     // -- Check definedness of (forall $q2: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) } ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), $q2): Int) <= ($map_sum(($struct_get($struct_loc(self, 11)): $Map[Int, Int])): Int))
       if (*) {
         assume false;
@@ -11826,20 +11828,20 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 161
   // inhale ($struct_get($struct_loc(self, -1)): Int) ==
   //   9122519725869122497593506884710 -- testsresourcesexamplesauction.vy.vpr@1580.3--1580.86
     assume ($struct_get(($struct_loc(self, -1): int)): int) == 9122519725869122497593506884710;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 162
   // inhale (forall $a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) }
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >=
   //     ($map_get(($struct_get($struct_loc($old_self, 10)): $Map[Int, Int]), $a): Int)) -- testsresourcesexamplesauction.vy.vpr@1582.3--1582.263
-    
+
     // -- Check definedness of (forall $a: Int :: { ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) } ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), $a): Int) >= ($map_get(($struct_get($struct_loc($old_self, 10)): $Map[Int, Int]), $a): Int))
       if (*) {
         assume false;
@@ -11850,7 +11852,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 163
   // inhale ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1583.3--1583.105
@@ -11859,14 +11861,14 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 164
   // inhale ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc($old_self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1584.3--1584.99
     assume ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc($old_self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 165
   // inhale ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1585.3--1585.102
@@ -11875,7 +11877,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 166
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -11886,7 +11888,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 167
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -11898,7 +11900,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 168
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -11908,14 +11910,14 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 169
   // inhale ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc($old_self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1589.3--1589.99
     assume ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc($old_self, 4): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 170
   // inhale ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -11928,20 +11930,20 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 171
   // inhale ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1591.3--1591.55
     assume ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 172
   // inhale ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1592.3--1592.94
     assume ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 173
   // inhale ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -11949,7 +11951,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 174
   // inhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -11960,7 +11962,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 175
   // inhale ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -11971,7 +11973,7 @@ procedure f$endAuction() returns ($succ: bool)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 176
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -11983,7 +11985,7 @@ procedure f$endAuction() returns ($succ: bool)
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 177
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -11993,7 +11995,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1597.3--1597.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -12004,14 +12006,14 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 178
   // inhale ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1598.3--1598.87
     assume ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 179
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -12020,7 +12022,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1599.3--1599.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -12031,7 +12033,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 180
   // inhale (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -12041,7 +12043,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1600.3--1600.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -12052,7 +12054,7 @@ procedure f$endAuction() returns ($succ: bool)
     );
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 181
   // inhale (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -12064,75 +12066,75 @@ procedure f$endAuction() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1601.3--1601.345
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if (*) {
         assume false;
       }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (l$no_reentrant_call) -- testsresourcesexamplesauction.vy.vpr@1602.3--1606.4
     if (l$no_reentrant_call) {
-      
+
       // -- Translating statement: // id = 182
   // self := $old_self -- testsresourcesexamplesauction.vy.vpr@1604.5--1604.22
         self := $old_self;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: // id = 183
   // $contracts := $old_$contracts -- testsresourcesexamplesauction.vy.vpr@1605.5--1605.34
         $contracts := $old_$contracts;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 184
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 185
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1608.3--1608.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 186
   // $contracts := l$havoc$4 -- testsresourcesexamplesauction.vy.vpr@1610.3--1610.26
     $contracts := l$havoc$4;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 187
   // $old_$contracts := i0$$pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1612.3--1612.40
     $old_$contracts := i0$$pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 188
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1614.3--1614.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 189
   // $contracts := l$havoc$5 -- testsresourcesexamplesauction.vy.vpr@1616.3--1616.26
     $contracts := l$havoc$5;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 190
   // $old_$contracts := i0$$pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1618.3--1618.40
     $old_$contracts := i0$$pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 191
   // $old_self := self -- testsresourcesexamplesauction.vy.vpr@1620.3--1620.20
     $old_self := self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 192
   // $old_$contracts := $contracts -- testsresourcesexamplesauction.vy.vpr@1621.3--1621.32
     $old_$contracts := $contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 193
   // label return -- testsresourcesexamplesauction.vy.vpr@1622.3--1622.15
     vreturn:
@@ -12140,28 +12142,28 @@ procedure f$endAuction() returns ($succ: bool)
     LabelreturnHeap := Heap;
     return_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($out_of_gas) -- testsresourcesexamplesauction.vy.vpr@1623.3--1625.4
     if ($out_of_gas) {
-      
+
       // -- Translating statement: // id = 194
   // goto revert -- testsresourcesexamplesauction.vy.vpr@1624.5--1624.16
         goto revert;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 195
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 196
   // goto end -- testsresourcesexamplesauction.vy.vpr@1626.3--1626.11
     goto end;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 197
   // label revert -- testsresourcesexamplesauction.vy.vpr@1627.3--1627.15
     revert:
@@ -12169,32 +12171,32 @@ procedure f$endAuction() returns ($succ: bool)
     LabelrevertHeap := Heap;
     revert_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 198
   // $succ := false -- testsresourcesexamplesauction.vy.vpr@1628.3--1628.17
     $succ := false;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 199
   // self := $pre_self -- testsresourcesexamplesauction.vy.vpr@1630.3--1630.20
     self := $pre_self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 200
   // $contracts := $pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1631.3--1631.32
     $contracts := $pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 201
   // $old_self := $pre_self -- testsresourcesexamplesauction.vy.vpr@1633.3--1633.25
     $old_self := $pre_self;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 202
   // $old_$contracts := $pre_$contracts -- testsresourcesexamplesauction.vy.vpr@1634.3--1634.37
     $old_$contracts := $pre_$contracts;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 203
   // label end -- testsresourcesexamplesauction.vy.vpr@1635.3--1635.12
     end:
@@ -12202,7 +12204,7 @@ procedure f$endAuction() returns ($succ: bool)
     LabelendHeap := Heap;
     end_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 204
   // exhale !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 10)): $Map[Int, Int])): Int) ==
@@ -12212,7 +12214,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int)): int) == ($map_sum(($struct_get(($struct_loc($pre_self, 10): int)): $MapDomainType int int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 205
   // assert $succ &&
   //   (($struct_get($struct_loc(msg, 1)): Int) >
@@ -12225,40 +12227,40 @@ procedure f$endAuction() returns ($succ: bool)
         ($struct_get(($struct_loc(msg, 0): int)): int) == ($struct_get(($struct_loc(self, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if ($succ) -- testsresourcesexamplesauction.vy.vpr@1640.3--1642.4
     if ($succ) {
-      
+
       // -- Translating statement: // id = 206
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: // id = 207
   // // LoopDummyStmtInfo()
   // inhale true -- <no position>
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 208
   // inhale l$havoc$6 >= 0 -- testsresourcesexamplesauction.vy.vpr@1643.3--1643.24
     assume l$havoc$6 >= 0;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 209
   // self := ($struct_set(self, 7, ($struct_get($struct_loc(self, 7)): Int) +
   //   l$havoc$6): $Struct) -- testsresourcesexamplesauction.vy.vpr@1644.3--1644.96
     self := ($struct_set(self, 7, ($struct_get(($struct_loc(self, 7): int)): int) + l$havoc$6): $StructDomainType);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 210
   // $contracts := l$havoc$7 -- testsresourcesexamplesauction.vy.vpr@1646.3--1646.26
     $contracts := l$havoc$7;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 211
   // assert ($struct_get($struct_loc(self, 3)): Int) == 0 ==>
   //   ($struct_get($struct_loc(self, 4)): Int) == 0 -- testsresourcesexamplesauction.vy.vpr@1648.3--1648.105
@@ -12267,14 +12269,14 @@ procedure f$endAuction() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 4): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 212
   // assert ($struct_get($struct_loc(self, 0)): Int) ==
   //   ($struct_get($struct_loc($old_self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1649.3--1649.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) == ($struct_get($struct_loc($old_self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1649.10--1649.99) [367]"}
       ($struct_get(($struct_loc(self, 0): int)): int) == ($struct_get(($struct_loc($old_self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 213
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 5)): Bool) -- testsresourcesexamplesauction.vy.vpr@1650.3--1650.102
@@ -12283,7 +12285,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 5): int)): bool);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 214
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -12294,7 +12296,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 215
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) +
@@ -12306,7 +12308,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) == ($map_sum(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int)): int) - ($map_sum(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 216
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_sum(($struct_get($struct_loc(self, 6)): $Map[Int, Int])): Int) <=
@@ -12316,14 +12318,14 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_sum(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int)): int) <= ($struct_get(($struct_loc(self, 7): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 217
   // assert ($struct_get($struct_loc(self, 4)): Int) >=
   //   ($struct_get($struct_loc($old_self, 4)): Int) -- testsresourcesexamplesauction.vy.vpr@1654.3--1654.99
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 4)): Int) >= ($struct_get($struct_loc($old_self, 4)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1654.10--1654.99) [372]"}
       ($struct_get(($struct_loc(self, 4): int)): int) >= ($struct_get(($struct_loc($old_self, 4): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 218
   // assert ($struct_get($struct_loc($old_self, 5)): Bool) ==>
   //   ($struct_get($struct_loc(self, 4)): Int) ==
@@ -12337,20 +12339,20 @@ procedure f$endAuction() returns ($succ: bool)
         ($struct_get(($struct_loc(self, 3): int)): int) == ($struct_get(($struct_loc($old_self, 3): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 219
   // assert ($struct_get($struct_loc(self, 0)): Int) != 0 -- testsresourcesexamplesauction.vy.vpr@1656.3--1656.55
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 0)): Int) != 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1656.10--1656.55) [375]"}
       ($struct_get(($struct_loc(self, 0): int)): int) != 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 220
   // assert ($struct_get($struct_loc(self, 3)): Int) !=
   //   ($struct_get($struct_loc(self, 0)): Int) -- testsresourcesexamplesauction.vy.vpr@1657.3--1657.94
     assert {:msg "  Assert might fail. Assertion ($struct_get($struct_loc(self, 3)): Int) != ($struct_get($struct_loc(self, 0)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1657.10--1657.94) [376]"}
       ($struct_get(($struct_loc(self, 3): int)): int) != ($struct_get(($struct_loc(self, 0): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 221
   // assert ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   0)): Int)): Int) ==
@@ -12358,7 +12360,7 @@ procedure f$endAuction() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 0)): Int)): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1658.10--1658.125) [377]"}
       ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 222
   // assert !($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -12369,7 +12371,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == 0;
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 223
   // assert ($struct_get($struct_loc(self, 5)): Bool) ==>
   //   ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
@@ -12380,7 +12382,7 @@ procedure f$endAuction() returns ($succ: bool)
         ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 0): int)): int)): int) == ($struct_get(($struct_loc(self, 4): int)): int);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 224
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self,
   //   3)): Int)): Int) +
@@ -12392,7 +12394,7 @@ procedure f$endAuction() returns ($succ: bool)
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) + ($struct_get($struct_loc(self, 4)): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), ($struct_get($struct_loc(self, 3)): Int)): Int) might not hold. (testsresourcesexamplesauction.vy.vpr@1661.10--1661.392) [380]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) + ($struct_get(($struct_loc(self, 4): int)): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), ($struct_get(($struct_loc(self, 3): int)): int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 225
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -12402,7 +12404,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) +
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int)) -- testsresourcesexamplesauction.vy.vpr@1662.3--1662.514
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 3)): Int) && q$a != ($struct_get($struct_loc(self, 0)): Int) ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) + ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) == ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int))
       if (*) {
         assume false;
@@ -12421,14 +12423,14 @@ procedure f$endAuction() returns ($succ: bool)
       0 <= q$a_30_1 && q$a_30_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_30_1 != ($struct_get(($struct_loc(self, 3): int)): int) && q$a_30_1 != ($struct_get(($struct_loc(self, 0): int)): int) ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_30_1): int) + ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_30_1): int) == ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_30_1): int)
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 226
   // assert ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) ==
   //   0 -- testsresourcesexamplesauction.vy.vpr@1663.3--1663.87
     assert {:msg "  Assert might fail. Assertion ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), 0): Int) == 0 might not hold. (testsresourcesexamplesauction.vy.vpr@1663.10--1663.87) [382]"}
       ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), 0): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 227
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) }
@@ -12437,7 +12439,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) !=
   //     0) -- testsresourcesexamplesauction.vy.vpr@1664.3--1664.344
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) != 0 ==> ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) != 0)
       if (*) {
         assume false;
@@ -12456,7 +12458,7 @@ procedure f$endAuction() returns ($succ: bool)
       0 <= q$a_33_1 && q$a_33_1 <= 1461501637330902918203684832716283019655932542975 ==> ($map_get(($struct_get(($struct_loc(self, 6): int)): $MapDomainType int int), q$a_33_1): int) != 0 ==> ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_33_1): int) != 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 228
   // assert (forall q$a: Int ::
   //     { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) }
@@ -12466,7 +12468,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     0 ==>
   //     ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) ==
   //     0) -- testsresourcesexamplesauction.vy.vpr@1665.3--1665.397
-    
+
     // -- Check definedness of (forall q$a: Int :: { ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) } 0 <= q$a && q$a <= 1461501637330902918203684832716283019655932542975 ==> q$a != ($struct_get($struct_loc(self, 0)): Int) && ($map_get(($struct_get($struct_loc(self, 11)): $Map[Int, Int]), q$a): Int) == 0 ==> ($map_get(($struct_get($struct_loc(self, 10)): $Map[Int, Int]), q$a): Int) == 0)
       if (*) {
         assume false;
@@ -12485,7 +12487,7 @@ procedure f$endAuction() returns ($succ: bool)
       0 <= q$a_36_1_1 && q$a_36_1_1 <= 1461501637330902918203684832716283019655932542975 ==> q$a_36_1_1 != ($struct_get(($struct_loc(self, 0): int)): int) && ($map_get(($struct_get(($struct_loc(self, 11): int)): $MapDomainType int int), q$a_36_1_1): int) == 0 ==> ($map_get(($struct_get(($struct_loc(self, 10): int)): $MapDomainType int int), q$a_36_1_1): int) == 0
     );
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: // id = 229
   // assert (forall q$a: Int, q$v: Int ::
   //     { $accessible$withdraw(18, q$a, q$v) }
@@ -12497,7 +12499,7 @@ procedure f$endAuction() returns ($succ: bool)
   //     q$v ==
   //     ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==>
   //     true) -- testsresourcesexamplesauction.vy.vpr@1666.3--1666.345
-    
+
     // -- Check definedness of (forall q$a: Int, q$v: Int :: { $accessible$withdraw(18, q$a, q$v) } 0 <= q$a && (q$a <= 1461501637330902918203684832716283019655932542975 && (0 <= q$v && q$v <= 115792089237316195423570985008687907853269984665640564039457584007913129639935)) ==> q$v == ($map_get(($struct_get($struct_loc(self, 6)): $Map[Int, Int]), q$a): Int) ==> true)
       if (*) {
         assume false;

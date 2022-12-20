@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -615,26 +617,26 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
   var j_1: int;
   var i_2: int;
   var j_2: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[this, $allocated];
     assume Heap[end, $allocated];
     assume AssumeFunctionsAbove == 4;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     perm := FullPerm;
     Mask[null, lseg(this, end)] := Mask[null, lseg(this, end)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of (this == end ? Seq[Int]() : (unfolding acc(lseg(this, end), write) in Seq(this.data) ++ contentNodes(this.next, end)))
       if (this == end) {
       } else {
@@ -659,11 +661,11 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
           assume state(UnfoldingHeap, UnfoldingMask);
           perm := FullPerm;
           UnfoldingMask[null, lseg(UnfoldingHeap[this, next], end)] := UnfoldingMask[null, lseg(UnfoldingHeap[this, next], end)] + perm;
-          
+
           // -- Extra unfolding of predicate
             assume InsidePredicate(lseg(this, end), UnfoldingHeap[null, lseg(this, end)], lseg(UnfoldingHeap[this, next], end), UnfoldingHeap[null, lseg(UnfoldingHeap[this, next], end)]);
           assume state(UnfoldingHeap, UnfoldingMask);
-          
+
           // -- Execute unfolding (for extra information)
             Unfolding1Heap := UnfoldingHeap;
             Unfolding1Mask := UnfoldingMask;
@@ -682,12 +684,12 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
               assume state(Unfolding1Heap, Unfolding1Mask);
               perm := FullPerm;
               Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)] := Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(Unfolding1Heap[this, next], end), Unfolding1Heap[null, lseg(Unfolding1Heap[this, next], end)], lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end), Unfolding1Heap[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)]);
               assume state(Unfolding1Heap, Unfolding1Mask);
               assume Unfolding1Heap[Unfolding1Heap[this, next], next] != end ==> Unfolding1Heap[Unfolding1Heap[this, next], data] <= Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (Unfolding1Heap[Unfolding1Heap[this, next], next] != end) {
                   Unfolding1Heap[null, lseg#sm(Unfolding1Heap[Unfolding1Heap[this, next], next], end)][Unfolding1Heap[Unfolding1Heap[this, next], next], data] := true;
@@ -703,7 +705,7 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
             }
             assume state(Unfolding1Heap, Unfolding1Mask);
           assume UnfoldingHeap[this, next] != end ==> UnfoldingHeap[this, data] <= UnfoldingHeap[UnfoldingHeap[this, next], data];
-          
+
           // -- Free assumptions (inhale module)
             if (UnfoldingHeap[this, next] != end) {
               UnfoldingHeap[null, lseg#sm(UnfoldingHeap[this, next], end)][UnfoldingHeap[this, next], data] := true;
@@ -740,7 +742,7 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
           // Enable postcondition for recursive call
           assume contentNodes#trigger(UnfoldingHeap[null, lseg(UnfoldingHeap[this, next], end)], UnfoldingHeap[this, next], end);
         }
-        
+
         // -- Free assumptions (exp module)
           if (this != end) {
             Heap[null, lseg#sm(this, end)][this, data] := true;
@@ -754,10 +756,10 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
           }
           assume state(Heap, Mask);
       }
-  
+
   // -- Translate function body
     Result := (if this == end then (Seq#Empty(): Seq int) else Seq#Append(Seq#Singleton(Heap[this, data]), contentNodes(Heap, Heap[this, next], end)));
-  
+
   // -- Exhaling postcondition (with checking)
     if (this == end) {
       assert {:msg "  Postcondition of contentNodes might not hold. Assertion result == Seq[Int]() might not hold. (linked-list-predicates.vpr@20.12--20.48) [1005]"}
@@ -766,7 +768,7 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
     if (this != end) {
       assert {:msg "  Postcondition of contentNodes might not hold. Assertion 0 < |result| might not hold. (linked-list-predicates.vpr@21.12--22.87) [1006]"}
         0 < Seq#Length(Result);
-      
+
       // -- Check definedness of result[0] == (unfolding acc(lseg(this, end), write) in this.data)
         assert {:msg "  Contract might not be well-formed. Index result[0] into result might exceed sequence length. (linked-list-predicates.vpr@21.12--22.87) [1007]"}
           0 < Seq#Length(Result);
@@ -791,11 +793,11 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
           assume state(UnfoldingHeap, UnfoldingMask);
           perm := FullPerm;
           UnfoldingMask[null, lseg(UnfoldingHeap[this, next], end)] := UnfoldingMask[null, lseg(UnfoldingHeap[this, next], end)] + perm;
-          
+
           // -- Extra unfolding of predicate
             assume InsidePredicate(lseg(this, end), UnfoldingHeap[null, lseg(this, end)], lseg(UnfoldingHeap[this, next], end), UnfoldingHeap[null, lseg(UnfoldingHeap[this, next], end)]);
           assume state(UnfoldingHeap, UnfoldingMask);
-          
+
           // -- Execute unfolding (for extra information)
             Unfolding1Heap := UnfoldingHeap;
             Unfolding1Mask := UnfoldingMask;
@@ -814,12 +816,12 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
               assume state(Unfolding1Heap, Unfolding1Mask);
               perm := FullPerm;
               Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)] := Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(Unfolding1Heap[this, next], end), Unfolding1Heap[null, lseg(Unfolding1Heap[this, next], end)], lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end), Unfolding1Heap[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)]);
               assume state(Unfolding1Heap, Unfolding1Mask);
               assume Unfolding1Heap[Unfolding1Heap[this, next], next] != end ==> Unfolding1Heap[Unfolding1Heap[this, next], data] <= Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (Unfolding1Heap[Unfolding1Heap[this, next], next] != end) {
                   Unfolding1Heap[null, lseg#sm(Unfolding1Heap[Unfolding1Heap[this, next], next], end)][Unfolding1Heap[Unfolding1Heap[this, next], next], data] := true;
@@ -835,7 +837,7 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
             }
             assume state(Unfolding1Heap, Unfolding1Mask);
           assume UnfoldingHeap[this, next] != end ==> UnfoldingHeap[this, data] <= UnfoldingHeap[UnfoldingHeap[this, next], data];
-          
+
           // -- Free assumptions (inhale module)
             if (UnfoldingHeap[this, next] != end) {
               UnfoldingHeap[null, lseg#sm(UnfoldingHeap[this, next], end)][UnfoldingHeap[this, next], data] := true;
@@ -852,7 +854,7 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
         assume state(UnfoldingHeap, UnfoldingMask);
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access this.data (linked-list-predicates.vpr@21.12--22.87) [1009]"}
           HasDirectPerm(UnfoldingMask, this, data);
-        
+
         // -- Free assumptions (exp module)
           if (this != end) {
             Heap[null, lseg#sm(this, end)][this, data] := true;
@@ -865,7 +867,7 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
             Heap[null, lseg#sm(this, end)] := newPMask;
           }
           assume state(Heap, Mask);
-        
+
         // -- Free assumptions (exp module)
           if (this != end) {
             Heap[null, lseg#sm(this, end)][this, data] := true;
@@ -880,7 +882,7 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
           assume state(Heap, Mask);
       assert {:msg "  Postcondition of contentNodes might not hold. Assertion result[0] == (unfolding acc(lseg(this, end), write) in this.data) might not hold. (linked-list-predicates.vpr@21.12--22.87) [1010]"}
         Seq#Index(Result, 0) == Heap[this, data];
-      
+
       // -- Free assumptions (exhale module)
         if (this != end) {
           Heap[null, lseg#sm(this, end)][this, data] := true;
@@ -894,7 +896,7 @@ procedure contentNodes#definedness(this: Ref, end: Ref) returns (Result: (Seq in
         }
         assume state(Heap, Mask);
     }
-    
+
     // -- Check definedness of (forall i: Int, j: Int :: { result[i], result[j] } 0 <= i && (i < j && j < |result|) ==> result[i] <= result[j])
       if (*) {
         if (0 <= i_1 && (i_1 < j_1 && j_1 < Seq#Length(Result))) {
@@ -974,26 +976,26 @@ procedure lengthNodes#definedness(this: Ref, end: Ref) returns (Result: int)
   var Unfolding1Mask: MaskType;
   var newPMask: PMaskType;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[this, $allocated];
     assume Heap[end, $allocated];
     assume AssumeFunctionsAbove == 3;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     perm := FullPerm;
     Mask[null, lseg(this, end)] := Mask[null, lseg(this, end)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of (unfolding acc(lseg(this, end), write) in (this == end ? 0 : 1 + lengthNodes(this.next, end)))
       UnfoldingHeap := Heap;
       UnfoldingMask := Mask;
@@ -1016,11 +1018,11 @@ procedure lengthNodes#definedness(this: Ref, end: Ref) returns (Result: int)
         assume state(UnfoldingHeap, UnfoldingMask);
         perm := FullPerm;
         UnfoldingMask[null, lseg(UnfoldingHeap[this, next], end)] := UnfoldingMask[null, lseg(UnfoldingHeap[this, next], end)] + perm;
-        
+
         // -- Extra unfolding of predicate
           assume InsidePredicate(lseg(this, end), UnfoldingHeap[null, lseg(this, end)], lseg(UnfoldingHeap[this, next], end), UnfoldingHeap[null, lseg(UnfoldingHeap[this, next], end)]);
         assume state(UnfoldingHeap, UnfoldingMask);
-        
+
         // -- Execute unfolding (for extra information)
           Unfolding1Heap := UnfoldingHeap;
           Unfolding1Mask := UnfoldingMask;
@@ -1039,12 +1041,12 @@ procedure lengthNodes#definedness(this: Ref, end: Ref) returns (Result: int)
             assume state(Unfolding1Heap, Unfolding1Mask);
             perm := FullPerm;
             Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)] := Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)] + perm;
-            
+
             // -- Extra unfolding of predicate
               assume InsidePredicate(lseg(Unfolding1Heap[this, next], end), Unfolding1Heap[null, lseg(Unfolding1Heap[this, next], end)], lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end), Unfolding1Heap[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)]);
             assume state(Unfolding1Heap, Unfolding1Mask);
             assume Unfolding1Heap[Unfolding1Heap[this, next], next] != end ==> Unfolding1Heap[Unfolding1Heap[this, next], data] <= Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], data];
-            
+
             // -- Free assumptions (inhale module)
               if (Unfolding1Heap[Unfolding1Heap[this, next], next] != end) {
                 Unfolding1Heap[null, lseg#sm(Unfolding1Heap[Unfolding1Heap[this, next], next], end)][Unfolding1Heap[Unfolding1Heap[this, next], next], data] := true;
@@ -1060,7 +1062,7 @@ procedure lengthNodes#definedness(this: Ref, end: Ref) returns (Result: int)
           }
           assume state(Unfolding1Heap, Unfolding1Mask);
         assume UnfoldingHeap[this, next] != end ==> UnfoldingHeap[this, data] <= UnfoldingHeap[UnfoldingHeap[this, next], data];
-        
+
         // -- Free assumptions (inhale module)
           if (UnfoldingHeap[this, next] != end) {
             UnfoldingHeap[null, lseg#sm(UnfoldingHeap[this, next], end)][UnfoldingHeap[this, next], data] := true;
@@ -1098,7 +1100,7 @@ procedure lengthNodes#definedness(this: Ref, end: Ref) returns (Result: int)
           assume lengthNodes#trigger(UnfoldingHeap[null, lseg(UnfoldingHeap[this, next], end)], UnfoldingHeap[this, next], end);
         }
       }
-      
+
       // -- Free assumptions (exp module)
         if (this != end) {
           Heap[null, lseg#sm(this, end)][this, data] := true;
@@ -1111,12 +1113,12 @@ procedure lengthNodes#definedness(this: Ref, end: Ref) returns (Result: int)
           Heap[null, lseg#sm(this, end)] := newPMask;
         }
         assume state(Heap, Mask);
-  
+
   // -- Translate function body
     Result := (if this == end then 0 else 1 + lengthNodes(Heap, Heap[this, next], end));
-  
+
   // -- Exhaling postcondition (with checking)
-    
+
     // -- Check definedness of result == |contentNodes(this, end)|
       if (*) {
         // Exhale precondition of function application
@@ -1194,25 +1196,25 @@ procedure content#definedness(this: Ref) returns (Result: (Seq int))
   var j_3: int;
   var i_2: int;
   var j_2: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[this, $allocated];
     assume AssumeFunctionsAbove == 2;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     perm := FullPerm;
     Mask[null, List(this)] := Mask[null, List(this)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of (unfolding acc(List(this), write) in contentNodes(this.head, null))
       UnfoldingHeap := Heap;
       UnfoldingMask := Mask;
@@ -1230,7 +1232,7 @@ procedure content#definedness(this: Ref) returns (Result: (Seq int))
       assume state(UnfoldingHeap, UnfoldingMask);
       perm := FullPerm;
       UnfoldingMask[null, lseg(UnfoldingHeap[this, head], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[this, head], null)] + perm;
-      
+
       // -- Extra unfolding of predicate
         assume InsidePredicate(List(this), UnfoldingHeap[null, List(this)], lseg(UnfoldingHeap[this, head], null), UnfoldingHeap[null, lseg(UnfoldingHeap[this, head], null)]);
       assume state(UnfoldingHeap, UnfoldingMask);
@@ -1252,7 +1254,7 @@ procedure content#definedness(this: Ref) returns (Result: (Seq int))
         // Stop execution
         assume false;
       }
-      
+
       // -- Free assumptions (exp module)
         Heap[null, List#sm(this)][this, head] := true;
         havoc newPMask;
@@ -1262,12 +1264,12 @@ procedure content#definedness(this: Ref) returns (Result: (Seq int))
         );
         Heap[null, List#sm(this)] := newPMask;
         assume state(Heap, Mask);
-  
+
   // -- Translate function body
     Result := contentNodes(Heap, Heap[this, head], null);
-  
+
   // -- Exhaling postcondition (with checking)
-    
+
     // -- Check definedness of (forall i: Int, j: Int :: { result[i], result[j] } 0 <= i && (i < j && j < |result|) ==> result[i] <= result[j])
       if (*) {
         if (0 <= i_3 && (i_3 < j_3 && j_3 < Seq#Length(Result))) {
@@ -1345,25 +1347,25 @@ procedure length#definedness(this: Ref) returns (Result: int)
   var UnfoldingMask: MaskType;
   var ExhaleHeap: HeapType;
   var newPMask: PMaskType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[this, $allocated];
     assume AssumeFunctionsAbove == 1;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     perm := FullPerm;
     Mask[null, List(this)] := Mask[null, List(this)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of (unfolding acc(List(this), write) in lengthNodes(this.head, null))
       UnfoldingHeap := Heap;
       UnfoldingMask := Mask;
@@ -1381,7 +1383,7 @@ procedure length#definedness(this: Ref) returns (Result: int)
       assume state(UnfoldingHeap, UnfoldingMask);
       perm := FullPerm;
       UnfoldingMask[null, lseg(UnfoldingHeap[this, head], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[this, head], null)] + perm;
-      
+
       // -- Extra unfolding of predicate
         assume InsidePredicate(List(this), UnfoldingHeap[null, List(this)], lseg(UnfoldingHeap[this, head], null), UnfoldingHeap[null, lseg(UnfoldingHeap[this, head], null)]);
       assume state(UnfoldingHeap, UnfoldingMask);
@@ -1403,7 +1405,7 @@ procedure length#definedness(this: Ref) returns (Result: int)
         // Stop execution
         assume false;
       }
-      
+
       // -- Free assumptions (exp module)
         Heap[null, List#sm(this)][this, head] := true;
         havoc newPMask;
@@ -1413,12 +1415,12 @@ procedure length#definedness(this: Ref) returns (Result: int)
         );
         Heap[null, List#sm(this)] := newPMask;
         assume state(Heap, Mask);
-  
+
   // -- Translate function body
     Result := lengthNodes(Heap, Heap[this, head], null);
-  
+
   // -- Exhaling postcondition (with checking)
-    
+
     // -- Check definedness of result == |content(this)|
       if (*) {
         // Exhale precondition of function application
@@ -1493,24 +1495,24 @@ procedure peek#definedness(this: Ref) returns (Result: int)
   var Unfolding2Heap: HeapType;
   var Unfolding2Mask: MaskType;
   var newPMask: PMaskType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume Heap[this, $allocated];
     assume AssumeFunctionsAbove == 0;
-  
+
   // -- Initializing the old state
     assume Heap == old(Heap);
     assume Mask == old(Mask);
-  
+
   // -- Inhaling precondition (with checking)
     perm := FullPerm;
     Mask[null, List(this)] := Mask[null, List(this)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of 0 < length(this)
       if (*) {
         // Exhale precondition of function application
@@ -1529,9 +1531,9 @@ procedure peek#definedness(this: Ref) returns (Result: int)
       }
     assume 0 < length(Heap, this);
     assume state(Heap, Mask);
-  
+
   // -- Check definedness of function body
-    
+
     // -- Check definedness of (unfolding acc(List(this), write) in (unfolding acc(lseg(this.head, null), write) in this.head.data))
       UnfoldingHeap := Heap;
       UnfoldingMask := Mask;
@@ -1549,7 +1551,7 @@ procedure peek#definedness(this: Ref) returns (Result: int)
       assume state(UnfoldingHeap, UnfoldingMask);
       perm := FullPerm;
       UnfoldingMask[null, lseg(UnfoldingHeap[this, head], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[this, head], null)] + perm;
-      
+
       // -- Extra unfolding of predicate
         assume InsidePredicate(List(this), UnfoldingHeap[null, List(this)], lseg(UnfoldingHeap[this, head], null), UnfoldingHeap[null, lseg(UnfoldingHeap[this, head], null)]);
       assume state(UnfoldingHeap, UnfoldingMask);
@@ -1575,11 +1577,11 @@ procedure peek#definedness(this: Ref) returns (Result: int)
         assume state(Unfolding1Heap, Unfolding1Mask);
         perm := FullPerm;
         Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[this, head], next], null)] := Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[this, head], next], null)] + perm;
-        
+
         // -- Extra unfolding of predicate
           assume InsidePredicate(lseg(Unfolding1Heap[this, head], null), Unfolding1Heap[null, lseg(Unfolding1Heap[this, head], null)], lseg(Unfolding1Heap[Unfolding1Heap[this, head], next], null), Unfolding1Heap[null, lseg(Unfolding1Heap[Unfolding1Heap[this, head], next], null)]);
         assume state(Unfolding1Heap, Unfolding1Mask);
-        
+
         // -- Execute unfolding (for extra information)
           Unfolding2Heap := Unfolding1Heap;
           Unfolding2Mask := Unfolding1Mask;
@@ -1598,12 +1600,12 @@ procedure peek#definedness(this: Ref) returns (Result: int)
             assume state(Unfolding2Heap, Unfolding2Mask);
             perm := FullPerm;
             Unfolding2Mask[null, lseg(Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], next], null)] := Unfolding2Mask[null, lseg(Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], next], null)] + perm;
-            
+
             // -- Extra unfolding of predicate
               assume InsidePredicate(lseg(Unfolding2Heap[Unfolding2Heap[this, head], next], null), Unfolding2Heap[null, lseg(Unfolding2Heap[Unfolding2Heap[this, head], next], null)], lseg(Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], next], null), Unfolding2Heap[null, lseg(Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], next], null)]);
             assume state(Unfolding2Heap, Unfolding2Mask);
             assume Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], next] != null ==> Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], data] <= Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], next], data];
-            
+
             // -- Free assumptions (inhale module)
               if (Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], next] != null) {
                 Unfolding2Heap[null, lseg#sm(Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], next], null)][Unfolding2Heap[Unfolding2Heap[Unfolding2Heap[this, head], next], next], data] := true;
@@ -1619,7 +1621,7 @@ procedure peek#definedness(this: Ref) returns (Result: int)
           }
           assume state(Unfolding2Heap, Unfolding2Mask);
         assume Unfolding1Heap[Unfolding1Heap[this, head], next] != null ==> Unfolding1Heap[Unfolding1Heap[this, head], data] <= Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, head], next], data];
-        
+
         // -- Free assumptions (inhale module)
           if (Unfolding1Heap[Unfolding1Heap[this, head], next] != null) {
             Unfolding1Heap[null, lseg#sm(Unfolding1Heap[Unfolding1Heap[this, head], next], null)][Unfolding1Heap[Unfolding1Heap[this, head], next], data] := true;
@@ -1640,7 +1642,7 @@ procedure peek#definedness(this: Ref) returns (Result: int)
         HasDirectPerm(Unfolding1Mask, Unfolding1Heap[this, head], data);
       assert {:msg "  Function might not be well-formed. There might be insufficient permission to access this.head (linked-list-predicates.vpr@67.1--73.2) [1039]"}
         HasDirectPerm(Unfolding1Mask, this, head);
-      
+
       // -- Free assumptions (exp module)
         if (UnfoldingHeap[this, head] != null) {
           UnfoldingHeap[null, lseg#sm(UnfoldingHeap[this, head], null)][UnfoldingHeap[this, head], data] := true;
@@ -1653,7 +1655,7 @@ procedure peek#definedness(this: Ref) returns (Result: int)
           UnfoldingHeap[null, lseg#sm(UnfoldingHeap[this, head], null)] := newPMask;
         }
         assume state(UnfoldingHeap, UnfoldingMask);
-      
+
       // -- Free assumptions (exp module)
         Heap[null, List#sm(this)][this, head] := true;
         havoc newPMask;
@@ -1674,12 +1676,12 @@ procedure peek#definedness(this: Ref) returns (Result: int)
           Heap[null, lseg#sm(Heap[this, head], null)] := newPMask;
         }
         assume state(Heap, Mask);
-  
+
   // -- Translate function body
     Result := Heap[Heap[this, head], data];
-  
+
   // -- Exhaling postcondition (with checking)
-    
+
     // -- Check definedness of result == content(this)[0]
       if (*) {
         // Exhale precondition of function application
@@ -1746,9 +1748,9 @@ procedure lseg#definedness(this: Ref, end: Ref) returns ()
   var Unfolding1Heap: HeapType;
   var Unfolding1Mask: MaskType;
   var newPMask: PMaskType;
-  
+
   // -- Check definedness of predicate body of lseg
-    
+
     // -- Initializing the state
       Mask := ZeroMask;
       assume state(Heap, Mask);
@@ -1764,14 +1766,14 @@ procedure lseg#definedness(this: Ref, end: Ref) returns ()
       assume this != null;
       Mask[this, next] := Mask[this, next] + perm;
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of acc(lseg(this.next, end), write)
         assert {:msg "  Predicate might not be well-formed. There might be insufficient permission to access this.next (linked-list-predicates.vpr@11.1--16.2) [1043]"}
           HasDirectPerm(Mask, this, next);
       perm := FullPerm;
       Mask[null, lseg(Heap[this, next], end)] := Mask[null, lseg(Heap[this, next], end)] + perm;
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of (unfolding acc(lseg(this.next, end), write) in this.next != end ==> this.data <= this.next.data)
         UnfoldingHeap := Heap;
         UnfoldingMask := Mask;
@@ -1794,11 +1796,11 @@ procedure lseg#definedness(this: Ref, end: Ref) returns ()
           assume state(UnfoldingHeap, UnfoldingMask);
           perm := FullPerm;
           UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end)] + perm;
-          
+
           // -- Extra unfolding of predicate
             assume InsidePredicate(lseg(UnfoldingHeap[this, next], end), UnfoldingHeap[null, lseg(UnfoldingHeap[this, next], end)], lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end)]);
           assume state(UnfoldingHeap, UnfoldingMask);
-          
+
           // -- Execute unfolding (for extra information)
             Unfolding1Heap := UnfoldingHeap;
             Unfolding1Mask := UnfoldingMask;
@@ -1817,12 +1819,12 @@ procedure lseg#definedness(this: Ref, end: Ref) returns ()
               assume state(Unfolding1Heap, Unfolding1Mask);
               perm := FullPerm;
               Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], next], end)] := Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], next], end)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end), Unfolding1Heap[null, lseg(Unfolding1Heap[Unfolding1Heap[this, next], next], end)], lseg(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], next], end), Unfolding1Heap[null, lseg(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], next], end)]);
               assume state(Unfolding1Heap, Unfolding1Mask);
               assume Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], next] != end ==> Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], data] <= Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], next] != end) {
                   Unfolding1Heap[null, lseg#sm(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], next], end)][Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[this, next], next], next], data] := true;
@@ -1838,7 +1840,7 @@ procedure lseg#definedness(this: Ref, end: Ref) returns ()
             }
             assume state(Unfolding1Heap, Unfolding1Mask);
           assume UnfoldingHeap[UnfoldingHeap[this, next], next] != end ==> UnfoldingHeap[UnfoldingHeap[this, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, next], next], data];
-          
+
           // -- Free assumptions (inhale module)
             if (UnfoldingHeap[UnfoldingHeap[this, next], next] != end) {
               UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[this, next], next], end)][UnfoldingHeap[UnfoldingHeap[this, next], next], data] := true;
@@ -1865,7 +1867,7 @@ procedure lseg#definedness(this: Ref, end: Ref) returns ()
           assert {:msg "  Predicate might not be well-formed. There might be insufficient permission to access this.next (linked-list-predicates.vpr@11.1--16.2) [1049]"}
             HasDirectPerm(UnfoldingMask, this, next);
         }
-        
+
         // -- Free assumptions (exp module)
           if (Heap[this, next] != end) {
             Heap[null, lseg#sm(Heap[this, next], end)][Heap[this, next], data] := true;
@@ -1878,7 +1880,7 @@ procedure lseg#definedness(this: Ref, end: Ref) returns ()
             Heap[null, lseg#sm(Heap[this, next], end)] := newPMask;
           }
           assume state(Heap, Mask);
-      
+
       // -- Execute unfolding (for extra information)
         UnfoldingHeap := Heap;
         UnfoldingMask := Mask;
@@ -1897,12 +1899,12 @@ procedure lseg#definedness(this: Ref, end: Ref) returns ()
           assume state(UnfoldingHeap, UnfoldingMask);
           perm := FullPerm;
           UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end)] + perm;
-          
+
           // -- Extra unfolding of predicate
             assume InsidePredicate(lseg(UnfoldingHeap[this, next], end), UnfoldingHeap[null, lseg(UnfoldingHeap[this, next], end)], lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end)]);
           assume state(UnfoldingHeap, UnfoldingMask);
           assume UnfoldingHeap[UnfoldingHeap[this, next], next] != end ==> UnfoldingHeap[UnfoldingHeap[this, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, next], next], data];
-          
+
           // -- Free assumptions (inhale module)
             if (UnfoldingHeap[UnfoldingHeap[this, next], next] != end) {
               UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[this, next], next], end)][UnfoldingHeap[UnfoldingHeap[this, next], next], data] := true;
@@ -1961,9 +1963,9 @@ procedure List#definedness(this: Ref) returns ()
   modifies Heap, Mask;
 {
   var perm: Perm;
-  
+
   // -- Check definedness of predicate body of List
-    
+
     // -- Initializing the state
       Mask := ZeroMask;
       assume state(Heap, Mask);
@@ -1973,7 +1975,7 @@ procedure List#definedness(this: Ref) returns ()
     assume this != null;
     Mask[this, head] := Mask[this, head] + perm;
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of acc(lseg(this.head, null), write)
       assert {:msg "  Predicate might not be well-formed. There might be insufficient permission to access this.head (linked-list-predicates.vpr@48.1--51.2) [1050]"}
         HasDirectPerm(Mask, this, head);
@@ -1999,14 +2001,14 @@ procedure create() returns (this: Ref)
   var UnfoldingMask: MaskType;
   var newPMask: PMaskType;
   var freshVersion: FrameType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -2022,7 +2024,7 @@ procedure create() returns (this: Ref)
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of content(this) == Seq[Int]()
       if (*) {
         // Exhale precondition of function application
@@ -2044,7 +2046,7 @@ procedure create() returns (this: Ref)
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: this := new(data, next, head, held, changed) -- linked-list-predicates.vpr@79.3--79.17
     havoc freshObj;
     assume freshObj != null && !Heap[freshObj, $allocated];
@@ -2056,15 +2058,15 @@ procedure create() returns (this: Ref)
     Mask[this, held] := Mask[this, held] + FullPerm;
     Mask[this, changed] := Mask[this, changed] + FullPerm;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: this.head := null -- linked-list-predicates.vpr@80.3--80.20
     assert {:msg "  Assignment might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@80.3--80.20) [1052]"}
       FullPerm == Mask[this, head];
     Heap[this, head] := null;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: fold acc(lseg(this.head, null), write) -- linked-list-predicates.vpr@81.3--81.34
-    
+
     // -- Check definedness of acc(lseg(this.head, null), write)
       assert {:msg "  Folding lseg(this.head, null) might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@81.3--81.34) [1053]"}
         HasDirectPerm(Mask, this, head);
@@ -2087,10 +2089,10 @@ procedure create() returns (this: Ref)
           perm <= Mask[null, lseg(Heap[Heap[this, head], next], null)];
       }
       Mask[null, lseg(Heap[Heap[this, head], next], null)] := Mask[null, lseg(Heap[Heap[this, head], next], null)] - perm;
-      
+
       // -- Record predicate instance information
         assume InsidePredicate(lseg(Heap[this, head], null), Heap[null, lseg(Heap[this, head], null)], lseg(Heap[Heap[this, head], next], null), Heap[null, lseg(Heap[Heap[this, head], next], null)]);
-      
+
       // -- Execute unfolding (for extra information)
         UnfoldingHeap := Heap;
         UnfoldingMask := Mask;
@@ -2107,12 +2109,12 @@ procedure create() returns (this: Ref)
           assume state(UnfoldingHeap, UnfoldingMask);
           perm := FullPerm;
           UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)] + perm;
-          
+
           // -- Extra unfolding of predicate
             assume InsidePredicate(lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], null)], lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)]);
           assume state(UnfoldingHeap, UnfoldingMask);
           assume UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != null ==> UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data];
-          
+
           // -- Free assumptions (inhale module)
             if (UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != null) {
               UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)][UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data] := true;
@@ -2132,7 +2134,7 @@ procedure create() returns (this: Ref)
           UnfoldingHeap[UnfoldingHeap[this, head], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], data];
       }
     }
-    
+
     // -- Free assumptions (exhale module)
       if (Heap[Heap[this, head], next] != null) {
         Heap[null, lseg#sm(Heap[Heap[this, head], next], null)][Heap[Heap[this, head], next], data] := true;
@@ -2168,7 +2170,7 @@ procedure create() returns (this: Ref)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: fold acc(List(this), write) -- linked-list-predicates.vpr@82.3--82.23
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -2182,7 +2184,7 @@ procedure create() returns (this: Ref)
         perm <= Mask[null, lseg(Heap[this, head], null)];
     }
     Mask[null, lseg(Heap[this, head], null)] := Mask[null, lseg(Heap[this, head], null)] - perm;
-    
+
     // -- Record predicate instance information
       assume InsidePredicate(List(this), Heap[null, List(this)], lseg(Heap[this, head], null), Heap[null, lseg(Heap[this, head], null)]);
     perm := FullPerm;
@@ -2205,7 +2207,7 @@ procedure create() returns (this: Ref)
     Heap[null, List#sm(this)] := newPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -2240,17 +2242,17 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
   var PreCallMask: MaskType;
   var arg_this: Ref;
   var freshVersion: FrameType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[this, $allocated];
     assume Heap[ptr, $allocated];
     assume Heap[end, $allocated];
-  
+
   // -- Checked inhaling of precondition
     perm := FullPerm;
     Mask[null, lseg(this, ptr)] := Mask[null, lseg(this, ptr)] + perm;
@@ -2269,7 +2271,7 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
       assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of 0 < |contentNodes(this, ptr)| && 0 < |contentNodes(ptr, end)|
       if (*) {
         // Exhale precondition of function application
@@ -2305,7 +2307,7 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
       }
     if (0 < Seq#Length(contentNodes(Heap, this, ptr)) && 0 < Seq#Length(contentNodes(Heap, ptr, end))) {
       assume state(Heap, Mask);
-      
+
       // -- Check definedness of contentNodes(this, ptr)[|contentNodes(this, ptr)| - 1] <= contentNodes(ptr, end)[0]
         if (*) {
           // Exhale precondition of function application
@@ -2361,9 +2363,9 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
       assume Seq#Index(contentNodes(Heap, this, ptr), Seq#Length(contentNodes(Heap, this, ptr)) - 1) <= Seq#Index(contentNodes(Heap, ptr, end), 0);
     }
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -2379,7 +2381,7 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of contentNodes(this, end) == old(contentNodes(this, ptr) ++ contentNodes(ptr, end))
       if (*) {
         // Exhale precondition of function application
@@ -2432,10 +2434,10 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: if (this != ptr) -- linked-list-predicates.vpr@95.3--100.4
     if (this != ptr) {
-      
+
       // -- Translating statement: unfold acc(lseg(this, ptr), write) -- linked-list-predicates.vpr@97.5--97.32
         assume lseg#trigger(Heap, lseg(this, ptr));
         assume Heap[null, lseg(this, ptr)] == FrameFragment((if this != ptr then CombineFrames(FrameFragment(Heap[this, data]), CombineFrames(FrameFragment(Heap[this, next]), Heap[null, lseg(Heap[this, next], ptr)])) else EmptyFrame));
@@ -2445,7 +2447,7 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
             perm <= Mask[null, lseg(this, ptr)];
         }
         Mask[null, lseg(this, ptr)] := Mask[null, lseg(this, ptr)] - perm;
-        
+
         // -- Update version of predicate
           if (!HasDirectPerm(Mask, null, lseg(this, ptr))) {
             havoc newVersion;
@@ -2462,11 +2464,11 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
           assume state(Heap, Mask);
           perm := FullPerm;
           Mask[null, lseg(Heap[this, next], ptr)] := Mask[null, lseg(Heap[this, next], ptr)] + perm;
-          
+
           // -- Extra unfolding of predicate
             assume InsidePredicate(lseg(this, ptr), Heap[null, lseg(this, ptr)], lseg(Heap[this, next], ptr), Heap[null, lseg(Heap[this, next], ptr)]);
           assume state(Heap, Mask);
-          
+
           // -- Execute unfolding (for extra information)
             UnfoldingHeap := Heap;
             UnfoldingMask := Mask;
@@ -2485,12 +2487,12 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
               assume state(UnfoldingHeap, UnfoldingMask);
               perm := FullPerm;
               UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], ptr)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], ptr)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(UnfoldingHeap[this, next], ptr), UnfoldingHeap[null, lseg(UnfoldingHeap[this, next], ptr)], lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], ptr), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], ptr)]);
               assume state(UnfoldingHeap, UnfoldingMask);
               assume UnfoldingHeap[UnfoldingHeap[this, next], next] != ptr ==> UnfoldingHeap[UnfoldingHeap[this, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (UnfoldingHeap[UnfoldingHeap[this, next], next] != ptr) {
                   UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[this, next], next], ptr)][UnfoldingHeap[UnfoldingHeap[this, next], next], data] := true;
@@ -2506,7 +2508,7 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
             }
             assume state(UnfoldingHeap, UnfoldingMask);
           assume Heap[this, next] != ptr ==> Heap[this, data] <= Heap[Heap[this, next], data];
-          
+
           // -- Free assumptions (inhale module)
             if (Heap[this, next] != ptr) {
               Heap[null, lseg#sm(Heap[this, next], ptr)][Heap[this, next], data] := true;
@@ -2522,16 +2524,16 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
         }
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: concat(this.next, ptr, end) -- linked-list-predicates.vpr@98.5--98.32
         PreCallHeap := Heap;
         PreCallMask := Mask;
-        
+
         // -- Check definedness of this.next
           assert {:msg "  Method call might fail. There might be insufficient permission to access this.next (linked-list-predicates.vpr@98.5--98.32) [1087]"}
             HasDirectPerm(Mask, this, next);
         arg_this := Heap[this, next];
-        
+
         // -- Exhaling precondition
           perm := FullPerm;
           if (perm != NoPerm) {
@@ -2563,7 +2565,7 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
           havoc ExhaleHeap;
           assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
           Heap := ExhaleHeap;
-        
+
         // -- Inhaling postcondition
           perm := FullPerm;
           Mask[null, lseg(arg_this, end)] := Mask[null, lseg(arg_this, end)] + perm;
@@ -2580,7 +2582,7 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
           }
           assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: fold acc(lseg(this, end), write) -- linked-list-predicates.vpr@99.5--99.30
         if (this != end) {
           perm := FullPerm;
@@ -2601,10 +2603,10 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
               perm <= Mask[null, lseg(Heap[this, next], end)];
           }
           Mask[null, lseg(Heap[this, next], end)] := Mask[null, lseg(Heap[this, next], end)] - perm;
-          
+
           // -- Record predicate instance information
             assume InsidePredicate(lseg(this, end), Heap[null, lseg(this, end)], lseg(Heap[this, next], end), Heap[null, lseg(Heap[this, next], end)]);
-          
+
           // -- Execute unfolding (for extra information)
             UnfoldingHeap := Heap;
             UnfoldingMask := Mask;
@@ -2621,12 +2623,12 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
               assume state(UnfoldingHeap, UnfoldingMask);
               perm := FullPerm;
               UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(UnfoldingHeap[this, next], end), UnfoldingHeap[null, lseg(UnfoldingHeap[this, next], end)], lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[this, next], next], end)]);
               assume state(UnfoldingHeap, UnfoldingMask);
               assume UnfoldingHeap[UnfoldingHeap[this, next], next] != end ==> UnfoldingHeap[UnfoldingHeap[this, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (UnfoldingHeap[UnfoldingHeap[this, next], next] != end) {
                   UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[this, next], next], end)][UnfoldingHeap[UnfoldingHeap[this, next], next], data] := true;
@@ -2646,7 +2648,7 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
               UnfoldingHeap[this, data] <= UnfoldingHeap[UnfoldingHeap[this, next], data];
           }
         }
-        
+
         // -- Free assumptions (exhale module)
           if (Heap[this, next] != end) {
             Heap[null, lseg#sm(Heap[this, next], end)][Heap[this, next], data] := true;
@@ -2684,7 +2686,7 @@ procedure vconcat(this: Ref, ptr: Ref, end: Ref) returns ()
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -2744,23 +2746,23 @@ procedure insert(this: Ref, elem: int) returns (index: int)
   var i_10: int;
   var i_12: int;
   var arg_this_1: Ref;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[this, $allocated];
-  
+
   // -- Checked inhaling of precondition
     perm := FullPerm;
     Mask[null, List(this)] := Mask[null, List(this)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -2777,7 +2779,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
     assume state(PostHeap, PostMask);
     assume 0 <= index;
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of index <= |old(content(this))|
       if (*) {
         // Exhale precondition of function application
@@ -2793,7 +2795,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
     assume index <= Seq#Length(content(old(Heap), this));
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of content(this) == old(content(this))[0..index] ++ Seq(elem) ++ old(content(this))[index..]
       if (*) {
         // Exhale precondition of function application
@@ -2837,14 +2839,14 @@ procedure insert(this: Ref, elem: int) returns (index: int)
     // Stop execution
     assume false;
   }
-  
+
   // -- Assumptions about local variables
     assume Heap[tmp, $allocated];
-  
+
   // -- Translating statement: index := 0 -- linked-list-predicates.vpr@110.3--110.13
     index := 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: unfold acc(List(this), write) -- linked-list-predicates.vpr@112.3--112.25
     assume List#trigger(Heap, List(this));
     assume Heap[null, List(this)] == CombineFrames(FrameFragment(Heap[this, head]), Heap[null, lseg(Heap[this, head], null)]);
@@ -2854,7 +2856,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         perm <= Mask[null, List(this)];
     }
     Mask[null, List(this)] := Mask[null, List(this)] - perm;
-    
+
     // -- Update version of predicate
       if (!HasDirectPerm(Mask, null, List(this))) {
         havoc newVersion;
@@ -2866,22 +2868,22 @@ procedure insert(this: Ref, elem: int) returns (index: int)
     assume state(Heap, Mask);
     perm := FullPerm;
     Mask[null, lseg(Heap[this, head], null)] := Mask[null, lseg(Heap[this, head], null)] + perm;
-    
+
     // -- Extra unfolding of predicate
       assume InsidePredicate(List(this), Heap[null, List(this)], lseg(Heap[this, head], null), Heap[null, lseg(Heap[this, head], null)]);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (this.head != null) -- linked-list-predicates.vpr@114.3--116.4
-    
+
     // -- Check definedness of this.head != null
       assert {:msg "  Conditional statement might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@114.6--114.23) [1114]"}
         HasDirectPerm(Mask, this, head);
     if (Heap[this, head] != null) {
-      
+
       // -- Translating statement: unfold acc(lseg(this.head, null), write) -- linked-list-predicates.vpr@115.5--115.38
-        
+
         // -- Check definedness of acc(lseg(this.head, null), write)
           assert {:msg "  Unfolding lseg(this.head, null) might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@115.5--115.38) [1115]"}
             HasDirectPerm(Mask, this, head);
@@ -2893,7 +2895,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             perm <= Mask[null, lseg(Heap[this, head], null)];
         }
         Mask[null, lseg(Heap[this, head], null)] := Mask[null, lseg(Heap[this, head], null)] - perm;
-        
+
         // -- Update version of predicate
           if (!HasDirectPerm(Mask, null, lseg(Heap[this, head], null))) {
             havoc newVersion;
@@ -2910,11 +2912,11 @@ procedure insert(this: Ref, elem: int) returns (index: int)
           assume state(Heap, Mask);
           perm := FullPerm;
           Mask[null, lseg(Heap[Heap[this, head], next], null)] := Mask[null, lseg(Heap[Heap[this, head], next], null)] + perm;
-          
+
           // -- Extra unfolding of predicate
             assume InsidePredicate(lseg(Heap[this, head], null), Heap[null, lseg(Heap[this, head], null)], lseg(Heap[Heap[this, head], next], null), Heap[null, lseg(Heap[Heap[this, head], next], null)]);
           assume state(Heap, Mask);
-          
+
           // -- Execute unfolding (for extra information)
             UnfoldingHeap := Heap;
             UnfoldingMask := Mask;
@@ -2933,12 +2935,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               assume state(UnfoldingHeap, UnfoldingMask);
               perm := FullPerm;
               UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], null)], lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)]);
               assume state(UnfoldingHeap, UnfoldingMask);
               assume UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != null ==> UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != null) {
                   UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)][UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data] := true;
@@ -2954,7 +2956,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             }
             assume state(UnfoldingHeap, UnfoldingMask);
           assume Heap[Heap[this, head], next] != null ==> Heap[Heap[this, head], data] <= Heap[Heap[Heap[this, head], next], data];
-          
+
           // -- Free assumptions (inhale module)
             if (Heap[Heap[this, head], next] != null) {
               Heap[null, lseg#sm(Heap[Heap[this, head], next], null)][Heap[Heap[this, head], next], data] := true;
@@ -2972,9 +2974,9 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (this.head == null || elem <= this.head.data) -- linked-list-predicates.vpr@118.3--161.4
-    
+
     // -- Check definedness of this.head == null || elem <= this.head.data
       assert {:msg "  Conditional statement might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@118.6--118.49) [1121]"}
         HasDirectPerm(Mask, this, head);
@@ -2985,7 +2987,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
           HasDirectPerm(Mask, this, head);
       }
     if (Heap[this, head] == null || elem <= Heap[Heap[this, head], data]) {
-      
+
       // -- Translating statement: tmp := new(data, next, head, held, changed) -- linked-list-predicates.vpr@119.5--119.18
         havoc freshObj;
         assume freshObj != null && !Heap[freshObj, $allocated];
@@ -2997,15 +2999,15 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         Mask[tmp, held] := Mask[tmp, held] + FullPerm;
         Mask[tmp, changed] := Mask[tmp, changed] + FullPerm;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: tmp.data := elem -- linked-list-predicates.vpr@120.5--120.21
         assert {:msg "  Assignment might fail. There might be insufficient permission to access tmp.data (linked-list-predicates.vpr@120.5--120.21) [1124]"}
           FullPerm == Mask[tmp, data];
         Heap[tmp, data] := elem;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: tmp.next := this.head -- linked-list-predicates.vpr@121.5--121.26
-        
+
         // -- Check definedness of this.head
           assert {:msg "  Assignment might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@121.5--121.26) [1125]"}
             HasDirectPerm(Mask, this, head);
@@ -3013,9 +3015,9 @@ procedure insert(this: Ref, elem: int) returns (index: int)
           FullPerm == Mask[tmp, next];
         Heap[tmp, next] := Heap[this, head];
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: fold acc(lseg(this.head, null), write) -- linked-list-predicates.vpr@122.5--122.36
-        
+
         // -- Check definedness of acc(lseg(this.head, null), write)
           assert {:msg "  Folding lseg(this.head, null) might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@122.5--122.36) [1127]"}
             HasDirectPerm(Mask, this, head);
@@ -3038,10 +3040,10 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               perm <= Mask[null, lseg(Heap[Heap[this, head], next], null)];
           }
           Mask[null, lseg(Heap[Heap[this, head], next], null)] := Mask[null, lseg(Heap[Heap[this, head], next], null)] - perm;
-          
+
           // -- Record predicate instance information
             assume InsidePredicate(lseg(Heap[this, head], null), Heap[null, lseg(Heap[this, head], null)], lseg(Heap[Heap[this, head], next], null), Heap[null, lseg(Heap[Heap[this, head], next], null)]);
-          
+
           // -- Execute unfolding (for extra information)
             UnfoldingHeap := Heap;
             UnfoldingMask := Mask;
@@ -3058,12 +3060,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               assume state(UnfoldingHeap, UnfoldingMask);
               perm := FullPerm;
               UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], null)], lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)]);
               assume state(UnfoldingHeap, UnfoldingMask);
               assume UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != null ==> UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != null) {
                   UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)][UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data] := true;
@@ -3083,7 +3085,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               UnfoldingHeap[UnfoldingHeap[this, head], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], data];
           }
         }
-        
+
         // -- Free assumptions (exhale module)
           if (Heap[Heap[this, head], next] != null) {
             Heap[null, lseg#sm(Heap[Heap[this, head], next], null)][Heap[Heap[this, head], next], data] := true;
@@ -3119,7 +3121,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         }
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: fold acc(lseg(tmp, null), write) -- linked-list-predicates.vpr@123.5--123.30
         if (tmp != null) {
           perm := FullPerm;
@@ -3140,10 +3142,10 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               perm <= Mask[null, lseg(Heap[tmp, next], null)];
           }
           Mask[null, lseg(Heap[tmp, next], null)] := Mask[null, lseg(Heap[tmp, next], null)] - perm;
-          
+
           // -- Record predicate instance information
             assume InsidePredicate(lseg(tmp, null), Heap[null, lseg(tmp, null)], lseg(Heap[tmp, next], null), Heap[null, lseg(Heap[tmp, next], null)]);
-          
+
           // -- Execute unfolding (for extra information)
             UnfoldingHeap := Heap;
             UnfoldingMask := Mask;
@@ -3160,12 +3162,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               assume state(UnfoldingHeap, UnfoldingMask);
               perm := FullPerm;
               UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[tmp, next], next], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[tmp, next], next], null)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(UnfoldingHeap[tmp, next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[tmp, next], null)], lseg(UnfoldingHeap[UnfoldingHeap[tmp, next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[tmp, next], next], null)]);
               assume state(UnfoldingHeap, UnfoldingMask);
               assume UnfoldingHeap[UnfoldingHeap[tmp, next], next] != null ==> UnfoldingHeap[UnfoldingHeap[tmp, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[tmp, next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (UnfoldingHeap[UnfoldingHeap[tmp, next], next] != null) {
                   UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[tmp, next], next], null)][UnfoldingHeap[UnfoldingHeap[tmp, next], next], data] := true;
@@ -3185,7 +3187,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               UnfoldingHeap[tmp, data] <= UnfoldingHeap[UnfoldingHeap[tmp, next], data];
           }
         }
-        
+
         // -- Free assumptions (exhale module)
           if (Heap[tmp, next] != null) {
             Heap[null, lseg#sm(Heap[tmp, next], null)][Heap[tmp, next], data] := true;
@@ -3221,27 +3223,27 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         }
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: this.head := tmp -- linked-list-predicates.vpr@124.5--124.21
         assert {:msg "  Assignment might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@124.5--124.21) [1144]"}
           FullPerm == Mask[this, head];
         Heap[this, head] := tmp;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Assumptions about local variables
         assume Heap[ptr, $allocated];
-      
+
       // -- Translating statement: ptr := this.head -- linked-list-predicates.vpr@126.5--126.30
-        
+
         // -- Check definedness of this.head
           assert {:msg "  Assignment might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@126.5--126.30) [1145]"}
             HasDirectPerm(Mask, this, head);
         ptr := Heap[this, head];
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: fold acc(lseg(this.head, ptr), write) -- linked-list-predicates.vpr@127.5--127.35
-        
+
         // -- Check definedness of acc(lseg(this.head, ptr), write)
           assert {:msg "  Folding lseg(this.head, ptr) might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@127.5--127.35) [1146]"}
             HasDirectPerm(Mask, this, head);
@@ -3264,10 +3266,10 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               perm <= Mask[null, lseg(Heap[Heap[this, head], next], ptr)];
           }
           Mask[null, lseg(Heap[Heap[this, head], next], ptr)] := Mask[null, lseg(Heap[Heap[this, head], next], ptr)] - perm;
-          
+
           // -- Record predicate instance information
             assume InsidePredicate(lseg(Heap[this, head], ptr), Heap[null, lseg(Heap[this, head], ptr)], lseg(Heap[Heap[this, head], next], ptr), Heap[null, lseg(Heap[Heap[this, head], next], ptr)]);
-          
+
           // -- Execute unfolding (for extra information)
             UnfoldingHeap := Heap;
             UnfoldingMask := Mask;
@@ -3284,12 +3286,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               assume state(UnfoldingHeap, UnfoldingMask);
               perm := FullPerm;
               UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], ptr)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], ptr)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], ptr), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], ptr)], lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], ptr), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], ptr)]);
               assume state(UnfoldingHeap, UnfoldingMask);
               assume UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != ptr ==> UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != ptr) {
                   UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], ptr)][UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data] := true;
@@ -3309,7 +3311,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               UnfoldingHeap[UnfoldingHeap[this, head], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], data];
           }
         }
-        
+
         // -- Free assumptions (exhale module)
           if (Heap[Heap[this, head], next] != ptr) {
             Heap[null, lseg#sm(Heap[Heap[this, head], next], ptr)][Heap[Heap[this, head], next], data] := true;
@@ -3345,15 +3347,15 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         }
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: index := index + 1 -- linked-list-predicates.vpr@128.5--128.23
         index := index + 1;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: while (ptr.next != null && (unfolding acc(lseg(ptr.next, null), write) in ptr.next.data < elem)) -- linked-list-predicates.vpr@130.5--150.6
-        
+
         // -- Before loop head
-          
+
           // -- Exhale loop invariant before loop
             perm := FullPerm;
             if (perm != NoPerm) {
@@ -3417,11 +3419,11 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             havoc ExhaleHeap;
             assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
             Heap := ExhaleHeap;
-        
+
         // -- Havoc loop written variables (except locals)
           havoc ptr, index;
           assume Heap[ptr, $allocated];
-        
+
         // -- Check definedness of invariant
           if (*) {
             perm := FullPerm;
@@ -3437,13 +3439,13 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             assume ptr != null;
             Mask[ptr, data] := Mask[ptr, data] + perm;
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of ptr.data <= elem
               assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access ptr.data (linked-list-predicates.vpr@132.17--132.67) [1165]"}
                 HasDirectPerm(Mask, ptr, data);
             assume Heap[ptr, data] <= elem;
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of acc(lseg(ptr.next, null), write)
               assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access ptr.next (linked-list-predicates.vpr@133.17--133.42) [1166]"}
                 HasDirectPerm(Mask, ptr, next);
@@ -3451,7 +3453,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             Mask[null, lseg(Heap[ptr, next], null)] := Mask[null, lseg(Heap[ptr, next], null)] + perm;
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of acc(lseg(this.head, ptr), write)
               assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access this.head (linked-list-predicates.vpr@134.17--134.42) [1167]"}
                 HasDirectPerm(Mask, this, head);
@@ -3460,7 +3462,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             assume state(Heap, Mask);
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall i: Int :: { contentNodes(this.head, ptr)[i] } 0 <= i && i < |contentNodes(this.head, ptr)| ==> contentNodes(this.head, ptr)[i] <= ptr.data)
               if (*) {
                 if (0 <= i_4) {
@@ -3515,7 +3517,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             );
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of (forall i: Int :: { contentNodes(ptr.next, null)[i] } 0 <= i && i < |contentNodes(ptr.next, null)| ==> ptr.data <= contentNodes(ptr.next, null)[i])
               if (*) {
                 if (0 <= i_6) {
@@ -3570,7 +3572,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             );
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of index - 1 == |contentNodes(this.head, ptr)|
               assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access this.head (linked-list-predicates.vpr@139.17--139.58) [1182]"}
                 HasDirectPerm(Mask, this, head);
@@ -3592,7 +3594,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             assume index - 1 == Seq#Length(contentNodes(Heap, Heap[this, head], ptr));
             assume state(Heap, Mask);
             assume state(Heap, Mask);
-            
+
             // -- Check definedness of old(content(this)) == contentNodes(this.head, ptr) ++ Seq(ptr.data) ++ contentNodes(ptr.next, null)
               if (*) {
                 // Exhale precondition of function application
@@ -3645,7 +3647,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             assume state(Heap, Mask);
             assume false;
           }
-        
+
         // -- Check the loop body
           if (*) {
             // Reset state
@@ -3689,7 +3691,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             assume Seq#Equal(content(old(Heap), this), Seq#Append(Seq#Append(contentNodes(Heap, Heap[this, head], ptr), Seq#Singleton(Heap[ptr, data])), contentNodes(Heap, Heap[ptr, next], null)));
             assume state(Heap, Mask);
             // Check and assume guard
-            
+
             // -- Check definedness of ptr.next != null && (unfolding acc(lseg(ptr.next, null), write) in ptr.next.data < elem)
               assert {:msg "  While statement might fail. There might be insufficient permission to access ptr.next (linked-list-predicates.vpr@130.11--130.90) [1190]"}
                 HasDirectPerm(Mask, ptr, next);
@@ -3715,11 +3717,11 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                   assume state(UnfoldingHeap, UnfoldingMask);
                   perm := FullPerm;
                   UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)] + perm;
-                  
+
                   // -- Extra unfolding of predicate
                     assume InsidePredicate(lseg(UnfoldingHeap[ptr, next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[ptr, next], null)], lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)]);
                   assume state(UnfoldingHeap, UnfoldingMask);
-                  
+
                   // -- Execute unfolding (for extra information)
                     Unfolding1Heap := UnfoldingHeap;
                     Unfolding1Mask := UnfoldingMask;
@@ -3738,12 +3740,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                       assume state(Unfolding1Heap, Unfolding1Mask);
                       perm := FullPerm;
                       Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], next], null)] := Unfolding1Mask[null, lseg(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], next], null)] + perm;
-                      
+
                       // -- Extra unfolding of predicate
                         assume InsidePredicate(lseg(Unfolding1Heap[Unfolding1Heap[ptr, next], next], null), Unfolding1Heap[null, lseg(Unfolding1Heap[Unfolding1Heap[ptr, next], next], null)], lseg(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], next], null), Unfolding1Heap[null, lseg(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], next], null)]);
                       assume state(Unfolding1Heap, Unfolding1Mask);
                       assume Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], next] != null ==> Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], data] <= Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], next], data];
-                      
+
                       // -- Free assumptions (inhale module)
                         if (Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], next] != null) {
                           Unfolding1Heap[null, lseg#sm(Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], next], null)][Unfolding1Heap[Unfolding1Heap[Unfolding1Heap[ptr, next], next], next], data] := true;
@@ -3759,7 +3761,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                     }
                     assume state(Unfolding1Heap, Unfolding1Mask);
                   assume UnfoldingHeap[UnfoldingHeap[ptr, next], next] != null ==> UnfoldingHeap[UnfoldingHeap[ptr, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], data];
-                  
+
                   // -- Free assumptions (inhale module)
                     if (UnfoldingHeap[UnfoldingHeap[ptr, next], next] != null) {
                       UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)][UnfoldingHeap[UnfoldingHeap[ptr, next], next], data] := true;
@@ -3780,7 +3782,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                   HasDirectPerm(UnfoldingMask, UnfoldingHeap[ptr, next], data);
                 assert {:msg "  While statement might fail. There might be insufficient permission to access ptr.next (linked-list-predicates.vpr@130.11--130.90) [1194]"}
                   HasDirectPerm(UnfoldingMask, ptr, next);
-                
+
                 // -- Free assumptions (exp module)
                   if (Heap[ptr, next] != null) {
                     Heap[null, lseg#sm(Heap[ptr, next], null)][Heap[ptr, next], data] := true;
@@ -3796,14 +3798,14 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               }
             assume Heap[ptr, next] != null && Heap[Heap[ptr, next], data] < elem;
             assume state(Heap, Mask);
-            
+
             // -- Translate loop body
-              
+
               // -- Assumptions about local variables
                 assume Heap[ptrn, $allocated];
-              
+
               // -- Translating statement: unfold acc(lseg(ptr.next, null), write) -- linked-list-predicates.vpr@143.7--143.39
-                
+
                 // -- Check definedness of acc(lseg(ptr.next, null), write)
                   assert {:msg "  Unfolding lseg(ptr.next, null) might fail. There might be insufficient permission to access ptr.next (linked-list-predicates.vpr@143.7--143.39) [1195]"}
                     HasDirectPerm(Mask, ptr, next);
@@ -3815,7 +3817,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                     perm <= Mask[null, lseg(Heap[ptr, next], null)];
                 }
                 Mask[null, lseg(Heap[ptr, next], null)] := Mask[null, lseg(Heap[ptr, next], null)] - perm;
-                
+
                 // -- Update version of predicate
                   if (!HasDirectPerm(Mask, null, lseg(Heap[ptr, next], null))) {
                     havoc newVersion;
@@ -3832,11 +3834,11 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                   assume state(Heap, Mask);
                   perm := FullPerm;
                   Mask[null, lseg(Heap[Heap[ptr, next], next], null)] := Mask[null, lseg(Heap[Heap[ptr, next], next], null)] + perm;
-                  
+
                   // -- Extra unfolding of predicate
                     assume InsidePredicate(lseg(Heap[ptr, next], null), Heap[null, lseg(Heap[ptr, next], null)], lseg(Heap[Heap[ptr, next], next], null), Heap[null, lseg(Heap[Heap[ptr, next], next], null)]);
                   assume state(Heap, Mask);
-                  
+
                   // -- Execute unfolding (for extra information)
                     UnfoldingHeap := Heap;
                     UnfoldingMask := Mask;
@@ -3855,12 +3857,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                       assume state(UnfoldingHeap, UnfoldingMask);
                       perm := FullPerm;
                       UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null)] + perm;
-                      
+
                       // -- Extra unfolding of predicate
                         assume InsidePredicate(lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)], lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null)]);
                       assume state(UnfoldingHeap, UnfoldingMask);
                       assume UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next] != null ==> UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], data];
-                      
+
                       // -- Free assumptions (inhale module)
                         if (UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next] != null) {
                           UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null)][UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], data] := true;
@@ -3876,7 +3878,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                     }
                     assume state(UnfoldingHeap, UnfoldingMask);
                   assume Heap[Heap[ptr, next], next] != null ==> Heap[Heap[ptr, next], data] <= Heap[Heap[Heap[ptr, next], next], data];
-                  
+
                   // -- Free assumptions (inhale module)
                     if (Heap[Heap[ptr, next], next] != null) {
                       Heap[null, lseg#sm(Heap[Heap[ptr, next], next], null)][Heap[Heap[ptr, next], next], data] := true;
@@ -3892,19 +3894,19 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                 }
                 assume state(Heap, Mask);
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: index := index + 1 -- linked-list-predicates.vpr@144.7--144.25
                 index := index + 1;
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: ptrn := ptr.next -- linked-list-predicates.vpr@145.7--145.32
-                
+
                 // -- Check definedness of ptr.next
                   assert {:msg "  Assignment might fail. There might be insufficient permission to access ptr.next (linked-list-predicates.vpr@145.7--145.32) [1197]"}
                     HasDirectPerm(Mask, ptr, next);
                 ptrn := Heap[ptr, next];
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: fold acc(lseg(ptrn, ptrn), write) -- linked-list-predicates.vpr@146.7--146.33
                 if (ptrn != ptrn) {
                   perm := FullPerm;
@@ -3925,10 +3927,10 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                       perm <= Mask[null, lseg(Heap[ptrn, next], ptrn)];
                   }
                   Mask[null, lseg(Heap[ptrn, next], ptrn)] := Mask[null, lseg(Heap[ptrn, next], ptrn)] - perm;
-                  
+
                   // -- Record predicate instance information
                     assume InsidePredicate(lseg(ptrn, ptrn), Heap[null, lseg(ptrn, ptrn)], lseg(Heap[ptrn, next], ptrn), Heap[null, lseg(Heap[ptrn, next], ptrn)]);
-                  
+
                   // -- Execute unfolding (for extra information)
                     UnfoldingHeap := Heap;
                     UnfoldingMask := Mask;
@@ -3945,12 +3947,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                       assume state(UnfoldingHeap, UnfoldingMask);
                       perm := FullPerm;
                       UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[ptrn, next], next], ptrn)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[ptrn, next], next], ptrn)] + perm;
-                      
+
                       // -- Extra unfolding of predicate
                         assume InsidePredicate(lseg(UnfoldingHeap[ptrn, next], ptrn), UnfoldingHeap[null, lseg(UnfoldingHeap[ptrn, next], ptrn)], lseg(UnfoldingHeap[UnfoldingHeap[ptrn, next], next], ptrn), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[ptrn, next], next], ptrn)]);
                       assume state(UnfoldingHeap, UnfoldingMask);
                       assume UnfoldingHeap[UnfoldingHeap[ptrn, next], next] != ptrn ==> UnfoldingHeap[UnfoldingHeap[ptrn, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptrn, next], next], data];
-                      
+
                       // -- Free assumptions (inhale module)
                         if (UnfoldingHeap[UnfoldingHeap[ptrn, next], next] != ptrn) {
                           UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[ptrn, next], next], ptrn)][UnfoldingHeap[UnfoldingHeap[ptrn, next], next], data] := true;
@@ -3970,7 +3972,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                       UnfoldingHeap[ptrn, data] <= UnfoldingHeap[UnfoldingHeap[ptrn, next], data];
                   }
                 }
-                
+
                 // -- Free assumptions (exhale module)
                   if (Heap[ptrn, next] != ptrn) {
                     Heap[null, lseg#sm(Heap[ptrn, next], ptrn)][Heap[ptrn, next], data] := true;
@@ -4006,7 +4008,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                 }
                 assume state(Heap, Mask);
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: fold acc(lseg(ptr, ptrn), write) -- linked-list-predicates.vpr@147.7--147.32
                 if (ptr != ptrn) {
                   perm := FullPerm;
@@ -4027,10 +4029,10 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                       perm <= Mask[null, lseg(Heap[ptr, next], ptrn)];
                   }
                   Mask[null, lseg(Heap[ptr, next], ptrn)] := Mask[null, lseg(Heap[ptr, next], ptrn)] - perm;
-                  
+
                   // -- Record predicate instance information
                     assume InsidePredicate(lseg(ptr, ptrn), Heap[null, lseg(ptr, ptrn)], lseg(Heap[ptr, next], ptrn), Heap[null, lseg(Heap[ptr, next], ptrn)]);
-                  
+
                   // -- Execute unfolding (for extra information)
                     UnfoldingHeap := Heap;
                     UnfoldingMask := Mask;
@@ -4047,12 +4049,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                       assume state(UnfoldingHeap, UnfoldingMask);
                       perm := FullPerm;
                       UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], ptrn)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], ptrn)] + perm;
-                      
+
                       // -- Extra unfolding of predicate
                         assume InsidePredicate(lseg(UnfoldingHeap[ptr, next], ptrn), UnfoldingHeap[null, lseg(UnfoldingHeap[ptr, next], ptrn)], lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], ptrn), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], ptrn)]);
                       assume state(UnfoldingHeap, UnfoldingMask);
                       assume UnfoldingHeap[UnfoldingHeap[ptr, next], next] != ptrn ==> UnfoldingHeap[UnfoldingHeap[ptr, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], data];
-                      
+
                       // -- Free assumptions (inhale module)
                         if (UnfoldingHeap[UnfoldingHeap[ptr, next], next] != ptrn) {
                           UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[ptr, next], next], ptrn)][UnfoldingHeap[UnfoldingHeap[ptr, next], next], data] := true;
@@ -4072,7 +4074,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                       UnfoldingHeap[ptr, data] <= UnfoldingHeap[UnfoldingHeap[ptr, next], data];
                   }
                 }
-                
+
                 // -- Free assumptions (exhale module)
                   if (Heap[ptr, next] != ptrn) {
                     Heap[null, lseg#sm(Heap[ptr, next], ptrn)][Heap[ptr, next], data] := true;
@@ -4108,16 +4110,16 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                 }
                 assume state(Heap, Mask);
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: concat(this.head, ptr, ptrn) -- linked-list-predicates.vpr@148.7--148.35
                 PreCallHeap := Heap;
                 PreCallMask := Mask;
-                
+
                 // -- Check definedness of this.head
                   assert {:msg "  Method call might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@148.7--148.35) [1206]"}
                     HasDirectPerm(Mask, this, head);
                 arg_this := Heap[this, head];
-                
+
                 // -- Exhaling precondition
                   perm := FullPerm;
                   if (perm != NoPerm) {
@@ -4149,7 +4151,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                   havoc ExhaleHeap;
                   assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
                   Heap := ExhaleHeap;
-                
+
                 // -- Inhaling postcondition
                   perm := FullPerm;
                   Mask[null, lseg(arg_this, ptrn)] := Mask[null, lseg(arg_this, ptrn)] + perm;
@@ -4166,7 +4168,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
                   }
                   assume state(Heap, Mask);
                 assume state(Heap, Mask);
-              
+
               // -- Translating statement: ptr := ptrn -- linked-list-predicates.vpr@149.7--149.18
                 ptr := ptrn;
                 assume state(Heap, Mask);
@@ -4236,7 +4238,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
             // Terminate execution
             assume false;
           }
-        
+
         // -- Inhale loop invariant after loop, and assume guard
           assume !(Heap[ptr, next] != null && Heap[Heap[ptr, next], data] < elem);
           assume state(Heap, Mask);
@@ -4275,7 +4277,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
           assume Seq#Equal(content(old(Heap), this), Seq#Append(Seq#Append(contentNodes(Heap, Heap[this, head], ptr), Seq#Singleton(Heap[ptr, data])), contentNodes(Heap, Heap[ptr, next], null)));
           assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: tmp := new(data, next, head, held, changed) -- linked-list-predicates.vpr@152.5--152.18
         havoc freshObj;
         assume freshObj != null && !Heap[freshObj, $allocated];
@@ -4287,15 +4289,15 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         Mask[tmp, held] := Mask[tmp, held] + FullPerm;
         Mask[tmp, changed] := Mask[tmp, changed] + FullPerm;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: tmp.data := elem -- linked-list-predicates.vpr@153.5--153.21
         assert {:msg "  Assignment might fail. There might be insufficient permission to access tmp.data (linked-list-predicates.vpr@153.5--153.21) [1223]"}
           FullPerm == Mask[tmp, data];
         Heap[tmp, data] := elem;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: tmp.next := ptr.next -- linked-list-predicates.vpr@154.5--154.25
-        
+
         // -- Check definedness of ptr.next
           assert {:msg "  Assignment might fail. There might be insufficient permission to access ptr.next (linked-list-predicates.vpr@154.5--154.25) [1224]"}
             HasDirectPerm(Mask, ptr, next);
@@ -4303,15 +4305,15 @@ procedure insert(this: Ref, elem: int) returns (index: int)
           FullPerm == Mask[tmp, next];
         Heap[tmp, next] := Heap[ptr, next];
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: ptr.next := tmp -- linked-list-predicates.vpr@155.5--155.20
         assert {:msg "  Assignment might fail. There might be insufficient permission to access ptr.next (linked-list-predicates.vpr@155.5--155.20) [1226]"}
           FullPerm == Mask[ptr, next];
         Heap[ptr, next] := tmp;
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: fold acc(lseg(ptr.next, null), write) -- linked-list-predicates.vpr@156.5--156.35
-        
+
         // -- Check definedness of acc(lseg(ptr.next, null), write)
           assert {:msg "  Folding lseg(ptr.next, null) might fail. There might be insufficient permission to access ptr.next (linked-list-predicates.vpr@156.5--156.35) [1227]"}
             HasDirectPerm(Mask, ptr, next);
@@ -4334,10 +4336,10 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               perm <= Mask[null, lseg(Heap[Heap[ptr, next], next], null)];
           }
           Mask[null, lseg(Heap[Heap[ptr, next], next], null)] := Mask[null, lseg(Heap[Heap[ptr, next], next], null)] - perm;
-          
+
           // -- Record predicate instance information
             assume InsidePredicate(lseg(Heap[ptr, next], null), Heap[null, lseg(Heap[ptr, next], null)], lseg(Heap[Heap[ptr, next], next], null), Heap[null, lseg(Heap[Heap[ptr, next], next], null)]);
-          
+
           // -- Execute unfolding (for extra information)
             UnfoldingHeap := Heap;
             UnfoldingMask := Mask;
@@ -4354,12 +4356,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               assume state(UnfoldingHeap, UnfoldingMask);
               perm := FullPerm;
               UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)], lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null)]);
               assume state(UnfoldingHeap, UnfoldingMask);
               assume UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next] != null ==> UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next] != null) {
                   UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], null)][UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], next], data] := true;
@@ -4379,7 +4381,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               UnfoldingHeap[UnfoldingHeap[ptr, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], data];
           }
         }
-        
+
         // -- Free assumptions (exhale module)
           if (Heap[Heap[ptr, next], next] != null) {
             Heap[null, lseg#sm(Heap[Heap[ptr, next], next], null)][Heap[Heap[ptr, next], next], data] := true;
@@ -4415,7 +4417,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         }
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: fold acc(lseg(ptr, null), write) -- linked-list-predicates.vpr@159.5--159.30
         if (ptr != null) {
           perm := FullPerm;
@@ -4436,10 +4438,10 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               perm <= Mask[null, lseg(Heap[ptr, next], null)];
           }
           Mask[null, lseg(Heap[ptr, next], null)] := Mask[null, lseg(Heap[ptr, next], null)] - perm;
-          
+
           // -- Record predicate instance information
             assume InsidePredicate(lseg(ptr, null), Heap[null, lseg(ptr, null)], lseg(Heap[ptr, next], null), Heap[null, lseg(Heap[ptr, next], null)]);
-          
+
           // -- Execute unfolding (for extra information)
             UnfoldingHeap := Heap;
             UnfoldingMask := Mask;
@@ -4456,12 +4458,12 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               assume state(UnfoldingHeap, UnfoldingMask);
               perm := FullPerm;
               UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)] + perm;
-              
+
               // -- Extra unfolding of predicate
                 assume InsidePredicate(lseg(UnfoldingHeap[ptr, next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[ptr, next], null)], lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)]);
               assume state(UnfoldingHeap, UnfoldingMask);
               assume UnfoldingHeap[UnfoldingHeap[ptr, next], next] != null ==> UnfoldingHeap[UnfoldingHeap[ptr, next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[ptr, next], next], data];
-              
+
               // -- Free assumptions (inhale module)
                 if (UnfoldingHeap[UnfoldingHeap[ptr, next], next] != null) {
                   UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[ptr, next], next], null)][UnfoldingHeap[UnfoldingHeap[ptr, next], next], data] := true;
@@ -4481,7 +4483,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
               UnfoldingHeap[ptr, data] <= UnfoldingHeap[UnfoldingHeap[ptr, next], data];
           }
         }
-        
+
         // -- Free assumptions (exhale module)
           if (Heap[ptr, next] != null) {
             Heap[null, lseg#sm(Heap[ptr, next], null)][Heap[ptr, next], data] := true;
@@ -4517,16 +4519,16 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         }
         assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: concat(this.head, ptr, null) -- linked-list-predicates.vpr@160.5--160.33
         PreCallHeap := Heap;
         PreCallMask := Mask;
-        
+
         // -- Check definedness of this.head
           assert {:msg "  Method call might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@160.5--160.33) [1244]"}
             HasDirectPerm(Mask, this, head);
         arg_this_1 := Heap[this, head];
-        
+
         // -- Exhaling precondition
           perm := FullPerm;
           if (perm != NoPerm) {
@@ -4558,7 +4560,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
           havoc ExhaleHeap;
           assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
           Heap := ExhaleHeap;
-        
+
         // -- Inhaling postcondition
           perm := FullPerm;
           Mask[null, lseg(arg_this_1, null)] := Mask[null, lseg(arg_this_1, null)] + perm;
@@ -4577,7 +4579,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: fold acc(List(this), write) -- linked-list-predicates.vpr@163.3--163.23
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -4591,7 +4593,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
         perm <= Mask[null, lseg(Heap[this, head], null)];
     }
     Mask[null, lseg(Heap[this, head], null)] := Mask[null, lseg(Heap[this, head], null)] - perm;
-    
+
     // -- Record predicate instance information
       assume InsidePredicate(List(this), Heap[null, List(this)], lseg(Heap[this, head], null), Heap[null, lseg(Heap[this, head], null)]);
     perm := FullPerm;
@@ -4614,7 +4616,7 @@ procedure insert(this: Ref, elem: int) returns (index: int)
     Heap[null, List#sm(this)] := newPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -4650,22 +4652,22 @@ procedure dequeue(this: Ref) returns (res: int)
   var UnfoldingMask: MaskType;
   var newPMask: PMaskType;
   var freshVersion: FrameType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
-  
+
   // -- Assumptions about method arguments
     assume Heap[this, $allocated];
-  
+
   // -- Checked inhaling of precondition
     perm := FullPerm;
     Mask[null, List(this)] := Mask[null, List(this)] + perm;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of 0 < length(this)
       if (*) {
         // Exhale precondition of function application
@@ -4684,9 +4686,9 @@ procedure dequeue(this: Ref) returns (res: int)
       }
     assume 0 < length(Heap, this);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -4702,7 +4704,7 @@ procedure dequeue(this: Ref) returns (res: int)
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of res == old(content(this)[0])
       if (*) {
         // Exhale precondition of function application
@@ -4720,7 +4722,7 @@ procedure dequeue(this: Ref) returns (res: int)
     assume res == Seq#Index(content(old(Heap), this), 0);
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of content(this) == old(content(this)[1..])
       if (*) {
         // Exhale precondition of function application
@@ -4753,7 +4755,7 @@ procedure dequeue(this: Ref) returns (res: int)
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: unfold acc(List(this), write) -- linked-list-predicates.vpr@173.3--173.25
     assume List#trigger(Heap, List(this));
     assume Heap[null, List(this)] == CombineFrames(FrameFragment(Heap[this, head]), Heap[null, lseg(Heap[this, head], null)]);
@@ -4763,7 +4765,7 @@ procedure dequeue(this: Ref) returns (res: int)
         perm <= Mask[null, List(this)];
     }
     Mask[null, List(this)] := Mask[null, List(this)] - perm;
-    
+
     // -- Update version of predicate
       if (!HasDirectPerm(Mask, null, List(this))) {
         havoc newVersion;
@@ -4775,15 +4777,15 @@ procedure dequeue(this: Ref) returns (res: int)
     assume state(Heap, Mask);
     perm := FullPerm;
     Mask[null, lseg(Heap[this, head], null)] := Mask[null, lseg(Heap[this, head], null)] + perm;
-    
+
     // -- Extra unfolding of predicate
       assume InsidePredicate(List(this), Heap[null, List(this)], lseg(Heap[this, head], null), Heap[null, lseg(Heap[this, head], null)]);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: unfold acc(lseg(this.head, null), write) -- linked-list-predicates.vpr@174.3--174.36
-    
+
     // -- Check definedness of acc(lseg(this.head, null), write)
       assert {:msg "  Unfolding lseg(this.head, null) might fail. There might be insufficient permission to access this.head (linked-list-predicates.vpr@174.3--174.36) [1269]"}
         HasDirectPerm(Mask, this, head);
@@ -4795,7 +4797,7 @@ procedure dequeue(this: Ref) returns (res: int)
         perm <= Mask[null, lseg(Heap[this, head], null)];
     }
     Mask[null, lseg(Heap[this, head], null)] := Mask[null, lseg(Heap[this, head], null)] - perm;
-    
+
     // -- Update version of predicate
       if (!HasDirectPerm(Mask, null, lseg(Heap[this, head], null))) {
         havoc newVersion;
@@ -4812,11 +4814,11 @@ procedure dequeue(this: Ref) returns (res: int)
       assume state(Heap, Mask);
       perm := FullPerm;
       Mask[null, lseg(Heap[Heap[this, head], next], null)] := Mask[null, lseg(Heap[Heap[this, head], next], null)] + perm;
-      
+
       // -- Extra unfolding of predicate
         assume InsidePredicate(lseg(Heap[this, head], null), Heap[null, lseg(Heap[this, head], null)], lseg(Heap[Heap[this, head], next], null), Heap[null, lseg(Heap[Heap[this, head], next], null)]);
       assume state(Heap, Mask);
-      
+
       // -- Execute unfolding (for extra information)
         UnfoldingHeap := Heap;
         UnfoldingMask := Mask;
@@ -4835,12 +4837,12 @@ procedure dequeue(this: Ref) returns (res: int)
           assume state(UnfoldingHeap, UnfoldingMask);
           perm := FullPerm;
           UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)] := UnfoldingMask[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)] + perm;
-          
+
           // -- Extra unfolding of predicate
             assume InsidePredicate(lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[this, head], next], null)], lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null), UnfoldingHeap[null, lseg(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)]);
           assume state(UnfoldingHeap, UnfoldingMask);
           assume UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != null ==> UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], data] <= UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data];
-          
+
           // -- Free assumptions (inhale module)
             if (UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next] != null) {
               UnfoldingHeap[null, lseg#sm(UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], null)][UnfoldingHeap[UnfoldingHeap[UnfoldingHeap[this, head], next], next], data] := true;
@@ -4856,7 +4858,7 @@ procedure dequeue(this: Ref) returns (res: int)
         }
         assume state(UnfoldingHeap, UnfoldingMask);
       assume Heap[Heap[this, head], next] != null ==> Heap[Heap[this, head], data] <= Heap[Heap[Heap[this, head], next], data];
-      
+
       // -- Free assumptions (inhale module)
         if (Heap[Heap[this, head], next] != null) {
           Heap[null, lseg#sm(Heap[Heap[this, head], next], null)][Heap[Heap[this, head], next], data] := true;
@@ -4872,9 +4874,9 @@ procedure dequeue(this: Ref) returns (res: int)
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: res := this.head.data -- linked-list-predicates.vpr@175.3--175.24
-    
+
     // -- Check definedness of this.head.data
       assert {:msg "  Assignment might fail. There might be insufficient permission to access this.head.data (linked-list-predicates.vpr@175.3--175.24) [1275]"}
         HasDirectPerm(Mask, Heap[this, head], data);
@@ -4882,9 +4884,9 @@ procedure dequeue(this: Ref) returns (res: int)
         HasDirectPerm(Mask, this, head);
     res := Heap[Heap[this, head], data];
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: this.head := this.head.next -- linked-list-predicates.vpr@176.3--176.30
-    
+
     // -- Check definedness of this.head.next
       assert {:msg "  Assignment might fail. There might be insufficient permission to access this.head.next (linked-list-predicates.vpr@176.3--176.30) [1277]"}
         HasDirectPerm(Mask, Heap[this, head], next);
@@ -4894,7 +4896,7 @@ procedure dequeue(this: Ref) returns (res: int)
       FullPerm == Mask[this, head];
     Heap[this, head] := Heap[Heap[this, head], next];
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: fold acc(List(this), write) -- linked-list-predicates.vpr@177.3--177.23
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -4908,7 +4910,7 @@ procedure dequeue(this: Ref) returns (res: int)
         perm <= Mask[null, lseg(Heap[this, head], null)];
     }
     Mask[null, lseg(Heap[this, head], null)] := Mask[null, lseg(Heap[this, head], null)] - perm;
-    
+
     // -- Record predicate instance information
       assume InsidePredicate(List(this), Heap[null, List(this)], lseg(Heap[this, head], null), Heap[null, lseg(Heap[this, head], null)]);
     perm := FullPerm;
@@ -4931,7 +4933,7 @@ procedure dequeue(this: Ref) returns (res: int)
     Heap[null, List#sm(this)] := newPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     perm := FullPerm;
     if (perm != NoPerm) {
@@ -4967,18 +4969,18 @@ procedure test(lock: Ref) returns ()
   var PreCallHeap: HeapType;
   var PreCallMask: MaskType;
   var r1: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     assume AssumeFunctionsAbove == -1;
     acq_lblGuard := false;
-  
+
   // -- Assumptions about method arguments
     assume Heap[lock, $allocated];
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -4989,15 +4991,15 @@ procedure test(lock: Ref) returns ()
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Do welldefinedness check of the inhale part.
       if (*) {
         assume state(PostHeap, PostMask);
         assume false;
       }
-    
+
     // -- Normally inhale the exhale part.
-      
+
       // -- Check definedness of (forperm r: Ref [r.held] :: false)
         if (*) {
           if (HasDirectPerm(PostMask, r_1, held)) {
@@ -5014,7 +5016,7 @@ procedure test(lock: Ref) returns ()
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: inhale acc(List(lock), write) &&
   //   (acc(lock.held, write) && acc(lock.changed, write)) -- linked-list-predicates.vpr@198.3--198.64
     perm := FullPerm;
@@ -5030,16 +5032,16 @@ procedure test(lock: Ref) returns ()
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label acq -- linked-list-predicates.vpr@199.1--199.10
     acq:
     LabelacqMask := Mask;
     LabelacqHeap := Heap;
     acq_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (2 <= length(lock)) -- linked-list-predicates.vpr@201.3--208.4
-    
+
     // -- Check definedness of 2 <= length(lock)
       if (*) {
         // Exhale precondition of function application
@@ -5057,12 +5059,12 @@ procedure test(lock: Ref) returns ()
         assume false;
       }
     if (2 <= length(Heap, lock)) {
-      
+
       // -- Translating statement: r1 := dequeue(lock) -- linked-list-predicates.vpr@203.5--203.24
         PreCallHeap := Heap;
         PreCallMask := Mask;
         havoc r1;
-        
+
         // -- Exhaling precondition
           perm := FullPerm;
           if (perm != NoPerm) {
@@ -5076,7 +5078,7 @@ procedure test(lock: Ref) returns ()
           havoc ExhaleHeap;
           assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
           Heap := ExhaleHeap;
-        
+
         // -- Inhaling postcondition
           perm := FullPerm;
           Mask[null, List(lock)] := Mask[null, List(lock)] + perm;
@@ -5087,9 +5089,9 @@ procedure test(lock: Ref) returns ()
           assume Seq#Equal(content(Heap, lock), Seq#Drop(content(old(PreCallHeap), lock), 1));
           assume state(Heap, Mask);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: assert r1 <= peek(lock) -- linked-list-predicates.vpr@205.5--205.28
-        
+
         // -- Check definedness of r1 <= peek(lock)
           if (*) {
             // Exhale precondition of function application
@@ -5111,7 +5113,7 @@ procedure test(lock: Ref) returns ()
         assert {:msg "  Assert might fail. Assertion r1 <= peek(lock) might not hold. (linked-list-predicates.vpr@205.12--205.28) [1297]"}
           r1 <= peek(Heap, lock);
         assume state(Heap, Mask);
-      
+
       // -- Translating statement: lock.changed := true -- linked-list-predicates.vpr@207.5--207.25
         assert {:msg "  Assignment might fail. There might be insufficient permission to access lock.changed (linked-list-predicates.vpr@207.5--207.25) [1298]"}
           FullPerm == Mask[lock, changed];
@@ -5119,12 +5121,12 @@ procedure test(lock: Ref) returns ()
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: exhale acc(List(lock), write) &&
   //   (acc(lock.held, write) &&
   //   (acc(lock.changed, write) &&
   //   (old[acq](content(lock)) == content(lock) || lock.changed))) -- linked-list-predicates.vpr@211.3--212.71
-    
+
     // -- Check definedness of acc(List(lock), write) && (acc(lock.held, write) && (acc(lock.changed, write) && (old[acq](content(lock)) == content(lock) || lock.changed)))
       assert {:msg "  Exhale might fail. Did not reach labelled state acq required to evaluate old[acq](content(lock)). (linked-list-predicates.vpr@211.13--212.71) [1299]"}
         acq_lblGuard;
@@ -5187,7 +5189,7 @@ procedure test(lock: Ref) returns ()
     assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
     Heap := ExhaleHeap;
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of test might not hold. Assertion (forperm r: Ref [r.held] :: false) might not hold. (linked-list-predicates.vpr@195.11--195.51) [1310]"}
       (forall r_2: Ref ::

@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -262,13 +264,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
   var i_11: int;
   var j$2_2: int;
   var i_4_1: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Check definedness of (forall j$0: Int :: { loc(a, j$0) } 0 <= j$0 && j$0 < len(a) ==> acc(loc(a, j$0).val, write))
       if (*) {
         assume false;
@@ -276,10 +278,10 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, j$0).val might not be injective. (binary-search-array.vpr@10.12--10.21) [149]"}
       (forall j$0_1: int, j$0_1_1: int ::
-      
+
       (((j$0_1 != j$0_1_1 && (0 <= j$0_1 && j$0_1 < (len(a_3): int))) && (0 <= j$0_1_1 && j$0_1_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$0_1): Ref) != (loc(a_3, j$0_1_1): Ref)
     );
-    
+
     // -- Define Inverse Function
       assume (forall j$0_1: int ::
         { (loc(a_3, j$0_1): Ref) } { (loc(a_3, j$0_1): Ref) }
@@ -289,13 +291,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         { invRecv1(o_3) }
         ((0 <= invRecv1(o_3) && invRecv1(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange1(o_3) ==> (loc(a_3, invRecv1(o_3)): Ref) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall j$0_1: int ::
         { (loc(a_3, j$0_1): Ref) } { (loc(a_3, j$0_1): Ref) }
         0 <= j$0_1 && j$0_1 < (len(a_3): int) ==> (loc(a_3, j$0_1): Ref) != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -308,7 +310,7 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
     Mask := QPMask;
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-    
+
     // -- Check definedness of (forall i: Int, j: Int :: { loc(a, i), loc(a, j) } 0 <= i && (j < len(a) && i < j) ==> loc(a, i).val < loc(a, j).val)
       if (*) {
         if (0 <= i_2 && (j < (len(a_3): int) && i_2 < j)) {
@@ -324,9 +326,9 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
       0 <= i_1_1 && (j_1 < (len(a_3): int) && i_1_1 < j_1) ==> Heap[(loc(a_3, i_1_1): Ref), val] < Heap[(loc(a_3, j_1): Ref), val]
     );
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -337,7 +339,7 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
   assume state(PostHeap, PostMask);
   if (*) {
     // Checked inhaling of postcondition to check definedness
-    
+
     // -- Check definedness of (forall j$1: Int :: { loc(a, j$1) } 0 <= j$1 && j$1 < len(a) ==> acc(loc(a, j$1).val, write))
       if (*) {
         assume false;
@@ -345,10 +347,10 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
     havoc QPMask;
     assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, j$1).val might not be injective. (binary-search-array.vpr@12.12--12.37) [152]"}
       (forall j$1_1: int, j$1_1_1: int ::
-      
+
       (((j$1_1 != j$1_1_1 && (0 <= j$1_1 && j$1_1 < (len(a_3): int))) && (0 <= j$1_1_1 && j$1_1_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$1_1): Ref) != (loc(a_3, j$1_1_1): Ref)
     );
-    
+
     // -- Define Inverse Function
       assume (forall j$1_1: int ::
         { (loc(a_3, j$1_1): Ref) } { (loc(a_3, j$1_1): Ref) }
@@ -358,13 +360,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         { invRecv2(o_3) }
         ((0 <= invRecv2(o_3) && invRecv2(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange2(o_3) ==> (loc(a_3, invRecv2(o_3)): Ref) == o_3
       );
-    
+
     // -- Assume set of fields is nonNull
       assume (forall j$1_1: int ::
         { (loc(a_3, j$1_1): Ref) } { (loc(a_3, j$1_1): Ref) }
         0 <= j$1_1 && j$1_1 < (len(a_3): int) ==> (loc(a_3, j$1_1): Ref) != null
       );
-    
+
     // -- Define permissions
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
@@ -376,7 +378,7 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
       );
     PostMask := QPMask;
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (forall j$2: Int :: { loc(a, j$2) } 0 <= j$2 && j$2 < len(a) ==> loc(a, j$2).val == old(loc(a, j$2).val))
       if (*) {
         if (0 <= j$2 && j$2 < (len(a_3): int)) {
@@ -396,7 +398,7 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
     assume index < (len(a_3): int);
     assume state(PostHeap, PostMask);
     if (0 <= index) {
-      
+
       // -- Check definedness of loc(a, index).val == key
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access loc(a, index).val (binary-search-array.vpr@14.12--14.51) [155]"}
           HasDirectPerm(PostMask, (loc(a_3, index): Ref), val);
@@ -404,7 +406,7 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
     }
     assume state(PostHeap, PostMask);
     if (-1 == index) {
-      
+
       // -- Check definedness of (forall i: Int :: { loc(a, i) } 0 <= i && i < len(a) ==> loc(a, i).val != key)
         if (*) {
           if (0 <= i_3 && i_3 < (len(a_3): int)) {
@@ -422,43 +424,43 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: low := 0 -- binary-search-array.vpr@17.3--17.20
     low := 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: high := len(a) -- binary-search-array.vpr@18.3--18.26
     high := (len(a_3): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: index := -1 -- binary-search-array.vpr@19.3--19.14
     index := -1;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: while (low < high) -- binary-search-array.vpr@21.3--40.4
-    
+
     // -- Before loop head
-      
+
       // -- Exhale loop invariant before loop
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver loc(a, j$3) is injective
           assert {:msg "  Loop invariant (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write)) && (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val)) might not hold on entry. Quantified resource loc(a, j$3).val might not be injective. (binary-search-array.vpr@22.15--22.40) [157]"}
             (forall j$3: int, j$3_1: int ::
             { neverTriggered4(j$3), neverTriggered4(j$3_1) }
             (((j$3 != j$3_1 && (0 <= j$3 && j$3 < (len(a_3): int))) && (0 <= j$3_1 && j$3_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3): Ref) != (loc(a_3, j$3_1): Ref)
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write)) && (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val)) might not hold on entry. There might be insufficient permission to access loc(a, j$3).val (binary-search-array.vpr@22.15--22.40) [158]"}
             (forall j$3: int ::
             { (loc(a_3, j$3): Ref) } { (loc(a_3, j$3): Ref) }
             0 <= j$3 && j$3 < (len(a_3): int) ==> Mask[(loc(a_3, j$3): Ref), val] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver loc(a, j$3)
           assume (forall j$3: int ::
             { (loc(a_3, j$3): Ref) } { (loc(a_3, j$3): Ref) }
@@ -468,13 +470,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
             { invRecv4(o_3) }
             (0 <= invRecv4(o_3) && invRecv4(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange4(o_3)) ==> (loc(a_3, invRecv4(o_3)): Ref) == o_3
           );
-        
+
         // -- assume permission updates for field val
           assume (forall o_3: Ref ::
             { QPMask[o_3, val] }
             ((0 <= invRecv4(o_3) && invRecv4(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange4(o_3)) ==> (loc(a_3, invRecv4(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv4(o_3) && invRecv4(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange4(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -523,13 +525,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         havoc ExhaleHeap;
         assume IdenticalOnKnownLocations(Heap, ExhaleHeap, Mask);
         Heap := ExhaleHeap;
-    
+
     // -- Havoc loop written variables (except locals)
       havoc high, index, low;
-    
+
     // -- Check definedness of invariant
       if (*) {
-        
+
         // -- Check definedness of (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write))
           if (*) {
             assume false;
@@ -537,10 +539,10 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         havoc QPMask;
         assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, j$3).val might not be injective. (binary-search-array.vpr@22.15--22.40) [167]"}
           (forall j$3_2: int, j$3_2_1: int ::
-          
+
           (((j$3_2 != j$3_2_1 && (0 <= j$3_2 && j$3_2 < (len(a_3): int))) && (0 <= j$3_2_1 && j$3_2_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3_2): Ref) != (loc(a_3, j$3_2_1): Ref)
         );
-        
+
         // -- Define Inverse Function
           assume (forall j$3_2: int ::
             { (loc(a_3, j$3_2): Ref) } { (loc(a_3, j$3_2): Ref) }
@@ -550,13 +552,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
             { invRecv5(o_3) }
             ((0 <= invRecv5(o_3) && invRecv5(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange5(o_3) ==> (loc(a_3, invRecv5(o_3)): Ref) == o_3
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall j$3_2: int ::
             { (loc(a_3, j$3_2): Ref) } { (loc(a_3, j$3_2): Ref) }
             0 <= j$3_2 && j$3_2 < (len(a_3): int) ==> (loc(a_3, j$3_2): Ref) != null
           );
-        
+
         // -- Define permissions
           assume (forall o_3: Ref ::
             { QPMask[o_3, val] }
@@ -568,7 +570,7 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
           );
         Mask := QPMask;
         assume state(Heap, Mask);
-        
+
         // -- Check definedness of (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val))
           if (*) {
             if (0 <= j$4_1 && j$4_1 < (len(a_3): int)) {
@@ -589,7 +591,7 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         assume high <= (len(a_3): int);
         assume state(Heap, Mask);
         if (index == -1) {
-          
+
           // -- Check definedness of (forall i: Int :: { loc(a, i) } 0 <= i && (i < len(a) && !(low <= i && i < high)) ==> loc(a, i).val != key)
             if (*) {
               if (0 <= i_4 && (i_4 < (len(a_3): int) && !(low <= i_4 && i_4 < high))) {
@@ -608,7 +610,7 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         assume index < (len(a_3): int);
         assume state(Heap, Mask);
         if (0 <= index) {
-          
+
           // -- Check definedness of loc(a, index).val == key
             assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access loc(a, index).val (binary-search-array.vpr@26.15--26.54) [171]"}
               HasDirectPerm(Mask, (loc(a_3, index): Ref), val);
@@ -617,7 +619,7 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Check the loop body
       if (*) {
         // Reset state
@@ -629,10 +631,10 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         havoc QPMask;
         assert {:msg "  While statement might fail. Quantified resource loc(a, j$3).val might not be injective. (binary-search-array.vpr@22.15--22.40) [172]"}
           (forall j$3_3: int, j$3_3_1: int ::
-          
+
           (((j$3_3 != j$3_3_1 && (0 <= j$3_3 && j$3_3 < (len(a_3): int))) && (0 <= j$3_3_1 && j$3_3_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3_3): Ref) != (loc(a_3, j$3_3_1): Ref)
         );
-        
+
         // -- Define Inverse Function
           assume (forall j$3_3: int ::
             { (loc(a_3, j$3_3): Ref) } { (loc(a_3, j$3_3): Ref) }
@@ -642,13 +644,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
             { invRecv6(o_3) }
             ((0 <= invRecv6(o_3) && invRecv6(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange6(o_3) ==> (loc(a_3, invRecv6(o_3)): Ref) == o_3
           );
-        
+
         // -- Assume set of fields is nonNull
           assume (forall j$3_3: int ::
             { (loc(a_3, j$3_3): Ref) } { (loc(a_3, j$3_3): Ref) }
             0 <= j$3_3 && j$3_3 < (len(a_3): int) ==> (loc(a_3, j$3_3): Ref) != null
           );
-        
+
         // -- Define permissions
           assume (forall o_3: Ref ::
             { QPMask[o_3, val] }
@@ -682,41 +684,41 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         // Check and assume guard
         assume low < high;
         assume state(Heap, Mask);
-        
+
         // -- Translate loop body
-          
+
           // -- Translating statement: mid := (low + high) / 2 -- binary-search-array.vpr@28.5--28.37
             mid := (low + high) div 2;
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: if (loc(a, mid).val < key) -- binary-search-array.vpr@30.5--39.6
-            
+
             // -- Check definedness of loc(a, mid).val < key
               assert {:msg "  Conditional statement might fail. There might be insufficient permission to access loc(a, mid).val (binary-search-array.vpr@30.9--30.30) [173]"}
                 HasDirectPerm(Mask, (loc(a_3, mid): Ref), val);
             if (Heap[(loc(a_3, mid): Ref), val] < key) {
-              
+
               // -- Translating statement: low := mid + 1 -- binary-search-array.vpr@31.7--31.21
                 low := mid + 1;
                 assume state(Heap, Mask);
             } else {
-              
+
               // -- Translating statement: if (key < loc(a, mid).val) -- binary-search-array.vpr@33.7--38.8
-                
+
                 // -- Check definedness of key < loc(a, mid).val
                   assert {:msg "  Conditional statement might fail. There might be insufficient permission to access loc(a, mid).val (binary-search-array.vpr@33.11--33.32) [174]"}
                     HasDirectPerm(Mask, (loc(a_3, mid): Ref), val);
                 if (key < Heap[(loc(a_3, mid): Ref), val]) {
-                  
+
                   // -- Translating statement: high := mid -- binary-search-array.vpr@34.9--34.20
                     high := mid;
                     assume state(Heap, Mask);
                 } else {
-                  
+
                   // -- Translating statement: index := mid -- binary-search-array.vpr@36.9--36.21
                     index := mid;
                     assume state(Heap, Mask);
-                  
+
                   // -- Translating statement: high := mid -- binary-search-array.vpr@37.9--37.20
                     high := mid;
                     assume state(Heap, Mask);
@@ -726,24 +728,24 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
             assume state(Heap, Mask);
         // Exhale invariant
         havoc QPMask;
-        
+
         // -- check that the permission amount is positive
-          
-        
+
+
         // -- check if receiver loc(a, j$3) is injective
           assert {:msg "  Loop invariant (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write)) && (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val)) might not be preserved. Quantified resource loc(a, j$3).val might not be injective. (binary-search-array.vpr@22.15--22.40) [175]"}
             (forall j$3_4: int, j$3_4_1: int ::
             { neverTriggered7(j$3_4), neverTriggered7(j$3_4_1) }
             (((j$3_4 != j$3_4_1 && (0 <= j$3_4 && j$3_4 < (len(a_3): int))) && (0 <= j$3_4_1 && j$3_4_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3_4): Ref) != (loc(a_3, j$3_4_1): Ref)
           );
-        
+
         // -- check if sufficient permission is held
           assert {:msg "  Loop invariant (forall j$3: Int :: { loc(a, j$3) } 0 <= j$3 && j$3 < len(a) ==> acc(loc(a, j$3).val, write)) && (forall j$4: Int :: { loc(a, j$4) } 0 <= j$4 && j$4 < len(a) ==> loc(a, j$4).val == old(loc(a, j$4).val)) might not be preserved. There might be insufficient permission to access loc(a, j$3).val (binary-search-array.vpr@22.15--22.40) [176]"}
             (forall j$3_4: int ::
             { (loc(a_3, j$3_4): Ref) } { (loc(a_3, j$3_4): Ref) }
             0 <= j$3_4 && j$3_4 < (len(a_3): int) ==> Mask[(loc(a_3, j$3_4): Ref), val] >= FullPerm
           );
-        
+
         // -- assumptions for inverse of receiver loc(a, j$3)
           assume (forall j$3_4: int ::
             { (loc(a_3, j$3_4): Ref) } { (loc(a_3, j$3_4): Ref) }
@@ -753,13 +755,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
             { invRecv7(o_3) }
             (0 <= invRecv7(o_3) && invRecv7(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange7(o_3)) ==> (loc(a_3, invRecv7(o_3)): Ref) == o_3
           );
-        
+
         // -- assume permission updates for field val
           assume (forall o_3: Ref ::
             { QPMask[o_3, val] }
             ((0 <= invRecv7(o_3) && invRecv7(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange7(o_3)) ==> (loc(a_3, invRecv7(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv7(o_3) && invRecv7(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange7(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
           );
-        
+
         // -- assume permission updates for independent locations
           assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
             { QPMask[o_3, f_5] }
@@ -811,17 +813,17 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         // Terminate execution
         assume false;
       }
-    
+
     // -- Inhale loop invariant after loop, and assume guard
       assume !(low < high);
       assume state(Heap, Mask);
       havoc QPMask;
       assert {:msg "  While statement might fail. Quantified resource loc(a, j$3).val might not be injective. (binary-search-array.vpr@22.15--22.40) [185]"}
         (forall j$3_5: int, j$3_5_1: int ::
-        
+
         (((j$3_5 != j$3_5_1 && (0 <= j$3_5 && j$3_5 < (len(a_3): int))) && (0 <= j$3_5_1 && j$3_5_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$3_5): Ref) != (loc(a_3, j$3_5_1): Ref)
       );
-      
+
       // -- Define Inverse Function
         assume (forall j$3_5: int ::
           { (loc(a_3, j$3_5): Ref) } { (loc(a_3, j$3_5): Ref) }
@@ -831,13 +833,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
           { invRecv8(o_3) }
           ((0 <= invRecv8(o_3) && invRecv8(o_3) < (len(a_3): int)) && NoPerm < FullPerm) && qpRange8(o_3) ==> (loc(a_3, invRecv8(o_3)): Ref) == o_3
         );
-      
+
       // -- Assume set of fields is nonNull
         assume (forall j$3_5: int ::
           { (loc(a_3, j$3_5): Ref) } { (loc(a_3, j$3_5): Ref) }
           0 <= j$3_5 && j$3_5 < (len(a_3): int) ==> (loc(a_3, j$3_5): Ref) != null
         );
-      
+
       // -- Define permissions
         assume (forall o_3: Ref ::
           { QPMask[o_3, val] }
@@ -869,27 +871,27 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
       }
       assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     havoc QPMask;
-    
+
     // -- check that the permission amount is positive
-      
-    
+
+
     // -- check if receiver loc(a, j$1) is injective
       assert {:msg "  Contract might not be well-formed. Quantified resource loc(a, j$1).val might not be injective. (binary-search-array.vpr@12.12--12.21) [186]"}
         (forall j$1_2: int, j$1_2_1: int ::
         { neverTriggered3(j$1_2), neverTriggered3(j$1_2_1) }
         (((j$1_2 != j$1_2_1 && (0 <= j$1_2 && j$1_2 < (len(a_3): int))) && (0 <= j$1_2_1 && j$1_2_1 < (len(a_3): int))) && NoPerm < FullPerm) && NoPerm < FullPerm ==> (loc(a_3, j$1_2): Ref) != (loc(a_3, j$1_2_1): Ref)
       );
-    
+
     // -- check if sufficient permission is held
       assert {:msg "  Postcondition of binary_search might not hold. There might be insufficient permission to access loc(a, j$1).val (binary-search-array.vpr@12.12--12.37) [187]"}
         (forall j$1_2: int ::
         { (loc(a_3, j$1_2): Ref) } { (loc(a_3, j$1_2): Ref) }
         0 <= j$1_2 && j$1_2 < (len(a_3): int) ==> Mask[(loc(a_3, j$1_2): Ref), val] >= FullPerm
       );
-    
+
     // -- assumptions for inverse of receiver loc(a, j$1)
       assume (forall j$1_2: int ::
         { (loc(a_3, j$1_2): Ref) } { (loc(a_3, j$1_2): Ref) }
@@ -899,13 +901,13 @@ procedure binary_search(a_3: IArrayDomainType, key: int) returns (index: int)
         { invRecv3(o_3) }
         (0 <= invRecv3(o_3) && invRecv3(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange3(o_3)) ==> (loc(a_3, invRecv3(o_3)): Ref) == o_3
       );
-    
+
     // -- assume permission updates for field val
       assume (forall o_3: Ref ::
         { QPMask[o_3, val] }
         ((0 <= invRecv3(o_3) && invRecv3(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange3(o_3)) ==> (loc(a_3, invRecv3(o_3)): Ref) == o_3 && QPMask[o_3, val] == Mask[o_3, val] - FullPerm) && (!((0 <= invRecv3(o_3) && invRecv3(o_3) < (len(a_3): int)) && (NoPerm < FullPerm && qpRange3(o_3))) ==> QPMask[o_3, val] == Mask[o_3, val])
       );
-    
+
     // -- assume permission updates for independent locations
       assume (forall <A, B> o_3: Ref, f_5: (Field A B) ::
         { QPMask[o_3, f_5] }

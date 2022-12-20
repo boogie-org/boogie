@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -533,37 +535,37 @@ procedure example1_pkg_F(xs_pkg_V0: (Seq int)) returns ()
   var ys_pkg_V1: (Seq int);
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Checked inhaling of precondition
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: xs_pkg_V0_CN0 := Seq[Int]() -- seq-slice-simple1.gobra.vpr@8.3--8.30
     xs_pkg_V0_CN0 := (Seq#Empty(): Seq int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: xs_pkg_V0_CN0 := xs_pkg_V0 -- seq-slice-simple1.gobra.vpr@12.3--12.29
     xs_pkg_V0_CN0 := xs_pkg_V0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: ys_pkg_V1 := Seq[Int]() -- seq-slice-simple1.gobra.vpr@17.3--17.26
     ys_pkg_V1 := (Seq#Empty(): Seq int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: ys_pkg_V1 := xs_pkg_V0_CN0[1..][..14 - 1] -- seq-slice-simple1.gobra.vpr@21.3--21.44
     ys_pkg_V1 := Seq#Take(Seq#Drop(xs_pkg_V0_CN0, 1), 13);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@22.3--22.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -582,28 +584,28 @@ procedure example2_pkg_F() returns ()
   var returnLabel_lblGuard: bool;
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert true && [0..10)[5..] == [5..10) -- seq-slice-simple1.gobra.vpr@36.3--36.41
     assert {:msg "  Assert might fail. Assertion [0..10)[5..] == [5..10) might not hold. (seq-slice-simple1.gobra.vpr@36.10--36.41) [44]"}
       Seq#Equal(Seq#Drop(Seq#Range(0, 10), 5), Seq#Range(5, 10));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && [0..10)[..5] == [0..5) -- seq-slice-simple1.gobra.vpr@40.3--40.40
     assert {:msg "  Assert might fail. Assertion [0..10)[..5] == [0..5) might not hold. (seq-slice-simple1.gobra.vpr@40.10--40.40) [46]"}
       Seq#Equal(Seq#Take(Seq#Range(0, 10), 5), Seq#Range(0, 5));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@41.3--41.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -622,28 +624,28 @@ procedure example3_pkg_F() returns ()
   var returnLabel_lblGuard: bool;
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert true && [0..10)[1..][2..][3..] == [6..10) -- seq-slice-simple1.gobra.vpr@55.3--55.51
     assert {:msg "  Assert might fail. Assertion [0..10)[1..][2..][3..] == [6..10) might not hold. (seq-slice-simple1.gobra.vpr@55.10--55.51) [48]"}
       Seq#Equal(Seq#Drop(Seq#Drop(Seq#Drop(Seq#Range(0, 10), 1), 2), 3), Seq#Range(6, 10));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && [0..10)[..5][..3] == [0..3) -- seq-slice-simple1.gobra.vpr@59.3--59.45
     assert {:msg "  Assert might fail. Assertion [0..10)[..5][..3] == [0..3) might not hold. (seq-slice-simple1.gobra.vpr@59.10--59.45) [50]"}
       Seq#Equal(Seq#Take(Seq#Take(Seq#Range(0, 10), 5), 3), Seq#Range(0, 3));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@60.3--60.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -663,49 +665,49 @@ procedure example4_pkg_F(xs_pkg_V2: (Seq int)) returns ()
   var xs_pkg_V2_CN1: (Seq int);
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Checked inhaling of precondition
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: xs_pkg_V2_CN1 := Seq[Int]() -- seq-slice-simple1.gobra.vpr@70.3--70.30
     xs_pkg_V2_CN1 := (Seq#Empty(): Seq int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: xs_pkg_V2_CN1 := xs_pkg_V2 -- seq-slice-simple1.gobra.vpr@74.3--74.29
     xs_pkg_V2_CN1 := xs_pkg_V2;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && xs_pkg_V2_CN1[0..] == xs_pkg_V2_CN1 -- seq-slice-simple1.gobra.vpr@81.3--81.53
     assert {:msg "  Assert might fail. Assertion xs_pkg_V2_CN1[0..] == xs_pkg_V2_CN1 might not hold. (seq-slice-simple1.gobra.vpr@81.10--81.53) [52]"}
       Seq#Equal(Seq#Drop(xs_pkg_V2_CN1, 0), xs_pkg_V2_CN1);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && xs_pkg_V2_CN1[..|xs_pkg_V2_CN1|] == xs_pkg_V2_CN1 -- seq-slice-simple1.gobra.vpr@85.3--85.67
     assert {:msg "  Assert might fail. Assertion xs_pkg_V2_CN1[..|xs_pkg_V2_CN1|] == xs_pkg_V2_CN1 might not hold. (seq-slice-simple1.gobra.vpr@85.10--85.67) [54]"}
       Seq#Equal(Seq#Take(xs_pkg_V2_CN1, Seq#Length(xs_pkg_V2_CN1)), xs_pkg_V2_CN1);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && xs_pkg_V2_CN1 == xs_pkg_V2_CN1 -- seq-slice-simple1.gobra.vpr@89.3--89.48
     assert {:msg "  Assert might fail. Assertion xs_pkg_V2_CN1 == xs_pkg_V2_CN1 might not hold. (seq-slice-simple1.gobra.vpr@89.10--89.48) [56]"}
       Seq#Equal(xs_pkg_V2_CN1, xs_pkg_V2_CN1);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && xs_pkg_V2_CN1[0..][..|xs_pkg_V2_CN1| - 0] == xs_pkg_V2_CN1 -- seq-slice-simple1.gobra.vpr@93.3--93.76
     assert {:msg "  Assert might fail. Assertion xs_pkg_V2_CN1[0..][..|xs_pkg_V2_CN1| - 0] == xs_pkg_V2_CN1 might not hold. (seq-slice-simple1.gobra.vpr@93.10--93.76) [58]"}
       Seq#Equal(Seq#Take(Seq#Drop(xs_pkg_V2_CN1, 0), Seq#Length(xs_pkg_V2_CN1) - 0), xs_pkg_V2_CN1);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@94.3--94.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -724,33 +726,33 @@ procedure example5_pkg_F() returns ()
   var returnLabel_lblGuard: bool;
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert true && Seq(1, 2, 4, 8)[2..] == Seq(4, 8) -- seq-slice-simple1.gobra.vpr@108.3--108.51
     assert {:msg "  Assert might fail. Assertion Seq(1, 2, 4, 8)[2..] == Seq(4, 8) might not hold. (seq-slice-simple1.gobra.vpr@108.10--108.51) [60]"}
       Seq#Equal(Seq#Drop(Seq#Append(Seq#Append(Seq#Append(Seq#Singleton(1), Seq#Singleton(2)), Seq#Singleton(4)), Seq#Singleton(8)), 2), Seq#Append(Seq#Singleton(4), Seq#Singleton(8)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && Seq(1, 2, 4, 8)[..2] == Seq(1, 2) -- seq-slice-simple1.gobra.vpr@112.3--112.51
     assert {:msg "  Assert might fail. Assertion Seq(1, 2, 4, 8)[..2] == Seq(1, 2) might not hold. (seq-slice-simple1.gobra.vpr@112.10--112.51) [62]"}
       Seq#Equal(Seq#Take(Seq#Append(Seq#Append(Seq#Append(Seq#Singleton(1), Seq#Singleton(2)), Seq#Singleton(4)), Seq#Singleton(8)), 2), Seq#Append(Seq#Singleton(1), Seq#Singleton(2)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && Seq(1, 2, 4, 8)[1..][..3 - 1] == Seq(2, 4) -- seq-slice-simple1.gobra.vpr@116.3--116.60
     assert {:msg "  Assert might fail. Assertion Seq(1, 2, 4, 8)[1..][..3 - 1] == Seq(2, 4) might not hold. (seq-slice-simple1.gobra.vpr@116.10--116.60) [64]"}
       Seq#Equal(Seq#Take(Seq#Drop(Seq#Append(Seq#Append(Seq#Append(Seq#Singleton(1), Seq#Singleton(2)), Seq#Singleton(4)), Seq#Singleton(8)), 1), 2), Seq#Append(Seq#Singleton(2), Seq#Singleton(4)));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@117.3--117.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -769,38 +771,38 @@ procedure example6_pkg_F() returns ()
   var returnLabel_lblGuard: bool;
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert true && [0..9)[0 - 10..] == [0..9) -- seq-slice-simple1.gobra.vpr@131.3--131.44
     assert {:msg "  Assert might fail. Assertion [0..9)[0 - 10..] == [0..9) might not hold. (seq-slice-simple1.gobra.vpr@131.10--131.44) [66]"}
       Seq#Equal(Seq#Drop(Seq#Range(0, 9), -10), Seq#Range(0, 9));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && [0..9)[..1000] == [0..9) -- seq-slice-simple1.gobra.vpr@135.3--135.42
     assert {:msg "  Assert might fail. Assertion [0..9)[..1000] == [0..9) might not hold. (seq-slice-simple1.gobra.vpr@135.10--135.42) [68]"}
       Seq#Equal(Seq#Take(Seq#Range(0, 9), 1000), Seq#Range(0, 9));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && [0..9)[0 - 100..][..100 - (0 - 100)] == [0..9) -- seq-slice-simple1.gobra.vpr@139.3--139.64
     assert {:msg "  Assert might fail. Assertion [0..9)[0 - 100..][..100 - (0 - 100)] == [0..9) might not hold. (seq-slice-simple1.gobra.vpr@139.10--139.64) [70]"}
       Seq#Equal(Seq#Take(Seq#Drop(Seq#Range(0, 9), -100), 200), Seq#Range(0, 9));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && [0..9)[100..][..0 - 100 - 100] == Seq[Int]() -- seq-slice-simple1.gobra.vpr@143.3--143.62
     assert {:msg "  Assert might fail. Assertion [0..9)[100..][..0 - 100 - 100] == Seq[Int]() might not hold. (seq-slice-simple1.gobra.vpr@143.10--143.62) [72]"}
       Seq#Equal(Seq#Take(Seq#Drop(Seq#Range(0, 9), 100), -200), (Seq#Empty(): Seq int));
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@144.3--144.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -819,33 +821,33 @@ procedure example7_pkg_F() returns ()
   var returnLabel_lblGuard: bool;
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert true && |[0..9)[5..]| == 4 -- seq-slice-simple1.gobra.vpr@158.3--158.36
     assert {:msg "  Assert might fail. Assertion |[0..9)[5..]| == 4 might not hold. (seq-slice-simple1.gobra.vpr@158.10--158.36) [74]"}
       Seq#Length(Seq#Drop(Seq#Range(0, 9), 5)) == 4;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && |[0..9)[..5]| == 5 -- seq-slice-simple1.gobra.vpr@162.3--162.36
     assert {:msg "  Assert might fail. Assertion |[0..9)[..5]| == 5 might not hold. (seq-slice-simple1.gobra.vpr@162.10--162.36) [76]"}
       Seq#Length(Seq#Take(Seq#Range(0, 9), 5)) == 5;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert true && |[0..9)[2..][..8 - 2]| == 6 -- seq-slice-simple1.gobra.vpr@166.3--166.45
     assert {:msg "  Assert might fail. Assertion |[0..9)[2..][..8 - 2]| == 6 might not hold. (seq-slice-simple1.gobra.vpr@166.10--166.45) [78]"}
       Seq#Length(Seq#Take(Seq#Drop(Seq#Range(0, 9), 2), 6)) == 6;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@167.3--167.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -866,45 +868,45 @@ procedure example8_pkg_F(xs_pkg_V3: (Seq int), x_pkg_V3: int) returns ()
   var x_pkg_V3_CN3: int;
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Checked inhaling of precondition
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume Seq#Contains(Seq#Drop(xs_pkg_V3, 4), x_pkg_V3);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: xs_pkg_V3_CN2 := Seq[Int]() -- seq-slice-simple1.gobra.vpr@180.3--180.30
     xs_pkg_V3_CN2 := (Seq#Empty(): Seq int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: x_pkg_V3_CN3 := 0 -- seq-slice-simple1.gobra.vpr@181.3--181.20
     x_pkg_V3_CN3 := 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: xs_pkg_V3_CN2 := xs_pkg_V3 -- seq-slice-simple1.gobra.vpr@185.3--185.29
     xs_pkg_V3_CN2 := xs_pkg_V3;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: x_pkg_V3_CN3 := x_pkg_V3 -- seq-slice-simple1.gobra.vpr@189.3--189.27
     x_pkg_V3_CN3 := x_pkg_V3;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (x_pkg_V3_CN3 in xs_pkg_V3_CN2) -- seq-slice-simple1.gobra.vpr@196.3--196.41
     assert {:msg "  Assert might fail. Assertion (x_pkg_V3_CN3 in xs_pkg_V3_CN2) might not hold. (seq-slice-simple1.gobra.vpr@196.11--196.40) [79]"}
       Seq#Contains(xs_pkg_V3_CN2, x_pkg_V3_CN3);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@197.3--197.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -925,45 +927,45 @@ procedure example9_pkg_F(xs_pkg_V4: (Seq int), x_pkg_V4: int) returns ()
   var x_pkg_V4_CN5: int;
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Checked inhaling of precondition
     assume state(Heap, Mask);
     assume state(Heap, Mask);
     assume Seq#Contains(Seq#Take(xs_pkg_V4, 7), x_pkg_V4);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: xs_pkg_V4_CN4 := Seq[Int]() -- seq-slice-simple1.gobra.vpr@210.3--210.30
     xs_pkg_V4_CN4 := (Seq#Empty(): Seq int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: x_pkg_V4_CN5 := 0 -- seq-slice-simple1.gobra.vpr@211.3--211.20
     x_pkg_V4_CN5 := 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: xs_pkg_V4_CN4 := xs_pkg_V4 -- seq-slice-simple1.gobra.vpr@215.3--215.29
     xs_pkg_V4_CN4 := xs_pkg_V4;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: x_pkg_V4_CN5 := x_pkg_V4 -- seq-slice-simple1.gobra.vpr@219.3--219.27
     x_pkg_V4_CN5 := x_pkg_V4;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (x_pkg_V4_CN5 in xs_pkg_V4_CN4) -- seq-slice-simple1.gobra.vpr@226.3--226.41
     assert {:msg "  Assert might fail. Assertion (x_pkg_V4_CN5 in xs_pkg_V4_CN4) might not hold. (seq-slice-simple1.gobra.vpr@226.11--226.40) [80]"}
       Seq#Contains(xs_pkg_V4_CN4, x_pkg_V4_CN5);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@227.3--227.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -984,12 +986,12 @@ procedure example10_pkg_F(xs_pkg_V5: (Seq int), x_pkg_V5: int) returns ()
   var x_pkg_V5_CN7: int;
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Checked inhaling of precondition
     assume state(Heap, Mask);
     assume state(Heap, Mask);
@@ -997,34 +999,34 @@ procedure example10_pkg_F(xs_pkg_V5: (Seq int), x_pkg_V5: int) returns ()
     assume state(Heap, Mask);
     assume !Seq#Contains(Seq#Take(xs_pkg_V5, 5), x_pkg_V5);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: xs_pkg_V5_CN6 := Seq[Int]() -- seq-slice-simple1.gobra.vpr@241.3--241.30
     xs_pkg_V5_CN6 := (Seq#Empty(): Seq int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: x_pkg_V5_CN7 := 0 -- seq-slice-simple1.gobra.vpr@242.3--242.20
     x_pkg_V5_CN7 := 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: xs_pkg_V5_CN6 := xs_pkg_V5 -- seq-slice-simple1.gobra.vpr@246.3--246.29
     xs_pkg_V5_CN6 := xs_pkg_V5;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: x_pkg_V5_CN7 := x_pkg_V5 -- seq-slice-simple1.gobra.vpr@250.3--250.27
     x_pkg_V5_CN7 := x_pkg_V5;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert !((x_pkg_V5_CN7 in xs_pkg_V5_CN6)) -- seq-slice-simple1.gobra.vpr@257.3--257.44
     assert {:msg "  Assert might fail. Assertion !((x_pkg_V5_CN7 in xs_pkg_V5_CN6)) might not hold. (seq-slice-simple1.gobra.vpr@257.10--257.44) [81]"}
       !Seq#Contains(xs_pkg_V5_CN6, x_pkg_V5_CN7);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@258.3--258.20
     returnLabel:
     LabelreturnLabelMask := Mask;
@@ -1047,18 +1049,18 @@ procedure example11_pkg_F(xs_pkg_V6: (Seq int), n_pkg_V6: int) returns ()
   var n_pkg_V6_CN9: int;
   var LabelreturnLabelMask: MaskType;
   var LabelreturnLabelHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
     returnLabel_lblGuard := false;
-  
+
   // -- Checked inhaling of precondition
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -1074,30 +1076,30 @@ procedure example11_pkg_F(xs_pkg_V6: (Seq int), n_pkg_V6: int) returns ()
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: xs_pkg_V6_CN8 := Seq[Int]() -- seq-slice-simple1.gobra.vpr@271.3--271.30
     xs_pkg_V6_CN8 := (Seq#Empty(): Seq int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: n_pkg_V6_CN9 := 0 -- seq-slice-simple1.gobra.vpr@272.3--272.20
     n_pkg_V6_CN9 := 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: xs_pkg_V6_CN8 := xs_pkg_V6 -- seq-slice-simple1.gobra.vpr@276.3--276.29
     xs_pkg_V6_CN8 := xs_pkg_V6;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: n_pkg_V6_CN9 := n_pkg_V6 -- seq-slice-simple1.gobra.vpr@280.3--280.27
     n_pkg_V6_CN9 := n_pkg_V6;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: label returnLabel -- seq-slice-simple1.gobra.vpr@285.3--285.20
     returnLabel:
     LabelreturnLabelMask := Mask;
     LabelreturnLabelHeap := Heap;
     returnLabel_lblGuard := true;
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of example11_pkg_F might not hold. Assertion xs_pkg_V6 == xs_pkg_V6[..n_pkg_V6] ++ xs_pkg_V6[n_pkg_V6..] might not hold. (seq-slice-simple1.gobra.vpr@264.11--264.78) [82]"}
       Seq#Equal(xs_pkg_V6, Seq#Append(Seq#Take(xs_pkg_V6, n_pkg_V6), Seq#Drop(xs_pkg_V6, n_pkg_V6)));

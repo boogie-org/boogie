@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -542,13 +544,13 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
   var mid: int;
   var i_11: int;
   var i_4_1: int;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Check definedness of (forall i: Int, j: Int :: { xs[i], xs[j] } 0 <= i && (j < |xs| && i < j) ==> xs[i] < xs[j])
       if (*) {
         if (0 <= i && (j < Seq#Length(xs) && i < j)) {
@@ -568,9 +570,9 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
       0 <= i_1 && (j_1 < Seq#Length(xs) && i_1 < j_1) ==> Seq#Index(xs, i_1) < Seq#Index(xs, j_1)
     );
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -585,7 +587,7 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
     assume index < Seq#Length(xs);
     assume state(PostHeap, PostMask);
     if (0 <= index) {
-      
+
       // -- Check definedness of xs[index] == key
         assert {:msg "  Contract might not be well-formed. Index xs[index] into xs might be negative. (binary-search-seq.vpr@9.12--9.43) [116]"}
           index >= 0;
@@ -595,7 +597,7 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
     }
     assume state(PostHeap, PostMask);
     if (-1 == index) {
-      
+
       // -- Check definedness of (forall i: Int :: { xs[i] } 0 <= i && i < |xs| ==> xs[i] != key)
         if (*) {
           if (0 <= i_2 && i_2 < Seq#Length(xs)) {
@@ -615,23 +617,23 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: low := 0 -- binary-search-seq.vpr@12.3--12.20
     low := 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: high := |xs| -- binary-search-seq.vpr@13.3--13.24
     high := Seq#Length(xs);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: index := -1 -- binary-search-seq.vpr@14.3--14.14
     index := -1;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: while (low < high && index == -1) -- binary-search-seq.vpr@16.3--33.4
-    
+
     // -- Before loop head
-      
+
       // -- Exhale loop invariant before loop
         assert {:msg "  Loop invariant 0 <= low && (low <= high && high <= |xs|) might not hold on entry. Assertion 0 <= low might not hold. (binary-search-seq.vpr@17.17--17.56) [120]"}
           0 <= low;
@@ -660,10 +662,10 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
           assert {:msg "  Loop invariant 0 <= index ==> xs[index] == key might not hold on entry. Assertion xs[index] == key might not hold. (binary-search-seq.vpr@20.17--20.48) [126]"}
             Seq#Index(xs, index) == key;
         }
-    
+
     // -- Havoc loop written variables (except locals)
       havoc high, index, low;
-    
+
     // -- Check definedness of invariant
       if (*) {
         assume 0 <= low;
@@ -671,7 +673,7 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
         assume high <= Seq#Length(xs);
         assume state(Heap, Mask);
         if (index == -1) {
-          
+
           // -- Check definedness of (forall i: Int :: { xs[i] } 0 <= i && (i < |xs| && !(low <= i && i < high)) ==> xs[i] != key)
             if (*) {
               if (0 <= i_4 && (i_4 < Seq#Length(xs) && !(low <= i_4 && i_4 < high))) {
@@ -692,7 +694,7 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
         assume index < Seq#Length(xs);
         assume state(Heap, Mask);
         if (0 <= index) {
-          
+
           // -- Check definedness of xs[index] == key
             assert {:msg "  Contract might not be well-formed. Index xs[index] into xs might be negative. (binary-search-seq.vpr@20.17--20.48) [129]"}
               index >= 0;
@@ -703,7 +705,7 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
         assume state(Heap, Mask);
         assume false;
       }
-    
+
     // -- Check the loop body
       if (*) {
         // Reset state
@@ -730,45 +732,45 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
         // Check and assume guard
         assume low < high && index == -1;
         assume state(Heap, Mask);
-        
+
         // -- Translate loop body
-          
+
           // -- Translating statement: mid := (low + high) / 2 -- binary-search-seq.vpr@22.5--22.37
             mid := (low + high) div 2;
             assume state(Heap, Mask);
-          
+
           // -- Translating statement: if (xs[mid] < key) -- binary-search-seq.vpr@23.5--32.6
-            
+
             // -- Check definedness of xs[mid] < key
               assert {:msg "  Conditional statement might fail. Index xs[mid] into xs might be negative. (binary-search-seq.vpr@23.9--23.22) [131]"}
                 mid >= 0;
               assert {:msg "  Conditional statement might fail. Index xs[mid] into xs might exceed sequence length. (binary-search-seq.vpr@23.9--23.22) [132]"}
                 mid < Seq#Length(xs);
             if (Seq#Index(xs, mid) < key) {
-              
+
               // -- Translating statement: low := mid + 1 -- binary-search-seq.vpr@24.7--24.21
                 low := mid + 1;
                 assume state(Heap, Mask);
             } else {
-              
+
               // -- Translating statement: if (key < xs[mid]) -- binary-search-seq.vpr@26.7--31.8
-                
+
                 // -- Check definedness of key < xs[mid]
                   assert {:msg "  Conditional statement might fail. Index xs[mid] into xs might be negative. (binary-search-seq.vpr@26.11--26.24) [133]"}
                     mid >= 0;
                   assert {:msg "  Conditional statement might fail. Index xs[mid] into xs might exceed sequence length. (binary-search-seq.vpr@26.11--26.24) [134]"}
                     mid < Seq#Length(xs);
                 if (key < Seq#Index(xs, mid)) {
-                  
+
                   // -- Translating statement: high := mid -- binary-search-seq.vpr@27.10--27.21
                     high := mid;
                     assume state(Heap, Mask);
                 } else {
-                  
+
                   // -- Translating statement: index := mid -- binary-search-seq.vpr@29.9--29.21
                     index := mid;
                     assume state(Heap, Mask);
-                  
+
                   // -- Translating statement: high := mid -- binary-search-seq.vpr@30.9--30.20
                     high := mid;
                     assume state(Heap, Mask);
@@ -807,7 +809,7 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
         // Terminate execution
         assume false;
       }
-    
+
     // -- Inhale loop invariant after loop, and assume guard
       assume !(low < high && index == -1);
       assume state(Heap, Mask);
@@ -827,7 +829,7 @@ procedure binary_search(xs: (Seq int), key: int) returns (index: int)
       }
       assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     assert {:msg "  Postcondition of binary_search might not hold. Assertion -1 <= index might not hold. (binary-search-seq.vpr@8.12--8.39) [142]"}
       -1 <= index;

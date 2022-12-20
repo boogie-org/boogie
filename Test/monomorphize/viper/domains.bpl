@@ -1,3 +1,5 @@
+// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+
 // ==================================================
 // Preamble of State module.
 // ==================================================
@@ -177,13 +179,13 @@ function  length<T>(xs: (ListDomainType T)): int;
 
 // Translation of domain axiom nil_length
 axiom (forall <T>  ::
-  
+
   (length((nil(): ListDomainType T)): int) == 0
 );
 
 // Translation of domain axiom cons_length
 axiom (forall <T> x_1: T ::
-  
+
   (forall xs_1: (ListDomainType T) ::
     { (length((cons(x_1, xs_1): ListDomainType T)): int) } { (length(xs_1): int) }
     (length((cons(x_1, xs_1): ListDomainType T)): int) == (length(xs_1): int) + 1
@@ -192,7 +194,7 @@ axiom (forall <T> x_1: T ::
 
 // Translation of domain axiom nil_cons
 axiom (forall <T> z: T ::
-  
+
   (forall zs: (ListDomainType T) ::
     { (cons(z, zs): ListDomainType T) }
     (cons(z, zs): ListDomainType T) != (nil(): ListDomainType T)
@@ -332,7 +334,7 @@ axiom (forall <A> a_3: A ::
 
 // Translation of domain axiom bar_ax2
 axiom (forall <B> b_3: B ::
-  
+
   (barfoo1(null): bool)
 );
 
@@ -421,31 +423,31 @@ procedure test(x_1: int, xs_1: (ListDomainType int)) returns ()
   modifies Heap, Mask;
 {
   var n: (ListDomainType int);
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: n := (nil(): List[Int]) -- domains.vpr@20.5--20.30
     n := (nil(): ListDomainType int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (length(n): Int) == 0 -- domains.vpr@21.5--21.26
     assert {:msg "  Assert might fail. Assertion (length(n): Int) == 0 might not hold. (domains.vpr@21.12--21.26) [19]"}
       (length(n): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert n != (cons(x, xs): List[Int]) -- domains.vpr@22.5--22.28
     assert {:msg "  Assert might fail. Assertion n != (cons(x, xs): List[Int]) might not hold. (domains.vpr@22.12--22.28) [20]"}
       n != (cons(x_1, xs_1): ListDomainType int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (length((cons(1, n): List[Int])): Int) == 1 -- domains.vpr@23.5--23.35
     assert {:msg "  Assert might fail. Assertion (length((cons(1, n): List[Int])): Int) == 1 might not hold. (domains.vpr@23.12--23.35) [21]"}
       (length((cons(1, n): ListDomainType int)): int) == 1;
@@ -459,22 +461,22 @@ procedure test(x_1: int, xs_1: (ListDomainType int)) returns ()
 procedure test2(a_3: int, b_3: bool) returns ()
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert (Pair_first((Pair_pair(a, b): Pair[Int, Bool])): Int) == a -- domains.vpr@68.3--68.42
     assert {:msg "  Assert might fail. Assertion (Pair_first((Pair_pair(a, b): Pair[Int, Bool])): Int) == a might not hold. (domains.vpr@68.10--68.42) [22]"}
       (Pair_first((Pair_pair(a_3, b_3): PairDomainType int bool)): int) == a_3;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (Pair_second((Pair_pair(a, b): Pair[Int, Bool])): Bool) == b -- domains.vpr@69.3--69.43
     assert {:msg "  Assert might fail. Assertion (Pair_second((Pair_pair(a, b): Pair[Int, Bool])): Bool) == b might not hold. (domains.vpr@69.10--69.43) [23]"}
       (Pair_second((Pair_pair(a_3, b_3): PairDomainType int bool)): bool) == b_3;
@@ -488,32 +490,32 @@ procedure test2(a_3: int, b_3: bool) returns ()
 procedure test3(a_3: int, b_3: bool, c_1: Ref) returns ()
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Assumptions about method arguments
     assume Heap[c_1, $allocated];
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert (Triple_first((Triple_triple(a, b, c): Triple[Int, Bool, Ref])): Int) ==
   //   a -- domains.vpr@73.3--73.51
     assert {:msg "  Assert might fail. Assertion (Triple_first((Triple_triple(a, b, c): Triple[Int, Bool, Ref])): Int) == a might not hold. (domains.vpr@73.10--73.51) [24]"}
       (Triple_first((Triple_triple(a_3, b_3, c_1): TripleDomainType int bool Ref)): int) == a_3;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (Triple_second((Triple_triple(a, b, c): Triple[Int, Bool, Ref])): Bool) ==
   //   b -- domains.vpr@74.3--74.52
     assert {:msg "  Assert might fail. Assertion (Triple_second((Triple_triple(a, b, c): Triple[Int, Bool, Ref])): Bool) == b might not hold. (domains.vpr@74.10--74.52) [25]"}
       (Triple_second((Triple_triple(a_3, b_3, c_1): TripleDomainType int bool Ref)): bool) == b_3;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (Triple_third((Triple_triple(a, b, c): Triple[Int, Bool, Ref])): Ref) ==
   //   c -- domains.vpr@75.3--75.51
     assert {:msg "  Assert might fail. Assertion (Triple_third((Triple_triple(a, b, c): Triple[Int, Bool, Ref])): Ref) == c might not hold. (domains.vpr@75.10--75.51) [26]"}
@@ -530,28 +532,28 @@ procedure test4(a_3: int, b_3: bool, c_1: Ref) returns ()
 {
   var p_2: (PairDomainType int bool);
   var t_2: (TripleDomainType int bool Ref);
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Assumptions about method arguments
     assume Heap[c_1, $allocated];
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: p := (Pair_pair(a, b): Pair[Int, Bool]) -- domains.vpr@79.3--79.44
     p_2 := (Pair_pair(a_3, b_3): PairDomainType int bool);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: t := (Triple_triple(a, b, c): Triple[Int, Bool, Ref]) -- domains.vpr@80.3--80.58
     t_2 := (Triple_triple(a_3, b_3, c_1): TripleDomainType int bool Ref);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (Triple_isPrefix(p, t): Bool) -- domains.vpr@81.3--81.31
     assert {:msg "  Assert might fail. Assertion (Triple_isPrefix(p, t): Bool) might not hold. (domains.vpr@81.10--81.31) [27]"}
       (Triple_isPrefix(p_2, t_2): bool);
@@ -565,19 +567,19 @@ procedure test4(a_3: int, b_3: bool, c_1: Ref) returns ()
 procedure t5() returns ()
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: inhale (forall i: Int :: { f1(i), f2(i) } f1(i) > 0) -- domains.vpr@91.10--91.50
-    
+
     // -- Check definedness of (forall i: Int :: { f1(i), f2(i) } f1(i) > 0)
       if (*) {
         assume false;
@@ -597,27 +599,27 @@ procedure t5() returns ()
 procedure t6() returns ()
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert (foo(1): Int) > 0 -- domains.vpr@107.3--107.20
     assert {:msg "  Assert might fail. Assertion (foo(1): Int) > 0 might not hold. (domains.vpr@107.10--107.20) [28]"}
       (foo(1): int) > 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (foo(null): Int) > 0 -- domains.vpr@108.3--108.23
     assert {:msg "  Assert might fail. Assertion (foo(null): Int) > 0 might not hold. (domains.vpr@108.10--108.23) [29]"}
       (foo(null): int) > 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (foo(none): Int) > 0 -- domains.vpr@109.3--109.23
     assert {:msg "  Assert might fail. Assertion (foo(none): Int) > 0 might not hold. (domains.vpr@109.10--109.23) [30]"}
       (foo(NoPerm): int) > 0;
@@ -631,17 +633,17 @@ procedure t6() returns ()
 procedure test7() returns ()
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert (barfoo2(101): Int) != 0 -- domains.vpr@128.3--128.27
     assert {:msg "  Assert might fail. Assertion (barfoo2(101): Int) != 0 might not hold. (domains.vpr@128.10--128.27) [31]"}
       (barfoo2(101): int) != 0;
@@ -655,22 +657,22 @@ procedure test7() returns ()
 procedure test8() returns ()
   modifies Heap, Mask;
 {
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: assert (hide2(101): Int) > 0 -- domains.vpr@144.3--144.24
     assert {:msg "  Assert might fail. Assertion (hide2(101): Int) > 0 might not hold. (domains.vpr@144.10--144.24) [32]"}
       (hide2(101): int) > 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (hide2(null): Int) < 0 -- domains.vpr@145.3--145.25
     assert {:msg "  Assert might fail. Assertion (hide2(null): Int) < 0 might not hold. (domains.vpr@145.10--145.25) [33]"}
       (hide2(null): int) < 0;
@@ -686,40 +688,40 @@ procedure test9() returns ()
 {
   var c1: (CellDomainType int);
   var c2: (CellDomainType Ref);
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
-  
+
   // -- Translating statement: c1 := (Cell_cell(0): Cell[Int]) -- domains.vpr@156.2--156.35
     c1 := (Cell_cell(0): CellDomainType int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert c1 == (Cell_cell(0): Cell[Int]) -- domains.vpr@158.3--158.28
     assert {:msg "  Assert might fail. Assertion c1 == (Cell_cell(0): Cell[Int]) might not hold. (domains.vpr@158.10--158.28) [34]"}
       c1 == (Cell_cell(0): CellDomainType int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (Cell_get(c1): Int) == 0 -- domains.vpr@159.2--159.26
     assert {:msg "  Assert might fail. Assertion (Cell_get(c1): Int) == 0 might not hold. (domains.vpr@159.9--159.26) [35]"}
       (Cell_get(c1): int) == 0;
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (Cell_get(c1): Int) == (Cell_get((Cell_cell(0): Cell[Int])): Int) -- domains.vpr@160.2--160.47
     assert {:msg "  Assert might fail. Assertion (Cell_get(c1): Int) == (Cell_get((Cell_cell(0): Cell[Int])): Int) might not hold. (domains.vpr@160.9--160.47) [36]"}
       (Cell_get(c1): int) == (Cell_get((Cell_cell(0): CellDomainType int)): int);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: c2 := (Cell_cell(null): Cell[Ref]) -- domains.vpr@162.2--162.38
     c2 := (Cell_cell(null): CellDomainType Ref);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: assert (Cell_get(c2): Ref) == null -- domains.vpr@164.2--164.29
     assert {:msg "  Assert might fail. Assertion (Cell_get(c2): Ref) == null might not hold. (domains.vpr@164.9--164.29) [37]"}
       (Cell_get(c2): Ref) == null;
