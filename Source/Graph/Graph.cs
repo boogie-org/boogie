@@ -1167,34 +1167,58 @@ namespace Microsoft.Boogie.GraphUtil
   public static class GraphAlgorithms
   {
     /**
-     * A merge node is a node that has multiple incoming edges, and which cannot be traversed unless all incoming edges have been traversed.
-     * A merge node is represented by an object of type IEnumerable{object}
+     * A merge node, represented by an object of type IEnumerable{object}, is a node that is itself a collection of nodes.
+     * The outgoing edges of a merge node may not be be traversed unless all nodes in it are known to be reachable.
+     * This search is accomplished via a doubly-nested loop.
      */
     public static IEnumerable<object> FindReachableNodesInGraphWithMergeNodes(Dictionary<object, List<object>> edges, IEnumerable<object> roots)
     {
       var todo = new Stack<object>(roots);
-      var visitedEdges = new HashSet<object>();
-      while (todo.Any())
+      var visitedNodes = new HashSet<object>();
+      while (true)
       {
-        var node = todo.Pop();
-        if (visitedEdges.Contains(node)) {
-          continue;
-        }
-        
-        if (node is IEnumerable<object> objects) {
-          if (!visitedEdges.IsSupersetOf(objects)) {
+        var visitedNodesCount = visitedNodes.Count;
+        while (todo.Any())
+        {
+          var node = todo.Pop();
+          if (visitedNodes.Contains(node))
+          {
             continue;
           }
+          visitedNodes.Add(node);
+          if (node is IEnumerable<object>)
+          {
+            // Delay the traversal of outgoing edges until a fixpoint is reached.
+            continue;
+          }
+          var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
+          foreach (var x in outgoing)
+          {
+            todo.Push(x);
+          }
         }
-        visitedEdges.Add(node);
 
-        var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
-        foreach (var x in outgoing)
+        // If no more nodes were discovered, the search is finished.
+        if (visitedNodesCount == visitedNodes.Count)
         {
-          todo.Push(x);
+          break;
+        }
+
+        // Process outgoing edges of each merge node whose members are already reachable
+        foreach (var node in visitedNodes.OfType<IEnumerable<object>>())
+        {
+          if (!visitedNodes.IsSupersetOf(node))
+          {
+            continue;
+          }
+          var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
+          foreach (var x in outgoing)
+          {
+            todo.Push(x);
+          }
         }
       }
-      return visitedEdges;
+      return visitedNodes;
     }
     
     public static Graph<Node> Dual<Node>(this Graph<Node> g, Node dummySource)
