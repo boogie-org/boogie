@@ -136,13 +136,13 @@ namespace VC
         Interlocked.Increment(ref currentId);
 
         TopLevelDeclarations = par.program.TopLevelDeclarations;
-        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "before");
+        PrintTopLevelDeclarationsForPruning("before");
         TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
-        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "after");
+        PrintTopLevelDeclarationsForPruning("after");
         randomGen = new Random(RandomSeed ?? 0);
       }
 
-      private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
+      private void PrintTopLevelDeclarationsForPruning(string suffix)
       {
         if (!options.Prune || options.PrintPrunedFile == null)
         {
@@ -150,11 +150,17 @@ namespace VC
         }
 
         using var writer = new TokenTextWriter(
-          $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
+          $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(Implementation.Name)}.bpl", false,
           options.PrettyPrint, options);
-        foreach (var declaration in TopLevelDeclarations ?? program.TopLevelDeclarations) {
+        foreach (var declaration in (TopLevelDeclarations ?? parent.program.TopLevelDeclarations).Where(x =>
+                   x is not Bpl.Implementation && x is not Procedure))
+        {
           declaration.Emit(writer, 0);
         }
+
+        Implementation.Emit(writer, 0);
+        Implementation.Proc.Emit(writer, 0);
+        blocks.Iter(block => block.Cmds.OfType<CallCmd>().Iter(callCmd => callCmd.Proc.Emit(writer, 0)));
 
         writer.Close();
       }

@@ -7,45 +7,32 @@ namespace Microsoft.Boogie
 {
   public class Prune {
 
-    public static Dictionary<object, List<object>> ComputeDeclarationDependencies(VCGenOptions options, Program program)
+    public static Dictionary<HashSet<Declaration>, List<HashSet<Declaration>>> ComputeDeclarationDependencies(VCGenOptions options, Program program)
     {
       if (!options.Prune)
       {
         return null;
       }
-      var axiomNodes = program.Axioms.Select(AxiomVisitor.GetDependencies);
-      var functionNodes = program.Functions.Select(FunctionVisitor.GetDependencies);
-      var constantNodes = program.Constants.Select(ConstantVisitor.GetDependencies);
-      var nodes = axiomNodes.Concat(functionNodes).Concat(constantNodes).ToList();
+      var axiomDependencyEvaluators = program.Axioms.Select(AxiomVisitor.GetDependencies);
+      var functionDependencyEvaluators = program.Functions.Select(FunctionVisitor.GetDependencies);
+      var constantDependencyEvaluators = program.Constants.Select(ConstantVisitor.GetDependencies);
+      var allDependencyEvaluators = axiomDependencyEvaluators.Concat(functionDependencyEvaluators).Concat(constantDependencyEvaluators).ToList();
 
-      var edges = new Dictionary<object, List<object>>();
-      foreach (var node in nodes) {
-        foreach (var incomingTuple in node.incomingSets) {
-          object source;
-          if (incomingTuple.Length == 0) {
-            continue;
-          }
-
-          if (incomingTuple.Length == 1) {
-            source = incomingTuple.First();
-          } else {
-            foreach (var mergeIncoming in incomingTuple) {
-              var mergeIncomingTargets = edges.GetOrCreate(mergeIncoming, () => new());
-              mergeIncomingTargets.Add(incomingTuple);
-            }
-
-            source = incomingTuple;
-          }
-
+      var edges = new Dictionary<HashSet<Declaration>, List<HashSet<Declaration>>>(new HashSetComparer<Declaration>());
+      foreach (var dependencyEvaluator in allDependencyEvaluators) {
+        foreach (var incomingTuple in dependencyEvaluator.incomingSets.Where(x => x.Length > 0)) {
+          var source = new HashSet<Declaration>(incomingTuple);
           var targets = edges.GetOrCreate(source, () => new());
-          targets.Add(node.declaration);
+          targets.Add(new HashSet<Declaration> { dependencyEvaluator.declaration });
         }
-        foreach (var outgoingSingle in node.outgoing) {
-          var targets = edges.GetOrCreate(node.declaration, () => new());
-          targets.Add(outgoingSingle);
+        foreach (var outgoingSingle in dependencyEvaluator.outgoing)
+        {
+          var source = new HashSet<Declaration> { dependencyEvaluator.declaration };
+          var target = new HashSet<Declaration> { outgoingSingle };
+          var targets = edges.GetOrCreate(source, () => new());
+          targets.Add(target);
         }
       }
-
       return edges;
     }
 
@@ -65,9 +52,38 @@ namespace Microsoft.Boogie
       blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
 
       var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
-      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing.Concat(keepRoots).ToHashSet()).ToHashSet();
+      var reachableDeclarations = FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing.Concat(keepRoots).ToHashSet()).ToHashSet();
       return program.TopLevelDeclarations.Where(d => 
         d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
+    }
+
+    private static IEnumerable<Declaration> FindReachableNodesInGraphWithMergeNodes(Dictionary<HashSet<Declaration>, List<HashSet<Declaration>>> edges, IEnumerable<Declaration> roots)
+    {
+      var todo = new Stack<HashSet<Declaration>>(roots.Select(root => new HashSet<Declaration> { root }));
+      var visitedNodes = new HashSet<HashSet<Declaration>>(new HashSetComparer<Declaration>());
+      var visitedDecls = new HashSet<Declaration>();
+      while (todo.Any())
+      {
+        var node = todo.Pop();
+        if (visitedNodes.Contains(node))
+        {
+          continue;
+        }
+        visitedNodes.Add(node);
+        visitedDecls.UnionWith(node);
+        var outgoing = edges.GetValueOrDefault(node) ?? new List<HashSet<Declaration>>();
+        foreach (var x in outgoing)
+        {
+          todo.Push(x);
+        }
+        if (!todo.Any())
+        {
+          // add more work for nodes whose outgoing edges may be enabled now
+          todo = new Stack<HashSet<Declaration>>(edges.Keys.Where(x =>
+            !visitedNodes.Contains(x) && visitedDecls.IsSupersetOf(x)));
+        }
+      }
+      return visitedDecls;
     }
   }
 }

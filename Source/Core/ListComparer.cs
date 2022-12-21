@@ -29,4 +29,19 @@ namespace Microsoft.Boogie
       return hCode.GetHashCode();
     }
   }
+
+  public class HashSetComparer<T> : IEqualityComparer<HashSet<T>>
+  {
+    public bool Equals(HashSet<T> l1, HashSet<T> l2)
+    {
+      return l1.SetEquals(l2);
+    }
+
+    public int GetHashCode(HashSet<T> l)
+    {
+      int hCode = 0;
+      l.Iter(x => { hCode = hCode ^ x.GetHashCode(); });
+      return hCode.GetHashCode();
+    }
+  }
 }

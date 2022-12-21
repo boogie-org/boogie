@@ -282,7 +282,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(cce.NonNullElements(this.globalVariablesCache, true));
     }
 
-    public Dictionary<object, List<object>> DeclarationDependencies { get; set; }
+    public Dictionary<HashSet<Declaration>, List<HashSet<Declaration>>> DeclarationDependencies { get; set; }
 
     public Program()
       : base(Token.NoToken)
