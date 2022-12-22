@@ -152,15 +152,10 @@ namespace VC
         using var writer = new TokenTextWriter(
           $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(Implementation.Name)}.bpl", false,
           options.PrettyPrint, options);
-        foreach (var declaration in (TopLevelDeclarations ?? parent.program.TopLevelDeclarations).Where(x =>
-                   x is not Bpl.Implementation && x is not Procedure))
+        foreach (var declaration in TopLevelDeclarations ?? parent.program.TopLevelDeclarations)
         {
           declaration.Emit(writer, 0);
         }
-
-        Implementation.Emit(writer, 0);
-        Implementation.Proc.Emit(writer, 0);
-        blocks.Iter(block => block.Cmds.OfType<CallCmd>().Iter(callCmd => callCmd.Proc.Emit(writer, 0)));
 
         writer.Close();
       }
