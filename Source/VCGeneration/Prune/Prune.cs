@@ -52,12 +52,13 @@ namespace Microsoft.Boogie
       blocksNode.Blocks.ForEach(blk => blocksNode.Visit(blk));
 
       var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
-      var reachableDeclarations = FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, blocksNode.outgoing.Concat(keepRoots).ToHashSet()).ToHashSet();
+      var reachableDeclarations = FindReachableDeclarations(program.DeclarationDependencies, blocksNode.outgoing.Concat(keepRoots).ToHashSet()).ToHashSet();
       return program.TopLevelDeclarations.Where(d => 
         d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
     }
 
-    private static IEnumerable<Declaration> FindReachableNodesInGraphWithMergeNodes(Dictionary<HashSet<Declaration>, List<HashSet<Declaration>>> edges, IEnumerable<Declaration> roots)
+    private static IEnumerable<Declaration> FindReachableDeclarations(
+      Dictionary<HashSet<Declaration>, List<HashSet<Declaration>>> edges, IEnumerable<Declaration> roots)
     {
       var todo = new Stack<HashSet<Declaration>>(roots.Select(root => new HashSet<Declaration> { root }));
       var visitedNodes = new HashSet<HashSet<Declaration>>(new HashSetComparer<Declaration>());
