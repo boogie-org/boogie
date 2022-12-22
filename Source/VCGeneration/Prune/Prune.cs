@@ -65,16 +65,15 @@ namespace Microsoft.Boogie
       while (todo.Any())
       {
         var node = todo.Pop();
-        if (visitedNodes.Contains(node))
+        if (!visitedNodes.Contains(node))
         {
-          continue;
-        }
-        visitedNodes.Add(node);
-        visitedDecls.UnionWith(node);
-        var outgoing = edges.GetValueOrDefault(node) ?? new List<HashSet<Declaration>>();
-        foreach (var x in outgoing)
-        {
-          todo.Push(x);
+          visitedNodes.Add(node);
+          visitedDecls.UnionWith(node);
+          var outgoing = edges.GetValueOrDefault(node) ?? new List<HashSet<Declaration>>();
+          foreach (var x in outgoing)
+          {
+            todo.Push(x);
+          }
         }
         if (!todo.Any())
         {
