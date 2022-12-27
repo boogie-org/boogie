@@ -70,6 +70,7 @@ namespace Microsoft.Boogie
   class TypeDependencyVisitor : ReadOnlyVisitor
   {
     /*
+     * An instance of this visitor is created with a type variable "formal" (passed to the constructor).
      * This visitor walks over a type T and adds an edge from any type variable nested inside T
      * to the type variable "formal". The class MonomorphizableChecker uses this visitor to check
      * that there are no expanding type cycles when a polymorphic function calls another
@@ -1199,6 +1200,37 @@ namespace Microsoft.Boogie
      * the latter creates a duplicate copy. MonomorphizationDuplicator is needed
      * because a polymorphic function, type, or procedure may be visited several
      * times in different type contexts.
+     *
+     * A polymorphic map type T is converted into a single-constructor datatype with
+     * one field for each instantiation I of T encountered in the program. An operation
+     * on a value of I-instantiation of T is translated to the corresponding operation
+     * on the field corresponding to I in the datatype corresponding to T. Polymorphic
+     * lambdas are translated to a constructed value of the datatype; the field
+     * corresponding to I is initialized by instantiating the polymorphic lambda on I.
+     *
+     * A polymorphic forall quantifier is translated to a conjunction of monomorphic
+     * instances of the quantifier obtained by instantiating the bound type parameters
+     * on concrete types collected from the program. Similarly, a polymorphic exists
+     * quantifier is translated to a disjunction. This instantiation scheme is "sound"
+     * if each forall quantifier occurs in positive polarity and each exists quantifier
+     * occurs in negative polarity in the verification condition submitted for
+     * satisfiability checking.
+     *
+     * The implementation uses a heuristic for collecting types for monomorphizing quantifiers.
+     * The body of the quantifier is examined to collect all instances of polymorphic types
+     * and functions mentioned in it. Suppose an instantiation T X of the polymorphic type T
+     * (with one parameter instantiated to X) is collected. If X is a type parameter of the
+     * enclosing quantifier, then each concrete type used in any instantiation of T becomes a
+     * candidate for instantiating the type quantifier. This scheme is easily generalized to
+     * types with more than one type parameter. References to polymorphic functions are handled
+     * similarly. Once candidates for all bound type parameters of the quantifier are collected,
+     * instantiation is performed using the Cartesian product of the candidates for each parameter.
+     *
+     * A big source of complexity in the implementation is the handling of nested binders.
+     * To handle nesting appropriately, the implementation
+     * (1) dynamically discovers polymorphic binders that become candidates for instantiation, and
+     * (2) finalizes the instantiation of a binder only when the instantiation of all of its
+     * children has been finalized.
      */
 
     public CoreOptions Options { get; }
