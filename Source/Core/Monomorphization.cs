@@ -251,15 +251,15 @@ namespace Microsoft.Boogie
     /*
      * This visitor walks over a polymorphic quantifier to collect hints for instantiating its type parameters
      * in the field instantiationHints. This field maps each type parameter T of the quantifier to a dictionary
-     * that maps a polymorphic type/function D to a list of integers, such that each integer in the list is a
+     * that maps a polymorphic type/function D to a set of integers, such that each integer in the set is a
      * valid position in the list of type parameters of D. If position i is in the list corresponding to D,
      * then the concrete type at position i among instances of D is a hint for T.
      */
     
     private HashSet<TypeVariable> typeParameters;
-    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, List<int>>> instantiationHints;
+    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, HashSet<int>>> instantiationHints;
 
-    public static Dictionary<TypeVariable, Dictionary<NamedDeclaration, List<int>>> CollectInstantiationHints(QuantifierExpr quantifierExpr)
+    public static Dictionary<TypeVariable, Dictionary<NamedDeclaration, HashSet<int>>> CollectInstantiationHints(QuantifierExpr quantifierExpr)
     {
       var instantiationHintCollector = new InstantiationHintCollector(quantifierExpr);
       instantiationHintCollector.VisitExpr(quantifierExpr);
@@ -270,7 +270,7 @@ namespace Microsoft.Boogie
     {
       typeParameters = new HashSet<TypeVariable>(quantifierExpr.TypeParameters);
       instantiationHints = quantifierExpr.TypeParameters.ToDictionary(typeParameter => typeParameter,
-        _ => new Dictionary<NamedDeclaration, List<int>>());
+        _ => new Dictionary<NamedDeclaration, HashSet<int>>());
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
@@ -297,7 +297,7 @@ namespace Microsoft.Boogie
         {
           if (!instantiationHints[typeVariable].ContainsKey(decl))
           {
-            instantiationHints[typeVariable][decl] = new List<int>();
+            instantiationHints[typeVariable][decl] = new HashSet<int>();
           }
           instantiationHints[typeVariable][decl].Add(i);
         }
@@ -367,7 +367,7 @@ namespace Microsoft.Boogie
   abstract class QuantifierExprMonomorphizer : BinderExprMonomorphizer
   {
     private QuantifierExpr quantifierExpr;
-    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, List<int>>> instantiationHints;
+    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, HashSet<int>>> instantiationHints;
 
     protected QuantifierExprMonomorphizer(QuantifierExpr quantifierExpr, MonomorphizationVisitor monomorphizationVisitor) :
       base(monomorphizationVisitor)
