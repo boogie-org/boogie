@@ -47,6 +47,7 @@ function max(CH:[val]int) : val;
 function card(CH:[val]int) : int;
 
 axiom card(MultisetEmpty) == 0;
+axiom (forall v:val :: card(MultisetSingleton(v)) == 1);
 axiom (forall CH:[val]int, v:val :: card(MultisetPlus(CH, MultisetSingleton(v))) == card(CH) + 1);
 axiom (forall CH:[val]int, v:val :: {CH[v := CH[v] + 1]} card(CH[v := CH[v] + 1]) == card(CH) + 1);
 axiom (forall m:[val]int, m':[val]int :: {card(m), card(m')} MultisetSubsetEq(m, m') && card(m) == card(m') ==> m == m');
@@ -271,9 +272,7 @@ requires {:layer 1} Inv(CH_low, CH);
 
   call old_CH_low := Snapshot();
   call d := receive(i);
-  received_values := MultisetEmpty;
-  received_values[d] := received_values[d] + 1;
-  // received_values := MultisetSingleton(d);
+  received_values := MultisetSingleton(d);
   j := 2;
   while (j <= n)
   invariant {:layer 1} 2 <= j && j <= n + 1;
