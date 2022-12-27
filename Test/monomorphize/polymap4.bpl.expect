@@ -1,0 +1,5 @@
+polymap4.bpl(18,5): Error: This assertion might not hold.
+Execution trace:
+    polymap4.bpl(14,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

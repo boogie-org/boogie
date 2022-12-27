@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /monomorphize /useArrayTheory "%s" > "%t"
+// RUN: %parallel-boogie /monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type A _;
