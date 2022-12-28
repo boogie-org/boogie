@@ -101,6 +101,8 @@ public abstract class ProverInterface
     Bounded
   }
 
+  public abstract TimeSpan Elapsed { get; }
+
   public readonly ISet<VCExprVar> NamedAssumes = new HashSet<VCExprVar>();
 
   public class ErrorHandler

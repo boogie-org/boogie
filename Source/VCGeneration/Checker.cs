@@ -248,6 +248,10 @@ namespace Microsoft.Boogie
       get { return hasOutput; }
     }
 
+    /// <summary>
+    /// Gets the amount of time How that the prover spent working. This measures the cost of processing queries,
+    /// but it does not include startup costs (unlike <c>ProverStartTime</c>).
+    /// </summary>
     public TimeSpan ProverRunTime
     {
       get { return proverRunTime; }
@@ -302,7 +306,7 @@ namespace Microsoft.Boogie
       }
 
       hasOutput = true;
-      proverRunTime = DateTime.UtcNow - ProverStart;
+      proverRunTime = thmProver.Elapsed;
     }
 
     public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
@@ -376,6 +380,8 @@ namespace Microsoft.Boogie
     {
       throw new NotImplementedException();
     }
+
+    public override TimeSpan Elapsed => throw new NotImplementedException();
 
     public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken) {

@@ -907,6 +907,7 @@ namespace Microsoft.Boogie
       }
       verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
       verificationResult.End = DateTime.UtcNow;
+      verificationResult.Elapsed = vcgen.TotalProverElapsedTime;
       verificationResult.ResourceCount = vcgen.ResourceCount;
 
       return verificationResult;

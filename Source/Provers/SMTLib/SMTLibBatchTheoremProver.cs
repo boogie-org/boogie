@@ -78,6 +78,7 @@ namespace Microsoft.Boogie.SMTLib
           await currentLogFile.WriteAsync(common.ToString());
         }
 
+        watch.Start();
         PrepareCommon();
         FlushAxioms();
 
@@ -106,6 +107,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     public override Task Reset(VCExpressionGenerator generator) {
+      watch.Reset();
       return Task.CompletedTask;
     }
 
@@ -143,6 +145,7 @@ namespace Microsoft.Boogie.SMTLib
       requests.Add("(get-model)");
 
       if (Process == null || HadErrors) {
+        watch.Stop();
         return Outcome.Undetermined;
       }
 
@@ -192,6 +195,7 @@ namespace Microsoft.Boogie.SMTLib
 
         return result;
       } finally {
+        watch.Stop();
         Close();
       }
     }

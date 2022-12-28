@@ -359,12 +359,6 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
 
-      Stopwatch watch = new Stopwatch();
-#if PRINT_TIME
-      Console.WriteLine("Checking function {0}", impl.Name);
-      watch.Reset();
-      watch.Start();
-#endif
 
       var data = implementationData.GetOrCreateValue(run.Implementation)!;
       if (!data.ConvertedToDAG) {
@@ -417,17 +411,13 @@ namespace VC
       outcome = await worker.WorkUntilDone(cancellationToken);
       ResourceCount = worker.ResourceCount;
 
+      TotalProverElapsedTime = worker.TotalProverElapsedTime;
       if (outcome == Outcome.Correct && smokeTester != null)
       {
         await smokeTester.Test(run.TraceWriter);
       }
 
       callback.OnProgress?.Invoke("done", 0, 0, 1.0);
-
-#if PRINT_TIME
-      watch.Stop();
-      Console.WriteLine("Total time for this method: {0}", watch.Elapsed.ToString());
-#endif
 
       return outcome;
     }
