@@ -4,6 +4,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Threading;
 using Microsoft.Boogie.VCExprAST;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Boogie.SMTLib;
 using VC;
@@ -43,6 +44,7 @@ namespace Microsoft.Boogie
     private volatile bool hasOutput;
     private volatile UnexpectedProverOutputException outputExn;
     public DateTime ProverStart { get; private set; }
+    private readonly Stopwatch ProverStopwatch = new();
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
     private volatile CheckerStatus status;
@@ -249,8 +251,8 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Gets the amount of time How that the prover spent working. This measures the cost of processing queries,
-    /// but it does not include startup costs (unlike <c>ProverStartTime</c>).
+    /// Gets the amount of time that the prover spent working. This measures the cost of processing queries,
+    /// but it does not include initial startup costs (unlike <c>VerificationResult.Start</c>).
     /// </summary>
     public TimeSpan ProverRunTime
     {
@@ -282,6 +284,9 @@ namespace Microsoft.Boogie
       {
         outputExn = new UnexpectedProverOutputException(e.ToString());
       }
+      finally {
+        ProverStopwatch.Stop();
+      }
 
       switch (outcome)
       {
@@ -306,7 +311,7 @@ namespace Microsoft.Boogie
       }
 
       hasOutput = true;
-      proverRunTime = thmProver.Elapsed;
+      proverRunTime = ProverStopwatch.Elapsed;
     }
 
     public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
@@ -328,8 +333,9 @@ namespace Microsoft.Boogie
       }
       SetTimeout(timeout);
       SetRlimit(rlimit);
-      ProverStart = DateTime.UtcNow;
 
+      ProverStart = DateTime.UtcNow;
+      ProverStopwatch.Restart();
       ProverTask = Check(descriptiveName, vc, cancellationToken);
     }
 
@@ -380,8 +386,6 @@ namespace Microsoft.Boogie
     {
       throw new NotImplementedException();
     }
-
-    public override TimeSpan Elapsed => throw new NotImplementedException();
 
     public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken) {

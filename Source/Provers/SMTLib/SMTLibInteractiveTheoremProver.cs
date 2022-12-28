@@ -85,7 +85,6 @@ namespace Microsoft.Boogie.SMTLib
           processNeedsRestart = true;
         }
 
-        watch.Start();
         PrepareCommon();
         FlushAndCacheCommons();
 
@@ -198,7 +197,6 @@ namespace Microsoft.Boogie.SMTLib
 
       if (Process == null || HadErrors)
       {
-        watch.Stop();
         return result;
       }
       var errorsDiscovered = 0;
@@ -304,7 +302,6 @@ namespace Microsoft.Boogie.SMTLib
 
       if (libOptions.RestartProverPerVC && Process != null)
       {
-        watch.Stop();
         processNeedsRestart = true;
       }
 
