@@ -197,8 +197,6 @@ namespace Microsoft.Boogie
       this.translator = t;
       this.orderingAxiomBuilder = new OrderingAxiomBuilder(ctxt.gen, t, ctxt.orderingAxiomBuilder);
 
-      StringBuilder cmds = new StringBuilder();
-
       distincts = new List<Variable>(ctxt.distincts);
       axiomConjuncts = new List<VCExpr>(ctxt.axiomConjuncts);
 

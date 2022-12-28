@@ -55,3 +55,8 @@ procedure I(p: Pair, a: int)
   var b: int;
   Pair(a, b) := p;
 }
+
+procedure J(p: Pair, x: bool) returns (q: Pair)
+{
+  q := p->(a := x);
+}

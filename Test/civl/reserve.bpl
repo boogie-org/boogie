@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 /*
@@ -25,12 +25,12 @@ var {:layer 0,1} freeSpace: int;
 var {:layer 0,1} allocMap: Bijection;
 
 function {:inline} BijectionInvariant(allocMap: Bijection): bool {
-    (forall tid: Tid ::
+    (forall {:pool "A"} tid: Tid :: {:add_to_pool "A", tid} {:add_to_pool "B", allocMap->tidToPtr[tid]}
         allocMap->domain[tid] ==>
             allocMap->range[allocMap->tidToPtr[tid]] &&
             allocMap->ptrToTid[allocMap->tidToPtr[tid]] == tid)
     &&
-    (forall ptr: int ::
+    (forall {:pool "B"} ptr: int :: {:add_to_pool "B", ptr}
         allocMap->range[ptr] ==>
             allocMap->domain[allocMap->ptrToTid[ptr]] &&
             allocMap->tidToPtr[allocMap->ptrToTid[ptr]] == ptr)
@@ -39,7 +39,7 @@ function {:inline} BijectionInvariant(allocMap: Bijection): bool {
 procedure {:yield_invariant} {:layer 1} YieldInvariant();
 requires 0 <= freeSpace;
 requires BijectionInvariant(allocMap);
-requires (forall y: int :: isFree[y] ==> memAddr(y));
+requires (forall {:pool "B"} y: int :: {:add_to_pool "B", y} isFree[y] ==> memAddr(y));
 requires MapDiff(allocMap->range, isFree) == MapConst(false);
 requires freeSpace == Size(MapDiff(isFree, allocMap->range));
 

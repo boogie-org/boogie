@@ -1764,8 +1764,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 
 	void ArrayExpression(out Expr/*!*/ e) {
 		Contract.Ensures(Contract.ValueAtReturn(out e) != null); 
-		IToken/*!*/ x;
-		FieldAccess fieldAccess;
+		IToken/*!*/ x, id;
 		Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
 		bool store; bool bvExtract;
 		List<Expr>/*!*/ allArgs = dummyExprSeq;
@@ -1818,8 +1817,20 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				 e = new NAryExpr(x, new MapSelect(x, allArgs.Count - 1), allArgs);
 				
 			} else {
-				FieldAccess(out x, out fieldAccess);
-				e = new NAryExpr(x, fieldAccess, new List<Expr> { e }); 
+				Get();
+				x = t; 
+				if (la.kind == 1) {
+					Ident(out id);
+					e = new NAryExpr(x, new FieldAccess(id, id.val), new List<Expr> { e }); 
+				} else if (la.kind == 10) {
+					Get();
+					Ident(out id);
+					Expect(52);
+					x = t; 
+					Expression(out e1);
+					Expect(11);
+					e = new NAryExpr(x, new FieldUpdate(id, id.val), new List<Expr> { e, e1 }); 
+				} else SynErr(138);
 			}
 		}
 	}
@@ -1936,7 +1947,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 					e = new NAryExpr(x, new FunctionCall(id), es); 
 				} else if (la.kind == 11) {
 					e = new NAryExpr(x, new FunctionCall(id), new List<Expr>()); 
-				} else SynErr(138);
+				} else SynErr(139);
 				Expect(11);
 			}
 			break;
@@ -1996,7 +2007,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				 e = new LambdaExpr(x, typeParams, ds, kv, e); 
 			} else if (la.kind == 8) {
 				LetExpr(out e);
-			} else SynErr(139);
+			} else SynErr(140);
 			Expect(11);
 			break;
 		}
@@ -2009,7 +2020,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			e = new CodeExpr(locals, blocks); 
 			break;
 		}
-		default: SynErr(140); break;
+		default: SynErr(141); break;
 		}
 	}
 
@@ -2021,7 +2032,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 6) {
 			Get();
 			s = t.val; 
-		} else SynErr(141);
+		} else SynErr(142);
 		try {
 		 n = BigDec.FromString(s);
 		} catch (FormatException) {
@@ -2065,7 +2076,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 103) {
 			Get();
-		} else SynErr(142);
+		} else SynErr(143);
 	}
 
 	void QuantifierBody(IToken/*!*/ q, out List<TypeVariable>/*!*/ typeParams, out List<Variable>/*!*/ ds,
@@ -2083,7 +2094,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			}
 		} else if (la.kind == 1 || la.kind == 25) {
 			BoundVars(out ds);
-		} else SynErr(143);
+		} else SynErr(144);
 		QSep();
 		while (la.kind == 25) {
 			AttributeOrTrigger(ref kv, ref trig);
@@ -2096,7 +2107,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 		} else if (la.kind == 105) {
 			Get();
-		} else SynErr(144);
+		} else SynErr(145);
 	}
 
 	void Lambda() {
@@ -2104,7 +2115,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 		} else if (la.kind == 107) {
 			Get();
-		} else SynErr(145);
+		} else SynErr(146);
 	}
 
 	void LetExpr(out Expr/*!*/ letexpr) {
@@ -2207,7 +2218,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 			Expression(out e);
 			b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); 
-		} else SynErr(146);
+		} else SynErr(147);
 		Expect(9);
 	}
 
@@ -2264,7 +2275,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			 trig.AddLast(new Trigger(tok, true, es, null));
 			}
 			
-		} else SynErr(147);
+		} else SynErr(148);
 		Expect(26);
 	}
 
@@ -2279,7 +2290,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		} else if (StartOf(9)) {
 			Expression(out e);
 			o = e; 
-		} else SynErr(148);
+		} else SynErr(149);
 	}
 
 	void QSep() {
@@ -2287,7 +2298,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 		} else if (la.kind == 109) {
 			Get();
-		} else SynErr(149);
+		} else SynErr(150);
 	}
 
 	void LetVar(out Variable/*!*/ v) {
@@ -2495,18 +2506,19 @@ public class Errors {
 			case 135: s = "invalid UnaryExpression"; break;
 			case 136: s = "invalid NegOp"; break;
 			case 137: s = "invalid CoercionExpression"; break;
-			case 138: s = "invalid AtomExpression"; break;
+			case 138: s = "invalid ArrayExpression"; break;
 			case 139: s = "invalid AtomExpression"; break;
 			case 140: s = "invalid AtomExpression"; break;
-			case 141: s = "invalid Dec"; break;
-			case 142: s = "invalid Forall"; break;
-			case 143: s = "invalid QuantifierBody"; break;
-			case 144: s = "invalid Exists"; break;
-			case 145: s = "invalid Lambda"; break;
-			case 146: s = "invalid SpecBlock"; break;
-			case 147: s = "invalid AttributeOrTrigger"; break;
-			case 148: s = "invalid AttributeParameter"; break;
-			case 149: s = "invalid QSep"; break;
+			case 141: s = "invalid AtomExpression"; break;
+			case 142: s = "invalid Dec"; break;
+			case 143: s = "invalid Forall"; break;
+			case 144: s = "invalid QuantifierBody"; break;
+			case 145: s = "invalid Exists"; break;
+			case 146: s = "invalid Lambda"; break;
+			case 147: s = "invalid SpecBlock"; break;
+			case 148: s = "invalid AttributeOrTrigger"; break;
+			case 149: s = "invalid AttributeParameter"; break;
+			case 150: s = "invalid QSep"; break;
 
 			default: s = "error " + n; break;
 		}
