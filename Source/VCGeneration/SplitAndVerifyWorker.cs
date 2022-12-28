@@ -82,6 +82,10 @@ namespace VC
     }
 
     public int ResourceCount => totalResourceCount;
+    /// <summary>
+    /// The cumulative time spent processing SMT queries.  When running with
+    /// `vcsCores > 1`, this may also include time spent restarting the prover.
+    /// </summary>
     public TimeSpan TotalProverElapsedTime { get; private set; }
     
     private void TrackSplitsCost(List<Split> splits)

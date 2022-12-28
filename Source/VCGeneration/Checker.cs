@@ -251,8 +251,8 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Gets the amount of time that the prover spent working. This measures the cost of processing queries,
-    /// but it does not include initial startup costs (unlike <c>VerificationResult.Start</c>).
+    /// Gets the amount of time that the prover spent working (and, when running
+    /// with `vcsCores > 1`, restarting), not including initial startup costs.
     /// </summary>
     public TimeSpan ProverRunTime
     {
