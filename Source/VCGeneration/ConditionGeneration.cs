@@ -85,6 +85,7 @@ namespace VC
       Contract.Invariant(program != null);
     }
 
+    public TimeSpan TotalProverElapsedTime { get; set; }
     public int CumulativeAssertionCount; // for statistics
     public int ResourceCount;
     
