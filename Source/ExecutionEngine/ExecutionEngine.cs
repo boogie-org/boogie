@@ -907,6 +907,11 @@ namespace Microsoft.Boogie
       }
       verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
       verificationResult.End = DateTime.UtcNow;
+      // `TotalProverElapsedTime` does not include the initial cost of starting
+      // the SMT solver (unlike `End - Start` in `VerificationResult`).  It
+      // may still include the time taken to restart the prover when running
+      // with `vcsCores > 1`.
+      verificationResult.Elapsed = vcgen.TotalProverElapsedTime;
       verificationResult.ResourceCount = vcgen.ResourceCount;
 
       return verificationResult;

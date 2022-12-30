@@ -4,6 +4,7 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Threading;
 using Microsoft.Boogie.VCExprAST;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.Boogie.SMTLib;
 using VC;
@@ -43,6 +44,7 @@ namespace Microsoft.Boogie
     private volatile bool hasOutput;
     private volatile UnexpectedProverOutputException outputExn;
     public DateTime ProverStart { get; private set; }
+    private readonly Stopwatch ProverStopwatch = new();
     private TimeSpan proverRunTime;
     private volatile ProverInterface.ErrorHandler handler;
     private volatile CheckerStatus status;
@@ -250,6 +252,10 @@ namespace Microsoft.Boogie
       get { return hasOutput; }
     }
 
+    /// <summary>
+    /// Gets the amount of time that the prover spent working (and, when running
+    /// with `vcsCores > 1`, restarting), not including initial startup costs.
+    /// </summary>
     public TimeSpan ProverRunTime
     {
       get { return proverRunTime; }
@@ -280,6 +286,9 @@ namespace Microsoft.Boogie
       {
         outputExn = new UnexpectedProverOutputException(e.ToString());
       }
+      finally {
+        ProverStopwatch.Stop();
+      }
 
       switch (outcome)
       {
@@ -304,7 +313,7 @@ namespace Microsoft.Boogie
       }
 
       hasOutput = true;
-      proverRunTime = DateTime.UtcNow - ProverStart;
+      proverRunTime = ProverStopwatch.Elapsed;
     }
 
     public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
@@ -326,8 +335,9 @@ namespace Microsoft.Boogie
       }
       SetTimeout(timeout);
       SetRlimit(rlimit);
-      ProverStart = DateTime.UtcNow;
 
+      ProverStart = DateTime.UtcNow;
+      ProverStopwatch.Restart();
       ProverTask = Check(descriptiveName, vc, cancellationToken);
     }
 

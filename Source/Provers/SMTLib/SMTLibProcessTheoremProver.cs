@@ -21,6 +21,7 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibSolverOptions options;
     protected bool usingUnsatCore;
     private string backgroundPredicates;
+
     protected internal TypeAxiomBuilder AxBuilder { get; set; }
     protected TypeAxiomBuilder CachedAxBuilder;
     protected internal abstract ScopedNamer Namer { get; }
