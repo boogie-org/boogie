@@ -432,12 +432,7 @@ namespace Microsoft.Boogie
     public static readonly VCExprOp LeOp = new VCExprNAryOp(2, Type.Bool);
     public static readonly VCExprOp GtOp = new VCExprNAryOp(2, Type.Bool);
     public static readonly VCExprOp GeOp = new VCExprNAryOp(2, Type.Bool);
-
-    public static readonly VCExprOp SubtypeOp = new VCExprNAryOp(2, Type.Bool);
-
-    // ternary version of the subtype operator, the first argument of which gives
-    // the type of the compared terms
-    public static readonly VCExprOp Subtype3Op = new VCExprNAryOp(3, Type.Bool);
+    
     public static readonly VCExprOp IfThenElseOp = new VCExprIfThenElseOp();
     public static readonly VCExprOp ToIntOp = new VCExprNAryOp(1, Type.Int);
     public static readonly VCExprOp ToRealOp = new VCExprNAryOp(1, Type.Real);
@@ -491,15 +486,6 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Function(new VCExprBvConcatOp(bv1.Type.BvBits, bv2.Type.BvBits), bv1, bv2);
     }
-
-    public VCExpr AtMost(VCExpr smaller, VCExpr greater)
-    {
-      Contract.Requires(greater != null);
-      Contract.Requires(smaller != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Function(SubtypeOp, smaller, greater);
-    }
-
 
     ////////////////////////////////////////////////////////////////////////////////
     // Dispatcher for the visitor
@@ -567,8 +553,6 @@ namespace Microsoft.Boogie
       SingletonOpDict.Add(LeOp, SingletonOp.LeOp);
       SingletonOpDict.Add(GtOp, SingletonOp.GtOp);
       SingletonOpDict.Add(GeOp, SingletonOp.GeOp);
-      SingletonOpDict.Add(SubtypeOp, SingletonOp.SubtypeOp);
-      SingletonOpDict.Add(Subtype3Op, SingletonOp.Subtype3Op);
       SingletonOpDict.Add(ToIntOp, SingletonOp.ToIntOp);
       SingletonOpDict.Add(ToRealOp, SingletonOp.ToRealOp);
     }

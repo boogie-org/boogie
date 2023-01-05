@@ -54,16 +54,6 @@ namespace Microsoft.Boogie
       return base.VisitMapType(node);
     }
 
-    public override Expr VisitNAryExpr(NAryExpr node)
-    {
-      BinaryOperator op = node.Fun as BinaryOperator;
-      if (op != null && op.Op == BinaryOperator.Opcode.Subtype)
-      {
-        isMonomorphic = false;
-      }
-      return base.VisitNAryExpr(node);
-    }
-
     public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
     {
       if (DoesTypeCtorDeclNeedMonomorphization(node))
@@ -192,11 +182,7 @@ namespace Microsoft.Boogie
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      if (node.Fun is BinaryOperator op && op.Op == BinaryOperator.Opcode.Subtype)
-      {
-        isMonomorphizable = false;
-      }
-      else if (node.Fun is FunctionCall functionCall)
+      if (node.Fun is FunctionCall functionCall)
       {
         functionCall.Func.TypeParameters.Iter(t =>
         {

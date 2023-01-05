@@ -1,5 +1,0 @@
-Orderings.bpl(14,20): Error: undeclared identifier: x
-Orderings.bpl(17,23): Error: c0 occurs more than once as parent
-Orderings.bpl(18,19): Error: constant cannot be its own parent
-Orderings.bpl(20,20): Error: the parent of a constant has to be a constant
-4 name resolution errors detected in Orderings.bpl
