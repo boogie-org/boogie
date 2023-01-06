@@ -70,10 +70,10 @@ procedure Bad2(y: int)
     options.VcsCores = 4;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
-    var expected = @"fakeFilename1(3,3): Error: This assertion might not hold.
+    var expected = @"fakeFilename1(3,3): Error: this assertion could not be proven
 Execution trace:
     fakeFilename1(3,3): anon0
-fakeFilename1(8,3): Error: This assertion might not hold.
+fakeFilename1(8,3): Error: this assertion could not be proven
 Execution trace:
     fakeFilename1(8,3): anon0
 
@@ -119,12 +119,12 @@ procedure Good(y: int)
     await task1Writer.DisposeAsync();
     await task2Writer.DisposeAsync();
     var output = writer.ToString();
-    var expected = @"fakeFilename1(3,3): Error: This assertion might not hold.
+    var expected = @"fakeFilename1(3,3): Error: this assertion could not be proven
 Execution trace:
     fakeFilename1(3,3): anon0
 
 Boogie program verifier finished with 1 verified, 1 error
-fakeFilename2(3,3): Error: This assertion might not hold.
+fakeFilename2(3,3): Error: this assertion could not be proven
 Execution trace:
     fakeFilename2(3,3): anon0
 
@@ -169,7 +169,7 @@ Boogie program verifier finished with 1 verified, 1 error
     await engine.ProcessProgram(writer, program1, "fakeFilename");
     await writer.DisposeAsync();
     var output = writer.ToString();
-    var expected = @"fakeFilename(10,5): Error: This loop invariant might not be maintained by the loop.
+    var expected = @"fakeFilename(10,5): Error: this loop invariant might not be maintained by the loop
 fakeFilename(10,5): Related message: fake failure
 Execution trace:
     fakeFilename(5,3): entry
