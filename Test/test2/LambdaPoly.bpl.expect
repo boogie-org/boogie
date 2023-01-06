@@ -1,12 +1,12 @@
-LambdaPoly.bpl(31,5): Error: This assertion might not hold.
+LambdaPoly.bpl(31,5): Error: this assertion could not be proven
 Execution trace:
     LambdaPoly.bpl(27,5): anon0
     LambdaPoly.bpl(30,5): anon4_Then
-LambdaPoly.bpl(34,5): Error: This assertion might not hold.
+LambdaPoly.bpl(34,5): Error: this assertion could not be proven
 Execution trace:
     LambdaPoly.bpl(27,5): anon0
     LambdaPoly.bpl(33,5): anon5_Then
-LambdaPoly.bpl(39,5): Error: This assertion might not hold.
+LambdaPoly.bpl(39,5): Error: this assertion could not be proven
 Execution trace:
     LambdaPoly.bpl(27,5): anon0
     LambdaPoly.bpl(37,5): anon5_Else

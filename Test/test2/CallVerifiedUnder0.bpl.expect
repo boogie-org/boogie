@@ -1,13 +1,13 @@
-CallVerifiedUnder0.bpl(9,5): Error: A precondition for this call might not hold.
-CallVerifiedUnder0.bpl(5,3): Related location: This is the precondition that might not hold.
+CallVerifiedUnder0.bpl(9,5): Error: a precondition for this call could not be proven
+CallVerifiedUnder0.bpl(5,3): Related location: this is the precondition that could not be proven
 Execution trace:
     CallVerifiedUnder0.bpl(9,5): anon0
-CallVerifiedUnder0.bpl(21,5): Error: A precondition for this call might not hold.
-CallVerifiedUnder0.bpl(5,3): Related location: This is the precondition that might not hold.
+CallVerifiedUnder0.bpl(21,5): Error: a precondition for this call could not be proven
+CallVerifiedUnder0.bpl(5,3): Related location: this is the precondition that could not be proven
 Execution trace:
     CallVerifiedUnder0.bpl(21,5): anon0
-CallVerifiedUnder0.bpl(34,5): Error: A precondition for this call might not hold.
-CallVerifiedUnder0.bpl(5,3): Related location: This is the precondition that might not hold.
+CallVerifiedUnder0.bpl(34,5): Error: a precondition for this call could not be proven
+CallVerifiedUnder0.bpl(5,3): Related location: this is the precondition that could not be proven
 Execution trace:
     CallVerifiedUnder0.bpl(34,5): anon0
 

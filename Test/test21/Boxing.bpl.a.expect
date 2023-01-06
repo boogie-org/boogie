@@ -1,4 +1,4 @@
-Boxing.bpl(24,3): Error: This assertion might not hold.
+Boxing.bpl(24,3): Error: this assertion could not be proven
 Execution trace:
     Boxing.bpl(19,6): anon0
 

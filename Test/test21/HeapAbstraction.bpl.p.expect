@@ -1,4 +1,4 @@
-HeapAbstraction.bpl(19,3): Error: This assertion might not hold.
+HeapAbstraction.bpl(19,3): Error: this assertion could not be proven
 Execution trace:
     HeapAbstraction.bpl(18,3): anon0
 

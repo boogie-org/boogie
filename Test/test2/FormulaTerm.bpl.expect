@@ -1,5 +1,5 @@
-FormulaTerm.bpl(12,3): Error: A postcondition might not hold on this return path.
-FormulaTerm.bpl(6,3): Related location: This is the postcondition that might not hold.
+FormulaTerm.bpl(12,3): Error: a postcondition could not be proven on this return path
+FormulaTerm.bpl(6,3): Related location: this is the postcondition that could not be proven
 Execution trace:
     FormulaTerm.bpl(10,1): start
 

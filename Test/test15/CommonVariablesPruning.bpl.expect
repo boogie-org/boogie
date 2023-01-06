@@ -1,4 +1,4 @@
-CommonVariablesPruning.bpl(28,5): Error: This assertion might not hold.
+CommonVariablesPruning.bpl(28,5): Error: this assertion could not be proven
 Execution trace:
     CommonVariablesPruning.bpl(21,3): anon0
     CommonVariablesPruning.bpl(23,7): anon2_Then
@@ -139,7 +139,7 @@ UOrdering3 -> {
   y -> 11
 *** END_STATE
 *** END_MODEL
-CommonVariablesPruning.bpl(45,5): Error: This assertion might not hold.
+CommonVariablesPruning.bpl(45,5): Error: this assertion could not be proven
 Execution trace:
     CommonVariablesPruning.bpl(38,3): anon0
     CommonVariablesPruning.bpl(40,7): anon2_Then

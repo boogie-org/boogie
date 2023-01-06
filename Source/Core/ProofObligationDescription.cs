@@ -56,7 +56,7 @@ public class RequiresDescription : ProofObligationDescription
     "this precondition holds";
 
   public override string FailureDescription =>
-    "this precondition could not be proven";
+    "this is the precondition that could not be proven";
 
   public override string ShortDescription => "requires";
 }
@@ -78,7 +78,7 @@ public class EnsuresDescription : ProofObligationDescription
     "this postcondition holds";
 
   public override string FailureDescription =>
-    "this postcondition could not be proven";
+    "this is the postcondition that could not be proven";
 
   public override string ShortDescription => "ensures";
 }

@@ -1,13 +1,13 @@
-Intervals.bpl(64,3): Error: This assertion might not hold.
-Intervals.bpl(75,3): Error: This assertion might not hold.
-Intervals.bpl(94,3): Error: This assertion might not hold.
-Intervals.bpl(140,3): Error: This assertion might not hold.
-Intervals.bpl(151,3): Error: This assertion might not hold.
-Intervals.bpl(202,3): Error: This assertion might not hold.
-Intervals.bpl(240,3): Error: This assertion might not hold.
-Intervals.bpl(252,3): Error: This assertion might not hold.
-Intervals.bpl(263,3): Error: This assertion might not hold.
-Intervals.bpl(285,3): Error: This assertion might not hold.
-Intervals.bpl(307,3): Error: This assertion might not hold.
+Intervals.bpl(64,3): Error: this assertion could not be proven
+Intervals.bpl(75,3): Error: this assertion could not be proven
+Intervals.bpl(94,3): Error: this assertion could not be proven
+Intervals.bpl(140,3): Error: this assertion could not be proven
+Intervals.bpl(151,3): Error: this assertion could not be proven
+Intervals.bpl(202,3): Error: this assertion could not be proven
+Intervals.bpl(240,3): Error: this assertion could not be proven
+Intervals.bpl(252,3): Error: this assertion could not be proven
+Intervals.bpl(263,3): Error: this assertion could not be proven
+Intervals.bpl(285,3): Error: this assertion could not be proven
+Intervals.bpl(307,3): Error: this assertion could not be proven
 
 Boogie program verifier finished with 17 verified, 11 errors

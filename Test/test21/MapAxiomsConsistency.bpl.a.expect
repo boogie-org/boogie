@@ -1,4 +1,4 @@
-MapAxiomsConsistency.bpl(98,5): Error: This assertion might not hold.
+MapAxiomsConsistency.bpl(98,5): Error: this assertion could not be proven
 Execution trace:
     MapAxiomsConsistency.bpl(83,13): anon0
 

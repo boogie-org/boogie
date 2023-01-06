@@ -1,4 +1,4 @@
-Orderings.bpl(18,3): Error: This assertion might not hold.
+Orderings.bpl(18,3): Error: this assertion could not be proven
 Execution trace:
     Orderings.bpl(13,3): anon0
 

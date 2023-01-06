@@ -1,5 +1,5 @@
-trace1.bpl(12,1): Error: A postcondition might not hold on this return path.
-trace1.bpl(8,1): Related location: This is the postcondition that might not hold.
+trace1.bpl(12,1): Error: a postcondition could not be proven on this return path
+trace1.bpl(8,1): Related location: this is the postcondition that could not be proven
 Execution trace:
     trace1.bpl(11,5): anon0
     trace1.bpl(17,5): inline$foo$0$anon0

@@ -1,4 +1,4 @@
-bug.bpl(15,3): Error: This assertion might not hold.
+bug.bpl(15,3): Error: this assertion could not be proven
 Execution trace:
     bug.bpl(14,3): anon0
 

@@ -1,4 +1,4 @@
-Havoc.bpl(17,3): Error: This assertion might not hold.
+Havoc.bpl(17,3): Error: this assertion could not be proven
 Execution trace:
     Havoc.bpl(16,3): anon0
 

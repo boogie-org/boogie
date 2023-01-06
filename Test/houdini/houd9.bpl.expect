@@ -2,7 +2,7 @@ Assignment computed by Houdini:
 b1 = True
 b2 = True
 b3 = True
-houd9.bpl(24,3): Error: This assertion might not hold.
+houd9.bpl(24,3): Error: this assertion could not be proven
 Execution trace:
     houd9.bpl(23,9): anon0
 
