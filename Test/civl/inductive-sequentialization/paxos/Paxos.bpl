@@ -41,11 +41,11 @@ function {:constructor} VotePerm(r:Round, n: Node): Permission;
 function {:constructor} ConcludePerm(r: Round): Permission;
 
 type {:pending_async}{:datatype} PA;
-function {:constructor} A_StartRound(round: Round, round_lin: Round) : PA;
-function {:constructor} A_Join(round: Round, node: Node, p: Permission) : PA;
-function {:constructor} A_Propose(round: Round, ps: [Permission]bool) : PA;
-function {:constructor} A_Vote(round: Round, node: Node, value: Value, p: Permission) : PA;
-function {:constructor} A_Conclude(round: Round, value: Value, p: Permission) : PA;
+function {:constructor} A_StartRound(r: Round, r_lin: Round) : PA;
+function {:constructor} A_Join(r: Round, n: Node, p: Permission) : PA;
+function {:constructor} A_Propose(r: Round, ps: [Permission]bool) : PA;
+function {:constructor} A_Vote(r: Round, n: Node, v: Value, p: Permission) : PA;
+function {:constructor} A_Conclude(r: Round, v: Value, p: Permission) : PA;
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Functions
@@ -84,34 +84,34 @@ axiom (forall r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo ::
   (
     var ret := MaxRound(r, ns, voteInfo);
     0 <= ret && ret < r &&
-    (forall r': Round :: ret < r' && r' < r && is#Some(voteInfo[r']) ==> IsDisjoint(ns, ns#VoteInfo(t#Some(voteInfo[r'])))) &&
-    (Round(ret) ==> is#Some(voteInfo[ret]) && !IsDisjoint(ns, ns#VoteInfo(t#Some(voteInfo[ret]))))
+    (forall r': Round :: ret < r' && r' < r && voteInfo[r'] is Some ==> IsDisjoint(ns, voteInfo[r']->t->ns)) &&
+    (Round(ret) ==> voteInfo[ret] is Some && !IsDisjoint(ns, voteInfo[ret]->t->ns))
   )
 );
 
 function {:inline} JoinPermissions(r: Round) : [Permission]bool
 {
-  (lambda p:Permission :: if (is#JoinPerm(p) && r#JoinPerm(p) == r) then true else false)
+  (lambda p:Permission :: if (p is JoinPerm && p->r == r) then true else false)
 }
 
 function {:inline} ProposePermissions(r: Round) : [Permission]bool
 {
-  (lambda p:Permission :: if (is#VotePerm(p) && r#VotePerm(p) == r) || (is#ConcludePerm(p) && r#ConcludePerm(p) == r) then true else false)
+  (lambda p:Permission :: if (p is VotePerm && p->r == r) || (p is ConcludePerm && p->r == r) then true else false)
 }
 
 function {:inline} VotePermissions(r: Round) : [Permission]bool
 {
-  (lambda p:Permission :: if (is#VotePerm(p) && r#VotePerm(p) == r) then true else false)
+  (lambda p:Permission :: if (p is VotePerm && p->r == r) then true else false)
 }
 
 function {:inline} JoinPAs(r: Round) : [PA]int
 {
-  (lambda pa: PA :: if is#A_Join(pa) && round#A_Join(pa) == r && Node(node#A_Join(pa)) && p#A_Join(pa) == JoinPerm(r, node#A_Join(pa)) then 1 else 0)
+  (lambda pa: PA :: if pa is A_Join && pa->r == r && Node(pa->n) && pa->p == JoinPerm(r, pa->n) then 1 else 0)
 }
 
 function {:inline} VotePAs(r: Round, v: Value) : [PA]int
 {
-  (lambda pa: PA :: if is#A_Vote(pa) && round#A_Vote(pa) == r && Node(node#A_Vote(pa)) && value#A_Vote(pa) == v && p#A_Vote(pa) == VotePerm(r, node#A_Vote(pa)) then 1 else 0)
+  (lambda pa: PA :: if pa is A_Vote && pa->r == r && Node(pa->n) && pa->v == v && pa->p == VotePerm(r, pa->n) then 1 else 0)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,8 +139,8 @@ function {:inline} Init (
 {
   rs == (lambda r: Round :: true) &&
   (forall r: Round :: joinedNodes[r] == NoNodes()) &&
-  (forall r: Round :: is#None(voteInfo[r])) &&
-  (forall r: Round :: is#None(decision[r])) &&
+  (forall r: Round :: voteInfo[r] is None) &&
+  (forall r: Round :: decision[r] is None) &&
   (forall pa: PA :: pendingAsyncs[pa] == 0)
 }
 
@@ -151,11 +151,11 @@ function {:inline} InitLow (
   permJoinChannel: JoinResponseChannel,
   permVoteChannel: VoteResponseChannel) : bool
 {
-  (forall n: Node :: lastJoinRound#AcceptorState(acceptorState[n]) == 0 && lastVoteRound#AcceptorState(acceptorState[n]) == 0) &&
+  (forall n: Node :: acceptorState[n]->lastJoinRound == 0 && acceptorState[n]->lastVoteRound == 0) &&
   (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] == 0) &&
   (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] == 0) &&
-  domain#JoinResponseChannel(permJoinChannel) == MapConst(false) &&
-  domain#VoteResponseChannel(permVoteChannel) == MapConst(false)
+  permJoinChannel->domain == MapConst(false) &&
+  permVoteChannel->domain == MapConst(false)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,9 +164,9 @@ function {:inline} InitLow (
 function {:inline}{:linear "perm"} RoundCollector (round: Round) : [Permission]bool
 {
   (lambda p: Permission ::
-    if (is#JoinPerm(p) && round == r#JoinPerm(p)) ||
-       (is#VotePerm(p) && round == r#VotePerm(p)) ||
-       (is#ConcludePerm(p) && round == r#ConcludePerm(p))
+    if (p is JoinPerm && round == p->r) ||
+       (p is VotePerm && round == p->r) ||
+       (p is ConcludePerm && round == p->r)
     then true else false
   )
 }
@@ -174,19 +174,19 @@ function {:inline}{:linear "perm"} RoundCollector (round: Round) : [Permission]b
 function {:inline}{:linear "perm"} RoundSetCollector (rounds: [Round]bool) : [Permission]bool
 {
   (lambda p: Permission ::
-    if (is#JoinPerm(p) && rounds[r#JoinPerm(p)]) ||
-       (is#VotePerm(p) && rounds[r#VotePerm(p)]) ||
-       (is#ConcludePerm(p) && rounds[r#ConcludePerm(p)])
+    if (p is JoinPerm && rounds[p->r]) ||
+       (p is VotePerm && rounds[p->r]) ||
+       (p is ConcludePerm && rounds[p->r])
     then true else false
   )
 }
 
 function {:inline}{:linear "perm"} JoinResponseChannelCollector (permJoinChannel: JoinResponseChannel) : [Permission]bool
 {
-  domain#JoinResponseChannel(permJoinChannel)
+  permJoinChannel->domain
 }
 
 function {:inline}{:linear "perm"} VoteResponseChannelCollector (permVoteChannel: VoteResponseChannel) : [Permission]bool
 {
-  domain#VoteResponseChannel(permVoteChannel)
+  permVoteChannel->domain
 }

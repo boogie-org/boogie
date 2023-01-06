@@ -11,7 +11,7 @@ function {:inline} {:linear "perm"} IntCollector(i: int) : [Perm]bool
 }
 function {:inline} {:linear "perm"} IntSetCollector(iset: [int]bool) : [Perm]bool
 {
-  (lambda p: Perm :: is#Left(p) && iset[i#Left(p)])
+  (lambda p: Perm :: p is Left && iset[p->i])
 }
 
 function {:inline} IntSetSubset(X: [int]bool, Y: [int]bool): bool

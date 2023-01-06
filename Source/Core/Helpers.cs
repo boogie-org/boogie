@@ -208,9 +208,6 @@ namespace Microsoft.Boogie
                 case Microsoft.Boogie.BinaryOperator.Opcode.Sub:
                   op = " - ";
                   break;
-                case Microsoft.Boogie.BinaryOperator.Opcode.Subtype:
-                  op = " <: ";
-                  break;
                 default:
                   op = " ";
                   break;

@@ -20,22 +20,22 @@ function {:inline} EmptyValueArray(): ValueArray {
     ValueArray(Seq_Empty_Value())
 }
 function {:inline} AddValueArray(a: ValueArray, v: Value): ValueArray {
-    ValueArray(Seq_Concat_Value(v#ValueArray(a),Seq_Unit_Value(v)))
+    ValueArray(Seq_Concat_Value(a->v,Seq_Unit_Value(v)))
 }
 function {:inline} RemoveValueArray(a: ValueArray): ValueArray {
-    ValueArray(Seq_Extract_Value(v#ValueArray(a), 0, Seq_Len_Value(v#ValueArray(a)) - 1))
+    ValueArray(Seq_Extract_Value(a->v, 0, Seq_Len_Value(a->v) - 1))
 }
 function {:inline} ConcatValueArray(a1: ValueArray, a2: ValueArray): ValueArray {
-    ValueArray(Seq_Concat_Value(v#ValueArray(a1), v#ValueArray(a2)))
+    ValueArray(Seq_Concat_Value(a1->v, a2->v))
 }
 function {:inline} IsEmpty(a: ValueArray): bool {
-    Seq_Len_Value(v#ValueArray(a)) == 0
+    Seq_Len_Value(a->v) == 0
 }
 function {:inline} LenValueArray(a: ValueArray): int {
-    Seq_Len_Value(v#ValueArray(a))
+    Seq_Len_Value(a->v)
 }
 function {:inline} ValueArrayAt(a: ValueArray, i: int): Value {
-    Seq_Nth_Value(v#ValueArray(a), i)
+    Seq_Nth_Value(a->v, i)
 }
 
 procedure test()

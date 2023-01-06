@@ -11,7 +11,7 @@ type {:datatype} {:linear "Perm"} Perm;
 function {:constructor} Perm (s:Pid, r:Pid) : Perm;
 
 function {:inline} is_perm (s:Pid, r:Pid, p:Perm) : bool
-{ p == Perm(s, r) && is_pid(s#Perm(p)) && is_pid(r#Perm(p)) }
+{ p == Perm(s, r) && is_pid(p->s) && is_pid(p->r) }
 
 function decision_function ([int]int) : int;
 axiom (forall x:[int]int, y:[int]int :: (forall pid:int :: is_pid(pid) ==> x[pid] == y[pid]) ==> decision_function(x) == decision_function(y));
@@ -124,16 +124,16 @@ procedure {:both}{:layer 1} read_init_val_atomic (pid:Pid) returns (v:int)
   v := init_val[pid];
 }
 
-procedure {:yields}{:layer 0}{:refines "Q_atomic"} Q (s:int, r:int, v:int, {:linear_in "Perm"} p:Perm);
+procedure {:yields}{:layer 0}{:refines "Q_atomic"} Q (r:int, s:int, v:int, {:linear_in "Perm"} p:Perm);
 procedure {:yields}{:layer 0}{:refines "read_init_val_atomic"} read_init_val (pid:Pid) returns (v:int);
 
 // ###########################################################################
 // Linear permissions
 
-function {:inline} all_perms () : [Perm]bool { (lambda p:Perm :: is_pid(s#Perm(p)) && is_pid(r#Perm(p))) }
-function {:inline} s_perms_eq (s:Pid) : [Perm]bool { (lambda p:Perm :: s#Perm(p) == s && is_pid(r#Perm(p))) }
-function {:inline} s_perms_geq (s:Pid) : [Perm]bool { (lambda p:Perm :: is_pid(s#Perm(p)) && is_pid(r#Perm(p)) && s#Perm(p) >= s) }
-function {:inline} s_r_perms_geq (s:Pid, r:Pid) : [Perm]bool { (lambda p:Perm :: s#Perm(p) == s && is_pid(r#Perm(p)) && r#Perm(p) >= r) }
+function {:inline} all_perms () : [Perm]bool { (lambda p:Perm :: is_pid(p->s) && is_pid(p->r)) }
+function {:inline} s_perms_eq (s:Pid) : [Perm]bool { (lambda p:Perm :: p->s == s && is_pid(p->r)) }
+function {:inline} s_perms_geq (s:Pid) : [Perm]bool { (lambda p:Perm :: is_pid(p->s) && is_pid(p->r) && p->s >= s) }
+function {:inline} s_r_perms_geq (s:Pid, r:Pid) : [Perm]bool { (lambda p:Perm :: p->s == s && is_pid(p->r) && p->r >= r) }
 
 procedure {:yields}{:layer 1}{:both} split_perms_sender (s:Pid, {:linear_in "Perm"} perms_in:[Perm]bool) returns ({:linear "Perm"} perms_out_1:[Perm]bool, {:linear "Perm"} perms_out_2:[Perm]bool);
 requires {:layer 1} perms_in == s_perms_geq(s);

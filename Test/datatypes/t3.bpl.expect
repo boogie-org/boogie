@@ -1,2 +1,0 @@
-t3.bpl(7,25): error: more than one declaration of datatype constructor name: Int
-1 parse errors detected in t3.bpl

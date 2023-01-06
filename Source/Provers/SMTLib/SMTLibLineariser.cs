@@ -447,7 +447,10 @@ namespace Microsoft.Boogie.SMTLib
           weight = 1;
         }
 
-        var hasAttrs = node.Triggers.Count > 0 || info.qid != null || weight != 1 || info.uniqueId != -1;
+        var hasAttrs = node.Triggers.Count > 0 ||
+                       weight != 1 ||
+                       (LibOptions.EmitDebugInformation &&
+                        (info.qid != null || info.uniqueId != -1));
 
         if (hasAttrs)
         {
@@ -766,6 +769,27 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
+      public bool VisitFieldAccessOp(VCExprNAry node, LineariserOptions options)
+      {
+        var op = (VCExprFieldAccessOp)node.Op;
+        var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
+        Variable v = constructor.InParams[op.FieldIndex];
+        var name = v.Name + "#" + constructor.Name;
+        name = ExprLineariser.Namer.GetQuotedName(v, name);
+        WriteApplication(name, node, options);
+        return true;
+      }
+
+      public bool VisitIsConstructorOp(VCExprNAry node, LineariserOptions options)
+      {
+        var op = (VCExprIsConstructorOp)node.Op;
+        var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
+        var name = "is-" + constructor.Name;
+        name = ExprLineariser.Namer.GetQuotedName(name, name);
+        WriteApplication(name, node, options);
+        return true;
+      }
+
       public bool VisitSelectOp(VCExprNAry node, LineariserOptions options)
       {
         var name = ExprLineariser.SelectOpName(node);
@@ -989,25 +1013,6 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      private string ExtractDatatype(Function func)
-      {
-        if (func is DatatypeSelector)
-        {
-          DatatypeSelector selector = (DatatypeSelector) func;
-          Variable v = selector.constructor.InParams[selector.index];
-          return ExprLineariser.Namer.GetQuotedName(v, v.Name + "#" + selector.constructor.Name);
-        }
-        else if (func is DatatypeMembership)
-        {
-          DatatypeMembership membership = (DatatypeMembership) func;
-          return ExprLineariser.Namer.GetQuotedName(membership, "is-" + membership.constructor.Name);
-        }
-        else
-        {
-          return null;
-        }
-      }
-
       public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)
       {
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp) node.Op;
@@ -1015,7 +1020,6 @@ namespace Microsoft.Boogie.SMTLib
         string printedName;
 
         var builtin = ExprLineariser.ExtractBuiltin(op.Func);
-        var datatype = ExtractDatatype(op.Func);
         if (builtin != null)
         {
           printedName = CheckSeqApply(builtin, node);
@@ -1023,10 +1027,6 @@ namespace Microsoft.Boogie.SMTLib
           {
             printedName = CheckMapApply(builtin, node);
           }
-        }
-        else if (datatype != null)
-        {
-          printedName = datatype;
         }
         else
         {

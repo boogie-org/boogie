@@ -4,6 +4,7 @@ using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
+using Microsoft.Boogie.SMTLib;
 using VC;
 
 namespace Microsoft.Boogie
@@ -441,6 +442,15 @@ namespace Microsoft.Boogie
       set => normalizeNames = value;
     }
 
+    public Func<SMTLibOptions, SMTLibSolverOptions, SMTLibSolver> CreateSolver { get; set; } = (libOptions, options) =>
+    {
+      return options.Solver switch
+      {
+        SolverKind.NoOpWithZ3Options => new NoopSolver(),
+        _ => new SMTLibProcess(libOptions, options)
+      };
+    };
+
     public bool NormalizeDeclarationOrder
     {
       get => normalizeDeclarationOrder;
@@ -650,7 +660,13 @@ namespace Microsoft.Boogie
       set => trustNoninterference = value;
     }
 
+    public bool TrustRefinement {
+      get => trustRefinement;
+      set => trustRefinement = value;
+    }
+    
     public int TrustLayersUpto { get; set; } = -1;
+    
     public int TrustLayersDownto { get; set; } = int.MaxValue;
 
     public bool TrustInductiveSequentialization {
@@ -764,7 +780,7 @@ namespace Microsoft.Boogie
 
     public int LiveVariableAnalysis { get; set; } = 1;
 
-    public bool UseLibrary { get; set; } = false;
+    public HashSet<string> Libraries { get; set; } = new HashSet<string>();
 
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
@@ -798,6 +814,7 @@ namespace Microsoft.Boogie
     private bool useProverEvaluate;
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
+    private bool trustRefinement = false;
     private bool trustInductiveSequentialization = false;
     private bool trace = false;
     private int enhancedErrorMessages = 0;
@@ -873,9 +890,9 @@ namespace Microsoft.Boogie
           return true;
 
         case "lib":
-          if (ps.ConfirmArgumentCount(0))
+          if (ps.ConfirmArgumentCount(1))
           {
-            this.UseLibrary = true;
+            this.Libraries.Add(cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1554,6 +1571,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||
               ps.CheckBooleanFlag("trustMoverTypes", x => trustMoverTypes = x) ||
               ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
+              ps.CheckBooleanFlag("trustRefinement", x => trustRefinement = x) ||
               ps.CheckBooleanFlag("trustInductiveSequentialization", x => trustInductiveSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
@@ -1773,6 +1791,14 @@ namespace Microsoft.Boogie
        Set the random seed for verifying a given implementation.
        Has the same effect as setting /randomSeed but only for a single implementation.
 
+     {:verboseName <string>}
+       Set the name to use when printing messages about verification
+       status in `/trace` and selecting procedures to verify with
+       `/proc`. There are no restrictions on the characters used in the
+       string, so it can be particularly useful as a way of describing
+       the original name of an identifier translated into Boogie from
+       some other source language.
+
   ---- On Axioms -------------------------------------------------------------
 
     {:include_dep}
@@ -1861,15 +1887,14 @@ namespace Microsoft.Boogie
   ---- Pool-based quantifier instantiation -----------------------------------
 
      {:pool ""name""}
-       Used on a bound variable of a quantifier or lambda.  Indicates that
+       Used on a bound variable of a quantifier or lambda. Indicates that
        expressions in pool name should be used for instantiating that variable.
 
      {:add_to_pool ""name"", e}
-       Used on a command.  Adds the expression e, after substituting variables
-       with their incarnations just before the command, to pool name.
+       Used on an assert or assume command. Adds the expression e to pool name
+       after substituting variables with their incarnations at the command.
 
-     {:skolem_add_to_pool ""name"", e}
-       Used on a quantifier.  Adds the expression e, after substituting the
+       Used on a quantifier. Adds the expression e, after substituting the
        bound variables with fresh skolem constants, whenever the quantifier is
        skolemized.
 
@@ -2084,6 +2109,8 @@ namespace Microsoft.Boogie
                 do not verify mover type annotations on atomic action declarations
   /trustNoninterference
                 do not perform noninterference checks
+  /trustRefinement
+                do not perform refinement checks
   /trustLayersUpto:<n>
                 do not verify layers <n> and below
   /trustLayersDownto:<n>

@@ -21,11 +21,6 @@ axiom(!b6);
 axiom(!b7);
 axiom(b8);
 
-function {:inline} {:linear "1"} SetCollector1(x: [int]bool) : [int]bool
-{
-  x
-}
-
 procedure main({:linear_in "1"} x_in: [int]bool)
   requires b0 ==> x_in == MapConst(true);
   requires b1 ==> x_in != MapConst(false);

@@ -95,6 +95,14 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    public virtual Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      node.Lhs = (NAryExpr)this.Visit(node.Lhs);
+      node.Rhs = (Expr)this.Visit(node.Rhs);
+      VisitAttributes(node);
+      return node;
+    }
+    
     public virtual Cmd VisitAssumeCmd(AssumeCmd node)
     {
       Contract.Requires(node != null);
@@ -552,7 +560,15 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public virtual MapType VisitMapType(MapType node)
+    public virtual AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
+    {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<AssignLhs>() != null);
+      node.Datatype = cce.NonNull((AssignLhs) this.Visit(node.Datatype));
+      return node;
+    }
+    
+    public virtual Type VisitMapType(MapType node)
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<MapType>() != null);
@@ -612,6 +628,7 @@ namespace Microsoft.Boogie
       node.Modifies = this.VisitIdentifierExprSeq(node.Modifies);
       node.OutParams = this.VisitVariableSeq(node.OutParams);
       node.Requires = this.VisitRequiresSeq(node.Requires);
+      VisitAttributes(node);
       return node;
     }
 
@@ -646,7 +663,7 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public virtual BinderExpr VisitBinderExpr(BinderExpr node)
+    public virtual Expr VisitBinderExpr(BinderExpr node)
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<BinderExpr>() != null);
@@ -956,7 +973,13 @@ namespace Microsoft.Boogie
         this.Visit(node.Lhss[i]);
         this.VisitExpr(node.Rhss[i]);
       }
+      return node;
+    }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      this.VisitExpr(node.Lhs);
+      this.VisitExpr(node.Rhs);
       return node;
     }
 
@@ -1345,7 +1368,7 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public override MapType VisitMapType(MapType node)
+    public override Type VisitMapType(MapType node)
     {
       Contract.Ensures(Contract.Result<MapType>() == node);
       // not doing anything about the bound variables ... maybe
@@ -1427,7 +1450,7 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public override BinderExpr VisitBinderExpr(BinderExpr node)
+    public override Expr VisitBinderExpr(BinderExpr node)
     {
       Contract.Ensures(Contract.Result<BinderExpr>() == node);
       this.VisitExpr(node.Body);

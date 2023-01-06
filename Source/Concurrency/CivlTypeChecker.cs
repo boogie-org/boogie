@@ -29,7 +29,6 @@ namespace Microsoft.Boogie
     public Dictionary<Procedure, LemmaProc> procToLemmaProc;
     public Dictionary<Procedure, IntroductionAction> procToIntroductionAction;
     public Dictionary<Procedure, YieldInvariant> procToYieldInvariant;
-    public CommutativityHints commutativityHints;
 
     public List<InductiveSequentialization> inductiveSequentializations;
 
@@ -43,7 +42,7 @@ namespace Microsoft.Boogie
     // These collections are for convenience in later phases and are only initialized at the end of type checking.
     public List<int> allRefinementLayers;
     public IEnumerable<Variable> GlobalVariables => globalVarToLayerRange.Keys;
-
+    
     public LinearTypeChecker linearTypeChecker;
 
     public AtomicAction SkipAtomicAction;
@@ -141,54 +140,39 @@ namespace Microsoft.Boogie
 
     public void TypeCheck()
     {
+      linearTypeChecker.TypeCheck();
+      if (checkingContext.ErrorCount > 0)
+      {
+        return;
+      }
+      
       TypeCheckGlobalVariables();
       TypeCheckLemmaProcedures();
       TypeCheckYieldInvariants();
       TypeCheckActions();
-      
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
-      
       TypeCheckPendingAsyncMachinery();
-
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
-
-      linearTypeChecker.TypeCheck();
       
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
-
       TypeCheckInductiveSequentializations();
       TypeCheckYieldingProcedureDecls();
       TypeCheckLocalVariables();
-
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
       
       TypeCheckYieldingProcedureImpls();
-
+      TypeCheckLoopAnnotations();
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
 
-      TypeCheckLoopAnnotations();
-
       TypeCheckRefinementLayers();
-
-      TypeCheckCommutativityHints();
-
       AttributeEraser.Erase(this);
-
       if (checkingContext.ErrorCount > 0)
       {
         return;
@@ -238,13 +222,6 @@ namespace Microsoft.Boogie
           Error(g, $"Global variable {g.Name} cannot be hidden at layer with IS");
         }
       }
-    }
-
-    private void TypeCheckCommutativityHints()
-    {
-      CommutativityHintVisitor visitor = new CommutativityHintVisitor(this);
-      visitor.VisitFunctions();
-      this.commutativityHints = visitor.commutativityHints;
     }
 
     private void TypeCheckGlobalVariables()
@@ -304,10 +281,6 @@ namespace Microsoft.Boogie
           {
             Error(proc, "Action must be either an atomic action or introduction action");
           }
-          else if (layerRange.lowerLayerNum != layerRange.upperLayerNum)
-          {
-            Error(proc, "Layer range of an introduction action should be singleton");
-          }
           else if (proc.Modifies.Any(ie => GlobalVariableLayerRange(ie.Decl).lowerLayerNum != layerRange.lowerLayerNum))
           {
             Error(proc, "Introduction actions can modify a global variable only on its introduction layer");
@@ -324,18 +297,24 @@ namespace Microsoft.Boogie
       {
         Error(program, "Call graph over atomic actions must be acyclic");
       }
-
+      
+      actionProcs.Iter(proc =>
+      {
+        if (proc.FindAttribute("inline") != null)
+        {
+          Error(proc, "unnecessary to provide inline attribute on action");
+        }
+      });
+      
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
 
       CivlUtil.AddInlineAttribute(SkipAtomicAction.proc);
-      CivlUtil.AddInlineAttribute(SkipAtomicAction.impl);
       actionProcs.Iter(proc =>
       {
         CivlUtil.AddInlineAttribute(proc);
-        CivlUtil.AddInlineAttribute(actionProcToImpl[proc]);
       });
       actionProcs.Iter(proc =>
       {
@@ -360,7 +339,7 @@ namespace Microsoft.Boogie
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.HasAttribute(CivlAttributes.INTRO))
         {
-          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange);
+          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange, Options);
         }
         else
         {
@@ -566,7 +545,7 @@ namespace Microsoft.Boogie
         foreach (var param in proc.InParams)
         {
           localVarToLayerRange[param] = new LayerRange(yieldInvariant.LayerNum);
-          var linearKind = linearTypeChecker.FindLinearKind(param);
+          var linearKind = LinearDomainCollector.FindLinearKind(param);
           if (linearKind == LinearKind.LINEAR_IN || linearKind == LinearKind.LINEAR_OUT)
           {
             Error(param, "Parameter to yield invariant can only be :linear");
@@ -830,18 +809,18 @@ namespace Microsoft.Boogie
             // For error messages below
             string name1 = formals1[i].Name;
             string name2 = formals2[i].Name;
-            string msg = (name1 == name2) ? name1 : $"{name1} (named {name2} in {decl2.Name})";
-
-            // the names of the formals are allowed to change from the proc to the impl
-            // but types must be identical
+            
             Type t1 = formals1[i].TypedIdent.Type;
             Type t2 = formals2[i].TypedIdent.Type;
-            if (!t1.Equals(t2))
+            if (name1 != name2)
             {
-              checkingContext.Error(formals1[i], $"mismatched type of {inout}-parameter in {decl2.Name}: {msg}");
+              checkingContext.Error(formals1[i], $"mismatched name of {inout}-parameter {name1}: (named {name2} in {decl2.Name})");
             }
-
-            if (checkLinearity &&
+            else if (!t1.Equals(t2))
+            {
+              checkingContext.Error(formals1[i], $"mismatched type of {inout}-parameter {name1} in {decl2.Name}");
+            }
+            else if (checkLinearity &&
                 (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) !=
                  QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
                  QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) !=
@@ -850,7 +829,7 @@ namespace Microsoft.Boogie
                  QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
             {
               checkingContext.Error(formals1[i],
-                $"mismatched linearity type of {inout}-parameter in {decl2.Name}: {msg}");
+                $"mismatched linearity annotation of {inout}-parameter {name1} in {decl2.Name}");
             }
           }
         }
@@ -989,7 +968,7 @@ namespace Microsoft.Boogie
 
       if (pendingAsyncType != null)
       {
-        pendingAsyncAdd = program.monomorphizer.Monomorphize("MapAdd",
+        pendingAsyncAdd = program.monomorphizer.InstantiateFunction("MapAdd",
           new Dictionary<string, Type>() { {"T", pendingAsyncType} });
 
         var pendingAsyncDatatypeTypeCtorDecl = pendingAsyncType.Decl as DatatypeTypeCtorDecl;
@@ -1119,12 +1098,12 @@ namespace Microsoft.Boogie
 
     #region Helpers for attribute parsing
 
-    private bool IsYieldingProcedure(Procedure proc)
+    public bool IsYieldingProcedure(Procedure proc)
     {
       return proc.HasAttribute(CivlAttributes.YIELDS);
     }
 
-    private bool IsAction(Procedure proc)
+    public bool IsAction(Procedure proc)
     {
       return !proc.HasAttribute(CivlAttributes.YIELDS) &&
              (GetMoverType(proc) != null ||
@@ -1133,12 +1112,12 @@ namespace Microsoft.Boogie
               proc.HasAttribute(CivlAttributes.IS_ABSTRACTION));
     }
 
-    private bool IsLemmaProcedure(Procedure proc)
+    public bool IsLemmaProcedure(Procedure proc)
     {
       return !proc.HasAttribute(CivlAttributes.YIELDS) && proc.HasAttribute(CivlAttributes.LEMMA);
     }
 
-    private bool IsYieldInvariant(Procedure proc)
+    public bool IsYieldInvariant(Procedure proc)
     {
       return proc.HasAttribute(CivlAttributes.YIELD_INVARIANT);
     }
@@ -1604,7 +1583,7 @@ namespace Microsoft.Boogie
       private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller, List<LinearKind> kinds)
         : this(civlTypeChecker, attr,
             new HashSet<Variable>(
-              caller.InParams.Union(caller.OutParams).Where(p => kinds.Contains(civlTypeChecker.linearTypeChecker.FindLinearKind(p)))
+              caller.InParams.Union(caller.OutParams).Where(p => kinds.Contains(LinearDomainCollector.FindLinearKind(p)))
             )
           ) {}
 
@@ -1630,7 +1609,7 @@ namespace Microsoft.Boogie
 
         if (!(attr.Params[0] is string yieldInvariantProcName))
         {
-          civlTypeChecker.Error(attr, "Name of a yield invariant must be provided at position 1");
+          civlTypeChecker.Error(attr, $"Illegal yield invariant name: {attr.Params[0]}");
           return;
         }
 
@@ -1651,7 +1630,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            civlTypeChecker.Error(attr, $"Illegal expression at position {i}");
+            civlTypeChecker.Error(attr, $"Illegal expression: {attr.Params[i]}");
           }
         }
 
@@ -1697,7 +1676,7 @@ namespace Microsoft.Boogie
       {
         foreach (var (actual, formal) in callCmd.Ins.Zip(callCmd.Proc.InParams))
         {
-          if (civlTypeChecker.linearTypeChecker.FindDomainName(formal) != null)
+          if (LinearDomainCollector.FindLinearKind(formal) != LinearKind.ORDINARY)
           {
             var decl = ((IdentifierExpr) actual).Decl;
             if (!availableLinearVars.Contains(decl))
@@ -1871,17 +1850,33 @@ namespace Microsoft.Boogie
               lhsLayerRange.Subset(civlTypeChecker.LocalVariableLayerRange(x.Decl))))
             {
               civlTypeChecker.checkingContext.Error(node,
-                "Layer range mismatch at position {0}: local variables accessed in rhs must be available at all layers where the lhs exists",
-                i);
+                $"Variables accessed in the source of assignment to {lhs} must exist at all layers where {lhs} exists");
             }
-
             localVariableAccesses = null;
           }
         }
-
         return cmd;
       }
 
+      public override Cmd VisitUnpackCmd(UnpackCmd node)
+      {
+        var cmd = base.VisitUnpackCmd(node);
+        localVariableAccesses = new List<IdentifierExpr>();
+        base.Visit(node.Rhs);
+        node.UnpackedLhs.Select(ie => ie.Decl).OfType<LocalVariable>().Iter(lhs =>
+        {
+          var lhsLayerRange = civlTypeChecker.LocalVariableLayerRange(lhs);
+          if (!localVariableAccesses.TrueForAll(x =>
+                lhsLayerRange.Subset(civlTypeChecker.LocalVariableLayerRange(x.Decl))))
+          {
+            civlTypeChecker.checkingContext.Error(node,
+              $"Variables accessed in the unpacked expression must exist at all layers where {lhs} exists");
+          }
+        });
+        localVariableAccesses = null;
+        return cmd;
+      }
+      
       public void VisitSpecPre()
       {
         globalVariableAccesses = new List<IdentifierExpr>();
@@ -1933,8 +1928,48 @@ namespace Microsoft.Boogie
 
       public override Cmd VisitParCallCmd(ParCallCmd node)
       {
-        Require(node.CallCmds.Where(callCmd => callCmd.HasAttribute(CivlAttributes.REFINES)).Count() <= 1, node,
+        Require(node.CallCmds.Count(callCmd => callCmd.HasAttribute(CivlAttributes.REFINES)) <= 1, node,
           "At most one arm of a parallel call can refine the specification action");
+        
+        HashSet<Variable> parallelCallInvars = new HashSet<Variable>();
+        foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => !civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc)))
+        {
+          for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+          {
+            if (LinearDomainCollector.FindLinearKind(callCmd.Proc.InParams[i]) == LinearKind.ORDINARY)
+            {
+              continue;
+            }
+            IdentifierExpr actual = callCmd.Ins[i] as IdentifierExpr;
+            if (parallelCallInvars.Contains(actual.Decl))
+            {
+              civlTypeChecker.Error(node,
+                $"Linear variable {actual.Decl.Name} can occur only once as an input parameter of a parallel call");
+            }
+            else
+            {
+              parallelCallInvars.Add(actual.Decl);
+            }
+          }
+        }
+
+        foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc)))
+        {
+          for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+          {
+            if (LinearDomainCollector.FindLinearKind(callCmd.Proc.InParams[i]) == LinearKind.ORDINARY)
+            {
+              continue;
+            }
+            IdentifierExpr actual = callCmd.Ins[i] as IdentifierExpr;
+            if (parallelCallInvars.Contains(actual.Decl))
+            {
+              civlTypeChecker.Error(node,
+                $"Linear variable {actual.Decl.Name} cannot be an input parameter to both a yield invariant and a procedure in a parallel call");
+            }
+          }
+        }
+        
         return base.VisitParCallCmd(node);
       }
 

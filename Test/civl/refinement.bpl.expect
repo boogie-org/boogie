@@ -2,6 +2,7 @@ refinement.bpl(7,48): Error: A yield-to-yield fragment modifies layer-2 state su
 Execution trace:
     refinement.bpl(9,3): anon0
     refinement.bpl(53,5): inline$INCR$0$anon0
+    refinement.bpl(9,3): anon0$1
     refinement.bpl(9,3): anon0_0
     refinement.bpl(53,5): inline$INCR$1$anon0
     (0,0): Civl_ReturnChecker
@@ -9,11 +10,13 @@ refinement.bpl(14,48): Error: A yield-to-yield fragment modifies layer-2 state i
 Execution trace:
     refinement.bpl(16,3): anon0
     refinement.bpl(59,5): inline$DECR$0$anon0
+    refinement.bpl(16,3): anon0$1
     (0,0): Civl_RefinementChecker
 refinement.bpl(14,48): Error: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
 Execution trace:
     refinement.bpl(16,3): anon0
     refinement.bpl(59,5): inline$DECR$0$anon0
+    refinement.bpl(16,3): anon0$1
     refinement.bpl(16,3): anon0_0
     refinement.bpl(53,5): inline$INCR$0$anon0
     (0,0): Civl_ReturnChecker
@@ -25,6 +28,7 @@ refinement.bpl(39,48): Error: A yield-to-yield fragment illegally modifies layer
 Execution trace:
     refinement.bpl(41,3): anon0
     refinement.bpl(53,5): inline$INCR$0$anon0
+    refinement.bpl(41,3): anon0$1
     refinement.bpl(41,3): anon0_0
     refinement.bpl(43,3): anon2_LoopHead
     refinement.bpl(53,5): inline$INCR$1$anon0

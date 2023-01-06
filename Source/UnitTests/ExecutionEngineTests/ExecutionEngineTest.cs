@@ -4,8 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
+using Microsoft.Boogie.SMTLib;
 using NUnit.Framework;
 using VC;
 
@@ -47,7 +49,11 @@ procedure Second(y: int)
     Assert.AreEqual(ConditionGeneration.Outcome.Errors, verificationResult1.Outcome);
     Assert.AreEqual(true, verificationResult1.Errors[0].Model.ModelHasStatesAlready);
 
-    var result2 = await tasks[1].TryRun()!.ToTask();
+    Assert.IsTrue(tasks[1].IsIdle);
+    var runningStates = tasks[1].TryRun()!;
+    Assert.IsFalse(tasks[1].IsIdle);
+    var result2 = await runningStates.ToTask();
+    Assert.IsTrue(tasks[1].IsIdle);
     var verificationResult2 = ((Completed)result2).Result;
     Assert.AreEqual(ConditionGeneration.Outcome.Correct, verificationResult2.Outcome);
   }
@@ -182,34 +188,78 @@ Boogie program verifier finished with 0 verified, 1 error
   }
 
   [Test]
-  public async Task RunCancelRun() {
+  public async Task RunCancelRunCancel() {
     var options = CommandLineOptions.FromArguments();
     options.VcsCores = 1;
+    options.CreateSolver = (_, _) => new UnsatSolver(new SemaphoreSlim(0));
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
     var source = @"
-function Fib(x: int): int;
-axiom (forall x: int :: (x <= 1 || Fib(x) == Fib(x - 1) + Fib(x - 2)));
-axiom (Fib(1) == 1);
-axiom (Fib(0) == 1);
-procedure FibTest() {
-  assert Fib(31) == 1346269;
+procedure Foo(x: int) {
+  assert true;
 }".TrimStart();
     var result = Parser.Parse(source, "fakeFilename1", out var program);
     Assert.AreEqual(0, result);
     var tasks = engine.GetImplementationTasks(program)[0];
-    var statusList = new List<IVerificationStatus>();
+    var statusList1 = new List<IVerificationStatus>();
     var firstStatuses = tasks.TryRun()!;
-    firstStatuses.Subscribe(statusList.Add);
+    await firstStatuses.Where(s => s is Running).FirstAsync().ToTask();
+    firstStatuses.Subscribe(statusList1.Add);
     tasks.Cancel();
+
     var secondStatuses = tasks.TryRun()!;
-    secondStatuses.Subscribe(statusList.Add);
+    tasks.Cancel();
+    var statusList2 = new List<IVerificationStatus>();
+    secondStatuses.Subscribe(statusList2.Add);
+    await secondStatuses.DefaultIfEmpty().ToTask();
+    var expected1 = new List<IVerificationStatus>() {
+      new Running(), new Stale()
+    };
+    Assert.AreEqual(expected1, statusList1);
+    var expected2 = new List<IVerificationStatus>() {
+      new Stale()
+    };
+    Assert.AreEqual(expected2, statusList2.TakeLast(1));
+  }
+
+  [Test]
+  public async Task RunRunCancelRunRun() {
+    var options = CommandLineOptions.FromArguments();
+    var returnCheckSat = new SemaphoreSlim(0);
+    options.VcsCores = 1;
+    options.CreateSolver = (_, _) => new UnsatSolver(returnCheckSat);
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var source = @"
+procedure Foo(x: int) {
+  assert true;
+}".TrimStart();
+    var result = Parser.Parse(source, "fakeFilename1", out var program);
+    Assert.AreEqual(0, result);
+    var tasks = engine.GetImplementationTasks(program)[0];
+    var statusList1 = new List<IVerificationStatus>();
+    var firstStatuses = tasks.TryRun()!;
+    var runAfterRun1 = tasks.TryRun();
+    Assert.AreEqual(null, runAfterRun1);
+    firstStatuses.Subscribe(statusList1.Add);
+    tasks.Cancel();
+
+    var secondStatuses = tasks.TryRun()!;
+    var runAfterRun2 = tasks.TryRun();
+    Assert.AreEqual(null, runAfterRun2);
+    var statusList2 = new List<IVerificationStatus>();
+    secondStatuses.Subscribe(statusList2.Add);
+    returnCheckSat.Release();
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
-    var expected = new List<IVerificationStatus>() {
-      new Running(), new Stale(), new Queued(), new Running(), finalResult
+    var expected1 = new List<IVerificationStatus>() {
+      new Running(), new Stale()
     };
-    Assert.AreEqual(expected, statusList);
+    Assert.AreEqual(expected1, statusList1);
+    var expected2 = new List<IVerificationStatus>() {
+      new Running(), finalResult
+    };
+    Assert.AreEqual(expected2, statusList2.Where(s => s is not Queued));
   }
 
   [Test]
@@ -220,12 +270,12 @@ procedure FibTest() {
     options.VerifySnapshots = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
-    var programString = @"procedure {:priority 7} {:checksum ""stable""} Bad(y: int)
+    var programString = @"procedure {:priority 3} {:checksum ""stable""} Bad(y: int)
 {
   assert 2 == 1;
 }
 
-procedure {:priority 4} {:checksum ""stable""} Good(y: int)
+procedure {:priority 2} {:checksum ""stable""} Good(y: int)
 {
   assert 2 == 2;
 }
@@ -253,9 +303,10 @@ procedure {:priority 4} {:checksum ""stable""} Good(y: int)
 
     Assert.AreEqual((firstName, new Running()), statusList[0]);
     Assert.AreEqual((secondName, new Queued()), statusList[1]);
-    Assert.AreEqual(firstName, statusList[2].Item1);
-    Assert.IsTrue(statusList[2].Item2 is Completed);
-    Assert.AreEqual((secondName, new Running()), statusList[3]);
+    var indexTwoAndThreeOrdered = statusList.Skip(2).Take(2).OrderByDescending(k => k.Item1 == firstName).ToList();
+    Assert.AreEqual(firstName, indexTwoAndThreeOrdered[0].Item1);
+    Assert.IsTrue(indexTwoAndThreeOrdered[0].Item2 is Completed);
+    Assert.AreEqual((secondName, new Running()), indexTwoAndThreeOrdered[1]);
     Assert.AreEqual(secondName, statusList[4].Item1);
     Assert.IsTrue(statusList[4].Item2 is Completed);
     

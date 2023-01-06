@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -monomorphize -normalizeNames:1 -enhancedErrorMessages:1 "%s" > "%t"
+// RUN: %parallel-boogie -monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // Issue #361
 
@@ -14,12 +14,12 @@ procedure p() {
   var x: Cell (OtherCell int);
   x := Cell(OtherCell(1));
   assume {:print "x=", x} true;
-  assert x#OtherCell(x#Cell(x)) == 1;
+  assert x->x->x == 1;
 }
 
 procedure q() {
   var x: Cell (OtherCell int);
   x := Cell(OtherCell(1));
   assume {:print "x=", x} true;
-  assert x#OtherCell(x#Cell(x)) == 0;
+  assert x->x->x == 0;
 }

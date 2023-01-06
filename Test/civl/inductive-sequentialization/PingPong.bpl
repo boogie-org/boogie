@@ -23,7 +23,7 @@ type {:linear "cid"} {:datatype} ChannelHandle;
 function {:constructor} Left(cid: ChannelId): ChannelHandle;
 function {:constructor} Right(cid: ChannelId): ChannelHandle;
 function {:inline} ChannelId(p: ChannelHandle) : ChannelId {
-  if is#Left(p) then cid#Left(p) else cid#Right(p)
+  p->cid
 }
 
 function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [ChannelHandle]bool {
@@ -35,7 +35,7 @@ function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [Channel
 // and Pong holding its right channel handle.
 type {:pending_async}{:datatype} PA;
 function {:constructor} PING(x: int, left: ChannelHandle): PA;
-function {:constructor} PONG(x: int, right: ChannelHandle): PA;
+function {:constructor} PONG(y: int, right: ChannelHandle): PA;
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
@@ -93,8 +93,8 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(left);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
 
   assert (exists {:pool "INV"} m:int :: left_channel[m] > 0);
   assert (forall m:int :: right_channel[m] == 0);
@@ -112,8 +112,8 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(right);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
 
   assert (exists {:pool "INV"} m:int :: right_channel[m] > 0);
   assert (forall m:int :: left_channel[m] == 0);
@@ -143,11 +143,11 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(left);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
 
   assert x > 0;
-  assert is#Left(left);
+  assert left is Left;
   assert (forall m:int :: left_channel[m] > 0 ==> m == x); // assertion to discharge
 
   assume left_channel[x] > 0;
@@ -176,11 +176,11 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(right);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
 
   assert y > 0;
-  assert is#Right(right);
+  assert right is Right;
   assert (forall m:int :: right_channel[m] > 0 ==> m == y || m == 0); // assertion to discharge
 
   if (*)
@@ -256,9 +256,9 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(permission);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
-  if (is#Left(permission)) {
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
+  if (permission is Left) {
     assume left_channel[m] > 0;
     left_channel[m] := left_channel[m] - 1;
   } else {
@@ -276,9 +276,9 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(permission);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
-  if (is#Left(permission)) {
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
+  if (permission is Left) {
     right_channel[m] := right_channel[m] + 1;
   } else {
     left_channel[m] := left_channel[m] + 1;

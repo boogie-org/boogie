@@ -1,7 +1,5 @@
 monomorphize6.bpl(24,3): Error: this assertion could not be proven
 Execution trace:
     monomorphize6.bpl(22,5): anon0
-Augmented execution trace:
-x=(Cell_182 (OtherCell_46 1))
 
 Boogie program verifier finished with 1 verified, 1 error

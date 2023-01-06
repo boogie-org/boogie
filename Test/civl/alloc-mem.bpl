@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "mem"} Ref = int;
+type {:linear "mem"} ref = int;
 
 type lmap;
 function {:linear "mem"} dom(lmap) : [int]bool;

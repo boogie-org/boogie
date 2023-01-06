@@ -144,7 +144,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      CivlVCGeneration.Transform(Options, civlTypeChecker);
+      CivlRewriter.Transform(Options, civlTypeChecker);
       if (Options.CivlDesugaredFile != null) {
         int oldPrintUnstructured = Options.PrintUnstructured;
         Options.PrintUnstructured = 1;
@@ -327,15 +327,19 @@ namespace Microsoft.Boogie
       {
         if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
         {
-          Options.UseLibrary = true;
+          Options.Libraries.Add("base");
         }
 
-        if (Options.UseLibrary)
+        foreach (var libraryName in Options.Libraries)
+        {
+          var library = Parser.ParseLibrary(libraryName);
+          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
+        }
+
+        if (Options.Libraries.Contains("base"))
         {
           Options.UseArrayTheory = true;
           Options.Monomorphize = true;
-          var library = Parser.ParseLibraryDefinitions();
-          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
         }
 
         return program;
@@ -432,6 +436,12 @@ namespace Microsoft.Boogie
       {
         Console.WriteLine(
           "Datatypes only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
+        return PipelineOutcome.FatalError;
+      }
+      else if (program.TopLevelDeclarations.OfType<Function>().Any(f => QKeyValue.FindBoolAttribute(f.Attributes, "define")))
+      {
+        Console.WriteLine(
+          "Functions with :define attribute only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       }
 
@@ -897,6 +907,11 @@ namespace Microsoft.Boogie
       }
       verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
       verificationResult.End = DateTime.UtcNow;
+      // `TotalProverElapsedTime` does not include the initial cost of starting
+      // the SMT solver (unlike `End - Start` in `VerificationResult`).  It
+      // may still include the time taken to restart the prover when running
+      // with `vcsCores > 1`.
+      verificationResult.Elapsed = vcgen.TotalProverElapsedTime;
       verificationResult.ResourceCount = vcgen.ResourceCount;
 
       return verificationResult;
@@ -1086,16 +1101,13 @@ namespace Microsoft.Boogie
                 string msg = null;
                 if (callError != null) {
                   tok = callError.FailingCall.tok;
-                  msg = callError.FailingCall.ErrorData as string ??
-                        callError.FailingCall.Description.FailureDescription;
+                  msg = callError.FailingCall.Description.FailureDescription;
                 } else if (returnError != null) {
                   tok = returnError.FailingReturn.tok;
                   msg = returnError.FailingReturn.Description.FailureDescription;
                 } else {
                   tok = assertError.FailingAssert.tok;
-                  if (assertError.FailingAssert.ErrorMessage == null || options.ForceBplErrors) {
-                    msg = assertError.FailingAssert.ErrorData as string;
-                  } else {
+                  if (!(assertError.FailingAssert.ErrorMessage == null || options.ForceBplErrors)) {
                     msg = assertError.FailingAssert.ErrorMessage;
                   }
 

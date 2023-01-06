@@ -39,4 +39,3 @@ requires{:layer 100} tid == GcTid;
     yield;
     assert{:layer 100} tid == GcTid;
 }
-

@@ -1,0 +1,8 @@
+issue-607.bpl(6,9): Error: This assertion might not hold.
+Execution trace:
+    issue-607.bpl(4,5): anon0
+    issue-607.bpl(5,9): anon2_Then
+Augmented execution trace:
+ModelCaptured
+
+Boogie program verifier finished with 0 verified, 1 error

@@ -1,3 +1,5 @@
+call-yield-invariant-errors.bpl(25,2): Error: Linear variable x can occur only once as an input parameter of a parallel call
+call-yield-invariant-errors.bpl(32,2): Error: Linear variable x cannot be an input parameter to both a yield invariant and a procedure in a parallel call
 call-yield-invariant-errors.bpl(14,64): Error: Argument must be available
-call-yield-invariant-errors.bpl(15,64): Error: Only a linear argument can be passed to linear parameter n
-2 type checking errors detected in call-yield-invariant-errors.bpl
+call-yield-invariant-errors.bpl(15,33): Error: Only linear variable can be passed to linear parameter: c
+4 type checking errors detected in call-yield-invariant-errors.bpl

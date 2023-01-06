@@ -7,6 +7,7 @@ using System.IO;
 using System.Diagnostics.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
+using SMTLib;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -21,6 +22,7 @@ namespace Microsoft.Boogie.SMTLib
     private readonly int smtProcessId;
     private static int smtProcessIdSeq = 0;
     private ConsoleCancelEventHandler cancelEvent;
+    private SExprParser sexpParser = new();
 
     public SMTLibProcess(SMTLibOptions libOptions, SMTLibSolverOptions options)
     {
@@ -133,10 +135,10 @@ namespace Microsoft.Boogie.SMTLib
       toProver.Flush();
     }
 
-    public override async Task<SExpr> SendRequest(string request) {
+    public override async Task<SExpr> SendRequest(string request, CancellationToken cancellationToken = default) {
       SExpr previousResponse = null;
       try {
-        await asyncLock.WaitAsync();
+        await asyncLock.WaitAsync(cancellationToken);
         Send(request);
         // Because Z3 4.8.5 may return a response multiple times for a single request,
         // We use a ping/pong to determine when Z3 has finished sending responses.
@@ -182,9 +184,9 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
+    public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests, CancellationToken cancellationToken = default) {
       try {
-        await asyncLock.WaitAsync();
+        await asyncLock.WaitAsync(cancellationToken);
         var result = new List<SExpr>();
         foreach (var request in requests) {
           Send(request);
@@ -214,7 +216,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       while (true) {
-        var exprs = await ParseSExprs(true).ToListAsync();
+        var exprs = await sexpParser.ParseSExprs(true).ToListAsync();
         Contract.Assert(exprs.Count <= 1);
         if (exprs.Count == 0) {
           return null;
@@ -314,181 +316,11 @@ namespace Microsoft.Boogie.SMTLib
       ErrorHandler?.Invoke(msg);
     }
 
-    #region SExpr parsing
-
-    int linePos;
-    string currLine;
-
-    async Task<char> SkipWs()
+    public override void AddErrorHandler(Action<string> handler)
     {
-      while (true)
-      {
-        if (currLine == null)
-        {
-          currLine = await ReadProver();
-          if (currLine == null)
-          {
-            return '\0';
-          }
-        }
-
-
-        while (linePos < currLine.Length && char.IsWhiteSpace(currLine[linePos]))
-        {
-          linePos++;
-        }
-
-        if (linePos < currLine.Length && currLine[linePos] != ';')
-        {
-          return currLine[linePos];
-        }
-        else
-        {
-          currLine = null;
-          linePos = 0;
-        }
-      }
+      ErrorHandler += handler;
+      sexpParser.ErrorHandler += HandleError;
     }
-
-    void Shift()
-    {
-      linePos++;
-    }
-
-    async Task<string> ParseId()
-    {
-      var sb = new StringBuilder();
-
-      var begin = await SkipWs();
-
-      var quoted = begin == '"' || begin == '|';
-      if (quoted)
-      {
-        Shift();
-      }
-
-      while (true)
-      {
-        if (linePos >= currLine.Length)
-        {
-          if (quoted)
-          {
-            do
-            {
-              sb.Append("\n");
-              currLine = await ReadProver();
-            } while (currLine == "");
-            if (currLine == null)
-            {
-              break;
-            }
-
-            linePos = 0;
-          }
-          else
-          {
-            break;
-          }
-        }
-
-        var c = currLine[linePos++];
-        if (quoted && c == begin)
-        {
-          break;
-        }
-
-        if (!quoted && (char.IsWhiteSpace(c) || c == '(' || c == ')'))
-        {
-          linePos--;
-          break;
-        }
-
-        if (quoted && c == '\\' && linePos < currLine.Length && currLine[linePos] == '"')
-        {
-          sb.Append('"');
-          linePos++;
-          continue;
-        }
-
-        sb.Append(c);
-      }
-
-      return sb.ToString();
-    }
-
-    void ParseError(string msg)
-    {
-      HandleError("Error parsing prover output: " + msg);
-    }
-
-    async IAsyncEnumerable<SExpr> ParseSExprs(bool top)
-    {
-      while (true)
-      {
-        var c = await SkipWs();
-        if (c == '\0')
-        {
-          break;
-        }
-
-        if (c == ')')
-        {
-          if (top)
-          {
-            ParseError("stray ')'");
-          }
-
-          break;
-        }
-
-        string id;
-
-        if (c == '(')
-        {
-          Shift();
-          c = await SkipWs();
-          if (c == '\0')
-          {
-            ParseError("expecting something after '('");
-            break;
-          }
-          else if (c == '(')
-          {
-            id = "";
-          }
-          else
-          {
-            id = await ParseId();
-          }
-
-          var args = await ParseSExprs(false).ToListAsync();
-
-          c = await SkipWs();
-          if (c == ')')
-          {
-            Shift();
-          }
-          else
-          {
-            ParseError("unclosed '(" + id + "'");
-          }
-
-          yield return new SExpr(id, args);
-        }
-        else
-        {
-          id = await ParseId();
-          yield return new SExpr(id);
-        }
-
-        if (top)
-        {
-          break;
-        }
-      }
-    }
-
-    #endregion
 
     #region handling input from the prover
 
@@ -524,7 +356,7 @@ namespace Microsoft.Boogie.SMTLib
           Console.WriteLine("[SMT-OUT-{0}] {1}", smtProcessId, e.Data);
         }
 
-        solverOutput.Enqueue(e.Data);
+        sexpParser.AddLine(e.Data);
     }
 
     void SolverErrorDataReceived(object sender, DataReceivedEventArgs e)

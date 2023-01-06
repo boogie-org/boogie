@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -47,7 +47,6 @@ namespace Microsoft.Boogie
       {
         errorCount += ResolveAndTypecheck(options, absy);
       }
-
       return errorCount;
     }
   }
@@ -55,16 +54,26 @@ namespace Microsoft.Boogie
   // Handy syntactic sugar missing in Expr
   public static class ExprHelper
   {
-    public static NAryExpr FunctionCall(ConcurrencyOptions options, Function f, params Expr[] args)
+    public static NAryExpr FunctionCall(IAppliable f, params Expr[] args)
     {
-      var expr = new NAryExpr(Token.NoToken, new FunctionCall(f), args);
-      var rc = new ResolutionContext(null, options);
-      rc.StateMode = ResolutionContext.State.Two;
-      expr.Resolve(rc);
-      expr.Typecheck(new TypecheckingContext(null, options));
-      return expr;
+      return new NAryExpr(Token.NoToken, f, args);
     }
 
+    public static NAryExpr FunctionCall(Function f, params Expr[] args)
+    {
+      return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
+    }
+    
+    public static NAryExpr FieldAccess(Expr path, string fieldName)
+    {
+      return new NAryExpr(Token.NoToken, new FieldAccess(Token.NoToken, fieldName), new Expr[] { path });
+    }
+
+    public static NAryExpr IsConstructor(Expr path, string constructorName)
+    {
+      return new NAryExpr(Token.NoToken, new IsConstructor(Token.NoToken, constructorName), new Expr[] { path });
+    }
+    
     public static NAryExpr IfThenElse(Expr ifExpr, Expr thenExpr, Expr elseExpr)
     {
       return new NAryExpr(Token.NoToken, new IfThenElse(Token.NoToken),
@@ -128,12 +137,51 @@ namespace Microsoft.Boogie
     public static AssertCmd AssertCmd(IToken tok, Expr expr, string msg)
     {
       return new AssertCmd(tok, expr)
-        { ErrorData = msg };
+        { Description = new FailureOnlyDescription(msg) };
     }
 
+    public static SimpleAssignLhs SimpleAssignLhs(Variable v)
+    {
+      return new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
+    }
+
+    public static FieldAssignLhs FieldAssignLhs(AssignLhs path, string fieldName)
+    {
+      return new FieldAssignLhs(Token.NoToken, path, new FieldAccess(Token.NoToken, fieldName));
+    }
+    
+    public static FieldAssignLhs FieldAssignLhs(Expr path, string fieldName)
+    {
+      return new FieldAssignLhs(Token.NoToken, ExprToAssignLhs(path), new FieldAccess(Token.NoToken, fieldName));
+    }
+    
+    public static AssignLhs ExprToAssignLhs(Expr e)
+    {
+      if (e is IdentifierExpr ie)
+      {
+        return SimpleAssignLhs(ie.Decl);
+      }
+      var naryExpr = (NAryExpr)e;
+      if (naryExpr.Fun is FieldAccess fieldAccess)
+      {
+        return FieldAssignLhs(naryExpr.Args[0], fieldAccess.FieldName);
+      }
+      if (naryExpr.Fun is MapSelect)
+      {
+        return new MapAssignLhs(Token.NoToken, ExprToAssignLhs(naryExpr.Args[0]), naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
+      }
+      Contract.Assume(false, "Unexpected expression");
+      return null;
+    }
+    
     public static AssignCmd AssignCmd(Variable v, Expr x)
     {
-      var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
+      var lhs = SimpleAssignLhs(v);
+      return new AssignCmd(Token.NoToken, new List<AssignLhs> {lhs}, new List<Expr> {x});
+    }
+
+    public static AssignCmd AssignCmd(AssignLhs lhs, Expr x)
+    {
       return new AssignCmd(Token.NoToken, new List<AssignLhs> {lhs}, new List<Expr> {x});
     }
 
@@ -146,6 +194,11 @@ namespace Microsoft.Boogie
     public static HavocCmd HavocCmd(List<IdentifierExpr> vars)
     {
       return new HavocCmd(Token.NoToken, vars);
+    }
+
+    public static HavocCmd HavocCmd(params IdentifierExpr[] vars)
+    {
+      return new HavocCmd(Token.NoToken, vars.ToList());
     }
   }
 

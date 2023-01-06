@@ -16,7 +16,6 @@ function Set_ofSeq(q: SeqInvoc) returns (s: SetInvoc);
 var {:layer 1,2} lin: SeqInvoc;
 var {:layer 1,2} vis: [Invoc]SetInvoc;
 
-type Ref;
 type Key;
 
 // ---------- Primitives for manipulating logical/abstract state

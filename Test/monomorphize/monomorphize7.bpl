@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -lib "%s" > "%t"
+// RUN: %parallel-boogie -lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function {:inline} $Box(x: $Value): $Value {
@@ -21,16 +21,16 @@ function {:inline} $Unbox(x: $Value): $Value {
     x
 }
 function {:inline} $Unbox_int(x: $Value): int {
-    i#$Integer(x)
+    x->i
 }
 function {:inline} $Unbox_bool(x: $Value): bool {
-    b#$Boolean(x)
+    x->b
 }
 function {:inline} $Unbox_addr(x: $Value): int {
-    a#$Address(x)
+    x->a
 }
 function {:inline} $Unbox_vec(x: $Value): Vec $Value {
-    v#$Vector(x)
+    x->v
 }
 
 type {:datatype} $Value;

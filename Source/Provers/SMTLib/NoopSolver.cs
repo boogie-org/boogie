@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.SMTLib;
 
-class NoopSolver : SMTLibSolver
+public class NoopSolver : SMTLibSolver
 {
 #pragma warning disable CS0067
   public override event Action<string> ErrorHandler;
@@ -15,7 +15,7 @@ class NoopSolver : SMTLibSolver
   {
   }
 
-  private readonly Queue<SExpr> responses = new();
+  protected readonly Queue<SExpr> responses = new();
 
   public override void Send(string cmd)
   {
@@ -37,12 +37,12 @@ class NoopSolver : SMTLibSolver
     if (response is not null) { responses.Enqueue(response); }
   }
 
-  public override Task<SExpr> SendRequest(string request) {
+  public override Task<SExpr> SendRequest(string request, CancellationToken cancellationToken = default) {
     Send(request);
     return GetProverResponse();
   }
 
-  public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests) {
+  public override async Task<IReadOnlyList<SExpr>> SendRequestsAndCloseInput(IReadOnlyList<string> requests, CancellationToken cancellationToken = default) {
 
     foreach (var request in requests) {
       Send(request);
@@ -55,7 +55,7 @@ class NoopSolver : SMTLibSolver
     return result;
   }
 
-  private Task<SExpr> GetProverResponse()
+  protected virtual Task<SExpr> GetProverResponse()
   {
     return Task.FromResult(responses.Count > 0 ? responses.Dequeue() : null);
   }
@@ -66,5 +66,9 @@ class NoopSolver : SMTLibSolver
 
   public override Task PingPong() {
     return Task.CompletedTask;
+  }
+
+  public override void AddErrorHandler(Action<string> handler)
+  {
   }
 }

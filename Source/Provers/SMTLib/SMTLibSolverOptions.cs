@@ -30,7 +30,7 @@ namespace Microsoft.Boogie.SMTLib
     Z3,
     CVC5,
     YICES2,
-    NoOpWithZ3Options
+    NoOpWithZ3Options,
   }
 
   public class SMTLibSolverOptions : ProverOptions

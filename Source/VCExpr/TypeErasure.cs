@@ -560,14 +560,11 @@ namespace Microsoft.Boogie.TypeErasure
       Ctor = HelperFuns.BoogieFunction("Ctor", t, Type.Int);
     }
 
-    public virtual void Setup()
+    public virtual void Setup(List<Type> usedTypes)
     {
-      GetBasicTypeRepr(Type.Int);
-      GetBasicTypeRepr(Type.Real);
-      GetBasicTypeRepr(Type.Bool);
-      GetBasicTypeRepr(Type.RMode);
-      GetBasicTypeRepr(Type.String);
-      GetBasicTypeRepr(Type.RegEx);
+      foreach (var ty in usedTypes) {
+        GetBasicTypeRepr(ty);
+      }
     }
 
     // constructor to allow cloning
@@ -678,16 +675,13 @@ namespace Microsoft.Boogie.TypeErasure
       TypeCasts = new Dictionary<Type /*!*/, TypeCastSet>(builder.TypeCasts);
     }
 
-    public override void Setup()
+    public override void Setup(List<Type> usedTypes)
     {
-      base.Setup();
+      base.Setup(usedTypes);
 
-      GetTypeCasts(Type.Int);
-      GetTypeCasts(Type.Real);
-      GetTypeCasts(Type.Bool);
-      GetTypeCasts(Type.RMode);
-      GetTypeCasts(Type.String);
-      GetTypeCasts(Type.RegEx);
+      foreach (var ty in usedTypes) {
+        GetTypeCasts(ty);
+      }
     }
 
     // generate inverse axioms for casts (castToU(castFromU(x)) = x, under certain premisses)

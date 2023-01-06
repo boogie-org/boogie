@@ -35,7 +35,7 @@ namespace Core
     private readonly List<Variable> _nestedBoundVariables = new List<Variable>();
 
     private readonly LambdaExpr _lambda;
-    private readonly Dictionary<Expr, FunctionCall> _liftedLambdas;
+    private readonly LiftedLambdas _liftedLambdas;
     private readonly String _freshFnName;
     private readonly List<Function> _lambdaFunctions;
     private readonly List<Axiom> _lambdaAxioms;
@@ -45,7 +45,7 @@ namespace Core
 
     public MaxHolesLambdaLifter(
       LambdaExpr lambda,
-      Dictionary<Expr, FunctionCall> liftedLambdas,
+      LiftedLambdas liftedLambdas,
       string freshFnName,
       List<Function> lambdaFunctions,
       List<Axiom> lambdaAxioms, CoreOptions options, int freshVarCount = 0

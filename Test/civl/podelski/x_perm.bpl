@@ -13,21 +13,21 @@ function {:constructor} B (x:int) : B;
 type {:linear "perm"} Perm = int;
 
 function {:inline} {:linear "perm"} ABCollector(ab: AB) : [int]bool
-{ MapConst(false)[x#AB(ab) := true][-x#AB(ab) := true] }
+{ MapConst(false)[ab->x := true][-ab->x := true] }
 function {:inline} {:linear "perm"} ABSetCollector(abs: [AB]bool) : [int]bool
 { (lambda i:int :: abs[AB(i)] || abs[AB(-i)]) }
 
 function {:inline} {:linear "perm"} ACollector(a: A) : [int]bool
-{ MapConst(false)[x#A(a) := true] }
+{ MapConst(false)[a->x := true] }
 function {:inline} {:linear "perm"} ASetCollector(as: [A]bool) : [int]bool
 { (lambda i:int :: as[A(i)]) }
 
 function {:inline} {:linear "perm"} BCollector(b: B) : [int]bool
-{ MapConst(false)[-x#B(b) := true] }
+{ MapConst(false)[-b->x := true] }
 function {:inline} {:linear "perm"} BSetCollector(bs: [B]bool) : [int]bool
 { (lambda i:int :: bs[B(-i)]) }
 
-function {:inline} bToA (b:B) : A { A(x#B(b)) }
+function {:inline} bToA (b:B) : A { A(b->x) }
 
 // Global variables
 var {:layer 0,1} x:int;
@@ -71,7 +71,7 @@ ensures cardAs(As) > cardBs(Bs);
 procedure {:yields}{:layer 1}
 {:yield_requires "Inv"}
 main ({:linear_in "perm"} all_abs: [AB]bool)
-requires {:layer 1} all_abs == (lambda v:AB :: 1 <= x#AB(v));
+requires {:layer 1} all_abs == (lambda v:AB :: 1 <= v->x);
 {
   var i:int;
   var {:linear "perm"} abs: [AB]bool;
@@ -81,7 +81,7 @@ requires {:layer 1} all_abs == (lambda v:AB :: 1 <= x#AB(v));
   while (*)
   invariant {:yields}{:layer 1}{:yield_loop "Inv"} true;
   invariant {:layer 1} 1 <= i;
-  invariant {:layer 1} abs == (lambda v:AB :: i <= x#AB(v));
+  invariant {:layer 1} abs == (lambda v:AB :: i <= v->x);
   {
     call ab, abs := transfer_ab(i, abs);
     async call incdec(ab);
@@ -99,15 +99,15 @@ procedure {:both}{:layer 1} TRANSFER_AB (x:int, {:linear_in "perm"} abs:[AB]bool
 
 procedure {:both}{:layer 1} SPLIT_AB ({:linear_in "perm"} ab:AB) returns ({:linear "perm"} a:A, {:linear "perm"} b:B)
 {
-  assert x#AB(ab) != 0;
-  a := A(x#AB(ab));
-  b := B(x#AB(ab));
+  assert ab->x != 0;
+  a := A(ab->x);
+  b := B(ab->x);
 }
 
 procedure {:yields}{:layer 1}
 {:yield_preserves "Inv"}
 incdec({:linear_in "perm"} ab:AB)
-requires {:layer 1} x#AB(ab) != 0;
+requires {:layer 1} ab->x != 0;
 {
   var {:linear "perm"} a:A;
   var {:linear "perm"} b:B;

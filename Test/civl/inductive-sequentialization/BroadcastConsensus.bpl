@@ -19,22 +19,22 @@ function {:inline} NoPAs () : [PA]int
 function {:inline} InitialPAs (k:pid) : [PA]int
 {
   MapAdd(
-    (lambda pa:PA :: if is#BROADCAST(pa) && pid(i#BROADCAST(pa)) && i#BROADCAST(pa) < k then 1 else 0),
-    (lambda pa:PA :: if is#COLLECT(pa) && pid(i#COLLECT(pa)) && i#COLLECT(pa) < k then 1 else 0)
+    (lambda pa:PA :: if pa is BROADCAST && pid(pa->i) && pa->i < k then 1 else 0),
+    (lambda pa:PA :: if pa is COLLECT && pid(pa->i) && pa->i < k then 1 else 0)
   )
 }
 
 function {:inline} AllBroadcasts () : [PA]int
-{ (lambda pa:PA :: if is#BROADCAST(pa) && pid(i#BROADCAST(pa)) then 1 else 0) }
+{ (lambda pa:PA :: if pa is BROADCAST && pid(pa->i) then 1 else 0) }
 
 function {:inline} AllCollects () : [PA]int
-{ (lambda pa:PA :: if is#COLLECT(pa) && pid(i#COLLECT(pa)) then 1 else 0) }
+{ (lambda pa:PA :: if pa is COLLECT && pid(pa->i) then 1 else 0) }
 
 function {:inline} RemainingBroadcasts (k:pid) : [PA]int
-{ (lambda {:pool "Broadcast"} pa:PA :: if is#BROADCAST(pa) && k < i#BROADCAST(pa) && i#BROADCAST(pa) <= n then 1 else 0) }
+{ (lambda {:pool "Broadcast"} pa:PA :: if pa is BROADCAST && k < pa->i && pa->i <= n then 1 else 0) }
 
 function {:inline} RemainingCollects (k:pid) : [PA]int
-{ (lambda {:pool "Collect"} pa:PA :: if is#COLLECT(pa) && k < i#COLLECT(pa) && i#COLLECT(pa) <= n then 1 else 0) }
+{ (lambda {:pool "Collect"} pa:PA :: if pa is COLLECT && k < pa->i && pa->i <= n then 1 else 0) }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -47,6 +47,7 @@ function max(CH:[val]int) : val;
 function card(CH:[val]int) : int;
 
 axiom card(MultisetEmpty) == 0;
+axiom (forall v:val :: card(MultisetSingleton(v)) == 1);
 axiom (forall CH:[val]int, v:val :: card(MultisetPlus(CH, MultisetSingleton(v))) == card(CH) + 1);
 axiom (forall CH:[val]int, v:val :: {CH[v := CH[v] + 1]} card(CH[v := CH[v] + 1]) == card(CH) + 1);
 axiom (forall m:[val]int, m':[val]int :: {card(m), card(m')} MultisetSubsetEq(m, m') && card(m) == card(m') ==> m == m');
@@ -271,9 +272,7 @@ requires {:layer 1} Inv(CH_low, CH);
 
   call old_CH_low := Snapshot();
   call d := receive(i);
-  received_values := MultisetEmpty;
-  received_values[d] := received_values[d] + 1;
-  // received_values := MultisetSingleton(d);
+  received_values := MultisetSingleton(d);
   j := 2;
   while (j <= n)
   invariant {:layer 1} 2 <= j && j <= n + 1;

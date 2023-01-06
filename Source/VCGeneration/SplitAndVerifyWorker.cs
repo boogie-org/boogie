@@ -34,7 +34,7 @@ namespace VC
     private int splitNumber;
 
     private int totalResourceCount;
-    
+
     public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
@@ -63,7 +63,7 @@ namespace VC
       Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(Implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(options, Implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = Split.FocusAndSplit(options, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
@@ -82,6 +82,11 @@ namespace VC
     }
 
     public int ResourceCount => totalResourceCount;
+    /// <summary>
+    /// The cumulative time spent processing SMT queries.  When running with
+    /// `vcsCores > 1`, this may also include time spent restarting the prover.
+    /// </summary>
+    public TimeSpan TotalProverElapsedTime { get; private set; }
     
     private void TrackSplitsCost(List<Split> splits)
     {
@@ -114,6 +119,7 @@ namespace VC
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
         await ProcessResult(iteration, split, checker, cancellationToken);
+        TotalProverElapsedTime += checker.ProverRunTime;
       }
       finally {
         await checker.GoBackToIdle();
@@ -125,7 +131,7 @@ namespace VC
       if (options.Trace && DoSplitting) {
         var splitNum = split.SplitIndex + 1;
         var splitIdxStr = options.RandomSeedIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
-        Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
+        run.TraceWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
       }
 

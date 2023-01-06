@@ -20,7 +20,7 @@ type {:datatype} {:linear "pair"} Pair;
 function {:constructor} Pair (xid: Xid, mid: Mid) : Pair;
 
 function {:inline} pair (xid: Xid, mid: Mid, p: Pair) : bool
-{ p == Pair(xid, mid) && participantMid(mid#Pair(p)) }
+{ p == Pair(xid, mid) && participantMid(p->mid) }
 
 // Transaction State
 type MState = int;
@@ -131,7 +131,7 @@ function {:inline} Inv_8 (state: GState, B: [Pair]bool, votes: [Xid]int) : bool
   && SetInv(B)
   && (forall xid: Xid :: VotesEqCoordinatorState(votes, state, xid))
   && (forall xid: Xid :: votes[xid] == -1 || votes[xid] == card(B, xid))
-  && (forall p: Pair :: B[p] && votes[xid#Pair(p)] != -1 ==> UndecidedOrCommitted(state[xid#Pair(p)][mid#Pair(p)]))
+  && (forall p: Pair :: B[p] && votes[p->xid] != -1 ==> UndecidedOrCommitted(state[p->xid][p->mid]))
 }
 
 function {:inline} Inv_9 (state: GState, B: [Pair]bool, xid: Xid) : bool
@@ -157,22 +157,6 @@ requires gConsistent(state);
 
 procedure {:yield_invariant} {:layer 10} YieldConsistent_10 ();
 requires gConsistent(state);
-
-// ###########################################################################
-
-function
-{:witness "state"}
-{:commutativity "atomic_Coordinator_VoteNo","atomic_Coordinator_VoteNo"}
-{:commutativity "atomic_Coordinator_VoteYes","atomic_Coordinator_VoteNo"}
-{:commutativity "atomic_Coordinator_VoteNo","atomic_Coordinator_VoteYes"}
-{:commutativity "atomic_Coordinator_VoteYes","atomic_Coordinator_VoteYes"}
-{:commutativity "atomic_SetParticipantAborted","atomic_Coordinator_VoteYes"}
-{:commutativity "atomic_SetParticipantAborted","atomic_Coordinator_VoteNo"}
-{:commutativity "atomic_Participant_VoteReq","atomic_Participant_VoteReq"}
-witness (state:GState, state':GState, second_xid:Xid) : GState
-{
-   state[second_xid := state'[second_xid]]
-}
 
 // ###########################################################################
 // Main
@@ -211,9 +195,9 @@ procedure {:intro} {:layer 10} GhostRead_10() returns (snapshot: GState)
 procedure {:atomic} {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
 modifies state;
 {
-  havoc state;
+  var {:pool "A"} x: XState;
+  state[xid] := x;
   assume xConsistent(state[xid]);
-  assume state == old(state)[xid := state[xid]];
 }
 
 procedure {:yields} {:layer 10} {:refines "atomic_Coordinator_TransactionReq"}
@@ -233,8 +217,8 @@ Coordinator_TransactionReq () returns (xid: Xid)
   while (i <= numParticipants)
   invariant {:cooperates} {:layer 8,9,10} true;
   invariant {:layer 8} Inv_8(state, B, votes);
-  invariant {:layer 8,10} pairs == (lambda p: Pair :: pair(xid, mid#Pair(p), p) && i <= mid#Pair(p));
-  invariant {:layer 8} votes[xid] == -1 || (forall p: Pair :: pairs[p] ==> UndecidedOrCommitted(state[xid][mid#Pair(p)]));
+  invariant {:layer 8,10} pairs == (lambda p: Pair :: pair(xid, p->mid, p) && i <= p->mid);
+  invariant {:layer 8} votes[xid] == -1 || (forall p: Pair :: pairs[p] ==> UndecidedOrCommitted(state[xid][p->mid]));
   invariant {:layer 9} Inv_9(state, B, xid);
   invariant {:layer 10} gConsistent(state);
   invariant {:layer 10} ExistsMonotoneExtension(snapshot, state, xid);
@@ -244,6 +228,8 @@ Coordinator_TransactionReq () returns (xid: Xid)
     async call {:sync} Participant_VoteReq(xid, i, pair);
     i := i + 1;
   }
+
+  assert {:layer 10} {:add_to_pool "A", state[xid]} true;
 }
 
 // ---------------------------------------------------------------------------
@@ -251,12 +237,12 @@ Coordinator_TransactionReq () returns (xid: Xid)
 procedure {:left} {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
+  var {:pool "A"} x: XState;
   assert !UnallocatedXids[xid];
   assert pair(xid, mid, pair);
   assert xConsistent(state[xid]);
-  havoc state;
+  state[xid] := x;
   assume xConsistentExtension(old(state)[xid], state[xid]);
-  assume state == old(state)[xid := state[xid]];
 }
 
 procedure {:yields} {:layer 9} {:refines "atomic_Participant_VoteReq"}
@@ -271,6 +257,8 @@ Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
     call SetParticipantAborted(xid, mid, pair);
     async call {:sync} Coordinator_VoteNo(xid, mid, pair);
   }
+
+  assert {:layer 9} {:add_to_pool "A", state[xid]} true;
 }
 
 // ---------------------------------------------------------------------------
@@ -278,15 +266,15 @@ Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 procedure {:left} {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state, B;
 {
+  var {:pool "A"} x: XState;
   assert !UnallocatedXids[xid];
   assert pair(xid, mid, pair);
   assert xConsistent(state[xid]);
   B[pair] := true;
   if (*) {
-    havoc state;
+    state[xid] := x;
     assume xAllParticipantsInB(xid, B);
     assume xConsistentExtension(old(state)[xid], state[xid]);
-    assume state == old(state)[xid := state[xid]];
   }
 }
 
@@ -320,18 +308,20 @@ Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
       i := i + 1;
     }
   }
+
+  assert {:layer 8} {:add_to_pool "A", state[xid]} true;
 }
 
 procedure {:left} {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
+  var {:pool "A"} x: XState;
   assert !UnallocatedXids[xid];
   assert pair(xid, mid, pair);
   assert xUndecidedOrAborted(state[xid]);
-  havoc state;
+  state[xid] := x;
   assume xUndecidedOrAborted(state[xid]);
   assume xConsistentExtension(old(state)[xid], state[xid]);
-  assume state == old(state)[xid := state[xid]];
 }
 
 procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteNo"}
@@ -359,6 +349,8 @@ Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
       i := i + 1;
     }
   }
+
+  assert {:layer 8} {:add_to_pool "A", state[xid]} true;
 }
 
 // ---------------------------------------------------------------------------
@@ -433,7 +425,7 @@ modifies UnallocatedXids;
 {
   assume UnallocatedXids[xid];
   assume state[xid] == (lambda j: Mid :: UNDECIDED());
-  pairs := (lambda p: Pair :: pair(xid, mid#Pair(p), p));
+  pairs := (lambda p: Pair :: pair(xid, p->mid, p));
   UnallocatedXids[xid] := false;
 }
 
@@ -449,7 +441,7 @@ procedure {:both} {:layer 8,10} atomic_TransferPair (xid: Xid, mid: Mid, {:linea
 
 function {:inline} {:linear "pair"} XidSetCollector(xids: [Xid]bool) : [Pair]bool
 {
-  (lambda p: Pair :: xids[xid#Pair(p)])
+  (lambda p: Pair :: xids[p->xid])
 }
 
 // ############################################################################
@@ -458,9 +450,9 @@ function {:inline} {:linear "pair"} XidSetCollector(xids: [Xid]bool) : [Pair]boo
 function card(pairs: [Pair]bool, xid: Xid) : int;
 
 procedure {:lemma} Lemma_add_to_set (set: [Pair]bool, pair: Pair);
-requires participantMid(mid#Pair(pair));
+requires participantMid(pair->mid);
 requires !set[pair];
-ensures (forall xid: Xid :: card(set[pair := true], xid) == (if xid == xid#Pair(pair) then card(set, xid) + 1 else card(set, xid)));
+ensures (forall xid: Xid :: card(set[pair := true], xid) == (if xid == pair->xid then card(set, xid) + 1 else card(set, xid)));
 
 procedure {:lemma} Lemma_all_in_set (set: [Pair]bool, xid: Xid);
 requires SetInv(set);

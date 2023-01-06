@@ -4,7 +4,7 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
 {
   assert Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
   havoc joinedNodes, voteInfo, decision, pendingAsyncs;
-  assume (forall r1: Round, r2: Round :: is#Some(decision[r1]) && is#Some(decision[r2]) ==> decision[r1] == decision[r2]);
+  assume (forall r1: Round, r2: Round :: decision[r1] is Some && decision[r2] is Some ==> decision[r1] == decision[r2]);
 }
 
 procedure {:atomic}{:layer 2}
@@ -25,22 +25,22 @@ modifies pendingAsyncs;
     {:add_to_pool "Round", 0, numRounds}
     {:add_to_pool "NumRounds", numRounds}
     0 <= numRounds;
-  PAs := (lambda pa: PA :: if is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && Round(round#A_StartRound(pa)) && round#A_StartRound(pa) <= numRounds then 1 else 0);
+  PAs := (lambda pa: PA :: if pa is A_StartRound && pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds then 1 else 0);
   pendingAsyncs := PAs;
 }
 
 function {:inline} StartRoundPAs(k: int, numRounds: int) : [PA]int
 {
-  (lambda pa: PA :: if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && k < round#A_StartRound(pa) && round#A_StartRound(pa) <= numRounds) then 1 else 0)
+  (lambda pa: PA :: if (pa is A_StartRound && pa->r == pa->r_lin && k < pa->r && pa->r <= numRounds) then 1 else 0)
 }
 
 function {:inline} StartRoundPlusJoinPlusProposePAs(k: int, m: Node, numRounds: int) : [PA]int
 {
   (lambda pa : PA ::
-    if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && k+1 < round#A_StartRound(pa) && round#A_StartRound(pa) <= numRounds) ||
+    if (pa is A_StartRound && pa->r == pa->r_lin && k+1 < pa->r && pa->r <= numRounds) ||
        (pa == A_Propose(k+1, ProposePermissions(k+1))) ||
-       (is#A_Join(pa) && round#A_Join(pa) == k+1 && m < node#A_Join(pa) && node#A_Join(pa) <= numNodes &&
-         p#A_Join(pa) == JoinPerm(k+1, node#A_Join(pa)))
+       (pa is A_Join && pa->r == k+1 && m < pa->n && pa->n <= numNodes &&
+         pa->p == JoinPerm(k+1, pa->n))
     then 1 else 0)
 }
 
@@ -52,10 +52,10 @@ function {:inline} JoinOrProposeChoice(k: int, m: Node) : PA
 function {:inline} StartRoundPlusVotePlusConcludePAs(k: int, m: Node, v: Value, numRounds: int) : [PA]int
 {
   ( lambda pa: PA ::
-    if (is#A_StartRound(pa) && round#A_StartRound(pa) == round_lin#A_StartRound(pa) && k+1 < round#A_StartRound(pa) && round#A_StartRound(pa) <= numRounds) ||
+    if (pa is A_StartRound && pa->r == pa->r_lin && k+1 < pa->r && pa->r <= numRounds) ||
        (pa == A_Conclude(k+1, v, ConcludePerm(k+1))) ||
-       (is#A_Vote(pa) && round#A_Vote(pa) == k+1 && m < node#A_Vote(pa) && node#A_Vote(pa) <= numNodes &&
-         value#A_Vote(pa) == v && p#A_Vote(pa) == VotePerm(k+1, node#A_Vote(pa)))
+       (pa is A_Vote && pa->r == k+1 && m < pa->n && pa->n <= numNodes &&
+         pa->v == v && pa->p == VotePerm(k+1, pa->n))
     then 1 else 0)
 }
 
@@ -92,14 +92,14 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
       PAs := NoPAs();
   } else if (*) {
       assume
-        (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
-        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
+        (forall r: Round :: r < 1 || r > k ==> voteInfo[r] is None) &&
+        (forall r: Round :: r < 1 || r > k ==> decision[r] is None);
       PAs := StartRoundPAs(k, numRounds);
       choice := A_StartRound(k+1, k+1);
   } else if (*) {
       assume
-        (forall r: Round :: r < 1 || r > k ==> is#None(voteInfo[r])) &&
-        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
+        (forall r: Round :: r < 1 || r > k ==> voteInfo[r] is None) &&
+        (forall r: Round :: r < 1 || r > k ==> decision[r] is None);
       assume
         {:add_to_pool "Node", m}
         0 <= m && m <= numNodes;
@@ -107,30 +107,30 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
       choice := JoinOrProposeChoice(k, m);
   } else {
       assume
-        is#Some(voteInfo[k+1]) &&
-        (forall r: Round :: r < 1 || r > k+1 ==> is#None(voteInfo[r])) &&
-        (forall r: Round :: r < 1 || r > k ==> is#None(decision[r]));
+        voteInfo[k+1] is Some &&
+        (forall r: Round :: r < 1 || r > k+1 ==> voteInfo[r] is None) &&
+        (forall r: Round :: r < 1 || r > k ==> decision[r] is None);
       assume
         {:add_to_pool "Node", m}
         0 <= m && m <= numNodes &&
-        (forall n: Node :: n < 1 || n > m ==> !ns#VoteInfo(t#Some(voteInfo[k+1]))[n]);
-      PAs := StartRoundPlusVotePlusConcludePAs(k, m, value#VoteInfo(t#Some(voteInfo[k+1])), numRounds);
-      choice := VoteOrConcludeChoice(k, m, value#VoteInfo(t#Some(voteInfo[k+1])));
+        (forall n: Node :: n < 1 || n > m ==> !voteInfo[k+1]->t->ns[n]);
+      PAs := StartRoundPlusVotePlusConcludePAs(k, m, voteInfo[k+1]->t->value, numRounds);
+      choice := VoteOrConcludeChoice(k, m, voteInfo[k+1]->t->value);
   }
 
   // If there was a decision for some value, then there must have been a
   // proposal of the same value and a quorum of nodes that voted for it.
-  assume (forall r: Round :: is#Some(decision[r]) ==>
-    is#Some(voteInfo[r]) &&
-    value#VoteInfo(t#Some(voteInfo[r])) == t#Some(decision[r]) &&
+  assume (forall r: Round :: decision[r] is Some ==>
+    voteInfo[r] is Some &&
+    voteInfo[r]->t->value == decision[r]->t &&
     (exists q: NodeSet ::
-      IsSubset(q, ns#VoteInfo(t#Some(voteInfo[r]))) && IsQuorum(q)));
+      IsSubset(q, voteInfo[r]->t->ns) && IsQuorum(q)));
 
   // This is the main invariant to prove
-  assume (forall r1: Round, r2: Round :: is#Some(decision[r1]) && r1 <= r2 && is#Some(voteInfo[r2]) ==> value#VoteInfo(t#Some(voteInfo[r2])) == t#Some(decision[r1]));
+  assume (forall r1: Round, r2: Round :: decision[r1] is Some && r1 <= r2 && voteInfo[r2] is Some ==> voteInfo[r2]->t->value == decision[r1]->t);
 
   // This is the main property to prove
-  assume (forall r1: Round, r2: Round :: is#Some(decision[r1]) && is#Some(decision[r2]) ==> decision[r1] == decision[r2]);
+  assume (forall r1: Round, r2: Round :: decision[r1] is Some && decision[r2] is Some ==> decision[r1] == decision[r2]);
 
   pendingAsyncs := PAs;
 }

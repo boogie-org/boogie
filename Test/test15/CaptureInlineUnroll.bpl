@@ -1,6 +1,6 @@
 // RUN: %boogie "%s" /mv:- /normalizeNames:1 /proverLog:%t.proverLog /loopUnroll:2 /inline:none > "%t"
 // RUN: %boogie "%s" /mv:- /normalizeNames:1 /loopUnroll:3 >> "%t"
-// RUN: %diff "%s.expect" "%t"
+// RUN: %diff "%s.expect" "%t" --ignore-matching-lines='u -> [1-9]' --ignore-matching-lines='call1formal@y@0 ->' --ignore-matching-lines='call1formal@y@0@@0 ->'
 
 procedure LoopUnroll(n: int)
 {
