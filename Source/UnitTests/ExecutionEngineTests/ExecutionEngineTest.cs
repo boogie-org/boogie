@@ -76,10 +76,10 @@ procedure Bad2(y: int)
     options.VcsCores = 4;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
-    var expected = @"fakeFilename1(3,3): Error: this assertion could not be proven
+    var expected = @"fakeFilename1(3,3): Error: this assertion could not be proved
 Execution trace:
     fakeFilename1(3,3): anon0
-fakeFilename1(8,3): Error: this assertion could not be proven
+fakeFilename1(8,3): Error: this assertion could not be proved
 Execution trace:
     fakeFilename1(8,3): anon0
 
@@ -125,12 +125,12 @@ procedure Good(y: int)
     await task1Writer.DisposeAsync();
     await task2Writer.DisposeAsync();
     var output = writer.ToString();
-    var expected = @"fakeFilename1(3,3): Error: this assertion could not be proven
+    var expected = @"fakeFilename1(3,3): Error: this assertion could not be proved
 Execution trace:
     fakeFilename1(3,3): anon0
 
 Boogie program verifier finished with 1 verified, 1 error
-fakeFilename2(3,3): Error: this assertion could not be proven
+fakeFilename2(3,3): Error: this assertion could not be proved
 Execution trace:
     fakeFilename2(3,3): anon0
 

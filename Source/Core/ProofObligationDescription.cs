@@ -11,7 +11,7 @@ namespace Microsoft.Boogie;
 public abstract class ProofObligationDescription {
   /// <summary>
   /// A description of what this proof obligation means when it has been
-  /// successfully proven.
+  /// successfully proved.
   /// </summary>
   public abstract string SuccessDescription { get; }
 
@@ -34,7 +34,7 @@ public class AssertionDescription : ProofObligationDescription
 {
   public override string SuccessDescription => "this assertion holds";
 
-  public override string FailureDescription => "this assertion could not be proven";
+  public override string FailureDescription => "this assertion could not be proved";
 
   public override string ShortDescription => "assert";
 }
@@ -45,7 +45,7 @@ public class PreconditionDescription : ProofObligationDescription
     "all preconditions hold for this call";
 
   public override string FailureDescription =>
-    "a precondition for this call could not be proven";
+    "a precondition for this call could not be proved";
 
   public override string ShortDescription => "precondition";
 }
@@ -56,7 +56,7 @@ public class RequiresDescription : ProofObligationDescription
     "this precondition holds";
 
   public override string FailureDescription =>
-    "this is the precondition that could not be proven";
+    "this is the precondition that could not be proved";
 
   public override string ShortDescription => "requires";
 }
@@ -67,7 +67,7 @@ public class PostconditionDescription : ProofObligationDescription
     "all postconditions hold for this return path";
 
   public override string FailureDescription =>
-    "a postcondition could not be proven on this return path";
+    "a postcondition could not be proved on this return path";
 
   public override string ShortDescription => "postcondition";
 }
@@ -78,7 +78,7 @@ public class EnsuresDescription : ProofObligationDescription
     "this postcondition holds";
 
   public override string FailureDescription =>
-    "this is the postcondition that could not be proven";
+    "this is the postcondition that could not be proved";
 
   public override string ShortDescription => "ensures";
 }
@@ -89,7 +89,7 @@ public class InvariantEstablishedDescription : AssertionDescription
     "this loop invariant holds on entry";
 
   public override string FailureDescription =>
-    "this loop invariant could not be proven on entry";
+    "this loop invariant could not be proved on entry";
 
   public override string ShortDescription => "invariant established";
 }

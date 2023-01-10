@@ -516,7 +516,7 @@ namespace Microsoft.Boogie
         else
         {
           newCmdSeq.Add(CmdHelper.AssertCmd(assertCmd.tok, expr,
-            $"This gate of {action.proc.Name} could not be proven."));
+            $"this gate of {action.proc.Name} could not be proved."));
         }
       }
 

@@ -1,22 +1,22 @@
-field_access_verification_error.bpl(13,1): Error: A postcondition might not hold on this return path.
-field_access_verification_error.bpl(9,3): Related location: This is the postcondition that might not hold.
+field_access_verification_error.bpl(13,1): Error: a postcondition could not be proved on this return path.
+field_access_verification_error.bpl(9,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     field_access_verification_error.bpl(11,5): anon0
-field_access_verification_error.bpl(21,1): Error: A postcondition might not hold on this return path.
-field_access_verification_error.bpl(17,3): Related location: This is the postcondition that might not hold.
+field_access_verification_error.bpl(21,1): Error: a postcondition could not be proved on this return path.
+field_access_verification_error.bpl(17,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     field_access_verification_error.bpl(19,8): anon0
-field_access_verification_error.bpl(34,1): Error: A postcondition might not hold on this return path.
-field_access_verification_error.bpl(28,3): Related location: This is the postcondition that might not hold.
+field_access_verification_error.bpl(34,1): Error: a postcondition could not be proved on this return path.
+field_access_verification_error.bpl(28,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     field_access_verification_error.bpl(31,5): anon0
-field_access_verification_error.bpl(43,3): Error: This assertion might not hold.
+field_access_verification_error.bpl(43,3): Error: this assertion could not be proved
 Execution trace:
     field_access_verification_error.bpl(42,11): anon0
-field_access_verification_error.bpl(50,11): Error: The precondition for unpack might not hold
+field_access_verification_error.bpl(50,11): Error: the precondition for unpack could not be proved
 Execution trace:
     field_access_verification_error.bpl(50,11): anon0
-field_access_verification_error.bpl(60,3): Error: This assertion might not hold.
+field_access_verification_error.bpl(60,3): Error: this assertion could not be proved
 Execution trace:
     field_access_verification_error.bpl(59,5): anon0
 
