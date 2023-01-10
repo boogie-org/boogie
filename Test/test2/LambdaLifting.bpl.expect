@@ -1,13 +1,13 @@
-LambdaLifting.bpl(14,2): Error: this assertion could not be proven
+LambdaLifting.bpl(14,2): Error: this assertion could not be proved
 Execution trace:
     LambdaLifting.bpl(8,4): anon0
-LambdaLifting.bpl(24,2): Error: this assertion could not be proven
+LambdaLifting.bpl(24,2): Error: this assertion could not be proved
 Execution trace:
     LambdaLifting.bpl(22,4): anon0
-LambdaLifting.bpl(32,2): Error: this assertion could not be proven
+LambdaLifting.bpl(32,2): Error: this assertion could not be proved
 Execution trace:
     LambdaLifting.bpl(30,4): anon0
-LambdaLifting.bpl(51,2): Error: this assertion could not be proven
+LambdaLifting.bpl(51,2): Error: this assertion could not be proved
 Execution trace:
     LambdaLifting.bpl(47,4): anon0
 

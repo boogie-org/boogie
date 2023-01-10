@@ -1,4 +1,4 @@
-Split.bpl(20,5): Error: this assertion could not be proven
+Split.bpl(20,5): Error: this assertion could not be proved
 Execution trace:
     Split.bpl(13,5): anon0
     Split.bpl(15,3): anon5_LoopHead

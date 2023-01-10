@@ -1,4 +1,4 @@
-bv6.bpl(10,3): Error: this assertion could not be proven
+bv6.bpl(10,3): Error: this assertion could not be proved
 Execution trace:
     bv6.bpl(7,5): anon0
 

@@ -1,4 +1,4 @@
-codeexpr.bpl(42,5): Error: this assertion could not be proven
+codeexpr.bpl(42,5): Error: this assertion could not be proved
 Execution trace:
     codeexpr.bpl(41,7): anon0
 

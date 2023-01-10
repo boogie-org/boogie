@@ -1,4 +1,4 @@
-Axioms.bpl(21,5): Error: this assertion could not be proven
+Axioms.bpl(21,5): Error: this assertion could not be proved
 Execution trace:
     Axioms.bpl(20,3): start
 

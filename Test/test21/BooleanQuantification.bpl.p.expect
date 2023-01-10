@@ -1,7 +1,7 @@
-BooleanQuantification.bpl(23,3): Error: this assertion could not be proven
+BooleanQuantification.bpl(23,3): Error: this assertion could not be proved
 Execution trace:
     BooleanQuantification.bpl(22,3): anon0
-BooleanQuantification.bpl(35,3): Error: this assertion could not be proven
+BooleanQuantification.bpl(35,3): Error: this assertion could not be proved
 Execution trace:
     BooleanQuantification.bpl(33,3): anon0
 

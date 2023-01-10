@@ -1,9 +1,9 @@
-Arrays.bpl(50,5): Error: a postcondition could not be proven on this return path
-Arrays.bpl(42,3): Related location: this is the postcondition that could not be proven
+Arrays.bpl(50,5): Error: a postcondition could not be proved on this return path
+Arrays.bpl(42,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     Arrays.bpl(46,3): start
-Arrays.bpl(131,5): Error: a postcondition could not be proven on this return path
-Arrays.bpl(123,3): Related location: this is the postcondition that could not be proven
+Arrays.bpl(131,5): Error: a postcondition could not be proved on this return path
+Arrays.bpl(123,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     Arrays.bpl(127,3): start
 

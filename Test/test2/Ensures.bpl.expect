@@ -1,21 +1,21 @@
-Ensures.bpl(32,5): Error: a postcondition could not be proven on this return path
-Ensures.bpl(21,3): Related location: this is the postcondition that could not be proven
+Ensures.bpl(32,5): Error: a postcondition could not be proved on this return path
+Ensures.bpl(21,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     Ensures.bpl(30,3): start
-Ensures.bpl(37,5): Error: a postcondition could not be proven on this return path
-Ensures.bpl(21,3): Related location: this is the postcondition that could not be proven
+Ensures.bpl(37,5): Error: a postcondition could not be proved on this return path
+Ensures.bpl(21,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     Ensures.bpl(36,3): start
-Ensures.bpl(43,5): Error: a postcondition could not be proven on this return path
-Ensures.bpl(21,3): Related location: this is the postcondition that could not be proven
+Ensures.bpl(43,5): Error: a postcondition could not be proved on this return path
+Ensures.bpl(21,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     Ensures.bpl(41,3): start
-Ensures.bpl(49,5): Error: a postcondition could not be proven on this return path
-Ensures.bpl(21,3): Related location: this is the postcondition that could not be proven
+Ensures.bpl(49,5): Error: a postcondition could not be proved on this return path
+Ensures.bpl(21,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     Ensures.bpl(47,3): start
-Ensures.bpl(74,5): Error: a postcondition could not be proven on this return path
-Ensures.bpl(21,3): Related location: this is the postcondition that could not be proven
+Ensures.bpl(74,5): Error: a postcondition could not be proved on this return path
+Ensures.bpl(21,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     Ensures.bpl(72,3): start
 

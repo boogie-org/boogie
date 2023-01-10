@@ -1,15 +1,15 @@
-SelectiveChecking.bpl(20,3): Error: this assertion could not be proven
+SelectiveChecking.bpl(20,3): Error: this assertion could not be proved
 Execution trace:
     SelectiveChecking.bpl(18,3): anon0
-SelectiveChecking.bpl(33,3): Error: this assertion could not be proven
+SelectiveChecking.bpl(33,3): Error: this assertion could not be proved
 Execution trace:
     SelectiveChecking.bpl(27,3): anon0
     SelectiveChecking.bpl(30,5): anon3_Then
     SelectiveChecking.bpl(33,3): anon2
-SelectiveChecking.bpl(40,3): Error: this assertion could not be proven
+SelectiveChecking.bpl(40,3): Error: this assertion could not be proved
 Execution trace:
     SelectiveChecking.bpl(40,3): anon0
-SelectiveChecking.bpl(42,3): Error: this assertion could not be proven
+SelectiveChecking.bpl(42,3): Error: this assertion could not be proved
 Execution trace:
     SelectiveChecking.bpl(40,3): anon0
 

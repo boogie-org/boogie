@@ -1,11 +1,11 @@
-CodeExpr1.bpl(46,5): Error: a postcondition could not be proven on this return path
-CodeExpr1.bpl(42,3): Related location: this is the postcondition that could not be proven
+CodeExpr1.bpl(46,5): Error: a postcondition could not be proved on this return path
+CodeExpr1.bpl(42,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     CodeExpr1.bpl(44,3): start
-CodeExpr1.bpl(54,5): Error: this assertion could not be proven
+CodeExpr1.bpl(54,5): Error: this assertion could not be proved
 Execution trace:
     CodeExpr1.bpl(51,3): start
-CodeExpr1.bpl(68,5): Error: this assertion could not be proven
+CodeExpr1.bpl(68,5): Error: this assertion could not be proved
 Execution trace:
     CodeExpr1.bpl(59,3): start
 

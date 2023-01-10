@@ -1,4 +1,4 @@
-nesting.bpl(46,35): Error: this assertion could not be proven
+nesting.bpl(46,35): Error: this assertion could not be proved
 Execution trace:
     nesting.bpl(18,3): anon0
     nesting.bpl(19,5): anon17_Then

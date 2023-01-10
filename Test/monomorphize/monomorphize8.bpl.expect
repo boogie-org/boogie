@@ -1,4 +1,4 @@
-monomorphize8.bpl(80,5): Error: this assertion could not be proven
+monomorphize8.bpl(80,5): Error: this assertion could not be proved
 Execution trace:
     monomorphize8.bpl(78,8): anon0
 

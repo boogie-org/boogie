@@ -1,4 +1,4 @@
-noProc.bpl(10,3): Error: this assertion could not be proven
+noProc.bpl(10,3): Error: this assertion could not be proved
 Execution trace:
     noProc.bpl(10,3): anon0
 

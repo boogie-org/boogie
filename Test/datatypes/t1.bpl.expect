@@ -1,4 +1,4 @@
-t1.bpl(25,3): Error: this assertion could not be proven
+t1.bpl(25,3): Error: this assertion could not be proved
 Execution trace:
     t1.bpl(18,3): anon0
 

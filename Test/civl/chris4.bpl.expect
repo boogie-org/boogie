@@ -1,4 +1,4 @@
-chris4.bpl(13,3): Error: this assertion could not be proven
+chris4.bpl(13,3): Error: this assertion could not be proved
 Execution trace:
     chris4.bpl(12,3): anon0
     chris4.bpl(12,3): anon0_0

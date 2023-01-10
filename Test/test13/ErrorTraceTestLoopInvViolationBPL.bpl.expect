@@ -1,7 +1,7 @@
-ErrorTraceTestLoopInvViolationBPL.bpl(9,3): Error: this assertion could not be proven
+ErrorTraceTestLoopInvViolationBPL.bpl(9,3): Error: this assertion could not be proved
 Execution trace:
     ErrorTraceTestLoopInvViolationBPL.bpl(7,5): anon0
-ErrorTraceTestLoopInvViolationBPL.bpl(18,16): Error: this loop invariant could not be proven on entry
+ErrorTraceTestLoopInvViolationBPL.bpl(18,16): Error: this loop invariant could not be proved on entry
 Execution trace:
     ErrorTraceTestLoopInvViolationBPL.bpl(16,5): anon0
 ErrorTraceTestLoopInvViolationBPL.bpl(29,17): Error: this loop invariant might not be maintained by the loop

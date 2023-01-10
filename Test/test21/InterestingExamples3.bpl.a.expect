@@ -1,4 +1,4 @@
-InterestingExamples3.bpl(19,2): Error: this assertion could not be proven
+InterestingExamples3.bpl(19,2): Error: this assertion could not be proved
 Execution trace:
     InterestingExamples3.bpl(17,2): anon0
 

@@ -1,4 +1,4 @@
-Maps1.bpl(35,3): Error: this assertion could not be proven
+Maps1.bpl(35,3): Error: this assertion could not be proved
 Execution trace:
     Maps1.bpl(23,3): anon0
 

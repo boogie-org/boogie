@@ -1,5 +1,5 @@
-BadLineNumber.bpl(15,1): Error: a postcondition could not be proven on this return path
-BadLineNumber.bpl(5,3): Related location: this is the postcondition that could not be proven
+BadLineNumber.bpl(15,1): Error: a postcondition could not be proved on this return path
+BadLineNumber.bpl(5,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     BadLineNumber.bpl(9,5): anon0
     BadLineNumber.bpl(14,5): anon3_Else

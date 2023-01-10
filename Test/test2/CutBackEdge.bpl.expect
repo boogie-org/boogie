@@ -2,12 +2,12 @@ CutBackEdge.bpl(12,5): Error: this loop invariant might not be maintained by the
 Execution trace:
     CutBackEdge.bpl(7,3): entry
     CutBackEdge.bpl(11,3): block850
-CutBackEdge.bpl(22,5): Error: this loop invariant could not be proven on entry
+CutBackEdge.bpl(22,5): Error: this loop invariant could not be proved on entry
 Execution trace:
-CutBackEdge.bpl(28,5): Error: this assertion could not be proven
+CutBackEdge.bpl(28,5): Error: this assertion could not be proved
 Execution trace:
     CutBackEdge.bpl(27,3): L
-CutBackEdge.bpl(40,5): Error: this loop invariant could not be proven on entry
+CutBackEdge.bpl(40,5): Error: this loop invariant could not be proved on entry
 Execution trace:
 
 Boogie program verifier finished with 1 verified, 4 errors

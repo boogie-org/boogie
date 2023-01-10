@@ -1,7 +1,7 @@
-Lambda.bpl(42,3): Error: this assertion could not be proven
+Lambda.bpl(42,3): Error: this assertion could not be proved
 Execution trace:
     Lambda.bpl(41,5): anon0
-Lambda.bpl(43,3): Error: this assertion could not be proven
+Lambda.bpl(43,3): Error: this assertion could not be proved
 Execution trace:
     Lambda.bpl(41,5): anon0
 

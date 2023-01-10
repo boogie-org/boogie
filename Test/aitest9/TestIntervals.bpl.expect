@@ -1,5 +1,5 @@
-TestIntervals.bpl(26,3): Error: this assertion could not be proven
-TestIntervals.bpl(71,3): Error: this assertion could not be proven
-TestIntervals.bpl(72,3): Error: this assertion could not be proven
+TestIntervals.bpl(26,3): Error: this assertion could not be proved
+TestIntervals.bpl(71,3): Error: this assertion could not be proved
+TestIntervals.bpl(72,3): Error: this assertion could not be proved
 
 Boogie program verifier finished with 2 verified, 3 errors

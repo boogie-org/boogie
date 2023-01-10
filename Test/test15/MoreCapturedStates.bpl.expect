@@ -1,18 +1,18 @@
-MoreCapturedStates.bpl(38,1): Error: a postcondition could not be proven on this return path
-MoreCapturedStates.bpl(10,3): Related location: this is the postcondition that could not be proven
+MoreCapturedStates.bpl(38,1): Error: a postcondition could not be proved on this return path
+MoreCapturedStates.bpl(10,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     MoreCapturedStates.bpl(12,3): anon0
     MoreCapturedStates.bpl(21,3): LabelB
     MoreCapturedStates.bpl(36,3): Done
-MoreCapturedStates.bpl(57,3): Error: a precondition for this call could not be proven
-MoreCapturedStates.bpl(66,3): Related location: this is the precondition that could not be proven
+MoreCapturedStates.bpl(57,3): Error: a precondition for this call could not be proved
+MoreCapturedStates.bpl(66,3): Related location: this is the precondition that could not be proved
 Execution trace:
     MoreCapturedStates.bpl(44,3): anon0
     MoreCapturedStates.bpl(53,3): LabelB
-MoreCapturedStates.bpl(83,3): Error: this assertion could not be proven
+MoreCapturedStates.bpl(83,3): Error: this assertion could not be proved
 Execution trace:
     MoreCapturedStates.bpl(71,3): anon0
-MoreCapturedStates.bpl(89,3): Error: this assertion could not be proven
+MoreCapturedStates.bpl(89,3): Error: this assertion could not be proved
 Execution trace:
     MoreCapturedStates.bpl(71,3): anon0
 

@@ -2,8 +2,8 @@ Assignment computed by Houdini:
 b1 = True
 b2 = True
 b3 = True
-houd10.bpl(20,3): Error: a precondition for this call could not be proven
-houd10.bpl(25,1): Related location: this is the precondition that could not be proven
+houd10.bpl(20,3): Error: a precondition for this call could not be proved
+houd10.bpl(25,1): Related location: this is the precondition that could not be proved
 Execution trace:
     houd10.bpl(19,9): anon0
 

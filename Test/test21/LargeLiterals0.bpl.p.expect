@@ -1,4 +1,4 @@
-LargeLiterals0.bpl(22,3): Error: this assertion could not be proven
+LargeLiterals0.bpl(22,3): Error: this assertion could not be proved
 Execution trace:
     LargeLiterals0.bpl(11,5): anon0
 

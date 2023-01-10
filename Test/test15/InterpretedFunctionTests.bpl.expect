@@ -1,10 +1,10 @@
-InterpretedFunctionTests.bpl(6,3): Error: this assertion could not be proven
+InterpretedFunctionTests.bpl(6,3): Error: this assertion could not be proved
 Execution trace:
     InterpretedFunctionTests.bpl(4,3): anon0
-InterpretedFunctionTests.bpl(12,3): Error: this assertion could not be proven
+InterpretedFunctionTests.bpl(12,3): Error: this assertion could not be proved
 Execution trace:
     InterpretedFunctionTests.bpl(10,3): anon0
-InterpretedFunctionTests.bpl(18,3): Error: this assertion could not be proven
+InterpretedFunctionTests.bpl(18,3): Error: this assertion could not be proved
 Execution trace:
     InterpretedFunctionTests.bpl(16,3): anon0
 

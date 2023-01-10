@@ -1,4 +1,4 @@
-(0,0): Error: this assertion could not be proven
+(0,0): Error: this assertion could not be proved
 Execution trace:
     detLoopExtractNested.bpl(12,12): anon0
     detLoopExtractNested.bpl(14,8): anon5_LoopBody

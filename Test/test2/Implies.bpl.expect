@@ -1,25 +1,25 @@
-Implies.bpl(15,3): Error: this assertion could not be proven
+Implies.bpl(15,3): Error: this assertion could not be proved
 Execution trace:
     Implies.bpl(14,3): anon0
-Implies.bpl(18,3): Error: this assertion could not be proven
+Implies.bpl(18,3): Error: this assertion could not be proved
 Execution trace:
     Implies.bpl(14,3): anon0
-Implies.bpl(22,3): Error: this assertion could not be proven
+Implies.bpl(22,3): Error: this assertion could not be proved
 Execution trace:
     Implies.bpl(22,3): anon0
-Implies.bpl(27,3): Error: this assertion could not be proven
+Implies.bpl(27,3): Error: this assertion could not be proved
 Execution trace:
     Implies.bpl(27,3): anon0
-Implies.bpl(28,3): Error: this assertion could not be proven
+Implies.bpl(28,3): Error: this assertion could not be proved
 Execution trace:
     Implies.bpl(27,3): anon0
-Implies.bpl(32,3): Error: this assertion could not be proven
+Implies.bpl(32,3): Error: this assertion could not be proved
 Execution trace:
     Implies.bpl(32,3): anon0
-Implies.bpl(37,3): Error: this assertion could not be proven
+Implies.bpl(37,3): Error: this assertion could not be proved
 Execution trace:
     Implies.bpl(37,3): anon0
-Implies.bpl(38,3): Error: this assertion could not be proven
+Implies.bpl(38,3): Error: this assertion could not be proved
 Execution trace:
     Implies.bpl(37,3): anon0
 

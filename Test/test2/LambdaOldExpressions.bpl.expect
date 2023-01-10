@@ -1,5 +1,5 @@
-LambdaOldExpressions.bpl(29,1): Error: a postcondition could not be proven on this return path
-LambdaOldExpressions.bpl(23,3): Related location: this is the postcondition that could not be proven
+LambdaOldExpressions.bpl(29,1): Error: a postcondition could not be proved on this return path
+LambdaOldExpressions.bpl(23,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     LambdaOldExpressions.bpl(27,7): anon0
 

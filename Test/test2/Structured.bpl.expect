@@ -1,17 +1,17 @@
-Structured.bpl(254,14): Error: a postcondition could not be proven on this return path
-Structured.bpl(245,3): Related location: this is the postcondition that could not be proven
+Structured.bpl(254,14): Error: a postcondition could not be proved on this return path
+Structured.bpl(245,3): Related location: this is the postcondition that could not be proved
 Execution trace:
     Structured.bpl(246,5): anon0
     Structured.bpl(248,5): anon6_LoopBody
     Structured.bpl(249,7): anon7_LoopBody
     Structured.bpl(250,11): anon8_Then
     Structured.bpl(254,14): anon9_Then
-Structured.bpl(305,3): Error: this assertion could not be proven
+Structured.bpl(305,3): Error: this assertion could not be proved
 Execution trace:
     Structured.bpl(301,5): anon0
     Structured.bpl(302,3): anon3_Else
     Structured.bpl(305,3): anon2
-Structured.bpl(313,7): Error: this assertion could not be proven
+Structured.bpl(313,7): Error: this assertion could not be proved
 Execution trace:
     Structured.bpl(310,3): anon0
     Structured.bpl(310,3): anon1_Then

@@ -1,7 +1,7 @@
-InterestingExamples4.bpl(41,3): Error: this assertion could not be proven
+InterestingExamples4.bpl(41,3): Error: this assertion could not be proved
 Execution trace:
     InterestingExamples4.bpl(41,3): anon0
-InterestingExamples4.bpl(44,3): Error: this assertion could not be proven
+InterestingExamples4.bpl(44,3): Error: this assertion could not be proved
 Execution trace:
     InterestingExamples4.bpl(41,3): anon0
 
