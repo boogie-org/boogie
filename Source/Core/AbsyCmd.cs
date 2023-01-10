@@ -2556,7 +2556,7 @@ namespace Microsoft.Boogie
       // assert that unpacked value has the correct constructor
       var assertCmd = new AssertCmd(tok,
         new NAryExpr(tok, new IsConstructor(tok, Constructor.datatypeTypeCtorDecl, Constructor.index),
-          new List<Expr> { rhs })) { Description = new FailureOnlyDescription("The precondition for unpack might not hold") };
+          new List<Expr> { rhs })) { Description = new FailureOnlyDescription("the precondition for unpack could not be proved") };
       cmds.Add(assertCmd);
       // read fields into lhs variables from localRhs
       var assignLhss = lhs.Args.Select(arg => new SimpleAssignLhs(tok, (IdentifierExpr)arg)).ToList<AssignLhs>();
