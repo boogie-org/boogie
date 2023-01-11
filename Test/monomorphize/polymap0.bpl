@@ -1,6 +1,5 @@
 // RUN: %parallel-boogie /monomorphize /useArrayTheory "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// XFAIL: *
 
 type Ref;
 var Heap: HeapType;

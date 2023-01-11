@@ -530,6 +530,7 @@ namespace Microsoft.Boogie
       node.Blocks = this.VisitBlockList(node.Blocks);
       node.Proc = this.VisitProcedure(cce.NonNull(node.Proc));
       node = (Implementation) this.VisitDeclWithFormals(node); // do this first or last?
+      VisitAttributes(node);
       return node;
     }
 

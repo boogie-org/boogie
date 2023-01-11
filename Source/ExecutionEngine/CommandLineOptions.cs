@@ -1799,7 +1799,7 @@ namespace Microsoft.Boogie
        the original name of an identifier translated into Boogie from
        some other source language.
 
-  ---- On Axioms -------------------------------------------------------------
+  ---- On axioms -------------------------------------------------------------
 
     {:include_dep}
       
@@ -1897,6 +1897,8 @@ namespace Microsoft.Boogie
        Used on a quantifier. Adds the expression e, after substituting the
        bound variables with fresh skolem constants, whenever the quantifier is
        skolemized.
+
+     These attributes are not effective for quantifiers inside the scope of axioms.
 
   ---- Civl ------------------------------------------------------------------
 
@@ -2002,7 +2004,9 @@ namespace Microsoft.Boogie
   Multiple .bpl files supplied on the command line are concatenated into one
   Boogie program.
 
-  /lib           : Include library definitions
+  /lib:<name>    : Include definitions in library <name>. The file <name>.bpl
+                   must be an included resource in Core.dll. Currently, the
+                   following libraries are supported---base, node.
   /proc:<p>      : Only check procedures matched by pattern <p>. This option
                    may be specified multiple times to match multiple patterns.
                    The pattern <p> matches the whole procedure name and may
