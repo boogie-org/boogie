@@ -348,7 +348,14 @@ namespace Microsoft.Boogie
       private void EliminateIntermediateVariables()
       {
         TryElimination(Enumerable.Empty<Variable>());
-        TryElimination(trc.allLocVars.Select(v => varCopies[v][0]));
+        if (trc.allLocVars.Count > 0)
+        {
+          for (int i = 1; i <= trc.allLocVars.Select(v => varCopies[v].Count).Max(); i++)
+          {
+            TryElimination(trc.allLocVars.SelectMany(v =>
+              varCopies[v].GetRange(0, i <= varCopies[v].Count ? i : varCopies[v].Count)));
+          }
+        }
         TryElimination(trc.allLocVars.Where(v => v.FindAttribute("pool") != null).SelectMany(v => varCopies[v]));
 
         if (trc.ignorePostState)
