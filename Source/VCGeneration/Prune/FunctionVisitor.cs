@@ -28,7 +28,7 @@ namespace Microsoft.Boogie
       }
       return base.VisitExpr(node);
     }
-    public override Boogie.Type VisitType(Boogie.Type node)
+    public override Type VisitType(Boogie.Type node)
     {
       types.Add(node);
       return base.VisitType(node);

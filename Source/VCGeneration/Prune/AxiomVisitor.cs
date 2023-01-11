@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 
@@ -80,10 +79,10 @@ namespace Microsoft.Boogie
         bvc.E1.pos = Expr.Position.Neither;
       } else if (node is BinderExpr bexp) {
         bexp.Body.pos = Expr.Position.Neither;
-      } else if (node is LetExpr l){
+      } else if (node is LetExpr l) {
         l.Body.pos = Expr.Position.Neither;
       } else {
-        if(node is LiteralExpr || node is IdentifierExpr) {
+        if (node is LiteralExpr || node is IdentifierExpr) {
 
         } else {
           Console.WriteLine(node);
@@ -93,7 +92,7 @@ namespace Microsoft.Boogie
       return base.VisitExpr(node);
     }
 
-    public override Boogie.Type VisitType(Boogie.Type node)
+    public override Type VisitType(Type node)
     {
       types.Add(node);
       return base.VisitType(node);
