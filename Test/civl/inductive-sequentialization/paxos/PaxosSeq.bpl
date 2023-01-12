@@ -9,7 +9,7 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
 
 procedure {:atomic}{:layer 2}
 {:IS "A_Paxos'","INV"}
-{:elim "A_StartRound","A_StartRound'"}
+{:elim "A_StartRound"}
 {:elim "A_Propose","A_Propose'"}
 {:elim "A_Conclude","A_Conclude'"}
 {:elim "A_Join","A_Join'"}

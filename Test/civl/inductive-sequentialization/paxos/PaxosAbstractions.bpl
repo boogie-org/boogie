@@ -19,28 +19,6 @@ A contradiction is created since A_Propose(r, _) forces n to have joined r where
 A_Vote'(r', n, _, _) forces n to not have joined any round greater than r'.
 */
 
-procedure {:IS_abstraction}{:layer 2} A_StartRound'(r: Round, {:linear_in "perm"} r_lin: Round)
-returns ({:pending_async "A_Join", "A_Propose"} PAs:[PA]int)
-modifies pendingAsyncs;
-{
-  assert r == r_lin;
-  assert Round(r);
-  assert pendingAsyncs[A_StartRound(r, r_lin)] > 0;
-
-  /**************************************************************************/
-  // Hint for left mover checks
-  assert
-    {:add_to_pool "Round", r-1}
-    {:add_to_pool "Node", 0}
-    RoundCollector(r)[ConcludePerm(r)];
-  /**************************************************************************/
-
-  PAs := MapAdd(JoinPAs(r), SingletonPA(A_Propose(r, ProposePermissions(r))));
-
-  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
-  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(A_StartRound(r, r_lin)));
-}
-
 procedure {:IS_abstraction}{:layer 2} A_Propose'(r: Round, {:linear_in "perm"} ps: [Permission]bool)
 returns ({:pending_async "A_Vote", "A_Conclude"} PAs:[PA]int)
 modifies voteInfo, pendingAsyncs;
@@ -59,16 +37,13 @@ modifies voteInfo, pendingAsyncs;
   assert (forall r': Round, n': Node, p': Permission :: r' <= r ==> pendingAsyncs[A_Join(r', n', p')] == 0);
   assert (forall r': Round, p': [Permission]bool :: r' < r ==> pendingAsyncs[A_Propose(r', p')] == 0);
   assert (forall r': Round, n': Node, v': Value, p': Permission :: r' <= r ==> pendingAsyncs[A_Vote(r', n', v', p')] == 0);
-
-  // Hint for commutativity w.r.t. {Paxos, Propose}
-  assert
-    {:add_to_pool "Round", r, r-1}
-    {:add_to_pool "Node", 0}
-    ps[ConcludePerm(r)];
   /**************************************************************************/
 
   assume
+    {:add_to_pool "Round", r, r-1}
+    {:add_to_pool "Node", 0}
     {:add_to_pool "NodeSet", ns}
+    {:add_to_pool "Permission", ConcludePerm(r)}
     true;
 
   if (*) {
@@ -100,10 +75,12 @@ modifies decision, pendingAsyncs;
   assert voteInfo[r]->t->value == v;
 
   /**************************************************************************/
-  assert
-    {:add_to_pool "Round", r}
-    (forall n': Node, v': Value, p': Permission :: pendingAsyncs[A_Vote(r, n', v', p')] == 0);
+  assert (forall n': Node, v': Value, p': Permission :: pendingAsyncs[A_Vote(r, n', v', p')] == 0);
   /**************************************************************************/
+
+  assume 
+    {:add_to_pool "Round", r}
+    true;
 
   if (*) {
     assume IsSubset(q, voteInfo[r]->t->ns) && IsQuorum(q);
@@ -131,6 +108,7 @@ modifies joinedNodes, pendingAsyncs;
     {:add_to_pool "Round", r, r-1}
     {:add_to_pool "Node", n}
     true;
+
   if (*) {
     assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' < r);
     joinedNodes[r][n] := true;
@@ -160,6 +138,7 @@ modifies joinedNodes, voteInfo, pendingAsyncs;
     {:add_to_pool "Round", r, r-1}
     {:add_to_pool "Node", n}
     true;
+
   if (*) {
     assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' <= r);
     voteInfo[r] := Some(VoteInfo(v, voteInfo[r]->t->ns[n := true]));
