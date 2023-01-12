@@ -100,7 +100,7 @@ public class InvariantMaintainedDescription : AssertionDescription
     "this loop invariant is maintained by the loop";
 
   public override string FailureDescription =>
-    "this loop invariant might not be maintained by the loop";
+    "this invariant could not be proved to be maintained by the loop";
 
   public override string ShortDescription => "invariant maintained";
 }

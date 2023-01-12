@@ -4,7 +4,7 @@ Execution trace:
 ErrorTraceTestLoopInvViolationBPL.bpl(18,16): Error: this loop invariant could not be proved on entry
 Execution trace:
     ErrorTraceTestLoopInvViolationBPL.bpl(16,5): anon0
-ErrorTraceTestLoopInvViolationBPL.bpl(29,17): Error: this loop invariant might not be maintained by the loop
+ErrorTraceTestLoopInvViolationBPL.bpl(29,17): Error: this invariant could not be proved to be maintained by the loop
 Execution trace:
     ErrorTraceTestLoopInvViolationBPL.bpl(27,5): anon0
     ErrorTraceTestLoopInvViolationBPL.bpl(29,3): anon2_LoopHead

@@ -1,4 +1,4 @@
-CutBackEdge.bpl(12,5): Error: this loop invariant might not be maintained by the loop
+CutBackEdge.bpl(12,5): Error: this invariant could not be proved to be maintained by the loop
 Execution trace:
     CutBackEdge.bpl(7,3): entry
     CutBackEdge.bpl(11,3): block850

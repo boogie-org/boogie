@@ -175,7 +175,7 @@ Boogie program verifier finished with 1 verified, 1 error
     await engine.ProcessProgram(writer, program1, "fakeFilename");
     await writer.DisposeAsync();
     var output = writer.ToString();
-    var expected = @"fakeFilename(10,5): Error: this loop invariant might not be maintained by the loop
+    var expected = @"fakeFilename(10,5): Error: this invariant could not be proved to be maintained by the loop
 fakeFilename(10,5): Related message: fake failure
 Execution trace:
     fakeFilename(5,3): entry

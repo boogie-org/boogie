@@ -16,7 +16,7 @@ Execution trace:
     Structured.bpl(310,3): anon0
     Structured.bpl(310,3): anon1_Then
     Structured.bpl(311,5): A
-Structured.bpl(356,3): Error: this loop invariant might not be maintained by the loop
+Structured.bpl(356,3): Error: this invariant could not be proved to be maintained by the loop
 Execution trace:
     Structured.bpl(354,5): anon0
     Structured.bpl(355,3): anon4_LoopHead
