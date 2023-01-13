@@ -415,7 +415,7 @@ namespace Microsoft.Boogie
             foreach (var v in existsVarMap.Keys)
             {
               var orig = copyToOriginalVar[v];
-              if (v == varCopies[orig].First() && trc.triggers.ContainsKey(orig))
+              if (trc.triggers.ContainsKey(orig))
               {
                 var f = trc.triggers[orig];
                 exprs.Add(ExprHelper.FunctionCall(f, Expr.Ident(existsVarMap[v])));

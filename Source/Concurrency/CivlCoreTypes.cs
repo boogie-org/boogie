@@ -299,6 +299,24 @@ namespace Microsoft.Boogie
         var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(f, Expr.Ident(v)));
         impl.Blocks[0].Cmds.Insert(0, assume);
       }
+      impl.Blocks.Iter(block =>
+      {
+        block.Cmds = block.Cmds.SelectMany(cmd =>
+        {
+          var newCmds = new List<Cmd> { cmd };
+          if (cmd is HavocCmd havocCmd)
+          {
+            var havocVars = new HashSet<Variable>(havocCmd.Vars.Select(x => x.Decl));
+            foreach (var v in impl.LocVars.Intersect(havocVars))
+            {
+              var f = triggerFunctions[v];
+              var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(f, Expr.Ident(v)));
+              newCmds.Add(assume);
+            }
+          }
+          return newCmds;
+        }).ToList();
+      });
     }
   }
 
