@@ -350,7 +350,7 @@ namespace Microsoft.Boogie
         // The first attempt eliminates temporaries using the defined variables set up in SetDefinedVariables above.
         TryElimination(Enumerable.Empty<Variable>());
 
-        // The second attempt eliminates temporaries considering as defined the subset that is defined by assignments.
+        // The second attempt eliminates temporaries considering as defined the subset that is not defined by assignments.
         TryElimination(trc.allLocVars.SelectMany(v => varCopies[v]).Except(assignments.Select(x => x.Var)));
 
         // The third attempt eliminates temporaties considering as defined the subset that has pool annotations.
