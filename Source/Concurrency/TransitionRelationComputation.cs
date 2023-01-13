@@ -353,7 +353,7 @@ namespace Microsoft.Boogie
         // The second attempt eliminates temporaries considering as defined the subset that is not defined by assignments.
         TryElimination(trc.allLocVars.SelectMany(v => varCopies[v]).Except(assignments.Select(x => x.Var)));
 
-        // The third attempt eliminates temporaties considering as defined the subset that has pool annotations.
+        // The third attempt eliminates temporaries considering as defined the subset that has pool annotations.
         TryElimination(trc.allLocVars.Where(v => v.FindAttribute("pool") != null).SelectMany(v => varCopies[v]));
 
         if (trc.ignorePostState)
