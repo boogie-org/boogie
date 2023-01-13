@@ -420,7 +420,7 @@ namespace Microsoft.Boogie
 
     public int? RandomSeed { get; set; }
 
-    public int RandomSeedIterations { get; set; } = 1;
+    public int RandomizeVcIterations { get; set; } = 1;
 
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
@@ -1450,9 +1450,10 @@ namespace Microsoft.Boogie
           ps.GetIntArgument(x => VcsCores = x, a => 1 <= a);
           return true;
 
-        case "randomSeedIterations":
-          ps.GetIntArgument(x => RandomSeedIterations = x, a => 1 <= a);
-          RandomSeed ??= 0; // Using /randomSeedIterations without any randomness isn't very useful
+        case "randomSeedIterations": // old name of the option that should be removed soon
+        case "randomizeVcIterations":
+          ps.GetIntArgument(x => RandomizeVcIterations = x, a => 1 <= a);
+          RandomSeed ??= 0; // Set to 0 if not already set
           return true;
 
         case "vcsLoad":
@@ -2208,25 +2209,23 @@ namespace Microsoft.Boogie
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.
 
-  /randomSeed:<n>
-                Turn on randomization of the input that Boogie passes to the 
+  /randomSeed:<s>
+                Supply the random seed for /randomizeVcIterations option.
+
+  /randomizeVcIterations:<n>
+                Turn on randomization of the input that Boogie passes to the
                 SMT solver and turn on randomization in the SMT solver itself.
- 
+                Attempt to randomize and prove each VC n times using the random
+                seed s provided by the option /randomSeed:<s>. If /randomSeed option
+                is not provided, s is chosen to be zero.
+
                 Certain Boogie inputs are unstable in the sense that changes to 
                 the input that preserve its meaning may cause the output to change.
-                The /randomSeed option simulates meaning-preserving changes to 
-                the input without requiring the user to actually make those changes.
-
-                The /randomSeed option is implemented by renaming variables and 
-                reordering declarations in the input, and by setting 
-                solver options that have similar effects.
-
-  /randomSeedIterations:<n>
-                Attempt to prove each VC n times with n random seeds. If
-                /randomSeed has been provided, each proof attempt will use
-                a new random seed derived from this original seed. If not,
-                it will implicitly use /randomSeed:0 to ensure a difference
-                between iterations.
+                This option simulates meaning-preserving changes to the input
+                without requiring the user to actually make those changes.
+                This option is implemented by renaming variables and reordering
+                declarations in the input, and by setting solver options that have
+                similar effects.
 
   ---- Verification-condition splitting --------------------------------------
 
