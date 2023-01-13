@@ -347,15 +347,13 @@ namespace Microsoft.Boogie
 
       private void EliminateIntermediateVariables()
       {
+        // The first attempt eliminates temporaries using the defined variables set up in SetDefinedVariables above.
         TryElimination(Enumerable.Empty<Variable>());
-        if (trc.allLocVars.Count > 0)
-        {
-          for (int i = 1; i <= trc.allLocVars.Select(v => varCopies[v].Count).Max(); i++)
-          {
-            TryElimination(trc.allLocVars.SelectMany(v =>
-              varCopies[v].GetRange(0, i <= varCopies[v].Count ? i : varCopies[v].Count)));
-          }
-        }
+
+        // The second attempt eliminates temporaries considering as defined the subset that is defined by assignments.
+        TryElimination(trc.allLocVars.SelectMany(v => varCopies[v]).Except(assignments.Select(x => x.Var)));
+
+        // The third attempt eliminates temporaties considering as defined the subset that has pool annotations.
         TryElimination(trc.allLocVars.Where(v => v.FindAttribute("pool") != null).SelectMany(v => varCopies[v]));
 
         if (trc.ignorePostState)

@@ -47,12 +47,11 @@ function max(CH:[val]int) : val;
 function card(CH:[val]int) : int;
 
 axiom card(MultisetEmpty) == 0;
-axiom (forall CH:[val]int, v:val :: card(MultisetPlus(CH, MultisetSingleton(v))) == card(CH) + 1);
 axiom (forall CH:[val]int, v:val, x:int :: card(CH[v := x]) == card(CH) + x - CH[v]);
 axiom (forall m:[val]int, m':[val]int :: MultisetSubsetEq(m, m') && card(m) == card(m') ==> m == m');
 
 axiom (forall v:val :: max(MultisetSingleton(v)) == v);
-axiom (forall CH:[val]int, v:val, x:int :: max(CH[v := x]) == (if v > max(CH) && x > 0 then v else max(CH)));
+axiom (forall CH:[val]int, v:val, x:int :: x > 0 ==> max(CH[v := x]) == (if v > max(CH) then v else max(CH)));
 
 function value_card(v:val, value:[pid]val, i:pid, j:pid) : int
 {
