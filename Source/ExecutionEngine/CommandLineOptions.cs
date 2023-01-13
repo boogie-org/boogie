@@ -1450,6 +1450,7 @@ namespace Microsoft.Boogie
           ps.GetIntArgument(x => VcsCores = x, a => 1 <= a);
           return true;
 
+        case "randomSeedIterations": // old name of the option that should be removed soon
         case "randomizeVcIterations":
           ps.GetIntArgument(x => RandomizeVcIterations = x, a => 1 <= a);
           RandomSeed ??= 0; // Set to 0 if not already set
