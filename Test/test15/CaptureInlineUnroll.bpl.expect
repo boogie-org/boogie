@@ -1,4 +1,4 @@
-CaptureInlineUnroll.bpl(33,3): Error: This assertion might not hold.
+CaptureInlineUnroll.bpl(33,3): Error: this assertion could not be proved
 Execution trace:
     CaptureInlineUnroll.bpl(23,5): anon0#2
 *** MODEL
@@ -30,7 +30,7 @@ tickleBool -> {
   u -> 1
 *** END_STATE
 *** END_MODEL
-CaptureInlineUnroll.bpl(40,3): Error: This assertion might not hold.
+CaptureInlineUnroll.bpl(40,3): Error: this assertion could not be proved
 Execution trace:
     CaptureInlineUnroll.bpl(38,3): anon0#2
 *** MODEL
@@ -57,7 +57,7 @@ tickleBool -> {
 *** END_MODEL
 
 Boogie program verifier finished with 1 verified, 2 errors
-CaptureInlineUnroll.bpl(13,5): Error: This assertion might not hold.
+CaptureInlineUnroll.bpl(13,5): Error: this assertion could not be proved
 Execution trace:
     CaptureInlineUnroll.bpl(9,3): anon0#3
     CaptureInlineUnroll.bpl(12,5): anon3_LoopBody#3
@@ -100,7 +100,7 @@ tickleBool -> {
   i -> 2
 *** END_STATE
 *** END_MODEL
-CaptureInlineUnroll.bpl(40,3): Error: This assertion might not hold.
+CaptureInlineUnroll.bpl(40,3): Error: this assertion could not be proved
 Execution trace:
     CaptureInlineUnroll.bpl(23,5): anon0#3
     CaptureInlineUnroll.bpl(38,3): inline$Increment$0$anon0#3

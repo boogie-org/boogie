@@ -1,4 +1,4 @@
-HeapAxiom.bpl(28,3): Error: This assertion might not hold.
+HeapAxiom.bpl(28,3): Error: this assertion could not be proved
 Execution trace:
     HeapAxiom.bpl(17,3): anon0
 

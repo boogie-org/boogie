@@ -11,7 +11,7 @@ namespace Microsoft.Boogie;
 public abstract class ProofObligationDescription {
   /// <summary>
   /// A description of what this proof obligation means when it has been
-  /// successfully proven.
+  /// successfully proved.
   /// </summary>
   public abstract string SuccessDescription { get; }
 
@@ -32,9 +32,9 @@ public abstract class ProofObligationDescription {
 
 public class AssertionDescription : ProofObligationDescription
 {
-  public override string SuccessDescription => "This assertion holds.";
+  public override string SuccessDescription => "this assertion holds";
 
-  public override string FailureDescription => "This assertion might not hold.";
+  public override string FailureDescription => "this assertion could not be proved";
 
   public override string ShortDescription => "assert";
 }
@@ -42,10 +42,10 @@ public class AssertionDescription : ProofObligationDescription
 public class PreconditionDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
-    "All preconditions hold for this call.";
+    "all preconditions hold for this call";
 
   public override string FailureDescription =>
-    "A precondition for this call might not hold.";
+    "a precondition for this call could not be proved";
 
   public override string ShortDescription => "precondition";
 }
@@ -53,10 +53,10 @@ public class PreconditionDescription : ProofObligationDescription
 public class RequiresDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
-    "This precondition holds.";
+    "this precondition holds";
 
   public override string FailureDescription =>
-    "This is the precondition that might not hold.";
+    "this is the precondition that could not be proved";
 
   public override string ShortDescription => "requires";
 }
@@ -64,10 +64,10 @@ public class RequiresDescription : ProofObligationDescription
 public class PostconditionDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
-    "All postconditions hold for this return path.";
+    "all postconditions hold for this return path";
 
   public override string FailureDescription =>
-    "A postcondition might not hold on this return path.";
+    "a postcondition could not be proved on this return path";
 
   public override string ShortDescription => "postcondition";
 }
@@ -75,10 +75,10 @@ public class PostconditionDescription : ProofObligationDescription
 public class EnsuresDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>
-    "This postcondition holds.";
+    "this postcondition holds";
 
   public override string FailureDescription =>
-    "This is the postcondition that might not hold.";
+    "this is the postcondition that could not be proved";
 
   public override string ShortDescription => "ensures";
 }
@@ -86,10 +86,10 @@ public class EnsuresDescription : ProofObligationDescription
 public class InvariantEstablishedDescription : AssertionDescription
 {
   public override string SuccessDescription =>
-    "This loop invariant holds on entry.";
+    "this loop invariant holds on entry";
 
   public override string FailureDescription =>
-    "This loop invariant might not hold on entry.";
+    "this loop invariant could not be proved on entry";
 
   public override string ShortDescription => "invariant established";
 }
@@ -97,10 +97,10 @@ public class InvariantEstablishedDescription : AssertionDescription
 public class InvariantMaintainedDescription : AssertionDescription
 {
   public override string SuccessDescription =>
-    "This loop invariant is maintained by the loop.";
+    "this loop invariant is maintained by the loop";
 
   public override string FailureDescription =>
-    "This loop invariant might not be maintained by the loop.";
+    "this invariant could not be proved to be maintained by the loop";
 
   public override string ShortDescription => "invariant maintained";
 }

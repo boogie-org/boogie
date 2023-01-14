@@ -1,5 +1,5 @@
-Issue25.bpl(12,1): Error: A postcondition might not hold on this return path.
-Issue25.bpl(8,1): Related location: This is the postcondition that might not hold.
+Issue25.bpl(12,1): Error: a postcondition could not be proved on this return path
+Issue25.bpl(8,1): Related location: this is the postcondition that could not be proved
 Execution trace:
     Issue25.bpl(11,3): anon0
     Issue25.bpl(12,1): anon2_LoopHead
