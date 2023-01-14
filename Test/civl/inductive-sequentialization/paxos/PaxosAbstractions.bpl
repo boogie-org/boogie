@@ -23,44 +23,12 @@ procedure {:IS_abstraction}{:layer 2} A_Propose'(r: Round, {:linear_in "perm"} p
 returns ({:pending_async "A_Vote", "A_Conclude"} PAs:[PA]int)
 modifies voteInfo, pendingAsyncs;
 {
-  var {:pool "Round"} maxRound: int;
-  var maxValue: Value;
-  var {:pool "NodeSet"} ns: NodeSet;
-
-  assert Round(r);
-  assert pendingAsyncs[A_Propose(r, ps)] > 0;
-  assert ps == ProposePermissions(r);
-  assert voteInfo[r] is None;
-
-  /**************************************************************************/
   assert (forall r': Round :: r' <= r ==> pendingAsyncs[A_StartRound(r', r')] == 0);
   assert (forall r': Round, n': Node, p': Permission :: r' <= r ==> pendingAsyncs[A_Join(r', n', p')] == 0);
   assert (forall r': Round, p': [Permission]bool :: r' < r ==> pendingAsyncs[A_Propose(r', p')] == 0);
   assert (forall r': Round, n': Node, v': Value, p': Permission :: r' <= r ==> pendingAsyncs[A_Vote(r', n', v', p')] == 0);
-  /**************************************************************************/
 
-  assume
-    {:add_to_pool "Round", r, r-1}
-    {:add_to_pool "Node", 0}
-    {:add_to_pool "NodeSet", ns}
-    {:add_to_pool "Permission", ConcludePerm(r)}
-    true;
-
-  if (*) {
-    assume IsSubset(ns, joinedNodes[r]) && IsQuorum(ns);
-    maxRound := MaxRound(r, ns, voteInfo);
-    if (maxRound != 0)
-    {
-      maxValue := voteInfo[maxRound]->t->value;
-    }
-    voteInfo[r] := Some(VoteInfo(maxValue, NoNodes()));
-    PAs := MapAdd(VotePAs(r, maxValue), SingletonPA(A_Conclude(r, maxValue, ConcludePerm(r))));
-  } else {
-    PAs := NoPAs();
-  }
-
-  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
-  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(A_Propose(r, ps)));
+  call PAs := A_Propose(r, ps);
 }
 
 procedure {:IS_abstraction}{:layer 2} A_Conclude'(r: Round, v: Value, {:linear_in "perm"} p: Permission)

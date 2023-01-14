@@ -4,6 +4,114 @@ using System.Linq;
 
 namespace Microsoft.Boogie
 {
+  public class AtomicActionLiveVariableAnalysis
+  {
+    private Implementation impl;
+    private ConcurrencyOptions options;
+    private Dictionary<Block, HashSet<Variable>> liveVarsBefore;
+    private Dictionary<Cmd, HashSet<Variable>> liveVarsAfter;
+
+    public AtomicActionLiveVariableAnalysis(Implementation impl, ConcurrencyOptions options)
+    {
+      this.impl = impl;
+      this.options = options;
+      this.liveVarsBefore = new Dictionary<Block, HashSet<Variable>>();
+      this.liveVarsAfter = new Dictionary<Cmd, HashSet<Variable>>();
+    }
+
+    public void Compute()
+    {
+      var graph = Program.GraphFromImpl(impl, false);
+      foreach (var block in graph.TopologicalSort())
+      {
+        if (block.TransferCmd is ReturnCmd)
+        {
+          liveVarsBefore[block] = Propagate(block.Cmds,
+            impl.Proc.Modifies.Select(x => x.Decl).Concat(impl.OutParams).ToHashSet());
+        }
+        else if (block.TransferCmd is GotoCmd gotoCmd)
+        {
+          liveVarsBefore[block] =
+            Propagate(block.Cmds, gotoCmd.labelTargets.SelectMany(x => liveVarsBefore[x]).ToHashSet());
+        }
+        else
+        {
+          throw new cce.UnreachableException();
+        }
+      }
+    }
+
+    public bool IsLiveAfter(Variable v, Cmd cmd)
+    {
+      return liveVarsAfter[cmd].Contains(v);
+    }
+
+    public bool IsLiveBefore(Variable v, Block block)
+    {
+      return liveVarsBefore[block].Contains(v);
+    }
+
+    private HashSet<Variable> Propagate(List<Cmd> cmds, HashSet<Variable> liveVars)
+    {
+      for (int i = cmds.Count - 1; i >= 0; i--)
+      {
+        var cmd = cmds[i];
+        liveVarsAfter[cmd] = new HashSet<Variable>(liveVars);
+        liveVars = Propagate(cmd, liveVars);
+      }
+      return liveVars;
+    }
+
+    private HashSet<Variable> Propagate(Cmd cmd, HashSet<Variable> liveVars)
+    {
+      if (cmd is HavocCmd havocCmd)
+      {
+        liveVars.ExceptWith(havocCmd.Vars.Select(v => v.Decl));
+        return liveVars;
+      }
+      if (cmd is AssignCmd assignCmd)
+      {
+        var usedVars = new HashSet<Variable>();
+        for (int i = 0; i < assignCmd.Lhss.Count; i++)
+        {
+          var lhs = assignCmd.Lhss[i];
+          var rhs = assignCmd.Rhss[i];
+          if (liveVars.Contains(lhs.DeepAssignedVariable))
+          {
+            liveVars.Remove(lhs.DeepAssignedVariable);
+            var variableCollector = new VariableCollector();
+            variableCollector.VisitExpr(rhs);
+            usedVars.UnionWith(variableCollector.usedVars);
+          }
+        }
+        liveVars.UnionWith(usedVars);
+        return liveVars;
+      }
+      if (cmd is PredicateCmd predicateCmd)
+      {
+        var variableCollector = new VariableCollector();
+        variableCollector.VisitExpr(predicateCmd.Expr);
+        liveVars.UnionWith(variableCollector.usedVars);
+        return liveVars;
+      }
+      if (cmd is SugaredCmd sugaredCmd)
+      {
+        return Propagate(sugaredCmd.GetDesugaring(options), liveVars);
+      }
+      if (cmd is CommentCmd)
+      {
+        return liveVars;
+      }
+      if (cmd is StateCmd stateCmd)
+      {
+        liveVars = Propagate(stateCmd.Cmds, liveVars);
+        liveVars.ExceptWith(stateCmd.Locals);
+        return liveVars;
+      }
+      throw new cce.UnreachableException();
+    }
+  }
+
   public class CivlUtil
   {
     public static void AddInlineAttribute(Declaration decl)

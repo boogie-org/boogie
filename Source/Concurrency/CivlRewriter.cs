@@ -40,7 +40,7 @@ namespace Microsoft.Boogie
       foreach (AtomicAction action in civlTypeChecker.procToAtomicAction.Values.Union(civlTypeChecker
         .procToIsAbstraction.Values))
       {
-        action.AddTriggerAssumes(program);
+        action.AddTriggerAssumes(program, options);
       }
 
       // Remove original declarations and add new checkers generated above
