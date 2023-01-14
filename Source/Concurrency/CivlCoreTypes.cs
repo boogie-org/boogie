@@ -317,16 +317,12 @@ namespace Microsoft.Boogie
           var newCmds = new List<Cmd> { cmd };
           if (cmd is HavocCmd havocCmd)
           {
-            var havocVars = new HashSet<Variable>(havocCmd.Vars.Select(x => x.Decl));
-            foreach (var v in impl.LocVars.Intersect(havocVars))
+            var liveHavocVars = new HashSet<Variable>(havocCmd.Vars.Select(x => x.Decl)
+              .Where(v => liveVariableAnalysis.IsLiveAfter(v, havocCmd)));
+            impl.LocVars.Intersect(liveHavocVars).Iter(v =>
             {
-              if (liveVariableAnalysis.IsLiveAfter(v, havocCmd))
-              {
-                var f = triggerFunctions[v];
-                var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(f, Expr.Ident(v)));
-                newCmds.Add(assume);
-              }
-            }
+              newCmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(triggerFunctions[v], Expr.Ident(v))));
+            });
           }
           return newCmds;
         }).ToList();
