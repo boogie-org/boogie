@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie -useArrayTheory "%s" > "%t"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 // UNSUPPORTED: batch_mode
-// CHECK-L: bla1.bpl(2100,5): Error: This assertion might not hold.
+// CHECK-L: bla1.bpl(2100,5): Error: this assertion could not be proved
 // CHECK-L: Boogie program verifier finished with 0 verified, 1 error
 var __storm_thread_done_0 : bool;
 var __storm_thread_done_1 : bool;

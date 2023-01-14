@@ -1,22 +1,22 @@
-InvariantVerifiedUnder0.bpl(8,7): Error: This assertion might not hold.
+InvariantVerifiedUnder0.bpl(8,7): Error: this assertion could not be proved
 Execution trace:
     InvariantVerifiedUnder0.bpl(7,5): anon0
-InvariantVerifiedUnder0.bpl(24,7): Error: This loop invariant might not hold on entry.
+InvariantVerifiedUnder0.bpl(24,7): Error: this loop invariant could not be proved on entry
 Execution trace:
     InvariantVerifiedUnder0.bpl(23,5): anon0
-InvariantVerifiedUnder0.bpl(25,7): Error: This loop invariant might not hold on entry.
+InvariantVerifiedUnder0.bpl(25,7): Error: this loop invariant could not be proved on entry
 Execution trace:
     InvariantVerifiedUnder0.bpl(23,5): anon0
-InvariantVerifiedUnder0.bpl(35,7): Error: This loop invariant might not hold on entry.
+InvariantVerifiedUnder0.bpl(35,7): Error: this loop invariant could not be proved on entry
 Execution trace:
     InvariantVerifiedUnder0.bpl(33,5): anon0
-InvariantVerifiedUnder0.bpl(42,7): Error: This loop invariant might not hold on entry.
+InvariantVerifiedUnder0.bpl(42,7): Error: this loop invariant could not be proved on entry
 Execution trace:
     InvariantVerifiedUnder0.bpl(41,5): anon0
-InvariantVerifiedUnder0.bpl(43,7): Error: This loop invariant might not hold on entry.
+InvariantVerifiedUnder0.bpl(43,7): Error: this loop invariant could not be proved on entry
 Execution trace:
     InvariantVerifiedUnder0.bpl(41,5): anon0
-InvariantVerifiedUnder0.bpl(52,7): Error: This loop invariant might not hold on entry.
+InvariantVerifiedUnder0.bpl(52,7): Error: this loop invariant could not be proved on entry
 Execution trace:
     InvariantVerifiedUnder0.bpl(51,5): anon0
 

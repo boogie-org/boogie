@@ -295,7 +295,7 @@ procedure length#definedness(x_1: Ref) returns (Result: int)
           perm := NoPerm;
           perm := perm + FullPerm;
           if (perm != NoPerm) {
-            assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x.next). (predicate_exhale.vpr@18.48) [80]"}
+            assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x.next). (predicate_exhale.vpr@18.48) [80]"}
               perm <= UnfoldingMask[null, list(UnfoldingHeap[x_1, next])];
           }
           UnfoldingMask[null, list(UnfoldingHeap[x_1, next])] := UnfoldingMask[null, list(UnfoldingHeap[x_1, next])] - perm;
@@ -419,7 +419,7 @@ procedure test1(x_1: Ref) returns ()
         perm := NoPerm;
         perm := perm + FullPerm;
         if (perm != NoPerm) {
-          assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x). (predicate_exhale.vpr@28.10) [81]"}
+          assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x). (predicate_exhale.vpr@28.10) [81]"}
             perm <= Mask[null, list(x_1)];
         }
         Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
@@ -562,7 +562,7 @@ procedure test1(x_1: Ref) returns ()
         perm := NoPerm;
         perm := perm + FullPerm;
         if (perm != NoPerm) {
-          assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x). (predicate_exhale.vpr@34.10) [92]"}
+          assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x). (predicate_exhale.vpr@34.10) [92]"}
             perm <= Mask[null, list(x_1)];
         }
         Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
@@ -575,7 +575,7 @@ procedure test1(x_1: Ref) returns ()
       }
       assume state(Heap, Mask);
     // Phase 1: pure assertions and fixed permissions
-    assert {:msg "  Assert might fail. Assertion length(x) == 7 might not hold. (predicate_exhale.vpr@34.3) [93]"}
+    assert {:msg "  Assert might fail. Assertion length(x) == 7 could not be proved. (predicate_exhale.vpr@34.3) [93]"}
       length(Heap, x_1) == 7;
     assume state(Heap, Mask);
   
@@ -622,7 +622,7 @@ procedure test1(x_1: Ref) returns ()
         HasDirectPerm(Mask, x_1, f_6);
       assume state(Heap, Mask);
     // Phase 1: pure assertions and fixed permissions
-    assert {:msg "  Assert might fail. Assertion x.f == 5 might not hold. (predicate_exhale.vpr@37.3) [97]"}
+    assert {:msg "  Assert might fail. Assertion x.f == 5 could not be proved. (predicate_exhale.vpr@37.3) [97]"}
       Heap[x_1, f_6] == 5;
     assume state(Heap, Mask);
   
@@ -699,7 +699,7 @@ procedure test1(x_1: Ref) returns ()
         perm := NoPerm;
         perm := perm + FullPerm;
         if (perm != NoPerm) {
-          assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x). (predicate_exhale.vpr@40.10) [104]"}
+          assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x). (predicate_exhale.vpr@40.10) [104]"}
             perm <= Mask[null, list(x_1)];
         }
         Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
@@ -712,7 +712,7 @@ procedure test1(x_1: Ref) returns ()
       }
       assume state(Heap, Mask);
     // Phase 1: pure assertions and fixed permissions
-    assert {:msg "  Assert might fail. Assertion length(x) == 7 might not hold. (predicate_exhale.vpr@40.3) [105]"}
+    assert {:msg "  Assert might fail. Assertion length(x) == 7 could not be proved. (predicate_exhale.vpr@40.3) [105]"}
       length(Heap, x_1) == 7;
     assume state(Heap, Mask);
   
@@ -747,7 +747,7 @@ procedure test1(x_1: Ref) returns ()
         perm := NoPerm;
         perm := perm + FullPerm;
         if (perm != NoPerm) {
-          assert {:msg "  Precondition of function length might not hold. There might be insufficient permission to access list(x). (predicate_exhale.vpr@45.10) [108]"}
+          assert {:msg "  Precondition of function length could not be proved. There might be insufficient permission to access list(x). (predicate_exhale.vpr@45.10) [108]"}
             perm <= Mask[null, list(x_1)];
         }
         Mask[null, list(x_1)] := Mask[null, list(x_1)] - perm;
@@ -760,8 +760,8 @@ procedure test1(x_1: Ref) returns ()
       }
       assume state(Heap, Mask);
     // Phase 1: pure assertions and fixed permissions
-    // CHECK-L: Assert might fail. Assertion length(x) == 7 might not hold. (predicate_exhale.vpr@45.3) [109]
-    assert {:msg "Assert might fail. Assertion length(x) == 7 might not hold. (predicate_exhale.vpr@45.3) [109]"}
+    // CHECK-L: Assert might fail. Assertion length(x) == 7 could not be proved. (predicate_exhale.vpr@45.3) [109]
+    assert {:msg "Assert might fail. Assertion length(x) == 7 could not be proved. (predicate_exhale.vpr@45.3) [109]"}
       length(Heap, x_1) == 7;
     assume state(Heap, Mask);
 }

@@ -1,4 +1,4 @@
-FunAxioms.bpl(34,3): Error: This assertion might not hold.
+FunAxioms.bpl(34,3): Error: this assertion could not be proved
 Execution trace:
     FunAxioms.bpl(22,3): anon0
 

@@ -1,4 +1,4 @@
-polymap1.bpl(15,2): Error: This assertion might not hold.
+polymap1.bpl(15,2): Error: this assertion could not be proved
 Execution trace:
     polymap1.bpl(14,2): anon0
 

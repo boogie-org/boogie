@@ -1,4 +1,4 @@
-BooleanQuantification2.bpl(17,3): Error: This assertion might not hold.
+BooleanQuantification2.bpl(17,3): Error: this assertion could not be proved
 Execution trace:
     BooleanQuantification2.bpl(14,3): anon0
 
