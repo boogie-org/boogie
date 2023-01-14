@@ -341,8 +341,8 @@ procedure {:atomic}{:layer 2,4}
 MiddleBuyer ({:linear_in "pid"} pid:int)
 modifies QuoteCH, RemCH, contribution;
 {
-  var {:pool "rem"} rem:int;
-  var {:pool "amount"} amount:int;
+  var rem:int;
+  var amount:int;
 
   assert middleBuyerID(pid);
   assert (forall q:int :: QuoteCH[pid][q] > 0 ==> q == price);
@@ -356,10 +356,7 @@ modifies QuoteCH, RemCH, contribution;
 
   if (*) { amount := min(wallet, rem); } else { amount := 0; }
   contribution[pid] := amount;
-  assume
-  {:add_to_pool "contribution", contribution}
-  {:add_to_pool "rem", rem}
-  {:add_to_pool "amount", amount} true;
+  assume {:add_to_pool "contribution", contribution} true;
   rem := rem - amount;
   RemCH[nextBuyer(pid)][rem] := RemCH[nextBuyer(pid)][rem] + 1;
 }
@@ -368,8 +365,8 @@ procedure {:atomic}{:layer 2,4}
 LastBuyer ({:linear_in "pid"} pid:int)
 modifies QuoteCH, RemCH, DecCH, contribution;
 {
-  var {:pool "rem"} rem:int;
-  var {:pool "amount"} amount:int;
+  var rem:int;
+  var amount:int;
 
   assert lastBuyerID(pid);
   assert (forall q:int :: QuoteCH[pid][q] > 0 ==> q == price);
@@ -383,10 +380,7 @@ modifies QuoteCH, RemCH, DecCH, contribution;
 
   if (*) { amount := min(wallet, rem); } else { amount := 0; }
   contribution[pid] := amount;
-  assume
-  {:add_to_pool "contribution", contribution}
-  {:add_to_pool "rem", rem}
-  {:add_to_pool "amount", amount} true;
+  assume {:add_to_pool "contribution", contribution} true;
   if (amount == rem)
   {
       DecCH[true] := DecCH[true] + 1;
