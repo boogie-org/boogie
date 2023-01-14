@@ -96,7 +96,7 @@ function {:inline} JoinPermissions(r: Round) : [Permission]bool
 
 function {:inline} ProposePermissions(r: Round) : [Permission]bool
 {
-  (lambda p:Permission :: if (p is VotePerm && p->r == r) || (p is ConcludePerm && p->r == r) then true else false)
+  (lambda {:pool "Permission"} p:Permission :: if (p is VotePerm && p->r == r) || (p is ConcludePerm && p->r == r) then true else false)
 }
 
 function {:inline} VotePermissions(r: Round) : [Permission]bool
@@ -163,22 +163,12 @@ function {:inline} InitLow (
 
 function {:inline}{:linear "perm"} RoundCollector (round: Round) : [Permission]bool
 {
-  (lambda p: Permission ::
-    if (p is JoinPerm && round == p->r) ||
-       (p is VotePerm && round == p->r) ||
-       (p is ConcludePerm && round == p->r)
-    then true else false
-  )
+  (lambda {:pool "Permission"} p: Permission :: round == p->r)
 }
 
 function {:inline}{:linear "perm"} RoundSetCollector (rounds: [Round]bool) : [Permission]bool
 {
-  (lambda p: Permission ::
-    if (p is JoinPerm && rounds[p->r]) ||
-       (p is VotePerm && rounds[p->r]) ||
-       (p is ConcludePerm && rounds[p->r])
-    then true else false
-  )
+  (lambda {:pool "Permission"} p: Permission :: rounds[p->r])
 }
 
 function {:inline}{:linear "perm"} JoinResponseChannelCollector (permJoinChannel: JoinResponseChannel) : [Permission]bool

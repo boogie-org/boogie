@@ -6,6 +6,12 @@ modifies pendingAsyncs;
   assert Round(r);
   assert pendingAsyncs[A_StartRound(r, r_lin)] > 0;
 
+  assume 
+    {:add_to_pool "Round", r-1}
+    {:add_to_pool "Node", 0}
+    {:add_to_pool "Permission", ConcludePerm(r)}
+    true;
+
   PAs := MapAdd(JoinPAs(r), SingletonPA(A_Propose(r, ProposePermissions(r))));
 
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
@@ -26,7 +32,10 @@ modifies voteInfo, pendingAsyncs;
   assert voteInfo[r] is None;
 
   assume
+    {:add_to_pool "Round", r, r-1}
+    {:add_to_pool "Node", 0}
     {:add_to_pool "NodeSet", ns}
+    {:add_to_pool "Permission", ConcludePerm(r)}
     true;
 
   if (*) {
@@ -57,6 +66,10 @@ modifies decision, pendingAsyncs;
   assert voteInfo[r] is Some;
   assert voteInfo[r]->t->value == v;
 
+  assume 
+    {:add_to_pool "Round", r}
+    true;
+
   if (*) {
     assume IsSubset(q, voteInfo[r]->t->ns) && IsQuorum(q);
     decision[r] := Some(v);
@@ -71,6 +84,11 @@ modifies joinedNodes, pendingAsyncs;
   assert Round(r);
   assert pendingAsyncs[A_Join(r, n, p)] > 0;
   assert p == JoinPerm(r, n);
+
+  assume
+    {:add_to_pool "Round", r, r-1}
+    {:add_to_pool "Node", n}
+    true;
 
   if (*) {
     assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' < r);

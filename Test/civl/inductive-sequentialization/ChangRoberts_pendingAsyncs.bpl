@@ -104,40 +104,8 @@ P' ({:linear_in "pid"} pid:int)
 returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel, pendingAsyncs, leader;
 {
-  var msg:int;
-
-  assert pid(pid);
-  assert pendingAsyncs[P(pid)] > 0;
-  assert (forall m:int :: channel[pid][m] > 0 ==> m <= id[max(id)]);
-
   assert (forall j:int :: pid(j) && between(max(id), j, pid) ==> pendingAsyncs[P(j)] == 0);
-
-  if (*)
-  {
-    PAs := NoPAs();
-  }
-  else
-  {
-    assume channel[pid][msg] > 0;
-    channel[pid][msg] := channel[pid][msg] - 1;
-
-    if (msg == id[pid])
-    {
-      leader[pid] := true;
-      PAs := NoPAs();
-    }
-    else
-    {
-      if (msg > id[pid])
-      {
-        channel[next(pid)][msg] := channel[next(pid)][msg] + 1;
-      }
-      PAs := NoPAs()[P(pid) := 1];
-    }
-  }
-
-  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
-  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(P(pid)));
+  call PAs := P(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
