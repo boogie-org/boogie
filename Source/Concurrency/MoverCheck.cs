@@ -86,7 +86,7 @@ namespace Microsoft.Boogie
     {
       var availableVars = paramVars.Union(frame);
       return civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(availableVars)
-        .Union(civlTypeChecker.linearTypeChecker.LmapWellFormedExpressions(availableVars))
+        .Union(civlTypeChecker.linearTypeChecker.LheapWellFormedExpressions(availableVars))
         .Select(expr => new Requires(false, expr));
     }
 

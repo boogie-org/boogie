@@ -365,12 +365,12 @@ namespace Microsoft.Boogie
         if (nAryExpr.Fun is MapSelect)
         {
           var mapExpr = nAryExpr.Args[0];
-          if (mapExpr is NAryExpr lmapValExpr &&
-              lmapValExpr.Fun is FieldAccess &&
-              lmapValExpr.Args[0].Type is CtorType ctorType &&
-              program.monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lmap")
+          if (mapExpr is NAryExpr lheapValExpr &&
+              lheapValExpr.Fun is FieldAccess &&
+              lheapValExpr.Args[0].Type is CtorType ctorType &&
+              program.monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
           {
-            return ExtractRootFromAccessPathExpr(lmapValExpr.Args[0]);
+            return ExtractRootFromAccessPathExpr(lheapValExpr.Args[0]);
           }
         }
       }
@@ -381,19 +381,19 @@ namespace Microsoft.Boogie
     {
       switch (program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
-        case "Lmap_Empty":
+        case "Lheap_Empty":
           return null;
-        case "Lmap_Split":
+        case "Lheap_Split":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
-        case "Lmap_Transfer":
+        case "Lheap_Transfer":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
-        case "Lmap_Read":
+        case "Lheap_Read":
           return null;
-        case "Lmap_Write":
+        case "Lheap_Write":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lmap_Add":
+        case "Lheap_Add":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lmap_Remove":
+        case "Lheap_Remove":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lset_Empty":
           return null;
@@ -701,7 +701,7 @@ namespace Microsoft.Boogie
       return expr;
     }
 
-    public IEnumerable<Expr> LmapWellFormedExpressions(IEnumerable<Variable> availableVars)
+    public IEnumerable<Expr> LheapWellFormedExpressions(IEnumerable<Variable> availableVars)
     {
       var monomorphizer = civlTypeChecker.program.monomorphizer;
       if (monomorphizer == null)
@@ -709,11 +709,11 @@ namespace Microsoft.Boogie
         return Enumerable.Empty<Expr>();
       }
       return availableVars.Where(v =>
-        v.TypedIdent.Type is CtorType ctorType && monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lmap").Select(
+        v.TypedIdent.Type is CtorType ctorType && monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap").Select(
         v =>
         {
           var ctorType = (CtorType)v.TypedIdent.Type;
-          var func = monomorphizer.InstantiateFunction("Lmap_WellFormed",
+          var func = monomorphizer.InstantiateFunction("Lheap_WellFormed",
             new Dictionary<string, Type>() { { "V", monomorphizer.GetTypeInstantiation(ctorType.Decl)[0] } });
           return ExprHelper.FunctionCall(func, Expr.Ident(v));
         });

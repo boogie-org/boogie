@@ -15,12 +15,12 @@ reasoning about node reachability.
 */
 
 type {:datatype} Treiber T;
-function {:constructor} Treiber<T>(top: RefNode T, stack: Lmap (Node T)): Treiber T;
+function {:constructor} Treiber<T>(top: RefNode T, stack: Lheap (Node T)): Treiber T;
 type RefTreiber T = Ref (Treiber T);
 
 type X; // module type parameter
 
-var {:layer 0, 4} ts: Lmap (Treiber X);
+var {:layer 0, 4} ts: Lheap (Treiber X);
 var {:layer 2, 4} unused: [RefTreiber X][RefNode X]bool;
 
 procedure {:layer 4} {:atomic} AtomicPopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
@@ -31,7 +31,7 @@ modifies ts;
   if (success) {
     assume ts->val[ref_t]->stack->dom[ts->val[ref_t]->top];
     Node(new_ref_n, x) := ts->val[ref_t]->stack->val[ts->val[ref_t]->top];
-    call Lmap_Write(ts->val[ref_t]->top, new_ref_n);
+    call Lheap_Write(ts->val[ref_t]->top, new_ref_n);
   }
 }
 procedure {:yields} {:layer 3} {:refines "AtomicPopIntermediate"}
@@ -60,9 +60,9 @@ modifies ts, unused;
   var {:pool "A"} new_ref_n: RefNode X;
   assert ts->dom[ref_t];
   assume {:add_to_pool "A", ref_n} true;
-  call new_ref_n := Lmap_Add(ts->val[ref_t]->stack, Node(if success then ts->val[ref_t]->top else ref_n, x));
+  call new_ref_n := Lheap_Add(ts->val[ref_t]->stack, Node(if success then ts->val[ref_t]->top else ref_n, x));
   if (success) {
-    call Lmap_Write(ts->val[ref_t]->top, new_ref_n);
+    call Lheap_Write(ts->val[ref_t]->top, new_ref_n);
   } else {
     unused[ref_t][new_ref_n] := true;
   }
@@ -128,7 +128,7 @@ AtomicAllocInStack(ref_t: RefTreiber X, node: Node X) returns (ref_n: RefNode X)
 modifies ts;
 {
   assert ts->dom[ref_t];
-  call ref_n := Lmap_Add(ts->val[ref_t]->stack, node);
+  call ref_n := Lheap_Add(ts->val[ref_t]->stack, node);
 }
 procedure {:yields} {:layer 0} {:refines "AtomicAllocInStack"} 
 AllocInStack(ref_t: RefTreiber X, node: Node X) returns (ref_n: RefNode X);
@@ -153,7 +153,7 @@ modifies ts;
 { 
   assert ts->dom[ref_t];
   if (old_ref_n == ts->val[ref_t]->top) {
-    call Lmap_Write(ts->val[ref_t]->top, new_ref_n);
+    call Lheap_Write(ts->val[ref_t]->top, new_ref_n);
     r := true;
   }
   else {
@@ -171,11 +171,11 @@ modifies unused;
   }
 }
 
-function {:inline} Domain(ts: Lmap (Treiber X), ref_t: RefTreiber X, unused: [RefTreiber X][RefNode X]bool): [RefNode X]bool {
+function {:inline} Domain(ts: Lheap (Treiber X), ref_t: RefTreiber X, unused: [RefTreiber X][RefNode X]bool): [RefNode X]bool {
   Difference(ts->val[ref_t]->stack->dom, unused[ref_t])
 }
 
-function {:inline} NilDomain(ts: Lmap (Treiber X), ref_t: RefTreiber X, unused: [RefTreiber X][RefNode X]bool): [RefNode X]bool {
+function {:inline} NilDomain(ts: Lheap (Treiber X), ref_t: RefTreiber X, unused: [RefTreiber X][RefNode X]bool): [RefNode X]bool {
   Union(Singleton(Nil()), Domain(ts, ref_t, unused))
 }
 

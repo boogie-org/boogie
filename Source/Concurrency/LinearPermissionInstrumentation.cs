@@ -46,7 +46,7 @@ namespace Microsoft.Boogie
         ? FilterInParams(proc.InParams)
         : FilterInOutParams(proc.InParams.Union(proc.OutParams));
       return DisjointnessExprs(availableVars)
-        .Union(civlTypeChecker.linearTypeChecker.LmapWellFormedExpressions(availableVars))
+        .Union(civlTypeChecker.linearTypeChecker.LheapWellFormedExpressions(availableVars))
         .Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
 
@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
     {
       var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
       return DisjointnessExprs(availableVars)
-        .Union(civlTypeChecker.linearTypeChecker.LmapWellFormedExpressions(availableVars))
+        .Union(civlTypeChecker.linearTypeChecker.LheapWellFormedExpressions(availableVars))
         .Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
     
