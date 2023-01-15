@@ -24,7 +24,8 @@ procedure {:atomic}{:layer 1}
 {:IS "A_Add","INV"}{:elim "A_Inc"}
 Async_Add(n: int) returns ({:pending_async "A_Inc"} PAs: [PA]int)
 {
-  assert {:add_to_pool "A", 0} 0 <= n;
+  assert 0 <= n;
+  assume {:add_to_pool "A", 0} true;
   PAs := MapConst(0)[A_Inc() := n];
 }
 

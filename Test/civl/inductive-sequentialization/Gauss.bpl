@@ -14,9 +14,9 @@ SUM (n: int)
 returns ({:pending_async "ADD"} PAs:[PA]int)
 modifies x;
 {
-  assert
-    {:add_to_pool "A", 0}
-    n >= 0;
+  assert n >= 0;
+  
+  assume {:add_to_pool "A", 0} true;
   PAs := (lambda pa: PA :: if pa is ADD && 1 <= pa->i && pa->i <= n then 1 else 0);
 }
 

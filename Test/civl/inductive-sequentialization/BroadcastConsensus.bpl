@@ -115,10 +115,9 @@ returns ({:pending_async "COLLECT"} PAs:[PA]int)
 modifies CH;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
-  assert
-    {:add_to_pool "INV_COLLECT", 0}
-    CH == MultisetEmpty;
+  assert CH == MultisetEmpty;
 
+  assume {:add_to_pool "INV_COLLECT", 0} true;
   CH := (lambda v:val :: value_card(v, value, 1, n));
   assume card(CH) == n;
   assume MultisetSubsetEq(MultisetEmpty, CH);
@@ -130,9 +129,9 @@ procedure {:atomic}{:layer 2}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 returns ({:pending_async "BROADCAST","COLLECT"} PAs:[PA]int)
 {
-  assert
-    {:add_to_pool "INV_BROADCAST", 0}
-    pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
+  assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
+  
+  assume {:add_to_pool "INV_BROADCAST", 0} true;
   assert CH == MultisetEmpty;
 
   PAs := MapAdd(AllBroadcasts(), AllCollects());

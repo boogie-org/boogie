@@ -60,9 +60,7 @@ modifies channel;
 
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
 
-  assume
-    {:add_to_pool "INV", c, c+1}
-    0 < c;
+  assume {:add_to_pool "INV", c, c+1} 0 < c;
   if (*) {
     channel[cid] := ChannelPair(EmptyChannel(), EmptyChannel()[c := 1]);
     PAs := NoPAs()[PONG(c, Right(cid)) := 1][PING(c, Left(cid)) := 1];

@@ -131,7 +131,6 @@ modifies QuoteCH, RemCH, DecCH, contribution;
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
 
   contribution := c;
-
   assume {:add_to_pool "INV3", 0, 1, k, k+1, n} true;
   if (*)
   {
@@ -206,6 +205,7 @@ returns ({:pending_async "SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"} 
 modifies QuoteCH;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
+
   assume {:add_to_pool "contribution", contribution} true;
   QuoteCH := (lambda i:int :: if buyerID(i) then MapConst(0)[price := 1] else MapConst(0));
   PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));

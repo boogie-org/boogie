@@ -78,6 +78,7 @@ modifies ReqCH, VoteCH, DecCH, votes, decisions;
   var {:pool "INV1"} k: int;
 
   assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
+
   assume
     {:add_to_pool "INV1", k, k+1}
     {:add_to_pool "PARTICIPANT2", PARTICIPANT2(n)}
@@ -115,9 +116,9 @@ returns ({:pending_async "PARTICIPANT2"} PAs:[PA]int)
 modifies ReqCH, VoteCH, DecCH, votes, decisions;
 {
   var dec:decision;
-  assert
-    {:add_to_pool "INV1", 0}
-    Init(pids, ReqCH, VoteCH, DecCH, decisions);
+  assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
+
+  assume {:add_to_pool "INV1", 0} true;
   havoc ReqCH, VoteCH, votes;
   if (*) { dec := COMMIT(); } else { dec := ABORT(); }
   assume dec == COMMIT() ==> (forall i:int :: pid(i) ==> votes[i] == YES());
@@ -197,7 +198,6 @@ returns ({:pending_async "COORDINATOR2","PARTICIPANT1","PARTICIPANT2"} PAs:[PA]i
 modifies ReqCH, VoteCH, votes;
 {
   var {:pool "INV2"} k: int;
-
   assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
 
   havoc ReqCH, VoteCH, votes;
@@ -223,9 +223,9 @@ MAIN2 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "COORDINATOR2","PARTICIPANT1"} PAs:[PA]int)
 modifies ReqCH;
 {
-  assert
-    {:add_to_pool "INV2", 0}
-    Init(pids, ReqCH, VoteCH, DecCH, decisions);
+  assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
+
+  assume {:add_to_pool "INV2", 0} true;
   ReqCH := (lambda i:int :: if pid(i) then 1 else 0);
   PAs := MapAddPA(SingletonPA(COORDINATOR2(0)), (lambda pa:PA :: if pa is PARTICIPANT1 && pid(pa->pid) then 1 else 0));
 }
