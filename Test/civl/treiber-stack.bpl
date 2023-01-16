@@ -163,6 +163,21 @@ modifies ts;
 procedure {:yields} {:layer 0} {:refines "AtomicWriteTopOfStack"} 
 WriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool);
 
+procedure {:atomic} {:layer 1, 4} 
+AtomicAllocTreiber() returns (ref_t: RefTreiber X)
+modifies ts;
+{
+  var top: Ref (Node X);
+  var stack: Lheap (Node X);
+  var treiber: Treiber X;
+  top := Nil();
+  call stack := Lheap_Empty();
+  treiber := Treiber(top, stack);
+  call ref_t := Lheap_Add(ts, treiber);
+}
+procedure {:yields} {:layer 0} {:refines "AtomicAllocTreiber"} 
+AllocTreiber() returns (ref_t: RefTreiber X);
+
 procedure {:intro} {:layer 2} AddToUnusedNodes(success: bool, ref_t: RefTreiber X, ref_n: RefNode X)
 modifies unused;
 {
