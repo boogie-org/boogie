@@ -17054,7 +17054,7 @@ implementation {:verboseName "Seq.LemmaFlattenLengthLeMul (correctness)"} {:_ind
         assume $IsAlloc(##s#1_0, TSeq(TSeq(Seq._default.LemmaFlattenLengthLeMul$T)), $Heap);
         assume Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenLengthLeMul$T, Seq#Take(s#0, Seq#Length(s#0) - 1));
         assume Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenLengthLeMul$T, Seq#Take(s#0, Seq#Length(s#0) - 1));
-        assert {:subsumption 0} Seq#Length(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenLengthLeMul$T, 
+        assert {:subsumption 0} {:split_here} Seq#Length(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenLengthLeMul$T, 
               $LS($LS($LZ)), 
               Seq#Take(s#0, Seq#Length(s#0) - 1)))
            <= Mul(Seq#Length(s#0) - 1, j#0);
