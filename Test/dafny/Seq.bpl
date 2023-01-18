@@ -21373,7 +21373,7 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume true;
-            assert Seq#Index(Seq#Append(a#0, b#0), LitInt(0)) == Seq#Index(a#0, LitInt(0));
+            assert {:split_here} Seq#Index(Seq#Append(a#0, b#0), LitInt(0)) == Seq#Index(a#0, LitInt(0));
             // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(652,40)
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
@@ -21696,7 +21696,7 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             assume true;
-            assert Seq#Equal(Seq#Append(Seq#Append(Seq#Build(Seq#Empty(): Seq Box, Seq#Index(Seq#Append(a#0, b#0), LitInt(0))), 
+            assert {:split_here} Seq#Equal(Seq#Append(Seq#Append(Seq#Build(Seq#Empty(): Seq Box, Seq#Index(Seq#Append(a#0, b#0), LitInt(0))), 
                   Seq#Drop(a#0, LitInt(1))), 
                 b#0), 
               Seq#Append(a#0, b#0));
