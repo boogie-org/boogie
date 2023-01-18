@@ -7423,7 +7423,7 @@ implementation {:verboseName "Seq.HasNoDuplicates (well-formedness)"} {:opaque} 
 
 
 
-procedure {:verboseName "Seq.LemmaNoDuplicatesInConcat (well-formedness)"} {:timeLimit 30} CheckWellFormed$$Seq.__default.LemmaNoDuplicatesInConcat(Seq._default.LemmaNoDuplicatesInConcat$T: Ty, 
+procedure {:verboseName "Seq.LemmaNoDuplicatesInConcat (well-formedness)"} CheckWellFormed$$Seq.__default.LemmaNoDuplicatesInConcat(Seq._default.LemmaNoDuplicatesInConcat$T: Ty, 
     a#0: Seq Box
        where $Is(a#0, TSeq(Seq._default.LemmaNoDuplicatesInConcat$T))
          && $IsAlloc(a#0, TSeq(Seq._default.LemmaNoDuplicatesInConcat$T), $Heap), 
@@ -7435,7 +7435,7 @@ procedure {:verboseName "Seq.LemmaNoDuplicatesInConcat (well-formedness)"} {:tim
 
 
 
-procedure {:verboseName "Seq.LemmaNoDuplicatesInConcat (call)"} {:timeLimit 30} Call$$Seq.__default.LemmaNoDuplicatesInConcat(Seq._default.LemmaNoDuplicatesInConcat$T: Ty, 
+procedure {:verboseName "Seq.LemmaNoDuplicatesInConcat (call)"} Call$$Seq.__default.LemmaNoDuplicatesInConcat(Seq._default.LemmaNoDuplicatesInConcat$T: Ty, 
     a#0: Seq Box
        where $Is(a#0, TSeq(Seq._default.LemmaNoDuplicatesInConcat$T))
          && $IsAlloc(a#0, TSeq(Seq._default.LemmaNoDuplicatesInConcat$T), $Heap), 
@@ -7461,7 +7461,7 @@ procedure {:verboseName "Seq.LemmaNoDuplicatesInConcat (call)"} {:timeLimit 30} 
 
 
 
-procedure {:verboseName "Seq.LemmaNoDuplicatesInConcat (correctness)"} {:timeLimit 30} Impl$$Seq.__default.LemmaNoDuplicatesInConcat(Seq._default.LemmaNoDuplicatesInConcat$T: Ty, 
+procedure {:verboseName "Seq.LemmaNoDuplicatesInConcat (correctness)"} Impl$$Seq.__default.LemmaNoDuplicatesInConcat(Seq._default.LemmaNoDuplicatesInConcat$T: Ty, 
     a#0: Seq Box
        where $Is(a#0, TSeq(Seq._default.LemmaNoDuplicatesInConcat$T))
          && $IsAlloc(a#0, TSeq(Seq._default.LemmaNoDuplicatesInConcat$T), $Heap), 
@@ -7489,7 +7489,7 @@ procedure {:verboseName "Seq.LemmaNoDuplicatesInConcat (correctness)"} {:timeLim
 
 
 
-implementation {:verboseName "Seq.LemmaNoDuplicatesInConcat (correctness)"} {:timeLimit 30} Impl$$Seq.__default.LemmaNoDuplicatesInConcat(Seq._default.LemmaNoDuplicatesInConcat$T: Ty, a#0: Seq Box, b#0: Seq Box)
+implementation {:verboseName "Seq.LemmaNoDuplicatesInConcat (correctness)"} Impl$$Seq.__default.LemmaNoDuplicatesInConcat(Seq._default.LemmaNoDuplicatesInConcat$T: Ty, a#0: Seq Box, b#0: Seq Box)
    returns ($_reverifyPost: bool)
 {
   var $_Frame: <beta>[ref,Field beta]bool;
@@ -7498,6 +7498,8 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesInConcat (correctness)"} {:ti
        && $IsAlloc(c#0, TSeq(Seq._default.LemmaNoDuplicatesInConcat$T), $Heap);
   var i#0_0: int;
   var j#0_0: int;
+  var i#0_2: int;
+  var j#0_2: int;
 
     // AddMethodImpl: LemmaNoDuplicatesInConcat, Impl$$Seq.__default.LemmaNoDuplicatesInConcat
     // initialize fuel constant
@@ -7588,75 +7590,96 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesInConcat (correctness)"} {:ti
         // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(183,7)
         // Begin Comprehension WF check
         havoc i#0_0;
-        havoc j#0_0;
         if (true)
         {
-            if (i#0_0 != j#0_0)
+            if (LitInt(0) <= i#0_0)
             {
-                if (LitInt(0) <= i#0_0)
-                {
-                }
             }
 
-            if (i#0_0 != j#0_0 && LitInt(0) <= i#0_0 && i#0_0 < Seq#Length(a#0))
-            {
-                if (Seq#Length(a#0) <= j#0_0)
-                {
-                }
-            }
-
-            if (i#0_0 != j#0_0
-               && 
-              LitInt(0) <= i#0_0
-               && i#0_0 < Seq#Length(a#0)
-               && 
-              Seq#Length(a#0) <= j#0_0
-               && j#0_0 < Seq#Length(c#0))
+            if (LitInt(0) <= i#0_0 && i#0_0 < Seq#Length(a#0))
             {
                 assert {:subsumption 0} 0 <= i#0_0 && i#0_0 < Seq#Length(c#0);
-                if (MultiSet#FromSeq(a#0)[Seq#Index(c#0, i#0_0)] > 0)
-                {
-                    assert {:subsumption 0} 0 <= j#0_0 && j#0_0 < Seq#Length(c#0);
-                }
-
-                if (MultiSet#FromSeq(a#0)[Seq#Index(c#0, i#0_0)] > 0
-                   && MultiSet#FromSeq(b#0)[Seq#Index(c#0, j#0_0)] > 0)
-                {
-                    assert {:subsumption 0} 0 <= i#0_0 && i#0_0 < Seq#Length(c#0);
-                    assert {:subsumption 0} 0 <= j#0_0 && j#0_0 < Seq#Length(c#0);
-                }
             }
         }
 
         // End Comprehension WF check
         assume true;
-        assert (forall i#0_1: int, j#0_1: int :: 
-          { Seq#Index(c#0, i#0_1), Seq#Index(c#0, j#0_1) } 
+        assert (forall i#0_1: int :: 
+          { Seq#Index(c#0, i#0_1) } 
           true
-             ==> (i#0_1 != j#0_1
-                   && 
-                  LitInt(0) <= i#0_1
-                   && i#0_1 < Seq#Length(a#0)
-                   && 
-                  Seq#Length(a#0) <= j#0_1
-                   && j#0_1 < Seq#Length(c#0)
-                 ==> MultiSet#FromSeq(a#0)[Seq#Index(c#0, i#0_1)] > 0)
-               && (i#0_1 != j#0_1
-                   && 
-                  LitInt(0) <= i#0_1
-                   && i#0_1 < Seq#Length(a#0)
-                   && 
-                  Seq#Length(a#0) <= j#0_1
-                   && j#0_1 < Seq#Length(c#0)
-                 ==> MultiSet#FromSeq(b#0)[Seq#Index(c#0, j#0_1)] > 0)
-               && (i#0_1 != j#0_1
-                   && 
-                  LitInt(0) <= i#0_1
-                   && i#0_1 < Seq#Length(a#0)
-                   && 
-                  Seq#Length(a#0) <= j#0_1
-                   && j#0_1 < Seq#Length(c#0)
-                 ==> Seq#Index(c#0, i#0_1) != Seq#Index(c#0, j#0_1)));
+             ==> 
+            LitInt(0) <= i#0_1 && i#0_1 < Seq#Length(a#0)
+             ==> MultiSet#FromSeq(a#0)[Seq#Index(c#0, i#0_1)] > 0);
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(185,7)
+        // Begin Comprehension WF check
+        havoc j#0_0;
+        if (true)
+        {
+            if (Seq#Length(a#0) <= j#0_0)
+            {
+            }
+
+            if (Seq#Length(a#0) <= j#0_0 && j#0_0 < Seq#Length(c#0))
+            {
+                assert {:subsumption 0} 0 <= j#0_0 && j#0_0 < Seq#Length(c#0);
+            }
+        }
+
+        // End Comprehension WF check
+        assume true;
+        assert (forall j#0_1: int :: 
+          { Seq#Index(c#0, j#0_1) } 
+          true
+             ==> 
+            Seq#Length(a#0) <= j#0_1 && j#0_1 < Seq#Length(c#0)
+             ==> MultiSet#FromSeq(b#0)[Seq#Index(c#0, j#0_1)] > 0);
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(187,7)
+        // Begin Comprehension WF check
+        havoc i#0_2;
+        havoc j#0_2;
+        if (true)
+        {
+            if (i#0_2 != j#0_2)
+            {
+                if (LitInt(0) <= i#0_2)
+                {
+                }
+            }
+
+            if (i#0_2 != j#0_2 && LitInt(0) <= i#0_2 && i#0_2 < Seq#Length(a#0))
+            {
+                if (Seq#Length(a#0) <= j#0_2)
+                {
+                }
+            }
+
+            if (i#0_2 != j#0_2
+               && 
+              LitInt(0) <= i#0_2
+               && i#0_2 < Seq#Length(a#0)
+               && 
+              Seq#Length(a#0) <= j#0_2
+               && j#0_2 < Seq#Length(c#0))
+            {
+                assert {:subsumption 0} 0 <= i#0_2 && i#0_2 < Seq#Length(c#0);
+                assert {:subsumption 0} 0 <= j#0_2 && j#0_2 < Seq#Length(c#0);
+            }
+        }
+
+        // End Comprehension WF check
+        assume true;
+        assert (forall i#0_3: int, j#0_3: int :: 
+          { Seq#Index(c#0, i#0_3), Seq#Index(c#0, j#0_3) } 
+          true
+             ==> 
+            i#0_3 != j#0_3
+               && 
+              LitInt(0) <= i#0_3
+               && i#0_3 < Seq#Length(a#0)
+               && 
+              Seq#Length(a#0) <= j#0_3
+               && j#0_3 < Seq#Length(c#0)
+             ==> Seq#Index(c#0, i#0_3) != Seq#Index(c#0, j#0_3));
     }
     else
     {
@@ -7799,26 +7822,26 @@ implementation {:verboseName "Seq.LemmaCardinalityOfSetNoDuplicates (correctness
     $_Frame := (lambda<alpha> $o: ref, $f: Field alpha :: 
       $o != null && read($Heap, $o, alloc) ==> false);
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(193,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(193,27)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(197,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(197,27)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__HasNoDuplicates();
     // TrCallStmt: After ProcessCallStmt
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(194,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(194,17)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(198,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(198,17)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__ToSet();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(195,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(199,5)
     assume true;
     if (Seq#Length(s#0) == LitInt(0))
     {
     }
     else
     {
-        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(197,40)
+        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(201,40)
         // TrCallStmt: Before ProcessCallStmt
         ##s#1_0 := s#0;
         // assume allocatedness for argument to function
@@ -7833,7 +7856,7 @@ implementation {:verboseName "Seq.LemmaCardinalityOfSetNoDuplicates (correctness
         // ProcessCallStmt: Make the call
         call Call$$Seq.__default.LemmaCardinalityOfSetNoDuplicates(Seq._default.LemmaCardinalityOfSetNoDuplicates$T, s##1_0);
         // TrCallStmt: After ProcessCallStmt
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(198,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(202,7)
         ##s#1_1 := s#0;
         // assume allocatedness for argument to function
         assume $IsAlloc(##s#1_1, TSeq(Seq._default.LemmaCardinalityOfSetNoDuplicates$T), $Heap);
@@ -8028,26 +8051,26 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesCardinalityOfSet (correctness
     $_Frame := (lambda<alpha> $o: ref, $f: Field alpha :: 
       $o != null && read($Heap, $o, alloc) ==> false);
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(207,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(207,27)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(211,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(211,27)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__HasNoDuplicates();
     // TrCallStmt: After ProcessCallStmt
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(208,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(208,17)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(212,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(212,17)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__ToSet();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(209,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(213,5)
     assume true;
     if (Seq#Length(s#0) == LitInt(0))
     {
     }
     else
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(211,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(215,7)
         ##s#1_0 := s#0;
         // assume allocatedness for argument to function
         assume $IsAlloc(##s#1_0, TSeq(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T), $Heap);
@@ -8064,7 +8087,7 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesCardinalityOfSet (correctness
           Seq#Append(Seq#Build(Seq#Empty(): Seq Box, 
               Seq.__default.First(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, s#0)), 
             Seq.__default.DropFirst(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, s#0)));
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(212,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(216,7)
         ##s#1_2 := s#0;
         // assume allocatedness for argument to function
         assume $IsAlloc(##s#1_2, TSeq(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T), $Heap);
@@ -8107,7 +8130,7 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesCardinalityOfSet (correctness
             Seq.__default.ToSet(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, 
               StartFuel_Seq._default.ToSet, 
               Seq.__default.DropFirst(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, s#0))));
-        // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(213,7)
+        // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(217,7)
         ##s#1_6 := s#0;
         // assume allocatedness for argument to function
         assume $IsAlloc(##s#1_6, TSeq(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T), $Heap);
@@ -8125,7 +8148,7 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesCardinalityOfSet (correctness
         if (Seq#Contains(Seq.__default.DropFirst(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, s#0), 
           Seq.__default.First(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, s#0)))
         {
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(215,9)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(219,9)
             ##s#1_0_0 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0, TSeq(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T), $Heap);
@@ -8157,7 +8180,7 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesCardinalityOfSet (correctness
               Seq.__default.ToSet(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, 
                 StartFuel_Seq._default.ToSet, 
                 Seq.__default.DropFirst(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, s#0)));
-            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(216,30)
+            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(220,30)
             // TrCallStmt: Before ProcessCallStmt
             ##s#1_0_3 := s#0;
             // assume allocatedness for argument to function
@@ -8171,7 +8194,7 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesCardinalityOfSet (correctness
             // ProcessCallStmt: Make the call
             call Call$$Seq.__default.LemmaCardinalityOfSet(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, s##1_0_0);
             // TrCallStmt: After ProcessCallStmt
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(217,9)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(221,9)
             ##s#1_0_4 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_4, TSeq(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T), $Heap);
@@ -8194,7 +8217,7 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesCardinalityOfSet (correctness
         }
         else
         {
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(219,9)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(223,9)
             ##s#1_1_0 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_1_0, TSeq(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T), $Heap);
@@ -8228,7 +8251,7 @@ implementation {:verboseName "Seq.LemmaNoDuplicatesCardinalityOfSet (correctness
                  + Set#Card(Seq.__default.ToSet(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, 
                     StartFuel_Seq._default.ToSet, 
                     Seq.__default.DropFirst(Seq._default.LemmaNoDuplicatesCardinalityOfSet$T, s#0)));
-            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(220,42)
+            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(224,42)
             // TrCallStmt: Before ProcessCallStmt
             ##s#1_1_3 := s#0;
             // assume allocatedness for argument to function
@@ -8387,14 +8410,14 @@ implementation {:verboseName "Seq.LemmaMultisetHasNoDuplicates (correctness)"} I
     $_Frame := (lambda<alpha> $o: ref, $f: Field alpha :: 
       $o != null && read($Heap, $o, alloc) ==> false);
     $_reverifyPost := false;
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(230,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(234,5)
     assume true;
     if (Seq#Length(s#0) == LitInt(0))
     {
     }
     else
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(232,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(236,7)
         ##s#1_0 := s#0;
         // assume allocatedness for argument to function
         assume $IsAlloc(##s#1_0, TSeq(Seq._default.LemmaMultisetHasNoDuplicates$T), $Heap);
@@ -8411,7 +8434,7 @@ implementation {:verboseName "Seq.LemmaMultisetHasNoDuplicates (correctness)"} I
           Seq#Append(Seq.__default.DropLast(Seq._default.LemmaMultisetHasNoDuplicates$T, s#0), 
             Seq#Build(Seq#Empty(): Seq Box, 
               Seq.__default.Last(Seq._default.LemmaMultisetHasNoDuplicates$T, s#0))));
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(233,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(237,7)
         ##s#1_2 := s#0;
         // assume allocatedness for argument to function
         assume $IsAlloc(##s#1_2, TSeq(Seq._default.LemmaMultisetHasNoDuplicates$T), $Heap);
@@ -8426,9 +8449,9 @@ implementation {:verboseName "Seq.LemmaMultisetHasNoDuplicates (correctness)"} I
            && Seq.__default.DropLast#canCall(Seq._default.LemmaMultisetHasNoDuplicates$T, s#0);
         if (*)
         {
-            // ----- assert statement proof ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(233,7)
-            // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(234,9)
-            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(234,31)
+            // ----- assert statement proof ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(237,7)
+            // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(238,9)
+            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(238,31)
             // TrCallStmt: Before ProcessCallStmt
             // ProcessCallStmt: Make the call
             call Call$$Seq.__default.reveal__HasNoDuplicates();
@@ -8440,7 +8463,7 @@ implementation {:verboseName "Seq.LemmaMultisetHasNoDuplicates (correctness)"} I
 
         assume !Seq#Contains(Seq.__default.DropLast(Seq._default.LemmaMultisetHasNoDuplicates$T, s#0), 
           Seq.__default.Last(Seq._default.LemmaMultisetHasNoDuplicates$T, s#0));
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(236,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(240,7)
         ##s#1_4 := s#0;
         // assume allocatedness for argument to function
         assume $IsAlloc(##s#1_4, TSeq(Seq._default.LemmaMultisetHasNoDuplicates$T), $Heap);
@@ -8456,9 +8479,9 @@ implementation {:verboseName "Seq.LemmaMultisetHasNoDuplicates (correctness)"} I
             Seq.__default.DropLast(Seq._default.LemmaMultisetHasNoDuplicates$T, s#0));
         if (*)
         {
-            // ----- assert statement proof ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(236,7)
-            // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(237,9)
-            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(237,31)
+            // ----- assert statement proof ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(240,7)
+            // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(241,9)
+            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(241,31)
             // TrCallStmt: Before ProcessCallStmt
             // ProcessCallStmt: Make the call
             call Call$$Seq.__default.reveal__HasNoDuplicates();
@@ -8472,7 +8495,7 @@ implementation {:verboseName "Seq.LemmaMultisetHasNoDuplicates (correctness)"} I
         assume Seq.__default.HasNoDuplicates(Seq._default.LemmaMultisetHasNoDuplicates$T, 
           StartFuelAssert_Seq._default.HasNoDuplicates, 
           Seq.__default.DropLast(Seq._default.LemmaMultisetHasNoDuplicates$T, s#0));
-        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(239,35)
+        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(243,35)
         // TrCallStmt: Before ProcessCallStmt
         ##s#1_6 := s#0;
         // assume allocatedness for argument to function
@@ -10376,14 +10399,14 @@ implementation {:verboseName "Seq.RemoveValue (well-formedness)"} {:opaque} Chec
     {
         $_Frame := (lambda<alpha> $o: ref, $f: Field alpha :: 
           $o != null && read($Heap, $o, alloc) ==> false);
-        // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(304,5)
-        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(304,27)
+        // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(308,5)
+        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(308,27)
         // TrCallStmt: Before ProcessCallStmt
         // ProcessCallStmt: Make the call
         call Call$$Seq.__default.reveal__HasNoDuplicates();
         // TrCallStmt: After ProcessCallStmt
-        // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(305,5)
-        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(305,17)
+        // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(309,5)
+        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(309,17)
         // TrCallStmt: Before ProcessCallStmt
         // ProcessCallStmt: Make the call
         call Call$$Seq.__default.reveal__ToSet();
@@ -10416,7 +10439,7 @@ implementation {:verboseName "Seq.RemoveValue (well-formedness)"} {:opaque} Chec
             // CheckWellformedWithResult: any expression
             assume $Is(let#0#0#0, Tclass._System.nat());
             assume i#Z#0 == let#0#0#0;
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(309,7)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(313,7)
             assert {:subsumption 0} 0 <= i#Z#0 && i#Z#0 <= Seq#Length(s#0);
             assert {:subsumption 0} 0 <= i#Z#0 + 1 && i#Z#0 + 1 <= Seq#Length(s#0);
             assume true;
@@ -10852,7 +10875,7 @@ implementation {:verboseName "Seq.Insert (well-formedness)"} {:opaque} CheckWell
     {
         $_Frame := (lambda<alpha> $o: ref, $f: Field alpha :: 
           $o != null && read($Heap, $o, alloc) ==> false);
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(322,5)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(326,5)
         assert {:subsumption 0} 0 <= pos#0 && pos#0 <= Seq#Length(s#0);
         assert {:subsumption 0} 0 <= pos#0 && pos#0 <= Seq#Length(s#0);
         assume true;
@@ -12959,7 +12982,7 @@ implementation {:verboseName "Seq.Max (well-formedness)"} {:opaque} CheckWellfor
     {
         $_Frame := (lambda<alpha> $o: ref, $f: Field alpha :: 
           $o != null && read($Heap, $o, alloc) ==> false);
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(386,5)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(390,5)
         assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(s#0);
         assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(s#0);
         assume true;
@@ -13332,26 +13355,26 @@ implementation {:verboseName "Seq.LemmaMaxOfConcat (correctness)"} {:_induction 
                ==> Seq.__default.Max(StartFuel_Seq._default.Max, Seq#Append($ih#a0#0, $ih#b0#0))
                  >= i#2));
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(398,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(398,15)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(402,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(402,15)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__Max();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(399,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(403,5)
     assume true;
     if (Seq#Length(a#0) == LitInt(1))
     {
     }
     else
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(401,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(405,7)
         assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
         assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(Seq#Append(a#0, b#0));
         assume true;
         assert Seq#Equal(Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0), 
           Seq#Drop(Seq#Append(a#0, b#0), LitInt(1)));
-        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(402,23)
+        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(406,23)
         // TrCallStmt: Before ProcessCallStmt
         assert 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
         assume true;
@@ -13577,7 +13600,7 @@ implementation {:verboseName "Seq.Min (well-formedness)"} {:opaque} CheckWellfor
     {
         $_Frame := (lambda<alpha> $o: ref, $f: Field alpha :: 
           $o != null && read($Heap, $o, alloc) ==> false);
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(412,5)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(416,5)
         assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(s#0);
         assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(s#0);
         assume true;
@@ -13938,26 +13961,26 @@ implementation {:verboseName "Seq.LemmaMinOfConcat (correctness)"} {:_induction 
                ==> Seq.__default.Min(StartFuel_Seq._default.Min, Seq#Append($ih#a0#0, $ih#b0#0))
                  <= i#2));
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(424,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(424,15)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(428,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(428,15)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__Min();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(425,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(429,5)
     assume true;
     if (Seq#Length(a#0) == LitInt(1))
     {
     }
     else
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(427,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(431,7)
         assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
         assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(Seq#Append(a#0, b#0));
         assume true;
         assert Seq#Equal(Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0), 
           Seq#Drop(Seq#Append(a#0, b#0), LitInt(1)));
-        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(428,23)
+        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(432,23)
         // TrCallStmt: Before ProcessCallStmt
         assert 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
         assume true;
@@ -14226,13 +14249,13 @@ implementation {:verboseName "Seq.LemmaSubseqMax (correctness)"} {:_induction s#
          ==> Seq.__default.Max(StartFuel_Seq._default.Max, Seq#Drop(Seq#Take($ih#s0#0, to#0), from#0))
            <= Seq.__default.Max(StartFuel_Seq._default.Max, $ih#s0#0));
     $_reverifyPost := false;
-    // ----- assignment statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(438,16)
+    // ----- assignment statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(442,16)
     assume true;
     assert 0 <= from#0 && from#0 <= Seq#Length(s#0);
     assert from#0 <= to#0 && to#0 <= Seq#Length(s#0);
     assume true;
     subseq#0 := Seq#Drop(Seq#Take(s#0, to#0), from#0);
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(439,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(443,5)
     ##s#2 := subseq#0;
     // assume allocatedness for argument to function
     assume $IsAlloc(##s#2, TSeq(TInt), $Heap);
@@ -14249,7 +14272,7 @@ implementation {:verboseName "Seq.LemmaSubseqMax (correctness)"} {:_induction s#
     if (Seq.__default.Max(StartFuel_Seq._default.Max, subseq#0)
        > Seq.__default.Max(StartFuel_Seq._default.Max, s#0))
     {
-        // ----- assign-such-that statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(440,13)
+        // ----- assign-such-that statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(444,13)
         havoc k#0_1;
         if (true)
         {
@@ -14303,7 +14326,7 @@ implementation {:verboseName "Seq.LemmaSubseqMax (correctness)"} {:_induction s#
            && k#0_0 < Seq#Length(subseq#0)
            && $Unbox(Seq#Index(subseq#0, k#0_0)): int
              == Seq.__default.Max(StartFuel_Seq._default.Max, subseq#0);
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(441,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(445,7)
         assert 0 <= Seq#Length(subseq#0);
         // Begin Comprehension WF check
         if (*)
@@ -14416,7 +14439,7 @@ implementation {:verboseName "Seq.LemmaSubseqMax (correctness)"} {:_induction s#
                             SetRef_to_SetBox((lambda $l#0_5#o#0: ref :: false))))), 
                       $LS($LZ)))), 
                 k#0_0)): int));
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(442,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(446,7)
         assume true;
         assert Lit(false);
     }
@@ -14677,13 +14700,13 @@ implementation {:verboseName "Seq.LemmaSubseqMin (correctness)"} {:_induction s#
          ==> Seq.__default.Min(StartFuel_Seq._default.Min, Seq#Drop(Seq#Take($ih#s0#0, to#0), from#0))
            >= Seq.__default.Min(StartFuel_Seq._default.Min, $ih#s0#0));
     $_reverifyPost := false;
-    // ----- assignment statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(452,16)
+    // ----- assignment statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(456,16)
     assume true;
     assert 0 <= from#0 && from#0 <= Seq#Length(s#0);
     assert from#0 <= to#0 && to#0 <= Seq#Length(s#0);
     assume true;
     subseq#0 := Seq#Drop(Seq#Take(s#0, to#0), from#0);
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(453,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(457,5)
     ##s#2 := subseq#0;
     // assume allocatedness for argument to function
     assume $IsAlloc(##s#2, TSeq(TInt), $Heap);
@@ -14700,7 +14723,7 @@ implementation {:verboseName "Seq.LemmaSubseqMin (correctness)"} {:_induction s#
     if (Seq.__default.Min(StartFuel_Seq._default.Min, subseq#0)
        < Seq.__default.Min(StartFuel_Seq._default.Min, s#0))
     {
-        // ----- assign-such-that statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(454,13)
+        // ----- assign-such-that statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(458,13)
         havoc k#0_1;
         if (true)
         {
@@ -14754,7 +14777,7 @@ implementation {:verboseName "Seq.LemmaSubseqMin (correctness)"} {:_induction s#
            && k#0_0 < Seq#Length(subseq#0)
            && $Unbox(Seq#Index(subseq#0, k#0_0)): int
              == Seq.__default.Min(StartFuel_Seq._default.Min, subseq#0);
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(455,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(459,7)
         assert 0 <= Seq#Length(subseq#0);
         // Begin Comprehension WF check
         if (*)
@@ -15219,21 +15242,21 @@ implementation {:verboseName "Seq.LemmaFlattenConcat (correctness)"} {:_inductio
           Seq#Append(Seq.__default.Flatten(Seq._default.LemmaFlattenConcat$T, $LS($LZ), $ih#a0#0), 
             Seq.__default.Flatten(Seq._default.LemmaFlattenConcat$T, $LS($LZ), $ih#b0#0))));
     $_reverifyPost := false;
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(480,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(484,5)
     assume true;
     if (Seq#Length(a#0) == LitInt(0))
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(481,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(485,7)
         assume true;
         assert Seq#Equal(Seq#Append(a#0, b#0), b#0);
     }
     else
     {
-        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
         // Assume Fuel Constant
         if (*)
         {
-            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             ##s#1_0_0 := Seq#Append(a#0, b#0);
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0, TSeq(TSeq(Seq._default.LemmaFlattenConcat$T)), $Heap);
@@ -15243,26 +15266,26 @@ implementation {:verboseName "Seq.LemmaFlattenConcat (correctness)"} {:_inductio
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             ##s#1_0_2_0 := Seq#Append(a#0, b#0);
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_2_0, TSeq(TSeq(Seq._default.LemmaFlattenConcat$T)), $Heap);
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, Seq#Append(a#0, b#0));
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, Seq#Append(a#0, b#0));
-            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(485,13)
+            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(489,13)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume true;
             assert Seq#Equal($Unbox(Seq#Index(Seq#Append(a#0, b#0), LitInt(0))): Seq Box, 
               $Unbox(Seq#Index(a#0, LitInt(0))): Seq Box);
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(485,41)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(489,41)
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             assume true;
             assert Seq#Equal(Seq#Drop(Seq#Append(a#0, b#0), LitInt(1)), 
               Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##s#1_0_2_1 := Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0);
@@ -15270,7 +15293,7 @@ implementation {:verboseName "Seq.LemmaFlattenConcat (correctness)"} {:_inductio
             assume $IsAlloc(##s#1_0_2_1, TSeq(TSeq(Seq._default.LemmaFlattenConcat$T)), $Heap);
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             assert {:subsumption 0} Seq#Equal(Seq.__default.Flatten(Seq._default.LemmaFlattenConcat$T, $LS($LS($LZ)), Seq#Append(a#0, b#0)), 
               Seq#Append($Unbox(Seq#Index(a#0, LitInt(0))): Seq Box, 
                 Seq.__default.Flatten(Seq._default.LemmaFlattenConcat$T, 
@@ -15280,7 +15303,7 @@ implementation {:verboseName "Seq.LemmaFlattenConcat (correctness)"} {:_inductio
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##s#1_0_1_0 := Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0);
@@ -15288,8 +15311,8 @@ implementation {:verboseName "Seq.LemmaFlattenConcat (correctness)"} {:_inductio
             assume $IsAlloc(##s#1_0_1_0, TSeq(TSeq(Seq._default.LemmaFlattenConcat$T)), $Heap);
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##s#1_0_1_1 := Seq#Drop(a#0, LitInt(1));
@@ -15302,7 +15325,7 @@ implementation {:verboseName "Seq.LemmaFlattenConcat (correctness)"} {:_inductio
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, b#0);
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, Seq#Drop(a#0, LitInt(1)))
                && Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, b#0);
-            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append($Unbox(Seq#Index(a#0, LitInt(0))): Seq Box, 
                 Seq.__default.Flatten(Seq._default.LemmaFlattenConcat$T, 
                   $LS($LS($LZ)), 
@@ -15314,7 +15337,7 @@ implementation {:verboseName "Seq.LemmaFlattenConcat (correctness)"} {:_inductio
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##s#1_0_0_0 := Seq#Drop(a#0, LitInt(1));
@@ -15327,8 +15350,8 @@ implementation {:verboseName "Seq.LemmaFlattenConcat (correctness)"} {:_inductio
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, b#0);
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, Seq#Drop(a#0, LitInt(1)))
                && Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, b#0);
-            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             ##s#1_0_0_2 := a#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0_2, TSeq(TSeq(Seq._default.LemmaFlattenConcat$T)), $Heap);
@@ -15339,7 +15362,7 @@ implementation {:verboseName "Seq.LemmaFlattenConcat (correctness)"} {:_inductio
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, b#0);
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, a#0)
                && Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenConcat$T, b#0);
-            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(483,7)
+            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(487,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq#Append($Unbox(Seq#Index(a#0, LitInt(0))): Seq Box, 
                   Seq.__default.Flatten(Seq._default.LemmaFlattenConcat$T, $LS($LS($LZ)), Seq#Drop(a#0, LitInt(1)))), 
                 Seq.__default.Flatten(Seq._default.LemmaFlattenConcat$T, $LS($LS($LZ)), b#0)), 
@@ -15747,11 +15770,11 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
           Seq#Append(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenReverseConcat$T, $LS($LZ), $ih#a0#0), 
             Seq.__default.FlattenReverse(Seq._default.LemmaFlattenReverseConcat$T, $LS($LZ), $ih#b0#0))));
     $_reverifyPost := false;
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(507,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,5)
     assume true;
     if (Seq#Length(b#0) == LitInt(0))
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(508,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(512,7)
         ##s#0_0 := b#0;
         // assume allocatedness for argument to function
         assume $IsAlloc(##s#0_0, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
@@ -15761,17 +15784,17 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
           Seq#Empty(): Seq Box);
         assume Seq#Equal(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenReverseConcat$T, $LS($LZ), b#0), 
           Seq#Empty(): Seq Box);
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(509,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(513,7)
         assume true;
         assert Seq#Equal(Seq#Append(a#0, b#0), a#0);
     }
     else
     {
-        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
         // Assume Fuel Constant
         if (*)
         {
-            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             ##s#1_0_0 := Seq#Append(a#0, b#0);
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
@@ -15781,14 +15804,14 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             ##s#1_0_2_0 := Seq#Append(a#0, b#0);
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_2_0, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
             assume Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenReverseConcat$T, Seq#Append(a#0, b#0));
             assume Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenReverseConcat$T, Seq#Append(a#0, b#0));
-            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(513,13)
+            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(517,13)
             ##s#1_0_2_1 := Seq#Append(a#0, b#0);
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_2_1, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
@@ -15803,7 +15826,7 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
                && Seq.__default.Last#canCall(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0);
             assert Seq#Equal($Unbox(Seq.__default.Last(TSeq(Seq._default.LemmaFlattenReverseConcat$T), Seq#Append(a#0, b#0))): Seq Box, 
               $Unbox(Seq.__default.Last(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0)): Seq Box);
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(513,45)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(517,45)
             ##s#1_0_2_3 := Seq#Append(a#0, b#0);
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_2_3, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
@@ -15818,7 +15841,7 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
                && Seq.__default.DropLast#canCall(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0);
             assert Seq#Equal(Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenReverseConcat$T), Seq#Append(a#0, b#0)), 
               Seq#Append(a#0, Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0)));
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             ##s#1_0_2_5 := b#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_2_5, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
@@ -15838,7 +15861,7 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
                && Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenReverseConcat$T, 
                 Seq#Append(a#0, Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0)))
                && Seq.__default.Last#canCall(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0);
-            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             assert {:subsumption 0} Seq#Equal(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenReverseConcat$T, $LS($LS($LZ)), Seq#Append(a#0, b#0)), 
               Seq#Append(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenReverseConcat$T, 
                   $LS($LS($LZ)), 
@@ -15848,7 +15871,7 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             ##s#1_0_1_0 := b#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_1_0, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
@@ -15868,8 +15891,8 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
                && Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenReverseConcat$T, 
                 Seq#Append(a#0, Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0)))
                && Seq.__default.Last#canCall(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0);
-            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             ##s#1_0_1_3 := a#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_1_3, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
@@ -15895,7 +15918,7 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
                && Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenReverseConcat$T, 
                 Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0))
                && Seq.__default.Last#canCall(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0);
-            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenReverseConcat$T, 
                   $LS($LS($LZ)), 
                   Seq#Append(a#0, Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0))), 
@@ -15909,7 +15932,7 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             ##s#1_0_0_0 := a#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0_0, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
@@ -15935,8 +15958,8 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
                && Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenReverseConcat$T, 
                 Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0))
                && Seq.__default.Last#canCall(TSeq(Seq._default.LemmaFlattenReverseConcat$T), b#0);
-            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             ##s#1_0_0_4 := a#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0_4, TSeq(TSeq(Seq._default.LemmaFlattenReverseConcat$T)), $Heap);
@@ -15947,7 +15970,7 @@ implementation {:verboseName "Seq.LemmaFlattenReverseConcat (correctness)"} {:_i
             assume Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenReverseConcat$T, b#0);
             assume Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenReverseConcat$T, a#0)
                && Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenReverseConcat$T, b#0);
-            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(511,7)
+            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(515,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq#Append(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenReverseConcat$T, $LS($LS($LZ)), a#0), 
                   Seq.__default.FlattenReverse(Seq._default.LemmaFlattenReverseConcat$T, 
                     $LS($LS($LZ)), 
@@ -16131,18 +16154,18 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
          ==> Seq#Equal(Seq.__default.Flatten(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, $LS($LZ), $ih#s0#0), 
           Seq.__default.FlattenReverse(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, $LS($LZ), $ih#s0#0)));
     $_reverifyPost := false;
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(526,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(530,5)
     assume true;
     if (Seq#Length(s#0) == LitInt(0))
     {
     }
     else
     {
-        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
         // Assume Fuel Constant
         if (*)
         {
-            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             ##s#1_0_0 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0, 
@@ -16154,7 +16177,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             ##s#1_0_3_0 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_3_0, 
@@ -16162,8 +16185,8 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
               $Heap);
             assume Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, s#0);
             assume Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, s#0);
-            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             ##s#1_0_3_1 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_3_1, 
@@ -16189,7 +16212,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
                && Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                 Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0))
                && Seq.__default.Last#canCall(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0);
-            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             assert {:subsumption 0} Seq#Equal(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, $LS($LS($LZ)), s#0), 
               Seq#Append(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                   $LS($LS($LZ)), 
@@ -16199,7 +16222,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             ##s#1_0_2_0 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_2_0, 
@@ -16225,8 +16248,8 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
                && Seq.__default.FlattenReverse#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                 Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0))
                && Seq.__default.Last#canCall(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0);
-            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
-            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(531,55)
+            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
+            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(535,55)
             // TrCallStmt: Before ProcessCallStmt
             ##s#1_0_2_3 := s#0;
             // assume allocatedness for argument to function
@@ -16243,7 +16266,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
             // ProcessCallStmt: Make the call
             call Call$$Seq.__default.LemmaFlattenAndFlattenReverseAreEquivalent(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, s##1_0_2_0);
             // TrCallStmt: After ProcessCallStmt
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             ##s#1_0_2_4 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_2_4, 
@@ -16269,7 +16292,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
                && Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                 Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0))
                && Seq.__default.Last#canCall(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0);
-            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                   $LS($LS($LZ)), 
                   Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0)), 
@@ -16282,7 +16305,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             ##s#1_0_1_0 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_1_0, 
@@ -16308,8 +16331,8 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
                && Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                 Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0))
                && Seq.__default.Last#canCall(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0);
-            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             ##s#1_0_1_3 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_1_3, 
@@ -16348,7 +16371,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
                && Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                 Seq#Build(Seq#Empty(): Seq Box, 
                   Seq.__default.Last(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0)));
-            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq.__default.Flatten(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                   $LS($LS($LZ)), 
                   Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0)), 
@@ -16364,7 +16387,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             ##s#1_0_0_0 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0_0, 
@@ -16403,8 +16426,8 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
                && Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                 Seq#Build(Seq#Empty(): Seq Box, 
                   Seq.__default.Last(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0)));
-            // ----- Hint3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
-            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(534,31)
+            // ----- Hint3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
+            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(538,31)
             // TrCallStmt: Before ProcessCallStmt
             ##s#1_0_0_4 := s#0;
             // assume allocatedness for argument to function
@@ -16432,7 +16455,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
             // ProcessCallStmt: Make the call
             call Call$$Seq.__default.LemmaFlattenConcat(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, a##1_0_0_0, b##1_0_0_0);
             // TrCallStmt: After ProcessCallStmt
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(535,9)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(539,9)
             ##s#1_0_0_6 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0_6, 
@@ -16453,7 +16476,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
               Seq#Append(Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0), 
                 Seq#Build(Seq#Empty(): Seq Box, 
                   Seq.__default.Last(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0))));
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             ##s#1_0_0_8 := s#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##s#1_0_0_8, 
@@ -16461,7 +16484,7 @@ implementation {:verboseName "Seq.LemmaFlattenAndFlattenReverseAreEquivalent (co
               $Heap);
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, s#0);
             assume Seq.__default.Flatten#canCall(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, s#0);
-            // ----- assert line3 == line4 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(528,7)
+            // ----- assert line3 == line4 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(532,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq.__default.Flatten(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T, 
                   $LS($LS($LZ)), 
                   Seq.__default.DropLast(TSeq(Seq._default.LemmaFlattenAndFlattenReverseAreEquivalent$T), s#0)), 
@@ -16718,11 +16741,11 @@ implementation {:verboseName "Seq.LemmaFlattenLengthGeSingleElementLength (corre
          ==> Seq#Length(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenLengthGeSingleElementLength$T, $LS($LZ), $ih#s0#0))
            >= Seq#Length($Unbox(Seq#Index($ih#s0#0, i#0)): Seq Box));
     $_reverifyPost := false;
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(547,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(551,5)
     assume true;
     if (i#0 < Seq#Length(s#0) - 1)
     {
-        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(548,46)
+        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(552,46)
         // TrCallStmt: Before ProcessCallStmt
         assert 0 <= Seq#Length(s#0) - 1 && Seq#Length(s#0) - 1 <= Seq#Length(s#0);
         assume true;
@@ -17002,14 +17025,14 @@ implementation {:verboseName "Seq.LemmaFlattenLengthLeMul (correctness)"} {:_ind
          ==> Seq#Length(Seq.__default.FlattenReverse(Seq._default.LemmaFlattenLengthLeMul$T, $LS($LZ), $ih#s0#0))
            <= Mul(Seq#Length($ih#s0#0), j#0));
     $_reverifyPost := false;
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(559,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(563,5)
     assume true;
     if (Seq#Length(s#0) == LitInt(0))
     {
     }
     else
     {
-        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(561,30)
+        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(565,30)
         // TrCallStmt: Before ProcessCallStmt
         assert 0 <= Seq#Length(s#0) - 1 && Seq#Length(s#0) - 1 <= Seq#Length(s#0);
         assume true;
@@ -17024,7 +17047,7 @@ implementation {:verboseName "Seq.LemmaFlattenLengthLeMul (correctness)"} {:_ind
         // ProcessCallStmt: Make the call
         call Call$$Seq.__default.LemmaFlattenLengthLeMul(Seq._default.LemmaFlattenLengthLeMul$T, s##1_0, j##1_0);
         // TrCallStmt: After ProcessCallStmt
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(562,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(566,7)
         assert {:subsumption 0} 0 <= Seq#Length(s#0) - 1 && Seq#Length(s#0) - 1 <= Seq#Length(s#0);
         ##s#1_0 := Seq#Take(s#0, Seq#Length(s#0) - 1);
         // assume allocatedness for argument to function
@@ -19555,27 +19578,27 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
               $ih#f0#0, 
               $ih#b0#0))));
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(609,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(609,15)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,15)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__Map();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(610,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(614,5)
     assume true;
     if (Seq#Length(a#0) == LitInt(0))
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(611,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(615,7)
         assume true;
         assert Seq#Equal(Seq#Append(a#0, b#0), b#0);
     }
     else
     {
-        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
         // Assume Fuel Constant
         if (*)
         {
-            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             ##f#1_0_0 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_0, 
@@ -19609,7 +19632,7 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             ##f#1_0_2_0 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_2_0, 
@@ -19639,19 +19662,19 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
               $Heap, 
               f#0, 
               Seq#Append(a#0, b#0));
-            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(615,13)
+            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(619,13)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume true;
             assert Seq#Index(Seq#Append(a#0, b#0), LitInt(0)) == Seq#Index(a#0, LitInt(0));
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(615,40)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(619,40)
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             assume true;
             assert Seq#Equal(Seq#Drop(Seq#Append(a#0, b#0), LitInt(1)), 
               Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             ##f#1_0_2_1 := f#0;
             // assume allocatedness for argument to function
@@ -19712,7 +19735,7 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
                 $Heap, 
                 f#0, 
                 Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             assert {:subsumption 0} Seq#Equal(Seq.__default.Map(Seq._default.LemmaMapDistributesOverConcat$T, 
                 Seq._default.LemmaMapDistributesOverConcat$R, 
                 StartFuelAssert_Seq._default.Map, 
@@ -19735,7 +19758,7 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             ##f#1_0_1_0 := f#0;
             // assume allocatedness for argument to function
@@ -19796,8 +19819,8 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
                 $Heap, 
                 f#0, 
                 Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             ##f#1_0_1_2 := f#0;
             // assume allocatedness for argument to function
@@ -19887,7 +19910,7 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
                 $Heap, 
                 f#0, 
                 b#0);
-            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq.__default.Map(Seq._default.LemmaMapDistributesOverConcat$T, 
                   Seq._default.LemmaMapDistributesOverConcat$R, 
                   StartFuelAssert_Seq._default.Map, 
@@ -19922,7 +19945,7 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             ##f#1_0_0_0 := f#0;
             // assume allocatedness for argument to function
@@ -20012,8 +20035,8 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
                 $Heap, 
                 f#0, 
                 b#0);
-            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(618,12)
+            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(622,12)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             assume true;
@@ -20021,7 +20044,7 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
                   Seq#Drop(a#0, LitInt(1))), 
                 b#0), 
               Seq#Append(a#0, b#0));
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             ##f#1_0_0_3 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_0_3, 
@@ -20080,7 +20103,7 @@ implementation {:verboseName "Seq.LemmaMapDistributesOverConcat (correctness)"} 
                 $Heap, 
                 f#0, 
                 b#0);
-            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(613,7)
+            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(617,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq#Append(Seq.__default.Map(Seq._default.LemmaMapDistributesOverConcat$T, 
                     Seq._default.LemmaMapDistributesOverConcat$R, 
                     StartFuelAssert_Seq._default.Map, 
@@ -21267,27 +21290,27 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
               $ih#f0#0, 
               $ih#b0#0))));
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(642,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(642,18)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,18)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__Filter();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(643,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(647,5)
     assume true;
     if (Seq#Length(a#0) == LitInt(0))
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(644,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(648,7)
         assume true;
         assert Seq#Equal(Seq#Append(a#0, b#0), b#0);
     }
     else
     {
-        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
         // Assume Fuel Constant
         if (*)
         {
-            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             ##f#1_0_0 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_0, 
@@ -21318,7 +21341,7 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             ##f#1_0_2_0 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_2_0, 
@@ -21345,19 +21368,19 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
               $Heap, 
               f#0, 
               Seq#Append(a#0, b#0));
-            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(648,13)
+            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(652,13)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume true;
             assert Seq#Index(Seq#Append(a#0, b#0), LitInt(0)) == Seq#Index(a#0, LitInt(0));
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(648,40)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(652,40)
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             assume true;
             assert Seq#Equal(Seq#Drop(Seq#Append(a#0, b#0), LitInt(1)), 
               Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             ##f#1_0_2_1 := f#0;
             // assume allocatedness for argument to function
@@ -21412,7 +21435,7 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
                 $Heap, 
                 f#0, 
                 Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             assert {:subsumption 0} Seq#Equal(Seq.__default.Filter(Seq._default.LemmaFilterDistributesOverConcat$T, 
                 StartFuelAssert_Seq._default.Filter, 
                 $Heap, 
@@ -21432,7 +21455,7 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             ##f#1_0_1_0 := f#0;
             // assume allocatedness for argument to function
@@ -21487,8 +21510,8 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
                 $Heap, 
                 f#0, 
                 Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             ##f#1_0_1_2 := f#0;
             // assume allocatedness for argument to function
@@ -21563,7 +21586,7 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
                 f#0, 
                 Seq#Drop(a#0, LitInt(1)))
                && Seq.__default.Filter#canCall(Seq._default.LemmaFilterDistributesOverConcat$T, $Heap, f#0, b#0);
-            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq.__default.Filter(Seq._default.LemmaFilterDistributesOverConcat$T, 
                   StartFuelAssert_Seq._default.Filter, 
                   $Heap, 
@@ -21593,7 +21616,7 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             ##f#1_0_0_0 := f#0;
             // assume allocatedness for argument to function
@@ -21668,8 +21691,8 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
                 f#0, 
                 Seq#Drop(a#0, LitInt(1)))
                && Seq.__default.Filter#canCall(Seq._default.LemmaFilterDistributesOverConcat$T, $Heap, f#0, b#0);
-            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(651,13)
+            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(655,13)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             assume true;
@@ -21677,7 +21700,7 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
                   Seq#Drop(a#0, LitInt(1))), 
                 b#0), 
               Seq#Append(a#0, b#0));
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             ##f#1_0_0_3 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_0_3, 
@@ -21718,7 +21741,7 @@ implementation {:verboseName "Seq.LemmaFilterDistributesOverConcat (correctness)
             assume Seq.__default.Filter#canCall(Seq._default.LemmaFilterDistributesOverConcat$T, $Heap, f#0, b#0);
             assume Seq.__default.Filter#canCall(Seq._default.LemmaFilterDistributesOverConcat$T, $Heap, f#0, a#0)
                && Seq.__default.Filter#canCall(Seq._default.LemmaFilterDistributesOverConcat$T, $Heap, f#0, b#0);
-            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(646,7)
+            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(650,7)
             assert {:subsumption 0} Seq#Equal(Seq#Append(Seq#Append(Seq.__default.Filter(Seq._default.LemmaFilterDistributesOverConcat$T, 
                     StartFuelAssert_Seq._default.Filter, 
                     $Heap, 
@@ -22529,26 +22552,26 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
               $ih#a0#0), 
             $ih#b0#0));
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(669,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(669,20)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(673,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(673,20)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__FoldLeft();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(670,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(674,5)
     assume true;
     if (Seq#Length(a#0) == LitInt(0))
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(671,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
         assume true;
         assert Seq#Equal(Seq#Append(a#0, b#0), b#0);
     }
     else
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(673,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(677,7)
         assume true;
         assert Seq#Length(a#0) >= LitInt(1);
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(674,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(678,7)
         assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
         assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
         assert {:subsumption 0} 0 <= LitInt(0)
@@ -22563,11 +22586,11 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
               b#0), 
             LitInt(0))
            == Seq#Index(a#0, LitInt(0));
-        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
         // Assume Fuel Constant
         if (*)
         {
-            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             ##f#1_0_0 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_0, 
@@ -22633,7 +22656,7 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             ##f#1_0_2_0 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_2_0, 
@@ -22695,8 +22718,8 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
                   init#0, 
                   a#0), 
                 b#0);
-            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##f#1_0_2_2 := f#0;
@@ -22796,7 +22819,7 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
                     Seq#Index(a#0, LitInt(0))), 
                   Seq#Drop(a#0, LitInt(1))), 
                 b#0);
-            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             assert {:subsumption 0} Seq.__default.FoldLeft(Seq._default.LemmaFoldLeftDistributesOverConcat$A, 
                 Seq._default.LemmaFoldLeftDistributesOverConcat$T, 
                 StartFuelAssert_Seq._default.FoldLeft, 
@@ -22829,7 +22852,7 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##f#1_0_1_0 := f#0;
@@ -22929,8 +22952,8 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
                     Seq#Index(a#0, LitInt(0))), 
                   Seq#Drop(a#0, LitInt(1))), 
                 b#0);
-            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
-            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(678,47)
+            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
+            // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(682,47)
             // TrCallStmt: Before ProcessCallStmt
             assume true;
             // ProcessCallStmt: CheckSubrange
@@ -22957,7 +22980,7 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
             // ProcessCallStmt: Make the call
             call Call$$Seq.__default.LemmaFoldLeftDistributesOverConcat(Seq._default.LemmaFoldLeftDistributesOverConcat$A, Seq._default.LemmaFoldLeftDistributesOverConcat$T, f##1_0_1_0, init##1_0_1_0, a##1_0_1_0, b##1_0_1_0);
             // TrCallStmt: After ProcessCallStmt
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##f#1_0_1_2 := f#0;
@@ -23001,7 +23024,7 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
                 init#0, 
                 Seq#Index(a#0, LitInt(0))), 
               Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             assert {:subsumption 0} Seq.__default.FoldLeft(Seq._default.LemmaFoldLeftDistributesOverConcat$A, 
                 Seq._default.LemmaFoldLeftDistributesOverConcat$T, 
                 StartFuelAssert_Seq._default.FoldLeft, 
@@ -23035,7 +23058,7 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##f#1_0_0_0 := f#0;
@@ -23079,19 +23102,19 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
                 init#0, 
                 Seq#Index(a#0, LitInt(0))), 
               Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(680,13)
+            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(684,13)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume true;
             assert Seq#Index(Seq#Append(a#0, b#0), LitInt(0)) == Seq#Index(a#0, LitInt(0));
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(681,13)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(685,13)
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             assume true;
             assert Seq#Equal(Seq#Drop(Seq#Append(a#0, b#0), LitInt(1)), 
               Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             ##f#1_0_0_1 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_0_1, 
@@ -23115,7 +23138,7 @@ implementation {:verboseName "Seq.LemmaFoldLeftDistributesOverConcat (correctnes
               f#0, 
               init#0, 
               Seq#Append(a#0, b#0));
-            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(675,7)
+            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(679,7)
             assert {:subsumption 0} Seq.__default.FoldLeft(Seq._default.LemmaFoldLeftDistributesOverConcat$A, 
                 Seq._default.LemmaFoldLeftDistributesOverConcat$T, 
                 StartFuelAssert_Seq._default.FoldLeft, 
@@ -23794,27 +23817,27 @@ implementation {:verboseName "Seq.LemmaInvFoldLeft (correctness)"} {:_induction 
               $ih#xs0#0), 
             $Box(Lit(Seq#Empty(): Seq Box)))): bool);
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(707,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(707,20)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(711,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(711,20)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__FoldLeft();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(708,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(712,5)
     assume true;
     if (Seq#Equal(xs#0, Seq#Empty(): Seq Box))
     {
     }
     else
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(710,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(714,7)
         assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(xs#0);
         assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(xs#0);
         assume true;
         assert Seq#Equal(Seq#Append(Seq#Build(Seq#Empty(): Seq Box, Seq#Index(xs#0, LitInt(0))), 
             Seq#Drop(xs#0, LitInt(1))), 
           xs#0);
-        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(711,23)
+        // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(715,23)
         // TrCallStmt: Before ProcessCallStmt
         assume true;
         // ProcessCallStmt: CheckSubrange
@@ -24570,27 +24593,27 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
               $ih#b0#0, 
               init#0)));
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(727,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(727,21)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,21)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__FoldRight();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(728,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(732,5)
     assume true;
     if (Seq#Length(a#0) == LitInt(0))
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(729,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(733,7)
         assume true;
         assert Seq#Equal(Seq#Append(a#0, b#0), b#0);
     }
     else
     {
-        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+        // ----- calc statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
         // Assume Fuel Constant
         if (*)
         {
-            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- assert wf[initial] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             ##f#1_0_0 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_0, 
@@ -24656,7 +24679,7 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             ##f#1_0_2_0 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_2_0, 
@@ -24718,8 +24741,8 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
                   f#0, 
                   b#0, 
                   init#0));
-            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- Hint0 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##f#1_0_2_2 := f#0;
@@ -24783,7 +24806,7 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
                   f#0, 
                   b#0, 
                   init#0));
-            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- assert line0 == line1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             assert {:subsumption 0} Seq.__default.FoldRight(Seq._default.LemmaFoldRightDistributesOverConcat$A, 
                 Seq._default.LemmaFoldRightDistributesOverConcat$T, 
                 StartFuelAssert_Seq._default.FoldRight, 
@@ -24816,7 +24839,7 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##f#1_0_1_0 := f#0;
@@ -24880,8 +24903,8 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
                   f#0, 
                   b#0, 
                   init#0));
-            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- Hint1 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##f#1_0_1_2 := f#0;
@@ -24907,7 +24930,7 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
               f#0, 
               Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0), 
               init#0);
-            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- assert line1 == line2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             assert {:subsumption 0} Apply2(Seq._default.LemmaFoldRightDistributesOverConcat$T, 
                 Seq._default.LemmaFoldRightDistributesOverConcat$A, 
                 Seq._default.LemmaFoldRightDistributesOverConcat$A, 
@@ -24941,7 +24964,7 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
         }
         else if (*)
         {
-            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- assume wf[lhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             assume {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             ##f#1_0_0_0 := f#0;
@@ -24967,19 +24990,19 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
               f#0, 
               Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0), 
               init#0);
-            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,13)
+            // ----- Hint2 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(739,13)
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(a#0);
             assume true;
             assert Seq#Index(Seq#Append(a#0, b#0), LitInt(0)) == Seq#Index(a#0, LitInt(0));
-            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(736,13)
+            // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(740,13)
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(Seq#Append(a#0, b#0));
             assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(a#0);
             assume true;
             assert Seq#Equal(Seq#Drop(Seq#Append(a#0, b#0), LitInt(1)), 
               Seq#Append(Seq#Drop(a#0, LitInt(1)), b#0));
-            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- assert wf[rhs] ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             ##f#1_0_0_1 := f#0;
             // assume allocatedness for argument to function
             assume $IsAlloc(##f#1_0_0_1, 
@@ -25003,7 +25026,7 @@ implementation {:verboseName "Seq.LemmaFoldRightDistributesOverConcat (correctne
               f#0, 
               Seq#Append(a#0, b#0), 
               init#0);
-            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(731,7)
+            // ----- assert line2 == line3 ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(735,7)
             assert {:subsumption 0} Apply2(Seq._default.LemmaFoldRightDistributesOverConcat$T, 
                 Seq._default.LemmaFoldRightDistributesOverConcat$A, 
                 Seq._default.LemmaFoldRightDistributesOverConcat$A, 
@@ -25685,20 +25708,20 @@ implementation {:verboseName "Seq.LemmaInvFoldRight (correctness)"} {:_induction
               $ih#xs0#0, 
               b#0))): bool);
     $_reverifyPost := false;
-    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(762,5)
-    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(762,21)
+    // ----- reveal statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(766,5)
+    // ----- call statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(766,21)
     // TrCallStmt: Before ProcessCallStmt
     // ProcessCallStmt: Make the call
     call Call$$Seq.__default.reveal__FoldRight();
     // TrCallStmt: After ProcessCallStmt
-    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(763,5)
+    // ----- if statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(767,5)
     assume true;
     if (Seq#Equal(xs#0, Seq#Empty(): Seq Box))
     {
     }
     else
     {
-        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(765,7)
+        // ----- assert statement ----- /Users/aarotomb/Repositories/libraries/src/Collections/Sequences/Seq.dfy(769,7)
         assert {:subsumption 0} 0 <= LitInt(0) && LitInt(0) < Seq#Length(xs#0);
         assert {:subsumption 0} 0 <= LitInt(1) && LitInt(1) <= Seq#Length(xs#0);
         assume true;
