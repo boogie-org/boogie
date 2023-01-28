@@ -1,10 +1,10 @@
-AlwaysAssume.bpl(15,3): Error: a precondition for this call could not be proved
+AlwaysAssume.bpl(14,3): Error: a precondition for this call could not be proved
 AlwaysAssume.bpl(6,3): Related location: this is the precondition that could not be proved
 Execution trace:
-    AlwaysAssume.bpl(15,3): anon0
-AlwaysAssume.bpl(24,1): Error: a postcondition could not be proved on this return path
-AlwaysAssume.bpl(20,3): Related location: this is the postcondition that could not be proved
+    AlwaysAssume.bpl(14,3): anon0
+AlwaysAssume.bpl(34,1): Error: a postcondition could not be proved on this return path
+AlwaysAssume.bpl(31,3): Related location: this is the postcondition that could not be proved
 Execution trace:
-    AlwaysAssume.bpl(24,1): anon0
+    AlwaysAssume.bpl(34,1): anon0
 
-Boogie program verifier finished with 1 verified, 2 errors
+Boogie program verifier finished with 4 verified, 2 errors
