@@ -3,8 +3,7 @@
 
 var {:layer 0,2} x:int;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} ADD(i: int) : PA;
+datatype {:pending_async} PA { ADD(i: int) }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -15,7 +14,7 @@ returns ({:pending_async "ADD"} PAs:[PA]int)
 modifies x;
 {
   assert n >= 0;
-  
+
   assume {:add_to_pool "A", 0} true;
   PAs := (lambda pa: PA :: if pa is ADD && 1 <= pa->i && pa->i <= n then 1 else 0);
 }

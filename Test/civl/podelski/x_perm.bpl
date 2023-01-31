@@ -2,12 +2,9 @@
 // RUN: %diff "%s.expect" "%t"
 
 // Permission types
-type {:datatype} AB;
-function {:constructor} AB (x:int) : AB;
-type {:datatype} A;
-function {:constructor} A (x:int) : A;
-type {:datatype} B;
-function {:constructor} B (x:int) : B;
+datatype AB { AB(x:int) }
+datatype A { A(x:int) }
+datatype B { B(x:int) }
 
 // Linear collectors
 type {:linear "perm"} Perm = int;

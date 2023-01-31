@@ -2,12 +2,12 @@
 // RUN: %diff "%s.expect" "%t"
 type {:linear "x", "tid"} X;
 
-function {:inline} None() : [X]bool
+function {:inline} NoElems() : [X]bool
 {
     MapConst(false)
 }
 
-function {:inline} All() : [X]bool
+function {:inline} AllElems() : [X]bool
 {
     MapConst(true)
 }
@@ -19,7 +19,7 @@ const nil: X;
 var {:layer 0,1}{:linear "tid"} unallocated:[X]bool;
 
 procedure {:yields} {:layer 1} Split({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool)
-ensures {:layer 1} xls == MapOr(xls1, xls2) && xls1 != None() && xls2 != None();
+ensures {:layer 1} xls == MapOr(xls1, xls2) && xls1 != NoElems() && xls2 != NoElems();
 {
   call xls1, xls2 := SplitLow(xls);
 }
@@ -52,9 +52,9 @@ procedure {:atomic} {:layer 1} AtomicSplitLow({:linear_in "x"} xls: [X]bool) ret
 {
   // xls == xls1 ⊎ xls2
   assume xls == MapOr(xls1, xls2);
-  assume MapAnd(xls1, xls2) == None();
-  assume xls1 != None();
-  assume xls2 != None();
+  assume MapAnd(xls1, xls2) == NoElems();
+  assume xls1 != NoElems();
+  assume xls2 != NoElems();
 }
 
 procedure {:yields} {:layer 0} {:refines "AtomicSplitLow"} SplitLow({:linear_in "x"} xls: [X]bool) returns ({:linear "x"} xls1: [X]bool, {:linear "x"} xls2: [X]bool);
@@ -66,7 +66,7 @@ modifies unallocated;
 procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow() returns ({:linear "tid"} xls: X);
 
 procedure {:yields} {:layer 1} main({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool)
-requires {:layer 1} tidls' != nil && xls' == All();
+requires {:layer 1} tidls' != nil && xls' == AllElems();
 {
     var {:linear "tid"} tidls: X;
     var {:linear "x"} xls: [X]bool;
@@ -79,7 +79,7 @@ requires {:layer 1} tidls' != nil && xls' == All();
 
     call Set(42);
     yield;
-    assert {:layer 1} xls == All();
+    assert {:layer 1} xls == AllElems();
     assert {:layer 1} x == 42;
     call xls1, xls2 := Split(xls);
     call lsChild := Allocate();
@@ -91,7 +91,7 @@ requires {:layer 1} tidls' != nil && xls' == All();
 }
 
 procedure {:yields} {:layer 1} thread({:linear_in "tid"} tidls': X, {:linear_in "x"} xls': [X]bool)
-requires {:layer 1} tidls' != nil && xls' != None();
+requires {:layer 1} tidls' != nil && xls' != NoElems();
 {
     var {:linear "x"} xls: [X]bool;
     var {:linear "tid"} tidls: X;
@@ -101,10 +101,10 @@ requires {:layer 1} tidls' != nil && xls' != None();
 
     call Lock(tidls);
     yield;
-    assert {:layer 1} tidls != nil && xls != None();
+    assert {:layer 1} tidls != nil && xls != NoElems();
     call Set(0);
     yield;
-    assert {:layer 1} tidls != nil && xls != None();
+    assert {:layer 1} tidls != nil && xls != NoElems();
     assert {:layer 1} x == 0;
     call Unlock();
 }

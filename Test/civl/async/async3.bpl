@@ -3,8 +3,7 @@
 
 var {:layer 0,3} x:int;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A_Inc() : PA;
+datatype {:pending_async} PA { A_Inc() }
 
 procedure {:yields}{:layer 2}{:refines "A_Inc"} Client ()
 {

@@ -16,8 +16,7 @@ function {:inline} Subset(X: [X]bool, Y: [X]bool) : (bool)
 //   - For a whole thread id, both the left and right fields are true.
 //   - For a fraction, either the left or right field is true.
 // In other words, Tid(i, true, true) can be be split into Tid(i, true, false), Tid(i, false, true).
-type{:datatype} Tid;
-function{:constructor} Tid(i:int, left:bool, right:bool):Tid;
+datatype Tid { Tid(i:int, left:bool, right:bool) }
 
 function {:inline} {:linear "tid"} TidCollector(x: Tid) : [X]bool
 {
@@ -54,10 +53,7 @@ function {:inline} RootScanBarrierInv(Set:[int]bool, rootScanBarrier: int) : boo
 
 type idx = int;
 type fld = int;
-type{:datatype} obj;
-function{:constructor} Nil():obj;
-function{:constructor} Obj(id:int):obj;
-function{:constructor} Int(i:int):obj;
+datatype obj { Nil(), Obj(id:int), Int(i:int) }
 
 function {:inline} IDLE():int { 0 }
 function {:inline} MARK():int { 1 }

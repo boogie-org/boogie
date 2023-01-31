@@ -1,14 +1,14 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:datatype} Channel; // FIFO channel
-function {:constructor} Channel(C: [int]int, head: int, tail: int): Channel;
+// FIFO channel
+datatype Channel { Channel(C: [int]int, head: int, tail: int) }
 
-type ChannelId; // id of a FIFO channel
+// id of a FIFO channel
+type ChannelId;
 
-type {:linear "cid"} {:datatype} ChannelHandle; // permission for sending to or receiving from a channel
-function {:constructor} Send(cid: ChannelId): ChannelHandle;
-function {:constructor} Receive(cid: ChannelId): ChannelHandle;
+// permission for sending to or receiving from a channel
+datatype {:linear "cid"} ChannelHandle { Send(cid: ChannelId), Receive(cid: ChannelId) }
 
 function {:inline} Cid(handle: ChannelHandle): ChannelId {
   handle->cid
@@ -18,11 +18,13 @@ function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [Channel
   MapConst(false)[Send(cid) := true][Receive(cid) := true]
 }
 
-var {:layer 0,3} channels: [ChannelId]Channel; // pool of FIFO channels
+// pool of FIFO channels
+var {:layer 0,3} channels: [ChannelId]Channel;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} PRODUCER(x: int, send_handle: ChannelHandle) : PA;
-function {:constructor} CONSUMER(x: int, receive_handle: ChannelHandle) : PA;
+datatype {:pending_async} PA {
+  PRODUCER(x: int, send_handle: ChannelHandle),
+  CONSUMER(x: int, receive_handle: ChannelHandle)
+}
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

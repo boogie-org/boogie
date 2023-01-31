@@ -45,9 +45,7 @@ function max ([int]int) : int;
 axiom (forall id:[int]int :: pid(max(id)) && (forall i:int :: pid(i) && i != max(id) ==> id[i] < id[max(id)]));
 
 // A type for keeping track of pending asyncs
-type {:pending_async}{:datatype} PA;
-function {:constructor} P(pid:int) : PA;
-function {:constructor} PInit(pid:int) : PA;
+datatype {:pending_async} PA { P(pid:int), PInit(pid:int) }
 
 function {:inline} EmptyChannel() : [int]int { (lambda i:int :: 0) }
 function {:inline} NoPAs() : [PA]int { (lambda pa:PA :: 0) }

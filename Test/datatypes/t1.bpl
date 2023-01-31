@@ -1,13 +1,13 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type TT;
-type {:datatype} Tree;
-function {:constructor} leaf() : Tree;
-function {:constructor} node(value:TT, children:TreeList) : Tree;
+datatype Tree {
+  leaf(), node(value:TT, children:TreeList)
+}
 
-type {:datatype} TreeList;
-function {:constructor} cons(car:Tree, cdr:TreeList) : TreeList;
-function {:constructor} nil() : TreeList;
+datatype TreeList {
+  cons(car:Tree, cdr:TreeList), nil()
+}
 
 procedure foo()
 {

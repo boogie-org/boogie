@@ -48,8 +48,7 @@ modifies g;
     call g := Lheap_Empty();
 }
 
-type {:datatype} Foo;
-function {:constructor} Foo(f: Lheap int): Foo;
+datatype Foo { Foo(f: Lheap int) }
 
 procedure {:atomic} {:layer 1, 2} A7({:linear_in} path: Lheap Foo, x: Ref Foo, y: Ref int) returns (path': Lheap Foo)
 {

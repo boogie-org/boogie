@@ -1,13 +1,9 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // In this example we show how to model a reader-writer lock.
 
 type {:linear "tid"} Tid;
-
-type {:datatype} Option _;
-function {:constructor} None<T>(): Option T;
-function {:constructor} Some<T>(t: T): Option T;
 
 function {:inline} EmptySet<T>(): [T]bool
 {
@@ -17,8 +13,7 @@ function {:inline} EmptySet<T>(): [T]bool
 
 // An `RwLock` allows either a number of `readers` or at most one `writer` at
 // any point in time.
-type {:datatype} RwLock;
-function {:constructor} RwLock(writer: Option Tid, readers: [Tid]bool): RwLock;
+datatype RwLock { RwLock(writer: Option Tid, readers: [Tid]bool) }
 
 // We want to obtain the following mover types.
 // * Acquiring a read or write lock is a right mover.

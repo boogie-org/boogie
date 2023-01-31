@@ -2,6 +2,6 @@ monomorphize5.bpl(21,3): Error: this assertion could not be proved
 Execution trace:
     monomorphize5.bpl(19,5): anon0
 Augmented execution trace:
-x=(Mk_33 1)
+x=(Mk_30 1)
 
 Boogie program verifier finished with 1 verified, 1 error

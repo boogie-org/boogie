@@ -20,8 +20,8 @@ procedure {:atomic} {:layer 1, 2} A3({:linear_in} path: Lheap int) returns (path
     call Lheap_Transfer(g, path');
 }
 
-type {:datatype} Foo;
-function {:constructor} Foo(f: Lheap int): Foo;
+datatype Foo { Foo(f: Lheap int) }
+
 
 procedure {:atomic} {:layer 1, 2} A4({:linear_in} path: Lheap Foo, x: Ref Foo, {:linear_in} l: Lheap int) returns (path': Lheap Foo, l': Lheap int)
 {

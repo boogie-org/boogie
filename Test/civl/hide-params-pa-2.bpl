@@ -1,8 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A(i:int) : PA;
+datatype {:pending_async} PA { A(i:int) }
 
 procedure {:atomic}{:layer 1,2} SPEC () returns ({:pending_async "A"} PAs:[PA]int)
 {

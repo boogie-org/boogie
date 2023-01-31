@@ -57,8 +57,7 @@ function {:inline} ValidTid(tid : Tid): bool {
 /*
  * datatype Epoch = Tid*Clock
  */
-type{:datatype} Epoch;
-function{:constructor} epoch(tid:Tid, clock:int):Epoch;
+datatype Epoch { epoch(tid:Tid, clock:int) }
 
 const unique SHARED: Epoch;
 
@@ -108,10 +107,11 @@ type Var;
 /*
  * datatype Shadowable = tid | lock | var
  */
-type{:datatype} Shadowable;
-function {:constructor} ShadowableTid(tid: Tid): Shadowable;
-function {:constructor} ShadowableLock(l: Lock): Shadowable;
-function {:constructor} ShadowableVar(x: Var): Shadowable;
+datatype Shadowable {
+  ShadowableTid(tid: Tid),
+  ShadowableLock(l: Lock),
+  ShadowableVar(x: Var)
+}
 
 var {:layer 0,30} shadow.VC   : [Shadowable] VC;
 var {:layer 0,30} shadow.Lock : [Shadowable] Tid;

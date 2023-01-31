@@ -2,7 +2,6 @@
 // RUN: %diff "%s.expect" "%t"
 // Issue #357
 
-type {:datatype} Cell _;
-function {:constructor} Mk<T>(i: int, x: T): Cell T;
+datatype Cell<T> { Mk(x: T) }
 
 procedure p() { }
