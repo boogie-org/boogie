@@ -17,8 +17,9 @@ const memHi: int;
 axiom 0 < memLo && memLo <= memHi;
 function {:inline} memAddr(i: int) returns (bool) { memLo <= i && i < memHi }
 
-type {:datatype} Bijection;
-function {:constructor} Bijection(domain: [Tid]bool, range: [int]bool, tidToPtr: [Tid]int, ptrToTid: [int]Tid): Bijection;
+datatype Bijection {
+  Bijection(domain: [Tid]bool, range: [int]bool, tidToPtr: [Tid]int, ptrToTid: [int]Tid)
+}
 
 var {:layer 0,1} isFree: [int]bool;
 var {:layer 0,1} freeSpace: int;

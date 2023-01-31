@@ -1,8 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A_Callback(tid: Tid) : PA;
+datatype {:pending_async} PA { A_Callback(tid: Tid) }
 
 type {:linear "tid"} Tid = int;
 

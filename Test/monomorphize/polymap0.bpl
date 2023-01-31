@@ -49,8 +49,7 @@ ensures h' == h[r, f := m[r]];
     assert x == m[r];
 }
 
-type {:datatype} Pair _;
-function {:constructor} Pair<T>(first: T, second: T): Pair T;
+datatype Pair<T> { Pair(first: T, second: T) }
 
 procedure D<T>(m: <B>[Ref]B, r: Ref, f: Field NormalField (Pair T), h: HeapType, t: T) returns (h': HeapType)
 requires m[r] == Pair(t, t);

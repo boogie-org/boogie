@@ -2,17 +2,16 @@
 // RUN: %diff "%s.expect" "%t"
 // XFAIL: *
 
-type {:datatype} Node T;
+datatype Node<T> { Node(next: RefNode T, val: T) }
 type RefNode T = Ref (Node T);
 function Nil<T>(): RefNode T;
-function {:constructor} Node<T>(next: RefNode T, val: T): Node T;
 
 function {:inline} Empty<T>(): [RefNode T]bool
 {
   MapConst(false)
 }
 
-function {:inline} Singleton<T>(a: RefNode T): [RefNode T]bool 
+function {:inline} Singleton<T>(a: RefNode T): [RefNode T]bool
 {
   MapOne(a)
 }

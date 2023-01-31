@@ -7,9 +7,10 @@ ensures set' == MapOr(set, MapConst(false)[elem := true]);
     set' := set[elem := true];
 }
 
-type {:datatype} Wrapper _;
-function {:constructor} Set<E>(set: [E]bool): Wrapper E;
-function {:constructor} Multiset<E>(multiset: [E]int): Wrapper E;
+datatype Wrapper<E> {
+  Set(set: [E]bool),
+  Multiset(multiset: [E]int)
+}
 
 type X;
 procedure wrapper_add(w: Wrapper X, elem: X) returns (w': Wrapper X)

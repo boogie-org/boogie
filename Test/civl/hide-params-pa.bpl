@@ -1,8 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} SKIP() : PA;
+datatype {:pending_async} PA { SKIP() }
 
 procedure {:atomic}{:layer 2} SKIP () returns () { }
 

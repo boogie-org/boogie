@@ -3,8 +3,7 @@
 
 var {:layer 0,2} x:int;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A_Inc() : PA;
+datatype {:pending_async} PA { A_Inc() }
 
 procedure {:both}{:layer 2} A_Add (n: int)
 modifies x;

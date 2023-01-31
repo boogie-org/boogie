@@ -35,9 +35,11 @@ function {:inline} Id<T>(t: T): T
 
 function Default<T>(): T;
 
+/// option
+datatype Option<T> { None(), Some(t: T) }
+
 /// vectors
-type {:datatype} Vec _;
-function {:constructor} Vec<T>(contents: [int]T, len: int): Vec T;
+datatype Vec<T> { Vec(contents: [int]T, len: int) }
 
 const Identity: [int]int;
 axiom (forall x: int :: Identity[x] == x);
@@ -126,11 +128,10 @@ function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int
 
 /// linear maps
 type Ref _;
-type {:datatype} Lheap _;
-function {:constructor} Lheap<V>(dom: [Ref V]bool, val: [Ref V]V): Lheap V;
+datatype Lheap<V> { Lheap(dom: [Ref V]bool, val: [Ref V]V) }
 
 function {:inline} Lheap_WellFormed<V>(l: Lheap V): bool {
-    l->val == MapIte(l->dom, l->val, MapConst(Default())) 
+    l->val == MapIte(l->dom, l->val, MapConst(Default()))
 }
 function {:inline} Lheap_Collector<V>(l: Lheap V): [Ref V]bool {
     l->dom
@@ -150,8 +151,7 @@ procedure Lheap_Add<V>(path: Lheap V, v: V) returns (k: Ref V);
 procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
 
 /// linear sets
-type {:datatype} Lset _;
-function {:constructor} Lset<V>(dom: [V]bool): Lset V;
+datatype Lset<V> { Lset(dom: [V]bool) }
 
 function {:inline} Lset_Collector<V>(l: Lset V): [V]bool {
     l->dom
@@ -164,8 +164,7 @@ procedure Lset_Split<V>({:linear_out} k: Lset V, path: Lset V);
 procedure Lset_Transfer<V>({:linear_in} path1: Lset V, path2: Lset V);
 
 /// linear vals
-type {:datatype} Lval _;
-function {:constructor} Lval<V>(val: V): Lval V;
+datatype Lval<V> { Lval(val: V) }
 
 function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
     MapConst(false)[l->val := true]

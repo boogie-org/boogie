@@ -1,13 +1,12 @@
 // RUN: %parallel-boogie -lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:datatype} Value;
+datatype Value {
+  Integer(i: int),
+  Vector(v: Array Value)
+}
 
-function {:constructor} Integer(i: int): Value;
-function {:constructor} Vector(v: Array Value): Value;
-
-type {:datatype} Array _;
-function {:constructor} Array<T>(v: Seq T): Array T;
+datatype Array<T> { Array(v: Seq T) }
 function {:inline} EmptyArray<T>(): Array T {
     Array(Seq_Empty())
 }

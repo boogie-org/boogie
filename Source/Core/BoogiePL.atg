@@ -74,7 +74,6 @@ public static int Parse(string s, string/*!*/ filename, out /*maybe null*/ Progr
   parser.Parse();
   if (errors.count == 0)
   {
-    parser.Pgm.ProcessDatatypes();
     program = parser.Pgm;
   }
   else
@@ -120,9 +119,9 @@ private class BvBounds : Expr {
     Contract.Assert(false);throw new cce.UnreachableException();
   }
   public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
-  
+
   public override int ContentHash => throw new NotSupportedException("Not supported since this type is translated away");
-  
+
   public override int ComputeHashCode()
   {
     return base.GetHashCode();
@@ -183,6 +182,7 @@ BoogiePL
      List<Declaration>/*!*/ ds;
      Axiom/*!*/ ax;
      List<Declaration/*!*/>/*!*/ ts;
+     DatatypeTypeCtorDecl dt;
      Procedure/*!*/ pr;
      Implementation im;
      Implementation/*!*/ nnim;
@@ -203,6 +203,7 @@ BoogiePL
                                     Pgm.AddTopLevelDeclaration(td);
                                   }
                                .)
+  | Datatype<out dt>           (. Pgm.AddTopLevelDeclaration(dt); .)
   | GlobalVars<out vs>         (. foreach(Bpl.Variable/*!*/ v in vs){
                                     Contract.Assert(v != null);
                                     Pgm.AddTopLevelDeclaration(v);
@@ -447,8 +448,8 @@ Function<.out List<Declaration>/*!*/ ds.>
     |
     ":" Type<out retTy>   (. retTyd = new TypedIdent(retTy.tok, TypedIdent.NoName, retTy); .)
   )
-  ( "{" Expression<out tmp> (. definition = tmp; .) "}" [ "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" ] 
-  | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" 
+  ( "{" Expression<out tmp> (. definition = tmp; .) "}" [ "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" ]
+  | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}"
   | ";"
   )
   (.
@@ -462,7 +463,7 @@ Function<.out List<Declaration>/*!*/ ds.>
         ds.Add(axiom);
         func.AddOtherDefinitionAxiom(axiom);
     }
-    
+
     Contract.Assert(func != null);
     ds.Add(func);
     bool allUnnamed = true;
@@ -578,6 +579,40 @@ UserDefinedType<out Declaration/*!*/ decl, QKeyValue kv>
    .)
   .
 
+/*------------------------------------------------------------------------*/
+Datatype<out DatatypeTypeCtorDecl datatypeTypeCtorDecl>
+= (. QKeyValue kv = null; IToken/*!*/ typeParamTok, name; List<TypeVariable> typeParams = new List<TypeVariable>(); .)
+  "datatype"
+  { Attribute<ref kv> }
+  Ident<out name>
+  [ TypeParams<out typeParamTok, out typeParams> ]
+  (. datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, typeParams, kv); .)
+  "{"
+    Constructors<datatypeTypeCtorDecl>
+  "}"
+  .
+
+Constructors<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
+=
+  Constructor<datatypeTypeCtorDecl>
+  {
+    ","
+    Constructor<datatypeTypeCtorDecl>
+  }
+  .
+
+Constructor<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
+= (. IToken name; List<TypedIdent> fields = new List<TypedIdent>(); .)
+  Ident<out name>
+  "("
+  [ IdsTypeWheres<false, "datatype constructor", delegate(TypedIdent ti) { fields.Add(ti); }> ]
+  ")"
+  (.
+    if (!datatypeTypeCtorDecl.AddConstructor(name, name.val, fields)) {
+      this.SemErr($"constructor name {name.val} used more than once in datatype");
+    }
+  .)
+  .
 
 /*------------------------------------------------------------------------*/
 Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
@@ -882,24 +917,24 @@ LabelOrAssign<out Cmd c, out IToken label>
   .)
   Ident<out id>              (. x = t; .)
   ( ":"                      (. c = null; label = x; .)
-  
+
   | "(" Idents<out ids> ")"
-    (. 
+    (.
       lhsExpr = new NAryExpr(x, new FunctionCall(new IdentifierExpr(id, id.val)), ids.Select(id => new IdentifierExpr(id, id.val)).ToList<Expr>());
     .)
     ":=" (. x = t; /* use location of := */ .)
     { Attribute<ref kv> }
-    Expression<out e0>    
-    ";"   
-    (. 
-       c = new UnpackCmd(x, lhsExpr, e0, kv); 
+    Expression<out e0>
+    ";"
+    (.
+       c = new UnpackCmd(x, lhsExpr, e0, kv);
     .)
 
   | (. lhss = new List<AssignLhs/*!*/>(); .)
     (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
 
-    { 
-      MapAssignIndex<out y, out indexes>  (. lhs = new MapAssignLhs(y, lhs, indexes); .) 
+    {
+      MapAssignIndex<out y, out indexes>  (. lhs = new MapAssignLhs(y, lhs, indexes); .)
       |
       FieldAccess<out y, out fieldAccess> (. lhs = new FieldAssignLhs(y, lhs, fieldAccess); .)
     }
@@ -908,7 +943,7 @@ LabelOrAssign<out Cmd c, out IToken label>
     { ","
       Ident<out id>
       (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
-      { 
+      {
         MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .)
         |
         FieldAccess<out y, out fieldAccess> (. lhs = new FieldAssignLhs(y, lhs, fieldAccess); .)
@@ -1191,7 +1226,7 @@ IsConstructor<out Expr/*!*/ e0>
     .)
   ]
   .
-  
+
 /*------------------------------------------------------------------------*/
 UnaryExpression<out Expr/*!*/ e>
 = (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
@@ -1241,7 +1276,7 @@ CoercionExpression<out Expr/*!*/ e>
 
 /*------------------------------------------------------------------------*/
 ArrayExpression<out Expr/*!*/ e>
-= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); 
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null);
      IToken/*!*/ x, id;
      Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
      bool store; bool bvExtract;

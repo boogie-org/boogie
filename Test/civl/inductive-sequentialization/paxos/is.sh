@@ -3,4 +3,4 @@
 # RUN: %parallel-boogie Paxos.bpl PaxosActions.bpl PaxosAbstractions.bpl PaxosSeq.bpl > "%t"
 # RUN: %diff "%s.expect" "%t"
 
-boogie $@ Paxos.bpl PaxosActions.bpl PaxosAbstractions.bpl PaxosSeq.bpl
+boogie $@ /lib:base Paxos.bpl PaxosActions.bpl PaxosAbstractions.bpl PaxosSeq.bpl

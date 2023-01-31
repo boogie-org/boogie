@@ -4,15 +4,10 @@
 type {:linear "pid"} Pid = int;
 
 // A type for vote messages of participants
-type {:datatype} vote;
-function {:constructor} YES():vote;
-function {:constructor} NO():vote;
+datatype vote { YES(), NO() }
 
 // A type for decision message of the coordinator
-type {:datatype} decision;
-function {:constructor} COMMIT():decision;
-function {:constructor} ABORT():decision;
-function {:constructor} NONE():decision;
+datatype decision { COMMIT(), ABORT(), NONE() }
 
 // Number of participants
 const n:int;
@@ -30,11 +25,12 @@ var {:layer 0,6} VoteCH:[vote]int;         // Channel of the coordinator for vot
 var {:layer 0,6} votes:[int]vote;          // Participant votes
 var {:layer 0,6} decisions:[int]decision;  // Coordinator and participant decisions
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} COORDINATOR1(pid:int) : PA;
-function {:constructor} COORDINATOR2(pid:int) : PA;
-function {:constructor} PARTICIPANT1(pid:int) : PA;
-function {:constructor} PARTICIPANT2(pid:int) : PA;
+datatype {:pending_async} PA {
+  COORDINATOR1(pid:int),
+  COORDINATOR2(pid:int),
+  PARTICIPANT1(pid:int),
+  PARTICIPANT2(pid:int)
+}
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

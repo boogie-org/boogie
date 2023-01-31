@@ -1,11 +1,10 @@
 // RUN: %parallel-boogie /lib:base /lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:datatype} Treiber T;
-function {:constructor} Treiber<T>(top: RefNode T, stack: Lheap (Node T)): Treiber T;
+datatype Treiber<T> { Treiber(top: RefNode T, stack: Lheap (Node T)) }
 type RefTreiber T = Ref (Treiber T);
 
-type X; 
+type X;
 var ts: Lheap (Treiber X);
 
 procedure YieldInv(ref_t: RefTreiber X)

@@ -297,28 +297,6 @@ namespace Microsoft.Boogie
       this.topLevelDeclarations.Emit(stream);
     }
 
-    public void ProcessDatatypes()
-    {
-      List<Declaration> newTopLevelDeclarations = new List<Declaration>();
-      foreach (Declaration decl in TopLevelDeclarations)
-      {
-        if (decl is TypeCtorDecl typeCtorDecl && QKeyValue.FindBoolAttribute(typeCtorDecl.Attributes, "datatype"))
-        {
-          newTopLevelDeclarations.Add(new DatatypeTypeCtorDecl(typeCtorDecl));
-        }
-        else if (decl is Function func && QKeyValue.FindBoolAttribute(decl.Attributes, "constructor"))
-        {
-          newTopLevelDeclarations.Add(new DatatypeConstructor(func));
-        }
-        else 
-        {
-          newTopLevelDeclarations.Add(decl);
-        }
-      }
-      ClearTopLevelDeclarations();
-      AddTopLevelDeclarations(newTopLevelDeclarations);
-    }
-
     /// <summary>
     /// Returns the number of name resolution errors.
     /// </summary>
@@ -395,21 +373,21 @@ namespace Microsoft.Boogie
         Contract.Assert(d != null);
         if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
         {
-          synonymDecls.Add((TypeSynonymDecl) d);
+          synonymDecls.Add(d);
         }
       }
 
-      // then resolve the type synonyms by a simple
-      // fixed-point iteration
+      // then resolve the type synonyms by a simple fixed-point iteration
       TypeSynonymDecl.ResolveTypeSynonyms(synonymDecls, rc);
       
-      // resolve the datatype constructors (which adds them to datatype declarations)
-      // and remove them from TopLevelDeclarations
-      foreach (var constructor in TopLevelDeclarations.OfType<DatatypeConstructor>())
+      // and finally resolve the datatype constructors
+      foreach (var datatypeTypeCtorDecl in TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
       {
-        constructor.Resolve(rc);
+        foreach (var constructor in datatypeTypeCtorDecl.Constructors)
+        {
+          constructor.Resolve(rc);
+        }
       }
-      TopLevelDeclarations = TopLevelDeclarations.Where(d => !(d is DatatypeConstructor)).ToList();
     }
 
     public int Typecheck(CoreOptions options)
@@ -1363,6 +1341,7 @@ namespace Microsoft.Boogie
   
   public class DatatypeTypeCtorDecl : TypeCtorDecl
   {
+    private List<TypeVariable> typeParameters;
     private List<DatatypeConstructor> constructors;
     private Dictionary<string, DatatypeConstructor> nameToConstructor;
     private Dictionary<string, List<DatatypeAccessor>> accessors;
@@ -1377,15 +1356,25 @@ namespace Microsoft.Boogie
       this.accessors = new Dictionary<string, List<DatatypeAccessor>>();
     }
 
-    public void AddConstructor(DatatypeConstructor constructor)
+    public DatatypeTypeCtorDecl(IToken tok, string name, List<TypeVariable> typeParams, QKeyValue kv)
+      : base(tok, name, typeParams.Count, kv)
     {
+      this.typeParameters = typeParams;
+      this.constructors = new List<DatatypeConstructor>();
+      this.nameToConstructor = new Dictionary<string, DatatypeConstructor>();
+      this.accessors = new Dictionary<string, List<DatatypeAccessor>>();
+    }
+
+    public bool AddConstructor(DatatypeConstructor constructor)
+    {
+      if (this.nameToConstructor.ContainsKey(constructor.Name))
+      {
+        return false;
+      }
       constructor.datatypeTypeCtorDecl = this;
       constructor.index = constructors.Count;
       this.constructors.Add(constructor);
-      if (!this.nameToConstructor.ContainsKey(constructor.Name))
-      {
-        this.nameToConstructor.Add(constructor.Name, constructor);
-      }
+      this.nameToConstructor.Add(constructor.Name, constructor);
       for (int i = 0; i < constructor.InParams.Count; i++)
       {
         var v = constructor.InParams[i];
@@ -1395,6 +1384,26 @@ namespace Microsoft.Boogie
         }
         accessors[v.Name].Add(new DatatypeAccessor(constructor.index, i));
       }
+      return true;
+    }
+
+    public bool AddConstructor(IToken tok, string name, List<TypedIdent> fields)
+    {
+      var returnType = new CtorType(this.tok, this, new List<Type>(this.typeParameters));
+      var function = new Function(tok, name, new List<TypeVariable>(this.typeParameters),
+        fields.Select(field => new Formal(field.tok, field, true)).ToList<Variable>(),
+        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, returnType), false));
+      var constructor = new DatatypeConstructor(function);
+      return AddConstructor(constructor);
+    }
+
+    public override void Register(ResolutionContext rc)
+    {
+      foreach (var constructor in constructors)
+      {
+        constructor.Register(rc);
+      }
+      base.Register(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -2449,35 +2458,6 @@ namespace Microsoft.Boogie
     public DatatypeConstructor(Function func)
       : base(func.tok, func.Name, func.TypeParameters, func.InParams, func.OutParams[0], func.Comment, func.Attributes)
     {
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      var outputTypeName = ((UnresolvedTypeIdentifier)OutParams[0].TypedIdent.Type).Name;
-      var typeCtorDecl = rc.LookUpType(outputTypeName);
-      if (typeCtorDecl != null && typeCtorDecl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
-      {
-        datatypeTypeCtorDecl.AddConstructor(this);
-      }
-      else 
-      {
-        rc.Error(tok, $"output type of constructor {Name} must be a datatype");
-      }
-      base.Resolve(rc);
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      var outputType = (CtorType)this.OutParams[0].TypedIdent.Type;
-      if (!outputType.Arguments.All(t => t is TypeVariable))
-      {
-        tc.Error(tok, "Each argument of the output type must be a type variable");
-      } 
-      else if (TypeParameters.Count != outputType.Arguments.Count)
-      {
-        tc.Error(tok, "Each type parameter must appear as an argument to the output type");
-      }
-      base.Typecheck(tc);
     }
 
     public override bool MayRename => false;

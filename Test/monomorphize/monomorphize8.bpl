@@ -3,9 +3,9 @@
 // Issue #356
 
 type Vec _;
-type {:datatype} VecRep _;
 
-function {:constructor} VecRep<T>(v: [int]T, l: int): VecRep T;
+datatype VecRep<T> { VecRep(v: [int]T, l: int) }
+
 
 function VecToRep<T>(v: Vec T): VecRep T;
 function VecFromRep<T>(v: VecRep T): Vec T;

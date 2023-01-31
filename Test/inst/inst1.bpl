@@ -1,8 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:datatype} PA;
-function {:constructor} ADD(i: int) : PA;
+datatype PA { ADD(i: int) }
 
 procedure INV0(n: int)
 {

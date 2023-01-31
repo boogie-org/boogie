@@ -5,17 +5,16 @@
 Highlights:
 - Nontrivial use of nested linear maps
 - Push and pop use distinct abstractions for read/write of top of stack
-- Variable "unused" tracks nodes added to the stack linear map that do 
+- Variable "unused" tracks nodes added to the stack linear map that do
   not logically become part of the stack
 - Push made atomic first before commutativity reasoning for the pop path
 
-The final layer that transforms the stack representation into a functional 
-version is not done. We expect that the proof for this layer will use 
+The final layer that transforms the stack representation into a functional
+version is not done. We expect that the proof for this layer will use
 reasoning about node reachability.
 */
 
-type {:datatype} Treiber T;
-function {:constructor} Treiber<T>(top: RefNode T, stack: Lheap (Node T)): Treiber T;
+datatype Treiber<T> { Treiber(top: RefNode T, stack: Lheap (Node T)) }
 type RefTreiber T = Ref (Treiber T);
 
 type X; // module type parameter
@@ -72,7 +71,7 @@ procedure {:yields} {:layer 2} {:refines "AtomicPushIntermediate"}
 PushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
 {
   var ref_n, new_ref_n: RefNode X;
-  
+
   call ref_n := ReadTopOfStack#Push(ref_t);
   call new_ref_n := AllocInStack(ref_t, Node(ref_n, x));
   call success := WriteTopOfStack(ref_t, ref_n, new_ref_n);
@@ -80,9 +79,9 @@ PushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
   call AddToUnusedNodes(success, ref_t, new_ref_n);
 }
 
-procedure {:right} {:layer 3} 
+procedure {:right} {:layer 3}
 AtomicReadTopOfStack#Pop(ref_t: RefTreiber X) returns (ref_n: RefNode X)
-{ 
+{
   assert ts->dom[ref_t];
   assume NilDomain(ts, ref_t, unused)[ref_n];
 }
@@ -93,47 +92,47 @@ ReadTopOfStack#Pop(ref_t: RefTreiber X) returns (ref_n: RefNode X)
   call ref_n := ReadTopOfStack(ref_t);
 }
 
-procedure {:right} {:layer 2} 
+procedure {:right} {:layer 2}
 AtomicReadTopOfStack#Push(ref_t: RefTreiber X) returns (ref_n: RefNode X)
-{ 
+{
   assert ts->dom[ref_t];
 }
-procedure {:yields} {:layer 1} {:refines "AtomicReadTopOfStack#Push"} 
+procedure {:yields} {:layer 1} {:refines "AtomicReadTopOfStack#Push"}
 ReadTopOfStack#Push(ref_t: RefTreiber X) returns (ref_n: RefNode X)
 {
   call ref_n := ReadTopOfStack(ref_t);
 }
 
-procedure {:atomic} {:layer 1, 2} 
+procedure {:atomic} {:layer 1, 2}
 AtomicReadTopOfStack(ref_t: RefTreiber X) returns (ref_n: RefNode X)
-{ 
+{
   assert ts->dom[ref_t];
   ref_n := ts->val[ref_t]->top;
 }
-procedure {:yields} {:layer 0} {:refines "AtomicReadTopOfStack"} 
+procedure {:yields} {:layer 0} {:refines "AtomicReadTopOfStack"}
 ReadTopOfStack(ref_t: RefTreiber X) returns (ref_n: RefNode X);
 
-procedure {:right} {:layer 1, 3} 
+procedure {:right} {:layer 1, 3}
 AtomicLoadNode(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X)
 {
   assert ts->dom[ref_t];
   assert ts->val[ref_t]->stack->dom[ref_n];
   node := ts->val[ref_t]->stack->val[ref_n];
 }
-procedure {:yields} {:layer 0} {:refines "AtomicLoadNode"} 
+procedure {:yields} {:layer 0} {:refines "AtomicLoadNode"}
 LoadNode(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X);
 
-procedure {:right} {:layer 1, 2} 
+procedure {:right} {:layer 1, 2}
 AtomicAllocInStack(ref_t: RefTreiber X, node: Node X) returns (ref_n: RefNode X)
 modifies ts;
 {
   assert ts->dom[ref_t];
   call ref_n := Lheap_Add(ts->val[ref_t]->stack, node);
 }
-procedure {:yields} {:layer 0} {:refines "AtomicAllocInStack"} 
+procedure {:yields} {:layer 0} {:refines "AtomicAllocInStack"}
 AllocInStack(ref_t: RefTreiber X, node: Node X) returns (ref_n: RefNode X);
 
-procedure {:atomic} {:layer 3} 
+procedure {:atomic} {:layer 3}
 AtomicWriteTopOfStack#Pop(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
 modifies ts;
 {
@@ -147,10 +146,10 @@ WriteTopOfStack#Pop(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNod
   call r := WriteTopOfStack(ref_t, old_ref_n, new_ref_n);
 }
 
-procedure {:atomic} {:layer 1, 3} 
+procedure {:atomic} {:layer 1, 3}
 AtomicWriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
 modifies ts;
-{ 
+{
   assert ts->dom[ref_t];
   if (old_ref_n == ts->val[ref_t]->top) {
     call Lheap_Write(ts->val[ref_t]->top, new_ref_n);
@@ -160,10 +159,10 @@ modifies ts;
     r := false;
   }
 }
-procedure {:yields} {:layer 0} {:refines "AtomicWriteTopOfStack"} 
+procedure {:yields} {:layer 0} {:refines "AtomicWriteTopOfStack"}
 WriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool);
 
-procedure {:atomic} {:layer 1, 4} 
+procedure {:atomic} {:layer 1, 4}
 AtomicAllocTreiber() returns (ref_t: RefTreiber X)
 modifies ts;
 {
@@ -175,7 +174,7 @@ modifies ts;
   treiber := Treiber(top, stack);
   call ref_t := Lheap_Add(ts, treiber);
 }
-procedure {:yields} {:layer 0} {:refines "AtomicAllocTreiber"} 
+procedure {:yields} {:layer 0} {:refines "AtomicAllocTreiber"}
 AllocTreiber() returns (ref_t: RefTreiber X);
 
 procedure {:intro} {:layer 2} AddToUnusedNodes(success: bool, ref_t: RefTreiber X, ref_n: RefNode X)

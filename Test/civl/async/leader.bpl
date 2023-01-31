@@ -7,8 +7,7 @@ axiom N > 0;
 type Pid = int;
 function is_pid (pid:Pid) : bool { 1 <= pid && pid <= N }
 
-type {:datatype} {:linear "Perm"} Perm;
-function {:constructor} Perm (s:Pid, r:Pid) : Perm;
+datatype {:linear "Perm"} Perm { Perm (s:Pid, r:Pid) }
 
 function {:inline} is_perm (s:Pid, r:Pid, p:Perm) : bool
 { p == Perm(s, r) && is_pid(p->s) && is_pid(p->r) }

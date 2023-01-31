@@ -3,9 +3,7 @@
 
 var {:layer 0,2} x:int;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} INC() : PA;
-function {:constructor} DEC() : PA;
+datatype {:pending_async} PA { INC(), DEC() }
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

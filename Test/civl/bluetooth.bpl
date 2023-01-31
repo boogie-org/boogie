@@ -12,9 +12,7 @@ see cav2020-3.bpl for another example inspired by a concurrent
 garbage collector.
 */
 
-type {:datatype} Perm;
-function {:constructor} Left(i: int): Perm;
-function {:constructor} Right(i: int): Perm;
+datatype Perm { Left(i: int), Right(i: int) }
 
 function Size<T>(set: [T]bool): int;
 axiom {:ctor "Lset"} (forall<T> set: [T]bool :: Size(set) >= 0);

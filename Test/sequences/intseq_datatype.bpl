@@ -1,10 +1,10 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:datatype} Value;
-
-function {:constructor} Integer(i: int): Value;
-function {:constructor} Vector(v: ValueArray): Value;
+datatype Value {
+  Integer(i: int),
+  Vector(v: ValueArray)
+}
 
 type {:builtin "Seq"} Seq _;
 function {:builtin "seq.empty"} Seq_Empty_Value(): Seq Value;
@@ -14,8 +14,7 @@ function {:builtin "seq.unit"} Seq_Unit_Value(v: Value): Seq Value;
 function {:builtin "seq.nth"} Seq_Nth_Value(a: Seq Value, i: int): Value;
 function {:builtin "seq.extract"} Seq_Extract_Value(a: Seq Value, pos: int, length: int): Seq Value;
 
-type {:datatype} ValueArray;
-function {:constructor} ValueArray(v: Seq Value): ValueArray;
+datatype ValueArray { ValueArray(v: Seq Value) }
 function {:inline} EmptyValueArray(): ValueArray {
     ValueArray(Seq_Empty_Value())
 }

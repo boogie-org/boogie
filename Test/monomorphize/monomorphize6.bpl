@@ -2,11 +2,11 @@
 // RUN: %diff "%s.expect" "%t"
 // Issue #361
 
-type {:datatype} Cell _;
-function {:constructor} Cell<T>(x: T): Cell T;
+datatype Cell<T> { Cell(x: T) }
 
-type {:datatype} OtherCell _;
-function {:constructor} OtherCell<T>(x: T): OtherCell T;
+
+datatype OtherCell<T> { OtherCell(x: T) }
+
 
 function foo<T>(): Cell T;
 

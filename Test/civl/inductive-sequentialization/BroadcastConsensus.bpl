@@ -9,9 +9,7 @@ type {:linear "collect", "broadcast"} pid = int;
 
 function {:inline} pid(i:int) : bool { 1 <= i && i <= n }
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} BROADCAST(i:pid) : PA;
-function {:constructor} COLLECT(i:pid) : PA;
+datatype {:pending_async} PA { BROADCAST(i:pid), COLLECT(i:pid) }
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
@@ -130,7 +128,7 @@ MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pi
 returns ({:pending_async "BROADCAST","COLLECT"} PAs:[PA]int)
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
-  
+
   assume {:add_to_pool "INV_BROADCAST", 0} true;
   assert CH == MultisetEmpty;
 

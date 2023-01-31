@@ -13,9 +13,9 @@ requires a->f == 0;
 requires a is T;
 
 
-type {:datatype} Perm;
-function {:constructor} Left(i: int): Perm;
-function {:constructor} Right(i: int): Perm;
+datatype Perm {
+  Left(i: int), Right(i: int)
+}
 
 procedure C(a: Perm);
 requires a->f == 0;
@@ -37,8 +37,8 @@ modifies g;
     Left(g) := x;
 }
 
-type{:datatype} Pair;
-function{:constructor} Pair(a: int, b: int): Pair;
+datatype Pair { Pair(a: int, b: int) }
+
 
 procedure G(p: Pair) returns (a: int)
 {

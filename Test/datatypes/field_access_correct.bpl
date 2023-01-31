@@ -1,8 +1,7 @@
 // RUN: %parallel-boogie /monomorphize "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type{:datatype} Pair;
-function{:constructor} Pair(a: int, b: int): Pair;
+datatype Pair { Pair(a: int, b: int) }
 
 procedure P0(p: Pair) returns (q: Pair)
   requires p->a == 0;
@@ -26,8 +25,7 @@ procedure P1(p: [int]Pair, x: int) returns (q: [int]Pair)
   assert q[x] == Pair(1, 1);
 }
 
-type{:datatype} PairOfMaps;
-function{:constructor} PairOfMaps(amap: [int]Pair, bmap: [int]Pair): PairOfMaps;
+datatype PairOfMaps { PairOfMaps(amap: [int]Pair, bmap: [int]Pair) }
 
 procedure P2(p: PairOfMaps, x: int) returns (q: PairOfMaps)
   requires p->amap[x]->a == 0;
@@ -39,8 +37,7 @@ procedure P2(p: PairOfMaps, x: int) returns (q: PairOfMaps)
   q->bmap := t;
 }
 
-type{:datatype} GenericPair U;
-function{:constructor} GenericPair<U>(a: U, b: U): GenericPair U;
+datatype GenericPair<U> { GenericPair(a: U, b: U) }
 
 procedure P3<T>(p: GenericPair T) returns (q: GenericPair T)
   requires p->a == p->b;
@@ -52,9 +49,7 @@ procedure P3<T>(p: GenericPair T) returns (q: GenericPair T)
   assert q is GenericPair;
 }
 
-type{:datatype} Split _;
-function{:constructor} Left<T>(i: T): Split T;
-function{:constructor} Right<U>(i: U): Split U;
+datatype Split<T> { Left(i: T), Right(i: T) }
 
 procedure P4(a: int, b: int)
 {

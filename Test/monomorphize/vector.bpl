@@ -103,9 +103,10 @@ ensures (forall i, j: int :: 0 <= i && i <= j && j < Vec_Len(s') ==> Vec_Nth(s',
   s' := Vec_Append(s', val);
 }
 
-type {:datatype} Value;
-function {:constructor} Integer(i: int): Value;
-function {:constructor} Vector(v: Vec Value): Value;
+datatype Value {
+  Integer(i: int),
+  Vector(v: Vec Value)
+}
 
 procedure test3(val: Value) returns (val': Value)
 requires val is Vector && Vec_Len(val->v) == 1 && Vec_Nth(val->v, 0) == Integer(0);
