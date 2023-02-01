@@ -1,3 +1,5 @@
+// First line checks for a deadlock
+// RUN: %boogie /vcsMaxKeepGoingSplits:2 /proverOpt:O:smt.qi.eager_threshold=100 "%s"
 // RUN: %boogie /vcsCores:3 /vcsMaxKeepGoingSplits:2 /trace -rlimit:5 /proverOpt:O:smt.qi.eager_threshold=100 "%s" > %t.log
 // RUN: %OutputCheck --file-to-check "%t.log" "%s"
 // CHECK-L: checking split 1/1, 0.00%
