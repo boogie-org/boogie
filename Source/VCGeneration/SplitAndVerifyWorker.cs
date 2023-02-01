@@ -268,6 +268,9 @@ namespace VC
 
       if (maxKeepGoingSplits > 1) {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
+        if (options.Trace) {
+          await run.TraceWriter.WriteLineAsync($"split {split.SplitIndex+1} was split into {newSplits.Count} parts");
+        }
         Contract.Assert(newSplits != null);
         maxVcCost = 1.0; // for future
         TrackSplitsCost(newSplits);
