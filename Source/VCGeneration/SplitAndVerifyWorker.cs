@@ -115,7 +115,7 @@ namespace VC
         await checker.ProverTask;
         await ProcessResult(iteration, split, checker, cancellationToken);
       }
-      finally {
+      catch {
         await checker.GoBackToIdle();
       }
     }
@@ -169,12 +169,12 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
-      if (!proverFailed) {
+      if (proverFailed) {
+        await HandleProverFailure(split, checker, callback, result, cancellationToken);
+      } else {
         split.Finish(result);
-        return;
+        await checker.GoBackToIdle();
       }
-
-      await HandleProverFailure(split, checker, callback, result, cancellationToken);
     }
 
     private static bool IsProverFailed(ProverInterface.Outcome outcome)
@@ -253,8 +253,11 @@ namespace VC
         };
         split.Finish(result);
         outcome = Outcome.Errors;
+        await checker.GoBackToIdle();
         return;
       }
+
+      await checker.GoBackToIdle();
 
       if (maxKeepGoingSplits > 1) {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
