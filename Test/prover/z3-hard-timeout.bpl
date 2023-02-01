@@ -1,7 +1,7 @@
 // RUN: %boogie /proverOpt:C:"-T:1" /proverOpt:BATCH_MODE=true /trace "%s" > "%t"
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 // CHECK: .*solver resource count: -1, 1 proof obligation\]  error
-// CHECK-L: z3-hard-timeout.bpl(11,3): Error: This assertion might not hold.
+// CHECK-L: z3-hard-timeout.bpl(11,3): Error: this assertion could not be proved
 
 function {:bvbuiltin "bvmul"}  BV256_MULT(x:bv256, y:bv256) returns  (bv256);
 function {:bvbuiltin "bvugt"}  BV256_UGT(x:bv256, y:bv256)   returns  (bool);

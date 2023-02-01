@@ -3,9 +3,9 @@
 
 type {:linear "pid"} Pid = int;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A(pid:int) : PA;
-function {:constructor} B(pid:int) : PA;
+datatype {:pending_async} PA {
+  A(pid:int), B(pid:int)
+}
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

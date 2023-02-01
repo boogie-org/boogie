@@ -1,4 +1,4 @@
-f2.bpl(26,4): Error: This assertion might not hold.
+f2.bpl(26,4): Error: this assertion could not be proved
 Execution trace:
     f2.bpl(22,4): anon0
 

@@ -2,13 +2,11 @@
 // RUN: %diff "%s.expect" "%t"
 // test for use of type synonyms
 
-type {:datatype} Cell _;
-function {:constructor} Cell<T>(x: T): Cell T;
+datatype Cell<T> { Cell(x: T) }
 
 function foo<T>(): Cell T;
 
-type {:datatype} Some;
-function {:constructor} Some(x: int): Some;
+datatype Some { Some(x: int) }
 
 type MyT = Some;
 

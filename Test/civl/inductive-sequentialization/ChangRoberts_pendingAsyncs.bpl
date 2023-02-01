@@ -45,9 +45,7 @@ function max ([int]int) : int;
 axiom (forall id:[int]int :: pid(max(id)) && (forall i:int :: pid(i) && i != max(id) ==> id[i] < id[max(id)]));
 
 // A type for keeping track of pending asyncs
-type {:pending_async}{:datatype} PA;
-function {:constructor} P(pid:int) : PA;
-function {:constructor} PInit(pid:int) : PA;
+datatype {:pending_async} PA { P(pid:int), PInit(pid:int) }
 
 function {:inline} EmptyChannel() : [int]int { (lambda i:int :: 0) }
 function {:inline} NoPAs() : [PA]int { (lambda pa:PA :: 0) }
@@ -86,7 +84,6 @@ modifies channel, pendingAsyncs, leader;
   assert Init(pids, channel, pendingAsyncs, id, leader);
 
   havoc channel, leader;
-
   assume
     {:add_to_pool "INV2", k, next(k), n+1}
     1 <= k && k <= n+1;
@@ -104,40 +101,8 @@ P' ({:linear_in "pid"} pid:int)
 returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel, pendingAsyncs, leader;
 {
-  var msg:int;
-
-  assert pid(pid);
-  assert pendingAsyncs[P(pid)] > 0;
-  assert (forall m:int :: channel[pid][m] > 0 ==> m <= id[max(id)]);
-
   assert (forall j:int :: pid(j) && between(max(id), j, pid) ==> pendingAsyncs[P(j)] == 0);
-
-  if (*)
-  {
-    PAs := NoPAs();
-  }
-  else
-  {
-    assume channel[pid][msg] > 0;
-    channel[pid][msg] := channel[pid][msg] - 1;
-
-    if (msg == id[pid])
-    {
-      leader[pid] := true;
-      PAs := NoPAs();
-    }
-    else
-    {
-      if (msg > id[pid])
-      {
-        channel[next(pid)][msg] := channel[next(pid)][msg] + 1;
-      }
-      PAs := NoPAs()[P(pid) := 1];
-    }
-  }
-
-  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
-  pendingAsyncs := MapSub(pendingAsyncs, SingletonPA(P(pid)));
+  call PAs := P(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,12 +114,9 @@ returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel, pendingAsyncs;
 {
   assert Init(pids, channel, pendingAsyncs, id, leader);
-  assume
-    {:add_to_pool "INV2", next(max(id))}
-    true;
 
+  assume {:add_to_pool "INV2", next(max(id))} true;
   havoc channel;
-
   assume (forall i:int :: 1 <= i && i <= n ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]);
   assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
   assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg == id[prev(i)]);
@@ -171,7 +133,6 @@ modifies channel, pendingAsyncs;
   assert Init(pids, channel, pendingAsyncs, id, leader);
 
   havoc channel;
-
   assume
     {:add_to_pool "INV1", k, k+1}
     {:add_to_pool "PInit", PInit(n)}
@@ -195,9 +156,8 @@ returns ({:pending_async "PInit"} PAs:[PA]int)
 modifies pendingAsyncs;
 {
   assert Init(pids, channel, pendingAsyncs, id, leader);
-  assume
-    {:add_to_pool "INV1", 0}
-    true;
+
+  assume {:add_to_pool "INV1", 0} true;
   PAs := (lambda pa:PA :: if pa is PInit && pid(pa->pid) then 1 else 0);
   pendingAsyncs := MapAdd(pendingAsyncs, PAs);
 }

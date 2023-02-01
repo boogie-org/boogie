@@ -2,8 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 // test for use of type synonyms
 
-type {:datatype} Cell _;
-function {:constructor} Mk<T>(x: T): Cell T;
+datatype Cell<T> { Mk(x: T) }
 
 function foo<T>(): Cell T;
 

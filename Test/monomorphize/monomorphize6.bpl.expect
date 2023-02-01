@@ -1,4 +1,4 @@
-monomorphize6.bpl(24,3): Error: This assertion might not hold.
+monomorphize6.bpl(24,3): Error: this assertion could not be proved
 Execution trace:
     monomorphize6.bpl(22,5): anon0
 

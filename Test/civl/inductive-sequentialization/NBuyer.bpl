@@ -24,16 +24,17 @@ function {:inline} nextBuyer(pid:int) : int { pid + 1 }
 
 function {:inline} min (x:int, y:int) : int {if x < y then x else y}
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} FirstBuyerInit(pid:int) : PA;
-function {:constructor} FirstBuyer(pid:int) : PA;
-function {:constructor} MiddleBuyer(pid:int) : PA;
-function {:constructor} LastBuyer(pid:int) : PA;
-function {:constructor} SellerInit(pid:int) : PA;
-function {:constructor} SellerFinish(pid:int) : PA;
+datatype {:pending_async} PA {
+  FirstBuyerInit(pid:int),
+  FirstBuyer(pid:int),
+  MiddleBuyer(pid:int),
+  LastBuyer(pid:int),
+  SellerInit(pid:int),
+  SellerFinish(pid:int)
+}
 
 function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
+{ MapConst(0) }
 
 function {:inline} SingletonPA (pa:PA) : [PA]int
 { NoPAs()[pa := 1] }
@@ -61,10 +62,10 @@ function {:inline} Init(pids:[int]bool, ReqCH:int, QuoteCH:[int][int]int,
 {
   pids == MapConst(true) &&
   ReqCH == 0 &&
-  QuoteCH == (lambda i:int :: (lambda q:int :: 0)) &&
-  RemCH == (lambda i:int :: (lambda r:int :: 0)) &&
-  DecCH == (lambda b:bool :: 0) &&
-  contribution == (lambda i:int :: 0)
+  QuoteCH == (lambda i:int :: MapConst(0)) &&
+  RemCH == (lambda i:int :: MapConst(0)) &&
+  DecCH == MapConst(0) &&
+  contribution == MapConst(0)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +87,7 @@ modifies DecCH, contribution;
   havoc contribution;
   if (*)
   {
-    DecCH := (lambda b:bool :: if b == (sum(contribution, 1, n) == price) then 1 else 0);
+    DecCH := MapConst(0)[(sum(contribution, 1, n) == price) := 1];
     PAs := SingletonPA(SellerFinish(0));
   }
   else
@@ -101,8 +102,8 @@ modifies DecCH;
 {
   var dec:bool;
   assert sellerID(pid);
-  assert DecCH == (lambda b:bool :: if b == (sum(contribution, 1, n) == price) then 1 else 0);
   dec := (sum(contribution, 1, n) == price);
+  assert DecCH == MapConst(0)[dec := 1];
   DecCH[dec] := DecCH[dec] - 1;
 }
 
@@ -116,7 +117,7 @@ modifies DecCH, contribution;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   havoc contribution;
-  DecCH := (lambda b:bool :: if b == (sum(contribution, 1, n) == price) then 1 else 0);
+  DecCH := MapConst(0)[(sum(contribution, 1, n) == price) := 1];
   PAs := SingletonPA(SellerFinish(0));
 }
 
@@ -126,37 +127,37 @@ returns ({:pending_async "SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"} 
 modifies QuoteCH, RemCH, DecCH, contribution;
 {
   var {:pool "INV3"} k: int;
+  var {:pool "contribution"} c: [int]int;
 
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
 
-  havoc contribution;
-
+  contribution := c;
   assume {:add_to_pool "INV3", 0, 1, k, k+1, n} true;
   if (*)
   {
-    QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then 1 else 0));
+    QuoteCH := (lambda i:int :: if buyerID(i) then MapConst(0)[price := 1] else MapConst(0));
     PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
     choice := FirstBuyer(1);
   }
   else if (*)
   {
     assume 1 <= k && k < n && 0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price;
-    QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && i > k && q == price then 1 else 0));
-    RemCH := (lambda i:int :: (lambda r:int :: if i == k+1 && r == price - sum(contribution, 1, k) then 1 else 0));
+    QuoteCH := (lambda i:int :: if buyerID(i) && i > k then MapConst(0)[price := 1] else MapConst(0));
+    RemCH := (lambda i:int :: if i == k+1 then MapConst(0)[(price - sum(contribution, 1, k)) := 1] else MapConst(0));
     PAs := MapAddPA3(SellerFinish(0), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) && pa->pid > k then 1 else 0));
     choice := if lastBuyerID(k+1) then LastBuyer(k+1) else MiddleBuyer(k+1);
   }
   else if (*)
   {
-    QuoteCH := (lambda i:int :: (lambda q:int :: if lastBuyerID(i) && q == price then 1 else 0));
+    QuoteCH := (lambda i:int :: if lastBuyerID(i) then MapConst(0)[price := 1] else MapConst(0));
     assume 0 <= sum(contribution, 1, n-1) && sum(contribution, 1, n-1) <= price;
-    RemCH := (lambda i:int :: (lambda r:int :: if i == n && r == price - sum(contribution, 1, n-1) then 1 else 0));
+    RemCH := (lambda i:int :: if i == n then MapConst(0)[(price - sum(contribution, 1, n-1)) := 1] else MapConst(0));
     PAs := MapAddPA(SingletonPA(SellerFinish(0)), SingletonPA(LastBuyer(n)));
     choice := LastBuyer(n);
   }
   else
   {
-    DecCH := (lambda b:bool :: if b == (sum(contribution, 1, n) == price) then 1 else 0);
+    DecCH := MapConst(0)[(sum(contribution, 1, n) == price) := 1];
     PAs := SingletonPA(SellerFinish(0));
   }
 }
@@ -165,85 +166,35 @@ procedure {:IS_abstraction}{:layer 4}
 FirstBuyer' ({:linear_in "pid"} pid:int)
 modifies QuoteCH, RemCH, contribution;
 {
-  var rem:int;
-  var amount:int;
-
-  assert firstBuyerID(pid);
-  assert (forall q:int :: QuoteCH[pid][q] > 0 ==> q == price);
-
-  assert DecCH == (lambda b:bool :: 0);
-  assert (forall i:int :: i != pid ==> RemCH[i] == (lambda r:int :: 0));
-
+  assert DecCH == MapConst(0);
+  assert (forall i:int :: i != pid ==> RemCH[i] == MapConst(0));
   assert QuoteCH[pid][price] > 0;
-  QuoteCH[pid][price] := QuoteCH[pid][price] - 1;
-
-  rem := price;
-  if (*) { amount := min(wallet, rem); } else { amount := 0; }
-  contribution[pid] := amount;
-  rem := rem - amount;
-  RemCH[nextBuyer(pid)][rem] := RemCH[nextBuyer(pid)][rem] + 1;
+  call FirstBuyer(pid);
 }
 
 procedure {:IS_abstraction}{:layer 4}
 MiddleBuyer' ({:linear_in "pid"} pid:int)
 modifies QuoteCH, RemCH, contribution;
 {
-  var rem:int;
-  var amount:int;
-
-  assert middleBuyerID(pid);
-  assert (forall q:int :: QuoteCH[pid][q] > 0 ==> q == price);
-  assert (forall r:int :: RemCH[pid][r] > 0 ==> 0 <= r && r <= price);
   assert (forall r:int :: RemCH[pid][r] > 0 ==> r == price - sum(contribution, 1, pid - 1));
   assert RemCH[pid][price - sum(contribution, 1, pid - 1)] > 0;
-  assert DecCH == (lambda b:bool :: 0);
-  assert (forall i:int :: i < pid ==> QuoteCH[i] == (lambda r:int :: 0));
-  assert (forall i:int :: i != pid ==> RemCH[i] == (lambda r:int :: 0));
-
+  assert DecCH == MapConst(0);
+  assert (forall i:int :: i < pid ==> QuoteCH[i] == MapConst(0));
+  assert (forall i:int :: i != pid ==> RemCH[i] == MapConst(0));
   assert QuoteCH[pid][price] > 0;
-  assume RemCH[pid][rem] > 0;
-
-  QuoteCH[pid][price] := QuoteCH[pid][price] - 1;
-  RemCH[pid][rem] := RemCH[pid][rem] - 1;
-
-  if (*) { amount := min(wallet, rem); } else { amount := 0; }
-  contribution[pid] := amount;
-  rem := rem - amount;
-  RemCH[nextBuyer(pid)][rem] := RemCH[nextBuyer(pid)][rem] + 1;
+  call MiddleBuyer(pid);
 }
 
 procedure {:IS_abstraction}{:layer 4}
 LastBuyer' ({:linear_in "pid"} pid:int)
 modifies QuoteCH, RemCH, DecCH, contribution;
 {
-  var rem:int;
-  var amount:int;
-
-  assert lastBuyerID(pid);
-  assert (forall q:int :: QuoteCH[pid][q] > 0 ==> q == price);
-  assert (forall r:int :: RemCH[pid][r] > 0 ==> 0 <= r && r <= price);
   assert (forall r:int :: RemCH[pid][r] > 0 ==> r == price - sum(contribution, 1, pid - 1));
   assert RemCH[n][price - sum(contribution, 1, n-1)] > 0;
-  assert DecCH == (lambda b:bool :: 0);
-  assert (forall i:int :: i < pid ==> QuoteCH[i] == (lambda r:int :: 0));
-
+  assert DecCH == MapConst(0);
+  assert (forall i:int :: i < pid ==> QuoteCH[i] == MapConst(0));
   assert QuoteCH[pid][price] > 0;
-  assume RemCH[pid][rem] > 0;
-
-  QuoteCH[pid][price] := QuoteCH[pid][price] - 1;
-  RemCH[pid][rem] := RemCH[pid][rem] - 1;
-
-  if (*) { amount := min(wallet, rem); } else { amount := 0; }
-  contribution[pid] := amount;
-
-  if (amount == rem)
-  {
-    DecCH[true] := DecCH[true] + 1;
-  }
-  else
-  {
-    DecCH[false] := DecCH[false] + 1;
-  }
+  call LastBuyer(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,7 +206,9 @@ returns ({:pending_async "SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"} 
 modifies QuoteCH;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
-  QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then 1 else 0));
+
+  assume {:add_to_pool "contribution", contribution} true;
+  QuoteCH := (lambda i:int :: if buyerID(i) then MapConst(0)[price := 1] else MapConst(0));
   PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
 }
 
@@ -272,7 +225,7 @@ modifies ReqCH, QuoteCH;
   }
   else
   {
-    QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then 1 else 0));
+    QuoteCH := (lambda i:int :: if buyerID(i) then MapConst(0)[price := 1] else MapConst(0));
     PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
   }
 }
@@ -282,14 +235,9 @@ SellerInit' ({:linear_in "pid"} pid:int)
 returns ({:pending_async "SellerFinish"} PAs:[PA]int)
 modifies ReqCH, QuoteCH;
 {
-  assert sellerID(pid);
-  assert QuoteCH == (lambda i:int :: (lambda q:int :: 0)); // To discharge gate failure preservation for FirstBuyer/MiddleBuyer/LastBuyer
-
+  assert QuoteCH == (lambda i:int :: MapConst(0)); // To discharge gate failure preservation for FirstBuyer/MiddleBuyer/LastBuyer
   assert ReqCH > 0;
-  ReqCH := ReqCH - 1;
-
-  QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then QuoteCH[i][q] + 1 else QuoteCH[i][q]));
-  PAs := SingletonPA(SellerFinish(pid));
+  call PAs := SellerInit(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,6 +333,7 @@ modifies QuoteCH, RemCH, contribution;
   rem := price;
   if (*) { amount := min(wallet, rem); } else { amount := 0; }
   contribution[pid] := amount;
+  assume {:add_to_pool "contribution", contribution} true;
   rem := rem - amount;
   RemCH[nextBuyer(pid)][rem] := RemCH[nextBuyer(pid)][rem] + 1;
 }
@@ -408,6 +357,7 @@ modifies QuoteCH, RemCH, contribution;
 
   if (*) { amount := min(wallet, rem); } else { amount := 0; }
   contribution[pid] := amount;
+  assume {:add_to_pool "contribution", contribution} true;
   rem := rem - amount;
   RemCH[nextBuyer(pid)][rem] := RemCH[nextBuyer(pid)][rem] + 1;
 }
@@ -431,7 +381,7 @@ modifies QuoteCH, RemCH, DecCH, contribution;
 
   if (*) { amount := min(wallet, rem); } else { amount := 0; }
   contribution[pid] := amount;
-
+  assume {:add_to_pool "contribution", contribution} true;
   if (amount == rem)
   {
       DecCH[true] := DecCH[true] + 1;

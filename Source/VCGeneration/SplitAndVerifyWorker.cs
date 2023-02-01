@@ -34,7 +34,7 @@ namespace VC
     private int splitNumber;
 
     private int totalResourceCount;
-    
+
     public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
@@ -82,6 +82,11 @@ namespace VC
     }
 
     public int ResourceCount => totalResourceCount;
+    /// <summary>
+    /// The cumulative time spent processing SMT queries.  When running with
+    /// `vcsCores > 1`, this may also include time spent restarting the prover.
+    /// </summary>
+    public TimeSpan TotalProverElapsedTime { get; private set; }
     
     private void TrackSplitsCost(List<Split> splits)
     {
@@ -100,7 +105,7 @@ namespace VC
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       split.SplitIndex = currentSplitNumber;
-      var tasks = Enumerable.Range(0, options.RandomSeedIterations).Select(iteration =>
+      var tasks = Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
         DoWork(iteration, split, cancellationToken));
       await Task.WhenAll(tasks);
     }
@@ -113,10 +118,12 @@ namespace VC
         cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
-        await ProcessResult(iteration, split, checker, cancellationToken);
+        await ProcessResultAndReleaseChecker(iteration, split, checker, cancellationToken);
+        TotalProverElapsedTime += checker.ProverRunTime;
       }
       catch {
         await checker.GoBackToIdle();
+        throw;
       }
     }
 
@@ -124,7 +131,7 @@ namespace VC
     {
       if (options.Trace && DoSplitting) {
         var splitNum = split.SplitIndex + 1;
-        var splitIdxStr = options.RandomSeedIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
+        var splitIdxStr = options.RandomizeVcIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
         run.TraceWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
       }
@@ -140,7 +147,7 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task ProcessResult(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {

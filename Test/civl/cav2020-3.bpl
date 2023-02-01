@@ -1,9 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "perm"} {:datatype} Perm;
-function {:constructor} Left(i: int): Perm;
-function {:constructor} Right(i: int): Perm;
+datatype {:linear "perm"} Perm { Left(i: int), Right(i: int) }
 
 function {:inline} {:linear "perm"} IntCollector(i: int) : [Perm]bool
 {

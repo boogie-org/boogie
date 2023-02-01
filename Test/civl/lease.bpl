@@ -3,17 +3,16 @@
 
 type {:linear "me"} X = int;
 // datatype lockMsg = transfer(epoch:int) | locked(epoch:int)
-type{:datatype} lockMsg;
-function{:constructor} transfer(epoch:int):lockMsg;
-function{:constructor} locked(epoch:int):lockMsg;
+datatype lockMsg {
+  transfer(epoch:int),
+  locked(epoch:int)
+}
 
 // datatype msg = msg(src:int, dst:int, payload:lockMsg)
-type{:datatype} msg;
-function{:constructor} msg(src:int, dst:int, payload:lockMsg):msg;
+datatype msg { msg(src:int, dst:int, payload:lockMsg) }
 
 // datatype node = node(held:bool, epoch:int)
-type{:datatype} node;
-function{:constructor} node(held:bool, epoch:int):node;
+datatype node { node(held:bool, epoch:int) }
 
 // var network:set<msg>
 var{:layer 1,2} network:[msg]bool;
@@ -25,8 +24,7 @@ var{:layer 1,3} external:[msg]bool;
 var{:layer 1,2} nodes:[int]node;
 
 // datatype history = history(len:int, locks:[int]int)
-type{:datatype} history;
-function{:constructor} history(len:int, locks:[int]int):history;
+datatype history { history(len:int, locks:[int]int) }
 
 var{:layer 1,3} history:history;
 

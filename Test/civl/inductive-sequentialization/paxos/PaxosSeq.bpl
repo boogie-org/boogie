@@ -9,7 +9,7 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
 
 procedure {:atomic}{:layer 2}
 {:IS "A_Paxos'","INV"}
-{:elim "A_StartRound","A_StartRound'"}
+{:elim "A_StartRound"}
 {:elim "A_Propose","A_Propose'"}
 {:elim "A_Conclude","A_Conclude'"}
 {:elim "A_Join","A_Join'"}
@@ -100,9 +100,7 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
       assume
         (forall r: Round :: r < 1 || r > k ==> voteInfo[r] is None) &&
         (forall r: Round :: r < 1 || r > k ==> decision[r] is None);
-      assume
-        {:add_to_pool "Node", m}
-        0 <= m && m <= numNodes;
+      assume {:add_to_pool "Node", m} 0 <= m && m <= numNodes;
       PAs := StartRoundPlusJoinPlusProposePAs(k, m, numRounds);
       choice := JoinOrProposeChoice(k, m);
   } else {
@@ -110,8 +108,7 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
         voteInfo[k+1] is Some &&
         (forall r: Round :: r < 1 || r > k+1 ==> voteInfo[r] is None) &&
         (forall r: Round :: r < 1 || r > k ==> decision[r] is None);
-      assume
-        {:add_to_pool "Node", m}
+      assume {:add_to_pool "Node", m}
         0 <= m && m <= numNodes &&
         (forall n: Node :: n < 1 || n > m ==> !voteInfo[k+1]->t->ns[n]);
       PAs := StartRoundPlusVotePlusConcludePAs(k, m, voteInfo[k+1]->t->value, numRounds);

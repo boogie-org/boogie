@@ -123,8 +123,6 @@ axiom (forall i: int :: $IntIs(i, System.Int64) <==> System.Int64.MinValue <= i 
 
 function $RefIs(ref, name) returns (bool);
 
-axiom (forall o: ref, T: name :: $RefIs(o, T) <==> o == null || $typeof(o) <: T);
-
 axiom (forall o: ref, T: name :: $RefIs(o, $NotNull(T)) <==> o != null && $RefIs(o, T));
 
 axiom (forall a: ref, T: name, i: int, $ArrayHeap: [ref, name]elements :: $RefIs(a, $IntArray(T)) && a != null ==> $IntIs($IntArrayGet($ArrayHeap[a, $elements], i), T));

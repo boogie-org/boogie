@@ -1,8 +1,8 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A() : PA;
+datatype {:pending_async} PA { A() }
+
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

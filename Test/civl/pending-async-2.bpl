@@ -4,9 +4,9 @@
 const n:int;
 axiom n > 0;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A() : PA;
-function {:constructor} B() : PA;
+datatype {:pending_async} PA {
+  A(), B()
+}
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

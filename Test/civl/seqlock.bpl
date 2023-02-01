@@ -1,10 +1,7 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type {:linear "tid"} Tid;
-type {:datatype} Option _;
-function {:constructor} None<T>() : Option T;
-function {:constructor} Some<T>(tid:Tid) : Option T;
 
 var {:layer 0,2} lock:Option Tid;
 var {:layer 0,2} seq:int;

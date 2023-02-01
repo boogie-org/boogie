@@ -35,9 +35,11 @@ function {:inline} Id<T>(t: T): T
 
 function Default<T>(): T;
 
+/// option
+datatype Option<T> { None(), Some(t: T) }
+
 /// vectors
-type {:datatype} Vec _;
-function {:constructor} Vec<T>(contents: [int]T, len: int): Vec T;
+datatype Vec<T> { Vec(contents: [int]T, len: int) }
 
 const Identity: [int]int;
 axiom (forall x: int :: Identity[x] == x);
@@ -126,32 +128,30 @@ function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int
 
 /// linear maps
 type Ref _;
-type {:datatype} Lmap _;
-function {:constructor} Lmap<V>(dom: [Ref V]bool, val: [Ref V]V): Lmap V;
+datatype Lheap<V> { Lheap(dom: [Ref V]bool, val: [Ref V]V) }
 
-function {:inline} Lmap_WellFormed<V>(l: Lmap V): bool {
-    l->val == MapIte(l->dom, l->val, MapConst(Default())) 
+function {:inline} Lheap_WellFormed<V>(l: Lheap V): bool {
+    l->val == MapIte(l->dom, l->val, MapConst(Default()))
 }
-function {:inline} Lmap_Collector<V>(l: Lmap V): [Ref V]bool {
+function {:inline} Lheap_Collector<V>(l: Lheap V): [Ref V]bool {
     l->dom
 }
-function {:inline} Lmap_Contains<V>(l: Lmap V, k: Ref V): bool {
+function {:inline} Lheap_Contains<V>(l: Lheap V, k: Ref V): bool {
     l->dom[k]
 }
-function {:inline} Lmap_Deref<V>(l: Lmap V, k: Ref V): V {
+function {:inline} Lheap_Deref<V>(l: Lheap V, k: Ref V): V {
     l->val[k]
 }
-procedure Lmap_Empty<V>() returns (l: Lmap V);
-procedure Lmap_Split<V>(k: [Ref V]bool, path: Lmap V) returns (l: Lmap V);
-procedure Lmap_Transfer<V>({:linear_in} path1: Lmap V, path2: Lmap V);
-procedure Lmap_Read<V>(path: V) returns (v: V);
-procedure Lmap_Write<V>(path: V, v: V);
-procedure Lmap_Add<V>(path: Lmap V, v: V) returns (k: Ref V);
-procedure Lmap_Remove<V>(path: Lmap V, k: Ref V) returns (v: V);
+procedure Lheap_Empty<V>() returns (l: Lheap V);
+procedure Lheap_Split<V>(k: [Ref V]bool, path: Lheap V) returns (l: Lheap V);
+procedure Lheap_Transfer<V>({:linear_in} path1: Lheap V, path2: Lheap V);
+procedure Lheap_Read<V>(path: V) returns (v: V);
+procedure Lheap_Write<V>(path: V, v: V);
+procedure Lheap_Add<V>(path: Lheap V, v: V) returns (k: Ref V);
+procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
 
 /// linear sets
-type {:datatype} Lset _;
-function {:constructor} Lset<V>(dom: [V]bool): Lset V;
+datatype Lset<V> { Lset(dom: [V]bool) }
 
 function {:inline} Lset_Collector<V>(l: Lset V): [V]bool {
     l->dom
@@ -164,8 +164,7 @@ procedure Lset_Split<V>({:linear_out} k: Lset V, path: Lset V);
 procedure Lset_Transfer<V>({:linear_in} path1: Lset V, path2: Lset V);
 
 /// linear vals
-type {:datatype} Lval _;
-function {:constructor} Lval<V>(val: V): Lval V;
+datatype Lval<V> { Lval(val: V) }
 
 function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
     MapConst(false)[l->val := true]

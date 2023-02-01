@@ -127,8 +127,6 @@ namespace Microsoft.Boogie
     protected VCGenerationOptions genOptions;
     protected Boogie2VCExprTranslator translator;
 
-    protected OrderingAxiomBuilder orderingAxiomBuilder;
-
     protected List<Variable> distincts;
     protected List<VCExpr> axiomConjuncts;
 
@@ -138,7 +136,6 @@ namespace Microsoft.Boogie
       Contract.Invariant(gen != null);
       Contract.Invariant(genOptions != null);
       Contract.Invariant(translator != null);
-      Contract.Invariant(orderingAxiomBuilder != null);
       Contract.Invariant(cce.NonNullElements(distincts));
       Contract.Invariant(cce.NonNullElements(axiomConjuncts));
     }
@@ -157,25 +154,14 @@ namespace Microsoft.Boogie
       Boogie2VCExprTranslator t = new Boogie2VCExprTranslator(gen, genOptions);
       this.translator = t;
 
-      SetupOrderingAxiomBuilder(gen, t);
-
       distincts = new List<Variable>();
       axiomConjuncts = new List<VCExpr>();
 
       exprTranslator = null;
     }
 
-    private void SetupOrderingAxiomBuilder(VCExpressionGenerator gen, Boogie2VCExprTranslator t)
-    {
-      OrderingAxiomBuilder oab = new OrderingAxiomBuilder(gen, t);
-      Contract.Assert(oab != null);
-      oab.Setup();
-      this.orderingAxiomBuilder = oab;
-    }
-
     public override void Reset()
     {
-      SetupOrderingAxiomBuilder(gen, translator);
       distincts = new List<Variable>();
       axiomConjuncts = new List<VCExpr>();
     }
@@ -195,7 +181,6 @@ namespace Microsoft.Boogie
       Boogie2VCExprTranslator t = (Boogie2VCExprTranslator) ctxt.translator.Clone();
       Contract.Assert(t != null);
       this.translator = t;
-      this.orderingAxiomBuilder = new OrderingAxiomBuilder(ctxt.gen, t, ctxt.orderingAxiomBuilder);
 
       distincts = new List<Variable>(ctxt.distincts);
       axiomConjuncts = new List<VCExpr>(ctxt.axiomConjuncts);
@@ -227,7 +212,6 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(c != null);
       base.DeclareConstant(c, uniq, attributes);
-      orderingAxiomBuilder.AddConstant(c);
 
       // TODO: make separate distinct lists for names coming from different types
       // e.g., one for strings, one for ints, one for program types.
@@ -266,10 +250,6 @@ namespace Microsoft.Boogie
         }
 
         axioms = gen.AndSimp(gen.Distinct(distinctVars), axioms);
-        if (options.TypeEncodingMethod != CoreOptions.TypeEncoding.Monomorphic)
-        {
-          axioms = gen.AndSimp(orderingAxiomBuilder.Axioms, axioms);
-        }
 
         return axioms;
       }

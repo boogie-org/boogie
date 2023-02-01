@@ -9,9 +9,7 @@ type {:linear "collect", "broadcast"} pid = int;
 
 function {:inline} pid(i:int) : bool { 1 <= i && i <= n }
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} BROADCAST(i:pid) : PA;
-function {:constructor} COLLECT(i:pid) : PA;
+datatype {:pending_async} PA { BROADCAST(i:pid), COLLECT(i:pid) }
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
@@ -47,13 +45,11 @@ function max(CH:[val]int) : val;
 function card(CH:[val]int) : int;
 
 axiom card(MultisetEmpty) == 0;
-axiom (forall v:val :: card(MultisetSingleton(v)) == 1);
-axiom (forall CH:[val]int, v:val :: card(MultisetPlus(CH, MultisetSingleton(v))) == card(CH) + 1);
-axiom (forall CH:[val]int, v:val :: {CH[v := CH[v] + 1]} card(CH[v := CH[v] + 1]) == card(CH) + 1);
-axiom (forall m:[val]int, m':[val]int :: {card(m), card(m')} MultisetSubsetEq(m, m') && card(m) == card(m') ==> m == m');
+axiom (forall CH:[val]int, v:val, x:int :: card(CH[v := x]) == card(CH) + x - CH[v]);
+axiom (forall m:[val]int, m':[val]int :: MultisetSubsetEq(m, m') && card(m) == card(m') ==> m == m');
 
 axiom (forall v:val :: max(MultisetSingleton(v)) == v);
-axiom (forall CH:[val]int, v:val :: { CH[v := CH[v] + 1] } max(CH[v := CH[v] + 1]) == (if v > max(CH) then v else max(CH)));
+axiom (forall CH:[val]int, v:val, x:int :: x > 0 ==> max(CH[v := x]) == (if v > max(CH) then v else max(CH)));
 
 function value_card(v:val, value:[pid]val, i:pid, j:pid) : int
 {
@@ -117,10 +113,9 @@ returns ({:pending_async "COLLECT"} PAs:[PA]int)
 modifies CH;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
-  assert
-    {:add_to_pool "INV_COLLECT", 0}
-    CH == MultisetEmpty;
+  assert CH == MultisetEmpty;
 
+  assume {:add_to_pool "INV_COLLECT", 0} true;
   CH := (lambda v:val :: value_card(v, value, 1, n));
   assume card(CH) == n;
   assume MultisetSubsetEq(MultisetEmpty, CH);
@@ -132,9 +127,9 @@ procedure {:atomic}{:layer 2}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 returns ({:pending_async "BROADCAST","COLLECT"} PAs:[PA]int)
 {
-  assert
-    {:add_to_pool "INV_BROADCAST", 0}
-    pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
+  assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
+
+  assume {:add_to_pool "INV_BROADCAST", 0} true;
   assert CH == MultisetEmpty;
 
   PAs := MapAdd(AllBroadcasts(), AllCollects());

@@ -17,8 +17,9 @@ const memHi: int;
 axiom 0 < memLo && memLo <= memHi;
 function {:inline} memAddr(i: int) returns (bool) { memLo <= i && i < memHi }
 
-type {:datatype} Bijection;
-function {:constructor} Bijection(domain: [Tid]bool, range: [int]bool, tidToPtr: [Tid]int, ptrToTid: [int]Tid): Bijection;
+datatype Bijection {
+  Bijection(domain: [Tid]bool, range: [int]bool, tidToPtr: [Tid]int, ptrToTid: [int]Tid)
+}
 
 var {:layer 0,1} isFree: [int]bool;
 var {:layer 0,1} freeSpace: int;
@@ -30,7 +31,7 @@ function {:inline} BijectionInvariant(allocMap: Bijection): bool {
             allocMap->range[allocMap->tidToPtr[tid]] &&
             allocMap->ptrToTid[allocMap->tidToPtr[tid]] == tid)
     &&
-    (forall {:pool "B"} ptr: int :: {:add_to_pool "B", ptr}
+    (forall {:pool "B"} ptr: int :: {:add_to_pool "B", ptr} {:add_to_pool "A", allocMap->ptrToTid[ptr]}
         allocMap->range[ptr] ==>
             allocMap->domain[allocMap->ptrToTid[ptr]] &&
             allocMap->tidToPtr[allocMap->ptrToTid[ptr]] == ptr)
@@ -90,6 +91,7 @@ modifies isFree, allocMap;
     spaceFound := isFree[ptr];
     if (spaceFound) {
         isFree[ptr] := false;
+        assume {:add_to_pool "A", tid} {:add_to_pool "B", ptr} true;
         call allocMap := Alloc(allocMap, tid, ptr);
     }
 }
@@ -103,6 +105,7 @@ procedure {:atomic} Alloc(allocMap: Bijection, tid: Tid, ptr: int) returns (allo
         // swap
         tid' := allocMap'->ptrToTid[ptr];
         ptr' := allocMap'->tidToPtr[tid];
+        assume {:add_to_pool "A", tid'} {:add_to_pool "B", ptr'} true;
         allocMap' := Bijection(
                         allocMap'->domain,
                         allocMap'->range,
@@ -111,6 +114,7 @@ procedure {:atomic} Alloc(allocMap: Bijection, tid: Tid, ptr: int) returns (allo
     }
     // alloc
     ptr' := allocMap'->tidToPtr[tid];
+    assume {:add_to_pool "B", ptr'} true;
     allocMap' := Bijection(
                     allocMap'->domain[tid := false],
                     allocMap'->range[ptr' := false],

@@ -16,8 +16,7 @@ const numParticipants : int;
 axiom 0 < numParticipants;
 function participantMid (mid : Mid) : bool { 1 <= mid && mid <= numParticipants }
 
-type {:datatype} {:linear "pair"} Pair;
-function {:constructor} Pair (xid: Xid, mid: Mid) : Pair;
+datatype {:linear "pair"} Pair { Pair(xid: Xid, mid: Mid) }
 
 function {:inline} pair (xid: Xid, mid: Mid, p: Pair) : bool
 { p == Pair(xid, mid) && participantMid(p->mid) }

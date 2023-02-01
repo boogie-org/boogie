@@ -32,7 +32,7 @@ procedure Q(omega: double where omega == F(omega),
 const SomeConstant: name;
 function fgh(int) returns (int);
 
-procedure Cnst(n: name where n <: SomeConstant /*this SomeConstant refers to the const*/) returns (SomeConstant: int)
+procedure Cnst(n: name where n == SomeConstant /*this SomeConstant refers to the const*/) returns (SomeConstant: int)
 {
   var k: int where k != SomeConstant;  // fine, since SomeConstants refers to the out parameter
   var m: name where m != SomeConstant;  // error: types don't match up

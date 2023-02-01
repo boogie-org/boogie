@@ -1,8 +1,8 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type{:datatype} Pair;
-function{:constructor} Pair(a: int, b: int): Pair;
+datatype Pair { Pair(a: int, b: int) }
+
 
 procedure P0(p: Pair) returns (q: Pair)
   requires p->a == 0;
@@ -20,8 +20,8 @@ procedure P1(p: [int]Pair, x: int) returns (q: [int]Pair)
   q[x]->b := 1;
 }
 
-type{:datatype} PairOfMaps;
-function{:constructor} PairOfMaps(amap: [int]Pair, bmap: [int]Pair): PairOfMaps;
+datatype PairOfMaps { PairOfMaps(amap: [int]Pair, bmap: [int]Pair) }
+
 
 procedure P2(p: PairOfMaps, x: int) returns (q: PairOfMaps)
   requires p->amap[x]->a == 0;
@@ -33,9 +33,9 @@ procedure P2(p: PairOfMaps, x: int) returns (q: PairOfMaps)
   q->bmap := t;
 }
 
-type{:datatype} Perm;
-function{:constructor} Left(i: int): Perm;
-function{:constructor} Right(i: int): Perm;
+datatype Perm {
+  Left(i: int), Right(i: int)
+}
 
 procedure P3(a: int) {
   var left: Perm;

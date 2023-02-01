@@ -4,9 +4,9 @@
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 // XFAIL: *
 
-// CHECK-L: Error: A postcondition might not hold on this return path
-// CHECK-L: Error: A postcondition might not hold on this return path
-// CHECK-L: Error: A postcondition might not hold on this return path
+// CHECK-L: Error: a postcondition could not be proved on this return path
+// CHECK-L: Error: a postcondition could not be proved on this return path
+// CHECK-L: Error: a postcondition could not be proved on this return path
 
 procedure ManyErrors(x0: int, x1: int, x2: int)
   ensures x0 == 1;

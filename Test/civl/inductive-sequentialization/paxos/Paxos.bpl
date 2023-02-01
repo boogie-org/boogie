@@ -13,39 +13,31 @@ type NodeSet = [Node]bool;
 
 type Value;
 
-type {:datatype} Option _;
-function {:constructor} None<T>(): Option T;
-function {:constructor} Some<T>(t: T): Option T;
+datatype VoteInfo { VoteInfo(value: Value, ns: NodeSet) }
 
-type {:datatype} VoteInfo;
-function {:constructor} VoteInfo(value: Value, ns: NodeSet): VoteInfo;
-
-type {:datatype} AcceptorState;
 /* 0 <= lastVoteRound, lastJoinRound <= numRounds */
-function {:constructor} AcceptorState(lastJoinRound: Round, lastVoteRound: int, lastVoteValue: Value): AcceptorState;
+datatype AcceptorState { AcceptorState(lastJoinRound: Round, lastVoteRound: int, lastVoteValue: Value) }
 
-type {:datatype} JoinResponse;
 /* 0 <= lastVoteRound <= numRounds */
-function {:constructor} JoinResponse(from: Node, lastVoteRound: int, lastVoteValue: Value): JoinResponse;
-type {:datatype} JoinResponseChannel;
-function {:constructor} JoinResponseChannel(domain: [Permission]bool, contents: [Permission]JoinResponse): JoinResponseChannel;
+datatype JoinResponse { JoinResponse(from: Node, lastVoteRound: int, lastVoteValue: Value) }
+datatype JoinResponseChannel { JoinResponseChannel(domain: [Permission]bool, contents: [Permission]JoinResponse) }
 
-type {:datatype} VoteResponse;
-function {:constructor} VoteResponse(from: Node): VoteResponse;
-type {:datatype} VoteResponseChannel;
-function {:constructor} VoteResponseChannel(domain: [Permission]bool, contents: [Permission]VoteResponse): VoteResponseChannel;
+datatype VoteResponse { VoteResponse(from: Node) }
+datatype VoteResponseChannel { VoteResponseChannel(domain: [Permission]bool, contents: [Permission]VoteResponse) }
 
-type {:datatype} {:linear "perm"} Permission;
-function {:constructor} JoinPerm(r:Round, n: Node): Permission;
-function {:constructor} VotePerm(r:Round, n: Node): Permission;
-function {:constructor} ConcludePerm(r: Round): Permission;
+datatype {:linear "perm"} Permission {
+  JoinPerm(r:Round, n: Node),
+  VotePerm(r:Round, n: Node),
+  ConcludePerm(r: Round)
+}
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A_StartRound(r: Round, r_lin: Round) : PA;
-function {:constructor} A_Join(r: Round, n: Node, p: Permission) : PA;
-function {:constructor} A_Propose(r: Round, ps: [Permission]bool) : PA;
-function {:constructor} A_Vote(r: Round, n: Node, v: Value, p: Permission) : PA;
-function {:constructor} A_Conclude(r: Round, v: Value, p: Permission) : PA;
+datatype {:pending_async} PA {
+  A_StartRound(r: Round, r_lin: Round),
+  A_Join(r: Round, n: Node, p: Permission),
+  A_Propose(r: Round, ps: [Permission]bool),
+  A_Vote(r: Round, n: Node, v: Value, p: Permission),
+  A_Conclude(r: Round, v: Value, p: Permission)
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Functions
@@ -96,7 +88,7 @@ function {:inline} JoinPermissions(r: Round) : [Permission]bool
 
 function {:inline} ProposePermissions(r: Round) : [Permission]bool
 {
-  (lambda p:Permission :: if (p is VotePerm && p->r == r) || (p is ConcludePerm && p->r == r) then true else false)
+  (lambda {:pool "Permission"} p:Permission :: if (p is VotePerm && p->r == r) || (p is ConcludePerm && p->r == r) then true else false)
 }
 
 function {:inline} VotePermissions(r: Round) : [Permission]bool
@@ -163,22 +155,12 @@ function {:inline} InitLow (
 
 function {:inline}{:linear "perm"} RoundCollector (round: Round) : [Permission]bool
 {
-  (lambda p: Permission ::
-    if (p is JoinPerm && round == p->r) ||
-       (p is VotePerm && round == p->r) ||
-       (p is ConcludePerm && round == p->r)
-    then true else false
-  )
+  (lambda {:pool "Permission"} p: Permission :: round == p->r)
 }
 
 function {:inline}{:linear "perm"} RoundSetCollector (rounds: [Round]bool) : [Permission]bool
 {
-  (lambda p: Permission ::
-    if (p is JoinPerm && rounds[p->r]) ||
-       (p is VotePerm && rounds[p->r]) ||
-       (p is ConcludePerm && rounds[p->r])
-    then true else false
-  )
+  (lambda {:pool "Permission"} p: Permission :: rounds[p->r])
 }
 
 function {:inline}{:linear "perm"} JoinResponseChannelCollector (permJoinChannel: JoinResponseChannel) : [Permission]bool

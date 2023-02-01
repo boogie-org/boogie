@@ -6,8 +6,7 @@
 // Its usage is specifically illustrated here on a PingPong example.
 
 // A bidirectional channel is a pair of ordinary channels with two ends---left and right.
-type {:datatype} ChannelPair;
-function {:constructor} ChannelPair(left: [int]int, right: [int]int): ChannelPair;
+datatype ChannelPair { ChannelPair(left: [int]int, right: [int]int) }
 
 // The id type for indexing into the pool of bidirectional channels.
 type ChannelId;
@@ -19,9 +18,7 @@ var {:layer 0,3} channel: [ChannelId]ChannelPair;
 // The id of a bidirectional channel can be split into two permissions---Left and Right.
 // Left permission is used to receive from the left channel and send to the right channel.
 // Right permission is used to receive from the right channel and send to the left channel.
-type {:linear "cid"} {:datatype} ChannelHandle;
-function {:constructor} Left(cid: ChannelId): ChannelHandle;
-function {:constructor} Right(cid: ChannelId): ChannelHandle;
+datatype {:linear "cid"} ChannelHandle { Left(cid: ChannelId), Right(cid: ChannelId) }
 function {:inline} ChannelId(p: ChannelHandle) : ChannelId {
   p->cid
 }
@@ -33,9 +30,10 @@ function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [Channel
 // This datatype declares the pending asyncs for Ping and Pong processes.
 // These two processes share a channel pair with Ping holding its left channel handle
 // and Pong holding its right channel handle.
-type {:pending_async}{:datatype} PA;
-function {:constructor} PING(x: int, left: ChannelHandle): PA;
-function {:constructor} PONG(y: int, right: ChannelHandle): PA;
+datatype {:pending_async} PA {
+  PING(x: int, left: ChannelHandle),
+  PONG(y: int, right: ChannelHandle)
+}
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }
@@ -60,9 +58,7 @@ modifies channel;
 
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
 
-  assume
-    {:add_to_pool "INV", c, c+1}
-    0 < c;
+  assume {:add_to_pool "INV", c, c+1} 0 < c;
   if (*) {
     channel[cid] := ChannelPair(EmptyChannel(), EmptyChannel()[c := 1]);
     PAs := NoPAs()[PONG(c, Right(cid)) := 1][PING(c, Left(cid)) := 1];

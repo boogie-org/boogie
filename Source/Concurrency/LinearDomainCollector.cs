@@ -140,7 +140,7 @@ namespace Microsoft.Boogie
         {
           var originalDecl = program.monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
           var originalDeclName = originalDecl.Name;
-          if (originalDeclName == "Lmap" || originalDeclName == "Lset" || originalDeclName == "Lval")
+          if (originalDeclName == "Lheap" || originalDeclName == "Lset" || originalDeclName == "Lval")
           {
             permissionTypes.Add(type);
             linearTypes.Add(type);
@@ -168,7 +168,7 @@ namespace Microsoft.Boogie
       var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(typeCtorDecl);
       var actualTypeParams = program.monomorphizer.GetTypeInstantiation(typeCtorDecl);
       return 
-        originalTypeCtorDecl.Name == "Lmap"
+        originalTypeCtorDecl.Name == "Lheap"
           ? new CtorType(Token.NoToken, program.monomorphizer.InstantiateTypeCtorDecl("Ref", actualTypeParams),
             new List<Type>())
           : actualTypeParams[0];
@@ -190,8 +190,8 @@ namespace Microsoft.Boogie
         if (!permissionTypeToCollectors[permissionType].ContainsKey(type))
         {
           var collector = 
-            originalTypeCtorDecl.Name == "Lmap" 
-              ? program.monomorphizer.InstantiateFunction("Lmap_Collector",
+            originalTypeCtorDecl.Name == "Lheap"
+              ? program.monomorphizer.InstantiateFunction("Lheap_Collector",
                 new Dictionary<string, Type> { { "V", actualTypeParams[0] } }) :
               originalTypeCtorDecl.Name == "Lset" 
                 ? program.monomorphizer.InstantiateFunction("Lset_Collector",

@@ -290,15 +290,43 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void AddTriggerAssumes(Program program)
+    /*
+     * This method adds triggers for each local variable at the beginning of the atomic
+     * action and after every havoc of the variable.
+     * As an optimization, the injection of the trigger is performed only if the variable
+     * is live at the point of injection.
+     */
+    public void AddTriggerAssumes(Program program, ConcurrencyOptions options)
     {
+      var liveVariableAnalysis = new AtomicActionLiveVariableAnalysis(impl, options);
+      liveVariableAnalysis.Compute();
       foreach (Variable v in impl.LocVars)
       {
         var f = triggerFunctions[v];
         program.AddTopLevelDeclaration(f);
-        var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(f, Expr.Ident(v)));
-        impl.Blocks[0].Cmds.Insert(0, assume);
+        if (liveVariableAnalysis.IsLiveBefore(v, impl.Blocks[0]))
+        {
+          var assume = CmdHelper.AssumeCmd(ExprHelper.FunctionCall(f, Expr.Ident(v)));
+          impl.Blocks[0].Cmds.Insert(0, assume);
+        }
       }
+      impl.Blocks.Iter(block =>
+      {
+        block.Cmds = block.Cmds.SelectMany(cmd =>
+        {
+          var newCmds = new List<Cmd> { cmd };
+          if (cmd is HavocCmd havocCmd)
+          {
+            var liveHavocVars = new HashSet<Variable>(havocCmd.Vars.Select(x => x.Decl)
+              .Where(v => liveVariableAnalysis.IsLiveAfter(v, havocCmd)));
+            impl.LocVars.Intersect(liveHavocVars).Iter(v =>
+            {
+              newCmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(triggerFunctions[v], Expr.Ident(v))));
+            });
+          }
+          return newCmds;
+        }).ToList();
+      });
     }
   }
 

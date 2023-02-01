@@ -2,8 +2,8 @@
 // RUN: %diff "%s.expect" "%t"
 // Issue #359
 
-type {:datatype} Cell _;
-function {:constructor} Mk<T>(x: T): Cell T;
+datatype Cell<T> { Mk(x: T) }
+
 
 function foo<T>(): Cell T;
 

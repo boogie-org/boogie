@@ -45,9 +45,7 @@ function max ([int]int) : int;
 axiom (forall id:[int]int :: pid(max(id)) && (forall i:int :: pid(i) && i != max(id) ==> id[i] < id[max(id)]));
 
 // A type for keeping track of pending asyncs
-type {:pending_async}{:datatype} PA;
-function {:constructor} P(pid:int) : PA;
-function {:constructor} PInit(pid:int) : PA;
+datatype {:pending_async} PA { P(pid:int), PInit(pid:int) }
 
 function EmptyChannel() : [int]int { (lambda i:int :: 0) }
 function NoPAs() : [PA]int { (lambda pa:PA :: 0) }
@@ -85,11 +83,7 @@ modifies channel, terminated, leader;
   assert Init(pids, channel, terminated, id, leader);
 
   havoc channel, terminated, leader;
-
-  assume
-    {:add_to_pool "INV2", k, next(k), n+1}
-    true;
-
+  assume {:add_to_pool "INV2", k, next(k), n+1} true;
   choice := P(k);
   if (*) {
     assume
@@ -103,7 +97,6 @@ modifies channel, terminated, leader;
       (forall i:int :: pid(i) ==> terminated[i]);
     PAs := NoPAs();
   }
-
 
   assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg <= id[max(id)] && (forall j:int:: betweenLeftEqual(i,j,max(id)) ==> msg != id[j]));
   assume (forall i:int :: pid(i) && i != max(id) ==> !leader[i]);
@@ -158,12 +151,9 @@ returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel;
 {
   assert Init(pids, channel, terminated, id, leader);
-  assume
-    {:add_to_pool "INV2", next(max(id))}
-    true;
 
+  assume {:add_to_pool "INV2", next(max(id))} true;
   havoc channel;
-
   assume (forall i:int :: 1 <= i && i <= n ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]);
   assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
   PAs := (lambda pa:PA ::  if pa is P && pid(pa->pid) then 1 else 0);
@@ -179,7 +169,6 @@ modifies channel;
   assert Init(pids, channel, terminated, id, leader);
 
   havoc channel;
-
   assume
     {:add_to_pool "INV1", k, k+1}
     {:add_to_pool "PInit", PInit(n)}
@@ -201,9 +190,8 @@ MAIN1 ({:linear_in "pid"} pids:[int]bool)
 returns ({:pending_async "PInit"} PAs:[PA]int)
 {
   assert Init(pids, channel, terminated, id, leader);
-  assume
-    {:add_to_pool "INV1", 0}
-    true;
+
+  assume {:add_to_pool "INV1", 0} true;
   PAs := (lambda pa:PA :: if pa is PInit && pid(pa->pid) then 1 else 0);
 }
 

@@ -6,8 +6,7 @@ var {:layer 0,1} x:[int]int;
 procedure {:yield_invariant} {:layer 1} yield_x({:linear "tid"} tid:int);
 requires x[tid] == 0;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A(tid:int) : PA;
+datatype {:pending_async} PA { A(tid:int) }
 
 function {:inline} NoPAs () : [PA]int
 { (lambda pa:PA :: 0) }

@@ -33,12 +33,13 @@ function {:inline} $Unbox_vec(x: $Value): Vec $Value {
     x->v
 }
 
-type {:datatype} $Value;
-function {:constructor} $Boolean(b: bool): $Value;
-function {:constructor} $Integer(i: int): $Value;
-function {:constructor} $Address(a: int): $Value;
-function {:constructor} $Vector(v: Vec $Value): $Value;
-function {:constructor} $Error(): $Value;
+datatype $Value {
+  $Boolean(b: bool),
+  $Integer(i: int),
+  $Address(a: int),
+  $Vector(v: Vec $Value),
+  $Error()
+}
 
 procedure p() {
     assert $Unbox_vec($Box_vec(Vec_Empty())) == Vec_Empty();

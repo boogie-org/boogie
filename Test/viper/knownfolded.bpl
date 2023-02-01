@@ -576,21 +576,21 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
       perm := NoPerm;
       perm := perm + FullPerm;
       if (perm != NoPerm) {
-        assert {:msg "  Postcondition of test1 might not hold. There might be insufficient permission to access x.f. (knownfolded.vpr@14.11) [61]"}
+        assert {:msg "  Postcondition of test1 could not be proved. There might be insufficient permission to access x.f. (knownfolded.vpr@14.11) [61]"}
           perm <= Mask[x, f_6];
       }
       Mask[x, f_6] := Mask[x, f_6] - perm;
-      assert {:msg "  Postcondition of test1 might not hold. Assertion x.f == 0 might not hold. (knownfolded.vpr@14.11) [62]"}
+      assert {:msg "  Postcondition of test1 could not be proved. Assertion x.f == 0 could not be proved. (knownfolded.vpr@14.11) [62]"}
         Heap[x, f_6] == 0;
     } else {
       perm := NoPerm;
       perm := perm + FullPerm;
       if (perm != NoPerm) {
-        assert {:msg "  Postcondition of test1 might not hold. There might be insufficient permission to access x.g. (knownfolded.vpr@14.11) [63]"}
+        assert {:msg "  Postcondition of test1 could not be proved. There might be insufficient permission to access x.g. (knownfolded.vpr@14.11) [63]"}
           perm <= Mask[x, g];
       }
       Mask[x, g] := Mask[x, g] - perm;
-      assert {:msg "  Postcondition of test1 might not hold. Assertion x.g might not hold. (knownfolded.vpr@14.11) [64]"}
+      assert {:msg "  Postcondition of test1 could not be proved. Assertion x.g could not be proved. (knownfolded.vpr@14.11) [64]"}
         Heap[x, g];
     }
     // Phase 2: abstract read permissions (and scaled abstract read permissions)
@@ -858,7 +858,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     perm := NoPerm;
     perm := perm + FullPerm;
     if (perm != NoPerm) {
-      assert {:msg "  Postcondition of test2 might not hold. There might be insufficient permission to access P(x, b). (knownfolded.vpr@30.11) [76]"}
+      assert {:msg "  Postcondition of test2 could not be proved. There might be insufficient permission to access P(x, b). (knownfolded.vpr@30.11) [76]"}
         perm <= Mask[null, P(x, b_2)];
     }
     Mask[null, P(x, b_2)] := Mask[null, P(x, b_2)] - perm;
@@ -881,10 +881,10 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
       }
       assume state(UnfoldingHeap, UnfoldingMask);
     if (b_2) {
-      assert {:msg "  Postcondition of test2 might not hold. Assertion x.f == 0 might not hold. (knownfolded.vpr@31.11) [77]"}
+      assert {:msg "  Postcondition of test2 could not be proved. Assertion x.f == 0 could not be proved. (knownfolded.vpr@31.11) [77]"}
         UnfoldingHeap[x, f_6] == 0;
     } else {
-      assert {:msg "  Postcondition of test2 might not hold. Assertion x.g might not hold. (knownfolded.vpr@31.11) [78]"}
+      assert {:msg "  Postcondition of test2 could not be proved. Assertion x.g could not be proved. (knownfolded.vpr@31.11) [78]"}
         UnfoldingHeap[x, g];
     }
     

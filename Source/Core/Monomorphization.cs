@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
   public class MonomorphismChecker : ReadOnlyVisitor
   {
+    // This visitor checks if the program is already monomorphic.
+
     public static bool DoesTypeCtorDeclNeedMonomorphization(TypeCtorDecl typeCtorDecl)
     {
       return typeCtorDecl.Arity > 0 && typeCtorDecl.FindStringAttribute("builtin") == null;
@@ -54,16 +57,6 @@ namespace Microsoft.Boogie
       return base.VisitMapType(node);
     }
 
-    public override Expr VisitNAryExpr(NAryExpr node)
-    {
-      BinaryOperator op = node.Fun as BinaryOperator;
-      if (op != null && op.Op == BinaryOperator.Opcode.Subtype)
-      {
-        isMonomorphic = false;
-      }
-      return base.VisitNAryExpr(node);
-    }
-
     public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
     {
       if (DoesTypeCtorDeclNeedMonomorphization(node))
@@ -76,6 +69,14 @@ namespace Microsoft.Boogie
 
   class TypeDependencyVisitor : ReadOnlyVisitor
   {
+    /*
+     * An instance of this visitor is created with a type variable "formal" (passed to the constructor).
+     * This visitor walks over a type T and adds an edge from any type variable nested inside T
+     * to the type variable "formal". The class MonomorphizableChecker uses this visitor to check
+     * that there are no expanding type cycles when a polymorphic function calls another
+     * polymorphic function or a polymorphic procedure calls another polymorphic procedure.
+     */
+
     private Graph<TypeVariable> typeVariableDependencyGraph;
     private HashSet<Tuple<TypeVariable, TypeVariable>> strongDependencyEdges;
     private TypeVariable formal;
@@ -87,7 +88,7 @@ namespace Microsoft.Boogie
       this.typeVariableDependencyGraph = typeVariableDependencyGraph;
       this.strongDependencyEdges = strongDependencyEdges;
       this.formal = formal;
-      this.insideContructedType = 0;
+      insideContructedType = 0;
     }
 
     public override CtorType VisitCtorType(CtorType node)
@@ -126,12 +127,14 @@ namespace Microsoft.Boogie
   
   class MonomorphizableChecker : ReadOnlyVisitor
   {
-    public static MonomorphizableStatus IsMonomorphizable(Program program,
-      out Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, out HashSet<Axiom> polymorphicFunctionAxioms)
+    /*
+     * This visitor checks if the program is monomorphizable. It calculates one status value from
+     * the enum MonomorphizableStatus for the program.
+     */
+    public static MonomorphizableStatus IsMonomorphizable(Program program, out HashSet<Axiom> polymorphicFunctionAxioms)
     {
       var checker = new MonomorphizableChecker(program);
       checker.VisitProgram(program);
-      axiomsToBeInstantiated = checker.axiomsToBeInstantiated;
       polymorphicFunctionAxioms = checker.polymorphicFunctionAxioms;
       if (!checker.isMonomorphizable)
       {
@@ -143,24 +146,20 @@ namespace Microsoft.Boogie
       }
       return MonomorphizableStatus.Monomorphizable;
     }
-
-    private Program program;
+    
     private bool isMonomorphizable;
-    private Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated;
     private HashSet<Axiom> polymorphicFunctionAxioms;
     private Graph<TypeVariable> typeVariableDependencyGraph; // (T,U) in this graph iff T flows to U
     private HashSet<Tuple<TypeVariable, TypeVariable>> strongDependencyEdges; // (T,U) in this set iff a type constructed from T flows into U
 
     private MonomorphizableChecker(Program program)
     {
-      this.program = program;
-      this.isMonomorphizable = true;
-      this.polymorphicFunctionAxioms = program.TopLevelDeclarations.OfType<Function>()
+      isMonomorphizable = true;
+      polymorphicFunctionAxioms = program.TopLevelDeclarations.OfType<Function>()
         .Where(f => f.TypeParameters.Count > 0 && f.DefinitionAxiom != null)
         .Select(f => f.DefinitionAxiom).ToHashSet();
-      this.axiomsToBeInstantiated = new Dictionary<Axiom, TypeCtorDecl>();
-      this.typeVariableDependencyGraph = new Graph<TypeVariable>();
-      this.strongDependencyEdges = new HashSet<Tuple<TypeVariable, TypeVariable>>();
+      typeVariableDependencyGraph = new Graph<TypeVariable>();
+      strongDependencyEdges = new HashSet<Tuple<TypeVariable, TypeVariable>>();
     }
 
     private bool IsFinitelyInstantiable()
@@ -181,22 +180,9 @@ namespace Microsoft.Boogie
       return true;
     }
     
-    public override Expr VisitBinderExpr(BinderExpr node)
-    {
-      if (node.TypeParameters.Count > 0)
-      {
-        isMonomorphizable = false;
-      }
-      return base.VisitBinderExpr(node);
-    }
-
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      if (node.Fun is BinaryOperator op && op.Op == BinaryOperator.Opcode.Subtype)
-      {
-        isMonomorphizable = false;
-      }
-      else if (node.Fun is FunctionCall functionCall)
+      if (node.Fun is FunctionCall functionCall)
       {
         functionCall.Func.TypeParameters.Iter(t =>
         {
@@ -204,7 +190,6 @@ namespace Microsoft.Boogie
           visitor.Visit(node.TypeParameters[t]);
         });
       }
-
       Visit(node.Type);
       return base.VisitNAryExpr(node);
     }
@@ -217,48 +202,6 @@ namespace Microsoft.Boogie
         visitor.Visit(node.TypeParameters[t]);
       });
       return base.VisitCallCmd(node);
-    }
-
-    public override Type VisitMapType(MapType node)
-    {
-      if (node.TypeParameters.Count > 0)
-      {
-        isMonomorphizable = false;
-      }
-      return base.VisitMapType(node);
-    }
-
-    private void CheckTypeCtorInstantiatedAxiom(Axiom axiom, string typeCtorName)
-    {
-      var tcDecl = program.TopLevelDeclarations.OfType<TypeCtorDecl>().FirstOrDefault(tcd => tcd.Name == typeCtorName);
-      if (tcDecl == null)
-      {
-        isMonomorphizable = false;
-        return;
-      }
-      var forallExpr = (ForallExpr) axiom.Expr;
-      if (tcDecl.Arity != forallExpr.TypeParameters.Count)
-      {
-        isMonomorphizable = false;
-        return;
-      }
-      axiomsToBeInstantiated.Add(axiom, tcDecl);
-      VisitExpr(forallExpr.Body);
-    }
-
-    public override Axiom VisitAxiom(Axiom node)
-    {
-      if (polymorphicFunctionAxioms.Contains(node))
-      {
-        return node;
-      }
-      var typeCtorName = node.FindStringAttribute("ctor");
-      if (typeCtorName == null || !(node.Expr is ForallExpr))
-      {
-        return base.VisitAxiom(node);
-      }
-      CheckTypeCtorInstantiatedAxiom(node, typeCtorName);
-      return node;
     }
 
     public override Function VisitFunction(Function node)
@@ -303,10 +246,545 @@ namespace Microsoft.Boogie
     }
   }
 
+  class InstantiationHintCollector : ReadOnlyVisitor
+  {
+    /*
+     * This visitor walks over a polymorphic quantifier to collect hints for instantiating its type parameters
+     * in the field instantiationHints. This field maps each type parameter T of the quantifier to a dictionary
+     * that maps a polymorphic type/function D to a set of integers, such that each integer in the set is a
+     * valid position in the list of type parameters of D. If position i is in the list corresponding to D,
+     * then the concrete type at position i among instances of D is a hint for T.
+     */
+    
+    private HashSet<TypeVariable> typeParameters;
+    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, HashSet<int>>> instantiationHints;
+
+    public static Dictionary<TypeVariable, Dictionary<NamedDeclaration, HashSet<int>>> CollectInstantiationHints(QuantifierExpr quantifierExpr)
+    {
+      var instantiationHintCollector = new InstantiationHintCollector(quantifierExpr);
+      instantiationHintCollector.VisitExpr(quantifierExpr);
+      return instantiationHintCollector.instantiationHints;
+    }
+
+    private InstantiationHintCollector(QuantifierExpr quantifierExpr)
+    {
+      typeParameters = new HashSet<TypeVariable>(quantifierExpr.TypeParameters);
+      instantiationHints = quantifierExpr.TypeParameters.ToDictionary(typeParameter => typeParameter,
+        _ => new Dictionary<NamedDeclaration, HashSet<int>>());
+    }
+
+    public override Expr VisitNAryExpr(NAryExpr node)
+    {
+      if (node.Fun is FunctionCall functionCall)
+      {
+        var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
+        PopulateInstantiationHints(actualTypeParams, functionCall.Func);
+      }
+      return base.VisitNAryExpr(node);
+    }
+
+    public override CtorType VisitCtorType(CtorType node)
+    {
+      PopulateInstantiationHints(node.Arguments, node.Decl);
+      return base.VisitCtorType(node);
+    }
+
+    private void PopulateInstantiationHints(List<Type> actualTypeParams, NamedDeclaration decl)
+    {
+      for (int i = 0; i < actualTypeParams.Count; i++)
+      {
+        if (actualTypeParams[i] is TypeVariable typeVariable && typeParameters.Contains(typeVariable))
+        {
+          if (!instantiationHints[typeVariable].ContainsKey(decl))
+          {
+            instantiationHints[typeVariable][decl] = new HashSet<int>();
+          }
+          instantiationHints[typeVariable][decl].Add(i);
+        }
+      }
+    }
+  }
+
+  abstract class BinderExprMonomorphizer
+  {
+    /*
+     * This is the abstract class that is extended by classes for monomorphizing
+     * LambdaExpr, ForallExpr, and ExistsExpr.
+     */
+
+    protected MonomorphizationVisitor monomorphizationVisitor;
+    protected Dictionary<List<Type>, Expr> instanceExprs;
+
+    public BinderExprMonomorphizer(MonomorphizationVisitor monomorphizationVisitor)
+    {
+      this.monomorphizationVisitor = monomorphizationVisitor;
+      instanceExprs = new Dictionary<List<Type>, Expr>(new ListComparer<Type>());
+    }
+
+    // Returns the BinderExpr for which this instance of BinderExprMonomorphizer was created.
+    public abstract BinderExpr BinderExpr { get; }
+
+    // Instantiates this.BinderExpr using the known function and type instantiations.
+    // Returns true if fresh instances of this.BinderExpr were created.
+    public abstract bool Instantiate();
+
+    // Returns the monomorphized version of this.BinderExpr.
+    public abstract Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter);
+  }
+
+  class LambdaExprMonomorphizer : BinderExprMonomorphizer
+  {
+    private LambdaExpr lambdaExpr;
+
+    public LambdaExprMonomorphizer(LambdaExpr lambdaExpr, MonomorphizationVisitor monomorphizationVisitor) :
+      base(monomorphizationVisitor)
+    {
+      this.lambdaExpr = lambdaExpr;
+    }
+
+    public override BinderExpr BinderExpr => lambdaExpr;
+
+    public override bool Instantiate()
+    {
+      var polymorphicMapInfo = monomorphizationVisitor.RegisterPolymorphicMapType(lambdaExpr.Type);
+      Debug.Assert(instanceExprs.Count <= polymorphicMapInfo.Instances.Count);
+      if (instanceExprs.Count == polymorphicMapInfo.Instances.Count)
+      {
+        return false;
+      }
+      polymorphicMapInfo.Instances.Skip(instanceExprs.Count).Iter(x =>
+        instanceExprs[x] = monomorphizationVisitor.InstantiateBinderExpr(lambdaExpr, x));
+      return true;
+    }
+
+    public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
+    {
+      return substituter.VisitExpr(monomorphizationVisitor.RegisterPolymorphicMapType(lambdaExpr.Type)
+        .GetLambdaConstructor(instanceExprs));
+    }
+  }
+
+  abstract class QuantifierExprMonomorphizer : BinderExprMonomorphizer
+  {
+    private QuantifierExpr quantifierExpr;
+    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, HashSet<int>>> instantiationHints;
+
+    protected QuantifierExprMonomorphizer(QuantifierExpr quantifierExpr, MonomorphizationVisitor monomorphizationVisitor) :
+      base(monomorphizationVisitor)
+    {
+      this.quantifierExpr = quantifierExpr;
+      instantiationHints = InstantiationHintCollector.CollectInstantiationHints(quantifierExpr);
+    }
+
+    public override BinderExpr BinderExpr => quantifierExpr;
+
+    public override bool Instantiate()
+    {
+      var instanceExprsCount = instanceExprs.Count;
+      var typeParameterIndexToTypeHints = Enumerable.Range(0, quantifierExpr.TypeParameters.Count)
+        .Select(_ => new HashSet<Type>()).ToList();
+      for (int typeParameterIndex = 0; typeParameterIndex < quantifierExpr.TypeParameters.Count; typeParameterIndex++)
+      {
+        var typeParameter = quantifierExpr.TypeParameters[typeParameterIndex];
+        foreach (var (decl, actualIndexes) in instantiationHints[typeParameter])
+        {
+          foreach (var actualTypeParameters in monomorphizationVisitor.NamedDeclarationInstantiations(decl))
+          {
+            foreach (var actualIndex in actualIndexes)
+            {
+              typeParameterIndexToTypeHints[typeParameterIndex].Add(actualTypeParameters[actualIndex]);
+            }
+          }
+        }
+      }
+      InstantiateOne(typeParameterIndexToTypeHints, new List<Type>());
+      return instanceExprsCount < instanceExprs.Count;
+    }
+
+    private void InstantiateOne(List<HashSet<Type>> typeParameterIndexToTypeHints, List<Type> actualTypeParams)
+    {
+      if (typeParameterIndexToTypeHints.Count == actualTypeParams.Count)
+      {
+        if (!instanceExprs.ContainsKey(actualTypeParams))
+        {
+          instanceExprs[new List<Type>(actualTypeParams)] =
+            monomorphizationVisitor.InstantiateBinderExpr(quantifierExpr, actualTypeParams);
+        }
+        return;
+      }
+
+      foreach (var type in typeParameterIndexToTypeHints[actualTypeParams.Count])
+      {
+        var addPosition = actualTypeParams.Count;
+        actualTypeParams.Add(type);
+        InstantiateOne(typeParameterIndexToTypeHints, actualTypeParams);
+        actualTypeParams.RemoveAt(addPosition);
+      }
+    }
+  }
+
+  class ForallExprMonomorphizer : QuantifierExprMonomorphizer
+  {
+    public ForallExprMonomorphizer(ForallExpr forallExpr, MonomorphizationVisitor monomorphizationVisitor) :
+      base(forallExpr, monomorphizationVisitor)
+    {
+    }
+
+    public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
+    {
+      return Expr.And(instanceExprs.Values.Select(x => substituter.VisitExpr(x)));
+    }
+  }
+
+  class ExistsExprMonomorphizer : QuantifierExprMonomorphizer
+  {
+    public ExistsExprMonomorphizer(ExistsExpr existsExpr, MonomorphizationVisitor monomorphizationVisitor) :
+      base(existsExpr, monomorphizationVisitor)
+    {
+    }
+
+    public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
+    {
+      return Expr.Or(instanceExprs.Values.Select(x => substituter.VisitExpr(x)));
+    }
+  }
+
+  class PolymorphicMapInfo
+  {
+    /*
+     * An instance of this class is created for each polymorphic map type.
+     * This class implements the instantiation of the polymorphic map type
+     * for concrete instances encountered in the program. This class also
+     * creates the datatype that represents the polymorphic map type in the
+     * monomorphized program.
+     */
+
+    class FieldInfo
+    {
+      public Type type;
+
+      public int index;
+
+      // actualParameters is the original parameter list that created this instance of FieldInfo
+      public List<Type> actualParameters;
+
+      public FieldInfo(Type type, int index, List<Type> actualParameters)
+      {
+        this.type = type;
+        this.index = index;
+        this.actualParameters = actualParameters;
+      }
+    }
+
+    private MonomorphizationVisitor monomorphizationVisitor;
+    private MapType mapType;
+    private Dictionary<List<Type>, FieldInfo> fieldInfos;
+    private List<List<Type>> instances;
+    private DatatypeTypeCtorDecl datatypeTypeCtorDecl;
+
+    public PolymorphicMapInfo(MonomorphizationVisitor monomorphizationVisitor, MapType mapType)
+    {
+      this.monomorphizationVisitor = monomorphizationVisitor;
+      this.mapType = mapType;
+      fieldInfos = new Dictionary<List<Type>, FieldInfo>(new ListComparer<Type>());
+      instances = new List<List<Type>>();
+      datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(new TypeCtorDecl(Token.NoToken, MapTypeName, 0,
+        new QKeyValue(Token.NoToken, "datatype", new List<object>(), null)));
+    }
+
+    public CtorType Datatype => new(Token.NoToken, datatypeTypeCtorDecl, new List<Type>());
+
+    public List<List<Type>> Instances => instances;
+
+    public DatatypeTypeCtorDecl CreateDatatypeTypeCtorDecl(PolymorphicMapAndBinderSubstituter polymorphicMapAndBinderSubstituter)
+    {
+      var inParams = instances.Select(x => new Formal(Token.NoToken,
+        new TypedIdent(Token.NoToken, FieldName(x), polymorphicMapAndBinderSubstituter.VisitType(fieldInfos[x].type)),
+        true)).ToList<Variable>();
+      var outParam = new Formal(Token.NoToken,
+        new TypedIdent(Token.NoToken, MapTypeName, new CtorType(Token.NoToken, datatypeTypeCtorDecl, new List<Type>())),
+        false);
+      var function = new Function(Token.NoToken, MapTypeName, new List<TypeVariable>(), inParams, outParam, null,
+        new QKeyValue(Token.NoToken, "constructor", new List<object>(), null));
+      var constructor = new DatatypeConstructor(function);
+      datatypeTypeCtorDecl.AddConstructor(constructor);
+      return datatypeTypeCtorDecl;
+    }
+
+    public Expr GetLambdaConstructor(Dictionary<List<Type>, Expr> instanceExprs)
+    {
+      var returnExpr = new NAryExpr(Token.NoToken, new FunctionCall(datatypeTypeCtorDecl.Constructors[0]),
+        instances.Select(x => instanceExprs[x]).ToList());
+      returnExpr.Type = Datatype;
+      returnExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      return returnExpr;
+    }
+
+    public FieldAccess GetFieldAccess(List<Type> actualParameters)
+    {
+      Debug.Assert(fieldInfos.ContainsKey(actualParameters));
+      actualParameters = PopulateField(actualParameters);
+      return new FieldAccess(Token.NoToken, FieldName(actualParameters), datatypeTypeCtorDecl,
+        new List<DatatypeAccessor> { new(0, fieldInfos[actualParameters].index) });
+    }
+
+    public Type GetFieldType(List<Type> actualParameters)
+    {
+      actualParameters = PopulateField(actualParameters);
+      return fieldInfos[actualParameters].type;
+    }
+
+    public List<Type> PopulateField(List<Type> actualParameters)
+    {
+      if (!fieldInfos.ContainsKey(actualParameters))
+      {
+        fieldInfos[actualParameters] = new FieldInfo(Instantiate(actualParameters), instances.Count, actualParameters);
+        instances.Add(actualParameters);
+      }
+      return fieldInfos[actualParameters].actualParameters;
+    }
+
+    private string MapTypeName => $"PolymorphicMapType_{mapType.UniqueId}";
+
+    private string FieldName(List<Type> actualParameters)
+    {
+      return MonomorphizationVisitor.MkInstanceName(MapTypeName, actualParameters);
+    }
+
+    private MapType Instantiate(List<Type> actualParameters)
+    {
+      var subst = LinqExtender.Map(mapType.TypeParameters, actualParameters);
+      List<Type> newArgs = new List<Type>();
+      foreach (Type t in mapType.Arguments)
+      {
+        newArgs.Add(t.Substitute(subst));
+      }
+      Type newResult = mapType.Result.Substitute(subst);
+      var returnType = new MapType(mapType.tok, new List<TypeVariable>(), newArgs, newResult);
+      return (MapType)new MonomorphizationDuplicator(monomorphizationVisitor).VisitMapType(returnType);
+    }
+  }
+
+  class PolymorphicMapAndBinderSubstituter : VarDeclOnceStandardVisitor
+  {
+    /*
+     * This visitor finalizes the monomorphization of polymorphic maps and binders once
+     * all instantiations have been discovered. It accomplishes the following substitutions:
+     * - ach access to a polymorphic map with an access to corresponding datatype
+     * - each occurrence of a polymorphic map type with the corresponding datatype
+     * - each polymorphic lambda with a constructor call of the corresponding datatype
+     * - each polymorphic forall quantifier with a conjunction
+     * - each polymorphic exists quantifier with a disjunction
+     */
+    
+    private MonomorphizationVisitor monomorphizationVisitor;
+    private Dictionary<BinderExpr, BinderExprMonomorphizer> binderExprMonomorphizers;
+    // The top-level conjuncts of the rewritten axiom are added to this list, thus allowing 
+    // the original axioms to be replaced by the axioms collected in splitAxioms. Splitting 
+    // the axioms makes it easy to read the rewritten program and enables axiom pruning to 
+    // be applied.
+    private List<Axiom> splitAxioms;
+
+    public PolymorphicMapAndBinderSubstituter(MonomorphizationVisitor monomorphizationVisitor)
+    {
+      this.monomorphizationVisitor = monomorphizationVisitor;
+      splitAxioms = new List<Axiom>();
+    }
+
+    public List<Axiom> Substitute(Program program)
+    {
+      binderExprMonomorphizers = monomorphizationVisitor.GetBinderExprMonomorphizers();
+      Visit(program);
+      return splitAxioms;
+    }
+
+    private List<Type> ActualTypeParams(TypeParamInstantiation typeParamInstantiation)
+    {
+      return typeParamInstantiation.FormalTypeParams.Select(x => TypeProxy.FollowProxy(typeParamInstantiation[x]))
+        .Select(x => monomorphizationVisitor.LookupType(x)).ToList();
+    }
+
+    public override Axiom VisitAxiom(Axiom node)
+    {
+      var axiom = base.VisitAxiom(node);
+      var stack = new Stack<Expr>();
+      stack.Push(axiom.Expr);
+      while (stack.Count > 0)
+      {
+        var expr = stack.Pop();
+        if (expr is NAryExpr { Fun: BinaryOperator { Op: BinaryOperator.Opcode.And } } nAryExpr)
+        {
+          stack.Push(nAryExpr.Args[0]);
+          stack.Push(nAryExpr.Args[1]);
+        }
+        else
+        {
+          splitAxioms.Add(new Axiom(Token.NoToken, expr));
+        }
+      }
+      return axiom;
+    }
+
+    public override Expr VisitNAryExpr(NAryExpr node)
+    {
+      if (node.Fun is BinaryOperator { Op: BinaryOperator.Opcode.Eq } && !node.Args[0].Type.Equals(node.Args[1].Type))
+      {
+        return Expr.False;
+      }
+      if (node.Fun is BinaryOperator { Op: BinaryOperator.Opcode.Neq } && !node.Args[0].Type.Equals(node.Args[1].Type))
+      {
+        return Expr.True;
+      }
+      if (!(node.Fun is MapSelect || node.Fun is MapStore) || node.TypeParameters.FormalTypeParams.Count == 0)
+      {
+        return base.VisitNAryExpr(node);
+      }
+      var polymorphicMapInfo = monomorphizationVisitor.RegisterPolymorphicMapType(node.Args[0].Type);
+      node = (NAryExpr)base.VisitNAryExpr(node);
+      var actualTypeParams = ActualTypeParams(node.TypeParameters);
+      var fieldAccess = polymorphicMapInfo.GetFieldAccess(actualTypeParams);
+      var polymorphicMapDatatypeExpr = node.Args[0];
+      var fieldAccessExpr = new NAryExpr(Token.NoToken, fieldAccess, new List<Expr> { polymorphicMapDatatypeExpr });
+      fieldAccessExpr.Type = polymorphicMapInfo.GetFieldType(actualTypeParams);
+      fieldAccessExpr.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      node.Args[0] = fieldAccessExpr;
+      node.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+      if (node.Fun is MapStore)
+      {
+        node.Type = fieldAccessExpr.Type;
+        var fieldUpdate = new FieldUpdate(fieldAccess);
+        node = new NAryExpr(Token.NoToken, fieldUpdate, new List<Expr> { polymorphicMapDatatypeExpr, node });
+        node.Type = polymorphicMapInfo.Datatype;
+      }
+      return node;
+    }
+
+    public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
+    {
+      var polymorphicMapInfo = monomorphizationVisitor.RegisterPolymorphicMapType(node.Map.Type);
+      var mapAssignLhs = (MapAssignLhs)base.VisitMapAssignLhs(node);
+      if (mapAssignLhs.TypeParameters.FormalTypeParams.Count > 0)
+      {
+        var actualTypeParams = ActualTypeParams(mapAssignLhs.TypeParameters);
+        var fieldAccess = polymorphicMapInfo.GetFieldAccess(actualTypeParams);
+        var fieldAssignLhs = new FieldAssignLhs(Token.NoToken, mapAssignLhs.Map, fieldAccess)
+        {
+          TypeParameters = SimpleTypeParamInstantiation.EMPTY
+        };
+        mapAssignLhs = new MapAssignLhs(Token.NoToken, fieldAssignLhs, mapAssignLhs.Indexes)
+        {
+          TypeParameters = SimpleTypeParamInstantiation.EMPTY
+        };
+      }
+      else
+      {
+        mapAssignLhs = new MapAssignLhs(Token.NoToken, mapAssignLhs.Map, mapAssignLhs.Indexes)
+        {
+          TypeParameters = SimpleTypeParamInstantiation.EMPTY
+        };
+      }
+      return mapAssignLhs;
+    }
+
+    public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
+    {
+      var fieldAssignLhs = (FieldAssignLhs)base.VisitFieldAssignLhs(node);
+      fieldAssignLhs = new FieldAssignLhs(Token.NoToken, fieldAssignLhs.Datatype, fieldAssignLhs.FieldAccess)
+        {
+          TypeParameters = SimpleTypeParamInstantiation.EMPTY
+        };
+      return fieldAssignLhs;
+    }
+
+    public override Type VisitMapType(MapType node)
+    {
+      node = (MapType)base.VisitMapType(node);
+      if (node.TypeParameters.Count > 0)
+      {
+        var polymorphicMapInfo = monomorphizationVisitor.RegisterPolymorphicMapType(node);
+        return polymorphicMapInfo.Datatype;
+      }
+      return node;
+    }
+
+    public override Expr VisitBinderExpr(BinderExpr node)
+    {
+      var returnExpr = binderExprMonomorphizers.ContainsKey(node)
+        ? binderExprMonomorphizers[node].MonomorphicExpr(this)
+        : base.VisitBinderExpr(node);
+      if (returnExpr is QuantifierExpr { Triggers: { } } quantifierExpr)
+      {
+        quantifierExpr.Triggers = VisitTrigger(quantifierExpr.Triggers);
+      }
+      if (returnExpr is BinderExpr { Attributes: { } } binderExpr)
+      {
+        binderExpr.Attributes = VisitQKeyValue(binderExpr.Attributes);
+      }
+      return returnExpr;
+    }
+
+    public override Expr VisitLambdaExpr(LambdaExpr node)
+    {
+      return VisitBinderExpr(node);
+    }
+
+    public override Expr VisitForallExpr(ForallExpr node)
+    {
+      return VisitBinderExpr(node);
+    }
+
+    public override Expr VisitExistsExpr(ExistsExpr node)
+    {
+      return VisitBinderExpr(node);
+    }
+
+    public override Type VisitType(Type node)
+    {
+      return (Type)Visit(node);
+    }
+
+    public override Type VisitBasicType(BasicType node)
+    {
+      return node;
+    }
+
+    public override Type VisitTypeVariable(TypeVariable node)
+    {
+      return node;
+    }
+
+    public override Expr VisitExpr(Expr node)
+    {
+      node = base.VisitExpr(node);
+      node.Type = VisitType(node.Type);
+      return node;
+    }
+    
+    public override Expr VisitIdentifierExpr(IdentifierExpr node)
+    {
+      var identifierExpr = base.VisitIdentifierExpr(node);
+      identifierExpr.Type = VisitType(identifierExpr.Type);
+      return identifierExpr;
+    }
+    
+    public override Declaration VisitTypeSynonymDecl(TypeSynonymDecl node)
+    {
+      node.Body = VisitType(node.Body);
+      return node;
+    }
+
+    public override Constant VisitConstant(Constant node)
+    {
+      return (Constant)VisitVariable(node);
+    }
+  }
+
   class MonomorphizationDuplicator : Duplicator
   {
+    // This class works together with MonomorphizationVisitor to accomplish monomorphization
+    // of a Boogie program.
+
     private MonomorphizationVisitor monomorphizationVisitor;
-    private Absy parentAbsy;
     private Dictionary<TypeVariable, Type> typeParamInstantiation;
     private Dictionary<Variable, Variable> variableMapping;
     private Dictionary<Variable, Variable> boundVarSubst;
@@ -314,7 +792,6 @@ namespace Microsoft.Boogie
     public MonomorphizationDuplicator(MonomorphizationVisitor monomorphizationVisitor)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
-      this.parentAbsy = null;
       typeParamInstantiation = new Dictionary<TypeVariable, Type>();
       variableMapping = new Dictionary<Variable, Variable>();
       boundVarSubst = new Dictionary<Variable, Variable>();
@@ -324,20 +801,18 @@ namespace Microsoft.Boogie
       Dictionary<TypeVariable, Type> typeParamInstantiation)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
-      this.parentAbsy = null;
       this.typeParamInstantiation = typeParamInstantiation;
-      this.variableMapping = new Dictionary<Variable, Variable>();
-      this.boundVarSubst = new Dictionary<Variable, Variable>();
+      variableMapping = new Dictionary<Variable, Variable>();
+      boundVarSubst = new Dictionary<Variable, Variable>();
     }
 
-    public MonomorphizationDuplicator(MonomorphizationVisitor monomorphizationVisitor, Absy parentAbsy,
+    public MonomorphizationDuplicator(MonomorphizationVisitor monomorphizationVisitor,
       Dictionary<TypeVariable, Type> typeParamInstantiation, Dictionary<Variable, Variable> variableMapping)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
-      this.parentAbsy = parentAbsy;
       this.typeParamInstantiation = typeParamInstantiation;
       this.variableMapping = variableMapping;
-      this.boundVarSubst = new Dictionary<Variable, Variable>();
+      boundVarSubst = new Dictionary<Variable, Variable>();
     }
 
     public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
@@ -347,6 +822,12 @@ namespace Microsoft.Boogie
         fieldAssignLhs.TypeParameters.FormalTypeParams.Select(x =>
             TypeProxy.FollowProxy(fieldAssignLhs.TypeParameters[x]).Substitute(typeParamInstantiation))
           .Select(x => monomorphizationVisitor.LookupType(x)).ToList();
+      fieldAssignLhs.TypeParameters =
+        SimpleTypeParamInstantiation.From(fieldAssignLhs.TypeParameters.FormalTypeParams, actualTypeParams);
+      if (actualTypeParams.Any(HasFreeTypeVariables))
+      {
+        return fieldAssignLhs;
+      }
       var fieldAccess = fieldAssignLhs.FieldAccess;
       var datatypeTypeCtorDecl = fieldAccess.DatatypeTypeCtorDecl;
       if (datatypeTypeCtorDecl.Arity == 0)
@@ -359,6 +840,22 @@ namespace Microsoft.Boogie
           monomorphizationVisitor.InstantiateFieldAccess(fieldAssignLhs.FieldAccess, actualTypeParams);
       }
       return fieldAssignLhs;
+    }
+
+    public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
+    {
+      var mapAssignLhs = (MapAssignLhs)base.VisitMapAssignLhs(node);
+      var actualTypeParams =
+        mapAssignLhs.TypeParameters.FormalTypeParams.Select(x =>
+            TypeProxy.FollowProxy(mapAssignLhs.TypeParameters[x]).Substitute(typeParamInstantiation))
+          .Select(x => monomorphizationVisitor.LookupType(x)).ToList();
+      mapAssignLhs.TypeParameters =
+        SimpleTypeParamInstantiation.From(mapAssignLhs.TypeParameters.FormalTypeParams, actualTypeParams);
+      if (!actualTypeParams.Any(HasFreeTypeVariables) && actualTypeParams.Count > 0)
+      {
+        monomorphizationVisitor.RegisterPolymorphicMapType(node.Map.Type).PopulateField(actualTypeParams);
+      }
+      return mapAssignLhs;
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
@@ -376,7 +873,20 @@ namespace Microsoft.Boogie
         return returnExpr.Args[0];
       }
 
-      if (returnExpr.Fun is IsConstructor isConstructor)
+      if (actualTypeParams.Any(HasFreeTypeVariables))
+      {
+        return returnExpr;
+      }
+      
+      if (returnExpr.Fun is MapSelect && returnExpr.TypeParameters.FormalTypeParams.Count > 0)
+      {
+        monomorphizationVisitor.RegisterPolymorphicMapType(returnExpr.Args[0].Type).PopulateField(actualTypeParams);
+      }
+      else if (returnExpr.Fun is MapStore && returnExpr.TypeParameters.FormalTypeParams.Count > 0)
+      {
+        monomorphizationVisitor.RegisterPolymorphicMapType(returnExpr.Type).PopulateField(actualTypeParams);
+      }
+      else if (returnExpr.Fun is IsConstructor isConstructor)
       {
         var datatypeTypeCtorDecl = isConstructor.DatatypeTypeCtorDecl;
         if (datatypeTypeCtorDecl.Arity == 0)
@@ -417,7 +927,7 @@ namespace Microsoft.Boogie
       }
       else if (returnExpr.Fun is FunctionCall functionCall)
       {
-        // a non-generic function must be processed to rewrite any generic types it uses
+        // a non-polymorphic function must be processed to rewrite any polymorphic types it uses
         // to the corresponding instantiated types
         if (functionCall.Func.TypeParameters.Count == 0)
         {
@@ -471,11 +981,11 @@ namespace Microsoft.Boogie
 
     public override Type VisitTypeVariable(TypeVariable node)
     {
-      if (typeParamInstantiation.Count == 0)
+      if (typeParamInstantiation.ContainsKey(node))
       {
-        return node;
+        return typeParamInstantiation[node];
       }
-      return typeParamInstantiation[node];
+      return node;
     }
 
     public override Type VisitMapType(MapType node)
@@ -483,10 +993,13 @@ namespace Microsoft.Boogie
       node = (MapType)node.Clone();
       for (int i = 0; i < node.Arguments.Count; ++i)
       {
-        node.Arguments[i] = (Type)this.Visit(node.Arguments[i]);
+        node.Arguments[i] = (Type)Visit(node.Arguments[i]);
       }
-
-      node.Result = (Type)this.Visit(node.Result);
+      node.Result = (Type)Visit(node.Result);
+      if (node.FreeVariables.Count == 0 && node.TypeParameters.Count > 0)
+      {
+        monomorphizationVisitor.RegisterPolymorphicMapType(node);
+      }
       return node;
     }
 
@@ -495,12 +1008,15 @@ namespace Microsoft.Boogie
       node = (CtorType)node.Clone();
       for (int i = 0; i < node.Arguments.Count; ++i)
       {
-        node.Arguments[i] = (Type)this.Visit(node.Arguments[i]);
+        node.Arguments[i] = (Type)Visit(node.Arguments[i]);
       }
 
+      if (node.Arguments.Any(HasFreeTypeVariables))
+      {
+        return node;
+      }
+      
       var typeCtorDecl = node.Decl;
-      monomorphizationVisitor.AddTriggerType(typeCtorDecl, node);
-
       if (MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl))
       {
         return new CtorType(node.tok, monomorphizationVisitor.InstantiateTypeCtorDecl(typeCtorDecl, node.Arguments),
@@ -512,15 +1028,14 @@ namespace Microsoft.Boogie
 
     public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
     {
-      base.VisitTypeSynonymAnnotation(node);
-      return node.ExpandedType;
+      return VisitType(node.ExpandedType);
     }
 
     public override Type VisitType(Type node)
     {
       return (Type)Visit(node);
     }
-
+    
     public override Type VisitTypeProxy(TypeProxy node)
     {
       return VisitType(TypeProxy.FollowProxy(node));
@@ -561,6 +1076,7 @@ namespace Microsoft.Boogie
       }
 
       var expr = (BinderExpr)base.VisitBinderExpr(node);
+      expr.Type = VisitType(expr.Type);
       expr.Dummies = node.Dummies.Select(x => oldToNew[x]).ToList<Variable>();
       // We process triggers of quantifier expressions here, because otherwise the
       // substitutions for bound variables have to be leaked outside this procedure.
@@ -568,7 +1084,7 @@ namespace Microsoft.Boogie
       {
         if (quantifierExpr.Triggers != null)
         {
-          ((QuantifierExpr)expr).Triggers = this.VisitTrigger(quantifierExpr.Triggers);
+          ((QuantifierExpr)expr).Triggers = VisitTrigger(quantifierExpr.Triggers);
         }
       }
 
@@ -582,13 +1098,33 @@ namespace Microsoft.Boogie
         boundVarSubst.Remove(x);
       }
 
+      if (expr.TypeParameters.Count > 0)
+      {
+        if (expr is LambdaExpr lambdaExpr)
+        {
+          monomorphizationVisitor.AddBinderExprMonomorphizer(new LambdaExprMonomorphizer(lambdaExpr, monomorphizationVisitor));
+        }
+        else if (expr is ForallExpr forallExpr)
+        {
+          monomorphizationVisitor.AddBinderExprMonomorphizer(new ForallExprMonomorphizer(forallExpr, monomorphizationVisitor));
+        }
+        else if (expr is ExistsExpr existsExpr)
+        {
+          monomorphizationVisitor.AddBinderExprMonomorphizer(new ExistsExprMonomorphizer(existsExpr, monomorphizationVisitor));
+        }
+        else
+        {
+          throw new cce.UnreachableException();
+        }
+      }
+
       return expr;
     }
 
     public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
     {
       // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
-      return (QuantifierExpr)this.VisitBinderExpr(node);
+      return (QuantifierExpr)VisitBinderExpr(node);
     }
 
     public override Expr VisitLetExpr(LetExpr node)
@@ -611,9 +1147,43 @@ namespace Microsoft.Boogie
 
       return expr;
     }
+
+    private static bool HasFreeTypeVariables(Type type)
+    {
+      return new FreeTypeVariableChecker().IsPolymorphic(type);
+    }
+
+    class FreeTypeVariableChecker
+    {
+      private HashSet<TypeVariable> boundTypeVariables = new HashSet<TypeVariable>();
+      public bool IsPolymorphic(Type type)
+      {
+        type = TypeProxy.FollowProxy(type).Expanded;
+        if (type is BasicType)
+        {
+          return false;
+        }
+        if (type is TypeVariable typeVariable)
+        {
+          return !boundTypeVariables.Contains(typeVariable);
+        }
+        if (type is CtorType ctorType)
+        {
+          return ctorType.Arguments.Any(IsPolymorphic);
+        }
+        if (type is MapType mapType)
+        {
+          mapType.TypeParameters.Iter(x => boundTypeVariables.Add(x));
+          var returnVal = mapType.Arguments.Any(IsPolymorphic) || IsPolymorphic(mapType.Result);
+          mapType.TypeParameters.Iter(x => boundTypeVariables.Remove(x));
+          return returnVal;
+        }
+        throw new cce.UnreachableException();
+      }
+    }
   }
 
-  class MonomorphizationVisitor : StandardVisitor
+  class MonomorphizationVisitor : VarDeclOnceStandardVisitor
   {
     /*
      * This class monomorphizes a Boogie program. Monomorphization starts from
@@ -630,12 +1200,42 @@ namespace Microsoft.Boogie
      * the latter creates a duplicate copy. MonomorphizationDuplicator is needed
      * because a polymorphic function, type, or procedure may be visited several
      * times in different type contexts.
+     *
+     * A polymorphic map type T is converted into a single-constructor datatype with
+     * one field for each instantiation I of T encountered in the program. An operation
+     * on a value of I-instantiation of T is translated to the corresponding operation
+     * on the field corresponding to I in the datatype corresponding to T. Polymorphic
+     * lambdas are translated to a constructed value of the datatype; the field
+     * corresponding to I is initialized by instantiating the polymorphic lambda on I.
+     *
+     * A polymorphic forall quantifier is translated to a conjunction of monomorphic
+     * instances of the quantifier obtained by instantiating the bound type parameters
+     * on concrete types collected from the program. Similarly, a polymorphic exists
+     * quantifier is translated to a disjunction. This instantiation scheme is "sound"
+     * if each forall quantifier occurs in positive polarity and each exists quantifier
+     * occurs in negative polarity in the verification condition submitted for
+     * satisfiability checking.
+     *
+     * The implementation uses a heuristic for collecting types for monomorphizing quantifiers.
+     * The body of the quantifier is examined to collect all instances of polymorphic types
+     * and functions mentioned in it. Suppose an instantiation T X of the polymorphic type T
+     * (with one parameter instantiated to X) is collected. If X is a type parameter of the
+     * enclosing quantifier, then each concrete type used in any instantiation of T becomes a
+     * candidate for instantiating the type quantifier. This scheme is easily generalized to
+     * types with more than one type parameter. References to polymorphic functions are handled
+     * similarly. Once candidates for all bound type parameters of the quantifier are collected,
+     * instantiation is performed using the Cartesian product of the candidates for each parameter.
+     *
+     * A big source of complexity in the implementation is the handling of nested binders.
+     * To handle nesting appropriately, the implementation
+     * (1) dynamically discovers polymorphic binders that become candidates for instantiation, and
+     * (2) finalizes the instantiation of a binder only when the instantiation of all of its
+     * children has been finalized.
      */
 
     public CoreOptions Options { get; }
     
     private Program program;
-    private Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated;
     private Dictionary<string, Function> nameToFunction;
     private Dictionary<string, Procedure> nameToProcedure;
     private Dictionary<string, Implementation> nameToImplementation;
@@ -645,20 +1245,18 @@ namespace Microsoft.Boogie
     private Dictionary<Implementation, Dictionary<List<Type>, Implementation>> implInstantiations;
     private Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>> typeInstantiations;
     private HashSet<Declaration> newInstantiatedDeclarations;
+    private List<BinderExprMonomorphizer> binderExprMonomorphizers;
+    private Dictionary<MapType, PolymorphicMapInfo> polymorphicMapInfos;
     private Dictionary<DeclWithFormals, Tuple<DeclWithFormals, Dictionary<string, Type>>> declWithFormalsToTypeInstantiation;
     private Dictionary<TypeCtorDecl, Tuple<TypeCtorDecl, List<Type>>> typeCtorDeclToTypeInstantiation;
-    private Dictionary<TypeCtorDecl, HashSet<CtorType>> triggerTypes;
-    private Dictionary<TypeCtorDecl, HashSet<CtorType>> newTriggerTypes;
     private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
     private HashSet<Function> visitedFunctions;
     private Dictionary<Procedure, Implementation> procToImpl;
 
-    private MonomorphizationVisitor(CoreOptions options, Program program,
-      Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated, HashSet<Axiom> polymorphicFunctionAxioms)
+    private MonomorphizationVisitor(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
       Options = options;
       this.program = program;
-      this.axiomsToBeInstantiated = axiomsToBeInstantiated;
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
       nameToImplementation = new Dictionary<string, Implementation>();
       program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).Iter(
@@ -687,6 +1285,8 @@ namespace Microsoft.Boogie
       typeCtorDeclToTypeInstantiation = new Dictionary<TypeCtorDecl, Tuple<TypeCtorDecl, List<Type>>>();
       typeInstantiations = new Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>>();
       newInstantiatedDeclarations = new HashSet<Declaration>();
+      binderExprMonomorphizers = new List<BinderExprMonomorphizer>();
+      polymorphicMapInfos = new Dictionary<MapType, PolymorphicMapInfo>();
       nameToTypeCtorDecl = new Dictionary<string, TypeCtorDecl>();
       program.TopLevelDeclarations.OfType<TypeCtorDecl>()
         .Where(typeCtorDecl => MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl)).Iter(
@@ -695,31 +1295,22 @@ namespace Microsoft.Boogie
             nameToTypeCtorDecl.Add(typeCtorDecl.Name, typeCtorDecl);
             typeInstantiations.Add(typeCtorDecl, new Dictionary<List<Type>, TypeCtorDecl>(new ListComparer<Type>()));
           });
-      triggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
-      newTriggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
-      axiomsToBeInstantiated.Values.ToHashSet().Iter(typeCtorDecl =>
-      {
-        triggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
-        newTriggerTypes.Add(typeCtorDecl, new HashSet<CtorType>());
-      });
-      this.visitedTypeCtorDecls = new HashSet<TypeCtorDecl>();
-      this.visitedFunctions = new HashSet<Function>();
-      this.procToImpl = new Dictionary<Procedure, Implementation>();
-      program.TopLevelDeclarations.OfType<Implementation>().Iter(impl => this.procToImpl[impl.Proc] = impl);
+      visitedTypeCtorDecls = new HashSet<TypeCtorDecl>();
+      visitedFunctions = new HashSet<Function>();
+      procToImpl = new Dictionary<Procedure, Implementation>();
+      program.TopLevelDeclarations.OfType<Implementation>().Iter(impl => procToImpl[impl.Proc] = impl);
       program.RemoveTopLevelDeclarations(decl => 
         decl is Implementation impl && implInstantiations.ContainsKey(impl) ||
         decl is Procedure proc && procInstantiations.ContainsKey(proc) ||
         decl is Function function && functionInstantiations.ContainsKey(function) ||
         decl is TypeCtorDecl typeCtorDecl && typeInstantiations.ContainsKey(typeCtorDecl) ||
         decl is TypeSynonymDecl typeSynonymDecl && typeSynonymDecl.TypeParameters.Count > 0 ||
-        decl is Axiom axiom && (axiomsToBeInstantiated.ContainsKey(axiom) || polymorphicFunctionAxioms.Contains(axiom)));
+        decl is Axiom axiom && polymorphicFunctionAxioms.Contains(axiom));
     }
     
-    public static MonomorphizationVisitor Initialize(CoreOptions options, Program program,
-      Dictionary<Axiom, TypeCtorDecl> axiomsToBeInstantiated,
-      HashSet<Axiom> polymorphicFunctionAxioms)
+    public static MonomorphizationVisitor Initialize(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
-      var monomorphizationVisitor = new MonomorphizationVisitor(options, program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+      var monomorphizationVisitor = new MonomorphizationVisitor(options, program, polymorphicFunctionAxioms);
       // ctorTypes contains all the uninterpreted types created for monomorphizing top-level polymorphic implementations 
       // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
@@ -738,21 +1329,92 @@ namespace Microsoft.Boogie
         instantiatedImpl.Proc = monomorphizationVisitor.InstantiateProcedure(impl.Proc, actualTypeParams);
       });
       monomorphizationVisitor.VisitProgram(program);
-      monomorphizationVisitor.InstantiateAxioms();
-      monomorphizationVisitor.AddInstantiatedDeclarations(program);
+      monomorphizationVisitor.AddInstantiatedDeclarations();
       program.AddTopLevelDeclarations(typeCtorDecls);
+      monomorphizationVisitor.FixpointOnBinderExprMonomorphizers();
+      var polymorphicMapAndBinderSubstituter = new PolymorphicMapAndBinderSubstituter(monomorphizationVisitor);
+      var polymorphicMapDatatypeCtorDecls =
+        monomorphizationVisitor.polymorphicMapInfos.Values.Select(polymorphicMapInfo =>
+          polymorphicMapInfo.CreateDatatypeTypeCtorDecl(polymorphicMapAndBinderSubstituter)).ToList();
+      var splitAxioms = polymorphicMapAndBinderSubstituter.Substitute(program);
+      program.RemoveTopLevelDeclarations(decl => decl is Axiom);
+      program.AddTopLevelDeclarations(splitAxioms);
+      program.AddTopLevelDeclarations(polymorphicMapDatatypeCtorDecls);
       Contract.Assert(MonomorphismChecker.IsMonomorphic(program));
       return monomorphizationVisitor;
     }
 
-    public void AddTriggerType(TypeCtorDecl typeCtorDecl, CtorType ctorType)
+    /*
+     * Binder expressions may be nested inside other binder expressions. The instantiation of known binder
+     * expressions using known type and function instantiations may discover more binder expressions and
+     * create more type and function instantiation. After the program has been visited, the top-level binder
+     * expressions have been discovered. The following method is called subsequently to execute a fixpoint
+     * on the set of binder expressions, function instantiations, and type instantiations.
+     */
+    private void FixpointOnBinderExprMonomorphizers()
     {
-      if (triggerTypes.ContainsKey(typeCtorDecl) &&
-          !triggerTypes[typeCtorDecl].Contains(ctorType))
+      var moreWorkNeeded = true;
+      while (moreWorkNeeded)
       {
-        triggerTypes[typeCtorDecl].Add(ctorType);
-        newTriggerTypes[typeCtorDecl].Add(ctorType);
+        moreWorkNeeded = false;
+
+        // binderExprMonomorphizers is modified inside the loop so iterate over a copy of it
+        var oldBinderExprMonomorphizers = new List<BinderExprMonomorphizer>(binderExprMonomorphizers);
+        foreach (var binderExprMonomorphizer in oldBinderExprMonomorphizers)
+        {
+          if (binderExprMonomorphizer.Instantiate())
+          {
+            // more instances created in binderExprMonomorphizer
+            moreWorkNeeded = true;
+          }
+        }
+
+        if (newInstantiatedDeclarations.Count > 0)
+        {
+          // more function/type instantiations were created 
+          AddInstantiatedDeclarations();
+          moreWorkNeeded = true;
+        }
+
+        if (oldBinderExprMonomorphizers.Count < binderExprMonomorphizers.Count)
+        {
+          // the instantiation in some binderExprMonomorphizer resulted in the discovery of a binder expression
+          moreWorkNeeded = true;
+        }
       }
+    }
+
+    public Dictionary<BinderExpr, BinderExprMonomorphizer> GetBinderExprMonomorphizers()
+    {
+      return binderExprMonomorphizers.ToDictionary(x => x.BinderExpr, x => x);
+    }
+
+    public IEnumerable<List<Type>> NamedDeclarationInstantiations(NamedDeclaration decl)
+    {
+      if (decl is Function function)
+      {
+        return functionInstantiations[function].Keys;
+      }
+      if (decl is TypeCtorDecl typeCtorDecl)
+      {
+        return typeInstantiations[typeCtorDecl].Keys;
+      }
+      throw new cce.UnreachableException();
+    }
+
+    public PolymorphicMapInfo RegisterPolymorphicMapType(Type type)
+    {
+      var mapType = (MapType)LookupType(type);
+      if (!polymorphicMapInfos.ContainsKey(mapType))
+      {
+        polymorphicMapInfos[mapType] = new PolymorphicMapInfo(this, mapType);
+      }
+      return polymorphicMapInfos[mapType];
+    }
+
+    public void AddBinderExprMonomorphizer(BinderExprMonomorphizer binderExprMonomorphizer)
+    {
+      binderExprMonomorphizers.Add(binderExprMonomorphizer);
     }
 
     public void InlineCallCmd(CallCmd callCmd, List<Type> actualTypeParams)
@@ -783,20 +1445,30 @@ namespace Microsoft.Boogie
 
     private Axiom InstantiateAxiom(Axiom axiom, List<Type> actualTypeParams)
     {
-      var forallExpr = (ForallExpr)InstantiateBinderExpr((BinderExpr)axiom.Expr, actualTypeParams);
-      var instantiatedAxiom = new Axiom(axiom.tok, forallExpr.Dummies.Count == 0 ? forallExpr.Body : forallExpr,
-        axiom.Comment, axiom.Attributes);
+      var axiomExpr = InstantiateBinderExpr((BinderExpr)axiom.Expr, actualTypeParams);
+      var instantiatedAxiom = new Axiom(axiom.tok, axiomExpr, axiom.Comment, axiom.Attributes);
       newInstantiatedDeclarations.Add(instantiatedAxiom);
       return instantiatedAxiom;
-    }  
+    }
 
-    public BinderExpr InstantiateBinderExpr(BinderExpr binderExpr, List<Type> actualTypeParams)
+    public Expr InstantiateBinderExpr(BinderExpr binderExpr, List<Type> actualTypeParams)
     {
-      binderExpr = (BinderExpr)InstantiateAbsy(binderExpr, LinqExtender.Map(binderExpr.TypeParameters, actualTypeParams),
-        new Dictionary<Variable, Variable>());
+      var binderExprTypeParameters = binderExpr.TypeParameters;
       binderExpr.TypeParameters = new List<TypeVariable>();
-      return binderExpr;
-    }  
+      var newBinderExpr = (BinderExpr)InstantiateAbsy(binderExpr, LinqExtender.Map(binderExprTypeParameters, actualTypeParams),
+        new Dictionary<Variable, Variable>());
+      binderExpr.TypeParameters = binderExprTypeParameters;
+      if (newBinderExpr is QuantifierExpr quantifierExpr && quantifierExpr.Dummies.Count == 0)
+      {
+        return quantifierExpr.Body;
+      }
+      if (binderExpr is LambdaExpr)
+      {
+        var polymorphicMapInfo = RegisterPolymorphicMapType(newBinderExpr.Type);
+        newBinderExpr.Type = polymorphicMapInfo.GetFieldType(actualTypeParams);
+      }
+      return newBinderExpr;
+    }
       
     public Function InstantiateFunction(Function func, List<Type> actualTypeParams)
     {
@@ -823,13 +1495,13 @@ namespace Microsoft.Boogie
         else if (func.DefinitionAxiom != null)
         {
           instantiatedFunction.DefinitionAxiom =
-            this.InstantiateAxiom(func.DefinitionAxiom, actualTypeParams);
+            InstantiateAxiom(func.DefinitionAxiom, actualTypeParams);
         }
       }
       return functionInstantiations[func][actualTypeParams];
     }
 
-    private void AddInstantiatedDeclarations(Program program)
+    private void AddInstantiatedDeclarations()
     {
       program.AddTopLevelDeclarations(newInstantiatedDeclarations);
       newInstantiatedDeclarations = new HashSet<Declaration>();
@@ -839,7 +1511,7 @@ namespace Microsoft.Boogie
       Dictionary<Variable, Variable> variableMapping)
     {
       var monomorphizationDuplicator =
-        new MonomorphizationDuplicator(this, absy, typeParamInstantiation, variableMapping);
+        new MonomorphizationDuplicator(this, typeParamInstantiation, variableMapping);
       return monomorphizationDuplicator.Visit(absy);
     }  
 
@@ -990,17 +1662,15 @@ namespace Microsoft.Boogie
 
     public Type LookupType(Type type)
     {
-      type = TypeProxy.FollowProxy(type);
-      if (type is CtorType ctorType && MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(ctorType.Decl))
+      type = TypeProxy.FollowProxy(type.Expanded);
+      if (type is CtorType ctorType && ctorType.FreeVariables.Count == 0 &&
+          MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(ctorType.Decl))
       {
         var instantiatedTypeArguments = ctorType.Arguments.Select(x => LookupType(x)).ToList();
         return new CtorType(Token.NoToken, typeInstantiations[ctorType.Decl][instantiatedTypeArguments],
           new List<Type>());
       }
-      else
-      {
-        return type;
-      }
+      return type;
     }
 
     public IsConstructor InstantiateIsConstructor(IsConstructor isConstructor, List<Type> actualTypeParams)
@@ -1034,8 +1704,7 @@ namespace Microsoft.Boogie
         return null;
       }
       var instantiatedFunction = InstantiateTypeCtorDecl(typeCtorDecl, actualTypeParams);
-      InstantiateAxioms();
-      AddInstantiatedDeclarations(program);
+      AddInstantiatedDeclarations();
       return instantiatedFunction;
     }
     
@@ -1047,23 +1716,8 @@ namespace Microsoft.Boogie
       }
       var actualTypeParams = function.TypeParameters.Select(tp => typeParamInstantiationMap[tp.Name]).ToList();
       var instantiatedFunction = InstantiateFunction(function, actualTypeParams);
-      InstantiateAxioms();
-      AddInstantiatedDeclarations(program);
+      AddInstantiatedDeclarations();
       return instantiatedFunction;
-    }
-
-    private void InstantiateAxioms()
-    {
-      while (newTriggerTypes.Any(x => x.Value.Count != 0))
-      {
-        var nextTriggerTypes = this.newTriggerTypes;
-        newTriggerTypes = new Dictionary<TypeCtorDecl, HashSet<CtorType>>();
-        nextTriggerTypes.Iter(x => { newTriggerTypes.Add(x.Key, new HashSet<CtorType>()); });
-        foreach ((var axiom, var tcDecl) in axiomsToBeInstantiated)
-        {
-          nextTriggerTypes[tcDecl].Iter(trigger => InstantiateAxiom(axiom, trigger.Arguments));
-        }
-      }
     }
 
     public bool GetFunction(string functionName, out Function function)
@@ -1092,10 +1746,8 @@ namespace Microsoft.Boogie
       {
         return base.VisitCallCmd(node);
       }
-      else
-      {
-        return new MonomorphizationDuplicator(this).VisitCallCmd(node);
-      }
+
+      return new MonomorphizationDuplicator(this).VisitCallCmd(node);
     }
 
     public override CtorType VisitCtorType(CtorType node)
@@ -1135,8 +1787,13 @@ namespace Microsoft.Boogie
       return new MonomorphizationDuplicator(this).VisitFieldAssignLhs(node);
     }
 
+    public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
+    {
+      return new MonomorphizationDuplicator(this).VisitMapAssignLhs(node);
+    }
+
     // this function may be called directly by monomorphizationDuplicator
-    // if a non-generic call to a datatype constructor/selector/membership
+    // if a non-polymorphic call to a datatype constructor/selector/membership
     // is discovered in an expression
     public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
     {
@@ -1153,7 +1810,7 @@ namespace Microsoft.Boogie
     }
 
     // this function may be called directly by monomorphizationDuplicator
-    // if a non-generic function call is discovered in an expression
+    // if a non-polymorphic function call is discovered in an expression
     public override Function VisitFunction(Function node)
     {
       if (visitedFunctions.Contains(node))
@@ -1166,22 +1823,30 @@ namespace Microsoft.Boogie
 
     public override Constant VisitConstant(Constant node)
     {
-      node = base.VisitConstant(node);
+      node = (Constant)base.VisitVariable(node);
       node.TypedIdent = new TypedIdent(node.TypedIdent.tok, node.TypedIdent.Name,
-        new MonomorphizationDuplicator(this).VisitType(node.TypedIdent.Type));
+        new MonomorphizationDuplicator(this).VisitType(node.TypedIdent.Type), node.TypedIdent.WhereExpr);
       return node;
     }
   }
   
   public class Monomorphizer
   {
+    /*
+     * This class exposes monomorphization to the rest of Boogie. After type checking a Boogie program,
+     * the static factory method Monomorphize is invoked with a Program object as a parameter. This factory
+     * method does the following:
+     * (1) returns if the input program is not monomorphizable,
+     * (2) otherwise, creates a Monomorphizer object and monomorphizes the program,
+     * (3) stashes the created Monomorphizer object inside the provided Program object.
+     */
+
     public static MonomorphizableStatus Monomorphize(CoreOptions options, Program program)
     {
-      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var axiomsToBeInstantiated,
-        out var polymorphicFunctionAxioms);
+      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var polymorphicFunctionAxioms);
       if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
       {
-        var monomorphizationVisitor = MonomorphizationVisitor.Initialize(options, program, axiomsToBeInstantiated, polymorphicFunctionAxioms);
+        var monomorphizationVisitor = MonomorphizationVisitor.Initialize(options, program, polymorphicFunctionAxioms);
         program.monomorphizer = new Monomorphizer(monomorphizationVisitor);
       }
       return monomorphizableStatus;
