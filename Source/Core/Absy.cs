@@ -1351,6 +1351,7 @@ namespace Microsoft.Boogie
     public DatatypeTypeCtorDecl(TypeCtorDecl typeCtorDecl)
       : base(typeCtorDecl.tok, typeCtorDecl.Name, typeCtorDecl.Arity, typeCtorDecl.Attributes)
     {
+      this.typeParameters = new List<TypeVariable>();
       this.constructors = new List<DatatypeConstructor>();
       this.nameToConstructor = new Dictionary<string, DatatypeConstructor>();
       this.accessors = new Dictionary<string, List<DatatypeAccessor>>();
@@ -1458,10 +1459,46 @@ namespace Microsoft.Boogie
       return accessors[fieldName];
     }
 
+    private void EmitCommaSeparatedListOfStrings(TokenTextWriter stream, int level, IEnumerable<string> values)
+    {
+      bool first = true;
+      values.Iter(value =>
+      {
+        if (!first)
+        {
+          stream.WriteLine(this, level, ",");
+        }
+        stream.Write(this, level, value);
+        first = false;
+      });
+    }
+
     public override void Emit(TokenTextWriter stream, int level)
     {
-      base.Emit(stream, level);
-      constructors.Iter(constructor => constructor.Emit(stream, level));
+      stream.Write(this, level, "datatype ");
+      stream.Write(this, level, Name);
+      if (typeParameters.Count > 0)
+      {
+        stream.Write(this, level, "<");
+        EmitCommaSeparatedListOfStrings(stream, level, typeParameters.Select(tp => tp.Name));
+        stream.Write(this, level, ">");
+      }
+      stream.WriteLine(this, level, " {");
+      bool firstConstructor = true;
+      constructors.Iter(constructor =>
+      {
+        if (!firstConstructor)
+        {
+          stream.WriteLine(this, level, ",");
+        }
+        stream.Write(this, level + 1, constructor.Name);
+        stream.Write(this, level, "(");
+        constructor.InParams.Emit(stream, false);
+        stream.Write(this, level, ")");
+        firstConstructor = false;
+      });
+      stream.WriteLine();
+      stream.WriteLine(this, level, "}");
     }
   }
 

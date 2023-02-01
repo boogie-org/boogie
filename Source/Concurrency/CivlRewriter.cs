@@ -5,6 +5,21 @@ namespace Microsoft.Boogie
 {
   public class CivlRewriter
   {
+    public static void AddPendingAsyncTypes(Program program)
+    {
+      var datatypeTypeCtorDecls = program.TopLevelDeclarations.OfType<Procedure>()
+        .Where(proc => proc.HasAttribute("pending_async")).Select(CreatePendingAsyncType);
+      program.TopLevelDeclarations = program.TopLevelDeclarations.Concat(datatypeTypeCtorDecls).ToList();
+    }
+
+    private static DatatypeTypeCtorDecl CreatePendingAsyncType(Procedure proc)
+    {
+      var fields = proc.InParams.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList();
+      var datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(proc.tok, proc.Name, new List<TypeVariable>(), null);
+      datatypeTypeCtorDecl.AddConstructor(proc.tok, proc.Name, fields);
+      return datatypeTypeCtorDecl;
+    }
+
     public static void Transform(ConcurrencyOptions options, CivlTypeChecker civlTypeChecker)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
