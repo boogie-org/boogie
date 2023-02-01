@@ -118,11 +118,12 @@ namespace VC
         cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
-        await ProcessResult(iteration, split, checker, cancellationToken);
+        await ProcessResultAndReleaseChecker(iteration, split, checker, cancellationToken);
         TotalProverElapsedTime += checker.ProverRunTime;
       }
-      finally {
+      catch {
         await checker.GoBackToIdle();
+        throw;
       }
     }
 
@@ -146,7 +147,7 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task ProcessResult(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -175,12 +176,12 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
-      if (!proverFailed) {
+      if (proverFailed) {
+        await HandleProverFailure(split, checker, callback, result, cancellationToken);
+      } else {
         split.Finish(result);
-        return;
+        await checker.GoBackToIdle();
       }
-
-      await HandleProverFailure(split, checker, callback, result, cancellationToken);
     }
 
     private static bool IsProverFailed(ProverInterface.Outcome outcome)
@@ -259,11 +260,17 @@ namespace VC
         };
         split.Finish(result);
         outcome = Outcome.Errors;
+        await checker.GoBackToIdle();
         return;
       }
 
+      await checker.GoBackToIdle();
+
       if (maxKeepGoingSplits > 1) {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
+        if (options.Trace) {
+          await run.TraceWriter.WriteLineAsync($"split {split.SplitIndex+1} was split into {newSplits.Count} parts");
+        }
         Contract.Assert(newSplits != null);
         maxVcCost = 1.0; // for future
         TrackSplitsCost(newSplits);
