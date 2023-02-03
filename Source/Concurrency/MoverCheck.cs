@@ -55,11 +55,21 @@ namespace Microsoft.Boogie
         from leftMover in IS.elim.Values
         from action in civlTypeChecker.procToAtomicAction.Values
         where action.layerRange.Contains(IS.inputAction.layerRange.upperLayerNum)
-        select new {action, leftMover};
+        let extraAssumption1 = IS.GenerateMoverCheckAssumption(action, action.firstImpl.InParams, leftMover, leftMover.secondImpl.InParams)
+        let extraAssumption2 = IS.GenerateMoverCheckAssumption(action, action.secondImpl.InParams, leftMover, leftMover.firstImpl.InParams)
+        select new {action, leftMover, extraAssumption1, extraAssumption2};
 
+      /*
+       * It is important that the mover checks required for inductive sequentialization are the last ones
+       * to be generated. Each of these mover checks may add an extra assumption. Since mover checks are
+       * cached, if a mover check has already been generated then one generated here with the extra
+       * assumption will get dropped. As a result, we preserve overall soundness.
+       */
       foreach (var moverCheck in inductiveSequentializationMoverChecks)
       {
-        moverChecking.CreateLeftMoverCheckers(moverCheck.action, moverCheck.leftMover);
+        moverChecking.CreateCommutativityChecker(moverCheck.action, moverCheck.leftMover, moverCheck.extraAssumption1);
+        moverChecking.CreateGatePreservationChecker(moverCheck.leftMover, moverCheck.action, moverCheck.extraAssumption2);
+        moverChecking.CreateFailurePreservationChecker(moverCheck.action, moverCheck.leftMover, moverCheck.extraAssumption1);
       }
 
       // Here we include IS abstractions
@@ -120,7 +130,7 @@ namespace Microsoft.Boogie
       return CmdHelper.CallCmd(action.proc, paramProvider.InParams, paramProvider.OutParams);
     }
 
-    private void CreateCommutativityChecker(AtomicAction first, AtomicAction second)
+    private void CreateCommutativityChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
     {
       if (first == second && first.firstImpl.InParams.Count == 0 && first.firstImpl.OutParams.Count == 0)
       {
@@ -154,6 +164,10 @@ namespace Microsoft.Boogie
       {
         requires.Add(new Requires(false, assertCmd.Expr));
       }
+      if (extraAssumption != null)
+      {
+        requires.Add(new Requires(false, extraAssumption));
+      }
 
       var transitionRelation = TransitionRelationComputation.Commutativity(civlTypeChecker, second, first, frame);
 
@@ -183,7 +197,7 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second)
+    private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
     {
       if (!first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Any())
       {
@@ -208,6 +222,10 @@ namespace Microsoft.Boogie
       foreach (AssertCmd assertCmd in first.firstGate.Union(second.secondGate))
       {
         requires.Add(new Requires(false, assertCmd.Expr));
+      }
+      if (extraAssumption != null)
+      {
+        requires.Add(new Requires(false, extraAssumption));
       }
 
       string checkerName = $"GatePreservationChecker_{first.proc.Name}_{second.proc.Name}";
@@ -234,7 +252,7 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second)
+    private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
     {
       if (!first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Any())
       {
@@ -262,6 +280,10 @@ namespace Microsoft.Boogie
       foreach (AssertCmd assertCmd in second.secondGate)
       {
         requires.Add(new Requires(false, assertCmd.Expr));
+      }
+      if (extraAssumption != null)
+      {
+        requires.Add(new Requires(false, extraAssumption));
       }
 
       IEnumerable<Expr> linearityAssumes =

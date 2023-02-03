@@ -10,10 +10,10 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
 procedure {:atomic}{:layer 2}
 {:IS "A_Paxos'","INV"}
 {:elim "A_StartRound"}
-{:elim "A_Propose","A_Propose'"}
-{:elim "A_Conclude","A_Conclude'"}
-{:elim "A_Join","A_Join'"}
-{:elim "A_Vote","A_Vote'"}
+{:elim "A_Propose"}
+{:elim "A_Conclude"}
+{:elim "A_Join"}
+{:elim "A_Vote"}
 A_Paxos({:linear_in "perm"} rs: [Round]bool)
 returns ({:pending_async "A_StartRound"} PAs:[PA]int)
 modifies pendingAsyncs;
