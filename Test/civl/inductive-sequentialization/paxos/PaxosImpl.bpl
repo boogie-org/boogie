@@ -1,16 +1,14 @@
 procedure {:atomic}{:layer 2} A_Paxos({:linear_in "perm"} rs: [Round]bool)
 returns ({:pending_async "A_StartRound"} PAs:[PA]int)
-modifies pendingAsyncs;
 {
   var {:pool "NumRounds"} numRounds: int;
   assert
-    Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
+    Init(rs, joinedNodes, voteInfo, decision);
   assume
     {:add_to_pool "Round", 0, numRounds}
     {:add_to_pool "NumRounds", numRounds}
     0 <= numRounds;
   PAs := (lambda pa: PA :: if pa is A_StartRound && pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds then 1 else 0);
-  pendingAsyncs := PAs;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +79,7 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:yields}{:layer 1}{:refines "A_Paxos"} Paxos({:layer 1}{:linear_in "perm"} rs: [Round]bool)
-requires {:layer 1} Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
+requires {:layer 1} Init(rs, joinedNodes, voteInfo, decision);
 requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
 {
   var r: int;
@@ -101,7 +99,6 @@ requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinCha
     call rs', r_lin := ExtractRoundPermission(rs', r);
     async call StartRound(r, r_lin);
   }
-  call AddPendingAsyncs(PAs);
 }
 
 procedure {:yields}{:layer 1}{:refines "A_StartRound"} StartRound(r: Round, {:layer 1}{:linear_in "perm"} r_lin: Round)
@@ -128,8 +125,6 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
     n := n + 1;
   }
   async call Propose(r, ps');
-  call AddPendingAsyncs(PAs);
-  call RemovePendingAsyncs(SingletonPA(A_StartRound(r, r_lin)));
 }
 
 procedure {:yields}{:layer 1}{:right} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, {:layer 1} ns: NodeSet)
@@ -207,8 +202,6 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   }
   async call Conclude(r, maxValue, cp);
   call ProposeIntro(r, maxValue);
-  call AddPendingAsyncs(PAs);
-  call RemovePendingAsyncs(SingletonPA(A_Propose(r, ps)));
 }
 
 procedure {:yields}{:layer 1}{:refines "A_Conclude"} Conclude(r: Round, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
@@ -243,7 +236,6 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
       break;
     }
   }
-  call RemovePendingAsyncs(SingletonPA(A_Conclude(r, v, p)));
 }
 
 procedure {:yields}{:layer 1}{:refines "A_Join"} Join(r: Round, n: Node, {:layer 1}{:linear_in "perm"} p: Permission)
@@ -260,7 +252,6 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
     call SendJoinResponseIntro(r, n, lastVoteRound, lastVoteValue, p);
     call JoinIntro(r, n);
   }
-  call RemovePendingAsyncs(SingletonPA(A_Join(r, n, p)));
 }
 
 procedure {:yields}{:layer 1}{:refines "A_Vote"} Vote(r: Round, n: Node, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
@@ -276,7 +267,6 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
     call JoinIntro(r, n);
     call VoteIntro(r, n);
   }
-  call RemovePendingAsyncs(SingletonPA(A_Vote(r, n, v, p)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -297,18 +287,6 @@ procedure {:intro}{:layer 1} VoteIntro(r: Round, n: Node)
 modifies voteInfo;
 {
   voteInfo[r] := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]));
-}
-
-procedure {:intro}{:layer 1} AddPendingAsyncs(PAs: [PA]int)
-modifies pendingAsyncs;
-{
-  pendingAsyncs := MapAdd(pendingAsyncs, PAs);
-}
-
-procedure {:intro}{:layer 1} RemovePendingAsyncs(PAs: [PA]int)
-modifies pendingAsyncs;
-{
-  pendingAsyncs := MapSub(pendingAsyncs, PAs);
 }
 
 // Trusted lemmas for the proof of Propose and Conclude

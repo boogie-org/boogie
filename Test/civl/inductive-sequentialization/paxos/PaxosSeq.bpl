@@ -1,32 +1,30 @@
 procedure {:atomic}{:layer 3} A_Paxos'({:linear_in "perm"} rs: [Round]bool)
 returns ()
-modifies joinedNodes, voteInfo, decision, pendingAsyncs;
+modifies joinedNodes, voteInfo, decision;
 {
-  assert Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
-  havoc joinedNodes, voteInfo, decision, pendingAsyncs;
+  assert Init(rs, joinedNodes, voteInfo, decision);
+  havoc joinedNodes, voteInfo, decision;
   assume (forall r1: Round, r2: Round :: decision[r1] is Some && decision[r2] is Some ==> decision[r1] == decision[r2]);
 }
 
 procedure {:atomic}{:layer 2}
 {:IS "A_Paxos'","INV"}
 {:elim "A_StartRound"}
-{:elim "A_Propose","A_Propose'"}
-{:elim "A_Conclude","A_Conclude'"}
-{:elim "A_Join","A_Join'"}
-{:elim "A_Vote","A_Vote'"}
+{:elim "A_Propose"}
+{:elim "A_Conclude"}
+{:elim "A_Join"}
+{:elim "A_Vote"}
 A_Paxos({:linear_in "perm"} rs: [Round]bool)
 returns ({:pending_async "A_StartRound"} PAs:[PA]int)
-modifies pendingAsyncs;
 {
   var {:pool "NumRounds"} numRounds: int;
   assert
-    Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
+    Init(rs, joinedNodes, voteInfo, decision);
   assume
     {:add_to_pool "Round", 0, numRounds}
     {:add_to_pool "NumRounds", numRounds}
     0 <= numRounds;
   PAs := (lambda pa: PA :: if pa is A_StartRound && pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds then 1 else 0);
-  pendingAsyncs := PAs;
 }
 
 function {:inline} StartRoundPAs(k: int, numRounds: int) : [PA]int
@@ -66,13 +64,13 @@ function {:inline} VoteOrConcludeChoice(k: int, m: Node, v: Value) : PA
 
 procedure {:IS_invariant}{:layer 2} INV({:linear_in "perm"} rs: [Round]bool)
 returns ({:pending_async "A_StartRound","A_Propose","A_Conclude","A_Join","A_Vote"} PAs:[PA]int, {:choice} choice:PA)
-modifies joinedNodes, voteInfo, decision, pendingAsyncs;
+modifies joinedNodes, voteInfo, decision;
 {
   var {:pool "NumRounds"} numRounds: int;
   var {:pool "Round"} k: int;
   var {:pool "Node"} m: Node;
 
-  assert Init(rs, joinedNodes, voteInfo, decision, pendingAsyncs);
+  assert Init(rs, joinedNodes, voteInfo, decision);
 
   havoc joinedNodes, voteInfo, decision;
 
@@ -128,8 +126,6 @@ modifies joinedNodes, voteInfo, decision, pendingAsyncs;
 
   // This is the main property to prove
   assume (forall r1: Round, r2: Round :: decision[r1] is Some && decision[r2] is Some ==> decision[r1] == decision[r2]);
-
-  pendingAsyncs := PAs;
 }
 
 // Local Variables:
