@@ -88,9 +88,7 @@ namespace Microsoft.Boogie.SMTLib
         FlushAxioms();
 
         Push();
-        if (this.libOptions.EmitDebugInformation) {
-          SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
-        }
+        SendVCId(descriptiveName);
         SendThisVC(vcString);
         SendOptimizationRequests();
 

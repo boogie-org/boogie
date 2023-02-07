@@ -441,13 +441,11 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    protected void SendVCAndOptions(string descriptiveName, String vcString)
+    protected void SendVCId(string descriptiveName)
     {
       if (this.libOptions.EmitDebugInformation) {
         SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
       }
-      SendVCOptions();
-      SendThisVC(vcString);
     }
 
     protected void CloseLogFile()
