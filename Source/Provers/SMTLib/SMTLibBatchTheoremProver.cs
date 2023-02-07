@@ -78,6 +78,7 @@ namespace Microsoft.Boogie.SMTLib
           await currentLogFile.WriteAsync(common.ToString());
         }
 
+        SendVCOptions();
         PrepareCommon();
         FlushAxioms();
 
@@ -87,7 +88,10 @@ namespace Microsoft.Boogie.SMTLib
         FlushAxioms();
 
         Push();
-        SendVCAndOptions(descriptiveName, vcString);
+        if (this.libOptions.EmitDebugInformation) {
+          SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
+        }
+        SendThisVC(vcString);
         SendOptimizationRequests();
 
         FlushLogFile();
