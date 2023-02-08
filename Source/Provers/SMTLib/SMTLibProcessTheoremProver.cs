@@ -428,11 +428,8 @@ namespace Microsoft.Boogie.SMTLib
       //FlushPushedAssertions();
     }
 
-    protected void SendVCAndOptions(string descriptiveName, String vcString)
+    protected void SendVCOptions()
     {
-      if (this.libOptions.EmitDebugInformation) {
-        SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
-      }
       if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
@@ -442,7 +439,13 @@ namespace Microsoft.Boogie.SMTLib
           SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
         }
       }
-      SendThisVC(vcString);
+    }
+
+    protected void SendVCId(string descriptiveName)
+    {
+      if (this.libOptions.EmitDebugInformation) {
+        SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
+      }
     }
 
     protected void CloseLogFile()
