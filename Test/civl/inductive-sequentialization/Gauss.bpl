@@ -3,20 +3,18 @@
 
 var {:layer 0,2} x:int;
 
-datatype {:pending_async} PA { ADD(i: int) }
-
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 1}
-{:IS "MAIN'","INV"}{:elim "ADD"}
+{:creates "ADD"}
+{:IS "MAIN'","INV"}
 SUM (n: int)
-returns ({:pending_async "ADD"} PAs:[PA]int)
 modifies x;
 {
   assert n >= 0;
 
   assume {:add_to_pool "A", 0} true;
-  PAs := (lambda pa: PA :: if pa is ADD && 1 <= pa->i && pa->i <= n then 1 else 0);
+  call create_asyncs((lambda pa: ADD :: 1 <= pa->i && pa->i <= n));
 }
 
 procedure {:atomic}{:layer 2}
@@ -27,9 +25,10 @@ modifies x;
   x := x + (n * (n+1)) div 2;
 }
 
-procedure {:IS_invariant}{:layer 1}
+procedure {:layer 1}
+{:creates "ADD"}
+{:IS_invariant}{:elim "ADD"}
 INV (n: int)
-returns ({:pending_async "ADD"} PAs:[PA]int, {:choice} choice:PA)
 modifies x;
 {
   var {:pool "A"} i: int;
@@ -41,13 +40,14 @@ modifies x;
     {:add_to_pool "B", ADD(n)}
     0 <= i && i <= n;
   x := x + (i * (i+1)) div 2;
-  PAs := (lambda {:pool "B"} pa: PA :: if pa is ADD && i < pa->i && pa->i <= n then 1 else 0);
-  choice := ADD(i+1);
+  call create_asyncs((lambda {:pool "B"} pa: ADD :: i < pa->i && pa->i <= n));
+  call set_choice(ADD(i+1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:left}{:layer 1}
+{:pending_async}
 ADD (i: int)
 modifies x;
 {

@@ -359,6 +359,19 @@ namespace Microsoft.Boogie
     }
   }
 
+  public static class TypeHelper
+  {
+    public static MapType MapType(Type indexType, Type resultType)
+    {
+      return new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { indexType }, resultType);
+    }
+
+    public static CtorType CtorType(TypeCtorDecl typeCtorDecl)
+    {
+      return new CtorType(Token.NoToken, typeCtorDecl, new List<Type>());
+    }
+  }
+  
   public static class SubstitutionHelper
   {
     public static Substitution FromVariableMap(Dictionary<Variable, Variable> map)

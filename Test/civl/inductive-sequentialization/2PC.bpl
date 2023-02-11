@@ -25,21 +25,6 @@ var {:layer 0,6} VoteCH:[vote]int;         // Channel of the coordinator for vot
 var {:layer 0,6} votes:[int]vote;          // Participant votes
 var {:layer 0,6} decisions:[int]decision;  // Coordinator and participant decisions
 
-datatype {:pending_async} PA {
-  COORDINATOR1(pid:int),
-  COORDINATOR2(pid:int),
-  PARTICIPANT1(pid:int),
-  PARTICIPANT2(pid:int)
-}
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
-
-function {:inline} SingletonPA (pa:PA) : [PA]int
-{ NoPAs()[pa := 1] }
-
-function {:builtin "MapAdd"} MapAddPA([PA]int, [PA]int) : [PA]int;
-
 ////////////////////////////////////////////////////////////////////////////////
 
 function {:inline} Init(pids:[int]bool, ReqCH:[int]int, VoteCH:[vote]int,
@@ -66,9 +51,10 @@ modifies ReqCH, VoteCH, votes, decisions;
   assume (forall i:int :: (i == 0 || pid(i)) ==> decisions[i] == dec);
 }
 
-procedure {:IS_invariant}{:layer 5}
+procedure {:layer 5}
+{:creates "PARTICIPANT2"}
+{:IS_invariant}{:elim "PARTICIPANT2","PARTICIPANT2'"}
 INV4 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "PARTICIPANT2"} PAs:[PA]int, {:choice} choice:PA)
 modifies ReqCH, VoteCH, DecCH, votes, decisions;
 {
   var {:pool "INV1"} k: int;
@@ -85,8 +71,8 @@ modifies ReqCH, VoteCH, DecCH, votes, decisions;
     (decisions[0] == COMMIT() ==> (forall i:int :: pid(i) ==> votes[i] == YES())) &&
     (forall i:int :: pidLe(i,k) ==> decisions[i] == decisions[0]);
   DecCH := (lambda i:int :: (lambda d:decision :: if pidGt(i, k) && d == decisions[0] then 1 else 0));
-  PAs := (lambda {:pool "PARTICIPANT2"} pa:PA :: if pa is PARTICIPANT2 && pidGt(pa->pid, k) then 1 else 0);
-  choice := PARTICIPANT2(k+1);
+  call create_asyncs((lambda {:pool "PARTICIPANT2"} pa:PARTICIPANT2 :: pidGt(pa->pid, k)));
+  call set_choice(PARTICIPANT2(k+1));
 }
 
 procedure {:IS_abstraction}{:layer 5}
@@ -106,9 +92,9 @@ modifies VoteCH, DecCH, decisions;
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 5}
-{:IS "MAIN5","INV4"}{:elim "PARTICIPANT2","PARTICIPANT2'"}
+{:creates "PARTICIPANT2"}
+{:IS "MAIN5","INV4"}
 MAIN4 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "PARTICIPANT2"} PAs:[PA]int)
 modifies ReqCH, VoteCH, DecCH, votes, decisions;
 {
   var dec:decision;
@@ -120,12 +106,13 @@ modifies ReqCH, VoteCH, DecCH, votes, decisions;
   assume dec == COMMIT() ==> (forall i:int :: pid(i) ==> votes[i] == YES());
   decisions[0] := dec;
   DecCH := (lambda i:int :: (lambda d:decision :: if pid(i) && d == dec then 1 else 0));
-  PAs := (lambda pa:PA :: if pa is PARTICIPANT2 && pid(pa->pid) then 1 else 0);
+  call create_asyncs((lambda pa:PARTICIPANT2 :: pid(pa->pid)));
 }
 
-procedure {:IS_invariant}{:layer 4}
+procedure {:layer 4}
+{:creates "COORDINATOR2","PARTICIPANT2"}
+{:IS_invariant}{:elim "COORDINATOR2","COORDINATOR2'"}
 INV3 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "COORDINATOR2","PARTICIPANT2"} PAs:[PA]int)
 modifies ReqCH, VoteCH, DecCH, votes, decisions;
 {
   var dec:decision;
@@ -138,7 +125,8 @@ modifies ReqCH, VoteCH, DecCH, votes, decisions;
     assume VoteCH[YES()] >= 0 && VoteCH[NO()] >= 0;
     assume VoteCH[YES()] + VoteCH[NO()] <= n;
     assume VoteCH[YES()] == n ==> (forall i:int :: pid(i) ==> votes[i] == YES());
-    PAs := MapAddPA(SingletonPA(COORDINATOR2(0)), (lambda pa:PA :: if pa is PARTICIPANT2 && pid(pa->pid) then 1 else 0));
+    call create_async(COORDINATOR2(0));
+    call create_asyncs((lambda pa:PARTICIPANT2 :: pid(pa->pid)));
   }
   else
   {
@@ -146,7 +134,7 @@ modifies ReqCH, VoteCH, DecCH, votes, decisions;
     assume dec == COMMIT() ==> (forall i:int :: pid(i) ==> votes[i] == YES());
     decisions[0] := dec;
     DecCH := (lambda i:int :: (lambda d:decision :: if pid(i) && d == dec then 1 else 0));
-    PAs := (lambda pa:PA :: if pa is PARTICIPANT2 && pid(pa->pid) then 1 else 0);
+    call create_asyncs((lambda pa:PARTICIPANT2 :: pid(pa->pid)));
   }
 }
 
@@ -175,9 +163,9 @@ modifies VoteCH, DecCH, decisions;
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 4}
-{:IS "MAIN4","INV3"}{:elim "COORDINATOR2","COORDINATOR2'"}
+{:creates "COORDINATOR2","PARTICIPANT2"}
+{:IS "MAIN4","INV3"}
 MAIN3 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "COORDINATOR2","PARTICIPANT2"} PAs:[PA]int)
 modifies ReqCH, VoteCH, votes;
 {
   assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
@@ -185,15 +173,18 @@ modifies ReqCH, VoteCH, votes;
   assume VoteCH[YES()] >= 0 && VoteCH[NO()] >= 0;
   assume VoteCH[YES()] + VoteCH[NO()] <= n;
   assume VoteCH[YES()] == n ==> (forall i:int :: pid(i) ==> votes[i] == YES());
-  PAs := MapAddPA(SingletonPA(COORDINATOR2(0)), (lambda pa:PA :: if pa is PARTICIPANT2 && pid(pa->pid) then 1 else 0));
+  call create_async(COORDINATOR2(0));
+  call create_asyncs((lambda pa:PARTICIPANT2 :: pid(pa->pid)));
 }
 
-procedure {:IS_invariant}{:layer 3}
+procedure {:layer 3}
+{:creates "COORDINATOR2","PARTICIPANT1","PARTICIPANT2"}
+{:IS_invariant}{:elim "PARTICIPANT1"}
 INV2 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "COORDINATOR2","PARTICIPANT1","PARTICIPANT2"} PAs:[PA]int, {:choice} choice:PA)
 modifies ReqCH, VoteCH, votes;
 {
   var {:pool "INV2"} k: int;
+
   assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
 
   havoc ReqCH, VoteCH, votes;
@@ -205,61 +196,64 @@ modifies ReqCH, VoteCH, votes;
     VoteCH[YES()] >= 0 && VoteCH[NO()] >= 0 &&
     VoteCH[YES()] + VoteCH[NO()] <= k &&
     (VoteCH[YES()] == k ==> (forall i:int :: pidLe(i,k) ==> votes[i] == YES()));
-  PAs := MapAddPA(SingletonPA(COORDINATOR2(0)),
-      MapAddPA((lambda pa:PA :: if pa is PARTICIPANT2 && pidLe(pa->pid, k) then 1 else 0),
-               (lambda {:pool "PARTICIPANT1"} pa:PA :: if pa is PARTICIPANT1 && pidGt(pa->pid, k) then 1 else 0)));
-  choice := PARTICIPANT1(k+1);
+  call create_async(COORDINATOR2(0));
+  call create_asyncs((lambda pa:PARTICIPANT2 :: pidLe(pa->pid, k)));
+  call create_asyncs((lambda {:pool "PARTICIPANT1"} pa:PARTICIPANT1 :: pidGt(pa->pid, k)));
+  call set_choice(PARTICIPANT1(k+1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 3}
-{:IS "MAIN3","INV2"}{:elim "PARTICIPANT1"}
+{:creates "COORDINATOR2","PARTICIPANT1"}
+{:IS "MAIN3","INV2"}
 MAIN2 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "COORDINATOR2","PARTICIPANT1"} PAs:[PA]int)
 modifies ReqCH;
 {
   assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
 
   assume {:add_to_pool "INV2", 0} true;
   ReqCH := (lambda i:int :: if pid(i) then 1 else 0);
-  PAs := MapAddPA(SingletonPA(COORDINATOR2(0)), (lambda pa:PA :: if pa is PARTICIPANT1 && pid(pa->pid) then 1 else 0));
+  call create_async(COORDINATOR2(0));
+  call create_asyncs((lambda pa:PARTICIPANT1 :: pid(pa->pid)));
 }
 
-procedure {:IS_invariant}{:layer 2}
+procedure {:layer 2}
+{:creates "COORDINATOR1","COORDINATOR2","PARTICIPANT1"}
+{:IS_invariant}{:elim "COORDINATOR1"}
 INV1 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "COORDINATOR1","COORDINATOR2","PARTICIPANT1"} PAs:[PA]int)
 modifies ReqCH;
 {
   assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
   if (*)
   {
-    PAs := MapAddPA(SingletonPA(COORDINATOR1(0)), (lambda pa:PA :: if pa is PARTICIPANT1 && pid(pa->pid) then 1 else 0));
-    assume PAs[COORDINATOR1(0)] > 0;
+    call create_async(COORDINATOR1(0));
+    call create_asyncs((lambda pa:PARTICIPANT1 :: pid(pa->pid)));
   }
   else
   {
     ReqCH := (lambda i:int :: if pid(i) then 1 else 0);
-    PAs := MapAddPA(SingletonPA(COORDINATOR2(0)), (lambda pa:PA :: if pa is PARTICIPANT1 && pid(pa->pid) then 1 else 0));
-    assume (forall pa:PA :: PAs[pa] == 0 <== pa is COORDINATOR1);
-    assume PAs[COORDINATOR2(0)] == 1;
+    call create_async(COORDINATOR2(0));
+    call create_asyncs((lambda pa:PARTICIPANT1 :: pid(pa->pid)));
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 2}
-{:IS "MAIN2","INV1"}{:elim "COORDINATOR1"}
+{:creates "COORDINATOR1","PARTICIPANT1"}
+{:IS "MAIN2","INV1"}
 MAIN1 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "COORDINATOR1","PARTICIPANT1"} PAs:[PA]int)
 {
   assert Init(pids, ReqCH, VoteCH, DecCH, decisions);
-  PAs := MapAddPA(SingletonPA(COORDINATOR1(0)), (lambda pa:PA :: if pa is PARTICIPANT1 && pid(pa->pid) then 1 else 0));
+  call create_async(COORDINATOR1(0));
+  call create_asyncs((lambda pa:PARTICIPANT1 :: pid(pa->pid)));
 }
 
 procedure {:atomic}{:layer 2,3}
+{:pending_async}
+{:creates "PARTICIPANT2"}
 PARTICIPANT1 ({:linear_in "pid"} pid:int)
-returns ({:pending_async "PARTICIPANT2"} PAs:[PA]int)
 modifies ReqCH, VoteCH, votes;
 {
   var v:vote;
@@ -274,10 +268,11 @@ modifies ReqCH, VoteCH, votes;
     VoteCH[v] := VoteCH[v] + 1;
   }
 
-  PAs := SingletonPA(PARTICIPANT2(pid));
+  call create_async(PARTICIPANT2(pid));
 }
 
 procedure {:atomic}{:layer 2,5}
+{:pending_async}
 PARTICIPANT2 ({:linear_in "pid"} pid:int)
 modifies DecCH, decisions;
 {
@@ -291,16 +286,18 @@ modifies DecCH, decisions;
 }
 
 procedure {:left}{:layer 2}
+{:pending_async}
+{:creates "COORDINATOR2"}
 COORDINATOR1 ({:linear_in "pid"} pid:int)
-returns ({:pending_async "COORDINATOR2"} PAs:[PA]int)
 modifies ReqCH;
 {
   assert pid == 0;
   ReqCH := (lambda i:int :: if pid(i) then ReqCH[i] + 1 else ReqCH[i]);
-  PAs := SingletonPA(COORDINATOR2(0));
+  call create_async(COORDINATOR2(0));
 }
 
 procedure {:atomic}{:layer 2,4}
+{:pending_async}
 COORDINATOR2 ({:linear_in "pid"} pid:int)
 modifies VoteCH, DecCH, decisions;
 {
@@ -333,7 +330,8 @@ main ({:linear_in "pid"} pids:[int]bool)
 requires {:layer 1} Init(pids, ReqCH, VoteCH, DecCH, decisions);
 {
   var i:int;
-  var {:pending_async}{:layer 1} PAs:[PA]int;
+  var {:pending_async}{:layer 1} Coordinator1_PAs:[COORDINATOR1]int;
+  var {:pending_async}{:layer 1} Participant1_PAs:[PARTICIPANT1]int;
   var {:linear "pid"} pid:int;
   var {:linear "pid"} pids':[int]bool;
 
@@ -345,7 +343,8 @@ requires {:layer 1} Init(pids, ReqCH, VoteCH, DecCH, decisions);
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} (forall ii:int :: pid(ii) && ii >= i ==> pids'[ii]);
-  invariant {:layer 1} PAs == MapAddPA(SingletonPA(COORDINATOR1(0)), (lambda pa:PA :: if pa is PARTICIPANT1 && pid(pa->pid) && pa->pid < i then 1 else 0));
+  invariant {:layer 1} Coordinator1_PAs == MapConst(0)[COORDINATOR1(0) := 1];
+  invariant {:layer 1} Participant1_PAs == (lambda pa:PARTICIPANT1 :: if pid(pa->pid) && pa->pid < i then 1 else 0);
   {
     call pid, pids' := linear_transfer(i, pids');
     async call participant1(pid);

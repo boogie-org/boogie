@@ -946,6 +946,19 @@ namespace Microsoft.Boogie
 
       return res;
     }
+    
+    public QKeyValue FindIdenticalAttribute(QKeyValue target)
+    {
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
+      {
+        if (kv.Key == target.Key && kv.Params.Count == target.Params.Count &&
+            kv.Params.Zip(target.Params).All(x => x.Item1.Equals(x.Item2)))
+        {
+          return kv;
+        }
+      }
+      return null;
+    }
 
     // Look for {:name expr} in list of attributes.
     public Expr FindExprAttribute(string name)

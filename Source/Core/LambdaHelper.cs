@@ -45,7 +45,18 @@ namespace Microsoft.Boogie
         }
         else
         {
-          x.Item1.Attributes.AddLast(clonedAttrs);
+          // Add each attribute in clonedAttrs that is not already present in x.Item1
+          QKeyValue kv = clonedAttrs;
+          while (kv != null)
+          {
+            var res = kv;
+            kv = kv.Next;
+            res.Next = null;
+            if (x.Item1.FindIdenticalAttribute(res) == null)
+            {
+              x.Item1.Attributes.AddLast(res);
+            }
+          }
         }
       });
       return true;

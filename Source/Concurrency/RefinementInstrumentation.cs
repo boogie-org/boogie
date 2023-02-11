@@ -137,11 +137,15 @@ namespace Microsoft.Boogie
 
       if (atomicAction.HasPendingAsyncs)
       {
-        Variable collectedPAs = civlTypeChecker.implToPendingAsyncCollector[originalImpl];
-        alwaysMap[atomicActionImpl.OutParams.Last()] = Expr.Ident(collectedPAs);
-        LocalVariable copy = Old(collectedPAs);
-        newLocalVars.Add(copy);
-        oldOutputMap[collectedPAs] = copy;
+        atomicAction.pendingAsyncs.Iter(action =>
+        {
+          Variable collectedPAs =
+            civlTypeChecker.implToPendingAsyncCollector[originalImpl][action.pendingAsyncType];
+          alwaysMap[atomicAction.PAs(action.pendingAsyncType)] = Expr.Ident(collectedPAs);
+          LocalVariable copy = Old(collectedPAs);
+          newLocalVars.Add(copy);
+          oldOutputMap[collectedPAs] = copy;
+        });
       }
 
       Substitution always = Substituter.SubstitutionFromDictionary(alwaysMap);

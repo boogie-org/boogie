@@ -9,30 +9,27 @@ type {:linear "collect", "broadcast"} pid = int;
 
 function {:inline} pid(i:int) : bool { 1 <= i && i <= n }
 
-datatype {:pending_async} PA { BROADCAST(i:pid), COLLECT(i:pid) }
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
-
-function {:inline} InitialPAs (k:pid) : [PA]int
+function {:inline} InitialBroadcastPAs (k:pid) : [BROADCAST]bool
 {
-  MapAdd(
-    (lambda pa:PA :: if pa is BROADCAST && pid(pa->i) && pa->i < k then 1 else 0),
-    (lambda pa:PA :: if pa is COLLECT && pid(pa->i) && pa->i < k then 1 else 0)
-  )
+  (lambda pa:BROADCAST :: pid(pa->i) && pa->i < k)
 }
 
-function {:inline} AllBroadcasts () : [PA]int
-{ (lambda pa:PA :: if pa is BROADCAST && pid(pa->i) then 1 else 0) }
+function {:inline} InitialCollectPAs (k:pid) : [COLLECT]bool
+{
+  (lambda pa:COLLECT :: pid(pa->i) && pa->i < k)
+}
 
-function {:inline} AllCollects () : [PA]int
-{ (lambda pa:PA :: if pa is COLLECT && pid(pa->i) then 1 else 0) }
+function {:inline} AllBroadcasts () : [BROADCAST]bool
+{ (lambda pa:BROADCAST :: pid(pa->i)) }
 
-function {:inline} RemainingBroadcasts (k:pid) : [PA]int
-{ (lambda {:pool "Broadcast"} pa:PA :: if pa is BROADCAST && k < pa->i && pa->i <= n then 1 else 0) }
+function {:inline} AllCollects () : [COLLECT]bool
+{ (lambda pa:COLLECT :: pid(pa->i)) }
 
-function {:inline} RemainingCollects (k:pid) : [PA]int
-{ (lambda {:pool "Collect"} pa:PA :: if pa is COLLECT && k < pa->i && pa->i <= n then 1 else 0) }
+function {:inline} RemainingBroadcasts (k:pid) : [BROADCAST]bool
+{ (lambda {:pool "Broadcast"} pa:BROADCAST :: k < pa->i && pa->i <= n) }
+
+function {:inline} RemainingCollects (k:pid) : [COLLECT]bool
+{ (lambda {:pool "Collect"} pa:COLLECT :: k < pa->i && pa->i <= n) }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -81,9 +78,10 @@ modifies CH, decision;
   decision := (lambda i:pid :: if pid(i) then max(CH) else old(decision)[i]);
 }
 
-procedure {:IS_invariant}{:layer 3}
+procedure {:layer 3}
+{:creates "COLLECT"}
+{:IS_invariant}{:elim "COLLECT","COLLECT'"}
 INV_COLLECT_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-returns ({:pending_async "COLLECT"} PAs:[PA]int, {:choice} choice:PA)
 modifies CH, decision;
 {
   var {:pool "INV_COLLECT"} k: int;
@@ -100,16 +98,16 @@ modifies CH, decision;
     {:add_to_pool "Collect", COLLECT(n)}
     0 <= k && k <= n;
   decision := (lambda i:pid :: if 1 <= i && i <= k then max(CH) else decision[i]);
-  PAs := RemainingCollects(k);
-  choice := COLLECT(k+1);
+  call create_asyncs(RemainingCollects(k));
+  call set_choice(COLLECT(k+1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 3}
-{:IS "MAIN''","INV_COLLECT_ELIM"}{:elim "COLLECT","COLLECT'"}
+{:creates "COLLECT"}
+{:IS "MAIN''","INV_COLLECT_ELIM"}
 MAIN'({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-returns ({:pending_async "COLLECT"} PAs:[PA]int)
 modifies CH;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
@@ -119,25 +117,27 @@ modifies CH;
   CH := (lambda v:val :: value_card(v, value, 1, n));
   assume card(CH) == n;
   assume MultisetSubsetEq(MultisetEmpty, CH);
-  PAs := AllCollects();
+  call create_asyncs(AllCollects());
 }
 
 procedure {:atomic}{:layer 2}
-{:IS "MAIN'","INV_BROADCAST_ELIM"}{:elim "BROADCAST"}
+{:creates "BROADCAST", "COLLECT"}
+{:IS "MAIN'","INV_BROADCAST_ELIM"}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-returns ({:pending_async "BROADCAST","COLLECT"} PAs:[PA]int)
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
 
   assume {:add_to_pool "INV_BROADCAST", 0} true;
   assert CH == MultisetEmpty;
 
-  PAs := MapAdd(AllBroadcasts(), AllCollects());
+  call create_asyncs(AllBroadcasts());
+  call create_asyncs(AllCollects());
 }
 
-procedure {:IS_invariant}{:layer 2}
+procedure {:layer 2}
+{:creates "BROADCAST", "COLLECT"}
+{:IS_invariant}{:elim "BROADCAST"}
 INV_BROADCAST_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-returns ({:pending_async "BROADCAST","COLLECT"} PAs:[PA]int, {:choice} choice:PA)
 modifies CH;
 {
   var {:pool "INV_BROADCAST"} k: int;
@@ -152,18 +152,23 @@ modifies CH;
   CH := (lambda v:val :: value_card(v, value, 1, k));
   assume card(CH) == k;
   assume MultisetSubsetEq(MultisetEmpty, CH);
-  PAs := MapAdd(RemainingBroadcasts(k), AllCollects());
-  choice := BROADCAST(k+1);
+  call create_asyncs(RemainingBroadcasts(k));
+  call create_asyncs(AllCollects());
+  call set_choice(BROADCAST(k+1));
 }
 
-procedure {:left}{:layer 2} BROADCAST({:linear_in "broadcast"} i:pid)
+procedure {:left}{:layer 2}
+{:pending_async}
+BROADCAST({:linear_in "broadcast"} i:pid)
 modifies CH;
 {
   assert pid(i);
   CH := CH[value[i] := CH[value[i]] + 1];
 }
 
-procedure {:atomic}{:layer 2,3} COLLECT({:linear_in "collect"} i:pid)
+procedure {:atomic}{:layer 2,3}
+{:pending_async}
+COLLECT({:linear_in "collect"} i:pid)
 modifies decision;
 {
   var received_values:[val]int;
@@ -210,7 +215,8 @@ requires {:layer 1} pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect =
 requires {:layer 1} (forall ii:pid :: CH_low[ii] == MultisetEmpty);
 requires {:layer 1} CH == MultisetEmpty;
 {
-  var {:pending_async}{:layer 1} PAs:[PA]int;
+  var {:pending_async}{:layer 1} Broadcast_PAs:[BROADCAST]int;
+  var {:pending_async}{:layer 1} Collect_PAs:[COLLECT]int;
   var i:pid;
   var {:linear "broadcast"} s:pid;
   var {:linear "collect"} r:pid;
@@ -224,14 +230,16 @@ requires {:layer 1} CH == MultisetEmpty;
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n + 1;
   invariant {:layer 1} ss == (lambda ii:pid :: pid(ii) && ii >= i) && ss == rr;
-  invariant {:layer 1} PAs == InitialPAs(i);
+  invariant {:layer 1} Broadcast_PAs == ToMultiset(InitialBroadcastPAs(i));
+  invariant {:layer 1} Collect_PAs == ToMultiset(InitialCollectPAs(i));
   {
     call s, r, ss, rr := linear_transfer(i, ss, rr);
     async call Broadcast(s);
     async call Collect(r);
     i := i + 1;
   }
-  assert {:layer 1} PAs == MapAdd(AllBroadcasts(), AllCollects());
+  assert {:layer 1} Broadcast_PAs == ToMultiset(AllBroadcasts());
+  assert {:layer 1} Collect_PAs == ToMultiset(AllCollects());
 }
 
 procedure {:yields}{:layer 1}{:refines "BROADCAST"} Broadcast({:linear_in "broadcast"} i:pid)
