@@ -6,20 +6,15 @@ var {:layer 0,1} x:[int]int;
 procedure {:yield_invariant} {:layer 1} yield_x({:linear "tid"} tid:int);
 requires x[tid] == 0;
 
-datatype {:pending_async} PA { A(tid:int) }
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
-
-procedure {:atomic}{:layer 1} A ({:linear "tid"} tid:int)
+procedure {:atomic}{:layer 1} {:pending_async} A ({:linear "tid"} tid:int)
 modifies x;
 {
   x[tid] := 1;
 }
 
-procedure {:left}{:layer 1} ASYNC_A ({:linear_in "tid"} tid:int) returns ({:pending_async "A"} PAs:[PA]int)
+procedure {:left}{:layer 1} {:creates "A"} ASYNC_A ({:linear_in "tid"} tid:int)
 {
-  PAs := NoPAs()[A(tid) := 1];
+  call create_async(A(tid));
 }
 
 procedure {:yields}{:layer 1} dummy () {}

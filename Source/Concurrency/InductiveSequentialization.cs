@@ -101,7 +101,7 @@ namespace Microsoft.Boogie
       var locals = new List<Variable>();
       List<Cmd> cmds = new List<Cmd>();
       cmds.Add(GetCallCmd(invariantAction));
-      cmds.Add(CmdHelper.AssumeCmd(ExprHelper.IsConstructor(choice, $"Choice_{pendingAsyncCtor.Name}")));
+      cmds.Add(CmdHelper.AssumeCmd(ChoiceTest(pendingAsyncType)));
       cmds.Add(CmdHelper.AssumeCmd(Expr.Gt(Expr.Select(PAs(pendingAsyncType), Choice(pendingAsyncType)),
         Expr.Literal(0))));
       cmds.Add(RemoveChoice(pendingAsyncType));
@@ -184,7 +184,9 @@ namespace Microsoft.Boogie
       Expr leftMoverExpr = Expr.Gt(Expr.Select(PAs(asyncLeftMover.pendingAsyncType), leftMoverPA), Expr.Literal(0));
       if (choice.Decl == invariantAction.impl.OutParams.Last())
       {
-        leftMoverExpr = Expr.And(Expr.Eq(Choice(asyncLeftMover.pendingAsyncType), leftMoverPA), leftMoverExpr);
+        var choiceExpr = Expr.And(ChoiceTest(asyncLeftMover.pendingAsyncType),
+          Expr.Eq(Choice(asyncLeftMover.pendingAsyncType), leftMoverPA));
+        leftMoverExpr = Expr.And(choiceExpr, leftMoverExpr);
       }
       var alwaysMap = new Dictionary<Variable, Expr>();
       var foroldMap = new Dictionary<Variable, Expr>();
@@ -287,6 +289,11 @@ namespace Microsoft.Boogie
     private Expr Choice(CtorType pendingAsyncType)
     {
       return ExprHelper.FieldAccess(choice, pendingAsyncType.Decl.Name);
+    }
+
+    private Expr ChoiceTest(CtorType pendingAsyncType)
+    {
+      return ExprHelper.IsConstructor(choice, $"Choice_{invariantAction.impl.Name}_{pendingAsyncType.Decl.Name}");
     }
     
     private Expr NoPendingAsyncs
