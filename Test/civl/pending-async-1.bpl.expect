@@ -6,7 +6,7 @@ Execution trace:
     pending-async-1.bpl(10,3): inline$B$1$anon0
     pending-async-1.bpl(43,3): anon0$2
     (0,0): Civl_ReturnChecker
-pending-async-1.bpl(57,3): Error: Pending asyncs created by this call are not summarized
+pending-async-1.bpl(57,3): Error: Pending asyncs to action A created by this call are not summarized
 Execution trace:
     pending-async-1.bpl(57,3): anon0
     pending-async-1.bpl(15,3): inline$C$0$anon0

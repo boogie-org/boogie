@@ -293,19 +293,15 @@ namespace Microsoft.Boogie
 
     private Expr ChoiceTest(CtorType pendingAsyncType)
     {
-      return ExprHelper.IsConstructor(choice, $"Choice_{invariantAction.impl.Name}_{pendingAsyncType.Decl.Name}");
+      return ExprHelper.IsConstructor(choice, invariantAction.ChoiceConstructor(pendingAsyncType).Name);
     }
     
     private Expr NoPendingAsyncs
     {
       get
       {
-        var paBound = elim.Keys.ToDictionary(action => action.pendingAsyncType,
-          action => civlTypeChecker.BoundVariable($"pa_{action.impl.Name}", action.pendingAsyncType));
-        var expr = Expr.And(elim.Keys.Select(action =>
-          ExprHelper.ForallExpr(new List<Variable> { paBound[action.pendingAsyncType] },
-            Expr.Eq(Expr.Select(PAs(action.pendingAsyncType), Expr.Ident(paBound[action.pendingAsyncType])),
-              Expr.Literal(0)))));
+        var expr = Expr.And(elim.Keys.Select(action => Expr.Eq(PAs(action.pendingAsyncType),
+          ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0)))));
         expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
         return expr;
       }

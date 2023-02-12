@@ -45,7 +45,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          // Add each attribute in clonedAttrs that is not already present in x.Item1
+          // Add each attribute in clonedAttrs to x.Item1 if not already present
           QKeyValue kv = clonedAttrs;
           while (kv != null)
           {

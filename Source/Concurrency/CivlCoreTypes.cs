@@ -451,15 +451,22 @@ namespace Microsoft.Boogie
 
   public class InvariantAction : Action
   {
+    public DatatypeTypeCtorDecl choiceDatatypeTypeCtorDecl;
+
     public InvariantAction(Procedure proc, Implementation impl, LayerRange layerRange) : base(proc, impl, layerRange)
     {
+    }
+
+    public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
+    {
+      return choiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
     }
 
     public void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs,
       IEnumerable<AsyncAction> elimPendingAsyncs)
     {
       var choiceDatatypeName = $"Choice_{impl.Name}";
-      var choiceDatatypeTypeCtorDecl =
+      choiceDatatypeTypeCtorDecl =
         new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
       elimPendingAsyncs.Iter(elim =>
       {

@@ -35,7 +35,6 @@ namespace Microsoft.Boogie
     public Dictionary<Absy, HashSet<int>> absyToLayerNums;
     
     public Dictionary<string, Procedure> pendingAsyncProcs;
-    public Dictionary<Procedure, HashSet<string>> actionProcToCreates;
     public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
     
     // These collections are for convenience in later phases and are only initialized at the end of type checking.
@@ -230,16 +229,10 @@ namespace Microsoft.Boogie
       }
     }
 
-    private void TypeCheckPendingAsyncsAndCreates(HashSet<Procedure> actionProcs, Dictionary<Procedure, LayerRange> actionProcToLayerRange)
+    private void TypeCheckCreates(
+      Dictionary<Procedure, HashSet<string>> actionProcToCreates, 
+      Dictionary<Procedure, LayerRange> actionProcToLayerRange)
     {
-      pendingAsyncProcs = actionProcs.Where(proc => proc.HasAttribute(CivlAttributes.PENDING_ASYNC))
-        .ToDictionary(proc => proc.Name, proc => proc);
-      actionProcToCreates = actionProcs.ToDictionary(proc => proc,
-        proc =>
-        {
-          var createsAttr = proc.FindAttribute(CivlAttributes.CREATES);
-          return createsAttr == null ? new HashSet<string>() : createsAttr.Params.OfType<string>().ToHashSet();
-        });
       actionProcToCreates.Keys.Iter(proc =>
       {
         actionProcToCreates[proc].Iter(name =>
@@ -280,13 +273,14 @@ namespace Microsoft.Boogie
     }
 
     private Dictionary<Procedure, Procedure> TypeCheckInvariantAction(Procedure proc,
-      Dictionary<string, Procedure> absActionProcs, Dictionary<Procedure, LayerRange> actionProcToLayerRange)
+      Dictionary<Procedure, HashSet<string>> actionProcToCreates,
+      Dictionary<string, Procedure> absActionProcs, 
+      Dictionary<Procedure, LayerRange> actionProcToLayerRange)
     {
       if (proc.HasAttribute(CivlAttributes.PENDING_ASYNC))
       {
         Error(proc, "Invariant action may not be a pending async");
       }
-
       var layer = actionProcToLayerRange[proc].upperLayerNum;
       var elimMap = new Dictionary<Procedure, Procedure>();
       var kvs = proc.FindAllAttributes(CivlAttributes.ELIM);
@@ -295,13 +289,11 @@ namespace Microsoft.Boogie
         Error(proc, "An elim attribute expects one or two strings");
         return null;
       }
-
       if (kvs.Select(kv => (string)kv.Params[0]).Distinct().Count() != kvs.Count)
       {
         Error(proc, "Each elim attribute must be distinct in the first action");
         return null;
       }
-
       foreach (var kv in kvs)
       {
         var names = kv.Params.OfType<string>().ToList();
@@ -309,18 +301,15 @@ namespace Microsoft.Boogie
         {
           Error(kv, $"Could not find pending async action {names[0]}");
         }
-
         if (names.Count == 2 && !absActionProcs.ContainsKey(names[1]))
         {
           Error(kv, $"Could not find atomic action {names[1]}");
         }
       }
-
       if (checkingContext.ErrorCount > 0)
       {
         return null;
       }
-
       foreach (var kv in kvs)
       {
         var names = kv.Params.OfType<string>().ToList();
@@ -330,7 +319,6 @@ namespace Microsoft.Boogie
         {
           Error(kv, $"Action {actionName} does not exist at layer {layer}");
         }
-
         Procedure absProc = elimProc;
         if (kv.Params.Count == 2)
         {
@@ -341,26 +329,25 @@ namespace Microsoft.Boogie
             Error(kv, $"Action {abstractionName} does not exist at layer {layer}");
           }
         }
-
         if (!actionProcToCreates[proc].Contains(actionName))
         {
           Error(kv, $"{actionName} must be created by {proc.Name}");
         }
-
         if (!actionProcToCreates[elimProc].IsSubsetOf(actionProcToCreates[proc]))
         {
           Error(kv, $"each pending async created by {actionName} must also be created by {proc.Name}");
         }
-
         CheckInductiveSequentializationAbstractionSignature(elimProc, absProc);
         elimMap[elimProc] = absProc;
       }
-
       return elimMap;
     }
 
-    private (Procedure, Procedure) TypeCheckAtomicAction(Procedure proc, Dictionary<string, Procedure> invariantActionProcs, 
-      Dictionary<Procedure, HashSet<string>> invariantProcToNonElims, Dictionary<string, Procedure> atomicActionProcs, 
+    private (Procedure, Procedure) TypeCheckAtomicAction(Procedure proc,
+      Dictionary<Procedure, HashSet<string>> actionProcToCreates,
+      Dictionary<string, Procedure> invariantActionProcs, 
+      Dictionary<Procedure, HashSet<string>> invariantProcToNonElims, 
+      Dictionary<string, Procedure> atomicActionProcs, 
       Dictionary<Procedure, LayerRange> actionProcToLayerRange)
     {
       if (actionProcToCreates[proc].Count > 0 &&
@@ -488,25 +475,40 @@ namespace Microsoft.Boogie
         actionProcToLayerRange.Add(proc, layerRange);
       }
 
-      TypeCheckPendingAsyncsAndCreates(actionProcs, actionProcToLayerRange);
+      // Set up useful data structures for the type checking
+      pendingAsyncProcs = actionProcs.Where(proc => proc.HasAttribute(CivlAttributes.PENDING_ASYNC))
+        .ToDictionary(proc => proc.Name, proc => proc);
+      var actionProcToCreates = actionProcs.ToDictionary(proc => proc,
+        proc =>
+        {
+          var createsAttr = proc.FindAttribute(CivlAttributes.CREATES);
+          return createsAttr == null ? new HashSet<string>() : createsAttr.Params.OfType<string>().ToHashSet();
+        });
+      var atomicActionProcs = actionProcs.Where(proc => GetMoverType(proc) != null)
+        .ToDictionary(proc => proc.Name, proc => proc);
+      var absActionProcs = actionProcs.Where(proc => proc.HasAttribute(CivlAttributes.IS_ABSTRACTION))
+        .ToDictionary(proc => proc.Name, proc => proc);
+      var invariantActionProcs = actionProcs.Where(proc => proc.HasAttribute(CivlAttributes.IS_INVARIANT))
+        .ToDictionary(proc => proc.Name, proc => proc);
+      
+      // type check creates lists
+      TypeCheckCreates(actionProcToCreates, actionProcToLayerRange);
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
       
+      // type check introduction actions
       actionProcs.Where(proc => proc.HasAttribute(CivlAttributes.INTRO)).Iter(proc =>
       {
         TypeCheckIntroductionAction(proc, actionProcToLayerRange[proc]);
       });
       
-      var atomicActionProcs = actionProcs.Where(proc => GetMoverType(proc) != null)
-        .ToDictionary(proc => proc.Name, proc => proc);
-      var absActionProcs = actionProcs.Where(proc => proc.HasAttribute(CivlAttributes.IS_ABSTRACTION))
-        .ToDictionary(proc => proc.Name, proc => proc);
+      // type check invariant actions and calculate for each invariant action the non-eliminated actions
       var invariantProcToElimMap = new Dictionary<Procedure, Dictionary<Procedure, Procedure>>();
       actionProcs.Where(proc => proc.HasAttribute(CivlAttributes.IS_INVARIANT)).Iter(proc =>
       {
-        var elimMap = TypeCheckInvariantAction(proc, absActionProcs, actionProcToLayerRange);
+        var elimMap = TypeCheckInvariantAction(proc, actionProcToCreates, absActionProcs, actionProcToLayerRange);
         if (elimMap != null)
         {
           invariantProcToElimMap[proc] = elimMap;
@@ -516,7 +518,6 @@ namespace Microsoft.Boogie
       {
         return;
       }
-
       var invariantProcToNonElims = invariantProcToElimMap.Keys.ToDictionary(proc => proc,
         proc =>
         {
@@ -524,21 +525,26 @@ namespace Microsoft.Boogie
           nonElims.ExceptWith(invariantProcToElimMap[proc].Keys.Select(x => x.Name));
           return nonElims;
         });
-      var invariantActionProcs = actionProcs.Where(proc => proc.HasAttribute(CivlAttributes.IS_INVARIANT))
-        .ToDictionary(proc => proc.Name, proc => proc);
+      
+      // type check atomic actions
       var actionProcToRefinedProc = new Dictionary<Procedure, Procedure>();
       var actionProcToInvariantProc = new Dictionary<Procedure, Procedure>();
       actionProcs.Where(proc => GetMoverType(proc) != null).Iter(proc =>
       {
-        var (refinedProc, invariantProc) = TypeCheckAtomicAction(proc, invariantActionProcs, invariantProcToNonElims, atomicActionProcs,
-          actionProcToLayerRange);
+        var (refinedProc, invariantProc) = TypeCheckAtomicAction(proc, actionProcToCreates, invariantActionProcs,
+          invariantProcToNonElims, atomicActionProcs, actionProcToLayerRange);
         if (refinedProc != null)
         {
           actionProcToRefinedProc[proc] = refinedProc;
           actionProcToInvariantProc[proc] = invariantProc;
         }
       });
-
+      if (checkingContext.ErrorCount > 0)
+      {
+        return;
+      }
+      
+      // Type check action bodies
       var actionImplVisitor = new ActionImplVisitor(this, actionProcToLayerRange, actionProcToCreates);
       foreach (var impl in actionProcToImpl.Values)
       {
@@ -548,7 +554,6 @@ namespace Microsoft.Boogie
       {
         Error(program, "Call graph over atomic actions must be acyclic");
       }
-      
       actionProcs.Iter(proc =>
       {
         if (proc.FindAttribute("inline") != null)
@@ -556,12 +561,12 @@ namespace Microsoft.Boogie
           Error(proc, "unnecessary to provide inline attribute on action");
         }
       });
-      
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
 
+      // Inline atomic actions
       CivlUtil.AddInlineAttribute(SkipAtomicAction.proc);
       actionProcs.Iter(proc =>
       {
@@ -584,8 +589,14 @@ namespace Microsoft.Boogie
         impl.OriginalLocVars = null;
       });
       
+      // Two-step initialization process for actions
+      // - First, create all actions.
+      // - Second, initialize pendingAsync actions across all actions.
       foreach (var proc in actionProcs.Except(actionProcToRefinedProc.Keys))
       {
+        // In this loop, we create all introduction, invariant, and abstraction actions,
+        // but only those atomic actions (pending async or otherwise) that do not refine
+        // another action.
         Implementation impl = actionProcToImpl[proc];
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.HasAttribute(CivlAttributes.INTRO))
@@ -609,11 +620,15 @@ namespace Microsoft.Boogie
           procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, GetActionMoverType(proc), null);
         }
       }
+      // Now we create all atomic actions that refine other actions via an inductive sequentialization.
+      // Note that each such action to be created is not a pending async action.
+      // Therefore, only the type AtomicAction will be created now.
       actionProcToRefinedProc.Keys.Iter(proc =>
       {
         CreateActionsThatRefineAnotherAction(proc, actionProcToImpl, actionProcToLayerRange, actionProcToRefinedProc);
       });
-      
+      // All actions have been created. Now we initialize their pending asyncs and desugar primitive
+      // invocations (for creating pending asyncs and setting choice) inside them. 
       procToIntroductionAction.Keys.Iter(proc =>
       {
         var action = procToIntroductionAction[proc];
@@ -639,6 +654,7 @@ namespace Microsoft.Boogie
           actionProcToCreates[proc].Select(name => FindAtomicAction(name) as AsyncAction));
       });
       
+      // Create inductive sequentializations
       actionProcToRefinedProc.Keys.Iter(proc =>
       {
         var action = procToAtomicAction[proc];
@@ -659,7 +675,8 @@ namespace Microsoft.Boogie
       });
     }
 
-    void CreateActionsThatRefineAnotherAction(Procedure proc, Dictionary<Procedure, Implementation> actionProcToImpl,
+    void CreateActionsThatRefineAnotherAction(Procedure proc, 
+      Dictionary<Procedure, Implementation> actionProcToImpl,
       Dictionary<Procedure, LayerRange> actionProcToLayerRange,
       Dictionary<Procedure, Procedure> actionProcToRefinedProc)
     {
@@ -1046,7 +1063,7 @@ namespace Microsoft.Boogie
     {
       var pendingAsyncMultisetTypes = program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
         .Where(decl => pendingAsyncProcs.ContainsKey(decl.Name)).Select(decl =>
-          TypeHelper.MapType(new CtorType(Token.NoToken, decl, new List<Type>()), Type.Int)).ToHashSet();
+          TypeHelper.MapType(TypeHelper.CtorType(decl), Type.Int)).ToHashSet();
       foreach (Implementation impl in program.Implementations.Where(i => procToYieldingProc.ContainsKey(i.Proc)))
       {
         // then we collect the layers of local variables in implementations
