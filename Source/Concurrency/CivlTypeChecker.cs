@@ -197,7 +197,7 @@ namespace Microsoft.Boogie
       }
 
       var allInductiveSequentializationLayers =
-        inductiveSequentializations.Select(x => x.inputAction.layerRange.upperLayerNum).ToList();
+        inductiveSequentializations.Select(x => x.invariantAction.layerRange.upperLayerNum).ToList();
 
       var intersect = allRefinementLayers.Intersect(allInductiveSequentializationLayers).ToList();
       if (intersect.Any())
@@ -310,6 +310,7 @@ namespace Microsoft.Boogie
       {
         return null;
       }
+      var invariantModifies = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
       foreach (var kv in kvs)
       {
         var names = kv.Params.OfType<string>().ToList();
@@ -338,6 +339,16 @@ namespace Microsoft.Boogie
           Error(kv, $"each pending async created by {actionName} must also be created by {proc.Name}");
         }
         CheckInductiveSequentializationAbstractionSignature(elimProc, absProc);
+        var elimModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
+        if (!elimModifies.IsSubsetOf(invariantModifies))
+        {
+          Error(kv, $"Modifies list of {elimProc.Name} must be subset of modifies list of invariant action {proc.Name}");
+        }
+        var absModifies = new HashSet<Variable>(absProc.Modifies.Select(ie => ie.Decl));
+        if (!elimModifies.SetEquals(absModifies))
+        {
+          Error(kv, $"Modifies list of {elimProc.Name} must be identical to modifies list of {absProc.Name}");
+        }
         elimMap[elimProc] = absProc;
       }
       return elimMap;
@@ -411,6 +422,17 @@ namespace Microsoft.Boogie
       }
       CheckInductiveSequentializationAbstractionSignature(proc, invariantProc);
       CheckInductiveSequentializationAbstractionSignature(proc, refinedProc);
+      var procModifies = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
+      var refinedProcModifies = new HashSet<Variable>(refinedProc.Modifies.Select(ie => ie.Decl));
+      var invariantProcModifies = new HashSet<Variable>(invariantProc.Modifies.Select(ie => ie.Decl));
+      if (!procModifies.IsSubsetOf(invariantProcModifies))
+      {
+        Error(kv, $"Modifies list of {proc.Name} must be subset of modifies list of invariant action {invariantProc.Name}");
+      }
+      if (!refinedProcModifies.IsSubsetOf(invariantProcModifies))
+      {
+        Error(kv, $"Modifies list of {refinedProc.Name} must be subset of modifies list of invariant action {invariantProc.Name}");
+      }
       return (refinedProc, invariantProc);
     }
 
@@ -640,27 +662,20 @@ namespace Microsoft.Boogie
         action.CompleteInitialization(this,
           actionProcToCreates[proc].Select(name => FindAtomicAction(name) as AsyncAction));
       });
-      procToIsInvariant.Keys.Iter(proc =>
-      {
-        var action = procToIsInvariant[proc];
-        action.CompleteInitialization(this,
-          actionProcToCreates[proc].Select(name => FindAtomicAction(name) as AsyncAction),
-          invariantProcToElimMap[proc].Keys.Select(x => procToAtomicAction[x]).OfType<AsyncAction>());
-      });
       procToIsAbstraction.Keys.Iter(proc =>
       {
         var action = procToIsAbstraction[proc];
         action.CompleteInitialization(this,
           actionProcToCreates[proc].Select(name => FindAtomicAction(name) as AsyncAction));
       });
-      
-      // Create inductive sequentializations
-      actionProcToRefinedProc.Keys.Iter(proc =>
+      var invariantProcToInductiveSequentialization = new Dictionary<Procedure, InductiveSequentialization>();
+      procToIsInvariant.Keys.Iter(proc =>
       {
-        var action = procToAtomicAction[proc];
-        var invariantProc = actionProcToInvariantProc[proc];
-        var invariantAction = procToIsInvariant[invariantProc];
-        var elimMap = invariantProcToElimMap[invariantProc];
+        var action = procToIsInvariant[proc];
+        action.CompleteInitialization(this,
+          actionProcToCreates[proc].Select(name => FindAtomicAction(name) as AsyncAction),
+          invariantProcToElimMap[proc].Keys.Select(x => procToAtomicAction[x]).OfType<AsyncAction>());
+        var elimMap = invariantProcToElimMap[proc];
         var elim = elimMap.Keys.ToDictionary(x => (AsyncAction)procToAtomicAction[x],
           x =>
           {
@@ -669,9 +684,16 @@ namespace Microsoft.Boogie
               ? procToIsAbstraction[absProc]
               : procToAtomicAction[absProc];
           });
-        var inductiveSequentialization =
-          new InductiveSequentialization(this, action, action.refinedAction, invariantAction, elim);
+        var inductiveSequentialization = new InductiveSequentialization(this, action, elim);
         inductiveSequentializations.Add(inductiveSequentialization);
+        invariantProcToInductiveSequentialization[proc] = inductiveSequentialization;
+      });
+      actionProcToRefinedProc.Keys.Iter(proc =>
+      {
+        var action = procToAtomicAction[proc];
+        var invariantProc = actionProcToInvariantProc[proc];
+        var inductiveSequentialization = invariantProcToInductiveSequentialization[invariantProc];
+        inductiveSequentialization.AddTarget(action);
       });
     }
 

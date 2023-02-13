@@ -8,35 +8,24 @@ namespace Microsoft.Boogie
   public class InductiveSequentialization
   {
     public CivlTypeChecker civlTypeChecker;
-    public AtomicAction inputAction;
-    public AtomicAction outputAction;
     public InvariantAction invariantAction;
     public Dictionary<AsyncAction, AtomicAction> elim;
+    public List<AtomicAction> targetActions;
 
     private HashSet<Variable> frame;
     private List<IdentifierExpr> modifies;
     private IdentifierExpr choice;
     private Dictionary<CtorType, Variable> newPAs;
-    private string checkName;
 
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
-    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, AtomicAction inputAction, AtomicAction outputAction,
-      InvariantAction invariantAction, Dictionary<AsyncAction, AtomicAction> elim)
+    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, InvariantAction invariantAction, Dictionary<AsyncAction, AtomicAction> elim)
     {
       this.civlTypeChecker = civlTypeChecker;
-      this.inputAction = inputAction;
-      this.outputAction = outputAction;
       this.invariantAction = invariantAction;
       this.elim = elim;
-
-      // TODO: check frame computation
-      // We could compute a tighter frame per check. For example, base/conclusion checkers
-      // don't have to take the eliminated actions into account.
-      var frameVars = new List<Action> { invariantAction, outputAction, inputAction }
-        .Union(elim.Select(kv => kv.Value))
-        .SelectMany(a => a.gateUsedGlobalVars.Union(a.modifiedGlobalVars)).Distinct();
-      this.frame = new HashSet<Variable>(frameVars);
+      this.targetActions = new List<AtomicAction>();
+      this.frame = new HashSet<Variable>(invariantAction.modifiedGlobalVars);
       this.modifies = frame.Select(Expr.Ident).ToList();
 
       newPAs = invariantAction.pendingAsyncs.ToDictionary(action => action.pendingAsyncType,
@@ -45,13 +34,19 @@ namespace Microsoft.Boogie
       choice = Expr.Ident(invariantAction.impl.OutParams.Last());
     }
 
-    public Tuple<Procedure, Implementation> GenerateBaseCaseChecker()
+    public void AddTarget(AtomicAction targetAction)
     {
-      this.checkName = "base";
+      targetActions.Add(targetAction);
+    }
+
+    public Tuple<Procedure, Implementation> GenerateBaseCaseChecker(AtomicAction inputAction)
+    {
       var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
       
       var subst = GetSubstitution(inputAction, invariantAction);
-      List<Cmd> cmds = GetGateAsserts(inputAction, subst).ToList<Cmd>();
+      List<Cmd> cmds = GetGateAsserts(inputAction, subst,
+          $"Gate of {inputAction.proc.Name} fails in IS base check against invariant {invariantAction.proc.Name}")
+        .ToList<Cmd>();
 
       // Construct call to inputAction
       var pendingAsyncTypeToOutputParamIndex = invariantAction.pendingAsyncs.Select((action, i) => (action, i))
@@ -72,29 +67,32 @@ namespace Microsoft.Boogie
           ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0))).ToList<Expr>();
         cmds.Add(CmdHelper.AssignCmd(lhss, rhss));
       }
+      
+      cmds.Add(GetCheck(inputAction.proc.tok, GetTransitionRelation(invariantAction),
+        $"IS base of {inputAction.proc.Name} failed"));
 
-      cmds.Add(GetCheck(GetTransitionRelation(invariantAction)));
-
-      return GetCheckerTuple(requires, new List<Variable>(), cmds);
+      return GetCheckerTuple($"IS_base_{inputAction.proc.Name}", requires, new List<Variable>(), cmds);
     }
 
-    public Tuple<Procedure, Implementation> GenerateConclusionChecker()
+    public Tuple<Procedure, Implementation> GenerateConclusionChecker(AtomicAction inputAction)
     {
-      this.checkName = "conclusion";
+      var outputAction = inputAction.refinedAction;
       var subst = GetSubstitution(outputAction, invariantAction);
       var requires = outputAction.gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
-      
-      List<Cmd> cmds = GetGateAsserts(invariantAction, null).ToList<Cmd>();
+
+      List<Cmd> cmds = GetGateAsserts(invariantAction, null,
+          $"Gate of {invariantAction.proc.Name} fails in IS conclusion check against {outputAction.proc.Name}")
+        .ToList<Cmd>();
       cmds.Add(GetCallCmd(invariantAction));
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
-      cmds.Add(GetCheck(Substituter.Apply(subst, GetTransitionRelation(outputAction))));
+      cmds.Add(GetCheck(inputAction.proc.tok, Substituter.Apply(subst, GetTransitionRelation(outputAction)),
+        $"IS conclusion of {inputAction.proc.Name} failed"));
 
-      return GetCheckerTuple(requires, new List<Variable>(), cmds);
+      return GetCheckerTuple($"IS_conclusion_{inputAction.proc.Name}", requires, new List<Variable>(), cmds);
     }
 
     public Tuple<Procedure, Implementation> GenerateStepChecker(AsyncAction pendingAsync)
     {
-      this.checkName = "step";
       var pendingAsyncType = pendingAsync.pendingAsyncType;
       var pendingAsyncCtor = pendingAsync.pendingAsyncCtor;
       var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
@@ -116,7 +114,8 @@ namespace Microsoft.Boogie
         inputExprs.Add(pendingAsyncParam);
       }
       var subst = Substituter.SubstitutionFromDictionary(map);
-      cmds.AddRange(GetGateAsserts(abs, subst));
+      cmds.AddRange(GetGateAsserts(abs, subst,
+        $"Gate of {abs.proc.Name} fails in IS induction step for invariant {invariantAction.proc.Name}"));
 
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
       if (abs.HasPendingAsyncs)
@@ -138,9 +137,10 @@ namespace Microsoft.Boogie
         cmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
       }
 
-      cmds.Add(GetCheck(GetTransitionRelation(invariantAction)));
+      cmds.Add(GetCheck(invariantAction.proc.tok, GetTransitionRelation(invariantAction),
+        $"IS step of {invariantAction.proc.Name} with {abs.proc.Name} failed"));
       
-      return GetCheckerTuple(requires, locals, cmds, "_" + abs.proc.Name);
+      return GetCheckerTuple($"IS_step_{invariantAction.proc.Name}_{abs.proc.Name}", requires, locals, cmds);
     }
 
     public Expr GenerateMoverCheckAssumption(AtomicAction action, List<Variable> actionArgs, AtomicAction leftMover, List<Variable> leftMoverArgs)
@@ -161,6 +161,7 @@ namespace Microsoft.Boogie
       //
       // Construct conjunction of transition relation of invariant, gate of invariant, actionExpr, and leftMoverExpr
       // and existentially quantify all free variables.
+      
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       Expr actionExpr = Expr.True;
       if (action is AsyncAction asyncAtomicAction && elim.ContainsKey(asyncAtomicAction))
@@ -229,13 +230,10 @@ namespace Microsoft.Boogie
       );
     }
 
-    private AssertCmd GetCheck(Expr expr)
+    private AssertCmd GetCheck(IToken tok, Expr expr, string msg)
     {
       expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
-      return CmdHelper.AssertCmd(
-        inputAction.proc.tok,
-        expr,
-        $"IS {checkName} of {inputAction.proc.Name} failed");
+      return CmdHelper.AssertCmd(tok, expr, msg);
     }
 
     public static IEnumerable<AssertCmd> GetGateAsserts(Action action, Substitution subst, string msg)
@@ -251,17 +249,11 @@ namespace Microsoft.Boogie
       }
     }
 
-    private IEnumerable<AssertCmd> GetGateAsserts(Action action, Substitution subst)
-    {
-      return GetGateAsserts(action, subst,
-        $"Gate of {action.proc.Name} fails in IS {checkName} of {inputAction.proc.Name}");
-    }
-
-    private Tuple<Procedure, Implementation> GetCheckerTuple(
-      List<Requires> requires, List<Variable> locals, List<Cmd> cmds, string suffix = "")
+    private Tuple<Procedure, Implementation> GetCheckerTuple(string checkerName,
+      List<Requires> requires, List<Variable> locals, List<Cmd> cmds)
     {
       var proc = DeclHelper.Procedure(
-        civlTypeChecker.AddNamePrefix($"IS_{checkName}_{inputAction.proc.Name}{suffix}"),
+        civlTypeChecker.AddNamePrefix(checkerName),
         invariantAction.impl.InParams,
         invariantAction.impl.OutParams,
         requires,
@@ -272,7 +264,7 @@ namespace Microsoft.Boogie
         proc.InParams,
         proc.OutParams,
         locals,
-        new List<Block> { BlockHelper.Block(checkName, cmds) });
+        new List<Block> { BlockHelper.Block(checkerName, cmds) });
       return Tuple.Create(proc, impl);
     }
 
@@ -383,8 +375,11 @@ namespace Microsoft.Boogie
     {
       foreach (var x in civlTypeChecker.inductiveSequentializations)
       {
-        AddCheck(civlTypeChecker, x.GenerateBaseCaseChecker());
-        AddCheck(civlTypeChecker, x.GenerateConclusionChecker());
+        foreach (var targetAction in x.targetActions)
+        {
+          AddCheck(civlTypeChecker, x.GenerateBaseCaseChecker(targetAction));
+          AddCheck(civlTypeChecker, x.GenerateConclusionChecker(targetAction));
+        }
         foreach (var elim in x.elim.Keys)
         {
           AddCheck(civlTypeChecker, x.GenerateStepChecker(elim));

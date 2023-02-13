@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
         from IS in civlTypeChecker.inductiveSequentializations
         from leftMover in IS.elim.Values
         from action in civlTypeChecker.procToAtomicAction.Values
-        where action.layerRange.Contains(IS.inputAction.layerRange.upperLayerNum)
+        where action.layerRange.Contains(IS.invariantAction.layerRange.upperLayerNum)
         let extraAssumption1 = IS.GenerateMoverCheckAssumption(action, action.firstImpl.InParams, leftMover, leftMover.secondImpl.InParams)
         let extraAssumption2 = IS.GenerateMoverCheckAssumption(action, action.secondImpl.InParams, leftMover, leftMover.firstImpl.InParams)
         select new {action, leftMover, extraAssumption1, extraAssumption2};

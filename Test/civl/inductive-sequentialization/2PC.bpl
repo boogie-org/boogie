@@ -77,7 +77,7 @@ modifies ReqCH, VoteCH, DecCH, votes, decisions;
 
 procedure {:IS_abstraction}{:layer 5}
 PARTICIPANT2' ({:linear_in "pid"} pid:int)
-modifies VoteCH, DecCH, decisions;
+modifies DecCH, decisions;
 {
   var d:decision;
   assert pid(pid);
