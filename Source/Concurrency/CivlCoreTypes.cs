@@ -130,7 +130,7 @@ namespace Microsoft.Boogie
       gate = HoistAsserts(impl, civlTypeChecker.Options);
       gateUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(gate).Where(x => x is GlobalVariable));
       actionUsedGlobalVars = new HashSet<Variable>(VariableCollector.Collect(impl).Where(x => x is GlobalVariable));
-      modifiedGlobalVars = new HashSet<Variable>(AssignedVariables().Where(x => x is GlobalVariable));
+      modifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(x => x.Decl));
     }
     
     public bool HasPendingAsyncs => pendingAsyncs.Count > 0;
@@ -143,16 +143,6 @@ namespace Microsoft.Boogie
     
     public bool HasAssumeCmd => impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
 
-    protected List<Variable> AssignedVariables()
-    {
-      List<Variable> modifiedVars = new List<Variable>();
-      foreach (Cmd cmd in impl.Blocks.SelectMany(b => b.Cmds))
-      {
-        cmd.AddAssignedVariables(modifiedVars);
-      }
-      return modifiedVars;
-    }
-    
     private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker)
     {
       impl.Blocks.Iter(block =>
@@ -361,8 +351,8 @@ namespace Microsoft.Boogie
 
     public bool TriviallyCommutesWith(AtomicAction other)
     {
-      return this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Count() == 0 &&
-             this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Count() == 0;
+      return !this.modifiedGlobalVars.Intersect(other.actionUsedGlobalVars).Any() &&
+             !this.actionUsedGlobalVars.Intersect(other.modifiedGlobalVars).Any();
     }
 
     private void DeclareTriggerFunctions()

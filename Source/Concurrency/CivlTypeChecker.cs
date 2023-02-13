@@ -345,9 +345,9 @@ namespace Microsoft.Boogie
           Error(kv, $"Modifies list of {elimProc.Name} must be subset of modifies list of invariant action {proc.Name}");
         }
         var absModifies = new HashSet<Variable>(absProc.Modifies.Select(ie => ie.Decl));
-        if (!elimModifies.SetEquals(absModifies))
+        if (!absModifies.IsSubsetOf(elimModifies))
         {
-          Error(kv, $"Modifies list of {elimProc.Name} must be identical to modifies list of {absProc.Name}");
+          Error(kv, $"Modifies list of {absProc.Name} must be subset of modifies list of {elimProc.Name}");
         }
         elimMap[elimProc] = absProc;
       }

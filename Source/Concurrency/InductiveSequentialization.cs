@@ -13,7 +13,6 @@ namespace Microsoft.Boogie
     public List<AtomicAction> targetActions;
 
     private HashSet<Variable> frame;
-    private List<IdentifierExpr> modifies;
     private IdentifierExpr choice;
     private Dictionary<CtorType, Variable> newPAs;
 
@@ -25,8 +24,10 @@ namespace Microsoft.Boogie
       this.invariantAction = invariantAction;
       this.elim = elim;
       this.targetActions = new List<AtomicAction>();
+      // The type checker ensures that the set of modified variables of an invariant is a superset of
+      // - the modified set of each of each eliminated and abstract action associated with this invariant.
+      // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
       this.frame = new HashSet<Variable>(invariantAction.modifiedGlobalVars);
-      this.modifies = frame.Select(Expr.Ident).ToList();
 
       newPAs = invariantAction.pendingAsyncs.ToDictionary(action => action.pendingAsyncType,
         action => (Variable)civlTypeChecker.LocalVariable($"newPAs_{action.impl.Name}",
@@ -257,7 +258,7 @@ namespace Microsoft.Boogie
         invariantAction.impl.InParams,
         invariantAction.impl.OutParams,
         requires,
-        modifies,
+        frame.Select(Expr.Ident).ToList(),
         new List<Ensures>());
       var impl = DeclHelper.Implementation(
         proc,
@@ -371,18 +372,18 @@ namespace Microsoft.Boogie
 
   public static class InductiveSequentializationChecker
   {
-    public static void AddCheckers(CivlTypeChecker civlTypeChecker)
+    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       foreach (var x in civlTypeChecker.inductiveSequentializations)
       {
         foreach (var targetAction in x.targetActions)
         {
-          AddCheck(civlTypeChecker, x.GenerateBaseCaseChecker(targetAction));
-          AddCheck(civlTypeChecker, x.GenerateConclusionChecker(targetAction));
+          AddCheck(x.GenerateBaseCaseChecker(targetAction), decls);
+          AddCheck(x.GenerateConclusionChecker(targetAction), decls);
         }
         foreach (var elim in x.elim.Keys)
         {
-          AddCheck(civlTypeChecker, x.GenerateStepChecker(elim));
+          AddCheck(x.GenerateStepChecker(elim), decls);
         }
       }
 
@@ -393,19 +394,15 @@ namespace Microsoft.Boogie
       
       foreach (var absCheck in absChecks)
       {
-        AddCheck(civlTypeChecker, GenerateAbstractionChecker(civlTypeChecker, absCheck.Key, absCheck.Value));
+        AddCheck(GenerateAbstractionChecker(civlTypeChecker, absCheck.Key, absCheck.Value), decls);
       }
     }
 
     private static Tuple<Procedure, Implementation> GenerateAbstractionChecker(CivlTypeChecker civlTypeChecker, AtomicAction action, AtomicAction abs)
     {
       var requires = abs.gate.Select(g => new Requires(false, g.Expr)).ToList();
-      // TODO: check frame computation
-      var frame = new HashSet<Variable>(
-        action.modifiedGlobalVars
-        .Union(action.gateUsedGlobalVars)
-        .Union(abs.modifiedGlobalVars)
-        .Union(abs.gateUsedGlobalVars));
+      // The type checker ensures that the modified set of abs is a subset of the modified set of action.
+      var frame = new HashSet<Variable>(action.modifiedGlobalVars);
 
       var subst = InductiveSequentialization.GetSubstitution(action, abs);
       List<Cmd> cmds = InductiveSequentialization.GetGateAsserts(action, subst,
@@ -441,10 +438,10 @@ namespace Microsoft.Boogie
       return Tuple.Create(proc, impl);
     }
 
-    private static void AddCheck(CivlTypeChecker civlTypeChecker, Tuple<Procedure, Implementation> t)
+    private static void AddCheck(Tuple<Procedure, Implementation> t, List<Declaration> decls)
     {
-      civlTypeChecker.program.AddTopLevelDeclaration(t.Item1);
-      civlTypeChecker.program.AddTopLevelDeclaration(t.Item2);
+      decls.Add(t.Item1);
+      decls.Add(t.Item2);
     }
   }
 }

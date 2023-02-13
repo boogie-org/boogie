@@ -49,7 +49,7 @@ namespace Microsoft.Boogie
 
       if (!options.TrustInductiveSequentialization)
       {
-        InductiveSequentializationChecker.AddCheckers(civlTypeChecker);
+        InductiveSequentializationChecker.AddCheckers(civlTypeChecker, decls);
       }
 
       foreach (AtomicAction action in civlTypeChecker.procToAtomicAction.Values.Union(
