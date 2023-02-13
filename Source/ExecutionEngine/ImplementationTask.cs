@@ -6,6 +6,7 @@ using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
+using VC;
 
 namespace Microsoft.Boogie;
 
@@ -30,6 +31,8 @@ public record Stale : IVerificationStatus;
 /// Currently being run
 /// </summary>
 public record Running : IVerificationStatus;
+
+public record BatchCompleted(Split Split, VCResult VcResult) : IVerificationStatus;
 
 public interface IImplementationTask {
   IVerificationStatus CacheStatus { get; }
@@ -109,27 +112,41 @@ public class ImplementationTask : IImplementationTask {
     cancellationSource = new();
 
     var cancellationToken = cancellationSource.Token;
-
     status = new ReplaySubject<IVerificationStatus>();
-    var task = RunInternal(cancellationToken, status.OnNext);
-    task.ContinueWith(r =>
+    
+    engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(),
+      null, null, Implementation, cancellationToken, TextWriter.Null).
+      Catch<IVerificationStatus, OperationCanceledException>((e) => Observable.Return(new Stale())).
+      Subscribe(next =>
+    {
+      if (next is Completed)
+      {
+        CacheStatus = next;
+      }
+      status.OnNext(next);
+    }, e =>
     {
       // Lock so we may do operations after clearing cancellationSource,
       // which releases our control over the field status.
-      lock (mayAccessCancellationSource) {
+      lock (mayAccessCancellationSource)
+      {
+        // Clear cancellationSource before calling status.OnError, so ImplementationTask.IsIdle returns true
+        cancellationSource = null;
+        status.OnError(e);
+      }
+    }, () =>
+    {
+      // Lock so we may do operations after clearing cancellationSource,
+      // which releases our control over the field status.
+      lock (mayAccessCancellationSource)
+      {
         // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns true
         cancellationSource = null;
-        if (cancellationToken.IsCancellationRequested && CacheStatus is not Completed) {
-          status.OnNext(new Stale());
-        }
 
-        if (r.Exception != null) {
-          status.OnError(r.Exception);
-        } else {
-          status.OnCompleted();
-        }
+        status.OnCompleted();
       }
-    }, TaskScheduler.Current);
+    });
+    
     return status;
   }
 
@@ -157,25 +174,6 @@ public class ImplementationTask : IImplementationTask {
         myCancellationSource.Token.Register(() => cancellationSource.Cancel());
       }
     });
-    return result;
-  }
-
-  private async Task<VerificationResult> RunInternal(CancellationToken cancellationToken, Action<IVerificationStatus> notifyStatusChange) {
-
-    var enqueueTask = engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(),
-      null, null, Implementation, cancellationToken, TextWriter.Null);
-
-    var afterEnqueueStatus = enqueueTask.IsCompleted ? (IVerificationStatus)new Running() : new Queued();
-    notifyStatusChange(afterEnqueueStatus);
-
-    var verifyTask = await enqueueTask;
-    if (afterEnqueueStatus is not Running) {
-      notifyStatusChange(new Running());
-    }
-
-    var result = await verifyTask;
-    CacheStatus = new Completed(result);
-    notifyStatusChange(CacheStatus);
     return result;
   }
 }

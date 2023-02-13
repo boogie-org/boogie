@@ -4,7 +4,7 @@ using VCGeneration;
 
 namespace Microsoft.Boogie;
 
-public interface OutputPrinter : IConditionGenerationPrinter
+public interface OutputPrinter
 {
   ExecutionEngineOptions Options { get; set; }
   void ErrorWriteLine(TextWriter tw, string s);
@@ -14,8 +14,4 @@ public interface OutputPrinter : IConditionGenerationPrinter
   void WriteTrailer(TextWriter textWriter, PipelineStatistics stats);
   void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true);
   void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null);
-
-  void ReportImplementationsBeforeVerification(Implementation[] implementations);
-  void ReportStartVerifyImplementation(Implementation implementation);
-  void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result);
 }

@@ -223,7 +223,7 @@ procedure Foo(x: int) {
   }
 
   [Test]
-  public async Task RunRunCancelRunRun() {
+  public async Task SingleTaskRunRunCancelRunRun() {
     var options = CommandLineOptions.FromArguments();
     var returnCheckSat = new SemaphoreSlim(0);
     options.VcsCores = 1;
@@ -236,20 +236,21 @@ procedure Foo(x: int) {
 }".TrimStart();
     var result = Parser.Parse(source, "fakeFilename1", out var program);
     Assert.AreEqual(0, result);
-    var tasks = engine.GetImplementationTasks(program)[0];
+    var task = engine.GetImplementationTasks(program)[0];
     var statusList1 = new List<IVerificationStatus>();
-    var firstStatuses = tasks.TryRun()!;
-    var runAfterRun1 = tasks.TryRun();
-    Assert.AreEqual(null, runAfterRun1);
+    var firstStatuses = task.TryRun()!;
+    var runDuringRun1 = task.TryRun();
+    Assert.AreEqual(null, runDuringRun1);
     firstStatuses.Subscribe(statusList1.Add);
-    tasks.Cancel();
+    task.Cancel();
 
-    var secondStatuses = tasks.TryRun()!;
-    var runAfterRun2 = tasks.TryRun();
-    Assert.AreEqual(null, runAfterRun2);
+    var secondStatuses = task.TryRun()!;
+    var runDuringRun2 = task.TryRun();
+    Assert.AreEqual(null, runDuringRun2);
     var statusList2 = new List<IVerificationStatus>();
     secondStatuses.Subscribe(statusList2.Add);
-    returnCheckSat.Release();
+    returnCheckSat.Release(2);
+    //returnCheckSat.Release();
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
     var expected1 = new List<IVerificationStatus>() {
@@ -303,12 +304,15 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
 
     Assert.AreEqual((firstName, new Running()), statusList[0]);
     Assert.AreEqual((secondName, new Queued()), statusList[1]);
-    var indexTwoAndThreeOrdered = statusList.Skip(2).Take(2).OrderByDescending(k => k.Item1 == firstName).ToList();
-    Assert.AreEqual(firstName, indexTwoAndThreeOrdered[0].Item1);
-    Assert.IsTrue(indexTwoAndThreeOrdered[0].Item2 is Completed);
-    Assert.AreEqual((secondName, new Running()), indexTwoAndThreeOrdered[1]);
-    Assert.AreEqual(secondName, statusList[4].Item1);
-    Assert.IsTrue(statusList[4].Item2 is Completed);
+    Assert.AreEqual(firstName, statusList[2].Item1);
+    Assert.IsTrue(statusList[2].Item2 is BatchCompleted);
+    Assert.AreEqual(firstName, statusList[3].Item1);
+    Assert.IsTrue(statusList[3].Item2 is Completed);
+    Assert.AreEqual((secondName, new Running()), statusList[4]);
+    Assert.AreEqual(secondName, statusList[5].Item1);
+    Assert.IsTrue(statusList[5].Item2 is BatchCompleted);
+    Assert.AreEqual(secondName, statusList[6].Item1);
+    Assert.IsTrue(statusList[6].Item2 is Completed);
     
     var tasks2 = engine.GetImplementationTasks(program);
     Assert.True(tasks2[0].CacheStatus is Completed);

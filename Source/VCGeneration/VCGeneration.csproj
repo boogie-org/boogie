@@ -15,4 +15,8 @@
     <ProjectReference Include="..\VCExpr\VCExpr.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.Reactive" Version="4.4.1" />
+  </ItemGroup>
+
 </Project>

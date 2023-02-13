@@ -7,6 +7,7 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 using System.IO;
+using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
@@ -19,6 +20,9 @@ namespace VC
 
   public class VCGen : ConditionGeneration
   {
+    public IObservable<(Split split, VCResult vcResult)> BatchCompletions => batchCompletions;
+    private readonly Subject<(Split split, VCResult vcResult)> batchCompletions = new();
+    
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
@@ -408,6 +412,8 @@ namespace VC
 
       var worker = new SplitAndVerifyWorker(Options, this, run, data.GotoCmdOrigins, callback,
         data.ModelViewInfo, outcome);
+      worker.BatchCompletions.Subscribe(batchCompletions);
+            
       outcome = await worker.WorkUntilDone(cancellationToken);
       ResourceCount = worker.ResourceCount;
 
