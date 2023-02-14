@@ -250,7 +250,6 @@ procedure Foo(x: int) {
     var statusList2 = new List<IVerificationStatus>();
     secondStatuses.Subscribe(statusList2.Add);
     returnCheckSat.Release(2);
-    //returnCheckSat.Release();
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
     var expected1 = new List<IVerificationStatus>() {
@@ -320,5 +319,18 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
 
     Assert.True(tasks2[1].CacheStatus is Completed);
     Assert.AreEqual(ConditionGeneration.Outcome.Correct, ((Completed)tasks2[1].CacheStatus).Result.Outcome);
+    
+    var batchResult = (BatchCompleted) statusList[2].Item2;
+    
+    var assertion = batchResult.VcResult.asserts[0];
+    batchResult.VcResult.ComputePerAssertOutcomes(out var perAssertOutcome, out var perAssertCounterExamples);
+    Assert.Contains(assertion, perAssertOutcome.Keys);
+    Assert.Contains(assertion, perAssertCounterExamples.Keys);
+    var outcomeAssertion = perAssertOutcome[assertion];
+    var counterExampleAssertion = perAssertCounterExamples[assertion];
+    Assert.AreEqual(ProverInterface.Outcome.Invalid, outcomeAssertion);
+    Assert.AreEqual(true, counterExampleAssertion is AssertCounterexample);
+    var assertCounterexample = (AssertCounterexample)counterExampleAssertion;
+    Assert.AreEqual(assertCounterexample.FailingAssert, assertion);
   }
 }
