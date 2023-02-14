@@ -14,10 +14,11 @@ namespace ExecutionEngineTests
   public class RegressionTests
   {
     [Test]
-    public async Task NoNullPointerExceptionEvenIfConcurrencyRaces() {
+    public async Task NoNullPointerExceptionEvenIfConcurrencyRaces()
+    {
       SMTLibOptions smtLibOptions = CommandLineOptions.FromArguments();
       VCExpressionGenerator vgen = new VCExpressionGenerator();
-      VCGenerationOptions genOptions = new VCGenerationOptions(new List<string>(){});
+      VCGenerationOptions genOptions = new VCGenerationOptions(new List<string>() { });
       var smtLibProverOptions = new SMTLibSolverOptions(smtLibOptions);
       smtLibProverOptions.Solver = SolverKind.NoOpWithZ3Options;
       var smtLibInteractiveTheoremProver = new SMTLibInteractiveTheoremProver(
@@ -25,10 +26,11 @@ namespace ExecutionEngineTests
         smtLibProverOptions,
         new VCExpressionGenerator(),
         new SMTLibProverContext(vgen, genOptions, smtLibOptions)
-        );
+      );
       smtLibInteractiveTheoremProver.Close();
       // No null pointer exception should arise here
       await smtLibInteractiveTheoremProver.GoBackToIdle();
       Assert.IsTrue(true);
     }
+  }
 }
