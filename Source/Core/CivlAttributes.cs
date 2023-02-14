@@ -31,8 +31,7 @@ namespace Microsoft.Boogie
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
     public const string LINEAR_OUT = "linear_out";
-
-    public const string BACKWARD = "backward";
+    
     public const string COMMUTATIVITY = "commutativity";
     public const string LEMMA = "lemma";
     public const string WITNESS = "witness";
