@@ -143,7 +143,7 @@ namespace Microsoft.Boogie
     {
       if (!civlTypeChecker.implToPendingAsyncCollector[enclosingImpl].TryGetValue(pendingAsyncType, out var collectedPAs))
       {
-        collectedPAs = civlTypeChecker.LocalVariable($"{pendingAsyncType.Decl.Name}_collectedPAs",
+        collectedPAs = civlTypeChecker.LocalVariable($"collectedPAs_{pendingAsyncType.Decl.Name}",
           TypeHelper.MapType(pendingAsyncType, Type.Int));
         civlTypeChecker.implToPendingAsyncCollector[enclosingImpl][pendingAsyncType] = collectedPAs;
       }

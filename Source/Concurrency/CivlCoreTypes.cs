@@ -111,7 +111,7 @@ namespace Microsoft.Boogie
       var rhss = new List<Expr>();
       pendingAsyncs.Iter(action =>
       {
-        var pa = civlTypeChecker.Formal($"PAs_{action.impl.Name}", action.pendingAsyncMultisetType, false);
+        var pa = VarHelper.Formal($"PAs_{action.impl.Name}", action.pendingAsyncMultisetType, false);
         impl.OutParams.Add(pa);
         proc.OutParams.Add(pa);
         lhss.Add(Expr.Ident(pa));
