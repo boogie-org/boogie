@@ -333,4 +333,44 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     var assertCounterexample = (AssertCounterexample)counterExampleAssertion;
     Assert.AreEqual(assertCounterexample.FailingAssert, assertion);
   }
+  
+
+  [Test]
+  public async Task SolverCrash()
+  {
+    var printer = new NullPrinter();
+    var options = CommandLineOptions.FromArguments(printer);
+    options.CreateSolver = (_, _) => new OverflowSolver();
+    var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var terminatingProgram = GetProgram(executionEngine, fast);
+
+    // We limit the number of checkers to 1.
+    options.VcsCores = 1;
+
+    var outcome1 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+    Assert.IsTrue(outcome1 is Completed completed && completed.Result.Outcome == ConditionGeneration.Outcome.Inconclusive);
+    options.CreateSolver = (_ ,_ ) => new UnsatSolver();
+    var outcome2 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+    Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.Outcome == ConditionGeneration.Outcome.Correct);
+  }
+
+  private readonly string fast = @"
+procedure easy() ensures 1 + 1 == 0; {
+}
+";
+
+  public Program GetProgram(ExecutionEngine engine, string code) {
+    var bplFileName = "1";
+    int errorCount = Parser.Parse(code, bplFileName, out Program program,
+      engine.Options.UseBaseNameForFileName);
+    Assert.AreEqual(0, errorCount);
+
+    engine.ResolveAndTypecheck(program, bplFileName, out _);
+    engine.EliminateDeadVariables(program);
+    engine.CollectModSets(program);
+    engine.CoalesceBlocks(program);
+    engine.Inline(program);
+    return program;
+  }
 }
