@@ -61,8 +61,6 @@ namespace Microsoft.Boogie
       // Remove original declarations and add new checkers generated above
       program.RemoveTopLevelDeclarations(x => originalDecls.Contains(x));
       program.AddTopLevelDeclarations(decls);
-
-      BackwardAssignmentSubstituter.SubstituteBackwardAssignments(civlTypeChecker.procToAtomicAction.Values);
       
       linearTypeChecker.EraseLinearAnnotations();
     }
