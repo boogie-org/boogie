@@ -1981,10 +1981,7 @@ namespace Microsoft.Boogie
      {:IS_abstraction}
        Actions that are only used as invariant actions or abstractions in
        inductive sequentialization. These are exempt from the overall pool of
-       actions for commutativity checking.
-
-     {:backward}
-       Backward assignment in atomic action.";
+       actions for commutativity checking.";
 
     protected override string HelpHeader =>
       base.HelpHeader + @"
