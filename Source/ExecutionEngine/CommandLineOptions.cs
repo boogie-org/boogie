@@ -1957,12 +1957,10 @@ namespace Microsoft.Boogie
        are supported.
 
      {:pending_async}
-       Pending async datatype.
+       Atomic action that may be created as a pending async.
        Local variable collecting pending asyncs in yielding procedure.
-     {:pending_async ""action""}
-       Pending async datatype constructor for action.
-     {:pending_async ""action1"", ""action2"", ...}
-       Output parameter of atomic action.
+     {:creates ""action1"", ""action2"", ...}
+       Pending asyncs created by an atomic action.
 
      {:sync}
        Synchronized async call.
