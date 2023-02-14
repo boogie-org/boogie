@@ -162,6 +162,11 @@ namespace Microsoft.Boogie
   // Handy syntactic sugar missing in Expr
   public static class ExprHelper
   {
+    public static NAryExpr FunctionCall(Function f, List<Expr> args)
+    {
+      return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
+    }
+
     public static NAryExpr FunctionCall(IAppliable f, params Expr[] args)
     {
       return new NAryExpr(Token.NoToken, f, args);

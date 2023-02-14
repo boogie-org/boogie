@@ -16,6 +16,8 @@ namespace Microsoft.Boogie
     private IdentifierExpr choice;
     private Dictionary<CtorType, Variable> newPAs;
 
+    private Function invariantTransitionRelation;
+    private List<Variable> alwaysMapKeys;
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
     public InductiveSequentialization(CivlTypeChecker civlTypeChecker, InvariantAction invariantAction, Dictionary<AsyncAction, AtomicAction> elim)
@@ -23,16 +25,48 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.invariantAction = invariantAction;
       this.elim = elim;
-      this.targetActions = new List<AtomicAction>();
+      targetActions = new List<AtomicAction>();
+
       // The type checker ensures that the set of modified variables of an invariant is a superset of
       // - the modified set of each of each eliminated and abstract action associated with this invariant.
       // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
-      this.frame = new HashSet<Variable>(invariantAction.modifiedGlobalVars);
-
+      frame = new HashSet<Variable>(invariantAction.modifiedGlobalVars);
+      choice = Expr.Ident(invariantAction.impl.OutParams.Last());
       newPAs = invariantAction.pendingAsyncs.ToDictionary(action => action.pendingAsyncType,
         action => (Variable)civlTypeChecker.LocalVariable($"newPAs_{action.impl.Name}",
           action.pendingAsyncMultisetType));
-      choice = Expr.Ident(invariantAction.impl.OutParams.Last());
+
+      var alwaysMap = new Dictionary<Variable, Expr>();
+      var foroldMap = new Dictionary<Variable, Expr>();
+      civlTypeChecker.program.GlobalVariables.Iter(g =>
+      {
+        alwaysMap[g] = Expr.Ident(VarHelper.Formal(g.Name, g.TypedIdent.Type, true));
+        foroldMap[g] = Expr.Ident(VarHelper.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
+      });
+      invariantAction.impl.InParams.Iter(v =>
+      {
+        alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
+      });
+      invariantAction.impl.OutParams.Iter(v =>
+      {
+        alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
+      });
+      var always = Substituter.SubstitutionFromDictionary(alwaysMap);
+      var forold = Substituter.SubstitutionFromDictionary(foroldMap);
+      var transitionRelationExpr =
+        Substituter.ApplyReplacingOldExprs(always, forold, GetInvariantTransitionRelationWithChoice());
+      var gateExprs = invariantAction.gate.Select(assertCmd =>
+        Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
+      alwaysMapKeys = alwaysMap.Keys.ToList();
+      invariantTransitionRelation = new Function(Token.NoToken, invariantAction.proc.Name, new List<TypeVariable>(),
+        alwaysMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
+        VarHelper.Formal(TypedIdent.NoName, Type.Bool, false), null,
+        new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
+      invariantTransitionRelation.Body = ExprHelper.ExistsExpr(
+        foroldMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
+        Expr.And(gateExprs.Append(transitionRelationExpr)));
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, invariantTransitionRelation.Body);
+      civlTypeChecker.program.AddTopLevelDeclaration(invariantTransitionRelation);
     }
 
     public void AddTarget(AtomicAction targetAction)
@@ -191,35 +225,26 @@ namespace Microsoft.Boogie
         leftMoverExpr = Expr.And(choiceExpr, leftMoverExpr);
       }
       var alwaysMap = new Dictionary<Variable, Expr>();
-      var foroldMap = new Dictionary<Variable, Expr>();
       civlTypeChecker.program.GlobalVariables.Iter(g =>
       {
-        alwaysMap[g] = Expr.Ident(new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, g.Name, g.TypedIdent.Type)));
-        foroldMap[g] = Expr.Ident(new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, $"old_{g.Name}", g.TypedIdent.Type)));
+        alwaysMap[g] = Expr.Ident(VarHelper.BoundVariable(g.Name, g.TypedIdent.Type));
       });
       invariantAction.impl.InParams.Iter(v =>
       {
-        alwaysMap[v] = Expr.Ident(new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)));
+        alwaysMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
       });
       invariantAction.impl.OutParams.Iter(v =>
       {
-        alwaysMap[v] = Expr.Ident(new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)));
+        alwaysMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
       });
       var always = Substituter.SubstitutionFromDictionary(alwaysMap);
-      var forold = Substituter.SubstitutionFromDictionary(foroldMap);
       actionExpr = Substituter.Apply(always, actionExpr);
       leftMoverExpr = Substituter.Apply(always, leftMoverExpr);
       var transitionRelationExpr =
-        Substituter.ApplyReplacingOldExprs(always, forold, GetInvariantTransitionRelationWithChoice());
-      var gateExprs = invariantAction.gate.Select(assertCmd =>
-        Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
+        ExprHelper.FunctionCall(invariantTransitionRelation, alwaysMapKeys.Select(v => alwaysMap[v]).ToList());
       return ExprHelper.ExistsExpr(
-        alwaysMap.Values.Concat(foroldMap.Values).OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
-        Expr.And(gateExprs.Concat(new[] { transitionRelationExpr, actionExpr, leftMoverExpr })));
+        alwaysMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
+        Expr.And(new[] { transitionRelationExpr, actionExpr, leftMoverExpr }));
     }
 
     private CallCmd GetCallCmd(Action callee)
