@@ -865,13 +865,8 @@ namespace Microsoft.Boogie
     {
       var verificationResult = new VerificationResult(impl, programId);
 
-      using var vcgen = new VCGen(processedProgram.Program, checkerPool);
-
-      var help = Helper();
-      return vcgen.BatchCompletions.Select(t => new BatchCompleted(t.split, t.vcResult))
-        .Concat<IVerificationStatus>(Observable.FromAsync(() => help));
-
-      async Task<IVerificationStatus> Helper()
+      var vcgen = new VCGen(processedProgram.Program, checkerPool);
+      var completeVerification = Task.Run(async () =>
       {
         vcgen.CachingActionCounts = stats.CachingActionCounts;
         verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
@@ -919,10 +914,6 @@ namespace Microsoft.Boogie
           verificationResult.Errors = null;
           verificationResult.Outcome = ConditionGeneration.Outcome.SolverException;
         }
-        catch (Exception)
-        {
-          throw;
-        }
 
         verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
         verificationResult.End = DateTime.UtcNow;
@@ -934,7 +925,9 @@ namespace Microsoft.Boogie
         verificationResult.ResourceCount = vcgen.ResourceCount;
 
         return new Completed(verificationResult);
-      }
+      }, cancellationToken);
+      return vcgen.BatchCompletions.Select(t => new BatchCompleted(t.split, t.vcResult))
+        .Concat<IVerificationStatus>(Observable.FromAsync(() => completeVerification));
     }
 
 
