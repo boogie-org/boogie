@@ -1970,10 +1970,7 @@ namespace Microsoft.Boogie
        using invariant action I
      {:elim ""A""}
      {:elim ""A"", ""A'""}
-       by eliminating multiple actions A (optionally using abstraction A')
-     {:choice}
-       and optionally using an output parameter to indicate the selected
-       pending async.
+       by eliminating multiple actions A (optionally using abstraction A').
 
      {:IS_invariant}
      {:IS_abstraction}

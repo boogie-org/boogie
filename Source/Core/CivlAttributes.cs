@@ -42,7 +42,6 @@ namespace Microsoft.Boogie
     public const string IS_INVARIANT = "IS_invariant";
     public const string IS_ABSTRACTION = "IS_abstraction";
     public const string ELIM = "elim";
-    public const string CHOICE = "choice";
 
     private static string[] CIVL_ATTRIBUTES =
     {
@@ -54,7 +53,7 @@ namespace Microsoft.Boogie
       REFINES, HIDE, COOPERATES,
       LEMMA,
       PENDING_ASYNC, SYNC, CREATES,
-      IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE
+      IS, IS_INVARIANT, IS_ABSTRACTION, ELIM
     };
 
     private static string[] LINEAR_ATTRIBUTES =
