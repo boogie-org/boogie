@@ -643,7 +643,7 @@ namespace Microsoft.Boogie
         }
       }
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
-      // Note that each such action to be created is not a pending async action.
+      // Earlier type checking guarantees that each such action is not a pending async action.
       // Therefore, only the type AtomicAction will be created now.
       actionProcToRefinedProc.Keys.Iter(proc =>
       {

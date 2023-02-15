@@ -1,17 +1,3 @@
-procedure {:atomic}{:layer 2} {:creates "A_StartRound"} A_Paxos({:linear_in "perm"} rs: [Round]bool)
-{
-  var {:pool "NumRounds"} numRounds: int;
-  assert
-    Init(rs, joinedNodes, voteInfo, decision);
-  assume
-    {:add_to_pool "Round", 0, numRounds}
-    {:add_to_pool "NumRounds", numRounds}
-    0 <= numRounds;
-  call create_asyncs((lambda pa: A_StartRound :: pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acceptorState: [Node]AcceptorState,
               permJoinChannel: JoinResponseChannel, permVoteChannel: VoteResponseChannel) : bool
 {

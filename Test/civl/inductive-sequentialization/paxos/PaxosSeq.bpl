@@ -1,12 +1,3 @@
-procedure {:atomic}{:layer 3} A_Paxos'({:linear_in "perm"} rs: [Round]bool)
-returns ()
-modifies joinedNodes, voteInfo, decision;
-{
-  assert Init(rs, joinedNodes, voteInfo, decision);
-  havoc joinedNodes, voteInfo, decision;
-  assume (forall r1: Round, r2: Round :: decision[r1] is Some && decision[r2] is Some ==> decision[r1] == decision[r2]);
-}
-
 procedure {:atomic}{:layer 2}
 {:creates "A_StartRound"}
 {:IS "A_Paxos'","INV"}
@@ -22,7 +13,17 @@ A_Paxos({:linear_in "perm"} rs: [Round]bool)
   call create_asyncs((lambda pa: A_StartRound :: pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds));
 }
 
-procedure {:layer 2} {:creates "A_StartRound","A_Propose","A_Conclude","A_Join","A_Vote"}
+procedure {:atomic}{:layer 3}
+A_Paxos'({:linear_in "perm"} rs: [Round]bool)
+modifies joinedNodes, voteInfo, decision;
+{
+  assert Init(rs, joinedNodes, voteInfo, decision);
+  havoc joinedNodes, voteInfo, decision;
+  assume (forall r1: Round, r2: Round :: decision[r1] is Some && decision[r2] is Some ==> decision[r1] == decision[r2]);
+}
+
+procedure {:layer 2}
+{:creates "A_StartRound","A_Propose","A_Conclude","A_Join","A_Vote"}
 {:IS_invariant}{:elim "A_StartRound"}{:elim "A_Propose"}{:elim "A_Conclude"}{:elim "A_Join"}{:elim "A_Vote"}
 INV({:linear_in "perm"} rs: [Round]bool)
 modifies joinedNodes, voteInfo, decision;

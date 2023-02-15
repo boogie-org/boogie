@@ -1,4 +1,6 @@
-procedure {:atomic}{:layer 2} {:pending_async} {:creates "A_Join", "A_Propose"} A_StartRound(r: Round, {:linear_in "perm"} r_lin: Round)
+procedure {:atomic}{:layer 2}
+{:pending_async} {:creates "A_Join", "A_Propose"}
+A_StartRound(r: Round, {:linear_in "perm"} r_lin: Round)
 {
   assert r == r_lin;
   assert Round(r);
@@ -13,7 +15,9 @@ procedure {:atomic}{:layer 2} {:pending_async} {:creates "A_Join", "A_Propose"} 
   call create_async(A_Propose(r, ProposePermissions(r)));
 }
 
-procedure {:atomic}{:layer 2} {:pending_async} {:creates "A_Vote", "A_Conclude"} A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
+procedure {:atomic}{:layer 2}
+{:pending_async} {:creates "A_Vote", "A_Conclude"}
+A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
 modifies voteInfo;
 {
   var {:pool "Round"} maxRound: int;
@@ -44,7 +48,9 @@ modifies voteInfo;
   }
 }
 
-procedure {:atomic}{:layer 2} {:pending_async} A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
+procedure {:atomic}{:layer 2}
+{:pending_async}
+A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
 modifies decision;
 {
   var q: NodeSet;
@@ -62,7 +68,9 @@ modifies decision;
   }
 }
 
-procedure {:atomic}{:layer 2} {:pending_async} A_Join(r: Round, n: Node, {:linear_in "perm"} p: Permission)
+procedure {:atomic}{:layer 2}
+{:pending_async}
+A_Join(r: Round, n: Node, {:linear_in "perm"} p: Permission)
 modifies joinedNodes;
 {
   assert Round(r);
@@ -79,7 +87,9 @@ modifies joinedNodes;
   }
 }
 
-procedure {:atomic}{:layer 2} {:pending_async} A_Vote(r: Round, n: Node, v: Value, {:linear_in "perm"} p: Permission)
+procedure {:atomic}{:layer 2}
+{:pending_async}
+A_Vote(r: Round, n: Node, v: Value, {:linear_in "perm"} p: Permission)
 modifies joinedNodes, voteInfo;
 {
   assert Round(r);

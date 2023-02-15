@@ -1950,12 +1950,6 @@ namespace Microsoft.Boogie
      {:linear_out ""domain""}
        Linear input/output parameter.
 
-     {:witness ""g""}
-     {:commutativity ""A"", ""B""}
-       Function provides witness for global variable g in commutativity check
-       between action A and action B. Multiple declarations of :commutativity
-       are supported.
-
      {:pending_async}
        Atomic action that may be created as a pending async.
        Local variable collecting pending asyncs in yielding procedure.
@@ -1966,15 +1960,15 @@ namespace Microsoft.Boogie
        Synchronized async call.
 
      {:IS ""B"", ""I""}
-       Apply inductive sequentialization to convert an action into action B
-       using invariant action I
+       Apply inductive sequentialization to convert annotated action into
+       action B using invariant action I
      {:elim ""A""}
      {:elim ""A"", ""A'""}
        by eliminating multiple actions A (optionally using abstraction A').
 
      {:IS_invariant}
      {:IS_abstraction}
-       Actions that are only used as invariant actions or abstractions in
+       Annotated actions are only used as invariant actions or abstractions in
        inductive sequentialization. These are exempt from the overall pool of
        actions for commutativity checking.";
 
