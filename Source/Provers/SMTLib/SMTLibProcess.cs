@@ -98,23 +98,18 @@ namespace Microsoft.Boogie.SMTLib
       toProver = null;
     }
 
-    private void TerminateProver(Int32 timeout = 2000)
+    private void TerminateProver(int timeout = 1000)
     {
-      try
+      var solverToTerminate = solver;
+      // Let the prover know that we're done sending input.
+      IndicateEndOfInput();
+      solverToTerminate.WaitForExitAsync(new CancellationTokenSource(timeout).Token).ContinueWith(t =>
       {
-        // Let the prover know that we're done sending input.
-        IndicateEndOfInput();
-
-        // Give it a chance to exit cleanly (e.g. to flush buffers)
-        if (!solver.WaitForExit(timeout))
+        if (!t.IsCompleted)
         {
-          solver.Kill();
+          solverToTerminate.Kill();
         }
-      }
-      catch
-      {
-        /* Swallow errors */
-      }
+      });
     }
 
     public override void Send(string cmd)
