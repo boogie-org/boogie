@@ -13,7 +13,7 @@ public class ConsolePrinter : OutputPrinter
   public virtual void ErrorWriteLine(TextWriter tw, string s)
   {
     Contract.Requires(s != null);
-    if (Options.Verbosity < CoreOptions.VerbosityLevel.Quiet) {
+    if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
       return;
     }
 
@@ -52,7 +52,7 @@ public class ConsolePrinter : OutputPrinter
   public virtual void ErrorWriteLine(TextWriter tw, string format, params object[] args)
   {
     Contract.Requires(format != null);
-    if (Options.Verbosity < CoreOptions.VerbosityLevel.Quiet) {
+    if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
       return;
     }
 
@@ -64,7 +64,7 @@ public class ConsolePrinter : OutputPrinter
   public virtual void AdvisoryWriteLine(TextWriter output, string format, params object[] args)
   {
     Contract.Requires(format != null);
-    if (Options.Verbosity < CoreOptions.VerbosityLevel.Quiet) {
+    if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
       return;
     }
 
