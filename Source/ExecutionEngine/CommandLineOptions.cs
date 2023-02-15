@@ -2103,7 +2103,7 @@ namespace Microsoft.Boogie
 
   ---- Debugging and general tracing options ---------------------------------
 
-  /silent       print nothing at all, producing only an exit code
+  /silent       print nothing at all
   /quiet        print nothing but warnings and errors
   /trace        blurt out various debug trace information
   /traceTimes   output timing information at certain points in the pipeline
