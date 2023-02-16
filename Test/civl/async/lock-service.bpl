@@ -1,8 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype {:pending_async} PA { A_Callback(tid: Tid) }
-
 type {:linear "tid"} Tid = int;
 
 const nil:Tid;
@@ -27,21 +25,25 @@ modifies x;
   x := x + 1;
 }
 
-procedure {:IS_invariant}{:layer 3} INV({:linear_in "tid"} tid:Tid) returns ({:pending_async "A_Callback"} PAs: [PA]int)
+procedure {:layer 3}
+{:creates "A_Callback"}
+{:IS_invariant}{:elim "A_Callback"}
+INV({:linear_in "tid"} tid:Tid)
 modifies l, x;
 {
   assert tid != nil;
   assume l == nil;
-  PAs := MapConst(0);
   if (*) {
     l := tid;
-    PAs[A_Callback(tid)] := 1;
+    call create_async(A_Callback(tid));
   } else {
     x := x + 1;
   }
 }
 
-procedure {:left}{:layer 3} A_Callback ({:linear_in "tid"} tid:Tid)
+procedure {:left}{:layer 3}
+{:pending_async}
+A_Callback ({:linear_in "tid"} tid:Tid)
 modifies l, x;
 {
   assert tid != nil && l == tid;
@@ -79,15 +81,15 @@ procedure {:yields}{:layer 0}{:refines "A_write_x"} write_x (v:int);
 // -----------------------------------------------------------------------------
 
 procedure {:atomic}{:layer 3}
-{:IS "A_GetLockAndCallback'","INV"}{:elim "A_Callback"}
+{:creates "A_Callback"}
+{:IS "A_GetLockAndCallback'","INV"}
 A_GetLockAndCallback ({:linear_in "tid"} tid:Tid)
-returns ({:pending_async "A_Callback"} PAs: [PA]int)
 modifies l;
 {
   assert tid != nil;
   assume l == nil;
   l := tid;
-  PAs := MapConst(0)[A_Callback(tid) := 1];
+  call create_async(A_Callback(tid));
 }
 procedure {:yields}{:layer 2}{:refines "A_GetLockAndCallback"} GetLockAndCallback ({:linear_in "tid"} tid:Tid)
 {

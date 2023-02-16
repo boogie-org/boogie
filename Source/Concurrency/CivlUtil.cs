@@ -162,6 +162,11 @@ namespace Microsoft.Boogie
   // Handy syntactic sugar missing in Expr
   public static class ExprHelper
   {
+    public static NAryExpr FunctionCall(Function f, List<Expr> args)
+    {
+      return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
+    }
+
     public static NAryExpr FunctionCall(IAppliable f, params Expr[] args)
     {
       return new NAryExpr(Token.NoToken, f, args);
@@ -359,6 +364,19 @@ namespace Microsoft.Boogie
     }
   }
 
+  public static class TypeHelper
+  {
+    public static MapType MapType(Type indexType, Type resultType)
+    {
+      return new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { indexType }, resultType);
+    }
+
+    public static CtorType CtorType(TypeCtorDecl typeCtorDecl)
+    {
+      return new CtorType(Token.NoToken, typeCtorDecl, new List<Type>());
+    }
+  }
+  
   public static class SubstitutionHelper
   {
     public static Substitution FromVariableMap(Dictionary<Variable, Variable> map)

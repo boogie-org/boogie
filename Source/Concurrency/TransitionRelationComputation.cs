@@ -91,7 +91,7 @@ namespace Microsoft.Boogie
         string.Format("Transition relation of {0} ∘ {1}", first.proc.Name, second.proc.Name));
     }
 
-    public static Expr Refinement(CivlTypeChecker civlTypeChecker, AtomicAction action, HashSet<Variable> frame)
+    public static Expr Refinement(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
     {
       return ComputeTransitionRelation(
         civlTypeChecker,

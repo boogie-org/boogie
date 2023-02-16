@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -7,142 +8,174 @@ namespace Microsoft.Boogie
   public class InductiveSequentialization
   {
     public CivlTypeChecker civlTypeChecker;
-    public AtomicAction inputAction;
-    public AtomicAction outputAction;
-    public AtomicAction invariantAction;
-    public Dictionary<AtomicAction, AtomicAction> elim;
+    public InvariantAction invariantAction;
+    public Dictionary<AsyncAction, AtomicAction> elim;
+    public List<AtomicAction> targetActions;
 
     private HashSet<Variable> frame;
-    private List<IdentifierExpr> modifies;
     private IdentifierExpr choice;
-    private IdentifierExpr newPAs;
-    private string checkName;
+    private Dictionary<CtorType, Variable> newPAs;
 
+    private Function invariantTransitionRelation;
+    private List<Variable> alwaysMapKeys;
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
-    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, AtomicAction inputAction, AtomicAction outputAction,
-      AtomicAction invariantAction, Dictionary<AtomicAction, AtomicAction> elim)
+    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, InvariantAction invariantAction, Dictionary<AsyncAction, AtomicAction> elim)
     {
       this.civlTypeChecker = civlTypeChecker;
-      this.inputAction = inputAction;
-      this.outputAction = outputAction;
       this.invariantAction = invariantAction;
       this.elim = elim;
+      targetActions = new List<AtomicAction>();
 
-      // TODO: check frame computation
-      // We could compute a tighter frame per check. For example, base/conclusion checkers
-      // don't have to take the eliminated actions into account.
-      var frameVars = new List<AtomicAction> { invariantAction, outputAction, inputAction }
-        .Union(elim.Select(kv => kv.Value))
-        .SelectMany(a => a.gateUsedGlobalVars.Union(a.modifiedGlobalVars)).Distinct();
-      this.frame = new HashSet<Variable>(frameVars);
-      this.modifies = frame.Select(Expr.Ident).ToList();
+      // The type checker ensures that the set of modified variables of an invariant is a superset of
+      // - the modified set of each of each eliminated and abstract action associated with this invariant.
+      // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
+      frame = new HashSet<Variable>(invariantAction.modifiedGlobalVars);
+      choice = Expr.Ident(invariantAction.impl.OutParams.Last());
+      newPAs = invariantAction.pendingAsyncs.ToDictionary(action => action.pendingAsyncType,
+        action => (Variable)civlTypeChecker.LocalVariable($"newPAs_{action.impl.Name}",
+          action.pendingAsyncMultisetType));
 
-      newPAs = Expr.Ident(civlTypeChecker.LocalVariable("newPAs", civlTypeChecker.pendingAsyncMultisetType));
-      if (HasChoice)
+      var alwaysMap = new Dictionary<Variable, Expr>();
+      var foroldMap = new Dictionary<Variable, Expr>();
+      civlTypeChecker.program.GlobalVariables.Iter(g =>
       {
-        choice = Expr.Ident(invariantAction.impl.OutParams.Last());
-      }
-      else
+        alwaysMap[g] = Expr.Ident(VarHelper.Formal(g.Name, g.TypedIdent.Type, true));
+        foroldMap[g] = Expr.Ident(VarHelper.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
+      });
+      invariantAction.impl.InParams.Iter(v =>
       {
-        choice = Expr.Ident(civlTypeChecker.LocalVariable("choice", civlTypeChecker.pendingAsyncType));
-      }
+        alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
+      });
+      invariantAction.impl.OutParams.Iter(v =>
+      {
+        alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
+      });
+      var always = Substituter.SubstitutionFromDictionary(alwaysMap);
+      var forold = Substituter.SubstitutionFromDictionary(foroldMap);
+      var transitionRelationExpr =
+        Substituter.ApplyReplacingOldExprs(always, forold, GetInvariantTransitionRelationWithChoice());
+      var gateExprs = invariantAction.gate.Select(assertCmd =>
+        Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
+      alwaysMapKeys = alwaysMap.Keys.ToList();
+      invariantTransitionRelation = new Function(Token.NoToken, invariantAction.proc.Name, new List<TypeVariable>(),
+        alwaysMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
+        VarHelper.Formal(TypedIdent.NoName, Type.Bool, false), null,
+        new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
+      invariantTransitionRelation.Body = ExprHelper.ExistsExpr(
+        foroldMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
+        Expr.And(gateExprs.Append(transitionRelationExpr)));
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, invariantTransitionRelation.Body);
+      civlTypeChecker.program.AddTopLevelDeclaration(invariantTransitionRelation);
     }
 
-    public Tuple<Procedure, Implementation> GenerateBaseCaseChecker()
+    public void AddTarget(AtomicAction targetAction)
     {
-      this.checkName = "base";
+      targetActions.Add(targetAction);
+    }
+
+    public Tuple<Procedure, Implementation> GenerateBaseCaseChecker(AtomicAction inputAction)
+    {
       var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
       
       var subst = GetSubstitution(inputAction, invariantAction);
-      List<Cmd> cmds = GetGateAsserts(inputAction, subst).ToList<Cmd>();
-      cmds.Add(GetCallCmd(inputAction));
-      cmds.Add(GetCheck(GetTransitionRelation(invariantAction)));
+      List<Cmd> cmds = GetGateAsserts(inputAction, subst,
+          $"Gate of {inputAction.proc.Name} fails in IS base check against invariant {invariantAction.proc.Name}")
+        .ToList<Cmd>();
 
-      return GetCheckerTuple(requires, new List<Variable>(), cmds);
+      // Construct call to inputAction
+      var pendingAsyncTypeToOutputParamIndex = invariantAction.pendingAsyncs.Select((action, i) => (action, i))
+        .ToDictionary(tuple => tuple.action.pendingAsyncType, tuple => tuple.action.pendingAsyncStartIndex + tuple.i);
+      var outputVars = new List<Variable>(invariantAction.impl.OutParams.Take(invariantAction.pendingAsyncStartIndex));
+      outputVars.AddRange(inputAction.pendingAsyncs.Select(action =>
+        invariantAction.impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.pendingAsyncType]]));
+      cmds.Add(CmdHelper.CallCmd(inputAction.proc, invariantAction.impl.InParams, outputVars));
+      
+      // Assign empty multiset to the rest
+      var remainderPendingAsyncs = invariantAction.pendingAsyncs.Except(inputAction.pendingAsyncs);
+      if (remainderPendingAsyncs.Count() > 0)
+      {
+        var lhss = remainderPendingAsyncs.Select(action =>
+            Expr.Ident(invariantAction.impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.pendingAsyncType]]))
+          .ToList();
+        var rhss = remainderPendingAsyncs.Select(action =>
+          ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0))).ToList<Expr>();
+        cmds.Add(CmdHelper.AssignCmd(lhss, rhss));
+      }
+      
+      cmds.Add(GetCheck(inputAction.proc.tok, GetTransitionRelation(invariantAction),
+        $"IS base of {inputAction.proc.Name} failed"));
+
+      return GetCheckerTuple($"IS_base_{inputAction.proc.Name}", requires, new List<Variable>(), cmds);
     }
 
-    public Tuple<Procedure, Implementation> GenerateConclusionChecker()
+    public Tuple<Procedure, Implementation> GenerateConclusionChecker(AtomicAction inputAction)
     {
-      this.checkName = "conclusion";
+      var outputAction = inputAction.refinedAction;
       var subst = GetSubstitution(outputAction, invariantAction);
       var requires = outputAction.gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
-      
-      List<Cmd> cmds = GetGateAsserts(invariantAction, null).ToList<Cmd>();
-      cmds.Add(GetCallCmd(invariantAction));
-      cmds.Add(CmdHelper.AssumeCmd(PendingAsyncsEliminatedExpr));
-      cmds.Add(GetCheck(Substituter.Apply(subst, GetTransitionRelation(outputAction))));
-      if (!outputAction.HasPendingAsyncs)
-      {
-        cmds.Add(CmdHelper.AssertCmd(
-          inputAction.proc.tok,
-          NoPendingAsyncs,
-          $"IS leaves pending asyncs not summarized by ${outputAction.proc.Name}"));
-      }
 
-      return GetCheckerTuple(requires, new List<Variable>(), cmds);
+      List<Cmd> cmds = GetGateAsserts(invariantAction, null,
+          $"Gate of {invariantAction.proc.Name} fails in IS conclusion check against {outputAction.proc.Name}")
+        .ToList<Cmd>();
+      cmds.Add(GetCallCmd(invariantAction));
+      cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
+      cmds.Add(GetCheck(inputAction.proc.tok, Substituter.Apply(subst, GetTransitionRelation(outputAction)),
+        $"IS conclusion of {inputAction.proc.Name} failed"));
+
+      return GetCheckerTuple($"IS_conclusion_{inputAction.proc.Name}", requires, new List<Variable>(), cmds);
     }
 
-    public Tuple<Procedure, Implementation> GenerateChoiceChecker()
+    public Tuple<Procedure, Implementation> GenerateStepChecker(AsyncAction pendingAsync)
     {
-      this.checkName = "choice";
-      var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
-
-      List<Cmd> cmds = new List<Cmd>();
-      cmds.Add(GetCallCmd(invariantAction));
-      cmds.Add(CmdHelper.AssumeCmd(ExistsElimPendingAsyncExpr));
-      cmds.Add(CmdHelper.AssertCmd(
-        invariantAction.proc.tok,
-        ElimPendingAsyncExpr(choice),
-        $"Failed to validate choice in IS of {inputAction.proc.Name}"));
-
-      return GetCheckerTuple(requires, new List<Variable>(), cmds);
-    }
-
-    public Tuple<Procedure, Implementation> GenerateStepChecker(AtomicAction pendingAsync, Function pendingAsyncAdd)
-    {
-      this.checkName = "step";
+      var pendingAsyncType = pendingAsync.pendingAsyncType;
+      var pendingAsyncCtor = pendingAsync.pendingAsyncCtor;
       var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
       var locals = new List<Variable>();
-
-      if (!HasChoice)
-      {
-        locals.Add(choice.Decl);
-      }
-
       List<Cmd> cmds = new List<Cmd>();
       cmds.Add(GetCallCmd(invariantAction));
-      cmds.Add(CmdHelper.AssumeCmd(ExprHelper.IsConstructor(choice, pendingAsync.pendingAsyncCtor.Name)));
-      cmds.Add(CmdHelper.AssumeCmd(Expr.Gt(Expr.Select(PAs, choice), Expr.Literal(0))));
-      cmds.Add(RemoveChoice);
+      cmds.Add(CmdHelper.AssumeCmd(ChoiceTest(pendingAsyncType)));
+      cmds.Add(CmdHelper.AssumeCmd(Expr.Gt(Expr.Select(PAs(pendingAsyncType), Choice(pendingAsyncType)),
+        Expr.Literal(0))));
+      cmds.Add(RemoveChoice(pendingAsyncType));
 
       AtomicAction abs = elim[pendingAsync];
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
       List<Expr> inputExprs = new List<Expr>();
       for (int i = 0; i < abs.impl.InParams.Count; i++)
       {
-        var pendingAsyncParam = ExprHelper.FieldAccess(choice, pendingAsync.pendingAsyncCtor.InParams[i].Name);
+        var pendingAsyncParam = ExprHelper.FieldAccess(Choice(pendingAsyncType), pendingAsyncCtor.InParams[i].Name);
         map[abs.impl.InParams[i]] = pendingAsyncParam;
         inputExprs.Add(pendingAsyncParam);
       }
       var subst = Substituter.SubstitutionFromDictionary(map);
-      cmds.AddRange(GetGateAsserts(abs, subst));
+      cmds.AddRange(GetGateAsserts(abs, subst,
+        $"Gate of {abs.proc.Name} fails in IS induction step for invariant {invariantAction.proc.Name}"));
 
-      List<IdentifierExpr> outputVars = new List<IdentifierExpr>();
+      List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
       if (abs.HasPendingAsyncs)
       {
-        locals.Add(newPAs.Decl);
-        outputVars.Add(newPAs);
+        abs.pendingAsyncs.Iter(action =>
+        {
+          var ie = NewPAs(action.pendingAsyncType);
+          locals.Add(ie.Decl);
+          outputExprs.Add(ie);
+        });
       }
-      cmds.Add(CmdHelper.CallCmd(abs.proc, inputExprs, outputVars));
+      cmds.Add(CmdHelper.CallCmd(abs.proc, inputExprs, outputExprs));
       if (abs.HasPendingAsyncs)
       {
-        cmds.Add(AddNewPAs(pendingAsyncAdd));
+        var lhss = abs.pendingAsyncs.Select(action => new SimpleAssignLhs(Token.NoToken, PAs(action.pendingAsyncType)))
+          .ToList<AssignLhs>();
+        var rhss = abs.pendingAsyncs.Select(action => ExprHelper.FunctionCall(action.pendingAsyncAdd,
+          PAs(action.pendingAsyncType), NewPAs(action.pendingAsyncType))).ToList<Expr>();
+        cmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
       }
 
-      cmds.Add(GetCheck(GetTransitionRelation(invariantAction)));
+      cmds.Add(GetCheck(invariantAction.proc.tok, GetTransitionRelation(invariantAction),
+        $"IS step of {invariantAction.proc.Name} with {abs.proc.Name} failed"));
       
-      return GetCheckerTuple(requires, locals, cmds, "_" + abs.proc.Name);
+      return GetCheckerTuple($"IS_step_{invariantAction.proc.Name}_{abs.proc.Name}", requires, locals, cmds);
     }
 
     public Expr GenerateMoverCheckAssumption(AtomicAction action, List<Variable> actionArgs, AtomicAction leftMover, List<Variable> leftMoverArgs)
@@ -163,12 +196,13 @@ namespace Microsoft.Boogie
       //
       // Construct conjunction of transition relation of invariant, gate of invariant, actionExpr, and leftMoverExpr
       // and existentially quantify all free variables.
+      
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       Expr actionExpr = Expr.True;
-      if (elim.ContainsKey(action))
+      if (action is AsyncAction asyncAtomicAction && elim.ContainsKey(asyncAtomicAction))
       {
         var domainToPermissionExprsForInvariant = linearTypeChecker.PermissionExprs(invariantAction.impl.InParams);
-        var domainToPermissionExprsForAction = linearTypeChecker.PermissionExprs(action.firstImpl.InParams);
+        var domainToPermissionExprsForAction = linearTypeChecker.PermissionExprs(actionArgs);
         var disjointnessExpr =
           Expr.And(domainToPermissionExprsForInvariant.Keys.Intersect(domainToPermissionExprsForAction.Keys).Select(
             domain =>
@@ -176,50 +210,44 @@ namespace Microsoft.Boogie
                 domainToPermissionExprsForInvariant[domain].Concat(domainToPermissionExprsForAction[domain]))
           ).ToList());
         var actionPA =
-          ExprHelper.FunctionCall(action.pendingAsyncCtor, actionArgs.Select(v => Expr.Ident(v)).ToArray());
-        actionExpr = Expr.Or(disjointnessExpr, Expr.Gt(Expr.Select(PAs, actionPA), Expr.Literal(0)));
+          ExprHelper.FunctionCall(asyncAtomicAction.pendingAsyncCtor, actionArgs.Select(v => Expr.Ident(v)).ToArray());
+        actionExpr = Expr.Or(disjointnessExpr, Expr.Gt(Expr.Select(PAs(asyncAtomicAction.pendingAsyncType), actionPA), Expr.Literal(0)));
       }
-      var leftMoverPendingAsyncCtor = elim.First(x => x.Value == leftMover).Key.pendingAsyncCtor;
+      var asyncLeftMover = elim.First(x => x.Value == leftMover).Key;
+      var leftMoverPendingAsyncCtor = asyncLeftMover.pendingAsyncCtor;
       var leftMoverPA =
         ExprHelper.FunctionCall(leftMoverPendingAsyncCtor, leftMoverArgs.Select(v => Expr.Ident(v)).ToArray());
-      Expr leftMoverExpr = Expr.Gt(Expr.Select(PAs, leftMoverPA), Expr.Literal(0));
+      Expr leftMoverExpr = Expr.Gt(Expr.Select(PAs(asyncLeftMover.pendingAsyncType), leftMoverPA), Expr.Literal(0));
       if (choice.Decl == invariantAction.impl.OutParams.Last())
       {
-        leftMoverExpr = Expr.And(Expr.Eq(choice, leftMoverPA), leftMoverExpr);
+        var choiceExpr = Expr.And(ChoiceTest(asyncLeftMover.pendingAsyncType),
+          Expr.Eq(Choice(asyncLeftMover.pendingAsyncType), leftMoverPA));
+        leftMoverExpr = Expr.And(choiceExpr, leftMoverExpr);
       }
       var alwaysMap = new Dictionary<Variable, Expr>();
-      var foroldMap = new Dictionary<Variable, Expr>();
       civlTypeChecker.program.GlobalVariables.Iter(g =>
       {
-        alwaysMap[g] = Expr.Ident(new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, g.Name, g.TypedIdent.Type)));
-        foroldMap[g] = Expr.Ident(new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, $"old_{g.Name}", g.TypedIdent.Type)));
+        alwaysMap[g] = Expr.Ident(VarHelper.BoundVariable(g.Name, g.TypedIdent.Type));
       });
       invariantAction.impl.InParams.Iter(v =>
       {
-        alwaysMap[v] = Expr.Ident(new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)));
+        alwaysMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
       });
       invariantAction.impl.OutParams.Iter(v =>
       {
-        alwaysMap[v] = Expr.Ident(new BoundVariable(Token.NoToken,
-          new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)));
+        alwaysMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
       });
       var always = Substituter.SubstitutionFromDictionary(alwaysMap);
-      var forold = Substituter.SubstitutionFromDictionary(foroldMap);
       actionExpr = Substituter.Apply(always, actionExpr);
       leftMoverExpr = Substituter.Apply(always, leftMoverExpr);
       var transitionRelationExpr =
-        Substituter.ApplyReplacingOldExprs(always, forold, GetInvariantTransitionRelationWithChoice());
-      var gateExprs = invariantAction.gate.Select(assertCmd =>
-        Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
+        ExprHelper.FunctionCall(invariantTransitionRelation, alwaysMapKeys.Select(v => alwaysMap[v]).ToList());
       return ExprHelper.ExistsExpr(
-        alwaysMap.Values.Concat(foroldMap.Values).OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
-        Expr.And(gateExprs.Concat(new[] { transitionRelationExpr, actionExpr, leftMoverExpr })));
+        alwaysMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
+        Expr.And(new[] { transitionRelationExpr, actionExpr, leftMoverExpr }));
     }
 
-    private CallCmd GetCallCmd(AtomicAction callee)
+    private CallCmd GetCallCmd(Action callee)
     {
       return CmdHelper.CallCmd(
         callee.proc,
@@ -228,16 +256,13 @@ namespace Microsoft.Boogie
       );
     }
 
-    private AssertCmd GetCheck(Expr expr)
+    private AssertCmd GetCheck(IToken tok, Expr expr, string msg)
     {
       expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
-      return CmdHelper.AssertCmd(
-        inputAction.proc.tok,
-        expr,
-        $"IS {checkName} of {inputAction.proc.Name} failed");
+      return CmdHelper.AssertCmd(tok, expr, msg);
     }
 
-    public static IEnumerable<AssertCmd> GetGateAsserts(AtomicAction action, Substitution subst, string msg)
+    public static IEnumerable<AssertCmd> GetGateAsserts(Action action, Substitution subst, string msg)
     {
       foreach (var gate in action.gate)
       {
@@ -250,109 +275,82 @@ namespace Microsoft.Boogie
       }
     }
 
-    private IEnumerable<AssertCmd> GetGateAsserts(AtomicAction action, Substitution subst)
-    {
-      return GetGateAsserts(action, subst,
-        $"Gate of {action.proc.Name} fails in IS {checkName} of {inputAction.proc.Name}");
-    }
-
-    private Tuple<Procedure, Implementation> GetCheckerTuple(
-      List<Requires> requires, List<Variable> locals, List<Cmd> cmds, string suffix = "")
+    private Tuple<Procedure, Implementation> GetCheckerTuple(string checkerName,
+      List<Requires> requires, List<Variable> locals, List<Cmd> cmds)
     {
       var proc = DeclHelper.Procedure(
-        civlTypeChecker.AddNamePrefix($"IS_{checkName}_{inputAction.proc.Name}{suffix}"),
+        civlTypeChecker.AddNamePrefix(checkerName),
         invariantAction.impl.InParams,
         invariantAction.impl.OutParams,
         requires,
-        modifies,
+        frame.Select(Expr.Ident).ToList(),
         new List<Ensures>());
       var impl = DeclHelper.Implementation(
         proc,
         proc.InParams,
         proc.OutParams,
         locals,
-        new List<Block> { BlockHelper.Block(checkName, cmds) });
+        new List<Block> { BlockHelper.Block(checkerName, cmds) });
       return Tuple.Create(proc, impl);
     }
 
-    public bool HasChoice => invariantAction.hasChoice;
+    private IdentifierExpr PAs(CtorType pendingAsyncType)
+    {
+      return Expr.Ident(invariantAction.PAs(pendingAsyncType));
+    }
 
-    private IdentifierExpr PAs => Expr.Ident(HasChoice
-      ? invariantAction.impl.OutParams[invariantAction.impl.OutParams.Count - 2]
-      : invariantAction.impl.OutParams.Last());
+    private IdentifierExpr NewPAs(CtorType pendingAsyncType)
+    {
+      return Expr.Ident(newPAs[pendingAsyncType]);
+    }
 
+    private Expr Choice(CtorType pendingAsyncType)
+    {
+      return ExprHelper.FieldAccess(choice, pendingAsyncType.Decl.Name);
+    }
+
+    private Expr ChoiceTest(CtorType pendingAsyncType)
+    {
+      return ExprHelper.IsConstructor(choice, invariantAction.ChoiceConstructor(pendingAsyncType).Name);
+    }
+    
     private Expr NoPendingAsyncs
     {
       get
       {
-        var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
-        var pa = Expr.Ident(paBound);
-        var expr = Expr.Eq(Expr.Select(PAs, pa), Expr.Literal(0));
+        var expr = Expr.And(elim.Keys.Select(action => Expr.Eq(PAs(action.pendingAsyncType),
+          ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0)))));
         expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
-        return ExprHelper.ForallExpr(new List<Variable> { paBound }, expr);
+        return expr;
       }
     }
-
-    private Expr PendingAsyncsEliminatedExpr
+    
+    private AssignCmd RemoveChoice(CtorType pendingAsyncType)
     {
-      get
-      {
-        var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
-        var pa = Expr.Ident(paBound);
-        var expr = Expr.Imp(
-          Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0)),
-          Expr.And(elim.Keys.Select(a =>
-            Expr.Not(ExprHelper.IsConstructor(pa, a.pendingAsyncCtor.Name)))));
-        expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
-        return ExprHelper.ForallExpr(new List<Variable> { paBound }, expr);
-      }
+      var rhs = Expr.Sub(Expr.Select(PAs(pendingAsyncType), Choice(pendingAsyncType)), Expr.Literal(1));
+      return AssignCmd.MapAssign(Token.NoToken, PAs(pendingAsyncType), new List<Expr> { Choice(pendingAsyncType) }, rhs);
     }
 
-    private Expr ExistsElimPendingAsyncExpr
+    public static Substitution GetSubstitution(Action from, Action to)
     {
-      get
-      {
-        var paBound = civlTypeChecker.BoundVariable("pa", civlTypeChecker.pendingAsyncType);
-        var pa = Expr.Ident(paBound);
-        return ExprHelper.ExistsExpr(new List<Variable> { paBound }, ElimPendingAsyncExpr(pa));
-      }
-    }
-
-    private Expr ElimPendingAsyncExpr(IdentifierExpr pa)
-    {
-      return Expr.And(
-        Expr.Or(elim.Keys.Select(a => ExprHelper.IsConstructor(pa, a.pendingAsyncCtor.Name))),
-        Expr.Gt(Expr.Select(PAs, pa), Expr.Literal(0))
-      );
-    }
-
-    private AssignCmd RemoveChoice
-    {
-      get
-      {
-        var rhs = Expr.Sub(Expr.Select(PAs, choice), Expr.Literal(1));
-        return AssignCmd.MapAssign(Token.NoToken, PAs, new List<Expr> { choice }, rhs);
-      }
-    }
-
-    private AssignCmd AddNewPAs(Function pendingAsyncAdd)
-    {
-      return AssignCmd.SimpleAssign(Token.NoToken,
-        PAs,
-        ExprHelper.FunctionCall(pendingAsyncAdd, PAs, newPAs));
-    }
-
-
-    public static Substitution GetSubstitution(AtomicAction from, AtomicAction to)
-    {
+      Debug.Assert(from.pendingAsyncStartIndex == to.pendingAsyncStartIndex);
+      Debug.Assert(from.impl.InParams.Count == to.impl.InParams.Count);
+      Debug.Assert(from.impl.OutParams.Count <= to.impl.OutParams.Count);
+      
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
       for (int i = 0; i < from.impl.InParams.Count; i++)
       {
         map[from.impl.InParams[i]] = Expr.Ident(to.impl.InParams[i]);
       }
-      for (int i = 0; i < Math.Min(from.impl.OutParams.Count, to.impl.OutParams.Count); i++)
+      for (int i = 0; i < from.pendingAsyncStartIndex; i++)
       {
         map[from.impl.OutParams[i]] = Expr.Ident(to.impl.OutParams[i]);
+      }
+      for (int i = from.pendingAsyncStartIndex; i < from.impl.OutParams.Count; i++)
+      {
+        var formal = from.impl.OutParams[i];
+        var pendingAsyncType = (CtorType)((MapType)formal.TypedIdent.Type).Arguments[0];
+        map[formal] = Expr.Ident(to.PAs(pendingAsyncType));
       }
       return Substituter.SubstitutionFromDictionary(map);
     }
@@ -362,10 +360,10 @@ namespace Microsoft.Boogie
       return TransitionRelationComputation.Refinement(civlTypeChecker, invariantAction, frame);
     }
 
-    private Expr GetTransitionRelation(AtomicAction action)
+    private Expr GetTransitionRelation(Action action)
     {
       var tr = TransitionRelationComputation.Refinement(civlTypeChecker, action, frame);
-      if (action == invariantAction && HasChoice)
+      if (action == invariantAction)
       {
         return new ChoiceEraser(invariantAction.impl.OutParams.Last()).VisitExpr(tr);
       }
@@ -399,19 +397,18 @@ namespace Microsoft.Boogie
 
   public static class InductiveSequentializationChecker
   {
-    public static void AddCheckers(CivlTypeChecker civlTypeChecker)
+    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       foreach (var x in civlTypeChecker.inductiveSequentializations)
       {
-        AddCheck(civlTypeChecker, x.GenerateBaseCaseChecker());
-        AddCheck(civlTypeChecker, x.GenerateConclusionChecker());
-        if (x.HasChoice)
+        foreach (var targetAction in x.targetActions)
         {
-          AddCheck(civlTypeChecker, x.GenerateChoiceChecker());
+          AddCheck(x.GenerateBaseCaseChecker(targetAction), decls);
+          AddCheck(x.GenerateConclusionChecker(targetAction), decls);
         }
         foreach (var elim in x.elim.Keys)
         {
-          AddCheck(civlTypeChecker, x.GenerateStepChecker(elim, civlTypeChecker.pendingAsyncAdd));
+          AddCheck(x.GenerateStepChecker(elim), decls);
         }
       }
 
@@ -422,19 +419,15 @@ namespace Microsoft.Boogie
       
       foreach (var absCheck in absChecks)
       {
-        AddCheck(civlTypeChecker, GenerateAbstractionChecker(civlTypeChecker, absCheck.Key, absCheck.Value));
+        AddCheck(GenerateAbstractionChecker(civlTypeChecker, absCheck.Key, absCheck.Value), decls);
       }
     }
 
     private static Tuple<Procedure, Implementation> GenerateAbstractionChecker(CivlTypeChecker civlTypeChecker, AtomicAction action, AtomicAction abs)
     {
       var requires = abs.gate.Select(g => new Requires(false, g.Expr)).ToList();
-      // TODO: check frame computation
-      var frame = new HashSet<Variable>(
-        action.modifiedGlobalVars
-        .Union(action.gateUsedGlobalVars)
-        .Union(abs.modifiedGlobalVars)
-        .Union(abs.gateUsedGlobalVars));
+      // The type checker ensures that the modified set of abs is a subset of the modified set of action.
+      var frame = new HashSet<Variable>(action.modifiedGlobalVars);
 
       var subst = InductiveSequentialization.GetSubstitution(action, abs);
       List<Cmd> cmds = InductiveSequentialization.GetGateAsserts(action, subst,
@@ -470,10 +463,10 @@ namespace Microsoft.Boogie
       return Tuple.Create(proc, impl);
     }
 
-    private static void AddCheck(CivlTypeChecker civlTypeChecker, Tuple<Procedure, Implementation> t)
+    private static void AddCheck(Tuple<Procedure, Implementation> t, List<Declaration> decls)
     {
-      civlTypeChecker.program.AddTopLevelDeclaration(t.Item1);
-      civlTypeChecker.program.AddTopLevelDeclaration(t.Item2);
+      decls.Add(t.Item1);
+      decls.Add(t.Item2);
     }
   }
 }

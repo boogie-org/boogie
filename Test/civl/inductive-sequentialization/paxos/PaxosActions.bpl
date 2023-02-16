@@ -1,5 +1,6 @@
-procedure {:atomic}{:layer 2} A_StartRound(r: Round, {:linear_in "perm"} r_lin: Round)
-returns ({:pending_async "A_Join", "A_Propose"} PAs:[PA]int)
+procedure {:atomic}{:layer 2}
+{:pending_async} {:creates "A_Join", "A_Propose"}
+A_StartRound(r: Round, {:linear_in "perm"} r_lin: Round)
 {
   assert r == r_lin;
   assert Round(r);
@@ -10,11 +11,13 @@ returns ({:pending_async "A_Join", "A_Propose"} PAs:[PA]int)
     {:add_to_pool "Permission", ConcludePerm(r)}
     true;
 
-  PAs := MapAdd(JoinPAs(r), SingletonPA(A_Propose(r, ProposePermissions(r))));
+  call create_asyncs(JoinPAs(r));
+  call create_async(A_Propose(r, ProposePermissions(r)));
 }
 
-procedure {:atomic}{:layer 2} A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
-returns ({:pending_async "A_Vote", "A_Conclude"} PAs:[PA]int)
+procedure {:atomic}{:layer 2}
+{:pending_async} {:creates "A_Vote", "A_Conclude"}
+A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
 modifies voteInfo;
 {
   var {:pool "Round"} maxRound: int;
@@ -40,13 +43,14 @@ modifies voteInfo;
       maxValue := voteInfo[maxRound]->t->value;
     }
     voteInfo[r] := Some(VoteInfo(maxValue, NoNodes()));
-    PAs := MapAdd(VotePAs(r, maxValue), SingletonPA(A_Conclude(r, maxValue, ConcludePerm(r))));
-  } else {
-    PAs := NoPAs();
+    call create_asyncs(VotePAs(r, maxValue));
+    call create_async(A_Conclude(r, maxValue, ConcludePerm(r)));
   }
 }
 
-procedure {:atomic}{:layer 2} A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
+procedure {:atomic}{:layer 2}
+{:pending_async}
+A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
 modifies decision;
 {
   var q: NodeSet;
@@ -64,7 +68,9 @@ modifies decision;
   }
 }
 
-procedure {:atomic}{:layer 2} A_Join(r: Round, n: Node, {:linear_in "perm"} p: Permission)
+procedure {:atomic}{:layer 2}
+{:pending_async}
+A_Join(r: Round, n: Node, {:linear_in "perm"} p: Permission)
 modifies joinedNodes;
 {
   assert Round(r);
@@ -81,7 +87,9 @@ modifies joinedNodes;
   }
 }
 
-procedure {:atomic}{:layer 2} A_Vote(r: Round, n: Node, v: Value, {:linear_in "perm"} p: Permission)
+procedure {:atomic}{:layer 2}
+{:pending_async}
+A_Vote(r: Round, n: Node, v: Value, {:linear_in "perm"} p: Permission)
 modifies joinedNodes, voteInfo;
 {
   assert Round(r);

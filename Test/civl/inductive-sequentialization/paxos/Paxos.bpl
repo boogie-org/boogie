@@ -31,19 +31,8 @@ datatype {:linear "perm"} Permission {
   ConcludePerm(r: Round)
 }
 
-datatype {:pending_async} PA {
-  A_StartRound(r: Round, r_lin: Round),
-  A_Join(r: Round, n: Node, p: Permission),
-  A_Propose(r: Round, ps: [Permission]bool),
-  A_Vote(r: Round, n: Node, v: Value, p: Permission),
-  A_Conclude(r: Round, v: Value, p: Permission)
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 //// Functions
-
-function {:inline} NoPAs(): [PA]int { MapConst(0) }
-function {:inline} SingletonPA(pa:PA): [PA]int { NoPAs()[pa := 1] }
 
 function {:inline} NoNodes(): NodeSet { MapConst(false) }
 function {:inline} SingletonNode(node: Node): NodeSet { NoNodes()[node := true] }
@@ -96,14 +85,14 @@ function {:inline} VotePermissions(r: Round) : [Permission]bool
   (lambda p:Permission :: if (p is VotePerm && p->r == r) then true else false)
 }
 
-function {:inline} JoinPAs(r: Round) : [PA]int
+function {:inline} JoinPAs(r: Round) : [A_Join]bool
 {
-  (lambda pa: PA :: if pa is A_Join && pa->r == r && Node(pa->n) && pa->p == JoinPerm(r, pa->n) then 1 else 0)
+  (lambda pa: A_Join :: pa->r == r && Node(pa->n) && pa->p == JoinPerm(r, pa->n))
 }
 
-function {:inline} VotePAs(r: Round, v: Value) : [PA]int
+function {:inline} VotePAs(r: Round, v: Value) : [A_Vote]bool
 {
-  (lambda pa: PA :: if pa is A_Vote && pa->r == r && Node(pa->n) && pa->v == v && pa->p == VotePerm(r, pa->n) then 1 else 0)
+  (lambda pa: A_Vote :: pa->r == r && Node(pa->n) && pa->v == v && pa->p == VotePerm(r, pa->n))
 }
 
 ////////////////////////////////////////////////////////////////////////////////

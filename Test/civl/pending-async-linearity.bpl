@@ -3,84 +3,73 @@
 
 type {:linear "pid"} Pid = int;
 
-datatype {:pending_async} PA {
-  A(pid:int), B(pid:int)
-}
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
-
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:pending_async}
 A ({:linear_in "pid"} pid:int)
 {}
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:pending_async}
 B ({:linear_in "pid"} pid:int)
 {}
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:creates "A"}
 M0 (pid:int)
-returns ({:pending_async "A"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A(/* out of thin air ☠ */ pid) := 1];
+  call create_async(A(/* out of thin air */ pid));
 }
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:creates "A"}
 M1 ({:linear_in "pid"} pid:int)
-returns ({:pending_async "A"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A(pid) := 1];
+  call create_async(A(pid));
 }
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:creates "A"}
 M2 ({:linear "pid"} pid:int)
-returns ({:pending_async "A"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A(/* duplication ☠ */ pid) := 1];
+  call create_async(A(/* duplication */ pid));
 }
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:creates "A", "B"}
 M3 ({:linear_in "pid"} pid1:int, {:linear_in "pid"} pid2:int)
-returns ({:pending_async "A","B"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A(pid1) := 1][B(pid2) := 1];
+  call create_async(A(pid1));
+  call create_async(B(pid2));
 }
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:creates "A", "B"}
 M4 ({:linear_in "pid"} pid1:int, {:linear_in "pid"} pid2:int)
-returns ({:pending_async "A","B"} PAs:[PA]int)
 {
-  PAs := NoPAs()[A(pid1) := 1][B(/* duplication ☠ */ pid1) := 1];
+  call create_async(A(pid1));
+  call create_async(B(/* duplication */ pid1));
 }
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:creates "A"}
 M5 ({:linear_in "pid"} pid:int)
-returns ({:linear "pid"} pid_out:int, {:pending_async "A"} PAs:[PA]int)
+returns ({:linear "pid"} pid_out:int)
 {
   pid_out := pid;
-  PAs := NoPAs()[A(/* duplication ☠ */ pid) := 1];
+  call create_async(A(/* duplication */ pid));
 }
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:creates "A", "B"}
 M6 ({:linear_in "pid"} pid1:int, {:linear_in "pid"} pid2:int, {:linear_in "pid"} pid3:int)
-returns ({:linear "pid"} pid_out:int, {:pending_async "A","B"} PAs:[PA]int)
+returns ({:linear "pid"} pid_out:int)
 {
   pid_out := pid3;
-  PAs := NoPAs()[A(pid1) := 1][B(pid2) := 1];
+  call create_async(A(pid1));
+  call create_async(B(pid2));
 }
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:creates "A"}
 M7 ({:linear_in "pid"} pid:[int]bool)
-returns ({:pending_async "A"} PAs:[PA]int)
 {
   assert pid == (lambda i:int :: 1 <= i && i <= 10);
-  PAs := NoPAs()[A(5) := 1];
+  call create_async(A(5));
 }
 
-procedure {:atomic}{:layer 1}
+procedure {:atomic}{:layer 1} {:creates "A"}
 M8 ({:linear_in "pid"} pid:[int]bool)
-returns ({:pending_async "A"} PAs:[PA]int)
 {
   assert pid == (lambda i:int :: 1 <= i && i <= 10);
-  PAs := NoPAs()[A(/* out of thin air ☠ */ 0) := 1];
+  call create_async(A(/* out of thin air */ 0));
 }
