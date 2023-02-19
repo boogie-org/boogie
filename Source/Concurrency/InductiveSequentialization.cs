@@ -213,17 +213,18 @@ namespace Microsoft.Boogie
           ExprHelper.FunctionCall(asyncAtomicAction.pendingAsyncCtor, actionArgs.Select(v => Expr.Ident(v)).ToArray());
         actionExpr = Expr.Or(disjointnessExpr, Expr.Gt(Expr.Select(PAs(asyncAtomicAction.pendingAsyncType), actionPA), Expr.Literal(0)));
       }
+
       var asyncLeftMover = elim.First(x => x.Value == leftMover).Key;
       var leftMoverPendingAsyncCtor = asyncLeftMover.pendingAsyncCtor;
       var leftMoverPA =
         ExprHelper.FunctionCall(leftMoverPendingAsyncCtor, leftMoverArgs.Select(v => Expr.Ident(v)).ToArray());
-      Expr leftMoverExpr = Expr.Gt(Expr.Select(PAs(asyncLeftMover.pendingAsyncType), leftMoverPA), Expr.Literal(0));
-      if (choice.Decl == invariantAction.impl.OutParams.Last())
+      var leftMoverExpr = Expr.And(new[]
       {
-        var choiceExpr = Expr.And(ChoiceTest(asyncLeftMover.pendingAsyncType),
-          Expr.Eq(Choice(asyncLeftMover.pendingAsyncType), leftMoverPA));
-        leftMoverExpr = Expr.And(choiceExpr, leftMoverExpr);
-      }
+        ChoiceTest(asyncLeftMover.pendingAsyncType),
+        Expr.Gt(Expr.Select(PAs(asyncLeftMover.pendingAsyncType), Choice(asyncLeftMover.pendingAsyncType)), Expr.Literal(0)),
+        Expr.Eq(Choice(asyncLeftMover.pendingAsyncType), leftMoverPA)
+      });
+
       var alwaysMap = new Dictionary<Variable, Expr>();
       civlTypeChecker.program.GlobalVariables.Iter(g =>
       {
