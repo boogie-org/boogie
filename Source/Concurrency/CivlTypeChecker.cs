@@ -97,6 +97,7 @@ namespace Microsoft.Boogie
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
       SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, null);
       SkipAtomicAction.CompleteInitialization(this, new List<AsyncAction>());
+      SkipAtomicAction.InitializeInputOutputRelation(this);
     }
 
     public string AddNamePrefix(string name)
@@ -655,18 +656,21 @@ namespace Microsoft.Boogie
       {
         var action = procToIntroductionAction[proc];
         action.CompleteInitialization(this, new List<AsyncAction>());
+        action.InitializeInputOutputRelation(this);
       });
       procToAtomicAction.Keys.Iter(proc =>
       {
         var action = procToAtomicAction[proc];
         action.CompleteInitialization(this,
           actionProcToCreates[proc].Select(name => FindAtomicAction(name) as AsyncAction));
+        action.InitializeInputOutputRelation(this);
       });
       procToIsAbstraction.Keys.Iter(proc =>
       {
         var action = procToIsAbstraction[proc];
         action.CompleteInitialization(this,
           actionProcToCreates[proc].Select(name => FindAtomicAction(name) as AsyncAction));
+        action.InitializeInputOutputRelation(this);
       });
       var invariantProcToInductiveSequentialization = new Dictionary<Procedure, InductiveSequentialization>();
       procToIsInvariant.Keys.Iter(proc =>
@@ -675,6 +679,7 @@ namespace Microsoft.Boogie
         action.CompleteInitialization(this,
           actionProcToCreates[proc].Select(name => FindAtomicAction(name) as AsyncAction),
           invariantProcToElimMap[proc].Keys.Select(x => procToAtomicAction[x]).OfType<AsyncAction>());
+        action.InitializeInputOutputRelation(this);
         var elimMap = invariantProcToElimMap[proc];
         var elim = elimMap.Keys.ToDictionary(x => (AsyncAction)procToAtomicAction[x],
           x =>

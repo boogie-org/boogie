@@ -16,8 +16,6 @@ namespace Microsoft.Boogie
     private IdentifierExpr choice;
     private Dictionary<CtorType, Variable> newPAs;
 
-    private Function invariantTransitionRelation;
-    private List<Variable> alwaysMapKeys;
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
     public InductiveSequentialization(CivlTypeChecker civlTypeChecker, InvariantAction invariantAction, Dictionary<AsyncAction, AtomicAction> elim)
@@ -35,38 +33,6 @@ namespace Microsoft.Boogie
       newPAs = invariantAction.pendingAsyncs.ToDictionary(action => action.pendingAsyncType,
         action => (Variable)civlTypeChecker.LocalVariable($"newPAs_{action.impl.Name}",
           action.pendingAsyncMultisetType));
-
-      var alwaysMap = new Dictionary<Variable, Expr>();
-      var foroldMap = new Dictionary<Variable, Expr>();
-      civlTypeChecker.program.GlobalVariables.Iter(g =>
-      {
-        alwaysMap[g] = Expr.Ident(VarHelper.Formal(g.Name, g.TypedIdent.Type, true));
-        foroldMap[g] = Expr.Ident(VarHelper.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
-      });
-      invariantAction.impl.InParams.Iter(v =>
-      {
-        alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
-      });
-      invariantAction.impl.OutParams.Iter(v =>
-      {
-        alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
-      });
-      var always = Substituter.SubstitutionFromDictionary(alwaysMap);
-      var forold = Substituter.SubstitutionFromDictionary(foroldMap);
-      var transitionRelationExpr =
-        Substituter.ApplyReplacingOldExprs(always, forold, GetInvariantTransitionRelationWithChoice());
-      var gateExprs = invariantAction.gate.Select(assertCmd =>
-        Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
-      alwaysMapKeys = alwaysMap.Keys.ToList();
-      invariantTransitionRelation = new Function(Token.NoToken, invariantAction.proc.Name, new List<TypeVariable>(),
-        alwaysMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
-        VarHelper.Formal(TypedIdent.NoName, Type.Bool, false), null,
-        new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
-      invariantTransitionRelation.Body = ExprHelper.ExistsExpr(
-        foroldMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
-        Expr.And(gateExprs.Append(transitionRelationExpr)));
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, invariantTransitionRelation.Body);
-      civlTypeChecker.program.AddTopLevelDeclaration(invariantTransitionRelation);
     }
 
     public void AddTarget(AtomicAction targetAction)
@@ -225,26 +191,22 @@ namespace Microsoft.Boogie
         Expr.Eq(Choice(asyncLeftMover.pendingAsyncType), leftMoverPA)
       });
 
-      var alwaysMap = new Dictionary<Variable, Expr>();
-      civlTypeChecker.program.GlobalVariables.Iter(g =>
-      {
-        alwaysMap[g] = Expr.Ident(VarHelper.BoundVariable(g.Name, g.TypedIdent.Type));
-      });
+      var alwaysFormalMap = new Dictionary<Variable, Expr>();
       invariantAction.impl.InParams.Iter(v =>
       {
-        alwaysMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
+        alwaysFormalMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
       });
       invariantAction.impl.OutParams.Iter(v =>
       {
-        alwaysMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
+        alwaysFormalMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
       });
-      var always = Substituter.SubstitutionFromDictionary(alwaysMap);
+      var always = Substituter.SubstitutionFromDictionary(alwaysFormalMap);
       actionExpr = Substituter.Apply(always, actionExpr);
       leftMoverExpr = Substituter.Apply(always, leftMoverExpr);
-      var transitionRelationExpr =
-        ExprHelper.FunctionCall(invariantTransitionRelation, alwaysMapKeys.Select(v => alwaysMap[v]).ToList());
+      var transitionRelationExpr = ExprHelper.FunctionCall(invariantAction.inputOutputRelation,
+        invariantAction.impl.InParams.Concat(invariantAction.impl.OutParams).Select(v => alwaysFormalMap[v]).ToList());
       return ExprHelper.ExistsExpr(
-        alwaysMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
+        alwaysFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
         Expr.And(new[] { transitionRelationExpr, actionExpr, leftMoverExpr }));
     }
 
