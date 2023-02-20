@@ -144,25 +144,25 @@ namespace Microsoft.Boogie
       return GetCheckerTuple($"IS_step_{invariantAction.proc.Name}_{abs.proc.Name}", requires, locals, cmds);
     }
 
+    /*
+     * This method generates the extra assumption for the left-mover check of the abstraction of an eliminated action.
+     * The arguments leftMover and leftMoverArgs pertain to the action being moved left.
+     * The arguments action and actionArgs pertain to the action across which leftMover is being moved.
+     *
+     * A key concept used in the generation of this extra assumption is the input-output transition relation of an action.
+     * This relation is obtained by taking the conjunction of the gate and transition relation of the action and
+     * existentially quantifying globals in the pre and the post state.
+     * 
+     * There are two parts to the assumption, one for leftMover and the other for action.
+     * Both parts are stated in the context of the input-output relation of the invariant action.
+     * - The invocation of leftMover is identical to the choice made by the invariant.
+     * - The invocation of action is such that either:
+     *   (1) the permissions in the invocation are disjoint from the permissions in the invariant invocation, or
+     *   (2) the invocation is one of the pending asyncs created by the invariant invocation, or
+     *   (3) the permissions in the invocation is contained in the permissions of one of the pending asyncs created by the invariant invocation.
+     */
     public Expr GenerateMoverCheckAssumption(AtomicAction action, List<Variable> actionArgs, AtomicAction leftMover, List<Variable> leftMoverArgs)
     {
-      // PAs = output pending asyncs of invariant
-      //
-      // Computation of actionExpr:
-      // Do the following three steps if action is being eliminated in this IS:
-      // 1. compute permission expressions (per domain) for the inputs of invariant --> A(d)
-      // 2. compute permission expressions (per domain) for the inputs of action --> B(d)
-      // 3. /\_d Disjoint(A(d), B(d)) \/ PAs[action.pendingAsyncCtor(actionArgs)] > 0 --> actionExpr
-      // Otherwise, actionExpr is true.
-      //
-      // Computation of leftMoverExpr:
-      // PAs[leftMover.pendingAsyncCtor(leftMoverArgs)] > 0 --> leftMoverExpr
-      // If choice is explicitly provide in invariantAction, add the conjunct
-      // choice == leftMover.pendingAsyncCtor(leftMoverArgs) to leftMoverExpr
-      //
-      // Construct conjunction of transition relation of invariant, gate of invariant, actionExpr, and leftMoverExpr
-      // and existentially quantify all free variables.
-      
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       Expr actionExpr = Expr.True;
       if (action is AsyncAction asyncAtomicAction && elim.ContainsKey(asyncAtomicAction))
