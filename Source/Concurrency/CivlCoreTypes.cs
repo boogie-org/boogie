@@ -146,6 +146,10 @@ namespace Microsoft.Boogie
 
     public void InitializeInputOutputRelation(CivlTypeChecker civlTypeChecker)
     {
+      if (inputOutputRelation != null)
+      {
+        return;
+      }
       var alwaysMap = new Dictionary<Variable, Expr>();
       var foroldMap = new Dictionary<Variable, Expr>();
       civlTypeChecker.program.GlobalVariables.Iter(g =>
