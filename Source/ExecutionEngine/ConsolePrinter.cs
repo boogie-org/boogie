@@ -13,6 +13,10 @@ public class ConsolePrinter : OutputPrinter
   public virtual void ErrorWriteLine(TextWriter tw, string s)
   {
     Contract.Requires(s != null);
+    if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
+      return;
+    }
+
     if (!s.Contains("Error: ") && !s.Contains("Error BP"))
     {
       tw.WriteLine(s);
@@ -48,6 +52,10 @@ public class ConsolePrinter : OutputPrinter
   public virtual void ErrorWriteLine(TextWriter tw, string format, params object[] args)
   {
     Contract.Requires(format != null);
+    if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
+      return;
+    }
+
     string s = string.Format(format, args);
     ErrorWriteLine(tw, s);
   }
@@ -56,6 +64,10 @@ public class ConsolePrinter : OutputPrinter
   public virtual void AdvisoryWriteLine(TextWriter output, string format, params object[] args)
   {
     Contract.Requires(format != null);
+    if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
+      return;
+    }
+
     ConsoleColor col = Console.ForegroundColor;
     Console.ForegroundColor = ConsoleColor.Yellow;
     Console.WriteLine(format, args);
@@ -81,6 +93,10 @@ public class ConsolePrinter : OutputPrinter
     Contract.Requires(stats != null);
     Contract.Requires(0 <= stats.VerifiedCount && 0 <= stats.ErrorCount && 0 <= stats.InconclusiveCount &&
                       0 <= stats.TimeoutCount && 0 <= stats.OutOfMemoryCount);
+
+    if (Options.Verbosity <= CoreOptions.VerbosityLevel.Quiet) {
+      return;
+    }
 
     textWriter.WriteLine();
     if (Options.ShowVerifiedProcedureCount)
@@ -128,6 +144,10 @@ public class ConsolePrinter : OutputPrinter
   {
     Contract.Requires(errorInfo != null);
 
+    if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
+      return;
+    }
+
     ReportBplError(errorInfo.Tok, errorInfo.FullMsg, true, tw);
 
     foreach (var e in errorInfo.Aux)
@@ -147,6 +167,10 @@ public class ConsolePrinter : OutputPrinter
   public virtual void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null)
   {
     Contract.Requires(message != null);
+
+    if (Options.Verbosity == CoreOptions.VerbosityLevel.Silent) {
+      return;
+    }
 
     if (category != null)
     {

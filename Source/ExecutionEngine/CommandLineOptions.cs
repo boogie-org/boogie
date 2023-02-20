@@ -431,10 +431,9 @@ namespace Microsoft.Boogie
     [Peer] public XmlSink XmlSink { get; set; }
     public bool Wait { get; set; }
 
-    public bool Trace {
-      get => trace;
-      set => trace = value;
-    }
+    public bool Trace => Verbosity == CoreOptions.VerbosityLevel.Trace;
+
+    public CoreOptions.VerbosityLevel Verbosity => verbosity;
 
     public bool NormalizeNames
     {
@@ -816,7 +815,6 @@ namespace Microsoft.Boogie
     private bool trustNoninterference = false;
     private bool trustRefinement = false;
     private bool trustInductiveSequentialization = false;
-    private bool trace = false;
     private int enhancedErrorMessages = 0;
     private int stagedHoudiniThreads = 1;
     private uint timeLimitPerAssertionInPercent = 10;
@@ -829,6 +827,7 @@ namespace Microsoft.Boogie
     private bool emitDebugInformation = true;
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
+    private CoreOptions.VerbosityLevel verbosity = CoreOptions.VerbosityLevel.Normal;
 
     public List<CoreOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
@@ -1535,7 +1534,9 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
               ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
               ps.CheckBooleanFlag("wait", x => Wait = x) ||
-              ps.CheckBooleanFlag("trace", x => trace = x) ||
+              ps.CheckBooleanFlag("trace", x => verbosity = CoreOptions.VerbosityLevel.Trace) ||
+              ps.CheckBooleanFlag("quiet", x => verbosity = CoreOptions.VerbosityLevel.Quiet) ||
+              ps.CheckBooleanFlag("silent", x => verbosity = CoreOptions.VerbosityLevel.Silent) ||
               ps.CheckBooleanFlag("traceTimes", x => TraceTimes = x) ||
               ps.CheckBooleanFlag("tracePOs", x => TraceProofObligations = x) ||
               ps.CheckBooleanFlag("noResolve", x => NoResolve = x) ||
@@ -2088,6 +2089,8 @@ namespace Microsoft.Boogie
 
   ---- Debugging and general tracing options ---------------------------------
 
+  /silent       print nothing at all
+  /quiet        print nothing but warnings and errors
   /trace        blurt out various debug trace information
   /traceTimes   output timing information at certain points in the pipeline
   /tracePOs     output information about the number of proof obligations
