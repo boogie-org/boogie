@@ -102,7 +102,9 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Push();
         string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
         FlushAxioms();
-        SendVCAndOptions(descriptiveName, vcString);
+        SendVCId(descriptiveName);
+        SendVCOptions();
+        SendThisVC(vcString);
 
         SendOptimizationRequests();
 

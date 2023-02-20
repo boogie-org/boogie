@@ -1,18 +1,3 @@
-procedure {:atomic}{:layer 2} A_Paxos({:linear_in "perm"} rs: [Round]bool)
-returns ({:pending_async "A_StartRound"} PAs:[PA]int)
-{
-  var {:pool "NumRounds"} numRounds: int;
-  assert
-    Init(rs, joinedNodes, voteInfo, decision);
-  assume
-    {:add_to_pool "Round", 0, numRounds}
-    {:add_to_pool "NumRounds", numRounds}
-    0 <= numRounds;
-  PAs := (lambda pa: PA :: if pa is A_StartRound && pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds then 1 else 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acceptorState: [Node]AcceptorState,
               permJoinChannel: JoinResponseChannel, permVoteChannel: VoteResponseChannel) : bool
 {
@@ -85,7 +70,7 @@ requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinCha
   var r: int;
   var {:layer 1}{:linear "perm"} r_lin: int;
   var {:layer 1}{:linear "perm"} rs': [Round]bool;
-  var {:layer 1}{:pending_async} PAs:[PA]int;
+  var {:layer 1}{:pending_async} PAs:[A_StartRound]int;
 
   r := 0;
   rs' := rs;
@@ -93,7 +78,7 @@ requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinCha
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 0 <= r;
   invariant {:layer 1} (forall r': Round :: r < r' ==> rs'[r']);
-  invariant {:layer 1} PAs == (lambda pa: PA :: if (pa is A_StartRound && pa->r == pa->r_lin && Round(pa->r) && pa->r <= r) then 1 else 0);
+  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_StartRound :: pa->r == pa->r_lin && Round(pa->r) && pa->r <= r));
   {
     r := r + 1;
     call rs', r_lin := ExtractRoundPermission(rs', r);
@@ -110,7 +95,7 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   var {:layer 1}{:linear "perm"} p: Permission;
   var {:layer 1}{:linear "perm"} ps: [Permission]bool;
   var {:layer 1}{:linear "perm"} ps': [Permission]bool;
-  var {:layer 1}{:pending_async} PAs:[PA]int;
+  var {:layer 1}{:pending_async} PAs:[A_Join]int;
 
   call ps, ps' := SplitPermissions(r_lin);
   n := 1;
@@ -118,7 +103,7 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
   invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps[JoinPerm(r, n')]);
-  invariant {:layer 1} PAs == (lambda pa: PA :: if pa is A_Join && pa->r == r && 1 <= pa->n && pa->n < n && pa->p == JoinPerm(pa->r, pa->n) then 1 else 0);
+  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Join :: pa->r == r && 1 <= pa->n && pa->n < n && pa->p == JoinPerm(pa->r, pa->n)));
   {
     call ps, p := ExtractJoinPermission(ps, r, n);
     async call Join(r, n, p);
@@ -185,16 +170,17 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   var {:layer 1}{:linear "perm"} ps': [Permission]bool;
   var {:layer 1}{:linear "perm"} p: Permission;
   var {:layer 1}{:linear "perm"} cp: Permission;
-  var {:layer 1}{:pending_async} PAs:[PA]int;
+  var {:layer 1}{:pending_async} PAs:[A_Vote]int;
 
   call maxRound, maxValue, ns := ProposeHelper(r);
+  assume {:add_to_pool "NodeSet", ns} true;
   call ps', cp := SplitConcludePermission(r, ps);
   n := 1;
   while (n <= numNodes)
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
   invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps'[VotePerm(r, n')]);
-  invariant {:layer 1} PAs == (lambda pa: PA :: if pa is A_Vote && pa->r == r && 1 <= pa->n && pa->n < n && pa->v == maxValue && pa->p == VotePerm(pa->r, pa->n) then 1 else 0);
+  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Vote :: pa->r == r && 1 <= pa->n && pa->n < n && pa->v == maxValue && pa->p == VotePerm(pa->r, pa->n)));
   {
     call ps', p := ExtractVotePermission(ps', r, n);
     async call Vote(r, n, maxValue, p);

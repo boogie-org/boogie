@@ -378,7 +378,9 @@ namespace Microsoft.Boogie
         return PipelineOutcome.Done;
       }
 
-      int errorCount = program.Resolve(Options);
+      CivlRewriter.AddPendingAsyncTypes(program);
+
+      var errorCount = program.Resolve(Options);
       if (errorCount != 0)
       {
         Console.WriteLine("{0} name resolution errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));

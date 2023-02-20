@@ -23,8 +23,8 @@ namespace Microsoft.Boogie
     public const string RIGHT = "right";
     public const string BOTH = "both";
 
-    public static string REFINES = "refines";
-    public static string HIDE = "hide";
+    public const string REFINES = "refines";
+    public const string HIDE = "hide";
 
     public const string COOPERATES = "cooperates";
 
@@ -32,27 +32,28 @@ namespace Microsoft.Boogie
     public const string LINEAR_IN = "linear_in";
     public const string LINEAR_OUT = "linear_out";
 
-    public const string BACKWARD = "backward";
-    public const string COMMUTATIVITY = "commutativity";
     public const string LEMMA = "lemma";
-    public const string WITNESS = "witness";
 
     public const string PENDING_ASYNC = "pending_async";
     public const string SYNC = "sync";
+    public const string CREATES = "creates";
 
     public const string IS = "IS";
     public const string IS_INVARIANT = "IS_invariant";
     public const string IS_ABSTRACTION = "IS_abstraction";
     public const string ELIM = "elim";
-    public const string CHOICE = "choice";
 
     private static string[] CIVL_ATTRIBUTES =
     {
-      LAYER, YIELDS, YIELD_INVARIANT, INTRO, ATOMIC, LEFT, RIGHT, BOTH, REFINES, HIDE,
-      COMMUTATIVITY, LEMMA, WITNESS,
-      PENDING_ASYNC, IS, IS_INVARIANT, IS_ABSTRACTION, ELIM, CHOICE,
-      YIELD_REQUIRES, YIELD_ENSURES, YIELD_PRESERVES, YIELD_LOOP,
-      COOPERATES
+      LAYER,
+      YIELDS,
+      YIELD_INVARIANT, YIELD_REQUIRES, YIELD_ENSURES, YIELD_PRESERVES, YIELD_LOOP,
+      INTRO,
+      ATOMIC, LEFT, RIGHT, BOTH,
+      REFINES, HIDE, COOPERATES,
+      LEMMA,
+      PENDING_ASYNC, SYNC, CREATES,
+      IS, IS_INVARIANT, IS_ABSTRACTION, ELIM
     };
 
     private static string[] LINEAR_ATTRIBUTES =

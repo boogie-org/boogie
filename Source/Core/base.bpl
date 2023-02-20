@@ -28,6 +28,20 @@ function {:inline} MapOne<T>(t: T): [T]bool
   MapConst(false)[t := true]
 }
 
+function {:inline} ToMultiset<T>(set: [T]bool): [T]int
+{
+  MapIte(set, MapConst(1), MapConst(0))
+}
+
+function {:inline} IsSubset<T>(a: [T]bool, b: [T]bool) : bool
+{
+  MapImp(a, b) == MapConst(true)
+}
+
+function {:inline} IsDisjoint<T>(a: [T]bool, b: [T]bool) : bool {
+  MapAnd(a, b) == MapConst(false)
+}
+
 function {:inline} Id<T>(t: T): T
 {
   t
@@ -171,3 +185,8 @@ function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
 }
 procedure Lval_Split<V>({:linear_out} k: Lval V, path: Lset V);
 procedure Lval_Transfer<V>({:linear_in} l: Lval V, path: Lset V);
+
+procedure create_async<T>(PA: T);
+procedure create_asyncs<T>(PAs: [T]bool);
+procedure create_multi_asyncs<T>(PAs: [T]int);
+procedure set_choice<T>(choice: T);

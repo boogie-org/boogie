@@ -43,6 +43,11 @@ class LinearityChecker
       }
     }
 
+    private IdentifierExpr PAs(AtomicAction action, int pendingAsyncIndex)
+    {
+      return Expr.Ident(action.impl.OutParams[action.pendingAsyncStartIndex + pendingAsyncIndex]);
+    }
+    
     private void AddChecker(Action action, List<Declaration> decls)
     {
       // Note: The implementation should be used as the variables in the
@@ -51,16 +56,20 @@ class LinearityChecker
       List<Variable> inputs = impl.InParams;
       List<Variable> outputs = impl.OutParams;
 
-      List<Variable> locals = new List<Variable>(2);
-      var paLocal1 = civlTypeChecker.LocalVariable("pa1", civlTypeChecker.pendingAsyncType);
-      var paLocal2 = civlTypeChecker.LocalVariable("pa2", civlTypeChecker.pendingAsyncType);
-      var pa1 = Expr.Ident(paLocal1);
-      var pa2 = Expr.Ident(paLocal2);
-      
-      if (civlTypeChecker.pendingAsyncType != null)
+      var locals = new List<Variable>();
+      var ctorTypeToFirstPA = new Dictionary<CtorType, IdentifierExpr>();
+      var ctorTypeToSecondPA = new Dictionary<CtorType, IdentifierExpr>();
+      if (action is AtomicAction x && x.HasPendingAsyncs)
       {
-        locals.Add(paLocal1);
-        locals.Add(paLocal2);
+        x.pendingAsyncs.Iter(y =>
+        {
+          var paLocal1 = civlTypeChecker.LocalVariable($"pa1_{y.pendingAsyncType.Decl.Name}", y.pendingAsyncType);
+          var paLocal2 = civlTypeChecker.LocalVariable($"pa2_{y.pendingAsyncType.Decl.Name}", y.pendingAsyncType);
+          locals.Add(paLocal1);
+          locals.Add(paLocal2);
+          ctorTypeToFirstPA[y.pendingAsyncType] = Expr.Ident(paLocal1);
+          ctorTypeToSecondPA[y.pendingAsyncType] = Expr.Ident(paLocal2);
+        });
       }
 
       List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
@@ -90,10 +99,13 @@ class LinearityChecker
 
         if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
         {
-          var PAs = Expr.Ident(atomicAction.impl.OutParams.Last());
+          var pendingAsyncs = atomicAction.pendingAsyncs;
           
-          foreach (var pendingAsync in atomicAction.pendingAsyncs)
+          for (int i = 0; i < pendingAsyncs.Count; i++)
           {
+            var pendingAsync = pendingAsyncs[i];
+            var pa1 = ctorTypeToFirstPA[pendingAsync.pendingAsyncType];
+            var pa2 = ctorTypeToSecondPA[pendingAsync.pendingAsyncType];
             var pendingAsyncLinearParams = PendingAsyncLinearParams(domain, pendingAsync, pa1);
 
             if (pendingAsyncLinearParams.Count == 0)
@@ -106,7 +118,7 @@ class LinearityChecker
             // are a subset of permissions in linear input variables.
             var exactlyOnePA = Expr.And(
               ExprHelper.IsConstructor(pa1, pendingAsync.pendingAsyncCtor.Name),
-              Expr.Eq(Expr.Select(PAs, pa1), Expr.Literal(1)));
+              Expr.Eq(Expr.Select(PAs(atomicAction, i), pa1), Expr.Literal(1)));
             var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
             linearityChecks.Add(new LinearityCheck(
               domain.DomainName,
@@ -119,7 +131,7 @@ class LinearityChecker
             // If there are two identical pending asyncs, then their input permissions mut be empty.
             var twoIdenticalPAs = Expr.And(
               ExprHelper.IsConstructor(pa1, pendingAsync.pendingAsyncCtor.Name),
-              Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(2)));
+              Expr.Ge(Expr.Select(PAs(atomicAction, i), pa1), Expr.Literal(2)));
             var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
             linearityChecks.Add(new LinearityCheck(
               domain.DomainName,
@@ -128,15 +140,15 @@ class LinearityChecker
               $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.DomainName}.",
               $"identical_{pendingAsync.proc.Name}"));
           }
-
-          var pendingAsyncs = atomicAction.pendingAsyncs.ToList();
+          
           for (int i = 0; i < pendingAsyncs.Count; i++)
           {
             var pendingAsync1 = pendingAsyncs[i];
+            var pa1 = ctorTypeToFirstPA[pendingAsync1.pendingAsyncType];
             for (int j = i; j < pendingAsyncs.Count; j++)
             {
               var pendingAsync2 = pendingAsyncs[j];
-
+              var pa2 = ctorTypeToSecondPA[pendingAsync2.pendingAsyncType];
               var pendingAsyncLinearParams1 = PendingAsyncLinearParams(domain, pendingAsync1, pa1);
               var pendingAsyncLinearParams2 = PendingAsyncLinearParams(domain, pendingAsync2, pa2);
               
@@ -149,14 +161,14 @@ class LinearityChecker
               // Input permissions of two non-identical pending asyncs (possibly of the same action)
               // are a subset of permissions in linear input variables.
               var membership = Expr.And(
-                Expr.Neq(pa1, pa2),
+                i == j ? Expr.Neq(pa1, pa2) : Expr.True,
                 Expr.And(
                   ExprHelper.IsConstructor(pa1, pendingAsync1.pendingAsyncCtor.Name),
                   ExprHelper.IsConstructor(pa2, pendingAsync2.pendingAsyncCtor.Name)));
 
               var existing = Expr.And(
-                Expr.Ge(Expr.Select(PAs, pa1), Expr.Literal(1)),
-                Expr.Ge(Expr.Select(PAs, pa2), Expr.Literal(1)));
+                Expr.Ge(Expr.Select(PAs(atomicAction, i), pa1), Expr.Literal(1)),
+                Expr.Ge(Expr.Select(PAs(atomicAction, j), pa2), Expr.Literal(1)));
 
               var noDuplication = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2));
 

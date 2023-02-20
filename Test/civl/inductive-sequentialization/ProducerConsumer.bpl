@@ -21,23 +21,16 @@ function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [Channel
 // pool of FIFO channels
 var {:layer 0,3} channels: [ChannelId]Channel;
 
-datatype {:pending_async} PA {
-  PRODUCER(x: int, send_handle: ChannelHandle),
-  CONSUMER(x: int, receive_handle: ChannelHandle)
-}
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
-
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 2}
-{:IS "MAIN'","INV"}{:elim "PRODUCER"}{:elim "CONSUMER","CONSUMER'"}
+{:creates "PRODUCER","CONSUMER"}
+{:IS "MAIN'","INV"}
 MAIN ({:linear_in "cid"} cid: ChannelId)
-returns ({:pending_async "PRODUCER","CONSUMER"} PAs:[PA]int)
 {
   assert channels[cid]->head == channels[cid]->tail;
-  PAs := NoPAs()[PRODUCER(1, Send(cid)) := 1][CONSUMER(1, Receive(cid)) := 1];
+  call create_async(PRODUCER(1, Send(cid)));
+  call create_async(CONSUMER(1, Receive(cid)));
 }
 
 procedure {:atomic}{:layer 3}
@@ -51,9 +44,10 @@ modifies channels;
   channels[cid] := channel;
 }
 
-procedure {:IS_invariant}{:layer 2}
+procedure {:layer 2}
+{:creates "PRODUCER","CONSUMER"}
+{:IS_invariant}{:elim "PRODUCER"}{:elim "CONSUMER","CONSUMER'"}
 INV ({:linear_in "cid"} cid: ChannelId)
-returns ({:pending_async "PRODUCER","CONSUMER"} PAs:[PA]int, {:choice} choice:PA)
 modifies channels;
 {
   var {:pool "INV1"} c: int;
@@ -69,19 +63,20 @@ modifies channels;
   assume {:add_to_pool "INV1", c} 0 < c;
   if (*) {
     assume head == tail;
-    PAs := NoPAs()[PRODUCER(c, Send(cid)) := 1][CONSUMER(c, Receive(cid)) := 1];
-    choice := PRODUCER(c, Send(cid));
+    call create_async(PRODUCER(c, Send(cid)));
+    call create_async(CONSUMER(c, Receive(cid)));
+    call set_choice(PRODUCER(c, Send(cid)));
   } else if (*) {
     assume tail == head + 1 && C[head] == 0;
-    PAs := NoPAs()[CONSUMER(c, Receive(cid)) := 1];
-    choice := CONSUMER(c, Receive(cid));
+    call create_async(CONSUMER(c, Receive(cid)));
+    call set_choice(CONSUMER(c, Receive(cid)));
   } else if (*) {
     assume tail == head + 1 && C[head] == c;
-    PAs := NoPAs()[PRODUCER(c+1, Send(cid)) := 1][CONSUMER(c, Receive(cid)) := 1];
-    choice := CONSUMER(c, Receive(cid));
+    call create_async(PRODUCER(c+1, Send(cid)));
+    call create_async(CONSUMER(c, Receive(cid)));
+    call set_choice(CONSUMER(c, Receive(cid)));
   } else {
     assume head == tail;
-    PAs := NoPAs();
   }
   channels[cid] := channel;
 }
@@ -89,8 +84,9 @@ modifies channels;
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:left}{:layer 2}
+{:pending_async}
+{:creates "PRODUCER"}
 PRODUCER (x: int, {:linear_in "cid"} send_handle: ChannelHandle)
-returns ({:pending_async "PRODUCER"} PAs:[PA]int)
 modifies channels;
 {
   var channel: Channel;
@@ -108,21 +104,21 @@ modifies channels;
   {
     C[tail] := x;
     tail := tail + 1;
-    PAs := NoPAs()[PRODUCER(x+1, send_handle) := 1];
+    call create_async(PRODUCER(x+1, send_handle));
   }
   else
   {
     C[tail] := 0;
     tail := tail + 1;
-    PAs := NoPAs();
   }
   channels[cid] := Channel(C, head, tail);
   assume {:add_to_pool "INV2", channels[cid]} true;
 }
 
 procedure {:atomic}{:layer 2}
+{:pending_async}
+{:creates "CONSUMER"}
 CONSUMER (x: int, {:linear_in "cid"} receive_handle: ChannelHandle)
-returns ({:pending_async "CONSUMER"} PAs:[PA]int)
 modifies channels;
 {
   var channel: Channel;
@@ -144,11 +140,7 @@ modifies channels;
   head := head + 1;
   if (x' != 0)
   {
-    PAs := NoPAs()[CONSUMER(x'+1, receive_handle) := 1];
-  }
-  else
-  {
-    PAs := NoPAs();
+    call create_async(CONSUMER(x'+1, receive_handle));
   }
   channels[cid] := Channel(C, head, tail);
   assume {:add_to_pool "INV2", channels[cid]} true;
@@ -157,8 +149,8 @@ modifies channels;
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:IS_abstraction}{:layer 2}
+{:creates "CONSUMER"}
 CONSUMER' (x:int, {:linear_in "cid"} receive_handle: ChannelHandle)
-returns ({:pending_async "CONSUMER"} PAs:[PA]int)
 modifies channels;
 {
   var channel: Channel;
@@ -170,7 +162,7 @@ modifies channels;
   head := channel->head;
   tail := channel->tail;
   assert head < tail;
-  call PAs := CONSUMER(x, receive_handle);
+  call CONSUMER(x, receive_handle);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
