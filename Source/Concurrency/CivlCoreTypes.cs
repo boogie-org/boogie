@@ -150,14 +150,10 @@ namespace Microsoft.Boogie
       var foroldMap = new Dictionary<Variable, Expr>();
       civlTypeChecker.program.GlobalVariables.Iter(g =>
       {
-        alwaysMap[g] = Expr.Ident(VarHelper.Formal(g.Name, g.TypedIdent.Type, true));
-        foroldMap[g] = Expr.Ident(VarHelper.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
+        alwaysMap[g] = Expr.Ident(civlTypeChecker.BoundVariable(g.Name, g.TypedIdent.Type));
+        foroldMap[g] = Expr.Ident(civlTypeChecker.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
       });
-      impl.InParams.Iter(v =>
-      {
-        alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
-      });
-      impl.OutParams.Iter(v =>
+      impl.InParams.Concat(impl.OutParams).Iter(v =>
       {
         alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
       });
@@ -168,13 +164,13 @@ namespace Microsoft.Boogie
           TransitionRelationComputation.Refinement(civlTypeChecker, this, new HashSet<Variable>(modifiedGlobalVars)));
       var gateExprs = gate.Select(assertCmd =>
         Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
-      var alwaysGlobalMapKeys = alwaysMap.Keys.Where(key => key is GlobalVariable);
       var transitionRelationInputs = impl.InParams.Concat(impl.OutParams)
         .Select(key => alwaysMap[key]).OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
       inputOutputRelation = new Function(Token.NoToken, $"Civl_InputOutputRelation_{proc.Name}", new List<TypeVariable>(),
         transitionRelationInputs, VarHelper.Formal(TypedIdent.NoName, Type.Bool, false), null,
         new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
-      var existsVars = foroldMap.Values.Concat(alwaysGlobalMapKeys.Select(key => alwaysMap[key]))
+      var existsVars = foroldMap.Values
+        .Concat(alwaysMap.Keys.Where(key => key is GlobalVariable).Select(key => alwaysMap[key]))
         .OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
       inputOutputRelation.Body =
         ExprHelper.ExistsExpr(existsVars, Expr.And(gateExprs.Append(transitionRelationExpr)));

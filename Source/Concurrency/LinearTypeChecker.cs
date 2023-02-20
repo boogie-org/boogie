@@ -729,6 +729,11 @@ namespace Microsoft.Boogie
       return expr;
     }
 
+    public Expr SubsetExprForPermissions(LinearDomain domain, Expr lhs, Expr rhs)
+    {
+      return Expr.Eq(ExprHelper.FunctionCall(domain.mapImp, lhs, rhs), ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
+    }
+
     private IEnumerable<Expr> PermissionExprForEachVariable(LinearDomain domain, IEnumerable<Variable> scope)
     {
       return FilterVariables(domain, scope)

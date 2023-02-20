@@ -12,7 +12,7 @@ function {:inline} MapDiff<T>(a: [T]bool, b: [T]bool) : [T]bool
 {
   MapAnd(a, MapNot(b))
 }
-
+ 
 function {:builtin "MapAdd"} MapAdd<T>([T]int, [T]int) : [T]int;
 function {:builtin "MapSub"} MapSub<T>([T]int, [T]int) : [T]int;
 function {:builtin "MapMul"} MapMul<T>([T]int, [T]int) : [T]int;
@@ -31,6 +31,15 @@ function {:inline} MapOne<T>(t: T): [T]bool
 function {:inline} ToMultiset<T>(set: [T]bool): [T]int
 {
   MapIte(set, MapConst(1), MapConst(0))
+}
+
+function {:inline} IsSubset<T>(a: [T]bool, b: [T]bool) : bool
+{
+  MapImp(a, b) == MapConst(true)
+}
+
+function {:inline} IsDisjoint<T>(a: [T]bool, b: [T]bool) : bool {
+  MapAnd(a, b) == MapConst(false)
 }
 
 function {:inline} Id<T>(t: T): T

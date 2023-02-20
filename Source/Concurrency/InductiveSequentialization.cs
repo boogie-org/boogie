@@ -177,7 +177,43 @@ namespace Microsoft.Boogie
           ).ToList());
         var actionPA =
           ExprHelper.FunctionCall(asyncAtomicAction.pendingAsyncCtor, actionArgs.Select(v => Expr.Ident(v)).ToArray());
-        actionExpr = Expr.Or(disjointnessExpr, Expr.Gt(Expr.Select(PAs(asyncAtomicAction.pendingAsyncType), actionPA), Expr.Literal(0)));
+        var pendingAsyncExprs = invariantAction.pendingAsyncs.Select(pendingAsync =>
+        {
+          var pendingAsyncFormalMap =
+            pendingAsync.impl.InParams.Concat(pendingAsync.impl.OutParams).ToDictionary(v => v,
+              v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{pendingAsync.proc.Name}_{v.Name}",
+                v.TypedIdent.Type)));
+          var subst = Substituter.SubstitutionFromDictionary(pendingAsyncFormalMap);
+          var domainToPermissionExprsForPendingAsyncAction =
+            linearTypeChecker.PermissionExprs(pendingAsync.impl.InParams).ToDictionary(
+              kv => kv.Key,
+              kv => kv.Value.Select(expr => Substituter.Apply(subst, expr)));
+          var conjuncts = domainToPermissionExprsForAction.Keys.Select(domain =>
+          {
+            var lhs = linearTypeChecker.UnionExprForPermissions(domain, domainToPermissionExprsForAction[domain]);
+            var rhs = linearTypeChecker.UnionExprForPermissions(domain,
+              domainToPermissionExprsForPendingAsyncAction.ContainsKey(domain)
+                ? domainToPermissionExprsForPendingAsyncAction[domain]
+                : new List<Expr>());
+            return linearTypeChecker.SubsetExprForPermissions(domain, lhs, rhs);
+          });
+          var pendingAsyncTransitionRelationExpr = ExprHelper.FunctionCall(pendingAsync.inputOutputRelation,
+            pendingAsync.impl.InParams.Concat(pendingAsync.impl.OutParams).Select(v => pendingAsyncFormalMap[v])
+              .ToList());
+          var membershipExpr =
+            Expr.Gt(
+              Expr.Select(PAs(pendingAsync.pendingAsyncType),
+                ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor,
+                  pendingAsync.impl.InParams.Select(v => pendingAsyncFormalMap[v]).ToList())), Expr.Literal(0));
+          return ExprHelper.ExistsExpr(
+            pendingAsyncFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
+            Expr.And(conjuncts.Concat(new[] { membershipExpr, pendingAsyncTransitionRelationExpr })));
+        });
+        actionExpr = Expr.Or(new[]
+          {
+            disjointnessExpr, Expr.Gt(Expr.Select(PAs(asyncAtomicAction.pendingAsyncType), actionPA), Expr.Literal(0))
+          }
+          .Concat(pendingAsyncExprs));
       }
 
       var asyncLeftMover = elim.First(x => x.Value == leftMover).Key;
@@ -191,23 +227,18 @@ namespace Microsoft.Boogie
         Expr.Eq(Choice(asyncLeftMover.pendingAsyncType), leftMoverPA)
       });
 
-      var alwaysFormalMap = new Dictionary<Variable, Expr>();
-      invariantAction.impl.InParams.Iter(v =>
-      {
-        alwaysFormalMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
-      });
-      invariantAction.impl.OutParams.Iter(v =>
-      {
-        alwaysFormalMap[v] = Expr.Ident(VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
-      });
-      var always = Substituter.SubstitutionFromDictionary(alwaysFormalMap);
-      actionExpr = Substituter.Apply(always, actionExpr);
-      leftMoverExpr = Substituter.Apply(always, leftMoverExpr);
-      var transitionRelationExpr = ExprHelper.FunctionCall(invariantAction.inputOutputRelation,
-        invariantAction.impl.InParams.Concat(invariantAction.impl.OutParams).Select(v => alwaysFormalMap[v]).ToList());
+      var invariantFormalMap =
+        invariantAction.impl.InParams.Concat(invariantAction.impl.OutParams).ToDictionary(v => v,
+          v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{invariantAction.proc.Name}_{v.Name}",
+            v.TypedIdent.Type)));
+      var invariantFormalSubst = Substituter.SubstitutionFromDictionary(invariantFormalMap);
+      actionExpr = Substituter.Apply(invariantFormalSubst, actionExpr);
+      leftMoverExpr = Substituter.Apply(invariantFormalSubst, leftMoverExpr);
+      var invariantTransitionRelationExpr = ExprHelper.FunctionCall(invariantAction.inputOutputRelation,
+        invariantAction.impl.InParams.Concat(invariantAction.impl.OutParams).Select(v => invariantFormalMap[v]).ToList());
       return ExprHelper.ExistsExpr(
-        alwaysFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
-        Expr.And(new[] { transitionRelationExpr, actionExpr, leftMoverExpr }));
+        invariantFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
+        Expr.And(new[] { invariantTransitionRelationExpr, actionExpr, leftMoverExpr }));
     }
 
     private CallCmd GetCallCmd(Action callee)
