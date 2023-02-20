@@ -49,14 +49,6 @@ axiom (forall ns1: NodeSet, ns2: NodeSet ::
   IsQuorum(ns1) && IsQuorum(ns2) ==> (exists n: Node :: Node(n) && ns1[n] && ns2[n])
 );
 
-function {:inline} IsSubset(ns1:NodeSet, ns2:NodeSet) : bool {
-  MapImp(ns1, ns2) == MapConst(true)
-}
-
-function {:inline} IsDisjoint(ns1:NodeSet, ns2:NodeSet) : bool {
-  MapAnd(ns1, ns2) == MapConst(false)
-}
-
 // MaxRound(r, ns, voteInfo) returns the highest round less than r that some node in ns voted for.
 // If no node in ns has voted for a round less than r, then it returns 0.
 function MaxRound(r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo): int;

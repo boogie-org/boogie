@@ -675,7 +675,9 @@ namespace Microsoft.Boogie
         action.CompleteInitialization(this,
           actionProcToCreates[proc].Select(name => FindAtomicAction(name) as AsyncAction),
           invariantProcToElimMap[proc].Keys.Select(x => procToAtomicAction[x]).OfType<AsyncAction>());
+        action.InitializeInputOutputRelation(this);
         var elimMap = invariantProcToElimMap[proc];
+        elimMap.Keys.Iter(proc => procToAtomicAction[proc].InitializeInputOutputRelation(this));
         var elim = elimMap.Keys.ToDictionary(x => (AsyncAction)procToAtomicAction[x],
           x =>
           {

@@ -33,6 +33,15 @@ function {:inline} ToMultiset<T>(set: [T]bool): [T]int
   MapIte(set, MapConst(1), MapConst(0))
 }
 
+function {:inline} IsSubset<T>(a: [T]bool, b: [T]bool) : bool
+{
+  MapImp(a, b) == MapConst(true)
+}
+
+function {:inline} IsDisjoint<T>(a: [T]bool, b: [T]bool) : bool {
+  MapAnd(a, b) == MapConst(false)
+}
+
 function {:inline} Id<T>(t: T): T
 {
   t
