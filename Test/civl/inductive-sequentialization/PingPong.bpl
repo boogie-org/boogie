@@ -5,16 +5,16 @@
 // two processes. The modeling of bidirectional channels is generic.
 // Its usage is specifically illustrated here on a PingPong example
 // containing two processes called Ping and Pong.
-// These two processes share a channel pair with Ping holding its left channel handle
-// and Pong holding its right channel handle.
 
 // A bidirectional channel is a pair of ordinary channels with two ends---left and right.
+// The Ping and Pong processes share a channel pair with Ping holding its left end
+// and Pong holding its right end.
 datatype ChannelPair { ChannelPair(left: [int]int, right: [int]int) }
 
 // The id type for indexing into the pool of bidirectional channels.
 type ChannelId;
 
-// The following global variables models al instances of a bidirectional channel indexed
+// The following global variables models all instances of a bidirectional channel indexed
 // the ChannelId type. A single instance of PingPong will only use a single channel id.
 var {:layer 0,3} channel: [ChannelId]ChannelPair;
 
