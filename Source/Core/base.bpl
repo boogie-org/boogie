@@ -12,7 +12,7 @@ function {:inline} MapDiff<T>(a: [T]bool, b: [T]bool) : [T]bool
 {
   MapAnd(a, MapNot(b))
 }
- 
+
 function {:builtin "MapAdd"} MapAdd<T>([T]int, [T]int) : [T]int;
 function {:builtin "MapSub"} MapSub<T>([T]int, [T]int) : [T]int;
 function {:builtin "MapMul"} MapMul<T>([T]int, [T]int) : [T]int;
