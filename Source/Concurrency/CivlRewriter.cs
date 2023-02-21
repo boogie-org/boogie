@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -7,9 +8,10 @@ namespace Microsoft.Boogie
   {
     public static void AddPendingAsyncTypes(Program program)
     {
-      var datatypeTypeCtorDecls = program.TopLevelDeclarations.OfType<Procedure>()
-        .Where(proc => proc.HasAttribute("pending_async")).Select(CreatePendingAsyncType);
-      program.TopLevelDeclarations = program.TopLevelDeclarations.Concat(datatypeTypeCtorDecls).ToList();
+      var pendingAsyncProcs = program.TopLevelDeclarations.OfType<Procedure>()
+        .Where(proc => proc.HasAttribute(CivlAttributes.PENDING_ASYNC)).ToList();
+      var datatypeTypeCtorDecls = pendingAsyncProcs.Select(CreatePendingAsyncType);
+      program.AddTopLevelDeclarations(datatypeTypeCtorDecls);
     }
 
     private static DatatypeTypeCtorDecl CreatePendingAsyncType(Procedure proc)
@@ -47,13 +49,11 @@ namespace Microsoft.Boogie
 
       if (!options.TrustInductiveSequentialization)
       {
-        InductiveSequentializationChecker.AddCheckers(civlTypeChecker);
+        InductiveSequentializationChecker.AddCheckers(civlTypeChecker, decls);
       }
 
-      PendingAsyncChecker.AddCheckers(civlTypeChecker);
-
-      foreach (AtomicAction action in civlTypeChecker.procToAtomicAction.Values.Union(civlTypeChecker
-        .procToIsAbstraction.Values))
+      foreach (AtomicAction action in civlTypeChecker.procToAtomicAction.Values.Union(
+                 civlTypeChecker.procToIsAbstraction.Values))
       {
         action.AddTriggerAssumes(program, options);
       }

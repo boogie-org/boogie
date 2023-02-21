@@ -88,7 +88,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       if (solver != null)
       {
-        TerminateProver();
+        var _ = TerminateProver();
       }
     }
 
@@ -98,22 +98,19 @@ namespace Microsoft.Boogie.SMTLib
       toProver = null;
     }
 
-    private void TerminateProver(Int32 timeout = 2000)
+    private async Task TerminateProver(int timeout = 1000)
     {
+      var solverToTerminate = solver;
+      // Let the prover know that we're done sending input.
+      IndicateEndOfInput();
       try
       {
-        // Let the prover know that we're done sending input.
-        IndicateEndOfInput();
-
-        // Give it a chance to exit cleanly (e.g. to flush buffers)
-        if (!solver.WaitForExit(timeout))
-        {
-          solver.Kill();
-        }
+        await solverToTerminate.WaitForExitAsync(new CancellationTokenSource(timeout).Token);
       }
       catch
       {
-        /* Swallow errors */
+        solverToTerminate.Kill();
+        
       }
     }
 
@@ -300,7 +297,7 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
-      TerminateProver();
+      var _ = TerminateProver();
       DisposeProver();
     }
 

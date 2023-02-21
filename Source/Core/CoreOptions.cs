@@ -35,6 +35,16 @@ namespace Microsoft.Boogie
 
     public bool Trace { get; }
 
+    public enum VerbosityLevel
+    {
+      Silent,
+      Quiet,
+      Normal,
+      Trace
+    }
+
+    public VerbosityLevel Verbosity { get; }
+
     public bool TraceVerify { get; }
 
     public int VerifySnapshots { get; }

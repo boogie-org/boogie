@@ -1,0 +1,3 @@
+quiet.bpl(6,3): Error: this assertion could not be proved
+Execution trace:
+    quiet.bpl(6,3): anon0

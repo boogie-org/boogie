@@ -1,9 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype {:pending_async} PA { SKIP() }
-
-procedure {:atomic}{:layer 2} SKIP () returns () { }
+procedure {:atomic}{:layer 2} {:pending_async} SKIP () returns () { }
 
 procedure {:yields}{:layer 1}{:refines "SKIP"} b ()
 {
@@ -20,10 +18,9 @@ procedure {:yields}{:layer 1}{:refines "SKIP"} b ()
   // call i', returnedPAs := A(i);
 }
 
-procedure {:atomic}{:layer 1} A (i:int) returns (i':int, {:pending_async} PAs:[PA]int)
+procedure {:atomic}{:layer 1} A (i:int) returns (i':int)
 {
   assert i > 0;
-  PAs := (lambda pa:PA :: 0);
   assume i' > i;
 }
 

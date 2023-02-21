@@ -24,27 +24,6 @@ function {:inline} nextBuyer(pid:int) : int { pid + 1 }
 
 function {:inline} min (x:int, y:int) : int {if x < y then x else y}
 
-datatype {:pending_async} PA {
-  FirstBuyerInit(pid:int),
-  FirstBuyer(pid:int),
-  MiddleBuyer(pid:int),
-  LastBuyer(pid:int),
-  SellerInit(pid:int),
-  SellerFinish(pid:int)
-}
-
-function {:inline} NoPAs () : [PA]int
-{ MapConst(0) }
-
-function {:inline} SingletonPA (pa:PA) : [PA]int
-{ NoPAs()[pa := 1] }
-
-function {:builtin "MapAdd"} MapAddPA([PA]int, [PA]int) : [PA]int;
-function MapAddPA3(a:PA, b:PA, c:[PA]int) : [PA]int
-{ MapAddPA(SingletonPA(a), MapAddPA(SingletonPA(b), c)) }
-function MapAddPA4(a:PA, b:PA, c:PA, d:[PA]int) : [PA]int
-{ MapAddPA(SingletonPA(a), MapAddPA(SingletonPA(b), MapAddPA(SingletonPA(c), d))) }
-
 function sum(A:[int]int, i:int, j:int) : int
 {
   if j < i then 0 else
@@ -78,9 +57,10 @@ modifies contribution;
   havoc contribution;
 }
 
-procedure {:IS_invariant}{:layer 5}
+procedure {:layer 5}
+{:creates "SellerFinish"}
+{:IS_invariant}{:elim "SellerFinish","SellerFinish'"}
 INV4 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "SellerFinish"} PAs:[PA]int)
 modifies DecCH, contribution;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
@@ -88,11 +68,7 @@ modifies DecCH, contribution;
   if (*)
   {
     DecCH := MapConst(0)[(sum(contribution, 1, n) == price) := 1];
-    PAs := SingletonPA(SellerFinish(0));
-  }
-  else
-  {
-    PAs := NoPAs();
+    call create_async(SellerFinish(0));
   }
 }
 
@@ -110,20 +86,21 @@ modifies DecCH;
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 5}
-{:IS "MAIN5","INV4"}{:elim "SellerFinish","SellerFinish'"}
+{:creates "SellerFinish"}
+{:IS "MAIN5","INV4"}
 MAIN4 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "SellerFinish"} PAs:[PA]int)
 modifies DecCH, contribution;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   havoc contribution;
   DecCH := MapConst(0)[(sum(contribution, 1, n) == price) := 1];
-  PAs := SingletonPA(SellerFinish(0));
+  call create_async(SellerFinish(0));
 }
 
-procedure {:IS_invariant}{:layer 4}
+procedure {:layer 4}
+{:creates "SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"}
+{:IS_invariant}{:elim "FirstBuyer","FirstBuyer'"}{:elim "MiddleBuyer","MiddleBuyer'"}{:elim "LastBuyer","LastBuyer'"}
 INV3 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"} PAs:[PA]int, {:choice} choice:PA)
 modifies QuoteCH, RemCH, DecCH, contribution;
 {
   var {:pool "INV3"} k: int;
@@ -133,32 +110,42 @@ modifies QuoteCH, RemCH, DecCH, contribution;
 
   contribution := c;
   assume {:add_to_pool "INV3", 0, 1, k, k+1, n} true;
+  call create_async(SellerFinish(0));
   if (*)
   {
     QuoteCH := (lambda i:int :: if buyerID(i) then MapConst(0)[price := 1] else MapConst(0));
-    PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
-    choice := FirstBuyer(1);
+    call create_async(LastBuyer(n));
+    call create_async(FirstBuyer(1));
+    call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
+    call set_choice(FirstBuyer(1));
   }
   else if (*)
   {
     assume 1 <= k && k < n && 0 <= sum(contribution, 1, k) && sum(contribution, 1, k) <= price;
     QuoteCH := (lambda i:int :: if buyerID(i) && i > k then MapConst(0)[price := 1] else MapConst(0));
     RemCH := (lambda i:int :: if i == k+1 then MapConst(0)[(price - sum(contribution, 1, k)) := 1] else MapConst(0));
-    PAs := MapAddPA3(SellerFinish(0), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) && pa->pid > k then 1 else 0));
-    choice := if lastBuyerID(k+1) then LastBuyer(k+1) else MiddleBuyer(k+1);
+    call create_async(LastBuyer(n));
+    call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid) && pa->pid > k));
+    if (lastBuyerID(k+1))
+    {
+      call set_choice(LastBuyer(k+1));
+    }
+    else
+    {
+      call set_choice(MiddleBuyer(k+1));
+    }
   }
   else if (*)
   {
     QuoteCH := (lambda i:int :: if lastBuyerID(i) then MapConst(0)[price := 1] else MapConst(0));
     assume 0 <= sum(contribution, 1, n-1) && sum(contribution, 1, n-1) <= price;
     RemCH := (lambda i:int :: if i == n then MapConst(0)[(price - sum(contribution, 1, n-1)) := 1] else MapConst(0));
-    PAs := MapAddPA(SingletonPA(SellerFinish(0)), SingletonPA(LastBuyer(n)));
-    choice := LastBuyer(n);
+    call create_async(LastBuyer(n));
+    call set_choice(LastBuyer(n));
   }
   else
   {
     DecCH := MapConst(0)[(sum(contribution, 1, n) == price) := 1];
-    PAs := SingletonPA(SellerFinish(0));
   }
 }
 
@@ -200,90 +187,108 @@ modifies QuoteCH, RemCH, DecCH, contribution;
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 4}
-{:IS "MAIN4","INV3"}{:elim "FirstBuyer","FirstBuyer'"}{:elim "MiddleBuyer","MiddleBuyer'"}{:elim "LastBuyer","LastBuyer'"}
+{:creates "SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"}
+{:IS "MAIN4","INV3"}
 MAIN3 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"} PAs:[PA]int)
 modifies QuoteCH;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
 
   assume {:add_to_pool "contribution", contribution} true;
   QuoteCH := (lambda i:int :: if buyerID(i) then MapConst(0)[price := 1] else MapConst(0));
-  PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
+  call create_async(SellerFinish(0));
+  call create_async(FirstBuyer(1));
+  call create_async(LastBuyer(n));
+  call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
 }
 
-procedure {:IS_invariant}{:layer 3}
+procedure {:layer 3}
+{:creates "SellerInit","SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"}
+{:IS_invariant}{:elim "SellerInit","SellerInit'"}
 INV2 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "SellerInit","SellerFinish","FirstBuyer","MiddleBuyer","LastBuyer"} PAs:[PA]int)
 modifies ReqCH, QuoteCH;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   if (*)
   {
     ReqCH := 1;
-    PAs := MapAddPA4(SellerInit(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
+    call create_async(SellerInit(0));
   }
   else
   {
     QuoteCH := (lambda i:int :: if buyerID(i) then MapConst(0)[price := 1] else MapConst(0));
-    PAs := MapAddPA4(SellerFinish(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
+    call create_async(SellerFinish(0));
   }
+  call create_async(FirstBuyer(1));
+  call create_async(LastBuyer(n));
+  call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
 }
 
-procedure {:atomic}{:layer 3}
+procedure {:IS_abstraction}{:layer 3}
+{:creates "SellerFinish"}
 SellerInit' ({:linear_in "pid"} pid:int)
-returns ({:pending_async "SellerFinish"} PAs:[PA]int)
 modifies ReqCH, QuoteCH;
 {
   assert QuoteCH == (lambda i:int :: MapConst(0)); // To discharge gate failure preservation for FirstBuyer/MiddleBuyer/LastBuyer
   assert ReqCH > 0;
-  call PAs := SellerInit(pid);
+  call SellerInit(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 3}
-{:IS "MAIN3","INV2"}{:elim "SellerInit","SellerInit'"}
+{:creates "SellerInit","FirstBuyer","MiddleBuyer","LastBuyer"}
+{:IS "MAIN3","INV2"}
 MAIN2 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "SellerInit","FirstBuyer","MiddleBuyer","LastBuyer"} PAs:[PA]int)
 modifies ReqCH;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   ReqCH := 1;
-  PAs := MapAddPA4(SellerInit(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
+  call create_async(SellerInit(0));
+  call create_async(FirstBuyer(1));
+  call create_async(LastBuyer(n));
+  call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
 }
 
-procedure {:IS_invariant}{:layer 2}
+procedure {:layer 2}
+{:creates "SellerInit","FirstBuyerInit","FirstBuyer","MiddleBuyer","LastBuyer"}
+{:IS_invariant}{:elim "FirstBuyerInit"}
 INV1 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "SellerInit","FirstBuyerInit","FirstBuyer","MiddleBuyer","LastBuyer"} PAs:[PA]int)
 modifies ReqCH;
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   if (*)
   {
-    PAs := MapAddPA4(SellerInit(0), FirstBuyerInit(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
+    call create_async(FirstBuyerInit(1));
   }
   else
   {
     ReqCH := 1;
-    PAs := MapAddPA4(SellerInit(0), FirstBuyer(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
+    call create_async(FirstBuyer(1));
   }
+  call create_async(SellerInit(0));
+  call create_async(LastBuyer(n));
+  call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 2}
-{:IS "MAIN2","INV1"}{:elim "FirstBuyerInit"}
+{:creates "SellerInit","FirstBuyerInit","MiddleBuyer","LastBuyer"}
+{:IS "MAIN2","INV1"}
 MAIN1 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "SellerInit","FirstBuyerInit","MiddleBuyer","LastBuyer"} PAs:[PA]int)
 {
   assert Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
-  PAs := MapAddPA4(SellerInit(0), FirstBuyerInit(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) then 1 else 0));
+  call create_async(SellerInit(0));
+  call create_async(FirstBuyerInit(1));
+  call create_async(LastBuyer(n));
+  call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
 }
 
 procedure {:atomic}{:layer 2,3}
+{:pending_async}
+{:creates "SellerFinish"}
 SellerInit ({:linear_in "pid"} pid:int)
-returns ({:pending_async "SellerFinish"} PAs:[PA]int)
 modifies ReqCH, QuoteCH;
 {
   assert sellerID(pid);
@@ -292,10 +297,11 @@ modifies ReqCH, QuoteCH;
   ReqCH := ReqCH - 1;
 
   QuoteCH := (lambda i:int :: (lambda q:int :: if buyerID(i) && q == price then QuoteCH[i][q] + 1 else QuoteCH[i][q]));
-  PAs := SingletonPA(SellerFinish(pid));
+  call create_async(SellerFinish(pid));
 }
 
 procedure {:atomic}{:layer 2,5}
+{:pending_async}
 SellerFinish ({:linear_in "pid"} pid:int)
 modifies DecCH;
 {
@@ -308,16 +314,18 @@ modifies DecCH;
 }
 
 procedure {:atomic}{:layer 2,4}
+{:pending_async}
+{:creates "FirstBuyer"}
 FirstBuyerInit ({:linear_in "pid"} pid:int)
-returns ({:pending_async "FirstBuyer"} PAs:[PA]int)
 modifies ReqCH;
 {
   assert firstBuyerID(pid);
   ReqCH := ReqCH + 1;
-  PAs := SingletonPA(FirstBuyer(pid));
+  call create_async(FirstBuyer(pid));
 }
 
 procedure {:atomic}{:layer 2,4}
+{:pending_async}
 FirstBuyer ({:linear_in "pid"} pid:int)
 modifies QuoteCH, RemCH, contribution;
 {
@@ -339,6 +347,7 @@ modifies QuoteCH, RemCH, contribution;
 }
 
 procedure {:atomic}{:layer 2,4}
+{:pending_async}
 MiddleBuyer ({:linear_in "pid"} pid:int)
 modifies QuoteCH, RemCH, contribution;
 {
@@ -363,6 +372,7 @@ modifies QuoteCH, RemCH, contribution;
 }
 
 procedure {:atomic}{:layer 2,4}
+{:pending_async}
 LastBuyer ({:linear_in "pid"} pid:int)
 modifies QuoteCH, RemCH, DecCH, contribution;
 {
@@ -399,7 +409,10 @@ main ({:linear_in "pid"} pids:[int]bool)
 requires {:layer 1} Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
 {
   var i:int;
-  var {:pending_async}{:layer 1} PAs:[PA]int;
+  var {:pending_async}{:layer 1} SellerInit_PAs:[SellerInit]int;
+  var {:pending_async}{:layer 1} FirstBuyerInit_PAs:[FirstBuyerInit]int;
+  var {:pending_async}{:layer 1} LastBuyer_PAs:[LastBuyer]int;
+  var {:pending_async}{:layer 1} MiddleBuyer_PAs:[MiddleBuyer]int;
   var {:linear "pid"} pid:int;
   var {:linear "pid"} pids':[int]bool;
 
@@ -415,7 +428,7 @@ requires {:layer 1} Init(pids, ReqCH, QuoteCH, RemCH, DecCH, contribution);
   invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 2 <= i && i <= n;
   invariant {:layer 1} (forall ii:int :: middleBuyerID(ii) && ii >= i ==> pids'[ii]);
-  invariant {:layer 1} PAs == MapAddPA4(SellerInit(0), FirstBuyerInit(1), LastBuyer(n), (lambda pa:PA :: if pa is MiddleBuyer && middleBuyerID(pa->pid) && pa->pid < i then 1 else 0));
+  invariant {:layer 1} MiddleBuyer_PAs == (lambda pa:MiddleBuyer :: if middleBuyerID(pa->pid) && pa->pid < i then 1 else 0);
   {
     call pid, pids' := linear_transfer(i, pids');
     async call middleBuyer(pid);

@@ -431,10 +431,9 @@ namespace Microsoft.Boogie
     [Peer] public XmlSink XmlSink { get; set; }
     public bool Wait { get; set; }
 
-    public bool Trace {
-      get => trace;
-      set => trace = value;
-    }
+    public bool Trace => Verbosity == CoreOptions.VerbosityLevel.Trace;
+
+    public CoreOptions.VerbosityLevel Verbosity => verbosity;
 
     public bool NormalizeNames
     {
@@ -815,7 +814,6 @@ namespace Microsoft.Boogie
     private bool trustNoninterference = false;
     private bool trustRefinement = false;
     private bool trustInductiveSequentialization = false;
-    private bool trace = false;
     private int enhancedErrorMessages = 0;
     private int stagedHoudiniThreads = 1;
     private uint timeLimitPerAssertionInPercent = 10;
@@ -828,6 +826,7 @@ namespace Microsoft.Boogie
     private bool emitDebugInformation = true;
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
+    private CoreOptions.VerbosityLevel verbosity = CoreOptions.VerbosityLevel.Normal;
 
     public List<CoreOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
@@ -1534,7 +1533,9 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
               ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
               ps.CheckBooleanFlag("wait", x => Wait = x) ||
-              ps.CheckBooleanFlag("trace", x => trace = x) ||
+              ps.CheckBooleanFlag("trace", x => verbosity = CoreOptions.VerbosityLevel.Trace) ||
+              ps.CheckBooleanFlag("quiet", x => verbosity = CoreOptions.VerbosityLevel.Quiet) ||
+              ps.CheckBooleanFlag("silent", x => verbosity = CoreOptions.VerbosityLevel.Silent) ||
               ps.CheckBooleanFlag("traceTimes", x => TraceTimes = x) ||
               ps.CheckBooleanFlag("tracePOs", x => TraceProofObligations = x) ||
               ps.CheckBooleanFlag("noResolve", x => NoResolve = x) ||
@@ -1949,36 +1950,25 @@ namespace Microsoft.Boogie
      {:linear_out ""domain""}
        Linear input/output parameter.
 
-     {:witness ""g""}
-     {:commutativity ""A"", ""B""}
-       Function provides witness for global variable g in commutativity check
-       between action A and action B. Multiple declarations of :commutativity
-       are supported.
-
      {:pending_async}
-       Pending async datatype.
+       Atomic action that may be created as a pending async.
        Local variable collecting pending asyncs in yielding procedure.
-     {:pending_async ""action""}
-       Pending async datatype constructor for action.
-     {:pending_async ""action1"", ""action2"", ...}
-       Output parameter of atomic action.
+     {:creates ""action1"", ""action2"", ...}
+       Pending asyncs created by an atomic action.
 
      {:sync}
        Synchronized async call.
 
      {:IS ""B"", ""I""}
-       Apply inductive sequentialization to convert an action into action B
-       using invariant action I
+       Apply inductive sequentialization to convert annotated action into
+       action B using invariant action I
      {:elim ""A""}
      {:elim ""A"", ""A'""}
-       by eliminating multiple actions A (optionally using abstraction A')
-     {:choice}
-       and optionally using an output parameter to indicate the selected
-       pending async.
+       by eliminating multiple actions A (optionally using abstraction A').
 
      {:IS_invariant}
      {:IS_abstraction}
-       Actions that are only used as invariant actions or abstractions in
+       Annotated actions are only used as invariant actions or abstractions in
        inductive sequentialization. These are exempt from the overall pool of
        actions for commutativity checking.";
 
@@ -2098,6 +2088,8 @@ namespace Microsoft.Boogie
 
   ---- Debugging and general tracing options ---------------------------------
 
+  /silent       print nothing at all
+  /quiet        print nothing but warnings and errors
   /trace        blurt out various debug trace information
   /traceTimes   output timing information at certain points in the pipeline
   /tracePOs     output information about the number of proof obligations
