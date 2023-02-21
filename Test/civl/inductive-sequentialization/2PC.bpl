@@ -83,14 +83,8 @@ procedure {:IS_abstraction}{:layer 5}
 PARTICIPANT2' ({:linear_in "pid"} pid:int)
 modifies DecisionChannel, decisions;
 {
-  var d:decision;
-  assert pid(pid);
-  assert DecisionChannel[pid][NONE()] == 0;
   assert DecisionChannel[pid][COMMIT()] > 0 || DecisionChannel[pid][ABORT()] > 0;
-  if (*) { d := COMMIT(); } else { d := ABORT(); }
-  assume DecisionChannel[pid][d] > 0;
-  DecisionChannel[pid][d] := DecisionChannel[pid][d] - 1;
-  decisions[pid] := d;
+  call PARTICIPANT2(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,7 +109,7 @@ modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
 
 procedure {:layer 4}
 {:creates "COORDINATOR2","PARTICIPANT2"}
-{:IS_invariant}{:elim "COORDINATOR2","COORDINATOR2'"}
+{:IS_invariant}{:elim "COORDINATOR2"}
 INV3 ({:linear_in "pid"} pids:[int]bool)
 modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
 {
@@ -140,28 +134,6 @@ modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
     DecisionChannel := (lambda i:int :: (lambda d:decision :: if pid(i) && d == dec then 1 else 0));
     call create_asyncs((lambda pa:PARTICIPANT2 :: pid(pa->pid)));
   }
-}
-
-procedure {:IS_abstraction}{:layer 4}
-COORDINATOR2' ({:linear_in "pid"} pid:int)
-modifies VoteChannel, DecisionChannel, decisions;
-{
-  var dec:decision;
-  assert pid == 0;
-
-  if (*)
-  {
-    assume VoteChannel[YES()] >= n;
-    dec := COMMIT();
-  }
-  else
-  {
-    dec := ABORT();
-  }
-
-  decisions[pid] := dec;
-  havoc VoteChannel;
-  DecisionChannel := (lambda i:int :: (lambda d:decision :: if pid(i) && d == dec then DecisionChannel[i][d] + 1 else DecisionChannel[i][d]));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,19 +283,15 @@ modifies VoteChannel, DecisionChannel, decisions;
   if (*)
   {
     assume VoteChannel[YES()] >= n;
-    VoteChannel[YES()] := VoteChannel[YES()] - n;
     dec := COMMIT();
   }
   else
   {
-    assume VoteChannel[NO()] > 0;
-    havoc VoteChannel;
-    assume VoteChannel[NO()] == old(VoteChannel)[NO()] - 1;
-    assume 0 <= VoteChannel[YES()] && VoteChannel[YES()] <= old(VoteChannel)[YES()];
     dec := ABORT();
   }
 
   decisions[pid] := dec;
+  havoc VoteChannel;
   DecisionChannel := (lambda i:int :: (lambda d:decision :: if pid(i) && d == dec then DecisionChannel[i][d] + 1 else DecisionChannel[i][d]));
 }
 
