@@ -103,37 +103,8 @@ procedure {:IS_abstraction}{:layer 3}
 P' ({:linear_in "pid"} pid:int)
 modifies channel, terminated, leader;
 {
-  var msg:int;
-
-  assert Pid(pid);
-  assert !terminated[pid];
-  assert (forall m:int :: channel[pid][m] > 0 ==> m <= id[Max(id)]);
-
   assert (forall j:int :: Pid(j) && Between(Max(id), j, pid) ==> terminated[j]);
-
-  if (*)
-  {
-    terminated[pid] := true;
-  }
-  else
-  {
-    assume channel[pid][msg] > 0;
-    channel[pid][msg] := channel[pid][msg] - 1;
-
-    if (msg == id[pid])
-    {
-      leader[pid] := true;
-      terminated[pid] := true;
-    }
-    else
-    {
-      if (msg > id[pid])
-      {
-        channel[Next(pid)][msg] := channel[Next(pid)][msg] + 1;
-      }
-      call create_async(P(pid));
-    }
-  }
+  call P(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

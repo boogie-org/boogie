@@ -182,11 +182,10 @@ modifies decision;
 procedure {:IS_abstraction}{:layer 3} COLLECT'({:linear_in "collect"} i:pid)
 modifies decision;
 {
-  assert pid(i);
   assert CH == (lambda v:val :: value_card(v, value, 1, n));
   assert card(CH) == n;
   assert MultisetSubsetEq(MultisetEmpty, CH);
-  decision[i] := max(CH);
+  call COLLECT(i);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
