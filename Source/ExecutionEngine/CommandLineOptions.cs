@@ -433,7 +433,7 @@ namespace Microsoft.Boogie
 
     public bool Trace => Verbosity == CoreOptions.VerbosityLevel.Trace;
 
-    public CoreOptions.VerbosityLevel Verbosity { get; set; }
+    public CoreOptions.VerbosityLevel Verbosity { get; set; } = CoreOptions.VerbosityLevel.Normal;
 
     public bool NormalizeNames
     {
