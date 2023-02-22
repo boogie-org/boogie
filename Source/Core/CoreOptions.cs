@@ -43,7 +43,7 @@ namespace Microsoft.Boogie
       Trace
     }
 
-    public VerbosityLevel Verbosity { get; }
+    public VerbosityLevel Verbosity { get; set; }
 
     public bool TraceVerify { get; }
 
