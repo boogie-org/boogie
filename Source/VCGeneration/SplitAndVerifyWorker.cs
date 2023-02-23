@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -12,6 +13,9 @@ namespace VC
 {
   class SplitAndVerifyWorker
   {
+    public IObservable<(Split split, VCResult vcResult)> BatchCompletions => batchCompletions;
+    private readonly Subject<(Split split, VCResult vcResult)> batchCompletions = new();
+
     private readonly VCGenOptions options;
     private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
@@ -76,7 +80,14 @@ namespace VC
     public async Task<Outcome> WorkUntilDone(CancellationToken cancellationToken)
     {
       TrackSplitsCost(manualSplits);
-      await Task.WhenAll(manualSplits.Select(split => DoWorkForMultipleIterations(split, cancellationToken)));
+      try
+      {
+        await Task.WhenAll(manualSplits.Select(split => DoWorkForMultipleIterations(split, cancellationToken)));
+      }
+      finally
+      {
+        batchCompletions.OnCompleted();
+      }
 
       return outcome;
     }
@@ -179,7 +190,7 @@ namespace VC
       if (proverFailed) {
         await HandleProverFailure(split, checker, callback, result, cancellationToken);
       } else {
-        split.Finish(result);
+        batchCompletions.OnNext((split, result));
         await checker.GoBackToIdle();
       }
     }
@@ -258,7 +269,7 @@ namespace VC
         var result = vcResult with {
           counterExamples = split.Counterexamples
         };
-        split.Finish(result);
+        batchCompletions.OnNext((split, result));
         outcome = Outcome.Errors;
         await checker.GoBackToIdle();
         return;
@@ -305,7 +316,8 @@ namespace VC
 
         callback.OnOutOfResource(msg);
       }
-      split.Finish(vcResult);
+
+      batchCompletions.OnNext((split, vcResult));
     }
   }
 }

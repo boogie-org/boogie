@@ -1439,10 +1439,6 @@ namespace VC
         }
       }
 
-      public void Finish(VCResult result) {
-        parent.CheckerPool.Options.Printer?.ReportSplitResult(this, result);
-      }
-
       public int NextRandom() {
         return randomGen.Next();
       }

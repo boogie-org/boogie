@@ -10,7 +10,11 @@ using VC;
 using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.ComTypes;
 using VCGeneration;
 
 namespace Microsoft.Boogie
@@ -20,7 +24,8 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class ExecutionEngine : IDisposable {
+  public class ExecutionEngine : IDisposable
+  {
 
     static int autoRequestIdCount;
 
@@ -630,8 +635,6 @@ namespace Microsoft.Boogie
       var impls = program.Implementations.Where(
         impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.VerboseName)) &&
                 !impl.IsSkipVerification(Options)).ToArray();
-      
-      Options.Printer.ReportImplementationsBeforeVerification(impls);
 
       // operate on a stable copy, in case it gets updated while we're running
       Implementation[] stablePrioritizedImpls = null;
@@ -660,11 +663,11 @@ namespace Microsoft.Boogie
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var implementation = stablePrioritizedImpls[index];
-        var result = await EnqueueVerifyImplementation(processedProgram, stats, programId, er,
-          implementation, cts, taskWriter).Unwrap();
-        var output = result.GetOutput(Options.Printer, this, stats, er);
+        var result = (Completed) await EnqueueVerifyImplementation(processedProgram, stats, programId, er,
+          implementation, cts, taskWriter).ToTask(cts.Token);
+        var output = result.Result.GetOutput(Options.Printer, this, stats, er);
         await taskWriter.WriteAsync(output);
-        return result;
+        return result.Result;
       }).ToList();
       var outcome = PipelineOutcome.VerificationCompleted;
 
@@ -710,7 +713,7 @@ namespace Microsoft.Boogie
     /// The outer task is to wait for a semaphore to let verification start
     /// The inner task is the actual verification of the implementation
     /// </returns>
-    public Task<Task<VerificationResult>> EnqueueVerifyImplementation(
+    public IObservable<IVerificationStatus> EnqueueVerifyImplementation(
       ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationTokenSource cts,
@@ -721,36 +724,33 @@ namespace Microsoft.Boogie
         old.Cancel();
       }
 
-      var result = EnqueueVerifyImplementation(processedProgram, stats, programId, er, implementation, cts.Token,
-        taskWriter);
-      var _ = result.Unwrap().ContinueWith(t =>
-      {
-        ImplIdToCancellationTokenSource.TryRemove(id, out old);
-      });
-      return result;
+      return EnqueueVerifyImplementation(processedProgram, stats, programId, er, implementation, cts.Token,
+          taskWriter).Finally(() => ImplIdToCancellationTokenSource.TryRemove(id, out old));
     }
 
     /// <returns>
     /// The outer task is to wait for a semaphore to let verification start
     /// The inner task is the actual verification of the implementation
     /// </returns>
-    public async Task<Task<VerificationResult>> EnqueueVerifyImplementation(
+    public IObservable<IVerificationStatus> EnqueueVerifyImplementation(
       ProcessedProgram processedProgram, PipelineStatistics stats,
       string programId, ErrorReporterDelegate er, Implementation implementation,
       CancellationToken cancellationToken,
       TextWriter taskWriter)
     {
+      var queuedTask = verifyImplementationSemaphore.WaitAsync(cancellationToken);
 
-      await verifyImplementationSemaphore.WaitAsync(cancellationToken);
+      // Do not report queued if there is no waiting to be done.
+      var queuedNotification = queuedTask.IsCompleted ? Observable.Empty<IVerificationStatus>() : Observable.Return(new Queued());
 
-      var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
-        implementation,
-        programId, taskWriter), cancellationToken);
-
-      var _ = coreTask.ContinueWith(t => {
-        verifyImplementationSemaphore.Release();
-      }, CancellationToken.None);
-      return coreTask;
+      return queuedNotification.Concat(Observable.
+        StartAsync(c => queuedTask).
+        SelectMany((_, c) => 
+          VerifyImplementation(processedProgram, stats, er, cancellationToken, implementation, programId, taskWriter).
+          Finally(() => 
+            verifyImplementationSemaphore.Release())
+        )
+      );
     }
 
     private void TraceCachingForBenchmarking(PipelineStatistics stats,
@@ -811,7 +811,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private async Task<VerificationResult> VerifyImplementation(
+    private IObservable<IVerificationStatus> VerifyImplementation(
       ProcessedProgram processedProgram,
       PipelineStatistics stats,
       ErrorReporterDelegate er,
@@ -823,23 +823,20 @@ namespace Microsoft.Boogie
       VerificationResult verificationResult = GetCachedVerificationResult(implementation, traceWriter);
       if (verificationResult != null) {
         UpdateCachedStatistics(stats, verificationResult.Outcome, verificationResult.Errors);
-        return verificationResult;
+        return Observable.Return(new Completed(verificationResult));
       }
-
       Options.Printer.Inform("", traceWriter); // newline
       Options.Printer.Inform($"Verifying {implementation.VerboseName} ...", traceWriter);
-      Options.Printer.ReportStartVerifyImplementation(implementation);
 
-      verificationResult = await VerifyImplementationWithoutCaching(processedProgram, stats, er, cancellationToken,
-        programId, implementation, traceWriter);
-
-      if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
+      var afterRunningStates = VerifyImplementationWithoutCaching(processedProgram, stats, er, cancellationToken,
+        programId, implementation, traceWriter).Do(status =>
       {
-        Cache.Insert(implementation, verificationResult);
-      }
-      Options.Printer.ReportEndVerifyImplementation(implementation, verificationResult);
-
-      return verificationResult;
+        if (status is Completed completed && 0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
+        {
+          Cache.Insert(implementation, completed.Result);
+        }
+      });
+      return Observable.Return(new Running()).Concat(afterRunningStates);
     }
 
     public VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
@@ -864,59 +861,77 @@ namespace Microsoft.Boogie
       return null;
     }
 
-    private async Task<VerificationResult> VerifyImplementationWithoutCaching(ProcessedProgram processedProgram,
+    private IObservable<IVerificationStatus> VerifyImplementationWithoutCaching(ProcessedProgram processedProgram,
       PipelineStatistics stats, ErrorReporterDelegate er, CancellationToken cancellationToken,
       string programId, Implementation impl, TextWriter traceWriter)
     {
       var verificationResult = new VerificationResult(impl, programId);
 
-      using var vcgen = new VCGen(processedProgram.Program, checkerPool);
+      var batchCompleted = new Subject<(Split split, VCResult vcResult)>();
+      var completeVerification = Task.Run(async () =>
+      {
+        var vcgen = new VCGen(processedProgram.Program, checkerPool);
+        vcgen.CachingActionCounts = stats.CachingActionCounts;
+        verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
+        verificationResult.Start = DateTime.UtcNow;
 
-      vcgen.CachingActionCounts = stats.CachingActionCounts;
-      verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
-      verificationResult.Start = DateTime.UtcNow;
-
-      try {
-        (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
-          await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), cancellationToken);
-        processedProgram.PostProcessResult(vcgen, impl, verificationResult);
-      } catch (VCGenException e) {
-        string msg = $"{e.Message} (encountered in implementation {impl.VerboseName}).";
-        var errorInfo = ErrorInformation.Create(impl.tok, msg, null);
-        errorInfo.ImplementationName = impl.VerboseName;
-        verificationResult.ErrorBeforeVerification = errorInfo;
-        if (er != null) {
-          lock (er) {
-            er(errorInfo);
+        try
+        {
+          (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
+            await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), batchCompleted, cancellationToken);
+          processedProgram.PostProcessResult(vcgen, impl, verificationResult);
+        }
+        catch (VCGenException e)
+        {
+          string msg = $"{e.Message} (encountered in implementation {impl.VerboseName}).";
+          var errorInfo = ErrorInformation.Create(impl.tok, msg, null);
+          errorInfo.ImplementationName = impl.VerboseName;
+          verificationResult.ErrorBeforeVerification = errorInfo;
+          if (er != null)
+          {
+            lock (er)
+            {
+              er(errorInfo);
+            }
           }
+
+          verificationResult.Errors = null;
+          verificationResult.Outcome = ConditionGeneration.Outcome.Inconclusive;
+        }
+        catch (ProverDiedException)
+        {
+          throw;
+        }
+        catch (UnexpectedProverOutputException upo)
+        {
+          Options.Printer.AdvisoryWriteLine(traceWriter,
+            "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
+            impl.VerboseName, upo.Message);
+          verificationResult.Errors = null;
+          verificationResult.Outcome = ConditionGeneration.Outcome.Inconclusive;
+        }
+        catch (IOException e)
+        {
+          Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED due to I/O exception: {1}",
+            impl.VerboseName, e.Message);
+          verificationResult.Errors = null;
+          verificationResult.Outcome = ConditionGeneration.Outcome.SolverException;
         }
 
-        verificationResult.Errors = null;
-        verificationResult.Outcome = ConditionGeneration.Outcome.Inconclusive;
-      } catch (ProverDiedException) {
-        throw;
-      } catch (UnexpectedProverOutputException upo) {
-        Options.Printer.AdvisoryWriteLine(traceWriter,
-          "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
-          impl.VerboseName, upo.Message);
-        verificationResult.Errors = null;
-        verificationResult.Outcome = ConditionGeneration.Outcome.Inconclusive;
-      } catch (IOException e) {
-        Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED due to I/O exception: {1}",
-          impl.VerboseName, e.Message);
-        verificationResult.Errors = null;
-        verificationResult.Outcome = ConditionGeneration.Outcome.SolverException;
-      }
-      verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
-      verificationResult.End = DateTime.UtcNow;
-      // `TotalProverElapsedTime` does not include the initial cost of starting
-      // the SMT solver (unlike `End - Start` in `VerificationResult`).  It
-      // may still include the time taken to restart the prover when running
-      // with `vcsCores > 1`.
-      verificationResult.Elapsed = vcgen.TotalProverElapsedTime;
-      verificationResult.ResourceCount = vcgen.ResourceCount;
+        verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
+        verificationResult.End = DateTime.UtcNow;
+        // `TotalProverElapsedTime` does not include the initial cost of starting
+        // the SMT solver (unlike `End - Start` in `VerificationResult`).  It
+        // may still include the time taken to restart the prover when running
+        // with `vcsCores > 1`.
+        verificationResult.Elapsed = vcgen.TotalProverElapsedTime;
+        verificationResult.ResourceCount = vcgen.ResourceCount;
 
-      return verificationResult;
+        batchCompleted.OnCompleted();
+        return new Completed(verificationResult);
+      }, cancellationToken);
+
+      return batchCompleted.Select(t => new BatchCompleted(t.split, t.vcResult)).Merge<IVerificationStatus>(Observable.FromAsync(() => completeVerification));
     }
 
 

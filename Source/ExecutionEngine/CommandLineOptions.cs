@@ -674,7 +674,6 @@ namespace Microsoft.Boogie
     }
 
     public bool RemoveEmptyBlocks { get; set; } = true;
-    IConditionGenerationPrinter VCGenOptions.Printer => Printer;
     public bool CoalesceBlocks { get; set; } = true;
     public bool PruneInfeasibleEdges { get; set; } = true;
 
