@@ -663,8 +663,8 @@ namespace Microsoft.Boogie
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var implementation = stablePrioritizedImpls[index];
-        var result = await EnqueueVerifyImplementation(processedProgram, stats, programId, er,
-          implementation, cts, taskWriter).OfType<Completed>().ToTask(cts.Token);
+        var result = (Completed) await EnqueueVerifyImplementation(processedProgram, stats, programId, er,
+          implementation, cts, taskWriter).ToTask(cts.Token);
         var output = result.Result.GetOutput(Options.Printer, this, stats, er);
         await taskWriter.WriteAsync(output);
         return result.Result;
@@ -867,9 +867,10 @@ namespace Microsoft.Boogie
     {
       var verificationResult = new VerificationResult(impl, programId);
 
-      var vcgen = new VCGen(processedProgram.Program, checkerPool);
+      var batchCompleted = new Subject<(Split split, VCResult vcResult)>();
       var completeVerification = Task.Run(async () =>
       {
+        var vcgen = new VCGen(processedProgram.Program, checkerPool);
         vcgen.CachingActionCounts = stats.CachingActionCounts;
         verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
         verificationResult.Start = DateTime.UtcNow;
@@ -877,7 +878,7 @@ namespace Microsoft.Boogie
         try
         {
           (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
-            await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), cancellationToken);
+            await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), batchCompleted, cancellationToken);
           processedProgram.PostProcessResult(vcgen, impl, verificationResult);
         }
         catch (VCGenException e)
@@ -926,10 +927,11 @@ namespace Microsoft.Boogie
         verificationResult.Elapsed = vcgen.TotalProverElapsedTime;
         verificationResult.ResourceCount = vcgen.ResourceCount;
 
+        batchCompleted.OnCompleted();
         return new Completed(verificationResult);
       }, cancellationToken);
-      return vcgen.BatchCompletions.Select(t => new BatchCompleted(t.split, t.vcResult))
-        .Concat<IVerificationStatus>(Observable.FromAsync(() => completeVerification));
+
+      return batchCompleted.Select(t => new BatchCompleted(t.split, t.vcResult)).Merge<IVerificationStatus>(Observable.FromAsync(() => completeVerification));
     }
 
 

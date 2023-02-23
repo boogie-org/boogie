@@ -20,8 +20,6 @@ namespace VC
 
   public class VCGen : ConditionGeneration
   {
-    public IObservable<(Split split, VCResult vcResult)> BatchCompletions => batchCompletions;
-    private readonly Subject<(Split split, VCResult vcResult)> batchCompletions = new();
     
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
@@ -350,7 +348,7 @@ namespace VC
     private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
 
     public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken)
+      CancellationToken cancellationToken, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
@@ -412,7 +410,7 @@ namespace VC
 
       var worker = new SplitAndVerifyWorker(Options, this, run, data.GotoCmdOrigins, callback,
         data.ModelViewInfo, outcome);
-      worker.BatchCompletions.Subscribe(batchCompletions);
+      worker.BatchCompletions.Subscribe(batchCompletedObserver);
             
       outcome = await worker.WorkUntilDone(cancellationToken);
       ResourceCount = worker.ResourceCount;
