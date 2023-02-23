@@ -433,7 +433,7 @@ namespace Microsoft.Boogie
 
     public bool Trace => Verbosity == CoreOptions.VerbosityLevel.Trace;
 
-    public CoreOptions.VerbosityLevel Verbosity => verbosity;
+    public CoreOptions.VerbosityLevel Verbosity { get; set; } = CoreOptions.VerbosityLevel.Normal;
 
     public bool NormalizeNames
     {
@@ -826,7 +826,6 @@ namespace Microsoft.Boogie
     private bool emitDebugInformation = true;
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
-    private CoreOptions.VerbosityLevel verbosity = CoreOptions.VerbosityLevel.Normal;
 
     public List<CoreOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
@@ -1533,9 +1532,9 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
               ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
               ps.CheckBooleanFlag("wait", x => Wait = x) ||
-              ps.CheckBooleanFlag("trace", x => verbosity = CoreOptions.VerbosityLevel.Trace) ||
-              ps.CheckBooleanFlag("quiet", x => verbosity = CoreOptions.VerbosityLevel.Quiet) ||
-              ps.CheckBooleanFlag("silent", x => verbosity = CoreOptions.VerbosityLevel.Silent) ||
+              ps.CheckBooleanFlag("trace", x => Verbosity = CoreOptions.VerbosityLevel.Trace) ||
+              ps.CheckBooleanFlag("quiet", x => Verbosity = CoreOptions.VerbosityLevel.Quiet) ||
+              ps.CheckBooleanFlag("silent", x => Verbosity = CoreOptions.VerbosityLevel.Silent) ||
               ps.CheckBooleanFlag("traceTimes", x => TraceTimes = x) ||
               ps.CheckBooleanFlag("tracePOs", x => TraceProofObligations = x) ||
               ps.CheckBooleanFlag("noResolve", x => NoResolve = x) ||
