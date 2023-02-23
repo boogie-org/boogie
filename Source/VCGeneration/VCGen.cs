@@ -7,6 +7,7 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 using System.IO;
+using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
@@ -19,6 +20,7 @@ namespace VC
 
   public class VCGen : ConditionGeneration
   {
+    
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
@@ -346,7 +348,7 @@ namespace VC
     private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
 
     public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken)
+      CancellationToken cancellationToken, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
@@ -408,6 +410,8 @@ namespace VC
 
       var worker = new SplitAndVerifyWorker(Options, this, run, data.GotoCmdOrigins, callback,
         data.ModelViewInfo, outcome);
+      worker.BatchCompletions.Subscribe(batchCompletedObserver);
+            
       outcome = await worker.WorkUntilDone(cancellationToken);
       ResourceCount = worker.ResourceCount;
 

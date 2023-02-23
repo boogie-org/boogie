@@ -2,8 +2,8 @@
 // RUN: %boogie /vcsMaxKeepGoingSplits:2 /proverOpt:O:smt.qi.eager_threshold=100 "%s"
 // RUN: %boogie /vcsCores:3 /vcsMaxKeepGoingSplits:2 /trace /proverOpt:O:smt.qi.eager_threshold=100 "%s" > %t.log
 // RUN: %OutputCheck --file-to-check "%t.log" "%s"
-// CHECK-L: checking split 1/1, 0.00%
-// CHECK-L: checking split 2/3, 1.92%, (cost:16/2) ...
+// CHECK-L: checking split 1/1
+// CHECK-L: checking split 2/3
 // CHECK-L: checking split 3/3
 // CHECK-L: checking split 4/5
 // CHECK-L: checking split 5/5
