@@ -47,9 +47,7 @@ procedure {:yields} {:layer 1}
 Proc(i: int)
 {
   call update_x(i);
-  yield;
-  assert {:layer 1} x[i] == 1;
-  assert {:layer 1} ind_inv(done, y, x);
+  call Yield(i);
   call update_y(i);
   call mark_done(i);
   assert {:layer 1} Trigger((i-1) mod N);
@@ -120,3 +118,7 @@ requires ind_inv(done, y, x);
 
 // Dummy function to supply hints for quantifier reasoning
 function Trigger(i: int) : bool { true }
+
+procedure {:yield_invariant} {:layer 1} Yield(i: int);
+requires x[i] == 1;
+requires ind_inv(done, y, x);

@@ -1,7 +1,6 @@
-perm4.bpl(55,5): Error: Non-interference check failed
+perm4.bpl(84,1): Error: Non-interference check failed
 Execution trace:
-    perm4.bpl(74,13): anon0
-    perm4.bpl(74,13): anon0_1
-    (0,0): inline$Civl_NoninterferenceChecker_impl_A_1$0$L0
+    perm4.bpl(65,13): anon0
+    (0,0): inline$Civl_NoninterferenceChecker_yield_Yield_g$0$L0
 
 Boogie program verifier finished with 4 verified, 1 error

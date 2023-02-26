@@ -872,13 +872,6 @@ namespace Microsoft.Boogie
       return variableSeq;
     }
 
-    public virtual YieldCmd VisitYieldCmd(YieldCmd node)
-    {
-      Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<YieldCmd>() != null);
-      return node;
-    }
-
     public virtual Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
     {
       Contract.Requires(node != null);
@@ -1623,12 +1616,6 @@ namespace Microsoft.Boogie
       }
 
       return variableSeq;
-    }
-
-    public override YieldCmd VisitYieldCmd(YieldCmd node)
-    {
-      Contract.Ensures(Contract.Result<YieldCmd>() == node);
-      return node;
     }
 
     public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)

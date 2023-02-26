@@ -624,13 +624,6 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<List<Variable>>() != null);
       return base.VisitVariableSeq(new List<Variable>(variableSeq));
     }
-
-    public override YieldCmd VisitYieldCmd(YieldCmd node)
-    {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<YieldCmd>() != null);
-      return base.VisitYieldCmd((YieldCmd) node.Clone());
-    }
   }
 
 

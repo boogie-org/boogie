@@ -176,17 +176,6 @@ namespace Microsoft.Boogie
       return ret;
     }
 
-    public override YieldCmd VisitYieldCmd(YieldCmd node)
-    {
-      if (!yieldingProcs.Contains(enclosingProc))
-      {
-        yieldingProcs.Add(enclosingProc);
-        moreProcessingRequired = true;
-      }
-
-      return base.VisitYieldCmd(node);
-    }
-
     public override Cmd VisitAssignCmd(AssignCmd assignCmd)
     {
       Contract.Ensures(Contract.Result<Cmd>() != null);

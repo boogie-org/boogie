@@ -409,11 +409,6 @@ namespace Microsoft.Boogie
               AddParCallCmdLabels(atomicityLabels, parCallCmd, next);
               AddParCallCmdLabelsAsync(asyncLabels, parCallCmd, next);
             }
-            else if (cmd is YieldCmd)
-            {
-              atomicityLabels[edge] = Y;
-              asyncLabels[edge] = Y;
-            }
             else
             {
               atomicityLabels[edge] = P;

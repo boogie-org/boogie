@@ -1706,46 +1706,7 @@ namespace Microsoft.Boogie
       return buffer.ToString();
     }
   }
-
-  public class YieldCmd : Cmd
-  {
-    public YieldCmd(IToken /*!*/ tok)
-      : base(tok)
-    {
-      Contract.Requires(tok != null);
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-      //Contract.Requires(stream != null);
-      stream.WriteLine(this, level, "yield;");
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      // nothing to resolve
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      if (!tc.Options.DoModSetAnalysis && !tc.Yields)
-      {
-        tc.Error(this, "enclosing procedure of a yield command must yield");
-      }
-    }
-
-    public override void AddAssignedVariables(List<Variable> vars)
-    {
-      // nothing to add
-    }
-
-    public override Absy StdDispatch(StandardVisitor visitor)
-    {
-      Contract.Ensures(Contract.Result<Absy>() != null);
-      return visitor.VisitYieldCmd(this);
-    }
-  }
-
+  
   public class CommentCmd : Cmd // just a convenience for debugging
   {
     public readonly string /*!*/

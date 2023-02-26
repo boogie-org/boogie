@@ -6,9 +6,9 @@ procedure {:yield_invariant} {:layer 1} Yield();
 procedure {:yields} {:layer 1} foo()
 {
     par A() | L();
-    yield;
+    call yield();
     par A() | bar();
-    yield;
+    call yield();
     par bar() | L();
 }
 
@@ -38,3 +38,5 @@ procedure {:right} {:layer 1,1} atomic_R()
 {
 }
 procedure {:yields} {:layer 0} {:refines "atomic_R"} R();
+
+procedure {:yield_invariant} {:layer 1} yield();

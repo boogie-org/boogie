@@ -2274,16 +2274,6 @@ namespace Microsoft.Boogie
           call, $"All output variables of call must be hidden at layer {calleeLayerNum}");
       }
 
-      public override YieldCmd VisitYieldCmd(YieldCmd node)
-      {
-        if (yieldingProc is MoverProc)
-        {
-          civlTypeChecker.Error(node, "A mover procedure cannot contain explicit yield statements");
-        }
-
-        return base.VisitYieldCmd(node);
-      }
-
       private void CheckMoverProcModifiesClause(Implementation impl)
       {
         if (yieldingProc is MoverProc caller)

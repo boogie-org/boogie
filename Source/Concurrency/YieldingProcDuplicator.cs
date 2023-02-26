@@ -193,13 +193,6 @@ namespace Microsoft.Boogie
       return newImpl;
     }
 
-    public override YieldCmd VisitYieldCmd(YieldCmd node)
-    {
-      YieldCmd yieldCmd = base.VisitYieldCmd(node);
-      absyMap[yieldCmd] = node;
-      return yieldCmd;
-    }
-
     public override Block VisitBlock(Block node)
     {
       Block block = base.VisitBlock(node);
