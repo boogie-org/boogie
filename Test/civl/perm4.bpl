@@ -25,9 +25,7 @@ requires x == MapConst(true) && g == 0;
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: int)
 ensures {:layer 1} xl != 0;
 {
-    yield;
     call xl := AllocateLow();
-    yield;
 }
 
 procedure {:atomic} {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xls: int)
@@ -43,27 +41,20 @@ requires {:layer 1} y == MapConst(true);
     var {:linear "tid"} tid_child: int;
     tid_out := tid_in;
 
-    yield;
     call SetG(0);
 
     par tid_child := Allocate() | Yield(x);
 
     async call B(tid_child, x);
 
-    yield;
-    assert {:layer 1} x == MapConst(true);
-    assert {:layer 1} g == 0;
+    call Yield_g(x);
 
     call SetH(0);
 
-    yield;
-    assert {:layer 1} h == 0 && y == MapConst(true);
+    call Yield_h(y);
 
-    yield;
     call tid_child := Allocate();
     async call C(tid_child, y);
-
-    yield;
 }
 
 procedure {:yields} {:layer 1} B({:linear_in "tid"} tid_in: int, {:linear_in "1"} x_in: [int]bool)
@@ -74,9 +65,7 @@ requires {:layer 1} x_in != MapConst(false);
     tid_out := tid_in;
     x := x_in;
 
-    yield;
     call SetG(1);
-    yield;
 }
 
 procedure {:yields} {:layer 1} C({:linear_in "tid"} tid_in: int, {:linear_in "2"} y_in: [int]bool)
@@ -87,7 +76,13 @@ requires {:layer 1} y_in != MapConst(false);
     tid_out := tid_in;
     y := y_in;
 
-    yield;
     call SetH(1);
-    yield;
 }
+
+procedure {:yield_invariant} {:layer 1} Yield_g(x: [int]bool);
+requires x == MapConst(true);
+requires g == 0;
+
+procedure {:yield_invariant} {:layer 1} Yield_h({:linear "2"} y: [int]bool);
+requires y == MapConst(true);
+requires h == 0;

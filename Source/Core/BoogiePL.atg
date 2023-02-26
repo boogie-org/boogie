@@ -896,8 +896,6 @@ LabelOrCmd<out Cmd c, out IToken label>
                           .)
   | CallCmd<out cn> ";"   (. c = cn; .)
   | ParCallCmd<out cn>    (. c = cn; .)
-  | "yield"               (. x = t; .)
-    ";"                   (. c = new YieldCmd(x); .)
   )
   .
 

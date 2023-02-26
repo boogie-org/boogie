@@ -298,14 +298,6 @@ namespace Microsoft.Boogie
           havocCmd.Vars.Where(ie => LinearDomainCollector.FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
             .Iter(ie => start.Remove(ie.Decl));
         }
-        else if (cmd is YieldCmd)
-        {
-          linearGlobalVariables.Except(start).Iter(g =>
-          {
-            Error(cmd, $"Global variable {g.Name} must be available at a yield");
-          });
-          availableLinearVars[cmd] = new HashSet<Variable>(start);
-        }
       }
 
       return start;

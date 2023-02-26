@@ -31,12 +31,11 @@ procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "
 }
 
 procedure {:yields} {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
+ensures {:layer 1} a[i] == 42;
 {
     i := i';
 
     call Write(i, 42);
-    yield;
-    assert {:layer 1} a[i] == 42;
 }
 
 procedure {:yield_invariant} {:layer 1} Yield({:linear "tid"} i: int, old_a: [int]int);

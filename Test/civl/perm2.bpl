@@ -39,20 +39,18 @@ requires {:layer 1} y == MapConst(true);
     tid_out := tid_in;
 
     call SetG(0);
-    yield;
-    assert {:layer 1} g == 0 && x == MapConst(true);
 
-    yield;
+    call Yield_g(x);
+
     call tid_child := Allocate();
     async call B(tid_child, x);
 
-    yield;
+    call yield();
+    
     call SetH(0);
 
-    yield;
-    assert {:layer 1} h == 0 && y == MapConst(true);
+    call Yield_h(y);
 
-    yield;
     call tid_child := Allocate();
     async call C(tid_child, y);
 
@@ -68,7 +66,7 @@ requires {:layer 1} x_in != MapConst(false);
 
     call SetG(1);
 
-    yield;
+    call yield();
 
     call SetG(2);
 }
@@ -83,7 +81,17 @@ requires {:layer 1} y_in != MapConst(false);
 
     call SetH(1);
 
-    yield;
+    call yield();
 
     call SetH(2);
 }
+
+procedure {:yield_invariant} {:layer 1} Yield_g({:linear "1"} x: [int]bool);
+requires x == MapConst(true);
+requires g == 0;
+
+procedure {:yield_invariant} {:layer 1} Yield_h({:linear "2"} y: [int]bool);
+requires y == MapConst(true);
+requires h == 0;
+
+procedure {:yield_invariant} {:layer 1} yield();

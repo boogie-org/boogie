@@ -199,11 +199,6 @@ namespace Microsoft.Boogie
               absy = null;
             }
           }
-
-          if (cmd is YieldCmd ycmd)
-          {
-            absy = ycmd;
-          }
         }
 
         if (absy != null)

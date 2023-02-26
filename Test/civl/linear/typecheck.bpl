@@ -65,9 +65,7 @@ procedure {:yields} {:layer 1} D()
 
 procedure {:yields} {:layer 1} E({:linear_in "D"} a: X, {:linear_in "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
 {
-    yield;
     c := a;
-    yield;
 }
 
 procedure {:yields} {:layer 1} F({:linear_in "D"} a: X) returns ({:linear "D"} c: X);
@@ -87,30 +85,21 @@ modifies g;
 
 procedure {:yields} {:layer 1} I({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
-  yield;
   x' := x;
-  yield;
 }
 
 procedure {:yields} {:layer 1} J()
 {
-  yield;
 }
 
 procedure {:yields} {:layer 1} P1({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
-  yield;
   par x' := I(x) | J();
-  yield;
   call x' := I(x');
-  yield;
 }
 
 procedure {:yields} {:layer 1} P2({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
-  yield;
   call x' := I(x);
-  yield;
   par x' := I(x') | J();
-  yield;
 }

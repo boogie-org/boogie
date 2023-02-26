@@ -513,11 +513,7 @@ namespace Microsoft.Boogie
             if (nextBlock.cmds.Count > 0)
             {
               var cmd = nextBlock.cmds[0];
-              if (cmd is YieldCmd)
-              {
-                addEdge = true;
-              }
-              else if (cmd is ParCallCmd parCallCmd)
+              if (cmd is ParCallCmd parCallCmd)
               {
                 foreach (var callCmd in parCallCmd.CallCmds)
                 {
@@ -559,17 +555,13 @@ namespace Microsoft.Boogie
         }
       }
 
-      // desugar YieldCmd and ParCallCmd 
+      // desugar ParCallCmd 
       foreach (Block b in impl.Blocks)
       {
         if (b.cmds.Count > 0)
         {
           var cmd = b.cmds[0];
-          if (cmd is YieldCmd)
-          {
-            DesugarYieldCmdInBlock(b, blocksInYieldingLoops.Contains(b));
-          }
-          else if (cmd is ParCallCmd)
+          if (cmd is ParCallCmd)
           {
             DesugarParCallCmdInBlock(b, blocksInYieldingLoops.Contains(b));
           }
@@ -624,11 +616,7 @@ namespace Microsoft.Boogie
         {
           var split = false;
           var cmd = b.cmds[i];
-          if (cmd is YieldCmd)
-          {
-            split = true;
-          }
-          else if (cmd is ParCallCmd)
+          if (cmd is ParCallCmd)
           {
             split = true;
           }
@@ -683,33 +671,6 @@ namespace Microsoft.Boogie
       returnBlockCmds.AddRange(refinementInstrumentation.CreateReturnAssertCmds());
       returnBlockCmds.Add(CmdHelper.AssumeCmd(Expr.False));
       return BlockHelper.Block(civlTypeChecker.AddNamePrefix("ReturnChecker"), returnBlockCmds);
-    }
-
-    private void DesugarYieldCmdInBlock(Block block, bool isBlockInYieldingLoop)
-    {
-      YieldCmd yieldCmd = (YieldCmd) block.Cmds[0];
-      var newCmds = new List<Cmd>();
-      if (!isBlockInYieldingLoop)
-      {
-        newCmds.AddRange(refinementInstrumentation.CreateUpdatesToRefinementVars(false));
-      }
-
-      var yieldPredicates = block.cmds.Skip(1).TakeWhile(c => c is PredicateCmd).Cast<PredicateCmd>().ToList();
-      newCmds.AddRange(yieldPredicates);
-      if (civlTypeChecker.GlobalVariables.Count() > 0)
-      {
-        newCmds.Add(CmdHelper.HavocCmd(civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList()));
-      }
-
-      newCmds.AddRange(refinementInstrumentation.CreateAssumeCmds());
-      newCmds.AddRange(linearPermissionInstrumentation.DisjointnessAndWellFormedAssumeCmds(yieldCmd, true));
-      newCmds.AddRange(CreateUpdatesToOldGlobalVars());
-      newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
-      newCmds.AddRange(CreateUpdatesToPermissionCollector(yieldCmd));
-      newCmds.AddRange(yieldPredicates.Select(x => new AssumeCmd(x.tok, x.Expr)));
-      var offsetAfterYieldPredicates = 1 + yieldPredicates.Count;
-      newCmds.AddRange(block.cmds.GetRange(offsetAfterYieldPredicates, block.cmds.Count - offsetAfterYieldPredicates));
-      block.cmds = newCmds;
     }
 
     private void DesugarParCallCmdInBlock(Block block, bool isBlockInYieldingLoop)

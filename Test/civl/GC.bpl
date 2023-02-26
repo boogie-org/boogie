@@ -1330,7 +1330,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicAllocIfPtrFree"} AllocIfPtrFree
     call color := ReadColorByMutator1(tid, ptr);
     if (Unalloc(color))
     {
-        yield;
+        call Yield();
         call LockAcquire(tid);
         call color := ReadColorByMutator2(tid, ptr);
         if (Unalloc(color))
@@ -1389,6 +1389,8 @@ procedure {:yields} {:layer 96} {:refines "AtomicClearToAbsWhite"} ClearToAbsWhi
     call LockedClearToAbsWhite(tid);
     call LockRelease(tid);
 }
+
+procedure {:yield_invariant} {:layer 96} Yield();
 
 //////////////////////////////////////////////////////////////////////////////
 // Layer 95
