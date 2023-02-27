@@ -974,7 +974,8 @@ namespace Microsoft.Boogie
             if (absyToLayerNums[predCmd].Intersect(yieldingLayers).Any() &&
                 VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
             {
-              Error(predCmd, "May not access global variable");
+              Error(predCmd,
+                "This invariant may not access a global variable since one of its layers is a yielding layer of its loop");
             }
           }
         }

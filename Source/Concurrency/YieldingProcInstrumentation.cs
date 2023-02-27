@@ -210,13 +210,6 @@ namespace Microsoft.Boogie
         }
       }
 
-      foreach (var impl in absyMap.Keys.OfType<Implementation>())
-      {
-        noninterferenceCheckerDecls.AddRange(
-          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
-          layerNum, absyMap, impl, impl.LocVars));
-      }
-
       foreach (var proc in absyMap.Keys.OfType<Procedure>())
       {
         var yieldingProc = civlTypeChecker.procToYieldingProc[absyMap.Original(proc)];
