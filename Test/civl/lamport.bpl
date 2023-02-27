@@ -33,7 +33,6 @@ Main()
   assert {:layer 1} Trigger(0);
   i := 0;
   while (i < N)
-  invariant {:cooperates} {:layer 1} true;
   invariant {:layer 1} ind_inv(done, y, x);
   {
     async call Proc(i);

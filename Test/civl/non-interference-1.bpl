@@ -39,7 +39,6 @@ procedure {:yields} {:layer 1} PD()
 procedure {:yields} {:layer 1} Main()
 {
   while (*)
-  invariant {:cooperates} {:layer 1} true;
   {
     async call PB();
     async call PE();

@@ -2,16 +2,14 @@
 // RUN: %diff "%s.expect" "%t"
 
 type {:linear "me"} X = int;
-// datatype lockMsg = transfer(epoch:int) | locked(epoch:int)
+
 datatype lockMsg {
   transfer(epoch:int),
   locked(epoch:int)
 }
 
-// datatype msg = msg(src:int, dst:int, payload:lockMsg)
 datatype msg { msg(src:int, dst:int, payload:lockMsg) }
 
-// datatype node = node(held:bool, epoch:int)
 datatype node { node(held:bool, epoch:int) }
 
 // var network:set<msg>
@@ -23,7 +21,6 @@ var{:layer 1,3} external:[msg]bool;
 // var nodes:imap<int, node>
 var{:layer 1,2} nodes:[int]node;
 
-// datatype history = history(len:int, locks:[int]int)
 datatype history { history(len:int, locks:[int]int) }
 
 var{:layer 1,3} history:history;
@@ -125,10 +122,8 @@ modifies history;
         history := addHistory(history, dst);
 }
 
-procedure{:yields}{:layer 2} {:refines "AtomicGrant"} Grant({:linear "me"} me:int) returns(dst:int, epoch:int)
-  requires{:layer 2} nodes[me]->held;
-  requires{:layer 2} Inv(network, nodes, history);
-  ensures {:layer 2} Inv(network, nodes, history);
+procedure{:yields}{:layer 2} {:yield_requires "YieldHeld", me} {:yield_preserves "YieldInv"} {:refines "AtomicGrant"} 
+Grant({:linear "me"} me:int) returns(dst:int, epoch:int)
 {
   var node:node;
 
@@ -150,16 +145,14 @@ modifies external;
         external := external[msg(me, dst, locked(epoch)) := true];
 }
 
-procedure{:yields}{:layer 2} {:refines "AtomicAccept"} Accept({:linear "me"} me:int, dst:int) returns(epoch:int)
-  requires{:layer 2} Inv(network, nodes, history);
-  ensures {:layer 2} Inv(network, nodes, history);
+procedure{:yields}{:layer 2} {:yield_preserves "YieldInv"} {:refines "AtomicAccept"} 
+Accept({:linear "me"} me:int, dst:int) returns(epoch:int)
 {
   var node:node;
   var m:msg;
 
   while (true)
-    invariant {:yields} {:layer 2} true;
-    invariant {:layer 2} Inv(network, nodes, history);
+    invariant {:yields 2} {:yield_loop "YieldInv"} true;
   {
     call m := Recv(me);
     call node := GetNode(me);
@@ -181,3 +174,9 @@ procedure CheckInitInv(network:[msg]bool, nodes:[int]node, history:history)
  ensures  Inv(network, nodes, history);
 {
 }
+
+procedure {:yield_invariant} {:layer 2} YieldInv();
+requires Inv(network, nodes, history);
+
+procedure {:yield_invariant} {:layer 2} YieldHeld({:linear "me"} me:int);
+requires nodes[me]->held;

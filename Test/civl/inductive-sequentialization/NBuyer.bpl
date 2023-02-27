@@ -429,7 +429,6 @@ requires {:layer 1} Init(pids, RequestChannel, QuoteChannel, RemainderChannel, D
   async call lastBuyer(pid);
   i := 2;
   while (i < n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 2 <= i && i <= n;
   invariant {:layer 1} (forall ii:int :: middleBuyerID(ii) && ii >= i ==> pids'[ii]);
   invariant {:layer 1} MiddleBuyer_PAs == (lambda pa:MiddleBuyer :: if middleBuyerID(pa->pid) && pa->pid < i then 1 else 0);
@@ -451,7 +450,6 @@ requires {:layer 1} sellerID(pid);
   call receive_request();
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} QuoteChannel == (lambda ii:int :: (lambda q:int :: if buyerID(ii) && ii < i && q == price then old_QuoteChannel[ii][q] + 1 else old_QuoteChannel[ii][q]));
   {

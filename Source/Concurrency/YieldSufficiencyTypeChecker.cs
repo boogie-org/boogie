@@ -254,28 +254,6 @@ namespace Microsoft.Boogie
       {
         var initialConstraints = new Dictionary<Absy, HashSet<int>>();
 
-        foreach (Block header in implGraph.Headers)
-        {
-          if (civlTypeChecker.IsYieldingLoopHeader(header, currLayerNum) ||
-              civlTypeChecker.IsCooperatingLoopHeader(header, currLayerNum))
-          {
-            continue;
-          }
-
-          initialConstraints[header] = new HashSet<int> {RM};
-        }
-
-        if (IsMoverProcedure)
-        {
-          foreach (var call in impl.Blocks.SelectMany(b => b.cmds).OfType<CallCmd>())
-          {
-            if (!IsCooperatingCall(call))
-            {
-              initialConstraints[call] = new HashSet<int> {RM};
-            }
-          }
-        }
-
         var simulationRelation =
           new SimulationRelation<Absy, int, string>(LabelsToLabeledEdges(atomicityLabels), AtomicitySpec, initialConstraints)
             .ComputeSimulationRelation();
@@ -297,11 +275,6 @@ namespace Microsoft.Boogie
       private bool IsMoverProcedure
       {
         get { return yieldingProc is MoverProc && yieldingProc.upperLayer == currLayerNum; }
-      }
-
-      private bool IsCooperatingCall(CallCmd call)
-      {
-        return !IsRecursiveMoverProcedureCall(call) || civlTypeChecker.IsCooperatingProcedure(call.Proc);
       }
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)

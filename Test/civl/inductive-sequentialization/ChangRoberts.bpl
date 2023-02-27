@@ -223,7 +223,6 @@ requires {:layer 1} Init(pids, channel, terminated, id, leader);
   pids' := pids;
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} (forall ii:int :: Pid(ii) && ii >= i ==> pids'[ii]);
   invariant {:layer 1} PAs == (lambda pa:PInit :: if Pid(pa->pid) && pa->pid < i then 1 else 0);

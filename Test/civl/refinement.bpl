@@ -41,7 +41,7 @@ procedure {:yields}{:layer 1}{:refines "INCR"} t ()
   call incr();
   call yield();
   while (*)
-  invariant {:layer 1}{:yields} true;
+  invariant {:yields 1} true;
   {
     call incr(); // Error: State change inside yielding loop
   }

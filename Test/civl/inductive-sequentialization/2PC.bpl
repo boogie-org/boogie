@@ -312,7 +312,6 @@ requires {:layer 1} Init(pids, RequestChannel, VoteChannel, DecisionChannel, dec
   async call coordinator1(pid);
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} (forall ii:int :: pid(ii) && ii >= i ==> pids'[ii]);
   invariant {:layer 1} Coordinator1_PAs == MapConst(0)[COORDINATOR1(0) := 1];
@@ -361,7 +360,6 @@ requires {:layer 1} (forall vv:vote :: VoteChannel[vv] >= 0);
   call old_RequestChannel := Snapshot_RequestChannel();
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} RequestChannel == (lambda ii:int :: if pid(ii) && ii < i then old_RequestChannel[ii] + 1 else old_RequestChannel[ii]);
   {
@@ -403,7 +401,6 @@ requires {:layer 1} (forall vv:vote :: VoteChannel[vv] >= 0);
   call set_decision(pid, d);
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
   invariant {:layer 1} DecisionChannel == (lambda ii:int :: (lambda dd:decision :: if pid(ii) && ii < i && dd == d then old_DecisionChannel[ii][dd] + 1 else old_DecisionChannel[ii][dd]));
   {

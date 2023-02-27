@@ -37,7 +37,7 @@ requires {:layer 1} xls == MapConst(true);
 
     call Init(xls);
     while (*)
-    invariant {:yields} {:layer 1} {:yield_loop "Yield"} true;
+    invariant {:yields 1} {:yield_loop "Yield"} true;
     {
         par tid := Allocate() | Yield();
         async call Thread(tid);
@@ -80,7 +80,10 @@ READ_DEVICE:
     call release(tid);
 
 COPY_TO_BUFFER:
-    call ReadCache(tid, start, bytesRead);
+    if (0 < bytesRead)
+    {
+        call ReadCache(tid, start, bytesRead);
+    }
 }
 
 procedure {:yields} {:layer 1}
@@ -92,7 +95,7 @@ WriteCache({:linear "tid"} tid: X, index: int)
 
     call j := ReadCurrsize(tid);
     while (j < index)
-    invariant {:yields} {:layer 1} {:yield_loop "Yield"} {:yield_loop "YieldToWriteCache", tid, old(currsize), old(newsize)} true;
+    invariant {:yields 1} {:yield_loop "Yield"} {:yield_loop "YieldToWriteCache", tid, old(currsize), old(newsize)} true;
     invariant {:layer 1} old(currsize) <= j;
     {
         call WriteCacheEntry(tid, j);
@@ -104,16 +107,15 @@ procedure {:yields} {:layer 1}
 {:yield_preserves "Yield"}
 {:yield_preserves "YieldToReadCache", tid, old(currsize)}
 ReadCache({:linear "tid"} tid: X, start: int, bytesRead: int)
-requires {:layer 1} 0 <= start && 0 <= bytesRead;
-requires {:layer 1} (bytesRead == 0 || start + bytesRead <= currsize);
+requires {:layer 1} 0 <= start && 0 < bytesRead;
+requires {:layer 1} start + bytesRead <= currsize;
 {
     var j: int;
 
     j := 0;
     while(j < bytesRead)
-    invariant {:yields} {:layer 1} {:yield_loop "Yield"} {:yield_loop "YieldToReadCache", tid, old(currsize)} true;
-    invariant {:layer 1} 0 <= j;
-    invariant {:layer 1} bytesRead == 0 || start + bytesRead <= currsize;
+    invariant {:yields 1} {:yield_loop "Yield"} {:yield_loop "YieldToReadCache", tid, old(currsize)} true;
+    invariant {:layer 1} 0 <= j && j <= bytesRead;
     {
         call ReadCacheEntry(tid, start + j);
         j := j + 1;

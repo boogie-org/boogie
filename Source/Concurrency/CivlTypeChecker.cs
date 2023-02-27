@@ -19,8 +19,6 @@ namespace Microsoft.Boogie
     private string namePrefix;
 
     public Dictionary<Block, YieldingLoop> yieldingLoops;
-    public Dictionary<Block, HashSet<int>> cooperatingLoopHeaders;
-    public HashSet<Procedure> cooperatingProcedures;
 
     public Dictionary<Procedure, AtomicAction> procToAtomicAction;
     public Dictionary<Procedure, InvariantAction> procToIsInvariant;
@@ -55,8 +53,6 @@ namespace Microsoft.Boogie
       this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
       this.localVarToLayerRange = new Dictionary<Variable, LayerRange>();
       this.yieldingLoops = new Dictionary<Block, YieldingLoop>();
-      this.cooperatingLoopHeaders = new Dictionary<Block, HashSet<int>>();
-      this.cooperatingProcedures = new HashSet<Procedure>();
       this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
       this.procToAtomicAction = new Dictionary<Procedure, AtomicAction>();
       this.procToIsInvariant = new Dictionary<Procedure, InvariantAction>();
@@ -917,10 +913,6 @@ namespace Microsoft.Boogie
 
         YieldingProcVisitor visitor = new YieldingProcVisitor(this, yieldRequires, yieldEnsures);
         visitor.VisitProcedure(proc);
-        if (proc.HasAttribute(CivlAttributes.COOPERATES))
-        {
-          cooperatingProcedures.Add(proc);
-        }
       }
 
       if (procToAtomicAction.ContainsKey(SkipAtomicAction.proc))
@@ -953,52 +945,36 @@ namespace Microsoft.Boogie
 
         foreach (var header in graph.Headers)
         {
-          var yieldingLayers = new HashSet<int>();
-          var cooperatingLayers = new HashSet<int>();
-          foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
+          var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd => cmd is PredicateCmd predCmd &&
+          QKeyValue.FindAttribute(predCmd.Attributes, kv => kv.Key == CivlAttributes.YIELDS) != null);
+          HashSet<int> yieldingLayers = new HashSet<int>();
+          if (yieldCmd != null)
           {
-            if (predCmd.HasAttribute(CivlAttributes.YIELDS))
-            {
-              yieldingLayers.UnionWith(absyToLayerNums[predCmd]);
-            }
-
-            if (predCmd.HasAttribute(CivlAttributes.COOPERATES))
-            {
-              cooperatingLayers.UnionWith(absyToLayerNums[predCmd]);
-            }
-          }
-
-          if (yieldingLayers.Intersect(cooperatingLayers).Count() != 0)
-          {
-            Error(header, "Loop cannot be both yielding and cooperating on the same layer.");
-            continue;
-          }
-
-          var yieldInvariants = new List<CallCmd>();
-          foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
-          {
-            foreach (var attr in CivlAttributes.FindAllAttributes(predCmd, CivlAttributes.YIELD_LOOP))
+            var yieldsAttr = QKeyValue.FindAttribute(yieldCmd.Attributes, kv => kv.Key == CivlAttributes.YIELDS);
+            yieldingLayers.UnionWith(TypeCheckLayers(yieldsAttr));
+            var yieldInvariants = new List<CallCmd>();
+            foreach (var attr in CivlAttributes.FindAllAttributes(yieldCmd, CivlAttributes.YIELD_LOOP))
             {
               var callCmd = YieldInvariantCallChecker.CheckLoop(this, attr, header);
               if (callCmd == null)
               {
                 continue;
               }
-
               var calleeLayerNum = procToYieldInvariant[callCmd.Proc].LayerNum;
-              if (yieldingLayers.Contains(calleeLayerNum))
-              {
-                yieldInvariants.Add(callCmd);
-              }
-              else
-              {
-                Error(attr, $"Loop must yield at layer {calleeLayerNum} of the called yield invariant");
-              }
+              yieldingLayers.Add(calleeLayerNum);
+              yieldInvariants.Add(callCmd);
             }
+            yieldingLoops[header] = new YieldingLoop(yieldingLayers, yieldInvariants);
+            header.Cmds.Remove(yieldCmd);
           }
 
-          yieldingLoops[header] = new YieldingLoop(yieldingLayers, yieldInvariants);
-          cooperatingLoopHeaders[header] = cooperatingLayers;
+          foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
+          {
+            if (absyToLayerNums[predCmd].Intersect(yieldingLayers).Any() && VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
+            {
+              Error(predCmd, "May not access global variable");
+            }
+          }
         }
       }
     }
@@ -1244,21 +1220,25 @@ namespace Microsoft.Boogie
       List<int> layers = new List<int>();
       for (; kv != null; kv = kv.Next)
       {
-        if (kv.Key != CivlAttributes.LAYER)
+        if (kv.Key == CivlAttributes.LAYER)
         {
-          continue;
-        }
-
-        foreach (var o in kv.Params)
-        {
-          var layerNum = TypeCheckLayer(kv, o);
-          if (layerNum.HasValue)
-          {
-            layers.Add(layerNum.Value);
-          }
+          layers.AddRange(TypeCheckLayers(kv));
         }
       }
+      return layers;
+    }
 
+    private List<int> TypeCheckLayers(QKeyValue kv)
+    {
+      var layers = new List<int>();
+      foreach (var o in kv.Params)
+      {
+        var layerNum = TypeCheckLayer(kv, o);
+        if (layerNum.HasValue)
+        {
+          layers.Add(layerNum.Value);
+        }
+      }
       return layers;
     }
 
@@ -1342,21 +1322,6 @@ namespace Microsoft.Boogie
       }
 
       return yieldingLoops[block].layers.Contains(layerNum);
-    }
-
-    public bool IsCooperatingLoopHeader(Block block, int layerNum)
-    {
-      if (!cooperatingLoopHeaders.ContainsKey(block))
-      {
-        return false;
-      }
-
-      return cooperatingLoopHeaders[block].Contains(layerNum);
-    }
-
-    public bool IsCooperatingProcedure(Procedure proc)
-    {
-      return cooperatingProcedures.Contains(proc);
     }
 
     public LayerRange GlobalVariableLayerRange(Variable g)
@@ -1952,6 +1917,12 @@ namespace Microsoft.Boogie
       public void VisitSpecPost<T>(T node)
         where T : Absy, ICarriesAttributes
       {
+        if (QKeyValue.FindAttribute(node.Attributes, kv => kv.Key == CivlAttributes.YIELDS) != null)
+        {
+          // the dummy loop invariant for specifying loop yielding layers and yield_loop specifications
+          // does not have the layer attribute.
+          return;
+        }
         var specLayers = civlTypeChecker.FindLayers(node.Attributes).Distinct().OrderBy(l => l).ToList();
         if (specLayers.Count == 0)
         {

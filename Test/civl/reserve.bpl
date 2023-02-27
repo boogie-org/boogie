@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 /*
@@ -43,6 +43,10 @@ requires BijectionInvariant(allocMap);
 requires (forall {:pool "B"} y: int :: {:add_to_pool "B", y} isFree[y] ==> memAddr(y));
 requires MapDiff(allocMap->range, isFree) == MapConst(false);
 requires freeSpace == Size(MapDiff(isFree, allocMap->range));
+
+procedure {:yield_invariant} {:layer 1} YieldAllocMap({:linear "tid"} tid: Tid, status: bool, i: int);
+requires allocMap->domain[tid] == status;
+requires allocMap->domain[tid] ==> i <= allocMap->tidToPtr[tid];
 
 function Size<T>([T]bool) returns (int);
 
@@ -133,9 +137,9 @@ modifies freeSpace, isFree;
 }
 
 procedure {:yields} {:layer 1}
+{:yield_requires "YieldAllocMap", tid, false, memLo}
 {:yield_preserves "YieldInvariant"}
 Malloc({:linear "tid"} tid: Tid)
-requires {:layer 1} !allocMap->domain[tid];
 {
     var i: int;
     var spaceFound: bool;
@@ -144,8 +148,8 @@ requires {:layer 1} !allocMap->domain[tid];
     i := memLo;
     call {:layer 1} SizeLemma1(MapDiff(isFree, allocMap->range), allocMap->tidToPtr[tid]);
     while (i < memHi)
-    invariant {:yields} {:layer 1} memAddr(i) && allocMap->domain[tid] && i <= allocMap->tidToPtr[tid];
-    invariant {:yields} {:layer 1} {:yield_loop "YieldInvariant"} true;
+    invariant {:layer 1} memAddr(i);
+    invariant {:yields 1} {:yield_loop "YieldInvariant"} {:yield_loop "YieldAllocMap", tid, true, i} true;
     {
         call {:layer 1} SizeLemma1(isFree, i);
         call {:layer 1} SizeLemma1(allocMap->range, i);
@@ -169,7 +173,7 @@ Collect()
     var ptr: int;
 
     while (*)
-    invariant {:yields} {:layer 1} {:yield_loop "YieldInvariant"} true;
+    invariant {:yields 1} {:yield_loop "YieldInvariant"} true;
     {
         call ptr := Reclaim();
         call {:layer 1} SizeLemma1(MapDiff(isFree, allocMap->range), ptr);

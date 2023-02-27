@@ -102,7 +102,7 @@ requires {:layer 1} tid != nil;
     var tmp: X;
 
     while (true)
-    invariant {:yields} {:layer 1} {:yield_loop "InvLock"} true;
+    invariant {:yields 1} {:yield_loop "InvLock"} true;
     {
         call status := CAS(tid, false, true);
         if (status) {
