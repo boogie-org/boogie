@@ -410,14 +410,8 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-
       var originalBlock = absyMap.Original(b);
-      if (!civlTypeChecker.yieldingLoops.ContainsKey(originalBlock))
-      {
-        return false;
-      }
-
-      return civlTypeChecker.yieldingLoops[originalBlock].layers.Contains(layerNum);
+      return civlTypeChecker.IsYieldingLoopHeader(originalBlock, layerNum);
     }
 
     private void ComputeYieldingLoops(

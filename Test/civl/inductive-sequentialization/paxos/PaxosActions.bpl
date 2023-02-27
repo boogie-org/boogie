@@ -21,7 +21,7 @@ A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
 modifies voteInfo;
 {
   var {:pool "Round"} maxRound: int;
-  var maxValue: Value;
+  var {:pool "MaxValue"} maxValue: Value;
   var {:pool "NodeSet"} ns: NodeSet;
 
   assert Round(r);

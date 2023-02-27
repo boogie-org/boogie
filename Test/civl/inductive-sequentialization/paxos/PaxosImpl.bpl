@@ -171,7 +171,7 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   var {:layer 1}{:pending_async} PAs:[A_Vote]int;
 
   call maxRound, maxValue, ns := ProposeHelper(r);
-  assume {:add_to_pool "NodeSet", ns} true;
+  assume {:add_to_pool "NodeSet", ns} {:add_to_pool "MaxValue", maxValue} true;
   call ps', cp := SplitConcludePermission(r, ps);
   n := 1;
   while (n <= numNodes)
