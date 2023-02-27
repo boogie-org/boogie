@@ -945,8 +945,9 @@ namespace Microsoft.Boogie
 
         foreach (var header in graph.Headers)
         {
-          var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd => cmd is PredicateCmd predCmd &&
-          QKeyValue.FindAttribute(predCmd.Attributes, kv => kv.Key == CivlAttributes.YIELDS) != null);
+          var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
+            cmd is PredicateCmd predCmd &&
+            QKeyValue.FindAttribute(predCmd.Attributes, kv => kv.Key == CivlAttributes.YIELDS) != null);
           HashSet<int> yieldingLayers = new HashSet<int>();
           if (yieldCmd != null)
           {
@@ -970,7 +971,8 @@ namespace Microsoft.Boogie
 
           foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
           {
-            if (absyToLayerNums[predCmd].Intersect(yieldingLayers).Any() && VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
+            if (absyToLayerNums[predCmd].Intersect(yieldingLayers).Any() &&
+                VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
             {
               Error(predCmd, "May not access global variable");
             }
