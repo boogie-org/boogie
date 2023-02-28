@@ -1834,6 +1834,7 @@ namespace Microsoft.Boogie
         VisitSpecPre();
         base.VisitEnsures(ensures);
         VisitSpecPost(ensures);
+        CheckAccessToGlobalVariables(ensures);
         return ensures;
       }
 
@@ -1842,7 +1843,21 @@ namespace Microsoft.Boogie
         VisitSpecPre();
         base.VisitRequires(requires);
         VisitSpecPost(requires);
+        CheckAccessToGlobalVariables(requires);
         return requires;
+      }
+
+      private void CheckAccessToGlobalVariables(Absy absy)
+      {
+        if (yieldingProc is MoverProc && civlTypeChecker.absyToLayerNums[absy].All(x => x == yieldingProc.upperLayer))
+        {
+          return;
+        }
+        if (VariableCollector.Collect(absy, true).OfType<GlobalVariable>().Any())
+        {
+          civlTypeChecker.Error(absy,
+            "This specification may not access a global variable since one of its layers is a yielding layer of its procedure");
+        }
       }
 
       public override Cmd VisitAssertCmd(AssertCmd assert)

@@ -102,8 +102,8 @@ procedure {:atomic} {:layer 2} AtomicInitAbstract ({:linear "tid"} xls:[X]bool)
 modifies cs, s, T;
 { assert xls == MapConst(true); cs := nil; s := 0; T := RightOpen(0); }
 
-procedure {:yields} {:layer 1} {:refines "AtomicInitAbstract"} InitAbstract ({:linear "tid"} xls:[X]bool)
-ensures  {:layer 1} Inv1(T, t);
+procedure {:yields} {:layer 1} {:yield_ensures "Yield1"} {:refines "AtomicInitAbstract"}
+InitAbstract ({:linear "tid"} xls:[X]bool)
 {
   call Init(xls);
 }

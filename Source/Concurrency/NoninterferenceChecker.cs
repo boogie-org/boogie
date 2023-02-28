@@ -23,6 +23,8 @@ namespace Microsoft.Boogie
       Procedure proc,
       List<Variable> declLocalVariables)
     {
+      Debug.Assert(civlTypeChecker.procToYieldInvariant.ContainsKey(proc));
+      
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       var domainToHoleVar = new Dictionary<LinearDomain, Variable>();
       Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
@@ -59,44 +61,15 @@ namespace Microsoft.Boogie
       var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker,
         layerNum, absyMap, domainToHoleVar, localVarMap);
       var yieldInfos = new List<YieldInfo>();
-      string noninterferenceCheckerName;
-      if (civlTypeChecker.procToYieldInvariant.ContainsKey(proc))
+      var noninterferenceCheckerName = $"yield_{proc.Name}";
+      if (proc.Requires.Count > 0)
       {
-        noninterferenceCheckerName = $"yield_{proc.Name}";
-        if (proc.Requires.Count > 0)
-        {
-          var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, true);
-          var yieldPredicates = proc.Requires.Select(requires =>
-            requires.Free
-              ? (PredicateCmd)new AssumeCmd(requires.tok, requires.Condition)
-              : (PredicateCmd)new AssertCmd(requires.tok, requires.Condition)).ToList();
-          yieldInfos.Add(new YieldInfo(disjointnessCmds, yieldPredicates));
-        }
-      }
-      else
-      {
-        noninterferenceCheckerName = $"proc_{absyMap.Original(proc).Name}_{layerNum}";
-        if (proc.Requires.Count > 0)
-        {
-          var entryDisjointnessCmds =
-            linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, true);
-          var entryYieldPredicates = proc.Requires.Select(requires =>
-            requires.Free
-              ? (PredicateCmd)new AssumeCmd(requires.tok, requires.Condition)
-              : (PredicateCmd)new AssertCmd(requires.tok, requires.Condition)).ToList();
-          yieldInfos.Add(new YieldInfo(entryDisjointnessCmds, entryYieldPredicates));
-        }
-
-        if (proc.Ensures.Count > 0)
-        {
-          var exitDisjointnessCmds =
-            linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, false);
-          var exitYieldPredicates = proc.Ensures.Select(ensures =>
-            ensures.Free
-              ? (PredicateCmd)new AssumeCmd(ensures.tok, ensures.Condition)
-              : (PredicateCmd)new AssertCmd(ensures.tok, ensures.Condition)).ToList();
-          yieldInfos.Add(new YieldInfo(exitDisjointnessCmds, exitYieldPredicates));
-        }
+        var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, true);
+        var yieldPredicates = proc.Requires.Select(requires =>
+          requires.Free
+            ? (PredicateCmd)new AssumeCmd(requires.tok, requires.Condition)
+            : (PredicateCmd)new AssertCmd(requires.tok, requires.Condition)).ToList();
+        yieldInfos.Add(new YieldInfo(disjointnessCmds, yieldPredicates));
       }
 
       var filteredYieldInfos = yieldInfos.Where(info =>

@@ -209,19 +209,6 @@ namespace Microsoft.Boogie
               layerNum, absyMap, proc, new List<Variable>()));
         }
       }
-
-      foreach (var proc in absyMap.Keys.OfType<Procedure>())
-      {
-        var yieldingProc = civlTypeChecker.procToYieldingProc[absyMap.Original(proc)];
-        if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
-        {
-          continue;
-        }
-
-        noninterferenceCheckerDecls.AddRange(
-          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
-            layerNum, absyMap, proc, new List<Variable>()));
-      }
     }
 
     // Add assignment g := g for all global variables g at yielding loop heads.

@@ -214,9 +214,8 @@ modifies channel, terminated, leader;
 procedure {:yield_invariant} {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
 requires Init(pids, channel, terminated, id, leader);
 
-procedure {:yields}{:layer 1}{:refines "MAIN1"}
+procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pids}{:refines "MAIN1"}
 main ({:linear_in "pid"} pids:[int]bool)
-requires {:layer 1} Init(pids, channel, terminated, id, leader);
 {
   var {:pending_async}{:layer 1} PAs:[PInit]int;
   var {:linear "pid"} pid:int;
