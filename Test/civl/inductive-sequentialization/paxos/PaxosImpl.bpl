@@ -55,17 +55,20 @@ function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: Jo
       permVoteChannel->contents[VotePerm(r, vr->from)] == vr)
 }
 
+procedure {:yield_invariant} {:layer 1} YieldInit({:linear "perm"} rs: [Round]bool);
+requires Init(rs, joinedNodes, voteInfo, decision);
+requires InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
+
 procedure {:yield_invariant} {:layer 1} YieldInv();
 requires Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 
 procedure {:yield_invariant} {:layer 1} YieldInvChannels();
-requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+requires InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yields}{:layer 1}{:refines "A_Paxos"} Paxos({:layer 1}{:linear_in "perm"} rs: [Round]bool)
-requires {:layer 1} Init(rs, joinedNodes, voteInfo, decision);
-requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
+procedure {:yields}{:layer 1}{:yield_requires "YieldInit", rs}{:refines "A_Paxos"}
+Paxos({:layer 1}{:linear_in "perm"} rs: [Round]bool)
 {
   var r: int;
   var {:layer 1}{:linear "perm"} r_lin: int;
@@ -75,7 +78,6 @@ requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinCha
   r := 0;
   rs' := rs;
   while (*)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 0 <= r;
   invariant {:layer 1} (forall r': Round :: r < r' ==> rs'[r']);
   invariant {:layer 1} PAs == ToMultiset((lambda pa: A_StartRound :: pa->r == pa->r_lin && Round(pa->r) && pa->r <= r));
@@ -86,10 +88,9 @@ requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinCha
   }
 }
 
-procedure {:yields}{:layer 1}{:refines "A_StartRound"} StartRound(r: Round, {:layer 1}{:linear_in "perm"} r_lin: Round)
+procedure {:yields}{:layer 1}{:refines "A_StartRound"}{:yield_requires "YieldInv"}{:yield_requires "YieldInvChannels"}
+StartRound(r: Round, {:layer 1}{:linear_in "perm"} r_lin: Round)
 requires {:layer 1} Round(r) && r_lin == r;
-requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 {
   var n: int;
   var {:layer 1}{:linear "perm"} p: Permission;
@@ -100,7 +101,6 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   call ps, ps' := SplitPermissions(r_lin);
   n := 1;
   while (n <= numNodes)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
   invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps[JoinPerm(r, n')]);
   invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Join :: pa->r == r && 1 <= pa->n && pa->n < n && pa->p == JoinPerm(pa->r, pa->n)));
@@ -158,10 +158,9 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   }
 }
 
-procedure {:yields}{:layer 1}{:refines "A_Propose"} Propose(r: Round, {:layer 1}{:linear_in "perm"} ps: [Permission]bool)
+procedure {:yields}{:layer 1}{:refines "A_Propose"}{:yield_requires "YieldInv"}{:yield_requires "YieldInvChannels"}
+Propose(r: Round, {:layer 1}{:linear_in "perm"} ps: [Permission]bool)
 requires {:layer 1} Round(r) && ps == ProposePermissions(r);
-requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
-requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 {
   var {:layer 1} maxRound: Round;
   var maxValue: Value;
@@ -173,11 +172,10 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   var {:layer 1}{:pending_async} PAs:[A_Vote]int;
 
   call maxRound, maxValue, ns := ProposeHelper(r);
-  assume {:add_to_pool "NodeSet", ns} true;
+  assume {:add_to_pool "NodeSet", ns} {:add_to_pool "MaxValue", maxValue} true;
   call ps', cp := SplitConcludePermission(r, ps);
   n := 1;
   while (n <= numNodes)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
   invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps'[VotePerm(r, n')]);
   invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Vote :: pa->r == r && 1 <= pa->n && pa->n < n && pa->v == maxValue && pa->p == VotePerm(pa->r, pa->n)));
@@ -190,10 +188,9 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   call ProposeIntro(r, maxValue);
 }
 
-procedure {:yields}{:layer 1}{:refines "A_Conclude"} Conclude(r: Round, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
+procedure {:yields}{:layer 1}{:refines "A_Conclude"}{:yield_requires "YieldInv"}{:yield_requires "YieldInvChannels"}
+Conclude(r: Round, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
 requires {:layer 1} Round(r) && p == ConcludePerm(r);
-requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 {
   var count: int;
   var voteResponse: VoteResponse;
@@ -224,9 +221,9 @@ requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permV
   }
 }
 
-procedure {:yields}{:layer 1}{:refines "A_Join"} Join(r: Round, n: Node, {:layer 1}{:linear_in "perm"} p: Permission)
+procedure {:yields}{:layer 1}{:refines "A_Join"}{:yield_requires "YieldInv"}
+Join(r: Round, n: Node, {:layer 1}{:linear_in "perm"} p: Permission)
 requires {:layer 1} Round(r) && Node(n) && p == JoinPerm(r, n);
-requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 {
   var doJoin: bool;
   var lastVoteRound: Round;
@@ -240,9 +237,9 @@ requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, p
   }
 }
 
-procedure {:yields}{:layer 1}{:refines "A_Vote"} Vote(r: Round, n: Node, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
+procedure {:yields}{:layer 1}{:refines "A_Vote"}{:yield_requires "YieldInv"}
+Vote(r: Round, n: Node, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
 requires {:layer 1} Round(r) && Node(n) && p == VotePerm(r, n);
-requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 {
   var doVote:bool;
 

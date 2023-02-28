@@ -1904,6 +1904,8 @@ namespace Microsoft.Boogie
 
      {:yields}
        Yielding procedure.
+     {:yields N1, N2, ...}
+       Yielding loop.
 
      {:atomic}
      {:right}
@@ -1936,9 +1938,6 @@ namespace Microsoft.Boogie
 
      {:refines ""action""}
        Refined atomic action of a yielding procedure.
-
-     {:cooperates}
-       Cooperating loop or mover procedure.
 
      {:linear ""domain""}
        Permission type for domain.

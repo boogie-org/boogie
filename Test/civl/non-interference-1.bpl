@@ -19,8 +19,10 @@ modifies g;
 
 procedure {:yields} {:layer 0} {:refines "AtomicSet"} Set(v: int);
 
-procedure {:yields} {:layer 1} PC()
-ensures {:layer 1} g == 3;
+procedure {:yield_invariant} {:layer 1} Yield();
+requires g == 3;
+
+procedure {:yields} {:layer 1} {:yield_ensures "Yield"} PC()
 {
   call Set(3);
 }
@@ -39,7 +41,6 @@ procedure {:yields} {:layer 1} PD()
 procedure {:yields} {:layer 1} Main()
 {
   while (*)
-  invariant {:cooperates} {:layer 1} true;
   {
     async call PB();
     async call PE();

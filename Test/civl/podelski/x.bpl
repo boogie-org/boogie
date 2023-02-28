@@ -11,7 +11,7 @@ procedure {:yields}{:layer 1}
 main ()
 {
   while (*)
-  invariant {:yields}{:layer 1}{:yield_loop "Inv"} true;
+  invariant {:yields} {:layer 1}{:yield_loop "Inv"} true;
   {
     async call incdec();
   }

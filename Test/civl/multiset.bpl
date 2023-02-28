@@ -71,9 +71,10 @@ modifies elt, owner;
   }
 }
 
-procedure {:yields} {:layer 1} {:refines "AtomicFindSlot"} FindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
-requires {:layer 1} Inv(valid, elt, owner) && x != null && tid != nil && tid != done;
-ensures {:layer 1} Inv(valid, elt, owner);
+procedure {:yields} {:layer 1} {:refines "AtomicFindSlot"}
+{:yield_preserves "Yield1"}
+FindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
+requires {:layer 1} x != null && tid != nil && tid != done;
 {
   var j : int;
   var elt_j : int;
@@ -82,8 +83,7 @@ ensures {:layer 1} Inv(valid, elt, owner);
 
   j := 0;
   while(j < max)
-  invariant {:yields} {:layer 1} true;
-  invariant {:layer 1} Inv(valid, elt, owner);
+  invariant {:yields} {:layer 1} {:yield_loop "Yield1"} true;
   invariant {:layer 1} 0 <= j;
   {
     call acquire(j, tid);
@@ -127,11 +127,10 @@ modifies elt, valid, owner;
   }
 }
 
-procedure {:yields} {:layer 2} {:refines "AtomicInsert"} Insert(x : int, {:linear "tid"} tid: X) returns (result : bool)
-requires {:layer 1} Inv(valid, elt, owner) && x != null && tid != nil && tid != done;
-ensures {:layer 1} Inv(valid, elt, owner);
-requires {:layer 2} Inv(valid, elt, owner) && x != null && tid != nil && tid != done;
-ensures {:layer 2} Inv(valid, elt, owner);
+procedure {:yields} {:layer 2} {:refines "AtomicInsert"}
+{:yield_preserves "Yield1"} {:yield_preserves "Yield2"}
+Insert(x : int, {:linear "tid"} tid: X) returns (result : bool)
+requires {:layer 1,2} x != null && tid != nil && tid != done;
 {
   var i: int;
   par Yield1() | Yield2();
@@ -179,11 +178,10 @@ modifies elt, valid, owner;
   }
 }
 
-procedure {:yields} {:layer 2} {:refines "AtomicInsertPair"} InsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
-requires {:layer 1} Inv(valid, elt, owner) && x != null && y != null && tid != nil && tid != done;
-ensures {:layer 1} Inv(valid, elt, owner);
-requires {:layer 2} Inv(valid, elt, owner) && x != null && y != null && tid != nil && tid != done;
-ensures {:layer 2} Inv(valid, elt, owner);
+procedure {:yields} {:layer 2} {:refines "AtomicInsertPair"}
+{:yield_preserves "Yield1"} {:yield_preserves "Yield2"}
+InsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
+requires {:layer 1,2} x != null && y != null && tid != nil && tid != done;
 {
   var i : int;
   var j : int;
@@ -237,11 +235,10 @@ procedure {:atomic} {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old
   assume !found ==> (forall ii:int :: 0 <= ii && ii < max ==> !(old_valid[ii] && old_elt[ii] == x));
 }
 
-procedure {:yields} {:layer 2} {:refines "AtomicLookUp"} LookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
-requires {:layer 1} {:layer 2} InvLookUp(old_valid, valid, old_elt, elt);
-requires {:layer 1} {:layer 2} Inv(valid, elt, owner);
+procedure {:yields} {:layer 2} {:refines "AtomicLookUp"}
+{:yield_preserves "Yield1"} {:yield_preserves "Yield2"} {:yield_requires "YieldLookUp1", old_valid, old_elt} {:yield_requires "YieldLookUp2", old_valid, old_elt}
+LookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
 requires {:layer 1} {:layer 2} (tid != nil && tid != done);
-ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
 {
   var j : int;
   var isThere : bool;
@@ -251,10 +248,11 @@ ensures {:layer 1} {:layer 2} Inv(valid, elt, owner);
   j := 0;
 
   while(j < max)
-  invariant {:yields} {:layer 1,2} true;
-  invariant {:layer 1} {:layer 2} Inv(valid, elt, owner);
+  invariant {:yields} {:layer 2}
+  {:yield_loop "Yield1"} {:yield_loop "Yield2"}
+  {:yield_loop "YieldLookUp1", old_valid, old_elt} {:yield_loop "YieldLookUp2", old_valid, old_elt}
+  true;
   invariant {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < j ==> !(old_valid[ii] && old_elt[ii] == x));
-  invariant {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < max && old_valid[ii] ==> valid[ii] && old_elt[ii] == elt[ii]);
   invariant {:layer 1} {:layer 2} 0 <= j;
   {
     call acquire(j, tid);

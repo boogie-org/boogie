@@ -21,9 +21,15 @@ procedure {:left} {:layer 2} AtomicIncrBy2()
 modifies x;
 { x := x + 2; }
 
-procedure {:yields} {:layer 2} EqualTo2({:linear "tid"} tid: X)
-requires {:layer 2} tid == MainTid && x == 0;
-ensures  {:layer 2} x == 2;
+procedure {:yields} {:layer 2}
+{:yield_requires "YieldPre", tid} {:yield_ensures "YieldPost"}
+EqualTo2({:linear "tid"} tid: X)
 {
   call IncrBy2();
 }
+
+procedure {:yield_invariant} {:layer 2} YieldPre({:linear "tid"} tid: X);
+requires tid == MainTid && x == 0;
+
+procedure {:yield_invariant} {:layer 2} YieldPost();
+requires x == 2;

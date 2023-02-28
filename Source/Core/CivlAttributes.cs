@@ -26,8 +26,6 @@ namespace Microsoft.Boogie
     public const string REFINES = "refines";
     public const string HIDE = "hide";
 
-    public const string COOPERATES = "cooperates";
-
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
     public const string LINEAR_OUT = "linear_out";
@@ -50,7 +48,7 @@ namespace Microsoft.Boogie
       YIELD_INVARIANT, YIELD_REQUIRES, YIELD_ENSURES, YIELD_PRESERVES, YIELD_LOOP,
       INTRO,
       ATOMIC, LEFT, RIGHT, BOTH,
-      REFINES, HIDE, COOPERATES,
+      REFINES, HIDE,
       LEMMA,
       PENDING_ASYNC, SYNC, CREATES,
       IS, IS_INVARIANT, IS_ABSTRACTION, ELIM

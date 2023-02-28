@@ -209,26 +209,6 @@ namespace Microsoft.Boogie
               layerNum, absyMap, proc, new List<Variable>()));
         }
       }
-
-      foreach (var impl in absyMap.Keys.OfType<Implementation>())
-      {
-        noninterferenceCheckerDecls.AddRange(
-          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
-          layerNum, absyMap, impl, impl.LocVars));
-      }
-
-      foreach (var proc in absyMap.Keys.OfType<Procedure>())
-      {
-        var yieldingProc = civlTypeChecker.procToYieldingProc[absyMap.Original(proc)];
-        if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
-        {
-          continue;
-        }
-
-        noninterferenceCheckerDecls.AddRange(
-          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
-            layerNum, absyMap, proc, new List<Variable>()));
-      }
     }
 
     // Add assignment g := g for all global variables g at yielding loop heads.
@@ -417,14 +397,8 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-
       var originalBlock = absyMap.Original(b);
-      if (!civlTypeChecker.yieldingLoops.ContainsKey(originalBlock))
-      {
-        return false;
-      }
-
-      return civlTypeChecker.yieldingLoops[originalBlock].layers.Contains(layerNum);
+      return civlTypeChecker.IsYieldingLoopHeader(originalBlock, layerNum);
     }
 
     private void ComputeYieldingLoops(

@@ -5,7 +5,6 @@ var {:layer 0,2} b: int;
 procedure {:yields} {:layer 2} main()
 {
     while (*)
-    invariant {:cooperates} {:layer 1,2} true;
     {
         async call Customer();
     }
@@ -14,10 +13,10 @@ procedure {:yields} {:layer 2} main()
 procedure {:yields} {:layer 2} Customer()
 {
     while (*)
-    invariant {:yields} {:layer 1,2} true;
+    invariant {:yields} {:layer 2} true;
     {
         call Enter();
-        par yield_1() | yield_2();
+        call Yield();
         call Leave();
     }
 }
@@ -70,5 +69,4 @@ modifies b;
 
 procedure {:yields} {:layer 0} {:refines "AtomicLeave"} Leave();
 
-procedure {:yield_invariant} {:layer 1} yield_1();
-procedure {:yield_invariant} {:layer 2} yield_2();
+procedure {:yields} {:layer 2} Yield();

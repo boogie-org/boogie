@@ -76,7 +76,7 @@ requires {:layer 1} all_abs == (lambda v:AB :: 1 <= v->x);
   abs := all_abs;
   i := 1;
   while (*)
-  invariant {:yields}{:layer 1}{:yield_loop "Inv"} true;
+  invariant {:yields} {:layer 1}{:yield_loop "Inv"} true;
   invariant {:layer 1} 1 <= i;
   invariant {:layer 1} abs == (lambda v:AB :: i <= v->x);
   {

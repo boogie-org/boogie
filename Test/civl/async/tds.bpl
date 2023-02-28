@@ -80,7 +80,6 @@ procedure {:yields} {:layer 3} {:refines "atomic_server"} server3({:linear "tid"
     call snapshot := StatusSnapshot();
     tids' := tids;
     while (i < n)
-    invariant {:cooperates} {:layer 3} true;
     invariant {:layer 3} 0 <= i && i <= n;
     invariant {:layer 3} (forall j: int :: i <= j && j < n <==> tids'[j]);
     invariant {:layer 3} status == (lambda j: int :: if (0 <= j && j < i) then CREATED else snapshot[j]);

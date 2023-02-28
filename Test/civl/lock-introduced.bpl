@@ -12,7 +12,7 @@ procedure {:yields} {:layer 3}
 Customer({:linear "tid"} tid: X)
 {
   while (*)
-  invariant {:yields} {:layer 1,2,3} {:yield_loop "Yield", tid} true;
+  invariant {:yields} {:layer 3} {:yield_loop "Yield", tid} true;
   {
     call Enter(tid);
     call Leave(tid);

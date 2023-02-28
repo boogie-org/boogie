@@ -190,6 +190,9 @@ modifies decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+procedure {:yield_invariant} {:layer 1} YieldInv();
+requires Inv(CH_low, CH);
+
 function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
 {
   (forall i:pid :: MultisetSubsetEq(MultisetEmpty, CH_low[i]) && MultisetSubsetEq(CH_low[i], CH))
@@ -208,11 +211,14 @@ procedure {:intro}{:layer 1} Snapshot() returns (snapshot:[pid][val]int)
   snapshot := CH_low;
 }
 
-procedure {:yields}{:layer 1}{:refines "MAIN"}
+procedure {:yield_invariant} {:layer 1}
+YieldInit({:linear "broadcast"} pidsBroadcast:[pid]bool, {:linear "collect"} pidsCollect:[pid]bool);
+requires pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
+requires (forall ii:pid :: CH_low[ii] == MultisetEmpty);
+requires CH == MultisetEmpty;
+
+procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pidsBroadcast, pidsCollect}{:refines "MAIN"}
 Main({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-requires {:layer 1} pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
-requires {:layer 1} (forall ii:pid :: CH_low[ii] == MultisetEmpty);
-requires {:layer 1} CH == MultisetEmpty;
 {
   var {:pending_async}{:layer 1} Broadcast_PAs:[BROADCAST]int;
   var {:pending_async}{:layer 1} Collect_PAs:[COLLECT]int;
@@ -226,7 +232,6 @@ requires {:layer 1} CH == MultisetEmpty;
   rr := pidsCollect;
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n + 1;
   invariant {:layer 1} ss == (lambda ii:pid :: pid(ii) && ii >= i) && ss == rr;
   invariant {:layer 1} Broadcast_PAs == ToMultiset(InitialBroadcastPAs(i));
@@ -252,7 +257,6 @@ requires {:layer 1} pid(i);
   call v := get_value(i);
   j := 1;
   while (j <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= j && j <= n+1;
   invariant {:layer 1} CH_low == (lambda jj: pid :: (if pid(jj) && jj < j then MultisetPlus(old_CH_low[jj], MultisetSingleton(value[i])) else old_CH_low[jj]));
   {
@@ -262,9 +266,9 @@ requires {:layer 1} pid(i);
   call intro(i);
 }
 
-procedure {:yields}{:layer 1}{:refines "COLLECT"} Collect({:linear_in "collect"} i:pid)
+procedure {:yields}{:layer 1}{:yield_requires "YieldInv"}{:refines "COLLECT"}
+Collect({:linear_in "collect"} i:pid)
 requires {:layer 1} pid(i);
-requires {:layer 1} Inv(CH_low, CH);
 {
   var j: pid;
   var d: val;

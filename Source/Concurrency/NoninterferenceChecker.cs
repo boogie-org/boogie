@@ -20,9 +20,11 @@ namespace Microsoft.Boogie
       CivlTypeChecker civlTypeChecker,
       int layerNum,
       AbsyMap absyMap,
-      DeclWithFormals decl,
+      Procedure proc,
       List<Variable> declLocalVariables)
     {
+      Debug.Assert(civlTypeChecker.procToYieldInvariant.ContainsKey(proc));
+      
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       var domainToHoleVar = new Dictionary<LinearDomain, Variable>();
       Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
@@ -36,7 +38,7 @@ namespace Microsoft.Boogie
         domainToHoleVar[domain] = inParam;
       }
 
-      foreach (Variable local in declLocalVariables.Union(decl.InParams).Union(decl.OutParams))
+      foreach (Variable local in declLocalVariables.Union(proc.InParams).Union(proc.OutParams))
       {
         var copy = CopyLocal(local);
         locals.Add(copy);
@@ -58,64 +60,21 @@ namespace Microsoft.Boogie
 
       var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker,
         layerNum, absyMap, domainToHoleVar, localVarMap);
-      List<YieldInfo> yieldInfos = null;
-      string noninterferenceCheckerName = null;
-      if (decl is Implementation impl)
+      var yieldInfos = new List<YieldInfo>();
+      var noninterferenceCheckerName = $"yield_{proc.Name}";
+      if (proc.Requires.Count > 0)
       {
-        noninterferenceCheckerName = $"impl_{absyMap.Original(impl).Name}_{layerNum}";
-        yieldInfos = CollectYields(civlTypeChecker, absyMap, layerNum, impl).Select(kv =>
-          new YieldInfo(linearPermissionInstrumentation.DisjointnessAndWellFormedAssumeCmds(kv.Key, false), kv.Value)).ToList();
-      }
-      else if (decl is Procedure proc)
-      {
-        yieldInfos = new List<YieldInfo>();
-        if (civlTypeChecker.procToYieldInvariant.ContainsKey(proc))
-        {
-          noninterferenceCheckerName = $"yield_{proc.Name}";
-          if (proc.Requires.Count > 0)
-          {
-            var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, true);
-            var yieldPredicates = proc.Requires.Select(requires =>
-              requires.Free
-                ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
-                : (PredicateCmd) new AssertCmd(requires.tok, requires.Condition)).ToList();
-            yieldInfos.Add(new YieldInfo(disjointnessCmds, yieldPredicates));
-          }
-        }
-        else
-        {
-          noninterferenceCheckerName = $"proc_{absyMap.Original(proc).Name}_{layerNum}";
-          if (proc.Requires.Count > 0)
-          {
-            var entryDisjointnessCmds =
-              linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, true);
-            var entryYieldPredicates = proc.Requires.Select(requires =>
-              requires.Free
-                ? (PredicateCmd) new AssumeCmd(requires.tok, requires.Condition)
-                : (PredicateCmd) new AssertCmd(requires.tok, requires.Condition)).ToList();
-            yieldInfos.Add(new YieldInfo(entryDisjointnessCmds, entryYieldPredicates));
-          }
-
-          if (proc.Ensures.Count > 0)
-          {
-            var exitDisjointnessCmds =
-              linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, false);
-            var exitYieldPredicates = proc.Ensures.Select(ensures =>
-              ensures.Free
-                ? (PredicateCmd) new AssumeCmd(ensures.tok, ensures.Condition)
-                : (PredicateCmd) new AssertCmd(ensures.tok, ensures.Condition)).ToList();
-            yieldInfos.Add(new YieldInfo(exitDisjointnessCmds, exitYieldPredicates));
-          }
-        }
-      }
-      else
-      {
-        Debug.Assert(false);
+        var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, true);
+        var yieldPredicates = proc.Requires.Select(requires =>
+          requires.Free
+            ? (PredicateCmd)new AssumeCmd(requires.tok, requires.Condition)
+            : (PredicateCmd)new AssertCmd(requires.tok, requires.Condition)).ToList();
+        yieldInfos.Add(new YieldInfo(disjointnessCmds, yieldPredicates));
       }
 
       var filteredYieldInfos = yieldInfos.Where(info =>
         info.invariantCmds.Any(predCmd => new GlobalAccessChecker().AccessesGlobal(predCmd.Expr)));
-      if (filteredYieldInfos.Count() == 0)
+      if (!filteredYieldInfos.Any())
       {
         return new List<Declaration>();
       }
@@ -167,48 +126,6 @@ namespace Microsoft.Boogie
       var noninterferenceCheckerImpl = DeclHelper.Implementation(noninterferenceCheckerProc,
         inputs, new List<Variable>(), locals, noninterferenceCheckerBlocks);
       return new List<Declaration> {noninterferenceCheckerProc, noninterferenceCheckerImpl};
-    }
-
-    private static Dictionary<Absy, List<PredicateCmd>> CollectYields(CivlTypeChecker civlTypeChecker,
-      AbsyMap absyMap, int layerNum, Implementation impl)
-    {
-      var allYieldPredicates = new Dictionary<Absy, List<PredicateCmd>>();
-      List<PredicateCmd> yieldPredicates = new List<PredicateCmd>();
-      foreach (Block b in impl.Blocks)
-      {
-        Absy absy = null;
-        var originalBlock = absyMap.Original(b);
-        if (civlTypeChecker.yieldingLoops.ContainsKey(originalBlock) &&
-            civlTypeChecker.yieldingLoops[originalBlock].layers.Contains(layerNum))
-        {
-          absy = b;
-        }
-
-        foreach (Cmd cmd in b.Cmds)
-        {
-          if (absy != null)
-          {
-            if (cmd is PredicateCmd)
-            {
-              yieldPredicates.Add(cmd as PredicateCmd);
-            }
-            else
-            {
-              allYieldPredicates[absy] = yieldPredicates;
-              yieldPredicates = new List<PredicateCmd>();
-              absy = null;
-            }
-          }
-        }
-
-        if (absy != null)
-        {
-          allYieldPredicates[absy] = yieldPredicates;
-          yieldPredicates = new List<PredicateCmd>();
-        }
-      }
-
-      return allYieldPredicates;
     }
 
     private static LocalVariable CopyLocal(Variable v)

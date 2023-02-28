@@ -33,7 +33,7 @@ requires {:layer 2} perm(p);
 // ###########################################################################
 // Event handlers of process B
 
-procedure {:yields} {:layer 2} {:left} {:cooperates}  propose_by_a (val : int, {:linear_in "lin"} p : int)
+procedure {:yields} {:layer 2} {:left} propose_by_a (val : int, {:linear_in "lin"} p : int)
 requires {:layer 2} perm(p);
 requires {:layer 2} val_a == val;
 ensures {:layer 2} val_a == val_b;
@@ -63,7 +63,7 @@ ensures {:layer 2} val_a == val_b;
 // ###########################################################################
 // Event handlers of process A
 
-procedure {:yields} {:layer 2} {:left} {:cooperates} propose_by_b (val : int, {:linear_in "lin"} p : int)
+procedure {:yields} {:layer 2} {:left} propose_by_b (val : int, {:linear_in "lin"} p : int)
 requires {:layer 2} perm(p);
 requires {:layer 2} val_b == val;
 ensures {:layer 2} val_a == val_b;
