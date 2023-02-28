@@ -31,7 +31,7 @@ Main ()
   var {:layer 1,2} {:linear "mem"} l:lmap;
   var i:int;
   while (*)
-    invariant {:yields 1,2} {:yield_loop "Yield"} true;
+    invariant {:yields} {:layer 1,2} {:yield_loop "Yield"} true;
   {
     call  l, i := Alloc();
     async call Thread(l, i);
@@ -52,7 +52,7 @@ requires {:layer 2} dom(local_in)[i];
   call o := Read(local, i);
   assert {:layer 2} o == 42;
   while (*)
-  invariant {:yields 1,2} {:yield_loop "Yield"} true;
+  invariant {:yields} {:layer 1,2} {:yield_loop "Yield"} true;
   {
     call l, y := Alloc();
     call l := Write(l, y, 42);

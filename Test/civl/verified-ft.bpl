@@ -945,7 +945,7 @@ Driver({:linear "tid"} tid:Tid) returns (ok: bool)
 
   ok := true;
   while (ok)
-    invariant {:yields 10,20,30}
+    invariant {:yields} {:layer 10,20,30}
     {:yield_loop "Yield_Lock_10", tid, ShadowableTid(tid)}
     {:yield_loop "Yield_FTRepOk_10"}
     {:yield_loop "Yield_Lock_20", tid, ShadowableTid(tid)}

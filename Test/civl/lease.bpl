@@ -122,7 +122,7 @@ modifies history;
         history := addHistory(history, dst);
 }
 
-procedure{:yields}{:layer 2} {:yield_requires "YieldHeld", me} {:yield_preserves "YieldInv"} {:refines "AtomicGrant"} 
+procedure{:yields}{:layer 2} {:yield_requires "YieldHeld", me} {:yield_preserves "YieldInv"} {:refines "AtomicGrant"}
 Grant({:linear "me"} me:int) returns(dst:int, epoch:int)
 {
   var node:node;
@@ -145,14 +145,14 @@ modifies external;
         external := external[msg(me, dst, locked(epoch)) := true];
 }
 
-procedure{:yields}{:layer 2} {:yield_preserves "YieldInv"} {:refines "AtomicAccept"} 
+procedure{:yields}{:layer 2} {:yield_preserves "YieldInv"} {:refines "AtomicAccept"}
 Accept({:linear "me"} me:int, dst:int) returns(epoch:int)
 {
   var node:node;
   var m:msg;
 
   while (true)
-    invariant {:yields 2} {:yield_loop "YieldInv"} true;
+    invariant {:yields} {:layer 2} {:yield_loop "YieldInv"} true;
   {
     call m := Recv(me);
     call node := GetNode(me);

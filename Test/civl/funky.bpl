@@ -133,7 +133,7 @@ requires {:layer 3} tid != nil;
     var {:linear "tid"} cid: X;
 
     while (*)
-    invariant {:yields 1,2,3} {:yield_loop "Yield_3"} true;
+    invariant {:yields} {:layer 1,2,3} {:yield_loop "Yield_3"} true;
     {
         if (*) {
             call cid := AllocTid();

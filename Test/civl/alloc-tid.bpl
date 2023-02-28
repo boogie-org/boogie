@@ -21,7 +21,7 @@ main()
   var i: int;
 
   while (true)
-  invariant {:yields 1,2} {:yield_loop "Yield1"} true;
+  invariant {:yields} {:layer 1,2} {:yield_loop "Yield1"} true;
   {
     call tid, i := Allocate();
     async call P(tid, i);

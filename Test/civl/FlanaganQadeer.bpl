@@ -18,7 +18,7 @@ procedure {:yields} {:layer 1} main()
     var val: int;
 
     while (*)
-    invariant {:yields 1} true;
+    invariant {:yields} {:layer 1} true;
     {
         call tid := Allocate();
         havoc val;

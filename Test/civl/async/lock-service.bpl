@@ -108,7 +108,7 @@ procedure {:yields}{:layer 1}{:refines "A_GetLock"} GetLock ({:linear "tid"} tid
 {
   var success:bool;
   while (true)
-  invariant {:yields 1} true;
+  invariant {:yields} {:layer 1} true;
   {
     call success := cas_l(nil, tid);
     if (success) {

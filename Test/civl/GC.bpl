@@ -342,7 +342,7 @@ requires {:layer 97,98,99,100} tid == GcTid;
     var nextPhase: int;
 
     while (*)
-    invariant {:yields 95,96,97,98,99,100}
+    invariant {:yields} {:layer 95,96,97,98,99,100}
     {:yield_loop "Yield_Iso"}
     {:yield_loop "Yield_MsWellFormed", tid, 0}
     {:yield_loop "Yield_RootScanBarrierInv"}
@@ -388,7 +388,7 @@ MarkOuterLoop({:linear "tid"} tid:Tid)
 
     call ResetSweepPtr(tid);
     while (true)
-    invariant {:yields 95,96,97,98,99,100}
+    invariant {:yields} {:layer 95,96,97,98,99,100}
     {:yield_loop "YieldMark", tid, old(Color)}
     {:yield_loop "Yield_MsWellFormed", tid, 0}
     {:yield_loop "Yield_CollectorPhase_98", tid, old(collectorPhase)}
@@ -418,7 +418,7 @@ MarkInnerLoop({:linear "tid"} tid:Tid)
     var child: int;
 
     while (true)
-    invariant {:yields 95,96,97,98,99,100}
+    invariant {:yields} {:layer 95,96,97,98,99,100}
     {:yield_loop "YieldMark", tid, old(Color)}
     {:yield_loop "Yield_MsWellFormed", tid, 0}
     {:yield_loop "Yield_CollectorPhase_98", tid, old(collectorPhase)}
@@ -431,7 +431,7 @@ MarkInnerLoop({:linear "tid"} tid:Tid)
         }
         fldIter := 0;
         while (fldIter < numFields)
-        invariant {:yields 95,96,97,98,99,100}
+        invariant {:yields} {:layer 95,96,97,98,99,100}
         {:yield_loop "YieldMark", tid, old(Color)}
         {:yield_loop "Yield_MsWellFormed", tid, nodeProcessed}
         {:yield_loop "Yield_CollectorPhase_98", tid, old(collectorPhase)}
@@ -468,7 +468,7 @@ requires {:layer 98,99,100} tid == GcTid;
 
     call snapColor := GhostReadColor100();
     while (localSweepPtr < memHi)
-    invariant {:yields 95,96} true;
+    invariant {:yields} {:layer 95,96} true;
     invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
     invariant {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
     invariant {:layer 100} SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
@@ -576,7 +576,7 @@ requires {:layer 99} tid == GcTid;
 
     i := 0;
     while (i < numRoots)
-    invariant {:yields 95,96,97,98}
+    invariant {:yields} {:layer 95,96,97,98}
     {:yield_loop "Yield_MsWellFormed", tid, 0}
     {:yield_loop "Yield_CollectorPhase_98", tid, old(collectorPhase)}
     true;
@@ -752,12 +752,12 @@ procedure {:yields} {:layer 98} {:refines "AtomicFindFreePtr"} FindFreePtr({:lin
 
     spaceFound := false;
     while (true)
-    invariant {:yields 95,96,97,98} true;
+    invariant {:yields} {:layer 95,96,97,98} true;
     invariant {:layer 98} !spaceFound;
     {
         iter := memLo;
         while (iter < memHi)
-        invariant {:yields 95,96,97,98} true;
+        invariant {:yields} {:layer 95,96,97,98} true;
         invariant {:layer 98} !spaceFound;
         invariant {:layer 98} memLo <= iter && iter <= memHi;
         {
@@ -905,7 +905,7 @@ WaitForMutators({:linear "tid"} tid:Tid, nextPhase: int)
     done := false;
     call YieldWaitForMutators(tid, nextPhase, done, 1);
     while (!done)
-    invariant {:yields 95,96,97}
+    invariant {:yields} {:layer 95,96,97}
     {:yield_loop "YieldWaitForMutators", tid, nextPhase, done, numMutators+1}
     true;
     {
@@ -913,7 +913,7 @@ WaitForMutators({:linear "tid"} tid:Tid, nextPhase: int)
         i := 1;
         call YieldWaitForMutators(tid, nextPhase, done, i);
         while (i <= numMutators)
-          invariant {:yields 95,96,97}
+          invariant {:yields} {:layer 95,96,97}
           {:yield_loop "YieldWaitForMutators", tid, nextPhase, done, i}
           true;
         {
@@ -953,13 +953,13 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
 
     n := memLo;
     while (n < memHi)
-        invariant{:yields 95} true;
+        invariant{:yields} {:layer 95} true;
         invariant{:layer 96} memLo <= n && n <= memHi;
         invariant{:layer 96} (forall i:int, f: fld :: memLo <= i && i < n && fieldAddr(f) ==> mem[i][f] == i);
     {
         m := 0;
         while (m < numFields)
-            invariant{:yields 95} true;
+            invariant{:yields} {:layer 95} true;
             invariant{:layer 96} 0 <= m && m <= numFields;
             invariant{:layer 96} (forall i:int, f: fld :: memLo <= i && i < n && fieldAddr(f) ==> mem[i][f] == i);
             invariant{:layer 96} (forall f: fld :: 0 <= f && f < m ==> mem[n][f] == n);
@@ -974,7 +974,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
 
     n := 0;
     while (n < numRoots)
-        invariant{:yields 95} true;
+        invariant{:yields} {:layer 95} true;
         invariant{:layer 96} 0 <= n && n <= numRoots;
         invariant{:layer 96} (forall i:int :: 0 <= i && i < n ==> root[i] == 0);
     {
@@ -984,7 +984,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
 
     n := memLo;
     while (n < memHi)
-        invariant{:yields 95} true;
+        invariant{:yields} {:layer 95} true;
         invariant{:layer 96} memLo <= n && n <= memHi;
         invariant{:layer 96} (forall i:int :: memLo <= i && i < n ==> Color[i] == UNALLOC());
     {
@@ -994,7 +994,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicInitVars100"} InitVars100({:lin
 
     n := 1;
     while (n <= numMutators)
-        invariant{:yields 95} true;
+        invariant{:yields} {:layer 95} true;
         invariant{:layer 96} 1 <= n && n <= numMutators + 1;
         invariant{:layer 96} (forall i:int :: mutatorId(i) && i < n ==> mutatorPhase[i] == IDLE());
     {
@@ -1238,7 +1238,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicCollectorRootScanBarrierWait"} 
     var v:int;
 
     while (true)
-    invariant {:yields 95,96} true;
+    invariant {:yields} {:layer 95,96} true;
     {
         call v := CollectorRootScanBarrierRead(tid);
         if (v == 0)
@@ -1287,7 +1287,7 @@ ensures {:layer 95,96} tid->i == tid_left->i && tid->left && tid->right;
     var b:bool;
 
     loop:
-        assert {:yields 95,96} true;
+        assert {:yields} {:layer 95,96} true;
         call LockAcquire(tid_left);
         call b := MutatorReadBarrierOn(tid_left);
         if (!b)
@@ -1347,7 +1347,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicAllocIfPtrFree"} AllocIfPtrFree
             call snapMem := GhostReadMem();
             fldIter := 0;
             while (fldIter < numFields)
-            invariant {:yields 95} true;
+            invariant {:yields} {:layer 95} true;
             invariant {:layer 96} 0 <= fldIter && fldIter <= numFields;
             invariant {:layer 96} mem == snapMem[ptr := (lambda z: int :: if (0 <= z && z < fldIter) then ptr else snapMem[ptr][z])];
             {
@@ -1805,7 +1805,7 @@ procedure {:yields} {:layer 95} {:refines "AtomicLockAcquire"} LockAcquire({:lin
 {
     var status:bool;
     while (true)
-    invariant {:yields 95} true;
+    invariant {:yields} {:layer 95} true;
     {
         call status := PrimitiveLockCAS(tid->i);
         if (status)

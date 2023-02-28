@@ -13,7 +13,7 @@ procedure {:yields} {:layer 2} main()
 procedure {:yields} {:layer 2} Customer()
 {
     while (*)
-    invariant {:yields 1,2} true;
+    invariant {:yields} {:layer 1,2} true;
     {
         call Enter();
         par yield_1() | yield_2();
@@ -30,7 +30,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicEnter"} Enter()
     var status: bool;
 
     while (true)
-    invariant {:yields 1} true;
+    invariant {:yields} {:layer 1} true;
     {
         call status := CAS(false, true);
         if (status) {

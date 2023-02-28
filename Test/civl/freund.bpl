@@ -13,7 +13,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicInc"} Inc() {
     var success: bool;
 
     while(true)
-    invariant {:yields 1} true;
+    invariant {:yields} {:layer 1} true;
     {
         call n := Read();
         call Yield();

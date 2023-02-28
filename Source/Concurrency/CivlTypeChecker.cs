@@ -946,13 +946,11 @@ namespace Microsoft.Boogie
         foreach (var header in graph.Headers)
         {
           var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
-            cmd is PredicateCmd predCmd &&
-            QKeyValue.FindAttribute(predCmd.Attributes, kv => kv.Key == CivlAttributes.YIELDS) != null);
+            cmd is PredicateCmd predCmd && predCmd.HasAttribute(CivlAttributes.YIELDS));
           HashSet<int> yieldingLayers = new HashSet<int>();
           if (yieldCmd != null)
           {
-            var yieldsAttr = QKeyValue.FindAttribute(yieldCmd.Attributes, kv => kv.Key == CivlAttributes.YIELDS);
-            yieldingLayers.UnionWith(TypeCheckLayers(yieldsAttr));
+            yieldingLayers.UnionWith(FindLayers(yieldCmd.Attributes));
             var yieldInvariants = new List<CallCmd>();
             foreach (var attr in CivlAttributes.FindAllAttributes(yieldCmd, CivlAttributes.YIELD_LOOP))
             {
@@ -1935,12 +1933,6 @@ namespace Microsoft.Boogie
       public void VisitSpecPost<T>(T node)
         where T : Absy, ICarriesAttributes
       {
-        if (QKeyValue.FindAttribute(node.Attributes, kv => kv.Key == CivlAttributes.YIELDS) != null)
-        {
-          // the dummy loop invariant for specifying loop yielding layers and yield_loop specifications
-          // does not have the layer attribute.
-          return;
-        }
         var specLayers = civlTypeChecker.FindLayers(node.Attributes).Distinct().OrderBy(l => l).ToList();
         if (specLayers.Count == 0)
         {
