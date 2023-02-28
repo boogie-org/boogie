@@ -342,7 +342,7 @@ requires {:layer 97,98,99,100} tid == GcTid;
     var nextPhase: int;
 
     while (*)
-    invariant {:yields} {:layer 100}
+    invariant {:yields}
     {:yield_loop "Yield_Iso"}
     {:yield_loop "Yield_MsWellFormed", tid, 0}
     {:yield_loop "Yield_RootScanBarrierInv"}
@@ -388,7 +388,7 @@ MarkOuterLoop({:linear "tid"} tid:Tid)
 
     call ResetSweepPtr(tid);
     while (true)
-    invariant {:yields} {:layer 100}
+    invariant {:yields}
     {:yield_loop "YieldMark", tid, old(Color)}
     {:yield_loop "Yield_MsWellFormed", tid, 0}
     {:yield_loop "Yield_CollectorPhase_98", tid, old(collectorPhase)}
@@ -418,7 +418,7 @@ MarkInnerLoop({:linear "tid"} tid:Tid)
     var child: int;
 
     while (true)
-    invariant {:yields} {:layer 100}
+    invariant {:yields}
     {:yield_loop "YieldMark", tid, old(Color)}
     {:yield_loop "Yield_MsWellFormed", tid, 0}
     {:yield_loop "Yield_CollectorPhase_98", tid, old(collectorPhase)}
@@ -431,7 +431,7 @@ MarkInnerLoop({:linear "tid"} tid:Tid)
         }
         fldIter := 0;
         while (fldIter < numFields)
-        invariant {:yields} {:layer 100}
+        invariant {:yields}
         {:yield_loop "YieldMark", tid, old(Color)}
         {:yield_loop "Yield_MsWellFormed", tid, nodeProcessed}
         {:yield_loop "Yield_CollectorPhase_98", tid, old(collectorPhase)}
@@ -752,12 +752,12 @@ procedure {:yields} {:layer 98} {:refines "AtomicFindFreePtr"} FindFreePtr({:lin
 
     spaceFound := false;
     while (true)
-    invariant {:yields} {:layer 98} true;
+    invariant {:yields} true;
     invariant {:layer 98} !spaceFound;
     {
         iter := memLo;
         while (iter < memHi)
-        invariant {:yields} {:layer 98} true;
+        invariant {:yields} true;
         invariant {:layer 98} !spaceFound;
         invariant {:layer 98} memLo <= iter && iter <= memHi;
         {
@@ -905,7 +905,7 @@ WaitForMutators({:linear "tid"} tid:Tid, nextPhase: int)
     done := false;
     call YieldWaitForMutators(tid, nextPhase, done, 1);
     while (!done)
-    invariant {:yields} {:layer 97}
+    invariant {:yields}
     {:yield_loop "YieldWaitForMutators", tid, nextPhase, done, numMutators+1}
     true;
     {
@@ -913,7 +913,7 @@ WaitForMutators({:linear "tid"} tid:Tid, nextPhase: int)
         i := 1;
         call YieldWaitForMutators(tid, nextPhase, done, i);
         while (i <= numMutators)
-          invariant {:yields} {:layer 97}
+          invariant {:yields}
           {:yield_loop "YieldWaitForMutators", tid, nextPhase, done, i}
           true;
         {
@@ -1238,7 +1238,7 @@ procedure {:yields} {:layer 96} {:refines "AtomicCollectorRootScanBarrierWait"} 
     var v:int;
 
     while (true)
-    invariant {:yields} {:layer 96} true;
+    invariant {:yields} true;
     {
         call v := CollectorRootScanBarrierRead(tid);
         if (v == 0)
@@ -1805,7 +1805,7 @@ procedure {:yields} {:layer 95} {:refines "AtomicLockAcquire"} LockAcquire({:lin
 {
     var status:bool;
     while (true)
-    invariant {:yields} {:layer 95} true;
+    invariant {:yields} true;
     {
         call status := PrimitiveLockCAS(tid->i);
         if (status)

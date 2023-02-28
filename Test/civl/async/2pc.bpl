@@ -168,7 +168,7 @@ main ()
 {
   var xid: Xid;
   while (*)
-  invariant {:yields} {:layer 11}
+  invariant {:yields}
     {:yield_loop "YieldInv_8"}
     {:yield_loop "YieldConsistent_9"}
     {:yield_loop "YieldConsistent_10"}

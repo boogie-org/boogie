@@ -83,7 +83,7 @@ requires {:layer 1} x != null && tid != nil && tid != done;
 
   j := 0;
   while(j < max)
-  invariant {:yields} {:layer 1} {:yield_loop "Yield1"} true;
+  invariant {:yields} {:yield_loop "Yield1"} true;
   invariant {:layer 1} 0 <= j;
   {
     call acquire(j, tid);
@@ -248,7 +248,7 @@ requires {:layer 1} {:layer 2} (tid != nil && tid != done);
   j := 0;
 
   while(j < max)
-  invariant {:yields} {:layer 2}
+  invariant {:yields}
   {:yield_loop "Yield1"} {:yield_loop "Yield2"}
   {:yield_loop "YieldLookUp1", old_valid, old_elt} {:yield_loop "YieldLookUp2", old_valid, old_elt}
   true;

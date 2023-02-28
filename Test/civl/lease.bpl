@@ -152,7 +152,7 @@ Accept({:linear "me"} me:int, dst:int) returns(epoch:int)
   var m:msg;
 
   while (true)
-    invariant {:yields} {:layer 2} {:yield_loop "YieldInv"} true;
+    invariant {:yields} {:yield_loop "YieldInv"} true;
   {
     call m := Recv(me);
     call node := GetNode(me);

@@ -12,7 +12,7 @@ procedure {:yields} {:layer 3}
 Customer({:linear "tid"} tid: X)
 {
   while (*)
-  invariant {:yields} {:layer 3} {:yield_loop "Yield", tid} true;
+  invariant {:yields} {:yield_loop "Yield", tid} true;
   {
     call Enter(tid);
     call Leave(tid);
@@ -56,7 +56,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicLowerEnter"} LowerEnter({:linear
   var status: bool;
 
   while (true)
-  invariant {:yields} {:layer 1} true;
+  invariant {:yields} true;
   {
     call status := CAS(false, true);
     if (status) {

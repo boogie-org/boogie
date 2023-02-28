@@ -945,23 +945,30 @@ namespace Microsoft.Boogie
 
         foreach (var header in graph.Headers)
         {
+          int yieldingLayer = procToYieldingProc[impl.Proc].upperLayer;
           var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
             cmd is PredicateCmd predCmd && predCmd.HasAttribute(CivlAttributes.YIELDS));
-          int yieldingLayer = int.MinValue;
-          if (yieldCmd != null)
+          if (yieldCmd == null)
+          {
+            yieldingLayer = int.MinValue;
+          }
+          else
           {
             var layers = FindLayers(yieldCmd.Attributes);
-            if (layers.Count != 1)
+            if (layers.Any())
             {
-              Error(header, "Expected layer attribute to indicate the highest yielding layer of this loop");
-              continue;
-            }
-            yieldingLayer = layers[0];
-            if (yieldingLayer > procToYieldingProc[impl.Proc].upperLayer)
-            {
-              Error(header,
-                "Yielding layer of loop must not be more than the disappearing layer of enclosing procedure");
-              continue;
+              if (layers.Count > 1)
+              {
+                Error(header, "Expected layer attribute to indicate the highest yielding layer of this loop");
+                continue;
+              }
+              if (layers[0] > yieldingLayer)
+              {
+                Error(header,
+                  "Yielding layer of loop must not be more than the disappearing layer of enclosing procedure");
+                continue;
+              }
+              yieldingLayer = layers[0];
             }
             var yieldInvariants = new List<CallCmd>();
             foreach (var attr in CivlAttributes.FindAllAttributes(yieldCmd, CivlAttributes.YIELD_LOOP))
@@ -1950,6 +1957,10 @@ namespace Microsoft.Boogie
       public void VisitSpecPost<T>(T node)
         where T : Absy, ICarriesAttributes
       {
+        if (node.HasAttribute(CivlAttributes.YIELDS))
+        {
+          return;
+        }
         var specLayers = civlTypeChecker.FindLayers(node.Attributes).Distinct().OrderBy(l => l).ToList();
         if (specLayers.Count == 0)
         {

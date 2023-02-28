@@ -149,7 +149,7 @@ Malloc({:linear "tid"} tid: Tid)
     call {:layer 1} SizeLemma1(MapDiff(isFree, allocMap->range), allocMap->tidToPtr[tid]);
     while (i < memHi)
     invariant {:layer 1} memAddr(i);
-    invariant {:yields} {:layer 1} {:yield_loop "YieldInvariant"} {:yield_loop "YieldAllocMap", tid, true, i} true;
+    invariant {:yields} {:yield_loop "YieldInvariant"} {:yield_loop "YieldAllocMap", tid, true, i} true;
     {
         call {:layer 1} SizeLemma1(isFree, i);
         call {:layer 1} SizeLemma1(allocMap->range, i);
@@ -173,7 +173,7 @@ Collect()
     var ptr: int;
 
     while (*)
-    invariant {:yields} {:layer 1} {:yield_loop "YieldInvariant"} true;
+    invariant {:yields} {:yield_loop "YieldInvariant"} true;
     {
         call ptr := Reclaim();
         call {:layer 1} SizeLemma1(MapDiff(isFree, allocMap->range), ptr);

@@ -11,7 +11,7 @@ p1({:linear "lin"} a: int, {:linear_in "lin"} b: int, c: int)
 {
   call p2(b);
   while (*)
-  invariant {:yields} {:layer 1}
+  invariant {:yields}
   {:yield_loop "linear_yield_x", a}
   {:yield_loop "linear_yield_x", b}
   {:yield_loop "linear_yield_x", c} true;

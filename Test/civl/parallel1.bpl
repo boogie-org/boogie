@@ -36,7 +36,7 @@ procedure {:yields} {:layer 1} PD()
 procedure {:yields} {:layer 1} Main()
 {
   while (*)
-  invariant {:yields} {:layer 1} true;
+  invariant {:yields} true;
   {
     par PB() | PC() | PD();
   }
