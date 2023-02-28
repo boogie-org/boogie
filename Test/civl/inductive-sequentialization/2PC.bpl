@@ -297,9 +297,11 @@ modifies VoteChannel, DecisionChannel, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yields}{:layer 1}{:refines "MAIN1"}
+procedure {:yield_invariant} {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
+requires Init(pids, RequestChannel, VoteChannel, DecisionChannel, decisions);
+
+procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pids}{:refines "MAIN1"}
 main ({:linear_in "pid"} pids:[int]bool)
-requires {:layer 1} Init(pids, RequestChannel, VoteChannel, DecisionChannel, decisions);
 {
   var i:int;
   var {:pending_async}{:layer 1} Coordinator1_PAs:[COORDINATOR1]int;
@@ -349,10 +351,12 @@ requires {:layer 1} pid(pid);
   call set_decision(pid, d);
 }
 
-procedure {:yields}{:layer 1}{:refines "COORDINATOR1"}
+procedure {:yield_invariant} {:layer 1} YieldCoordinator();
+requires (forall vv:vote :: VoteChannel[vv] >= 0);
+
+procedure {:yields}{:layer 1}{:yield_requires "YieldCoordinator"}{:refines "COORDINATOR1"}
 coordinator1 ({:linear_in "pid"} pid:int)
 requires {:layer 1} pid == 0;
-requires {:layer 1} (forall vv:vote :: VoteChannel[vv] >= 0);
 {
   var i:int;
   var {:layer 1} old_RequestChannel:[int]int;
@@ -369,10 +373,9 @@ requires {:layer 1} (forall vv:vote :: VoteChannel[vv] >= 0);
   async call coordinator2(pid);
 }
 
-procedure {:yields}{:layer 1}{:refines "COORDINATOR2"}
+procedure {:yields}{:layer 1}{:yield_requires "YieldCoordinator"}{:refines "COORDINATOR2"}
 coordinator2 ({:linear_in "pid"} pid:int)
 requires {:layer 1} pid == 0;
-requires {:layer 1} (forall vv:vote :: VoteChannel[vv] >= 0);
 {
   var d:decision;
   var v:vote;

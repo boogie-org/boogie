@@ -121,10 +121,9 @@ procedure {:yields} {:layer 2} {:refines "AtomicTB"} TB({:linear "tid"} tid: X)
     call UnlockB(tid);
 }
 
-procedure {:yields} {:layer 3} AbsTB({:linear "tid"} tid: X)
-requires {:layer 3} tid != nil && counter == 0;
+procedure {:yields} {:layer 3} {:yield_requires "Yield_3"} AbsTB({:linear "tid"} tid: X)
+requires {:layer 3} tid != nil;
 {
-    assert {:layer 3} counter == 0;
     call TB(tid);
 }
 

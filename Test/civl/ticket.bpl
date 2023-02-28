@@ -112,13 +112,10 @@ procedure {:right} {:layer 2} AtomicGetTicketAbstract ({:linear "tid"} tid: X) r
 modifies T;
 { assume !T[m]; T[m] := true; }
 
-procedure {:yields} {:layer 1} {:refines "AtomicGetTicketAbstract"} GetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
-requires {:layer 1} Inv1(T, t);
-ensures  {:layer 1} Inv1(T, t);
+procedure {:yields} {:layer 1} {:yield_preserves "Yield1"} {:refines "AtomicGetTicketAbstract"}
+GetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
 {
-  par Yield1();
   call m := GetTicket(tid);
-  par Yield1();
 }
 
 // ###########################################################################

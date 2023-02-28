@@ -408,9 +408,11 @@ modifies QuoteChannel, RemainderChannel, DecisionChannel, contribution;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yields}{:layer 1}{:refines "MAIN1"}
+procedure {:yield_invariant} {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
+requires Init(pids, RequestChannel, QuoteChannel, RemainderChannel, DecisionChannel, contribution);
+
+procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pids}{:refines "MAIN1"}
 main ({:linear_in "pid"} pids:[int]bool)
-requires {:layer 1} Init(pids, RequestChannel, QuoteChannel, RemainderChannel, DecisionChannel, contribution);
 {
   var i:int;
   var {:pending_async}{:layer 1} SellerInit_PAs:[SellerInit]int;

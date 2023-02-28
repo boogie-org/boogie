@@ -37,7 +37,6 @@ procedure {:yields} {:layer 3} {:refines "AtomicPopIntermediate"}
 {:yield_preserves "YieldInv#2", ref_t}
 {:yield_preserves "YieldInv#3", ref_t}
 PopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
-requires {:layer 2} ts->dom[ref_t];
 {
   var ref_n, new_ref_n: RefNode X;
   var node: Node X;
@@ -194,6 +193,7 @@ function {:inline} NilDomain(ts: Lheap (Treiber X), ref_t: RefTreiber X, unused:
 }
 
 procedure {:yield_invariant} {:layer 2} YieldInv#2(ref_t: RefTreiber X);
+requires ts->dom[ref_t];
 requires Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
 requires NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
 

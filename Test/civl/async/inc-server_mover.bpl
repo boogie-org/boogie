@@ -18,11 +18,13 @@ var {:layer 7,9} y : int;
 // ###########################################################################
 // Main
 
-procedure {:yields}{:layer 9} main ({:linear_in "lin"} p : int)
-requires {:layer 9} perm(p) && x == y;
+procedure {:yields}{:layer 9}{:yield_requires "Yield_9", p} main ({:linear_in "lin"} p : int)
 {
   async call {:sync} Server_Inc(p);
 }
+
+procedure {:yield_invariant} {:layer 9} Yield_9({:linear "lin"} p : int);
+requires perm(p) && x == y;
 
 // ###########################################################################
 // Event Handlers

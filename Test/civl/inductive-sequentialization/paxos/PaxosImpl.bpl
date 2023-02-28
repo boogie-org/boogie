@@ -55,17 +55,20 @@ function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: Jo
       permVoteChannel->contents[VotePerm(r, vr->from)] == vr)
 }
 
+procedure {:yield_invariant} {:layer 1} YieldInit({:linear "perm"} rs: [Round]bool);
+requires Init(rs, joinedNodes, voteInfo, decision);
+requires InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
+
 procedure {:yield_invariant} {:layer 1} YieldInv();
 requires Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 
 procedure {:yield_invariant} {:layer 1} YieldInvChannels();
-requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+requires InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yields}{:layer 1}{:refines "A_Paxos"} Paxos({:layer 1}{:linear_in "perm"} rs: [Round]bool)
-requires {:layer 1} Init(rs, joinedNodes, voteInfo, decision);
-requires {:layer 1} InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
+procedure {:yields}{:layer 1}{:yield_requires "YieldInit", rs}{:refines "A_Paxos"}
+Paxos({:layer 1}{:linear_in "perm"} rs: [Round]bool)
 {
   var r: int;
   var {:layer 1}{:linear "perm"} r_lin: int;

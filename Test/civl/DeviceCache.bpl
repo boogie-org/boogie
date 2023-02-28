@@ -105,10 +105,10 @@ WriteCache({:linear "tid"} tid: X, index: int)
 
 procedure {:yields} {:layer 1}
 {:yield_preserves "Yield"}
+{:yield_requires "YieldToReadCache", tid, start + bytesRead}
 {:yield_preserves "YieldToReadCache", tid, old(currsize)}
 ReadCache({:linear "tid"} tid: X, start: int, bytesRead: int)
 requires {:layer 1} 0 <= start && 0 < bytesRead;
-requires {:layer 1} start + bytesRead <= currsize;
 {
     var j: int;
 

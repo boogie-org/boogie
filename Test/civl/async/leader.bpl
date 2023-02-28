@@ -58,9 +58,12 @@ modifies col_dom, col_val, dec_dom, dec_val;
   assume all_decided(init_val, dec_dom, dec_val);
 }
 
-procedure {:yields}{:layer 1}{:refines "main_atomic"} main ({:linear_in "Perm"} perms:[Perm]bool)
+procedure {:yield_invariant} {:layer 1} YieldAllDecided();
+requires all_decided(init_val, dec_dom, dec_val);
+
+procedure {:yields}{:layer 1}{:yield_ensures "YieldAllDecided"}{:refines "main_atomic"}
+main ({:linear_in "Perm"} perms:[Perm]bool)
 requires {:layer 1} perms == all_perms();
-ensures {:layer 1} all_decided(init_val, dec_dom, dec_val);
 {
   var s:int;
   var {:linear "Perm"} perms':[Perm]bool;

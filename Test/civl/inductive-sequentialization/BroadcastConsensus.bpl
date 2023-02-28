@@ -190,6 +190,9 @@ modifies decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+procedure {:yield_invariant} {:layer 1} YieldInv();
+requires Inv(CH_low, CH);
+
 function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
 {
   (forall i:pid :: MultisetSubsetEq(MultisetEmpty, CH_low[i]) && MultisetSubsetEq(CH_low[i], CH))
@@ -208,11 +211,14 @@ procedure {:intro}{:layer 1} Snapshot() returns (snapshot:[pid][val]int)
   snapshot := CH_low;
 }
 
-procedure {:yields}{:layer 1}{:refines "MAIN"}
+procedure {:yield_invariant} {:layer 1}
+YieldInit({:linear "broadcast"} pidsBroadcast:[pid]bool, {:linear "collect"} pidsCollect:[pid]bool);
+requires pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
+requires (forall ii:pid :: CH_low[ii] == MultisetEmpty);
+requires CH == MultisetEmpty;
+
+procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pidsBroadcast, pidsCollect}{:refines "MAIN"}
 Main({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-requires {:layer 1} pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
-requires {:layer 1} (forall ii:pid :: CH_low[ii] == MultisetEmpty);
-requires {:layer 1} CH == MultisetEmpty;
 {
   var {:pending_async}{:layer 1} Broadcast_PAs:[BROADCAST]int;
   var {:pending_async}{:layer 1} Collect_PAs:[COLLECT]int;
@@ -260,9 +266,9 @@ requires {:layer 1} pid(i);
   call intro(i);
 }
 
-procedure {:yields}{:layer 1}{:refines "COLLECT"} Collect({:linear_in "collect"} i:pid)
+procedure {:yields}{:layer 1}{:yield_requires "YieldInv"}{:refines "COLLECT"}
+Collect({:linear_in "collect"} i:pid)
 requires {:layer 1} pid(i);
-requires {:layer 1} Inv(CH_low, CH);
 {
   var j: pid;
   var d: val;
