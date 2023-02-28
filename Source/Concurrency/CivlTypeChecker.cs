@@ -957,6 +957,12 @@ namespace Microsoft.Boogie
               continue;
             }
             yieldingLayer = layers[0];
+            if (yieldingLayer > procToYieldingProc[impl.Proc].upperLayer)
+            {
+              Error(header,
+                "Yielding layer of loop must not be more than the disappearing layer of enclosing procedure");
+              continue;
+            }
             var yieldInvariants = new List<CallCmd>();
             foreach (var attr in CivlAttributes.FindAllAttributes(yieldCmd, CivlAttributes.YIELD_LOOP))
             {
