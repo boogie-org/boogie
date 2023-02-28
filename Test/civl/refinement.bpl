@@ -7,14 +7,14 @@ var {:layer 0,2} x:int;
 procedure {:yields}{:layer 1}{:refines "INCR"} p ()
 {
   call incr(); // Refined action INCR occurred
-  call yield();
+  call Yield();
   call incr(); // Error: State changed again
 }
 
 procedure {:yields}{:layer 1}{:refines "INCR"} q ()
 {
   call decr(); // Error: State changed, but not according to INCR
-  call yield();
+  call Yield();
   call incr(); // Error: State changed again
 }
 
@@ -22,9 +22,9 @@ procedure {:yields}{:layer 1}{:refines "INCR"} r ()
 {
   call incr();
   call decr(); // SKIP
-  call yield();
+  call Yield();
   call incr(); // INCR
-  call yield();
+  call Yield();
   call incr();
   call incr();
   call decr();
@@ -39,7 +39,7 @@ procedure {:yields}{:layer 1}{:refines "INCR"} s ()
 procedure {:yields}{:layer 1}{:refines "INCR"} t ()
 {
   call incr();
-  call yield();
+  call Yield();
   while (*)
   invariant {:yields} {:layer 1} true;
   {
@@ -62,4 +62,4 @@ modifies x;
 procedure {:yields} {:layer 0} {:refines "INCR"} incr ();
 procedure {:yields} {:layer 0} {:refines "DECR"} decr ();
 
-procedure {:yield_invariant} {:layer 1} yield();
+procedure {:yield_invariant} {:layer 1} Yield();
