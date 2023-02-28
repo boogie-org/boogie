@@ -947,10 +947,16 @@ namespace Microsoft.Boogie
         {
           var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
             cmd is PredicateCmd predCmd && predCmd.HasAttribute(CivlAttributes.YIELDS));
-          HashSet<int> yieldingLayers = new HashSet<int>();
+          int yieldingLayer = int.MinValue;
           if (yieldCmd != null)
           {
-            yieldingLayers.UnionWith(FindLayers(yieldCmd.Attributes));
+            var layers = FindLayers(yieldCmd.Attributes);
+            if (layers.Count != 1)
+            {
+              Error(header, "Expected layer attribute to indicate the highest yielding layer of this loop");
+              continue;
+            }
+            yieldingLayer = layers[0];
             var yieldInvariants = new List<CallCmd>();
             foreach (var attr in CivlAttributes.FindAllAttributes(yieldCmd, CivlAttributes.YIELD_LOOP))
             {
@@ -960,16 +966,22 @@ namespace Microsoft.Boogie
                 continue;
               }
               var calleeLayerNum = procToYieldInvariant[callCmd.Proc].LayerNum;
-              yieldingLayers.Add(calleeLayerNum);
-              yieldInvariants.Add(callCmd);
+              if (calleeLayerNum <= yieldingLayer)
+              {
+                yieldInvariants.Add(callCmd);
+              }
+              else
+              {
+                Error(attr, $"Loop must yield at layer {calleeLayerNum} of the called yield invariant");
+              }
             }
-            yieldingLoops[header] = new YieldingLoop(yieldingLayers, yieldInvariants);
+            yieldingLoops[header] = new YieldingLoop(yieldingLayer, yieldInvariants);
             header.Cmds.Remove(yieldCmd);
           }
 
           foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
           {
-            if (absyToLayerNums[predCmd].Intersect(yieldingLayers).Any() &&
+            if (absyToLayerNums[predCmd].Max() <= yieldingLayer &&
                 VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
             {
               Error(predCmd,
@@ -1321,8 +1333,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-
-      return yieldingLoops[block].layers.Contains(layerNum);
+      return layerNum <= yieldingLoops[block].upperLayer;
     }
 
     public LayerRange GlobalVariableLayerRange(Variable g)

@@ -559,12 +559,12 @@ namespace Microsoft.Boogie
 
   public class YieldingLoop
   {
-    public HashSet<int> layers;
+    public int upperLayer;
     public List<CallCmd> yieldInvariants;
 
-    public YieldingLoop(HashSet<int> layers, List<CallCmd> yieldInvariants)
+    public YieldingLoop(int upperLayer, List<CallCmd> yieldInvariants)
     {
-      this.layers = layers;
+      this.upperLayer = upperLayer;
       this.yieldInvariants = yieldInvariants;
     }
   }

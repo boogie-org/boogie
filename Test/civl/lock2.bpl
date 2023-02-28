@@ -13,7 +13,7 @@ procedure {:yields} {:layer 2} main()
 procedure {:yields} {:layer 2} Customer()
 {
     while (*)
-    invariant {:yields} {:layer 1,2} true;
+    invariant {:yields} {:layer 2} true;
     {
         call Enter();
         par yield_1() | yield_2();

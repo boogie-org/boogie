@@ -46,7 +46,7 @@ User(i: int, {:layer 1,2} l: Lval Perm, {:layer 1,2} r: Lval Perm)
 requires {:layer 1, 2} l->val == Left(i) && r->val == Right(i);
 {
     while (*)
-    invariant {:yields} {:layer 1,2} {:yield_loop "Inv1"} {:yield_loop "Inv2"} true;
+    invariant {:yields} {:layer 2} {:yield_loop "Inv1"} {:yield_loop "Inv2"} true;
     {
         call Enter#1(i, l, r);
         call CheckAssert#1(i, r);

@@ -33,7 +33,7 @@ procedure {:layer 2}{:yields}{:refines "READ"} read () returns (v:int, w:int)
   var seq1:int;
   var seq2:int;
   while (true)
-  invariant {:yields} {:layer 1,2} true;
+  invariant {:yields} {:layer 2} true;
   {
     call seq1 := stale_read_seq();
     if (isEven(seq1)) {
