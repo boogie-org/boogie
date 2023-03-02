@@ -74,7 +74,7 @@ PushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
   call ref_n := ReadTopOfStack#Push(ref_t);
   call new_ref_n := AllocInStack(ref_t, Node(ref_n, x));
   call success := WriteTopOfStack(ref_t, ref_n, new_ref_n);
-  assert {:layer 2} {:add_to_pool "A", ref_n, new_ref_n} true;
+  assume {:add_to_pool "A", ref_n, new_ref_n} true;
   call AddToUnusedNodes(success, ref_t, new_ref_n);
 }
 

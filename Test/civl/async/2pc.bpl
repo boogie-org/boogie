@@ -256,7 +256,7 @@ Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
     async call {:sync} Coordinator_VoteNo(xid, mid, pair);
   }
 
-  assert {:layer 9} {:add_to_pool "A", state[xid]} true;
+  assume {:add_to_pool "A", state[xid]} true;
 }
 
 // ---------------------------------------------------------------------------

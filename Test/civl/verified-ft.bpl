@@ -416,7 +416,7 @@ VC.Copy({:linear "tid"} tid: Tid, v1: Shadowable, v2: Shadowable)
     call VCSetElem(tid, v1, i, e2);
     i := i + 1;
   }
-  assert {:layer 10} {:add_to_pool "A", shadow.VC[v1]} true;
+  assume {:add_to_pool "A", shadow.VC[v1]} true;
 }
 
 
@@ -472,7 +472,7 @@ VC.Join({:linear "tid"} tid: Tid, v1: Shadowable, v2: Shadowable)
     call VCSetElem(tid, v1, i, EpochMax(e1, e2));
     i := i + 1;
   }
-  assert {:layer 10} {:add_to_pool "A", shadow.VC[v1]} true;
+  assume {:add_to_pool "A", shadow.VC[v1]} true;
 }
 
 
@@ -566,7 +566,7 @@ Fork({:linear "tid"} tid:Tid, uid : Tid)
 {
   call VC.Join(tid, ShadowableTid(uid), ShadowableTid(tid));
   call VC.Inc(tid, ShadowableTid(tid), tid);
-  assert {:layer 20} {:add_to_pool "A", shadow.VC[ShadowableTid(uid)], shadow.VC[ShadowableTid(tid)]} true;
+  assume {:add_to_pool "A", shadow.VC[ShadowableTid(uid)], shadow.VC[ShadowableTid(tid)]} true;
 }
 
 procedure {:atomic} {:layer 21,30} AtomicJoin({:linear "tid"} tid:Tid, uid : Tid)
@@ -682,7 +682,7 @@ Release({:linear "tid"} tid: Tid, l: Lock)
 
   call VC.Copy(tid, ShadowableLock(l), ShadowableTid(tid));
   call VC.Inc(tid, ShadowableTid(tid), tid);
-  assert {:layer 20} {:add_to_pool "A", shadow.VC[ShadowableLock(l)], shadow.VC[ShadowableTid(tid)]} true;
+  assume {:add_to_pool "A", shadow.VC[ShadowableLock(l)], shadow.VC[ShadowableTid(tid)]} true;
 }
 
 
