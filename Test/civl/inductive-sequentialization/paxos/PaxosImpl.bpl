@@ -216,6 +216,7 @@ requires {:layer 1} Round(r) && p == ConcludePerm(r);
     count := count + 1;
     if (2 * count > numNodes) {
       call SetDecision(r, v);
+      assume {:add_to_pool "NodeSet", q} true;
       break;
     }
   }

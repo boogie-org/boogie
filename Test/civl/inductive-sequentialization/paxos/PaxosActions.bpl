@@ -53,7 +53,7 @@ procedure {:atomic}{:layer 2}
 A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
 modifies decision;
 {
-  var q: NodeSet;
+  var {:pool "NodeSet"} q: NodeSet;
 
   assert Round(r);
   assert p == ConcludePerm(r);
