@@ -183,7 +183,7 @@ BoogiePL
      Axiom/*!*/ ax;
      List<Declaration/*!*/>/*!*/ ts;
      DatatypeTypeCtorDecl dt;
-     YieldInvariantProcedure yi;
+     YieldInvariant yi;
      Procedure/*!*/ pr;
      Implementation im;
      Implementation/*!*/ nnim;
@@ -617,14 +617,14 @@ Constructor<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
   .
 
 /*------------------------------------------------------------------------*/
-YieldInvariant<out YieldInvariantProcedure yieldInvariant>
+YieldInvariant<out YieldInvariant yieldInvariant>
 = (. List<Requires> invariants = new List<Requires>(); QKeyValue kv = null; IToken name = null; List<Variable> ins; .)
   "yield" "invariant"
   { Attribute<ref kv> }
   Ident<out name>
   ProcFormals<true, true, out ins> ";"
   { Invariant<invariants> }
-  (. yieldInvariant = new YieldInvariantProcedure(name, name.val, ins, invariants, kv); .)
+  (. yieldInvariant = new YieldInvariant(name, name.val, ins, invariants, kv); .)
   .
 
 Invariant<.List<Requires> invariants.>
