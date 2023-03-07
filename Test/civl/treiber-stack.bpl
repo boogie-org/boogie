@@ -192,12 +192,12 @@ function {:inline} NilDomain(ts: Lheap (Treiber X), ref_t: RefTreiber X, unused:
   Union(Singleton(Nil()), Domain(ts, ref_t, unused))
 }
 
-procedure {:yield_invariant} {:layer 2} YieldInv#2(ref_t: RefTreiber X);
-requires ts->dom[ref_t];
-requires Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
-requires NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
+yield invariant {:layer 2} YieldInv#2(ref_t: RefTreiber X);
+invariant ts->dom[ref_t];
+invariant Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
+invariant NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
 
-procedure {:yield_invariant} {:layer 3} YieldInv#3(ref_t: RefTreiber X);
-requires Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
-requires NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
-requires (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDomain(ts, ref_t, unused)[ts->val[ref_t]->stack->val[ref_n]->next]);
+yield invariant {:layer 3} YieldInv#3(ref_t: RefTreiber X);
+invariant Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
+invariant NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
+invariant (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDomain(ts, ref_t, unused)[ts->val[ref_t]->stack->val[ref_n]->next]);

@@ -3203,7 +3203,7 @@ namespace Microsoft.Boogie
 
         RegisterFormals(OutParams, rc);
         ResolveFormals(OutParams,
-          rc); // "where" clauses of out-parameters are resolved with both in- and out-parametes in scope
+          rc); // "where" clauses of out-parameters are resolved with both in- and out-parameters in scope
 
         rc.StateMode = ResolutionContext.State.Two;
         foreach (Ensures /*!*/ e in Ensures)
@@ -3269,6 +3269,23 @@ namespace Microsoft.Boogie
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitProcedure(this);
+    }
+  }
+
+  public class YieldInvariant : Procedure
+  {
+    private int layerNum;
+
+    public int LayerNum
+    {
+      get { return layerNum; }
+      set { layerNum = value; }
+    }
+
+    public YieldInvariant(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
+      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), requires, new List<IdentifierExpr>(),
+        requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
+    {
     }
   }
 

@@ -297,8 +297,8 @@ modifies VoteChannel, DecisionChannel, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yield_invariant} {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
-requires Init(pids, RequestChannel, VoteChannel, DecisionChannel, decisions);
+yield invariant {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
+invariant Init(pids, RequestChannel, VoteChannel, DecisionChannel, decisions);
 
 procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pids}{:refines "MAIN1"}
 main ({:linear_in "pid"} pids:[int]bool)
@@ -351,8 +351,8 @@ requires {:layer 1} pid(pid);
   call set_decision(pid, d);
 }
 
-procedure {:yield_invariant} {:layer 1} YieldCoordinator();
-requires (forall vv:vote :: VoteChannel[vv] >= 0);
+yield invariant {:layer 1} YieldCoordinator();
+invariant (forall vv:vote :: VoteChannel[vv] >= 0);
 
 procedure {:yields}{:layer 1}{:yield_requires "YieldCoordinator"}{:refines "COORDINATOR1"}
 coordinator1 ({:linear_in "pid"} pid:int)

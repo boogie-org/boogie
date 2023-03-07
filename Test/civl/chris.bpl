@@ -20,5 +20,5 @@ procedure{:yields}{:layer 3}{:yield_preserves "Inv"} P()
   call Recover();
 }
 
-procedure {:yield_invariant} {:layer 3} Inv();
-requires x == 5;
+yield invariant {:layer 3} Inv();
+invariant x == 5;

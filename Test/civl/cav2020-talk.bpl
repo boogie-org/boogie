@@ -14,8 +14,8 @@ double_inc_x()
     call inc_x();
 }
 
-procedure {:layer 1} {:yield_invariant} yield_x(i: int);
-requires i <= x;
+yield invariant {:layer 1} yield_x(i: int);
+invariant i <= x;
 
 procedure {:yields} {:layer 1}
 {:yield_requires "yield_y", old(y)}
@@ -27,8 +27,8 @@ double_inc_y()
     call inc_y();
 }
 
-procedure {:layer 1} {:yield_invariant} yield_y(i: int);
-requires i <= y;
+yield invariant {:layer 1} yield_y(i: int);
+invariant i <= y;
 
 procedure {:yields} {:layer 1}
 {:yield_requires "yield_x", 0}

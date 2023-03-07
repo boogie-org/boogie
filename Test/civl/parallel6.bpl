@@ -3,7 +3,7 @@
 
 var {:layer 0,2} x: int;
 
-procedure {:yield_invariant} {:layer 1} Yield();
+yield invariant {:layer 1} Yield();
 
 procedure {:yields} {:layer 1} {:refines "atomic_incr_by_two"} incr_by_two_bad()
 {

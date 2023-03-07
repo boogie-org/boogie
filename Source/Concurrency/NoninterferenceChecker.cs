@@ -20,11 +20,9 @@ namespace Microsoft.Boogie
       CivlTypeChecker civlTypeChecker,
       int layerNum,
       AbsyMap absyMap,
-      Procedure proc,
+      YieldInvariant proc,
       List<Variable> declLocalVariables)
     {
-      Debug.Assert(civlTypeChecker.procToYieldInvariant.ContainsKey(proc));
-      
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       var domainToHoleVar = new Dictionary<LinearDomain, Variable>();
       Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();

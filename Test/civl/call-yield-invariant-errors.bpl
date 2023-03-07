@@ -3,8 +3,8 @@
 
 type {:linear "lin"} X = int;
 var {:layer 0,1} x:int;
-procedure {:yield_invariant} {:layer 1} linear_yield_x({:linear "lin"} n: int);
-requires x >= n;
+yield invariant {:layer 1} linear_yield_x({:linear "lin"} n: int);
+invariant x >= n;
 
 procedure {:yields} {:layer 1}
 p1({:linear "lin"} a: int, {:linear_in "lin"} b: int, c: int)

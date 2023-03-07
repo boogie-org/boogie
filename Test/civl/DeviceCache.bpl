@@ -15,14 +15,14 @@ function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
     (ghostLock == nil <==> currsize == newsize)
 }
 
-procedure {:yield_invariant} {:layer 1} Yield();
-requires Inv(ghostLock, currsize, newsize);
+yield invariant {:layer 1} Yield();
+invariant Inv(ghostLock, currsize, newsize);
 
-procedure {:yield_invariant} {:layer 1} YieldToReadCache({:linear "tid"} tid: X, old_currsize: int);
-requires tid != nil && old_currsize <= currsize;
+yield invariant {:layer 1} YieldToReadCache({:linear "tid"} tid: X, old_currsize: int);
+invariant tid != nil && old_currsize <= currsize;
 
-procedure {:yield_invariant} {:layer 1} YieldToWriteCache({:linear "tid"} tid: X, old_currsize: int, old_newsize: int);
-requires tid != nil && ghostLock == tid && old_currsize == currsize && old_newsize == newsize;
+yield invariant {:layer 1} YieldToWriteCache({:linear "tid"} tid: X, old_currsize: int, old_newsize: int);
+invariant tid != nil && ghostLock == tid && old_currsize == currsize && old_newsize == newsize;
 
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: X)
 ensures {:layer 1} xl != nil;

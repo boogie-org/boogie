@@ -3,8 +3,8 @@
 
 var {:layer 0,1} g: int;
 
-procedure {:yield_invariant} {:layer 1} Inv();
-requires g > 0;
+yield invariant {:layer 1} Inv();
+invariant g > 0;
 
 procedure {:yields} {:layer 1} foo()
 {

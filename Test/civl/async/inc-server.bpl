@@ -41,8 +41,8 @@ procedure {:yields}{:layer 9}{:yield_requires "Yield_9", p}{:refines "inc_x_high
   async call {:sync} Client_IncDone(p);
 }
 
-procedure {:yield_invariant} {:layer 9} Yield_9({:linear "lin"} p : int);
-requires perm(p) && x == y;
+yield invariant {:layer 9} Yield_9({:linear "lin"} p : int);
+invariant perm(p) && x == y;
 
 // ###########################################################################
 // Abstracted low-level atomic actions (i.e., enriched with permissions)

@@ -3,7 +3,7 @@
 type {:linear "Perm"} X = int;
 var {:layer 0,1} g:int;
 
-procedure {:yields} {:layer 1}  
+procedure {:yields} {:layer 1}
 {:yield_requires "Yield", permVar_in, 0}
 PB({:linear_in "Perm"} permVar_in:[int]bool)
 {
@@ -32,6 +32,6 @@ modifies g;
 
 procedure {:yields} {:layer 0} {:refines "AtomicIncrG"} IncrG();
 
-procedure {:yield_invariant} {:layer 1} Yield({:linear "Perm"} p: [int]bool, v: int);
-requires p[0];
-requires g == v;
+yield invariant {:layer 1} Yield({:linear "Perm"} p: [int]bool, v: int);
+invariant p[0];
+invariant g == v;
