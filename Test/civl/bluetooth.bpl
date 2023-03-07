@@ -30,12 +30,12 @@ var {:layer 1,2} usersInDriver: Lset Perm;
 var {:layer 0,1} pendingIo: int;
 var {:layer 0,1} stoppingEvent: bool;
 
-procedure {:yield_invariant} {:layer 2} Inv2();
-requires stopped ==> stoppingFlag;
+yield invariant {:layer 2} Inv2();
+invariant stopped ==> stoppingFlag;
 
-procedure {:yield_invariant} {:layer 1} Inv1();
-requires stoppingEvent ==> stoppingFlag && usersInDriver->dom == MapConst(false);
-requires pendingIo == Size(usersInDriver->dom) + (if stoppingFlag then 0 else 1);
+yield invariant {:layer 1} Inv1();
+invariant stoppingEvent ==> stoppingFlag && usersInDriver->dom == MapConst(false);
+invariant pendingIo == Size(usersInDriver->dom) + (if stoppingFlag then 0 else 1);
 
 // user code
 

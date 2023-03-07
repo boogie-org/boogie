@@ -156,5 +156,5 @@ requires {:layer 3} tid != nil;
 
 procedure {:yields} {:layer 2} Yield();
 
-procedure {:yield_invariant} {:layer 3} YieldCounter();
-requires counter == 0;
+yield invariant {:layer 3} YieldCounter();
+invariant counter == 0;

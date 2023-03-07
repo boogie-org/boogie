@@ -409,9 +409,9 @@ namespace Microsoft.Boogie
           return P;
         }
 
-        if (civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
+        if (callCmd.Proc is YieldInvariant yieldInvariant)
         {
-          return civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum == currLayerNum ? Y : P;
+          return yieldInvariant.LayerNum == currLayerNum ? Y : P;
         }
 
         YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
@@ -479,9 +479,9 @@ namespace Microsoft.Boogie
           return P;
         }
 
-        if (civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
+        if (callCmd.Proc is YieldInvariant yieldInvariant)
         {
-          return civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum == currLayerNum ? Y : P;
+          return yieldInvariant.LayerNum == currLayerNum ? Y : P;
         }
 
         YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
@@ -539,9 +539,7 @@ namespace Microsoft.Boogie
       private void CheckParCallCmd(ParCallCmd parCallCmd)
       {
         CheckNonMoverCondition(parCallCmd);
-        if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == Y &&
-                                               !civlTypeChecker.procToYieldInvariant.ContainsKey(
-                                                 callCmd.Proc)))
+        if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == Y && callCmd.Proc is not YieldInvariant))
         {
           if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == N))
           {
@@ -608,8 +606,7 @@ namespace Microsoft.Boogie
         {
           var label = CallCmdLabel(callCmd);
           Debug.Assert(label != N);
-          if (label == P || label == Y && civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc)
-          )
+          if (label == P || label == Y && callCmd.Proc is YieldInvariant)
           {
             continue;
           }

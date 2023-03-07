@@ -54,5 +54,5 @@ procedure {:intro} {:layer 0} intro_write_x (x':int)
 modifies x;
 { x := x'; }
 
-procedure {:yield_invariant} {:layer 1} Yield_xy();
-requires x == y;
+yield invariant {:layer 1} Yield_xy();
+invariant x == y;

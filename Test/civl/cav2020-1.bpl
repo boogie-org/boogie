@@ -13,8 +13,8 @@ incr_x(_x: int)
     call _incr_x();
 }
 
-procedure {:layer 1} {:yield_invariant} yield_x(_x: int);
-requires _x <= x;
+yield invariant {:layer 1} yield_x(_x: int);
+invariant _x <= x;
 
 procedure {:yields} {:layer 1}
 {:yield_preserves  "yield_y", _y}
@@ -25,8 +25,8 @@ incr_y(_y: int)
     call _incr_y();
 }
 
-procedure {:layer 1} {:yield_invariant} yield_y(_y: int);
-requires _y <= y;
+yield invariant {:layer 1} yield_y(_y: int);
+invariant _y <= y;
 
 procedure {:yields} {:layer 1}
 {:yield_requires "yield_x", 0}

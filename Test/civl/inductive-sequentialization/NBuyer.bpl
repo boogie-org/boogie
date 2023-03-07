@@ -408,8 +408,8 @@ modifies QuoteChannel, RemainderChannel, DecisionChannel, contribution;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yield_invariant} {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
-requires Init(pids, RequestChannel, QuoteChannel, RemainderChannel, DecisionChannel, contribution);
+yield invariant {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
+invariant Init(pids, RequestChannel, QuoteChannel, RemainderChannel, DecisionChannel, contribution);
 
 procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pids}{:refines "MAIN1"}
 main ({:linear_in "pid"} pids:[int]bool)

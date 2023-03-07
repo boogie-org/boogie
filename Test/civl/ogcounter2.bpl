@@ -75,8 +75,8 @@ EqualTo2({:linear "tid"} tid: X)
   call IncrBy2();
 }
 
-procedure {:yield_invariant} {:layer 5} YieldPre({:linear "tid"} tid: X);
-requires tid == MainTid && x == 0;
+yield invariant {:layer 5} YieldPre({:linear "tid"} tid: X);
+invariant tid == MainTid && x == 0;
 
-procedure {:yield_invariant} {:layer 5} YieldPost();
-requires x == 2;
+yield invariant {:layer 5} YieldPost();
+invariant x == 2;

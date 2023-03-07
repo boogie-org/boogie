@@ -139,23 +139,23 @@ function {:inline} Inv_9 (state: GState, B: [Pair]bool, xid: Xid) : bool
   && (xAllParticipantsInB(xid, B) || xUndecidedOrAborted(state[xid]))
 }
 
-procedure {:yield_invariant} {:layer 8} YieldInv_8 ();
-requires Inv_8(state, B, votes);
+yield invariant {:layer 8} YieldInv_8 ();
+invariant Inv_8(state, B, votes);
 
-procedure {:yield_invariant} {:layer 8} YieldUndecidedOrCommitted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
-requires pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
+yield invariant {:layer 8} YieldUndecidedOrCommitted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
+invariant pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
 
-procedure {:yield_invariant} {:layer 8} YieldAborted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
-requires pair(xid, mid, pair) && Aborted(state[xid][mid]);
+yield invariant {:layer 8} YieldAborted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
+invariant pair(xid, mid, pair) && Aborted(state[xid][mid]);
 
-procedure {:yield_invariant} {:layer 9} YieldInv_9 (xid: Xid);
-requires Inv_9(state, B, xid);
+yield invariant {:layer 9} YieldInv_9 (xid: Xid);
+invariant Inv_9(state, B, xid);
 
-procedure {:yield_invariant} {:layer 9} YieldConsistent_9 ();
-requires gConsistent(state);
+yield invariant {:layer 9} YieldConsistent_9 ();
+invariant gConsistent(state);
 
-procedure {:yield_invariant} {:layer 10} YieldConsistent_10 ();
-requires gConsistent(state);
+yield invariant {:layer 10} YieldConsistent_10 ();
+invariant gConsistent(state);
 
 // ###########################################################################
 // Main

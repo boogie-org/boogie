@@ -60,11 +60,11 @@ write ({:hide}{:linear "tid"} tid:Tid, v:int, w:int)
   call release(tid);
 }
 
-procedure {:yield_invariant}{:layer 2} SeqLockInv ();
-requires lock == None() <==> isEven(seq);
+yield invariant{:layer 2} SeqLockInv ();
+invariant lock == None() <==> isEven(seq);
 
-procedure {:yield_invariant}{:layer 2} HoldLock ({:linear "tid"} tid:Tid);
-requires lock == Some(tid);
+yield invariant{:layer 2} HoldLock ({:linear "tid"} tid:Tid);
+invariant lock == Some(tid);
 
 // =============================================================================
 // Abstractions of atomic actions with stronger mover types

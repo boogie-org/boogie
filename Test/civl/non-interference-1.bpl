@@ -19,8 +19,8 @@ modifies g;
 
 procedure {:yields} {:layer 0} {:refines "AtomicSet"} Set(v: int);
 
-procedure {:yield_invariant} {:layer 1} Yield();
-requires g == 3;
+yield invariant {:layer 1} Yield();
+invariant g == 3;
 
 procedure {:yields} {:layer 1} {:yield_ensures "Yield"} PC()
 {

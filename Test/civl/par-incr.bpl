@@ -18,7 +18,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicIncr2"} Incr2()
   par Incr() | Incr();
 }
 
-procedure {:yield_invariant} {:layer 1} Yield();
+yield invariant {:layer 1} Yield();
 
 procedure {:atomic} {:layer 3} AtomicIncr4()
 modifies x;
@@ -28,6 +28,3 @@ procedure {:yields} {:layer 2} {:refines "AtomicIncr4"} Incr4()
 {
   par Incr2() | Incr2() | Yield();
 }
-
-
-
