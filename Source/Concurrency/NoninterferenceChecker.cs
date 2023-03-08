@@ -20,11 +20,9 @@ namespace Microsoft.Boogie
       CivlTypeChecker civlTypeChecker,
       int layerNum,
       AbsyMap absyMap,
-      Procedure proc,
+      YieldInvariant yieldInvariant,
       List<Variable> declLocalVariables)
     {
-      Debug.Assert(civlTypeChecker.procToYieldInvariant.ContainsKey(proc));
-      
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       var domainToHoleVar = new Dictionary<LinearDomain, Variable>();
       Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
@@ -38,7 +36,7 @@ namespace Microsoft.Boogie
         domainToHoleVar[domain] = inParam;
       }
 
-      foreach (Variable local in declLocalVariables.Union(proc.InParams).Union(proc.OutParams))
+      foreach (Variable local in declLocalVariables.Union(yieldInvariant.InParams).Union(yieldInvariant.OutParams))
       {
         var copy = CopyLocal(local);
         locals.Add(copy);
@@ -61,11 +59,11 @@ namespace Microsoft.Boogie
       var linearPermissionInstrumentation = new LinearPermissionInstrumentation(civlTypeChecker,
         layerNum, absyMap, domainToHoleVar, localVarMap);
       var yieldInfos = new List<YieldInfo>();
-      var noninterferenceCheckerName = $"yield_{proc.Name}";
-      if (proc.Requires.Count > 0)
+      var noninterferenceCheckerName = $"yield_{yieldInvariant.Name}";
+      if (yieldInvariant.Requires.Count > 0)
       {
-        var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(proc, true);
-        var yieldPredicates = proc.Requires.Select(requires =>
+        var disjointnessCmds = linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(yieldInvariant, true);
+        var yieldPredicates = yieldInvariant.Requires.Select(requires =>
           requires.Free
             ? (PredicateCmd)new AssumeCmd(requires.tok, requires.Condition)
             : (PredicateCmd)new AssertCmd(requires.tok, requires.Condition)).ToList();

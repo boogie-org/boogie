@@ -23,8 +23,8 @@ procedure {:yields}{:layer 9}{:yield_requires "Yield_9", p} main ({:linear_in "l
   async call {:sync} Server_Inc(p);
 }
 
-procedure {:yield_invariant} {:layer 9} Yield_9({:linear "lin"} p : int);
-requires perm(p) && x == y;
+yield invariant {:layer 9} Yield_9({:linear "lin"} p : int);
+invariant perm(p) && x == y;
 
 // ###########################################################################
 // Event Handlers
@@ -50,7 +50,7 @@ modifies x;
   call Yield_8();
 }
 
-procedure {:yield_invariant}{:layer 8} Yield_8 ();
+yield invariant{:layer 8} Yield_8 ();
 
 // ###########################################################################
 // Abstracted low-level atomic actions (i.e., enriched with permissions)

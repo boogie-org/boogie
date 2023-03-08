@@ -62,4 +62,4 @@ modifies x;
 procedure {:yields} {:layer 0} {:refines "INCR"} incr ();
 procedure {:yields} {:layer 0} {:refines "DECR"} decr ();
 
-procedure {:yield_invariant} {:layer 1} Yield();
+yield invariant {:layer 1} Yield();

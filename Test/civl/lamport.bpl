@@ -112,12 +112,12 @@ function ind_inv(done: [int]bool, y: [int]int, x: [int]int): bool
   safety(done, y) && x_inv(done, x)
 }
 
-procedure {:yield_invariant} {:layer 1} yield_ind_inv();
-requires ind_inv(done, y, x);
+yield invariant {:layer 1} yield_ind_inv();
+invariant ind_inv(done, y, x);
 
 // Dummy function to supply hints for quantifier reasoning
 function Trigger(i: int) : bool { true }
 
-procedure {:yield_invariant} {:layer 1} Yield(i: int);
-requires x[i] == 1;
-requires ind_inv(done, y, x);
+yield invariant {:layer 1} Yield(i: int);
+invariant x[i] == 1;
+invariant ind_inv(done, y, x);

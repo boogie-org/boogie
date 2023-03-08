@@ -7,11 +7,11 @@ var {:layer 0,2} a:[int]int;
 var {:layer 0,1} count: int;
 var {:layer 1,2} {:linear "tid"} unallocated:[int]bool;
 
-procedure {:yield_invariant} {:layer 1} Yield1();
-requires AllocInv(count, unallocated);
+yield invariant {:layer 1} Yield1();
+invariant AllocInv(count, unallocated);
 
-procedure {:yield_invariant} {:layer 2} Yield2({:linear "tid"} tid: int, v: int);
-requires a[tid] == v;
+yield invariant {:layer 2} Yield2({:linear "tid"} tid: int, v: int);
+invariant a[tid] == v;
 
 procedure {:yields} {:layer 2}
 {:yield_requires "Yield1"}

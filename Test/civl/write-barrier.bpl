@@ -17,8 +17,8 @@ function {:inline} Gray(i:int)    returns(bool) { i == 2 }
 function {:inline} Black(i:int)   returns(bool) { i >= 3 }
 function {:inline} WhiteOrLighter(i:int) returns(bool) { i <= 1 }
 
-procedure {:yield_invariant} {:layer 2} YieldColorOnlyGetsDarker(old_Color: int);
-requires Color >= old_Color;
+yield invariant {:layer 2} YieldColorOnlyGetsDarker(old_Color: int);
+invariant Color >= old_Color;
 
 procedure {:yields} {:layer 2}
 {:yield_requires "YieldColorOnlyGetsDarker", WHITE()}

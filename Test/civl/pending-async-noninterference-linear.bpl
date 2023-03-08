@@ -3,8 +3,8 @@
 type {:linear "tid"} X = int;
 var {:layer 0,1} x:[int]int;
 
-procedure {:yield_invariant} {:layer 1} yield_x({:linear "tid"} tid:int);
-requires x[tid] == 0;
+yield invariant {:layer 1} yield_x({:linear "tid"} tid:int);
+invariant x[tid] == 0;
 
 procedure {:atomic}{:layer 1} {:pending_async} A ({:linear "tid"} tid:int)
 modifies x;

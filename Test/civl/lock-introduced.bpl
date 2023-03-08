@@ -22,8 +22,8 @@ Customer({:linear "tid"} tid: X)
 function {:inline} InvLock(lock: X, b: bool) : bool
 { lock != nil <==> b }
 
-procedure {:yield_invariant} {:layer 2} Yield({:linear "tid"} tid: X);
-requires tid != nil && InvLock(lock, b);
+yield invariant {:layer 2} Yield({:linear "tid"} tid: X);
+invariant tid != nil && InvLock(lock, b);
 
 procedure {:right} {:layer 3} AtomicEnter({:linear "tid"} tid: X)
 modifies lock;

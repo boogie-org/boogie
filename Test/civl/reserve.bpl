@@ -37,16 +37,16 @@ function {:inline} BijectionInvariant(allocMap: Bijection): bool {
             allocMap->tidToPtr[allocMap->ptrToTid[ptr]] == ptr)
 }
 
-procedure {:yield_invariant} {:layer 1} YieldInvariant();
-requires 0 <= freeSpace;
-requires BijectionInvariant(allocMap);
-requires (forall {:pool "B"} y: int :: {:add_to_pool "B", y} isFree[y] ==> memAddr(y));
-requires MapDiff(allocMap->range, isFree) == MapConst(false);
-requires freeSpace == Size(MapDiff(isFree, allocMap->range));
+yield invariant {:layer 1} YieldInvariant();
+invariant 0 <= freeSpace;
+invariant BijectionInvariant(allocMap);
+invariant (forall {:pool "B"} y: int :: {:add_to_pool "B", y} isFree[y] ==> memAddr(y));
+invariant MapDiff(allocMap->range, isFree) == MapConst(false);
+invariant freeSpace == Size(MapDiff(isFree, allocMap->range));
 
-procedure {:yield_invariant} {:layer 1} YieldAllocMap({:linear "tid"} tid: Tid, status: bool, i: int);
-requires allocMap->domain[tid] == status;
-requires allocMap->domain[tid] ==> i <= allocMap->tidToPtr[tid];
+yield invariant {:layer 1} YieldAllocMap({:linear "tid"} tid: Tid, status: bool, i: int);
+invariant allocMap->domain[tid] == status;
+invariant allocMap->domain[tid] ==> i <= allocMap->tidToPtr[tid];
 
 function Size<T>([T]bool) returns (int);
 

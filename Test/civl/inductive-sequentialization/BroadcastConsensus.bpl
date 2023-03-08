@@ -190,8 +190,8 @@ modifies decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yield_invariant} {:layer 1} YieldInv();
-requires Inv(CH_low, CH);
+yield invariant {:layer 1} YieldInv();
+invariant Inv(CH_low, CH);
 
 function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
 {
@@ -211,11 +211,11 @@ procedure {:intro}{:layer 1} Snapshot() returns (snapshot:[pid][val]int)
   snapshot := CH_low;
 }
 
-procedure {:yield_invariant} {:layer 1}
+yield invariant {:layer 1}
 YieldInit({:linear "broadcast"} pidsBroadcast:[pid]bool, {:linear "collect"} pidsCollect:[pid]bool);
-requires pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
-requires (forall ii:pid :: CH_low[ii] == MultisetEmpty);
-requires CH == MultisetEmpty;
+invariant pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
+invariant (forall ii:pid :: CH_low[ii] == MultisetEmpty);
+invariant CH == MultisetEmpty;
 
 procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pidsBroadcast, pidsCollect}{:refines "MAIN"}
 Main({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)

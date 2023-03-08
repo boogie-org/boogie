@@ -30,11 +30,11 @@ procedure {:atomic}{:layer 1} ASSERTION()
 procedure {:yields}{:layer 0}{:refines "WRITE"} write();
 procedure {:yields}{:layer 0}{:refines "ASSERTION"} assertion();
 
-procedure {:yield_invariant}{:layer 1} Yield_P({:linear "tid"} tid1:int, {:linear "tid"} tid2:int);
-requires tid1 == 1;
-requires tid2 == 1;
-requires x == 0;
+yield invariant {:layer 1} Yield_P({:linear "tid"} tid1:int, {:linear "tid"} tid2:int);
+invariant tid1 == 1;
+invariant tid2 == 1;
+invariant x == 0;
 
-procedure {:yield_invariant}{:layer 1} Yield_Q({:linear "tid"} tid1:int);
-requires tid1 == 1;
-requires x == 0; // This precondition is not valid at the end of procedure P
+yield invariant {:layer 1} Yield_Q({:linear "tid"} tid1:int);
+invariant tid1 == 1;
+invariant x == 0; // This precondition is not valid at the end of procedure P

@@ -539,22 +539,6 @@ namespace Microsoft.Boogie
       });
     }
   }
-  
-  public class YieldInvariant
-  {
-    public Procedure proc;
-    private int layer;
-
-    public YieldInvariant(Procedure proc, int layer)
-    {
-      this.proc = proc;
-      this.layer = layer;
-      this.proc.Ensures.AddRange(this.proc.Requires.Select(requires =>
-        new Ensures(requires.tok, false, requires.Condition, null)));
-    }
-
-    public int LayerNum => layer;
-  }
 
   public class YieldingLoop
   {
