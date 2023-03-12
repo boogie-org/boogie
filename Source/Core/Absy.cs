@@ -3272,7 +3272,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class YieldInvariant : Procedure
+  public class YieldInvariantDecl : Procedure
   {
     private int layerNum;
 
@@ -3282,10 +3282,139 @@ namespace Microsoft.Boogie
       set { layerNum = value; }
     }
 
-    public YieldInvariant(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
+    public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
       base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), requires, new List<IdentifierExpr>(),
         requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
     {
+    }
+  }
+
+  public enum ActionQualifier
+  {
+      Async,
+      Invariant,
+      Link,
+      Proxy,
+      None
+  }
+
+  public class ActionDeclRef : Absy
+  {
+    public string actionName;
+    public ActionDecl actionDecl;
+
+    public ActionDeclRef(IToken tok, string name) : base(tok)
+    {
+      actionName = name;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      if (actionDecl != null)
+      {
+        return;
+      }
+      actionDecl = rc.LookUpProcedure(actionName) as ActionDecl;
+      if (actionDecl == null)
+      {
+        rc.Error(this, "undeclared action: {0}", actionName);
+      }
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      throw new NotImplementedException();
+    }
+  }
+
+  public enum MoverType
+  {
+    Non,
+    Right,
+    Left,
+    Both
+  }
+
+  public class ActionDecl : Procedure
+  {
+    private MoverType moverType;
+    private ActionQualifier actionQualifier;
+    private List<ActionDeclRef> creates;
+    private ActionDeclRef refinedAction;
+
+    public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
+      List<Variable> inParams, List<Variable> outParams, List<ActionDeclRef> creates, ActionDeclRef refinedAction,
+      List<IdentifierExpr> modifies, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
+      new List<Requires>(), modifies, new List<Ensures>(), kv)
+    {
+      this.moverType = moverType;
+      this.actionQualifier = actionQualifier;
+      this.creates = creates;
+      this.refinedAction = refinedAction;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      base.Resolve(rc);
+      if (moverType != MoverType.Non)
+      {
+        if (actionQualifier == ActionQualifier.Invariant)
+        {
+          rc.Error(this, "Mover may not be a invariant action");
+        }
+        if (actionQualifier == ActionQualifier.Link)
+        {
+          rc.Error(this, "Mover may not be a link action");
+        }
+        if (actionQualifier == ActionQualifier.Proxy)
+        {
+          rc.Error(this, "Mover may not be a proxy action");
+        }
+      }
+      if (creates.Any())
+      {
+        if (actionQualifier == ActionQualifier.Link)
+        {
+          rc.Error(this, "Link action may not create pending asyncs");
+        }
+        if (moverType == MoverType.Right || moverType == MoverType.Both)
+        {
+          rc.Error(this, "Right mover may not create pending asyncs");
+        }
+      }
+      creates.Iter(create => create.Resolve(rc));
+    }
+  }
+
+  public class YieldProcedureDecl : Procedure
+  {
+    private List<CallCmd> yieldRequires;
+    private List<CallCmd> yieldEnsures;
+    private ActionDeclRef refinedAction;
+
+    public YieldProcedureDecl(IToken tok, string name, List<Variable> inParams, List<Variable> outParams,
+      List<Requires> requires, List<CallCmd> yieldRequires, List<Ensures> ensures, List<CallCmd> yieldEnsures,
+      ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
+      requires, null, ensures, kv)
+    {
+      this.yieldRequires = yieldRequires;
+      this.yieldEnsures = yieldEnsures;
+      this.refinedAction = refinedAction;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      base.Resolve(rc);
+      yieldRequires.Iter(callCmd => callCmd.Resolve(rc));
+      yieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
+      refinedAction.Resolve(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      base.Typecheck(tc);
+      yieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
+      yieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
     }
   }
 

@@ -236,7 +236,7 @@ private class BvBounds : Expr {
 		Axiom/*!*/ ax;
 		List<Declaration/*!*/>/*!*/ ts;
 		DatatypeTypeCtorDecl dt;
-		YieldInvariant yi;
+		YieldInvariantDecl yi;
 		Procedure/*!*/ pr;
 		Implementation im;
 		Implementation/*!*/ nnim;
@@ -290,7 +290,7 @@ private class BvBounds : Expr {
 				break;
 			}
 			case 33: {
-				YieldInvariant(out yi);
+				YieldInvariantDecl(out yi);
 				Pgm.AddTopLevelDeclaration(yi); 
 				break;
 			}
@@ -540,7 +540,7 @@ private class BvBounds : Expr {
 		Expect(9);
 	}
 
-	void YieldInvariant(out YieldInvariant yieldInvariant) {
+	void YieldInvariantDecl(out YieldInvariantDecl yieldInvariant) {
 		List<Requires> invariants = new List<Requires>(); QKeyValue kv = null; IToken name = null; List<Variable> ins; 
 		Expect(33);
 		Expect(34);
@@ -553,7 +553,7 @@ private class BvBounds : Expr {
 		while (la.kind == 34) {
 			Invariant(invariants);
 		}
-		yieldInvariant = new YieldInvariant(name, name.val, ins, invariants, kv); 
+		yieldInvariant = new YieldInvariantDecl(name, name.val, ins, invariants, kv); 
 	}
 
 	void Procedure(out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl) {

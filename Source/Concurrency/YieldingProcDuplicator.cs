@@ -275,7 +275,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (newCall.Proc is YieldInvariant yieldInvariant)
+      if (newCall.Proc is YieldInvariantDecl yieldInvariant)
       {
         if (layerNum == yieldInvariant.LayerNum)
         {
@@ -398,7 +398,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          var yieldInvariant = (YieldInvariant)callCmd.Proc;
+          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.LayerNum)
           {
             callCmds.Add(callCmd);
