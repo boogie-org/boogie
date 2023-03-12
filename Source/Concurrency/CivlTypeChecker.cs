@@ -744,7 +744,7 @@ namespace Microsoft.Boogie
 
     private void TypeCheckYieldInvariants()
     {
-      foreach (var yieldInvariant in program.TopLevelDeclarations.OfType<YieldInvariant>())
+      foreach (var yieldInvariant in program.TopLevelDeclarations.OfType<YieldInvariantDecl>())
       {
         var layers = FindLayers(yieldInvariant.Attributes);
         if (layers.Count != 1)
@@ -965,7 +965,7 @@ namespace Microsoft.Boogie
               {
                 continue;
               }
-              var yieldInvariant = (YieldInvariant)callCmd.Proc;
+              var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
               var calleeLayerNum = yieldInvariant.LayerNum;
               if (calleeLayerNum <= yieldingLayer)
               {
@@ -1650,7 +1650,7 @@ namespace Microsoft.Boogie
           return;
         }
 
-        var yieldInvariant = civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariant>()
+        var yieldInvariant = civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>()
           .FirstOrDefault(proc => proc.Name == yieldInvariantProcName);
         if (yieldInvariant == null)
         {
@@ -1790,13 +1790,13 @@ namespace Microsoft.Boogie
         {
           yieldRequiresVisitor.Visit(callCmd);
           VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer,
-            ((YieldInvariant)callCmd.Proc).LayerNum);
+            ((YieldInvariantDecl)callCmd.Proc).LayerNum);
         }
 
         foreach (var callCmd in yieldEnsures)
         {
           VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer,
-            ((YieldInvariant)callCmd.Proc).LayerNum);
+            ((YieldInvariantDecl)callCmd.Proc).LayerNum);
         }
 
         yieldingProc = null;
@@ -1988,7 +1988,7 @@ namespace Microsoft.Boogie
           "At most one arm of a parallel call can refine the specification action");
         
         HashSet<Variable> parallelCallInvars = new HashSet<Variable>();
-        foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => callCmd.Proc is not YieldInvariant))
+        foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => callCmd.Proc is not YieldInvariantDecl))
         {
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
@@ -2009,7 +2009,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => callCmd.Proc is YieldInvariant))
+        foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => callCmd.Proc is YieldInvariantDecl))
         {
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
@@ -2037,7 +2037,7 @@ namespace Microsoft.Boogie
         {
           VisitYieldingProcCallCmd(call, callerProc, civlTypeChecker.procToYieldingProc[call.Proc]);
         }
-        else if (call.Proc is YieldInvariant yieldInvariant)
+        else if (call.Proc is YieldInvariantDecl yieldInvariant)
         {
           VisitYieldInvariantCallCmd(call, callerProc.upperLayer, yieldInvariant.LayerNum);
         }
@@ -2295,7 +2295,7 @@ namespace Microsoft.Boogie
             }
             else
             {
-              Debug.Assert(callCmd.Proc is YieldInvariant ||
+              Debug.Assert(callCmd.Proc is YieldInvariantDecl ||
                            civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc));
             }
 

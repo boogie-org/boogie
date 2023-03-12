@@ -409,7 +409,7 @@ namespace Microsoft.Boogie
           return P;
         }
 
-        if (callCmd.Proc is YieldInvariant yieldInvariant)
+        if (callCmd.Proc is YieldInvariantDecl yieldInvariant)
         {
           return yieldInvariant.LayerNum == currLayerNum ? Y : P;
         }
@@ -479,7 +479,7 @@ namespace Microsoft.Boogie
           return P;
         }
 
-        if (callCmd.Proc is YieldInvariant yieldInvariant)
+        if (callCmd.Proc is YieldInvariantDecl yieldInvariant)
         {
           return yieldInvariant.LayerNum == currLayerNum ? Y : P;
         }
@@ -539,7 +539,7 @@ namespace Microsoft.Boogie
       private void CheckParCallCmd(ParCallCmd parCallCmd)
       {
         CheckNonMoverCondition(parCallCmd);
-        if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == Y && callCmd.Proc is not YieldInvariant))
+        if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == Y && callCmd.Proc is not YieldInvariantDecl))
         {
           if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == N))
           {
@@ -606,7 +606,7 @@ namespace Microsoft.Boogie
         {
           var label = CallCmdLabel(callCmd);
           Debug.Assert(label != N);
-          if (label == P || label == Y && callCmd.Proc is YieldInvariant)
+          if (label == P || label == Y && callCmd.Proc is YieldInvariantDecl)
           {
             continue;
           }

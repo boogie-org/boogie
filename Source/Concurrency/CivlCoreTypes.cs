@@ -5,14 +5,6 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-  public enum MoverType
-  {
-    Non,
-    Right,
-    Left,
-    Both
-  }
-
   public class LayerRange
   {
     public static int Min = 0;

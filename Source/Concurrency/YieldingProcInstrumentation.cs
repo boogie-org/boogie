@@ -199,7 +199,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      foreach (var yieldInvariant in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariant>())
+      foreach (var yieldInvariant in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>())
       {
         if (layerNum == yieldInvariant.LayerNum)
         {
@@ -229,7 +229,7 @@ namespace Microsoft.Boogie
       var inlinedYieldInvariants = new List<Cmd>();
       foreach (var callCmd in yieldInvariants)
       {
-        var yieldInvariant = (YieldInvariant)callCmd.Proc;
+        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
         if (layerNum == yieldInvariant.LayerNum)
         {
           Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
@@ -277,7 +277,7 @@ namespace Microsoft.Boogie
 
         foreach (var callCmd in GetYieldingProc(impl).yieldRequires)
         {
-          var yieldInvariant = (YieldInvariant)callCmd.Proc;
+          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.LayerNum)
           {
             Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(yieldInvariant.InParams
@@ -302,7 +302,7 @@ namespace Microsoft.Boogie
         var yieldingProc = GetYieldingProc(impl);
         foreach (var callCmd in yieldingProc.yieldRequires)
         {
-          var yieldInvariant = (YieldInvariant)callCmd.Proc;
+          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.LayerNum)
           {
             Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
@@ -319,7 +319,7 @@ namespace Microsoft.Boogie
 
         foreach (var callCmd in yieldingProc.yieldEnsures)
         {
-          var yieldInvariant = (YieldInvariant)callCmd.Proc;
+          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.LayerNum)
           {
             Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
