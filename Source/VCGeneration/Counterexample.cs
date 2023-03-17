@@ -742,12 +742,12 @@ namespace Microsoft.Boogie
     
     public virtual ProgressDelegate OnProgress => null;
 
-    public virtual void OnUnreachableCode(Implementation impl)
+    public virtual void OnUnreachableCode(ImplementationRun run)
     {
-      Contract.Requires(impl != null);
+      Contract.Requires(run != null);
     }
 
-    public virtual void OnWarning(string msg)
+    public virtual void OnWarning(CoreOptions options, string msg)
     {
       Contract.Requires(msg != null);
       switch (printProverWarnings)
@@ -755,7 +755,7 @@ namespace Microsoft.Boogie
         case CoreOptions.ProverWarnings.None:
           break;
         case CoreOptions.ProverWarnings.Stdout:
-          Console.WriteLine("Prover warning: " + msg);
+          options.OutputWriter.WriteLine("Prover warning: " + msg);
           break;
         case CoreOptions.ProverWarnings.Stderr:
           Console.Error.WriteLine("Prover warning: " + msg);

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.Boogie;
 using System.Collections.Generic;
+using System.IO;
 
 namespace CoreTests
 {
@@ -150,7 +151,7 @@ namespace CoreTests
     [Test()]
     public void ProtectedExprType()
     {
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       var e = GetUnTypedImmutableNAry();
 
       // Now Typecheck
@@ -164,7 +165,7 @@ namespace CoreTests
     [Test()]
     public void ProtectedExprChangeTypeFail()
     {
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       var e = GetUnTypedImmutableNAry();
 
       // Now Typecheck
@@ -181,7 +182,7 @@ namespace CoreTests
     [Test()]
     public void ProtectedExprTypeChangeTypeSucceed()
     {
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       var e = GetUnTypedImmutableNAry();
 
       // Now Typecheck

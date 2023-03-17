@@ -38,7 +38,7 @@ procedure Second(y: int)
 }
 ".Trim();
     Parser.Parse(programString, "fakeFilename10", out var program);
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.PrintErrorModel = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
     var tasks = engine.GetImplementationTasks(program);
@@ -72,7 +72,7 @@ procedure Bad2(y: int)
   assert 2 == 3;
 }
 ";
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.VcsCores = 4;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
@@ -97,7 +97,7 @@ Boogie program verifier finished with 0 verified, 2 errors
 
   [Test]
   public async Task ConcurrentInferAndVerifyCalls() {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.VcsCores = 4;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
@@ -142,7 +142,7 @@ Boogie program verifier finished with 1 verified, 1 error
   [Test]
   public async Task LoopInvariantDescriptions()
   {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
     var writer = new StringWriter();
@@ -189,7 +189,7 @@ Boogie program verifier finished with 0 verified, 1 error
 
   [Test]
   public async Task RunCancelRunCancel() {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.VcsCores = 1;
     options.CreateSolver = (_, _) => new UnsatSolver(new SemaphoreSlim(0));
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
@@ -224,7 +224,7 @@ procedure Foo(x: int) {
 
   [Test]
   public async Task SingleTaskRunRunCancelRunRun() {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     var returnCheckSat = new SemaphoreSlim(0);
     options.VcsCores = 1;
     options.CreateSolver = (_, _) => new UnsatSolver(returnCheckSat);
@@ -265,7 +265,7 @@ procedure Foo(x: int) {
   [Test]
   public async Task StatusTest() {
     
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.VcsCores = 1;
     options.VerifySnapshots = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
@@ -339,7 +339,7 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
   public async Task SolverCrash()
   {
     var printer = new NullPrinter();
-    var options = CommandLineOptions.FromArguments(printer);
+    var options = CommandLineOptions.FromArguments(TextWriter.Null, printer);
     options.CreateSolver = (_, _) => new OverflowSolver();
     var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
 

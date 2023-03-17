@@ -11,7 +11,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(cce.NonNullElements(args));
 
-      var options = new CommandLineOptions(new ConsolePrinter())
+      var options = new CommandLineOptions(Console.Out, new ConsolePrinter())
       {
         RunningBoogieFromCommandLine = true
       };

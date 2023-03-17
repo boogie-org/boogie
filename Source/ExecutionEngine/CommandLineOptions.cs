@@ -274,19 +274,21 @@ namespace Microsoft.Boogie
   /// </summary>
   public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions
   {
-    public static CommandLineOptions FromArguments(params string[] arguments)
+    public static CommandLineOptions FromArguments(TextWriter outputWriter, params string[] arguments)
     {
-      return FromArguments(new ConsolePrinter(), arguments);
+      return FromArguments(outputWriter, new ConsolePrinter(), arguments);
     }
 
-    public static CommandLineOptions FromArguments(OutputPrinter printer, params string[] arguments) {
-      var result = new CommandLineOptions(printer);
+    public static CommandLineOptions FromArguments(TextWriter outputWriter, OutputPrinter printer, params string[] arguments) {
+      var result = new CommandLineOptions(outputWriter, printer);
       result.Parse(arguments);
       return result;
     }
 
-    public CommandLineOptions(OutputPrinter printer)
-      : this("Boogie", "Boogie program verifier", printer) {
+    public CommandLineOptions(TextWriter outputWriter, OutputPrinter printer)
+      : this("Boogie", "Boogie program verifier", printer)
+    {
+      OutputWriter = outputWriter;
     }
 
     protected CommandLineOptions(string toolName, string descriptiveName, OutputPrinter printer)
@@ -580,6 +582,7 @@ namespace Microsoft.Boogie
 
     public ExecutionEngineOptions.ShowEnvironment ShowEnv { get; set; } = ExecutionEngineOptions.ShowEnvironment.DuringPrint;
 
+    public TextWriter OutputWriter { get; }
     public OutputPrinter Printer { get; set;  }
 
     public bool ShowVerifiedProcedureCount { get; set; } = true;

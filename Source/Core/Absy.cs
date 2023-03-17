@@ -335,7 +335,7 @@ namespace Microsoft.Boogie
           if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
           {
             // ignore this implementation
-            Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
+            rc.Options.OutputWriter.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
               ((Implementation) d).Name);
             rc.ErrorCount = e;
             continue;
@@ -3998,16 +3998,16 @@ namespace Microsoft.Boogie
 
         if (options.PrintWithUniqueASTIds)
         {
-          Console.WriteLine("Implementation.GetImplFormalMap on {0}:", this.Name);
+          options.OutputWriter.WriteLine("Implementation.GetImplFormalMap on {0}:", this.Name);
           using TokenTextWriter stream =
-            new TokenTextWriter("<console>", Console.Out, /*setTokens=*/false, /*pretty=*/ false, options);
+            new TokenTextWriter("<console>", options.OutputWriter, /*setTokens=*/false, /*pretty=*/ false, options);
           foreach (var e in map)
           {
-            Console.Write("  ");
+            options.OutputWriter.Write("  ");
             cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0);
-            Console.Write("  --> ");
+            options.OutputWriter.Write("  --> ");
             cce.NonNull((Expr) e.Value).Emit(stream);
-            Console.WriteLine();
+            options.OutputWriter.WriteLine();
           }
         }
 

@@ -261,7 +261,7 @@ namespace Microsoft.Boogie
       {
         if (options.Trace)
         {
-          Console.WriteLine("Interprocedural reachability: computing SCCs");
+          options.OutputWriter.WriteLine("Interprocedural reachability: computing SCCs");
         }
 
         Adjacency<Block> next = new Adjacency<Block>(reachabilityGraph.Successors);
@@ -296,7 +296,7 @@ namespace Microsoft.Boogie
 
         if (options.Trace)
         {
-          Console.WriteLine("Interprocedural reachability: SCCs computed!");
+          options.OutputWriter.WriteLine("Interprocedural reachability: SCCs computed!");
         }
       }
 
@@ -327,17 +327,14 @@ namespace Microsoft.Boogie
     {
       foreach (var n in nodes)
       {
-        Console.WriteLine(n.Label + " -> {");
+        options.OutputWriter.WriteLine(n.Label + " -> {");
         GotoCmd gotoCmd = n.TransferCmd as GotoCmd;
-        if (n != null)
+        foreach (Block m in gotoCmd.labelTargets)
         {
-          foreach (Block m in gotoCmd.labelTargets)
-          {
-            Console.WriteLine("   " + m.Label);
-          }
+          options.OutputWriter.WriteLine("   " + m.Label);
         }
 
-        Console.WriteLine("}");
+        options.OutputWriter.WriteLine("}");
       }
     }
 
