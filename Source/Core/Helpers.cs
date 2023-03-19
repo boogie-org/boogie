@@ -258,7 +258,7 @@ namespace Microsoft.Boogie
       {
         DateTime now = DateTime.UtcNow;
         TimeSpan timeSinceStartUp = now - StartUp;
-        Console.WriteLine(">>> {0}   [{1} s]", point, timeSinceStartUp.TotalSeconds);
+        options.OutputWriter.WriteLine(">>> {0}   [{1} s]", point, timeSinceStartUp.TotalSeconds);
       }
     }
 
