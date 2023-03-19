@@ -5,36 +5,36 @@ var {:layer 0,1} x:int;
 yield invariant {:layer 1} yield_x(n: int);
 invariant x >= n;
 
-procedure {:yields} {:layer 1}
-{:yield_requires "yield_x", 5}
-{:yield_ensures "yield_x", 8}
-p1()
+
+yield procedure {:layer 1} p1()
+requires call yield_x(5);
+ensures call yield_x(8);
 {
   call Incr(1);
   call Incr(1);
   call Incr(1);
 }
 
-procedure {:yields} {:layer 1}
+
+yield procedure {:layer 1} p2()
 // The following commented precondition is required to verify the postcondition.
-// {:yield_requires "yield_x", x}
-{:yield_ensures "yield_x", old(x) + 3}
-p2()
+// requires call yield_x(old(x));
+ensures call yield_x(old(x) + 3);
 {
   call Incr(1);
   call Incr(1);
   call Incr(1);
 }
 
-procedure {:yields} {:layer 1} q()
+yield procedure {:layer 1} q()
 {
   call Incr(3);
 }
 
-procedure {:both} {:layer 1,1} AtomicIncr(val: int)
+<-> action {:layer 1,1} AtomicIncr(val: int)
 modifies x;
 {
   x := x + val;
 }
 
-procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr(val: int);
+yield procedure {:layer 0} Incr(val: int) refines AtomicIncr;

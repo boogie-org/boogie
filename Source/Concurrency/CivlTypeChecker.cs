@@ -327,7 +327,7 @@ namespace Microsoft.Boogie
       return elimMap;
     }
 
-    private (ActionDecl, ActionDecl) TypeCheckAtomicAction(ActionDecl proc,
+    private ActionDecl TypeCheckAtomicAction(ActionDecl proc,
       Dictionary<ActionDecl, HashSet<string>> actionProcToCreates,
       Dictionary<string, ActionDecl> invariantActionProcs, 
       Dictionary<ActionDecl, HashSet<string>> invariantProcToNonElims, 
@@ -337,40 +337,30 @@ namespace Microsoft.Boogie
       var attrs = proc.FindAllAttributes(CivlAttributes.IS);
       if (attrs.Count == 0)
       {
-        return (null, null);
+        return null;
       }
       if (attrs.Count > 1)
       {
         Error(proc, "Expected no more than one IS attribute");
-        return (null, null);
-      }
-      if (pendingAsyncProcs.ContainsKey(proc.Name))
-      {
-        Error(proc, "Action transformed by IS cannot be a pending async");
-        return (null, null);
+        return null;
       }
       var kv = attrs[0];
-      if (!(kv.Params.Count == 2 &&
-            kv.Params[0] is string refinedActionName &&
-            kv.Params[1] is string invariantActionName))
+      if (!(kv.Params.Count == 1 &&
+            kv.Params[0] is string invariantActionName))
       {
-        Error(proc, "IS attribute expects two strings");
-        return (null, null);
+        Error(proc, "IS attribute expects one string");
+        return null;
       }
       var layer = actionProcToLayerRange[proc].upperLayerNum;
-      if (!atomicActionProcs.ContainsKey(refinedActionName))
-      {
-        Error(kv, $"Could not find refined atomic action {refinedActionName}");
-      }
       if (!invariantActionProcs.ContainsKey(invariantActionName))
       {
         Error(kv, $"Could not find invariant action {invariantActionName}");
       }
       if (checkingContext.ErrorCount > 0)
       {
-        return (null, null);
+        return null;
       }
-      var refinedProc = atomicActionProcs[refinedActionName];
+      var refinedProc = proc.refinedAction.actionDecl;
       if (!actionProcToLayerRange[refinedProc].Contains(layer + 1))
       {
         Error(kv, $"IS input does not exist at layer {layer + 1}");
@@ -401,15 +391,11 @@ namespace Microsoft.Boogie
       {
         Error(kv, $"Modifies list of {refinedProc.Name} must be subset of modifies list of invariant action {invariantProc.Name}");
       }
-      return (refinedProc, invariantProc);
+      return invariantProc;
     }
 
     private void TypeCheckActions()
     {
-      // Atomic action:
-      // * no {:yield}
-      // * {:right}, {:left}, {:both}, {:atomic}, {:intro}, {:IS_invariant}, {:IS_abstraction}, {:creates}
-      // * layer range
       var actionProcs = program.Procedures.OfType<ActionDecl>().ToHashSet();
       var actionProcToImpl = new Dictionary<ActionDecl, Implementation>();
       foreach (var impl in program.Implementations.Where(impl => impl.Proc is ActionDecl))
@@ -484,15 +470,13 @@ namespace Microsoft.Boogie
         });
       
       // type check atomic actions
-      var actionProcToRefinedProc = new Dictionary<ActionDecl, ActionDecl>();
       var actionProcToInvariantProc = new Dictionary<ActionDecl, ActionDecl>();
-      atomicActionProcs.Values.Iter(proc =>
+      atomicActionProcs.Values.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        var (refinedProc, invariantProc) = TypeCheckAtomicAction(proc, actionProcToCreates, invariantActionProcs,
+        var invariantProc = TypeCheckAtomicAction(proc, actionProcToCreates, invariantActionProcs,
           invariantProcToNonElims, atomicActionProcs, actionProcToLayerRange);
-        if (refinedProc != null)
+        if (invariantProc != null)
         {
-          actionProcToRefinedProc[proc] = refinedProc;
           actionProcToInvariantProc[proc] = invariantProc;
         }
       });
@@ -549,7 +533,7 @@ namespace Microsoft.Boogie
       // Two-step initialization process for actions
       // - First, create all actions.
       // - Second, initialize pendingAsync actions across all actions.
-      foreach (var proc in actionProcs.Except(actionProcToRefinedProc.Keys))
+      foreach (var proc in actionProcs.Where(proc => proc.refinedAction == null))
       {
         // In this loop, we create all introduction, invariant, and abstraction actions,
         // but only those atomic actions (pending async or otherwise) that do not refine
@@ -580,9 +564,9 @@ namespace Microsoft.Boogie
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
       // Earlier type checking guarantees that each such action is not a pending async action.
       // Therefore, only the type AtomicAction will be created now.
-      actionProcToRefinedProc.Keys.Iter(proc =>
+      actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        CreateActionsThatRefineAnotherAction(proc, actionProcToImpl, actionProcToLayerRange, actionProcToRefinedProc);
+        CreateActionsThatRefineAnotherAction(proc, actionProcToImpl, actionProcToLayerRange);
       });
       // All actions have been created. Now we initialize their pending asyncs and desugar primitive
       // invocations (for creating pending asyncs and setting choice) inside them. 
@@ -625,7 +609,7 @@ namespace Microsoft.Boogie
         inductiveSequentializations.Add(inductiveSequentialization);
         invariantProcToInductiveSequentialization[proc] = inductiveSequentialization;
       });
-      actionProcToRefinedProc.Keys.Iter(proc =>
+      actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
         var action = procToAtomicAction[proc];
         var invariantProc = actionProcToInvariantProc[proc];
@@ -636,15 +620,14 @@ namespace Microsoft.Boogie
 
     void CreateActionsThatRefineAnotherAction(ActionDecl proc, 
       Dictionary<ActionDecl, Implementation> actionProcToImpl,
-      Dictionary<ActionDecl, LayerRange> actionProcToLayerRange,
-      Dictionary<ActionDecl, ActionDecl> actionProcToRefinedProc)
+      Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
     {
       if (procToAtomicAction.ContainsKey(proc))
       {
         return;
       }
-      var refinedProc = actionProcToRefinedProc[proc];
-      CreateActionsThatRefineAnotherAction(refinedProc, actionProcToImpl, actionProcToLayerRange, actionProcToRefinedProc);
+      var refinedProc = proc.refinedAction.actionDecl;
+      CreateActionsThatRefineAnotherAction(refinedProc, actionProcToImpl, actionProcToLayerRange);
       var refinedAction = procToAtomicAction[refinedProc];
       Implementation impl = actionProcToImpl[proc];
       LayerRange layerRange = actionProcToLayerRange[proc];
@@ -715,28 +698,25 @@ namespace Microsoft.Boogie
       yieldRequires = new List<CallCmd>();
       yieldEnsures = new List<CallCmd>();
       
-      foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_REQUIRES))
+      foreach (var callCmd in proc.yieldRequires)
       {
-        var callCmd = YieldInvariantCallChecker.CheckRequires(this, attr, proc);
-        if (callCmd != null)
+        if (YieldInvariantCallChecker.CheckRequires(this, callCmd, proc))
         {
           yieldRequires.Add(StripOld(callCmd));
         }
       }
 
-      foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_ENSURES))
+      foreach (var callCmd in proc.yieldEnsures)
       {
-        var callCmd = YieldInvariantCallChecker.CheckEnsures(this, attr, proc);
-        if (callCmd != null)
+        if (YieldInvariantCallChecker.CheckEnsures(this, callCmd, proc))
         {
           yieldEnsures.Add(callCmd);
         }
       }
 
-      foreach (var attr in CivlAttributes.FindAllAttributes(proc, CivlAttributes.YIELD_PRESERVES))
+      foreach (var callCmd in proc.yieldPreserves)
       {
-        var callCmd = YieldInvariantCallChecker.CheckPreserves(this, attr, proc);
-        if (callCmd != null)
+        if (YieldInvariantCallChecker.CheckPreserves(this, callCmd, proc))
         {
           yieldRequires.Add(StripOld(callCmd));
           yieldEnsures.Add(callCmd);
@@ -770,15 +750,14 @@ namespace Microsoft.Boogie
         {
           localVarToLayerRange[param] = FindLocalVariableLayerRange(proc, param, upperLayer);
         }
-
-        string refinesName = QKeyValue.FindStringAttribute(proc.Attributes, CivlAttributes.REFINES);
+        
         MoverType moverType = proc.moverType;
 
         TypeCheckYieldingPrePostDecls(proc, out var yieldRequires, out var yieldEnsures);
 
-        if (refinesName != null) // proc is an action procedure
+        if (proc.refinedAction != null) // proc is an action procedure
         {
-          AtomicAction refinedAction = FindAtomicAction(refinesName);
+          AtomicAction refinedAction = FindAtomicAction(proc.refinedAction.actionName);
           if (refinedAction == null)
           {
             Error(proc, "Could not find refined atomic action");
@@ -878,6 +857,7 @@ namespace Microsoft.Boogie
           else
           {
             var layers = FindLayers(yieldCmd.Attributes);
+            header.Cmds.Remove(yieldCmd);
             if (layers.Any())
             {
               if (layers.Count > 1)
@@ -893,32 +873,33 @@ namespace Microsoft.Boogie
               }
               yieldingLayer = layers[0];
             }
-            var yieldInvariants = new List<CallCmd>();
-            foreach (var attr in CivlAttributes.FindAllAttributes(yieldCmd, CivlAttributes.YIELD_LOOP))
-            {
-              var callCmd = YieldInvariantCallChecker.CheckLoop(this, attr, header);
-              if (callCmd == null)
-              {
-                continue;
-              }
-              var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-              var calleeLayerNum = yieldInvariant.LayerNum;
-              if (calleeLayerNum <= yieldingLayer)
-              {
-                yieldInvariants.Add(callCmd);
-              }
-              else
-              {
-                Error(attr, $"Loop must yield at layer {calleeLayerNum} of the called yield invariant");
-              }
-            }
-            yieldingLoops[header] = new YieldingLoop(yieldingLayer, yieldInvariants);
-            header.Cmds.Remove(yieldCmd);
           }
+          var yieldInvariants = header.Cmds
+            .TakeWhile(cmd => cmd is CallCmd callCmd && callCmd.Proc is YieldInvariantDecl).OfType<CallCmd>()
+            .ToList();
+          header.Cmds.RemoveRange(0, yieldInvariants.Count);
+          if (yieldInvariants.Any() && yieldCmd != null)
+          {
+            Error(header, "Expected :yields attribute on this loop");
+          }
+          foreach (var callCmd in yieldInvariants.Where(callCmd => YieldInvariantCallChecker.CheckLoop(this, callCmd, header)))
+          {
+            var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
+            var calleeLayerNum = yieldInvariant.LayerNum;
+            if (calleeLayerNum <= yieldingLayer)
+            {
+              yieldInvariants.Add(callCmd);
+            }
+            else
+            {
+              Error(callCmd, $"Loop must yield at layer {calleeLayerNum} of the called yield invariant");
+            }
+          }
+          yieldingLoops[header] = new YieldingLoop(yieldingLayer, yieldInvariants);
 
           foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
           {
-            if (absyToLayerNums[predCmd].Max() <= yieldingLayer &&
+            if (absyToLayerNums[predCmd].Min() <= yieldingLayer &&
                 VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
             {
               Error(predCmd,
@@ -1433,11 +1414,10 @@ namespace Microsoft.Boogie
       private CivlTypeChecker civlTypeChecker;
       private int insideOldExpr;
       private int initialErrorCount;
-      private QKeyValue attr;
       private CallCmd callCmd;
       private ISet<Variable> availableLinearVars;
 
-      private bool ShouldAbort => callCmd == null || civlTypeChecker.checkingContext.ErrorCount != initialErrorCount;
+      private bool ShouldAbort => civlTypeChecker.checkingContext.ErrorCount != initialErrorCount;
 
       static List<LinearKind> RequiresAvailable = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_IN };
       static List<LinearKind> EnsuresAvailable = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
@@ -1445,45 +1425,43 @@ namespace Microsoft.Boogie
 
       private ConcurrencyOptions Options => civlTypeChecker.Options;
 
-      public static CallCmd CheckRequires(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
+      public static bool CheckRequires(CivlTypeChecker civlTypeChecker, CallCmd callCmd, Procedure caller)
       {
-        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, caller, RequiresAvailable);
-        return v.callCmd;
+        var v = new YieldInvariantCallChecker(civlTypeChecker, callCmd, caller, RequiresAvailable);
+        return !v.ShouldAbort;
       }
 
-      public static CallCmd CheckEnsures(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
+      public static bool CheckEnsures(CivlTypeChecker civlTypeChecker, CallCmd callCmd, Procedure caller)
       {
-        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, caller, EnsuresAvailable);
-        return v.callCmd;
+        var v = new YieldInvariantCallChecker(civlTypeChecker, callCmd, caller, EnsuresAvailable);
+        return !v.ShouldAbort;
       }
 
-      public static CallCmd CheckPreserves(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller)
+      public static bool CheckPreserves(CivlTypeChecker civlTypeChecker, CallCmd callCmd, Procedure caller)
       {
-        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, caller, PreservesAvailable);
-        return v.callCmd;
+        var v = new YieldInvariantCallChecker(civlTypeChecker, callCmd, caller, PreservesAvailable);
+        return !v.ShouldAbort;
       }
 
-      public static CallCmd CheckLoop(CivlTypeChecker civlTypeChecker, QKeyValue attr, Block loopHeader)
+      public static bool CheckLoop(CivlTypeChecker civlTypeChecker, CallCmd callCmd, Block loopHeader)
       {
         var availableLinearVars = civlTypeChecker.linearTypeChecker.AvailableLinearVars(loopHeader);
-        var v = new YieldInvariantCallChecker(civlTypeChecker, attr, availableLinearVars);
-        return v.callCmd;
+        var v = new YieldInvariantCallChecker(civlTypeChecker, callCmd, availableLinearVars);
+        return !v.ShouldAbort;
       }
 
-      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, ISet<Variable> availableLinearVars)
+      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, CallCmd callCmd, ISet<Variable> availableLinearVars)
       {
         this.civlTypeChecker = civlTypeChecker;
-        this.attr = attr;
+        this.callCmd = callCmd;
         this.availableLinearVars = availableLinearVars;
         this.insideOldExpr = 0;
         this.initialErrorCount = civlTypeChecker.checkingContext.ErrorCount;
-        this.callCmd = null;
-
         Check();
       }
 
-      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, QKeyValue attr, Procedure caller, List<LinearKind> kinds)
-        : this(civlTypeChecker, attr,
+      private YieldInvariantCallChecker(CivlTypeChecker civlTypeChecker, CallCmd callCmd, Procedure caller, List<LinearKind> kinds)
+        : this(civlTypeChecker, callCmd,
             new HashSet<Variable>(
               caller.InParams.Union(caller.OutParams).Where(p => kinds.Contains(LinearDomainCollector.FindLinearKind(p)))
             )
@@ -1491,69 +1469,11 @@ namespace Microsoft.Boogie
 
       private void Check()
       {
-        ParseAttribute();
-        if (ShouldAbort) { callCmd = null; return; }
         civlTypeChecker.linearTypeChecker.VisitCallCmd(callCmd);
-        if (ShouldAbort) { callCmd = null; return; }
+        if (ShouldAbort) { return; }
         Visit(callCmd);
-        if (ShouldAbort) { callCmd = null; return; }
+        if (ShouldAbort) { return; }
         CheckLinearParameters();
-        if (ShouldAbort) { callCmd = null; return; }
-      }
-
-      private void ParseAttribute()
-      {
-        if (attr.Params.Count == 0)
-        {
-          civlTypeChecker.Error(attr, "A yield invariant name must be provided");
-          return;
-        }
-
-        if (!(attr.Params[0] is string yieldInvariantProcName))
-        {
-          civlTypeChecker.Error(attr, $"Illegal yield invariant name: {attr.Params[0]}");
-          return;
-        }
-
-        var yieldInvariant = civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>()
-          .FirstOrDefault(proc => proc.Name == yieldInvariantProcName);
-        if (yieldInvariant == null)
-        {
-          civlTypeChecker.Error(attr, $"Yield invariant {yieldInvariantProcName} does not exist");
-          return;
-        }
-
-        var exprs = new List<Expr>();
-        for (int i = 1; i < attr.Params.Count; i++)
-        {
-          if (attr.Params[i] is Expr expr)
-          {
-            exprs.Add(expr);
-          }
-          else
-          {
-            civlTypeChecker.Error(attr, $"Illegal expression: {attr.Params[i]}");
-          }
-        }
-
-        if (exprs.Count + 1 != attr.Params.Count)
-        {
-          // Error added in the loop above
-          return;
-        }
-
-        if (exprs.Count != yieldInvariant.InParams.Count)
-        {
-          civlTypeChecker.Error(attr, $"Incorrect number of arguments to yield invariant {yieldInvariant.Name}");
-          return;
-        }
-
-        callCmd = new CallCmd(attr.tok, yieldInvariant.Name, exprs, new List<IdentifierExpr>()) { Proc = yieldInvariant };
-
-        if (CivlUtil.ResolveAndTypecheck(Options, callCmd) != 0)
-        {
-          callCmd = null;
-        }
       }
 
       public override Expr VisitOldExpr(OldExpr node)

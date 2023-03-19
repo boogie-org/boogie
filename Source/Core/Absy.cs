@@ -3315,10 +3315,6 @@ namespace Microsoft.Boogie
       {
         rc.Error(this, "undeclared action: {0}", actionName);
       }
-      else if (actionDecl.actionQualifier != ActionQualifier.Async)
-      {
-        rc.Error(this, $"{actionName} in creates list must be an async action");
-      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -3383,7 +3379,22 @@ namespace Microsoft.Boogie
           rc.Error(this, "Right mover may not create pending asyncs");
         }
       }
-      creates.Iter(create => create.Resolve(rc));
+      creates.Iter(create =>
+      {
+        create.Resolve(rc);
+        if (create.actionDecl.actionQualifier != ActionQualifier.Async)
+        {
+          rc.Error(this, $"{create.actionName} in creates list must be an async action");
+        }
+      });
+      if (refinedAction != null)
+      {
+        refinedAction.Resolve(rc);
+        if (actionQualifier == ActionQualifier.Async)
+        {
+          rc.Error(this, "Action transformed by IS cannot be a pending async");
+        }
+      }
     }
   }
   
@@ -3392,24 +3403,30 @@ namespace Microsoft.Boogie
     public MoverType moverType;
     public List<CallCmd> yieldRequires;
     public List<CallCmd> yieldEnsures;
+    public List<CallCmd> yieldPreserves;
     public ActionDeclRef refinedAction;
 
     public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams, List<Variable> outParams,
-      List<Requires> requires, List<CallCmd> yieldRequires, List<Ensures> ensures, List<CallCmd> yieldEnsures,
+      List<Requires> requires, List<Ensures> ensures, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
       requires, new List<IdentifierExpr>(), ensures, kv)
     {
       this.moverType = moverType;
       this.yieldRequires = yieldRequires;
       this.yieldEnsures = yieldEnsures;
+      this.yieldPreserves = yieldPreserves;
       this.refinedAction = refinedAction;
     }
 
     public override void Resolve(ResolutionContext rc)
     {
       base.Resolve(rc);
+      var oldStateMode = rc.StateMode;
+      rc.StateMode = ResolutionContext.State.Two;
       yieldRequires.Iter(callCmd => callCmd.Resolve(rc));
       yieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
+      yieldPreserves.Iter(callCmd => callCmd.Resolve(rc));
+      rc.StateMode = oldStateMode;
       if (refinedAction != null)
       {
         if (moverType != MoverType.None)
@@ -3425,6 +3442,7 @@ namespace Microsoft.Boogie
       base.Typecheck(tc);
       yieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
       yieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
+      yieldPreserves.Iter(callCmd => callCmd.Typecheck(tc));
     }
   }
 

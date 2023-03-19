@@ -780,6 +780,10 @@ namespace Microsoft.Boogie
 
           // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
           List<Cmd> ssHead = new List<Cmd>();
+          foreach (CallCmd yield in wcmd.Yields)
+          {
+            ssHead.Add(yield);
+          }
           foreach (PredicateCmd inv in wcmd.Invariants)
           {
             ssHead.Add(inv);

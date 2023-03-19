@@ -9,11 +9,6 @@ namespace Microsoft.Boogie
     public const string LAYER = "layer";
 
     public const string YIELDS = "yields";
-    
-    public const string YIELD_REQUIRES = "yield_requires";
-    public const string YIELD_ENSURES = "yield_ensures";
-    public const string YIELD_PRESERVES = "yield_preserves";
-    public const string YIELD_LOOP = "yield_loop";
 
     public const string REFINES = "refines";
     public const string HIDE = "hide";
@@ -34,7 +29,6 @@ namespace Microsoft.Boogie
     {
       LAYER,
       YIELDS,
-      YIELD_REQUIRES, YIELD_ENSURES, YIELD_PRESERVES, YIELD_LOOP,
       REFINES, HIDE,
       LEMMA,
       PENDING_ASYNC, SYNC,
