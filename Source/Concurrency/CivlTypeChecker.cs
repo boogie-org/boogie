@@ -327,56 +327,31 @@ namespace Microsoft.Boogie
       return elimMap;
     }
 
-    private ActionDecl TypeCheckAtomicAction(ActionDecl proc,
+    private void TypeCheckAtomicAction(ActionDecl proc,
       Dictionary<ActionDecl, HashSet<string>> actionProcToCreates,
       Dictionary<string, ActionDecl> invariantActionProcs, 
       Dictionary<ActionDecl, HashSet<string>> invariantProcToNonElims, 
       Dictionary<string, ActionDecl> atomicActionProcs, 
       Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
     {
-      var attrs = proc.FindAllAttributes(CivlAttributes.IS);
-      if (attrs.Count == 0)
-      {
-        return null;
-      }
-      if (attrs.Count > 1)
-      {
-        Error(proc, "Expected no more than one IS attribute");
-        return null;
-      }
-      var kv = attrs[0];
-      if (!(kv.Params.Count == 1 &&
-            kv.Params[0] is string invariantActionName))
-      {
-        Error(proc, "IS attribute expects one string");
-        return null;
-      }
       var layer = actionProcToLayerRange[proc].upperLayerNum;
-      if (!invariantActionProcs.ContainsKey(invariantActionName))
-      {
-        Error(kv, $"Could not find invariant action {invariantActionName}");
-      }
-      if (checkingContext.ErrorCount > 0)
-      {
-        return null;
-      }
       var refinedProc = proc.refinedAction.actionDecl;
       if (!actionProcToLayerRange[refinedProc].Contains(layer + 1))
       {
-        Error(kv, $"IS input does not exist at layer {layer + 1}");
+        Error(refinedProc, $"Refined action does not exist at layer {layer + 1}");
       }
-      var invariantProc = invariantActionProcs[invariantActionName];
+      var invariantProc = proc.invariantAction.actionDecl;
       if (!actionProcToLayerRange[invariantProc].Contains(layer))
       {
-        Error(kv, $"IS invariant does not exist at layer {layer}");
+        Error(invariantProc, $"Invariant action does not exist at layer {layer}");
       }
       if (!actionProcToCreates[proc].IsSubsetOf(actionProcToCreates[invariantProc]))
       {
-        Error(kv, $"Pending asyncs created by IS input must be subset of those created by invariant action {invariantActionName}");
+        Error(proc, $"Pending asyncs created by refining action must be subset of those created by invariant action {invariantProc.Name}");
       }
       if (!actionProcToCreates[refinedProc].SetEquals(invariantProcToNonElims[invariantProc]))
       {
-        Error(kv, $"Pending asyncs created by IS output must be the same as those not eliminated by invariant action {invariantActionName}");
+        Error(refinedProc, $"Pending asyncs created by refined action must be the same as those not eliminated by invariant action {invariantProc.Name}");
       }
       CheckInductiveSequentializationAbstractionSignature(proc, invariantProc);
       CheckInductiveSequentializationAbstractionSignature(proc, refinedProc);
@@ -385,13 +360,12 @@ namespace Microsoft.Boogie
       var invariantProcModifies = new HashSet<Variable>(invariantProc.Modifies.Select(ie => ie.Decl));
       if (!procModifies.IsSubsetOf(invariantProcModifies))
       {
-        Error(kv, $"Modifies list of {proc.Name} must be subset of modifies list of invariant action {invariantProc.Name}");
+        Error(proc, $"Modifies of {proc.Name} must be subset of modifies of {invariantProc.Name}");
       }
       if (!refinedProcModifies.IsSubsetOf(invariantProcModifies))
       {
-        Error(kv, $"Modifies list of {refinedProc.Name} must be subset of modifies list of invariant action {invariantProc.Name}");
+        Error(refinedProc, $"Modifies of {refinedProc.Name} must be subset of modifies of {invariantProc.Name}");
       }
-      return invariantProc;
     }
 
     private void TypeCheckActions()
@@ -470,15 +444,10 @@ namespace Microsoft.Boogie
         });
       
       // type check atomic actions
-      var actionProcToInvariantProc = new Dictionary<ActionDecl, ActionDecl>();
       atomicActionProcs.Values.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        var invariantProc = TypeCheckAtomicAction(proc, actionProcToCreates, invariantActionProcs,
-          invariantProcToNonElims, atomicActionProcs, actionProcToLayerRange);
-        if (invariantProc != null)
-        {
-          actionProcToInvariantProc[proc] = invariantProc;
-        }
+        TypeCheckAtomicAction(proc, actionProcToCreates, invariantActionProcs, invariantProcToNonElims,
+          atomicActionProcs, actionProcToLayerRange);
       });
       if (checkingContext.ErrorCount > 0)
       {
@@ -612,7 +581,7 @@ namespace Microsoft.Boogie
       actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
         var action = procToAtomicAction[proc];
-        var invariantProc = actionProcToInvariantProc[proc];
+        var invariantProc = proc.invariantAction.actionDecl;
         var inductiveSequentialization = invariantProcToInductiveSequentialization[invariantProc];
         inductiveSequentialization.AddTarget(action);
       });
@@ -878,7 +847,7 @@ namespace Microsoft.Boogie
             .TakeWhile(cmd => cmd is CallCmd callCmd && callCmd.Proc is YieldInvariantDecl).OfType<CallCmd>()
             .ToList();
           header.Cmds.RemoveRange(0, yieldInvariants.Count);
-          if (yieldInvariants.Any() && yieldCmd != null)
+          if (yieldInvariants.Any() && yieldCmd == null)
           {
             Error(header, "Expected :yields attribute on this loop");
           }
@@ -886,11 +855,7 @@ namespace Microsoft.Boogie
           {
             var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
             var calleeLayerNum = yieldInvariant.LayerNum;
-            if (calleeLayerNum <= yieldingLayer)
-            {
-              yieldInvariants.Add(callCmd);
-            }
-            else
+            if (calleeLayerNum > yieldingLayer)
             {
               Error(callCmd, $"Loop must yield at layer {calleeLayerNum} of the called yield invariant");
             }

@@ -3338,9 +3338,10 @@ namespace Microsoft.Boogie
     public ActionQualifier actionQualifier;
     public List<ActionDeclRef> creates;
     public ActionDeclRef refinedAction;
+    public ActionDeclRef invariantAction;
 
     public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
-      List<Variable> inParams, List<Variable> outParams, List<ActionDeclRef> creates, ActionDeclRef refinedAction,
+      List<Variable> inParams, List<Variable> outParams, List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
       List<IdentifierExpr> modifies, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
       new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
@@ -3348,6 +3349,7 @@ namespace Microsoft.Boogie
       this.actionQualifier = actionQualifier;
       this.creates = creates;
       this.refinedAction = refinedAction;
+      this.invariantAction = invariantAction;
     }
 
     public override void Resolve(ResolutionContext rc)
@@ -3392,7 +3394,16 @@ namespace Microsoft.Boogie
         refinedAction.Resolve(rc);
         if (actionQualifier == ActionQualifier.Async)
         {
-          rc.Error(this, "Action transformed by IS cannot be a pending async");
+          rc.Error(this, "A refining action may not be async");
+        }
+      }
+      if (invariantAction != null)
+      {
+        invariantAction.Resolve(rc);
+        if (invariantAction.actionDecl != null &&
+            invariantAction.actionDecl.actionQualifier != ActionQualifier.Invariant)
+        {
+          rc.Error(this, "Expected an invariant action");
         }
       }
     }
@@ -3423,9 +3434,13 @@ namespace Microsoft.Boogie
       base.Resolve(rc);
       var oldStateMode = rc.StateMode;
       rc.StateMode = ResolutionContext.State.Two;
+      rc.PushVarContext();
+      RegisterFormals(InParams, rc);
       yieldRequires.Iter(callCmd => callCmd.Resolve(rc));
-      yieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
       yieldPreserves.Iter(callCmd => callCmd.Resolve(rc));
+      RegisterFormals(OutParams, rc);
+      yieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
+      rc.PopVarContext();
       rc.StateMode = oldStateMode;
       if (refinedAction != null)
       {

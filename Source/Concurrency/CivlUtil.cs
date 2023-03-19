@@ -336,7 +336,7 @@ namespace Microsoft.Boogie
       QKeyValue kv = null)
     {
       return new ActionDecl(Token.NoToken, name, MoverType.Both, ActionQualifier.None, inParams, outParams,
-        new List<ActionDeclRef>(), null, modifies, kv);
+        new List<ActionDeclRef>(), null, null, modifies, kv);
     }
     
     public static Procedure Procedure(string name,

@@ -21,8 +21,7 @@ namespace Microsoft.Boogie
 
     public const string PENDING_ASYNC = "pending_async";
     public const string SYNC = "sync";
-
-    public const string IS = "IS";
+    
     public const string ELIM = "elim";
 
     private static string[] CIVL_ATTRIBUTES =
@@ -32,7 +31,7 @@ namespace Microsoft.Boogie
       REFINES, HIDE,
       LEMMA,
       PENDING_ASYNC, SYNC,
-      IS, ELIM
+      ELIM
     };
 
     private static string[] LINEAR_ATTRIBUTES =

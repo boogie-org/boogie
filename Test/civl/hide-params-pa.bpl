@@ -1,9 +1,9 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure {:atomic}{:layer 2} {:pending_async} SKIP () returns () { }
+async action {:layer 2} SKIP () returns () { }
 
-procedure {:yields}{:layer 1}{:refines "SKIP"} b ()
+yield procedure {:layer 1} b () refines SKIP
 {
   var {:layer 0} b:bool;
   var {:layer 0} b':bool;
@@ -18,7 +18,7 @@ procedure {:yields}{:layer 1}{:refines "SKIP"} b ()
   // call i', returnedPAs := A(i);
 }
 
-procedure {:atomic}{:layer 1} A (i:int) returns (i':int)
+action {:layer 1} A (i:int) returns (i':int)
 {
   assert i > 0;
   assume i' > i;
@@ -26,8 +26,8 @@ procedure {:atomic}{:layer 1} A (i:int) returns (i':int)
 
 // In the refinement checker for a, the remaining formals of A must be
 // properly mapped to the matching formals in a.
-procedure {:yields}{:layer 0}{:refines "A"}
-a ({:hide} b:bool, i:int, {:hide} r:real) returns ({:hide} b':bool, i':int, {:hide} r':real)
+yield procedure {:layer 0}
+a ({:hide} b:bool, i:int, {:hide} r:real) returns ({:hide} b':bool, i':int, {:hide} r':real) refines A
 {
   i' := i + 1;
 }

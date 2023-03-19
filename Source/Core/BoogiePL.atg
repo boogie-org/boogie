@@ -655,6 +655,7 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl>
      List<IdentifierExpr> mods = new List<IdentifierExpr>();
      List<ActionDeclRef> creates = new List<ActionDeclRef>();
      ActionDeclRef refinedAction = null;
+     ActionDeclRef invariantAction = null;
      List<Variable> locals;
      StmtList stmtList;
      QKeyValue kv = null;
@@ -672,11 +673,12 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl>
   ProcFormals<true, true, out ins>
     [ "returns" ProcFormals<false, true, out outs> ]
     [ "creates" (. List<IToken> cs; .) Idents<out cs> (. foreach(IToken c in cs) { creates.Add(new ActionDeclRef(c, c.val)); } .)]
-    [ "refines" (. IToken m; .) Ident<out m> (. refinedAction = new ActionDeclRef(m, m.val); .) ]
+    [ "refines" (. IToken m; .) Ident<out m> (. refinedAction = new ActionDeclRef(m, m.val); .) 
+      "using" Ident<out m> (. invariantAction = new ActionDeclRef(m, m.val); .) ]
   { SpecModifies<mods> }
   ImplBody<out locals, out stmtList>
   (.
-     actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, mods, kv);
+     actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, invariantAction, mods, kv);
      impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
                                       locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
    .)
@@ -975,25 +977,21 @@ WhileCmd<out WhileCmd wcmd>
   "while"             (. x = t; .)
   Guard<out guard>    (. Contract.Assume(guard == null || cce.Owner.None(guard)); .)
   {                   (. isFree = false; z = la/*lookahead token*/; .)
-    (
-    [ "free"          (. isFree = true;  .)
-    ]
+    [ "free"          (. isFree = true;  .) ]
     "invariant"
     { Attribute<ref kv> }
-    Expression<out e> (. if (isFree) {
-                           invariants.Add(new AssumeCmd(z, e, kv));
-                         } else {
-                           invariants.Add(new AssertCmd(z, e, kv));
-                         }
-						 kv = null;
-                      .)
-    ";"
-    )
-    |
     (
-    "yield" CallCmd<out cmd> (. yields.Add((CallCmd)cmd); .)
-    ";"
+      Expression<out e> (. if (isFree) {
+                             invariants.Add(new AssumeCmd(z, e, kv));
+                           } else {
+                             invariants.Add(new AssertCmd(z, e, kv));
+                           }
+						   kv = null;
+                        .)
+      |
+      CallCmd<out cmd>  (. yields.Add((CallCmd)cmd); .)
     )
+    ";"
   }
   "{"
   StmtList<out body>  (. wcmd = new WhileCmd(x, guard, invariants, yields, body); .)

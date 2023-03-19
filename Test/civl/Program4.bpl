@@ -5,7 +5,6 @@ var {:layer 0,1} x:int;
 yield invariant {:layer 1} yield_x(n: int);
 invariant x >= n;
 
-
 yield procedure {:layer 1} p1()
 requires call yield_x(5);
 ensures call yield_x(8);
@@ -14,7 +13,6 @@ ensures call yield_x(8);
   call Incr(1);
   call Incr(1);
 }
-
 
 yield procedure {:layer 1} p2()
 requires call yield_x(old(x));
