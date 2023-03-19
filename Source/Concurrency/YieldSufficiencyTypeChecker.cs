@@ -60,7 +60,7 @@ namespace Microsoft.Boogie
     {
       switch (moverType)
       {
-        case MoverType.Non:
+        case MoverType.Atomic:
           return N;
         case MoverType.Both:
           return B;
@@ -279,7 +279,7 @@ namespace Microsoft.Boogie
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
       {
-        if (yieldingProc.moverType == MoverType.Non && simulationRelation[initialState].Count == 0)
+        if (yieldingProc.moverType == MoverType.Atomic && simulationRelation[initialState].Count == 0)
         {
           return false;
         }

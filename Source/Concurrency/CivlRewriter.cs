@@ -7,8 +7,8 @@ namespace Microsoft.Boogie
   {
     public static void AddPendingAsyncTypes(Program program)
     {
-      var pendingAsyncProcs = program.TopLevelDeclarations.OfType<Procedure>()
-        .Where(proc => proc.HasAttribute(CivlAttributes.PENDING_ASYNC)).ToList();
+      var pendingAsyncProcs = program.TopLevelDeclarations.OfType<ActionDecl>()
+        .Where(proc => proc.actionQualifier == ActionQualifier.Async).ToList();
       var datatypeTypeCtorDecls = pendingAsyncProcs.Select(CreatePendingAsyncType);
       program.AddTopLevelDeclarations(datatypeTypeCtorDecls);
     }

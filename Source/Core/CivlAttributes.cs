@@ -15,13 +15,6 @@ namespace Microsoft.Boogie
     public const string YIELD_PRESERVES = "yield_preserves";
     public const string YIELD_LOOP = "yield_loop";
 
-    public const string INTRO = "intro";
-
-    public const string ATOMIC = "atomic";
-    public const string LEFT = "left";
-    public const string RIGHT = "right";
-    public const string BOTH = "both";
-
     public const string REFINES = "refines";
     public const string HIDE = "hide";
 
@@ -33,11 +26,8 @@ namespace Microsoft.Boogie
 
     public const string PENDING_ASYNC = "pending_async";
     public const string SYNC = "sync";
-    public const string CREATES = "creates";
 
     public const string IS = "IS";
-    public const string IS_INVARIANT = "IS_invariant";
-    public const string IS_ABSTRACTION = "IS_abstraction";
     public const string ELIM = "elim";
 
     private static string[] CIVL_ATTRIBUTES =
@@ -45,12 +35,10 @@ namespace Microsoft.Boogie
       LAYER,
       YIELDS,
       YIELD_REQUIRES, YIELD_ENSURES, YIELD_PRESERVES, YIELD_LOOP,
-      INTRO,
-      ATOMIC, LEFT, RIGHT, BOTH,
       REFINES, HIDE,
       LEMMA,
-      PENDING_ASYNC, SYNC, CREATES,
-      IS, IS_INVARIANT, IS_ABSTRACTION, ELIM
+      PENDING_ASYNC, SYNC,
+      IS, ELIM
     };
 
     private static string[] LINEAR_ATTRIBUTES =

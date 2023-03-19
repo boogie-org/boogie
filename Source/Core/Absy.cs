@@ -3253,15 +3253,11 @@ namespace Microsoft.Boogie
         e.Typecheck(tc);
       }
 
-      bool oldYields = tc.Yields;
-      tc.Yields = QKeyValue.FindBoolAttribute(Attributes, CivlAttributes.YIELDS);
       foreach (Ensures /*!*/ e in Ensures)
       {
         Contract.Assert(e != null);
         e.Typecheck(tc);
       }
-
-      tc.Yields = oldYields;
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -3294,7 +3290,7 @@ namespace Microsoft.Boogie
       Async,
       Invariant,
       Link,
-      Proxy,
+      Abstract,
       None
   }
 
@@ -3319,6 +3315,10 @@ namespace Microsoft.Boogie
       {
         rc.Error(this, "undeclared action: {0}", actionName);
       }
+      else if (actionDecl.actionQualifier != ActionQualifier.Async)
+      {
+        rc.Error(this, $"{actionName} in creates list must be an async action");
+      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -3329,18 +3329,19 @@ namespace Microsoft.Boogie
 
   public enum MoverType
   {
-    Non,
+    Atomic,
     Right,
     Left,
-    Both
+    Both,
+    None
   }
 
   public class ActionDecl : Procedure
   {
-    private MoverType moverType;
-    private ActionQualifier actionQualifier;
-    private List<ActionDeclRef> creates;
-    private ActionDeclRef refinedAction;
+    public MoverType moverType;
+    public ActionQualifier actionQualifier;
+    public List<ActionDeclRef> creates;
+    public ActionDeclRef refinedAction;
 
     public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
       List<Variable> inParams, List<Variable> outParams, List<ActionDeclRef> creates, ActionDeclRef refinedAction,
@@ -3356,7 +3357,7 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       base.Resolve(rc);
-      if (moverType != MoverType.Non)
+      if (moverType != MoverType.None)
       {
         if (actionQualifier == ActionQualifier.Invariant)
         {
@@ -3366,7 +3367,7 @@ namespace Microsoft.Boogie
         {
           rc.Error(this, "Mover may not be a link action");
         }
-        if (actionQualifier == ActionQualifier.Proxy)
+        if (actionQualifier == ActionQualifier.Abstract)
         {
           rc.Error(this, "Mover may not be a proxy action");
         }
@@ -3385,18 +3386,20 @@ namespace Microsoft.Boogie
       creates.Iter(create => create.Resolve(rc));
     }
   }
-
+  
   public class YieldProcedureDecl : Procedure
   {
-    private List<CallCmd> yieldRequires;
-    private List<CallCmd> yieldEnsures;
-    private ActionDeclRef refinedAction;
+    public MoverType moverType;
+    public List<CallCmd> yieldRequires;
+    public List<CallCmd> yieldEnsures;
+    public ActionDeclRef refinedAction;
 
-    public YieldProcedureDecl(IToken tok, string name, List<Variable> inParams, List<Variable> outParams,
+    public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams, List<Variable> outParams,
       List<Requires> requires, List<CallCmd> yieldRequires, List<Ensures> ensures, List<CallCmd> yieldEnsures,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      requires, null, ensures, kv)
+      requires, new List<IdentifierExpr>(), ensures, kv)
     {
+      this.moverType = moverType;
       this.yieldRequires = yieldRequires;
       this.yieldEnsures = yieldEnsures;
       this.refinedAction = refinedAction;
@@ -3407,7 +3410,14 @@ namespace Microsoft.Boogie
       base.Resolve(rc);
       yieldRequires.Iter(callCmd => callCmd.Resolve(rc));
       yieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
-      refinedAction.Resolve(rc);
+      if (refinedAction != null)
+      {
+        if (moverType != MoverType.None)
+        {
+          rc.Error(this, "A yielding procedure cannot have both a refines annotation and a mover type");
+        }
+        refinedAction.Resolve(rc);
+      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -4016,7 +4026,7 @@ namespace Microsoft.Boogie
       List<IdentifierExpr> oldFrame = tc.Frame;
       bool oldYields = tc.Yields;
       tc.Frame = Proc.Modifies;
-      tc.Yields = QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS);
+      tc.Yields = Proc is YieldProcedureDecl;
       foreach (Block b in Blocks)
       {
         b.Typecheck(tc);

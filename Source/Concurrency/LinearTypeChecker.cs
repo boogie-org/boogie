@@ -339,7 +339,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      return civlTypeChecker.IsAction(enclosingProc) || civlTypeChecker.IsLemmaProcedure(enclosingProc);
+      return enclosingProc is ActionDecl || civlTypeChecker.IsLemmaProcedure(enclosingProc);
     }
 
     private IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
@@ -581,7 +581,7 @@ namespace Microsoft.Boogie
             Error(node, $"Primitive assigns to input variable: {formal}");
           }
           else if (modifiedArgument is GlobalVariable &&
-                   !civlTypeChecker.IsYieldingProcedure(enclosingProc) &&
+                   enclosingProc is not YieldProcedureDecl &&
                    enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
           {
             Error(node,
@@ -629,7 +629,7 @@ namespace Microsoft.Boogie
         {
           int? LayerNum(Procedure proc)
           {
-            if (!civlTypeChecker.IsYieldingProcedure(proc))
+            if (proc is not YieldProcedureDecl)
             {
               return null;
             }

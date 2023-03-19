@@ -1089,11 +1089,11 @@ namespace Microsoft.Boogie
   {
     [Peer] public Expr Guard;
 
-    public List<PredicateCmd /*!*/> /*!*/
-      Invariants;
+    public List<PredicateCmd> Invariants;
 
-    public StmtList /*!*/
-      Body;
+    public List<CallCmd> Yields;
+
+    public StmtList Body;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -1103,7 +1103,7 @@ namespace Microsoft.Boogie
     }
 
 
-    public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd /*!*/> /*!*/ invariants, StmtList /*!*/ body)
+    public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<CallCmd> yields, StmtList body)
       : base(tok)
     {
       Contract.Requires(cce.NonNullElements(invariants));
@@ -1111,6 +1111,7 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
       this.Guard = guard;
       this.Invariants = invariants;
+      this.Yields = yields;
       this.Body = body;
     }
 
@@ -2919,11 +2920,11 @@ namespace Microsoft.Boogie
 
         foreach (CallCmd callCmd in CallCmds)
         {
-          if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELDS) &&
-              callCmd.Proc is not YieldInvariantDecl)
+          if (callCmd.Proc is YieldProcedureDecl || callCmd.Proc is YieldInvariantDecl)
           {
-            tc.Error(callCmd, "target procedure of a parallel call must yield");
+            continue;
           }
+          tc.Error(callCmd, "target procedure of a parallel call must yield");
         }
       }
 
@@ -3315,8 +3316,7 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, "enclosing procedure of an async call must yield");
         }
-
-        if (!QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS))
+        if (Proc is not YieldProcedureDecl)
         {
           tc.Error(this, "target procedure of an async call must yield");
         }

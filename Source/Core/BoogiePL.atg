@@ -184,6 +184,8 @@ BoogiePL
      List<Declaration/*!*/>/*!*/ ts;
      DatatypeTypeCtorDecl dt;
      YieldInvariantDecl yi;
+     ActionDecl ac;
+     YieldProcedureDecl yp;
      Procedure/*!*/ pr;
      Implementation im;
      Implementation/*!*/ nnim;
@@ -210,7 +212,17 @@ BoogiePL
                                     Pgm.AddTopLevelDeclaration(v);
                                   }
                                .)
-  | YieldInvariantDecl<out yi> (. Pgm.AddTopLevelDeclaration(yi); .)
+  | ActionDecl<out ac, out im> (. Pgm.AddTopLevelDeclaration(ac); Pgm.AddTopLevelDeclaration(im); .)
+  | "yield" 
+    (
+      YieldInvariantDecl<out yi> (. Pgm.AddTopLevelDeclaration(yi); .)
+    | YieldProcedureDecl<out yp, out im>     
+                               (. Pgm.AddTopLevelDeclaration(yp);
+                                  if (im != null) {
+                                    Pgm.AddTopLevelDeclaration(im);
+                                  }
+                               .)
+    )
   | Procedure<out pr, out im>  (. Pgm.AddTopLevelDeclaration(pr);
                                    if (im != null) {
                                      Pgm.AddTopLevelDeclaration(im);
@@ -619,7 +631,7 @@ Constructor<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
 /*------------------------------------------------------------------------*/
 YieldInvariantDecl<out YieldInvariantDecl yieldInvariant>
 = (. List<Requires> invariants = new List<Requires>(); QKeyValue kv = null; IToken name = null; List<Variable> ins; .)
-  "yield" "invariant"
+  "invariant"
   { Attribute<ref kv> }
   Ident<out name>
   ProcFormals<true, true, out ins> ";"
@@ -633,6 +645,112 @@ Invariant<.List<Requires> invariants.>
     { Attribute<ref kv> }
     Proposition<out e> ";"  (. invariants.Add(new Requires(tok, false, e, null, kv)); .)
   )
+  .
+
+ActionDecl<out ActionDecl actionDecl, out Implementation impl>
+= (. IToken name = null;
+     MoverType moverType = MoverType.None;
+     ActionQualifier actionQualifier = ActionQualifier.None;
+     List<Variable> ins, outs = new List<Variable>();
+     List<IdentifierExpr> mods = new List<IdentifierExpr>();
+     List<ActionDeclRef> creates = new List<ActionDeclRef>();
+     ActionDeclRef refinedAction = null;
+     List<Variable> locals;
+     StmtList stmtList;
+     QKeyValue kv = null;
+   .)
+  [ ActionQualifierDecl<ref actionQualifier> ]
+  (. 
+    if (actionQualifier == ActionQualifier.None || actionQualifier == ActionQualifier.Async) {
+      moverType = MoverType.Atomic;
+    }
+  .)
+  [ MoverQualifier <ref moverType> ]
+  "action"
+  { Attribute<ref kv> }
+  Ident<out name>
+  ProcFormals<true, true, out ins>
+    [ "returns" ProcFormals<false, true, out outs> ]
+    [ "creates" (. List<IToken> cs; .) Idents<out cs> (. foreach(IToken c in cs) { creates.Add(new ActionDeclRef(c, c.val)); } .)]
+    [ "refines" (. IToken m; .) Ident<out m> (. refinedAction = new ActionDeclRef(m, m.val); .) ]
+  { SpecModifies<mods> }
+  ImplBody<out locals, out stmtList>
+  (.
+     actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, mods, kv);
+     impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+                                      locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
+   .)
+  .
+
+MoverQualifier<ref MoverType moverType>
+= (
+    "<-"  (. moverType = MoverType.Left; .)
+    | "->"  (. moverType = MoverType.Right; .)
+    | "<->" (. moverType = MoverType.Both; .)
+    | ">-<" (. moverType = MoverType.Atomic; .)
+  )
+  .
+ActionQualifierDecl<ref ActionQualifier actionQualifier>
+= (
+    "async" (. actionQualifier = ActionQualifier.Async; .)
+  | "invariant" (. actionQualifier = ActionQualifier.Invariant; .)
+  | "link" (. actionQualifier = ActionQualifier.Link; .)
+  | "abstract" (. actionQualifier = ActionQualifier.Abstract; .)
+  )
+  .
+
+YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
+= (. IToken name;
+     List<Variable> ins, outs = new List<Variable>();
+     IToken m;
+     MoverType moverType = MoverType.None;
+     ActionDeclRef refinedAction = null;
+     List<Requires> pre = new List<Requires>();
+     List<CallCmd> yieldPre = new List<CallCmd>();
+     List<Ensures> post = new List<Ensures>();
+     List<CallCmd> yieldPost = new List<CallCmd>();
+     List<Variable> locals = null;
+     StmtList stmtList = null;
+     QKeyValue kv = null;
+     impl = null;
+  .)
+  [ MoverQualifier <ref moverType> ]
+  "procedure"
+  { Attribute<ref kv> }
+    Ident<out name>
+    ProcFormals<true, true, out ins>
+      [ "returns" ProcFormals<false, true, out outs> ]
+      [ "refines" Ident<out m> (. refinedAction = new ActionDeclRef(m, m.val); .) ]
+    ( ";"
+      { SpecYieldPrePost<pre, yieldPre, post, yieldPost> }
+    | { SpecYieldPrePost<pre, yieldPre, post, yieldPost> }
+      ImplBody<out locals, out stmtList>
+      (.
+         impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+                                   locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
+      .)
+    )
+    (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, yieldPre, post, yieldPost, refinedAction, kv); .)
+  .
+
+SpecYieldPrePost<.List<Requires> pre, List<CallCmd> yieldPre, List<Ensures> post, List<CallCmd> yieldPost.>
+= (. Expr e; Cmd cmd; Token tok = null; QKeyValue kv = null; .)
+  ( "requires"              (. tok = t; .)
+    ( 
+      { Attribute<ref kv> }
+      Proposition<out e>  (. pre.Add(new Requires(tok, false, e, null, kv)); .)
+      |
+      CallCmd<out cmd>        (. yieldPre.Add((CallCmd)cmd); .)
+    )
+  | "ensures"               (. tok = t; .)
+    (
+      { Attribute<ref kv> }
+      Proposition<out e>  (. post.Add(new Ensures(tok, false, e, null, kv)); .)
+      |
+      CallCmd<out cmd>        (. yieldPost.Add((CallCmd)cmd); .)
+    )
+  )
+  ";"
   .
 
 Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
@@ -694,17 +812,19 @@ ProcSignature<.bool allowWhereClausesOnFormals, out IToken/*!*/ name, out List<T
 
 
 Spec<.List<Requires>/*!*/ pre, List<IdentifierExpr>/*!*/ mods, List<Ensures>/*!*/ post.>
-= (.Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); List<IToken>/*!*/ ms; .)
-  ( "modifies"
-    [ Idents<out ms>        (. foreach(IToken/*!*/ m in ms){
-                                 Contract.Assert(m != null);
-                                 mods.Add(new IdentifierExpr(m, m.val));
-                               }
-                            .)
-    ] ";"
+=
+  (
+    SpecModifies<mods>
   | "free" SpecPrePost<true, pre, post>
   | SpecPrePost<false, pre, post>
   )
+  .
+
+SpecModifies<.List<IdentifierExpr> mods.>
+= (. List<IToken> ms; .)
+  "modifies"
+  [ Idents<out ms> (. foreach(IToken m in ms) { mods.Add(new IdentifierExpr(m, m.val)); } .) ]
+  ";"
   .
 
 SpecPrePost<.bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post.>
@@ -841,16 +961,18 @@ IfCmd<out IfCmd/*!*/ ifcmd>
   (. ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); .)
   .
 
-WhileCmd<out WhileCmd/*!*/ wcmd>
-= (. Contract.Ensures(Contract.ValueAtReturn(out wcmd) != null); IToken/*!*/ x;  Token z;
-     Expr guard;  Expr/*!*/ e;  bool isFree;
-     List<PredicateCmd/*!*/> invariants = new List<PredicateCmd/*!*/>();
-     StmtList/*!*/ body;
+WhileCmd<out WhileCmd wcmd>
+= (. Contract.Ensures(Contract.ValueAtReturn(out wcmd) != null); IToken x;  Token z;
+     Expr guard;  Expr e;  Cmd cmd;  bool isFree;
+     List<PredicateCmd> invariants = new List<PredicateCmd>();
+     List<CallCmd> yields = new List<CallCmd>();
+     StmtList body;
      QKeyValue kv = null;
   .)
   "while"             (. x = t; .)
   Guard<out guard>    (. Contract.Assume(guard == null || cce.Owner.None(guard)); .)
   {                   (. isFree = false; z = la/*lookahead token*/; .)
+    (
     [ "free"          (. isFree = true;  .)
     ]
     "invariant"
@@ -863,9 +985,15 @@ WhileCmd<out WhileCmd/*!*/ wcmd>
 						 kv = null;
                       .)
     ";"
+    )
+    |
+    (
+    "yield" CallCmd<out cmd> (. yields.Add((CallCmd)cmd); .)
+    ";"
+    )
   }
   "{"
-  StmtList<out body>  (. wcmd = new WhileCmd(x, guard, invariants, body); .)
+  StmtList<out body>  (. wcmd = new WhileCmd(x, guard, invariants, yields, body); .)
   .
 
 Guard<out Expr e>

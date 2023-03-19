@@ -64,7 +64,7 @@ namespace Microsoft.Boogie
 
   public abstract class Action
   {
-    public Procedure proc;
+    public ActionDecl proc;
     public Implementation impl;
     public LayerRange layerRange;
     public List<AssertCmd> gate;
@@ -76,7 +76,7 @@ namespace Microsoft.Boogie
     public List<AsyncAction> pendingAsyncs;
     public Function inputOutputRelation;
 
-    protected Action(Procedure proc, Implementation impl, LayerRange layerRange)
+    protected Action(ActionDecl proc, Implementation impl, LayerRange layerRange)
     {
       this.proc = proc;
       this.impl = impl;
@@ -333,7 +333,7 @@ namespace Microsoft.Boogie
      */
   public class IntroductionAction : Action
   {
-    public IntroductionAction(Procedure proc, Implementation impl, LayerRange layerRange) : base(proc, impl, layerRange)
+    public IntroductionAction(ActionDecl proc, Implementation impl, LayerRange layerRange) : base(proc, impl, layerRange)
     {
     }
 
@@ -352,7 +352,7 @@ namespace Microsoft.Boogie
     
     public Dictionary<Variable, Function> triggerFunctions;
 
-    public AtomicAction(Procedure proc, Implementation impl, LayerRange layerRange, MoverType moverType, AtomicAction refinedAction) : 
+    public AtomicAction(ActionDecl proc, Implementation impl, LayerRange layerRange, MoverType moverType, AtomicAction refinedAction) : 
       base(proc, impl, layerRange)
     {
       this.moverType = moverType;
@@ -451,7 +451,7 @@ namespace Microsoft.Boogie
     public Function pendingAsyncConst;
     public Function pendingAsyncIte;
 
-    public AsyncAction(CivlTypeChecker civlTypeChecker, Procedure proc, Implementation impl, LayerRange layerRange,
+    public AsyncAction(CivlTypeChecker civlTypeChecker, ActionDecl proc, Implementation impl, LayerRange layerRange,
       MoverType moverType) :
       base(proc, impl, layerRange, moverType, null)
     {
@@ -473,7 +473,7 @@ namespace Microsoft.Boogie
   {
     public DatatypeTypeCtorDecl choiceDatatypeTypeCtorDecl;
 
-    public InvariantAction(Procedure proc, Implementation impl, LayerRange layerRange) : base(proc, impl, layerRange)
+    public InvariantAction(ActionDecl proc, Implementation impl, LayerRange layerRange) : base(proc, impl, layerRange)
     {
     }
 
