@@ -1734,7 +1734,7 @@ namespace Microsoft.Boogie
 
       public override Cmd VisitParCallCmd(ParCallCmd node)
       {
-        Require(node.CallCmds.Count(callCmd => callCmd.HasAttribute(CivlAttributes.REFINES)) <= 1, node,
+        Require(node.CallCmds.Count(CivlAttributes.IsCallMarked) <= 1, node,
           "At most one arm of a parallel call can refine the specification action");
         
         HashSet<Variable> parallelCallInvars = new HashSet<Variable>();

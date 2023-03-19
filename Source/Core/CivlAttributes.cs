@@ -10,7 +10,7 @@ namespace Microsoft.Boogie
 
     public const string YIELDS = "yields";
 
-    public const string REFINES = "refines";
+    public const string MARK = "mark";
     public const string HIDE = "hide";
 
     public const string LINEAR = "linear";
@@ -28,7 +28,7 @@ namespace Microsoft.Boogie
     {
       LAYER,
       YIELDS,
-      REFINES, HIDE,
+      MARK, HIDE,
       LEMMA,
       PENDING_ASYNC, SYNC,
       ELIM
@@ -110,6 +110,11 @@ namespace Microsoft.Boogie
     public static void RemoveLinearAttributes(ICarriesAttributes obj)
     {
       RemoveAttributes(obj, LINEAR_ATTRIBUTES);
+    }
+    
+    public static bool IsCallMarked(CallCmd callCmd)
+    {
+      return callCmd.HasAttribute(MARK);
     }
   }
 }

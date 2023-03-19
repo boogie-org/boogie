@@ -493,7 +493,7 @@ namespace Microsoft.Boogie
                   {
                     var targetBlock = refinementBlocks[callCmd];
                     FixUpImplRefinementCheckingBlock(targetBlock,
-                      IsCallMarked(callCmd)
+                      CivlAttributes.IsCallMarked(callCmd)
                         ? returnCheckerBlock
                         : unchangedCheckerBlock);
                     targetBlocks.Add(targetBlock);
@@ -566,14 +566,9 @@ namespace Microsoft.Boogie
       gotoCmd.AddTarget(refinementCheckerBlock);
     }
 
-    private bool IsCallMarked(CallCmd callCmd)
-    {
-      return callCmd.HasAttribute(CivlAttributes.REFINES);
-    }
-
     private bool IsParCallMarked(ParCallCmd parCallCmd)
     {
-      return parCallCmd.CallCmds.Any(callCmd => IsCallMarked(callCmd));
+      return parCallCmd.CallCmds.Any(callCmd => CivlAttributes.IsCallMarked(callCmd));
     }
 
     private void SplitBlocks(Implementation impl)
