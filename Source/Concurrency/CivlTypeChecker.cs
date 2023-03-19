@@ -379,10 +379,6 @@ namespace Microsoft.Boogie
       var actionProcToLayerRange = new Dictionary<ActionDecl, LayerRange>();
       foreach (var proc in actionProcs)
       {
-        if (proc.actionQualifier == ActionQualifier.Async && proc.OutParams.Count > 0)
-        {
-          Error(proc, $"Action declared as pending async cannot have output parameters");
-        }
         Implementation impl = actionProcToImpl[proc];
         impl.PruneUnreachableBlocks(Options);
         Graph<Block> cfg = Program.GraphFromImpl(impl);

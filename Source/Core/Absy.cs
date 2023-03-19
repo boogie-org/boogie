@@ -3355,6 +3355,10 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       base.Resolve(rc);
+      if (actionQualifier == ActionQualifier.Async && OutParams.Count > 0)
+      {
+        rc.Error(this, $"Async action may not have output parameters");
+      }
       if (moverType != MoverType.None)
       {
         if (actionQualifier == ActionQualifier.Invariant)
