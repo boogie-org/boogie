@@ -2,28 +2,28 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,2} x: int;
 
-procedure {:left} {:layer 1,2} AtomicIncr()
+<- action {:layer 1,2} AtomicIncr()
 modifies x;
 { x := x + 1; }
 
-procedure {:left} {:layer 1,2} AtomicDecr()
+<- action {:layer 1,2} AtomicDecr()
 modifies x;
 { x := x - 1; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
-procedure {:yields} {:layer 0} {:refines "AtomicDecr"} Decr();
+yield procedure {:layer 0} Incr() refines AtomicIncr;
+yield procedure {:layer 0} Decr() refines AtomicDecr;
 
-procedure {:yields} {:layer 1} {:refines "AtomicIncr"} AsyncIncr()
+yield procedure {:layer 1} AsyncIncr() refines AtomicIncr
 {
   async call {:sync} Incr();
 }
 
-procedure {:yields} {:layer 1} {:refines "AtomicDecr"} AsyncDecr()
+yield procedure {:layer 1} AsyncDecr() refines AtomicDecr
 {
   async call {:sync} Decr();
 }
 
-procedure {:yields} {:layer 1} AsyncIncrDecr()
+yield procedure {:layer 1} AsyncIncrDecr()
 {
   async call {:sync} Incr();
   async call {:sync} Decr();

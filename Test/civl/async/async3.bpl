@@ -3,15 +3,13 @@
 
 var {:layer 0,3} x:int;
 
-procedure {:yields}{:layer 2}{:refines "A_Inc"} Client ()
+yield procedure {:layer 2} Client () refines A_Inc
 {
   call Service();
 }
 
-procedure {:layer 1}
-{:creates "A_Inc"}
-{:IS_invariant}{:elim "A_Inc"}
-INV()
+invariant action {:layer 1}{:elim "A_Inc"} INV()
+creates A_Inc;
 modifies x;
 {
   if (*) {
@@ -21,21 +19,17 @@ modifies x;
   }
 }
 
-procedure {:atomic}{:layer 1}
-{:creates "A_Inc"}
-{:IS "A_Inc","INV"}
-A_Service()
+action {:layer 1} A_Service() refines A_Inc using INV
+creates A_Inc;
 {
   call create_async(A_Inc());
 }
-procedure {:yields}{:layer 0}{:refines "A_Service"} Service ()
+yield procedure {:layer 0} Service () refines A_Service
 {
   async call Callback();
 }
 
-procedure {:both}{:layer 1,3}
-{:pending_async}
-A_Inc ()
+async <-> action {:layer 1,3} A_Inc ()
 modifies x;
 { x := x + 1; }
-procedure {:yields}{:layer 0}{:refines "A_Inc"} Callback ();
+yield procedure {:layer 0} Callback () refines A_Inc;

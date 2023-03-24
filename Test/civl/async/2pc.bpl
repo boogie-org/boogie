@@ -160,19 +160,18 @@ invariant gConsistent(state);
 // ###########################################################################
 // Main
 
-procedure {:yields} {:layer 11}
-{:yield_requires "YieldInv_8"}
-{:yield_requires "YieldConsistent_9"}
-{:yield_requires "YieldConsistent_10"}
+yield procedure {:layer 11}
 main ()
+requires call YieldInv_8();
+requires call YieldConsistent_9();
+requires call YieldConsistent_10();
 {
   var xid: Xid;
   while (*)
-  invariant {:yields}
-    {:yield_loop "YieldInv_8"}
-    {:yield_loop "YieldConsistent_9"}
-    {:yield_loop "YieldConsistent_10"}
-    true;
+  invariant {:yields} true;
+  invariant call YieldInv_8();
+  invariant call YieldConsistent_9();
+  invariant call YieldConsistent_10();
   {
     call xid := Coordinator_TransactionReq();
   }
@@ -181,17 +180,17 @@ main ()
 // ###########################################################################
 // Event Handlers
 
-procedure {:intro} {:layer 8} GhostRead_8() returns (snapshot: GState)
+link action {:layer 8} GhostRead_8() returns (snapshot: GState)
 {
    snapshot := state;
 }
 
-procedure {:intro} {:layer 10} GhostRead_10() returns (snapshot: GState)
+link action {:layer 10} GhostRead_10() returns (snapshot: GState)
 {
    snapshot := state;
 }
 
-procedure {:atomic} {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
+action {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
 modifies state;
 {
   var {:pool "A"} x: XState;
@@ -199,11 +198,11 @@ modifies state;
   assume xConsistent(state[xid]);
 }
 
-procedure {:yields} {:layer 10} {:refines "atomic_Coordinator_TransactionReq"}
-{:yield_preserves "YieldInv_8"}
-{:yield_preserves "YieldConsistent_9"}
-{:yield_preserves "YieldConsistent_10"}
-Coordinator_TransactionReq () returns (xid: Xid)
+yield procedure {:layer 10}
+Coordinator_TransactionReq () returns (xid: Xid) refines atomic_Coordinator_TransactionReq
+preserves call YieldInv_8();
+preserves call YieldConsistent_9();
+preserves call YieldConsistent_10();
 {
   var {:linear "pair"} pair: Pair;
   var {:linear "pair"} pairs: [Pair]bool;
@@ -232,7 +231,7 @@ Coordinator_TransactionReq () returns (xid: Xid)
 
 // ---------------------------------------------------------------------------
 
-procedure {:left} {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+<- action {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
   var {:pool "A"} x: XState;
@@ -243,11 +242,11 @@ modifies state;
   assume xConsistentExtension(old(state)[xid], state[xid]);
 }
 
-procedure {:yields} {:layer 9} {:refines "atomic_Participant_VoteReq"}
-{:yield_requires "YieldInv_8"}
-{:yield_requires "YieldUndecidedOrCommitted_8", xid, mid, pair}
-{:yield_requires "YieldInv_9", xid}
-Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+yield procedure {:layer 9}
+Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) refines atomic_Participant_VoteReq
+requires call YieldInv_8();
+requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
+requires call YieldInv_9(xid);
 {
   if (*) {
     async call {:sync} Coordinator_VoteYes(xid, mid, pair);
@@ -261,7 +260,7 @@ Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 
 // ---------------------------------------------------------------------------
 
-procedure {:left} {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+<- action {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state, B;
 {
   var {:pool "A"} x: XState;
@@ -276,10 +275,10 @@ modifies state, B;
   }
 }
 
-procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteYes"}
-{:yield_requires "YieldInv_8"}
-{:yield_requires "YieldUndecidedOrCommitted_8", xid, mid, pair}
-Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+yield procedure {:layer 8}
+Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) refines atomic_Coordinator_VoteYes
+requires call YieldInv_8();
+requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
 {
   var commit : bool;
   var i : Mid;
@@ -309,7 +308,7 @@ Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
   assert {:layer 8} {:add_to_pool "A", state[xid]} true;
 }
 
-procedure {:left} {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+<- action {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
   var {:pool "A"} x: XState;
@@ -321,9 +320,9 @@ modifies state;
   assume xConsistentExtension(old(state)[xid], state[xid]);
 }
 
-procedure {:yields} {:layer 8} {:refines "atomic_Coordinator_VoteNo"}
-{:yield_requires "YieldAborted_8", xid, mid, pair}
-Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+yield procedure {:layer 8}
+Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) refines atomic_Coordinator_VoteNo
+requires call YieldAborted_8(xid, mid, pair);
 {
   var abort : bool;
   var i : int;
@@ -351,13 +350,13 @@ Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 
 // ---------------------------------------------------------------------------
 
-procedure {:yields} {:layer 7} {:refines "atomic_SetParticipantAborted"} SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
-procedure {:yields} {:layer 7} {:refines "atomic_StateUpdateOnVoteYes"} StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool);
-procedure {:yields} {:layer 7} {:refines "atomic_StateUpdateOnVoteNo"} StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool);
-procedure {:yields} {:layer 7} {:refines "atomic_Participant_Commit"} Participant_Commit (xid : Xid, mid : Mid);
-procedure {:yields} {:layer 7} {:refines "atomic_Participant_Abort"} Participant_Abort (xid : Xid, mid : Mid);
+yield procedure {:layer 7} SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair) refines atomic_SetParticipantAborted;
+yield procedure {:layer 7} StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool) refines atomic_StateUpdateOnVoteYes;
+yield procedure {:layer 7} StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool) refines atomic_StateUpdateOnVoteNo;
+yield procedure {:layer 7} Participant_Commit (xid : Xid, mid : Mid) refines atomic_Participant_Commit;
+yield procedure {:layer 7} Participant_Abort (xid : Xid, mid : Mid) refines atomic_Participant_Abort;
 
-procedure {:atomic} {:layer 8,9} atomic_SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair)
+action {:layer 8,9} atomic_SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair)
 modifies state;
 {
   assert pair(xid, mid, pair);
@@ -365,7 +364,7 @@ modifies state;
   state[xid][mid] := ABORTED();
 }
 
-procedure {:atomic} {:layer 8} atomic_StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool)
+action {:layer 8} atomic_StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool)
 modifies votes, state, B;
 {
   assert !UnallocatedXids[xid];
@@ -380,7 +379,7 @@ modifies votes, state, B;
   }
 }
 
-procedure {:atomic} {:layer 8} atomic_StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool)
+action {:layer 8} atomic_StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool)
 modifies votes, state;
 {
   assert !UnallocatedXids[xid];
@@ -392,7 +391,7 @@ modifies votes, state;
 
 // ---------------------------------------------------------------------------
 
-procedure {:left} {:layer 8} atomic_Participant_Commit (xid : Xid, mid : Mid)
+<- action {:layer 8} atomic_Participant_Commit (xid : Xid, mid : Mid)
 modifies state;
 {
   assert participantMid(mid);
@@ -401,7 +400,7 @@ modifies state;
   state[xid][mid] := COMMITTED();
 }
 
-procedure {:left} {:layer 8} atomic_Participant_Abort (xid : Xid, mid : Mid)
+<- action {:layer 8} atomic_Participant_Abort (xid : Xid, mid : Mid)
 modifies state;
 {
   assert participantMid(mid);
@@ -413,10 +412,12 @@ modifies state;
 // ###########################################################################
 // Linear variable allocation
 
-procedure {:yields} {:layer 7} {:refines "atomic_AllocateXid"} AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool);
-procedure {:yields} {:layer 7} {:refines "atomic_TransferPair"} TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"} inPairs: [Pair]bool) returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair);
+yield procedure {:layer 7} AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool) refines atomic_AllocateXid;
+yield procedure {:layer 7} TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"} inPairs: [Pair]bool)
+returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair)
+refines atomic_TransferPair;
 
-procedure {:atomic} {:layer 8,10} atomic_AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool)
+action {:layer 8,10} atomic_AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool)
 modifies UnallocatedXids;
 {
   assume UnallocatedXids[xid];
@@ -425,7 +426,7 @@ modifies UnallocatedXids;
   UnallocatedXids[xid] := false;
 }
 
-procedure {:both} {:layer 8,10} atomic_TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"} inPairs: [Pair]bool) returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair)
+<-> action {:layer 8,10} atomic_TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"} inPairs: [Pair]bool) returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair)
 {
   assert inPairs[Pair(xid, mid)];
   pair := Pair(xid, mid);

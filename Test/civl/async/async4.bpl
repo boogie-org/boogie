@@ -3,14 +3,12 @@
 
 var {:layer 0,2} x:int;
 
-procedure {:both}{:layer 2} A_Add (n: int)
+<-> action {:layer 2} A_Add (n: int)
 modifies x;
 { assert 0 <= n; x := x + n; }
 
-procedure {:layer 1}
-{:creates "A_Inc"}
-{:IS_invariant}{:elim "A_Inc"}
-INV(n: int)
+invariant action {:layer 1}{:elim "A_Inc"} INV(n: int)
+creates A_Inc;
 modifies x;
 {
   var {:pool "A"} i: int;
@@ -20,18 +18,14 @@ modifies x;
   call create_multi_asyncs(MapConst(0)[A_Inc() := n - i]);
 }
 
-procedure {:atomic}{:layer 1}
-{:creates "A_Inc"}
-{:IS "A_Add","INV"}
-Async_Add(n: int)
+invariant action {:layer 1} Async_Add(n: int) refines A_Add using INV
+creates A_Inc;
 {
   assert 0 <= n;
   assume {:add_to_pool "A", 0} true;
   call create_multi_asyncs(MapConst(0)[A_Inc() := n]);
 }
 
-procedure {:both}{:layer 1,2}
-{:pending_async}
-A_Inc ()
+async <-> action {:layer 1,2} A_Inc ()
 modifies x;
 { x := x + 1; }

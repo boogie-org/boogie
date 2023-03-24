@@ -2,12 +2,12 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,2} x:int;
 
-procedure {:yields}{:layer 1}{:refines "A_Inc"} Service ()
+yield procedure {:layer 1} Service () refines A_Inc
 {
   async call {:sync} Callback();
 }
 
-procedure {:both}{:layer 1,2} A_Inc ()
+<-> action {:layer 1,2} A_Inc ()
 modifies x;
 { x := x + 1; }
-procedure {:yields}{:layer 0}{:refines "A_Inc"} Callback ();
+yield procedure {:layer 0} Callback () refines A_Inc;
