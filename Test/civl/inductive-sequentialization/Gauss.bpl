@@ -6,8 +6,8 @@ var {:layer 0,2} x:int;
 ////////////////////////////////////////////////////////////////////////////////
 
 action {:layer 1} SUM (n: int)
-creates ADD
 refines MAIN' using INV
+creates ADD;
 modifies x;
 {
   assert n >= 0;
@@ -23,7 +23,8 @@ modifies x;
   x := x + (n * (n+1)) div 2;
 }
 
-invariant action {:layer 1} {:elim "ADD"} INV (n: int) creates ADD
+invariant action {:layer 1} {:elim "ADD"} INV (n: int)
+creates ADD;
 modifies x;
 {
   var {:pool "A"} i: int;

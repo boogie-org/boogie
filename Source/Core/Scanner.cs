@@ -529,9 +529,9 @@ public class Scanner {
 			case "datatype": t.kind = 33; break;
 			case "invariant": t.kind = 34; break;
 			case "action": t.kind = 35; break;
-			case "creates": t.kind = 36; break;
-			case "refines": t.kind = 37; break;
-			case "using": t.kind = 38; break;
+			case "refines": t.kind = 36; break;
+			case "using": t.kind = 37; break;
+			case "creates": t.kind = 38; break;
 			case "async": t.kind = 43; break;
 			case "link": t.kind = 44; break;
 			case "abstract": t.kind = 45; break;
@@ -539,9 +539,9 @@ public class Scanner {
 			case "requires": t.kind = 47; break;
 			case "ensures": t.kind = 48; break;
 			case "preserves": t.kind = 49; break;
-			case "implementation": t.kind = 50; break;
-			case "free": t.kind = 51; break;
-			case "modifies": t.kind = 52; break;
+			case "modifies": t.kind = 50; break;
+			case "implementation": t.kind = 51; break;
+			case "free": t.kind = 52; break;
 			case "goto": t.kind = 53; break;
 			case "return": t.kind = 54; break;
 			case "if": t.kind = 55; break;

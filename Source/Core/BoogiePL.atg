@@ -672,10 +672,9 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl>
   Ident<out name>
   ProcFormals<true, true, out ins>
     [ "returns" ProcFormals<false, true, out outs> ]
-    [ "creates" (. List<IToken> cs; .) Idents<out cs> (. foreach(IToken c in cs) { creates.Add(new ActionDeclRef(c, c.val)); } .)]
     [ "refines" (. IToken m; .) Ident<out m> (. refinedAction = new ActionDeclRef(m, m.val); .) 
       "using" Ident<out m> (. invariantAction = new ActionDeclRef(m, m.val); .) ]
-  { SpecModifies<mods> }
+  { SpecAction<mods, creates> }
   ImplBody<out locals, out stmtList>
   (.
      actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, invariantAction, mods, kv);
@@ -684,6 +683,21 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl>
    .)
   .
 
+SpecCreates<.List<ActionDeclRef> creates.>
+= 
+  "creates" (. List<IToken> cs; .) 
+  Idents<out cs> (. foreach(IToken c in cs) { creates.Add(new ActionDeclRef(c, c.val)); } .)
+  ";"
+  .
+
+SpecAction<.List<IdentifierExpr> mods, List<ActionDeclRef> creates.>
+=
+  (
+    SpecModifies<mods>
+  | SpecCreates<creates>
+  )
+  .
+  
 MoverQualifier<ref MoverType moverType>
 = (
     "<-"  (. moverType = MoverType.Left; .)
@@ -692,6 +706,7 @@ MoverQualifier<ref MoverType moverType>
     | ">-<" (. moverType = MoverType.Atomic; .)
   )
   .
+
 ActionQualifierDecl<ref ActionQualifier actionQualifier>
 = (
     "async" (. actionQualifier = ActionQualifier.Async; .)
@@ -712,6 +727,7 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
      List<CallCmd> yieldRequires = new List<CallCmd>();
      List<CallCmd> yieldEnsures = new List<CallCmd>();
      List<CallCmd> yieldPreserves = new List<CallCmd>();
+     List<IdentifierExpr> mods = new List<IdentifierExpr>();
      List<Variable> locals = null;
      StmtList stmtList = null;
      QKeyValue kv = null;
@@ -725,18 +741,18 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
       [ "returns" ProcFormals<false, true, out outs> ]
       [ "refines" Ident<out m> (. refinedAction = new ActionDeclRef(m, m.val); .) ]
     ( ";"
-      { SpecYieldPrePost<pre, post, yieldRequires, yieldEnsures, yieldPreserves> }
-    | { SpecYieldPrePost<pre, post, yieldRequires, yieldEnsures, yieldPreserves> }
+      { SpecYieldPrePost<pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
+    | { SpecYieldPrePost<pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
       ImplBody<out locals, out stmtList>
       (.
          impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
                                    locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
       .)
     )
-    (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, post, yieldRequires, yieldEnsures, yieldPreserves, refinedAction, kv); .)
+    (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, mods, post, yieldRequires, yieldEnsures, yieldPreserves, refinedAction, kv); .)
   .
 
-SpecYieldPrePost<.List<Requires> pre, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves.>
+SpecYieldPrePost<.List<Requires> pre, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves, List<IdentifierExpr> mods.>
 = (. Expr e; Cmd cmd; Token tok = null; QKeyValue kv = null; .)
   ( "requires"              (. tok = t; .)
     ( 
@@ -754,6 +770,8 @@ SpecYieldPrePost<.List<Requires> pre, List<Ensures> post, List<CallCmd> yieldReq
     )
   | "preserves"             (. tok = t; .)
     CallCmd<out cmd>        (. yieldPreserves.Add((CallCmd)cmd); .)
+  | "modifies" (. List<IToken> ms; .)
+    [ Idents<out ms> (. foreach(IToken m in ms) { mods.Add(new IdentifierExpr(m, m.val)); } .) ]
   )
   ";"
   .
@@ -786,7 +804,6 @@ Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
   (. proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); .)
   .
 
-
 Implementation<out Implementation/*!*/ impl>
 = (. Contract.Ensures(Contract.ValueAtReturn(out impl) != null); IToken/*!*/ x;
      List<TypeVariable>/*!*/ typeParams;
@@ -814,9 +831,8 @@ ProcSignature<.bool allowWhereClausesOnFormals, out IToken/*!*/ name, out List<T
   ProcFormals<true, allowWhereClausesOnFormals, out ins>
   [ "returns" ProcFormals<false, allowWhereClausesOnFormals, out outs> ]
   .
-
-
-Spec<.List<Requires>/*!*/ pre, List<IdentifierExpr>/*!*/ mods, List<Ensures>/*!*/ post.>
+  
+Spec<.List<Requires> pre, List<IdentifierExpr> mods, List<Ensures> post.>
 =
   (
     SpecModifies<mods>

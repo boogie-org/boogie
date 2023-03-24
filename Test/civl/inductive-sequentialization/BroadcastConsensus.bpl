@@ -80,7 +80,7 @@ modifies CH, decision;
 
 invariant action {:layer 3} {:elim "COLLECT","COLLECT'"}
 INV_COLLECT_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-creates COLLECT
+creates COLLECT;
 modifies CH, decision;
 {
   var {:pool "INV_COLLECT"} k: int;
@@ -105,8 +105,8 @@ modifies CH, decision;
 
 action {:layer 3}
 MAIN'({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-creates COLLECT
 refines MAIN'' using INV_COLLECT_ELIM
+creates COLLECT;
 modifies CH;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
@@ -121,8 +121,8 @@ modifies CH;
 
 action {:layer 2}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-creates BROADCAST, COLLECT
 refines MAIN' using INV_BROADCAST_ELIM
+creates BROADCAST, COLLECT;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
 
@@ -135,7 +135,7 @@ refines MAIN' using INV_BROADCAST_ELIM
 
 invariant action {:layer 2} {:elim "BROADCAST"}
 INV_BROADCAST_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-creates BROADCAST, COLLECT
+creates BROADCAST, COLLECT;
 modifies CH;
 {
   var {:pool "INV_BROADCAST"} k: int;

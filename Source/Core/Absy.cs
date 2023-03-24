@@ -3422,9 +3422,10 @@ namespace Microsoft.Boogie
     public ActionDeclRef refinedAction;
 
     public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams, List<Variable> outParams,
-      List<Requires> requires, List<Ensures> ensures, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
+      List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
+      List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      requires, new List<IdentifierExpr>(), ensures, kv)
+      requires, modifies, ensures, kv)
     {
       this.moverType = moverType;
       this.yieldRequires = yieldRequires;
@@ -3451,6 +3452,10 @@ namespace Microsoft.Boogie
         if (moverType != MoverType.None)
         {
           rc.Error(this, "A yielding procedure cannot have both a refines annotation and a mover type");
+        }
+        if (Modifies.Any())
+        {
+         rc.Error(this, "A yielding procedure cannot have both a refines annotation and a non-empty modifies clause"); 
         }
         refinedAction.Resolve(rc);
       }

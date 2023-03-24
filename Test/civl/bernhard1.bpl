@@ -4,7 +4,7 @@
 type {:linear "x"} X = int;
 var {:linear "x"} {:layer 0,1} A : [int]bool;
 
-procedure {:yields} {:layer 1} Proc ({:linear "x"} i: int)
+yield procedure {:layer 1} Proc ({:linear "x"} i: int)
 {
   call {:layer 1} Lemma(A, i);
 }
