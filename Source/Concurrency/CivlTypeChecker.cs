@@ -723,24 +723,11 @@ namespace Microsoft.Boogie
         if (proc.refinedAction != null) // proc is an action procedure
         {
           AtomicAction refinedAction = FindAtomicAction(proc.refinedAction.actionName);
-          if (refinedAction == null)
-          {
-            Error(proc, "Could not find refined atomic action");
-            continue;
-          }
-
           if (!refinedAction.layerRange.Contains(upperLayer + 1))
           {
             checkingContext.Error(proc, "Refined atomic action must be available at layer {0}", upperLayer + 1);
             continue;
           }
-
-          if (proc.Modifies.Count > 0)
-          {
-            Error(proc, $"Modifies clause must be empty");
-            continue;
-          }
-
           var hiddenFormals =
             new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
           var actionProc = new ActionProc(proc, refinedAction, upperLayer, hiddenFormals, yieldRequires, yieldEnsures);
@@ -755,22 +742,14 @@ namespace Microsoft.Boogie
               $"All variables in the modifies clause of a mover procedure must be available at its disappearing layer");
             continue;
           }
-
           procToYieldingProc[proc] = new MoverProc(proc, moverType, upperLayer, yieldRequires, yieldEnsures);
         }
         else // proc refines the skip action
         {
-          if (proc.Modifies.Count > 0)
-          {
-            Error(proc, $"Modifies clause must be empty");
-            continue;
-          }
-
           if (!procToAtomicAction.ContainsKey(SkipAtomicAction.proc))
           {
             procToAtomicAction[SkipAtomicAction.proc] = SkipAtomicAction;
           }
-
           var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams)
             .Where(x => localVarToLayerRange[x].upperLayerNum == upperLayer));
           var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals, yieldRequires,

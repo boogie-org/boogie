@@ -3449,15 +3449,21 @@ namespace Microsoft.Boogie
       rc.StateMode = oldStateMode;
       if (refinedAction != null)
       {
-        if (moverType != MoverType.None)
-        {
-          rc.Error(this, "A yielding procedure cannot have both a refines annotation and a mover type");
-        }
+        refinedAction.Resolve(rc);
+      }
+      if (moverType == MoverType.None)
+      {
         if (Modifies.Any())
         {
-         rc.Error(this, "A yielding procedure cannot have both a refines annotation and a non-empty modifies clause"); 
+          rc.Error(this, "Yielding procedure has non-empty modifies clause but no mover type");
         }
-        refinedAction.Resolve(rc);
+      }
+      else
+      {
+        if (refinedAction != null)
+        {
+          rc.Error(this, "Yielding procedure with a mover type cannot have a refines annotation");
+        }
       }
     }
 

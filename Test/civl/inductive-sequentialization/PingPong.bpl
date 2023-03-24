@@ -35,16 +35,15 @@ function {:inline} EmptyChannel () : [int]int
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 3}
+action {:layer 3}
 MAIN' ({:linear_in "cid"} cid: ChannelId)
 {
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
 }
 
-procedure {:layer 2}
-{:creates "PING", "PONG"}
-{:IS_invariant}{:elim "PING","PING'"}{:elim "PONG","PONG'"}
+invariant action {:layer 2}{:elim "PING","PING'"}{:elim "PONG","PONG'"}
 INV ({:linear_in "cid"} cid: ChannelId)
+creates PING, PONG;
 modifies channel;
 {
   var {:pool "INV"} c: int;
@@ -73,9 +72,8 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:IS_abstraction}{:layer 2}
-{:creates "PING"}
-PING' (x: int, {:linear_in "cid"} left: ChannelHandle)
+abstract action {:layer 2} PING' (x: int, {:linear_in "cid"} left: ChannelHandle)
+creates PING;
 modifies channel;
 {
   var cid: ChannelId;
@@ -92,9 +90,8 @@ modifies channel;
 
 }
 
-procedure {:IS_abstraction}{:layer 2}
-{:creates "PONG"}
-PONG' (y: int, {:linear_in "cid"} right: ChannelHandle)
+abstract action {:layer 2} PONG' (y: int, {:linear_in "cid"} right: ChannelHandle)
+creates PONG;
 modifies channel;
 {
   var cid: ChannelId;
@@ -112,10 +109,8 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 2}
-{:creates "PING", "PONG"}
-{:IS "MAIN'","INV"}
-MAIN ({:linear_in "cid"} cid: ChannelId)
+action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
+creates PING, PONG;
 modifies channel;
 {
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
@@ -124,10 +119,8 @@ modifies channel;
   call create_async(PONG(1, Right(cid)));
 }
 
-procedure {:atomic}{:layer 2}
-{:pending_async}
-{:creates "PING"}
-PING (x: int, {:linear_in "cid"} left: ChannelHandle)
+async action {:layer 2} PING (x: int, {:linear_in "cid"} left: ChannelHandle)
+creates PING;
 modifies channel;
 {
   var cid: ChannelId;
@@ -157,10 +150,8 @@ modifies channel;
   channel[cid] := ChannelPair(left_channel, right_channel);
 }
 
-procedure {:atomic}{:layer 2}
-{:pending_async}
-{:creates "PONG"}
-PONG (y: int, {:linear_in "cid"} right: ChannelHandle)
+async action {:layer 2} PONG (y: int, {:linear_in "cid"} right: ChannelHandle)
+creates PONG;
 modifies channel;
 {
   var cid: ChannelId;
@@ -192,8 +183,8 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yields}{:layer 1}{:refines "MAIN"}
-main ({:linear_in "cid"} cid: ChannelId)
+yield procedure {:layer 1}
+main ({:linear_in "cid"} cid: ChannelId) refines MAIN
 {
   var {:linear "cid"} left: ChannelHandle;
   var {:linear "cid"} right: ChannelHandle;
@@ -204,8 +195,8 @@ main ({:linear_in "cid"} cid: ChannelId)
   async call pong(1, right);
 }
 
-procedure {:yields}{:layer 1}{:refines "PING"}
-ping (x: int, {:linear_in "cid"} left: ChannelHandle)
+yield procedure {:layer 1}
+ping (x: int, {:linear_in "cid"} left: ChannelHandle) refines PING
 {
   var x': int;
 
@@ -222,8 +213,8 @@ ping (x: int, {:linear_in "cid"} left: ChannelHandle)
   }
 }
 
-procedure {:yields}{:layer 1}{:refines "PONG"}
-pong (y: int, {:linear_in "cid"} right: ChannelHandle)
+yield procedure {:layer 1}
+pong (y: int, {:linear_in "cid"} right: ChannelHandle) refines PONG
 {
   var y': int;
 
@@ -239,7 +230,7 @@ pong (y: int, {:linear_in "cid"} right: ChannelHandle)
 ////////////////////////////////////////////////////////////////////////////////
 // Bidirectional channels
 
-procedure {:right}{:layer 1} RECEIVE (permission: ChannelHandle) returns (m: int)
+-> action {:layer 1} RECEIVE (permission: ChannelHandle) returns (m: int)
 modifies channel;
 {
   var cid: ChannelId;
@@ -259,7 +250,7 @@ modifies channel;
   channel[cid] := ChannelPair(left_channel, right_channel);
 }
 
-procedure {:left}{:layer 1} SEND (permission: ChannelHandle, m: int)
+<- action {:layer 1} SEND (permission: ChannelHandle, m: int)
 modifies channel;
 {
   var cid: ChannelId;
@@ -277,14 +268,14 @@ modifies channel;
   channel[cid] := ChannelPair(left_channel, right_channel);
 }
 
-procedure {:both}{:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
+<-> action {:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
   returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle)
 {
   left := Left(cid);
   right := Right(cid);
 }
 
-procedure {:yields}{:layer 0}{:refines "RECEIVE"} receive (permission: ChannelHandle) returns (m: int);
-procedure {:yields}{:layer 0}{:refines "SEND"} send (permission: ChannelHandle, m: int);
-procedure {:yields}{:layer 0}{:refines "SPLIT"} split({:linear_in "cid"} cid: ChannelId)
-  returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle);
+yield procedure {:layer 0} receive (permission: ChannelHandle) returns (m: int) refines RECEIVE;
+yield procedure {:layer 0} send (permission: ChannelHandle, m: int) refines SEND;
+yield procedure {:layer 0} split({:linear_in "cid"} cid: ChannelId)
+  returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle) refines SPLIT;
