@@ -25,9 +25,8 @@ var {:layer 1} done : [int]bool;
 // #############################################################################
 
 // Main procedures that spawns all processes
-procedure {:yields} {:layer 1}
-{:yield_preserves "yield_ind_inv"}
-Main()
+yield procedure {:layer 1} Main()
+preserves call yield_ind_inv();
 {
   var i: int;
   assert {:layer 1} Trigger(0);
@@ -41,9 +40,9 @@ Main()
 }
 
 // Code of process i
-procedure {:yields} {:layer 1}
-{:yield_preserves "yield_ind_inv"}
+yield procedure {:layer 1}
 Proc(i: int)
+preserves call yield_ind_inv();
 {
   call update_x(i);
   call Yield(i);
@@ -53,7 +52,7 @@ Proc(i: int)
 }
 
 // Introduction action that gives meaning to the introduced variable done
-procedure {:intro} {:layer 1} mark_done(i: int)
+link action {:layer 1} mark_done(i: int)
 modifies done;
 {
   done := done[i:=true];
@@ -63,20 +62,20 @@ modifies done;
 
 // Low-level atomic actions
 
-procedure {:layer 1}{:atomic} atomic_update_x(i: int)
+action {:layer 1} atomic_update_x(i: int)
 modifies x;
 {
   x[i] := 1;
 }
 
-procedure {:layer 1}{:atomic} atomic_update_y(i: int)
+action {:layer 1} atomic_update_y(i: int)
 modifies y;
 {
   y[i] := x[(i-1) mod N];
 }
 
-procedure {:layer 0}{:yields}{:refines "atomic_update_x"} update_x(i: int);
-procedure {:layer 0}{:yields}{:refines "atomic_update_y"} update_y(i: int);
+yield procedure {:layer 0} update_x(i: int) refines atomic_update_x;
+yield procedure {:layer 0} update_y(i: int) refines atomic_update_y;
 
 // #############################################################################
 
