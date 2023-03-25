@@ -7,18 +7,6 @@ yield invariant {:layer 1} linear_yield_x({:linear "lin"} n: int);
 invariant x >= n;
 
 yield procedure {:layer 1}
-p1({:linear "lin"} a: int, {:linear_in "lin"} b: int, c: int)
-{
-  call p2(b);
-  while (*)
-  invariant {:yields} true;
-  invariant call linear_yield_x(a);
-  invariant call linear_yield_x(b);
-  invariant call linear_yield_x(c);
-  {}
-}
-
-yield procedure {:layer 1}
 p2({:linear_in "lin"} b: int);
 
 yield procedure {:layer 1}
