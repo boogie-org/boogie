@@ -562,7 +562,7 @@ namespace Microsoft.Boogie
         var formalKind = LinearDomainCollector.FindLinearKind(formal);
         if (formalKind == LinearKind.ORDINARY)
         {
-          Error(node, "Only a linear variable can be passed to a linear parameter");
+          Error(node, $"Only linear parameter can be assigned to a linear variable: {formal}");
           continue;
         }
         if (LinearDomainCollector.FindDomainName(formal) != LinearDomainCollector.FindDomainName(actual.Decl))

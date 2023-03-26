@@ -3411,6 +3411,11 @@ namespace Microsoft.Boogie
         }
       }
     }
+
+    public IEnumerable<ActionDeclRef> ActionDeclRefs()
+    {
+      return creates.Append(refinedAction).Append(invariantAction);
+    }
   }
   
   public class YieldProcedureDecl : Procedure
@@ -3473,6 +3478,16 @@ namespace Microsoft.Boogie
       yieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
       yieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
       yieldPreserves.Iter(callCmd => callCmd.Typecheck(tc));
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitYieldProcedureDecl(this);
+    }
+
+    public IEnumerable<CallCmd> CallCmds()
+    {
+      return yieldEnsures.Union(yieldPreserves).Union(yieldRequires);
     }
   }
 

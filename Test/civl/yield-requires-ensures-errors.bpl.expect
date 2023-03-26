@@ -1,6 +1,6 @@
-yield-requires-ensures-errors.bpl(12,9): Error: Only linear variable can be passed to linear parameter: a
-yield-requires-ensures-errors.bpl(17,9): Error: A local variable used in input to the call not available at layer 1
-yield-requires-ensures-errors.bpl(18,8): Error: A local variable used in input to the call not available at layer 1
-yield-requires-ensures-errors.bpl(26,29): Error: Argument must be available
-yield-requires-ensures-errors.bpl(27,28): Error: Argument must be available
+yield-requires-ensures-errors.bpl(15,9): Error: A local variable used in input to the call not available at layer 1
+yield-requires-ensures-errors.bpl(16,8): Error: A local variable used in input to the call not available at layer 1
+yield-requires-ensures-errors.bpl(24,29): Error: Argument must be available
+yield-requires-ensures-errors.bpl(25,28): Error: Argument must be available
+yield-requires-ensures-errors.bpl(26,30): Error: Argument must be available
 5 type checking errors detected in yield-requires-ensures-errors.bpl
