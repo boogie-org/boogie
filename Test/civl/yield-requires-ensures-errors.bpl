@@ -8,16 +8,8 @@ invariant x >= n;
 yield invariant {:layer 1} linear_yield_x({:linear "lin"} n: int);
 invariant x >= n;
 
-yield procedure {:layer 1} p0()
-requires call yield_x(x == 4);
-ensures call yield_x(x == 8);
-{
-}
-
 yield procedure {:layer 1} p1(a: int) returns (c: int)
-//requires call yield_x(c);
 requires call linear_yield_x(a);
-ensures call yield_x(a + c);
 {
 }
 

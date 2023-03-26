@@ -1327,28 +1327,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    private class YieldRequiresVisitor : ReadOnlyVisitor
-    {
-      private CivlTypeChecker civlTypeChecker;
-      HashSet<Variable> outs;
-
-      public YieldRequiresVisitor(CivlTypeChecker civlTypeChecker, Procedure proc)
-      {
-        this.civlTypeChecker = civlTypeChecker;
-        this.outs = new HashSet<Variable>(proc.OutParams);
-      }
-
-      public override Expr VisitIdentifierExpr(IdentifierExpr node)
-      {
-        if (outs.Contains(node.Decl))
-        {
-          civlTypeChecker.Error(node, "Output parameter cannot be accessed");
-        }
-
-        return base.VisitIdentifierExpr(node);
-      }
-    }
-
     class YieldInvariantCallChecker : ReadOnlyVisitor
     {
       private CivlTypeChecker civlTypeChecker;
@@ -1469,8 +1447,7 @@ namespace Microsoft.Boogie
         this.localVariableAccesses = null;
       }
 
-      public YieldingProcVisitor(CivlTypeChecker civlTypeChecker, List<CallCmd> yieldRequires,
-        List<CallCmd> yieldEnsures)
+      public YieldingProcVisitor(CivlTypeChecker civlTypeChecker, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
       {
         this.civlTypeChecker = civlTypeChecker;
         this.yieldRequires = yieldRequires;
@@ -1510,10 +1487,8 @@ namespace Microsoft.Boogie
         VisitVariableSeq(node.InParams);
         VisitVariableSeq(node.OutParams);
         VisitRequiresSeq(node.Requires);
-        var yieldRequiresVisitor = new YieldRequiresVisitor(civlTypeChecker, node);
         foreach (var callCmd in yieldRequires)
         {
-          yieldRequiresVisitor.Visit(callCmd);
           VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer,
             ((YieldInvariantDecl)callCmd.Proc).LayerNum);
         }
