@@ -3,34 +3,37 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 1,2} {:pending_async} A () {}
+async action {:layer 1,2} A () {}
 
-procedure {:left}{:layer 1} {:creates "A"} B ()
+<- action {:layer 1} B ()
+creates A;
 {
   call create_async(A());
 }
 
-procedure {:left}{:layer 1} {:creates "A"} C (flag:bool)
+<- action {:layer 1} C (flag:bool)
+creates A;
 {
   if (flag) {
     call create_async(A());
   }
 }
 
-procedure {:yields}{:layer 0}{:refines "B"} b ();
-procedure {:yields}{:layer 0}{:refines "C"} c (flag:bool);
+yield procedure {:layer 0} b () refines B;
+yield procedure {:layer 0} c (flag:bool) refines C;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // Verifies
-procedure {:yields}{:layer 1}{:refines "TEST1"} test1 ()
+yield procedure {:layer 1} test1 () refines TEST1
 {
   call b();
   call b();
 }
 
-procedure {:atomic}{:layer 2} {:creates "A"} TEST1 ()
+action {:layer 2} TEST1 ()
+creates A;
 {
   call create_multi_asyncs(MapConst(0)[A() := 2]);
 }
@@ -38,13 +41,14 @@ procedure {:atomic}{:layer 2} {:creates "A"} TEST1 ()
 ////////////////////////////////////////////////////////////////////////////////
 
 // Fails
-procedure {:yields}{:layer 1}{:refines "TEST2"} test2 ()
+yield procedure {:layer 1} test2 () refines TEST2
 {
   call b();
   call b();
 }
 
-procedure {:atomic}{:layer 2} {:creates "A"} TEST2 ()
+action {:layer 2} TEST2 ()
+creates A;
 {
   call create_async(A());
 }
@@ -52,27 +56,27 @@ procedure {:atomic}{:layer 2} {:creates "A"} TEST2 ()
 ////////////////////////////////////////////////////////////////////////////////
 
 // Fails
-procedure {:yields}{:layer 1}{:refines "TEST3"} test3 ()
+yield procedure {:layer 1} test3 () refines TEST3
 {
   call c(true);
 }
 
-procedure {:atomic}{:layer 2} TEST3 () returns () {}
+action {:layer 2} TEST3 () returns () {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // Verifies
-procedure {:yields}{:layer 1}{:refines "TEST4"} test4 ()
+yield procedure {:layer 1} test4 () refines TEST4
 {
   call c(false);
 }
 
-procedure {:atomic}{:layer 2} TEST4 () returns () {}
+action {:layer 2} TEST4 () returns () {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // Verifies
-procedure {:yields}{:layer 1}{:refines "TEST5"} test5 ()
+yield procedure {:layer 1} test5 () refines TEST5
 {
   var i:int;
   var {:pending_async}{:layer 1} PAs:[A]int;
@@ -87,7 +91,8 @@ procedure {:yields}{:layer 1}{:refines "TEST5"} test5 ()
   }
 }
 
-procedure {:atomic}{:layer 2} {:creates "A"} TEST5 ()
+action {:layer 2} TEST5 ()
+creates A;
 {
   call create_multi_asyncs(MapConst(0)[A() := 10]);
 }

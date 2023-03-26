@@ -1,2 +1,2 @@
-pending-async-2.bpl(16,2): Error: Primitive creates a pending async that is not in the enclosing procedure's creates clause: B
+pending-async-2.bpl(17,2): Error: Primitive creates a pending async that is not in the enclosing procedure's creates clause: B
 1 type checking errors detected in pending-async-2.bpl

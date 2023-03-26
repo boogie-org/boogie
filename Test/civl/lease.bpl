@@ -35,52 +35,52 @@ function nextNode(me:int):int;
 
 ////// primitive actions //////
 
-procedure{:both}{:layer 2} AtomicGetNode({:linear "me"} me:int) returns(n:node)
+<-> action {:layer 2} AtomicGetNode({:linear "me"} me:int) returns(n:node)
 {
         n := nodes[me];
 }
 
-procedure{:yields}{:layer 1} {:refines "AtomicGetNode"} GetNode({:linear "me"} me:int) returns(n:node);
+yield procedure {:layer 1} GetNode({:linear "me"} me:int) returns(n:node) refines AtomicGetNode;
 
-procedure{:both}{:layer 2} AtomicSetNode({:linear "me"} me:int, n:node)
+<-> action {:layer 2} AtomicSetNode({:linear "me"} me:int, n:node)
 modifies nodes;
 {
         nodes := nodes[me := n];
 }
 
-procedure{:yields}{:layer 1} {:refines "AtomicSetNode"} SetNode({:linear "me"} me:int, n:node);
+yield procedure {:layer 1} SetNode({:linear "me"} me:int, n:node) refines AtomicSetNode;
 
-procedure{:right}{:layer 2} AtomicRecv({:linear "me"} me:int) returns(m:msg)
+-> action {:layer 2} AtomicRecv({:linear "me"} me:int) returns(m:msg)
 {
         assume network[m] && m->dst == me;
 }
 
-procedure{:yields}{:layer 1} {:refines "AtomicRecv"} Recv({:linear "me"} me:int) returns(m:msg);
+yield procedure {:layer 1} Recv({:linear "me"} me:int) returns(m:msg) refines AtomicRecv;
 
-procedure{:left}{:layer 2} AtomicSendInternal({:linear "me"} me:int, dst:int, payload:lockMsg)
+<- action {:layer 2} AtomicSendInternal({:linear "me"} me:int, dst:int, payload:lockMsg)
 modifies network;
 {
         network := network[msg(me, dst, payload) := true];
 }
 
-procedure{:yields}{:layer 1} {:refines "AtomicSendInternal"} SendInternal({:linear "me"} me:int, dst:int, payload:lockMsg);
+yield procedure {:layer 1} SendInternal({:linear "me"} me:int, dst:int, payload:lockMsg) refines AtomicSendInternal;
 
-procedure{:left}{:layer 2} AtomicSendExternal({:linear "me"} me:int, dst:int, payload:lockMsg)
+<- action {:layer 2} AtomicSendExternal({:linear "me"} me:int, dst:int, payload:lockMsg)
 modifies network, external;
 {
         network  := network [msg(me, dst, payload) := true];
         external := external[msg(me, dst, payload) := true];
 }
 
-procedure{:yields}{:layer 1} {:refines "AtomicSendExternal"} SendExternal({:linear "me"} me:int, dst:int, payload:lockMsg);
+yield procedure {:layer 1} SendExternal({:linear "me"} me:int, dst:int, payload:lockMsg) refines AtomicSendExternal;
 
-procedure{:atomic}{:layer 2} AtomicAddHistory(l:int)
+action {:layer 2} AtomicAddHistory(l:int)
 modifies history;
 {
         history  := addHistory(history, l);
 }
 
-procedure{:yields}{:layer 1} {:refines "AtomicAddHistory"} AddHistory(l:int);
+yield procedure {:layer 1} AddHistory(l:int) refines AtomicAddHistory;
 ////// composite actions //////
 
 function EpochInHistory(epoch:int, history:history):bool
@@ -116,14 +116,16 @@ function Inv(network:[msg]bool, nodes:[int]node, history:history):bool
 && (forall m:msg :: network[m] ==> InvMsg(network, nodes, history, m))
 }
 
-procedure{:atomic}{:layer 3} AtomicGrant({:linear "me"} me:int) returns(dst:int, epoch:int)
+action {:layer 3} AtomicGrant({:linear "me"} me:int) returns(dst:int, epoch:int)
 modifies history;
 {
         history := addHistory(history, dst);
 }
 
-procedure{:yields}{:layer 2} {:yield_requires "YieldHeld", me} {:yield_preserves "YieldInv"} {:refines "AtomicGrant"}
-Grant({:linear "me"} me:int) returns(dst:int, epoch:int)
+yield procedure {:layer 2}
+Grant({:linear "me"} me:int) returns(dst:int, epoch:int) refines AtomicGrant
+requires call YieldHeld(me);
+preserves call YieldInv();
 {
   var node:node;
 
@@ -135,7 +137,7 @@ Grant({:linear "me"} me:int) returns(dst:int, epoch:int)
   call SendInternal(me, dst, transfer(epoch + 1));
 }
 
-procedure{:atomic}{:layer 3} AtomicAccept({:linear "me"} me:int, dst:int) returns(epoch:int)
+action {:layer 3} AtomicAccept({:linear "me"} me:int, dst:int) returns(epoch:int)
 modifies external;
 {
         // specify that the message source (me) must appear at right epoch in history:
@@ -145,14 +147,16 @@ modifies external;
         external := external[msg(me, dst, locked(epoch)) := true];
 }
 
-procedure{:yields}{:layer 2} {:yield_preserves "YieldInv"} {:refines "AtomicAccept"}
-Accept({:linear "me"} me:int, dst:int) returns(epoch:int)
+yield procedure {:layer 2}
+Accept({:linear "me"} me:int, dst:int) returns(epoch:int) refines AtomicAccept
+preserves call YieldInv();
 {
   var node:node;
   var m:msg;
 
   while (true)
-    invariant {:yields} {:yield_loop "YieldInv"} true;
+    invariant {:yields} true;
+    invariant call YieldInv();
   {
     call m := Recv(me);
     call node := GetNode(me);

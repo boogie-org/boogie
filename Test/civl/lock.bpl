@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,2} b: bool;
 
-procedure {:yields} {:layer 2} main()
+yield procedure {:layer 2} main()
 {
     while (*)
     {
@@ -10,7 +10,7 @@ procedure {:yields} {:layer 2} main()
     }
 }
 
-procedure {:yields} {:layer 2} Customer()
+yield procedure {:layer 2} Customer()
 {
     while (*)
     invariant {:yields} true;
@@ -21,11 +21,11 @@ procedure {:yields} {:layer 2} Customer()
     }
 }
 
-procedure {:atomic} {:layer 2} AtomicEnter()
+action {:layer 2} AtomicEnter()
 modifies b;
 { assume !b; b := true; }
 
-procedure {:yields} {:layer 1} {:refines "AtomicEnter"} Enter()
+yield procedure {:layer 1} Enter() refines AtomicEnter
 {
     var status: bool;
 
@@ -39,7 +39,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicEnter"} Enter()
     }
 }
 
-procedure {:atomic} {:layer 1,2} AtomicCAS(prev: bool, next: bool) returns (status: bool)
+action {:layer 1,2} AtomicCAS(prev: bool, next: bool) returns (status: bool)
 modifies b;
 {
   if (b == prev) {
@@ -50,12 +50,12 @@ modifies b;
   }
 }
 
-procedure {:yields} {:layer 0} {:refines "AtomicCAS"} CAS(prev: bool, next: bool) returns (status: bool);
+yield procedure {:layer 0} CAS(prev: bool, next: bool) returns (status: bool) refines AtomicCAS;
 
-procedure {:atomic} {:layer 1,2} AtomicLeave()
+action {:layer 1,2} AtomicLeave()
 modifies b;
 { b := false; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicLeave"} Leave();
+yield procedure {:layer 0} Leave() refines AtomicLeave;
 
-procedure {:yields} {:layer 2} Yield();
+yield procedure {:layer 2} Yield();

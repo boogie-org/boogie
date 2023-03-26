@@ -8,9 +8,9 @@ type {:linear "tid"} X = int;
 
 var {:layer 0,1} a:int;
 
-procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: int);
+yield procedure {:layer 1} Allocate() returns ({:linear "tid"} tid: int);
 
-procedure {:yields} {:layer 1} main()
+yield procedure {:layer 1} main()
 {
   var {:linear "tid"} i: int;
   var {:linear "tid"} j: int;
@@ -19,7 +19,7 @@ procedure {:yields} {:layer 1} main()
   par i := t(i) | j := t(j);
 }
 
-procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
+yield procedure {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
 {
   i := i';
   call Yield();
@@ -27,10 +27,10 @@ procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "
   call Incr();
 }
 
-procedure {:atomic} {:layer 1} AtomicIncr()
+action {:layer 1} AtomicIncr()
 modifies a;
 { a := a + 1; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
+yield procedure {:layer 0} Incr() refines AtomicIncr;
 
 yield invariant {:layer 1} Yield();

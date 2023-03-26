@@ -1,20 +1,20 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure {:intro} {:layer 1} GhostRead() returns (oldx: int)
+link action{:layer 1} GhostRead() returns (oldx: int)
 {
    oldx := x;
 }
 
 var {:layer 0,2} x: int;
 
-procedure {:yields} {:layer 0} {:refines "AtomicIncX"} IncX();
+yield procedure {:layer 0} IncX() refines AtomicIncX;
 
-procedure {:both} {:layer 1} AtomicIncX()
+<-> action {:layer 1} AtomicIncX()
 modifies x;
 { x := x + 1; }
 
-procedure {:yields} {:layer 1} {:refines "AtomicSlowAdd"} SlowAdd(n: int)
+yield procedure {:layer 1} SlowAdd(n: int) refines AtomicSlowAdd
 requires {:layer 1} n >= 0;
 {
     var i: int;
@@ -33,6 +33,6 @@ requires {:layer 1} n >= 0;
     assert {:layer 1} i == n;
 }
 
-procedure {:both} {:layer 2} AtomicSlowAdd(n: int)
+<-> action {:layer 2} AtomicSlowAdd(n: int)
 modifies x;
 { x := x + n; }

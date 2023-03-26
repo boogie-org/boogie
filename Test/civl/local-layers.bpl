@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure {:yields} {:layer 5} foo()
+yield procedure {:layer 5} foo()
 {
     var {:layer 1} x: int;
     var y: int;
