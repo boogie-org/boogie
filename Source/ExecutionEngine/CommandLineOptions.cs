@@ -286,14 +286,15 @@ namespace Microsoft.Boogie
     }
 
     public CommandLineOptions(TextWriter outputWriter, OutputPrinter printer)
-      : this("Boogie", "Boogie program verifier", printer)
+      : this(outputWriter, "Boogie", "Boogie program verifier", printer)
     {
-      OutputWriter = outputWriter;
     }
 
-    protected CommandLineOptions(string toolName, string descriptiveName, OutputPrinter printer)
+    protected CommandLineOptions(TextWriter outputWriter, string toolName, string descriptiveName, OutputPrinter printer)
       : base(toolName, descriptiveName)
     {
+      Contract.Requires(outputWriter != null);
+      OutputWriter = outputWriter;
       Contract.Requires(toolName != null);
       Contract.Requires(descriptiveName != null);
       Contract.Requires(printer.Options == null);
