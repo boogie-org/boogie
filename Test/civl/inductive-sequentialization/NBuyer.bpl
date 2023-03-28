@@ -365,14 +365,13 @@ requires {:layer 1} sellerID(pid);
 preserves call YieldInv();
 {
   var i:int;
-  var {:layer 1} old_QuoteChannel:[int][int]int;
 
-  call old_QuoteChannel := Snapshot_QuoteChannel();
   call receive_request();
   i := 1;
   while (i <= n)
+  invariant {:yields} true;
+  invariant call YieldInv();
   invariant {:layer 1} 1 <= i && i <= n+1;
-  invariant {:layer 1} QuoteChannel == (lambda ii:int :: (lambda q:int :: if buyerID(ii) && ii < i && q == price then old_QuoteChannel[ii][q] + 1 else old_QuoteChannel[ii][q]));
   {
     call send_quote(i, price);
     i := i + 1;
@@ -443,11 +442,6 @@ preserves call YieldInv();
   if (*) { amount := min(wallet, r); } else { amount := 0; }
   call set_contribution(pid, amount);
   call send_decision(amount == r);
-}
-
-link action {:layer 1} Snapshot_QuoteChannel() returns (snapshot:[int][int]int)
-{
-  snapshot := QuoteChannel;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
