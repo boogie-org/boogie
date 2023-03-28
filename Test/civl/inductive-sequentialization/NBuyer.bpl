@@ -75,11 +75,8 @@ modifies DecisionChannel, contribution;
 abstract action {:layer 5} SellerFinish' ({:linear_in "pid"} pid:int)
 modifies DecisionChannel;
 {
-  var dec:bool;
-  assert sellerID(pid);
-  dec := (sum(contribution, 1, n) == price);
-  assert DecisionChannel == MapConst(0)[dec := 1];
-  DecisionChannel[dec] := DecisionChannel[dec] - 1;
+  assert DecisionChannel == MapConst(0)[(sum(contribution, 1, n) == price) := 1];
+  call SellerFinish(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,11 +270,10 @@ modifies RemainderChannel, contribution;
   var amount:int;
 
   assert firstBuyerID(pid);
-  rem := price;
-  if (*) { amount := min(wallet, rem); } else { amount := 0; }
+  if (*) { amount := min(wallet, price); } else { amount := 0; }
   contribution[pid] := amount;
   assume {:add_to_pool "contribution", contribution} true;
-  rem := rem - amount;
+  rem := price - amount;
   RemainderChannel[nextBuyer(pid)][rem] := RemainderChannel[nextBuyer(pid)][rem] + 1;
 }
 
