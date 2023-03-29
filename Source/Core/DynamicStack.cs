@@ -1,4 +1,6 @@
-namespace Microsoft.Boogie.DynamicStack; 
+using System.ComponentModel.Design.Serialization;
+
+namespace Microsoft.Boogie; 
 
 using System;
 using System.Collections.Generic;
@@ -8,6 +10,12 @@ using System.Threading;
 
 [AsyncMethodBuilder(typeof(DynamicStackBuilder))]
 public class DynamicStack {
+
+  public static DynamicStack<TResult> FromResult<TResult>(TResult result) {
+    return new DynamicStack<TResult> {
+      Result = result
+    };
+  }
   public void Run() {
     DynamicStackBuilder.Builder.Value!.Run();
   }
@@ -36,7 +44,7 @@ public class DynamicStackBuilder : INotifyCompletion {
 
   public void Start<TStateMachine>(ref TStateMachine stateMachine)
     where TStateMachine : IAsyncStateMachine {
-    // Push recursive call
+    // Called on await, push recursive call
     todos.Push(stateMachine);
   }
 
@@ -82,15 +90,35 @@ public class DynamicStackBuilder : INotifyCompletion {
   }
 }
 
+public static class DynamicStackExtensions {
+  public static async DynamicStack<IList<T>> ToDynamicStackList<T>(this IEnumerable<DynamicStack<T>> items) {
+    var result = new List<T>();
+    foreach (var item in items) {
+      result.Add(await item);
+    }
+    return result;
+  }
+}
+
 /// <summary>
 /// Equivalent to Task<T>
 /// </summary>
 [AsyncMethodBuilder(typeof(DynamicStackBuilder<>))]
 public class DynamicStack<TResult> {
+  private TResult result;
+
   internal DynamicStack() {
   }
 
-  public TResult Result { get; internal set; }
+  public TResult Result {
+    get {
+      if (result == null) {
+        Run();
+      }
+      return result;
+    }
+    internal set => result = value;
+  }
 
   public void Run() {
     DynamicStackBuilder<TResult>.Builder.Value!.Run();
@@ -108,6 +136,7 @@ public class DynamicStack<TResult> {
 public class DynamicStackBuilder<TResult> : INotifyCompletion {
   public static readonly ThreadLocal<DynamicStackBuilder<TResult>> Builder = new(() => new DynamicStackBuilder<TResult>());
   private DynamicStack<TResult> dynamicStack = new();
+  private bool completed = false;
 
   public static DynamicStackBuilder<TResult> Create() {
     return Builder.Value;
@@ -139,6 +168,7 @@ public class DynamicStackBuilder<TResult> : INotifyCompletion {
 
   public void SetResult(TResult result) {
     dynamicStack.Result = result;
+    completed = true;
   }
   
   public void SetResult(DynamicStack<TResult> result) {
@@ -151,9 +181,13 @@ public class DynamicStackBuilder<TResult> : INotifyCompletion {
     where TAwaiter : INotifyCompletion
     where TStateMachine : IAsyncStateMachine {
     // Place recursive call on top of continuation
-    var recursiveCall = todos.Pop();
-    todos.Push(stateMachine);
-    todos.Push(recursiveCall);
+    if (todos.Any()) {
+      var recursiveCall = todos.Pop();
+      todos.Push(stateMachine);
+      todos.Push(recursiveCall);
+    } else {
+      todos.Push(stateMachine);
+    }
   }
 
   public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(
@@ -170,7 +204,7 @@ public class DynamicStackBuilder<TResult> : INotifyCompletion {
     // Never called because AwaitOnCompleted doesn't call it.
   }
 
-  public bool IsCompleted => !todos.Any();
+  public bool IsCompleted => completed && !todos.Any();
 
   public TResult GetResult() {
     return dynamicStack.Result;
