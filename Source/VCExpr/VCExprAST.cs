@@ -98,7 +98,7 @@ namespace Microsoft.Boogie.VCExprAST {
       }
     }
 
-    public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
+    public override DynamicStack<Result> Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
       Contract.Requires(visitor != null);
       throw new NotImplementedException();
     }
@@ -108,7 +108,7 @@ namespace Microsoft.Boogie.VCExprAST {
   public abstract class VCExpr {
     public abstract Type Type { get; }
 
-    public abstract Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg);
+    public abstract DynamicStack<Result> Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg);
 
     [Pure]
     public override string ToString() {
@@ -140,9 +140,9 @@ namespace Microsoft.Boogie.VCExprAST {
       this.LitType = type;
     }
 
-    public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
+    public override DynamicStack<Result> Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
       //Contract.Requires(visitor != null);
-      return visitor.Visit(this, arg);
+      return DynamicStack.FromResult(visitor.Visit(this, arg));
     }
   }
 
@@ -403,12 +403,12 @@ namespace Microsoft.Boogie.VCExprAST {
       this.Op = op;
     }
 
-    public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
+    public override DynamicStack<Result> Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
       //Contract.Requires(visitor != null);
       return visitor.Visit(this, arg);
     }
 
-    public Result Accept<Result, Arg>(IVCExprOpVisitor<Result, Arg> visitor, Arg arg) {
+    public DynamicStack<Result> Accept<Result, Arg>(IVCExprOpVisitor<Result, Arg> visitor, Arg arg) {
       Contract.Requires(visitor != null);
       return Op.Accept(this, visitor, arg);
     }
@@ -683,7 +683,8 @@ namespace Microsoft.Boogie.VCExprAST {
 
     public abstract Type /*!*/ InferType(List<VCExpr /*!*/> /*!*/ args, List<Type /*!*/> /*!*/ typeArgs);
 
-    public virtual Result Accept<Result, Arg>(VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg) {
+    public virtual DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor,
+      Arg arg) {
       Contract.Requires(visitor != null);
       Contract.Requires(expr != null);
       if (VCExpressionGenerator.SingletonOpDict.TryGetValue(this, out var op)) {
@@ -809,8 +810,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return Arity * 917632481;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       //Contract.Requires(visitor != null);
@@ -857,8 +857,7 @@ namespace Microsoft.Boogie.VCExprAST {
       DatatypeAccessor = datatypeAccessor;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       return visitor.VisitFieldAccessOp(expr, arg);
@@ -899,8 +898,7 @@ namespace Microsoft.Boogie.VCExprAST {
       ConstructorIndex = constructorIndex;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       return visitor.VisitIsConstructorOp(expr, arg);
@@ -961,8 +959,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.MapTypeParamArity = typeParamArity;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       //Contract.Requires(visitor != null);
@@ -1017,8 +1014,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.MapTypeParamArity = typeParamArity;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       //Contract.Requires(visitor != null);
@@ -1065,8 +1061,7 @@ namespace Microsoft.Boogie.VCExprAST {
     internal VCExprIfThenElseOp() {
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       //Contract.Requires(visitor != null);
@@ -1145,9 +1140,8 @@ namespace Microsoft.Boogie.VCExprAST {
       return Type;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry /*!*/ expr,
-      IVCExprOpVisitor<Result, Arg> /*!*/ visitor,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr, /*!*/
+      IVCExprOpVisitor<Result, Arg> visitor, /*!*/
       Arg arg) {
       //Contract.Requires(expr != null);
       //Contract.Requires(visitor != null);
@@ -1220,8 +1214,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.op = op;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       //Contract.Requires(visitor != null);
@@ -1298,8 +1291,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.Bits = bits;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       //Contract.Requires(visitor != null);
@@ -1356,8 +1348,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.Total = total;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       //Contract.Requires(visitor != null);
@@ -1411,8 +1402,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.RightSize = rightSize;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       //Contract.Requires(visitor != null);
@@ -1485,8 +1475,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.Func = func;
     }
 
-    public override Result Accept<Result, Arg>(
-      VCExprNAry expr,
+    public override DynamicStack<Result> Accept<Result, Arg>(VCExprNAry expr,
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg) {
       //Contract.Requires(visitor != null);
@@ -1528,9 +1517,9 @@ namespace Microsoft.Boogie.VCExprAST {
       this.VarType = type;
     }
 
-    public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
+    public override DynamicStack<Result> Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
       //Contract.Requires(visitor != null);
-      return visitor.Visit(this, arg);
+      return DynamicStack.FromResult(visitor.Visit(this, arg));
     }
 
     // For VCExprVar, equality is based on reference comparison.
@@ -1729,7 +1718,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.Info = info;
     }
 
-    public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
+    public override DynamicStack<Result> Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
       //Contract.Requires(visitor != null);
       return visitor.Visit(this, arg);
     }
@@ -1856,7 +1845,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.Bindings = bindings;
     }
 
-    public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
+    public override DynamicStack<Result> Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {
       //Contract.Requires(visitor != null);
       return visitor.Visit(this, arg);
     }

@@ -38,7 +38,7 @@ public class TypeEraserPremisses : TypeEraser {
 
   ////////////////////////////////////////////////////////////////////////////
 
-  public override VCExpr Visit(VCExprQuantifier node, VariableBindings oldBindings) {
+  public override async DynamicStack<VCExpr> Visit(VCExprQuantifier node, VariableBindings oldBindings) {
     Contract.Requires(oldBindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -71,12 +71,9 @@ public class TypeEraserPremisses : TypeEraser {
 
     // bound term variables are replaced with bound term variables typed in
     // a simpler way
-    List<VCExprVar /*!*/> /*!*/
-      newBoundVars =
-        BoundVarsAfterErasure(occurringVars, bindings);
+    List<VCExprVar /*!*/> /*!*/ newBoundVars = BoundVarsAfterErasure(occurringVars, bindings);
     Contract.Assert(cce.NonNullElements(newBoundVars));
-    VCExpr /*!*/
-      newNode = HandleQuantifier(node, occurringVars,
+    VCExpr /*!*/ newNode = await HandleQuantifier(node, occurringVars,
         newBoundVars, bindings);
     Contract.Assert(newNode != null);
 
@@ -89,8 +86,7 @@ public class TypeEraserPremisses : TypeEraser {
       return newNode;
     }
 
-    return HandleQuantifier(node, occurringVars,
-      newBoundVars, bindings2);
+    return await HandleQuantifier(node, occurringVars, newBoundVars, bindings2);
   }
 
   private VCExpr /*!*/ GenTypePremisses(List<VCExprVar /*!*/> /*!*/ oldBoundVars,
@@ -173,7 +169,7 @@ public class TypeEraserPremisses : TypeEraser {
     return false;
   }
 
-  private VCExpr HandleQuantifier(VCExprQuantifier node, List<VCExprVar /*!*/> /*!*/ occurringVars /*!*/,
+  private async DynamicStack<VCExpr> HandleQuantifier(VCExprQuantifier node, List<VCExprVar /*!*/> /*!*/ occurringVars /*!*/,
     List<VCExprVar /*!*/> /*!*/ newBoundVars, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
@@ -221,7 +217,7 @@ public class TypeEraserPremisses : TypeEraser {
     Contract.Assert(cce.NonNullElements(furtherTriggers));
     Contract.Assert(typePremisses != null);
     List<VCTrigger /*!*/> /*!*/
-      newTriggers = new List<VCTrigger>(MutateTriggers(node.Triggers, bindings));
+      newTriggers = new List<VCTrigger>(await MutateTriggers(node.Triggers, bindings));
     Contract.Assert(cce.NonNullElements(newTriggers));
     newTriggers.AddRange(furtherTriggers);
     newTriggers = AddLets2Triggers(newTriggers, typeVarBindings);

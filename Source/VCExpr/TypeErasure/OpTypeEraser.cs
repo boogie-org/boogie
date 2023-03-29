@@ -33,7 +33,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
     this.Gen = gen;
   }
 
-  protected override VCExpr StandardResult(VCExprNAry node, VariableBindings bindings) {
+  protected override DynamicStack<VCExpr> StandardResult(VCExprNAry node, VariableBindings bindings) {
     //Contract.Requires(bindings != null);
     //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -42,38 +42,34 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
     throw new cce.UnreachableException(); // to please the compiler
   }
 
-  private List<VCExpr /*!*/> /*!*/ MutateSeq(VCExprNAry node, VariableBindings bindings, int newPolarity) {
+  private async DynamicStack<List<VCExpr /*!*/>> /*!*/ MutateSeq(VCExprNAry node, VariableBindings bindings, int newPolarity) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExpr>>()));
     int oldPolarity = Eraser.Polarity;
     Eraser.Polarity = newPolarity;
-    List<VCExpr /*!*/> /*!*/
-      newArgs = Eraser.MutateSeq(node.Arguments, bindings);
+    List<VCExpr /*!*/> /*!*/ newArgs = await Eraser.MutateSeq(node.Arguments, bindings);
     Eraser.Polarity = oldPolarity;
     return newArgs;
   }
 
-  private VCExpr CastArguments(VCExprNAry node, Type argType, VariableBindings bindings, int newPolarity) {
+  private async DynamicStack<VCExpr> CastArguments(VCExprNAry node, Type argType, VariableBindings bindings, int newPolarity) {
     Contract.Requires(bindings != null);
     Contract.Requires(argType != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    return Gen.Function(node.Op,
-      AxBuilder.CastSeq(MutateSeq(node, bindings, newPolarity),
-        argType));
+    return Gen.Function(node.Op, AxBuilder.CastSeq(await MutateSeq(node, bindings, newPolarity), argType));
   }
 
   // Cast the arguments of the node to their old type if necessary and possible; otherwise use
   // their new type (int, real, bool, or U)
-  private VCExpr CastArgumentsToOldType(VCExprNAry node, VariableBindings bindings, int newPolarity) {
+  private async DynamicStack<VCExpr> CastArgumentsToOldType(VCExprNAry node, VariableBindings bindings, int newPolarity) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Requires((node.Arity > 0));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-    List<VCExpr /*!*/> /*!*/
-      newArgs = MutateSeq(node, bindings, newPolarity);
+    List<VCExpr /*!*/> /*!*/ newArgs = await MutateSeq(node, bindings, newPolarity);
     Type /*!*/
       oldType = node[0].Type;
     if (AxBuilder.UnchangedType(oldType) &&
@@ -86,28 +82,28 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
 
   ///////////////////////////////////////////////////////////////////////////
 
-  public override VCExpr VisitNotOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitNotOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, Type.Bool, bindings, -Eraser.Polarity);
   }
 
-  public override VCExpr VisitEqOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitEqOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitNeqOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitNeqOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitImpliesOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitImpliesOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -118,22 +114,21 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
     newArgs.Add(Eraser.Mutate(node[0], bindings));
     Eraser.Polarity = -Eraser.Polarity;
     newArgs.Add(Eraser.Mutate(node[1], bindings));
-    return Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, Type.Bool));
+    return DynamicStack.FromResult(Gen.Function(node.Op, AxBuilder.CastSeq(newArgs, Type.Bool)));
   }
 
-  public override VCExpr VisitDistinctOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitDistinctOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitIfThenElseOp(VCExprNAry node, VariableBindings bindings) {
+  public override async DynamicStack<VCExpr> VisitIfThenElseOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    List<VCExpr /*!*/> /*!*/
-      newArgs = MutateSeq(node, bindings, 0);
+    List<VCExpr /*!*/> /*!*/ newArgs = await MutateSeq(node, bindings, 0);
     newArgs[0] = AxBuilder.Cast(newArgs[0], Type.Bool);
     Type t = node.Type;
     if (!AxBuilder.UnchangedType(t)) {
@@ -145,52 +140,51 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
     return Gen.Function(node.Op, newArgs);
   }
 
-  public override VCExpr /*!*/ VisitCustomOp(VCExprNAry /*!*/ node, VariableBindings /*!*/ bindings) {
+  public override async DynamicStack<VCExpr> /*!*/ VisitCustomOp(VCExprNAry node /*!*/, VariableBindings bindings /*!*/) {
     Contract.Requires(node != null);
     Contract.Requires(bindings != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-    List<VCExpr /*!*/> /*!*/
-      newArgs = MutateSeq(node, bindings, 0);
+    List<VCExpr /*!*/> /*!*/ newArgs = await MutateSeq(node, bindings, 0);
     return Gen.Function(node.Op, newArgs);
   }
 
-  public override VCExpr VisitAddOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitAddOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, node.Type, bindings, 0);
   }
 
-  public override VCExpr VisitSubOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitSubOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, node.Type, bindings, 0);
   }
 
-  public override VCExpr VisitMulOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitMulOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, node.Type, bindings, 0);
   }
 
-  public override VCExpr VisitDivOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitDivOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, Type.Int, bindings, 0);
   }
 
-  public override VCExpr VisitModOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitModOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, Type.Int, bindings, 0);
   }
 
-  public override VCExpr VisitRealDivOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitRealDivOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -204,152 +198,151 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return CastArguments(node, Type.Float, bindings, 0);
     }*/
-  public override VCExpr VisitPowOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitPowOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, Type.Real, bindings, 0);
   }
 
-  public override VCExpr VisitLtOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitLtOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitLeOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitLeOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitGtOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitGtOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitGeOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitGeOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitSubtypeOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitSubtypeOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArguments(node, AxBuilder.U, bindings, 0);
   }
 
-  public override VCExpr VisitToIntOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitToIntOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitToRealOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitToRealOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatAddOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatAddOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatSubOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatSubOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatMulOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatMulOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatDivOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatDivOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatLeqOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatLeqOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatLtOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatLtOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatGeqOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatGeqOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatGtOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatGtOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatEqOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatEqOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitFloatNeqOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitFloatNeqOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitBvOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitBvOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitBvExtractOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitBvExtractOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return CastArgumentsToOldType(node, bindings, 0);
   }
 
-  public override VCExpr VisitBvConcatOp(VCExprNAry node, VariableBindings bindings) {
+  public override async DynamicStack<VCExpr> VisitBvConcatOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    List<VCExpr /*!*/> /*!*/
-      newArgs = MutateSeq(node, bindings, 0);
+    List<VCExpr /*!*/> /*!*/ newArgs = await MutateSeq(node, bindings, 0);
 
     // each argument is cast to its old type
     Contract.Assert(newArgs.Count == node.Arity && newArgs.Count == 2);

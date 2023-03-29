@@ -51,18 +51,18 @@ namespace Microsoft.Boogie.Clustering {
       return true;
     }
 
-    public override bool Visit(VCExprNAry node, bool arg) {
+    public override async DynamicStack<bool> Visit(VCExprNAry node, bool arg) {
       Contract.Requires(node != null);
       VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
       if (op == null) {
-        base.Visit(node, arg);
+        await base.Visit(node, arg);
         return false;
       }
 
       bool res = true;
       foreach (VCExpr subexpr in node.Arguments) {
         Contract.Assert(subexpr != null);
-        res &= this.Traverse(subexpr, arg);
+        res &= await Traverse(subexpr, arg);
       }
 
       if (res) {
@@ -472,7 +472,7 @@ namespace Microsoft.Boogie.Clustering {
       Contract.Requires(s != null);
       Contract.Requires((s.Type.Equals(t.Type)));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Traverse(s, t);
+      return Traverse(s, t).Result;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -505,7 +505,7 @@ namespace Microsoft.Boogie.Clustering {
       return AbstractWithVariable(node, that);
     }
 
-    public override VCExpr Visit(VCExprNAry node, VCExpr that) {
+    public override async DynamicStack<VCExpr> Visit(VCExprNAry node, VCExpr that) {
       Contract.Requires(that != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -518,7 +518,7 @@ namespace Microsoft.Boogie.Clustering {
         List<VCExpr /*!*/> /*!*/
           unifiedArgs = new List<VCExpr /*!*/>();
         for (int i = 0; i < node.Arity; ++i) {
-          unifiedArgs.Add(Traverse(node[i], thatNAry[i]));
+          unifiedArgs.Add(await Traverse(node[i], thatNAry[i]));
         }
 
         return Gen.Function(node.Op, unifiedArgs);

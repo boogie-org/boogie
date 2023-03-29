@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie.VCExprAST {
   public class QuantifierInstantiationEngine {
@@ -417,30 +418,30 @@ namespace Microsoft.Boogie.VCExprAST {
       return Join(elems.Select(x => x));
     }
 
-    public override Dictionary<VCExprVar, Polarity> Visit(VCExprNAry node, Polarity arg) {
+    public override async DynamicStack<Dictionary<VCExprVar, Polarity>> Visit(VCExprNAry node, Polarity arg) {
       if (arg != Polarity.Unknown) {
         if (node.Op.Equals(VCExpressionGenerator.NotOp)) {
-          return node[0].Accept(this, Flip(arg));
+          return await node[0].Accept(this, Flip(arg));
         }
         if (node.Op.Equals(VCExpressionGenerator.AndOp) || node.Op.Equals(VCExpressionGenerator.OrOp)) {
-          return Join(node[0].Accept(this, arg), node[1].Accept(this, arg));
+          return Join(await node[0].Accept(this, arg), await node[1].Accept(this, arg));
         }
         if (node.Op.Equals(VCExpressionGenerator.ImpliesOp)) {
-          return Join(node[0].Accept(this, Flip(arg)), node[1].Accept(this, arg));
+          return Join(await node[0].Accept(this, Flip(arg)), await node[1].Accept(this, arg));
         }
       }
-      return Join(node.UniformArguments.Select(x => x.Accept(this, Polarity.Unknown)));
+      return Join(await node.UniformArguments.Select(x => x.Accept(this, Polarity.Unknown)).ToDynamicStackList());
     }
 
     public override Dictionary<VCExprVar, Polarity> Visit(VCExprVar node, Polarity arg) {
       return new Dictionary<VCExprVar, Polarity> { { node, arg } };
     }
 
-    protected override Dictionary<VCExprVar, Polarity> VisitAfterBinding(VCExprLet node, Polarity arg) {
-      var result = node.Body.Accept(this, arg);
+    protected override async DynamicStack<Dictionary<VCExprVar, Polarity>> VisitAfterBinding(VCExprLet node, Polarity arg) {
+      var result = await node.Body.Accept(this, arg);
       for (int i = node.Length - 1; i >= 0; i--) {
         if (result.ContainsKey(node[i].V)) {
-          result = Join(result, node[i].E.Accept(this, result[node[i].V]));
+          result = Join(result, await node[i].E.Accept(this, result[node[i].V]));
         }
       }
       foreach (var x in node.BoundVars) {
@@ -449,16 +450,17 @@ namespace Microsoft.Boogie.VCExprAST {
       return result;
     }
 
-    protected override Dictionary<VCExprVar, Polarity> VisitAfterBinding(VCExprQuantifier node, Polarity arg) {
-      var result = node.Body.Accept(this, arg);
+    protected override async DynamicStack<Dictionary<VCExprVar, Polarity>> VisitAfterBinding(VCExprQuantifier node,
+      Polarity arg) {
+      var result = await node.Body.Accept(this, arg);
       foreach (var x in node.BoundVars) {
         result.Remove(x);
       }
       return result;
     }
 
-    public override Dictionary<VCExprVar, Polarity> Visit(VCExprQuantifier node, Polarity arg) {
-      var result = base.Visit(node, arg);
+    public override async DynamicStack<Dictionary<VCExprVar, Polarity>> Visit(VCExprQuantifier node, Polarity arg) {
+      var result = await base.Visit(node, arg);
       if (arg != Polarity.Unknown && !result.Keys.Intersect(BoundTermVars.Keys).Any()) {
         if ((arg == Polarity.Positive) == (node.Quan == Quantifier.EX)) {
           quantifiers.Add(node);
@@ -505,22 +507,24 @@ namespace Microsoft.Boogie.VCExprAST {
       return base.Visit(node, arg);
     }
 
-    public override VCExpr Visit(VCExprQuantifier node, bool arg) {
+    public override DynamicStack<VCExpr> Visit(VCExprQuantifier node, bool arg) {
       if (node.TypeParameters.Count == 0 && quantifiers.Contains(node)) {
         return PerformSkolemization(node, arg);
       }
       return base.Visit(node, arg);
     }
 
-    private VCExpr PerformSkolemization(VCExprQuantifier node, bool arg) {
+    private async DynamicStack<VCExpr> PerformSkolemization(VCExprQuantifier node, bool arg) {
       var oldToNew = node.BoundVars.ToDictionary(v => v, v => (VCExpr)qiEngine.FreshSkolemConstant(v));
       foreach (var x in node.BoundVars) {
         bound.Add(x, oldToNew[x]);
       }
-      var retExpr = (VCExprQuantifier)base.Visit(node, arg);
-      retExpr.Info.instantiationExprs.Iter(kv => {
-        kv.Value.Iter(expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
-      });
+      var retExpr = (VCExprQuantifier)await base.Visit(node, arg);
+      foreach (var kv in retExpr.Info.instantiationExprs) {
+        foreach (var expr in kv.Value) {
+          qiEngine.AddTerm(kv.Key, await expr.Accept(this, arg));
+        }
+      }
       foreach (var x in node.BoundVars) {
         bound.Remove(x);
       }
@@ -545,8 +549,8 @@ namespace Microsoft.Boogie.VCExprAST {
       this.qiEngine = qiEngine;
     }
 
-    public override VCExpr Visit(VCExprQuantifier node, bool arg) {
-      return qiEngine.BindQuantifier(node);
+    public override DynamicStack<VCExpr> Visit(VCExprQuantifier node, bool arg) {
+      return DynamicStack.FromResult(qiEngine.BindQuantifier(node));
     }
   }
 
@@ -619,7 +623,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return vcExpr;
     }
 
-    public override bool Visit(VCExprNAry node, bool arg) {
+    public override async DynamicStack<bool> Visit(VCExprNAry node, bool arg) {
       if (node.Op is VCExprBoogieFunctionOp functionOp) {
         var function = functionOp.Func;
         if (function.OriginalLambdaExprAsString != null && qiEngine.BindLambdaFunction(function)) {
@@ -631,12 +635,12 @@ namespace Microsoft.Boogie.VCExprAST {
           // then this term is ineligible and should be removed
           instancesOnStack.Push(new Tuple<VCExprNAry, HashSet<VCExprVar>>(substExpr,
             BoundTermVars.Keys.Where(x => BoundTermVars[x] == null).ToHashSet()));
-          var retVal = base.Visit(node, arg);
+          var retVal = await base.Visit(node, arg);
           instancesOnStack.Pop();
           return retVal;
         }
       }
-      return base.Visit(node, arg);
+      return await base.Visit(node, arg);
     }
 
     public override bool Visit(VCExprVar node, bool arg) {
@@ -652,7 +656,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return base.Visit(node, arg);
     }
 
-    public override bool Visit(VCExprLet node, bool arg) {
+    public override DynamicStack<bool> Visit(VCExprLet node, bool arg) {
       letBoundVarsOnStack.Push(node.BoundVars);
       var retVal = base.Visit(node, arg);
       letBoundVarsOnStack.Pop();

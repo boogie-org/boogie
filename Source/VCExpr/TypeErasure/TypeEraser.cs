@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.TypeErasure;
@@ -35,11 +36,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
     Contract.Requires((polarity >= -1 && polarity <= 1));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     this.Polarity = polarity;
-    VCExpr result = null;
-    var thread = new Thread(() => result = Mutate(expr, new VariableBindings()), 0x10000000);
-    thread.Start();
-    thread.Join();
-    return result;
+    return Mutate(expr, new VariableBindings());
   }
 
   internal int Polarity = 1; // 1 for positive, -1 for negative, 0 for both
@@ -57,12 +54,8 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
   ////////////////////////////////////////////////////////////////////////////
 
-  public override bool AvoidVisit(VCExprNAry node, VariableBindings arg) {
-    return node.Op.Equals(VCExpressionGenerator.AndOp) ||
-           node.Op.Equals(VCExpressionGenerator.OrOp);
-  }
 
-  public override VCExpr Visit(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> Visit(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -184,7 +177,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
   ////////////////////////////////////////////////////////////////////////////
 
-  public override VCExpr Visit(VCExprLet node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> Visit(VCExprLet node, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -220,6 +213,6 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
     VCExpr /*!*/
       newbody = Mutate(node.Body, newVarBindings);
-    return Gen.Let(newbindings, newbody);
+    return DynamicStack.FromResult(Gen.Let(newbindings, newbody));
   }
 }

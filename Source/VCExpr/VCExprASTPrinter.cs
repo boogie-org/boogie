@@ -51,7 +51,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return true;
     }
 
-    public bool Visit(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> Visit(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       VCExprOp /*!*/
@@ -77,7 +77,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
         wr.Write(")");
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
       return node.Accept<bool, TextWriter /*!*/>(OpPrinter, wr);
@@ -90,7 +90,7 @@ namespace Microsoft.Boogie.VCExprAST {
       return true;
     }
 
-    public bool Visit(VCExprQuantifier node, TextWriter wr) {
+    public DynamicStack<bool> Visit(VCExprQuantifier node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       string /*!*/
@@ -151,10 +151,10 @@ namespace Microsoft.Boogie.VCExprAST {
 
       Print(node.Body, wr);
       wr.Write(")");
-      return true;
+      return DynamicStack.FromResult(true);
     }
 
-    public bool Visit(VCExprLet node, TextWriter wr) {
+    public DynamicStack<bool> Visit(VCExprLet node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       wr.Write("(Let ");
@@ -174,7 +174,7 @@ namespace Microsoft.Boogie.VCExprAST {
 
       Print(node.Body, wr);
       wr.Write(")");
-      return true;
+      return DynamicStack.FromResult(true);
     }
   }
 
@@ -192,7 +192,7 @@ namespace Microsoft.Boogie.VCExprAST {
       this.ExprPrinter = exprPrinter;
     }
 
-    private bool PrintNAry(string op, VCExprNAry node, TextWriter wr) {
+    private DynamicStack<bool> PrintNAry(string op, VCExprNAry node, TextWriter wr) {
       Contract.Requires(wr != null);
       Contract.Requires(node != null);
       Contract.Requires(op != null);
@@ -204,171 +204,171 @@ namespace Microsoft.Boogie.VCExprAST {
       }
 
       wr.Write(")");
-      return true;
+      return DynamicStack.FromResult(true);
     }
 
-    public bool VisitNotOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitNotOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("!", node, wr);
     }
 
-    public bool VisitEqOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitEqOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("==", node, wr);
     }
 
-    public bool VisitNeqOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitNeqOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("!=", node, wr);
     }
 
-    public bool VisitAndOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitAndOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
 
-    public bool VisitOrOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitOrOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
 
-    public bool VisitImpliesOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitImpliesOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("Implies", node, wr);
     }
 
-    public bool VisitDistinctOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitDistinctOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("Distinct", node, wr);
     }
 
-    public bool VisitFieldAccessOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFieldAccessOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("FieldAccess", node, wr);
     }
 
-    public bool VisitIsConstructorOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitIsConstructorOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("IsConstructor", node, wr);
     }
 
-    public bool VisitSelectOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitSelectOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("Select", node, wr);
     }
 
-    public bool VisitStoreOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitStoreOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("Store", node, wr);
     }
 
-    public bool VisitFloatAddOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFloatAddOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("fp.add", node, wr);
     }
 
-    public bool VisitFloatSubOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFloatSubOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("fp.sub", node, wr);
     }
 
-    public bool VisitFloatMulOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFloatMulOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("fp.mul", node, wr);
     }
 
-    public bool VisitFloatDivOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFloatDivOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("fp.div", node, wr);
     }
 
-    public bool VisitFloatLeqOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFloatLeqOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("fp.leq", node, wr);
     }
 
-    public bool VisitFloatLtOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFloatLtOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("fp.lt", node, wr);
     }
 
-    public bool VisitFloatGeqOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFloatGeqOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("fp.geq", node, wr);
     }
 
-    public bool VisitFloatGtOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFloatGtOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("fp.gt", node, wr);
     }
 
-    public bool VisitFloatEqOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitFloatEqOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("fp.eq", node, wr);
     }
 
-    public bool VisitFloatNeqOp(VCExprNAry node, TextWriter wr) {
+    public async DynamicStack<bool> VisitFloatNeqOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
-      bool toReturn = PrintNAry("not (fp.eq", node, wr);
+      bool toReturn = await PrintNAry("not (fp.eq", node, wr);
       wr.Write(")"); // A bit hacky, but it works
       return toReturn;
     }
 
-    public bool VisitBvOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitBvOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("Bv", node, wr);
     }
 
-    public bool VisitBvExtractOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitBvExtractOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("BvExtract", node, wr);
     }
 
-    public bool VisitBvConcatOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitBvConcatOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("BvConcat", node, wr);
     }
 
-    public bool VisitIfThenElseOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitIfThenElseOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("if-then-else", node, wr);
     }
 
-    public bool VisitCustomOp(VCExprNAry /*!*/ node, TextWriter /*!*/ wr) {
+    public DynamicStack<bool> VisitCustomOp(VCExprNAry node /*!*/, TextWriter wr /*!*/) {
       //Contract.Requires(node!=null);
       //Contract.Requires(wr != null);
       VCExprCustomOp op = (VCExprCustomOp)node.Op;
       return PrintNAry(op.Name, node, wr);
     }
 
-    public bool VisitAddOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitAddOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       if (ExprPrinter.Options.ReflectAdd) {
@@ -378,91 +378,91 @@ namespace Microsoft.Boogie.VCExprAST {
       }
     }
 
-    public bool VisitSubOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitSubOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("-", node, wr);
     }
 
-    public bool VisitMulOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitMulOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("*", node, wr);
     }
 
-    public bool VisitDivOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitDivOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("div", node, wr);
     }
 
-    public bool VisitModOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitModOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("mod", node, wr);
     }
 
-    public bool VisitRealDivOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitRealDivOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("/", node, wr);
     }
 
-    public bool VisitPowOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitPowOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("**", node, wr);
     }
 
-    public bool VisitLtOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitLtOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("<", node, wr);
     }
 
-    public bool VisitLeOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitLeOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("<=", node, wr);
     }
 
-    public bool VisitGtOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitGtOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry(">", node, wr);
     }
 
-    public bool VisitGeOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitGeOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry(">=", node, wr);
     }
 
-    public bool VisitSubtypeOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitSubtypeOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("<:", node, wr);
     }
 
-    public bool VisitSubtype3Op(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitSubtype3Op(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("<::", node, wr);
     }
 
-    public bool VisitToIntOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitToIntOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("int", node, wr);
     }
 
-    public bool VisitToRealOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitToRealOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       return PrintNAry("real", node, wr);
     }
 
-    public bool VisitBoogieFunctionOp(VCExprNAry node, TextWriter wr) {
+    public DynamicStack<bool> VisitBoogieFunctionOp(VCExprNAry node, TextWriter wr) {
       //Contract.Requires(wr != null);
       //Contract.Requires(node != null);
       VCExprBoogieFunctionOp /*!*/

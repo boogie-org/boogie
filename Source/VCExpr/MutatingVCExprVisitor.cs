@@ -21,23 +21,22 @@ public abstract class MutatingVCExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, 
   public VCExpr Mutate(VCExpr expr, Arg arg) {
     Contract.Requires(expr != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    return expr.Accept(this, arg);
+    return expr.Accept(this, arg).Result;
   }
 
-  public List<VCExpr /*!*/> /*!*/ MutateSeq(IEnumerable<VCExpr /*!*/> /*!*/ exprs, Arg arg) {
+  public async DynamicStack<List<VCExpr /*!*/>> /*!*/ MutateSeq(IEnumerable<VCExpr /*!*/> /*!*/ exprs, Arg arg) {
     Contract.Requires(cce.NonNullElements(exprs));
     Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExpr>>()));
-    List<VCExpr /*!*/> /*!*/
-      res = new List<VCExpr /*!*/>();
+    List<VCExpr /*!*/> /*!*/ res = new List<VCExpr /*!*/>();
     foreach (VCExpr /*!*/ expr in exprs) {
       Contract.Assert(expr != null);
-      res.Add(expr.Accept(this, arg));
+      res.Add(await expr.Accept(this, arg));
     }
 
     return res;
   }
 
-  private List<VCExpr /*!*/> /*!*/ MutateList(List<VCExpr /*!*/> /*!*/ exprs, Arg arg) {
+  private async DynamicStack<List<VCExpr /*!*/>> /*!*/ MutateList(List<VCExpr /*!*/> /*!*/ exprs, Arg arg) {
     Contract.Requires(cce.NonNullElements(exprs));
     Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExpr>>()));
     bool changed = false;
@@ -45,9 +44,8 @@ public abstract class MutatingVCExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, 
       res = new List<VCExpr /*!*/>();
     foreach (VCExpr /*!*/ expr in exprs) {
       Contract.Assert(expr != null);
-      VCExpr /*!*/
-        newExpr = expr.Accept(this, arg);
-      if (!Object.ReferenceEquals(expr, newExpr)) {
+      var /*!*/ newExpr = await expr.Accept(this, arg);
+      if (!ReferenceEquals(expr, newExpr)) {
         changed = true;
       }
 
@@ -69,102 +67,21 @@ public abstract class MutatingVCExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, 
 
   ////////////////////////////////////////////////////////////////////////////
 
-  // Special element used to mark the positions in the todo-stack where
-  // results have to be popped from the result-stack.
-  private static readonly VCExpr /*!*/
-    CombineResultsMarker = new VCExprLiteral(Type.Bool);
-
-  // The todo-stack contains records of the shape
-  //
-  //     arg0
-  //     arg1
-  //     arg2
-  //     ...
-  //     CombineResultsMarker
-  //     f(arg0, arg1, arg2, ...)               (the original expression)
-
-  private readonly Stack<VCExpr /*!*/> /*!*/
-    NAryExprTodoStack = new Stack<VCExpr /*!*/>();
-
-  private readonly Stack<VCExpr /*!*/> /*!*/
-    NAryExprResultStack = new Stack<VCExpr /*!*/>();
-
-  [ContractInvariantMethod]
-  void ObjectInvarianta() {
-    Contract.Invariant(cce.NonNullElements(NAryExprResultStack));
-    Contract.Invariant(cce.NonNullElements(NAryExprTodoStack));
-  }
-
-
-  private void PushTodo(VCExprNAry exprTodo) {
-    Contract.Requires(exprTodo != null);
-    NAryExprTodoStack.Push(exprTodo);
-    NAryExprTodoStack.Push(CombineResultsMarker);
-    for (int i = exprTodo.Arity - 1; i >= 0; --i) {
-      NAryExprTodoStack.Push(exprTodo[i]);
-    }
-  }
-
-  public virtual bool AvoidVisit(VCExprNAry node, Arg arg) {
-    return true;
-  }
-
-  public virtual VCExpr Visit(VCExprNAry node, Arg arg) {
+  public virtual async DynamicStack<VCExpr> Visit(VCExprNAry node, Arg arg) {
     //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    int initialStackSize = NAryExprTodoStack.Count;
-    int initialResultStackSize = NAryExprResultStack.Count;
 
-    PushTodo(node);
-
-    while (NAryExprTodoStack.Count > initialStackSize) {
-      VCExpr /*!*/
-        subExpr = NAryExprTodoStack.Pop();
-      Contract.Assert(subExpr != null);
-
-      if (Object.ReferenceEquals(subExpr, CombineResultsMarker)) {
-        // assemble a result
-        VCExprNAry /*!*/
-          originalExpr = (VCExprNAry)NAryExprTodoStack.Pop();
-        Contract.Assert(originalExpr != null);
-        VCExprOp /*!*/
-          op = originalExpr.Op;
-        bool changed = false;
-        List<VCExpr /*!*/> /*!*/
-          newSubExprs = new List<VCExpr /*!*/>();
-
-        for (int i = op.Arity - 1; i >= 0; --i) {
-          VCExpr /*!*/
-            nextSubExpr = NAryExprResultStack.Pop();
-          Contract.Assert(nextSubExpr != null);
-          if (!Object.ReferenceEquals(nextSubExpr, originalExpr[i])) {
-            changed = true;
-          }
-
-          newSubExprs.Insert(0, nextSubExpr);
-        }
-
-        NAryExprResultStack.Push(UpdateModifiedNode(originalExpr, newSubExprs, changed, arg));
-        //
-      } else {
-        //
-        VCExprNAry narySubExpr = subExpr as VCExprNAry;
-        if (narySubExpr != null && this.AvoidVisit(narySubExpr, arg) &&
-            // as in VCExprNAryUniformOpEnumerator, all expressions with
-            // type parameters are allowed to be inspected more closely
-            narySubExpr.TypeParamArity == 0) {
-          PushTodo(narySubExpr);
-        } else {
-          NAryExprResultStack.Push(subExpr.Accept(this, arg));
-        }
-
-        //
+    bool changed = false;
+    var children = new List<VCExpr>();
+    for (int i = node.Arity - 1; i >= 0; --i) {
+      var child = await node[i].Accept(this, arg);
+      if (!Object.ReferenceEquals(child, node[i])) {
+        changed = true;
       }
+      children.Insert(0, child);
     }
 
-    Contract.Assert(NAryExprTodoStack.Count == initialStackSize &&
-                    NAryExprResultStack.Count == initialResultStackSize + 1);
-    return NAryExprResultStack.Pop();
+    return UpdateModifiedNode(node, children, changed, arg);
   }
 
   protected virtual VCExpr /*!*/ UpdateModifiedNode(VCExprNAry /*!*/ originalNode,
@@ -190,18 +107,15 @@ public abstract class MutatingVCExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, 
     return node;
   }
 
-  protected List<VCTrigger /*!*/> /*!*/ MutateTriggers(List<VCTrigger /*!*/> /*!*/ triggers, Arg arg) {
+  protected async DynamicStack<List<VCTrigger /*!*/>> /*!*/ MutateTriggers(List<VCTrigger /*!*/> /*!*/ triggers, Arg arg) {
     Contract.Requires(cce.NonNullElements(triggers));
     Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCTrigger>>()));
-    List<VCTrigger /*!*/> /*!*/
-      newTriggers = new List<VCTrigger /*!*/>();
+    List<VCTrigger /*!*/> /*!*/ newTriggers = new List<VCTrigger /*!*/>();
     bool changed = false;
     foreach (VCTrigger /*!*/ trigger in triggers) {
       Contract.Assert(trigger != null);
-      List<VCExpr /*!*/> /*!*/
-        exprs = trigger.Exprs;
-      List<VCExpr /*!*/> /*!*/
-        newExprs = MutateList(exprs, arg);
+      List<VCExpr /*!*/> /*!*/ exprs = trigger.Exprs;
+      List<VCExpr /*!*/> /*!*/ newExprs = await MutateList(exprs, arg);
 
       if (Object.ReferenceEquals(exprs, newExprs)) {
         newTriggers.Add(trigger);
@@ -218,18 +132,16 @@ public abstract class MutatingVCExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, 
     return newTriggers;
   }
 
-  public virtual VCExpr Visit(VCExprQuantifier node, Arg arg) {
+  public virtual async DynamicStack<VCExpr> Visit(VCExprQuantifier node, Arg arg) {
     //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     bool changed = false;
 
-    VCExpr /*!*/
-      body = node.Body;
+    VCExpr /*!*/ body = node.Body;
     Contract.Assert(body != null);
-    VCExpr /*!*/
-      newbody = body.Accept(this, arg);
+    VCExpr /*!*/ newbody = await body.Accept(this, arg);
     Contract.Assert(newbody != null);
-    if (!Object.ReferenceEquals(body, newbody)) {
+    if (!ReferenceEquals(body, newbody)) {
       changed = true;
     }
 
@@ -237,10 +149,9 @@ public abstract class MutatingVCExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, 
     List<VCTrigger /*!*/> /*!*/
       triggers = node.Triggers;
     Contract.Assert(cce.NonNullElements(triggers));
-    List<VCTrigger /*!*/> /*!*/
-      newTriggers = MutateTriggers(triggers, arg);
+    List<VCTrigger /*!*/> /*!*/ newTriggers = await MutateTriggers(triggers, arg);
     Contract.Assert(cce.NonNullElements(newTriggers));
-    if (!Object.ReferenceEquals(triggers, newTriggers)) {
+    if (!ReferenceEquals(triggers, newTriggers)) {
       changed = true;
     }
 
@@ -252,30 +163,24 @@ public abstract class MutatingVCExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, 
       newTriggers, node.Info, newbody);
   }
 
-  public virtual VCExpr Visit(VCExprLet node, Arg arg) {
+  public virtual async DynamicStack<VCExpr> Visit(VCExprLet node, Arg arg) {
     //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     bool changed = false;
 
-    VCExpr /*!*/
-      body = node.Body;
-    VCExpr /*!*/
-      newbody = body.Accept(this, arg);
-    if (!Object.ReferenceEquals(body, newbody)) {
+    VCExpr /*!*/ body = node.Body;
+    VCExpr /*!*/ newbody = await body.Accept(this, arg);
+    if (!ReferenceEquals(body, newbody)) {
       changed = true;
     }
 
-    List<VCExprLetBinding /*!*/> /*!*/
-      newbindings = new List<VCExprLetBinding /*!*/>();
+    List<VCExprLetBinding /*!*/> /*!*/ newbindings = new List<VCExprLetBinding /*!*/>();
     for (int i = 0; i < node.Length; ++i) {
-      VCExprLetBinding /*!*/
-        binding = node[i];
+      VCExprLetBinding /*!*/ binding = node[i];
       Contract.Assert(binding != null);
-      VCExpr /*!*/
-        e = binding.E;
-      VCExpr /*!*/
-        newE = e.Accept(this, arg);
-      if (Object.ReferenceEquals(e, newE)) {
+      VCExpr /*!*/ e = binding.E;
+      var /*!*/ newE = await e.Accept(this, arg);
+      if (ReferenceEquals(e, newE)) {
         newbindings.Add(binding);
       } else {
         changed = true;

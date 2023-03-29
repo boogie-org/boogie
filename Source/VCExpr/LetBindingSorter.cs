@@ -31,7 +31,7 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Requires(gen != null);
     }
 
-    public override VCExpr Visit(VCExprLet node, bool arg) {
+    public override DynamicStack<VCExpr> Visit(VCExprLet node, bool arg) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       IDictionary<VCExprVar /*!*/, Binding /*!*/> boundVars =
@@ -127,7 +127,7 @@ namespace Microsoft.Boogie.VCExprAST {
         newBindings.Add(Gen.LetBinding(b.V, b.E));
       }
 
-      return Gen.Let(newBindings, newBody);
+      return DynamicStack.FromResult(Gen.Let(newBindings, newBody));
     }
 
     private class Binding {

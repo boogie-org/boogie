@@ -467,7 +467,7 @@ namespace Microsoft.Boogie.TypeErasure {
 
     ////////////////////////////////////////////////////////////////////////////
 
-    public override VCExpr Visit(VCExprQuantifier node, VariableBindings oldBindings) {
+    public override async DynamicStack<VCExpr> Visit(VCExprQuantifier node, VariableBindings oldBindings) {
       Contract.Requires(oldBindings != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -482,8 +482,7 @@ namespace Microsoft.Boogie.TypeErasure {
 
       // type variables are replaced with ordinary quantified variables
       GenBoundVarsForTypeParams(node.TypeParameters, newBoundVars, bindings);
-      VCExpr /*!*/
-        newNode = HandleQuantifier(node, newBoundVars, bindings);
+      VCExpr /*!*/ newNode = await HandleQuantifier(node, newBoundVars, bindings);
       Contract.Assert(newNode != null);
 
       if (!(newNode is VCExprQuantifier) || !IsUniversalQuantifier(node)) {
@@ -496,7 +495,7 @@ namespace Microsoft.Boogie.TypeErasure {
       }
 
       GenBoundVarsForTypeParams(node.TypeParameters, newBoundVars, bindings2);
-      return HandleQuantifier(node, newBoundVars, bindings2);
+      return await HandleQuantifier(node, newBoundVars, bindings2);
     }
 
     private void GenBoundVarsForTypeParams(List<TypeVariable /*!*/> /*!*/ typeParams,
@@ -514,14 +513,14 @@ namespace Microsoft.Boogie.TypeErasure {
       }
     }
 
-    private VCExpr HandleQuantifier(VCExprQuantifier node, List<VCExprVar /*!*/> /*!*/ newBoundVars,
+    private async DynamicStack<VCExpr> HandleQuantifier(VCExprQuantifier node, List<VCExprVar /*!*/> /*!*/ newBoundVars,
       VariableBindings bindings) {
       Contract.Requires(bindings != null);
       Contract.Requires(node != null);
       Contract.Requires(cce.NonNullElements(newBoundVars));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       List<VCTrigger /*!*/> /*!*/
-        newTriggers = MutateTriggers(node.Triggers, bindings);
+        newTriggers = await MutateTriggers(node.Triggers, bindings);
       Contract.Assert(cce.NonNullElements(newTriggers));
       VCExpr /*!*/
         newBody = Mutate(node.Body, bindings);
@@ -628,29 +627,29 @@ namespace Microsoft.Boogie.TypeErasure {
 
     ///////////////////////////////////////////////////////////////////////////
 
-    public override VCExpr VisitEqOp(VCExprNAry node, VariableBindings bindings) {
+    public override async DynamicStack<VCExpr> VisitEqOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       // we also have to state that the types are equal, because the
       // translation does not contain any information about the
       // relationship between values and types
-      return Gen.AndSimp(base.VisitEqOp(node, bindings),
+      return Gen.AndSimp(await base.VisitEqOp(node, bindings),
         EqualTypes(node[0].Type, node[1].Type, bindings));
     }
 
-    public override VCExpr VisitNeqOp(VCExprNAry node, VariableBindings bindings) {
+    public override async DynamicStack<VCExpr> VisitNeqOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       // we also have to state that the types are (un)equal, because the
       // translation does not contain any information about the
       // relationship between values and types
-      return Gen.OrSimp(base.VisitNeqOp(node, bindings),
+      return Gen.OrSimp(await base.VisitNeqOp(node, bindings),
         Gen.Not(EqualTypes(node[0].Type, node[1].Type, bindings)));
     }
 
-    public override VCExpr VisitSelectOp(VCExprNAry node, VariableBindings bindings) {
+    public override DynamicStack<VCExpr> VisitSelectOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -668,10 +667,10 @@ namespace Microsoft.Boogie.TypeErasure {
         NewOpCache.Add(originalOpTypes, newOpTypes);
       }
 
-      return AssembleOpExpression(newOpTypes, node.Arguments, bindings);
+      return DynamicStack.FromResult(AssembleOpExpression(newOpTypes, node.Arguments, bindings));
     }
 
-    public override VCExpr VisitStoreOp(VCExprNAry node, VariableBindings bindings) {
+    public override DynamicStack<VCExpr> VisitStoreOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -688,7 +687,7 @@ namespace Microsoft.Boogie.TypeErasure {
         NewOpCache.Add(originalOpTypes, newOpTypes);
       }
 
-      return AssembleOpExpression(newOpTypes, node.Arguments, bindings);
+      return DynamicStack.FromResult(AssembleOpExpression(newOpTypes, node.Arguments, bindings));
     }
 
     private OpTypesPair TypesPairForSelectStore(VCExprNAry /*!*/ node, Function /*!*/ untypedOp,
@@ -717,7 +716,7 @@ namespace Microsoft.Boogie.TypeErasure {
 
     ///////////////////////////////////////////////////////////////////////////
 
-    public override VCExpr VisitBoogieFunctionOp(VCExprNAry node, VariableBindings bindings) {
+    public override DynamicStack<VCExpr> VisitBoogieFunctionOp(VCExprNAry node, VariableBindings bindings) {
       Contract.Requires((bindings != null));
       Contract.Requires((node != null));
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -742,7 +741,7 @@ namespace Microsoft.Boogie.TypeErasure {
         NewOpCache.Add(originalOpTypes, newOpTypes);
       }
 
-      return AssembleOpExpression(newOpTypes, node.Arguments, bindings);
+      return DynamicStack.FromResult(AssembleOpExpression(newOpTypes, node.Arguments, bindings));
     }
 
     ///////////////////////////////////////////////////////////////////////////

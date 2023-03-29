@@ -81,7 +81,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool> {
     return true; // not used
   }
 
-  public override bool Visit(VCExprNAry node, bool arg) {
+  public override DynamicStack<bool> Visit(VCExprNAry node, bool arg) {
     Contract.Requires(node != null);
     if (node.Op is VCExprBoogieFunctionOp) {
       Function func = ((VCExprBoogieFunctionOp)node.Op).Func;
@@ -92,7 +92,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool> {
           varsInCasts.Add(castVar);
         }
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
     } else if (node.Op is VCExprNAryOp) {
       VCExpressionGenerator.SingletonOp op = VCExpressionGenerator.SingletonOpDict[node.Op];
@@ -115,7 +115,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool> {
             }
           }
 
-          return true;
+          return DynamicStack.FromResult(true);
         default:
           break;
       }

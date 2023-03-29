@@ -55,8 +55,8 @@ public class OpTypeEraserPremisses : OpTypeEraser {
     return Gen.Function(newFun, newArgs);
   }
 
-  public override VCExpr /*!*/ VisitSelectOp(VCExprNAry /*!*/ node,
-    VariableBindings /*!*/ bindings) {
+  public override DynamicStack<VCExpr> /*!*/ VisitSelectOp(VCExprNAry node, /*!*/
+    VariableBindings bindings /*!*/) {
     Contract.Requires(node != null);
     Contract.Requires(bindings != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -81,10 +81,10 @@ public class OpTypeEraserPremisses : OpTypeEraser {
       typeArgs.Add(node.TypeArguments[i]);
     }
 
-    return HandleFunctionOp(select, typeArgs, node.Arguments, bindings);
+    return DynamicStack.FromResult(HandleFunctionOp(select, typeArgs, node.Arguments, bindings));
   }
 
-  public override VCExpr VisitStoreOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitStoreOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -92,14 +92,14 @@ public class OpTypeEraserPremisses : OpTypeEraser {
       store =
         AxBuilder.MapTypeAbstracter.Store(node[0].Type.AsMap, out var instantiations);
     Contract.Assert(store != null);
-    return HandleFunctionOp(store,
+    return DynamicStack.FromResult(HandleFunctionOp(store,
       // the store function never has explicit
       // type parameters
       new List<Type /*!*/>(),
-      node.Arguments, bindings);
+      node.Arguments, bindings));
   }
 
-  public override VCExpr VisitBoogieFunctionOp(VCExprNAry node, VariableBindings bindings) {
+  public override DynamicStack<VCExpr> VisitBoogieFunctionOp(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -110,11 +110,8 @@ public class OpTypeEraserPremisses : OpTypeEraser {
     Contract.Assert(untypedFun.Fun.InParams.Count ==
                     untypedFun.ExplicitTypeParams.Count + node.Arity);
 
-    List<Type /*!*/> /*!*/
-      typeArgs =
-        ExtractTypeArgs(node,
-          oriFun.TypeParameters, untypedFun.ExplicitTypeParams);
-    return HandleFunctionOp(untypedFun.Fun, typeArgs, node.Arguments, bindings);
+    List<Type /*!*/> /*!*/ typeArgs = ExtractTypeArgs(node, oriFun.TypeParameters, untypedFun.ExplicitTypeParams);
+    return DynamicStack.FromResult(HandleFunctionOp(untypedFun.Fun, typeArgs, node.Arguments, bindings));
   }
 
   private List<Type /*!*/> /*!*/ ExtractTypeArgs(VCExprNAry node, List<TypeVariable> allTypeParams,
