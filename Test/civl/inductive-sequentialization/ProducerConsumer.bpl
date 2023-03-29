@@ -10,10 +10,6 @@ type ChannelId;
 // permission for sending to or receiving from a channel
 datatype {:linear "cid"} ChannelHandle { Send(cid: ChannelId), Receive(cid: ChannelId) }
 
-function {:inline} Cid(handle: ChannelHandle): ChannelId {
-  handle->cid
-}
-
 function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [ChannelHandle]bool {
   MapConst(false)[Send(cid) := true][Receive(cid) := true]
 }
@@ -86,11 +82,9 @@ modifies channels;
   var channel: Channel;
   var C: [int]int;
   var head, tail: int;
-  var cid: ChannelId;
 
   assert send_handle is Send;
-  cid := Cid(send_handle);
-  channel := channels[cid];
+  channel := channels[send_handle->cid];
   C := channel->C;
   head := channel->head;
   tail := channel->tail;
@@ -105,8 +99,8 @@ modifies channels;
     C[tail] := 0;
     tail := tail + 1;
   }
-  channels[cid] := Channel(C, head, tail);
-  assume {:add_to_pool "INV2", channels[cid]} true;
+  channels[send_handle->cid] := Channel(C, head, tail);
+  assume {:add_to_pool "INV2", channels[send_handle->cid]} true;
 }
 
 async action {:layer 2} CONSUMER (x: int, {:linear_in "cid"} receive_handle: ChannelHandle)
@@ -117,11 +111,9 @@ modifies channels;
   var C: [int]int;
   var head, tail: int;
   var x': int;
-  var cid: ChannelId;
 
   assert receive_handle is Receive;
-  cid := Cid(receive_handle);
-  channel := channels[cid];
+  channel := channels[receive_handle->cid];
   C := channel->C;
   head := channel->head;
   tail := channel->tail;
@@ -134,8 +126,8 @@ modifies channels;
   {
     call create_async(CONSUMER(x'+1, receive_handle));
   }
-  channels[cid] := Channel(C, head, tail);
-  assume {:add_to_pool "INV2", channels[cid]} true;
+  channels[receive_handle->cid] := Channel(C, head, tail);
+  assume {:add_to_pool "INV2", channels[receive_handle->cid]} true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,10 +138,8 @@ modifies channels;
 {
   var channel: Channel;
   var head, tail: int;
-  var cid: ChannelId;
 
-  cid := Cid(receive_handle);
-  channel := channels[cid];
+  channel := channels[receive_handle->cid];
   head := channel->head;
   tail := channel->tail;
   assert head < tail;
@@ -203,17 +193,15 @@ modifies channels;
   var channel: Channel;
   var C: [int]int;
   var head, tail: int;
-  var cid: ChannelId;
 
   assert send_handle is Send;
-  cid := Cid(send_handle);
-  channel := channels[cid];
+  channel := channels[send_handle->cid];
   C := channel->C;
   head := channel->head;
   tail := channel->tail;
   C[tail] := m;
   tail := tail + 1;
-  channels[cid] := Channel(C, head, tail);
+  channels[send_handle->cid] := Channel(C, head, tail);
 }
 
 action {:layer 1} RECEIVE ({:linear "cid"} receive_handle: ChannelHandle) returns (m:int)
@@ -222,18 +210,16 @@ modifies channels;
   var channel: Channel;
   var C: [int]int;
   var head, tail: int;
-  var cid: ChannelId;
 
   assert receive_handle is Receive;
-  cid := Cid(receive_handle);
-  channel := channels[cid];
+  channel := channels[receive_handle->cid];
   C := channel->C;
   head := channel->head;
   tail := channel->tail;
   assume head < tail;
   m := C[head];
   head := head + 1;
-  channels[cid] := Channel(C, head, tail);
+  channels[receive_handle->cid] := Channel(C, head, tail);
 }
 
 <-> action {:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
