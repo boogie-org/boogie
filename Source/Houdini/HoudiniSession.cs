@@ -155,17 +155,18 @@ namespace Microsoft.Boogie.Houdini
       return false;
     }
 
-    public HoudiniSession(TextWriter traceWriter, Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program,
-      Implementation impl, HoudiniStatistics stats, int taskID = -1)
+    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program,
+      ImplementationRun run, HoudiniStatistics stats, int taskID = -1)
     {
+      var impl = run.Implementation;
       this.Description = impl.Name;
       this.houdini = houdini;
       this.stats = stats;
       collector = new ConditionGeneration.VerificationResultCollector(houdini.Options);
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
-      vcgen.ConvertCFG2DAG(impl, taskID: taskID);
-      var gotoCmdOrigins = vcgen.PassifyImpl(new ImplementationRun(impl, traceWriter), out var mvInfo);
+      vcgen.ConvertCFG2DAG(run, taskID: taskID);
+      var gotoCmdOrigins = vcgen.PassifyImpl(run, out var mvInfo);
 
       ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out var ecollector);
       this.houdiniAssertConstants = ecollector.houdiniAssertConstants;

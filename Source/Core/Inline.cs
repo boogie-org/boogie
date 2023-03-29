@@ -201,9 +201,9 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
-      Console.WriteLine("after inlining procedure calls");
-      impl.Proc.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options), 0);
-      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options), 0);
+      options.OutputWriter.WriteLine("after inlining procedure calls");
+      impl.Proc.Emit(new TokenTextWriter("<console>", options.OutputWriter, /*pretty=*/ false, options), 0);
+      impl.Emit(new TokenTextWriter("<console>", options.OutputWriter, /*pretty=*/ false, options), 0);
     }
 
     private sealed class DummyErrorSink : IErrorSink

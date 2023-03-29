@@ -105,9 +105,9 @@ public abstract class ProverInterface
 
   public class ErrorHandler
   {
-    private SMTLibOptions options;
+    protected SMTLibOptions options;
 
-    public ErrorHandler(SMTLibOptions options)
+    protected ErrorHandler(SMTLibOptions options)
     {
       this.options = options;
     }
@@ -142,7 +142,7 @@ public abstract class ProverInterface
         case CoreOptions.ProverWarnings.None:
           break;
         case CoreOptions.ProverWarnings.Stdout:
-          Console.WriteLine("Prover warning: " + message);
+          options.OutputWriter.WriteLine("Prover warning: " + message);
           break;
         case CoreOptions.ProverWarnings.Stderr:
           Console.Error.WriteLine("Prover warning: " + message);

@@ -360,15 +360,15 @@ namespace Microsoft.Boogie.AbstractInterpretation
         var tf = new ThresholdFinder(impl);
         tf.Find(out downThresholds, out upThresholds);
 #if DEBUG_PRINT
-        Console.Write("DEBUG: for implementation '{0}', setting downs to [", impl.Name);
+        options.OutputWriter.Write("DEBUG: for implementation '{0}', setting downs to [", impl.Name);
         foreach (var i in downThresholds) {
-          Console.Write(" {0}", i);
+          options.OutputWriter.Write(" {0}", i);
         }
-        Console.Write(" ] and ups to [");
+        options.OutputWriter.Write(" ] and ups to [");
         foreach (var i in upThresholds) {
-          Console.Write(" {0}", i);
+          options.OutputWriter.Write(" {0}", i);
         }
-        Console.WriteLine(" ]");
+        options.OutputWriter.WriteLine(" ]");
 #endif
       }
 

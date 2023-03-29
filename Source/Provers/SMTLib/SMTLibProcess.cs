@@ -51,7 +51,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (options.Verbosity >= 1)
       {
-        Console.WriteLine("[SMT-{0}] Starting {1} {2}", smtProcessId, psi.FileName, psi.Arguments);
+        libOptions.OutputWriter.WriteLine("[SMT-{0}] Starting {1} {2}", smtProcessId, psi.FileName, psi.Arguments);
       }
 
       try

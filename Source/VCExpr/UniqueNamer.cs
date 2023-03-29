@@ -1,9 +1,7 @@
 using System;
 
-namespace Microsoft.Boogie.VCExprAST
-{
-  public interface UniqueNamer
-  {
+namespace Microsoft.Boogie.VCExprAST {
+  public interface UniqueNamer {
     string Lookup(Object thingie);
 
     string GetName(Object thing, string name);

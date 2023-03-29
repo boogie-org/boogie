@@ -20,7 +20,7 @@ public class FunctionDependencyCollector : BoundVarTraversingVCExprVisitor<bool,
     return functionList;
   }
 
-  public override bool Visit(VCExprNAry node, bool arg)
+  public override DynamicStack<bool> Visit(VCExprNAry node, bool arg)
   {
     VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
     if (op != null)

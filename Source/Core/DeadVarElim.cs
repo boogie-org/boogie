@@ -145,21 +145,21 @@ namespace Microsoft.Boogie
       }
 
 #if DEBUG_PRINT
-      Console.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
+      options.OutputWriter.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
       foreach (Procedure/*!*/ x in modSets.Keys) {
         Contract.Assert(x != null);
-        Console.Write("{0} : ", x.Name);
+        options.OutputWriter.Write("{0} : ", x.Name);
         bool first = true;
         foreach (Variable/*!*/ y in modSets[x]) {
           Contract.Assert(y != null);
           if (first)
             first = false;
           else
-            Console.Write(", ");
-          Console.Write("{0}", y.Name);
+            options.OutputWriter.Write(", ");
+          options.OutputWriter.Write("{0}", y.Name);
         }
-        Console.WriteLine("");
-      }
+        options.OutputWriter.WriteLine("");
+      options.OutputWriter
 #endif
     }
 
@@ -970,7 +970,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class ICFG
+  public class ImplementationControlFlowGraph
   {
     public Graph<Block /*!*/> /*!*/
       graph;
@@ -1012,6 +1012,8 @@ namespace Microsoft.Boogie
     public GenKillWeight /*!*/
       summary;
 
+    private readonly CoreOptions options;
+
     public Implementation /*!*/
       impl;
 
@@ -1036,7 +1038,7 @@ namespace Microsoft.Boogie
 
 
     [NotDelayed]
-    public ICFG(Implementation impl)
+    public ImplementationControlFlowGraph(CoreOptions options, Implementation impl)
     {
       Contract.Requires(impl != null);
       this.graph = new Graph<Block /*!*/>();
@@ -1056,6 +1058,7 @@ namespace Microsoft.Boogie
       this.liveVarsBefore = new Dictionary<Block /*!*/, HashSet<Variable /*!*/> /*!*/>();
 
       summary = GenKillWeight.zero();
+      this.options = options;
       this.impl = impl;
 
       Initialize(impl);
@@ -1115,7 +1118,7 @@ namespace Microsoft.Boogie
 
       if (!acyclic)
       {
-        Console.WriteLine("Warning: graph is not a dag");
+        options.OutputWriter.WriteLine("Warning: graph is not a dag");
       }
 
       int num = sortedNodes.Count;
@@ -1186,7 +1189,7 @@ namespace Microsoft.Boogie
     private CoreOptions options;
     Program /*!*/ program;
 
-    Dictionary<string /*!*/, ICFG /*!*/> /*!*/
+    Dictionary<string /*!*/, ImplementationControlFlowGraph /*!*/> /*!*/
       procICFG;
 
     Dictionary<string /*!*/, Procedure /*!*/> /*!*/
@@ -1246,7 +1249,7 @@ namespace Microsoft.Boogie
       Contract.Requires(impl != null);
       this.program = program;
       this.options = options;
-      procICFG = new Dictionary<string /*!*/, ICFG /*!*/>();
+      procICFG = new Dictionary<string /*!*/, ImplementationControlFlowGraph /*!*/>();
       name2Proc = new Dictionary<string /*!*/, Procedure /*!*/>();
       workList = new WorkList();
       this.callers = new Dictionary<string /*!*/, List<WorkItem /*!*/> /*!*/>();
@@ -1278,19 +1281,19 @@ namespace Microsoft.Boogie
         }
       }
 
-      ICFG /*!*/
-        mainICFG = new ICFG(mainImpl);
-      Contract.Assert(mainICFG != null);
-      procICFG.Add(mainICFG.impl.Name, mainICFG);
-      callGraph.AddSource(mainICFG.impl.Name);
+      ImplementationControlFlowGraph /*!*/
+        mainImplementationControlFlowGraph = new ImplementationControlFlowGraph(this.options, mainImpl);
+      Contract.Assert(mainImplementationControlFlowGraph != null);
+      procICFG.Add(mainImplementationControlFlowGraph.impl.Name, mainImplementationControlFlowGraph);
+      callGraph.AddSource(mainImplementationControlFlowGraph.impl.Name);
 
-      List<ICFG /*!*/> /*!*/
-        procsToConsider = new List<ICFG /*!*/>();
-      procsToConsider.Add(mainICFG);
+      List<ImplementationControlFlowGraph /*!*/> /*!*/
+        procsToConsider = new List<ImplementationControlFlowGraph /*!*/>();
+      procsToConsider.Add(mainImplementationControlFlowGraph);
 
       while (procsToConsider.Count != 0)
       {
-        ICFG /*!*/
+        ImplementationControlFlowGraph /*!*/
           p = procsToConsider[0];
         Contract.Assert(p != null);
         procsToConsider.RemoveAt(0);
@@ -1326,8 +1329,8 @@ namespace Microsoft.Boogie
             continue;
           }
 
-          ICFG /*!*/
-            ncfg = new ICFG(name2Impl[callee]);
+          ImplementationControlFlowGraph /*!*/
+            ncfg = new ImplementationControlFlowGraph(this.options, name2Impl[callee]);
           Contract.Assert(ncfg != null);
           procICFG.Add(callee, ncfg);
           procsToConsider.Add(ncfg);
@@ -1448,7 +1451,7 @@ namespace Microsoft.Boogie
 
     class WorkItem
     {
-      public ICFG /*!*/
+      public ImplementationControlFlowGraph /*!*/
         cfg;
 
       public Block /*!*/
@@ -1462,7 +1465,7 @@ namespace Microsoft.Boogie
       }
 
 
-      public WorkItem(ICFG cfg, Block block)
+      public WorkItem(ImplementationControlFlowGraph cfg, Block block)
       {
         Contract.Requires(block != null);
         Contract.Requires(cfg != null);
@@ -1628,7 +1631,7 @@ namespace Microsoft.Boogie
       Contract.Assert(procName != null);
       if (procICFG.ContainsKey(procName))
       {
-        ICFG /*!*/
+        ImplementationControlFlowGraph /*!*/
           cfg = procICFG[procName];
         Contract.Assert(cfg != null);
         return GenKillWeight.projectLocals(cfg.summary);
@@ -1653,7 +1656,7 @@ namespace Microsoft.Boogie
     public void Compute()
     {
       // Put all exit nodes in the worklist
-      foreach (ICFG /*!*/ cfg in procICFG.Values)
+      foreach (ImplementationControlFlowGraph /*!*/ cfg in procICFG.Values)
       {
         Contract.Assert(cfg != null);
         foreach (Block /*!*/ eb in cfg.exitNodes)
@@ -1676,7 +1679,7 @@ namespace Microsoft.Boogie
       }
 
       // Propagate LV to all procedures
-      foreach (ICFG /*!*/ cfg in procICFG.Values)
+      foreach (ImplementationControlFlowGraph /*!*/ cfg in procICFG.Values)
       {
         Contract.Assert(cfg != null);
         foreach (Block /*!*/ b in cfg.nodes)
@@ -1687,7 +1690,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      ICFG /*!*/
+      ImplementationControlFlowGraph /*!*/
         mainCfg = procICFG[mainImpl.Name];
       Contract.Assert(mainCfg != null);
       foreach (Block /*!*/ eb in mainCfg.exitNodes)
@@ -1708,7 +1711,7 @@ namespace Microsoft.Boogie
       }
 
       // Set live variable info
-      foreach (ICFG /*!*/ cfg in procICFG.Values)
+      foreach (ImplementationControlFlowGraph /*!*/ cfg in procICFG.Values)
       {
         Contract.Assert(cfg != null);
         HashSet<Variable /*!*/> /*!*/
@@ -1749,7 +1752,7 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
     private void ProcessLv(WorkItem wi)
     {
       Contract.Requires(wi != null);
-      ICFG /*!*/
+      ImplementationControlFlowGraph /*!*/
         cfg = wi.cfg;
       Contract.Assert(cfg != null);
       Block /*!*/
@@ -1774,7 +1777,7 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
           Contract.Assert(procName != null);
           if (procICFG.ContainsKey(procName))
           {
-            ICFG /*!*/
+            ImplementationControlFlowGraph /*!*/
               callee = procICFG[procName];
             Contract.Assert(callee != null);
             // Inter propagation

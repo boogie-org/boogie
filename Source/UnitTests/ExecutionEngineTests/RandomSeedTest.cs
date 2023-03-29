@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using NUnit.Framework;
@@ -28,18 +29,18 @@ public class RandomSeedTest
   [Test]
   public async Task AttributeAndCommandLineOptionProduceSameResult()
   {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.RandomSeed = randomSeed;
     var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);
     var randomAttributeLogs = await
-      GetProverLogs.GetProverLogForProgram(CommandLineOptions.FromArguments(), GetProgramWithAttribute(randomSeed));
+      GetProverLogs.GetProverLogForProgram(CommandLineOptions.FromArguments(TextWriter.Null), GetProgramWithAttribute(randomSeed));
     Assert.AreEqual(randomOptionsLogs, randomAttributeLogs);
   }
 
   [Test]
   public async Task Z3RandomisationOptionsAreSet()
   {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.RandomSeed = randomSeed;
     var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);
     Assert.IsTrue(randomOptionsLogs.Contains("(set-option :smt.random_seed 12312314)"));
@@ -49,7 +50,7 @@ public class RandomSeedTest
   [Test]
   public async Task DeclarationOrderIsRandomised()
   {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.NormalizeDeclarationOrder = false;
     var noRandomLogs = await GetProverLogs.GetProverLogForProgram(options, program);
     options.RandomSeed = 10000;
@@ -69,7 +70,7 @@ public class RandomSeedTest
   [Test]
   public async Task SomeVariablesAreRenamed()
   {
-    var options = CommandLineOptions.FromArguments();
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.RandomSeed = randomSeed;
     options.NormalizeNames = false;
     var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);

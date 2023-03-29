@@ -194,7 +194,7 @@ namespace Microsoft.Boogie.SMTLib
       KnownVariables.Add(variable);
     }
 
-    public override bool Visit(VCExprNAry node, bool arg)
+    public override DynamicStack<bool> Visit(VCExprNAry node, bool arg)
     {
       Contract.Requires(node != null);
 
@@ -282,7 +282,7 @@ namespace Microsoft.Boogie.SMTLib
       return base.Visit(node, arg);
     }
 
-    public override bool Visit(VCExprQuantifier node, bool arg)
+    public override DynamicStack<bool> Visit(VCExprQuantifier node, bool arg)
     {
       Contract.Requires(node != null);
       foreach (VCExprVar v in node.BoundVars)

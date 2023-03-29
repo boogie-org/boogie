@@ -384,14 +384,14 @@ namespace Core
       {
         if (options.TraceVerify)
         {
-          Console.WriteLine("Old lambda: {0}", lam_str);
+          options.OutputWriter.WriteLine("Old lambda: {0}", lam_str);
         }
       }
       else
       {
         if (options.TraceVerify)
         {
-          Console.WriteLine("New lambda: {0}", lam_str);
+          options.OutputWriter.WriteLine("New lambda: {0}", lam_str);
         }
 
         var freshTypeVars = (from tv in freeTypeVars select new TypeVariable(tv.tok, tv.Name)).ToList();

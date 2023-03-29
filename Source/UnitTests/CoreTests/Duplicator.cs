@@ -1,4 +1,5 @@
-﻿using Microsoft.Boogie.TestUtil;
+﻿using System.IO;
+using Microsoft.Boogie.TestUtil;
 using Microsoft.Boogie;
 using Microsoft.BaseTypes;
 using NUnit.Framework;
@@ -119,7 +120,7 @@ namespace CoreTests
     [Test()]
     public void GotoTargets()
     {
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main()
         {
@@ -186,7 +187,7 @@ namespace CoreTests
     [Test()]
     public void ImplementationProcedureResolving()
     {
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main(a:int) returns (r:int);
         requires a > 0;
@@ -219,7 +220,7 @@ namespace CoreTests
     [Test()]
     public void CallCmdResolving()
     {
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       Program p = TestUtil.ProgramLoader.LoadProgramFrom(options, @"
         procedure main()
         {
