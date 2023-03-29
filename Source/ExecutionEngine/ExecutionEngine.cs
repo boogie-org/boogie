@@ -10,7 +10,6 @@ using VC;
 using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using VCGeneration;
 
 namespace Microsoft.Boogie
@@ -20,7 +19,12 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class ExecutionEngine : IDisposable {
+  public class ExecutionEngine : IDisposable
+  {
+    private static readonly WorkStealingTaskScheduler LargeThreadScheduler = new(16 * 1024 * 1024);
+    private static readonly TaskFactory LargeThreadTaskFactory = new(
+      CancellationToken.None, TaskCreationOptions.DenyChildAttach,
+      TaskContinuationOptions.None, LargeThreadScheduler);
 
     static int autoRequestIdCount;
 
@@ -731,9 +735,9 @@ namespace Microsoft.Boogie
 
       await verifyImplementationSemaphore.WaitAsync(cancellationToken);
 
-      var coreTask = Task.Run(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
+      var coreTask = LargeThreadTaskFactory.StartNew(() => VerifyImplementation(processedProgram, stats, er, cancellationToken,
         implementation,
-        programId, taskWriter), cancellationToken);
+        programId, taskWriter), cancellationToken).Unwrap();
 
       var _ = coreTask.ContinueWith(t => {
         verifyImplementationSemaphore.Release();
