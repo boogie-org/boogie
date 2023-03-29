@@ -254,28 +254,6 @@ namespace Microsoft.Boogie
       {
         var initialConstraints = new Dictionary<Absy, HashSet<int>>();
 
-        foreach (Block header in implGraph.Headers)
-        {
-          if (civlTypeChecker.IsYieldingLoopHeader(header, currLayerNum) ||
-              civlTypeChecker.IsCooperatingLoopHeader(header, currLayerNum))
-          {
-            continue;
-          }
-
-          initialConstraints[header] = new HashSet<int> {RM};
-        }
-
-        if (IsMoverProcedure)
-        {
-          foreach (var call in impl.Blocks.SelectMany(b => b.cmds).OfType<CallCmd>())
-          {
-            if (!IsCooperatingCall(call))
-            {
-              initialConstraints[call] = new HashSet<int> {RM};
-            }
-          }
-        }
-
         var simulationRelation =
           new SimulationRelation<Absy, int, string>(LabelsToLabeledEdges(atomicityLabels), AtomicitySpec, initialConstraints)
             .ComputeSimulationRelation();
@@ -297,11 +275,6 @@ namespace Microsoft.Boogie
       private bool IsMoverProcedure
       {
         get { return yieldingProc is MoverProc && yieldingProc.upperLayer == currLayerNum; }
-      }
-
-      private bool IsCooperatingCall(CallCmd call)
-      {
-        return !IsRecursiveMoverProcedureCall(call) || civlTypeChecker.IsCooperatingProcedure(call.Proc);
       }
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
@@ -436,9 +409,9 @@ namespace Microsoft.Boogie
           return P;
         }
 
-        if (civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
+        if (callCmd.Proc is YieldInvariantDecl yieldInvariant)
         {
-          return civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum == currLayerNum ? Y : P;
+          return yieldInvariant.LayerNum == currLayerNum ? Y : P;
         }
 
         YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
@@ -506,9 +479,9 @@ namespace Microsoft.Boogie
           return P;
         }
 
-        if (civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc))
+        if (callCmd.Proc is YieldInvariantDecl yieldInvariant)
         {
-          return civlTypeChecker.procToYieldInvariant[callCmd.Proc].LayerNum == currLayerNum ? Y : P;
+          return yieldInvariant.LayerNum == currLayerNum ? Y : P;
         }
 
         YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
@@ -566,9 +539,7 @@ namespace Microsoft.Boogie
       private void CheckParCallCmd(ParCallCmd parCallCmd)
       {
         CheckNonMoverCondition(parCallCmd);
-        if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == Y &&
-                                               !civlTypeChecker.procToYieldInvariant.ContainsKey(
-                                                 callCmd.Proc)))
+        if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == Y && callCmd.Proc is not YieldInvariantDecl))
         {
           if (parCallCmd.CallCmds.Any(callCmd => CallCmdLabel(callCmd) == N))
           {
@@ -635,8 +606,7 @@ namespace Microsoft.Boogie
         {
           var label = CallCmdLabel(callCmd);
           Debug.Assert(label != N);
-          if (label == P || label == Y && civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc)
-          )
+          if (label == P || label == Y && callCmd.Proc is YieldInvariantDecl)
           {
             continue;
           }

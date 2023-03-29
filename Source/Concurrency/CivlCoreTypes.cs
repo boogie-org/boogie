@@ -1,19 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-  public enum MoverType
-  {
-    Non,
-    Right,
-    Left,
-    Both
-  }
-
   public class LayerRange
   {
     public static int Min = 0;
@@ -540,31 +531,15 @@ namespace Microsoft.Boogie
       });
     }
   }
-  
-  public class YieldInvariant
-  {
-    public Procedure proc;
-    private int layer;
-
-    public YieldInvariant(Procedure proc, int layer)
-    {
-      this.proc = proc;
-      this.layer = layer;
-      this.proc.Ensures.AddRange(this.proc.Requires.Select(requires =>
-        new Ensures(requires.tok, false, requires.Condition, null)));
-    }
-
-    public int LayerNum => layer;
-  }
 
   public class YieldingLoop
   {
-    public HashSet<int> layers;
+    public int upperLayer;
     public List<CallCmd> yieldInvariants;
 
-    public YieldingLoop(HashSet<int> layers, List<CallCmd> yieldInvariants)
+    public YieldingLoop(int upperLayer, List<CallCmd> yieldInvariants)
     {
-      this.layers = layers;
+      this.upperLayer = upperLayer;
       this.yieldInvariants = yieldInvariants;
     }
   }

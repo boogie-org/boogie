@@ -2920,7 +2920,7 @@ namespace Microsoft.Boogie
         foreach (CallCmd callCmd in CallCmds)
         {
           if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELDS) &&
-              !QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELD_INVARIANT))
+              callCmd.Proc is not YieldInvariantDecl)
           {
             tc.Error(callCmd, "target procedure of a parallel call must yield");
           }

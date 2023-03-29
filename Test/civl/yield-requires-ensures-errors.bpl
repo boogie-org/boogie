@@ -2,11 +2,11 @@
 // RUN: %diff "%s.expect" "%t"
 type {:linear "lin"} X = int;
 var {:layer 0,1} x:int;
-procedure {:yield_invariant} {:layer 1} yield_x(n: int);
-requires x >= n;
+yield invariant {:layer 1} yield_x(n: int);
+invariant x >= n;
 
-procedure {:yield_invariant} {:layer 1} linear_yield_x({:linear "lin"} n: int);
-requires x >= n;
+yield invariant {:layer 1} linear_yield_x({:linear "lin"} n: int);
+invariant x >= n;
 
 procedure {:yields} {:layer 1}
 {:yield_requires "yield_x", x == 4}

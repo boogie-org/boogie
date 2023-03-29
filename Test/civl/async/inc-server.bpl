@@ -18,8 +18,7 @@ var {:layer 7,11} y : int;
 // ###########################################################################
 // Main
 
-procedure {:yields}{:layer 11} main ({:linear_in "lin"} p : int)
-requires {:layer 9} perm(p) && x == y;
+procedure {:yields}{:layer 11}{:yield_requires "Yield_9", p} main ({:linear_in "lin"} p : int)
 {
   async call {:sync} Server_Inc(p);
 }
@@ -31,18 +30,19 @@ procedure {:left}{:layer 10,11} inc_x_high_atomic ({:linear_in "lin"} p : int)
 modifies x;
 { x := x + 1; }
 
-procedure {:yields}{:layer 10}{:refines "inc_x_high_atomic"} Server_Inc ({:linear_in "lin"} p : int)
-requires {:layer 9} perm(p) && x == y;
+procedure {:yields}{:layer 10}{:yield_requires "Yield_9", p}{:refines "inc_x_high_atomic"} Server_Inc ({:linear_in "lin"} p : int)
 {
   async call {:sync} AsyncInc(p);
 }
 
-procedure {:yields}{:layer 9}{:refines "inc_x_high_atomic"} AsyncInc ({:linear_in "lin"} p : int)
-requires {:layer 9} perm(p) && x == y;
+procedure {:yields}{:layer 9}{:yield_requires "Yield_9", p}{:refines "inc_x_high_atomic"} AsyncInc ({:linear_in "lin"} p : int)
 {
   call inc_x_perm(p);
   async call {:sync} Client_IncDone(p);
 }
+
+yield invariant {:layer 9} Yield_9({:linear "lin"} p : int);
+invariant perm(p) && x == y;
 
 // ###########################################################################
 // Abstracted low-level atomic actions (i.e., enriched with permissions)

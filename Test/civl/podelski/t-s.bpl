@@ -4,16 +4,15 @@
 var {:layer 0,1} s:int;
 var {:layer 0,1} t:int;
 
-procedure {:yield_invariant}{:layer 1} Inv ();
-requires t == s;
-// requires t >= s;
+yield invariant {:layer 1} Inv ();
+invariant t == s;
 
 procedure {:yields}{:layer 1}
 {:yield_requires "Inv"}
 main ()
 {
   while (*)
-  invariant {:yields}{:layer 1}{:yield_loop "Inv"} true;
+  invariant {:yields} {:yield_loop "Inv"} true;
   {
     async call incdec();
   }

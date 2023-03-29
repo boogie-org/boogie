@@ -26,6 +26,10 @@ namespace Microsoft.Boogie
 
   public class ExecutionEngine : IDisposable
   {
+    private static readonly WorkStealingTaskScheduler LargeThreadScheduler = new(16 * 1024 * 1024);
+    private static readonly TaskFactory LargeThreadTaskFactory = new(
+      CancellationToken.None, TaskCreationOptions.DenyChildAttach,
+      TaskContinuationOptions.None, LargeThreadScheduler);
 
     static int autoRequestIdCount;
 
@@ -831,9 +835,11 @@ namespace Microsoft.Boogie
       var afterRunningStates = VerifyImplementationWithoutCaching(processedProgram, stats, er, cancellationToken,
         programId, implementation, traceWriter).Do(status =>
       {
-        if (status is Completed completed && 0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
-        {
-          Cache.Insert(implementation, completed.Result);
+        if (status is Completed completed) {
+          if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum)) {
+            Cache.Insert(implementation, completed.Result);
+          }
+          Options.Printer.ReportEndVerifyImplementation(implementation, completed.Result);
         }
       });
       return Observable.Return(new Running()).Concat(afterRunningStates);
@@ -868,7 +874,7 @@ namespace Microsoft.Boogie
       var verificationResult = new VerificationResult(impl, programId);
 
       var batchCompleted = new Subject<(Split split, VCResult vcResult)>();
-      var completeVerification = Task.Run(async () =>
+      var completeVerification = LargeThreadTaskFactory.StartNew(async () =>
       {
         var vcgen = new VCGen(processedProgram.Program, checkerPool);
         vcgen.CachingActionCounts = stats.CachingActionCounts;
@@ -929,7 +935,7 @@ namespace Microsoft.Boogie
 
         batchCompleted.OnCompleted();
         return new Completed(verificationResult);
-      }, cancellationToken);
+      }, cancellationToken).Unwrap();
 
       return batchCompleted.Select(t => new BatchCompleted(t.split, t.vcResult)).Merge<IVerificationStatus>(Observable.FromAsync(() => completeVerification));
     }

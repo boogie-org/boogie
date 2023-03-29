@@ -1,8 +1,8 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure {:yield_invariant} {:layer 100} Yield({:linear "tid"} tid:int);
-requires tid == GcTid;
+yield invariant {:layer 100} Yield({:linear "tid"} tid:int);
+invariant tid == GcTid;
 
 const GcTid:int;
 

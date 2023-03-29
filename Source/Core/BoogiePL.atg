@@ -183,6 +183,7 @@ BoogiePL
      Axiom/*!*/ ax;
      List<Declaration/*!*/>/*!*/ ts;
      DatatypeTypeCtorDecl dt;
+     YieldInvariantDecl yi;
      Procedure/*!*/ pr;
      Implementation im;
      Implementation/*!*/ nnim;
@@ -209,6 +210,7 @@ BoogiePL
                                     Pgm.AddTopLevelDeclaration(v);
                                   }
                                .)
+  | YieldInvariantDecl<out yi> (. Pgm.AddTopLevelDeclaration(yi); .)
   | Procedure<out pr, out im>  (. Pgm.AddTopLevelDeclaration(pr);
                                    if (im != null) {
                                      Pgm.AddTopLevelDeclaration(im);
@@ -615,6 +617,24 @@ Constructor<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
   .
 
 /*------------------------------------------------------------------------*/
+YieldInvariantDecl<out YieldInvariantDecl yieldInvariant>
+= (. List<Requires> invariants = new List<Requires>(); QKeyValue kv = null; IToken name = null; List<Variable> ins; .)
+  "yield" "invariant"
+  { Attribute<ref kv> }
+  Ident<out name>
+  ProcFormals<true, true, out ins> ";"
+  { Invariant<invariants> }
+  (. yieldInvariant = new YieldInvariantDecl(name, name.val, ins, invariants, kv); .)
+  .
+
+Invariant<.List<Requires> invariants.>
+= (. Expr e; IToken tok = null; QKeyValue kv = null; .)
+  ( "invariant"              (. tok = t; .)
+    { Attribute<ref kv> }
+    Proposition<out e> ";"  (. invariants.Add(new Requires(tok, false, e, null, kv)); .)
+  )
+  .
+
 Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
 = (. Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
      List<TypeVariable>/*!*/ typeParams;

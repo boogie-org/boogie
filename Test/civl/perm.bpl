@@ -28,6 +28,6 @@ modifies x;
 
 procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
 
-procedure {:yield_invariant} {:layer 1} Yield({:linear "Perm"} p: [int]bool, v: int);
-requires p[1];
-requires x == v;
+yield invariant {:layer 1} Yield({:linear "Perm"} p: [int]bool, v: int);
+invariant p[1];
+invariant x == v;

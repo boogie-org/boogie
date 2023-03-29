@@ -19,11 +19,11 @@ var {:layer 0,1} b: bool;
 
 const p: int;
 
-procedure {:yield_invariant} {:layer 1} InvLock();
-requires lock != nil <==> b;
+yield invariant {:layer 1} InvLock();
+invariant lock != nil <==> b;
 
-procedure {:yield_invariant} {:layer 3} InvMem();
-requires dom(g)[p] && dom(g)[p+4] && map(g)[p] == map(g)[p+4];
+yield invariant {:layer 3} InvMem();
+invariant dom(g)[p] && dom(g)[p+4] && map(g)[p] == map(g)[p+4];
 
 procedure {:yields} {:layer 3}
 {:yield_preserves "InvLock"}
@@ -102,7 +102,7 @@ requires {:layer 1} tid != nil;
     var tmp: X;
 
     while (true)
-    invariant {:yields} {:layer 1} {:yield_loop "InvLock"} true;
+    invariant {:yields} {:yield_loop "InvLock"} true;
     {
         call status := CAS(tid, false, true);
         if (status) {

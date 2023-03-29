@@ -32,12 +32,12 @@ var {:layer 0,1}{:linear "perm"} As:[A]bool;
 var {:layer 0,1}{:linear "perm"} Bs:[B]bool;
 
 // Invariant
-procedure {:yield_invariant}{:layer 1} Inv ();
-requires x >= cardAs(As) - cardBs(Bs);
-requires (forall b:B :: Bs[b] ==> As[bToA(b)]);
+yield invariant {:layer 1} Inv ();
+invariant x >= cardAs(As) - cardBs(Bs);
+invariant (forall b:B :: Bs[b] ==> As[bToA(b)]);
 
-procedure {:yield_invariant}{:layer 1} Inv_incdec (b:B);
-requires As[bToA(b)];
+yield invariant {:layer 1} Inv_incdec (b:B);
+invariant As[bToA(b)];
 
 // Definitions and facts about cardinality
 function cardAs (As:[A]bool) : int;
@@ -76,7 +76,7 @@ requires {:layer 1} all_abs == (lambda v:AB :: 1 <= v->x);
   abs := all_abs;
   i := 1;
   while (*)
-  invariant {:yields}{:layer 1}{:yield_loop "Inv"} true;
+  invariant {:yields} {:yield_loop "Inv"} true;
   invariant {:layer 1} 1 <= i;
   invariant {:layer 1} abs == (lambda v:AB :: i <= v->x);
   {

@@ -30,12 +30,12 @@ var {:layer 1,2} usersInDriver: Lset Perm;
 var {:layer 0,1} pendingIo: int;
 var {:layer 0,1} stoppingEvent: bool;
 
-procedure {:yield_invariant} {:layer 2} Inv2();
-requires stopped ==> stoppingFlag;
+yield invariant {:layer 2} Inv2();
+invariant stopped ==> stoppingFlag;
 
-procedure {:yield_invariant} {:layer 1} Inv1();
-requires stoppingEvent ==> stoppingFlag && usersInDriver->dom == MapConst(false);
-requires pendingIo == Size(usersInDriver->dom) + (if stoppingFlag then 0 else 1);
+yield invariant {:layer 1} Inv1();
+invariant stoppingEvent ==> stoppingFlag && usersInDriver->dom == MapConst(false);
+invariant pendingIo == Size(usersInDriver->dom) + (if stoppingFlag then 0 else 1);
 
 // user code
 
@@ -46,8 +46,7 @@ User(i: int, {:layer 1,2} l: Lval Perm, {:layer 1,2} r: Lval Perm)
 requires {:layer 1, 2} l->val == Left(i) && r->val == Right(i);
 {
     while (*)
-    invariant {:yields} {:layer 2} {:yield_loop "Inv2"} true;
-    invariant {:yields} {:layer 1} {:yield_loop "Inv1"} true;
+    invariant {:yields} {:yield_loop "Inv1"} {:yield_loop "Inv2"} true;
     {
         call Enter#1(i, l, r);
         call CheckAssert#1(i, r);

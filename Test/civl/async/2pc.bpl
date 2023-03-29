@@ -139,23 +139,23 @@ function {:inline} Inv_9 (state: GState, B: [Pair]bool, xid: Xid) : bool
   && (xAllParticipantsInB(xid, B) || xUndecidedOrAborted(state[xid]))
 }
 
-procedure {:yield_invariant} {:layer 8} YieldInv_8 ();
-requires Inv_8(state, B, votes);
+yield invariant {:layer 8} YieldInv_8 ();
+invariant Inv_8(state, B, votes);
 
-procedure {:yield_invariant} {:layer 8} YieldUndecidedOrCommitted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
-requires pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
+yield invariant {:layer 8} YieldUndecidedOrCommitted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
+invariant pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
 
-procedure {:yield_invariant} {:layer 8} YieldAborted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
-requires pair(xid, mid, pair) && Aborted(state[xid][mid]);
+yield invariant {:layer 8} YieldAborted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
+invariant pair(xid, mid, pair) && Aborted(state[xid][mid]);
 
-procedure {:yield_invariant} {:layer 9} YieldInv_9 (xid: Xid);
-requires Inv_9(state, B, xid);
+yield invariant {:layer 9} YieldInv_9 (xid: Xid);
+invariant Inv_9(state, B, xid);
 
-procedure {:yield_invariant} {:layer 9} YieldConsistent_9 ();
-requires gConsistent(state);
+yield invariant {:layer 9} YieldConsistent_9 ();
+invariant gConsistent(state);
 
-procedure {:yield_invariant} {:layer 10} YieldConsistent_10 ();
-requires gConsistent(state);
+yield invariant {:layer 10} YieldConsistent_10 ();
+invariant gConsistent(state);
 
 // ###########################################################################
 // Main
@@ -168,7 +168,7 @@ main ()
 {
   var xid: Xid;
   while (*)
-  invariant {:yields}{:layer 8,9,10,11}
+  invariant {:yields}
     {:yield_loop "YieldInv_8"}
     {:yield_loop "YieldConsistent_9"}
     {:yield_loop "YieldConsistent_10"}
@@ -214,7 +214,6 @@ Coordinator_TransactionReq () returns (xid: Xid)
   call snapshot := GhostRead_10();
   i := 1;
   while (i <= numParticipants)
-  invariant {:cooperates} {:layer 8,9,10} true;
   invariant {:layer 8} Inv_8(state, B, votes);
   invariant {:layer 8,10} pairs == (lambda p: Pair :: pair(xid, p->mid, p) && i <= p->mid);
   invariant {:layer 8} votes[xid] == -1 || (forall p: Pair :: pairs[p] ==> UndecidedOrCommitted(state[xid][p->mid]));
@@ -257,7 +256,7 @@ Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
     async call {:sync} Coordinator_VoteNo(xid, mid, pair);
   }
 
-  assert {:layer 9} {:add_to_pool "A", state[xid]} true;
+  assume {:add_to_pool "A", state[xid]} true;
 }
 
 // ---------------------------------------------------------------------------
@@ -298,7 +297,6 @@ Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
     assert {:layer 8} xUndecidedOrCommitted(state[xid]);
     i := 1;
     while (i <= numParticipants)
-    invariant {:layer 8} {:cooperates} true;
     invariant {:layer 8} 1 <= i && i <= numParticipants + 1;
     invariant {:layer 8} Inv_8(state, B, votes);
     invariant {:layer 8} ExistsMonotoneExtension(snapshot, state, xid);
@@ -338,7 +336,6 @@ Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
   {
     i := 1;
     while (i <= numParticipants)
-    invariant {:layer 8} {:cooperates} true;
     invariant {:layer 8} 1 <= i && i <= numParticipants + 1;
     invariant {:layer 8} Aborted(state[xid][CoordinatorMid]);
     invariant {:layer 8} xUndecidedOrAborted(state[xid]);

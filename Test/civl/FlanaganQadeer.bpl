@@ -18,7 +18,7 @@ procedure {:yields} {:layer 1} main()
     var val: int;
 
     while (*)
-    invariant {:yields} {:layer 1} true;
+    invariant {:yields} true;
     {
         call tid := Allocate();
         havoc val;
@@ -62,6 +62,6 @@ requires {:layer 1} tid != nil;
     call Unlock();
 }
 
-procedure {:yield_invariant} {:layer 1} Yield({:linear "tid"} tid: X, old_l: X, old_x: int);
-requires tid != nil;
-requires old_l == tid ==> old_l == l && old_x == x;
+yield invariant {:layer 1} Yield({:linear "tid"} tid: X, old_l: X, old_x: int);
+invariant tid != nil;
+invariant old_l == tid ==> old_l == l && old_x == x;

@@ -31,7 +31,7 @@ Main ()
   var {:layer 1,2} {:linear "mem"} l:lmap;
   var i:int;
   while (*)
-  invariant {:yields} {:layer 1,2} {:yield_loop "Yield"} true;
+    invariant {:yields} {:yield_loop "Yield"} true;
   {
     call  l, i := Alloc();
     async call Thread(l, i);
@@ -52,7 +52,7 @@ requires {:layer 2} dom(local_in)[i];
   call o := Read(local, i);
   assert {:layer 2} o == 42;
   while (*)
-  invariant {:yields} {:layer 1,2} {:yield_loop "Yield"} true;
+  invariant {:yields} {:yield_loop "Yield"} true;
   {
     call l, y := Alloc();
     call l := Write(l, y, 42);
@@ -146,12 +146,12 @@ procedure {:intro} {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap,
   l' := cons(dom(l), map(l)[i := o]);
 }
 
-procedure {:yield_invariant} {:layer 1} Yield ();
-requires PoolInv(unallocated, pool);
+yield invariant {:layer 1} Yield ();
+invariant PoolInv(unallocated, pool);
 
-procedure {:yield_invariant} {:layer 1} YieldMem ({:layer 1} {:linear "mem"} l:lmap, i:int);
-requires PoolInv(unallocated, pool);
-requires dom(l)[i] && map(l)[i] == mem[i];
+yield invariant {:layer 1} YieldMem ({:layer 1} {:linear "mem"} l:lmap, i:int);
+invariant PoolInv(unallocated, pool);
+invariant dom(l)[i] && map(l)[i] == mem[i];
 
 var {:layer 1, 2} {:linear "mem"} pool:lmap;
 var {:layer 0, 1} mem:[int]int;

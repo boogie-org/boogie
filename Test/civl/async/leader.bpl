@@ -58,9 +58,12 @@ modifies col_dom, col_val, dec_dom, dec_val;
   assume all_decided(init_val, dec_dom, dec_val);
 }
 
-procedure {:yields}{:layer 1}{:refines "main_atomic"} main ({:linear_in "Perm"} perms:[Perm]bool)
+yield invariant {:layer 1} YieldAllDecided();
+invariant all_decided(init_val, dec_dom, dec_val);
+
+procedure {:yields}{:layer 1}{:yield_ensures "YieldAllDecided"}{:refines "main_atomic"}
+main ({:linear_in "Perm"} perms:[Perm]bool)
 requires {:layer 1} perms == all_perms();
-ensures {:layer 1} all_decided(init_val, dec_dom, dec_val);
 {
   var s:int;
   var {:linear "Perm"} perms':[Perm]bool;
@@ -68,7 +71,6 @@ ensures {:layer 1} all_decided(init_val, dec_dom, dec_val);
   s := 1;
   perms' := perms;
   while (s <= N)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} perms' == s_perms_geq(s);
   invariant {:layer 1} inv_val(s, init_val, col_dom, col_val);
   invariant {:layer 1} s > N ==> all_decided(init_val, dec_dom, dec_val);
@@ -95,7 +97,6 @@ modifies col_dom, col_val, dec_dom, dec_val;
   r := 1;
   call v := read_init_val(s);
   while (r <= N)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} perms' == s_r_perms_geq(s,r);
   invariant {:layer 1} inv_val'(s, r, init_val, col_dom, col_val);
   invariant {:layer 1} s == N ==> all_decided'(r, init_val, dec_dom, dec_val);

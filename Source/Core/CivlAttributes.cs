@@ -9,8 +9,7 @@ namespace Microsoft.Boogie
     public const string LAYER = "layer";
 
     public const string YIELDS = "yields";
-
-    public const string YIELD_INVARIANT = "yield_invariant";
+    
     public const string YIELD_REQUIRES = "yield_requires";
     public const string YIELD_ENSURES = "yield_ensures";
     public const string YIELD_PRESERVES = "yield_preserves";
@@ -25,8 +24,6 @@ namespace Microsoft.Boogie
 
     public const string REFINES = "refines";
     public const string HIDE = "hide";
-
-    public const string COOPERATES = "cooperates";
 
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
@@ -47,10 +44,10 @@ namespace Microsoft.Boogie
     {
       LAYER,
       YIELDS,
-      YIELD_INVARIANT, YIELD_REQUIRES, YIELD_ENSURES, YIELD_PRESERVES, YIELD_LOOP,
+      YIELD_REQUIRES, YIELD_ENSURES, YIELD_PRESERVES, YIELD_LOOP,
       INTRO,
       ATOMIC, LEFT, RIGHT, BOTH,
-      REFINES, HIDE, COOPERATES,
+      REFINES, HIDE,
       LEMMA,
       PENDING_ASYNC, SYNC, CREATES,
       IS, IS_INVARIANT, IS_ABSTRACTION, ELIM

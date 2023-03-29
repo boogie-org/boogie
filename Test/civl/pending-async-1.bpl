@@ -79,7 +79,6 @@ procedure {:yields}{:layer 1}{:refines "TEST5"} test5 ()
 
   i := 0;
   while (i < 10)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 0 <= i && i <= 10;
   invariant {:layer 1} PAs == MapConst(0)[A() := i];
   {

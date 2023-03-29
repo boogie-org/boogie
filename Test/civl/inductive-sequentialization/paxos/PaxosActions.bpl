@@ -21,7 +21,7 @@ A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
 modifies voteInfo;
 {
   var {:pool "Round"} maxRound: int;
-  var maxValue: Value;
+  var {:pool "MaxValue"} maxValue: Value;
   var {:pool "NodeSet"} ns: NodeSet;
 
   assert Round(r);
@@ -53,7 +53,7 @@ procedure {:atomic}{:layer 2}
 A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
 modifies decision;
 {
-  var q: NodeSet;
+  var {:pool "NodeSet"} q: NodeSet;
 
   assert Round(r);
   assert p == ConcludePerm(r);

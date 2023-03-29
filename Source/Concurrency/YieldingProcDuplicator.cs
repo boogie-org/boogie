@@ -263,7 +263,6 @@ namespace Microsoft.Boogie
           InjectGate(introductionAction, newCall);
           newCmdSeq.Add(newCall);
         }
-
         return;
       }
 
@@ -273,20 +272,17 @@ namespace Microsoft.Boogie
         {
           newCmdSeq.Add(newCall);
         }
-
         return;
       }
 
-      if (civlTypeChecker.procToYieldInvariant.ContainsKey(newCall.Proc))
+      if (newCall.Proc is YieldInvariantDecl yieldInvariant)
       {
-        var yieldInvariant = civlTypeChecker.procToYieldInvariant[newCall.Proc];
         if (layerNum == yieldInvariant.LayerNum)
         {
           var parCallCmd = new ParCallCmd(newCall.tok, new List<CallCmd> {newCall});
           absyMap[parCallCmd] = absyMap[newCall];
           newCmdSeq.Add(parCallCmd);
         }
-
         return;
       }
 
@@ -326,7 +322,6 @@ namespace Microsoft.Boogie
             }
           }
         }
-
         return;
       }
 
@@ -403,8 +398,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          Debug.Assert(civlTypeChecker.procToYieldInvariant.ContainsKey(callCmd.Proc));
-          var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.LayerNum)
           {
             callCmds.Add(callCmd);

@@ -37,7 +37,6 @@ procedure {:yields} {:layer 3} {:refines "AtomicPopIntermediate"}
 {:yield_preserves "YieldInv#2", ref_t}
 {:yield_preserves "YieldInv#3", ref_t}
 PopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
-requires {:layer 2} ts->dom[ref_t];
 {
   var ref_n, new_ref_n: RefNode X;
   var node: Node X;
@@ -75,7 +74,7 @@ PushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
   call ref_n := ReadTopOfStack#Push(ref_t);
   call new_ref_n := AllocInStack(ref_t, Node(ref_n, x));
   call success := WriteTopOfStack(ref_t, ref_n, new_ref_n);
-  assert {:layer 2} {:add_to_pool "A", ref_n, new_ref_n} true;
+  assume {:add_to_pool "A", ref_n, new_ref_n} true;
   call AddToUnusedNodes(success, ref_t, new_ref_n);
 }
 
@@ -193,11 +192,12 @@ function {:inline} NilDomain(ts: Lheap (Treiber X), ref_t: RefTreiber X, unused:
   Union(Singleton(Nil()), Domain(ts, ref_t, unused))
 }
 
-procedure {:yield_invariant} {:layer 2} YieldInv#2(ref_t: RefTreiber X);
-requires Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
-requires NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
+yield invariant {:layer 2} YieldInv#2(ref_t: RefTreiber X);
+invariant ts->dom[ref_t];
+invariant Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
+invariant NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
 
-procedure {:yield_invariant} {:layer 3} YieldInv#3(ref_t: RefTreiber X);
-requires Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
-requires NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
-requires (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDomain(ts, ref_t, unused)[ts->val[ref_t]->stack->val[ref_n]->next]);
+yield invariant {:layer 3} YieldInv#3(ref_t: RefTreiber X);
+invariant Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
+invariant NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
+invariant (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDomain(ts, ref_t, unused)[ts->val[ref_t]->stack->val[ref_n]->next]);
