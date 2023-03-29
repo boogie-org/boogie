@@ -3,7 +3,7 @@
 
 type Ref;
 type Field A B;
-type HeapType = <A, B> [Ref, Field A B]B;
+type HeapType = <A, B> [Ref, Field A B]B; // Using type parameters and the ==> operator can trigger the OpTypeEraser visitor which can cause stack overflows.
 
 procedure foo(n: int)
   requires true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true || true
