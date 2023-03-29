@@ -96,7 +96,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs)
+    public virtual void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs)
     {
       this.pendingAsyncs = new List<AsyncAction>(pendingAsyncs);
       var lhss = new List<IdentifierExpr>();
@@ -360,7 +360,7 @@ namespace Microsoft.Boogie
       pendingAsyncStartIndex = impl.OutParams.Count;
     }
 
-    public new void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs)
+    public override void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs)
     {
       base.CompleteInitialization(civlTypeChecker, pendingAsyncs);
 
@@ -482,13 +482,12 @@ namespace Microsoft.Boogie
       return choiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
     }
 
-    public void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs,
-      IEnumerable<AsyncAction> elimPendingAsyncs)
+    public override void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs)
     {
       var choiceDatatypeName = $"Choice_{impl.Name}";
       choiceDatatypeTypeCtorDecl =
         new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
-      elimPendingAsyncs.Iter(elim =>
+      pendingAsyncs.Iter(elim =>
       {
         var field = new TypedIdent(Token.NoToken, elim.impl.Name, elim.pendingAsyncType);
         choiceDatatypeTypeCtorDecl.AddConstructor(Token.NoToken, $"{choiceDatatypeName}_{elim.impl.Name}",

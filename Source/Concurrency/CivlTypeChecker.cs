@@ -329,8 +329,6 @@ namespace Microsoft.Boogie
 
     private void TypeCheckAtomicAction(ActionDecl proc,
       Dictionary<ActionDecl, HashSet<string>> actionProcToCreates,
-      Dictionary<string, ActionDecl> invariantActionProcs, 
-      Dictionary<ActionDecl, HashSet<string>> invariantProcToNonElims, 
       Dictionary<string, ActionDecl> atomicActionProcs, 
       Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
     {
@@ -349,9 +347,17 @@ namespace Microsoft.Boogie
       {
         Error(proc, $"Pending asyncs created by refining action must be subset of those created by invariant action {invariantProc.Name}");
       }
-      if (!actionProcToCreates[refinedProc].SetEquals(invariantProcToNonElims[invariantProc]))
+      if (!actionProcToCreates[refinedProc].IsSubsetOf(actionProcToCreates[invariantProc]))
       {
-        Error(refinedProc, $"Pending asyncs created by refined action must be the same as those not eliminated by invariant action {invariantProc.Name}");
+        Error(refinedProc, $"Pending asyncs created by refined action must be subset of those created by invariant action {invariantProc.Name}");
+      }
+      foreach (var elimActionName in actionProcToCreates[invariantProc].Except(actionProcToCreates[refinedProc]))
+      {
+        if (!actionProcToCreates[atomicActionProcs[elimActionName]].IsSubsetOf(actionProcToCreates[invariantProc]))
+        {
+          Error(atomicActionProcs[elimActionName],
+            $"Pending asyncs created by eliminated action must be subset of those created by invariant action {invariantProc.Name}");
+        }
       }
       CheckInductiveSequentializationAbstractionSignature(proc, invariantProc);
       CheckInductiveSequentializationAbstractionSignature(proc, refinedProc);
@@ -431,19 +437,11 @@ namespace Microsoft.Boogie
       {
         return;
       }
-      var invariantProcToNonElims = invariantProcToElimMap.Keys.ToDictionary(proc => proc,
-        proc =>
-        {
-          var nonElims = new HashSet<string>(actionProcToCreates[proc]);
-          nonElims.ExceptWith(invariantProcToElimMap[proc].Keys.Select(x => x.Name));
-          return nonElims;
-        });
-      
+
       // type check atomic actions
       atomicActionProcs.Values.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        TypeCheckAtomicAction(proc, actionProcToCreates, invariantActionProcs, invariantProcToNonElims,
-          atomicActionProcs, actionProcToLayerRange);
+        TypeCheckAtomicAction(proc, actionProcToCreates, atomicActionProcs, actionProcToLayerRange);
       });
       if (checkingContext.ErrorCount > 0)
       {
@@ -557,8 +555,7 @@ namespace Microsoft.Boogie
       {
         var action = procToIsInvariant[proc];
         action.CompleteInitialization(this,
-          proc.creates.Select(actionDeclRef => FindAtomicAction(actionDeclRef.actionName) as AsyncAction),
-          invariantProcToElimMap[proc].Keys.Select(x => procToAtomicAction[x]).OfType<AsyncAction>());
+          proc.creates.Select(actionDeclRef => FindAtomicAction(actionDeclRef.actionName) as AsyncAction));
         action.InitializeInputOutputRelation(this);
         var elimMap = invariantProcToElimMap[proc];
         elimMap.Keys.Iter(proc => procToAtomicAction[proc].InitializeInputOutputRelation(this));
