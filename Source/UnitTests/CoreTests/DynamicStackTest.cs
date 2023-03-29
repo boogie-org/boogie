@@ -1,5 +1,5 @@
 using System;
-using Microsoft.Boogie.DynamicStack;
+using Microsoft.Boogie;
 using NUnit.Framework;
 
 namespace CoreTests; 
