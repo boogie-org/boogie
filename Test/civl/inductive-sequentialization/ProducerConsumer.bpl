@@ -19,7 +19,8 @@ var {:layer 0,3} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
+action {:layer 2} {:elim "CONSUMER","CONSUMER'"}
+MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
 creates PRODUCER, CONSUMER;
 {
   assert channels[cid]->head == channels[cid]->tail;
@@ -37,7 +38,7 @@ modifies channels;
   channels[cid] := channel;
 }
 
-invariant action {:layer 2}{:elim "PRODUCER"}{:elim "CONSUMER","CONSUMER'"}
+invariant action {:layer 2}
 INV ({:linear_in "cid"} cid: ChannelId)
 creates PRODUCER, CONSUMER;
 modifies channels;

@@ -78,7 +78,7 @@ modifies CH, decision;
   decision := (lambda i:pid :: if pid(i) then max(CH) else old(decision)[i]);
 }
 
-invariant action {:layer 3} {:elim "COLLECT","COLLECT'"}
+invariant action {:layer 3}
 INV_COLLECT_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 creates COLLECT;
 modifies CH, decision;
@@ -103,7 +103,7 @@ modifies CH, decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3}
+action {:layer 3} {:elim "COLLECT","COLLECT'"}
 MAIN'({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 refines MAIN'' using INV_COLLECT_ELIM
 creates COLLECT;
@@ -133,7 +133,7 @@ creates BROADCAST, COLLECT;
   call create_asyncs(AllCollects());
 }
 
-invariant action {:layer 2} {:elim "BROADCAST"}
+invariant action {:layer 2}
 INV_BROADCAST_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 creates BROADCAST, COLLECT;
 modifies CH;

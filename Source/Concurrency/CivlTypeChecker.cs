@@ -249,23 +249,23 @@ namespace Microsoft.Boogie
       }
     }
 
-    private Dictionary<ActionDecl, ActionDecl> TypeCheckInvariantAction(ActionDecl proc,
+    private void TypeCheckElimAttributes(ActionDecl proc, ActionDecl invariantProc,
       Dictionary<ActionDecl, HashSet<string>> actionProcToCreates,
       Dictionary<string, ActionDecl> absActionProcs, 
-      Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
+      Dictionary<ActionDecl, LayerRange> actionProcToLayerRange,
+      Dictionary<ActionDecl, ActionDecl> elimMap)
     {
       var layer = actionProcToLayerRange[proc].upperLayerNum;
-      var elimMap = new Dictionary<ActionDecl, ActionDecl>();
       var kvs = proc.FindAllAttributes(CivlAttributes.ELIM);
-      if (!kvs.All(kv => 1 <= kv.Params.Count && kv.Params.Count <= 2 && kv.Params.All(p => p is string)))
+      if (!kvs.All(kv => kv.Params.Count == 2 && kv.Params.All(p => p is string)))
       {
-        Error(proc, "An elim attribute expects one or two strings");
-        return null;
+        Error(proc, "An elim attribute expects two strings");
+        return;
       }
       if (kvs.Select(kv => (string)kv.Params[0]).Distinct().Count() != kvs.Count)
       {
         Error(proc, "Each elim attribute must be distinct in the first action");
-        return null;
+        return;
       }
       foreach (var kv in kvs)
       {
@@ -274,16 +274,16 @@ namespace Microsoft.Boogie
         {
           Error(kv, $"Could not find pending async action {names[0]}");
         }
-        if (names.Count == 2 && !absActionProcs.ContainsKey(names[1]))
+        if (!absActionProcs.ContainsKey(names[1]))
         {
           Error(kv, $"Could not find atomic action {names[1]}");
         }
       }
       if (checkingContext.ErrorCount > 0)
       {
-        return null;
+        return;
       }
-      var invariantModifies = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
+
       foreach (var kv in kvs)
       {
         var names = kv.Params.OfType<string>().ToList();
@@ -294,29 +294,18 @@ namespace Microsoft.Boogie
           Error(kv, $"Action {actionName} does not exist at layer {layer}");
         }
         var absProc = elimProc;
-        if (kv.Params.Count == 2)
+        var abstractionName = names[1];
+        absProc = absActionProcs[abstractionName];
+        if (!actionProcToLayerRange[absProc].Contains(layer))
         {
-          var abstractionName = names[1];
-          absProc = absActionProcs[abstractionName];
-          if (!actionProcToLayerRange[absProc].Contains(layer))
-          {
-            Error(kv, $"Action {abstractionName} does not exist at layer {layer}");
-          }
+          Error(kv, $"Action {abstractionName} does not exist at layer {layer}");
         }
-        if (!actionProcToCreates[proc].Contains(actionName))
+        if (!actionProcToCreates[invariantProc].Contains(actionName))
         {
-          Error(kv, $"{actionName} must be created by {proc.Name}");
-        }
-        if (!actionProcToCreates[elimProc].IsSubsetOf(actionProcToCreates[proc]))
-        {
-          Error(kv, $"each pending async created by {actionName} must also be created by {proc.Name}");
+          Error(kv, $"{actionName} must be created by {invariantProc.Name}");
         }
         CheckInductiveSequentializationAbstractionSignature(elimProc, absProc);
         var elimModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
-        if (!elimModifies.IsSubsetOf(invariantModifies))
-        {
-          Error(kv, $"Modifies list of {elimProc.Name} must be subset of modifies list of invariant action {proc.Name}");
-        }
         var absModifies = new HashSet<Variable>(absProc.Modifies.Select(ie => ie.Decl));
         if (!absModifies.IsSubsetOf(elimModifies))
         {
@@ -324,12 +313,12 @@ namespace Microsoft.Boogie
         }
         elimMap[elimProc] = absProc;
       }
-      return elimMap;
     }
 
-    private void TypeCheckAtomicAction(ActionDecl proc,
+    private Dictionary<ActionDecl, ActionDecl> TypeCheckActionRefinement(ActionDecl proc,
       Dictionary<ActionDecl, HashSet<string>> actionProcToCreates,
-      Dictionary<string, ActionDecl> atomicActionProcs, 
+      Dictionary<string, ActionDecl> atomicActionProcs,
+      Dictionary<string, ActionDecl> absActionProcs,
       Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
     {
       var layer = actionProcToLayerRange[proc].upperLayerNum;
@@ -353,9 +342,10 @@ namespace Microsoft.Boogie
       }
       foreach (var elimActionName in actionProcToCreates[invariantProc].Except(actionProcToCreates[refinedProc]))
       {
-        if (!actionProcToCreates[atomicActionProcs[elimActionName]].IsSubsetOf(actionProcToCreates[invariantProc]))
+        var elimProc = atomicActionProcs[elimActionName];
+        if (!actionProcToCreates[elimProc].IsSubsetOf(actionProcToCreates[invariantProc]))
         {
-          Error(atomicActionProcs[elimActionName],
+          Error(elimProc,
             $"Pending asyncs created by eliminated action must be subset of those created by invariant action {invariantProc.Name}");
         }
       }
@@ -372,6 +362,21 @@ namespace Microsoft.Boogie
       {
         Error(refinedProc, $"Modifies of {refinedProc.Name} must be subset of modifies of {invariantProc.Name}");
       }
+
+      var elimMap = new Dictionary<ActionDecl, ActionDecl>();
+      foreach (var elimActionName in actionProcToCreates[invariantProc].Except(actionProcToCreates[refinedProc]))
+      {
+        var elimProc = atomicActionProcs[elimActionName];
+        elimMap[elimProc] = elimProc;
+        var elimProcModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
+        if (!elimProcModifies.IsSubsetOf(invariantProcModifies))
+        {
+          Error(elimProc,
+            $"Modifies of {elimProc.Name} must be subset of modifies of {invariantProc.Name}");
+        }
+      }
+      TypeCheckElimAttributes(proc, invariantProc, actionProcToCreates, absActionProcs, actionProcToLayerRange, elimMap);
+      return elimMap;
     }
 
     private void TypeCheckActions()
@@ -407,9 +412,7 @@ namespace Microsoft.Boogie
         .ToDictionary(proc => proc.Name, proc => proc);
       var absActionProcs = actionProcs.Where(proc => proc.actionQualifier == ActionQualifier.Abstract)
         .ToDictionary(proc => proc.Name, proc => proc);
-      var invariantActionProcs = actionProcs.Where(proc => proc.actionQualifier == ActionQualifier.Invariant)
-        .ToDictionary(proc => proc.Name, proc => proc);
-      
+
       // type check creates lists
       TypeCheckCreates(actionProcs, actionProcToLayerRange);
       if (checkingContext.ErrorCount > 0)
@@ -422,26 +425,13 @@ namespace Microsoft.Boogie
       {
         TypeCheckIntroductionAction(proc, actionProcToLayerRange[proc]);
       });
-      
-      // type check invariant actions and calculate for each invariant action the non-eliminated actions
-      var invariantProcToElimMap = new Dictionary<ActionDecl, Dictionary<ActionDecl, ActionDecl>>();
-      actionProcs.Where(proc => proc.actionQualifier == ActionQualifier.Invariant).Iter(proc =>
-      {
-        var elimMap = TypeCheckInvariantAction(proc, actionProcToCreates, absActionProcs, actionProcToLayerRange);
-        if (elimMap != null)
-        {
-          invariantProcToElimMap[proc] = elimMap;
-        }
-      });
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
 
-      // type check atomic actions
+      // type check action refinements
+      var actionProcToElimMap = new Dictionary<ActionDecl, Dictionary<ActionDecl, ActionDecl>>();
       atomicActionProcs.Values.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        TypeCheckAtomicAction(proc, actionProcToCreates, atomicActionProcs, actionProcToLayerRange);
+        actionProcToElimMap[proc] = TypeCheckActionRefinement(proc, actionProcToCreates, atomicActionProcs,
+          absActionProcs, actionProcToLayerRange);
       });
       if (checkingContext.ErrorCount > 0)
       {
@@ -543,40 +533,36 @@ namespace Microsoft.Boogie
         var action = procToAtomicAction[proc];
         action.CompleteInitialization(this,
           proc.creates.Select(actionDeclRef => FindAtomicAction(actionDeclRef.actionName) as AsyncAction));
+        action.InitializeInputOutputRelation(this);
       });
       procToIsAbstraction.Keys.Iter(proc =>
       {
         var action = procToIsAbstraction[proc];
         action.CompleteInitialization(this,
           proc.creates.Select(actionDeclRef => FindAtomicAction(actionDeclRef.actionName) as AsyncAction));
+        action.InitializeInputOutputRelation(this);
       });
-      var invariantProcToInductiveSequentialization = new Dictionary<Procedure, InductiveSequentialization>();
       procToIsInvariant.Keys.Iter(proc =>
       {
         var action = procToIsInvariant[proc];
         action.CompleteInitialization(this,
           proc.creates.Select(actionDeclRef => FindAtomicAction(actionDeclRef.actionName) as AsyncAction));
         action.InitializeInputOutputRelation(this);
-        var elimMap = invariantProcToElimMap[proc];
-        elimMap.Keys.Iter(proc => procToAtomicAction[proc].InitializeInputOutputRelation(this));
-        var elim = elimMap.Keys.ToDictionary(x => (AsyncAction)procToAtomicAction[x],
-          x =>
-          {
-            var absProc = elimMap[x];
-            return procToIsAbstraction.ContainsKey(absProc)
-              ? procToIsAbstraction[absProc]
-              : procToAtomicAction[absProc];
-          });
-        var inductiveSequentialization = new InductiveSequentialization(this, action, elim);
-        inductiveSequentializations.Add(inductiveSequentialization);
-        invariantProcToInductiveSequentialization[proc] = inductiveSequentialization;
       });
       actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        var action = procToAtomicAction[proc];
         var invariantProc = proc.invariantAction.actionDecl;
-        var inductiveSequentialization = invariantProcToInductiveSequentialization[invariantProc];
-        inductiveSequentialization.AddTarget(action);
+        var action = procToAtomicAction[proc];
+        var invariantAction = procToIsInvariant[invariantProc];
+        var elimMap = actionProcToElimMap[proc];
+        var elim = elimMap.Keys.ToDictionary(x => (AsyncAction)procToAtomicAction[x],
+          x =>
+          {
+            var abs = elimMap[x];
+            return procToIsAbstraction.ContainsKey(abs) ? procToIsAbstraction[abs] : procToAtomicAction[abs];
+          });
+        var inductiveSequentialization = new InductiveSequentialization(this, action, invariantAction, elim);
+        inductiveSequentializations.Add(inductiveSequentialization);
       });
     }
 

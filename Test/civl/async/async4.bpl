@@ -7,7 +7,7 @@ var {:layer 0,2} x:int;
 modifies x;
 { assert 0 <= n; x := x + n; }
 
-invariant action {:layer 1}{:elim "A_Inc"} INV(n: int)
+invariant action {:layer 1} INV(n: int)
 creates A_Inc;
 modifies x;
 {
@@ -18,7 +18,7 @@ modifies x;
   call create_multi_asyncs(MapConst(0)[A_Inc() := n - i]);
 }
 
-invariant action {:layer 1} Async_Add(n: int) refines A_Add using INV
+action {:layer 1} Async_Add(n: int) refines A_Add using INV
 creates A_Inc;
 {
   assert 0 <= n;

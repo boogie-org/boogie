@@ -19,7 +19,7 @@ modifies joinedNodes, voteInfo, decision;
   assume (forall r1: Round, r2: Round :: decision[r1] is Some && decision[r2] is Some ==> decision[r1] == decision[r2]);
 }
 
-invariant action {:layer 2}{:elim "A_StartRound"}{:elim "A_Propose"}{:elim "A_Conclude"}{:elim "A_Join"}{:elim "A_Vote"}
+invariant action {:layer 2}
 INV({:linear_in "perm"} rs: [Round]bool)
 creates A_StartRound, A_Propose, A_Conclude, A_Join, A_Vote;
 modifies joinedNodes, voteInfo, decision;

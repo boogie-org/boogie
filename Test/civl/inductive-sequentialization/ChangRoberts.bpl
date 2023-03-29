@@ -68,7 +68,7 @@ modifies channel, terminated, leader;
   assume (forall i:int :: Pid(i) && i != Max(id) ==> !leader[i]);
 }
 
-invariant action {:layer 3}{:elim "P", "P'"}
+invariant action {:layer 3}
 INV2 ({:linear_in "pid"} pids:[int]bool)
 creates P;
 modifies channel, terminated, leader;
@@ -105,7 +105,7 @@ modifies channel, terminated, leader;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool) refines MAIN3 using INV2
+action {:layer 3} {:elim "P", "P'"} MAIN2 ({:linear_in "pid"} pids:[int]bool) refines MAIN3 using INV2
 creates P;
 modifies channel;
 {
@@ -119,7 +119,7 @@ modifies channel;
   assume (forall i:int, msg:int :: Pid(i) && channel[i][msg] > 0 ==> msg == id[Prev(i)]);
 }
 
-invariant action {:layer 2}{:elim "PInit"}
+invariant action {:layer 2}
 INV1 ({:linear_in "pid"} pids:[int]bool)
 creates PInit, P;
 modifies channel;

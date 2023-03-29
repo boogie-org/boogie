@@ -38,7 +38,7 @@ MAIN' ({:linear_in "cid"} cid: ChannelId)
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
 }
 
-invariant action {:layer 2}{:elim "PING","PING'"}{:elim "PONG","PONG'"}
+invariant action {:layer 2}
 INV ({:linear_in "cid"} cid: ChannelId)
 creates PING, PONG;
 modifies channel;
@@ -89,7 +89,8 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
+action {:layer 2} {:elim "PING","PING'"}{:elim "PONG","PONG'"}
+MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
 creates PING, PONG;
 modifies channel;
 {

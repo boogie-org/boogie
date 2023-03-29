@@ -55,7 +55,7 @@ modifies RequestChannel, VoteChannel, votes, decisions;
   assume (forall i:int :: (i == 0 || pid(i)) ==> decisions[i] == dec);
 }
 
-invariant action {:layer 5}{:elim "PARTICIPANT2","PARTICIPANT2'"} INV4 ({:linear_in "pid"} pids:[int]bool)
+invariant action {:layer 5} INV4 ({:linear_in "pid"} pids:[int]bool)
 creates PARTICIPANT2;
 modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
 {
@@ -86,7 +86,7 @@ modifies DecisionChannel, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool) refines MAIN5 using INV4
+action {:layer 5} {:elim "PARTICIPANT2","PARTICIPANT2'"} MAIN4 ({:linear_in "pid"} pids:[int]bool) refines MAIN5 using INV4
 creates PARTICIPANT2;
 modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
 {
@@ -102,7 +102,7 @@ modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
   call create_asyncs((lambda pa:PARTICIPANT2 :: pid(pa->pid)));
 }
 
-invariant action {:layer 4}{:elim "COORDINATOR2"}
+invariant action {:layer 4}
 INV3 ({:linear_in "pid"} pids:[int]bool)
 creates COORDINATOR2, PARTICIPANT2;
 modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
@@ -145,7 +145,7 @@ modifies RequestChannel, VoteChannel, votes;
   call create_asyncs((lambda pa:PARTICIPANT2 :: pid(pa->pid)));
 }
 
-invariant action {:layer 3}{:elim "PARTICIPANT1"}
+invariant action {:layer 3}
 INV2 ({:linear_in "pid"} pids:[int]bool)
 creates COORDINATOR2, PARTICIPANT1, PARTICIPANT2;
 modifies RequestChannel, VoteChannel, votes;
@@ -183,7 +183,7 @@ modifies RequestChannel;
   call create_asyncs((lambda pa:PARTICIPANT1 :: pid(pa->pid)));
 }
 
-invariant action {:layer 2}{:elim "COORDINATOR1"}
+invariant action {:layer 2}
 INV1 ({:linear_in "pid"} pids:[int]bool)
 creates COORDINATOR1, COORDINATOR2, PARTICIPANT1;
 modifies RequestChannel;

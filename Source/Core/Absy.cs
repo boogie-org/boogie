@@ -3396,9 +3396,9 @@ namespace Microsoft.Boogie
       if (refinedAction != null)
       {
         refinedAction.Resolve(rc);
-        if (actionQualifier == ActionQualifier.Async)
+        if (actionQualifier != ActionQualifier.None)
         {
-          rc.Error(this, "A refining action may not be async");
+          rc.Error(this, "A refining action may not have any qualifiers on it");
         }
       }
       if (invariantAction != null)

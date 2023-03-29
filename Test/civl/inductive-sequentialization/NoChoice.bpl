@@ -16,7 +16,7 @@ action {:layer 2} MAIN' ()
 {
 }
 
-invariant action {:layer 1}{:elim "INC"}{:elim "DEC"}
+invariant action {:layer 1}
 INV ()
 creates INC, DEC;
 modifies x;

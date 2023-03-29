@@ -8,9 +8,9 @@ namespace Microsoft.Boogie
   public class InductiveSequentialization
   {
     public CivlTypeChecker civlTypeChecker;
+    public AtomicAction targetAction;
     public InvariantAction invariantAction;
     public Dictionary<AsyncAction, AtomicAction> elim;
-    public List<AtomicAction> targetActions;
 
     private HashSet<Variable> frame;
     private IdentifierExpr choice;
@@ -18,12 +18,13 @@ namespace Microsoft.Boogie
 
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
-    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, InvariantAction invariantAction, Dictionary<AsyncAction, AtomicAction> elim)
+    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, AtomicAction targetAction,
+      InvariantAction invariantAction, Dictionary<AsyncAction, AtomicAction> elim)
     {
       this.civlTypeChecker = civlTypeChecker;
+      this.targetAction = targetAction;
       this.invariantAction = invariantAction;
       this.elim = elim;
-      targetActions = new List<AtomicAction>();
 
       // The type checker ensures that the set of modified variables of an invariant is a superset of
       // - the modified set of each of each eliminated and abstract action associated with this invariant.
@@ -33,11 +34,6 @@ namespace Microsoft.Boogie
       newPAs = invariantAction.pendingAsyncs.ToDictionary(action => action.pendingAsyncType,
         action => (Variable)civlTypeChecker.LocalVariable($"newPAs_{action.impl.Name}",
           action.pendingAsyncMultisetType));
-    }
-
-    public void AddTarget(AtomicAction targetAction)
-    {
-      targetActions.Add(targetAction);
     }
 
     public Tuple<Procedure, Implementation> GenerateBaseCaseChecker(AtomicAction inputAction)
@@ -395,11 +391,8 @@ namespace Microsoft.Boogie
     {
       foreach (var x in civlTypeChecker.inductiveSequentializations)
       {
-        foreach (var targetAction in x.targetActions)
-        {
-          AddCheck(x.GenerateBaseCaseChecker(targetAction), decls);
-          AddCheck(x.GenerateConclusionChecker(targetAction), decls);
-        }
+        AddCheck(x.GenerateBaseCaseChecker(x.targetAction), decls);
+        AddCheck(x.GenerateConclusionChecker(x.targetAction), decls);
         foreach (var elim in x.elim.Keys)
         {
           AddCheck(x.GenerateStepChecker(elim), decls);

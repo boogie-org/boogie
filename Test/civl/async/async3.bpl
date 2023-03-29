@@ -8,7 +8,7 @@ yield procedure {:layer 2} Client () refines A_Inc
   call Service();
 }
 
-invariant action {:layer 1}{:elim "A_Inc"} INV()
+invariant action {:layer 1} INV()
 creates A_Inc;
 modifies x;
 {
