@@ -1,4 +1,5 @@
 using System.ComponentModel.Design.Serialization;
+using System.Diagnostics;
 
 namespace Microsoft.Boogie; 
 
@@ -104,28 +105,42 @@ public static class DynamicStackExtensions {
 /// Equivalent to Task<T>
 /// </summary>
 [AsyncMethodBuilder(typeof(DynamicStackBuilder<>))]
-public class DynamicStack<TResult> {
+public class DynamicStack<TResult> : INotifyCompletion {
   private TResult result;
+  private bool completed = false;
 
   internal DynamicStack() {
   }
 
   public TResult Result {
     get {
-      if (result == null) {
+      if (!IsCompleted) {
         Run();
       }
       return result;
     }
-    internal set => result = value;
+    internal set {
+      result = value;
+      completed = true;
+    }
   }
 
   public void Run() {
     DynamicStackBuilder<TResult>.Builder.Value!.Run();
   }
 
-  public DynamicStackBuilder<TResult> GetAwaiter() {
-    return DynamicStackBuilder<TResult>.Builder.Value!;
+  public DynamicStack<TResult> GetAwaiter() {
+    return this;
+  }
+  
+  public void OnCompleted(Action continuation) {
+    // Never called because AwaitOnCompleted doesn't call it.
+  }
+
+  public bool IsCompleted => completed;
+
+  public TResult GetResult() {
+    return result;
   }
 }
 
@@ -133,10 +148,10 @@ public class DynamicStack<TResult> {
 /// Combines both the builder and the awaiter pattern, described here:
 /// https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-7.0/task-types
 /// </summary>
-public class DynamicStackBuilder<TResult> : INotifyCompletion {
+public class DynamicStackBuilder<TResult> {
   public static readonly ThreadLocal<DynamicStackBuilder<TResult>> Builder = new(() => new DynamicStackBuilder<TResult>());
-  private DynamicStack<TResult> dynamicStack = new();
-  private bool completed = false;
+  private ConditionalWeakTable<IAsyncStateMachine, DynamicStack<TResult>> results = new ();
+  private DynamicStack<TResult> dynamicStack;
 
   public static DynamicStackBuilder<TResult> Create() {
     return Builder.Value;
@@ -147,13 +162,17 @@ public class DynamicStackBuilder<TResult> : INotifyCompletion {
   public void Run() {
     while (todos.Any()) {
       var machine = todos.Pop();
+      results.TryGetValue(machine, out dynamicStack);
       machine.MoveNext();
     }
   }
-
+  
+  [DebuggerStepThrough]
   public void Start<TStateMachine>(ref TStateMachine stateMachine)
     where TStateMachine : IAsyncStateMachine {
     // Push recursive call
+    dynamicStack = new DynamicStack<TResult>();
+    results.Add(stateMachine, dynamicStack);
     todos.Push(stateMachine);
   }
 
@@ -168,11 +187,17 @@ public class DynamicStackBuilder<TResult> : INotifyCompletion {
 
   public void SetResult(TResult result) {
     dynamicStack.Result = result;
-    completed = true;
+    // dynamicStack = new DynamicStack<TResult>() {
+    //   Result = result
+    // };
+    //dynamicStack.Result = result;
   }
   
   public void SetResult(DynamicStack<TResult> result) {
-    dynamicStack = result;
+    dynamicStack = new DynamicStack<TResult>() {
+      Result = result.Result
+    };
+    // dynamicStack = result;
     // TODO maybe not correct?
   }
 
@@ -198,15 +223,5 @@ public class DynamicStackBuilder<TResult> : INotifyCompletion {
     var recursiveCall = todos.Pop();
     todos.Push(stateMachine);
     todos.Push(recursiveCall);
-  }
-  
-  public void OnCompleted(Action continuation) {
-    // Never called because AwaitOnCompleted doesn't call it.
-  }
-
-  public bool IsCompleted => completed && !todos.Any();
-
-  public TResult GetResult() {
-    return dynamicStack.Result;
   }
 }
