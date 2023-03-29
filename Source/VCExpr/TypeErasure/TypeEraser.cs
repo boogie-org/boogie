@@ -9,7 +9,7 @@ namespace Microsoft.Boogie.TypeErasure;
 // VCExprs. This class makes use of the type axiom builder to manage
 // the available types and symbols.
 [ContractClass(typeof(TypeEraserContracts))]
-public abstract class TypeEraser : MutatingVcExprVisitor<VariableBindings /*!*/> {
+public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/> {
   protected readonly TypeAxiomBuilderIntBoolU /*!*/
     AxBuilder;
 

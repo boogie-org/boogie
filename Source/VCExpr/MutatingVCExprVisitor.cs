@@ -4,7 +4,7 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.VCExprAST;
 
-public abstract class MutatingVcExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, Arg> {
+public abstract class MutatingVCExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, Arg> {
   protected readonly VCExpressionGenerator /*!*/
     Gen;
 
@@ -13,7 +13,7 @@ public abstract class MutatingVcExprVisitor<Arg> : IVCExprVisitor<VCExpr /*!*/, 
     Contract.Invariant(Gen != null);
   }
 
-  public MutatingVcExprVisitor(VCExpressionGenerator gen) {
+  public MutatingVCExprVisitor(VCExpressionGenerator gen) {
     Contract.Requires(gen != null);
     this.Gen = gen;
   }

@@ -8,7 +8,7 @@ using Microsoft.BaseTypes;
 // literals larger than 32 bits.
 
 namespace Microsoft.Boogie.VCExprAST {
-  public class BigLiteralAbstracter : MutatingVcExprVisitor<bool>, ICloneable {
+  public class BigLiteralAbstracter : MutatingVCExprVisitor<bool>, ICloneable {
     public BigLiteralAbstracter(VCExpressionGenerator gen)
       : base(gen) {
       Contract.Requires(gen != null);

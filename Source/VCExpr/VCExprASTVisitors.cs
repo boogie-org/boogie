@@ -937,7 +937,7 @@ namespace Microsoft.Boogie.VCExprAST {
   /////////////////////////////////////////////////////////////////////////////////
 
   public class SubstitutingVCExprVisitor
-    : MutatingVcExprVisitor<VCExprSubstitution /*!*/> {
+    : MutatingVCExprVisitor<VCExprSubstitution /*!*/> {
     public SubstitutingVCExprVisitor(VCExpressionGenerator gen)
       : base(gen) {
       Contract.Requires(gen != null);

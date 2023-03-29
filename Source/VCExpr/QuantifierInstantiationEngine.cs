@@ -476,7 +476,7 @@ namespace Microsoft.Boogie.VCExprAST {
     }
   }
 
-  class Skolemizer : MutatingVcExprVisitor<bool> {
+  class Skolemizer : MutatingVCExprVisitor<bool> {
     /*
      * The method Skolemize performs best-effort skolemization of the input expression expr.
      * Factorization is performed on the resulting expression.
@@ -528,7 +528,7 @@ namespace Microsoft.Boogie.VCExprAST {
     }
   }
 
-  class Factorizer : MutatingVcExprVisitor<bool> {
+  class Factorizer : MutatingVCExprVisitor<bool> {
     /* 
      * The method Factorize factors out quantified expressions in expr replacing them with a bound variable.
      * The binding between the bound variable and the quantifier replaced by it is registered in qiEngine.

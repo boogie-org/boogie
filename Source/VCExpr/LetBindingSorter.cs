@@ -7,7 +7,7 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.VCExprAST {
   // (argument is not used)
-  public class LetBindingSorter : MutatingVcExprVisitor<bool> {
+  public class LetBindingSorter : MutatingVCExprVisitor<bool> {
     [ContractInvariantMethod]
     void ObjectInvariant() {
       Contract.Invariant(FreeVarCollector != null);
