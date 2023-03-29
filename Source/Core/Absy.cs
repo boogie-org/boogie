@@ -3,7 +3,6 @@ using System.Linq;
 using System.Collections;
 using System.Diagnostics;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
@@ -79,7 +78,7 @@ namespace Microsoft.Boogie
     public abstract void Typecheck(TypecheckingContext /*!*/ tc);
 
     /// <summary>
-    /// Intorduced this so the uniqueId is not the same on a cloned object.
+    /// Introduced so the uniqueId is not the same on a cloned object.
     /// </summary>
     /// <param name="tc"></param>
     public virtual Absy Clone()
@@ -273,16 +272,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  public interface IPotentialErrorNode<out TGet>
-  {
-    TGet ErrorData { get; }
-  }
-
-  public interface IPotentialErrorNode<out TGet, in TSet> : IPotentialErrorNode<TGet>
-  {
-    new TSet ErrorData { set; }
-  }
-
   public class Program : Absy
   {
     [ContractInvariantMethod]
@@ -307,69 +296,6 @@ namespace Microsoft.Boogie
       this.topLevelDeclarations.Emit(stream);
     }
 
-    public void ProcessDatatypeConstructors(Errors errors)
-    {
-      Dictionary<string, DatatypeTypeCtorDecl> datatypeTypeCtorDecls = new Dictionary<string, DatatypeTypeCtorDecl>();
-      Dictionary<string, DatatypeConstructor> constructors = new Dictionary<string, DatatypeConstructor>();
-      List<Declaration> prunedTopLevelDeclarations = new List<Declaration>();
-      foreach (TypeCtorDecl typeCtorDecl in TopLevelDeclarations.OfType<TypeCtorDecl>())
-      {
-        if (QKeyValue.FindBoolAttribute(typeCtorDecl.Attributes, "datatype"))
-        {
-          if (datatypeTypeCtorDecls.ContainsKey(typeCtorDecl.Name))
-          {
-            errors.SemErr(typeCtorDecl.tok,
-              string.Format("more than one declaration of datatype name: {0}", typeCtorDecl.Name));
-          }
-          else
-          {
-            var datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(typeCtorDecl);
-            datatypeTypeCtorDecls.Add(typeCtorDecl.Name, datatypeTypeCtorDecl);
-            prunedTopLevelDeclarations.Add(datatypeTypeCtorDecl);
-          }
-        }
-        else
-        {
-          prunedTopLevelDeclarations.Add(typeCtorDecl);
-        }
-      }
-      foreach (Declaration decl in TopLevelDeclarations)
-      {
-        if (decl is TypeCtorDecl)
-        {
-          continue;
-        }
-        Function func = decl as Function;
-        if (func == null || !QKeyValue.FindBoolAttribute(decl.Attributes, "constructor"))
-        {
-          prunedTopLevelDeclarations.Add(decl);
-          continue;
-        }
-        if (constructors.ContainsKey(func.Name))
-        {
-          errors.SemErr(func.tok,
-            string.Format("more than one declaration of datatype constructor name: {0}", func.Name));
-          continue;
-        }
-        var outputTypeName = (func.OutParams[0].TypedIdent.Type as UnresolvedTypeIdentifier).Name;
-        if (!datatypeTypeCtorDecls.ContainsKey(outputTypeName))
-        {
-          errors.SemErr(func.tok,
-            string.Format("output type of constructor does not match any datatype name: {0}", func.Name));
-          continue;
-        }
-        var datatypeTypeCtorDecl = datatypeTypeCtorDecls[outputTypeName];
-        DatatypeConstructor constructor = new DatatypeConstructor(datatypeTypeCtorDecl, func);
-        constructors.Add(func.Name, constructor);
-      }
-      if (errors.count > 0)
-      {
-        return;
-      }
-      ClearTopLevelDeclarations();
-      AddTopLevelDeclarations(prunedTopLevelDeclarations);
-    }
-
     /// <summary>
     /// Returns the number of name resolution errors.
     /// </summary>
@@ -388,7 +314,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       Helpers.ExtraTraceInformation(rc.Options, "Starting resolution");
 
       foreach (var d in TopLevelDeclarations)
@@ -397,48 +322,19 @@ namespace Microsoft.Boogie
       }
 
       ResolveTypes(rc);
-
+      
       var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
-
-      foreach (var datatypeTypeCtorDecl in TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
+      foreach (var d in TopLevelDeclarations.Where(d => !QKeyValue.FindBoolAttribute(d.Attributes, "ignore")))
       {
-        foreach (var f in datatypeTypeCtorDecl.Constructors)
-        {
-          f.Register(rc);
-          int e = rc.ErrorCount;
-          f.Resolve(rc);
-          if (rc.ErrorCount != e)
-          {
-            continue;
-          }
-          for (int i = 0; i < f.InParams.Count; i++)
-          {
-            DatatypeSelector selector = DatatypeSelector.NewDatatypeSelector(f, i);
-            f.selectors.Add(selector);
-            selector.Register(rc);
-          }
-          DatatypeMembership membership = DatatypeMembership.NewDatatypeMembership(f);
-          f.membership = membership;
-          membership.Register(rc);
-        }
-      }
-
-      foreach (var d in TopLevelDeclarations)
-      {
-        if (QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
-        {
-          continue;
-        }
-
         // resolve all the declarations that have not been resolved yet 
-        if (!(d is TypeCtorDecl || d is TypeSynonymDecl || d is DatatypeConstructor))
+        if (!(d is TypeCtorDecl || d is TypeSynonymDecl))
         {
           int e = rc.ErrorCount;
           d.Resolve(rc);
           if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
           {
             // ignore this implementation
-            System.Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
+            Console.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
               ((Implementation) d).Name);
             rc.ErrorCount = e;
             continue;
@@ -476,13 +372,21 @@ namespace Microsoft.Boogie
         Contract.Assert(d != null);
         if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
         {
-          synonymDecls.Add((TypeSynonymDecl) d);
+          synonymDecls.Add(d);
         }
       }
 
-      // then resolve the type synonyms by a simple
-      // fixed-point iteration
+      // then resolve the type synonyms by a simple fixed-point iteration
       TypeSynonymDecl.ResolveTypeSynonyms(synonymDecls, rc);
+      
+      // and finally resolve the datatype constructors
+      foreach (var datatypeTypeCtorDecl in TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
+      {
+        foreach (var constructor in datatypeTypeCtorDecl.Constructors)
+        {
+          constructor.Resolve(rc);
+        }
+      }
     }
 
     public int Typecheck(CoreOptions options)
@@ -1041,6 +945,19 @@ namespace Microsoft.Boogie
 
       return res;
     }
+    
+    public QKeyValue FindIdenticalAttribute(QKeyValue target)
+    {
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
+      {
+        if (kv.Key == target.Key && kv.Params.Count == target.Params.Count &&
+            kv.Params.Zip(target.Params).All(x => x.Item1.Equals(x.Item2)))
+        {
+          return kv;
+        }
+      }
+      return null;
+    }
 
     // Look for {:name expr} in list of attributes.
     public Expr FindExprAttribute(string name)
@@ -1298,14 +1215,7 @@ namespace Microsoft.Boogie
 
   public abstract class NamedDeclaration : Declaration
   {
-    private string /*!*/
-      name;
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(name != null);
-    }
+    private string name;
 
     // A name for a declaration that may be more verbose than, and use
     // characters not allowed by, standard Boogie identifiers. This can
@@ -1314,19 +1224,10 @@ namespace Microsoft.Boogie
     public string VerboseName =>
       QKeyValue.FindStringAttribute(Attributes, "verboseName") ?? Name;
 
-    public string /*!*/ Name
+    public string Name
     {
-      get
-      {
-        Contract.Ensures(Contract.Result<string>() != null);
-
-        return this.name;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this.name = value;
-      }
+      get => this.name;
+      set => this.name = value;
     }
 
     public uint GetTimeLimit(CoreOptions options)
@@ -1336,7 +1237,6 @@ namespace Microsoft.Boogie
       if (tl < 0) {
         tl = options.TimeLimit;
       }
-
       return tl;
     }
 
@@ -1347,7 +1247,6 @@ namespace Microsoft.Boogie
       if (rl < 0) {
         rl = options.ResourceLimit;
       }
-
       return rl;
     }
 
@@ -1364,20 +1263,19 @@ namespace Microsoft.Boogie
       }
     }
 
-    public NamedDeclaration(IToken /*!*/ tok, string /*!*/ name)
+    public NamedDeclaration(IToken tok, string name)
       : base(tok)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(name != null);
       this.name = name;
     }
 
     [Pure]
     public override string ToString()
     {
-      Contract.Ensures(Contract.Result<string>() != null);
       return cce.NonNull(Name);
     }
+    
+    public virtual bool MayRename => true;
   }
 
   public class TypeCtorDecl : NamedDeclaration
@@ -1441,28 +1339,178 @@ namespace Microsoft.Boogie
     }
   }
 
+  public class DatatypeAccessor
+  {
+    public int ConstructorIndex;
+    public int FieldIndex;
+
+    public DatatypeAccessor(int constructorIndex, int fieldIndex)
+    {
+      ConstructorIndex = constructorIndex;
+      FieldIndex = fieldIndex;
+    }
+  }
+  
   public class DatatypeTypeCtorDecl : TypeCtorDecl
   {
+    private List<TypeVariable> typeParameters;
     private List<DatatypeConstructor> constructors;
+    private Dictionary<string, DatatypeConstructor> nameToConstructor;
+    private Dictionary<string, List<DatatypeAccessor>> accessors;
 
-    public List<DatatypeConstructor> Constructors
-    {
-      get
-      {
-        return constructors;
-      }
-    }
+    public List<DatatypeConstructor> Constructors => constructors;
 
     public DatatypeTypeCtorDecl(TypeCtorDecl typeCtorDecl)
       : base(typeCtorDecl.tok, typeCtorDecl.Name, typeCtorDecl.Arity, typeCtorDecl.Attributes)
     {
+      this.typeParameters = new List<TypeVariable>();
       this.constructors = new List<DatatypeConstructor>();
+      this.nameToConstructor = new Dictionary<string, DatatypeConstructor>();
+      this.accessors = new Dictionary<string, List<DatatypeAccessor>>();
+    }
+
+    public DatatypeTypeCtorDecl(IToken tok, string name, List<TypeVariable> typeParams, QKeyValue kv)
+      : base(tok, name, typeParams.Count, kv)
+    {
+      this.typeParameters = typeParams;
+      this.constructors = new List<DatatypeConstructor>();
+      this.nameToConstructor = new Dictionary<string, DatatypeConstructor>();
+      this.accessors = new Dictionary<string, List<DatatypeAccessor>>();
+    }
+
+    public bool AddConstructor(DatatypeConstructor constructor)
+    {
+      if (this.nameToConstructor.ContainsKey(constructor.Name))
+      {
+        return false;
+      }
+      constructor.datatypeTypeCtorDecl = this;
+      constructor.index = constructors.Count;
+      this.constructors.Add(constructor);
+      this.nameToConstructor.Add(constructor.Name, constructor);
+      for (int i = 0; i < constructor.InParams.Count; i++)
+      {
+        var v = constructor.InParams[i];
+        if (!accessors.ContainsKey(v.Name))
+        {
+          accessors.Add(v.Name, new List<DatatypeAccessor>());
+        }
+        accessors[v.Name].Add(new DatatypeAccessor(constructor.index, i));
+      }
+      return true;
+    }
+
+    public bool AddConstructor(IToken tok, string name, List<TypedIdent> fields)
+    {
+      var returnType = new CtorType(this.tok, this, new List<Type>(this.typeParameters));
+      var function = new Function(tok, name, new List<TypeVariable>(this.typeParameters),
+        fields.Select(field => new Formal(field.tok, field, true)).ToList<Variable>(),
+        new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, returnType), false));
+      var constructor = new DatatypeConstructor(function);
+      return AddConstructor(constructor);
+    }
+
+    public override void Register(ResolutionContext rc)
+    {
+      foreach (var constructor in constructors)
+      {
+        constructor.Register(rc);
+      }
+      base.Register(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      accessors.Where(kv => kv.Value.Count > 1).Iter(kv =>
+      {
+        var firstAccessor = kv.Value[0];
+        var firstConstructor = constructors[firstAccessor.ConstructorIndex];
+        var firstSelector = firstConstructor.InParams[firstAccessor.FieldIndex];
+        for (int i = 1; i < kv.Value.Count; i++)
+        {
+          var accessor = kv.Value[i];
+          var constructor = constructors[accessor.ConstructorIndex];
+          var index = accessor.FieldIndex;
+          var field = constructor.InParams[index];
+          if (!NormalizedFieldType(firstConstructor, constructor, index).Equals(firstSelector.TypedIdent.Type))
+          {
+            tc.Error(field,
+              "type mismatch between field {0} and identically-named field in constructor {1}",
+              field.Name, firstConstructor);
+          }
+        }
+      });
+      base.Typecheck(tc);
+    }
+
+    private static Type NormalizedFieldType(DatatypeConstructor firstConstructor, DatatypeConstructor constructor, int index)
+    {
+      var firstConstructorType = (CtorType)firstConstructor.OutParams[0].TypedIdent.Type;
+      var constructorType = (CtorType)constructor.OutParams[0].TypedIdent.Type;
+      var typeSubst = constructorType.Arguments.Zip(firstConstructorType.Arguments).ToDictionary(
+        x => x.Item1 as TypeVariable,
+        x => x.Item2);
+      return constructor.InParams[index].TypedIdent.Type.Substitute(typeSubst);
+    }
+
+    public DatatypeConstructor GetConstructor(string constructorName)
+    {
+      if (!nameToConstructor.ContainsKey(constructorName))
+      {
+        return null;
+      }
+      return nameToConstructor[constructorName];
+    }
+
+    public List<DatatypeAccessor> GetAccessors(string fieldName)
+    {
+      if (!accessors.ContainsKey(fieldName))
+      {
+        return null;
+      }
+      return accessors[fieldName];
+    }
+
+    private void EmitCommaSeparatedListOfStrings(TokenTextWriter stream, int level, IEnumerable<string> values)
+    {
+      bool first = true;
+      values.Iter(value =>
+      {
+        if (!first)
+        {
+          stream.WriteLine(this, level, ",");
+        }
+        stream.Write(this, level, value);
+        first = false;
+      });
     }
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      base.Emit(stream, level);
-      constructors.Iter(constructor => constructor.Emit(stream, level));
+      stream.Write(this, level, "datatype ");
+      stream.Write(this, level, Name);
+      if (typeParameters.Count > 0)
+      {
+        stream.Write(this, level, "<");
+        EmitCommaSeparatedListOfStrings(stream, level, typeParameters.Select(tp => tp.Name));
+        stream.Write(this, level, ">");
+      }
+      stream.WriteLine(this, level, " {");
+      bool firstConstructor = true;
+      constructors.Iter(constructor =>
+      {
+        if (!firstConstructor)
+        {
+          stream.WriteLine(this, level, ",");
+        }
+        stream.Write(this, level + 1, constructor.Name);
+        stream.Write(this, level, "(");
+        constructor.InParams.Emit(stream, false);
+        stream.Write(this, level, ")");
+        firstConstructor = false;
+      });
+      stream.WriteLine();
+      stream.WriteLine(this, level, "}");
     }
   }
 
@@ -1866,22 +1914,7 @@ namespace Microsoft.Boogie
     // from all other constants.
     public readonly bool Unique;
 
-    // the <:-parents of the value of this constant. If the field is
-    // null, no information about the parents is provided, which means
-    // that the parental situation is unconstrained.
-    public readonly ReadOnlyCollection<ConstantParent /*!*/> Parents;
-
     public IList<Axiom> DefinitionAxioms { get; }
-    
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(cce.NonNullElements(Parents, true));
-    }
-
-    // if true, it is assumed that the immediate <:-children of the
-    // value of this constant are completely specified
-    public readonly bool ChildrenComplete;
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
       : this(tok, typedIdent, true)
@@ -1889,25 +1922,21 @@ namespace Microsoft.Boogie
     }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent, bool unique)
-      : this(tok, typedIdent, unique, null, false, null, new List<Axiom>())
+      : this(tok, typedIdent, unique, null, new List<Axiom>())
     {
     }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent,
       bool unique,
-      IEnumerable<ConstantParent /*!*/> parents = null, bool childrenComplete = false,
       QKeyValue kv = null,
       IList<Axiom> definitionAxioms = null)
       : base(tok, typedIdent, kv)
     {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
-      Contract.Requires(cce.NonNullElements(parents, true));
       Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
       Contract.Requires(typedIdent.WhereExpr == null);
       this.Unique = unique;
-      this.Parents = parents == null ? null : new ReadOnlyCollection<ConstantParent>(parents.ToList());
-      this.ChildrenComplete = childrenComplete;
       this.DefinitionAxioms = definitionAxioms ?? new List<Axiom>();
     }
 
@@ -1925,30 +1954,6 @@ namespace Microsoft.Boogie
 
       EmitVitals(stream, level, false);
 
-      if (Parents != null || ChildrenComplete)
-      {
-        stream.Write(this, level, " extends");
-        string /*!*/
-          sep = " ";
-        foreach (ConstantParent /*!*/ p in cce.NonNull(Parents))
-        {
-          Contract.Assert(p != null);
-          stream.Write(this, level, sep);
-          sep = ", ";
-          if (p.Unique)
-          {
-            stream.Write(this, level, "unique ");
-          }
-
-          p.Parent.Emit(stream);
-        }
-
-        if (ChildrenComplete)
-        {
-          stream.Write(this, level, " complete");
-        }
-      }
-
       stream.WriteLine(";");
     }
 
@@ -1956,72 +1961,6 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(rc != null);
       rc.AddVariable(this);
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      //Contract.Requires(rc != null);
-      base.Resolve(rc);
-      if (Parents != null)
-      {
-        foreach (ConstantParent /*!*/ p in Parents)
-        {
-          Contract.Assert(p != null);
-          p.Parent.Resolve(rc);
-          if (p.Parent.Decl != null && !(p.Parent.Decl is Constant))
-          {
-            rc.Error(p.Parent, "the parent of a constant has to be a constant");
-          }
-
-          if (this.Equals(p.Parent.Decl))
-          {
-            rc.Error(p.Parent, "constant cannot be its own parent");
-          }
-        }
-      }
-
-      // check that no parent occurs twice
-      // (could be optimised)
-      if (Parents != null)
-      {
-        for (int i = 0; i < Parents.Count; ++i)
-        {
-          if (Parents[i].Parent.Decl != null)
-          {
-            for (int j = i + 1; j < Parents.Count; ++j)
-            {
-              if (Parents[j].Parent.Decl != null &&
-                  cce.NonNull(Parents[i].Parent.Decl).Equals(Parents[j].Parent.Decl))
-              {
-                rc.Error(Parents[j].Parent,
-                  "{0} occurs more than once as parent",
-                  Parents[j].Parent.Decl);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      //Contract.Requires(tc != null);
-      base.Typecheck(tc);
-
-      if (Parents != null)
-      {
-        foreach (ConstantParent /*!*/ p in Parents)
-        {
-          Contract.Assert(p != null);
-          p.Parent.Typecheck(tc);
-          if (!cce.NonNull(p.Parent.Decl).TypedIdent.Type.Unify(this.TypedIdent.Type))
-          {
-            tc.Error(p.Parent,
-              "parent of constant has incompatible type ({0} instead of {1})",
-              p.Parent.Decl.TypedIdent.Type, this.TypedIdent.Type);
-          }
-        }
-      }
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -2564,119 +2503,13 @@ namespace Microsoft.Boogie
   {
     public DatatypeTypeCtorDecl datatypeTypeCtorDecl;
     public int index;
-    public List<DatatypeSelector> selectors;
-    public DatatypeMembership membership;
 
-    public DatatypeConstructor(DatatypeTypeCtorDecl datatypeTypeCtorDecl, Function func)
+    public DatatypeConstructor(Function func)
       : base(func.tok, func.Name, func.TypeParameters, func.InParams, func.OutParams[0], func.Comment, func.Attributes)
     {
-      selectors = new List<DatatypeSelector>();
-      index = datatypeTypeCtorDecl.Constructors.Count;
-      datatypeTypeCtorDecl.Constructors.Add(this);
-      this.datatypeTypeCtorDecl = datatypeTypeCtorDecl;
     }
 
-    public override void Resolve(ResolutionContext rc)
-    {
-      HashSet<string> selectorNames = new HashSet<string>();
-      foreach (DatatypeSelector selector in selectors)
-      {
-        if (selector.Name.StartsWith("#"))
-        {
-          rc.Error(selector.tok, "The selector must be a non-empty string");
-        }
-        else
-        {
-          if (selectorNames.Contains(selector.Name))
-          {
-            rc.Error(this.tok, "The selectors for a constructor must be distinct strings");
-          }
-          else
-          {
-            selectorNames.Add(selector.Name);
-          }
-        }
-      }
-
-      base.Resolve(rc);
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      CtorType outputType = this.OutParams[0].TypedIdent.Type as CtorType;
-      if (outputType == null || !outputType.IsDatatype())
-      {
-        tc.Error(tok, "The output type of a constructor must be a datatype");
-      }
-      else if (!outputType.Arguments.All(t => t is TypeVariable))
-      {
-        tc.Error(tok, "Each type argument of the output type of a constructor must be a type variable");
-      }
-      base.Typecheck(tc);
-    }
-  }
-
-  public class DatatypeSelector : Function
-  {
-    public DatatypeConstructor constructor;
-    public int index;
-
-    public static DatatypeSelector NewDatatypeSelector(DatatypeConstructor constructor, int index)
-    {
-      var newTypeVariables = constructor.TypeParameters.Select(tp => new TypeVariable(tp.tok, tp.Name)).ToList();
-      var typeVariableMapping = LinqExtender.Map(constructor.TypeParameters, newTypeVariables.Select(x => (Type)x).ToList());
-      return new DatatypeSelector(constructor, index, newTypeVariables, typeVariableMapping);
-    }
-
-    private DatatypeSelector(DatatypeConstructor constructor, int index, List<TypeVariable> newTypeVariables, Dictionary<TypeVariable, Type> typeVariableMapping)
-      : base(constructor.InParams[index].tok,
-        constructor.InParams[index].Name + "#" + constructor.Name,
-        newTypeVariables,
-        new List<Variable>
-        {
-          new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type.Substitute(typeVariableMapping)),
-            true)
-        },
-        new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.InParams[index].TypedIdent.Type.Substitute(typeVariableMapping)),
-          false))
-    {
-      this.constructor = constructor;
-      this.index = index;
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-    }
-  }
-
-  public class DatatypeMembership : Function
-  {
-    public DatatypeConstructor constructor;
-
-    public static DatatypeMembership NewDatatypeMembership(DatatypeConstructor constructor)
-    {
-      var newTypeVariables = constructor.TypeParameters.Select(tp => new TypeVariable(tp.tok, tp.Name)).ToList();
-      var typeVariableMapping = LinqExtender.Map(constructor.TypeParameters, newTypeVariables.Select(x => (Type)x).ToList());
-      return new DatatypeMembership(constructor, newTypeVariables, typeVariableMapping);
-    }
-
-    private DatatypeMembership(DatatypeConstructor constructor, List<TypeVariable> newTypeVariables, Dictionary<TypeVariable, Type> typeVariableMapping)
-      : base(constructor.tok,
-        "is#" + constructor.Name,
-        newTypeVariables,
-        new List<Variable>
-        {
-          new Formal(constructor.tok, new TypedIdent(constructor.tok, "", constructor.OutParams[0].TypedIdent.Type.Substitute(typeVariableMapping)),
-            true)
-        },
-        new Formal(constructor.tok, new TypedIdent(constructor.tok, "", Type.Bool), false))
-    {
-      this.constructor = constructor;
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-    }
+    public override bool MayRename => false;
   }
 
   public class Function : DeclWithFormals
@@ -3006,7 +2839,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class Requires : Absy, ICarriesAttributes, IPotentialErrorNode<string, string>
+  public class Requires : Absy, ICarriesAttributes
   {
     public readonly bool Free;
 
@@ -3036,20 +2869,6 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(this._condition != null);
     }
-
-
-    // TODO: convert to use generics
-    private string errorData;
-
-    // Note: the `Description` property should cover all the use cases
-    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
-    // eventually go away.
-    public string ErrorData
-    {
-      get { return errorData; }
-      set { errorData = value; }
-    }
-
 
     private MiningStrategy errorDataEnhanced;
 
@@ -3142,7 +2961,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class Ensures : Absy, ICarriesAttributes, IPotentialErrorNode<string, string>
+  public class Ensures : Absy, ICarriesAttributes
   {
     public readonly bool Free;
 
@@ -3172,18 +2991,6 @@ namespace Microsoft.Boogie
     }
 
     public string Comment;
-
-    // TODO: convert to use generics
-    private string errorData;
-
-    // Note: the `Description` property should cover all the use cases
-    // of `ErrorData` and be used instead. Ideally, `ErrorData` will
-    // eventually go away.
-    public string ErrorData
-    {
-      get { return errorData; }
-      set { errorData = value; }
-    }
 
     private MiningStrategy errorDataEnhanced;
 
@@ -3396,7 +3203,7 @@ namespace Microsoft.Boogie
 
         RegisterFormals(OutParams, rc);
         ResolveFormals(OutParams,
-          rc); // "where" clauses of out-parameters are resolved with both in- and out-parametes in scope
+          rc); // "where" clauses of out-parameters are resolved with both in- and out-parameters in scope
 
         rc.StateMode = ResolutionContext.State.Two;
         foreach (Ensures /*!*/ e in Ensures)
@@ -3462,6 +3269,152 @@ namespace Microsoft.Boogie
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitProcedure(this);
+    }
+  }
+
+  public class YieldInvariantDecl : Procedure
+  {
+    private int layerNum;
+
+    public int LayerNum
+    {
+      get { return layerNum; }
+      set { layerNum = value; }
+    }
+
+    public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
+      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), requires, new List<IdentifierExpr>(),
+        requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
+    {
+    }
+  }
+
+  public enum ActionQualifier
+  {
+      Async,
+      Invariant,
+      Link,
+      Proxy,
+      None
+  }
+
+  public class ActionDeclRef : Absy
+  {
+    public string actionName;
+    public ActionDecl actionDecl;
+
+    public ActionDeclRef(IToken tok, string name) : base(tok)
+    {
+      actionName = name;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      if (actionDecl != null)
+      {
+        return;
+      }
+      actionDecl = rc.LookUpProcedure(actionName) as ActionDecl;
+      if (actionDecl == null)
+      {
+        rc.Error(this, "undeclared action: {0}", actionName);
+      }
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      throw new NotImplementedException();
+    }
+  }
+
+  public enum MoverType
+  {
+    Non,
+    Right,
+    Left,
+    Both
+  }
+
+  public class ActionDecl : Procedure
+  {
+    private MoverType moverType;
+    private ActionQualifier actionQualifier;
+    private List<ActionDeclRef> creates;
+    private ActionDeclRef refinedAction;
+
+    public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
+      List<Variable> inParams, List<Variable> outParams, List<ActionDeclRef> creates, ActionDeclRef refinedAction,
+      List<IdentifierExpr> modifies, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
+      new List<Requires>(), modifies, new List<Ensures>(), kv)
+    {
+      this.moverType = moverType;
+      this.actionQualifier = actionQualifier;
+      this.creates = creates;
+      this.refinedAction = refinedAction;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      base.Resolve(rc);
+      if (moverType != MoverType.Non)
+      {
+        if (actionQualifier == ActionQualifier.Invariant)
+        {
+          rc.Error(this, "Mover may not be a invariant action");
+        }
+        if (actionQualifier == ActionQualifier.Link)
+        {
+          rc.Error(this, "Mover may not be a link action");
+        }
+        if (actionQualifier == ActionQualifier.Proxy)
+        {
+          rc.Error(this, "Mover may not be a proxy action");
+        }
+      }
+      if (creates.Any())
+      {
+        if (actionQualifier == ActionQualifier.Link)
+        {
+          rc.Error(this, "Link action may not create pending asyncs");
+        }
+        if (moverType == MoverType.Right || moverType == MoverType.Both)
+        {
+          rc.Error(this, "Right mover may not create pending asyncs");
+        }
+      }
+      creates.Iter(create => create.Resolve(rc));
+    }
+  }
+
+  public class YieldProcedureDecl : Procedure
+  {
+    private List<CallCmd> yieldRequires;
+    private List<CallCmd> yieldEnsures;
+    private ActionDeclRef refinedAction;
+
+    public YieldProcedureDecl(IToken tok, string name, List<Variable> inParams, List<Variable> outParams,
+      List<Requires> requires, List<CallCmd> yieldRequires, List<Ensures> ensures, List<CallCmd> yieldEnsures,
+      ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
+      requires, null, ensures, kv)
+    {
+      this.yieldRequires = yieldRequires;
+      this.yieldEnsures = yieldEnsures;
+      this.refinedAction = refinedAction;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      base.Resolve(rc);
+      yieldRequires.Iter(callCmd => callCmd.Resolve(rc));
+      yieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
+      refinedAction.Resolve(rc);
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      base.Typecheck(tc);
+      yieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
+      yieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
     }
   }
 

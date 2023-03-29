@@ -21,7 +21,7 @@ namespace Microsoft.Boogie.SMTLib
     private ISet<string> usedNamedAssumes;
 
     [NotDelayed]
-    public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
+    public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx) : base(libOptions, options, gen, ctx) {
       DeclCollector = new TypeDeclCollector(libOptions, new ProverNamer(this));
       SetupProcess();
@@ -30,7 +30,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    internal override ScopedNamer Namer => finalNamer ?? (commonNamer ??= GetNamer(libOptions, options));
+    protected internal override ScopedNamer Namer => finalNamer ?? (commonNamer ??= GetNamer(libOptions, options));
 
     public override Task GoBackToIdle()
     {
@@ -102,7 +102,9 @@ namespace Microsoft.Boogie.SMTLib
         DeclCollector.Push();
         string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
         FlushAxioms();
-        SendVCAndOptions(descriptiveName, vcString);
+        SendVCId(descriptiveName);
+        SendVCOptions();
+        SendThisVC(vcString);
 
         SendOptimizationRequests();
 
@@ -134,23 +136,20 @@ namespace Microsoft.Boogie.SMTLib
 
     public override async Task Reset(VCExpressionGenerator generator)
     {
-      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
+      gen = generator;
+      SendThisVC("(reset)");
+      await RecoverIfProverCrashedAfterReset();
+      if (0 < common.Length)
       {
-        this.gen = generator;
-        SendThisVC("(reset)");
-        await RecoverIfProverCrashedAfterReset();
-        if (0 < common.Length)
+        var c = common.ToString();
+        Process.Send(c);
+        if (currentLogFile != null)
         {
-          var c = common.ToString();
-          Process.Send(c);
-          if (currentLogFile != null)
-          {
-            currentLogFile.WriteLine(c);
-          }
+          currentLogFile.WriteLine(c);
         }
-
-        hasReset = true;
       }
+
+      hasReset = true;
     }
 
     private async Task RecoverIfProverCrashedAfterReset()
@@ -164,27 +163,26 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void FullReset(VCExpressionGenerator generator)
     {
-      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
-      {
-        this.gen = generator;
-        SendThisVC("(reset)");
+      gen = generator;
+      SendThisVC("(reset)");
+      if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options) {
         SendThisVC("(set-option :" + Z3.RlimitOption + " 0)");
-        commonNamer = null;
-        finalNamer = null;
-        hasReset = true;
-        common.Clear();
-        SetupAxiomBuilder(gen);
-        Axioms.Clear();
-        TypeDecls.Clear();
-        AxiomsAreSetup = false;
-        ctx.Reset();
-        ctx.KnownDatatypes.Clear();
-        ctx.parent = this;
-        DeclCollector.Reset();
-        NamedAssumes.Clear();
-        usedNamedAssumes = null;
-        SendThisVC("; did a full reset");
       }
+      commonNamer = null;
+      finalNamer = null;
+      hasReset = true;
+      common.Clear();
+      SetupAxiomBuilder(gen);
+      Axioms.Clear();
+      TypeDecls.Clear();
+      AxiomsAreSetup = false;
+      ctx.Reset();
+      ctx.KnownDatatypes.Clear();
+      ctx.parent = this;
+      DeclCollector.Reset();
+      NamedAssumes.Clear();
+      usedNamedAssumes = null;
+      SendThisVC("; did a full reset");
     }
 
     [NoDefaultContract]
@@ -474,7 +472,7 @@ namespace Microsoft.Boogie.SMTLib
       string v = "0";
       while (true)
       {
-        var response = await Process.SendRequest($"(get-value (({VCExpressionGenerator.ControlFlowName} {controlFlowConstant} {v})))").WaitAsync(cancellationToken);
+        var response = await Process.SendRequest($"(get-value (({VCExpressionGenerator.ControlFlowName} {controlFlowConstant} {v})))", cancellationToken);
         if (response == null)
         {
           break;
@@ -868,6 +866,22 @@ namespace Microsoft.Boogie.SMTLib
       {
         currentErrorHandler = null;
       }
+    }
+
+    protected void SetupProcess()
+    {
+      Process?.Close();
+      Process = libOptions.CreateSolver(libOptions, options);
+
+      Process.ErrorHandler += HandleProverError;
+    }
+
+    public override void Close()
+    {
+      base.Close();
+      Process?.Close();
+      Process = null;
+      CloseLogFile();
     }
   }
 }

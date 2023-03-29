@@ -50,8 +50,8 @@ namespace VC
             continue;
           }
 
-          perAssertOutcome.Add(underlyingAssert, ProverInterface.Outcome.Invalid);
-          perAssertCounterExamples.Add(underlyingAssert, counterExample);
+          perAssertOutcome.TryAdd(underlyingAssert, ProverInterface.Outcome.Invalid);
+          perAssertCounterExamples.TryAdd(underlyingAssert, counterExample);
         }
 
         var remainingOutcome =

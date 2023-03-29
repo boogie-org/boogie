@@ -30,14 +30,14 @@ function {:inline} Inv2 (tickets: [int]bool, ticket: int, lock: X): (bool)
 // ###########################################################################
 // Yield invariants
 
-procedure {:yield_invariant} {:layer 2} YieldSpec ({:linear "tid"} tid: X);
-requires tid != nil && cs == tid;
+yield invariant {:layer 2} YieldSpec ({:linear "tid"} tid: X);
+invariant tid != nil && cs == tid;
 
-procedure {:yield_invariant} {:layer 1} Yield1 ();
-requires Inv1(T, t);
+yield invariant {:layer 1} Yield1 ();
+invariant Inv1(T, t);
 
-procedure {:yield_invariant} {:layer 2} Yield2 ();
-requires Inv2(T, s, cs);
+yield invariant {:layer 2} Yield2 ();
+invariant Inv2(T, s, cs);
 
 // ###########################################################################
 // Main program
@@ -52,7 +52,7 @@ requires {:layer 2} xls' == MapConst(true);
   xls := xls';
 
   while (*)
-  invariant {:yields} {:layer 1,2} {:yield_loop "Yield1"} {:yield_loop "Yield2"} true;
+  invariant {:yields} {:yield_loop "Yield1"} {:yield_loop "Yield2"} true;
   {
     par xls, tid := Allocate(xls) | Yield1() | Yield2();
     async call Customer(tid);
@@ -72,7 +72,7 @@ Customer ({:linear_in "tid"} tid: X)
 requires {:layer 2} tid != nil;
 {
   while (*)
-  invariant {:yields} {:layer 1,2} {:yield_loop "Yield1"} {:yield_loop "Yield2"} true;
+  invariant {:yields} {:yield_loop "Yield1"} {:yield_loop "Yield2"} true;
   {
     call Enter(tid);
     par Yield1() | Yield2() | YieldSpec(tid);
@@ -102,8 +102,8 @@ procedure {:atomic} {:layer 2} AtomicInitAbstract ({:linear "tid"} xls:[X]bool)
 modifies cs, s, T;
 { assert xls == MapConst(true); cs := nil; s := 0; T := RightOpen(0); }
 
-procedure {:yields} {:layer 1} {:refines "AtomicInitAbstract"} InitAbstract ({:linear "tid"} xls:[X]bool)
-ensures  {:layer 1} Inv1(T, t);
+procedure {:yields} {:layer 1} {:yield_ensures "Yield1"} {:refines "AtomicInitAbstract"}
+InitAbstract ({:linear "tid"} xls:[X]bool)
 {
   call Init(xls);
 }
@@ -112,13 +112,10 @@ procedure {:right} {:layer 2} AtomicGetTicketAbstract ({:linear "tid"} tid: X) r
 modifies T;
 { assume !T[m]; T[m] := true; }
 
-procedure {:yields} {:layer 1} {:refines "AtomicGetTicketAbstract"} GetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
-requires {:layer 1} Inv1(T, t);
-ensures  {:layer 1} Inv1(T, t);
+procedure {:yields} {:layer 1} {:yield_preserves "Yield1"} {:refines "AtomicGetTicketAbstract"}
+GetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
 {
-  par Yield1();
   call m := GetTicket(tid);
-  par Yield1();
 }
 
 // ###########################################################################

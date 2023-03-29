@@ -1,26 +1,26 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 type TT;
-type {:datatype} Tree;
-function {:constructor} leaf() : Tree;
-function {:constructor} node(value:TT, children:TreeList) : Tree;
+datatype Tree {
+  leaf(), node(value:TT, children:TreeList)
+}
 
-type {:datatype} TreeList;
-function {:constructor} cons(car:Tree, cdr:TreeList) : TreeList;
-function {:constructor} nil() : TreeList;
+datatype TreeList {
+  cons(car:Tree, cdr:TreeList), nil()
+}
 
-procedure foo() 
+procedure foo()
 {
   var a: Tree;
   var b: TreeList;
   var x: TT;
 
-  assert value#node(node(x, nil())) == x;
-  assert children#node(node(x, nil())) == nil();
-  
+  assert node(x, nil())->value == x;
+  assert node(x, nil())->children == nil();
+
   assert (cons(leaf(), nil()) != nil());
 
-  assert is#nil(nil());
+  assert nil() is nil;
 
-  assert is#node(leaf());
+  assert leaf() is node;
 }

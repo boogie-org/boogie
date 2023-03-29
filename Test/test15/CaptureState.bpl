@@ -1,5 +1,5 @@
 // RUN: %parallel-boogie "%s" -normalizeNames:1 -mv:- > "%t"
-// RUN: %diff "%s.expect" "%t"
+// RUN: %diff "%s.expect" "%t" --ignore-matching-lines='else ->'
 type Ref;
 type FieldName;
 var Heap: [Ref,FieldName]int;

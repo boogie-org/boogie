@@ -21,9 +21,10 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibSolverOptions options;
     protected bool usingUnsatCore;
     private string backgroundPredicates;
-    internal TypeAxiomBuilder AxBuilder { get; set; }
+
+    protected internal TypeAxiomBuilder AxBuilder { get; set; }
     protected TypeAxiomBuilder CachedAxBuilder;
-    internal abstract ScopedNamer Namer { get; }
+    protected internal abstract ScopedNamer Namer { get; }
     protected TypeDeclCollector DeclCollector;
 
     protected bool HadErrors { get; set; }
@@ -45,14 +46,14 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NotDelayed]
-    public SMTLibProcessTheoremProver(SMTLibOptions libOptions, ProverOptions options, VCExpressionGenerator gen,
+    public SMTLibProcessTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
       Contract.Requires(gen != null);
       Contract.Requires(ctx != null);
 
-      this.options = (SMTLibSolverOptions) options;
+      this.options = options;
       this.libOptions = libOptions;
       this.ctx = ctx;
       this.gen = gen;
@@ -108,14 +109,14 @@ namespace Microsoft.Boogie.SMTLib
       {
         case CoreOptions.TypeEncoding.Arguments:
           AxBuilder = new TypeAxiomBuilderArguments(gen, libOptions);
-          AxBuilder.Setup();
+          AxBuilder.Setup(options.UsedTypes);
           break;
         case CoreOptions.TypeEncoding.Monomorphic:
           AxBuilder = null;
           break;
         default:
           AxBuilder = new TypeAxiomBuilderPremisses(gen, libOptions);
-          AxBuilder.Setup();
+          AxBuilder.Setup(options.UsedTypes);
           break;
       }
     }
@@ -147,22 +148,6 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       return msg;
-    }
-
-    protected void SetupProcess()
-    {
-      Process?.Close();
-      Process = libOptions.CreateSolver(libOptions, options);
-      
-      Process.ErrorHandler += HandleProverError;
-    }
-
-    public override void Close()
-    {
-      base.Close();
-      Process?.Close();
-      Process = null;
-      CloseLogFile();
     }
 
     public override void LogComment(string comment)
@@ -443,11 +428,8 @@ namespace Microsoft.Boogie.SMTLib
       //FlushPushedAssertions();
     }
 
-    protected void SendVCAndOptions(string descriptiveName, String vcString)
+    protected void SendVCOptions()
     {
-      if (this.libOptions.EmitDebugInformation) {
-        SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
-      }
       if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
@@ -457,7 +439,13 @@ namespace Microsoft.Boogie.SMTLib
           SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
         }
       }
-      SendThisVC(vcString);
+    }
+
+    protected void SendVCId(string descriptiveName)
+    {
+      if (this.libOptions.EmitDebugInformation) {
+        SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
+      }
     }
 
     protected void CloseLogFile()
@@ -1291,7 +1279,7 @@ namespace Microsoft.Boogie.SMTLib
 
     protected Model ParseErrorModel(SExpr resp)
     {
-      if (resp is null || resp.Name.Contains("error")) {
+      if (resp is null || resp.Name == "error") {
         return null;
       }
 
@@ -1656,9 +1644,9 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Requires(ctx != null);
       Contract.Ensures(Contract.Result<SMTLibProcessTheoremProver>() != null);
       if (options.BatchMode) {
-        return new SMTLibBatchTheoremProver(libOptions, options, gen, ctx);
+        return new SMTLibBatchTheoremProver(libOptions, (SMTLibSolverOptions)options, gen, ctx);
       } else {
-        return new SMTLibInteractiveTheoremProver(libOptions, options, gen, ctx);
+        return new SMTLibInteractiveTheoremProver(libOptions, (SMTLibSolverOptions)options, gen, ctx);
       }
     }
   }

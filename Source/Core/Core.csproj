@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="LibraryDefinitions.bpl" />
-    <EmbeddedResource Include="LibraryDefinitions.bpl" />
+    <EmbeddedResource Include="base.bpl" />
+    <EmbeddedResource Include="node.bpl" />
   </ItemGroup>
 
 </Project>

@@ -4,25 +4,19 @@
 const n:int;
 axiom n > 0;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A() : PA;
-function {:constructor} B() : PA;
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
-
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 1} A () {}
-procedure {:atomic}{:layer 1} B () {}
+procedure {:atomic}{:layer 1} {:pending_async} A () {}
+procedure {:atomic}{:layer 1} {:pending_async} B () {}
 
-procedure {:left}{:layer 1} C () returns ({:pending_async "A"} PAs:[PA]int)
+procedure {:left}{:layer 1} {:creates "A"} C ()
 {
+  call create_async(A());
   // create undeclared pending async to B
-  PAs := NoPAs()[A() := 1][B() := 1];
+  call create_async(B());
 }
 
-procedure {:left}{:layer 1} D () returns ({:pending_async "A","B"} PAs:[PA]int)
+procedure {:left}{:layer 1} {:creates "A", "B"} D ()
 {
-  // (nondeterministically) create negative pending asyncs
+  // do nothing
 }

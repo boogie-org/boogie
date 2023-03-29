@@ -16,7 +16,7 @@
 // CHECK:      checking split 10/12, .*
 // CHECK:      checking split 11/12, .*
 // CHECK:      checking split 12/12, .*
-// CHECK-L: SplitOnEveryAssert.bpl(32,5): Error: This assertion might not hold.
+// CHECK-L: SplitOnEveryAssert.bpl(32,5): Error: this assertion could not be proved
 
 procedure Ex() returns (y: int)
   ensures y >= 0;

@@ -1,41 +1,36 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:datatype} Channel; // FIFO channel
-function {:constructor} Channel(C: [int]int, head: int, tail: int): Channel;
+// FIFO channel
+datatype Channel { Channel(C: [int]int, head: int, tail: int) }
 
-type ChannelId; // id of a FIFO channel
+// id of a FIFO channel
+type ChannelId;
 
-type {:linear "cid"} {:datatype} ChannelHandle; // permission for sending to or receiving from a channel
-function {:constructor} Send(cid: ChannelId): ChannelHandle;
-function {:constructor} Receive(cid: ChannelId): ChannelHandle;
+// permission for sending to or receiving from a channel
+datatype {:linear "cid"} ChannelHandle { Send(cid: ChannelId), Receive(cid: ChannelId) }
 
 function {:inline} Cid(handle: ChannelHandle): ChannelId {
-  if is#Send(handle) then cid#Send(handle) else cid#Receive(handle)
+  handle->cid
 }
 
 function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [ChannelHandle]bool {
   MapConst(false)[Send(cid) := true][Receive(cid) := true]
 }
 
-var {:layer 0,3} channels: [ChannelId]Channel; // pool of FIFO channels
-
-type {:pending_async}{:datatype} PA;
-function {:constructor} PRODUCER(x: int, send_handle: ChannelHandle) : PA;
-function {:constructor} CONSUMER(x: int, receive_handle: ChannelHandle) : PA;
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
+// pool of FIFO channels
+var {:layer 0,3} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 2}
-{:IS "MAIN'","INV"}{:elim "PRODUCER"}{:elim "CONSUMER","CONSUMER'"}
+{:creates "PRODUCER","CONSUMER"}
+{:IS "MAIN'","INV"}
 MAIN ({:linear_in "cid"} cid: ChannelId)
-returns ({:pending_async "PRODUCER","CONSUMER"} PAs:[PA]int)
 {
-  assert head#Channel(channels[cid]) == tail#Channel(channels[cid]);
-  PAs := NoPAs()[PRODUCER(1, Send(cid)) := 1][CONSUMER(1, Receive(cid)) := 1];
+  assert channels[cid]->head == channels[cid]->tail;
+  call create_async(PRODUCER(1, Send(cid)));
+  call create_async(CONSUMER(1, Receive(cid)));
 }
 
 procedure {:atomic}{:layer 3}
@@ -44,14 +39,15 @@ modifies channels;
 {
   var channel: Channel;
 
-  assert head#Channel(channels[cid]) == tail#Channel(channels[cid]);
-  assume head#Channel(channel) == tail#Channel(channel);
+  assert channels[cid]->head == channels[cid]->tail;
+  assume channel->head == channel->tail;
   channels[cid] := channel;
 }
 
-procedure {:IS_invariant}{:layer 2}
+procedure {:layer 2}
+{:creates "PRODUCER","CONSUMER"}
+{:IS_invariant}{:elim "PRODUCER"}{:elim "CONSUMER","CONSUMER'"}
 INV ({:linear_in "cid"} cid: ChannelId)
-returns ({:pending_async "PRODUCER","CONSUMER"} PAs:[PA]int, {:choice} choice:PA)
 modifies channels;
 {
   var {:pool "INV1"} c: int;
@@ -59,27 +55,28 @@ modifies channels;
   var C: [int]int;
   var head, tail: int;
 
-  assert head#Channel(channels[cid]) == tail#Channel(channels[cid]);
-  
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  assert channels[cid]->head == channels[cid]->tail;
+
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   assume {:add_to_pool "INV1", c} 0 < c;
   if (*) {
     assume head == tail;
-    PAs := NoPAs()[PRODUCER(c, Send(cid)) := 1][CONSUMER(c, Receive(cid)) := 1];
-    choice := PRODUCER(c, Send(cid));
+    call create_async(PRODUCER(c, Send(cid)));
+    call create_async(CONSUMER(c, Receive(cid)));
+    call set_choice(PRODUCER(c, Send(cid)));
   } else if (*) {
     assume tail == head + 1 && C[head] == 0;
-    PAs := NoPAs()[CONSUMER(c, Receive(cid)) := 1];
-    choice := CONSUMER(c, Receive(cid));
+    call create_async(CONSUMER(c, Receive(cid)));
+    call set_choice(CONSUMER(c, Receive(cid)));
   } else if (*) {
     assume tail == head + 1 && C[head] == c;
-    PAs := NoPAs()[PRODUCER(c+1, Send(cid)) := 1][CONSUMER(c, Receive(cid)) := 1];
-    choice := CONSUMER(c, Receive(cid));
+    call create_async(PRODUCER(c+1, Send(cid)));
+    call create_async(CONSUMER(c, Receive(cid)));
+    call set_choice(CONSUMER(c, Receive(cid)));
   } else {
     assume head == tail;
-    PAs := NoPAs();
   }
   channels[cid] := channel;
 }
@@ -87,8 +84,9 @@ modifies channels;
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:left}{:layer 2}
+{:pending_async}
+{:creates "PRODUCER"}
 PRODUCER (x: int, {:linear_in "cid"} send_handle: ChannelHandle)
-returns ({:pending_async "PRODUCER"} PAs:[PA]int)
 modifies channels;
 {
   var channel: Channel;
@@ -96,31 +94,31 @@ modifies channels;
   var head, tail: int;
   var cid: ChannelId;
 
-  assert is#Send(send_handle);
+  assert send_handle is Send;
   cid := Cid(send_handle);
   channel := channels[cid];
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   if (*)
   {
     C[tail] := x;
     tail := tail + 1;
-    PAs := NoPAs()[PRODUCER(x+1, send_handle) := 1];
+    call create_async(PRODUCER(x+1, send_handle));
   }
   else
   {
     C[tail] := 0;
     tail := tail + 1;
-    PAs := NoPAs();
   }
   channels[cid] := Channel(C, head, tail);
   assume {:add_to_pool "INV2", channels[cid]} true;
 }
 
 procedure {:atomic}{:layer 2}
+{:pending_async}
+{:creates "CONSUMER"}
 CONSUMER (x: int, {:linear_in "cid"} receive_handle: ChannelHandle)
-returns ({:pending_async "CONSUMER"} PAs:[PA]int)
 modifies channels;
 {
   var channel: Channel;
@@ -129,12 +127,12 @@ modifies channels;
   var x': int;
   var cid: ChannelId;
 
-  assert is#Receive(receive_handle);
+  assert receive_handle is Receive;
   cid := Cid(receive_handle);
   channel := channels[cid];
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   assert head < tail ==> C[head] == x || C[head] == 0;  // assertion to discharge
 
   assume head < tail;
@@ -142,11 +140,7 @@ modifies channels;
   head := head + 1;
   if (x' != 0)
   {
-    PAs := NoPAs()[CONSUMER(x'+1, receive_handle) := 1];
-  }
-  else
-  {
-    PAs := NoPAs();
+    call create_async(CONSUMER(x'+1, receive_handle));
   }
   channels[cid] := Channel(C, head, tail);
   assume {:add_to_pool "INV2", channels[cid]} true;
@@ -155,8 +149,8 @@ modifies channels;
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:IS_abstraction}{:layer 2}
+{:creates "CONSUMER"}
 CONSUMER' (x:int, {:linear_in "cid"} receive_handle: ChannelHandle)
-returns ({:pending_async "CONSUMER"} PAs:[PA]int)
 modifies channels;
 {
   var channel: Channel;
@@ -165,10 +159,10 @@ modifies channels;
 
   cid := Cid(receive_handle);
   channel := channels[cid];
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  head := channel->head;
+  tail := channel->tail;
   assert head < tail;
-  call PAs := CONSUMER(x, receive_handle);
+  call CONSUMER(x, receive_handle);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,15 +192,15 @@ producer (x:int, {:linear_in "cid"} send_handle: ChannelHandle)
 }
 
 procedure {:yields}{:layer 1}{:refines "CONSUMER"}
-consumer (y:int, {:linear_in "cid"} receive_handle: ChannelHandle)
+consumer (x:int, {:linear_in "cid"} receive_handle: ChannelHandle)
 {
-  var y': int;
+  var x': int;
 
-  call y' := receive(receive_handle);
-  if (y' != 0)
+  call x' := receive(receive_handle);
+  if (x' != 0)
   {
-    assert {:layer 1} y' == y; // low-level assertion to discharge
-    async call consumer(y'+1, receive_handle);
+    assert {:layer 1} x' == x; // low-level assertion to discharge
+    async call consumer(x'+1, receive_handle);
   }
 }
 
@@ -220,12 +214,12 @@ modifies channels;
   var head, tail: int;
   var cid: ChannelId;
 
-  assert is#Send(send_handle);
+  assert send_handle is Send;
   cid := Cid(send_handle);
   channel := channels[cid];
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   C[tail] := m;
   tail := tail + 1;
   channels[cid] := Channel(C, head, tail);
@@ -239,12 +233,12 @@ modifies channels;
   var head, tail: int;
   var cid: ChannelId;
 
-  assert is#Receive(receive_handle);
+  assert receive_handle is Receive;
   cid := Cid(receive_handle);
   channel := channels[cid];
-  C := C#Channel(channel);
-  head := head#Channel(channel);
-  tail := tail#Channel(channel);
+  C := channel->C;
+  head := channel->head;
+  tail := channel->tail;
   assume head < tail;
   m := C[head];
   head := head + 1;

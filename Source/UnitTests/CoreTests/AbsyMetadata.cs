@@ -34,6 +34,17 @@ namespace CoreTests
       Assert.Throws(typeof(ArgumentOutOfRangeException), () => absy.GetMetadata<string>(1));
     }
 
+    [Test]
+    public void EnsureBinaryExpressionsHaveTokensIfLeftOperandHasToken()
+    {
+      var left = Expr.Literal(0);
+      var right = Expr.Literal(1);
+      left.tok = new Token(42, 27);
+      var result = Expr.Gt(left, right);
+      Assert.NotNull(result.tok);
+      Assert.AreEqual(result.tok.line, left.tok.line);
+    }
+
     [Test()]
     public void SimpleMetadata()
     {

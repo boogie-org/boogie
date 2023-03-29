@@ -7,6 +7,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
 using Microsoft.BaseTypes;
@@ -27,13 +28,13 @@ readonly List<Expr>/*!*/ dummyExprSeq;
 readonly TransferCmd/*!*/ dummyTransferCmd;
 readonly StructuredCmd/*!*/ dummyStructuredCmd;
 
-public static Program ParseLibraryDefinitions()
+public static Program ParseLibrary(string libraryName)
 {
-  string libraryDefinitionsFileName = "LibraryDefinitions.bpl";
+  string libraryFileName = $"{libraryName}.bpl";
   Assembly asm = Assembly.GetExecutingAssembly();
-  var resourceName = "Core.LibraryDefinitions.bpl";
+  var resourceName = $"Core.{libraryFileName}";
   using Stream resourceStream = asm.GetManifestResourceStream(resourceName);
-  Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out Program program);
+  Parse(new StreamReader(resourceStream), libraryFileName, new List<string>(), out Program program);
   return program;
 }
 
@@ -73,12 +74,9 @@ public static int Parse(string s, string/*!*/ filename, out /*maybe null*/ Progr
   parser.Parse();
   if (errors.count == 0)
   {
-    parser.Pgm.ProcessDatatypeConstructors(errors);
-  }
-  if (errors.count == 0)
-  {
     program = parser.Pgm;
-  } else
+  }
+  else
   {
     program = null;
   }
@@ -121,9 +119,9 @@ private class BvBounds : Expr {
     Contract.Assert(false);throw new cce.UnreachableException();
   }
   public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
-  
+
   public override int ContentHash => throw new NotSupportedException("Not supported since this type is translated away");
-  
+
   public override int ComputeHashCode()
   {
     return base.GetHashCode();
@@ -184,6 +182,8 @@ BoogiePL
      List<Declaration>/*!*/ ds;
      Axiom/*!*/ ax;
      List<Declaration/*!*/>/*!*/ ts;
+     DatatypeTypeCtorDecl dt;
+     YieldInvariantDecl yi;
      Procedure/*!*/ pr;
      Implementation im;
      Implementation/*!*/ nnim;
@@ -204,11 +204,13 @@ BoogiePL
                                     Pgm.AddTopLevelDeclaration(td);
                                   }
                                .)
+  | Datatype<out dt>           (. Pgm.AddTopLevelDeclaration(dt); .)
   | GlobalVars<out vs>         (. foreach(Bpl.Variable/*!*/ v in vs){
                                     Contract.Assert(v != null);
                                     Pgm.AddTopLevelDeclaration(v);
                                   }
                                .)
+  | YieldInvariantDecl<out yi> (. Pgm.AddTopLevelDeclaration(yi); .)
   | Procedure<out pr, out im>  (. Pgm.AddTopLevelDeclaration(pr);
                                    if (im != null) {
                                      Pgm.AddTopLevelDeclaration(im);
@@ -402,66 +404,21 @@ Consts<.out List<Declaration>/*!*/ ds.>
 = (. Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; List<TypedIdent>/*!*/ xs;
      ds = new List<Declaration>();
      var axioms = new List<Axiom>();
-     Axiom ax;
-     bool u = false; QKeyValue kv = null;
-     bool ChildrenComplete = false;
-     List<ConstantParent/*!*/> Parents = null; .)
+     Axiom axiom;
+     bool u = false; QKeyValue kv = null; .)
   "const"                 (. y = t; .)
   { Attribute<ref kv> }
   [ "unique"              (. u = true;  .)
   ]
   IdsType<out xs>
-  [ OrderSpec<out ChildrenComplete, out Parents> ]
-  ( ";" | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}")
-  (. bool makeClone = false;
+  ( ";" | "uses" "{" { Axiom<out axiom>(. axioms.Add(axiom); ds.Add(axiom); .) } "}")
+  (.
      foreach(TypedIdent/*!*/ x in xs){
        Contract.Assert(x != null);
-
-       // ensure that no sharing is introduced
-       List<ConstantParent/*!*/> ParentsClone;
-       if (makeClone && Parents != null) {
-         ParentsClone = new List<ConstantParent/*!*/> ();
-         foreach (ConstantParent/*!*/ p in Parents){
-           Contract.Assert(p != null);
-           ParentsClone.Add(new ConstantParent (
-                            new IdentifierExpr (p.Parent.tok, p.Parent.Name),
-                            p.Unique));}
-       } else {
-         ParentsClone = Parents;
-       }
-       makeClone = true;
-       
-       var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv, axioms);
+       var constant = new Constant(y, x, u, kv, axioms);
        ds.Add(constant);
      }
-     foreach(var axiom in axioms) {
-       ds.Add(axiom);
-     }
   .)
-  .
-
-OrderSpec<.out bool ChildrenComplete, out List<ConstantParent/*!*/> Parents.>
-= (.Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out Parents),true)); ChildrenComplete = false;
-     Parents = null;
-     bool u;
-     IToken/*!*/ parent; .)
-  "extends"                (. Parents = new List<ConstantParent/*!*/> ();
-                              u = false; .)
-  [
-    [ "unique"             (. u = true; .)
-    ]
-    Ident<out parent>      (. Parents.Add(new ConstantParent (
-                                          new IdentifierExpr(parent, parent.val), u)); .)
-    {
-      ","                  (. u = false; .)
-      [ "unique"           (. u = true; .)
-      ]
-      Ident<out parent>    (. Parents.Add(new ConstantParent (
-                                          new IdentifierExpr(parent, parent.val), u)); .)
-    }
-  ]
-  [ "complete"             (. ChildrenComplete = true; .)
-  ]
   .
 
 /*------------------------------------------------------------------------*/
@@ -493,8 +450,8 @@ Function<.out List<Declaration>/*!*/ ds.>
     |
     ":" Type<out retTy>   (. retTyd = new TypedIdent(retTy.tok, TypedIdent.NoName, retTy); .)
   )
-  ( "{" Expression<out tmp> (. definition = tmp; .) "}" [ "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" ] 
-  | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" 
+  ( "{" Expression<out tmp> (. definition = tmp; .) "}" [ "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}" ]
+  | "uses" "{" { Axiom<out ax>(. axioms.Add(ax); .) } "}"
   | ";"
   )
   (.
@@ -508,7 +465,7 @@ Function<.out List<Declaration>/*!*/ ds.>
         ds.Add(axiom);
         func.AddOtherDefinitionAxiom(axiom);
     }
-    
+
     Contract.Assert(func != null);
     ds.Add(func);
     bool allUnnamed = true;
@@ -624,8 +581,60 @@ UserDefinedType<out Declaration/*!*/ decl, QKeyValue kv>
    .)
   .
 
+/*------------------------------------------------------------------------*/
+Datatype<out DatatypeTypeCtorDecl datatypeTypeCtorDecl>
+= (. QKeyValue kv = null; IToken/*!*/ typeParamTok, name; List<TypeVariable> typeParams = new List<TypeVariable>(); .)
+  "datatype"
+  { Attribute<ref kv> }
+  Ident<out name>
+  [ TypeParams<out typeParamTok, out typeParams> ]
+  (. datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, typeParams, kv); .)
+  "{"
+    Constructors<datatypeTypeCtorDecl>
+  "}"
+  .
+
+Constructors<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
+=
+  Constructor<datatypeTypeCtorDecl>
+  {
+    ","
+    Constructor<datatypeTypeCtorDecl>
+  }
+  .
+
+Constructor<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
+= (. IToken name; List<TypedIdent> fields = new List<TypedIdent>(); .)
+  Ident<out name>
+  "("
+  [ IdsTypeWheres<false, "datatype constructor", delegate(TypedIdent ti) { fields.Add(ti); }> ]
+  ")"
+  (.
+    if (!datatypeTypeCtorDecl.AddConstructor(name, name.val, fields)) {
+      this.SemErr($"constructor name {name.val} used more than once in datatype");
+    }
+  .)
+  .
 
 /*------------------------------------------------------------------------*/
+YieldInvariantDecl<out YieldInvariantDecl yieldInvariant>
+= (. List<Requires> invariants = new List<Requires>(); QKeyValue kv = null; IToken name = null; List<Variable> ins; .)
+  "yield" "invariant"
+  { Attribute<ref kv> }
+  Ident<out name>
+  ProcFormals<true, true, out ins> ";"
+  { Invariant<invariants> }
+  (. yieldInvariant = new YieldInvariantDecl(name, name.val, ins, invariants, kv); .)
+  .
+
+Invariant<.List<Requires> invariants.>
+= (. Expr e; IToken tok = null; QKeyValue kv = null; .)
+  ( "invariant"              (. tok = t; .)
+    { Attribute<ref kv> }
+    Proposition<out e> ";"  (. invariants.Add(new Requires(tok, false, e, null, kv)); .)
+  )
+  .
+
 Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
 = (. Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
      List<TypeVariable>/*!*/ typeParams;
@@ -907,8 +916,6 @@ LabelOrCmd<out Cmd c, out IToken label>
                           .)
   | CallCmd<out cn> ";"   (. c = cn; .)
   | ParCallCmd<out cn>    (. c = cn; .)
-  | "yield"               (. x = t; .)
-    ";"                   (. c = new YieldCmd(x); .)
   )
   .
 
@@ -916,27 +923,49 @@ LabelOrCmd<out Cmd c, out IToken label>
 
 LabelOrAssign<out Cmd c, out IToken label>
 /* ensures (c == null) != (label != null) */
-= (. IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0;
+= (. IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0; List<IToken> ids;
      c = dummyCmd;  label = null;
      AssignLhs/*!*/ lhs;
      List<AssignLhs/*!*/>/*!*/ lhss;
      List<Expr/*!*/>/*!*/ rhss;
      List<Expr/*!*/>/*!*/ indexes;
+     FieldAccess fieldAccess;
      QKeyValue kv = null;
+     NAryExpr lhsExpr;
   .)
   Ident<out id>              (. x = t; .)
-  ( ":"                      (. c = null;  label = x; .)
+  ( ":"                      (. c = null; label = x; .)
+
+  | "(" Idents<out ids> ")"
+    (.
+      lhsExpr = new NAryExpr(x, new FunctionCall(new IdentifierExpr(id, id.val)), ids.Select(id => new IdentifierExpr(id, id.val)).ToList<Expr>());
+    .)
+    ":=" (. x = t; /* use location of := */ .)
+    { Attribute<ref kv> }
+    Expression<out e0>
+    ";"
+    (.
+       c = new UnpackCmd(x, lhsExpr, e0, kv);
+    .)
 
   | (. lhss = new List<AssignLhs/*!*/>(); .)
     (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
 
-    { MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .) }
+    {
+      MapAssignIndex<out y, out indexes>  (. lhs = new MapAssignLhs(y, lhs, indexes); .)
+      |
+      FieldAccess<out y, out fieldAccess> (. lhs = new FieldAssignLhs(y, lhs, fieldAccess); .)
+    }
     (. lhss.Add(lhs); .)
 
     { ","
       Ident<out id>
       (. lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); .)
-      { MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .) }
+      {
+        MapAssignIndex<out y, out indexes>    (. lhs = new MapAssignLhs(y, lhs, indexes); .)
+        |
+        FieldAccess<out y, out fieldAccess> (. lhs = new FieldAssignLhs(y, lhs, fieldAccess); .)
+      }
       (. lhss.Add(lhs); .)
     }
 
@@ -963,6 +992,12 @@ MapAssignIndex<.out IToken/*!*/ x, out List<Expr/*!*/>/*!*/ indexes.>
       }
     ]
   "]"
+  .
+
+FieldAccess<.out IToken x, out FieldAccess fieldAccess.>
+= (. Contract.Ensures(Contract.ValueAtReturn(out fieldAccess) != null); IToken id; .)
+  "->" (. x = t; .)
+  Ident<out id> (. fieldAccess = new FieldAccess(id, id.val); .)
   .
 
 /*------------------------------------------------------------------------*/
@@ -1138,7 +1173,6 @@ RelOp<out IToken/*!*/ x, out BinaryOperator.Opcode op>
   | "<="           (. x = t; op=BinaryOperator.Opcode.Le; .)
   | ">="           (. x = t; op=BinaryOperator.Opcode.Ge; .)
   | "!="           (. x = t; op=BinaryOperator.Opcode.Neq; .)
-  | "<:"           (. x = t; op=BinaryOperator.Opcode.Subtype; .)
   | '\u2260'       (. x = t; op=BinaryOperator.Opcode.Neq; .)
   | '\u2264'       (. x = t; op=BinaryOperator.Opcode.Le; .)
   | '\u2265'       (. x = t; op=BinaryOperator.Opcode.Ge; .)
@@ -1192,11 +1226,22 @@ MulOp<out IToken/*!*/ x, out BinaryOperator.Opcode op>
 /*------------------------------------------------------------------------*/
 Power<out Expr/*!*/ e0>
 = (.Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; .)
-  UnaryExpression<out e0>
+  IsConstructor<out e0>
   [
     "**"           (. x = t; .)
     /* recurse because exponentation is right-associative */
     Power<out e1>  (. e0 = Expr.Binary(x, BinaryOperator.Opcode.Pow, e0, e1); .)
+  ]
+  .
+
+IsConstructor<out Expr/*!*/ e0>
+= (. Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x, id; .)
+  UnaryExpression<out e0>
+  [ "is"            (. x = t; .)
+    Ident<out id>
+    (. var isConstructor = new IsConstructor(id, id.val);
+       e0 = new NAryExpr(x, isConstructor, new List<Expr> { e0 });
+    .)
   ]
   .
 
@@ -1249,7 +1294,8 @@ CoercionExpression<out Expr/*!*/ e>
 
 /*------------------------------------------------------------------------*/
 ArrayExpression<out Expr/*!*/ e>
-= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
+= (. Contract.Ensures(Contract.ValueAtReturn(out e) != null);
+     IToken/*!*/ x, id;
      Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
      bool store; bool bvExtract;
      List<Expr>/*!*/ allArgs = dummyExprSeq;
@@ -1289,9 +1335,19 @@ ArrayExpression<out Expr/*!*/ e>
        else
          e = new NAryExpr(x, new MapSelect(x, allArgs.Count - 1), allArgs);
     .)
+    |
+      "->" (. x = t; .)
+      (
+        Ident<out id> (. e = new NAryExpr(x, new FieldAccess(id, id.val), new List<Expr> { e }); .)
+        |
+        "("
+        Ident<out id>
+        ":=" (. x = t; .)
+        Expression<out e1>
+        ")" (. e = new NAryExpr(x, new FieldUpdate(id, id.val), new List<Expr> { e, e1 }); .)
+      )
   }
   .
-
 
 /*------------------------------------------------------------------------*/
 AtomExpression<out Expr/*!*/ e>
@@ -1340,9 +1396,8 @@ AtomExpression<out Expr/*!*/ e>
     Expression<out e>
     ")"                     (. e = new NAryExpr(x, new ArithmeticCoercion(x, ArithmeticCoercion.CoercionType.ToReal), new List<Expr>{ e }); .)
 
-		| "(" ( Expression<out e>                 (. if (e is BvBounds)
-                                                 this.SemErr("parentheses around bitvector bounds " +
-                                                        "are not allowed"); .)
+  | "(" ( Expression<out e>                 (. if (e is BvBounds)
+                                                 this.SemErr("parentheses around bitvector bounds are not allowed"); .)
         | Forall                            (. x = t; .)
           QuantifierBody<x, out typeParams, out ds, out kv, out trig, out e>
                                             (. if (typeParams.Count + ds.Count > 0)

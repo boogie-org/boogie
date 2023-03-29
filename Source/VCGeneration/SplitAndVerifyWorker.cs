@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
@@ -12,6 +13,9 @@ namespace VC
 {
   class SplitAndVerifyWorker
   {
+    public IObservable<(Split split, VCResult vcResult)> BatchCompletions => batchCompletions;
+    private readonly Subject<(Split split, VCResult vcResult)> batchCompletions = new();
+
     private readonly VCGenOptions options;
     private readonly VerifierCallback callback;
     private readonly ModelViewInfo mvInfo;
@@ -34,7 +38,7 @@ namespace VC
     private int splitNumber;
 
     private int totalResourceCount;
-    
+
     public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       Outcome outcome)
@@ -63,7 +67,7 @@ namespace VC
       Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(Implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(options, Implementation, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = Split.FocusAndSplit(options, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
@@ -76,12 +80,24 @@ namespace VC
     public async Task<Outcome> WorkUntilDone(CancellationToken cancellationToken)
     {
       TrackSplitsCost(manualSplits);
-      await Task.WhenAll(manualSplits.Select(split => DoWorkForMultipleIterations(split, cancellationToken)));
+      try
+      {
+        await Task.WhenAll(manualSplits.Select(split => DoWorkForMultipleIterations(split, cancellationToken)));
+      }
+      finally
+      {
+        batchCompletions.OnCompleted();
+      }
 
       return outcome;
     }
 
     public int ResourceCount => totalResourceCount;
+    /// <summary>
+    /// The cumulative time spent processing SMT queries.  When running with
+    /// `vcsCores > 1`, this may also include time spent restarting the prover.
+    /// </summary>
+    public TimeSpan TotalProverElapsedTime { get; private set; }
     
     private void TrackSplitsCost(List<Split> splits)
     {
@@ -100,7 +116,7 @@ namespace VC
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       split.SplitIndex = currentSplitNumber;
-      var tasks = Enumerable.Range(0, options.RandomSeedIterations).Select(iteration =>
+      var tasks = Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
         DoWork(iteration, split, cancellationToken));
       await Task.WhenAll(tasks);
     }
@@ -113,10 +129,12 @@ namespace VC
         cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
-        await ProcessResult(iteration, split, checker, cancellationToken);
+        await ProcessResultAndReleaseChecker(iteration, split, checker, cancellationToken);
+        TotalProverElapsedTime += checker.ProverRunTime;
       }
-      finally {
+      catch {
         await checker.GoBackToIdle();
+        throw;
       }
     }
 
@@ -124,8 +142,8 @@ namespace VC
     {
       if (options.Trace && DoSplitting) {
         var splitNum = split.SplitIndex + 1;
-        var splitIdxStr = options.RandomSeedIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
-        Console.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
+        var splitIdxStr = options.RandomizeVcIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
+        run.TraceWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
@@ -140,7 +158,7 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task ProcessResult(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -169,12 +187,12 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
-      if (!proverFailed) {
-        split.Finish(result);
-        return;
+      if (proverFailed) {
+        await HandleProverFailure(split, checker, callback, result, cancellationToken);
+      } else {
+        batchCompletions.OnNext((split, result));
+        await checker.GoBackToIdle();
       }
-
-      await HandleProverFailure(split, checker, callback, result, cancellationToken);
     }
 
     private static bool IsProverFailed(ProverInterface.Outcome outcome)
@@ -251,13 +269,19 @@ namespace VC
         var result = vcResult with {
           counterExamples = split.Counterexamples
         };
-        split.Finish(result);
+        batchCompletions.OnNext((split, result));
         outcome = Outcome.Errors;
+        await checker.GoBackToIdle();
         return;
       }
 
+      await checker.GoBackToIdle();
+
       if (maxKeepGoingSplits > 1) {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
+        if (options.Trace) {
+          await run.TraceWriter.WriteLineAsync($"split {split.SplitIndex+1} was split into {newSplits.Count} parts");
+        }
         Contract.Assert(newSplits != null);
         maxVcCost = 1.0; // for future
         TrackSplitsCost(newSplits);
@@ -292,7 +316,8 @@ namespace VC
 
         callback.OnOutOfResource(msg);
       }
-      split.Finish(vcResult);
+
+      batchCompletions.OnNext((split, vcResult));
     }
   }
 }

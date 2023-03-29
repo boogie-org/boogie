@@ -1,33 +1,32 @@
-// RUN: %parallel-boogie -lib "%s" > "%t"
+// RUN: %parallel-boogie -lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:datatype} Value;
+datatype Value {
+  Integer(i: int),
+  Vector(v: Array Value)
+}
 
-function {:constructor} Integer(i: int): Value;
-function {:constructor} Vector(v: Array Value): Value;
-
-type {:datatype} Array _;
-function {:constructor} Array<T>(v: Seq T): Array T;
+datatype Array<T> { Array(v: Seq T) }
 function {:inline} EmptyArray<T>(): Array T {
     Array(Seq_Empty())
 }
 function {:inline} AddArray<T>(a: Array T, v: T): Array T {
-    Array(Seq_Concat(v#Array(a), Seq_Unit(v)))
+    Array(Seq_Concat(a->v, Seq_Unit(v)))
 }
 function {:inline} RemoveArray<T>(a: Array T): Array T {
-    Array(Seq_Extract(v#Array(a), 0, Seq_Len(v#Array(a)) - 1))
+    Array(Seq_Extract(a->v, 0, Seq_Len(a->v) - 1))
 }
 function {:inline} ConcatArray<T>(a1: Array T, a2: Array T): Array T {
-    Array(Seq_Concat(v#Array(a1), v#Array(a2)))
+    Array(Seq_Concat(a1->v, a2->v))
 }
 function {:inline} IsEmpty<T>(a: Array T): bool {
-    Seq_Len(v#Array(a)) == 0
+    Seq_Len(a->v) == 0
 }
 function {:inline} LenArray<T>(a: Array T): int {
-    Seq_Len(v#Array(a))
+    Seq_Len(a->v)
 }
 function {:inline} ArrayAt<T>(a: Array T, i: int): T {
-    Seq_Nth(v#Array(a), i)
+    Seq_Nth(a->v, i)
 }
 
 procedure test()

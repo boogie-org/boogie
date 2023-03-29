@@ -76,10 +76,10 @@ procedure Bad2(y: int)
     options.VcsCores = 4;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
 
-    var expected = @"fakeFilename1(3,3): Error: This assertion might not hold.
+    var expected = @"fakeFilename1(3,3): Error: this assertion could not be proved
 Execution trace:
     fakeFilename1(3,3): anon0
-fakeFilename1(8,3): Error: This assertion might not hold.
+fakeFilename1(8,3): Error: this assertion could not be proved
 Execution trace:
     fakeFilename1(8,3): anon0
 
@@ -125,12 +125,12 @@ procedure Good(y: int)
     await task1Writer.DisposeAsync();
     await task2Writer.DisposeAsync();
     var output = writer.ToString();
-    var expected = @"fakeFilename1(3,3): Error: This assertion might not hold.
+    var expected = @"fakeFilename1(3,3): Error: this assertion could not be proved
 Execution trace:
     fakeFilename1(3,3): anon0
 
 Boogie program verifier finished with 1 verified, 1 error
-fakeFilename2(3,3): Error: This assertion might not hold.
+fakeFilename2(3,3): Error: this assertion could not be proved
 Execution trace:
     fakeFilename2(3,3): anon0
 
@@ -175,7 +175,7 @@ Boogie program verifier finished with 1 verified, 1 error
     await engine.ProcessProgram(writer, program1, "fakeFilename");
     await writer.DisposeAsync();
     var output = writer.ToString();
-    var expected = @"fakeFilename(10,5): Error: This loop invariant might not be maintained by the loop.
+    var expected = @"fakeFilename(10,5): Error: this invariant could not be proved to be maintained by the loop
 fakeFilename(10,5): Related message: fake failure
 Execution trace:
     fakeFilename(5,3): entry
@@ -223,7 +223,7 @@ procedure Foo(x: int) {
   }
 
   [Test]
-  public async Task RunRunCancelRunRun() {
+  public async Task SingleTaskRunRunCancelRunRun() {
     var options = CommandLineOptions.FromArguments();
     var returnCheckSat = new SemaphoreSlim(0);
     options.VcsCores = 1;
@@ -236,20 +236,20 @@ procedure Foo(x: int) {
 }".TrimStart();
     var result = Parser.Parse(source, "fakeFilename1", out var program);
     Assert.AreEqual(0, result);
-    var tasks = engine.GetImplementationTasks(program)[0];
+    var task = engine.GetImplementationTasks(program)[0];
     var statusList1 = new List<IVerificationStatus>();
-    var firstStatuses = tasks.TryRun()!;
-    var runAfterRun1 = tasks.TryRun();
-    Assert.AreEqual(null, runAfterRun1);
+    var firstStatuses = task.TryRun()!;
+    var runDuringRun1 = task.TryRun();
+    Assert.AreEqual(null, runDuringRun1);
     firstStatuses.Subscribe(statusList1.Add);
-    tasks.Cancel();
+    task.Cancel();
 
-    var secondStatuses = tasks.TryRun()!;
-    var runAfterRun2 = tasks.TryRun();
-    Assert.AreEqual(null, runAfterRun2);
+    var secondStatuses = task.TryRun()!;
+    var runDuringRun2 = task.TryRun();
+    Assert.AreEqual(null, runDuringRun2);
     var statusList2 = new List<IVerificationStatus>();
     secondStatuses.Subscribe(statusList2.Add);
-    returnCheckSat.Release();
+    returnCheckSat.Release(2);
     var finalResult = await secondStatuses.ToTask();
     Assert.IsTrue(finalResult is Completed);
     var expected1 = new List<IVerificationStatus>() {
@@ -259,7 +259,7 @@ procedure Foo(x: int) {
     var expected2 = new List<IVerificationStatus>() {
       new Running(), finalResult
     };
-    Assert.AreEqual(expected2, statusList2.Where(s => s is not Queued));
+    Assert.AreEqual(expected2, statusList2.Where(s => s is not Queued && s is not BatchCompleted));
   }
 
   [Test]
@@ -303,12 +303,15 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
 
     Assert.AreEqual((firstName, new Running()), statusList[0]);
     Assert.AreEqual((secondName, new Queued()), statusList[1]);
-    var indexTwoAndThreeOrdered = statusList.Skip(2).Take(2).OrderByDescending(k => k.Item1 == firstName).ToList();
-    Assert.AreEqual(firstName, indexTwoAndThreeOrdered[0].Item1);
-    Assert.IsTrue(indexTwoAndThreeOrdered[0].Item2 is Completed);
-    Assert.AreEqual((secondName, new Running()), indexTwoAndThreeOrdered[1]);
-    Assert.AreEqual(secondName, statusList[4].Item1);
-    Assert.IsTrue(statusList[4].Item2 is Completed);
+    Assert.AreEqual(firstName, statusList[2].Item1);
+    Assert.IsTrue(statusList[2].Item2 is BatchCompleted);
+    Assert.AreEqual(firstName, statusList[3].Item1);
+    Assert.IsTrue(statusList[3].Item2 is Completed);
+    Assert.AreEqual((secondName, new Running()), statusList[4]);
+    Assert.AreEqual(secondName, statusList[5].Item1);
+    Assert.IsTrue(statusList[5].Item2 is BatchCompleted);
+    Assert.AreEqual(secondName, statusList[6].Item1);
+    Assert.IsTrue(statusList[6].Item2 is Completed);
     
     var tasks2 = engine.GetImplementationTasks(program);
     Assert.True(tasks2[0].CacheStatus is Completed);
@@ -316,5 +319,58 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
 
     Assert.True(tasks2[1].CacheStatus is Completed);
     Assert.AreEqual(ConditionGeneration.Outcome.Correct, ((Completed)tasks2[1].CacheStatus).Result.Outcome);
+    
+    var batchResult = (BatchCompleted) statusList[2].Item2;
+    
+    var assertion = batchResult.VcResult.asserts[0];
+    batchResult.VcResult.ComputePerAssertOutcomes(out var perAssertOutcome, out var perAssertCounterExamples);
+    Assert.Contains(assertion, perAssertOutcome.Keys);
+    Assert.Contains(assertion, perAssertCounterExamples.Keys);
+    var outcomeAssertion = perAssertOutcome[assertion];
+    var counterExampleAssertion = perAssertCounterExamples[assertion];
+    Assert.AreEqual(ProverInterface.Outcome.Invalid, outcomeAssertion);
+    Assert.AreEqual(true, counterExampleAssertion is AssertCounterexample);
+    var assertCounterexample = (AssertCounterexample)counterExampleAssertion;
+    Assert.AreEqual(assertCounterexample.FailingAssert, assertion);
+  }
+  
+
+  [Test]
+  public async Task SolverCrash()
+  {
+    var printer = new NullPrinter();
+    var options = CommandLineOptions.FromArguments(printer);
+    options.CreateSolver = (_, _) => new OverflowSolver();
+    var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var terminatingProgram = GetProgram(executionEngine, fast);
+
+    // We limit the number of checkers to 1.
+    options.VcsCores = 1;
+
+    var outcome1 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+    Assert.IsTrue(outcome1 is Completed completed && completed.Result.Outcome == ConditionGeneration.Outcome.Inconclusive);
+    options.CreateSolver = (_ ,_ ) => new UnsatSolver();
+    var outcome2 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+    Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.Outcome == ConditionGeneration.Outcome.Correct);
+  }
+
+  private readonly string fast = @"
+procedure easy() ensures 1 + 1 == 0; {
+}
+";
+
+  public Program GetProgram(ExecutionEngine engine, string code) {
+    var bplFileName = "1";
+    int errorCount = Parser.Parse(code, bplFileName, out Program program,
+      engine.Options.UseBaseNameForFileName);
+    Assert.AreEqual(0, errorCount);
+
+    engine.ResolveAndTypecheck(program, bplFileName, out _);
+    engine.EliminateDeadVariables(program);
+    engine.CollectModSets(program);
+    engine.CoalesceBlocks(program);
+    engine.Inline(program);
+    return program;
   }
 }

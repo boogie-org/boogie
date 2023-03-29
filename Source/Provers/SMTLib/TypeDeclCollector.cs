@@ -225,7 +225,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         VCExprBoogieFunctionOp op = node.Op as VCExprBoogieFunctionOp;
         if (op != null &&
-            !(op.Func is DatatypeConstructor) && !(op.Func is DatatypeMembership) && !(op.Func is DatatypeSelector) &&
+            !(op.Func is DatatypeConstructor) &&
             !KnownFunctions.Contains(op.Func))
         {
           Function f = op.Func;
@@ -263,7 +263,7 @@ namespace Microsoft.Boogie.SMTLib
     public override bool Visit(VCExprVar node, bool arg)
     {
       Contract.Requires(node != null);
-      if (!BoundTermVars.Contains(node) && !KnownVariables.Contains(node))
+      if (!BoundTermVars.ContainsKey(node) && !KnownVariables.Contains(node))
       {
         string printedName = Namer.GetQuotedName(node, node.Name);
         Contract.Assert(printedName != null);

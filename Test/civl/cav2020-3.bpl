@@ -1,9 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "perm"} {:datatype} Perm;
-function {:constructor} Left(i: int): Perm;
-function {:constructor} Right(i: int): Perm;
+datatype {:linear "perm"} Perm { Left(i: int), Right(i: int) }
 
 function {:inline} {:linear "perm"} IntCollector(i: int) : [Perm]bool
 {
@@ -11,7 +9,7 @@ function {:inline} {:linear "perm"} IntCollector(i: int) : [Perm]bool
 }
 function {:inline} {:linear "perm"} IntSetCollector(iset: [int]bool) : [Perm]bool
 {
-  (lambda p: Perm :: is#Left(p) && iset[i#Left(p)])
+  (lambda p: Perm :: p is Left && iset[p->i])
 }
 
 function {:inline} IntSetSubset(X: [int]bool, Y: [int]bool): bool
@@ -125,13 +123,13 @@ requires {:layer 1} i == 0;
     call SetBarrier(false);
 }
 
-procedure {:yield_invariant} {:layer 1} BarrierInv();
-requires IntSetSubset(mutatorsInBarrier, Mutators);
-requires size(mutatorsInBarrier) + barrierCounter == N;
+yield invariant {:layer 1} BarrierInv();
+invariant IntSetSubset(mutatorsInBarrier, Mutators);
+invariant size(mutatorsInBarrier) + barrierCounter == N;
 
-procedure {:yield_invariant} {:layer 1} MutatorInv({:linear "perm"} p: Perm, i: int);
-requires p == Right(i) && mutatorsInBarrier[i];
+yield invariant {:layer 1} MutatorInv({:linear "perm"} p: Perm, i: int);
+invariant p == Right(i) && mutatorsInBarrier[i];
 
-procedure {:yield_invariant} {:layer 1} CollectorInv({:linear "perm"} i: int, done: bool);
-requires i == 0 && barrierOn;
-requires done ==> mutatorsInBarrier == Mutators;
+yield invariant {:layer 1} CollectorInv({:linear "perm"} i: int, done: bool);
+invariant i == 0 && barrierOn;
+invariant done ==> mutatorsInBarrier == Mutators;

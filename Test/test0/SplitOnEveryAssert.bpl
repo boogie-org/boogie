@@ -16,7 +16,7 @@
 // CHECK:      checking split 10/12, .*
 // CHECK:      checking split 11/12, .*
 // CHECK:      checking split 12/12, .*
-// CHECK-L: SplitOnEveryAssert.bpl(37,5): Error: This assertion might not hold.
+// CHECK-L: SplitOnEveryAssert.bpl(37,5): Error: this assertion could not be proved
 
 // Verify the second procedure is NOT split. .* is necessary to match the blank line in-between.
 // CHECK-NEXT: .*

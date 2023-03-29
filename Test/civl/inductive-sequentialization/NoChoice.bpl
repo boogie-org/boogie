@@ -3,21 +3,15 @@
 
 var {:layer 0,2} x:int;
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} INC() : PA;
-function {:constructor} DEC() : PA;
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
-
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 1}
-{:IS "MAIN'","INV"}{:elim "INC"}{:elim "DEC"}
+{:creates "INC", "DEC"}
+{:IS "MAIN'","INV"}
 MAIN ()
-returns ({:pending_async "INC","DEC"} PAs:[PA]int)
 {
-  PAs := NoPAs()[INC() := 1][DEC() := 1];
+  call create_async(INC());
+  call create_async(DEC());
 }
 
 procedure {:atomic}{:layer 2}
@@ -25,19 +19,20 @@ MAIN' ()
 {
 }
 
-procedure {:IS_invariant}{:layer 1}
+procedure {:layer 1}
+{:creates "INC", "DEC"}
+{:IS_invariant}{:elim "INC"}{:elim "DEC"}
 INV ()
-returns ({:pending_async "INC","DEC"} PAs:[PA]int)
 modifies x;
 {
-  PAs := NoPAs();
-  if (*) { PAs[INC()] := 1; } else { x := x + 1; }
-  if (*) { PAs[DEC()] := 1; } else { x := x - 1; }
+  if (*) { call create_async(INC()); } else { x := x + 1; }
+  if (*) { call create_async(DEC()); } else { x := x - 1; }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:left}{:layer 1}
+{:pending_async}
 INC ()
 modifies x;
 {
@@ -45,6 +40,7 @@ modifies x;
 }
 
 procedure {:left}{:layer 1}
+{:pending_async}
 DEC ()
 modifies x;
 {

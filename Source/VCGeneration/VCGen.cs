@@ -7,6 +7,7 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 using System.IO;
+using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
@@ -19,6 +20,7 @@ namespace VC
 
   public class VCGen : ConditionGeneration
   {
+    
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
@@ -346,7 +348,7 @@ namespace VC
     private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
 
     public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken)
+      CancellationToken cancellationToken, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
@@ -359,12 +361,6 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
 
-      Stopwatch watch = new Stopwatch();
-#if PRINT_TIME
-      Console.WriteLine("Checking function {0}", impl.Name);
-      watch.Reset();
-      watch.Start();
-#endif
 
       var data = implementationData.GetOrCreateValue(run.Implementation)!;
       if (!data.ConvertedToDAG) {
@@ -414,20 +410,18 @@ namespace VC
 
       var worker = new SplitAndVerifyWorker(Options, this, run, data.GotoCmdOrigins, callback,
         data.ModelViewInfo, outcome);
+      worker.BatchCompletions.Subscribe(batchCompletedObserver);
+            
       outcome = await worker.WorkUntilDone(cancellationToken);
       ResourceCount = worker.ResourceCount;
 
+      TotalProverElapsedTime = worker.TotalProverElapsedTime;
       if (outcome == Outcome.Correct && smokeTester != null)
       {
         await smokeTester.Test(run.TraceWriter);
       }
 
       callback.OnProgress?.Invoke("done", 0, 0, 1.0);
-
-#if PRINT_TIME
-      watch.Stop();
-      Console.WriteLine("Total time for this method: {0}", watch.Elapsed.ToString());
-#endif
 
       return outcome;
     }
@@ -734,7 +728,6 @@ namespace VC
               }
 
               b.Attributes = c.Attributes;
-              b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsInit.Add(b);
 
               if (Options.ConcurrentHoudini)
@@ -755,7 +748,6 @@ namespace VC
               }
 
               b.Attributes = c.Attributes;
-              b.ErrorData = c.ErrorData;
               prefixOfPredicateCmdsMaintained.Add(b);
               header.Cmds[i] = new AssumeCmd(c.tok, c.Expr);
             }

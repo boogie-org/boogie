@@ -13,12 +13,12 @@ procedure{:yields}{:layer 1} {:refines "AtomicRecover"} Recover()
 {
 }
 
-procedure{:yields}{:layer 3} P()
-  requires{:layer 2,3} x == 5;
-  ensures {:layer 2,3} x == 5;
+procedure{:yields}{:layer 3}{:yield_preserves "Inv"} P()
 {
-
   call Havoc();
-  yield; assert{:layer 3} x == 5;
+  call Inv();
   call Recover();
 }
+
+yield invariant {:layer 3} Inv();
+invariant x == 5;

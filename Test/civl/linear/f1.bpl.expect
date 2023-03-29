@@ -1,5 +1,5 @@
-f1.bpl(40,4): Error: This assertion might not hold.
+f1.bpl(35,4): Error: this assertion could not be proved
 Execution trace:
-    f1.bpl(34,6): anon0
+    f1.bpl(29,6): anon0
 
 Boogie program verifier finished with 1 verified, 1 error

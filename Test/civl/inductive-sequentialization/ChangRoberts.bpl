@@ -10,16 +10,16 @@ var {:layer 1,4} terminated:[int]bool;   // Ghost var to keep terminated node in
 var {:layer 0,4} id:[int]int;            // pid -> ID
 var {:layer 0,4} leader:[int]bool;       // leader[pid] iff pid is a leader
 
-function {:inline} pid (pid:int) : bool { 1 <= pid && pid <= n }
+function {:inline} Pid (pid:int) : bool { 1 <= pid && pid <= n }
 
-function {:inline} next (pid:int) : int { if pid < n then pid + 1 else 1 }
-function {:inline} prev (pid:int) : int { if pid > 1 then pid - 1 else n }
+function {:inline} Next (pid:int) : int { if pid < n then pid + 1 else 1 }
+function {:inline} Prev (pid:int) : int { if pid > 1 then pid - 1 else n }
 
 // True iff b is between a and c in a ring, excluding the boundaries
 // Between relation is assumed to be growing such that when a == c, every b in the ring is between a and c
-function {:inline} between (a:int, b:int, c:int) : bool
+function {:inline} Between (a:int, b:int, c:int) : bool
 {
-  pid(a) && pid(b) && pid(c) &&
+  Pid(a) && Pid(b) && Pid(c) &&
   (
     (a < b && b < c) ||
     (c < a && a < b) ||
@@ -30,9 +30,9 @@ function {:inline} between (a:int, b:int, c:int) : bool
 
 // True iff b is between a and c excluding only c
 // Between relation is assumed to be growing such that when a == c, every b in the ring is between a and c
-function {:inline} betweenLeftEqual (a:int, b:int, c:int) : bool
+function {:inline} BetweenLeftEqual (a:int, b:int, c:int) : bool
 {
-  pid(a) && pid(b) && pid(c) &&
+  Pid(a) && Pid(b) && Pid(c) &&
   (
     (a <= b && b < c) ||
     (c < a && a <= b) ||
@@ -41,16 +41,10 @@ function {:inline} betweenLeftEqual (a:int, b:int, c:int) : bool
 }
 
 // Returns pid with maximum id number
-function max ([int]int) : int;
-axiom (forall id:[int]int :: pid(max(id)) && (forall i:int :: pid(i) && i != max(id) ==> id[i] < id[max(id)]));
-
-// A type for keeping track of pending asyncs
-type {:pending_async}{:datatype} PA;
-function {:constructor} P(pid:int) : PA;
-function {:constructor} PInit(pid:int) : PA;
+function Max ([int]int) : int;
+axiom (forall id:[int]int :: Pid(Max(id)) && (forall i:int :: Pid(i) && i != Max(id) ==> id[i] < id[Max(id)]));
 
 function EmptyChannel() : [int]int { (lambda i:int :: 0) }
-function NoPAs() : [PA]int { (lambda pa:PA :: 0) }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -73,165 +67,126 @@ modifies channel, terminated, leader;
 {
   assert Init(pids, channel, terminated, id, leader);
   havoc channel, terminated, leader;
-  assume (forall i:int :: pid(i) && i != max(id) ==> !leader[i]);
+  assume (forall i:int :: Pid(i) && i != Max(id) ==> !leader[i]);
 }
 
-procedure {:IS_invariant}{:layer 3}
+procedure {:layer 3}
+{:creates "P"}
+{:IS_invariant}{:elim "P", "P'"}
 INV2 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "P"} PAs:[PA]int, {:choice} choice:PA)
 modifies channel, terminated, leader;
 {
   var {:pool "INV2"} k: int;
   assert Init(pids, channel, terminated, id, leader);
 
   havoc channel, terminated, leader;
-
-  assume
-    {:add_to_pool "INV2", k, next(k), n+1}
-    true;
-
-  choice := P(k);
+  assume {:add_to_pool "INV2", k, Next(k), n+1} true;
   if (*) {
     assume
-      pid(k) &&
-      (forall i:int :: pid(i) && between(max(id),i,k) ==> terminated[i]) &&
-      (forall i:int :: pid(i) && !between(max(id),i,k) ==> !terminated[i]);
-    PAs := (lambda pa:PA :: if is#P(pa) && pid(pid#P(pa)) && !between(max(id), pid#P(pa), k) then 1 else 0);
+      Pid(k) &&
+      (forall i:int :: Pid(i) && Between(Max(id),i,k) ==> terminated[i]) &&
+      (forall i:int :: Pid(i) && !Between(Max(id),i,k) ==> !terminated[i]);
+    call create_asyncs((lambda pa:P :: Pid(pa->pid) && !Between(Max(id), pa->pid, k)));
+    call set_choice(P(k));
   } else {
     assume
       k == n + 1 &&
-      (forall i:int :: pid(i) ==> terminated[i]);
-    PAs := NoPAs();
+      (forall i:int :: Pid(i) ==> terminated[i]);
   }
 
-
-  assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg <= id[max(id)] && (forall j:int:: betweenLeftEqual(i,j,max(id)) ==> msg != id[j]));
-  assume (forall i:int :: pid(i) && i != max(id) ==> !leader[i]);
+  assume (forall i:int, msg:int :: Pid(i) && channel[i][msg] > 0 ==> msg <= id[Max(id)] && (forall j:int:: BetweenLeftEqual(i,j,Max(id)) ==> msg != id[j]));
+  assume (forall i:int :: Pid(i) && i != Max(id) ==> !leader[i]);
 }
 
 procedure {:IS_abstraction}{:layer 3}
+{:creates "P"}
 P' ({:linear_in "pid"} pid:int)
-returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel, terminated, leader;
 {
-  var msg:int;
-
-  assert pid(pid);
-  assert !terminated[pid];
-  assert (forall m:int :: channel[pid][m] > 0 ==> m <= id[max(id)]);
-
-  assert (forall j:int :: pid(j) && between(max(id), j, pid) ==> terminated[j]);
-
-  if (*)
-  {
-    terminated[pid] := true;
-    PAs := NoPAs();
-  }
-  else
-  {
-    assume channel[pid][msg] > 0;
-    channel[pid][msg] := channel[pid][msg] - 1;
-
-    if (msg == id[pid])
-    {
-      leader[pid] := true;
-      terminated[pid] := true;
-      PAs := NoPAs();
-    }
-    else
-    {
-      if (msg > id[pid])
-      {
-        channel[next(pid)][msg] := channel[next(pid)][msg] + 1;
-      }
-      PAs := NoPAs()[P(pid) := 1];
-    }
-  }
+  assert (forall j:int :: Pid(j) && Between(Max(id), j, pid) ==> terminated[j]);
+  call P(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 3}
-{:IS "MAIN3","INV2"}{:elim "P", "P'" }
+{:creates "P"}
+{:IS "MAIN3","INV2"}
 MAIN2 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel;
 {
   assert Init(pids, channel, terminated, id, leader);
-  assume
-    {:add_to_pool "INV2", next(max(id))}
-    true;
 
+  assume {:add_to_pool "INV2", Next(Max(id))} true;
   havoc channel;
-
-  assume (forall i:int :: 1 <= i && i <= n ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]);
+  assume (forall i:int :: 1 <= i && i <= n ==> channel[Next(i)] == EmptyChannel()[id[i] := 1 ]);
   assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
-  PAs := (lambda pa:PA ::  if is#P(pa) && pid(pid#P(pa)) then 1 else 0);
-  assume (forall i:int, msg:int :: pid(i) && channel[i][msg] > 0 ==> msg == id[prev(i)]);
+  call create_asyncs((lambda pa:P :: Pid(pa->pid)));
+  assume (forall i:int, msg:int :: Pid(i) && channel[i][msg] > 0 ==> msg == id[Prev(i)]);
 }
 
-procedure {:IS_invariant}{:layer 2}
+procedure {:layer 2}
+{:creates "PInit", "P"}
+{:IS_invariant}{:elim "PInit"}
 INV1 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "PInit", "P"} PAs:[PA]int, {:choice} choice:PA)
 modifies channel;
 {
   var {:pool "INV1"} k: int;
   assert Init(pids, channel, terminated, id, leader);
 
   havoc channel;
-
   assume
     {:add_to_pool "INV1", k, k+1}
     {:add_to_pool "PInit", PInit(n)}
-    pid(k) || k == 0;
+    Pid(k) || k == 0;
   assume
-    (forall i:int :: 1 <= i && i <= k ==> channel[next(i)] == EmptyChannel()[id[i] := 1 ]) &&
-    (forall i:int :: k < i && i <= n ==> channel[next(i)] == EmptyChannel()) &&
+    (forall i:int :: 1 <= i && i <= k ==> channel[Next(i)] == EmptyChannel()[id[i] := 1 ]) &&
+    (forall i:int :: k < i && i <= n ==> channel[Next(i)] == EmptyChannel()) &&
     (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
-  PAs := (lambda {:pool "PInit"} pa:PA :: if is#PInit(pa) && k < pid#PInit(pa) && pid#PInit(pa) <= n then 1
-              else if is#P(pa) &&  1 <= pid#P(pa) && pid#P(pa) <= k  then 1 else 0);
-  choice := PInit(k+1);
+  call create_asyncs((lambda {:pool "PInit"} pa:PInit :: k < pa->pid && pa->pid <= n));
+  call create_asyncs((lambda pa:P :: 1 <= pa->pid && pa->pid <= k));
+  call set_choice(PInit(k+1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 2}
-{:IS "MAIN2","INV1"}{:elim "PInit"}
+{:creates "PInit"}
+{:IS "MAIN2","INV1"}
 MAIN1 ({:linear_in "pid"} pids:[int]bool)
-returns ({:pending_async "PInit"} PAs:[PA]int)
 {
   assert Init(pids, channel, terminated, id, leader);
-  assume
-    {:add_to_pool "INV1", 0}
-    true;
-  PAs := (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) then 1 else 0);
+
+  assume {:add_to_pool "INV1", 0} true;
+  call create_asyncs((lambda pa:PInit :: Pid(pa->pid)));
 }
 
 procedure {:left}{:layer 2}
+{:pending_async}
+{:creates "P"}
 PInit ({:linear_in "pid"} pid:int)
-returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel;
 {
-  assert pid(pid);
-  channel[next(pid)][id[pid]] := channel[next(pid)][id[pid]] + 1;
-  PAs := NoPAs()[P(pid) := 1];
+  assert Pid(pid);
+  channel[Next(pid)][id[pid]] := channel[Next(pid)][id[pid]] + 1;
+  call create_async(P(pid));
 }
 
 procedure {:atomic}{:layer 2, 3}
+{:pending_async}
+{:creates "P"}
 P ({:linear_in "pid"} pid:int)
-returns ({:pending_async "P"} PAs:[PA]int)
 modifies channel, terminated, leader;
 {
   var msg:int;
 
-  assert pid(pid);
+  assert Pid(pid);
   assert !terminated[pid];
-  assert (forall m:int :: channel[pid][m] > 0 ==> m <= id[max(id)]);
+  assert (forall m:int :: channel[pid][m] > 0 ==> m <= id[Max(id)]);
 
   if (*)
   {
     terminated[pid] := true;
-    PAs := NoPAs();
   }
   else
   {
@@ -242,26 +197,27 @@ modifies channel, terminated, leader;
     {
       leader[pid] := true;
       terminated[pid] := true;
-      PAs := NoPAs();
     }
     else
     {
       if (msg > id[pid])
       {
-        channel[next(pid)][msg] := channel[next(pid)][msg] + 1;
+        channel[Next(pid)][msg] := channel[Next(pid)][msg] + 1;
       }
-      PAs := NoPAs()[P(pid) := 1];
+      call create_async(P(pid));
     }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yields}{:layer 1}{:refines "MAIN1"}
+yield invariant {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
+invariant Init(pids, channel, terminated, id, leader);
+
+procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pids}{:refines "MAIN1"}
 main ({:linear_in "pid"} pids:[int]bool)
-requires {:layer 1} Init(pids, channel, terminated, id, leader);
 {
-  var {:pending_async}{:layer 1} PAs:[PA]int;
+  var {:pending_async}{:layer 1} PAs:[PInit]int;
   var {:linear "pid"} pid:int;
   var {:linear "pid"} pids':[int]bool;
   var i:int;
@@ -269,10 +225,9 @@ requires {:layer 1} Init(pids, channel, terminated, id, leader);
   pids' := pids;
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n+1;
-  invariant {:layer 1} (forall ii:int :: pid(ii) && ii >= i ==> pids'[ii]);
-  invariant {:layer 1} PAs == (lambda pa:PA :: if is#PInit(pa) && pid(pid#PInit(pa)) && pid#PInit(pa) < i then 1 else 0);
+  invariant {:layer 1} (forall ii:int :: Pid(ii) && ii >= i ==> pids'[ii]);
+  invariant {:layer 1} PAs == (lambda pa:PInit :: if Pid(pa->pid) && pa->pid < i then 1 else 0);
   {
     call pid, pids' := linear_transfer(i, pids');
     async call pinit(pid);
@@ -282,18 +237,18 @@ requires {:layer 1} Init(pids, channel, terminated, id, leader);
 
 procedure {:yields}{:layer 1}{:refines "PInit"}
 pinit ({:linear_in "pid"} pid:int)
-requires {:layer 1} pid(pid);
+requires {:layer 1} Pid(pid);
 {
   var m:int;
 
   call m := get_id(pid);
-  call send(next(pid), m);
+  call send(Next(pid), m);
   async call p(pid);
 }
 
 procedure {:yields}{:layer 1}{:refines "P"}
 p ({:linear_in "pid"} pid:int)
-requires {:layer 1} pid(pid);
+requires {:layer 1} Pid(pid);
 {
   var m:int;
   var i:int;
@@ -309,7 +264,7 @@ requires {:layer 1} pid(pid);
   {
     if (m > i)
     {
-      call send(next(pid), m);
+      call send(Next(pid), m);
     }
     async call p(pid);
   }

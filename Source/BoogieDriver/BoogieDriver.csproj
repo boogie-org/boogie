@@ -20,7 +20,6 @@
     <ProjectReference Include="..\ExecutionEngine\ExecutionEngine.csproj" />
     <ProjectReference Include="..\Graph\Graph.csproj" />
     <ProjectReference Include="..\Houdini\Houdini.csproj" />
-    <ProjectReference Include="..\Predication\Predication.csproj" />
     <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj" />
     <ProjectReference Include="..\VCExpr\VCExpr.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj" />

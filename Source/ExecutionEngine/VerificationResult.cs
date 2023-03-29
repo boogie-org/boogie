@@ -20,6 +20,13 @@ public sealed class VerificationResult
   public DateTime Start { get; set; }
   public DateTime End { get; set; }
 
+  /// <summary>
+  /// Gets or sets the elapsed time, excluding SMT solver setup costs.
+  /// (This is narrower than <c>Start - End</c>.)
+  /// <c>Start</c> and <c>End</c> are kept because we need them in XML reports.
+  /// </summary>
+  public TimeSpan Elapsed { get; set; }
+
   public int ResourceCount { get; set; }
 
   public int ProofObligationCount
@@ -78,7 +85,7 @@ public sealed class VerificationResult
       }
 
       engine.Options.XmlSink.WriteEndMethod(Outcome.ToString().ToLowerInvariant(),
-        End, End - Start,
+        End, Elapsed,
         ResourceCount);
     }
   }
@@ -89,7 +96,7 @@ public sealed class VerificationResult
     if (options.Trace)
     {
       result = string.Format("  [{0:F3} s, solver resource count: {1}, {2} proof obligation{3}]  ",
-        (End - Start).TotalSeconds,
+        Elapsed.TotalSeconds,
         ResourceCount,
         ProofObligationCount,
         ProofObligationCount == 1 ? "" : "s");

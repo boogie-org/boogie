@@ -54,12 +54,22 @@ namespace Microsoft.Boogie
         from IS in civlTypeChecker.inductiveSequentializations
         from leftMover in IS.elim.Values
         from action in civlTypeChecker.procToAtomicAction.Values
-        where action.layerRange.Contains(IS.inputAction.layerRange.upperLayerNum)
-        select new {action, leftMover};
+        where action.layerRange.Contains(IS.invariantAction.layerRange.upperLayerNum)
+        let extraAssumption1 = IS.GenerateMoverCheckAssumption(action, action.firstImpl.InParams, leftMover, leftMover.secondImpl.InParams)
+        let extraAssumption2 = IS.GenerateMoverCheckAssumption(action, action.secondImpl.InParams, leftMover, leftMover.firstImpl.InParams)
+        select new {action, leftMover, extraAssumption1, extraAssumption2};
 
+      /*
+       * It is important that the mover checks required for inductive sequentialization are the last ones
+       * to be generated. Each of these mover checks may add an extra assumption. Since mover checks are
+       * cached, if a mover check has already been generated then one generated here with the extra
+       * assumption will get dropped. As a result, we preserve overall soundness.
+       */
       foreach (var moverCheck in inductiveSequentializationMoverChecks)
       {
-        moverChecking.CreateLeftMoverCheckers(moverCheck.action, moverCheck.leftMover);
+        moverChecking.CreateCommutativityChecker(moverCheck.action, moverCheck.leftMover, moverCheck.extraAssumption1);
+        moverChecking.CreateGatePreservationChecker(moverCheck.leftMover, moverCheck.action, moverCheck.extraAssumption2);
+        moverChecking.CreateFailurePreservationChecker(moverCheck.action, moverCheck.leftMover, moverCheck.extraAssumption1);
       }
 
       // Here we include IS abstractions
@@ -82,9 +92,12 @@ namespace Microsoft.Boogie
       }
     }
 
-    private Requires DisjointnessRequires(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
+    private IEnumerable<Requires> DisjointnessAndWellFormedRequires(IEnumerable<Variable> paramVars, HashSet<Variable> frame)
     {
-      return new Requires(false, Expr.And(civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(paramVars.Union(frame))));
+      var availableVars = paramVars.Union(frame);
+      return civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(availableVars)
+        .Union(civlTypeChecker.linearTypeChecker.LheapWellFormedExpressions(availableVars))
+        .Select(expr => new Requires(false, expr));
     }
 
     private void AddChecker(string checkerName, List<Variable> inputs, List<Variable> outputs, List<Variable> locals,
@@ -117,7 +130,7 @@ namespace Microsoft.Boogie
       return CmdHelper.CallCmd(action.proc, paramProvider.InParams, paramProvider.OutParams);
     }
 
-    private void CreateCommutativityChecker(AtomicAction first, AtomicAction second)
+    private void CreateCommutativityChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
     {
       if (first == second && first.firstImpl.InParams.Count == 0 && first.firstImpl.OutParams.Count == 0)
       {
@@ -143,23 +156,23 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.actionUsedGlobalVars);
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      List<Requires> requires = new List<Requires>
-      {
-        DisjointnessRequires(
+      List<Requires> requires =
+        DisjointnessAndWellFormedRequires(
           first.firstImpl.InParams.Union(second.secondImpl.InParams)
-            .Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),
-          frame)
-      };
+            .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
       foreach (AssertCmd assertCmd in Enumerable.Union(first.firstGate, second.secondGate))
       {
         requires.Add(new Requires(false, assertCmd.Expr));
       }
+      if (extraAssumption != null)
+      {
+        requires.Add(new Requires(false, extraAssumption));
+      }
 
-      var witnesses = civlTypeChecker.commutativityHints.GetWitnesses(first, second);
-      var transitionRelation = TransitionRelationComputation.Commutativity(civlTypeChecker, second, first, frame, witnesses);
+      var transitionRelation = TransitionRelationComputation.Commutativity(civlTypeChecker, second, first, frame);
 
       var secondInParamsFiltered =
-        second.secondImpl.InParams.Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
+        second.secondImpl.InParams.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_IN);
       IEnumerable<Expr> linearityAssumes = Enumerable.Union(
         linearTypeChecker.DisjointnessExprForEachDomain(first.firstImpl.OutParams.Union(secondInParamsFiltered)
           .Union(frame)),
@@ -176,10 +189,6 @@ namespace Microsoft.Boogie
         ActionCallCmd(first, first.firstImpl),
         ActionCallCmd(second, second.secondImpl)
       };
-      foreach (var lemma in civlTypeChecker.commutativityHints.GetLemmas(first, second))
-      {
-        cmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(Options, lemma.function, lemma.args.ToArray())));
-      }
       cmds.Add(commutativityCheck);
 
       List<Variable> inputs = Enumerable.Union(first.firstImpl.InParams, second.secondImpl.InParams).ToList();
@@ -188,7 +197,7 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second)
+    private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
     {
       if (!first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Any())
       {
@@ -206,15 +215,17 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.actionUsedGlobalVars);
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      List<Requires> requires = new List<Requires>
-      {
-        DisjointnessRequires(
+      List<Requires> requires = 
+        DisjointnessAndWellFormedRequires(
           first.firstImpl.InParams.Union(second.secondImpl.InParams)
-            .Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
-      };
+            .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
       foreach (AssertCmd assertCmd in first.firstGate.Union(second.secondGate))
       {
         requires.Add(new Requires(false, assertCmd.Expr));
+      }
+      if (extraAssumption != null)
+      {
+        requires.Add(new Requires(false, extraAssumption));
       }
 
       string checkerName = $"GatePreservationChecker_{first.proc.Name}_{second.proc.Name}";
@@ -241,7 +252,7 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second)
+    private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
     {
       if (!first.gateUsedGlobalVars.Intersect(second.modifiedGlobalVars).Any())
       {
@@ -259,18 +270,20 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.actionUsedGlobalVars);
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      List<Requires> requires = new List<Requires>
-      {
-        DisjointnessRequires(
+      List<Requires> requires = 
+        DisjointnessAndWellFormedRequires(
           first.firstImpl.InParams.Union(second.secondImpl.InParams)
-            .Where(v => linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame)
-      };
+            .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
       Expr firstNegatedGate = Expr.Not(Expr.And(first.firstGate.Select(a => a.Expr)));
       firstNegatedGate.Type = Type.Bool; // necessary?
       requires.Add(new Requires(false, firstNegatedGate));
       foreach (AssertCmd assertCmd in second.secondGate)
       {
         requires.Add(new Requires(false, assertCmd.Expr));
+      }
+      if (extraAssumption != null)
+      {
+        requires.Add(new Requires(false, extraAssumption));
       }
 
       IEnumerable<Expr> linearityAssumes =
@@ -308,11 +321,9 @@ namespace Microsoft.Boogie
       frame.UnionWith(action.gateUsedGlobalVars);
       frame.UnionWith(action.actionUsedGlobalVars);
 
-      List<Requires> requires = new List<Requires>
-      {
-        DisjointnessRequires(impl.InParams.Where(v => civlTypeChecker.linearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),
-          frame)
-      };
+      List<Requires> requires =
+        DisjointnessAndWellFormedRequires(impl.InParams.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT),
+          frame).ToList();
       foreach (AssertCmd assertCmd in action.gate)
       {
         requires.Add(new Requires(false, assertCmd.Expr));

@@ -295,6 +295,20 @@ namespace Microsoft.Boogie.VCExprAST
       return PrintNAry("Distinct", node, wr);
     }
 
+    public bool VisitFieldAccessOp(VCExprNAry node, TextWriter wr)
+    {
+      //Contract.Requires(wr != null);
+      //Contract.Requires(node != null);
+      return PrintNAry("FieldAccess", node, wr);
+    }
+    
+    public bool VisitIsConstructorOp(VCExprNAry node, TextWriter wr)
+    {
+      //Contract.Requires(wr != null);
+      //Contract.Requires(node != null);
+      return PrintNAry("IsConstructor", node, wr);
+    }
+    
     public bool VisitSelectOp(VCExprNAry node, TextWriter wr)
     {
       //Contract.Requires(wr != null);

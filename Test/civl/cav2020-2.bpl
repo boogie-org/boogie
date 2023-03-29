@@ -1,17 +1,14 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type {:linear "tid"} Tid;
-type {:datatype} Option _;
-function {:constructor} None<T>(): Option T;
-function {:constructor} Some<T>(t: T): Option T;
 
 var {:layer 0, 1} b: bool;
 var {:layer 0, 3} count: int;
 var {:layer 1, 2} l: Option Tid;
 
-procedure {:yield_invariant} {:layer 1} LockInv();
-requires b <==> (l != None());
+yield invariant {:layer 1} LockInv();
+invariant b <==> (l != None());
 
 procedure {:atomic} {:layer 3,3} IncrSpec()
 modifies count;
@@ -110,7 +107,7 @@ modifies count;
 }
 procedure {:yields} {:layer 0} {:refines "atomic_WRITE"} WRITE(v: int);
 
-procedure {:inline} {:intro} {:layer 1} set_l(v: Option Tid)
+procedure {:intro} {:layer 1} set_l(v: Option Tid)
 modifies l;
 {
     l := v;

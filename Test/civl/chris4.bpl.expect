@@ -1,6 +1,5 @@
-chris4.bpl(13,3): Error: This assertion might not hold.
+chris4.bpl(6,3): Error: this assertion could not be proved
 Execution trace:
-    chris4.bpl(12,3): anon0
-    chris4.bpl(12,3): anon0_0
+    chris4.bpl(6,3): anon0
 
-Boogie program verifier finished with 1 verified, 1 error
+Boogie program verifier finished with 0 verified, 1 error

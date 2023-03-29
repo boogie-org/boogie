@@ -121,35 +121,30 @@ procedure {:yields} {:layer 2} {:refines "AtomicTB"} TB({:linear "tid"} tid: X)
     call UnlockB(tid);
 }
 
-procedure {:yields} {:layer 3} AbsTB({:linear "tid"} tid: X)
-requires {:layer 3} tid != nil && counter == 0;
+procedure {:yields} {:layer 3} {:yield_requires "YieldCounter"} AbsTB({:linear "tid"} tid: X)
+requires {:layer 3} tid != nil;
 {
-    assert {:layer 3} counter == 0;
     call TB(tid);
 }
 
-procedure {:yields} {:layer 3} main({:linear "tid"} tid: X)
-requires {:layer 3} tid != nil && counter == 0;
+procedure {:yields} {:layer 3} {:yield_requires "YieldCounter"} main({:linear "tid"} tid: X)
+requires {:layer 3} tid != nil;
 {
     var {:linear "tid"} cid: X;
 
-    assert {:layer 3} counter == 0;
     while (*)
-    invariant {:yields} {:layer 1,2,3} true;
-    invariant {:layer 3} counter == 0;
+    invariant {:yields} {:yield_loop "YieldCounter"} true;
     {
         if (*) {
             call cid := AllocTid();
             async call TA(cid);
         }
-        yield;
-        assert {:layer 3} counter == 0;
+        par Yield() | YieldCounter();
         if (*) {
             call cid := AllocTid();
             async call AbsTB(cid);
         }
-        yield;
-        assert {:layer 3} counter == 0;
+        par Yield() | YieldCounter();
         call LockA(tid);
         call AbsAssertA(tid);
         call LockB(tid);
@@ -158,3 +153,8 @@ requires {:layer 3} tid != nil && counter == 0;
         call UnlockA(tid);
     }
 }
+
+procedure {:yields} {:layer 2} Yield();
+
+yield invariant {:layer 3} YieldCounter();
+invariant counter == 0;

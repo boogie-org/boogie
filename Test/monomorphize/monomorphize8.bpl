@@ -3,9 +3,9 @@
 // Issue #356
 
 type Vec _;
-type {:datatype} VecRep _;
 
-function {:constructor} VecRep<T>(v: [int]T, l: int): VecRep T;
+datatype VecRep<T> { VecRep(v: [int]T, l: int) }
+
 
 function VecToRep<T>(v: Vec T): VecRep T;
 function VecFromRep<T>(v: VecRep T): Vec T;
@@ -17,10 +17,10 @@ axiom {:ctor "VecRep"} (forall<T> r1, r2: VecRep T :: {VecFromRep(r1), VecFromRe
 
 function {:inline} VecRepIsEqual<T>(r1: VecRep T, r2: VecRep T): bool {
     r1 == r2 ||
-    (var l := l#VecRep(r1);
-     l == l#VecRep(r2) &&
-     (forall i: int :: {v#VecRep(r1)[i], v#VecRep(r2)[i]}
-         i >=0 && i < l ==> v#VecRep(r1)[i] == v#VecRep(r2)[i]))
+    (var l := r1->l;
+     l == r2->l &&
+     (forall i: int :: {r1->v[i], r2->v[i]}
+         i >=0 && i < l ==> r1->v[i] == r2->v[i]))
 }
 
 function DefaultVecMap<T>(): [int]T;
@@ -37,33 +37,33 @@ function {:inline} SingleVec<T>(v: T): Vec T {
 }
 
 function {:inline} ReadVec<T>(a: Vec T, i: int): T {
-    v#VecRep(VecToRep(a))[i]
+    VecToRep(a)->v[i]
 }
 
 function {:inline} LenVec<T>(a: Vec T): int {
-    l#VecRep(VecToRep(a))
+    VecToRep(a)->l
 }
 
 function {:inline} RemoveVec<T>(a: Vec T): Vec T {
     (var r := VecToRep(a);
-    (var l := l#VecRep(r) - 1;
-     VecFromRep(VecRep(v#VecRep(r), l))))
+    (var l := r->l - 1;
+     VecFromRep(VecRep(r->v, l))))
 }
 
 function {:inline} RemoveAtVec<T>(a: Vec T, i: int): Vec T {
     (var r := VecToRep(a);
-    (var l := l#VecRep(r) - 1;
+    (var l := r->l - 1;
     VecFromRep(VecRep(
         (lambda j: int ::
            if j >= 0 && j < l then
-               if j < i then v#VecRep(r)[j] else v#VecRep(r)[j+1]
+               if j < i then r->v[j] else r->v[j+1]
            else DefaultVecMap()[0]),
         l))))
 }
 
 function {:inline} ConcatVec<T>(a1: Vec T, a2: Vec T): Vec T {
     (var r1, r2 := VecToRep(a1), VecToRep(a2);
-    (var l1, m1, l2, m2 := l#VecRep(r1), v#VecRep(r1), l#VecRep(r2), v#VecRep(r2);
+    (var l1, m1, l2, m2 := r1->l, r1->v, r2->l, r2->v;
     VecFromRep(VecRep(
         (lambda i: int ::
           if i >= 0 && i < l1 + l2 then

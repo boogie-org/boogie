@@ -1,26 +1,19 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:pending_async}{:datatype} PA;
-function {:constructor} A() : PA;
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
-
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 1,2} A () {}
+procedure {:atomic}{:layer 1,2} {:pending_async} A () {}
 
-procedure {:left}{:layer 1} B () returns ({:pending_async "A"} PAs:[PA]int)
+procedure {:left}{:layer 1} {:creates "A"} B ()
 {
-  PAs := NoPAs()[A() := 1];
+  call create_async(A());
 }
 
-procedure {:left}{:layer 1} C (flag:bool) returns ({:pending_async "A"} PAs:[PA]int)
+procedure {:left}{:layer 1} {:creates "A"} C (flag:bool)
 {
-  PAs := NoPAs();
   if (flag) {
-    PAs := PAs[A() := 1];
+    call create_async(A());
   }
 }
 
@@ -37,9 +30,9 @@ procedure {:yields}{:layer 1}{:refines "TEST1"} test1 ()
   call b();
 }
 
-procedure {:atomic}{:layer 2} TEST1 () returns ({:pending_async "A"} PAs:[PA]int)
+procedure {:atomic}{:layer 2} {:creates "A"} TEST1 ()
 {
-  PAs := NoPAs()[A() := 2];
+  call create_multi_asyncs(MapConst(0)[A() := 2]);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,9 +44,9 @@ procedure {:yields}{:layer 1}{:refines "TEST2"} test2 ()
   call b();
 }
 
-procedure {:atomic}{:layer 2} TEST2 () returns ({:pending_async "A"} PAs:[PA]int)
+procedure {:atomic}{:layer 2} {:creates "A"} TEST2 ()
 {
-  PAs := NoPAs()[A() := 1];
+  call create_async(A());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,20 +75,19 @@ procedure {:atomic}{:layer 2} TEST4 () returns () {}
 procedure {:yields}{:layer 1}{:refines "TEST5"} test5 ()
 {
   var i:int;
-  var {:pending_async}{:layer 1} PAs:[PA]int;
+  var {:pending_async}{:layer 1} PAs:[A]int;
 
   i := 0;
   while (i < 10)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 0 <= i && i <= 10;
-  invariant {:layer 1} PAs == NoPAs()[A() := i];
+  invariant {:layer 1} PAs == MapConst(0)[A() := i];
   {
     call b();
     i := i + 1;
   }
 }
 
-procedure {:atomic}{:layer 2} TEST5 () returns ({:pending_async "A"} PAs:[PA]int)
+procedure {:atomic}{:layer 2} {:creates "A"} TEST5 ()
 {
-  PAs := NoPAs()[A() := 10];
+  call create_multi_asyncs(MapConst(0)[A() := 10]);
 }

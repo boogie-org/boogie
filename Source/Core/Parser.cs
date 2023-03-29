@@ -10,6 +10,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Microsoft.Boogie;
 using Microsoft.BaseTypes;
@@ -58,13 +59,13 @@ readonly List<Expr>/*!*/ dummyExprSeq;
 readonly TransferCmd/*!*/ dummyTransferCmd;
 readonly StructuredCmd/*!*/ dummyStructuredCmd;
 
-public static Program ParseLibraryDefinitions()
+public static Program ParseLibrary(string libraryName)
 {
-  string libraryDefinitionsFileName = "LibraryDefinitions.bpl";
+  string libraryFileName = $"{libraryName}.bpl";
   Assembly asm = Assembly.GetExecutingAssembly();
-  var resourceName = "Core.LibraryDefinitions.bpl";
+  var resourceName = $"Core.{libraryFileName}";
   using Stream resourceStream = asm.GetManifestResourceStream(resourceName);
-  Parse(new StreamReader(resourceStream), libraryDefinitionsFileName, new List<string>(), out Program program);
+  Parse(new StreamReader(resourceStream), libraryFileName, new List<string>(), out Program program);
   return program;
 }
 
@@ -104,12 +105,9 @@ public static int Parse(string s, string/*!*/ filename, out /*maybe null*/ Progr
   parser.Parse();
   if (errors.count == 0)
   {
-    parser.Pgm.ProcessDatatypeConstructors(errors);
-  }
-  if (errors.count == 0)
-  {
     program = parser.Pgm;
-  } else
+  }
+  else
   {
     program = null;
   }
@@ -152,9 +150,9 @@ private class BvBounds : Expr {
     Contract.Assert(false);throw new cce.UnreachableException();
   }
   public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
-  
+
   public override int ContentHash => throw new NotSupportedException("Not supported since this type is translated away");
-  
+
   public override int ComputeHashCode()
   {
     return base.GetHashCode();
@@ -237,6 +235,8 @@ private class BvBounds : Expr {
 		List<Declaration>/*!*/ ds;
 		Axiom/*!*/ ax;
 		List<Declaration/*!*/>/*!*/ ts;
+		DatatypeTypeCtorDecl dt;
+		YieldInvariantDecl yi;
 		Procedure/*!*/ pr;
 		Implementation im;
 		Implementation/*!*/ nnim;
@@ -252,7 +252,7 @@ private class BvBounds : Expr {
 				
 				break;
 			}
-			case 29: {
+			case 27: {
 				Function(out ds);
 				foreach(Bpl.Declaration/*!*/ d in ds){
 				 Contract.Assert(d != null);
@@ -261,18 +261,23 @@ private class BvBounds : Expr {
 				
 				break;
 			}
-			case 31: {
+			case 29: {
 				Axiom(out ax);
 				Pgm.AddTopLevelDeclaration(ax); 
 				break;
 			}
-			case 32: {
+			case 30: {
 				UserDefinedTypes(out ts);
 				foreach(Declaration/*!*/ td in ts){
 				 Contract.Assert(td != null);
 				 Pgm.AddTopLevelDeclaration(td);
 				}
 				
+				break;
+			}
+			case 32: {
+				Datatype(out dt);
+				Pgm.AddTopLevelDeclaration(dt); 
 				break;
 			}
 			case 8: {
@@ -284,7 +289,12 @@ private class BvBounds : Expr {
 				
 				break;
 			}
-			case 34: {
+			case 33: {
+				YieldInvariantDecl(out yi);
+				Pgm.AddTopLevelDeclaration(yi); 
+				break;
+			}
+			case 35: {
 				Procedure(out pr, out im);
 				Pgm.AddTopLevelDeclaration(pr);
 				if (im != null) {
@@ -293,7 +303,7 @@ private class BvBounds : Expr {
 				
 				break;
 			}
-			case 35: {
+			case 36: {
 				Implementation(out nnim);
 				Pgm.AddTopLevelDeclaration(nnim); 
 				break;
@@ -307,10 +317,8 @@ private class BvBounds : Expr {
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; List<TypedIdent>/*!*/ xs;
 		ds = new List<Declaration>();
 		var axioms = new List<Axiom>();
-		Axiom ax;
-		bool u = false; QKeyValue kv = null;
-		bool ChildrenComplete = false;
-		List<ConstantParent/*!*/> Parents = null; 
+		Axiom axiom;
+		bool u = false; QKeyValue kv = null; 
 		Expect(22);
 		y = t; 
 		while (la.kind == 25) {
@@ -321,43 +329,21 @@ private class BvBounds : Expr {
 			u = true;  
 		}
 		IdsType(out xs);
-		if (la.kind == 27) {
-			OrderSpec(out ChildrenComplete, out Parents);
-		}
 		if (la.kind == 9) {
 			Get();
 		} else if (la.kind == 24) {
 			Get();
 			Expect(25);
-			while (la.kind == 31) {
-				Axiom(out ax);
-				axioms.Add(ax); 
+			while (la.kind == 29) {
+				Axiom(out axiom);
+				axioms.Add(axiom); ds.Add(axiom); 
 			}
 			Expect(26);
 		} else SynErr(109);
-		bool makeClone = false;
 		foreach(TypedIdent/*!*/ x in xs){
 		 Contract.Assert(x != null);
-		
-		 // ensure that no sharing is introduced
-		 List<ConstantParent/*!*/> ParentsClone;
-		 if (makeClone && Parents != null) {
-		   ParentsClone = new List<ConstantParent/*!*/> ();
-		   foreach (ConstantParent/*!*/ p in Parents){
-		     Contract.Assert(p != null);
-		     ParentsClone.Add(new ConstantParent (
-		                      new IdentifierExpr (p.Parent.tok, p.Parent.Name),
-		                      p.Unique));}
-		 } else {
-		   ParentsClone = Parents;
-		 }
-		 makeClone = true;
-		 
-		 var constant = new Constant(y, x, u, ParentsClone, ChildrenComplete, kv, axioms);
+		 var constant = new Constant(y, x, u, kv, axioms);
 		 ds.Add(constant);
-		}
-		foreach(var axiom in axioms) {
-		 ds.Add(axiom);
 		}
 		
 	}
@@ -378,7 +364,7 @@ private class BvBounds : Expr {
 		Expr/*!*/ tmp;
 		Axiom ax;
 		
-		Expect(29);
+		Expect(27);
 		while (la.kind == 25) {
 			Attribute(ref kv);
 		}
@@ -398,7 +384,7 @@ private class BvBounds : Expr {
 		}
 		Expect(11);
 		argKv = null; 
-		if (la.kind == 30) {
+		if (la.kind == 28) {
 			Get();
 			Expect(10);
 			VarOrType(out retTyd, out argKv);
@@ -416,7 +402,7 @@ private class BvBounds : Expr {
 			if (la.kind == 24) {
 				Get();
 				Expect(25);
-				while (la.kind == 31) {
+				while (la.kind == 29) {
 					Axiom(out ax);
 					axioms.Add(ax); 
 				}
@@ -425,7 +411,7 @@ private class BvBounds : Expr {
 		} else if (la.kind == 24) {
 			Get();
 			Expect(25);
-			while (la.kind == 31) {
+			while (la.kind == 29) {
 				Axiom(out ax);
 				axioms.Add(ax); 
 			}
@@ -498,7 +484,7 @@ private class BvBounds : Expr {
 
 	void Axiom(out Axiom/*!*/ m) {
 		Contract.Ensures(Contract.ValueAtReturn(out m) != null); Expr/*!*/ e; QKeyValue kv = null; 
-		Expect(31);
+		Expect(29);
 		while (la.kind == 25) {
 			Attribute(ref kv);
 		}
@@ -510,7 +496,7 @@ private class BvBounds : Expr {
 
 	void UserDefinedTypes(out List<Declaration/*!*/>/*!*/ ts) {
 		Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out ts))); Declaration/*!*/ decl; QKeyValue kv = null; ts = new List<Declaration/*!*/> (); 
-		Expect(32);
+		Expect(30);
 		while (la.kind == 25) {
 			Attribute(ref kv);
 		}
@@ -522,6 +508,22 @@ private class BvBounds : Expr {
 			ts.Add(decl);  
 		}
 		Expect(9);
+	}
+
+	void Datatype(out DatatypeTypeCtorDecl datatypeTypeCtorDecl) {
+		QKeyValue kv = null; IToken/*!*/ typeParamTok, name; List<TypeVariable> typeParams = new List<TypeVariable>(); 
+		Expect(32);
+		while (la.kind == 25) {
+			Attribute(ref kv);
+		}
+		Ident(out name);
+		if (la.kind == 20) {
+			TypeParams(out typeParamTok, out typeParams);
+		}
+		datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, typeParams, kv); 
+		Expect(25);
+		Constructors(datatypeTypeCtorDecl);
+		Expect(26);
 	}
 
 	void GlobalVars(out List<Variable>/*!*/ ds) {
@@ -538,6 +540,22 @@ private class BvBounds : Expr {
 		Expect(9);
 	}
 
+	void YieldInvariantDecl(out YieldInvariantDecl yieldInvariant) {
+		List<Requires> invariants = new List<Requires>(); QKeyValue kv = null; IToken name = null; List<Variable> ins; 
+		Expect(33);
+		Expect(34);
+		while (la.kind == 25) {
+			Attribute(ref kv);
+		}
+		Ident(out name);
+		ProcFormals(true, true, out ins);
+		Expect(9);
+		while (la.kind == 34) {
+			Invariant(invariants);
+		}
+		yieldInvariant = new YieldInvariantDecl(name, name.val, ins, invariants, kv); 
+	}
+
 	void Procedure(out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl) {
 		Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
 		List<TypeVariable>/*!*/ typeParams;
@@ -551,7 +569,7 @@ private class BvBounds : Expr {
 		QKeyValue kv = null;
 		impl = null;
 		
-		Expect(34);
+		Expect(35);
 		ProcSignature(true, out x, out typeParams, out ins, out outs, out kv);
 		if (la.kind == 9) {
 			Get();
@@ -578,7 +596,7 @@ private class BvBounds : Expr {
 		StmtList/*!*/ stmtList;
 		QKeyValue kv;
 		
-		Expect(35);
+		Expect(36);
 		ProcSignature(false, out x, out typeParams, out ins, out outs, out kv);
 		ImplBody(out locals, out stmtList);
 		impl = new Implementation(x, x.val, typeParams, ins, outs, locals, stmtList, kv, this.errors); 
@@ -820,40 +838,6 @@ private class BvBounds : Expr {
 		}
 	}
 
-	void OrderSpec(out bool ChildrenComplete, out List<ConstantParent/*!*/> Parents) {
-		Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out Parents),true)); ChildrenComplete = false;
-		Parents = null;
-		bool u;
-		IToken/*!*/ parent; 
-		Expect(27);
-		Parents = new List<ConstantParent/*!*/> ();
-		u = false; 
-		if (la.kind == 1 || la.kind == 23) {
-			if (la.kind == 23) {
-				Get();
-				u = true; 
-			}
-			Ident(out parent);
-			Parents.Add(new ConstantParent (
-			           new IdentifierExpr(parent, parent.val), u)); 
-			while (la.kind == 13) {
-				Get();
-				u = false; 
-				if (la.kind == 23) {
-					Get();
-					u = true; 
-				}
-				Ident(out parent);
-				Parents.Add(new ConstantParent (
-				           new IdentifierExpr(parent, parent.val), u)); 
-			}
-		}
-		if (la.kind == 28) {
-			Get();
-			ChildrenComplete = true; 
-		}
-	}
-
 	void VarOrType(out TypedIdent/*!*/ tyd, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out tyd) != null);
 		string/*!*/ varName = TypedIdent.NoName;
@@ -892,7 +876,7 @@ private class BvBounds : Expr {
 		if (la.kind == 1) {
 			WhiteSpaceIdents(out paramTokens);
 		}
-		if (la.kind == 33) {
+		if (la.kind == 31) {
 			Get();
 			Type(out body);
 			synonym = true; 
@@ -919,6 +903,40 @@ private class BvBounds : Expr {
 		}
 	}
 
+	void Constructors(DatatypeTypeCtorDecl datatypeTypeCtorDecl) {
+		Constructor(datatypeTypeCtorDecl);
+		while (la.kind == 13) {
+			Get();
+			Constructor(datatypeTypeCtorDecl);
+		}
+	}
+
+	void Constructor(DatatypeTypeCtorDecl datatypeTypeCtorDecl) {
+		IToken name; List<TypedIdent> fields = new List<TypedIdent>(); 
+		Ident(out name);
+		Expect(10);
+		if (la.kind == 1) {
+			IdsTypeWheres(false, "datatype constructor", delegate(TypedIdent ti) { fields.Add(ti); });
+		}
+		Expect(11);
+		if (!datatypeTypeCtorDecl.AddConstructor(name, name.val, fields)) {
+		 this.SemErr($"constructor name {name.val} used more than once in datatype");
+		}
+		
+	}
+
+	void Invariant(List<Requires> invariants) {
+		Expr e; IToken tok = null; QKeyValue kv = null; 
+		Expect(34);
+		tok = t; 
+		while (la.kind == 25) {
+			Attribute(ref kv);
+		}
+		Proposition(out e);
+		Expect(9);
+		invariants.Add(new Requires(tok, false, e, null, kv)); 
+	}
+
 	void ProcSignature(bool allowWhereClausesOnFormals, out IToken/*!*/ name, out List<TypeVariable>/*!*/ typeParams,
 out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out name) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ins) != null); Contract.Ensures(Contract.ValueAtReturn(out outs) != null);
@@ -932,7 +950,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			TypeParams(out typeParamTok, out typeParams);
 		}
 		ProcFormals(true, allowWhereClausesOnFormals, out ins);
-		if (la.kind == 30) {
+		if (la.kind == 28) {
 			Get();
 			ProcFormals(false, allowWhereClausesOnFormals, out outs);
 		}
@@ -940,7 +958,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 
 	void Spec(List<Requires>/*!*/ pre, List<IdentifierExpr>/*!*/ mods, List<Ensures>/*!*/ post) {
 		Contract.Requires(pre != null); Contract.Requires(mods != null); Contract.Requires(post != null); List<IToken>/*!*/ ms; 
-		if (la.kind == 36) {
+		if (la.kind == 37) {
 			Get();
 			if (la.kind == 1) {
 				Idents(out ms);
@@ -951,10 +969,10 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				
 			}
 			Expect(9);
-		} else if (la.kind == 37) {
+		} else if (la.kind == 38) {
 			Get();
 			SpecPrePost(true, pre, post);
-		} else if (la.kind == 38 || la.kind == 39) {
+		} else if (la.kind == 39 || la.kind == 40) {
 			SpecPrePost(false, pre, post);
 		} else SynErr(116);
 	}
@@ -970,7 +988,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 
 	void SpecPrePost(bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post) {
 		Contract.Requires(pre != null); Contract.Requires(post != null); Expr/*!*/ e; Token tok = null; QKeyValue kv = null; 
-		if (la.kind == 38) {
+		if (la.kind == 39) {
 			Get();
 			tok = t; 
 			while (la.kind == 25) {
@@ -979,7 +997,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Proposition(out e);
 			Expect(9);
 			pre.Add(new Requires(tok, free, e, null, kv)); 
-		} else if (la.kind == 39) {
+		} else if (la.kind == 40) {
 			Get();
 			tok = t; 
 			while (la.kind == 25) {
@@ -1024,7 +1042,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				 cs = new List<Cmd>();
 				}
 				
-			} else if (la.kind == 42 || la.kind == 44 || la.kind == 47) {
+			} else if (la.kind == 43 || la.kind == 45 || la.kind == 47) {
 				StructuredCmd(out ecn);
 				ec = ecn;
 				if (startToken == null) { startToken = ec.tok;  cs = new List<Cmd>(); }
@@ -1108,7 +1126,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			
 			break;
 		}
-		case 37: case 53: case 54: {
+		case 38: case 53: case 54: {
 			CallCmd(out cn);
 			Expect(9);
 			c = cn; 
@@ -1119,13 +1137,6 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			c = cn; 
 			break;
 		}
-		case 51: {
-			Get();
-			x = t; 
-			Expect(9);
-			c = new YieldCmd(x); 
-			break;
-		}
 		default: SynErr(118); break;
 		}
 	}
@@ -1134,10 +1145,10 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out ec) != null); ec = dummyStructuredCmd;  Contract.Assume(cce.IsPeerConsistent(ec));
 		IfCmd/*!*/ ifcmd;  WhileCmd/*!*/ wcmd;  BreakCmd/*!*/ bcmd;
 		
-		if (la.kind == 42) {
+		if (la.kind == 43) {
 			IfCmd(out ifcmd);
 			ec = ifcmd; 
-		} else if (la.kind == 44) {
+		} else if (la.kind == 45) {
 			WhileCmd(out wcmd);
 			ec = wcmd; 
 		} else if (la.kind == 47) {
@@ -1151,7 +1162,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Token y;  List<IToken>/*!*/ xs;
 		List<String> ss = new List<String>();
 		
-		if (la.kind == 40) {
+		if (la.kind == 41) {
 			Get();
 			y = t; 
 			Idents(out xs);
@@ -1160,7 +1171,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			 ss.Add(s.val); }
 			tc = new GotoCmd(y, ss);
 			
-		} else if (la.kind == 41) {
+		} else if (la.kind == 42) {
 			Get();
 			tc = new ReturnCmd(t); 
 		} else SynErr(120);
@@ -1174,14 +1185,14 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		IfCmd/*!*/ elseIf;  IfCmd elseIfOption = null;
 		StmtList/*!*/ els;  StmtList elseOption = null;
 		
-		Expect(42);
+		Expect(43);
 		x = t; 
 		Guard(out guard);
 		Expect(25);
 		StmtList(out thn);
-		if (la.kind == 43) {
+		if (la.kind == 44) {
 			Get();
-			if (la.kind == 42) {
+			if (la.kind == 43) {
 				IfCmd(out elseIf);
 				elseIfOption = elseIf; 
 			} else if (la.kind == 25) {
@@ -1200,17 +1211,17 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		StmtList/*!*/ body;
 		QKeyValue kv = null;
 		
-		Expect(44);
+		Expect(45);
 		x = t; 
 		Guard(out guard);
 		Contract.Assume(guard == null || cce.Owner.None(guard)); 
-		while (la.kind == 37 || la.kind == 45) {
+		while (la.kind == 34 || la.kind == 38) {
 			isFree = false; z = la/*lookahead token*/; 
-			if (la.kind == 37) {
+			if (la.kind == 38) {
 				Get();
 				isFree = true;  
 			}
-			Expect(45);
+			Expect(34);
 			while (la.kind == 25) {
 				Attribute(ref kv);
 			}
@@ -1257,38 +1268,65 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void LabelOrAssign(out Cmd c, out IToken label) {
-		IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0;
+		IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0; List<IToken> ids;
 		c = dummyCmd;  label = null;
 		AssignLhs/*!*/ lhs;
 		List<AssignLhs/*!*/>/*!*/ lhss;
 		List<Expr/*!*/>/*!*/ rhss;
 		List<Expr/*!*/>/*!*/ indexes;
+		FieldAccess fieldAccess;
 		QKeyValue kv = null;
+		NAryExpr lhsExpr;
 		
 		Ident(out id);
 		x = t; 
 		if (la.kind == 12) {
 			Get();
-			c = null;  label = x; 
-		} else if (la.kind == 13 || la.kind == 18 || la.kind == 52) {
+			c = null; label = x; 
+		} else if (la.kind == 10) {
+			Get();
+			Idents(out ids);
+			Expect(11);
+			lhsExpr = new NAryExpr(x, new FunctionCall(new IdentifierExpr(id, id.val)), ids.Select(id => new IdentifierExpr(id, id.val)).ToList<Expr>());
+			
+			Expect(51);
+			x = t; /* use location of := */ 
+			while (la.kind == 25) {
+				Attribute(ref kv);
+			}
+			Expression(out e0);
+			Expect(9);
+			c = new UnpackCmd(x, lhsExpr, e0, kv);
+			
+		} else if (StartOf(10)) {
 			lhss = new List<AssignLhs/*!*/>(); 
 			lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); 
-			while (la.kind == 18) {
-				MapAssignIndex(out y, out indexes);
-				lhs = new MapAssignLhs(y, lhs, indexes); 
+			while (la.kind == 18 || la.kind == 52) {
+				if (la.kind == 18) {
+					MapAssignIndex(out y, out indexes);
+					lhs = new MapAssignLhs(y, lhs, indexes); 
+				} else {
+					FieldAccess(out y, out fieldAccess);
+					lhs = new FieldAssignLhs(y, lhs, fieldAccess); 
+				}
 			}
 			lhss.Add(lhs); 
 			while (la.kind == 13) {
 				Get();
 				Ident(out id);
 				lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); 
-				while (la.kind == 18) {
-					MapAssignIndex(out y, out indexes);
-					lhs = new MapAssignLhs(y, lhs, indexes); 
+				while (la.kind == 18 || la.kind == 52) {
+					if (la.kind == 18) {
+						MapAssignIndex(out y, out indexes);
+						lhs = new MapAssignLhs(y, lhs, indexes); 
+					} else {
+						FieldAccess(out y, out fieldAccess);
+						lhs = new FieldAssignLhs(y, lhs, fieldAccess); 
+					}
 				}
 				lhss.Add(lhs); 
 			}
-			Expect(52);
+			Expect(51);
 			x = t; /* use location of := */ 
 			while (la.kind == 25) {
 				Attribute(ref kv);
@@ -1317,7 +1355,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 			isAsync = true;  
 		}
-		if (la.kind == 37) {
+		if (la.kind == 38) {
 			Get();
 			isFree = true;  
 		}
@@ -1364,6 +1402,14 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Expect(19);
 	}
 
+	void FieldAccess(out IToken x, out FieldAccess fieldAccess) {
+		Contract.Ensures(Contract.ValueAtReturn(out fieldAccess) != null); IToken id; 
+		Expect(52);
+		x = t; 
+		Ident(out id);
+		fieldAccess = new FieldAccess(id, id.val); 
+	}
+
 	void CallParams(bool isAsync, bool isFree, IToken x, out Cmd c) {
 		QKeyValue kv = null;
 		List<IdentifierExpr> ids = new List<IdentifierExpr>();
@@ -1390,7 +1436,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			}
 			Expect(11);
 			c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; 
-		} else if (la.kind == 13 || la.kind == 52) {
+		} else if (la.kind == 13 || la.kind == 51) {
 			ids.Add(new IdentifierExpr(first, first.val)); 
 			if (la.kind == 13) {
 				Get();
@@ -1402,7 +1448,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 					ids.Add(new IdentifierExpr(p, p.val)); 
 				}
 			}
-			Expect(52);
+			Expect(51);
 			Ident(out first);
 			Expect(10);
 			if (StartOf(9)) {
@@ -1433,7 +1479,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void ImpliesExpression(bool noExplies, out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
 		LogicalExpression(out e0);
-		if (StartOf(10)) {
+		if (StartOf(11)) {
 			if (la.kind == 59 || la.kind == 60) {
 				ImpliesOp();
 				x = t; 
@@ -1467,7 +1513,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void LogicalExpression(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
 		RelationalExpression(out e0);
-		if (StartOf(11)) {
+		if (StartOf(12)) {
 			if (la.kind == 63 || la.kind == 64) {
 				AndOp();
 				x = t; 
@@ -1513,7 +1559,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void RelationalExpression(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
 		BvTerm(out e0);
-		if (StartOf(12)) {
+		if (StartOf(13)) {
 			RelOp(out x, out op);
 			BvTerm(out e1);
 			e0 = Expr.Binary(x, op, e0, e1); 
@@ -1539,7 +1585,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void BvTerm(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
 		Term(out e0);
-		while (la.kind == 75) {
+		while (la.kind == 74) {
 			Get();
 			x = t; 
 			Term(out e1);
@@ -1582,20 +1628,15 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 		case 71: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Subtype; 
+			x = t; op=BinaryOperator.Opcode.Neq; 
 			break;
 		}
 		case 72: {
 			Get();
-			x = t; op=BinaryOperator.Opcode.Neq; 
-			break;
-		}
-		case 73: {
-			Get();
 			x = t; op=BinaryOperator.Opcode.Le; 
 			break;
 		}
-		case 74: {
+		case 73: {
 			Get();
 			x = t; op=BinaryOperator.Opcode.Ge; 
 			break;
@@ -1607,7 +1648,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void Term(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
 		Factor(out e0);
-		while (la.kind == 76 || la.kind == 77) {
+		while (la.kind == 75 || la.kind == 76) {
 			AddOp(out x, out op);
 			Factor(out e1);
 			e0 = Expr.Binary(x, op, e0, e1); 
@@ -1617,7 +1658,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void Factor(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
 		Power(out e0);
-		while (StartOf(13)) {
+		while (StartOf(14)) {
 			MulOp(out x, out op);
 			Power(out e1);
 			e0 = Expr.Binary(x, op, e0, e1); 
@@ -1626,10 +1667,10 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 
 	void AddOp(out IToken/*!*/ x, out BinaryOperator.Opcode op) {
 		Contract.Ensures(Contract.ValueAtReturn(out x) != null); x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; 
-		if (la.kind == 76) {
+		if (la.kind == 75) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.Add; 
-		} else if (la.kind == 77) {
+		} else if (la.kind == 76) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.Sub; 
 		} else SynErr(131);
@@ -1637,8 +1678,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 
 	void Power(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
-		UnaryExpression(out e0);
-		if (la.kind == 81) {
+		IsConstructor(out e0);
+		if (la.kind == 80) {
 			Get();
 			x = t; 
 			Power(out e1);
@@ -1651,23 +1692,36 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		if (la.kind == 46) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.Mul; 
-		} else if (la.kind == 78) {
+		} else if (la.kind == 77) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.Div; 
-		} else if (la.kind == 79) {
+		} else if (la.kind == 78) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.Mod; 
-		} else if (la.kind == 80) {
+		} else if (la.kind == 79) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.RealDiv; 
 		} else SynErr(132);
+	}
+
+	void IsConstructor(out Expr/*!*/ e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x, id; 
+		UnaryExpression(out e0);
+		if (la.kind == 81) {
+			Get();
+			x = t; 
+			Ident(out id);
+			var isConstructor = new IsConstructor(id, id.val);
+			e0 = new NAryExpr(x, isConstructor, new List<Expr> { e0 });
+			
+		}
 	}
 
 	void UnaryExpression(out Expr/*!*/ e) {
 		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
 		e = dummyExpr;
 		
-		if (la.kind == 77) {
+		if (la.kind == 76) {
 			Get();
 			x = t; 
 			UnaryExpression(out e);
@@ -1677,7 +1731,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			x = t; 
 			UnaryExpression(out e);
 			e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); 
-		} else if (StartOf(14)) {
+		} else if (StartOf(15)) {
 			CoercionExpression(out e);
 		} else SynErr(133);
 	}
@@ -1716,57 +1770,75 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void ArrayExpression(out Expr/*!*/ e) {
-		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
+		Contract.Ensures(Contract.ValueAtReturn(out e) != null);
+		IToken/*!*/ x, id;
 		Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
 		bool store; bool bvExtract;
 		List<Expr>/*!*/ allArgs = dummyExprSeq;
 		
 		AtomExpression(out e);
-		while (la.kind == 18) {
-			Get();
-			x = t; allArgs = new List<Expr> ();
-			allArgs.Add(e);
-			store = false; bvExtract = false; 
-			if (StartOf(15)) {
-				if (StartOf(9)) {
-					Expression(out index0);
-					if (index0 is BvBounds)
-					 bvExtract = true;
-					else
-					 allArgs.Add(index0);
-					
-					while (la.kind == 13) {
+		while (la.kind == 18 || la.kind == 52) {
+			if (la.kind == 18) {
+				Get();
+				x = t; allArgs = new List<Expr> ();
+				allArgs.Add(e);
+				store = false; bvExtract = false; 
+				if (StartOf(16)) {
+					if (StartOf(9)) {
+						Expression(out index0);
+						if (index0 is BvBounds)
+						 bvExtract = true;
+						else
+						 allArgs.Add(index0);
+						
+						while (la.kind == 13) {
+							Get();
+							Expression(out e1);
+							if (bvExtract || e1 is BvBounds)
+							 this.SemErr("bitvectors only have one dimension");
+							allArgs.Add(e1);
+							
+						}
+						if (la.kind == 51) {
+							Get();
+							Expression(out e1);
+							if (bvExtract || e1 is BvBounds)
+							 this.SemErr("assignment to bitvectors is not possible");
+							allArgs.Add(e1); store = true;
+							
+						}
+					} else {
 						Get();
 						Expression(out e1);
-						if (bvExtract || e1 is BvBounds)
-						 this.SemErr("bitvectors only have one dimension");
-						allArgs.Add(e1);
-						
+						allArgs.Add(e1); store = true; 
 					}
-					if (la.kind == 52) {
-						Get();
-						Expression(out e1);
-						if (bvExtract || e1 is BvBounds)
-						 this.SemErr("assignment to bitvectors is not possible");
-						allArgs.Add(e1); store = true;
-						
-					}
-				} else {
-					Get();
-					Expression(out e1);
-					allArgs.Add(e1); store = true; 
 				}
+				Expect(19);
+				if (store)
+				 e = new NAryExpr(x, new MapStore(x, allArgs.Count - 2), allArgs);
+				else if (bvExtract)
+				 e = new BvExtractExpr(x, e,
+				                       ((BvBounds)index0).Upper.ToIntSafe,
+				                       ((BvBounds)index0).Lower.ToIntSafe);
+				else
+				 e = new NAryExpr(x, new MapSelect(x, allArgs.Count - 1), allArgs);
+				
+			} else {
+				Get();
+				x = t; 
+				if (la.kind == 1) {
+					Ident(out id);
+					e = new NAryExpr(x, new FieldAccess(id, id.val), new List<Expr> { e }); 
+				} else if (la.kind == 10) {
+					Get();
+					Ident(out id);
+					Expect(51);
+					x = t; 
+					Expression(out e1);
+					Expect(11);
+					e = new NAryExpr(x, new FieldUpdate(id, id.val), new List<Expr> { e, e1 }); 
+				} else SynErr(136);
 			}
-			Expect(19);
-			if (store)
-			 e = new NAryExpr(x, new MapStore(x, allArgs.Count - 2), allArgs);
-			else if (bvExtract)
-			 e = new BvExtractExpr(x, e,
-			                       ((BvBounds)index0).Upper.ToIntSafe,
-			                       ((BvBounds)index0).Lower.ToIntSafe);
-			else
-			 e = new NAryExpr(x, new MapSelect(x, allArgs.Count - 1), allArgs);
-			
 		}
 	}
 
@@ -1882,7 +1954,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 					e = new NAryExpr(x, new FunctionCall(id), es); 
 				} else if (la.kind == 11) {
 					e = new NAryExpr(x, new FunctionCall(id), new List<Expr>()); 
-				} else SynErr(136);
+				} else SynErr(137);
 				Expect(11);
 			}
 			break;
@@ -1919,8 +1991,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			if (StartOf(9)) {
 				Expression(out e);
 				if (e is BvBounds)
-				 this.SemErr("parentheses around bitvector bounds " +
-				        "are not allowed"); 
+				 this.SemErr("parentheses around bitvector bounds are not allowed"); 
 			} else if (la.kind == 100 || la.kind == 101) {
 				Forall();
 				x = t; 
@@ -1943,11 +2014,11 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				 e = new LambdaExpr(x, typeParams, ds, kv, e); 
 			} else if (la.kind == 8) {
 				LetExpr(out e);
-			} else SynErr(137);
+			} else SynErr(138);
 			Expect(11);
 			break;
 		}
-		case 42: {
+		case 43: {
 			IfThenElseExpression(out e);
 			break;
 		}
@@ -1956,7 +2027,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			e = new CodeExpr(locals, blocks); 
 			break;
 		}
-		default: SynErr(138); break;
+		default: SynErr(139); break;
 		}
 	}
 
@@ -1968,7 +2039,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 6) {
 			Get();
 			s = t.val; 
-		} else SynErr(139);
+		} else SynErr(140);
 		try {
 		 n = BigDec.FromString(s);
 		} catch (FormatException) {
@@ -2012,7 +2083,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 101) {
 			Get();
-		} else SynErr(140);
+		} else SynErr(141);
 	}
 
 	void QuantifierBody(IToken/*!*/ q, out List<TypeVariable>/*!*/ typeParams, out List<Variable>/*!*/ ds,
@@ -2030,7 +2101,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			}
 		} else if (la.kind == 1 || la.kind == 25) {
 			BoundVars(out ds);
-		} else SynErr(141);
+		} else SynErr(142);
 		QSep();
 		while (la.kind == 25) {
 			AttributeOrTrigger(ref kv, ref trig);
@@ -2043,7 +2114,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 		} else if (la.kind == 103) {
 			Get();
-		} else SynErr(142);
+		} else SynErr(143);
 	}
 
 	void Lambda() {
@@ -2051,7 +2122,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 		} else if (la.kind == 105) {
 			Get();
-		} else SynErr(143);
+		} else SynErr(144);
 	}
 
 	void LetExpr(out Expr/*!*/ letexpr) {
@@ -2072,7 +2143,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			LetVar(out v);
 			ds.Add(v); 
 		}
-		Expect(52);
+		Expect(51);
 		Expression(out e0);
 		rhss.Add(e0); 
 		while (la.kind == 13) {
@@ -2093,12 +2164,12 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		IToken/*!*/ tok;
 		Expr/*!*/ e0, e1, e2;
 		e = dummyExpr; 
-		Expect(42);
+		Expect(43);
 		tok = t; 
 		Expression(out e0);
 		Expect(99);
 		Expression(out e1);
-		Expect(43);
+		Expect(44);
 		Expression(out e2);
 		e = new NAryExpr(tok, new IfThenElse(tok), new List<Expr>{ e0, e1, e2 }); 
 	}
@@ -2141,7 +2212,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			}
 			
 		}
-		if (la.kind == 40) {
+		if (la.kind == 41) {
 			Get();
 			y = t; 
 			Idents(out xs);
@@ -2150,11 +2221,11 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			 ss.Add(s.val); }
 			b = new Block(x,x.val,cs,new GotoCmd(y,ss));
 			
-		} else if (la.kind == 41) {
+		} else if (la.kind == 42) {
 			Get();
 			Expression(out e);
 			b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); 
-		} else SynErr(144);
+		} else SynErr(145);
 		Expect(9);
 	}
 
@@ -2211,7 +2282,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			 trig.AddLast(new Trigger(tok, true, es, null));
 			}
 			
-		} else SynErr(145);
+		} else SynErr(146);
 		Expect(26);
 	}
 
@@ -2226,7 +2297,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		} else if (StartOf(9)) {
 			Expression(out e);
 			o = e; 
-		} else SynErr(146);
+		} else SynErr(147);
 	}
 
 	void QSep() {
@@ -2234,7 +2305,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 		} else if (la.kind == 107) {
 			Get();
-		} else SynErr(147);
+		} else SynErr(148);
 	}
 
 	void LetVar(out Variable/*!*/ v) {
@@ -2264,21 +2335,22 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 
 	static readonly bool[,]/*!*/ set = {
 		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_T,_x,_T, _T,_x,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_T, _x,_T,_T,_x, _T,_T,_x,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_T, _T,_T,_T,_x, _T,_x,_x,_x, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_T, _T,_T,_T,_x, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _T,_T,_T,_x, _T,_x,_x,_T, _T,_T,_T,_T, _x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_T,_T,_T, _T,_T,_T,_T, _x,_x,_T,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _x,_x,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_T,_T,_T, _x,_T,_x,_T, _T,_T,_T,_x, _x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_x, _x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _T,_T,_T,_T, _x,_x,_T,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_T,_T,_T, _T,_T,_T,_T, _x,_x,_T,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
-		{_x,_T,_T,_T, _T,_T,_T,_T, _x,_x,_T,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_x,_x, _x,_x,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x}
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _T,_T,_T,_T, _x,_x,_T,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_T,_T,_T, _T,_T,_T,_T, _x,_x,_T,_x, _x,_x,_x,_T, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_T,_T, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x}
 
 	};
 } // end Parser
@@ -2330,32 +2402,32 @@ public class Errors {
 			case 24: s = "\"uses\" expected"; break;
 			case 25: s = "\"{\" expected"; break;
 			case 26: s = "\"}\" expected"; break;
-			case 27: s = "\"extends\" expected"; break;
-			case 28: s = "\"complete\" expected"; break;
-			case 29: s = "\"function\" expected"; break;
-			case 30: s = "\"returns\" expected"; break;
-			case 31: s = "\"axiom\" expected"; break;
-			case 32: s = "\"type\" expected"; break;
-			case 33: s = "\"=\" expected"; break;
-			case 34: s = "\"procedure\" expected"; break;
-			case 35: s = "\"implementation\" expected"; break;
-			case 36: s = "\"modifies\" expected"; break;
-			case 37: s = "\"free\" expected"; break;
-			case 38: s = "\"requires\" expected"; break;
-			case 39: s = "\"ensures\" expected"; break;
-			case 40: s = "\"goto\" expected"; break;
-			case 41: s = "\"return\" expected"; break;
-			case 42: s = "\"if\" expected"; break;
-			case 43: s = "\"else\" expected"; break;
-			case 44: s = "\"while\" expected"; break;
-			case 45: s = "\"invariant\" expected"; break;
+			case 27: s = "\"function\" expected"; break;
+			case 28: s = "\"returns\" expected"; break;
+			case 29: s = "\"axiom\" expected"; break;
+			case 30: s = "\"type\" expected"; break;
+			case 31: s = "\"=\" expected"; break;
+			case 32: s = "\"datatype\" expected"; break;
+			case 33: s = "\"yield\" expected"; break;
+			case 34: s = "\"invariant\" expected"; break;
+			case 35: s = "\"procedure\" expected"; break;
+			case 36: s = "\"implementation\" expected"; break;
+			case 37: s = "\"modifies\" expected"; break;
+			case 38: s = "\"free\" expected"; break;
+			case 39: s = "\"requires\" expected"; break;
+			case 40: s = "\"ensures\" expected"; break;
+			case 41: s = "\"goto\" expected"; break;
+			case 42: s = "\"return\" expected"; break;
+			case 43: s = "\"if\" expected"; break;
+			case 44: s = "\"else\" expected"; break;
+			case 45: s = "\"while\" expected"; break;
 			case 46: s = "\"*\" expected"; break;
 			case 47: s = "\"break\" expected"; break;
 			case 48: s = "\"assert\" expected"; break;
 			case 49: s = "\"assume\" expected"; break;
 			case 50: s = "\"havoc\" expected"; break;
-			case 51: s = "\"yield\" expected"; break;
-			case 52: s = "\":=\" expected"; break;
+			case 51: s = "\":=\" expected"; break;
+			case 52: s = "\"->\" expected"; break;
 			case 53: s = "\"async\" expected"; break;
 			case 54: s = "\"call\" expected"; break;
 			case 55: s = "\"par\" expected"; break;
@@ -2374,17 +2446,17 @@ public class Errors {
 			case 68: s = "\"<=\" expected"; break;
 			case 69: s = "\">=\" expected"; break;
 			case 70: s = "\"!=\" expected"; break;
-			case 71: s = "\"<:\" expected"; break;
-			case 72: s = "\"\\u2260\" expected"; break;
-			case 73: s = "\"\\u2264\" expected"; break;
-			case 74: s = "\"\\u2265\" expected"; break;
-			case 75: s = "\"++\" expected"; break;
-			case 76: s = "\"+\" expected"; break;
-			case 77: s = "\"-\" expected"; break;
-			case 78: s = "\"div\" expected"; break;
-			case 79: s = "\"mod\" expected"; break;
-			case 80: s = "\"/\" expected"; break;
-			case 81: s = "\"**\" expected"; break;
+			case 71: s = "\"\\u2260\" expected"; break;
+			case 72: s = "\"\\u2264\" expected"; break;
+			case 73: s = "\"\\u2265\" expected"; break;
+			case 74: s = "\"++\" expected"; break;
+			case 75: s = "\"+\" expected"; break;
+			case 76: s = "\"-\" expected"; break;
+			case 77: s = "\"div\" expected"; break;
+			case 78: s = "\"mod\" expected"; break;
+			case 79: s = "\"/\" expected"; break;
+			case 80: s = "\"**\" expected"; break;
+			case 81: s = "\"is\" expected"; break;
 			case 82: s = "\"!\" expected"; break;
 			case 83: s = "\"\\u00ac\" expected"; break;
 			case 84: s = "\"false\" expected"; break;
@@ -2439,18 +2511,19 @@ public class Errors {
 			case 133: s = "invalid UnaryExpression"; break;
 			case 134: s = "invalid NegOp"; break;
 			case 135: s = "invalid CoercionExpression"; break;
-			case 136: s = "invalid AtomExpression"; break;
+			case 136: s = "invalid ArrayExpression"; break;
 			case 137: s = "invalid AtomExpression"; break;
 			case 138: s = "invalid AtomExpression"; break;
-			case 139: s = "invalid Dec"; break;
-			case 140: s = "invalid Forall"; break;
-			case 141: s = "invalid QuantifierBody"; break;
-			case 142: s = "invalid Exists"; break;
-			case 143: s = "invalid Lambda"; break;
-			case 144: s = "invalid SpecBlock"; break;
-			case 145: s = "invalid AttributeOrTrigger"; break;
-			case 146: s = "invalid AttributeParameter"; break;
-			case 147: s = "invalid QSep"; break;
+			case 139: s = "invalid AtomExpression"; break;
+			case 140: s = "invalid Dec"; break;
+			case 141: s = "invalid Forall"; break;
+			case 142: s = "invalid QuantifierBody"; break;
+			case 143: s = "invalid Exists"; break;
+			case 144: s = "invalid Lambda"; break;
+			case 145: s = "invalid SpecBlock"; break;
+			case 146: s = "invalid AttributeOrTrigger"; break;
+			case 147: s = "invalid AttributeParameter"; break;
+			case 148: s = "invalid QSep"; break;
 
 			default: s = "error " + n; break;
 		}

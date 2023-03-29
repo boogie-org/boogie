@@ -1,0 +1,5 @@
+polymap1.bpl(15,2): Error: this assertion could not be proved
+Execution trace:
+    polymap1.bpl(14,2): anon0
+
+Boogie program verifier finished with 0 verified, 1 error

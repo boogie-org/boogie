@@ -1,9 +1,117 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 
 namespace Microsoft.Boogie
 {
+  public class AtomicActionLiveVariableAnalysis
+  {
+    private Implementation impl;
+    private ConcurrencyOptions options;
+    private Dictionary<Block, HashSet<Variable>> liveVarsBefore;
+    private Dictionary<Cmd, HashSet<Variable>> liveVarsAfter;
+
+    public AtomicActionLiveVariableAnalysis(Implementation impl, ConcurrencyOptions options)
+    {
+      this.impl = impl;
+      this.options = options;
+      this.liveVarsBefore = new Dictionary<Block, HashSet<Variable>>();
+      this.liveVarsAfter = new Dictionary<Cmd, HashSet<Variable>>();
+    }
+
+    public void Compute()
+    {
+      var graph = Program.GraphFromImpl(impl, false);
+      foreach (var block in graph.TopologicalSort())
+      {
+        if (block.TransferCmd is ReturnCmd)
+        {
+          liveVarsBefore[block] = Propagate(block.Cmds,
+            impl.Proc.Modifies.Select(x => x.Decl).Concat(impl.OutParams).ToHashSet());
+        }
+        else if (block.TransferCmd is GotoCmd gotoCmd)
+        {
+          liveVarsBefore[block] =
+            Propagate(block.Cmds, gotoCmd.labelTargets.SelectMany(x => liveVarsBefore[x]).ToHashSet());
+        }
+        else
+        {
+          throw new cce.UnreachableException();
+        }
+      }
+    }
+
+    public bool IsLiveAfter(Variable v, Cmd cmd)
+    {
+      return liveVarsAfter[cmd].Contains(v);
+    }
+
+    public bool IsLiveBefore(Variable v, Block block)
+    {
+      return liveVarsBefore[block].Contains(v);
+    }
+
+    private HashSet<Variable> Propagate(List<Cmd> cmds, HashSet<Variable> liveVars)
+    {
+      for (int i = cmds.Count - 1; i >= 0; i--)
+      {
+        var cmd = cmds[i];
+        liveVarsAfter[cmd] = new HashSet<Variable>(liveVars);
+        liveVars = Propagate(cmd, liveVars);
+      }
+      return liveVars;
+    }
+
+    private HashSet<Variable> Propagate(Cmd cmd, HashSet<Variable> liveVars)
+    {
+      if (cmd is HavocCmd havocCmd)
+      {
+        liveVars.ExceptWith(havocCmd.Vars.Select(v => v.Decl));
+        return liveVars;
+      }
+      if (cmd is AssignCmd assignCmd)
+      {
+        var usedVars = new HashSet<Variable>();
+        for (int i = 0; i < assignCmd.Lhss.Count; i++)
+        {
+          var lhs = assignCmd.Lhss[i];
+          var rhs = assignCmd.Rhss[i];
+          if (liveVars.Contains(lhs.DeepAssignedVariable))
+          {
+            liveVars.Remove(lhs.DeepAssignedVariable);
+            var variableCollector = new VariableCollector();
+            variableCollector.VisitExpr(rhs);
+            usedVars.UnionWith(variableCollector.usedVars);
+          }
+        }
+        liveVars.UnionWith(usedVars);
+        return liveVars;
+      }
+      if (cmd is PredicateCmd predicateCmd)
+      {
+        var variableCollector = new VariableCollector();
+        variableCollector.VisitExpr(predicateCmd.Expr);
+        liveVars.UnionWith(variableCollector.usedVars);
+        return liveVars;
+      }
+      if (cmd is SugaredCmd sugaredCmd)
+      {
+        return Propagate(sugaredCmd.GetDesugaring(options), liveVars);
+      }
+      if (cmd is CommentCmd)
+      {
+        return liveVars;
+      }
+      if (cmd is StateCmd stateCmd)
+      {
+        liveVars = Propagate(stateCmd.Cmds, liveVars);
+        liveVars.ExceptWith(stateCmd.Locals);
+        return liveVars;
+      }
+      throw new cce.UnreachableException();
+    }
+  }
+
   public class CivlUtil
   {
     public static void AddInlineAttribute(Declaration decl)
@@ -47,7 +155,6 @@ namespace Microsoft.Boogie
       {
         errorCount += ResolveAndTypecheck(options, absy);
       }
-
       return errorCount;
     }
   }
@@ -55,16 +162,31 @@ namespace Microsoft.Boogie
   // Handy syntactic sugar missing in Expr
   public static class ExprHelper
   {
-    public static NAryExpr FunctionCall(ConcurrencyOptions options, Function f, params Expr[] args)
+    public static NAryExpr FunctionCall(Function f, List<Expr> args)
     {
-      var expr = new NAryExpr(Token.NoToken, new FunctionCall(f), args);
-      var rc = new ResolutionContext(null, options);
-      rc.StateMode = ResolutionContext.State.Two;
-      expr.Resolve(rc);
-      expr.Typecheck(new TypecheckingContext(null, options));
-      return expr;
+      return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
     }
 
+    public static NAryExpr FunctionCall(IAppliable f, params Expr[] args)
+    {
+      return new NAryExpr(Token.NoToken, f, args);
+    }
+
+    public static NAryExpr FunctionCall(Function f, params Expr[] args)
+    {
+      return new NAryExpr(Token.NoToken, new FunctionCall(f), args);
+    }
+    
+    public static NAryExpr FieldAccess(Expr path, string fieldName)
+    {
+      return new NAryExpr(Token.NoToken, new FieldAccess(Token.NoToken, fieldName), new Expr[] { path });
+    }
+
+    public static NAryExpr IsConstructor(Expr path, string constructorName)
+    {
+      return new NAryExpr(Token.NoToken, new IsConstructor(Token.NoToken, constructorName), new Expr[] { path });
+    }
+    
     public static NAryExpr IfThenElse(Expr ifExpr, Expr thenExpr, Expr elseExpr)
     {
       return new NAryExpr(Token.NoToken, new IfThenElse(Token.NoToken),
@@ -128,12 +250,51 @@ namespace Microsoft.Boogie
     public static AssertCmd AssertCmd(IToken tok, Expr expr, string msg)
     {
       return new AssertCmd(tok, expr)
-        { ErrorData = msg };
+        { Description = new FailureOnlyDescription(msg) };
     }
 
+    public static SimpleAssignLhs SimpleAssignLhs(Variable v)
+    {
+      return new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
+    }
+
+    public static FieldAssignLhs FieldAssignLhs(AssignLhs path, string fieldName)
+    {
+      return new FieldAssignLhs(Token.NoToken, path, new FieldAccess(Token.NoToken, fieldName));
+    }
+    
+    public static FieldAssignLhs FieldAssignLhs(Expr path, string fieldName)
+    {
+      return new FieldAssignLhs(Token.NoToken, ExprToAssignLhs(path), new FieldAccess(Token.NoToken, fieldName));
+    }
+    
+    public static AssignLhs ExprToAssignLhs(Expr e)
+    {
+      if (e is IdentifierExpr ie)
+      {
+        return SimpleAssignLhs(ie.Decl);
+      }
+      var naryExpr = (NAryExpr)e;
+      if (naryExpr.Fun is FieldAccess fieldAccess)
+      {
+        return FieldAssignLhs(naryExpr.Args[0], fieldAccess.FieldName);
+      }
+      if (naryExpr.Fun is MapSelect)
+      {
+        return new MapAssignLhs(Token.NoToken, ExprToAssignLhs(naryExpr.Args[0]), naryExpr.Args.ToList().GetRange(1, naryExpr.Args.Count - 1));
+      }
+      Contract.Assume(false, "Unexpected expression");
+      return null;
+    }
+    
     public static AssignCmd AssignCmd(Variable v, Expr x)
     {
-      var lhs = new SimpleAssignLhs(Token.NoToken, Expr.Ident(v));
+      var lhs = SimpleAssignLhs(v);
+      return new AssignCmd(Token.NoToken, new List<AssignLhs> {lhs}, new List<Expr> {x});
+    }
+
+    public static AssignCmd AssignCmd(AssignLhs lhs, Expr x)
+    {
       return new AssignCmd(Token.NoToken, new List<AssignLhs> {lhs}, new List<Expr> {x});
     }
 
@@ -146,6 +307,11 @@ namespace Microsoft.Boogie
     public static HavocCmd HavocCmd(List<IdentifierExpr> vars)
     {
       return new HavocCmd(Token.NoToken, vars);
+    }
+
+    public static HavocCmd HavocCmd(params IdentifierExpr[] vars)
+    {
+      return new HavocCmd(Token.NoToken, vars.ToList());
     }
   }
 
@@ -198,6 +364,19 @@ namespace Microsoft.Boogie
     }
   }
 
+  public static class TypeHelper
+  {
+    public static MapType MapType(Type indexType, Type resultType)
+    {
+      return new MapType(Token.NoToken, new List<TypeVariable>(), new List<Type> { indexType }, resultType);
+    }
+
+    public static CtorType CtorType(TypeCtorDecl typeCtorDecl)
+    {
+      return new CtorType(Token.NoToken, typeCtorDecl, new List<Type>());
+    }
+  }
+  
   public static class SubstitutionHelper
   {
     public static Substitution FromVariableMap(Dictionary<Variable, Variable> map)

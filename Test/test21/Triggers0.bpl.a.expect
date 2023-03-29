@@ -1,7 +1,7 @@
-Triggers0.bpl(44,3): Error: This assertion might not hold.
+Triggers0.bpl(44,3): Error: this assertion could not be proved
 Execution trace:
     Triggers0.bpl(44,3): anon0
-Triggers0.bpl(48,3): Error: This assertion might not hold.
+Triggers0.bpl(48,3): Error: this assertion could not be proved
 Execution trace:
     Triggers0.bpl(44,3): anon0
 

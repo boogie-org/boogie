@@ -13,45 +13,26 @@ type NodeSet = [Node]bool;
 
 type Value;
 
-type {:datatype} Option _;
-function {:constructor} None<T>(): Option T;
-function {:constructor} Some<T>(t: T): Option T;
+datatype VoteInfo { VoteInfo(value: Value, ns: NodeSet) }
 
-type {:datatype} VoteInfo;
-function {:constructor} VoteInfo(value: Value, ns: NodeSet): VoteInfo;
-
-type {:datatype} AcceptorState;
 /* 0 <= lastVoteRound, lastJoinRound <= numRounds */
-function {:constructor} AcceptorState(lastJoinRound: Round, lastVoteRound: int, lastVoteValue: Value): AcceptorState;
+datatype AcceptorState { AcceptorState(lastJoinRound: Round, lastVoteRound: int, lastVoteValue: Value) }
 
-type {:datatype} JoinResponse;
 /* 0 <= lastVoteRound <= numRounds */
-function {:constructor} JoinResponse(from: Node, lastVoteRound: int, lastVoteValue: Value): JoinResponse;
-type {:datatype} JoinResponseChannel;
-function {:constructor} JoinResponseChannel(domain: [Permission]bool, contents: [Permission]JoinResponse): JoinResponseChannel;
+datatype JoinResponse { JoinResponse(from: Node, lastVoteRound: int, lastVoteValue: Value) }
+datatype JoinResponseChannel { JoinResponseChannel(domain: [Permission]bool, contents: [Permission]JoinResponse) }
 
-type {:datatype} VoteResponse;
-function {:constructor} VoteResponse(from: Node): VoteResponse;
-type {:datatype} VoteResponseChannel;
-function {:constructor} VoteResponseChannel(domain: [Permission]bool, contents: [Permission]VoteResponse): VoteResponseChannel;
+datatype VoteResponse { VoteResponse(from: Node) }
+datatype VoteResponseChannel { VoteResponseChannel(domain: [Permission]bool, contents: [Permission]VoteResponse) }
 
-type {:datatype} {:linear "perm"} Permission;
-function {:constructor} JoinPerm(r:Round, n: Node): Permission;
-function {:constructor} VotePerm(r:Round, n: Node): Permission;
-function {:constructor} ConcludePerm(r: Round): Permission;
-
-type {:pending_async}{:datatype} PA;
-function {:constructor} A_StartRound(round: Round, round_lin: Round) : PA;
-function {:constructor} A_Join(round: Round, node: Node, p: Permission) : PA;
-function {:constructor} A_Propose(round: Round, ps: [Permission]bool) : PA;
-function {:constructor} A_Vote(round: Round, node: Node, value: Value, p: Permission) : PA;
-function {:constructor} A_Conclude(round: Round, value: Value, p: Permission) : PA;
+datatype {:linear "perm"} Permission {
+  JoinPerm(r:Round, n: Node),
+  VotePerm(r:Round, n: Node),
+  ConcludePerm(r: Round)
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Functions
-
-function {:inline} NoPAs(): [PA]int { MapConst(0) }
-function {:inline} SingletonPA(pa:PA): [PA]int { NoPAs()[pa := 1] }
 
 function {:inline} NoNodes(): NodeSet { MapConst(false) }
 function {:inline} SingletonNode(node: Node): NodeSet { NoNodes()[node := true] }
@@ -68,14 +49,6 @@ axiom (forall ns1: NodeSet, ns2: NodeSet ::
   IsQuorum(ns1) && IsQuorum(ns2) ==> (exists n: Node :: Node(n) && ns1[n] && ns2[n])
 );
 
-function {:inline} IsSubset(ns1:NodeSet, ns2:NodeSet) : bool {
-  MapImp(ns1, ns2) == MapConst(true)
-}
-
-function {:inline} IsDisjoint(ns1:NodeSet, ns2:NodeSet) : bool {
-  MapAnd(ns1, ns2) == MapConst(false)
-}
-
 // MaxRound(r, ns, voteInfo) returns the highest round less than r that some node in ns voted for.
 // If no node in ns has voted for a round less than r, then it returns 0.
 function MaxRound(r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo): int;
@@ -84,34 +57,34 @@ axiom (forall r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo ::
   (
     var ret := MaxRound(r, ns, voteInfo);
     0 <= ret && ret < r &&
-    (forall r': Round :: ret < r' && r' < r && is#Some(voteInfo[r']) ==> IsDisjoint(ns, ns#VoteInfo(t#Some(voteInfo[r'])))) &&
-    (Round(ret) ==> is#Some(voteInfo[ret]) && !IsDisjoint(ns, ns#VoteInfo(t#Some(voteInfo[ret]))))
+    (forall r': Round :: ret < r' && r' < r && voteInfo[r'] is Some ==> IsDisjoint(ns, voteInfo[r']->t->ns)) &&
+    (Round(ret) ==> voteInfo[ret] is Some && !IsDisjoint(ns, voteInfo[ret]->t->ns))
   )
 );
 
 function {:inline} JoinPermissions(r: Round) : [Permission]bool
 {
-  (lambda p:Permission :: if (is#JoinPerm(p) && r#JoinPerm(p) == r) then true else false)
+  (lambda p:Permission :: if (p is JoinPerm && p->r == r) then true else false)
 }
 
 function {:inline} ProposePermissions(r: Round) : [Permission]bool
 {
-  (lambda p:Permission :: if (is#VotePerm(p) && r#VotePerm(p) == r) || (is#ConcludePerm(p) && r#ConcludePerm(p) == r) then true else false)
+  (lambda {:pool "Permission"} p:Permission :: if (p is VotePerm && p->r == r) || (p is ConcludePerm && p->r == r) then true else false)
 }
 
 function {:inline} VotePermissions(r: Round) : [Permission]bool
 {
-  (lambda p:Permission :: if (is#VotePerm(p) && r#VotePerm(p) == r) then true else false)
+  (lambda p:Permission :: if (p is VotePerm && p->r == r) then true else false)
 }
 
-function {:inline} JoinPAs(r: Round) : [PA]int
+function {:inline} JoinPAs(r: Round) : [A_Join]bool
 {
-  (lambda pa: PA :: if is#A_Join(pa) && round#A_Join(pa) == r && Node(node#A_Join(pa)) && p#A_Join(pa) == JoinPerm(r, node#A_Join(pa)) then 1 else 0)
+  (lambda pa: A_Join :: pa->r == r && Node(pa->n) && pa->p == JoinPerm(r, pa->n))
 }
 
-function {:inline} VotePAs(r: Round, v: Value) : [PA]int
+function {:inline} VotePAs(r: Round, v: Value) : [A_Vote]bool
 {
-  (lambda pa: PA :: if is#A_Vote(pa) && round#A_Vote(pa) == r && Node(node#A_Vote(pa)) && value#A_Vote(pa) == v && p#A_Vote(pa) == VotePerm(r, node#A_Vote(pa)) then 1 else 0)
+  (lambda pa: A_Vote :: pa->r == r && Node(pa->n) && pa->v == v && pa->p == VotePerm(r, pa->n))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +92,6 @@ function {:inline} VotePAs(r: Round, v: Value) : [PA]int
 // Abstract
 var {:layer 1,3} joinedNodes: [Round]NodeSet;
 var {:layer 1,3} voteInfo: [Round]Option VoteInfo;
-var {:layer 1,3} pendingAsyncs: [PA]int;
 
 // Concrete
 var {:layer 0,1} acceptorState: [Node]AcceptorState;
@@ -135,13 +107,12 @@ var {:layer 1,1} {:linear "perm"} permVoteChannel: VoteResponseChannel;
 
 function {:inline} Init (
   rs: [Round]bool, joinedNodes:[Round]NodeSet, voteInfo: [Round]Option VoteInfo,
-  decision:[Round]Option Value, pendingAsyncs: [PA]int) : bool
+  decision:[Round]Option Value) : bool
 {
   rs == (lambda r: Round :: true) &&
   (forall r: Round :: joinedNodes[r] == NoNodes()) &&
-  (forall r: Round :: is#None(voteInfo[r])) &&
-  (forall r: Round :: is#None(decision[r])) &&
-  (forall pa: PA :: pendingAsyncs[pa] == 0)
+  (forall r: Round :: voteInfo[r] is None) &&
+  (forall r: Round :: decision[r] is None)
 }
 
 function {:inline} InitLow (
@@ -151,11 +122,11 @@ function {:inline} InitLow (
   permJoinChannel: JoinResponseChannel,
   permVoteChannel: VoteResponseChannel) : bool
 {
-  (forall n: Node :: lastJoinRound#AcceptorState(acceptorState[n]) == 0 && lastVoteRound#AcceptorState(acceptorState[n]) == 0) &&
+  (forall n: Node :: acceptorState[n]->lastJoinRound == 0 && acceptorState[n]->lastVoteRound == 0) &&
   (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] == 0) &&
   (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] == 0) &&
-  domain#JoinResponseChannel(permJoinChannel) == MapConst(false) &&
-  domain#VoteResponseChannel(permVoteChannel) == MapConst(false)
+  permJoinChannel->domain == MapConst(false) &&
+  permVoteChannel->domain == MapConst(false)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,30 +134,20 @@ function {:inline} InitLow (
 
 function {:inline}{:linear "perm"} RoundCollector (round: Round) : [Permission]bool
 {
-  (lambda p: Permission ::
-    if (is#JoinPerm(p) && round == r#JoinPerm(p)) ||
-       (is#VotePerm(p) && round == r#VotePerm(p)) ||
-       (is#ConcludePerm(p) && round == r#ConcludePerm(p))
-    then true else false
-  )
+  (lambda {:pool "Permission"} p: Permission :: round == p->r)
 }
 
 function {:inline}{:linear "perm"} RoundSetCollector (rounds: [Round]bool) : [Permission]bool
 {
-  (lambda p: Permission ::
-    if (is#JoinPerm(p) && rounds[r#JoinPerm(p)]) ||
-       (is#VotePerm(p) && rounds[r#VotePerm(p)]) ||
-       (is#ConcludePerm(p) && rounds[r#ConcludePerm(p)])
-    then true else false
-  )
+  (lambda {:pool "Permission"} p: Permission :: rounds[p->r])
 }
 
 function {:inline}{:linear "perm"} JoinResponseChannelCollector (permJoinChannel: JoinResponseChannel) : [Permission]bool
 {
-  domain#JoinResponseChannel(permJoinChannel)
+  permJoinChannel->domain
 }
 
 function {:inline}{:linear "perm"} VoteResponseChannelCollector (permVoteChannel: VoteResponseChannel) : [Permission]bool
 {
-  domain#VoteResponseChannel(permVoteChannel)
+  permVoteChannel->domain
 }

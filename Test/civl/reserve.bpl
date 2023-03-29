@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 /*
@@ -17,31 +17,36 @@ const memHi: int;
 axiom 0 < memLo && memLo <= memHi;
 function {:inline} memAddr(i: int) returns (bool) { memLo <= i && i < memHi }
 
-type {:datatype} Bijection;
-function {:constructor} Bijection(domain: [Tid]bool, range: [int]bool, tidToPtr: [Tid]int, ptrToTid: [int]Tid): Bijection;
+datatype Bijection {
+  Bijection(domain: [Tid]bool, range: [int]bool, tidToPtr: [Tid]int, ptrToTid: [int]Tid)
+}
 
 var {:layer 0,1} isFree: [int]bool;
 var {:layer 0,1} freeSpace: int;
 var {:layer 0,1} allocMap: Bijection;
 
 function {:inline} BijectionInvariant(allocMap: Bijection): bool {
-    (forall tid: Tid ::
-        domain#Bijection(allocMap)[tid] ==>
-            range#Bijection(allocMap)[tidToPtr#Bijection(allocMap)[tid]] &&
-            ptrToTid#Bijection(allocMap)[tidToPtr#Bijection(allocMap)[tid]] == tid)
+    (forall {:pool "A"} tid: Tid :: {:add_to_pool "A", tid} {:add_to_pool "B", allocMap->tidToPtr[tid]}
+        allocMap->domain[tid] ==>
+            allocMap->range[allocMap->tidToPtr[tid]] &&
+            allocMap->ptrToTid[allocMap->tidToPtr[tid]] == tid)
     &&
-    (forall ptr: int ::
-        range#Bijection(allocMap)[ptr] ==>
-            domain#Bijection(allocMap)[ptrToTid#Bijection(allocMap)[ptr]] &&
-            tidToPtr#Bijection(allocMap)[ptrToTid#Bijection(allocMap)[ptr]] == ptr)
+    (forall {:pool "B"} ptr: int :: {:add_to_pool "B", ptr} {:add_to_pool "A", allocMap->ptrToTid[ptr]}
+        allocMap->range[ptr] ==>
+            allocMap->domain[allocMap->ptrToTid[ptr]] &&
+            allocMap->tidToPtr[allocMap->ptrToTid[ptr]] == ptr)
 }
 
-procedure {:yield_invariant} {:layer 1} YieldInvariant();
-requires 0 <= freeSpace;
-requires BijectionInvariant(allocMap);
-requires (forall y: int :: isFree[y] ==> memAddr(y));
-requires MapDiff(range#Bijection(allocMap), isFree) == MapConst(false);
-requires freeSpace == Size(MapDiff(isFree, range#Bijection(allocMap)));
+yield invariant {:layer 1} YieldInvariant();
+invariant 0 <= freeSpace;
+invariant BijectionInvariant(allocMap);
+invariant (forall {:pool "B"} y: int :: {:add_to_pool "B", y} isFree[y] ==> memAddr(y));
+invariant MapDiff(allocMap->range, isFree) == MapConst(false);
+invariant freeSpace == Size(MapDiff(isFree, allocMap->range));
+
+yield invariant {:layer 1} YieldAllocMap({:linear "tid"} tid: Tid, status: bool, i: int);
+invariant allocMap->domain[tid] == status;
+invariant allocMap->domain[tid] ==> i <= allocMap->tidToPtr[tid];
 
 function Size<T>([T]bool) returns (int);
 
@@ -59,22 +64,22 @@ modifies freeSpace, allocMap;
 {
     var ptr: int;
     assume 0 < freeSpace;
-    assert !domain#Bijection(allocMap)[tid];
-    assert freeSpace == Size(MapDiff(isFree, range#Bijection(allocMap)));
-    assume MapDiff(isFree, range#Bijection(allocMap))[ptr];
+    assert !allocMap->domain[tid];
+    assert freeSpace == Size(MapDiff(isFree, allocMap->range));
+    assume MapDiff(isFree, allocMap->range)[ptr];
     freeSpace := freeSpace - 1;
     call allocMap := Reserve(allocMap, tid, ptr);
 }
 
 procedure {:atomic} Reserve(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
-    assert !domain#Bijection(allocMap)[tid];
-    assert !range#Bijection(allocMap)[ptr];
+    assert !allocMap->domain[tid];
+    assert !allocMap->range[ptr];
     assert memAddr(ptr);
     allocMap' := Bijection(
-                    domain#Bijection(allocMap)[tid := true],
-                    range#Bijection(allocMap)[ptr := true],
-                    tidToPtr#Bijection(allocMap)[tid := ptr],
-                    ptrToTid#Bijection(allocMap)[ptr := tid]);
+                    allocMap->domain[tid := true],
+                    allocMap->range[ptr := true],
+                    allocMap->tidToPtr[tid := ptr],
+                    allocMap->ptrToTid[ptr := tid]);
 }
 
 procedure {:yields} {:layer 0} {:refines "atomic_AllocIfPtrFree"} AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool);
@@ -86,10 +91,11 @@ modifies isFree, allocMap;
     var ptr': int;
     assert memAddr(ptr);
     assert isFree[ptr] || memAddr(ptr + 1);
-    assert domain#Bijection(allocMap)[tid];
+    assert allocMap->domain[tid];
     spaceFound := isFree[ptr];
     if (spaceFound) {
         isFree[ptr] := false;
+        assume {:add_to_pool "A", tid} {:add_to_pool "B", ptr} true;
         call allocMap := Alloc(allocMap, tid, ptr);
     }
 }
@@ -97,25 +103,27 @@ modifies isFree, allocMap;
 procedure {:atomic} Alloc(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
     var tid': Tid;
     var ptr': int;
-    assert domain#Bijection(allocMap)[tid];
+    assert allocMap->domain[tid];
     allocMap' := allocMap;
-    if (range#Bijection(allocMap')[ptr]) {
+    if (allocMap'->range[ptr]) {
         // swap
-        tid' := ptrToTid#Bijection(allocMap')[ptr];
-        ptr' := tidToPtr#Bijection(allocMap')[tid];
+        tid' := allocMap'->ptrToTid[ptr];
+        ptr' := allocMap'->tidToPtr[tid];
+        assume {:add_to_pool "A", tid'} {:add_to_pool "B", ptr'} true;
         allocMap' := Bijection(
-                        domain#Bijection(allocMap'),
-                        range#Bijection(allocMap'),
-                        tidToPtr#Bijection(allocMap')[tid := ptr][tid' := ptr'],
-                        ptrToTid#Bijection(allocMap')[ptr := tid][ptr' := tid']);
+                        allocMap'->domain,
+                        allocMap'->range,
+                        allocMap'->tidToPtr[tid := ptr][tid' := ptr'],
+                        allocMap'->ptrToTid[ptr := tid][ptr' := tid']);
     }
     // alloc
-    ptr' := tidToPtr#Bijection(allocMap')[tid];
+    ptr' := allocMap'->tidToPtr[tid];
+    assume {:add_to_pool "B", ptr'} true;
     allocMap' := Bijection(
-                    domain#Bijection(allocMap')[tid := false],
-                    range#Bijection(allocMap')[ptr' := false],
-                    tidToPtr#Bijection(allocMap'),
-                    ptrToTid#Bijection(allocMap'));
+                    allocMap'->domain[tid := false],
+                    allocMap'->range[ptr' := false],
+                    allocMap'->tidToPtr,
+                    allocMap'->ptrToTid);
 }
 
 procedure {:yields} {:layer 0} {:refines "atomic_Reclaim"} Reclaim() returns (ptr: int);
@@ -129,29 +137,28 @@ modifies freeSpace, isFree;
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "YieldInvariant"}
-{:yield_ensures "YieldInvariant"}
+{:yield_requires "YieldAllocMap", tid, false, memLo}
+{:yield_preserves "YieldInvariant"}
 Malloc({:linear "tid"} tid: Tid)
-requires {:layer 1} !domain#Bijection(allocMap)[tid];
 {
     var i: int;
     var spaceFound: bool;
 
     call DecrementFreeSpace(tid);
     i := memLo;
-    call {:layer 1} SizeLemma1(MapDiff(isFree, range#Bijection(allocMap)), tidToPtr#Bijection(allocMap)[tid]);
+    call {:layer 1} SizeLemma1(MapDiff(isFree, allocMap->range), allocMap->tidToPtr[tid]);
     while (i < memHi)
-    invariant {:yields} {:layer 1} memAddr(i) && domain#Bijection(allocMap)[tid] && i <= tidToPtr#Bijection(allocMap)[tid];
-    invariant {:yields} {:layer 1} {:yield_loop "YieldInvariant"} true;
+    invariant {:layer 1} memAddr(i);
+    invariant {:yields} {:yield_loop "YieldInvariant"} {:yield_loop "YieldAllocMap", tid, true, i} true;
     {
         call {:layer 1} SizeLemma1(isFree, i);
-        call {:layer 1} SizeLemma1(range#Bijection(allocMap), i);
-        call {:layer 1} SizeLemma1(range#Bijection(allocMap), tidToPtr#Bijection(allocMap)[tid]);
-        call {:layer 1} SizeLemma2(range#Bijection(allocMap), isFree);
+        call {:layer 1} SizeLemma1(allocMap->range, i);
+        call {:layer 1} SizeLemma1(allocMap->range, allocMap->tidToPtr[tid]);
+        call {:layer 1} SizeLemma2(allocMap->range, isFree);
         call spaceFound := AllocIfPtrFree(tid, i);
         if (spaceFound)
         {
-            call {:layer 1} SizeLemma2(range#Bijection(allocMap), isFree);
+            call {:layer 1} SizeLemma2(allocMap->range, isFree);
             return;
         }
         i := i + 1;
@@ -160,16 +167,15 @@ requires {:layer 1} !domain#Bijection(allocMap)[tid];
 }
 
 procedure {:yields} {:layer 1}
-{:yield_requires "YieldInvariant"}
-{:yield_ensures "YieldInvariant"}
+{:yield_preserves "YieldInvariant"}
 Collect()
 {
     var ptr: int;
 
     while (*)
-    invariant {:yields} {:layer 1} {:yield_loop "YieldInvariant"} true;
+    invariant {:yields} {:yield_loop "YieldInvariant"} true;
     {
         call ptr := Reclaim();
-        call {:layer 1} SizeLemma1(MapDiff(isFree, range#Bijection(allocMap)), ptr);
+        call {:layer 1} SizeLemma1(MapDiff(isFree, allocMap->range), ptr);
     }
 }

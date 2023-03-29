@@ -496,6 +496,11 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
+      if (node.Fun is FieldUpdate fieldUpdate)
+      {
+        return TranslateNAryExpr(fieldUpdate.Update(Token.NoToken, node.Args[0], node.Args[1]));
+      }
+      
       bool flipContextForArg0 = false;
       if (node.Fun is UnaryOperator)
       {
@@ -678,7 +683,7 @@ namespace Microsoft.Boogie.VCExprAST
         QKeyValue.FindIntAttribute(node.Attributes, "weight", 1), 
         Enumerable.Range(0, boundVars.Count)
           .ToDictionary(x => boundVars[x], x => QuantifierInstantiationEngine.FindInstantiationHints(node.Dummies[x])),
-        QuantifierInstantiationEngine.FindInstantiationSources(node, "skolem_add_to_pool", this));
+        QuantifierInstantiationEngine.FindInstantiationSources(node, "add_to_pool", this));
     }
 
     private string GetQid(QuantifierExpr node)
@@ -807,12 +812,18 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
-      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Contract.Assert(false);
       throw new cce.UnreachableException();
     }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      Contract.Assert(false);
+      throw new cce.UnreachableException();
+    }
+    
     public override Cmd VisitAssumeCmd(AssumeCmd node)
     {
       //Contract.Requires(node != null);
@@ -1080,7 +1091,7 @@ namespace Microsoft.Boogie.VCExprAST
       throw new cce.UnreachableException();
     }
 
-    public override MapType VisitMapType(MapType node)
+    public override Type VisitMapType(MapType node)
     {
       //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<MapType>() != null);
@@ -1410,7 +1421,36 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       return Gen.Function(VCExpressionGenerator.IfThenElseOp, this.args);
     }
+    
+    public VCExpr Visit(FieldAccess fieldAccess)
+    {
+      var accessor = fieldAccess.Accessors[0];
+      var expr = Gen.Function(new VCExprFieldAccessOp(fieldAccess.DatatypeTypeCtorDecl, accessor),
+        this.args);
+      for (int i = 1; i < fieldAccess.Accessors.Count; i++)
+      {
+        accessor = fieldAccess.Accessors[i];
+        var condExpr = Gen.Function(new VCExprIsConstructorOp(fieldAccess.DatatypeTypeCtorDecl, accessor.ConstructorIndex),
+          this.args);
+        var thenExpr =
+          Gen.Function(new VCExprFieldAccessOp(fieldAccess.DatatypeTypeCtorDecl, accessor),
+            this.args);
+        expr = Gen.Function(VCExpressionGenerator.IfThenElseOp, new List<VCExpr>() { condExpr, thenExpr, expr });
+      }
+      return expr;
+    }
 
+    public VCExpr Visit(FieldUpdate fieldUpdate)
+    {
+      throw new cce.UnreachableException();
+    }
+    
+    public VCExpr Visit(IsConstructor isConstructor)
+    {
+      return Gen.Function(new VCExprIsConstructorOp(isConstructor.DatatypeTypeCtorDecl, isConstructor.ConstructorIndex), this.args);
+    }
+    
+    
     ///////////////////////////////////////////////////////////////////////////////
 
     private VCExpr TranslateBinaryOperator(BinaryOperator app, List<VCExpr /*!*/> /*!*/ args)
@@ -1540,8 +1580,6 @@ namespace Microsoft.Boogie.VCExprAST
           return Gen.Function(VCExpressionGenerator.AndOp, args);
         case BinaryOperator.Opcode.Or:
           return Gen.Function(VCExpressionGenerator.OrOp, args);
-        case BinaryOperator.Opcode.Subtype:
-          return Gen.Function(VCExpressionGenerator.SubtypeOp, args);
         default:
           Contract.Assert(false);
           throw new cce.UnreachableException(); // unexpected binary operator

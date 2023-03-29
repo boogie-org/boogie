@@ -176,23 +176,11 @@ namespace Microsoft.Boogie
       return ret;
     }
 
-    public override YieldCmd VisitYieldCmd(YieldCmd node)
-    {
-      if (!yieldingProcs.Contains(enclosingProc))
-      {
-        yieldingProcs.Add(enclosingProc);
-        moreProcessingRequired = true;
-      }
-
-      return base.VisitYieldCmd(node);
-    }
-
     public override Cmd VisitAssignCmd(AssignCmd assignCmd)
     {
-      //Contract.Requires(assignCmd != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Cmd ret = base.VisitAssignCmd(assignCmd);
-      foreach (AssignLhs /*!*/ lhs in assignCmd.Lhss)
+      foreach (AssignLhs lhs in assignCmd.Lhss)
       {
         Contract.Assert(lhs != null);
         ProcessVariable(lhs.DeepAssignedVariable);
@@ -201,12 +189,22 @@ namespace Microsoft.Boogie
       return ret;
     }
 
+    public override Cmd VisitUnpackCmd(UnpackCmd unpackCmd)
+    {
+      Contract.Ensures(Contract.Result<Cmd>() != null);
+      Cmd ret = base.VisitUnpackCmd(unpackCmd);
+      foreach (var expr in unpackCmd.Lhs.Args)
+      {
+        ProcessVariable(((IdentifierExpr)expr).Decl);
+      }
+      return ret;
+    }
+    
     public override Cmd VisitHavocCmd(HavocCmd havocCmd)
     {
-      //Contract.Requires(havocCmd != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
       Cmd ret = base.VisitHavocCmd(havocCmd);
-      foreach (IdentifierExpr /*!*/ expr in havocCmd.Vars)
+      foreach (IdentifierExpr expr in havocCmd.Vars)
       {
         Contract.Assert(expr != null);
         ProcessVariable(expr.Decl);
@@ -348,18 +346,18 @@ namespace Microsoft.Boogie
 
   public class VariableCollector : ReadOnlyVisitor
   {
-    protected HashSet<Variable /*!*/> /*!*/
-      _usedVars;
+    private bool _ignoreOld;
 
-    public IEnumerable<Variable /*!*/> /*!*/ usedVars
+    protected HashSet<Variable> _usedVars;
+
+    public IEnumerable<Variable> usedVars
     {
       get { return _usedVars.AsEnumerable(); }
     }
 
-    protected HashSet<Variable /*!*/> /*!*/
-      _oldVarsUsed;
+    protected HashSet<Variable> _oldVarsUsed;
 
-    public IEnumerable<Variable /*!*/> /*!*/ oldVarsUsed
+    public IEnumerable<Variable> oldVarsUsed
     {
       get { return _oldVarsUsed.AsEnumerable(); }
     }
@@ -373,27 +371,27 @@ namespace Microsoft.Boogie
 
     int insideOldExpr;
 
-    public VariableCollector()
+    public VariableCollector(bool ignoreOld = false)
     {
-      _usedVars = new System.Collections.Generic.HashSet<Variable /*!*/>();
-      _oldVarsUsed = new System.Collections.Generic.HashSet<Variable /*!*/>();
+      _ignoreOld = ignoreOld;
+      _usedVars = new HashSet<Variable>();
+      _oldVarsUsed = new HashSet<Variable>();
       insideOldExpr = 0;
     }
 
     public override Expr VisitOldExpr(OldExpr node)
     {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Expr>() != null);
-      insideOldExpr++;
-      node.Expr = this.VisitExpr(node.Expr);
-      insideOldExpr--;
+      if (!_ignoreOld)
+      {
+        insideOldExpr++;
+        node.Expr = this.VisitExpr(node.Expr);
+        insideOldExpr--;
+      }
       return node;
     }
 
     public override Expr VisitIdentifierExpr(IdentifierExpr node)
     {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Expr>() != null);
       if (node.Decl != null)
       {
         _usedVars.Add(node.Decl);
@@ -402,25 +400,23 @@ namespace Microsoft.Boogie
           _oldVarsUsed.Add(node.Decl);
         }
       }
-
       return node;
     }
 
-    public static IEnumerable<Variable> Collect(Absy node)
+    public static IEnumerable<Variable> Collect(Absy node, bool ignoreOld = false)
     {
-      var collector = new VariableCollector();
+      var collector = new VariableCollector(ignoreOld);
       collector.Visit(node);
       return collector.usedVars;
     }
 
-    public static IEnumerable<Variable> Collect(IEnumerable<Absy> nodes)
+    public static IEnumerable<Variable> Collect(IEnumerable<Absy> nodes, bool ignoreOld = false)
     {
-      var collector = new VariableCollector();
+      var collector = new VariableCollector(ignoreOld);
       foreach (var node in nodes)
       {
         collector.Visit(node);
       }
-
       return collector.usedVars;
     }
   }
@@ -2235,95 +2231,6 @@ b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
       Contract.Assert(ret != null);
       weightCacheAfterCall[cmd] = ret;
       return ret;
-    }
-  }
-
-  public class TokenEliminator : ReadOnlyVisitor
-  {
-    public int TokenCount = 0;
-
-    public override Expr VisitExpr(Expr node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitExpr(node);
-    }
-
-    public override Variable VisitVariable(Variable node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitVariable(node);
-    }
-
-    public override Function VisitFunction(Function node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitFunction(node);
-    }
-
-    public override Implementation VisitImplementation(Implementation node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitImplementation(node);
-    }
-
-    public override Procedure VisitProcedure(Procedure node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitProcedure(node);
-    }
-
-    public override Axiom VisitAxiom(Axiom node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitAxiom(node);
-    }
-
-    public override Cmd VisitAssignCmd(AssignCmd node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitAssignCmd(node);
-    }
-
-    public override Cmd VisitAssumeCmd(AssumeCmd node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitAssumeCmd(node);
-    }
-
-    public override Cmd VisitHavocCmd(HavocCmd node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitHavocCmd(node);
-    }
-
-    public override Constant VisitConstant(Constant node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitConstant(node);
-    }
-
-    public override TransferCmd VisitTransferCmd(TransferCmd node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitTransferCmd(node);
-    }
-
-    public override Block VisitBlock(Block node)
-    {
-      node.tok = Token.NoToken;
-      TokenCount++;
-      return base.VisitBlock(node);
     }
   }
 }

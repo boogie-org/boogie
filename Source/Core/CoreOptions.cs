@@ -35,6 +35,16 @@ namespace Microsoft.Boogie
 
     public bool Trace { get; }
 
+    public enum VerbosityLevel
+    {
+      Silent,
+      Quiet,
+      Normal,
+      Trace
+    }
+
+    public VerbosityLevel Verbosity { get; set; }
+
     public bool TraceVerify { get; }
 
     public int VerifySnapshots { get; }
@@ -60,7 +70,7 @@ namespace Microsoft.Boogie
     TypeEncoding TypeEncodingMethod { get; set; }
     SubsumptionOption UseSubsumption { get; }
     int VcsCores { get; }
-    int RandomSeedIterations { get; }
+    int RandomizeVcIterations { get; }
     List<string> ProverOptions { get; }
     bool Prune { get; }
     bool RunDiagnosticsOnTimeout { get; }

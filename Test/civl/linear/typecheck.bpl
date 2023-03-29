@@ -1,19 +1,8 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
 type X;
 type {:linear "A", "B", "C", "D", "D2", "x", "", "lin"} Lin = int;
-function {:inline} none() : [int]bool { (lambda i:int :: false) }
-function {:inline} {:linear "A"} A_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "A"} A_int_Collector(a: int) : [int]bool { none() }
-function {:inline} {:linear "B"} B_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "B"} B_XSet_Collector(a: [X]bool) : [int]bool { none() }
-function {:inline} {:linear "C"} C_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "C"} C_XMulSet_Collector(a: [X]int) : [int]bool { none() }
-function {:inline} {:linear "D"} D_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "D"} D_XSet_Collector(a: [X]bool) : [int]bool { none() }
-function {:inline} {:linear "D2"} A2_X_Collector(a: X) : [int]bool { none() }
-function {:inline} {:linear "x"} x_int_Collector(a: int) : [int]bool { none() }
-function {:inline} {:linear ""} empty_int_Collector(a: int) : [int]bool { none() }
 
 procedure A()
 {
@@ -72,17 +61,11 @@ procedure {:yields} {:layer 1} D()
     call a, x := E(c, x);
 
     call c, x := E(a, x);
-
-    yield;
-    par c := F(a) | x := F(a);
-    yield;
 }
 
 procedure {:yields} {:layer 1} E({:linear_in "D"} a: X, {:linear_in "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
 {
-    yield;
     c := a;
-    yield;
 }
 
 procedure {:yields} {:layer 1} F({:linear_in "D"} a: X) returns ({:linear "D"} c: X);
@@ -102,45 +85,21 @@ modifies g;
 
 procedure {:yields} {:layer 1} I({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
-  yield;
   x' := x;
-  yield;
 }
 
 procedure {:yields} {:layer 1} J()
 {
-  yield;
 }
 
 procedure {:yields} {:layer 1} P1({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
-  yield;
   par x' := I(x) | J();
-  yield;
   call x' := I(x');
-  yield;
 }
 
 procedure {:yields} {:layer 1} P2({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
-  yield;
   call x' := I(x);
-  yield;
   par x' := I(x') | J();
-  yield;
 }
-
-procedure {:yields} {:layer 1}
-P({:linear "lin"} x: int, {:linear_in "lin"} y: int)
-{
-  par Q(x) | linear_yield_x(y) | linear_yield_x(y);
-  par Q(x) | linear_yield_x(x) | linear_yield_x(y);
-}
-
-procedure {:yields} {:layer 1}
-Q({:linear "lin"} a: int);
-
-var {:layer 0,1} x:int;
-
-procedure {:yield_invariant} {:layer 1} linear_yield_x({:linear "lin"} n: int);
-requires x >= n;

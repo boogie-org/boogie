@@ -174,7 +174,11 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       var uniqueInherentName = NextFreeName(thing, inherentName);
-      if (boogieDeterminedNames.Contains(inherentName))
+      if (thing is NamedDeclaration namedDeclaration && !namedDeclaration.MayRename)
+      {
+        result = uniqueInherentName;
+      }
+      else if (boogieDeterminedNames.Contains(inherentName))
       {
         result = uniqueInherentName;
       }

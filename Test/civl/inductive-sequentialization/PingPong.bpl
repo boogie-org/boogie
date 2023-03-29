@@ -3,42 +3,32 @@
 
 // This example shows how to use a bidirectional shared channel to communicate between
 // two processes. The modeling of bidirectional channels is generic.
-// Its usage is specifically illustrated here on a PingPong example.
+// Its usage is specifically illustrated here on a PingPong example
+// containing two processes called Ping and Pong.
 
 // A bidirectional channel is a pair of ordinary channels with two ends---left and right.
-type {:datatype} ChannelPair;
-function {:constructor} ChannelPair(left: [int]int, right: [int]int): ChannelPair;
+// The Ping and Pong processes share a channel pair with Ping holding its left end
+// and Pong holding its right end.
+datatype ChannelPair { ChannelPair(left: [int]int, right: [int]int) }
 
 // The id type for indexing into the pool of bidirectional channels.
 type ChannelId;
 
-// The following global variables models al instances of a bidirectional channel indexed
+// The following global variables models all instances of a bidirectional channel indexed
 // the ChannelId type. A single instance of PingPong will only use a single channel id.
 var {:layer 0,3} channel: [ChannelId]ChannelPair;
 
 // The id of a bidirectional channel can be split into two permissions---Left and Right.
 // Left permission is used to receive from the left channel and send to the right channel.
 // Right permission is used to receive from the right channel and send to the left channel.
-type {:linear "cid"} {:datatype} ChannelHandle;
-function {:constructor} Left(cid: ChannelId): ChannelHandle;
-function {:constructor} Right(cid: ChannelId): ChannelHandle;
+datatype {:linear "cid"} ChannelHandle { Left(cid: ChannelId), Right(cid: ChannelId) }
 function {:inline} ChannelId(p: ChannelHandle) : ChannelId {
-  if is#Left(p) then cid#Left(p) else cid#Right(p)
+  p->cid
 }
 
 function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [ChannelHandle]bool {
   MapConst(false)[Left(cid) := true][Right(cid) := true]
 }
-
-// This datatype declares the pending asyncs for Ping and Pong processes.
-// These two processes share a channel pair with Ping holding its left channel handle
-// and Pong holding its right channel handle.
-type {:pending_async}{:datatype} PA;
-function {:constructor} PING(x: int, left: ChannelHandle): PA;
-function {:constructor} PONG(x: int, right: ChannelHandle): PA;
-
-function {:inline} NoPAs () : [PA]int
-{ (lambda pa:PA :: 0) }
 
 function {:inline} EmptyChannel () : [int]int
 { (lambda m:int :: 0) }
@@ -51,41 +41,41 @@ MAIN' ({:linear_in "cid"} cid: ChannelId)
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
 }
 
-procedure {:IS_invariant}{:layer 2}
+procedure {:layer 2}
+{:creates "PING", "PONG"}
+{:IS_invariant}{:elim "PING","PING'"}{:elim "PONG","PONG'"}
 INV ({:linear_in "cid"} cid: ChannelId)
-returns ({:pending_async "PING","PONG"} PAs: [PA]int, {:choice} choice: PA)
 modifies channel;
 {
   var {:pool "INV"} c: int;
 
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
 
-  assume
-    {:add_to_pool "INV", c, c+1}
-    0 < c;
+  assume {:add_to_pool "INV", c, c+1} 0 < c;
   if (*) {
     channel[cid] := ChannelPair(EmptyChannel(), EmptyChannel()[c := 1]);
-    PAs := NoPAs()[PONG(c, Right(cid)) := 1][PING(c, Left(cid)) := 1];
-    choice := PONG(c, Right(cid));
+    call create_async(PONG(c, Right(cid)));
+    call create_async(PING(c, Left(cid)));
+    call set_choice(PONG(c, Right(cid)));
   } else if (*) {
     channel[cid] := ChannelPair(EmptyChannel(), EmptyChannel()[0 := 1]);
-    PAs := NoPAs()[PONG(c, Right(cid)) := 1];
-    choice := PONG(c, Right(cid));
+    call create_async(PONG(c, Right(cid)));
+    call set_choice(PONG(c, Right(cid)));
   } else if (*) {
     channel[cid] := ChannelPair(EmptyChannel()[c := 1], EmptyChannel());
-    PAs := NoPAs()[PONG(c+1, Right(cid)) := 1][PING(c, Left(cid)) := 1];
-    choice := PING(c, Left(cid));
+    call create_async(PONG(c+1, Right(cid)));
+    call create_async(PING(c, Left(cid)));
+    call set_choice(PING(c, Left(cid)));
   } else {
     channel[cid] := ChannelPair(EmptyChannel(), EmptyChannel());
-    PAs := NoPAs();
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:IS_abstraction}{:layer 2}
+{:creates "PING"}
 PING' (x: int, {:linear_in "cid"} left: ChannelHandle)
-returns ({:pending_async "PING"} PAs: [PA]int)
 modifies channel;
 {
   var cid: ChannelId;
@@ -93,18 +83,18 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(left);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
 
   assert (exists {:pool "INV"} m:int :: left_channel[m] > 0);
   assert (forall m:int :: right_channel[m] == 0);
-  call PAs := PING(x, left);
+  call PING(x, left);
 
 }
 
 procedure {:IS_abstraction}{:layer 2}
+{:creates "PONG"}
 PONG' (y: int, {:linear_in "cid"} right: ChannelHandle)
-returns ({:pending_async "PONG"} PAs: [PA]int)
 modifies channel;
 {
   var cid: ChannelId;
@@ -112,30 +102,32 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(right);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
 
   assert (exists {:pool "INV"} m:int :: right_channel[m] > 0);
   assert (forall m:int :: left_channel[m] == 0);
-  call PAs := PONG(y, right);
+  call PONG(y, right);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 procedure {:atomic}{:layer 2}
-{:IS "MAIN'","INV"}{:elim "PING","PING'"}{:elim "PONG","PONG'"}
+{:creates "PING", "PONG"}
+{:IS "MAIN'","INV"}
 MAIN ({:linear_in "cid"} cid: ChannelId)
-returns ({:pending_async "PING","PONG"} PAs: [PA]int)
 modifies channel;
 {
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
   channel[cid] := ChannelPair(EmptyChannel(), EmptyChannel()[1 := 1]);
-  PAs := NoPAs()[PING(1, Left(cid)) := 1][PONG(1, Right(cid)) := 1];
+  call create_async(PING(1, Left(cid)));
+  call create_async(PONG(1, Right(cid)));
 }
 
 procedure {:atomic}{:layer 2}
+{:pending_async}
+{:creates "PING"}
 PING (x: int, {:linear_in "cid"} left: ChannelHandle)
-returns ({:pending_async "PING"} PAs: [PA]int)
 modifies channel;
 {
   var cid: ChannelId;
@@ -143,11 +135,11 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(left);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
 
   assert x > 0;
-  assert is#Left(left);
+  assert left is Left;
   assert (forall m:int :: left_channel[m] > 0 ==> m == x); // assertion to discharge
 
   assume left_channel[x] > 0;
@@ -156,19 +148,19 @@ modifies channel;
   if (*)
   {
     right_channel[x+1] := right_channel[x+1] + 1;
-    PAs := NoPAs()[PING(x+1, left) := 1];
+    call create_async(PING(x+1, left));
   }
   else
   {
     right_channel[0] := right_channel[0] + 1;
-    PAs := NoPAs();
   }
   channel[cid] := ChannelPair(left_channel, right_channel);
 }
 
 procedure {:atomic}{:layer 2}
+{:pending_async}
+{:creates "PONG"}
 PONG (y: int, {:linear_in "cid"} right: ChannelHandle)
-returns ({:pending_async "PONG"} PAs: [PA]int)
 modifies channel;
 {
   var cid: ChannelId;
@@ -176,11 +168,11 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(right);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
 
   assert y > 0;
-  assert is#Right(right);
+  assert right is Right;
   assert (forall m:int :: right_channel[m] > 0 ==> m == y || m == 0); // assertion to discharge
 
   if (*)
@@ -188,13 +180,12 @@ modifies channel;
     assume right_channel[y] > 0;
     right_channel[y] := right_channel[y] - 1;
     left_channel[y] := left_channel[y] + 1;
-    PAs := NoPAs()[PONG(y+1, right) := 1];
+    call create_async(PONG(y+1, right));
   }
   else
   {
     assume right_channel[0] > 0;
     right_channel[0] := right_channel[0] - 1;
-    PAs := NoPAs();
   }
   channel[cid] := ChannelPair(left_channel, right_channel);
 }
@@ -256,9 +247,9 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(permission);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
-  if (is#Left(permission)) {
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
+  if (permission is Left) {
     assume left_channel[m] > 0;
     left_channel[m] := left_channel[m] - 1;
   } else {
@@ -276,9 +267,9 @@ modifies channel;
   var right_channel: [int]int;
 
   cid := ChannelId(permission);
-  left_channel := left#ChannelPair(channel[cid]);
-  right_channel := right#ChannelPair(channel[cid]);
-  if (is#Left(permission)) {
+  left_channel := channel[cid]->left;
+  right_channel := channel[cid]->right;
+  if (permission is Left) {
     right_channel[m] := right_channel[m] + 1;
   } else {
     left_channel[m] := left_channel[m] + 1;

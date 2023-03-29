@@ -33,7 +33,6 @@ Main()
   assert {:layer 1} Trigger(0);
   i := 0;
   while (i < N)
-  invariant {:cooperates} {:layer 1} true;
   invariant {:layer 1} ind_inv(done, y, x);
   {
     async call Proc(i);
@@ -47,9 +46,7 @@ procedure {:yields} {:layer 1}
 Proc(i: int)
 {
   call update_x(i);
-  yield;
-  assert {:layer 1} x[i] == 1;
-  assert {:layer 1} ind_inv(done, y, x);
+  call Yield(i);
   call update_y(i);
   call mark_done(i);
   assert {:layer 1} Trigger((i-1) mod N);
@@ -115,8 +112,12 @@ function ind_inv(done: [int]bool, y: [int]int, x: [int]int): bool
   safety(done, y) && x_inv(done, x)
 }
 
-procedure {:yield_invariant} {:layer 1} yield_ind_inv();
-requires ind_inv(done, y, x);
+yield invariant {:layer 1} yield_ind_inv();
+invariant ind_inv(done, y, x);
 
 // Dummy function to supply hints for quantifier reasoning
 function Trigger(i: int) : bool { true }
+
+yield invariant {:layer 1} Yield(i: int);
+invariant x[i] == 1;
+invariant ind_inv(done, y, x);

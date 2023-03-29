@@ -66,6 +66,8 @@ namespace Microsoft.Boogie.VCExprAST
     Result VisitOrOp(VCExprNAry node, Arg arg);
     Result VisitImpliesOp(VCExprNAry node, Arg arg);
     Result VisitDistinctOp(VCExprNAry node, Arg arg);
+    Result VisitFieldAccessOp(VCExprNAry node, Arg arg);
+    Result VisitIsConstructorOp(VCExprNAry node, Arg arg);
     Result VisitSelectOp(VCExprNAry node, Arg arg);
     Result VisitStoreOp(VCExprNAry node, Arg arg);
     Result VisitFloatAddOp(VCExprNAry node, Arg arg);
@@ -148,6 +150,18 @@ namespace Microsoft.Boogie.VCExprAST
       throw new NotImplementedException();
     }
 
+    public Result VisitFieldAccessOp(VCExprNAry node, Arg arg)
+    {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+    
+    public Result VisitIsConstructorOp(VCExprNAry node, Arg arg)
+    {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+    
     public Result VisitSelectOp(VCExprNAry node, Arg arg)
     {
       Contract.Requires(node != null);
@@ -613,66 +627,26 @@ namespace Microsoft.Boogie.VCExprAST
   public abstract class BoundVarTraversingVCExprVisitor<Result, Arg>
     : TraversingVCExprVisitor<Result, Arg>
   {
-    private readonly ISet<VCExprVar> BoundTermVarsSet = new HashSet<VCExprVar>();
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(BoundTermVarsSet != null);
-      Contract.Invariant(BoundTypeVarsSet != null);
-    }
+    private readonly IDictionary<VCExprVar, VCExpr> BoundTermVarsMap = new Dictionary<VCExprVar, VCExpr>();
 
     private readonly ISet<TypeVariable> BoundTypeVarsSet = new HashSet<TypeVariable>();
 
-    protected ICollection<VCExprVar> BoundTermVars
-    {
-      get
-      {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<ICollection<VCExprVar>>()));
-        return BoundTermVarsSet;
-      }
-    }
+    protected IDictionary<VCExprVar, VCExpr> BoundTermVars => BoundTermVarsMap;
 
-    protected ICollection<TypeVariable> BoundTypeVars
-    {
-      get
-      {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<ICollection<TypeVariable>>()));
-        return BoundTypeVarsSet;
-      }
-    }
-
-    private void AddBoundVar<T>(ISet<T> set, T sym)
-    {
-      Contract.Requires(sym != null);
-      Contract.Requires(set != null);
-      Contract.Requires(!set.Contains(sym));
-      set.Add(sym);
-    }
-
-    private void RemoveBoundVar<T>(ISet<T> set, T sym)
-    {
-      Contract.Requires(sym != null);
-      Contract.Requires(set != null);
-      Contract.Requires(set.Contains(sym));
-      set.Remove(sym);
-    }
+    protected ICollection<TypeVariable> BoundTypeVars => BoundTypeVarsSet;
 
     public override Result Visit(VCExprQuantifier node, Arg arg)
     {
-      Contract.Requires(node != null);
       // we temporarily add bound (term and type) variables to the
       // corresponding lists
-      foreach (VCExprVar /*!*/ v in node.BoundVars)
+      foreach (VCExprVar v in node.BoundVars)
       {
-        Contract.Assert(v != null);
-        AddBoundVar<VCExprVar>(BoundTermVarsSet, v);
+        BoundTermVarsMap.Add(v, null);
       }
 
-      foreach (TypeVariable /*!*/ v in node.TypeParameters)
+      foreach (TypeVariable v in node.TypeParameters)
       {
-        Contract.Assert(v != null);
-        AddBoundVar<TypeVariable>(BoundTypeVarsSet, v);
+        BoundTypeVarsSet.Add(v);
       }
 
       Result res;
@@ -682,16 +656,14 @@ namespace Microsoft.Boogie.VCExprAST
       }
       finally
       {
-        foreach (VCExprVar /*!*/ v in node.BoundVars)
+        foreach (VCExprVar v in node.BoundVars)
         {
-          Contract.Assert(v != null);
-          RemoveBoundVar<VCExprVar>(BoundTermVarsSet, v);
+          BoundTermVarsMap.Remove(v);
         }
 
-        foreach (TypeVariable /*!*/ v in node.TypeParameters)
+        foreach (TypeVariable v in node.TypeParameters)
         {
-          Contract.Assert(v != null);
-          RemoveBoundVar<TypeVariable>(BoundTypeVarsSet, v);
+          BoundTypeVarsSet.Remove(v);
         }
       }
 
@@ -700,13 +672,11 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Result Visit(VCExprLet node, Arg arg)
     {
-      Contract.Requires(node != null);
       // we temporarily add bound term variables to the
       // corresponding lists
-      foreach (VCExprVar /*!*/ v in node.BoundVars)
+      foreach (var binding in node)
       {
-        Contract.Assert(v != null);
-        AddBoundVar<VCExprVar>(BoundTermVarsSet, v);
+        BoundTermVarsMap.Add(binding.V, binding.E);
       }
 
       Result res;
@@ -716,10 +686,9 @@ namespace Microsoft.Boogie.VCExprAST
       }
       finally
       {
-        foreach (VCExprVar /*!*/ v in node.BoundVars)
+        foreach (VCExprVar v in node.BoundVars)
         {
-          Contract.Assert(v != null);
-          RemoveBoundVar<VCExprVar>(BoundTermVarsSet, v);
+          BoundTermVarsMap.Remove(v);
         }
       }
 
@@ -859,7 +828,7 @@ namespace Microsoft.Boogie.VCExprAST
     public override bool Visit(VCExprVar node, bool arg)
     {
       Contract.Requires(node != null);
-      if (!BoundTermVars.Contains(node) && !FreeTermVars.Contains(node))
+      if (!BoundTermVars.ContainsKey(node) && !FreeTermVars.Contains(node))
       {
         FreeTermVars.Add(node);
         Collect(node.Type);
@@ -1780,6 +1749,18 @@ namespace Microsoft.Boogie.VCExprAST
       return StandardResult(node, arg);
     }
 
+    public virtual Result VisitFieldAccessOp(VCExprNAry node, Arg arg)
+    {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
+    
+    public virtual Result VisitIsConstructorOp(VCExprNAry node, Arg arg)
+    {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
+    
     public virtual Result VisitSelectOp(VCExprNAry node, Arg arg)
     {
       //Contract.Requires(node != null);

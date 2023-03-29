@@ -1,13 +1,9 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // In this example we show how to model a reader-writer lock.
 
 type {:linear "tid"} Tid;
-
-type {:datatype} Option _;
-function {:constructor} None<T>(): Option T;
-function {:constructor} Some<T>(t: T): Option T;
 
 function {:inline} EmptySet<T>(): [T]bool
 {
@@ -17,8 +13,7 @@ function {:inline} EmptySet<T>(): [T]bool
 
 // An `RwLock` allows either a number of `readers` or at most one `writer` at
 // any point in time.
-type {:datatype} RwLock;
-function {:constructor} RwLock(writer: Option Tid, readers: [Tid]bool): RwLock;
+datatype RwLock { RwLock(writer: Option Tid, readers: [Tid]bool) }
 
 // We want to obtain the following mover types.
 // * Acquiring a read or write lock is a right mover.
@@ -35,8 +30,8 @@ var {:layer 0, 1} rwlock: RwLock;
 procedure {:right}{:layer 1, 1} atomic_acquire_read({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
-    assume writer#RwLock(rwlock) == None();
-    rwlock := RwLock(writer#RwLock(rwlock), readers#RwLock(rwlock)[tid := true]);
+    assume rwlock->writer == None();
+    rwlock := RwLock(rwlock->writer, rwlock->readers[tid := true]);
 }
 
 // Acquiring a write lock is possbile if there is no other writer and no reader,
@@ -44,25 +39,25 @@ modifies rwlock;
 procedure {:right}{:layer 1, 1} atomic_acquire_write({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
-    assume writer#RwLock(rwlock) == None();
-    assume readers#RwLock(rwlock) == EmptySet();
-    rwlock := RwLock(Some(tid), readers#RwLock(rwlock));
+    assume rwlock->writer == None();
+    assume rwlock->readers == EmptySet();
+    rwlock := RwLock(Some(tid), rwlock->readers);
 }
 
 // The predicate for holding a read lock:
 // There is no writer and we are among the readers.
 function {:inline} holds_read_lock(tid: Tid, rwlock: RwLock): bool
 {
-    writer#RwLock(rwlock) == None() &&
-    readers#RwLock(rwlock)[tid]
+    rwlock->writer == None() &&
+    rwlock->readers[tid]
 }
 
 // The predicate for holding a write lock:
 // We are the writer and there are no readers.
 function {:inline} holds_write_lock(tid: Tid, rwlock: RwLock): bool
 {
-    writer#RwLock(rwlock) == Some(tid) &&
-    readers#RwLock(rwlock) == EmptySet()
+    rwlock->writer == Some(tid) &&
+    rwlock->readers == EmptySet()
 }
 
 // Releasing a read lock takes us out of `readers`.
@@ -70,7 +65,7 @@ procedure {:left}{:layer 1, 1} atomic_release_read({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assert holds_read_lock(tid, rwlock);
-    rwlock := RwLock(writer#RwLock(rwlock), readers#RwLock(rwlock)[tid := false]);
+    rwlock := RwLock(rwlock->writer, rwlock->readers[tid := false]);
 }
 
 // Releasing a write lock takes us out of `writer`.
@@ -78,7 +73,7 @@ procedure {:left}{:layer 1, 1} atomic_release_write({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assert holds_write_lock(tid, rwlock);
-    rwlock := RwLock(None(), readers#RwLock(rwlock));
+    rwlock := RwLock(None(), rwlock->readers);
 }
 
 procedure {:yields}{:layer 0}{:refines "atomic_acquire_read"} acquire_read({:linear "tid"} tid: Tid);

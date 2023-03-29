@@ -1,14 +1,14 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure {:yield_invariant} {:layer 1} Yield();
+yield invariant {:layer 1} Yield();
 
 procedure {:yields} {:layer 1} foo()
 {
     par A() | L();
-    yield;
+    call Yield();
     par A() | bar();
-    yield;
+    call Yield();
     par bar() | L();
 }
 

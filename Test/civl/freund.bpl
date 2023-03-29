@@ -13,10 +13,10 @@ procedure {:yields} {:layer 1} {:refines "AtomicInc"} Inc() {
     var success: bool;
 
     while(true)
-    invariant {:yields} {:layer 1} true;
+    invariant {:yields} true;
     {
         call n := Read();
-        yield;
+        call Yield();
         call success := CAS(n, n+1);
         if (success) {
             break;
@@ -41,3 +41,5 @@ procedure {:atomic} {:layer 1} AtomicRead() returns (val: int)
     val := count;
 }
 procedure {:yields} {:layer 0} {:refines "AtomicRead"} Read() returns (val: int);
+
+yield invariant {:layer 1} Yield();

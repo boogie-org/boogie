@@ -712,29 +712,6 @@ namespace Microsoft.Boogie.TypeErasure
         Gen.Not(EqualTypes(node[0].Type, node[1].Type, bindings)));
     }
 
-    public override VCExpr VisitSubtypeOp(VCExprNAry node, VariableBindings bindings)
-    {
-      Contract.Requires((bindings != null));
-      Contract.Requires((node != null));
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      // UGLY: the code for tracking polarities should be factored out
-      int oldPolarity = Eraser.Polarity;
-      Eraser.Polarity = 0;
-
-      VCExpr /*!*/
-        res =
-          Gen.Function(VCExpressionGenerator.Subtype3Op,
-            AxBuilder.Type2Term(node[0].Type,
-              bindings.TypeVariableBindings),
-            AxBuilder.Cast(Eraser.Mutate(node[0], bindings),
-              AxBuilder.U),
-            AxBuilder.Cast(Eraser.Mutate(node[1], bindings),
-              AxBuilder.U));
-
-      Eraser.Polarity = oldPolarity;
-      return res;
-    }
-
     public override VCExpr VisitSelectOp(VCExprNAry node, VariableBindings bindings)
     {
       Contract.Requires((bindings != null));

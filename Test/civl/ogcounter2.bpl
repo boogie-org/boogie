@@ -68,9 +68,15 @@ procedure {:yields} {:layer 4} {:refines "AtomicIncrBy2"} IncrBy2()
   par Incr(tid1) | Incr(tid2);
 }
 
-procedure {:yields} {:layer 5} EqualTo2({:linear "tid"} tid: X)
-requires {:layer 5} tid == MainTid && x == 0;
-ensures  {:layer 5} x == 2;
+procedure {:yields} {:layer 5}
+{:yield_requires "YieldPre", tid} {:yield_ensures "YieldPost"}
+EqualTo2({:linear "tid"} tid: X)
 {
   call IncrBy2();
 }
+
+yield invariant {:layer 5} YieldPre({:linear "tid"} tid: X);
+invariant tid == MainTid && x == 0;
+
+yield invariant {:layer 5} YieldPost();
+invariant x == 2;

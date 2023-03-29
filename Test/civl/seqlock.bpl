@@ -1,10 +1,7 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type {:linear "tid"} Tid;
-type {:datatype} Option _;
-function {:constructor} None<T>() : Option T;
-function {:constructor} Some<T>(tid:Tid) : Option T;
 
 var {:layer 0,2} lock:Option Tid;
 var {:layer 0,2} seq:int;
@@ -36,7 +33,7 @@ procedure {:layer 2}{:yields}{:refines "READ"} read () returns (v:int, w:int)
   var seq1:int;
   var seq2:int;
   while (true)
-  invariant {:yields}{:layer 1,2} true;
+  invariant {:yields} true;
   {
     call seq1 := stale_read_seq();
     if (isEven(seq1)) {
@@ -63,11 +60,11 @@ write ({:hide}{:linear "tid"} tid:Tid, v:int, w:int)
   call release(tid);
 }
 
-procedure {:yield_invariant}{:layer 2} SeqLockInv ();
-requires lock == None() <==> isEven(seq);
+yield invariant{:layer 2} SeqLockInv ();
+invariant lock == None() <==> isEven(seq);
 
-procedure {:yield_invariant}{:layer 2} HoldLock ({:linear "tid"} tid:Tid);
-requires lock == Some(tid);
+yield invariant{:layer 2} HoldLock ({:linear "tid"} tid:Tid);
+invariant lock == Some(tid);
 
 // =============================================================================
 // Abstractions of atomic actions with stronger mover types

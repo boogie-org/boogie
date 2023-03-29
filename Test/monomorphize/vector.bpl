@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -lib "%s" > "%t"
+// RUN: %parallel-boogie -lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure test0()
@@ -103,12 +103,13 @@ ensures (forall i, j: int :: 0 <= i && i <= j && j < Vec_Len(s') ==> Vec_Nth(s',
   s' := Vec_Append(s', val);
 }
 
-type {:datatype} Value;
-function {:constructor} Integer(i: int): Value;
-function {:constructor} Vector(v: Vec Value): Value;
+datatype Value {
+  Integer(i: int),
+  Vector(v: Vec Value)
+}
 
 procedure test3(val: Value) returns (val': Value)
-requires is#Vector(val) && Vec_Len(v#Vector(val)) == 1 && Vec_Nth(v#Vector(val), 0) == Integer(0);
+requires val is Vector && Vec_Len(val->v) == 1 && Vec_Nth(val->v, 0) == Integer(0);
 ensures val == val';
 {
   var s: Vec Value;
@@ -120,9 +121,9 @@ ensures val == val';
 
 function has_zero(val: Value): (bool)
 {
-  if (is#Integer(val))
+  if (val is Integer)
   then val == Integer(0)
-  else (exists i: int :: 0 <= i && i < Vec_Len(v#Vector(val)) && has_zero(Vec_Nth(v#Vector(val), i)))
+  else (exists i: int :: 0 <= i && i < Vec_Len(val->v) && has_zero(Vec_Nth(val->v, i)))
 }
 
 procedure traverse(val: Value) returns (b: bool)
@@ -132,11 +133,11 @@ ensures b == has_zero(val);
   var i: int;
 
   b := false;
-  if (is#Integer(val)) {
+  if (val is Integer) {
       b := val == Integer(0);
       return;
   }
-  s := v#Vector(val);
+  s := val->v;
   i := 0;
   while (i < Vec_Len(s))
   invariant !b;
