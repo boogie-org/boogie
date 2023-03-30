@@ -26,14 +26,14 @@ namespace Microsoft.Boogie
 
   public class ExecutionEngine : IDisposable
   {
-    private static readonly WorkStealingTaskScheduler LargeThreadScheduler = new(16 * 1024 * 1024);
-    private static readonly TaskFactory LargeThreadTaskFactory = new(
+    private static readonly CustomStackSizePoolTaskScheduler largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Environment.ProcessorCount);
+    private static readonly TaskFactory largeThreadTaskFactory = new(
       CancellationToken.None, TaskCreationOptions.DenyChildAttach,
-      TaskContinuationOptions.None, LargeThreadScheduler);
+      TaskContinuationOptions.None, largeThreadScheduler);
 
     static int autoRequestIdCount;
 
-    static readonly string AutoRequestIdPrefix = "auto_request_id_";
+    private const string AutoRequestIdPrefix = "auto_request_id_";
 
     public static string FreshRequestId() {
       var id = Interlocked.Increment(ref autoRequestIdCount);
@@ -874,7 +874,7 @@ namespace Microsoft.Boogie
       var verificationResult = new VerificationResult(impl, programId);
 
       var batchCompleted = new Subject<(Split split, VCResult vcResult)>();
-      var completeVerification = LargeThreadTaskFactory.StartNew(async () =>
+      var completeVerification = largeThreadTaskFactory.StartNew(async () =>
       {
         var vcgen = new VCGen(processedProgram.Program, checkerPool);
         vcgen.CachingActionCounts = stats.CachingActionCounts;
