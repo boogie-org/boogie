@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Boogie;
 
+/// <summary>
+/// Uses a thread pool of a configurable size, with threads with a configurable stack size,
+/// to queue tasks.
+/// </summary>
 public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 {
   private readonly int threadCount;
@@ -66,8 +70,9 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   public void Dispose()
   {
-    for (int i = 0; i < threads.Length; i++) {
-      threads[i].Join();
+    foreach (var thread in threads)
+    {
+      thread.Join();
     }
   }
 }
