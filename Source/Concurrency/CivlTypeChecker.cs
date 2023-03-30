@@ -25,7 +25,7 @@ namespace Microsoft.Boogie
     public Dictionary<ActionDecl, AtomicAction> procToIsAbstraction;
     public Dictionary<Procedure, YieldingProc> procToYieldingProc;
     public Dictionary<Procedure, LemmaProc> procToLemmaProc;
-    public Dictionary<Procedure, IntroductionAction> procToIntroductionAction;
+    public Dictionary<Procedure, LinkAction> procToLinkAction;
 
     public List<InductiveSequentialization> inductiveSequentializations;
 
@@ -57,7 +57,7 @@ namespace Microsoft.Boogie
       this.procToIsAbstraction = new Dictionary<ActionDecl, AtomicAction>();
       this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
       this.procToLemmaProc = new Dictionary<Procedure, LemmaProc>();
-      this.procToIntroductionAction = new Dictionary<Procedure, IntroductionAction>();
+      this.procToLinkAction = new Dictionary<Procedure, LinkAction>();
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
 
@@ -239,11 +239,11 @@ namespace Microsoft.Boogie
       }); 
     }
     
-    private void TypeCheckIntroductionAction(Procedure proc, LayerRange layerRange)
+    private void TypeCheckLinkAction(Procedure proc, LayerRange layerRange)
     {
       if (proc.Modifies.Any(ie => GlobalVariableLayerRange(ie.Decl).lowerLayerNum != layerRange.lowerLayerNum))
       {
-        Error(proc, "Introduction actions can modify a global variable only on its introduction layer");
+        Error(proc, "Link actions can modify a global variable only on its lower layer");
       }
     }
 
@@ -308,10 +308,10 @@ namespace Microsoft.Boogie
         return;
       }
       
-      // type check introduction actions
+      // type check link actions
       actionProcs.Where(proc => proc.actionQualifier == ActionQualifier.Link).Iter(proc =>
       {
-        TypeCheckIntroductionAction(proc, actionProcToLayerRange[proc]);
+        TypeCheckLinkAction(proc, actionProcToLayerRange[proc]);
       });
 
       // type check action refinements
@@ -374,14 +374,14 @@ namespace Microsoft.Boogie
       // - Second, initialize pendingAsync actions across all actions.
       foreach (var proc in actionProcs.Where(proc => proc.refinedAction == null))
       {
-        // In this loop, we create all introduction, invariant, and abstraction actions,
+        // In this loop, we create all link, invariant, and abstraction actions,
         // but only those atomic actions (pending async or otherwise) that do not refine
         // another action.
         Implementation impl = actionProcToImpl[proc];
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.actionQualifier == ActionQualifier.Link)
         {
-          procToIntroductionAction[proc] = new IntroductionAction(proc, impl, layerRange);
+          procToLinkAction[proc] = new LinkAction(proc, impl, layerRange);
         }
         else if (proc.actionQualifier == ActionQualifier.Invariant)
         {
@@ -409,30 +409,26 @@ namespace Microsoft.Boogie
       });
       // All actions have been created. Now we initialize their pending asyncs and desugar primitive
       // invocations (for creating pending asyncs and setting choice) inside them. 
-      procToIntroductionAction.Keys.Iter(proc =>
+      procToLinkAction.Values.Iter(action =>
       {
-        var action = procToIntroductionAction[proc];
         action.CompleteInitialization(this, new List<AsyncAction>());
       });
-      procToAtomicAction.Keys.Iter(proc =>
+      procToAtomicAction.Values.Iter(action =>
       {
-        var action = procToAtomicAction[proc];
         action.CompleteInitialization(this,
-          proc.creates.Select(actionDeclRef => FindAtomicAction(actionDeclRef.actionName) as AsyncAction));
+          action.proc.creates.Select(actionDeclRef => procToAtomicAction[actionDeclRef.actionDecl] as AsyncAction));
         action.InitializeInputOutputRelation(this);
       });
-      procToIsAbstraction.Keys.Iter(proc =>
+      procToIsAbstraction.Values.Iter(action =>
       {
-        var action = procToIsAbstraction[proc];
         action.CompleteInitialization(this,
-          proc.creates.Select(actionDeclRef => FindAtomicAction(actionDeclRef.actionName) as AsyncAction));
+          action.proc.creates.Select(actionDeclRef => procToAtomicAction[actionDeclRef.actionDecl] as AsyncAction));
         action.InitializeInputOutputRelation(this);
       });
-      procToIsInvariant.Keys.Iter(proc =>
+      procToIsInvariant.Values.Iter(action =>
       {
-        var action = procToIsInvariant[proc];
         action.CompleteInitialization(this,
-          proc.creates.Select(actionDeclRef => FindAtomicAction(actionDeclRef.actionName) as AsyncAction));
+          action.proc.creates.Select(actionDeclRef => procToAtomicAction[actionDeclRef.actionDecl] as AsyncAction));
         action.InitializeInputOutputRelation(this);
       });
       actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
@@ -591,7 +587,7 @@ namespace Microsoft.Boogie
 
         if (proc.refinedAction != null) // proc is an action procedure
         {
-          AtomicAction refinedAction = FindAtomicAction(proc.refinedAction.actionName);
+          AtomicAction refinedAction = procToAtomicAction[proc.refinedAction.actionDecl];
           if (!refinedAction.layerRange.Contains(upperLayer + 1))
           {
             checkingContext.Error(proc, "Refined atomic action must be available at layer {0}", upperLayer + 1);
@@ -930,7 +926,6 @@ namespace Microsoft.Boogie
       {
         Error(kv, "Layer must be a non-negative integer");
       }
-
       return null;
     }
 
@@ -972,7 +967,6 @@ namespace Microsoft.Boogie
         Error(decl,
           "Hidden layer of local variable cannot be greater than the disappearing layer of enclosing procedure");
       }
-
       return layerRange;
     }
 
@@ -1006,17 +1000,7 @@ namespace Microsoft.Boogie
       return LocalVariableLayerRange(param).Contains(actionProc.upperLayer) &&
              !actionProc.hiddenFormals.Contains(param);
     }
-
-    public AtomicAction FindAtomicAction(string name)
-    {
-      return procToAtomicAction.Values.FirstOrDefault(a => a.proc.Name == name);
-    }
-
-    public InvariantAction FindIsInvariant(string name)
-    {
-      return procToIsInvariant.Values.FirstOrDefault(a => a.proc.Name == name);
-    }
-
+    
     public IEnumerable<AtomicAction> AllAtomicActions => procToAtomicAction.Values.Concat(procToIsAbstraction.Values);
 
     public void Error(Absy node, string message)
@@ -1075,7 +1059,7 @@ namespace Microsoft.Boogie
               globalVarLayerRange.lowerLayerNum == layerRange.lowerLayerNum && proc.actionQualifier != ActionQualifier.Link)
             // a global variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
             // thus, a global variable with layer range [n,n] is not accessible by an atomic action
-            // however, an introduction action may access the global variable at layer n
+            // however, a link action may access the global variable at layer n
           {
             civlTypeChecker.checkingContext.Error(node, "Global variable {0} is not available in action specification",
               node.Decl.Name);
@@ -1615,15 +1599,15 @@ namespace Microsoft.Boogie
         {
           VisitLemmaProcCallCmd(call, callerProc.upperLayer);
         }
-        else if (civlTypeChecker.procToIntroductionAction.ContainsKey(call.Proc))
+        else if (civlTypeChecker.procToLinkAction.ContainsKey(call.Proc))
         {
-          VisitIntroductionActionCallCmd(call, callerProc.upperLayer,
-            civlTypeChecker.procToIntroductionAction[call.Proc]);
+          VisitLinkActionCallCmd(call, callerProc.upperLayer,
+            civlTypeChecker.procToLinkAction[call.Proc]);
         }
         else
         {
           civlTypeChecker.Error(call,
-            "A yielding procedure can only call yielding procedures, lemma procedures, or introduction actions");
+            "A yielding procedure can only call yielding procedures, lemma procedures, or link actions");
         }
 
         return call;
@@ -1791,14 +1775,14 @@ namespace Microsoft.Boogie
         CheckCallOutputs(call, callerProcUpperLayer, layerNum);
       }
 
-      private void VisitIntroductionActionCallCmd(CallCmd call, int callerProcUpperLayer,
-        IntroductionAction introductionAction)
+      private void VisitLinkActionCallCmd(CallCmd call, int callerProcUpperLayer,
+        LinkAction linkAction)
       {
-        var calleeLayerNum = introductionAction.LayerNum;
+        var calleeLayerNum = linkAction.LayerNum;
         VisitYieldInvariantCallCmd(call, callerProcUpperLayer, calleeLayerNum);
         CheckCallOutputs(call, callerProcUpperLayer, calleeLayerNum);
         Require(callerProcUpperLayer == calleeLayerNum ||
-                introductionAction.modifiedGlobalVars.All(v =>
+                linkAction.modifiedGlobalVars.All(v =>
                   civlTypeChecker.GlobalVariableLayerRange(v).upperLayerNum == calleeLayerNum),
           call, $"All modified variables of callee must be hidden at layer {calleeLayerNum}");
       }
@@ -1855,10 +1839,10 @@ namespace Microsoft.Boogie
                 Debug.Assert(false);
               }
             }
-            else if (civlTypeChecker.procToIntroductionAction.ContainsKey(callCmd.Proc))
+            else if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc))
             {
-              var introductionAction = civlTypeChecker.procToIntroductionAction[callCmd.Proc];
-              if (caller.upperLayer == introductionAction.LayerNum)
+              var linkAction = civlTypeChecker.procToLinkAction[callCmd.Proc];
+              if (caller.upperLayer == linkAction.LayerNum)
               {
                 mods = new HashSet<Variable>(callCmd.Proc.Modifies.Select(ie => ie.Decl));
               }

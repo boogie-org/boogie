@@ -327,13 +327,13 @@ namespace Microsoft.Boogie
   }
 
     /*
-     * An introduction action may have a layer range which allows it to be called
+     * A link action may have a layer range which allows it to be called
      * from other atomic actions. But its lower layer is special because the variables
      * it can modify must have been introduced at that layer.
      */
-  public class IntroductionAction : Action
+  public class LinkAction : Action
   {
-    public IntroductionAction(ActionDecl proc, Implementation impl, LayerRange layerRange) : base(proc, impl, layerRange)
+    public LinkAction(ActionDecl proc, Implementation impl, LayerRange layerRange) : base(proc, impl, layerRange)
     {
     }
 

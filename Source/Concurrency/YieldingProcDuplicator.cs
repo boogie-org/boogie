@@ -255,12 +255,12 @@ namespace Microsoft.Boogie
 
     private void ProcessCallCmd(CallCmd newCall)
     {
-      if (civlTypeChecker.procToIntroductionAction.ContainsKey(newCall.Proc))
+      if (civlTypeChecker.procToLinkAction.ContainsKey(newCall.Proc))
       {
-        var introductionAction = civlTypeChecker.procToIntroductionAction[newCall.Proc];
-        if (introductionAction.LayerNum == layerNum)
+        var linkAction = civlTypeChecker.procToLinkAction[newCall.Proc];
+        if (linkAction.LayerNum == layerNum)
         {
-          InjectGate(introductionAction, newCall);
+          InjectGate(linkAction, newCall);
           newCmdSeq.Add(newCall);
         }
         return;
