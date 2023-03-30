@@ -31,7 +31,6 @@ namespace Microsoft.Boogie
 
     public Dictionary<Absy, HashSet<int>> absyToLayerNums;
     
-    public Dictionary<string, ActionDecl> pendingAsyncProcs;
     public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
     
     // These collections are for convenience in later phases and are only initialized at the end of type checking.
@@ -229,13 +228,12 @@ namespace Microsoft.Boogie
       {
         proc.creates.Iter(actionDeclRef =>
         {
-          var name = actionDeclRef.actionName;
-          var pendingAsync = pendingAsyncProcs[name];
+          var pendingAsync = actionDeclRef.actionDecl;
           var actionLayerRange = actionProcToLayerRange[proc];
           var pendingAsyncLayerRange = actionProcToLayerRange[pendingAsync];
           if (!actionLayerRange.Subset(pendingAsyncLayerRange))
           {
-            Error(proc, $"Pending async {name} is not available on all layers of {proc.Name}");
+            Error(proc, $"Pending async {pendingAsync.Name} is not available on all layers of {proc.Name}");
           }
         });
       }); 
@@ -249,77 +247,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private void TypeCheckElimAttributes(ActionDecl proc, ActionDecl invariantProc,
-      Dictionary<ActionDecl, HashSet<string>> actionProcToCreates,
-      Dictionary<string, ActionDecl> absActionProcs, 
-      Dictionary<ActionDecl, LayerRange> actionProcToLayerRange,
-      Dictionary<ActionDecl, ActionDecl> elimMap)
-    {
-      var layer = actionProcToLayerRange[proc].upperLayerNum;
-      var kvs = proc.FindAllAttributes(CivlAttributes.ELIM);
-      if (!kvs.All(kv => kv.Params.Count == 2 && kv.Params.All(p => p is string)))
-      {
-        Error(proc, "An elim attribute expects two strings");
-        return;
-      }
-      if (kvs.Select(kv => (string)kv.Params[0]).Distinct().Count() != kvs.Count)
-      {
-        Error(proc, "Each elim attribute must be distinct in the first action");
-        return;
-      }
-      foreach (var kv in kvs)
-      {
-        var names = kv.Params.OfType<string>().ToList();
-        if (!pendingAsyncProcs.ContainsKey(names[0]))
-        {
-          Error(kv, $"Could not find pending async action {names[0]}");
-        }
-        if (!absActionProcs.ContainsKey(names[1]))
-        {
-          Error(kv, $"Could not find atomic action {names[1]}");
-        }
-      }
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
-
-      foreach (var kv in kvs)
-      {
-        var names = kv.Params.OfType<string>().ToList();
-        var actionName = names[0];
-        var elimProc = pendingAsyncProcs[actionName];
-        if (!actionProcToLayerRange[elimProc].Contains(layer))
-        {
-          Error(kv, $"Action {actionName} does not exist at layer {layer}");
-        }
-        var absProc = elimProc;
-        var abstractionName = names[1];
-        absProc = absActionProcs[abstractionName];
-        if (!actionProcToLayerRange[absProc].Contains(layer))
-        {
-          Error(kv, $"Action {abstractionName} does not exist at layer {layer}");
-        }
-        if (!actionProcToCreates[invariantProc].Contains(actionName))
-        {
-          Error(kv, $"{actionName} must be created by {invariantProc.Name}");
-        }
-        CheckInductiveSequentializationAbstractionSignature(elimProc, absProc);
-        var elimModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
-        var absModifies = new HashSet<Variable>(absProc.Modifies.Select(ie => ie.Decl));
-        if (!absModifies.IsSubsetOf(elimModifies))
-        {
-          Error(kv, $"Modifies list of {absProc.Name} must be subset of modifies list of {elimProc.Name}");
-        }
-        elimMap[elimProc] = absProc;
-      }
-    }
-
-    private Dictionary<ActionDecl, ActionDecl> TypeCheckActionRefinement(ActionDecl proc,
-      Dictionary<ActionDecl, HashSet<string>> actionProcToCreates,
-      Dictionary<string, ActionDecl> atomicActionProcs,
-      Dictionary<string, ActionDecl> absActionProcs,
-      Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
+    private void TypeCheckActionRefinement(ActionDecl proc, Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
     {
       var layer = actionProcToLayerRange[proc].upperLayerNum;
       var refinedProc = proc.refinedAction.actionDecl;
@@ -332,51 +260,22 @@ namespace Microsoft.Boogie
       {
         Error(invariantProc, $"Invariant action does not exist at layer {layer}");
       }
-      if (!actionProcToCreates[proc].IsSubsetOf(actionProcToCreates[invariantProc]))
-      {
-        Error(proc, $"Pending asyncs created by refining action must be subset of those created by invariant action {invariantProc.Name}");
-      }
-      if (!actionProcToCreates[refinedProc].IsSubsetOf(actionProcToCreates[invariantProc]))
-      {
-        Error(refinedProc, $"Pending asyncs created by refined action must be subset of those created by invariant action {invariantProc.Name}");
-      }
-      foreach (var elimActionName in actionProcToCreates[invariantProc].Except(actionProcToCreates[refinedProc]))
-      {
-        var elimProc = atomicActionProcs[elimActionName];
-        if (!actionProcToCreates[elimProc].IsSubsetOf(actionProcToCreates[invariantProc]))
-        {
-          Error(elimProc,
-            $"Pending asyncs created by eliminated action must be subset of those created by invariant action {invariantProc.Name}");
-        }
-      }
       CheckInductiveSequentializationAbstractionSignature(proc, invariantProc);
       CheckInductiveSequentializationAbstractionSignature(proc, refinedProc);
-      var procModifies = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
-      var refinedProcModifies = new HashSet<Variable>(refinedProc.Modifies.Select(ie => ie.Decl));
-      var invariantProcModifies = new HashSet<Variable>(invariantProc.Modifies.Select(ie => ie.Decl));
-      if (!procModifies.IsSubsetOf(invariantProcModifies))
+      foreach (var elimDecl in proc.eliminates)
       {
-        Error(proc, $"Modifies of {proc.Name} must be subset of modifies of {invariantProc.Name}");
-      }
-      if (!refinedProcModifies.IsSubsetOf(invariantProcModifies))
-      {
-        Error(refinedProc, $"Modifies of {refinedProc.Name} must be subset of modifies of {invariantProc.Name}");
-      }
-
-      var elimMap = new Dictionary<ActionDecl, ActionDecl>();
-      foreach (var elimActionName in actionProcToCreates[invariantProc].Except(actionProcToCreates[refinedProc]))
-      {
-        var elimProc = atomicActionProcs[elimActionName];
-        elimMap[elimProc] = elimProc;
-        var elimProcModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
-        if (!elimProcModifies.IsSubsetOf(invariantProcModifies))
+        var elimProc = elimDecl.target.actionDecl;
+        if (!actionProcToLayerRange[elimProc].Contains(layer))
         {
-          Error(elimProc,
-            $"Modifies of {elimProc.Name} must be subset of modifies of {invariantProc.Name}");
+          Error(elimDecl, $"Action {elimProc.Name} does not exist at layer {layer}");
         }
+        var absProc = elimDecl.abstraction.actionDecl;
+        if (!actionProcToLayerRange[absProc].Contains(layer))
+        {
+          Error(elimDecl, $"Action {absProc.Name} does not exist at layer {layer}");
+        }
+        CheckInductiveSequentializationAbstractionSignature(elimProc, absProc);
       }
-      TypeCheckElimAttributes(proc, invariantProc, actionProcToCreates, absActionProcs, actionProcToLayerRange, elimMap);
-      return elimMap;
     }
 
     private void TypeCheckActions()
@@ -402,17 +301,6 @@ namespace Microsoft.Boogie
         actionProcToLayerRange.Add(proc, layerRange);
       }
 
-      // Set up useful data structures for the type checking
-      pendingAsyncProcs = actionProcs.Where(proc => proc.actionQualifier == ActionQualifier.Async)
-        .ToDictionary(proc => proc.Name, proc => proc);
-      var actionProcToCreates = actionProcs.ToDictionary(proc => proc,
-        proc => new HashSet<string>(proc.creates.Select(actionDeclRef => actionDeclRef.actionName)));
-      var atomicActionProcs = actionProcs.Where(proc =>
-          proc.actionQualifier == ActionQualifier.None || proc.actionQualifier == ActionQualifier.Async)
-        .ToDictionary(proc => proc.Name, proc => proc);
-      var absActionProcs = actionProcs.Where(proc => proc.actionQualifier == ActionQualifier.Abstract)
-        .ToDictionary(proc => proc.Name, proc => proc);
-
       // type check creates lists
       TypeCheckCreates(actionProcs, actionProcToLayerRange);
       if (checkingContext.ErrorCount > 0)
@@ -427,11 +315,9 @@ namespace Microsoft.Boogie
       });
 
       // type check action refinements
-      var actionProcToElimMap = new Dictionary<ActionDecl, Dictionary<ActionDecl, ActionDecl>>();
-      atomicActionProcs.Values.Where(proc => proc.refinedAction != null).Iter(proc =>
+      actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        actionProcToElimMap[proc] = TypeCheckActionRefinement(proc, actionProcToCreates, atomicActionProcs,
-          absActionProcs, actionProcToLayerRange);
+        TypeCheckActionRefinement(proc, actionProcToLayerRange);
       });
       if (checkingContext.ErrorCount > 0)
       {
@@ -439,7 +325,7 @@ namespace Microsoft.Boogie
       }
       
       // Type check action bodies
-      var actionImplVisitor = new ActionImplVisitor(this, actionProcToLayerRange, actionProcToCreates);
+      var actionImplVisitor = new ActionImplVisitor(this, actionProcToLayerRange);
       foreach (var impl in actionProcToImpl.Values)
       {
         actionImplVisitor.VisitImplementation(impl);
@@ -554,7 +440,7 @@ namespace Microsoft.Boogie
         var invariantProc = proc.invariantAction.actionDecl;
         var action = procToAtomicAction[proc];
         var invariantAction = procToIsInvariant[invariantProc];
-        var elimMap = actionProcToElimMap[proc];
+        var elimMap = proc.EliminationMap();
         var elim = elimMap.Keys.ToDictionary(x => (AsyncAction)procToAtomicAction[x],
           x =>
           {
@@ -915,8 +801,10 @@ namespace Microsoft.Boogie
 
     private void TypeCheckLocalVariables()
     {
+      var pendingAsyncProcs = program.TopLevelDeclarations.OfType<ActionDecl>()
+        .Where(proc => proc.actionQualifier == ActionQualifier.Async).Select(proc => proc.Name).ToHashSet();
       var pendingAsyncMultisetTypes = program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
-        .Where(decl => pendingAsyncProcs.ContainsKey(decl.Name)).Select(decl =>
+        .Where(decl => pendingAsyncProcs.Contains(decl.Name)).Select(decl =>
           TypeHelper.MapType(TypeHelper.CtorType(decl), Type.Int)).ToHashSet();
       foreach (Implementation impl in program.Implementations.Where(i => procToYieldingProc.ContainsKey(i.Proc)))
       {
@@ -1156,13 +1044,12 @@ namespace Microsoft.Boogie
       private Graph<Procedure> callGraph;
       private ActionDecl proc;
 
-      public ActionImplVisitor(CivlTypeChecker civlTypeChecker,
-        Dictionary<ActionDecl, LayerRange> actionProcToLayerRange,
-        Dictionary<ActionDecl, HashSet<string>> actionProcToCreates)
+      public ActionImplVisitor(CivlTypeChecker civlTypeChecker, Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
       {
         this.civlTypeChecker = civlTypeChecker;
         this.actionProcToLayerRange = actionProcToLayerRange;
-        this.actionProcToCreates = actionProcToCreates;
+        this.actionProcToCreates = civlTypeChecker.program.TopLevelDeclarations.OfType<ActionDecl>().ToDictionary(proc => proc,
+          proc => new HashSet<string>(proc.creates.Select(actionDeclRef => actionDeclRef.actionName)));
         this.callGraph = new Graph<Procedure>();
       }
 

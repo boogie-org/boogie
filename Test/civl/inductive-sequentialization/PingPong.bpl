@@ -89,9 +89,10 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} {:elim "PING","PING'"}{:elim "PONG","PONG'"}
+action {:layer 2}
 MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
 creates PING, PONG;
+eliminates PING using PING', PONG using PONG';
 modifies channel;
 {
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());

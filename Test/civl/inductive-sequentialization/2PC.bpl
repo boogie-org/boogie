@@ -86,8 +86,9 @@ modifies DecisionChannel, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 5} {:elim "PARTICIPANT2","PARTICIPANT2'"} MAIN4 ({:linear_in "pid"} pids:[int]bool) refines MAIN5 using INV4
+action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool) refines MAIN5 using INV4
 creates PARTICIPANT2;
+eliminates PARTICIPANT2 using PARTICIPANT2';
 modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
 {
   var dec:decision;

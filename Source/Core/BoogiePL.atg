@@ -656,6 +656,7 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl>
      List<ActionDeclRef> creates = new List<ActionDeclRef>();
      ActionDeclRef refinedAction = null;
      ActionDeclRef invariantAction = null;
+     List<ElimDecl> elims = new List<ElimDecl>();
      List<Variable> locals;
      StmtList stmtList;
      QKeyValue kv = null;
@@ -674,10 +675,10 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl>
     [ "returns" ProcFormals<false, true, out outs> ]
     [ "refines" (. IToken m; .) Ident<out m> (. refinedAction = new ActionDeclRef(m, m.val); .) 
       "using" Ident<out m> (. invariantAction = new ActionDeclRef(m, m.val); .) ]
-  { SpecAction<mods, creates> }
+  { SpecAction<mods, creates, elims> }
   ImplBody<out locals, out stmtList>
   (.
-     actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, invariantAction, mods, kv);
+     actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, invariantAction, elims, mods, kv);
      impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
                                       locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
    .)
@@ -690,11 +691,25 @@ SpecCreates<.List<ActionDeclRef> creates.>
   ";"
   .
 
-SpecAction<.List<IdentifierExpr> mods, List<ActionDeclRef> creates.>
+SpecUsing<.List<ElimDecl> elims.>
+= (. IToken name, tok; ActionDeclRef target, abstraction; .)
+  Ident<out name> (. target = new ActionDeclRef(name, name.val); .)
+  "using" (. tok = t; .)
+  Ident<out name> (. abstraction = new ActionDeclRef(name, name.val); .)
+  (. elims.Add(new ElimDecl(tok, target, abstraction)); .)
+  .
+
+SpecEliminates<.List<ElimDecl> elims.>
+=
+  "eliminates" SpecUsing<elims> { "," SpecUsing<elims> } ";"
+  .
+
+SpecAction<.List<IdentifierExpr> mods, List<ActionDeclRef> creates, List<ElimDecl> elims.>
 =
   (
     SpecModifies<mods>
   | SpecCreates<creates>
+  | SpecEliminates<elims>
   )
   .
   

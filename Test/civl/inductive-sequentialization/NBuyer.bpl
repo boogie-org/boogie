@@ -81,8 +81,9 @@ modifies DecisionChannel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 5} {:elim "SellerFinish","SellerFinish'"} MAIN4 ({:linear_in "pid"} pids:[int]bool) refines MAIN5 using INV4
+action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool) refines MAIN5 using INV4
 creates SellerFinish;
+eliminates SellerFinish using SellerFinish';
 modifies DecisionChannel, contribution;
 {
   assert Init(pids, RemainderChannel, DecisionChannel, contribution);
@@ -168,9 +169,9 @@ modifies RemainderChannel, DecisionChannel, contribution;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 4} {:elim "FirstBuyer","FirstBuyer'"}{:elim "MiddleBuyer","MiddleBuyer'"}{:elim "LastBuyer","LastBuyer'"}
-MAIN3 ({:linear_in "pid"} pids:[int]bool) refines MAIN4 using INV3
+action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool) refines MAIN4 using INV3
 creates SellerFinish, FirstBuyer, MiddleBuyer, LastBuyer;
+eliminates FirstBuyer using FirstBuyer', MiddleBuyer using MiddleBuyer', LastBuyer using LastBuyer';
 {
   assert Init(pids, RemainderChannel, DecisionChannel, contribution);
 

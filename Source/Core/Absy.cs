@@ -3332,6 +3332,33 @@ namespace Microsoft.Boogie
     None
   }
 
+  public class ElimDecl : Absy
+  {
+    public ActionDeclRef target;
+    public ActionDeclRef abstraction;
+
+    public ElimDecl(IToken tok, ActionDeclRef target, ActionDeclRef abstraction) : base(tok)
+    {
+      this.target = target;
+      this.abstraction = abstraction;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      target.Resolve(rc);
+      abstraction.Resolve(rc);
+      if (abstraction.actionDecl != null && abstraction.actionDecl.actionQualifier != ActionQualifier.Abstract)
+      {
+        rc.Error(this, $"Action must be abstract: {abstraction.actionName}");
+      }
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      throw new NotImplementedException();
+    }
+  }
+
   public class ActionDecl : Procedure
   {
     public MoverType moverType;
@@ -3339,9 +3366,11 @@ namespace Microsoft.Boogie
     public List<ActionDeclRef> creates;
     public ActionDeclRef refinedAction;
     public ActionDeclRef invariantAction;
+    public List<ElimDecl> eliminates;
 
     public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
-      List<Variable> inParams, List<Variable> outParams, List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
+      List<Variable> inParams, List<Variable> outParams,
+      List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction, List<ElimDecl> eliminates,
       List<IdentifierExpr> modifies, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
       new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
@@ -3350,6 +3379,7 @@ namespace Microsoft.Boogie
       this.creates = creates;
       this.refinedAction = refinedAction;
       this.invariantAction = invariantAction;
+      this.eliminates = eliminates;
     }
 
     public override void Resolve(ResolutionContext rc)
@@ -3395,14 +3425,11 @@ namespace Microsoft.Boogie
       });
       if (refinedAction != null)
       {
-        refinedAction.Resolve(rc);
         if (actionQualifier != ActionQualifier.None)
         {
           rc.Error(this, "A refining action may not have any qualifiers on it");
         }
-      }
-      if (invariantAction != null)
-      {
+        refinedAction.Resolve(rc);
         invariantAction.Resolve(rc);
         if (invariantAction.actionDecl != null &&
             invariantAction.actionDecl.actionQualifier != ActionQualifier.Invariant)
@@ -3410,6 +3437,98 @@ namespace Microsoft.Boogie
           rc.Error(this, "Expected an invariant action");
         }
       }
+      eliminates.Iter(elim =>
+      {
+        elim.Resolve(rc);
+      });
+      if (eliminates.Any())
+      {
+        if (eliminates.Select(elim => elim.target.actionDecl).Distinct().Count() != eliminates.Count)
+        {
+          rc.Error(this, "Each eliminates pair must be distinct in the first action");
+        }
+        if (refinedAction == null)
+        {
+          rc.Error(this, "Eliminates clause must be accompanied by refinement specification");
+        }
+      }
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      base.Typecheck(tc);
+      if (invariantAction != null)
+      {
+        var refinedProc = refinedAction.actionDecl;
+        var invariantProc = invariantAction.actionDecl;
+
+        var actionCreates = creates.Select(x => x.actionDecl).ToHashSet();
+        var refinedActionCreates = refinedProc.creates.Select(x => x.actionDecl).ToHashSet();
+        var invariantCreates = invariantProc.creates.Select(x => x.actionDecl).ToHashSet();
+        if (!actionCreates.IsSubsetOf(invariantCreates))
+        {
+          tc.Error(this, $"Pending asyncs created by refining action must be subset of those created by invariant action {invariantProc.Name}");
+        }
+        if (!refinedActionCreates.IsSubsetOf(invariantCreates))
+        {
+          tc.Error(this, $"Pending asyncs created by refined action must be subset of those created by invariant action {invariantProc.Name}");
+        }
+        var actionModifies = new HashSet<Variable>(Modifies.Select(ie => ie.Decl));
+        var refinedActionModifies = new HashSet<Variable>(refinedProc.Modifies.Select(ie => ie.Decl));
+        var invariantModifies = new HashSet<Variable>(invariantProc.Modifies.Select(ie => ie.Decl));
+        if (!actionModifies.IsSubsetOf(invariantModifies))
+        {
+          tc.Error(this, $"Modifies of {Name} must be subset of modifies of {invariantProc.Name}");
+        }
+        if (!refinedActionModifies.IsSubsetOf(invariantModifies))
+        {
+          tc.Error(this, $"Modifies of {refinedProc.Name} must be subset of modifies of {invariantProc.Name}");
+        }
+        foreach (var elimProc in invariantCreates.Except(refinedActionCreates))
+        {
+          var elimCreates = elimProc.creates.Select(x => x.actionDecl).ToHashSet();
+          if (!elimCreates.IsSubsetOf(invariantCreates))
+          {
+            tc.Error(this,
+              $"Pending asyncs created by eliminated action {elimProc.Name} must be subset of those created by invariant action {invariantProc.Name}");
+          }
+          var targetModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
+          if (!targetModifies.IsSubsetOf(invariantModifies))
+          {
+            tc.Error(this, $"Modifies of {elimProc.Name} must be subset of modifies of {invariantProc.Name}");
+          }
+        }
+
+        foreach (var elim in eliminates)
+        {
+          if (!invariantCreates.Contains(elim.target.actionDecl))
+          {
+            tc.Error(this, $"Eliminated action must be created by invariant {invariantAction.actionName}");
+          }
+          var targetProc = elim.target.actionDecl;
+          var absProc = elim.target.actionDecl;
+          var targetModifies = new HashSet<Variable>(targetProc.Modifies.Select(ie => ie.Decl));
+          var absModifies = new HashSet<Variable>(absProc.Modifies.Select(ie => ie.Decl));
+          if (!absModifies.IsSubsetOf(targetModifies))
+          {
+            tc.Error(elim, $"Modifies list of {absProc.Name} must be subset of modifies list of {targetProc.Name}");
+          }
+        }
+      }
+    }
+
+    public Dictionary<ActionDecl, ActionDecl> EliminationMap()
+    {
+      var refinedProc = refinedAction.actionDecl;
+      var invariantProc = invariantAction.actionDecl;
+      var refinedActionCreates = refinedProc.creates.Select(x => x.actionDecl).ToHashSet();
+      var invariantCreates = invariantProc.creates.Select(x => x.actionDecl).ToHashSet();
+      var elimMap = invariantCreates.Except(refinedActionCreates).ToDictionary(x => x, x => x);
+      foreach (var elimDecl in eliminates)
+      {
+        elimMap[elimDecl.target.actionDecl] = elimDecl.abstraction.actionDecl;
+      }
+      return elimMap;
     }
 
     public IEnumerable<ActionDeclRef> ActionDeclRefs()

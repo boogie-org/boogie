@@ -103,10 +103,11 @@ modifies CH, decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3} {:elim "COLLECT","COLLECT'"}
+action {:layer 3}
 MAIN'({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 refines MAIN'' using INV_COLLECT_ELIM
 creates COLLECT;
+eliminates COLLECT using COLLECT';
 modifies CH;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;

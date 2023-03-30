@@ -19,9 +19,9 @@ var {:layer 0,3} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} {:elim "CONSUMER","CONSUMER'"}
-MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
+action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
 creates PRODUCER, CONSUMER;
+eliminates CONSUMER using CONSUMER';
 {
   assert channels[cid]->head == channels[cid]->tail;
   call create_async(PRODUCER(1, Send(cid)));

@@ -105,8 +105,9 @@ modifies channel, terminated, leader;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3} {:elim "P", "P'"} MAIN2 ({:linear_in "pid"} pids:[int]bool) refines MAIN3 using INV2
+action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool) refines MAIN3 using INV2
 creates P;
+eliminates P using P';
 modifies channel;
 {
   assert Init(pids, channel, terminated, id, leader);
