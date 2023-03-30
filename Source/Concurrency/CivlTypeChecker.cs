@@ -22,7 +22,6 @@ namespace Microsoft.Boogie
 
     private Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
     private Dictionary<ActionDecl, InvariantAction> procToIsInvariant;
-    private Dictionary<ActionDecl, AtomicAction> procToIsAbstraction;
     public Dictionary<Procedure, LinkAction> procToLinkAction;
     public Dictionary<Procedure, YieldingProc> procToYieldingProc;
     public HashSet<Procedure> lemmaProcedures;
@@ -54,7 +53,6 @@ namespace Microsoft.Boogie
       this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
       this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
       this.procToIsInvariant = new Dictionary<ActionDecl, InvariantAction>();
-      this.procToIsAbstraction = new Dictionary<ActionDecl, AtomicAction>();
       this.procToLinkAction = new Dictionary<Procedure, LinkAction>();
       this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
       this.lemmaProcedures = new HashSet<Procedure>();
@@ -389,7 +387,7 @@ namespace Microsoft.Boogie
         }
         else if (proc.actionQualifier == ActionQualifier.Abstract)
         {
-          procToIsAbstraction[proc] = new AtomicAction(proc, impl, layerRange, MoverType.None, null);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, MoverType.None, null);
         }
         else if (proc.actionQualifier == ActionQualifier.Async)
         {
@@ -419,12 +417,6 @@ namespace Microsoft.Boogie
           action.proc.creates.Select(actionDeclRef => procToAtomicAction[actionDeclRef.actionDecl] as AsyncAction));
         action.InitializeInputOutputRelation(this);
       });
-      procToIsAbstraction.Values.Iter(action =>
-      {
-        action.CompleteInitialization(this,
-          action.proc.creates.Select(actionDeclRef => procToAtomicAction[actionDeclRef.actionDecl] as AsyncAction));
-        action.InitializeInputOutputRelation(this);
-      });
       procToIsInvariant.Values.Iter(action =>
       {
         action.CompleteInitialization(this,
@@ -433,18 +425,12 @@ namespace Microsoft.Boogie
       });
       actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        var invariantProc = proc.invariantAction.actionDecl;
         var action = procToAtomicAction[proc];
+        var invariantProc = proc.invariantAction.actionDecl;
         var invariantAction = procToIsInvariant[invariantProc];
-        var elimMap = proc.EliminationMap();
-        var elim = elimMap.Keys.ToDictionary(x => (AsyncAction)procToAtomicAction[x],
-          x =>
-          {
-            var abs = elimMap[x];
-            return procToIsAbstraction.ContainsKey(abs) ? procToIsAbstraction[abs] : procToAtomicAction[abs];
-          });
-        var inductiveSequentialization = new InductiveSequentialization(this, action, invariantAction, elim);
-        inductiveSequentializations.Add(inductiveSequentialization);
+        var elim = new Dictionary<AsyncAction, AtomicAction>(proc.EliminationMap().Select(x =>
+          KeyValuePair.Create((AsyncAction)procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
+        inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
       });
     }
 
@@ -996,9 +982,9 @@ namespace Microsoft.Boogie
              !actionProc.hiddenFormals.Contains(param);
     }
 
-    public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values;
+    public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values.Where(action => action.proc.actionQualifier != ActionQualifier.Abstract);
     
-    public IEnumerable<AtomicAction> AllAtomicActions => procToAtomicAction.Values.Concat(procToIsAbstraction.Values);
+    public IEnumerable<AtomicAction> AllAtomicActions => procToAtomicAction.Values;
 
     public void Error(Absy node, string message)
     {
