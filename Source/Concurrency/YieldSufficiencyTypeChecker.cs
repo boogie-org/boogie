@@ -404,7 +404,7 @@ namespace Microsoft.Boogie
       private string CallCmdLabel(CallCmd callCmd)
       {
         if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc) ||
-            civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
+            civlTypeChecker.lemmaProcedures.Contains(callCmd.Proc))
         {
           return P;
         }
@@ -474,7 +474,7 @@ namespace Microsoft.Boogie
       private string CallCmdLabelAsync(CallCmd callCmd)
       {
         if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc) ||
-            civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
+            civlTypeChecker.lemmaProcedures.Contains(callCmd.Proc))
         {
           return P;
         }

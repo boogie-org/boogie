@@ -21,11 +21,11 @@ namespace Microsoft.Boogie
     public Dictionary<Block, YieldingLoop> yieldingLoops;
 
     public Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
-    public Dictionary<ActionDecl, InvariantAction> procToIsInvariant;
-    public Dictionary<ActionDecl, AtomicAction> procToIsAbstraction;
-    public Dictionary<Procedure, YieldingProc> procToYieldingProc;
-    public Dictionary<Procedure, LemmaProc> procToLemmaProc;
+    private Dictionary<ActionDecl, InvariantAction> procToIsInvariant;
+    private Dictionary<ActionDecl, AtomicAction> procToIsAbstraction;
     public Dictionary<Procedure, LinkAction> procToLinkAction;
+    public Dictionary<Procedure, YieldingProc> procToYieldingProc;
+    public HashSet<Procedure> lemmaProcedures;
 
     public List<InductiveSequentialization> inductiveSequentializations;
 
@@ -55,9 +55,9 @@ namespace Microsoft.Boogie
       this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
       this.procToIsInvariant = new Dictionary<ActionDecl, InvariantAction>();
       this.procToIsAbstraction = new Dictionary<ActionDecl, AtomicAction>();
-      this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
-      this.procToLemmaProc = new Dictionary<Procedure, LemmaProc>();
       this.procToLinkAction = new Dictionary<Procedure, LinkAction>();
+      this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
+      this.lemmaProcedures = new HashSet<Procedure>();
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
 
@@ -466,12 +466,7 @@ namespace Microsoft.Boogie
 
     private void TypeCheckLemmaProcedures()
     {
-      // Lemma procedure:
-      // * {:lemma}
-      // * no {:yields}
-      // * no mover type
-      // * no layer range
-      LemmaProcedureVisitor visitor = new LemmaProcedureVisitor(this);
+      var visitor = new LemmaProcedureVisitor(this);
       foreach (var proc in program.Procedures.Where(IsLemmaProcedure))
       {
         if (proc.Modifies.Count > 0)
@@ -480,7 +475,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          procToLemmaProc[proc] = new LemmaProc(proc);
+          lemmaProcedures.Add(proc);
           visitor.VisitProcedure(proc);
         }
       }
@@ -490,7 +485,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      foreach (Implementation impl in program.Implementations.Where(impl => procToLemmaProc.ContainsKey(impl.Proc)))
+      foreach (Implementation impl in program.Implementations.Where(impl => lemmaProcedures.Contains(impl.Proc)))
       {
         visitor.VisitImplementation(impl);
       }
@@ -1132,12 +1127,11 @@ namespace Microsoft.Boogie
 
       public override Cmd VisitCallCmd(CallCmd callCmd)
       {
-        if (!civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
+        if (!civlTypeChecker.lemmaProcedures.Contains(callCmd.Proc))
         {
           civlTypeChecker.Error(callCmd, "Lemma procedure can only call a lemma procedure");
           return callCmd;
         }
-
         return base.VisitCallCmd(callCmd);
       }
 
@@ -1147,7 +1141,6 @@ namespace Microsoft.Boogie
         {
           civlTypeChecker.Error(node, "Global variable is not accessible in lemma procedure");
         }
-
         return node;
       }
     }
@@ -1595,7 +1588,7 @@ namespace Microsoft.Boogie
         {
           VisitYieldInvariantCallCmd(call, callerProc.upperLayer, yieldInvariant.LayerNum);
         }
-        else if (civlTypeChecker.procToLemmaProc.ContainsKey(call.Proc))
+        else if (civlTypeChecker.lemmaProcedures.Contains(call.Proc))
         {
           VisitLemmaProcCallCmd(call, callerProc.upperLayer);
         }
@@ -1769,10 +1762,12 @@ namespace Microsoft.Boogie
           civlTypeChecker.checkingContext.Error(call, "Call to lemma procedure must be annotated with a layer");
           return;
         }
-
         var layerNum = calledLayers[0];
         VisitYieldInvariantCallCmd(call, callerProcUpperLayer, layerNum);
-        CheckCallOutputs(call, callerProcUpperLayer, layerNum);
+        if (call.Proc.OutParams.Any())
+        {
+          civlTypeChecker.checkingContext.Error(call, "Lemma procedure called by a yield procedure may not have outputs");
+        }
       }
 
       private void VisitLinkActionCallCmd(CallCmd call, int callerProcUpperLayer,
@@ -1850,7 +1845,7 @@ namespace Microsoft.Boogie
             else
             {
               Debug.Assert(callCmd.Proc is YieldInvariantDecl ||
-                           civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc));
+                           civlTypeChecker.lemmaProcedures.Contains(callCmd.Proc));
             }
 
             foreach (var mod in mods)

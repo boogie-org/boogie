@@ -618,16 +618,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class LemmaProc
-  {
-    public Procedure proc;
-
-    public LemmaProc(Procedure proc)
-    {
-      this.proc = proc;
-    }
-  }
-
   /// <summary>
   /// Creates first/second copies of atomic actions used in commutativity checks
   /// (i.e., all non-global variables are prefixed with first_ resp. second_).
