@@ -31,8 +31,8 @@ namespace Microsoft.Boogie
       // TODO: make enumeration of mover checks more efficient / elegant
 
       var regularMoverChecks =
-        from first in civlTypeChecker.procToAtomicAction.Values
-        from second in civlTypeChecker.procToAtomicAction.Values
+        from first in civlTypeChecker.AtomicActions
+        from second in civlTypeChecker.AtomicActions
         where first.layerRange.OverlapsWith(second.layerRange)
         where first.IsRightMover || second.IsLeftMover
         select new {first, second};
@@ -53,7 +53,7 @@ namespace Microsoft.Boogie
       var inductiveSequentializationMoverChecks =
         from IS in civlTypeChecker.inductiveSequentializations
         from leftMover in IS.elim.Values
-        from action in civlTypeChecker.procToAtomicAction.Values
+        from action in civlTypeChecker.AtomicActions
         where action.layerRange.Contains(IS.invariantAction.layerRange.upperLayerNum)
         let extraAssumption1 = IS.GenerateMoverCheckAssumption(action, action.firstImpl.InParams, leftMover, leftMover.secondImpl.InParams)
         let extraAssumption2 = IS.GenerateMoverCheckAssumption(action, action.secondImpl.InParams, leftMover, leftMover.firstImpl.InParams)

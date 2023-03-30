@@ -20,7 +20,7 @@ namespace Microsoft.Boogie
 
     public Dictionary<Block, YieldingLoop> yieldingLoops;
 
-    public Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
+    private Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
     private Dictionary<ActionDecl, InvariantAction> procToIsInvariant;
     private Dictionary<ActionDecl, AtomicAction> procToIsAbstraction;
     public Dictionary<Procedure, LinkAction> procToLinkAction;
@@ -995,6 +995,8 @@ namespace Microsoft.Boogie
       return LocalVariableLayerRange(param).Contains(actionProc.upperLayer) &&
              !actionProc.hiddenFormals.Contains(param);
     }
+
+    public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values;
     
     public IEnumerable<AtomicAction> AllAtomicActions => procToAtomicAction.Values.Concat(procToIsAbstraction.Values);
 
