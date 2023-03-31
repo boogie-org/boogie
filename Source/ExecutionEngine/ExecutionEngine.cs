@@ -26,6 +26,10 @@ namespace Microsoft.Boogie
 
   public class ExecutionEngine : IDisposable
   {
+    /// <summary>
+    /// Boogie traverses the Boogie and VCExpr AST using the call-stack,
+    /// so it needs to use a large stack to prevent stack overflows.
+    /// </summary>
     private static readonly CustomStackSizePoolTaskScheduler largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Environment.ProcessorCount);
     private static readonly TaskFactory largeThreadTaskFactory = new(
       CancellationToken.None, TaskCreationOptions.DenyChildAttach,

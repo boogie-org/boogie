@@ -13,8 +13,7 @@ namespace Microsoft.Boogie;
 public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 {
   private readonly int threadCount;
-  private readonly ConcurrentQueue<Task> queue = new();
-  private readonly SemaphoreSlim isWorkAvailable = new(0);
+  private readonly AsyncQueue<Task> queue = new();
   private readonly Thread[] threads;
 
   public static CustomStackSizePoolTaskScheduler Create(int stackSize, int threadCount)
@@ -37,7 +36,6 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
   protected override void QueueTask(Task task)
   {
     queue.Enqueue(task);
-    isWorkAvailable.Release(1);
   }
 
   protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
@@ -49,23 +47,16 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   protected override IEnumerable<Task> GetScheduledTasks()
   {
-    return queue;
+    return queue.Items;
   }
   
   private void WorkLoop()
   {
     while (true)
     {
-      var task = BlockUntilTaskIsAvailable();
+      var task = queue.Dequeue(CancellationToken.None).Result;
       TryExecuteTask(task);
     }
-  }
-
-  private Task BlockUntilTaskIsAvailable()
-  {
-    isWorkAvailable.Wait();
-    queue.TryDequeue(out var task);
-    return task;
   }
 
   public void Dispose()
