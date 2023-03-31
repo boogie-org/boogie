@@ -148,8 +148,7 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
     call joinResponse := ReceiveJoinResponse(r);
     call receivedPermission := ReceiveJoinResponseIntro(r, joinResponse);
     call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(receivedPermission->n));
-    call {:layer 1} AddToQuorum(ns, receivedPermission->n);
-    ns[receivedPermission->n] := true;
+    call {:layer 1} ns := AddToQuorum(ns, receivedPermission->n);
     call receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
     count := count + 1;
     if (joinResponse->lastVoteRound > maxRound) {
@@ -219,8 +218,7 @@ requires call YieldInvChannels();
   {
     call voteResponse := ReceiveVoteResponse(r);
     call receivedPermission := ReceiveVoteResponseIntro(r, voteResponse);
-    call {:layer 1} AddToQuorum(q, receivedPermission->n);
-    q[receivedPermission->n] := true;
+    call {:layer 1} q := AddToQuorum(q, receivedPermission->n);
     call receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
     count := count + 1;
     if (2 * count > numNodes) {
@@ -285,9 +283,10 @@ modifies voteInfo;
 }
 
 // Trusted lemmas for the proof of Propose and Conclude
-procedure {:lemma} AddToQuorum(q: NodeSet, n: Node);
+procedure {:lemma} AddToQuorum(q: NodeSet, n: Node) returns (q': NodeSet);
 requires !q[n];
-ensures Cardinality(q[n := true]) == Cardinality(q) + 1;
+ensures q' == q[n := true];
+ensures Cardinality(q') == Cardinality(q) + 1;
 
 procedure {:lemma} MaxRoundLemma(voteInfo:[Round]Option VoteInfo, r: Round, ns1: NodeSet, ns2: NodeSet);
 requires Round(r);

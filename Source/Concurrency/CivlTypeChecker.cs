@@ -1752,10 +1752,7 @@ namespace Microsoft.Boogie
         }
         var layerNum = calledLayers[0];
         VisitYieldInvariantCallCmd(call, callerProcUpperLayer, layerNum);
-        if (call.Proc.OutParams.Any())
-        {
-          civlTypeChecker.checkingContext.Error(call, "Lemma procedure called by a yield procedure may not have outputs");
-        }
+        CheckCallOutputs(call, callerProcUpperLayer, layerNum);
       }
 
       private void VisitLinkActionCallCmd(CallCmd call, int callerProcUpperLayer,
