@@ -9,5 +9,5 @@ yield procedure {:layer 1} Proc ({:linear "x"} i: int)
   call {:layer 1} Lemma(A, i);
 }
 
-procedure {:lemma} Lemma (set: [int]bool, i: int);
+pure procedure Lemma (set: [int]bool, i: int);
 requires !set[i];

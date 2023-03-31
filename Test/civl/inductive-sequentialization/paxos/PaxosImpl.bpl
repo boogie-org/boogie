@@ -283,12 +283,12 @@ modifies voteInfo;
 }
 
 // Trusted lemmas for the proof of Propose and Conclude
-procedure {:lemma} AddToQuorum(q: NodeSet, n: Node) returns (q': NodeSet);
+pure procedure AddToQuorum(q: NodeSet, n: Node) returns (q': NodeSet);
 requires !q[n];
 ensures q' == q[n := true];
 ensures Cardinality(q') == Cardinality(q) + 1;
 
-procedure {:lemma} MaxRoundLemma(voteInfo:[Round]Option VoteInfo, r: Round, ns1: NodeSet, ns2: NodeSet);
+pure procedure MaxRoundLemma(voteInfo:[Round]Option VoteInfo, r: Round, ns1: NodeSet, ns2: NodeSet);
 requires Round(r);
 ensures MaxRound(r, MapOr(ns1, ns2), voteInfo) ==
          if (MaxRound(r, ns1, voteInfo) < MaxRound(r, ns2, voteInfo))

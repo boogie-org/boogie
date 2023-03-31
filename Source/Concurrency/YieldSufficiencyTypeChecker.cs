@@ -16,7 +16,7 @@ namespace Microsoft.Boogie
     private const string L = "L"; // left mover action
     private const string R = "R"; // right mover action
     private const string N = "N"; // non mover action
-    private const string P = "P"; // private access (local variable, link action, lemma, ...)
+    private const string P = "P"; // private access (local variable, link action, pure procedure, ...)
     private const string M = "M"; // modification of global variables
     private const string A = "A"; // async call
     
@@ -403,8 +403,7 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabel(CallCmd callCmd)
       {
-        if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc) ||
-            civlTypeChecker.lemmaProcedures.Contains(callCmd.Proc))
+        if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc) || callCmd.Proc.IsPure)
         {
           return P;
         }
@@ -473,8 +472,7 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabelAsync(CallCmd callCmd)
       {
-        if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc) ||
-            civlTypeChecker.lemmaProcedures.Contains(callCmd.Proc))
+        if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc) || callCmd.Proc.IsPure)
         {
           return P;
         }

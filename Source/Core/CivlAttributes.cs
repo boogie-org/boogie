@@ -7,32 +7,19 @@ namespace Microsoft.Boogie
   public static class CivlAttributes
   {
     public const string LAYER = "layer";
-
     public const string YIELDS = "yields";
-
     public const string MARK = "mark";
     public const string HIDE = "hide";
+    public const string PENDING_ASYNC = "pending_async";
+    public const string SYNC = "sync";
+
+    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, MARK, HIDE, PENDING_ASYNC, SYNC };
 
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
     public const string LINEAR_OUT = "linear_out";
 
-    public const string LEMMA = "lemma";
-
-    public const string PENDING_ASYNC = "pending_async";
-    public const string SYNC = "sync";
-
-    private static string[] CIVL_ATTRIBUTES =
-    {
-      LAYER,
-      YIELDS,
-      MARK, HIDE,
-      LEMMA,
-      PENDING_ASYNC, SYNC
-    };
-
-    private static string[] LINEAR_ATTRIBUTES =
-      {LINEAR, LINEAR_IN, LINEAR_OUT};
+    private static string[] LINEAR_ATTRIBUTES = { LINEAR, LINEAR_IN, LINEAR_OUT };
 
     public static bool HasCivlAttribute(this ICarriesAttributes obj)
     {

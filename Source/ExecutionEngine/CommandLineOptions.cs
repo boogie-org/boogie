@@ -1902,11 +1902,8 @@ namespace Microsoft.Boogie
 
   ---- Civl ------------------------------------------------------------------
 
-     {:yields N}
+     {:yields}
        Yielding loop.
-
-     {:lemma}
-       Lemma procedure.
 
      {:layer N}
      {:layer M, N}
@@ -1916,6 +1913,12 @@ namespace Microsoft.Boogie
      {:hide}
        Hidden input/output parameter.
 
+     {:pending_async}
+       Local variable collecting pending asyncs in yielding procedure.
+
+     {:sync}
+       Synchronized async call.
+
      {:linear ""domain""}
        Permission type for domain.
        Collector function for domain.
@@ -1923,13 +1926,7 @@ namespace Microsoft.Boogie
 
      {:linear_in ""domain""}
      {:linear_out ""domain""}
-       Linear input/output parameter.
-
-     {:pending_async}
-       Local variable collecting pending asyncs in yielding procedure.
-
-     {:sync}
-       Synchronized async call.";
+       Linear input/output parameter.";
 
     protected override string HelpHeader =>
       base.HelpHeader + @"

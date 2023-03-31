@@ -17,10 +17,10 @@ datatype Perm { Left(i: int), Right(i: int) }
 function Size<T>(set: [T]bool): int;
 axiom {:ctor "Lset"} (forall<T> set: [T]bool :: Size(set) >= 0);
 
-procedure {:lemma} SizeLemma<T>(X: [T]bool, x: T);
+pure procedure SizeLemma<T>(X: [T]bool, x: T);
 ensures Size(X[x := false]) + 1 == Size(X[x := true]);
 
-procedure {:lemma} SubsetSizeRelationLemma<T>(X: [T]bool, Y: [T]bool);
+pure procedure SubsetSizeRelationLemma<T>(X: [T]bool, Y: [T]bool);
 requires MapImp(X, Y) == MapConst(true);
 ensures X == Y || Size(X) < Size(Y);
 

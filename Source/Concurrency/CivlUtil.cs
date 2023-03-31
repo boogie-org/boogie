@@ -344,7 +344,7 @@ namespace Microsoft.Boogie
       List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
       QKeyValue kv = null)
     {
-      return new Procedure(Token.NoToken, name, new List<TypeVariable>(), inParams, outParams, requires, modifies, ensures, kv);
+      return new Procedure(Token.NoToken, name, new List<TypeVariable>(), inParams, outParams, false, requires, modifies, ensures, kv);
     }
 
     public static Implementation Implementation(Procedure proc,

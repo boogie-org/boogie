@@ -3083,53 +3083,28 @@ namespace Microsoft.Boogie
 
   public class Procedure : DeclWithFormals
   {
-    public List<Requires> /*!*/
-      Requires;
+    public bool IsPure;
 
-    public List<IdentifierExpr> /*!*/
-      Modifies;
+    public List<Requires> Requires;
 
-    public List<Ensures> /*!*/
-      Ensures;
+    public List<IdentifierExpr> Modifies;
 
-    [ContractInvariantMethod]
-    void ObjectInvariant()
+    public List<Ensures> Ensures;
+
+    public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
+      List<Variable> inParams, List<Variable> outParams, bool isPure,
+      List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures)
+      : this(tok, name, typeParams, inParams, outParams, isPure, requires, modifies, ensures, null)
     {
-      Contract.Invariant(Requires != null);
-      Contract.Invariant(Modifies != null);
-      Contract.Invariant(Ensures != null);
     }
 
-    public Procedure(IToken /*!*/ tok, string /*!*/ name, List<TypeVariable> /*!*/ typeParams,
-      List<Variable> /*!*/ inParams, List<Variable> /*!*/ outParams,
-      List<Requires> /*!*/ requires, List<IdentifierExpr> /*!*/ modifies, List<Ensures> /*!*/ ensures)
-      : this(tok, name, typeParams, inParams, outParams, requires, modifies, ensures, null)
-    {
-      Contract.Requires(tok != null);
-      Contract.Requires(name != null);
-      Contract.Requires(typeParams != null);
-      Contract.Requires(inParams != null);
-      Contract.Requires(outParams != null);
-      Contract.Requires(requires != null);
-      Contract.Requires(modifies != null);
-      Contract.Requires(ensures != null);
-      //:this(tok, name, typeParams, inParams, outParams, requires, modifies, ensures, null);
-    }
-
-    public Procedure(IToken /*!*/ tok, string /*!*/ name, List<TypeVariable> /*!*/ typeParams,
-      List<Variable> /*!*/ inParams, List<Variable> /*!*/ outParams,
-      List<Requires> /*!*/ @requires, List<IdentifierExpr> /*!*/ @modifies, List<Ensures> /*!*/ @ensures, QKeyValue kv
+    public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
+      List<Variable> inParams, List<Variable> outParams, bool isPure,
+      List<Requires> @requires, List<IdentifierExpr> @modifies, List<Ensures> @ensures, QKeyValue kv
     )
       : base(tok, name, typeParams, inParams, outParams)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(name != null);
-      Contract.Requires(typeParams != null);
-      Contract.Requires(inParams != null);
-      Contract.Requires(outParams != null);
-      Contract.Requires(@requires != null);
-      Contract.Requires(@modifies != null);
-      Contract.Requires(@ensures != null);
+      this.IsPure = isPure;
       this.Requires = @requires;
       this.Modifies = @modifies;
       this.Ensures = @ensures;
@@ -3138,8 +3113,7 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
-      stream.Write(this, level, "procedure ");
+      stream.Write(this, level, IsPure ? "pure procedure " : "procedure ");
       EmitAttributes(stream);
       stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
       EmitSignature(stream, false);
@@ -3147,7 +3121,7 @@ namespace Microsoft.Boogie
 
       level++;
 
-      foreach (Requires /*!*/ e in this.Requires)
+      foreach (Requires e in this.Requires)
       {
         Contract.Assert(e != null);
         e.Emit(stream, level);
@@ -3160,7 +3134,7 @@ namespace Microsoft.Boogie
         stream.WriteLine(";");
       }
 
-      foreach (Ensures /*!*/ e in this.Ensures)
+      foreach (Ensures e in this.Ensures)
       {
         Contract.Assert(e != null);
         e.Emit(stream, level);
@@ -3172,19 +3146,27 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddProcedure(this);
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.PushVarContext();
 
-      foreach (IdentifierExpr /*!*/ ide in Modifies)
+      if (Modifies.Any())
       {
-        Contract.Assert(ide != null);
-        ide.Resolve(rc);
+        if (IsPure)
+        {
+          rc.Error(this, "unnecessary modifies clause for pure procedure");
+        }
+        else
+        {
+          foreach (IdentifierExpr ide in Modifies)
+          {
+            Contract.Assert(ide != null);
+            ide.Resolve(rc);
+          }
+        }
       }
 
       int previousTypeBinderState = rc.TypeBinderState;
@@ -3192,10 +3174,14 @@ namespace Microsoft.Boogie
       {
         RegisterTypeParameters(rc);
 
+        if (IsPure)
+        {
+          rc.StateMode = ResolutionContext.State.StateLess;
+        }
         RegisterFormals(InParams, rc);
         ResolveFormals(InParams,
           rc); // "where" clauses of in-parameters are resolved without the out-parameters in scope
-        foreach (Requires /*!*/ e in Requires)
+        foreach (Requires e in Requires)
         {
           Contract.Assert(e != null);
           e.Resolve(rc);
@@ -3205,8 +3191,11 @@ namespace Microsoft.Boogie
         ResolveFormals(OutParams,
           rc); // "where" clauses of out-parameters are resolved with both in- and out-parameters in scope
 
-        rc.StateMode = ResolutionContext.State.Two;
-        foreach (Ensures /*!*/ e in Ensures)
+        if (!IsPure)
+        {
+          rc.StateMode = ResolutionContext.State.Two;
+        }
+        foreach (Ensures e in Ensures)
         {
           Contract.Assert(e != null);
           e.Resolve(rc);
@@ -3233,9 +3222,8 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       base.Typecheck(tc);
-      foreach (IdentifierExpr /*!*/ ide in Modifies)
+      foreach (IdentifierExpr ide in Modifies)
       {
         Contract.Assert(ide != null);
         Contract.Assume(ide.Decl != null);
@@ -3243,17 +3231,16 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, "modifies list contains constant: {0}", ide.Name);
         }
-
         ide.Typecheck(tc);
       }
 
-      foreach (Requires /*!*/ e in Requires)
+      foreach (Requires e in Requires)
       {
         Contract.Assert(e != null);
         e.Typecheck(tc);
       }
 
-      foreach (Ensures /*!*/ e in Ensures)
+      foreach (Ensures e in Ensures)
       {
         Contract.Assert(e != null);
         e.Typecheck(tc);
@@ -3262,8 +3249,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitProcedure(this);
     }
   }
@@ -3279,7 +3264,7 @@ namespace Microsoft.Boogie
     }
 
     public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
-      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), requires, new List<IdentifierExpr>(),
+      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false, requires, new List<IdentifierExpr>(),
         requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
     {
     }
@@ -3370,9 +3355,10 @@ namespace Microsoft.Boogie
 
     public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
       List<Variable> inParams, List<Variable> outParams,
-      List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction, List<ElimDecl> eliminates,
+      List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
+      List<ElimDecl> eliminates,
       List<IdentifierExpr> modifies, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      new List<Requires>(), modifies, new List<Ensures>(), kv)
+      false, new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
       this.moverType = moverType;
       this.actionQualifier = actionQualifier;
@@ -3549,7 +3535,7 @@ namespace Microsoft.Boogie
       List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
       List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      requires, modifies, ensures, kv)
+      false, requires, modifies, ensures, kv)
     {
       this.moverType = moverType;
       this.yieldRequires = yieldRequires;
@@ -3619,7 +3605,7 @@ namespace Microsoft.Boogie
     public LoopProcedure(Implementation impl, Block header,
       List<Variable> inputs, List<Variable> outputs, List<IdentifierExpr> globalMods)
       : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
-        new List<TypeVariable>(), inputs, outputs,
+        new List<TypeVariable>(), inputs, outputs, false,
         new List<Requires>(), globalMods, new List<Ensures>())
     {
       enclosingImpl = impl;
@@ -3648,16 +3634,15 @@ namespace Microsoft.Boogie
 
   public class Implementation : DeclWithFormals {
 
-    public List<Variable> /*!*/
-      LocVars;
+    public List<Variable> LocVars;
 
     [Rep] public StmtList StructuredStmts;
-    [Rep] public List<Block /*!*/> /*!*/ Blocks;
+    [Rep] public List<Block> Blocks;
     public Procedure Proc;
 
     // Blocks before applying passification etc.
     // Both are used only when /inline is set.
-    public List<Block /*!*/> OriginalBlocks;
+    public List<Block> OriginalBlocks;
     public List<Variable> OriginalLocVars;
 
     public readonly ISet<byte[]> AssertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
@@ -4154,7 +4139,7 @@ namespace Microsoft.Boogie
 
         ResolveAttributes(rc);
 
-        rc.StateMode = ResolutionContext.State.Two;
+        rc.StateMode = Proc.IsPure ? ResolutionContext.State.StateLess : ResolutionContext.State.Two;
         foreach (Block b in Blocks)
         {
           b.Resolve(rc);
@@ -4207,8 +4192,10 @@ namespace Microsoft.Boogie
 
       List<IdentifierExpr> oldFrame = tc.Frame;
       bool oldYields = tc.Yields;
+      bool oldIsPure = tc.IsPure;
       tc.Frame = Proc.Modifies;
       tc.Yields = Proc is YieldProcedureDecl;
+      tc.IsPure = Proc.IsPure;
       foreach (Block b in Blocks)
       {
         b.Typecheck(tc);
@@ -4217,6 +4204,7 @@ namespace Microsoft.Boogie
       Contract.Assert(tc.Frame == Proc.Modifies);
       tc.Frame = oldFrame;
       tc.Yields = oldYields;
+      tc.IsPure = oldIsPure;
     }
 
     void MatchFormals(List<Variable> /*!*/ implFormals, List<Variable> /*!*/ procFormals, string /*!*/ inout,

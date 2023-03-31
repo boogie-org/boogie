@@ -50,10 +50,10 @@ invariant allocMap->domain[tid] ==> i <= allocMap->tidToPtr[tid];
 
 function Size<T>([T]bool) returns (int);
 
-procedure {:lemma} SizeLemma1<T>(X: [T]bool, x: T);
+pure procedure SizeLemma1<T>(X: [T]bool, x: T);
 ensures Size(X[x := false]) + 1 == Size(X[x := true]);
 
-procedure {:lemma} SizeLemma2<T>(X: [T]bool, Y: [T]bool);
+pure procedure SizeLemma2<T>(X: [T]bool, Y: [T]bool);
 requires MapDiff(X, Y) == MapConst(false);
 ensures Size(Y) == Size(X) + Size(MapDiff(Y, X));
 

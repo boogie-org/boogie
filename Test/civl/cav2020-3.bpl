@@ -23,15 +23,15 @@ function {:inline} IntSetEq(X: [int]bool, Y: [int]bool): bool
 
 function size(set: [int]bool): int;
 
-procedure {:lemma} LemmaAddToSet(set: [int]bool, i: int);
+pure procedure LemmaAddToSet(set: [int]bool, i: int);
 requires !set[i];
 ensures size(set[i := true]) ==  size(set) + 1;
 
-procedure {:lemma} LemmaRemoveFromSet(set: [int]bool, i: int);
+pure procedure LemmaRemoveFromSet(set: [int]bool, i: int);
 requires set[i];
 ensures size(set[i := false]) ==  size(set) - 1;
 
-procedure {:lemma} LemmaSubsetSizeRelation(a: [int]bool, b: [int]bool);
+pure procedure LemmaSubsetSizeRelation(a: [int]bool, b: [int]bool);
 requires IntSetSubset(a, b);
 ensures a == b || size(a) < size(b);
 

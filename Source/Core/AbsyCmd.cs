@@ -3314,6 +3314,10 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
         actualTypeParams);
 
+      if (tc.IsPure && !Proc.IsPure)
+      {
+        tc.Error(this, "pure procedure may only call a pure procedure");
+      }
       if (!tc.Options.DoModSetAnalysis && IsAsync)
       {
         if (!tc.Yields)

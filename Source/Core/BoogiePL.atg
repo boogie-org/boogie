@@ -798,13 +798,14 @@ Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
      List<Requires>/*!*/ pre = new List<Requires>();
      List<IdentifierExpr>/*!*/ mods = new List<IdentifierExpr>();
      List<Ensures>/*!*/ post = new List<Ensures>();
-
+     bool isPure = false;
      List<Variable>/*!*/ locals = new List<Variable>();
      StmtList/*!*/ stmtList;
      QKeyValue kv = null;
      impl = null;
   .)
 
+  ["pure" (. isPure = true; .)]
   "procedure"
   ProcSignature<true, out x, out typeParams, out ins, out outs, out kv>
   ( ";"
@@ -816,7 +817,7 @@ Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
                                 Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
     .)
   )
-  (. proc = new Procedure(x, x.val, typeParams, ins, outs, pre, mods, post, kv); .)
+  (. proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, mods, post, kv); .)
   .
 
 Implementation<out Implementation/*!*/ impl>

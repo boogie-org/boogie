@@ -339,7 +339,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      return enclosingProc is ActionDecl || civlTypeChecker.IsLemmaProcedure(enclosingProc);
+      return enclosingProc is ActionDecl || enclosingProc.IsPure;
     }
 
     private IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)

@@ -266,7 +266,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (civlTypeChecker.lemmaProcedures.Contains(newCall.Proc))
+      if (newCall.Proc.IsPure)
       {
         if (civlTypeChecker.FindLayers(newCall.Attributes)[0] == layerNum)
         {

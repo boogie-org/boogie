@@ -446,11 +446,11 @@ function {:inline} {:linear "pair"} XidSetCollector(xids: [Xid]bool) : [Pair]boo
 
 function card(pairs: [Pair]bool, xid: Xid) : int;
 
-procedure {:lemma} Lemma_add_to_set (set: [Pair]bool, pair: Pair);
+pure procedure Lemma_add_to_set (set: [Pair]bool, pair: Pair);
 requires participantMid(pair->mid);
 requires !set[pair];
 ensures (forall xid: Xid :: card(set[pair := true], xid) == (if xid == pair->xid then card(set, xid) + 1 else card(set, xid)));
 
-procedure {:lemma} Lemma_all_in_set (set: [Pair]bool, xid: Xid);
+pure procedure Lemma_all_in_set (set: [Pair]bool, xid: Xid);
 requires SetInv(set);
 ensures card(set, xid) >= numParticipants ==> (forall mid: Mid :: participantMid(mid) ==> set[Pair(xid, mid)]);

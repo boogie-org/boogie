@@ -46,19 +46,19 @@ axiom (forall As:[A]bool :: cardAs(As) >= 0);
 function cardBs (Bs:[B]bool) : int;
 axiom (forall Bs:[B]bool :: cardBs(Bs) >= 0);
 
-procedure {:lemma} Lemma_add_to_A (a: A, As: [A]bool);
+pure procedure Lemma_add_to_A (a: A, As: [A]bool);
 requires !As[a];
 ensures  cardAs(As[a := true]) == cardAs(As) + 1;
 
-procedure {:lemma} Lemma_add_to_B (b: B, Bs: [B]bool);
+pure procedure Lemma_add_to_B (b: B, Bs: [B]bool);
 requires !Bs[b];
 ensures cardBs(Bs[b := true]) == cardBs(Bs) + 1;
 
-procedure {:lemma} Lemma_card_geq (As: [A]bool, Bs: [B]bool);
+pure procedure Lemma_card_geq (As: [A]bool, Bs: [B]bool);
 requires (forall b: B :: Bs[b] ==> As[bToA(b)]);
 ensures cardAs(As) >= cardBs(Bs);
 
-procedure {:lemma} Lemma_card_greater (_b: B, As: [A]bool, Bs: [B]bool);
+pure procedure Lemma_card_greater (_b: B, As: [A]bool, Bs: [B]bool);
 requires (forall b: B :: Bs[b] ==> As[bToA(b)]);
 requires !Bs[_b];
 requires As[bToA(_b)];

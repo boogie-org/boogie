@@ -746,6 +746,7 @@ namespace Microsoft.Boogie
     public CoreOptions Options { get; }
     public List<IdentifierExpr> Frame; // used in checking the assignment targets of implementation bodies
     public bool Yields;
+    public bool IsPure;
 
     public TypecheckingContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)
