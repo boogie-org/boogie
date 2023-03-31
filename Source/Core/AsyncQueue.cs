@@ -36,6 +36,17 @@ public class AsyncQueue<T>
     }
   }
 
+  public IEnumerable<T> Items
+  {
+    get
+    {
+      lock (myLock)
+      {
+        return items.ToArray();
+      }
+    }
+  }
+
   public Task<T> Dequeue(CancellationToken cancellationToken)
   {
     lock (myLock) {

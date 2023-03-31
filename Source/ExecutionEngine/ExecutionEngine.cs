@@ -26,10 +26,15 @@ namespace Microsoft.Boogie
 
   public class ExecutionEngine : IDisposable
   {
+    /// <summary>
+    /// Boogie traverses the Boogie and VCExpr AST using the call-stack,
+    /// so it needs to use a large stack to prevent stack overflows.
+    /// </summary>
+    private readonly TaskFactory largeThreadTaskFactory;
 
     static int autoRequestIdCount;
 
-    static readonly string AutoRequestIdPrefix = "auto_request_id_";
+    private const string AutoRequestIdPrefix = "auto_request_id_";
 
     public static string FreshRequestId() {
       var id = Interlocked.Increment(ref autoRequestIdCount);
@@ -63,6 +68,9 @@ namespace Microsoft.Boogie
       Cache = cache;
       checkerPool = new CheckerPool(options);
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
+      
+      var largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
+      largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
     public static ExecutionEngine CreateWithoutSharedCache(ExecutionEngineOptions options) {
@@ -870,7 +878,7 @@ namespace Microsoft.Boogie
       var verificationResult = new VerificationResult(impl, programId);
 
       var batchCompleted = new Subject<(Split split, VCResult vcResult)>();
-      var completeVerification = Task.Run(async () =>
+      var completeVerification = largeThreadTaskFactory.StartNew(async () =>
       {
         var vcgen = new VCGen(processedProgram.Program, checkerPool);
         vcgen.CachingActionCounts = stats.CachingActionCounts;
@@ -931,7 +939,7 @@ namespace Microsoft.Boogie
 
         batchCompleted.OnCompleted();
         return new Completed(verificationResult);
-      }, cancellationToken);
+      }, cancellationToken).Unwrap();
 
       return batchCompleted.Select(t => new BatchCompleted(t.split, t.vcResult)).Merge<IVerificationStatus>(Observable.FromAsync(() => completeVerification));
     }
