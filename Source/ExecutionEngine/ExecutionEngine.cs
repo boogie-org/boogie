@@ -30,10 +30,7 @@ namespace Microsoft.Boogie
     /// Boogie traverses the Boogie and VCExpr AST using the call-stack,
     /// so it needs to use a large stack to prevent stack overflows.
     /// </summary>
-    private static readonly CustomStackSizePoolTaskScheduler largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Environment.ProcessorCount);
-    private static readonly TaskFactory largeThreadTaskFactory = new(
-      CancellationToken.None, TaskCreationOptions.DenyChildAttach,
-      TaskContinuationOptions.None, largeThreadScheduler);
+    private readonly TaskFactory largeThreadTaskFactory;
 
     static int autoRequestIdCount;
 
@@ -71,6 +68,9 @@ namespace Microsoft.Boogie
       Cache = cache;
       checkerPool = new CheckerPool(options);
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
+      
+      var largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
+      largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
     public static ExecutionEngine CreateWithoutSharedCache(ExecutionEngineOptions options) {
