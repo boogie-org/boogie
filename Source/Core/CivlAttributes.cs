@@ -101,4 +101,19 @@ namespace Microsoft.Boogie
       return callCmd.HasAttribute(MARK);
     }
   }
+
+  public static class CivlPrimitives
+  {
+    public static HashSet<string> Linear = new()
+    {
+      "Lheap_Empty", "Lheap_Split", "Lheap_Transfer", "Lheap_Read", "Lheap_Write", "Lheap_Add", "Lheap_Remove",
+      "Lset_Empty", "Lset_Split", "Lset_Transfer",
+      "Lval_Split", "Lval_Transfer"
+    };
+
+    public static HashSet<string> Async = new()
+    {
+      "create_async", "create_asyncs", "create_multi_asyncs", "set_choice"
+    };
+  }
 }

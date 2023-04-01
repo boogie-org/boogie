@@ -47,8 +47,8 @@ namespace Microsoft.Boogie
 
       // Construct call to inputAction
       var pendingAsyncTypeToOutputParamIndex = invariantAction.pendingAsyncs.Select((action, i) => (action, i))
-        .ToDictionary(tuple => tuple.action.pendingAsyncType, tuple => tuple.action.pendingAsyncStartIndex + tuple.i);
-      var outputVars = new List<Variable>(invariantAction.impl.OutParams.Take(invariantAction.pendingAsyncStartIndex));
+        .ToDictionary(tuple => tuple.action.pendingAsyncType, tuple => tuple.action.PendingAsyncStartIndex + tuple.i);
+      var outputVars = new List<Variable>(invariantAction.impl.OutParams.Take(invariantAction.PendingAsyncStartIndex));
       outputVars.AddRange(inputAction.pendingAsyncs.Select(action =>
         invariantAction.impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.pendingAsyncType]]));
       cmds.Add(CmdHelper.CallCmd(inputAction.proc, invariantAction.impl.InParams, outputVars));
@@ -323,7 +323,7 @@ namespace Microsoft.Boogie
 
     public static Substitution GetSubstitution(Action from, Action to)
     {
-      Debug.Assert(from.pendingAsyncStartIndex == to.pendingAsyncStartIndex);
+      Debug.Assert(from.PendingAsyncStartIndex == to.PendingAsyncStartIndex);
       Debug.Assert(from.impl.InParams.Count == to.impl.InParams.Count);
       Debug.Assert(from.impl.OutParams.Count <= to.impl.OutParams.Count);
       
@@ -332,11 +332,11 @@ namespace Microsoft.Boogie
       {
         map[from.impl.InParams[i]] = Expr.Ident(to.impl.InParams[i]);
       }
-      for (int i = 0; i < from.pendingAsyncStartIndex; i++)
+      for (int i = 0; i < from.PendingAsyncStartIndex; i++)
       {
         map[from.impl.OutParams[i]] = Expr.Ident(to.impl.OutParams[i]);
       }
-      for (int i = from.pendingAsyncStartIndex; i < from.impl.OutParams.Count; i++)
+      for (int i = from.PendingAsyncStartIndex; i < from.impl.OutParams.Count; i++)
       {
         var formal = from.impl.OutParams[i];
         var pendingAsyncType = (CtorType)((MapType)formal.TypedIdent.Type).Arguments[0];

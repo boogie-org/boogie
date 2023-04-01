@@ -5,13 +5,6 @@ namespace Microsoft.Boogie;
 
 public class LinearRewriter
 {
-  private static HashSet<string> primitives = new HashSet<string>()
-  {
-    "Lheap_Empty", "Lheap_Split", "Lheap_Transfer", "Lheap_Read", "Lheap_Write","Lheap_Add", "Lheap_Remove",
-    "Lset_Empty", "Lset_Split", "Lset_Transfer",
-    "Lval_Split", "Lval_Transfer",
-  };
-
   private CivlTypeChecker civlTypeChecker;
 
   private Procedure proc;
@@ -44,7 +37,7 @@ public class LinearRewriter
   
   public static bool IsPrimitive(DeclWithFormals decl)
   {
-    return primitives.Contains(decl.Name);
+    return CivlPrimitives.Linear.Contains(decl.Name);
   }
 
   public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)

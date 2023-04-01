@@ -19,7 +19,6 @@ namespace Microsoft.Boogie
 
     private Dictionary<Procedure, Procedure> procToDuplicate; /* Original -> Duplicate */
     private AbsyMap absyMap; /* Duplicate -> Original */
-    private HashSet<Procedure> yieldingProcs;
     private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
 
     private Dictionary<CallCmd, CallCmd> refinementCallCmds; // rewritten -> original
@@ -33,7 +32,6 @@ namespace Microsoft.Boogie
       this.layerNum = layerNum;
       this.procToDuplicate = new Dictionary<Procedure, Procedure>();
       this.absyMap = new AbsyMap();
-      this.yieldingProcs = new HashSet<Procedure>();
       this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
       this.refinementBlocks = new Dictionary<CallCmd, Block>();
     }
@@ -47,27 +45,21 @@ namespace Microsoft.Boogie
       {
         YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[node];
         Debug.Assert(layerNum <= yieldingProc.upperLayer);
-
-        Procedure proc = (Procedure) node.Clone();
-        proc.Name = civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}");
-        proc.InParams = this.VisitVariableSeq(node.InParams);
-        proc.OutParams = this.VisitVariableSeq(node.OutParams);
-        proc.Requires = this.VisitRequiresSeq(node.Requires);
-        proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
-        if (yieldingProc is MoverProc moverProc && yieldingProc.upperLayer == layerNum)
-        {
-          proc.Modifies = moverProc.modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
-        }
-        else
-        {
-          proc.Modifies = civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList();
-          yieldingProcs.Add(proc);
-        }
-
+        var proc = new Procedure(
+          node.tok,
+          civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}"),
+          new List<TypeVariable>(),
+          VisitVariableSeq(node.InParams),
+          VisitVariableSeq(node.OutParams),
+          false,
+          VisitRequiresSeq(node.Requires),
+          (yieldingProc is MoverProc moverProc && yieldingProc.upperLayer == layerNum
+            ? moverProc.modifiedGlobalVars.Select(g => Expr.Ident(g))
+            : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
+          VisitEnsuresSeq(node.Ensures));
         procToDuplicate[node] = proc;
         absyMap[proc] = node;
       }
-
       return procToDuplicate[node];
     }
 

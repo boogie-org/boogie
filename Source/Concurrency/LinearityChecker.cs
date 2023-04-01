@@ -44,7 +44,7 @@ class LinearityChecker
 
     private IdentifierExpr PAs(AtomicAction action, int pendingAsyncIndex)
     {
-      return Expr.Ident(action.impl.OutParams[action.pendingAsyncStartIndex + pendingAsyncIndex]);
+      return Expr.Ident(action.impl.OutParams[action.PendingAsyncStartIndex + pendingAsyncIndex]);
     }
     
     private void AddChecker(Action action, List<Declaration> decls)
