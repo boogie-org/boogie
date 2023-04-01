@@ -12,28 +12,48 @@ public class LinearRewriter
     "Lval_Split", "Lval_Transfer",
   };
 
-  private Monomorphizer monomorphizer;
+  private CivlTypeChecker civlTypeChecker;
 
-  private ConcurrencyOptions options;
-
-  private List<IdentifierExpr> frame;
+  private Procedure proc;
   
+  private Monomorphizer monomorphizer => civlTypeChecker.program.monomorphizer;
+  
+  private ConcurrencyOptions options => civlTypeChecker.Options;
+
   private int? layerNum;
 
-  public LinearRewriter(ConcurrencyOptions options, Monomorphizer monomorphizer, List<IdentifierExpr> frame, int? layerNum)
+  private LinearRewriter(CivlTypeChecker civlTypeChecker, Procedure proc)
   {
-    this.monomorphizer = monomorphizer;
-    this.options = options;
-    this.frame = frame;
-    this.layerNum = layerNum;
+    int? LayerNum()
+    {
+      if (proc is not YieldProcedureDecl)
+      {
+        return null;
+      }
+      var layers = civlTypeChecker.FindLayers(proc.Attributes);
+      if (layers.Count == 0)
+      {
+        return null;
+      }
+      return layers[0];
+    }
+    this.civlTypeChecker = civlTypeChecker;
+    this.proc = proc;
+    this.layerNum = LayerNum();
   }
   
   public static bool IsPrimitive(DeclWithFormals decl)
   {
     return primitives.Contains(decl.Name);
   }
-  
-  public List<Cmd> RewriteCmdSeq(List<Cmd> cmdSeq)
+
+  public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)
+  {
+    var linearRewriter = new LinearRewriter(civlTypeChecker, impl.Proc);
+    impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
+  }
+
+  private List<Cmd> RewriteCmdSeq(List<Cmd> cmdSeq)
   {
     var newCmdSeq = new List<Cmd>();
     foreach (var cmd in cmdSeq)
@@ -50,7 +70,7 @@ public class LinearRewriter
     return newCmdSeq;
   }
 
-  public List<Cmd> RewriteCallCmd(CallCmd callCmd)
+  private List<Cmd> RewriteCallCmd(CallCmd callCmd)
   {
     switch (monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
@@ -461,7 +481,7 @@ public class LinearRewriter
       return;
     }
     var tc = new TypecheckingContext(null, options);
-    tc.Frame = frame;
+    tc.Frame = proc.Modifies;
     absys.Iter(absy => absy.Typecheck(tc));
   }
 }

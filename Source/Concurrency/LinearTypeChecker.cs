@@ -627,21 +627,7 @@ namespace Microsoft.Boogie
         var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
         impls.Iter(impl =>
         {
-          int? LayerNum(Procedure proc)
-          {
-            if (proc is not YieldProcedureDecl)
-            {
-              return null;
-            }
-            var layers = civlTypeChecker.FindLayers(proc.Attributes);
-            if (layers.Count == 0)
-            {
-              return null;
-            }
-            return layers[0];
-          }
-          var linearRewriter = new LinearRewriter(civlTypeChecker.Options, program.monomorphizer, impl.Proc.Modifies, LayerNum(impl.Proc));
-          impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
+          LinearRewriter.Rewrite(civlTypeChecker, impl);
         }); 
       }
     }
