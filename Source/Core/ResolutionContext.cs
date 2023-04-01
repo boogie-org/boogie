@@ -744,9 +744,7 @@ namespace Microsoft.Boogie
   public class TypecheckingContext : CheckingContext
   {
     public CoreOptions Options { get; }
-    public List<IdentifierExpr> Frame; // used in checking the assignment targets of implementation bodies
-    public bool Yields;
-    public bool IsPure;
+    public Procedure Proc;
 
     public TypecheckingContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)
@@ -756,9 +754,9 @@ namespace Microsoft.Boogie
 
     public bool InFrame(Variable v)
     {
-      Contract.Requires(v != null);
-      Contract.Requires(Frame != null);
-      return Frame.Any(f => f.Decl == v);
+      return Proc.Modifies.Any(f => f.Decl == v);
     }
+
+    public bool Yields => Proc is YieldProcedureDecl;
   }
 }

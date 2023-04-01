@@ -481,7 +481,7 @@ public class LinearRewriter
       return;
     }
     var tc = new TypecheckingContext(null, options);
-    tc.Frame = proc.Modifies;
+    tc.Proc = proc;
     absys.Iter(absy => absy.Typecheck(tc));
   }
 }

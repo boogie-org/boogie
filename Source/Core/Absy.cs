@@ -3580,9 +3580,13 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       base.Typecheck(tc);
+      var oldProc = tc.Proc;
+      tc.Proc = this;
       yieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
       yieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
       yieldPreserves.Iter(callCmd => callCmd.Typecheck(tc));
+      Contract.Assert(tc.Proc == this);
+      tc.Proc = oldProc;
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -4190,21 +4194,14 @@ namespace Microsoft.Boogie
         v.Typecheck(tc);
       }
 
-      List<IdentifierExpr> oldFrame = tc.Frame;
-      bool oldYields = tc.Yields;
-      bool oldIsPure = tc.IsPure;
-      tc.Frame = Proc.Modifies;
-      tc.Yields = Proc is YieldProcedureDecl;
-      tc.IsPure = Proc.IsPure;
+      var oldProc = tc.Proc;
+      tc.Proc = Proc;
       foreach (Block b in Blocks)
       {
         b.Typecheck(tc);
       }
-
-      Contract.Assert(tc.Frame == Proc.Modifies);
-      tc.Frame = oldFrame;
-      tc.Yields = oldYields;
-      tc.IsPure = oldIsPure;
+      Contract.Assert(tc.Proc == Proc);
+      tc.Proc = oldProc;
     }
 
     void MatchFormals(List<Variable> /*!*/ implFormals, List<Variable> /*!*/ procFormals, string /*!*/ inout,
