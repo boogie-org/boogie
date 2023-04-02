@@ -81,7 +81,7 @@ namespace Microsoft.Boogie
         new List<Variable>(),
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
       SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, null, this);
-      SkipAtomicAction.InitializeInputOutputRelation(this);
+      SkipAtomicAction.CompleteInitialization(this);
     }
 
     public string AddNamePrefix(string name)
@@ -405,11 +405,11 @@ namespace Microsoft.Boogie
       // Construct transition and input-output relation.
       procToAtomicAction.Values.Iter(action =>
       {
-        action.InitializeInputOutputRelation(this);
+        action.CompleteInitialization(this, true);
       });
       procToInvariantAction.Values.Iter(action =>
       {
-        action.InitializeInputOutputRelation(this);
+        action.CompleteInitialization(this, true);
       });
       
       // Construct inductive sequentializations

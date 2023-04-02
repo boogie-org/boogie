@@ -3543,6 +3543,9 @@ namespace Microsoft.Boogie
     public Function PendingAsyncIte => pendingAsyncIte;
     private Function pendingAsyncIte;
 
+    // This method is needed to ensure that all support monomorphized functions can be generated during Civl type checking.
+    // Otherwise, during later passes, monomorphization might be invoked and cause program.TopLevelDeclarations to be modified
+    // while an iteration is being done on it.
     public void Initialize(Monomorphizer monomorphizer)
     {
       if (pendingAsyncCtorDecl == null)
