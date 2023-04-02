@@ -22,7 +22,6 @@ namespace Microsoft.Boogie
 
     public Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
     private Dictionary<ActionDecl, InvariantAction> procToInvariantAction;
-    public Dictionary<Procedure, LinkAction> procToLinkAction;
     public Dictionary<Procedure, YieldingProc> procToYieldingProc;
 
     public List<InductiveSequentialization> inductiveSequentializations;
@@ -52,7 +51,6 @@ namespace Microsoft.Boogie
       this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
       this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
       this.procToInvariantAction = new Dictionary<ActionDecl, InvariantAction>();
-      this.procToLinkAction = new Dictionary<Procedure, LinkAction>();
       this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
@@ -82,8 +80,7 @@ namespace Microsoft.Boogie
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
-      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, null);
-      SkipAtomicAction.CompleteInitialization(this, new List<ActionDecl>());
+      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, null, this);
       SkipAtomicAction.InitializeInputOutputRelation(this);
     }
 
@@ -336,10 +333,15 @@ namespace Microsoft.Boogie
       }
 
       // Four-step initialization process for actions:
-      // First, create all actions.
-      // Second, desugar all actions with respect to pending asyncs.
-      // Third, inline actions.
+      // First, initialize all action decls so that all the pending async machinery is set up.
+      // Second, create all actions which also desugars set_choice and variations of create_async.
+      // Third, inline actions. This step must be done after the desugaring.
       // Fourth, construct the transition and input-output relation for all actions.
+      
+      // Initialize ActionDecls
+      actionProcs.Iter(proc => proc.Initialize(program.monomorphizer));
+      
+      // Create all actions
       foreach (var proc in actionProcs.Where(proc => proc.refinedAction == null))
       {
         // In this loop, we create all link, invariant, and abstraction actions,
@@ -349,24 +351,23 @@ namespace Microsoft.Boogie
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.actionQualifier == ActionQualifier.Link)
         {
-          procToLinkAction[proc] = new LinkAction(proc, impl, layerRange);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, MoverType.None, null, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Invariant)
         {
-          procToInvariantAction[proc] = new InvariantAction(proc, impl, layerRange);
+          procToInvariantAction[proc] = new InvariantAction(proc, impl, layerRange, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Abstract)
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, MoverType.None, null);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, MoverType.None, null, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Async)
         {
-          proc.Initialize(program.monomorphizer);
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, null);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, null, this);
         }
         else
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, null);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, null, this);
         }
       }
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
@@ -376,24 +377,7 @@ namespace Microsoft.Boogie
       {
         CreateActionsThatRefineAnotherAction(proc, actionProcToImpl, actionProcToLayerRange);
       });
-      
-      // All actions have been created. Now we initialize their pending asyncs and desugar primitive
-      // invocations (for creating pending asyncs and setting choice) inside them. 
-      procToLinkAction.Values.Iter(action =>
-      {
-        action.CompleteInitialization(this, new List<ActionDecl>());
-      });
-      procToAtomicAction.Values.Iter(action =>
-      {
-        action.CompleteInitialization(this,
-          action.proc.creates.Select(actionDeclRef => actionDeclRef.actionDecl));
-      });
-      procToInvariantAction.Values.Iter(action =>
-      {
-        action.CompleteInitialization(this,
-          action.proc.creates.Select(actionDeclRef => actionDeclRef.actionDecl));
-      });
-      
+
       // Inline atomic actions
       CivlUtil.AddInlineAttribute(SkipAtomicAction.proc);
       actionProcs.Iter(proc =>
@@ -419,10 +403,6 @@ namespace Microsoft.Boogie
       });
       
       // Construct transition and input-output relation.
-      procToLinkAction.Values.Iter(action =>
-      {
-        action.InitializeInputOutputRelation(this);
-      });
       procToAtomicAction.Values.Iter(action =>
       {
         action.InitializeInputOutputRelation(this);
@@ -457,7 +437,7 @@ namespace Microsoft.Boogie
       var refinedAction = procToAtomicAction[refinedProc];
       Implementation impl = actionProcToImpl[proc];
       LayerRange layerRange = actionProcToLayerRange[proc];
-      procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, refinedAction);
+      procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, refinedAction, this);
     }
 
     private void TypeCheckYieldInvariants()
@@ -960,9 +940,14 @@ namespace Microsoft.Boogie
              !actionProc.hiddenFormals.Contains(param);
     }
 
-    public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values.Where(action => action.proc.actionQualifier != ActionQualifier.Abstract);
-    
-    public IEnumerable<AtomicAction> AllAtomicActions => procToAtomicAction.Values;
+    public IEnumerable<AtomicAction> LinkActions =>
+      procToAtomicAction.Values.Where(action => action.proc.actionQualifier == ActionQualifier.Link);
+
+    public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values.Where(action =>
+      action.proc.actionQualifier != ActionQualifier.Abstract && action.proc.actionQualifier != ActionQualifier.Link);
+
+    public IEnumerable<AtomicAction> AllAtomicActions =>
+      procToAtomicAction.Values.Where(action => action.proc.actionQualifier != ActionQualifier.Link);
 
     public void Error(Absy node, string message)
     {
@@ -1504,10 +1489,9 @@ namespace Microsoft.Boogie
         {
           VisitPureProcCallCmd(call, callerProc.upperLayer);
         }
-        else if (civlTypeChecker.procToLinkAction.ContainsKey(call.Proc))
+        else if (call.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } actionDecl)
         {
-          VisitLinkActionCallCmd(call, callerProc.upperLayer,
-            civlTypeChecker.procToLinkAction[call.Proc]);
+          VisitLinkActionCallCmd(call, callerProc.upperLayer, civlTypeChecker.procToAtomicAction[actionDecl]);
         }
         else
         {
@@ -1677,8 +1661,7 @@ namespace Microsoft.Boogie
         CheckCallOutputs(call, callerProcUpperLayer, layerNum);
       }
 
-      private void VisitLinkActionCallCmd(CallCmd call, int callerProcUpperLayer,
-        LinkAction linkAction)
+      private void VisitLinkActionCallCmd(CallCmd call, int callerProcUpperLayer, AtomicAction linkAction)
       {
         var calleeLayerNum = linkAction.LayerNum;
         VisitYieldInvariantCallCmd(call, callerProcUpperLayer, calleeLayerNum);
@@ -1741,9 +1724,9 @@ namespace Microsoft.Boogie
                 Debug.Assert(false);
               }
             }
-            else if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc))
+            else if (callCmd.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } actionDecl)
             {
-              var linkAction = civlTypeChecker.procToLinkAction[callCmd.Proc];
+              var linkAction = civlTypeChecker.procToAtomicAction[actionDecl];
               if (caller.upperLayer == linkAction.LayerNum)
               {
                 mods = new HashSet<Variable>(callCmd.Proc.Modifies.Select(ie => ie.Decl));

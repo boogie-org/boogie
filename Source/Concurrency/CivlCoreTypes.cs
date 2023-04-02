@@ -74,7 +74,7 @@ namespace Microsoft.Boogie
     public List<ActionDecl> pendingAsyncs;
     public Function inputOutputRelation;
 
-    protected Action(ActionDecl proc, Implementation impl, LayerRange layerRange)
+    protected Action(ActionDecl proc, Implementation impl, LayerRange layerRange, CivlTypeChecker civlTypeChecker)
     {
       this.proc = proc;
       this.impl = impl;
@@ -92,11 +92,8 @@ namespace Microsoft.Boogie
       {
         impl.OutParams[i].Attributes = proc.OutParams[i].Attributes;
       }
-    }
-
-    public virtual void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<ActionDecl> pendingAsyncs)
-    {
-      this.pendingAsyncs = new List<ActionDecl>(pendingAsyncs);
+      
+      this.pendingAsyncs = proc.creates.Select(x => x.actionDecl).ToList();
       var lhss = new List<IdentifierExpr>();
       var rhss = new List<Expr>();
       pendingAsyncs.Iter(decl =>
@@ -118,6 +115,8 @@ namespace Microsoft.Boogie
       }
       DesugarCreateAsyncs(civlTypeChecker);
     }
+
+    public int LayerNum => layerRange.lowerLayerNum;
     
     public bool HasPendingAsyncs => pendingAsyncs.Count > 0;
 
@@ -324,20 +323,6 @@ namespace Microsoft.Boogie
     }
   }
 
-    /*
-     * A link action may have a layer range which allows it to be called
-     * from other atomic actions. But its lower layer is special because the variables
-     * it can modify must have been introduced at that layer.
-     */
-  public class LinkAction : Action
-  {
-    public LinkAction(ActionDecl proc, Implementation impl, LayerRange layerRange) : base(proc, impl, layerRange)
-    {
-    }
-
-    public int LayerNum => layerRange.lowerLayerNum;
-  }
-
   public class AtomicAction : Action
   {
     public MoverType moverType;
@@ -350,8 +335,9 @@ namespace Microsoft.Boogie
     
     public Dictionary<Variable, Function> triggerFunctions;
 
-    public AtomicAction(ActionDecl proc, Implementation impl, LayerRange layerRange, MoverType moverType, AtomicAction refinedAction) : 
-      base(proc, impl, layerRange)
+    public AtomicAction(ActionDecl proc, Implementation impl, LayerRange layerRange, MoverType moverType,
+      AtomicAction refinedAction, CivlTypeChecker civlTypeChecker) :
+      base(proc, impl, layerRange, civlTypeChecker)
     {
       this.moverType = moverType;
       this.refinedAction = refinedAction;
@@ -366,15 +352,9 @@ namespace Microsoft.Boogie
       DeclareTriggerFunctions();
     }
 
-    public bool IsRightMover
-    {
-      get { return moverType == MoverType.Right || moverType == MoverType.Both; }
-    }
+    public bool IsRightMover => moverType == MoverType.Right || moverType == MoverType.Both;
 
-    public bool IsLeftMover
-    {
-      get { return moverType == MoverType.Left || moverType == MoverType.Both; }
-    }
+    public bool IsLeftMover => moverType == MoverType.Left || moverType == MoverType.Both;
 
     public bool TriviallyCommutesWith(AtomicAction other)
     {
@@ -443,19 +423,9 @@ namespace Microsoft.Boogie
   {
     public DatatypeTypeCtorDecl choiceDatatypeTypeCtorDecl;
 
-    public InvariantAction(ActionDecl proc, Implementation impl, LayerRange layerRange) : base(proc, impl, layerRange)
+    public InvariantAction(ActionDecl proc, Implementation impl, LayerRange layerRange, CivlTypeChecker civlTypeChecker)
+      : base(proc, impl, layerRange, civlTypeChecker)
     {
-    }
-
-    public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
-    {
-      return choiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
-    }
-
-    public override void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<ActionDecl> pendingAsyncs)
-    {
-      base.CompleteInitialization(civlTypeChecker, pendingAsyncs);
-
       var choiceDatatypeName = $"Choice_{impl.Name}";
       choiceDatatypeTypeCtorDecl =
         new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
@@ -472,6 +442,11 @@ namespace Microsoft.Boogie
       DesugarSetChoice(civlTypeChecker, choice);
     }
 
+    public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
+    {
+      return choiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
+    }
+    
     private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Variable choice)
     {
       impl.Blocks.Iter(block =>

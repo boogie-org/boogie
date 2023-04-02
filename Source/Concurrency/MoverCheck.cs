@@ -86,7 +86,7 @@ namespace Microsoft.Boogie
         moverChecking.CreateCooperationChecker(atomicAction);
       }
 
-      foreach (var linkAction in civlTypeChecker.procToLinkAction.Values)
+      foreach (var linkAction in civlTypeChecker.LinkActions)
       {
         moverChecking.CreateCooperationChecker(linkAction);
       }

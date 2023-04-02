@@ -403,7 +403,8 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabel(CallCmd callCmd)
       {
-        if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc) || callCmd.Proc.IsPure)
+        if (callCmd.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } ||
+            callCmd.Proc.IsPure)
         {
           return P;
         }
@@ -472,7 +473,7 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabelAsync(CallCmd callCmd)
       {
-        if (civlTypeChecker.procToLinkAction.ContainsKey(callCmd.Proc) || callCmd.Proc.IsPure)
+        if (callCmd.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } || callCmd.Proc.IsPure)
         {
           return P;
         }

@@ -247,9 +247,9 @@ namespace Microsoft.Boogie
 
     private void ProcessCallCmd(CallCmd newCall)
     {
-      if (civlTypeChecker.procToLinkAction.ContainsKey(newCall.Proc))
+      if (newCall.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } actionDecl)
       {
-        var linkAction = civlTypeChecker.procToLinkAction[newCall.Proc];
+        var linkAction = civlTypeChecker.procToAtomicAction[actionDecl];
         if (linkAction.LayerNum == layerNum)
         {
           InjectGate(linkAction, newCall);

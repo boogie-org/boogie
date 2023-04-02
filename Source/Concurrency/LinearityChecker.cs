@@ -15,7 +15,7 @@ class LinearityChecker
     public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       var linearityChecker = new LinearityChecker(civlTypeChecker);
-      foreach (var action in civlTypeChecker.AtomicActions.Concat<Action>(civlTypeChecker.procToLinkAction.Values))
+      foreach (var action in civlTypeChecker.AtomicActions.Concat<Action>(civlTypeChecker.LinkActions))
       {
         linearityChecker.AddChecker(action, decls);
       }
