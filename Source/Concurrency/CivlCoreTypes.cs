@@ -521,15 +521,9 @@ namespace Microsoft.Boogie
       this.yieldEnsures = yieldEnsures;
     }
 
-    public bool IsRightMover
-    {
-      get { return moverType == MoverType.Right || moverType == MoverType.Both; }
-    }
+    public bool IsRightMover => moverType == MoverType.Right || moverType == MoverType.Both;
 
-    public bool IsLeftMover
-    {
-      get { return moverType == MoverType.Left || moverType == MoverType.Both; }
-    }
+    public bool IsLeftMover => moverType == MoverType.Left || moverType == MoverType.Both;
   }
 
   public class MoverProc : YieldingProc
@@ -569,10 +563,8 @@ namespace Microsoft.Boogie
         {
           return action;
         }
-
         action = action.refinedAction;
       }
-
       return null;
     }
   }
