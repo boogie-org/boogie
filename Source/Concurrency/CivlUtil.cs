@@ -330,15 +330,6 @@ namespace Microsoft.Boogie
 
   public static class DeclHelper
   {
-    public static ActionDecl ActionDecl(string name,
-      List<Variable> inParams, List<Variable> outParams,
-      List<IdentifierExpr> modifies,
-      QKeyValue kv = null)
-    {
-      return new ActionDecl(Token.NoToken, name, MoverType.Both, ActionQualifier.None, inParams, outParams,
-        new List<ActionDeclRef>(), null, null, new List<ElimDecl>(), modifies, null, kv);
-    }
-    
     public static Procedure Procedure(string name,
       List<Variable> inParams, List<Variable> outParams,
       List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,

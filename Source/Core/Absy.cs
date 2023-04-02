@@ -3392,7 +3392,7 @@ namespace Microsoft.Boogie
         }
         if (actionQualifier == ActionQualifier.Abstract)
         {
-          rc.Error(this, "Mover may not be a proxy action");
+          rc.Error(this, "Mover may not be an abstract action");
         }
       }
       if (creates.Any())

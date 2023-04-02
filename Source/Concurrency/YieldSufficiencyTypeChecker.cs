@@ -424,7 +424,7 @@ namespace Microsoft.Boogie
 
           if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum && callCmd.HasAttribute(CivlAttributes.SYNC))
           {
-            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).moverType);
+            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).proc.moverType);
           }
 
           return L;
@@ -438,7 +438,7 @@ namespace Microsoft.Boogie
 
           if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
           {
-            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).moverType);
+            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).proc.moverType);
           }
 
           return Y;

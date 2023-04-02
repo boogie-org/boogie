@@ -31,8 +31,8 @@ namespace Microsoft.Boogie
       // TODO: make enumeration of mover checks more efficient / elegant
 
       var regularMoverChecks =
-        from first in civlTypeChecker.AtomicActions
-        from second in civlTypeChecker.AtomicActions
+        from first in civlTypeChecker.MoverActions
+        from second in civlTypeChecker.MoverActions
         where first.layerRange.OverlapsWith(second.layerRange)
         where first.IsRightMover || second.IsLeftMover
         select new {first, second};
@@ -53,7 +53,7 @@ namespace Microsoft.Boogie
       var inductiveSequentializationMoverChecks =
         from IS in civlTypeChecker.inductiveSequentializations
         from leftMover in IS.elim.Values
-        from action in civlTypeChecker.AtomicActions
+        from action in civlTypeChecker.MoverActions
         where action.layerRange.Contains(IS.invariantAction.layerRange.upperLayerNum)
         let extraAssumption1 = IS.GenerateMoverCheckAssumption(action, action.firstImpl.InParams, leftMover, leftMover.secondImpl.InParams)
         let extraAssumption2 = IS.GenerateMoverCheckAssumption(action, action.secondImpl.InParams, leftMover, leftMover.firstImpl.InParams)
@@ -72,23 +72,20 @@ namespace Microsoft.Boogie
         moverChecking.CreateFailurePreservationChecker(moverCheck.action, moverCheck.leftMover, moverCheck.extraAssumption1);
       }
 
-      // Here we include IS abstractions
-      foreach (var atomicAction in civlTypeChecker.AllAtomicActions.Where(a => a.IsLeftMover))
+      foreach (var action in civlTypeChecker.MoverActions.Where(a => a.IsLeftMover))
       {
-        moverChecking.CreateCooperationChecker(atomicAction);
+        moverChecking.CreateCooperationChecker(action);
       }
 
-      // IS abstractions are marked left movers, so here we select regular atomic actions
-      // that are not marked left mover but used as abstraction in IS.
-      foreach (var atomicAction in civlTypeChecker.inductiveSequentializations.SelectMany(IS => IS.elim.Values)
-        .Where(a => !a.IsLeftMover).Distinct())
+      foreach (var action in civlTypeChecker.inductiveSequentializations.SelectMany(IS => IS.elim.Values)
+                 .Where(a => !a.IsLeftMover).Distinct())
       {
-        moverChecking.CreateCooperationChecker(atomicAction);
+        moverChecking.CreateCooperationChecker(action);
       }
 
-      foreach (var linkAction in civlTypeChecker.LinkActions)
+      foreach (var action in civlTypeChecker.LinkActions)
       {
-        moverChecking.CreateCooperationChecker(linkAction);
+        moverChecking.CreateCooperationChecker(action);
       }
     }
 

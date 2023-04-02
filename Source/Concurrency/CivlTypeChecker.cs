@@ -69,18 +69,16 @@ namespace Microsoft.Boogie
         }
       }
 
-      var skipProcedure = DeclHelper.ActionDecl(
-        AddNamePrefix("Skip"),
-        new List<Variable>(),
-        new List<Variable>(),
-        new List<IdentifierExpr>());
+      var skipProcedure = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, ActionQualifier.None,
+        new List<Variable>(), new List<Variable>(), new List<ActionDeclRef>(), null, null, new List<ElimDecl>(),
+        new List<IdentifierExpr>(), null, null);
       var skipImplementation = DeclHelper.Implementation(
         skipProcedure,
         new List<Variable>(),
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
-      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, null, this);
+      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, null, this);
       SkipAtomicAction.CompleteInitialization(this);
     }
 
@@ -351,7 +349,7 @@ namespace Microsoft.Boogie
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.actionQualifier == ActionQualifier.Link)
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, MoverType.None, null, this);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, null, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Invariant)
         {
@@ -359,15 +357,15 @@ namespace Microsoft.Boogie
         }
         else if (proc.actionQualifier == ActionQualifier.Abstract)
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, MoverType.None, null, this);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, null, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Async)
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, null, this);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, null, this);
         }
         else
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, null, this);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, null, this);
         }
       }
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
@@ -419,7 +417,7 @@ namespace Microsoft.Boogie
         var invariantProc = proc.invariantAction.actionDecl;
         var invariantAction = procToInvariantAction[invariantProc];
         var elim = new Dictionary<AtomicAction, AtomicAction>(proc.EliminationMap().Select(x =>
-          KeyValuePair.Create((AtomicAction)procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
+          KeyValuePair.Create(procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
         inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
       });
     }
@@ -437,7 +435,7 @@ namespace Microsoft.Boogie
       var refinedAction = procToAtomicAction[refinedProc];
       Implementation impl = actionProcToImpl[proc];
       LayerRange layerRange = actionProcToLayerRange[proc];
-      procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, refinedAction, this);
+      procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, refinedAction, this);
     }
 
     private void TypeCheckYieldInvariants()
@@ -943,11 +941,10 @@ namespace Microsoft.Boogie
     public IEnumerable<AtomicAction> LinkActions =>
       procToAtomicAction.Values.Where(action => action.proc.actionQualifier == ActionQualifier.Link);
 
-    public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values.Where(action =>
+    public IEnumerable<AtomicAction> MoverActions => procToAtomicAction.Values.Where(action =>
       action.proc.actionQualifier != ActionQualifier.Abstract && action.proc.actionQualifier != ActionQualifier.Link);
 
-    public IEnumerable<AtomicAction> AllAtomicActions =>
-      procToAtomicAction.Values.Where(action => action.proc.actionQualifier != ActionQualifier.Link);
+    public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values;
 
     public void Error(Absy node, string message)
     {
@@ -1756,7 +1753,7 @@ namespace Microsoft.Boogie
       {
         var attributeEraser = new AttributeEraser();
         attributeEraser.VisitProgram(civlTypeChecker.program);
-        foreach (var action in civlTypeChecker.AllAtomicActions)
+        foreach (var action in civlTypeChecker.AtomicActions)
         {
           attributeEraser.VisitAtomicAction(action);
         }

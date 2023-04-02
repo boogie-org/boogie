@@ -332,7 +332,6 @@ namespace Microsoft.Boogie
 
   public class AtomicAction : Action
   {
-    public MoverType moverType;
     public AtomicAction refinedAction;
 
     public List<AssertCmd> firstGate;
@@ -342,11 +341,9 @@ namespace Microsoft.Boogie
     
     public Dictionary<Variable, Function> triggerFunctions;
 
-    public AtomicAction(ActionDecl proc, Implementation impl, LayerRange layerRange, MoverType moverType,
-      AtomicAction refinedAction, CivlTypeChecker civlTypeChecker) :
-      base(proc, impl, layerRange, civlTypeChecker)
+    public AtomicAction(ActionDecl proc, Implementation impl, LayerRange layerRange, AtomicAction refinedAction,
+      CivlTypeChecker civlTypeChecker) : base(proc, impl, layerRange, civlTypeChecker)
     {
-      this.moverType = moverType;
       this.refinedAction = refinedAction;
     }
 
@@ -359,9 +356,9 @@ namespace Microsoft.Boogie
       DeclareTriggerFunctions();
     }
 
-    public bool IsRightMover => moverType == MoverType.Right || moverType == MoverType.Both;
+    public bool IsRightMover => proc.moverType == MoverType.Right || proc.moverType == MoverType.Both;
 
-    public bool IsLeftMover => moverType == MoverType.Left || moverType == MoverType.Both;
+    public bool IsLeftMover => proc.moverType == MoverType.Left || proc.moverType == MoverType.Both;
 
     public bool TriviallyCommutesWith(AtomicAction other)
     {
@@ -547,7 +544,7 @@ namespace Microsoft.Boogie
     public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer, HashSet<Variable> hiddenFormals,
       List<CallCmd> yieldRequires,
       List<CallCmd> yieldEnsures)
-      : base(proc, refinedAction.moverType, upperLayer, yieldRequires, yieldEnsures)
+      : base(proc, refinedAction.proc.moverType, upperLayer, yieldRequires, yieldEnsures)
     {
       this.refinedAction = refinedAction;
       this.hiddenFormals = hiddenFormals;

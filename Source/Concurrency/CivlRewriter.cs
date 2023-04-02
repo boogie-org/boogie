@@ -35,7 +35,7 @@ namespace Microsoft.Boogie
         InductiveSequentializationChecker.AddCheckers(civlTypeChecker, decls);
       }
 
-      foreach (var action in civlTypeChecker.AllAtomicActions)
+      foreach (var action in civlTypeChecker.AtomicActions)
       {
         action.AddTriggerAssumes(program, options);
       }
