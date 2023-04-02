@@ -279,7 +279,7 @@ namespace Microsoft.Boogie
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
       {
-        if (yieldingProc.moverType == MoverType.Atomic && simulationRelation[initialState].Count == 0)
+        if (yieldingProc.MoverType == MoverType.Atomic && simulationRelation[initialState].Count == 0)
         {
           return false;
         }
@@ -419,7 +419,7 @@ namespace Microsoft.Boogie
         {
           if (callee is MoverProc && callee.upperLayer == currLayerNum)
           {
-            return MoverTypeToLabel(callee.moverType);
+            return MoverTypeToLabel(callee.MoverType);
           }
 
           if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum && callCmd.HasAttribute(CivlAttributes.SYNC))
@@ -433,7 +433,7 @@ namespace Microsoft.Boogie
         {
           if (callee is MoverProc && callee.upperLayer == currLayerNum)
           {
-            return MoverTypeToLabel(callee.moverType);
+            return MoverTypeToLabel(callee.MoverType);
           }
 
           if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)

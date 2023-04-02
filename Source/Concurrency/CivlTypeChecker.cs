@@ -549,7 +549,7 @@ namespace Microsoft.Boogie
               $"All variables in the modifies clause of a mover procedure must be available at its disappearing layer");
             continue;
           }
-          procToYieldingProc[proc] = new MoverProc(proc, moverType, upperLayer, yieldRequires, yieldEnsures);
+          procToYieldingProc[proc] = new MoverProc(proc, upperLayer, yieldRequires, yieldEnsures);
         }
         else // proc refines the skip action
         {
@@ -559,8 +559,7 @@ namespace Microsoft.Boogie
           }
           var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams)
             .Where(x => localVarToLayerRange[x].upperLayerNum == upperLayer));
-          var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals, yieldRequires,
-            yieldEnsures);
+          var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals, yieldRequires, yieldEnsures);
           procToYieldingProc[proc] = actionProc;
         }
 

@@ -501,39 +501,37 @@ namespace Microsoft.Boogie
 
   public abstract class YieldingProc
   {
-    public Procedure proc;
-    public MoverType moverType;
+    public YieldProcedureDecl proc;
     public int upperLayer;
     public List<CallCmd> yieldRequires;
     public List<CallCmd> yieldEnsures;
 
-    public YieldingProc(Procedure proc, MoverType moverType, int upperLayer,
-      List<CallCmd> yieldRequires,
-      List<CallCmd> yieldEnsures)
+    public YieldingProc(YieldProcedureDecl proc, int upperLayer, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
     {
       this.proc = proc;
-      this.moverType = moverType;
       this.upperLayer = upperLayer;
       this.yieldRequires = yieldRequires;
       this.yieldEnsures = yieldEnsures;
     }
 
-    public bool IsRightMover => moverType == MoverType.Right || moverType == MoverType.Both;
+    public abstract MoverType MoverType { get; }
 
-    public bool IsLeftMover => moverType == MoverType.Left || moverType == MoverType.Both;
+    public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
+
+    public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
   }
 
   public class MoverProc : YieldingProc
   {
     public HashSet<Variable> modifiedGlobalVars;
 
-    public MoverProc(Procedure proc, MoverType moverType, int upperLayer,
-      List<CallCmd> yieldRequires,
-      List<CallCmd> yieldEnsures)
-      : base(proc, moverType, upperLayer, yieldRequires, yieldEnsures)
+    public MoverProc(YieldProcedureDecl proc, int upperLayer, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
+      : base(proc, upperLayer, yieldRequires, yieldEnsures)
     {
       modifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
     }
+
+    public override MoverType MoverType => proc.moverType;
   }
 
   public class ActionProc : YieldingProc
@@ -541,14 +539,15 @@ namespace Microsoft.Boogie
     public AtomicAction refinedAction;
     public HashSet<Variable> hiddenFormals;
 
-    public ActionProc(Procedure proc, AtomicAction refinedAction, int upperLayer, HashSet<Variable> hiddenFormals,
-      List<CallCmd> yieldRequires,
-      List<CallCmd> yieldEnsures)
-      : base(proc, refinedAction.proc.moverType, upperLayer, yieldRequires, yieldEnsures)
+    public ActionProc(YieldProcedureDecl proc, AtomicAction refinedAction, int upperLayer, HashSet<Variable> hiddenFormals,
+      List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
+      : base(proc, upperLayer, yieldRequires, yieldEnsures)
     {
       this.refinedAction = refinedAction;
       this.hiddenFormals = hiddenFormals;
     }
+
+    public override MoverType MoverType => refinedAction.proc.moverType;
 
     public AtomicAction RefinedActionAtLayer(int layer)
     {
