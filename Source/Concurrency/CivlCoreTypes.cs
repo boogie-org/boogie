@@ -71,9 +71,7 @@ namespace Microsoft.Boogie
     public HashSet<Variable> gateUsedGlobalVars;
     public HashSet<Variable> actionUsedGlobalVars;
     public HashSet<Variable> modifiedGlobalVars;
-
-    public virtual int PendingAsyncStartIndex => impl.OutParams.Count - pendingAsyncs.Count;
-    public List<AsyncAction> pendingAsyncs;
+    public List<ActionDecl> pendingAsyncs;
     public Function inputOutputRelation;
 
     protected Action(ActionDecl proc, Implementation impl, LayerRange layerRange)
@@ -96,19 +94,19 @@ namespace Microsoft.Boogie
       }
     }
 
-    public virtual void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs)
+    public virtual void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<ActionDecl> pendingAsyncs)
     {
-      this.pendingAsyncs = new List<AsyncAction>(pendingAsyncs);
+      this.pendingAsyncs = new List<ActionDecl>(pendingAsyncs);
       var lhss = new List<IdentifierExpr>();
       var rhss = new List<Expr>();
-      pendingAsyncs.Iter(action =>
+      pendingAsyncs.Iter(decl =>
       {
-        var pa = civlTypeChecker.Formal($"PAs_{action.impl.Name}", action.pendingAsyncMultisetType, false);
+        var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
         impl.OutParams.Add(pa);
         proc.OutParams.Add(pa);
         lhss.Add(Expr.Ident(pa));
-        rhss.Add(ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0)));
-        var paLocal = civlTypeChecker.LocalVariable($"local_PAs_{action.impl.Name}", action.pendingAsyncMultisetType);
+        rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
+        var paLocal = civlTypeChecker.LocalVariable($"local_PAs_{decl.Name}", decl.PendingAsyncMultisetType);
         impl.LocVars.Add(paLocal);
       });
       if (pendingAsyncs.Any())
@@ -126,7 +124,7 @@ namespace Microsoft.Boogie
     public Variable PAs(CtorType pendingAsyncType)
     {
       var pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
-      return impl.OutParams.Skip(this.PendingAsyncStartIndex).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
+      return impl.OutParams.Skip(proc.PendingAsyncStartIndex).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
     }
 
     public Variable LocalPAs(CtorType pendingAsyncType)
@@ -190,18 +188,18 @@ namespace Microsoft.Boogie
             {
               var pendingAsyncType =
                 (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-              var pendingAsync = pendingAsyncs.First(action => action.pendingAsyncType.Equals(pendingAsyncType));
+              var pendingAsync = pendingAsyncs.First(decl => decl.PendingAsyncType.Equals(pendingAsyncType));
               var tc = new TypecheckingContext(null, civlTypeChecker.Options);
               var pendingAsyncMultiset = originalProc.Name == "create_async"
-                ? Expr.Store(ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(0)), callCmd.Ins[0],
+                ? Expr.Store(ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)), callCmd.Ins[0],
                   Expr.Literal(1))
                 : originalProc.Name == "create_asyncs"
-                  ? ExprHelper.FunctionCall(pendingAsync.pendingAsyncIte, callCmd.Ins[0],
-                    ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(1)),
-                    ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(0)))
+                  ? ExprHelper.FunctionCall(pendingAsync.PendingAsyncIte, callCmd.Ins[0],
+                    ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(1)),
+                    ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)))
                   : callCmd.Ins[0];
               var assignCmd = CmdHelper.AssignCmd(PAs(pendingAsyncType),
-                ExprHelper.FunctionCall(pendingAsync.pendingAsyncAdd, Expr.Ident(PAs(pendingAsyncType)),
+                ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(PAs(pendingAsyncType)),
                   pendingAsyncMultiset));
               assignCmd.Typecheck(tc);
               newCmds.Add(assignCmd);
@@ -210,13 +208,13 @@ namespace Microsoft.Boogie
             if (callCmd.Proc is ActionDecl actionDecl)
             {
               newCmds.Add(callCmd);
-              actionDecl.creates.Iter(x =>
+              actionDecl.creates.Iter(actionDeclRef =>
               {
-                var pendingAsync = (AsyncAction)civlTypeChecker.procToAtomicAction[x.actionDecl];
-                var pendingAsyncType = pendingAsync.pendingAsyncType;
+                var pendingAsync = actionDeclRef.actionDecl;
+                var pendingAsyncType = pendingAsync.PendingAsyncType;
                 callCmd.Outs.Add(Expr.Ident(LocalPAs(pendingAsyncType)));
                 var assignCmd = CmdHelper.AssignCmd(PAs(pendingAsyncType),
-                  ExprHelper.FunctionCall(pendingAsync.pendingAsyncAdd, Expr.Ident(PAs(pendingAsyncType)),
+                  ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(PAs(pendingAsyncType)),
                     Expr.Ident(LocalPAs(pendingAsyncType))));
                 newCmds.Add(assignCmd);
               });
@@ -441,33 +439,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class AsyncAction : AtomicAction
-  {
-    public DatatypeConstructor pendingAsyncCtor;
-    public CtorType pendingAsyncType;
-    public MapType pendingAsyncMultisetType;
-    public Function pendingAsyncAdd;
-    public Function pendingAsyncConst;
-    public Function pendingAsyncIte;
-
-    public AsyncAction(CivlTypeChecker civlTypeChecker, ActionDecl proc, Implementation impl, LayerRange layerRange,
-      MoverType moverType) :
-      base(proc, impl, layerRange, moverType, null)
-    {
-      var pendingAsyncCtorDecl = civlTypeChecker.program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
-        .First(x => x.Name == proc.Name);
-      pendingAsyncCtor = pendingAsyncCtorDecl.GetConstructor(proc.Name);
-      pendingAsyncType = new CtorType(pendingAsyncCtorDecl.tok, pendingAsyncCtorDecl, new List<Type>());
-      pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
-      pendingAsyncAdd = civlTypeChecker.program.monomorphizer.InstantiateFunction("MapAdd",
-        new Dictionary<string, Type>() { { "T", pendingAsyncType } });
-      pendingAsyncConst = civlTypeChecker.program.monomorphizer.InstantiateFunction("MapConst",
-        new Dictionary<string, Type>() { { "T", pendingAsyncType }, { "U", Type.Int } });
-      pendingAsyncIte = civlTypeChecker.program.monomorphizer.InstantiateFunction("MapIte",
-        new Dictionary<string, Type>() { { "T", pendingAsyncType }, { "U", Type.Int } });
-    }
-  }
-
   public class InvariantAction : Action
   {
     public DatatypeTypeCtorDecl choiceDatatypeTypeCtorDecl;
@@ -476,14 +447,12 @@ namespace Microsoft.Boogie
     {
     }
 
-    public override int PendingAsyncStartIndex => base.PendingAsyncStartIndex - 1;
-
     public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
     {
       return choiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
     }
 
-    public override void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs)
+    public override void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<ActionDecl> pendingAsyncs)
     {
       base.CompleteInitialization(civlTypeChecker, pendingAsyncs);
 
@@ -492,8 +461,8 @@ namespace Microsoft.Boogie
         new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
       pendingAsyncs.Iter(elim =>
       {
-        var field = new TypedIdent(Token.NoToken, elim.impl.Name, elim.pendingAsyncType);
-        choiceDatatypeTypeCtorDecl.AddConstructor(Token.NoToken, $"{choiceDatatypeName}_{elim.impl.Name}",
+        var field = new TypedIdent(Token.NoToken, elim.Name, elim.PendingAsyncType);
+        choiceDatatypeTypeCtorDecl.AddConstructor(Token.NoToken, $"{choiceDatatypeName}_{elim.Name}",
           new List<TypedIdent>() { field });
       });
       civlTypeChecker.program.AddTopLevelDeclaration(choiceDatatypeTypeCtorDecl);
@@ -516,10 +485,10 @@ namespace Microsoft.Boogie
             if (originalProc.Name == "set_choice")
             {
               var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-              var pendingAsync = pendingAsyncs.First(action => action.pendingAsyncType.Equals(pendingAsyncType));
+              var pendingAsync = pendingAsyncs.First(decl => decl.PendingAsyncType.Equals(pendingAsyncType));
               var tc = new TypecheckingContext(null, civlTypeChecker.Options);
               var emptyExpr = Expr.Eq(Expr.Ident(PAs(pendingAsyncType)),
-                ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(0)));
+                ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)));
               var memberExpr = Expr.Gt(Expr.Select(Expr.Ident(PAs(pendingAsyncType)), callCmd.Ins[0]),
                 Expr.Literal(0));
               var assertCmd = CmdHelper.AssertCmd(cmd.tok, Expr.Or(emptyExpr, memberExpr),

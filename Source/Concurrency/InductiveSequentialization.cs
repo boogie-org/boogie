@@ -10,7 +10,7 @@ namespace Microsoft.Boogie
     public CivlTypeChecker civlTypeChecker;
     public AtomicAction targetAction;
     public InvariantAction invariantAction;
-    public Dictionary<AsyncAction, AtomicAction> elim;
+    public Dictionary<AtomicAction, AtomicAction> elim;
 
     private HashSet<Variable> frame;
     private IdentifierExpr choice;
@@ -19,7 +19,7 @@ namespace Microsoft.Boogie
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
     public InductiveSequentialization(CivlTypeChecker civlTypeChecker, AtomicAction targetAction,
-      InvariantAction invariantAction, Dictionary<AsyncAction, AtomicAction> elim)
+      InvariantAction invariantAction, Dictionary<AtomicAction, AtomicAction> elim)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.targetAction = targetAction;
@@ -31,9 +31,8 @@ namespace Microsoft.Boogie
       // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
       frame = new HashSet<Variable>(invariantAction.modifiedGlobalVars);
       choice = Expr.Ident(invariantAction.impl.OutParams.Last());
-      newPAs = invariantAction.pendingAsyncs.ToDictionary(action => action.pendingAsyncType,
-        action => (Variable)civlTypeChecker.LocalVariable($"newPAs_{action.impl.Name}",
-          action.pendingAsyncMultisetType));
+      newPAs = invariantAction.pendingAsyncs.ToDictionary(decl => decl.PendingAsyncType,
+        decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
     }
 
     public Tuple<Procedure, Implementation> GenerateBaseCaseChecker(AtomicAction inputAction)
@@ -47,21 +46,21 @@ namespace Microsoft.Boogie
 
       // Construct call to inputAction
       var pendingAsyncTypeToOutputParamIndex = invariantAction.pendingAsyncs.Select((action, i) => (action, i))
-        .ToDictionary(tuple => tuple.action.pendingAsyncType, tuple => tuple.action.PendingAsyncStartIndex + tuple.i);
-      var outputVars = new List<Variable>(invariantAction.impl.OutParams.Take(invariantAction.PendingAsyncStartIndex));
+        .ToDictionary(tuple => tuple.action.PendingAsyncType, tuple => tuple.action.PendingAsyncStartIndex + tuple.i);
+      var outputVars = new List<Variable>(invariantAction.impl.OutParams.Take(invariantAction.proc.PendingAsyncStartIndex));
       outputVars.AddRange(inputAction.pendingAsyncs.Select(action =>
-        invariantAction.impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.pendingAsyncType]]));
+        invariantAction.impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.PendingAsyncType]]));
       cmds.Add(CmdHelper.CallCmd(inputAction.proc, invariantAction.impl.InParams, outputVars));
       
       // Assign empty multiset to the rest
       var remainderPendingAsyncs = invariantAction.pendingAsyncs.Except(inputAction.pendingAsyncs);
-      if (remainderPendingAsyncs.Count() > 0)
+      if (remainderPendingAsyncs.Any())
       {
-        var lhss = remainderPendingAsyncs.Select(action =>
-            Expr.Ident(invariantAction.impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.pendingAsyncType]]))
+        var lhss = remainderPendingAsyncs.Select(decl =>
+            Expr.Ident(invariantAction.impl.OutParams[pendingAsyncTypeToOutputParamIndex[decl.PendingAsyncType]]))
           .ToList();
-        var rhss = remainderPendingAsyncs.Select(action =>
-          ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0))).ToList<Expr>();
+        var rhss = remainderPendingAsyncs.Select(decl =>
+          ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0))).ToList<Expr>();
         cmds.Add(CmdHelper.AssignCmd(lhss, rhss));
       }
       
@@ -88,10 +87,10 @@ namespace Microsoft.Boogie
       return GetCheckerTuple($"IS_conclusion_{inputAction.proc.Name}", requires, new List<Variable>(), cmds);
     }
 
-    public Tuple<Procedure, Implementation> GenerateStepChecker(AsyncAction pendingAsync)
+    public Tuple<Procedure, Implementation> GenerateStepChecker(AtomicAction pendingAsync)
     {
-      var pendingAsyncType = pendingAsync.pendingAsyncType;
-      var pendingAsyncCtor = pendingAsync.pendingAsyncCtor;
+      var pendingAsyncType = pendingAsync.proc.PendingAsyncType;
+      var pendingAsyncCtor = pendingAsync.proc.PendingAsyncCtor;
       var requires = invariantAction.gate.Select(g => new Requires(false, g.Expr)).ToList();
       var locals = new List<Variable>();
       List<Cmd> cmds = new List<Cmd>();
@@ -117,9 +116,9 @@ namespace Microsoft.Boogie
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
       if (abs.HasPendingAsyncs)
       {
-        abs.pendingAsyncs.Iter(action =>
+        abs.pendingAsyncs.Iter(decl =>
         {
-          var ie = NewPAs(action.pendingAsyncType);
+          var ie = NewPAs(decl.PendingAsyncType);
           locals.Add(ie.Decl);
           outputExprs.Add(ie);
         });
@@ -127,10 +126,10 @@ namespace Microsoft.Boogie
       cmds.Add(CmdHelper.CallCmd(abs.proc, inputExprs, outputExprs));
       if (abs.HasPendingAsyncs)
       {
-        var lhss = abs.pendingAsyncs.Select(action => new SimpleAssignLhs(Token.NoToken, PAs(action.pendingAsyncType)))
+        var lhss = abs.pendingAsyncs.Select(decl => new SimpleAssignLhs(Token.NoToken, PAs(decl.PendingAsyncType)))
           .ToList<AssignLhs>();
-        var rhss = abs.pendingAsyncs.Select(action => ExprHelper.FunctionCall(action.pendingAsyncAdd,
-          PAs(action.pendingAsyncType), NewPAs(action.pendingAsyncType))).ToList<Expr>();
+        var rhss = abs.pendingAsyncs.Select(decl => ExprHelper.FunctionCall(decl.PendingAsyncAdd,
+          PAs(decl.PendingAsyncType), NewPAs(decl.PendingAsyncType))).ToList<Expr>();
         cmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
       }
 
@@ -161,7 +160,7 @@ namespace Microsoft.Boogie
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       Expr actionExpr = Expr.True;
-      if (action is AsyncAction asyncAtomicAction && elim.ContainsKey(asyncAtomicAction))
+      if (elim.ContainsKey(action))
       {
         var domainToPermissionExprsForInvariant = linearTypeChecker.PermissionExprs(invariantAction.impl.InParams);
         var domainToPermissionExprsForAction = linearTypeChecker.PermissionExprs(actionArgs);
@@ -172,16 +171,16 @@ namespace Microsoft.Boogie
                 domainToPermissionExprsForInvariant[domain].Concat(domainToPermissionExprsForAction[domain]))
           ).ToList());
         var actionPA =
-          ExprHelper.FunctionCall(asyncAtomicAction.pendingAsyncCtor, actionArgs.Select(v => Expr.Ident(v)).ToArray());
+          ExprHelper.FunctionCall(action.proc.PendingAsyncCtor, actionArgs.Select(v => Expr.Ident(v)).ToArray());
         var pendingAsyncExprs = invariantAction.pendingAsyncs.Select(pendingAsync =>
         {
           var pendingAsyncFormalMap =
-            pendingAsync.impl.InParams.Concat(pendingAsync.impl.OutParams).ToDictionary(v => v,
-              v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{pendingAsync.proc.Name}_{v.Name}",
+            pendingAsync.InParams.Concat(pendingAsync.OutParams).ToDictionary(v => v,
+              v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{pendingAsync.Name}_{v.Name}",
                 v.TypedIdent.Type)));
           var subst = Substituter.SubstitutionFromDictionary(pendingAsyncFormalMap);
           var domainToPermissionExprsForPendingAsyncAction =
-            linearTypeChecker.PermissionExprs(pendingAsync.impl.InParams).ToDictionary(
+            linearTypeChecker.PermissionExprs(pendingAsync.InParams).ToDictionary(
               kv => kv.Key,
               kv => kv.Value.Select(expr => Substituter.Apply(subst, expr)));
           var conjuncts = domainToPermissionExprsForAction.Keys.Select(domain =>
@@ -193,34 +192,34 @@ namespace Microsoft.Boogie
                 : new List<Expr>());
             return linearTypeChecker.SubsetExprForPermissions(domain, lhs, rhs);
           });
-          var pendingAsyncTransitionRelationExpr = ExprHelper.FunctionCall(pendingAsync.inputOutputRelation,
-            pendingAsync.impl.InParams.Concat(pendingAsync.impl.OutParams).Select(v => pendingAsyncFormalMap[v])
+          var pendingAsyncTransitionRelationExpr = ExprHelper.FunctionCall(civlTypeChecker.procToAtomicAction[pendingAsync].inputOutputRelation,
+            pendingAsync.InParams.Concat(pendingAsync.OutParams).Select(v => pendingAsyncFormalMap[v])
               .ToList());
           var membershipExpr =
             Expr.Gt(
-              Expr.Select(PAs(pendingAsync.pendingAsyncType),
-                ExprHelper.FunctionCall(pendingAsync.pendingAsyncCtor,
-                  pendingAsync.impl.InParams.Select(v => pendingAsyncFormalMap[v]).ToList())), Expr.Literal(0));
+              Expr.Select(PAs(pendingAsync.PendingAsyncType),
+                ExprHelper.FunctionCall(pendingAsync.PendingAsyncCtor,
+                  pendingAsync.InParams.Select(v => pendingAsyncFormalMap[v]).ToList())), Expr.Literal(0));
           return ExprHelper.ExistsExpr(
             pendingAsyncFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
             Expr.And(conjuncts.Concat(new[] { membershipExpr, pendingAsyncTransitionRelationExpr })));
         });
         actionExpr = Expr.Or(new[]
           {
-            disjointnessExpr, Expr.Gt(Expr.Select(PAs(asyncAtomicAction.pendingAsyncType), actionPA), Expr.Literal(0))
+            disjointnessExpr, Expr.Gt(Expr.Select(PAs(action.proc.PendingAsyncType), actionPA), Expr.Literal(0))
           }
           .Concat(pendingAsyncExprs));
       }
 
       var asyncLeftMover = elim.First(x => x.Value == leftMover).Key;
-      var leftMoverPendingAsyncCtor = asyncLeftMover.pendingAsyncCtor;
+      var leftMoverPendingAsyncCtor = asyncLeftMover.proc.PendingAsyncCtor;
       var leftMoverPA =
         ExprHelper.FunctionCall(leftMoverPendingAsyncCtor, leftMoverArgs.Select(v => Expr.Ident(v)).ToArray());
       var leftMoverExpr = Expr.And(new[]
       {
-        ChoiceTest(asyncLeftMover.pendingAsyncType),
-        Expr.Gt(Expr.Select(PAs(asyncLeftMover.pendingAsyncType), Choice(asyncLeftMover.pendingAsyncType)), Expr.Literal(0)),
-        Expr.Eq(Choice(asyncLeftMover.pendingAsyncType), leftMoverPA)
+        ChoiceTest(asyncLeftMover.proc.PendingAsyncType),
+        Expr.Gt(Expr.Select(PAs(asyncLeftMover.proc.PendingAsyncType), Choice(asyncLeftMover.proc.PendingAsyncType)), Expr.Literal(0)),
+        Expr.Eq(Choice(asyncLeftMover.proc.PendingAsyncType), leftMoverPA)
       });
 
       var invariantFormalMap =
@@ -308,8 +307,8 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var expr = Expr.And(elim.Keys.Select(action => Expr.Eq(PAs(action.pendingAsyncType),
-          ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0)))));
+        var expr = Expr.And(elim.Keys.Select(action => Expr.Eq(PAs(action.proc.PendingAsyncType),
+          ExprHelper.FunctionCall(action.proc.PendingAsyncConst, Expr.Literal(0)))));
         expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
         return expr;
       }
@@ -323,7 +322,7 @@ namespace Microsoft.Boogie
 
     public static Substitution GetSubstitution(Action from, Action to)
     {
-      Debug.Assert(from.PendingAsyncStartIndex == to.PendingAsyncStartIndex);
+      Debug.Assert(from.proc.PendingAsyncStartIndex == to.proc.PendingAsyncStartIndex);
       Debug.Assert(from.impl.InParams.Count == to.impl.InParams.Count);
       Debug.Assert(from.impl.OutParams.Count <= to.impl.OutParams.Count);
       
@@ -332,11 +331,11 @@ namespace Microsoft.Boogie
       {
         map[from.impl.InParams[i]] = Expr.Ident(to.impl.InParams[i]);
       }
-      for (int i = 0; i < from.PendingAsyncStartIndex; i++)
+      for (int i = 0; i < from.proc.PendingAsyncStartIndex; i++)
       {
         map[from.impl.OutParams[i]] = Expr.Ident(to.impl.OutParams[i]);
       }
-      for (int i = from.PendingAsyncStartIndex; i < from.impl.OutParams.Count; i++)
+      for (int i = from.proc.PendingAsyncStartIndex; i < from.impl.OutParams.Count; i++)
       {
         var formal = from.impl.OutParams[i];
         var pendingAsyncType = (CtorType)((MapType)formal.TypedIdent.Type).Arguments[0];

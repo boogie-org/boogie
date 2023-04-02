@@ -487,34 +487,34 @@ namespace Microsoft.Boogie
     private void CollectReturnedPendingAsyncs(CallCmd newCall, AtomicAction calleeRefinedAction)
     {
       // Inject pending async collection
-      newCall.Outs.AddRange(calleeRefinedAction.pendingAsyncs.Select(action => Expr.Ident(ReturnedPAs(action.pendingAsyncType))));
+      newCall.Outs.AddRange(calleeRefinedAction.pendingAsyncs.Select(decl => Expr.Ident(ReturnedPAs(decl.PendingAsyncType))));
       if (!IsRefinementLayer)
       {
         return;
       }
 
-      calleeRefinedAction.pendingAsyncs.Iter(action =>
+      calleeRefinedAction.pendingAsyncs.Iter(decl =>
       {
-        if (RefinedAction.pendingAsyncs.Contains(action))
+        if (RefinedAction.pendingAsyncs.Contains(decl))
         {
-          newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs(action.pendingAsyncType),
-            ExprHelper.FunctionCall(action.pendingAsyncAdd, Expr.Ident(CollectedPAs(action.pendingAsyncType)),
-              Expr.Ident(ReturnedPAs(action.pendingAsyncType)))));
+          newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs(decl.PendingAsyncType),
+            ExprHelper.FunctionCall(decl.PendingAsyncAdd, Expr.Ident(CollectedPAs(decl.PendingAsyncType)),
+              Expr.Ident(ReturnedPAs(decl.PendingAsyncType)))));
         }
         else
         {
           newCmdSeq.Add(CmdHelper.AssertCmd(newCall.tok,
-            Expr.Eq(Expr.Ident(ReturnedPAs(action.pendingAsyncType)), ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0))),
-            $"Pending asyncs to action {action.impl.Name} created by this call are not summarized"));
+            Expr.Eq(Expr.Ident(ReturnedPAs(decl.PendingAsyncType)), ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0))),
+            $"Pending asyncs to action {decl.Name} created by this call are not summarized"));
         }
       });
     }
 
-    private Expr EmptyPendingAsyncMultisetExpr(Func<CtorType, Variable> pendingAsyncMultisets, IEnumerable<AsyncAction> asyncActions)
+    private Expr EmptyPendingAsyncMultisetExpr(Func<CtorType, Variable> pendingAsyncMultisets, IEnumerable<ActionDecl> asyncActions)
     {
-      var returnExpr = Expr.And(asyncActions.Select(action =>
-        Expr.Eq(Expr.Ident(pendingAsyncMultisets(action.pendingAsyncType)),
-          ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0)))).ToList());
+      var returnExpr = Expr.And(asyncActions.Select(decl =>
+        Expr.Eq(Expr.Ident(pendingAsyncMultisets(decl.PendingAsyncType)),
+          ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)))).ToList());
       returnExpr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
       return returnExpr;
     }
@@ -570,8 +570,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      var asyncAction = (AsyncAction)calleeRefinedAction;
-      if (RefinedAction.pendingAsyncs.Contains(asyncAction))
+      if (RefinedAction.pendingAsyncs.Contains(calleeRefinedAction.proc))
       {
         Expr[] newIns = new Expr[calleeRefinedAction.proc.InParams.Count];
         for (int i = 0, j = 0; i < calleeProc.proc.InParams.Count; i++)
@@ -582,8 +581,8 @@ namespace Microsoft.Boogie
             j++;
           }
         }
-        var collectedPAs = CollectedPAs(asyncAction.pendingAsyncType);
-        var pa = ExprHelper.FunctionCall(asyncAction.pendingAsyncCtor, newIns);
+        var collectedPAs = CollectedPAs(calleeRefinedAction.proc.PendingAsyncType);
+        var pa = ExprHelper.FunctionCall(calleeRefinedAction.proc.PendingAsyncCtor, newIns);
         var inc = Expr.Add(Expr.Select(Expr.Ident(collectedPAs), pa), Expr.Literal(1));
         var add = CmdHelper.AssignCmd(collectedPAs, Expr.Store(Expr.Ident(collectedPAs), pa, inc));
         newCmdSeq.Add(add);

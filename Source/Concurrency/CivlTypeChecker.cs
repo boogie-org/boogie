@@ -83,7 +83,7 @@ namespace Microsoft.Boogie
         new List<Variable>(),
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
       SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, MoverType.Both, null);
-      SkipAtomicAction.CompleteInitialization(this, new List<AsyncAction>());
+      SkipAtomicAction.CompleteInitialization(this, new List<ActionDecl>());
       SkipAtomicAction.InitializeInputOutputRelation(this);
     }
 
@@ -361,7 +361,8 @@ namespace Microsoft.Boogie
         }
         else if (proc.actionQualifier == ActionQualifier.Async)
         {
-          procToAtomicAction[proc] = new AsyncAction(this, proc, impl, layerRange, proc.moverType);
+          proc.Initialize(program.monomorphizer);
+          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, proc.moverType, null);
         }
         else
         {
@@ -380,17 +381,17 @@ namespace Microsoft.Boogie
       // invocations (for creating pending asyncs and setting choice) inside them. 
       procToLinkAction.Values.Iter(action =>
       {
-        action.CompleteInitialization(this, new List<AsyncAction>());
+        action.CompleteInitialization(this, new List<ActionDecl>());
       });
       procToAtomicAction.Values.Iter(action =>
       {
         action.CompleteInitialization(this,
-          action.proc.creates.Select(actionDeclRef => procToAtomicAction[actionDeclRef.actionDecl] as AsyncAction));
+          action.proc.creates.Select(actionDeclRef => actionDeclRef.actionDecl));
       });
       procToInvariantAction.Values.Iter(action =>
       {
         action.CompleteInitialization(this,
-          action.proc.creates.Select(actionDeclRef => procToAtomicAction[actionDeclRef.actionDecl] as AsyncAction));
+          action.proc.creates.Select(actionDeclRef => actionDeclRef.actionDecl));
       });
       
       // Inline atomic actions
@@ -437,8 +438,8 @@ namespace Microsoft.Boogie
         var action = procToAtomicAction[proc];
         var invariantProc = proc.invariantAction.actionDecl;
         var invariantAction = procToInvariantAction[invariantProc];
-        var elim = new Dictionary<AsyncAction, AtomicAction>(proc.EliminationMap().Select(x =>
-          KeyValuePair.Create((AsyncAction)procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
+        var elim = new Dictionary<AtomicAction, AtomicAction>(proc.EliminationMap().Select(x =>
+          KeyValuePair.Create((AtomicAction)procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
         inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
       });
     }
@@ -1548,7 +1549,7 @@ namespace Microsoft.Boogie
               }
               else if (highestRefinedAction != civlTypeChecker.SkipAtomicAction)
               {
-                Require(highestRefinedAction is AsyncAction, call,
+                Require(highestRefinedAction.proc.actionQualifier == ActionQualifier.Async, call,
                   $"No pending-async constructor available for the atomic action {highestRefinedAction.proc.Name}");
               }
             }

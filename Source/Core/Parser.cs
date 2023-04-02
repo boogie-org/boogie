@@ -292,8 +292,12 @@ private class BvBounds : Expr {
 				break;
 			}
 			case 34: case 35: case 40: case 41: case 42: case 43: case 44: case 45: case 46: {
-				ActionDecl(out ac, out im);
-				Pgm.AddTopLevelDeclaration(ac); Pgm.AddTopLevelDeclaration(im); 
+				ActionDecl(out ac, out im, out dt);
+				Pgm.AddTopLevelDeclaration(ac); Pgm.AddTopLevelDeclaration(im);
+				if (dt != null) {
+				 Pgm.AddTopLevelDeclaration(dt);
+				}
+				
 				break;
 			}
 			case 8: {
@@ -557,7 +561,7 @@ private class BvBounds : Expr {
 		Expect(10);
 	}
 
-	void ActionDecl(out ActionDecl actionDecl, out Implementation impl) {
+	void ActionDecl(out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeCtorDecl datatypeTypeCtorDecl) {
 		IToken name = null;
 		MoverType moverType = MoverType.None;
 		ActionQualifier actionQualifier = ActionQualifier.None;
@@ -570,6 +574,7 @@ private class BvBounds : Expr {
 		List<Variable> locals;
 		StmtList stmtList;
 		QKeyValue kv = null;
+		datatypeTypeCtorDecl = null;
 		
 		if (StartOf(4)) {
 			ActionQualifierDecl(ref actionQualifier);
@@ -604,7 +609,11 @@ private class BvBounds : Expr {
 			SpecAction(mods, creates, elims);
 		}
 		ImplBody(out locals, out stmtList);
-		actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, invariantAction, elims, mods, kv);
+		if (actionQualifier == ActionQualifier.Async) {
+		 datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, new List<TypeVariable>(), null);
+		 datatypeTypeCtorDecl.AddConstructor(name, name.val, ins.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList());
+		}
+		actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, invariantAction, elims, mods, datatypeTypeCtorDecl, kv);
 		impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
 		                                locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 		

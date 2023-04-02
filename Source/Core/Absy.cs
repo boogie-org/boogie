@@ -3352,12 +3352,15 @@ namespace Microsoft.Boogie
     public ActionDeclRef refinedAction;
     public ActionDeclRef invariantAction;
     public List<ElimDecl> eliminates;
+    public DatatypeTypeCtorDecl pendingAsyncCtorDecl;
+    public int PendingAsyncStartIndex;
 
     public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
       List<Variable> inParams, List<Variable> outParams,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
       List<ElimDecl> eliminates,
-      List<IdentifierExpr> modifies, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
+      List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
+      new List<TypeVariable>(), inParams, outParams,
       false, new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
       this.moverType = moverType;
@@ -3366,6 +3369,8 @@ namespace Microsoft.Boogie
       this.refinedAction = refinedAction;
       this.invariantAction = invariantAction;
       this.eliminates = eliminates;
+      this.pendingAsyncCtorDecl = pendingAsyncCtorDecl;
+      this.PendingAsyncStartIndex = outParams.Count;
     }
 
     public override void Resolve(ResolutionContext rc)
@@ -3520,6 +3525,36 @@ namespace Microsoft.Boogie
     public IEnumerable<ActionDeclRef> ActionDeclRefs()
     {
       return creates.Append(refinedAction).Append(invariantAction);
+    }
+
+    public DatatypeConstructor PendingAsyncCtor => pendingAsyncCtorDecl.GetConstructor(Name);
+
+    public CtorType PendingAsyncType => new (pendingAsyncCtorDecl.tok, pendingAsyncCtorDecl, new List<Type>());
+
+    public MapType PendingAsyncMultisetType => new(Token.NoToken, new List<TypeVariable>(),
+      new List<Type> { PendingAsyncType }, Type.Int);
+
+    public Function PendingAsyncAdd => pendingAsyncAdd;
+    private Function pendingAsyncAdd;
+
+    public Function PendingAsyncConst => pendingAsyncConst;
+    private Function pendingAsyncConst;
+
+    public Function PendingAsyncIte => pendingAsyncIte;
+    private Function pendingAsyncIte;
+
+    public void Initialize(Monomorphizer monomorphizer)
+    {
+      if (pendingAsyncCtorDecl == null)
+      {
+        return;
+      }
+      pendingAsyncAdd =
+        monomorphizer.InstantiateFunction("MapAdd", new Dictionary<string, Type> { { "T", PendingAsyncType } });
+      pendingAsyncConst = monomorphizer.InstantiateFunction("MapConst",
+        new Dictionary<string, Type> { { "T", PendingAsyncType }, { "U", Type.Int } });
+      pendingAsyncIte = monomorphizer.InstantiateFunction("MapIte",
+        new Dictionary<string, Type> { { "T", PendingAsyncType }, { "U", Type.Int } });
     }
   }
   
