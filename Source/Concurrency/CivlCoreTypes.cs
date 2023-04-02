@@ -186,43 +186,25 @@ namespace Microsoft.Boogie
           if (cmd is CallCmd callCmd)
           {
             var originalProc = (Procedure)civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc);
-            if (originalProc.Name == "create_async" ||
-                originalProc.Name == "create_asyncs" ||
-                originalProc.Name == "create_multi_asyncs" ||
-                originalProc.Name == "set_choice")
+            if (originalProc.Name == "create_async" || originalProc.Name == "create_asyncs" || originalProc.Name == "create_multi_asyncs")
             {
-              var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+              var pendingAsyncType =
+                (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
               var pendingAsync = pendingAsyncs.First(action => action.pendingAsyncType.Equals(pendingAsyncType));
               var tc = new TypecheckingContext(null, civlTypeChecker.Options);
-              if (originalProc.Name == "create_async" || originalProc.Name == "create_asyncs" || originalProc.Name == "create_multi_asyncs")
-              {
-                var pendingAsyncMultiset = originalProc.Name == "create_async"
-                  ?
-                  Expr.Store(ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(0)), callCmd.Ins[0],
-                    Expr.Literal(1))
-                  : originalProc.Name == "create_asyncs"
-                    ? ExprHelper.FunctionCall(pendingAsync.pendingAsyncIte, callCmd.Ins[0],
-                      ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(1)),
-                      ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(0)))
-                    : callCmd.Ins[0];
-                var assignCmd = CmdHelper.AssignCmd(PAs(pendingAsyncType),
-                  ExprHelper.FunctionCall(pendingAsync.pendingAsyncAdd, Expr.Ident(PAs(pendingAsyncType)),
-                    pendingAsyncMultiset));
-                assignCmd.Typecheck(tc);
-                newCmds.Add(assignCmd);
-              }
-              else
-              {
-                // originalProc.Name == "set_choice"
-                var emptyExpr = Expr.Eq(Expr.Ident(PAs(pendingAsyncType)),
-                  ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(0)));
-                var memberExpr = Expr.Gt(Expr.Select(Expr.Ident(PAs(pendingAsyncType)), callCmd.Ins[0]),
-                  Expr.Literal(0));
-                var assertCmd = CmdHelper.AssertCmd(cmd.tok, Expr.Or(emptyExpr, memberExpr),
-                  "Choice is not a created pending async");
-                assertCmd.Typecheck(tc);
-                newCmds.Add(assertCmd);
-              }
+              var pendingAsyncMultiset = originalProc.Name == "create_async"
+                ? Expr.Store(ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(0)), callCmd.Ins[0],
+                  Expr.Literal(1))
+                : originalProc.Name == "create_asyncs"
+                  ? ExprHelper.FunctionCall(pendingAsync.pendingAsyncIte, callCmd.Ins[0],
+                    ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(1)),
+                    ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(0)))
+                  : callCmd.Ins[0];
+              var assignCmd = CmdHelper.AssignCmd(PAs(pendingAsyncType),
+                ExprHelper.FunctionCall(pendingAsync.pendingAsyncAdd, Expr.Ident(PAs(pendingAsyncType)),
+                  pendingAsyncMultiset));
+              assignCmd.Typecheck(tc);
+              newCmds.Add(assignCmd);
               continue;
             }
             if (callCmd.Proc is ActionDecl actionDecl)
@@ -503,6 +485,8 @@ namespace Microsoft.Boogie
 
     public override void CompleteInitialization(CivlTypeChecker civlTypeChecker, IEnumerable<AsyncAction> pendingAsyncs)
     {
+      base.CompleteInitialization(civlTypeChecker, pendingAsyncs);
+
       var choiceDatatypeName = $"Choice_{impl.Name}";
       choiceDatatypeTypeCtorDecl =
         new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
@@ -513,14 +497,10 @@ namespace Microsoft.Boogie
           new List<TypedIdent>() { field });
       });
       civlTypeChecker.program.AddTopLevelDeclaration(choiceDatatypeTypeCtorDecl);
-
       var choice = VarHelper.Formal("choice", TypeHelper.CtorType(choiceDatatypeTypeCtorDecl), false);
-      DesugarSetChoice(civlTypeChecker, choice);
-
-      base.CompleteInitialization(civlTypeChecker, pendingAsyncs);
-
       impl.OutParams.Add(choice);
       proc.OutParams.Add(choice);
+      DesugarSetChoice(civlTypeChecker, choice);
     }
 
     private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Variable choice)
@@ -530,20 +510,29 @@ namespace Microsoft.Boogie
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
         {
-          newCmds.Add(cmd);
           if (cmd is CallCmd callCmd)
           {
             var originalProc = (Procedure)civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc);
             if (originalProc.Name == "set_choice")
             {
               var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+              var pendingAsync = pendingAsyncs.First(action => action.pendingAsyncType.Equals(pendingAsyncType));
               var tc = new TypecheckingContext(null, civlTypeChecker.Options);
-              var lhs = CmdHelper.FieldAssignLhs(Expr.Ident(choice), pendingAsyncType.Decl.Name);
-              var assignCmd = CmdHelper.AssignCmd(lhs, callCmd.Ins[0]);
+              var emptyExpr = Expr.Eq(Expr.Ident(PAs(pendingAsyncType)),
+                ExprHelper.FunctionCall(pendingAsync.pendingAsyncConst, Expr.Literal(0)));
+              var memberExpr = Expr.Gt(Expr.Select(Expr.Ident(PAs(pendingAsyncType)), callCmd.Ins[0]),
+                Expr.Literal(0));
+              var assertCmd = CmdHelper.AssertCmd(cmd.tok, Expr.Or(emptyExpr, memberExpr),
+                "Choice is not a created pending async");
+              assertCmd.Typecheck(tc);
+              newCmds.Add(assertCmd);
+              var assignCmd = CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(Expr.Ident(choice), pendingAsyncType.Decl.Name), callCmd.Ins[0]);
               assignCmd.Typecheck(tc);
               newCmds.Add(assignCmd);
+              continue;
             }
           }
+          newCmds.Add(cmd);
         }
         block.Cmds = newCmds;
       });
