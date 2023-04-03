@@ -1,37 +1,37 @@
 refinement.bpl(7,28): Error: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
 Execution trace:
-    refinement.bpl(9,3): anon0
-    refinement.bpl(53,5): inline$INCR$0$anon0
-    refinement.bpl(9,3): anon0$1
-    refinement.bpl(9,3): anon0_0
-    refinement.bpl(53,5): inline$INCR$1$anon0
+    refinement.bpl(10,3): anon0
+    refinement.bpl(58,5): inline$INCR$0$anon0
+    refinement.bpl(10,3): anon0$1
+    refinement.bpl(10,3): anon0_0
+    refinement.bpl(58,5): inline$INCR$1$anon0
     (0,0): Civl_ReturnChecker
-refinement.bpl(14,28): Error: A yield-to-yield fragment modifies layer-2 state in a way that does not match the refined atomic action
+refinement.bpl(15,28): Error: A yield-to-yield fragment modifies layer-2 state in a way that does not match the refined atomic action
 Execution trace:
-    refinement.bpl(16,3): anon0
-    refinement.bpl(59,5): inline$DECR$0$anon0
-    refinement.bpl(16,3): anon0$1
+    refinement.bpl(18,3): anon0
+    refinement.bpl(64,5): inline$DECR$0$anon0
+    refinement.bpl(18,3): anon0$1
     (0,0): Civl_RefinementChecker
-refinement.bpl(14,28): Error: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
+refinement.bpl(15,28): Error: A yield-to-yield fragment modifies layer-2 state subsequent to a yield-to-yield fragment that already modified layer-2 state
 Execution trace:
-    refinement.bpl(16,3): anon0
-    refinement.bpl(59,5): inline$DECR$0$anon0
-    refinement.bpl(16,3): anon0$1
-    refinement.bpl(16,3): anon0_0
-    refinement.bpl(53,5): inline$INCR$0$anon0
+    refinement.bpl(18,3): anon0
+    refinement.bpl(64,5): inline$DECR$0$anon0
+    refinement.bpl(18,3): anon0$1
+    refinement.bpl(18,3): anon0_0
+    refinement.bpl(58,5): inline$INCR$0$anon0
     (0,0): Civl_ReturnChecker
-refinement.bpl(34,28): Error: On some path no yield-to-yield fragment matched the refined atomic action
+refinement.bpl(37,28): Error: On some path no yield-to-yield fragment matched the refined atomic action
 Execution trace:
-    refinement.bpl(37,1): anon0
+    refinement.bpl(41,1): anon0
     (0,0): Civl_ReturnChecker
-refinement.bpl(39,28): Error: A yield-to-yield fragment illegally modifies layer-2 globals
+refinement.bpl(43,28): Error: A yield-to-yield fragment illegally modifies layer-2 globals
 Execution trace:
-    refinement.bpl(41,3): anon0
-    refinement.bpl(53,5): inline$INCR$0$anon0
-    refinement.bpl(41,3): anon0$1
-    refinement.bpl(41,3): anon0_0
-    refinement.bpl(43,3): anon2_LoopHead
-    refinement.bpl(53,5): inline$INCR$1$anon0
+    refinement.bpl(46,3): anon0
+    refinement.bpl(58,5): inline$INCR$0$anon0
+    refinement.bpl(46,3): anon0$1
+    refinement.bpl(46,3): anon0_0
+    refinement.bpl(48,3): anon2_LoopHead
+    refinement.bpl(58,5): inline$INCR$1$anon0
     (0,0): Civl_UnchangedChecker
 
 Boogie program verifier finished with 3 verified, 5 errors

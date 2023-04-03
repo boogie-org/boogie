@@ -15,7 +15,8 @@ modifies count;
 {
     count := count + 1;
 }
-yield procedure {:layer 2} Incr({:layer 1,2} {:hide} {:linear "tid"} tid: Tid) refines IncrSpec
+yield procedure {:layer 2} Incr({:layer 1,2} {:hide} {:linear "tid"} tid: Tid)
+refines IncrSpec;
 preserves call LockInv();
 {
     var t: int;
@@ -32,7 +33,8 @@ modifies l;
     assume l == None();
     l := Some(tid);
 }
-yield procedure {:layer 1} Acquire({:layer 1} {:linear "tid"} tid: Tid) refines AcquireSpec
+yield procedure {:layer 1} Acquire({:layer 1} {:linear "tid"} tid: Tid)
+refines AcquireSpec;
 preserves call LockInv();
 {
     var t: bool;
@@ -51,7 +53,8 @@ modifies l;
     assert l == Some(tid);
     l := None();
 }
-yield procedure {:layer 1} Release({:layer 1} {:linear "tid"} tid: Tid) refines ReleaseSpec
+yield procedure {:layer 1} Release({:layer 1} {:linear "tid"} tid: Tid)
+refines ReleaseSpec;
 preserves call LockInv();
 {
     var t: bool;
@@ -65,7 +68,8 @@ preserves call LockInv();
     assert l == Some(tid);
     v := count;
 }
-yield procedure {:layer 1} Read({:layer 1} {:linear "tid"} tid: Tid) returns (v: int) refines ReadSpec
+yield procedure {:layer 1} Read({:layer 1} {:linear "tid"} tid: Tid) returns (v: int)
+refines ReadSpec;
 {
     call v := READ();
 }
@@ -76,7 +80,8 @@ modifies count;
     assert l == Some(tid);
     count := v;
 }
-yield procedure {:layer 1} Write({:layer 1} {:linear "tid"} tid: Tid, v: int) refines WriteSpec
+yield procedure {:layer 1} Write({:layer 1} {:linear "tid"} tid: Tid, v: int)
+refines WriteSpec;
 {
     call WRITE(v);
 }
@@ -89,20 +94,23 @@ modifies b;
         b := new_b;
     }
 }
-yield procedure {:layer 0} CAS(old_b: bool, new_b: bool) returns (success: bool) refines atomic_CAS;
+yield procedure {:layer 0} CAS(old_b: bool, new_b: bool) returns (success: bool);
+refines atomic_CAS;
 
 action {:layer 1,1} atomic_READ() returns (v: int)
 {
     v := count;
 }
-yield procedure {:layer 0} READ() returns (v: int) refines atomic_READ;
+yield procedure {:layer 0} READ() returns (v: int);
+refines atomic_READ;
 
 action {:layer 1,1} atomic_WRITE(v: int)
 modifies count;
 {
     count := v;
 }
-yield procedure {:layer 0} WRITE(v: int) refines atomic_WRITE;
+yield procedure {:layer 0} WRITE(v: int);
+refines atomic_WRITE;
 
 link action {:layer 1} set_l(v: Option Tid)
 modifies l;

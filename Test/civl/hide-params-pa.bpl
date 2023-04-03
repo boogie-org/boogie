@@ -3,7 +3,8 @@
 
 async action {:layer 2} SKIP () returns () { }
 
-yield procedure {:layer 1} b () refines SKIP
+yield procedure {:layer 1} b ()
+refines SKIP;
 {
   var {:layer 0} b:bool;
   var {:layer 0} b':bool;
@@ -27,7 +28,8 @@ action {:layer 1} A (i:int) returns (i':int)
 // In the refinement checker for a, the remaining formals of A must be
 // properly mapped to the matching formals in a.
 yield procedure {:layer 0}
-a ({:hide} b:bool, i:int, {:hide} r:real) returns ({:hide} b':bool, i':int, {:hide} r':real) refines A
+a ({:hide} b:bool, i:int, {:hide} r:real) returns ({:hide} b':bool, i':int, {:hide} r':real)
+refines A;
 {
   i' := i + 1;
 }

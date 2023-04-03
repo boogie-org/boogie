@@ -63,7 +63,8 @@ modifies usersInDriver;
     call AddToBarrier(i, l);
 }
 yield procedure {:layer 1}
-Enter#1(i: int, {:layer 1} {:linear_in} l: Lval Perm, {:layer 1} r: Lval Perm) refines AtomicEnter#1
+Enter#1(i: int, {:layer 1} {:linear_in} l: Lval Perm, {:layer 1} r: Lval Perm)
+refines AtomicEnter#1;
 preserves call Inv1();
 requires {:layer 1} l->val == Left(i) && r->val == Right(i);
 {
@@ -78,7 +79,8 @@ requires {:layer 1} l->val == Left(i) && r->val == Right(i);
     assert !stopped;
 }
 yield procedure {:layer 1}
-CheckAssert#1(i: int, {:layer 1} r: Lval Perm) refines AtomicCheckAssert#1
+CheckAssert#1(i: int, {:layer 1} r: Lval Perm)
+refines AtomicCheckAssert#1;
 preserves call Inv1();
 {
     call CheckAssert();
@@ -91,7 +93,8 @@ modifies usersInDriver;
     call RemoveFromBarrier(i, l);
 }
 yield procedure {:layer 1}
-Exit(i: int, {:layer 1} {:linear_out} l: Lval Perm, {:layer 1} r: Lval Perm) refines AtomicExit
+Exit(i: int, {:layer 1} {:linear_out} l: Lval Perm, {:layer 1} r: Lval Perm)
+refines AtomicExit;
 preserves call Inv1();
 {
     call DeleteReference();
@@ -102,7 +105,8 @@ preserves call Inv1();
 
 // stopper code
 
-yield procedure {:layer 2} Stopper(i: Lval int) refines AtomicSetStoppingFlag
+yield procedure {:layer 2} Stopper(i: Lval int)
+refines AtomicSetStoppingFlag;
 preserves call Inv2();
 preserves call Inv1();
 {
@@ -110,7 +114,8 @@ preserves call Inv1();
     call WaitAndStop();
 }
 
-yield procedure {:layer 1} Close(i: Lval int) refines AtomicSetStoppingFlag
+yield procedure {:layer 1} Close(i: Lval int)
+refines AtomicSetStoppingFlag;
 preserves call Inv1();
 {
     call SetStoppingFlag(i);
@@ -124,7 +129,8 @@ modifies stopped;
     assume usersInDriver->dom == MapConst(false);
     stopped := true;
 }
-yield procedure {:layer 1} WaitAndStop() refines AtomicWaitAndStop
+yield procedure {:layer 1} WaitAndStop()
+refines AtomicWaitAndStop;
 preserves call Inv1();
 {
     call WaitOnStoppingEvent();
@@ -153,13 +159,15 @@ modifies pendingIo;
     assume !stoppingFlag;
     pendingIo := pendingIo + 1;
 }
-yield procedure {:layer 0} Enter() refines AtomicEnter;
+yield procedure {:layer 0} Enter();
+refines AtomicEnter;
 
 action {:layer 1} AtomicCheckAssert()
 {
     assert !stopped;
 }
-yield procedure {:layer 0} CheckAssert() refines AtomicCheckAssert;
+yield procedure {:layer 0} CheckAssert();
+refines AtomicCheckAssert;
 
 -> action {:layer 1,3} AtomicSetStoppingFlag(i: Lval int)
 modifies stoppingFlag;
@@ -170,7 +178,8 @@ modifies stoppingFlag;
     assert !stoppingFlag;
     stoppingFlag := true;
 }
-yield procedure {:layer 0} SetStoppingFlag(i: Lval int) refines AtomicSetStoppingFlag;
+yield procedure {:layer 0} SetStoppingFlag(i: Lval int);
+refines AtomicSetStoppingFlag;
 
 action {:layer 1} AtomicDeleteReference()
 modifies pendingIo, stoppingEvent;
@@ -180,17 +189,20 @@ modifies pendingIo, stoppingEvent;
         stoppingEvent := true;
     }
 }
-yield procedure {:layer 0} DeleteReference() refines AtomicDeleteReference;
+yield procedure {:layer 0} DeleteReference();
+refines AtomicDeleteReference;
 
 action {:layer 1} AtomicWaitOnStoppingEvent()
 {
     assume stoppingEvent;
 }
-yield procedure {:layer 0} WaitOnStoppingEvent() refines AtomicWaitOnStoppingEvent;
+yield procedure {:layer 0} WaitOnStoppingEvent();
+refines AtomicWaitOnStoppingEvent;
 
 <- action {:layer 1} AtomicSetStopped()
 modifies stopped;
 {
     stopped := true;
 }
-yield procedure {:layer 0} SetStopped() refines AtomicSetStopped;
+yield procedure {:layer 0} SetStopped();
+refines AtomicSetStopped;

@@ -72,8 +72,11 @@ modifies y;
   y[i] := x[(i-1) mod N];
 }
 
-yield procedure {:layer 0} update_x(i: int) refines atomic_update_x;
-yield procedure {:layer 0} update_y(i: int) refines atomic_update_y;
+yield procedure {:layer 0} update_x(i: int);
+refines atomic_update_x;
+
+yield procedure {:layer 0} update_y(i: int);
+refines atomic_update_y;
 
 // #############################################################################
 

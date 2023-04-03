@@ -5,7 +5,8 @@ var {:layer 0,2} x:int;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 1} MAIN () refines MAIN' using INV
+action {:layer 1} MAIN ()
+refines MAIN' using INV;
 creates INC, DEC;
 {
   call create_async(INC());

@@ -28,7 +28,8 @@ modifies x, y;
   y := w;
 }
 
-yield procedure {:layer 2} read () returns (v:int, w:int) refines READ
+yield procedure {:layer 2} read () returns (v:int, w:int)
+refines READ;
 {
   var seq1:int;
   var seq2:int;
@@ -48,7 +49,8 @@ yield procedure {:layer 2} read () returns (v:int, w:int) refines READ
 }
 
 yield procedure {:layer 2}
-write ({:hide}{:linear "tid"} tid:Tid, v:int, w:int) refines WRITE
+write ({:hide}{:linear "tid"} tid:Tid, v:int, w:int)
+refines WRITE;
 preserves call SeqLockInv();
 {
   call acquire(tid);
@@ -120,17 +122,28 @@ modifies y;
   y := v;
 }
 
-yield procedure {:layer 1} stale_read_seq () returns (r:int) refines STALE_READ_SEQ
+yield procedure {:layer 1} stale_read_seq () returns (r:int)
+refines STALE_READ_SEQ;
 { call r := read_seq(); }
-yield procedure {:layer 1} stale_read_x ({:layer 1} seq1:int) returns (r:int) refines STALE_READ_X
+
+yield procedure {:layer 1} stale_read_x ({:layer 1} seq1:int) returns (r:int)
+refines STALE_READ_X;
 { call r := read_x(); }
-yield procedure {:layer 1} stale_read_y ({:layer 1} seq1:int) returns (r:int) refines STALE_READ_Y
+
+yield procedure {:layer 1} stale_read_y ({:layer 1} seq1:int) returns (r:int)
+refines STALE_READ_Y;
 { call r := read_y(); }
-yield procedure {:layer 1} locked_inc_seq ({:layer 1}{:linear "tid"} tid:Tid) refines LOCKED_INC_SEQ
+
+yield procedure {:layer 1} locked_inc_seq ({:layer 1}{:linear "tid"} tid:Tid)
+refines LOCKED_INC_SEQ;
 { call inc_seq(); }
-yield procedure {:layer 1} locked_write_x ({:layer 1}{:linear "tid"} tid:Tid, v:int) refines LOCKED_WRITE_X
+
+yield procedure {:layer 1} locked_write_x ({:layer 1}{:linear "tid"} tid:Tid, v:int)
+refines LOCKED_WRITE_X;
 { call write_x(v); }
-yield procedure {:layer 1} locked_write_y ({:layer 1}{:linear "tid"} tid:Tid, v:int) refines LOCKED_WRITE_Y
+
+yield procedure {:layer 1} locked_write_y ({:layer 1}{:linear "tid"} tid:Tid, v:int)
+refines LOCKED_WRITE_Y;
 { call write_y(v); }
 
 // =============================================================================
@@ -186,11 +199,26 @@ modifies lock;
   lock := None();
 }
 
-yield procedure {:layer 0} read_x () returns (r:int) refines READ_X;
-yield procedure {:layer 0} read_y () returns (r:int) refines READ_Y;
-yield procedure {:layer 0} write_x (v:int) refines WRITE_X;
-yield procedure {:layer 0} write_y (v:int) refines WRITE_Y;
-yield procedure {:layer 0} read_seq () returns (r:int) refines READ_SEQ;
-yield procedure {:layer 0} inc_seq () refines INC_SEQ;
-yield procedure {:layer 0} acquire ({:linear "tid"} tid:Tid) refines ACQUIRE;
-yield procedure {:layer 0} release ({:linear "tid"} tid:Tid) refines RELEASE;
+yield procedure {:layer 0} read_x () returns (r:int);
+refines READ_X;
+
+yield procedure {:layer 0} read_y () returns (r:int);
+refines READ_Y;
+
+yield procedure {:layer 0} write_x (v:int);
+refines WRITE_X;
+
+yield procedure {:layer 0} write_y (v:int);
+refines WRITE_Y;
+
+yield procedure {:layer 0} read_seq () returns (r:int);
+refines READ_SEQ;
+
+yield procedure {:layer 0} inc_seq ();
+refines INC_SEQ;
+
+yield procedure {:layer 0} acquire ({:linear "tid"} tid:Tid);
+refines ACQUIRE;
+
+yield procedure {:layer 0} release ({:linear "tid"} tid:Tid);
+refines RELEASE;

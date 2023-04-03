@@ -21,7 +21,8 @@ modifies x, y;
   y := w;
 }
 
-yield procedure {:layer 1} get_x (tid: Lval Tid) returns (v: int) refines GET_X
+yield procedure {:layer 1} get_x (tid: Lval Tid) returns (v: int)
+refines GET_X;
 requires {:layer 1} tid->val != nil;
 {
   call acquire_x(tid);
@@ -29,7 +30,8 @@ requires {:layer 1} tid->val != nil;
   call release_x(tid);
 }
 
-yield procedure {:layer 1} set_both (tid: Lval Tid, v: int, w: int) refines SET_BOTH
+yield procedure {:layer 1} set_both (tid: Lval Tid, v: int, w: int)
+refines SET_BOTH;
 requires {:layer 1} tid->val != nil;
 {
   call acquire_x(tid);
@@ -90,10 +92,23 @@ modifies y;
   r := x;
 }
 
-yield procedure {:layer 0} acquire_x (tid: Lval Tid) refines ACQUIRE_X;
-yield procedure {:layer 0} acquire_y (tid: Lval Tid) refines ACQUIRE_Y;
-yield procedure {:layer 0} release_x (tid: Lval Tid) refines RELEASE_X;
-yield procedure {:layer 0} release_y (tid: Lval Tid) refines RELEASE_Y;
-yield procedure {:layer 0} write_x (tid: Lval Tid, v: int) refines WRITE_X;
-yield procedure {:layer 0} write_y (tid: Lval Tid, v: int) refines WRITE_Y;
-yield procedure {:layer 0} read_x (tid: Lval Tid) returns (r: int) refines READ_X;
+yield procedure {:layer 0} acquire_x (tid: Lval Tid);
+refines ACQUIRE_X;
+
+yield procedure {:layer 0} acquire_y (tid: Lval Tid);
+refines ACQUIRE_Y;
+
+yield procedure {:layer 0} release_x (tid: Lval Tid);
+refines RELEASE_X;
+
+yield procedure {:layer 0} release_y (tid: Lval Tid);
+refines RELEASE_Y;
+
+yield procedure {:layer 0} write_x (tid: Lval Tid, v: int);
+refines WRITE_X;
+
+yield procedure {:layer 0} write_y (tid: Lval Tid, v: int);
+refines WRITE_Y;
+
+yield procedure {:layer 0} read_x (tid: Lval Tid) returns (r: int);
+refines READ_X;

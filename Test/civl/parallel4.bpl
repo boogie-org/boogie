@@ -31,6 +31,7 @@ action {:layer 1} AtomicIncr()
 modifies a;
 { a := a + 1; }
 
-yield procedure {:layer 0} Incr() refines AtomicIncr;
+yield procedure {:layer 0} Incr();
+refines AtomicIncr;
 
 yield invariant {:layer 1} Yield();

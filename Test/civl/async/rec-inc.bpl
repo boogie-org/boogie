@@ -7,7 +7,8 @@ var {:layer 0,2} x : int;
 
 // ###########################################################################
 
-yield procedure {:layer 1} main (n: int) refines atomic_inc_x
+yield procedure {:layer 1} main (n: int)
+refines atomic_inc_x;
 requires {:layer 1} n >= 0;
 {
   call inc(n);
@@ -29,4 +30,5 @@ ensures {:layer 1} x == old(x) + i;
 modifies x;
 { x := x + n; }
 
-yield procedure {:layer 0} inc_x (n: int) refines atomic_inc_x;
+yield procedure {:layer 0} inc_x (n: int);
+refines atomic_inc_x;

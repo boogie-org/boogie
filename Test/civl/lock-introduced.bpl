@@ -29,7 +29,8 @@ invariant tid != nil && InvLock(lock, b);
 modifies lock;
 { assume lock == nil && tid != nil; lock := tid; }
 
-yield procedure {:layer 2} Enter({:linear "tid"} tid: X) refines AtomicEnter
+yield procedure {:layer 2} Enter({:linear "tid"} tid: X)
+refines AtomicEnter;
 preserves call Yield(tid);
 {
   call LowerEnter(tid);
@@ -39,7 +40,8 @@ preserves call Yield(tid);
 modifies lock;
 { assert lock == tid && tid != nil; lock := nil; }
 
-yield procedure {:layer 2} Leave({:linear "tid"} tid:X) refines AtomicLeave
+yield procedure {:layer 2} Leave({:linear "tid"} tid:X)
+refines AtomicLeave;
 preserves call Yield(tid);
 {
   call LowerLeave();
@@ -49,7 +51,8 @@ action {:layer 2} AtomicLowerEnter({:linear "tid"} tid: X)
 modifies b, lock;
 { assume !b; b := true; lock := tid; }
 
-yield procedure {:layer 1} LowerEnter({:linear "tid"} tid: X) refines AtomicLowerEnter
+yield procedure {:layer 1} LowerEnter({:linear "tid"} tid: X)
+refines AtomicLowerEnter;
 {
   var status: bool;
 
@@ -68,7 +71,8 @@ action {:layer 2} AtomicLowerLeave()
 modifies b, lock;
 { b := false; lock := nil; }
 
-yield procedure {:layer 1} LowerLeave() refines AtomicLowerLeave
+yield procedure {:layer 1} LowerLeave()
+refines AtomicLowerLeave;
 {
   call SET(false);
   call SetLock(nil);
@@ -93,5 +97,8 @@ action {:layer 1} AtomicSET(next: bool)
 modifies b;
 { b := next; }
 
-yield procedure {:layer 0} CAS(prev: bool, next: bool) returns (status: bool) refines AtomicCAS;
-yield procedure {:layer 0} SET(next: bool) refines AtomicSET;
+yield procedure {:layer 0} CAS(prev: bool, next: bool) returns (status: bool);
+refines AtomicCAS;
+
+yield procedure {:layer 0} SET(next: bool);
+refines AtomicSET;

@@ -72,7 +72,8 @@ modifies pool;
 }
 
 yield procedure {:layer 1}
-Alloc() returns ({:layer 1} {:linear "mem"} l:lmap, i:int) refines atomic_Alloc
+Alloc() returns ({:layer 1} {:linear "mem"} l:lmap, i:int)
+refines atomic_Alloc;
 requires call Yield();
 ensures call YieldMem(l, i);
 {
@@ -87,7 +88,8 @@ modifies pool;
   pool := Add(pool, i);
 }
 
-yield procedure {:layer 1} Free({:layer 1} {:linear_in "mem"} l:lmap, i:int) refines atomic_Free
+yield procedure {:layer 1} Free({:layer 1} {:linear_in "mem"} l:lmap, i:int)
+refines atomic_Free;
 requires {:layer 1} dom(l)[i];
 preserves call Yield();
 {
@@ -108,7 +110,8 @@ preserves call Yield();
 }
 
 yield procedure {:layer 1}
-Read ({:layer 1} {:linear "mem"} l:lmap, i:int) returns (o:int) refines atomic_Read
+Read ({:layer 1} {:linear "mem"} l:lmap, i:int) returns (o:int)
+refines atomic_Read;
 requires call YieldMem(l, i);
 ensures call Yield();
 {
@@ -116,7 +119,8 @@ ensures call Yield();
 }
 
 yield procedure {:layer 1}
-Write ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap) refines atomic_Write
+Write ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
+refines atomic_Write;
 requires call YieldMem(l, i);
 ensures call YieldMem(l', i);
 {
@@ -174,7 +178,14 @@ action {:layer 1} atomic_ReturnAddr (i:int)
 modifies unallocated;
 { unallocated[i] := true; }
 
-yield procedure {:layer 0} ReadLow (i:int) returns (o:int) refines atomic_ReadLow;
-yield procedure {:layer 0} WriteLow (i:int, o:int) refines atomic_WriteLow;
-yield procedure {:layer 0} PickAddr () returns (i:int) refines atomic_PickAddr;
-yield procedure {:layer 0} ReturnAddr (i:int) refines atomic_ReturnAddr;
+yield procedure {:layer 0} ReadLow (i:int) returns (o:int);
+refines atomic_ReadLow;
+
+yield procedure {:layer 0} WriteLow (i:int, o:int);
+refines atomic_WriteLow;
+
+yield procedure {:layer 0} PickAddr () returns (i:int);
+refines atomic_PickAddr;
+
+yield procedure {:layer 0} ReturnAddr (i:int);
+refines atomic_ReturnAddr;

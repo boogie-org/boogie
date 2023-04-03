@@ -19,14 +19,18 @@ creates A;
   }
 }
 
-yield procedure {:layer 0} b () refines B;
-yield procedure {:layer 0} c (flag:bool) refines C;
+yield procedure {:layer 0} b ();
+refines B;
+
+yield procedure {:layer 0} c (flag:bool);
+refines C;
 
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // Verifies
-yield procedure {:layer 1} test1 () refines TEST1
+yield procedure {:layer 1} test1 ()
+refines TEST1;
 {
   call b();
   call b();
@@ -41,7 +45,8 @@ creates A;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Fails
-yield procedure {:layer 1} test2 () refines TEST2
+yield procedure {:layer 1} test2 ()
+refines TEST2;
 {
   call b();
   call b();
@@ -56,7 +61,8 @@ creates A;
 ////////////////////////////////////////////////////////////////////////////////
 
 // Fails
-yield procedure {:layer 1} test3 () refines TEST3
+yield procedure {:layer 1} test3 ()
+refines TEST3;
 {
   call c(true);
 }
@@ -66,7 +72,8 @@ action {:layer 2} TEST3 () returns () {}
 ////////////////////////////////////////////////////////////////////////////////
 
 // Verifies
-yield procedure {:layer 1} test4 () refines TEST4
+yield procedure {:layer 1} test4 ()
+refines TEST4;
 {
   call c(false);
 }
@@ -76,7 +83,8 @@ action {:layer 2} TEST4 () returns () {}
 ////////////////////////////////////////////////////////////////////////////////
 
 // Verifies
-yield procedure {:layer 1} test5 () refines TEST5
+yield procedure {:layer 1} test5 ()
+refines TEST5;
 {
   var i:int;
   var {:pending_async}{:layer 1} PAs:[A]int;

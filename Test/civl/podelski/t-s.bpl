@@ -39,5 +39,8 @@ modifies s;
   s := s + 1;
 }
 
-yield procedure {:layer 0} inc_t () refines INC_T;
-yield procedure {:layer 0} inc_s () refines INC_S;
+yield procedure {:layer 0} inc_t ();
+refines INC_T;
+
+yield procedure {:layer 0} inc_s ();
+refines INC_S;

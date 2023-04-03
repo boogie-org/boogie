@@ -11,7 +11,8 @@ yield procedure {:layer 1} foo()
     call A();
 }
 
-yield procedure {:layer 0} A() refines atomic_A;
+yield procedure {:layer 0} A();
+refines atomic_A;
 action {:layer 1,1} atomic_A()
 modifies g;
 {

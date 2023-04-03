@@ -529,10 +529,10 @@ public class Scanner {
 			case "datatype": t.kind = 33; break;
 			case "invariant": t.kind = 34; break;
 			case "action": t.kind = 35; break;
-			case "refines": t.kind = 36; break;
+			case "creates": t.kind = 36; break;
 			case "using": t.kind = 37; break;
-			case "creates": t.kind = 38; break;
-			case "eliminates": t.kind = 39; break;
+			case "eliminates": t.kind = 38; break;
+			case "refines": t.kind = 39; break;
 			case "async": t.kind = 44; break;
 			case "link": t.kind = 45; break;
 			case "abstract": t.kind = 46; break;

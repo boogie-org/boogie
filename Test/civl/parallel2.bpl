@@ -9,7 +9,8 @@ action {:layer 1} AtomicWrite(idx: int, val: int)
 modifies a;
 { a[idx] := val; }
 
-yield procedure {:layer 0} Write(idx: int, val: int) refines AtomicWrite;
+yield procedure {:layer 0} Write(idx: int, val: int);
+refines AtomicWrite;
 
 yield procedure {:layer 1} main()
 {

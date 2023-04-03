@@ -10,7 +10,8 @@ modifies x;
 }
 
 
-yield procedure {:layer 1} main () refines MAIN
+yield procedure {:layer 1} main ()
+refines MAIN;
 {
   async call {:sync} a();
 }
@@ -48,4 +49,5 @@ ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 3;
 modifies x;
 { x := x + n; }
 
-yield procedure {:layer 0} add (n:int) refines ADD;
+yield procedure {:layer 0} add (n:int);
+refines ADD;

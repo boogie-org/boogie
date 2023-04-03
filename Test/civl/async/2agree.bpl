@@ -22,7 +22,8 @@ modifies val_a, val_b;
   assume val_a == val_b;
 }
 
-yield procedure {:layer 2} main ({:linear_in "lin"} p : int) refines atomic_agree
+yield procedure {:layer 2} main ({:linear_in "lin"} p : int)
+refines atomic_agree;
 requires {:layer 2} perm(p);
 {
   var val_a_local : int;
@@ -104,11 +105,16 @@ modifies val_a;
 modifies val_b;
 { assert perm(p); val_b := val; }
 
-yield procedure {:layer 1} get_val_a_perm ({:linear "lin"} p : int) returns (ret : int) refines atomic_get_val_a_perm
+yield procedure {:layer 1} get_val_a_perm ({:linear "lin"} p : int) returns (ret : int)
+refines atomic_get_val_a_perm;
 { call ret := get_val_a(); }
-yield procedure {:layer 1} set_val_a_perm (val : int, {:linear "lin"} p : int) refines atomic_set_val_a_perm
+
+yield procedure {:layer 1} set_val_a_perm (val : int, {:linear "lin"} p : int)
+refines atomic_set_val_a_perm;
 { call set_val_a(val); }
-yield procedure {:layer 1} set_val_b_perm (val : int, {:linear "lin"} p : int) refines atomic_set_val_b_perm
+
+yield procedure {:layer 1} set_val_b_perm (val : int, {:linear "lin"} p : int)
+refines atomic_set_val_b_perm;
 { call set_val_b(val); }
 
 // ###########################################################################
@@ -125,6 +131,11 @@ action {:layer 1} atomic_set_val_b (val : int)
 modifies val_b;
 { val_b := val; }
 
-yield procedure {:layer 0} get_val_a () returns (ret : int) refines atomic_get_val_a;
-yield procedure {:layer 0} set_val_a (val : int) refines atomic_set_val_a;
-yield procedure {:layer 0} set_val_b (val : int) refines atomic_set_val_b;
+yield procedure {:layer 0} get_val_a () returns (ret : int);
+refines atomic_get_val_a;
+
+yield procedure {:layer 0} set_val_a (val : int);
+refines atomic_set_val_a;
+
+yield procedure {:layer 0} set_val_b (val : int);
+refines atomic_set_val_b;

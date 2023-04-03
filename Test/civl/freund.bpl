@@ -8,7 +8,9 @@ modifies count;
 {
     count := count + 1;
 }
-yield procedure {:layer 1} Inc() refines AtomicInc {
+yield procedure {:layer 1} Inc()
+refines AtomicInc;
+{
     var n: int;
     var success: bool;
 
@@ -34,12 +36,14 @@ modifies count;
         status := false;
     }
 }
-yield procedure {:layer 0} CAS(prev: int, next: int) returns (status: bool) refines AtomicCAS;
+yield procedure {:layer 0} CAS(prev: int, next: int) returns (status: bool);
+refines AtomicCAS;
 
 action {:layer 1} AtomicRead() returns (val: int)
 {
     val := count;
 }
-yield procedure {:layer 0} Read() returns (val: int) refines AtomicRead;
+yield procedure {:layer 0} Read() returns (val: int);
+refines AtomicRead;
 
 yield invariant {:layer 1} Yield();

@@ -31,13 +31,15 @@ requires call Yield_9(p);
 modifies x;
 { x := x + 1; }
 
-yield procedure {:layer 10} Server_Inc ({:linear_in "lin"} p : int) refines inc_x_high_atomic
+yield procedure {:layer 10} Server_Inc ({:linear_in "lin"} p : int)
+refines inc_x_high_atomic;
 requires call Yield_9(p);
 {
   async call {:sync} AsyncInc(p);
 }
 
-yield procedure {:layer 9} AsyncInc ({:linear_in "lin"} p : int) refines inc_x_high_atomic
+yield procedure {:layer 9} AsyncInc ({:linear_in "lin"} p : int)
+refines inc_x_high_atomic;
 requires call Yield_9(p);
 {
   call inc_x_perm(p);
@@ -57,12 +59,14 @@ modifies x;
 <- action {:layer 9} Client_IncDone_atomic ({:linear_in "lin"} p : int)
 { assert perm(p) && x == y + 1; }
 
-yield procedure {:layer 8} inc_x_perm ({:linear "lin"} p : int) refines inc_x_perm_atomic
+yield procedure {:layer 8} inc_x_perm ({:linear "lin"} p : int)
+refines inc_x_perm_atomic;
 {
   call inc_x();
 }
 
-yield procedure {:layer 8} Client_IncDone ({:linear_in "lin"} p : int) refines Client_IncDone_atomic
+yield procedure {:layer 8} Client_IncDone ({:linear_in "lin"} p : int)
+refines Client_IncDone_atomic;
 {
   call Assertion();
 }
@@ -77,5 +81,8 @@ modifies x;
 action {:layer 8} Assertion_atomic ()
 { assert x == y + 1; }
 
-yield procedure {:layer 7} inc_x () refines inc_x_atomic;
-yield procedure {:layer 7} Assertion () refines Assertion_atomic;
+yield procedure {:layer 7} inc_x ();
+refines inc_x_atomic;
+
+yield procedure {:layer 7} Assertion ();
+refines Assertion_atomic;

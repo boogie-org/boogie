@@ -68,7 +68,8 @@ invariant InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-Paxos({:layer 1}{:linear_in "perm"} rs: [Round]bool) refines A_Paxos
+Paxos({:layer 1}{:linear_in "perm"} rs: [Round]bool)
+refines A_Paxos;
 requires call YieldInit(rs);
 {
   var r: int;
@@ -90,7 +91,8 @@ requires call YieldInit(rs);
 }
 
 yield procedure {:layer 1}
-StartRound(r: Round, {:layer 1}{:linear_in "perm"} r_lin: Round) refines A_StartRound
+StartRound(r: Round, {:layer 1}{:linear_in "perm"} r_lin: Round)
+refines A_StartRound;
 requires {:layer 1} Round(r) && r_lin == r;
 requires call YieldInv();
 requires call YieldInvChannels();
@@ -162,7 +164,8 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
 }
 
 yield procedure {:layer 1}
-Propose(r: Round, {:layer 1}{:linear_in "perm"} ps: [Permission]bool) refines A_Propose
+Propose(r: Round, {:layer 1}{:linear_in "perm"} ps: [Permission]bool)
+refines A_Propose;
 requires {:layer 1} Round(r) && ps == ProposePermissions(r);
 requires call YieldInv();
 requires call YieldInvChannels();
@@ -194,7 +197,8 @@ requires call YieldInvChannels();
 }
 
 yield procedure {:layer 1}
-Conclude(r: Round, v: Value, {:layer 1}{:linear_in "perm"} p: Permission) refines A_Conclude
+Conclude(r: Round, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
+refines A_Conclude;
 requires {:layer 1} Round(r) && p == ConcludePerm(r);
 requires call YieldInv();
 requires call YieldInvChannels();
@@ -230,7 +234,8 @@ requires call YieldInvChannels();
 }
 
 yield procedure {:layer 1}
-Join(r: Round, n: Node, {:layer 1}{:linear_in "perm"} p: Permission) refines A_Join
+Join(r: Round, n: Node, {:layer 1}{:linear_in "perm"} p: Permission)
+refines A_Join;
 requires {:layer 1} Round(r) && Node(n) && p == JoinPerm(r, n);
 requires call YieldInv();
 {
@@ -247,7 +252,8 @@ requires call YieldInv();
 }
 
 yield procedure {:layer 1}
-Vote(r: Round, n: Node, v: Value, {:layer 1}{:linear_in "perm"} p: Permission) refines A_Vote
+Vote(r: Round, n: Node, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
+refines A_Vote;
 requires {:layer 1} Round(r) && Node(n) && p == VotePerm(r, n);
 requires call YieldInv();
 {
@@ -333,9 +339,14 @@ modifies acceptorState;
   }
 }
 
-yield procedure {:layer 0} SetDecision(round: Round, value: Value) refines A_SetDecision;
-yield procedure {:layer 0} JoinUpdate(r: Round, n: Node) returns (join:bool, lastVoteRound: Round, lastVoteValue: Value) refines A_JoinUpdate;
-yield procedure {:layer 0} VoteUpdate(r: Round, n: Node, v: Value) returns (vote:bool) refines A_VoteUpdate;
+yield procedure {:layer 0} SetDecision(round: Round, value: Value);
+refines A_SetDecision;
+
+yield procedure {:layer 0} JoinUpdate(r: Round, n: Node) returns (join:bool, lastVoteRound: Round, lastVoteValue: Value);
+refines A_JoinUpdate;
+
+yield procedure {:layer 0} VoteUpdate(r: Round, n: Node, v: Value) returns (vote:bool);
+refines A_VoteUpdate;
 
 //// Channel send/receive actions
 
@@ -368,16 +379,20 @@ modifies voteChannel;
 }
 
 yield procedure {:layer 0}
-SendJoinResponse(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value) refines A_SendJoinResponse;
+SendJoinResponse(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value);
+refines A_SendJoinResponse;
 
 yield procedure {:layer 0}
-ReceiveJoinResponse(round: Round) returns (joinResponse: JoinResponse) refines A_ReceiveJoinResponse;
+ReceiveJoinResponse(round: Round) returns (joinResponse: JoinResponse);
+refines A_ReceiveJoinResponse;
 
 yield procedure {:layer 0}
-SendVoteResponse(round: Round, from: Node) refines A_SendVoteResponse;
+SendVoteResponse(round: Round, from: Node);
+refines A_SendVoteResponse;
 
 yield procedure {:layer 0}
-ReceiveVoteResponse(round: Round) returns (voteResponse: VoteResponse) refines A_ReceiveVoteResponse;
+ReceiveVoteResponse(round: Round) returns (voteResponse: VoteResponse);
+refines A_ReceiveVoteResponse;
 
 //// Introduction procedure for quorum
 link action {:layer 1} InitializeQuorum() returns (q: NodeSet) {

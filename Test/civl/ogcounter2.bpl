@@ -14,36 +14,42 @@ var {:layer 1,4}{:linear "tid"} unallocated:[X]bool;
 modifies unallocated;
 { assume tid != Nil && unallocated[tid]; unallocated[tid] := false; }
 
-yield procedure {:layer 1} AllocTid() returns ({:linear "tid"} tid: X) refines AtomicAllocTid;
+yield procedure {:layer 1} AllocTid() returns ({:linear "tid"} tid: X);
+refines AtomicAllocTid;
 
 -> action {:layer 3} atomic_acq({:linear "tid"} tid: X)
 modifies lock;
 { assert tid != Nil; assume lock == Nil; lock := tid; }
 
-yield procedure {:layer 2} acq({:linear "tid"} tid: X) refines atomic_acq;
+yield procedure {:layer 2} acq({:linear "tid"} tid: X);
+refines atomic_acq;
 
 <- action {:layer 3} atomic_rel({:linear "tid"} tid: X)
 modifies lock;
 { assert tid != Nil && lock == tid; lock := Nil; }
 
-yield procedure {:layer 2} rel({:linear "tid"} tid: X) refines atomic_rel;
+yield procedure {:layer 2} rel({:linear "tid"} tid: X);
+refines atomic_rel;
 
 <-> action {:layer 3} atomic_read({:linear "tid"} tid: X) returns (v: int)
 { assert tid != Nil && lock == tid; v := x; }
 
-yield procedure {:layer 2} read({:linear "tid"} tid: X) returns (v: int) refines atomic_read;
+yield procedure {:layer 2} read({:linear "tid"} tid: X) returns (v: int);
+refines atomic_read;
 
 <-> action {:layer 3} atomic_write({:linear "tid"} tid: X, v: int)
 modifies x;
 { assert tid != Nil && lock == tid; x := v; }
 
-yield procedure {:layer 2} write({:linear "tid"} tid: X, v: int) refines atomic_write;
+yield procedure {:layer 2} write({:linear "tid"} tid: X, v: int);
+refines atomic_write;
 
 <- action {:layer 4} AtomicIncr({:linear "tid"} tid: X)
 modifies x;
 { x := x + 1; }
 
-yield procedure {:layer 3} Incr({:linear "tid"} tid: X) refines AtomicIncr
+yield procedure {:layer 3} Incr({:linear "tid"} tid: X)
+refines AtomicIncr;
 requires {:layer 3} tid != Nil;
 {
   var t: int;
@@ -58,7 +64,8 @@ requires {:layer 3} tid != Nil;
 modifies x;
 { x := x + 2; }
 
-yield procedure {:layer 4} IncrBy2() refines AtomicIncrBy2
+yield procedure {:layer 4} IncrBy2()
+refines AtomicIncrBy2;
 {
   var {:linear "tid"} tid1: X;
   var {:linear "tid"} tid2: X;

@@ -25,7 +25,8 @@ action {:layer 2} atomic_Free({:linear "tid"} tid: X, i: int)
 modifies status;
 { assert tid != nil; status[i] := true; }
 
-yield procedure {:layer 1} Alloc({:linear "tid"} tid: X) returns (r: int) refines atomic_Alloc
+yield procedure {:layer 1} Alloc({:linear "tid"} tid: X) returns (r: int)
+refines atomic_Alloc;
 {
   var i: int;
   var b: bool;
@@ -49,7 +50,8 @@ yield procedure {:layer 1} Alloc({:linear "tid"} tid: X) returns (r: int) refine
   }
 }
 
-yield procedure {:layer 1} Free({:linear "tid"} tid: X, i: int) refines atomic_Free
+yield procedure {:layer 1} Free({:linear "tid"} tid: X, i: int)
+refines atomic_Free;
 {
   call acquire(tid, i);
   call Write(tid, i, true);
@@ -71,7 +73,14 @@ modifies l;
 modifies status;
 { assert tid != nil; assert l[i] == tid; status[i] := val; }
 
-yield procedure {:layer 0} acquire({:linear "tid"} tid: X, i: int) refines atomic_acquire;
-yield procedure {:layer 0} release({:linear "tid"} tid: X, i: int) refines atomic_release;
-yield procedure {:layer 0} Read({:linear "tid"} tid: X, i: int) returns (val: bool) refines atomic_Read;
-yield procedure {:layer 0} Write({:linear "tid"} tid: X, i: int, val: bool) refines atomic_Write;
+yield procedure {:layer 0} acquire({:linear "tid"} tid: X, i: int);
+refines atomic_acquire;
+
+yield procedure {:layer 0} release({:linear "tid"} tid: X, i: int);
+refines atomic_release;
+
+yield procedure {:layer 0} Read({:linear "tid"} tid: X, i: int) returns (val: bool);
+refines atomic_Read;
+
+yield procedure {:layer 0} Write({:linear "tid"} tid: X, i: int, val: bool);
+refines atomic_Write;

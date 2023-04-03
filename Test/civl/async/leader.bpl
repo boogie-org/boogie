@@ -62,7 +62,8 @@ yield invariant {:layer 1} YieldAllDecided();
 invariant all_decided(init_val, dec_dom, dec_val);
 
 yield procedure {:layer 1}
-main ({:linear_in "Perm"} perms:[Perm]bool) refines main_atomic
+main ({:linear_in "Perm"} perms:[Perm]bool)
+refines main_atomic;
 requires {:layer 1} perms == all_perms();
 ensures call YieldAllDecided();
 {
@@ -125,8 +126,11 @@ modifies col_dom, col_val, dec_dom, dec_val;
   v := init_val[pid];
 }
 
-yield procedure {:layer 0} Q (r:int, s:int, v:int, {:linear_in "Perm"} p:Perm) refines Q_atomic;
-yield procedure {:layer 0} read_init_val (pid:Pid) returns (v:int) refines read_init_val_atomic;
+yield procedure {:layer 0} Q (r:int, s:int, v:int, {:linear_in "Perm"} p:Perm);
+refines Q_atomic;
+
+yield procedure {:layer 0} read_init_val (pid:Pid) returns (v:int);
+refines read_init_val_atomic;
 
 // ###########################################################################
 // Linear permissions

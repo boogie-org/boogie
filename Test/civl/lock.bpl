@@ -25,7 +25,8 @@ action {:layer 2} AtomicEnter()
 modifies b;
 { assume !b; b := true; }
 
-yield procedure {:layer 1} Enter() refines AtomicEnter
+yield procedure {:layer 1} Enter()
+refines AtomicEnter;
 {
     var status: bool;
 
@@ -50,12 +51,14 @@ modifies b;
   }
 }
 
-yield procedure {:layer 0} CAS(prev: bool, next: bool) returns (status: bool) refines AtomicCAS;
+yield procedure {:layer 0} CAS(prev: bool, next: bool) returns (status: bool);
+refines AtomicCAS;
 
 action {:layer 1,2} AtomicLeave()
 modifies b;
 { b := false; }
 
-yield procedure {:layer 0} Leave() refines AtomicLeave;
+yield procedure {:layer 0} Leave();
+refines AtomicLeave;
 
 yield procedure {:layer 2} Yield();

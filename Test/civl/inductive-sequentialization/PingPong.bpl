@@ -90,7 +90,8 @@ modifies channel;
 ////////////////////////////////////////////////////////////////////////////////
 
 action {:layer 2}
-MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
+MAIN ({:linear_in "cid"} cid: ChannelId)
+refines MAIN' using INV;
 creates PING, PONG;
 eliminates PING using PING', PONG using PONG';
 modifies channel;
@@ -162,7 +163,8 @@ modifies channel;
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-main ({:linear_in "cid"} cid: ChannelId) refines MAIN
+main ({:linear_in "cid"} cid: ChannelId)
+refines MAIN;
 {
   var {:linear "cid"} left: ChannelHandle;
   var {:linear "cid"} right: ChannelHandle;
@@ -174,7 +176,8 @@ main ({:linear_in "cid"} cid: ChannelId) refines MAIN
 }
 
 yield procedure {:layer 1}
-ping (x: int, {:linear_in "cid"} p: ChannelHandle) refines PING
+ping (x: int, {:linear_in "cid"} p: ChannelHandle)
+refines PING;
 {
   var x': int;
 
@@ -192,7 +195,8 @@ ping (x: int, {:linear_in "cid"} p: ChannelHandle) refines PING
 }
 
 yield procedure {:layer 1}
-pong (y: int, {:linear_in "cid"} p: ChannelHandle) refines PONG
+pong (y: int, {:linear_in "cid"} p: ChannelHandle)
+refines PONG;
 {
   var y': int;
 
@@ -249,7 +253,11 @@ modifies channel;
   right := Right(cid);
 }
 
-yield procedure {:layer 0} receive (p: ChannelHandle) returns (m: int) refines RECEIVE;
-yield procedure {:layer 0} send (p: ChannelHandle, m: int) refines SEND;
-yield procedure {:layer 0} split({:linear_in "cid"} cid: ChannelId)
-  returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle) refines SPLIT;
+yield procedure {:layer 0} receive (p: ChannelHandle) returns (m: int);
+refines RECEIVE;
+
+yield procedure {:layer 0} send (p: ChannelHandle, m: int);
+refines SEND;
+
+yield procedure {:layer 0} split({:linear_in "cid"} cid: ChannelId) returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle);
+refines SPLIT;

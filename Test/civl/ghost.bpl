@@ -6,7 +6,8 @@ var {:layer 0,2} x: int;
 modifies x;
 { x := x + 1; }
 
-yield procedure {:layer 0} Incr() refines AtomicIncr;
+yield procedure {:layer 0} Incr();
+refines AtomicIncr;
 
 link action {:layer 1} ghost(y: int) returns (z: int)
 {
@@ -17,7 +18,8 @@ link action {:layer 1} ghost(y: int) returns (z: int)
 modifies x;
 { x := x + 2; }
 
-yield procedure {:layer 1} Incr2() refines AtomicIncr2
+yield procedure {:layer 1} Incr2()
+refines AtomicIncr2;
 {
   var {:layer 1} a: int;
 
@@ -31,7 +33,8 @@ link action {:layer 1} ghost'() returns (z: int)
   z := x;
 }
 
-yield procedure {:layer 1} Incr2'() refines AtomicIncr2
+yield procedure {:layer 1} Incr2'()
+refines AtomicIncr2;
 {
   var {:layer 1} a: int;
   var {:layer 1} b: int;

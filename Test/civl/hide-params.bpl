@@ -8,4 +8,5 @@ yield procedure {:layer 1} b ()
 
 action {:layer 1} A () { }
 
-yield procedure {:layer 0} a ({:hide} i:int) refines A;
+yield procedure {:layer 0} a ({:hide} i:int);
+refines A;

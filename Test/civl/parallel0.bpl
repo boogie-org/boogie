@@ -10,9 +10,11 @@ yield procedure {:layer 1} P()
 <- action {:layer 1} AtomicA(a: int) returns (b: int)
 { }
 
-yield procedure {:layer 0} A(a: int) returns (b: int) refines AtomicA;
+yield procedure {:layer 0} A(a: int) returns (b: int);
+refines AtomicA;
 
 <- action {:layer 1} AtomicB(v: int) returns (w: int)
 { }
 
-yield procedure {:layer 0} B(v: int) returns (w: int) refines AtomicB;
+yield procedure {:layer 0} B(v: int) returns (w: int);
+refines AtomicB;

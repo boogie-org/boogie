@@ -19,7 +19,8 @@ modifies status;
     assert status[tid] == DEFAULT;
     status[tid] := CREATED;
 }
-yield procedure {:layer 0} CreateTask({:linear "tid"} tid: int) refines AtomicCreateTask;
+yield procedure {:layer 0} CreateTask({:linear "tid"} tid: int);
+refines AtomicCreateTask;
 
 <- action {:layer 1} AtomicProcessTask({:linear "tid"} tid: int)
 modifies status;
@@ -27,7 +28,8 @@ modifies status;
     assert status[tid] == CREATED;
     status[tid] := PROCESSED;
 }
-yield procedure {:layer 0} ProcessTask({:linear "tid"} tid: int) refines AtomicProcessTask;
+yield procedure {:layer 0} ProcessTask({:linear "tid"} tid: int);
+refines AtomicProcessTask;
 
 <- action {:layer 1} AtomicFinishTask({:linear "tid"} tid: int)
 modifies status;
@@ -35,14 +37,16 @@ modifies status;
     assert status[tid] == PROCESSED;
     status[tid] := FINISHED;
 }
-yield procedure {:layer 0} FinishTask({:linear "tid"} tid: int) refines AtomicFinishTask;
+yield procedure {:layer 0} FinishTask({:linear "tid"} tid: int);
+refines AtomicFinishTask;
 
 link action {:layer 1} StatusSnapshot() returns (snapshot: [int]int)
 {
   snapshot := status;
 }
 
-yield procedure {:layer 0} Alloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool) refines AtomicAlloc;
+yield procedure {:layer 0} Alloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool);
+refines AtomicAlloc;
 <-> action {:layer 1} AtomicAlloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool)
 { assert tidq[i]; id := i; tidq' := tidq[i := false]; }
 
@@ -54,7 +58,9 @@ modifies status;
     status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
 
-yield procedure {:layer 1} Main({:linear_in "tid"} tids: [int]bool) refines AtomicMain {
+yield procedure {:layer 1} Main({:linear_in "tid"} tids: [int]bool)
+refines AtomicMain;
+{
     var i: int;
     var {:layer 1} snapshot: [int]int;
     var {:linear "tid"} tids': [int]bool;

@@ -14,12 +14,14 @@ action {:layer 1} atomic_inc_n ({:linear_in "tid"} t : Tid)
 modifies S, n;
 { assert !S[t]; S[t] := true; n := n + 1; }
 
-yield procedure {:layer 0} inc_n ({:linear_in "tid"} t : Tid) refines atomic_inc_n;
+yield procedure {:layer 0} inc_n ({:linear_in "tid"} t : Tid);
+refines atomic_inc_n;
 
 -> action {:layer 1} atomic_read_n () returns (ret : int)
 { ret := n; }
 
-yield procedure {:layer 0} read_n () returns (ret : int) refines atomic_read_n;
+yield procedure {:layer 0} read_n () returns (ret : int);
+refines atomic_read_n;
 
 type {:linear "tid"} Tid = int;
 type TidSet = [Tid]bool;

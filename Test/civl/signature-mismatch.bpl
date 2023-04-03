@@ -14,7 +14,8 @@ action {:layer 1,1} atomic_write_x_1 (x':bool)
 modifies y;
 { y := x'; }
 
-yield procedure {:layer 0} write_x_1 (y':bool) refines atomic_write_x_1;
+yield procedure {:layer 0} write_x_1 (y':bool);
+refines atomic_write_x_1;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -22,7 +23,8 @@ action {:layer 1,1} atomic_write_x_2 (x':int, foo:int)
 modifies x;
 { x := x'; }
 
-yield procedure {:layer 0} write_x_2 (y':bool) refines atomic_write_x_2;
+yield procedure {:layer 0} write_x_2 (y':bool);
+refines atomic_write_x_2;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +33,8 @@ action {:layer 1,1} atomic_write_x_3 ({:linear "lin"} x':int)
 modifies x;
 { x := x'; }
 
-yield procedure {:layer 0} write_x_3 ({:linear_in "lin"} x':int) refines atomic_write_x_3;
+yield procedure {:layer 0} write_x_3 ({:linear_in "lin"} x':int);
+refines atomic_write_x_3;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -39,4 +42,5 @@ action {:layer 1,1} atomic_write_x_4 (x':int)
 modifies x;
 { x := x'; }
 
-yield procedure {:layer 0} write_x_4 (x':bool) refines atomic_write_x_4;
+yield procedure {:layer 0} write_x_4 (x':bool);
+refines atomic_write_x_4;

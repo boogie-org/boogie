@@ -27,8 +27,11 @@ action {:layer 1} ASSERTION()
   assert x == 0;
 }
 
-yield procedure {:layer 0} write() refines WRITE;
-yield procedure {:layer 0} assertion() refines ASSERTION;
+yield procedure {:layer 0} write();
+refines WRITE;
+
+yield procedure {:layer 0} assertion();
+refines ASSERTION;
 
 yield invariant {:layer 1} Yield_P({:linear "tid"} tid1:int, {:linear "tid"} tid2:int);
 invariant tid1 == 1;

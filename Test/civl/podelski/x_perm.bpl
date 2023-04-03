@@ -135,8 +135,14 @@ modifies x, Bs;
   Bs[b] := true;
 }
 
-yield procedure {:layer 0} geq0_inc ({:linear_in "perm"} a:A, {:linear "perm"} b:B) refines GEQ0_INC;
-yield procedure {:layer 0} geq0_dec ({:linear_in "perm"} b:B) refines GEQ0_DEC;
+yield procedure {:layer 0} geq0_inc ({:linear_in "perm"} a:A, {:linear "perm"} b:B);
+refines GEQ0_INC;
 
-yield procedure {:layer 0} transfer_ab (x:int, {:linear_in "perm"} abs:[AB]bool) returns ({:linear "perm"} ab:AB, {:linear "perm"} abs':[AB]bool) refines TRANSFER_AB;
-yield procedure {:layer 0} split_ab ({:linear_in "perm"} ab:AB) returns ({:linear "perm"} a:A, {:linear "perm"} b:B) refines SPLIT_AB;
+yield procedure {:layer 0} geq0_dec ({:linear_in "perm"} b:B);
+refines GEQ0_DEC;
+
+yield procedure {:layer 0} transfer_ab (x:int, {:linear_in "perm"} abs:[AB]bool) returns ({:linear "perm"} ab:AB, {:linear "perm"} abs':[AB]bool);
+refines TRANSFER_AB;
+
+yield procedure {:layer 0} split_ab ({:linear_in "perm"} ab:AB) returns ({:linear "perm"} a:A, {:linear "perm"} b:B);
+refines SPLIT_AB;

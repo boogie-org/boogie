@@ -18,7 +18,8 @@ modifies x;
   call create_multi_asyncs(MapConst(0)[A_Inc() := n - i]);
 }
 
-action {:layer 1} Async_Add(n: int) refines A_Add using INV
+action {:layer 1} Async_Add(n: int)
+refines A_Add using INV;
 creates A_Inc;
 {
   assert 0 <= n;

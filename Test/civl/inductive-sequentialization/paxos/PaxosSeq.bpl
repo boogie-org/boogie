@@ -1,4 +1,5 @@
-action {:layer 2} A_Paxos({:linear_in "perm"} rs: [Round]bool) refines A_Paxos' using INV
+action {:layer 2} A_Paxos({:linear_in "perm"} rs: [Round]bool)
+refines A_Paxos' using INV;
 creates A_StartRound;
 {
   var {:pool "NumRounds"} numRounds: int;

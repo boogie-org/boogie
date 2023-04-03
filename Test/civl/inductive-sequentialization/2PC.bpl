@@ -86,7 +86,8 @@ modifies DecisionChannel, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool) refines MAIN5 using INV4
+action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool)
+refines MAIN5 using INV4;
 creates PARTICIPANT2;
 eliminates PARTICIPANT2 using PARTICIPANT2';
 modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
@@ -133,7 +134,8 @@ modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool) refines MAIN4 using INV3
+action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
+refines MAIN4 using INV3;
 creates COORDINATOR2, PARTICIPANT2;
 modifies RequestChannel, VoteChannel, votes;
 {
@@ -172,7 +174,8 @@ modifies RequestChannel, VoteChannel, votes;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool) refines MAIN3 using INV2
+action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+refines MAIN3 using INV2;
 creates COORDINATOR2, PARTICIPANT1;
 modifies RequestChannel;
 {
@@ -205,7 +208,8 @@ modifies RequestChannel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool) refines MAIN2 using INV1
+action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+refines MAIN2 using INV1;
 creates COORDINATOR1, PARTICIPANT1;
 {
   assert Init(pids, RequestChannel, VoteChannel, DecisionChannel, decisions);
@@ -279,7 +283,8 @@ modifies VoteChannel, DecisionChannel, decisions;
 yield invariant {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
 invariant Init(pids, RequestChannel, VoteChannel, DecisionChannel, decisions);
 
-yield procedure {:layer 1} main ({:linear_in "pid"} pids:[int]bool) refines MAIN1
+yield procedure {:layer 1} main ({:linear_in "pid"} pids:[int]bool)
+refines MAIN1;
 requires call YieldInit(pids);
 {
   var i:int;
@@ -304,7 +309,8 @@ requires call YieldInit(pids);
   }
 }
 
-yield procedure {:layer 1} participant1 ({:linear_in "pid"} pid:int) refines PARTICIPANT1
+yield procedure {:layer 1} participant1 ({:linear_in "pid"} pid:int)
+refines PARTICIPANT1;
 requires {:layer 1} pid(pid);
 {
   var v:vote;
@@ -319,7 +325,8 @@ requires {:layer 1} pid(pid);
   async call participant2(pid);
 }
 
-yield procedure {:layer 1} participant2 ({:linear_in "pid"} pid:int) refines PARTICIPANT2
+yield procedure {:layer 1} participant2 ({:linear_in "pid"} pid:int)
+refines PARTICIPANT2;
 requires {:layer 1} pid(pid);
 {
   var d:decision;
@@ -331,7 +338,8 @@ requires {:layer 1} pid(pid);
 yield invariant {:layer 1} YieldCoordinator();
 invariant (forall vv:vote :: VoteChannel[vv] >= 0);
 
-yield procedure {:layer 1} coordinator1 ({:linear_in "pid"} pid:int) refines COORDINATOR1
+yield procedure {:layer 1} coordinator1 ({:linear_in "pid"} pid:int)
+refines COORDINATOR1;
 requires {:layer 1} pid == 0;
 requires call YieldCoordinator();
 {
@@ -350,7 +358,8 @@ requires call YieldCoordinator();
   async call coordinator2(pid);
 }
 
-yield procedure {:layer 1} coordinator2 ({:linear_in "pid"} pid:int) refines COORDINATOR2
+yield procedure {:layer 1} coordinator2 ({:linear_in "pid"} pid:int)
+refines COORDINATOR2;
 requires {:layer 1} pid == 0;
 requires call YieldCoordinator();
 {
@@ -457,14 +466,29 @@ modifies DecisionChannel;
   DecisionChannel[pid][d] := DecisionChannel[pid][d] - 1;
 }
 
-yield procedure {:layer 0} set_vote({:linear "pid"} pid:int, v:vote) refines SET_VOTE;
-yield procedure {:layer 0} set_decision({:linear "pid"} pid:int, d:decision) refines SET_DECISION;
-yield procedure {:layer 0} send_request(pid:int) refines SEND_REQUEST;
-yield procedure {:layer 0} receive_req(pid:int) refines RECEIVE_REQ;
-yield procedure {:layer 0} send_vote(v:vote) refines SEND_VOTE;
-yield procedure {:layer 0} receive_vote() returns (v:vote) refines RECEIVE_VOTE;
-yield procedure {:layer 0} send_decision(pid:int, d:decision) refines SEND_DECISION;
-yield procedure {:layer 0} receive_decision(pid:int) returns (d:decision) refines RECEIVE_DECISION;
+yield procedure {:layer 0} set_vote({:linear "pid"} pid:int, v:vote);
+refines SET_VOTE;
+
+yield procedure {:layer 0} set_decision({:linear "pid"} pid:int, d:decision);
+refines SET_DECISION;
+
+yield procedure {:layer 0} send_request(pid:int);
+refines SEND_REQUEST;
+
+yield procedure {:layer 0} receive_req(pid:int);
+refines RECEIVE_REQ;
+
+yield procedure {:layer 0} send_vote(v:vote);
+refines SEND_VOTE;
+
+yield procedure {:layer 0} receive_vote() returns (v:vote);
+refines RECEIVE_VOTE;
+
+yield procedure {:layer 0} send_decision(pid:int, d:decision);
+refines SEND_DECISION;
+
+yield procedure {:layer 0} receive_decision(pid:int) returns (d:decision);
+refines RECEIVE_DECISION;
 
 <-> action {:layer 1}
 LINEAR_TRANSFER(i:int, {:linear_in "pid"} pids:[int]bool)
@@ -476,4 +500,5 @@ returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
 }
 
 yield procedure {:layer 0} linear_transfer(i:int, {:linear_in "pid"} pids:[int]bool)
-returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool) refines LINEAR_TRANSFER;
+returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool);
+refines LINEAR_TRANSFER;

@@ -129,54 +129,64 @@ action {:layer 1} AtomicInit({:linear_in "tid"} xls:[X]bool)
 modifies currsize, newsize, lock, ghostLock;
 { assert xls == MapConst(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; }
 
-yield procedure {:layer 0} Init({:linear_in "tid"} xls:[X]bool) refines AtomicInit;
+yield procedure {:layer 0} Init({:linear_in "tid"} xls:[X]bool);
+refines AtomicInit;
 
 -> action {:layer 1} AtomicReadCurrsize({:linear "tid"} tid: X) returns (val: int)
 { assert tid != nil; assert lock == tid || ghostLock == tid; val := currsize; }
 
-yield procedure {:layer 0} ReadCurrsize({:linear "tid"} tid: X) returns (val: int) refines AtomicReadCurrsize;
+yield procedure {:layer 0} ReadCurrsize({:linear "tid"} tid: X) returns (val: int);
+refines AtomicReadCurrsize;
 
 -> action {:layer 1} AtomicReadNewsize({:linear "tid"} tid: X) returns (val: int)
 { assert tid != nil; assert lock == tid || ghostLock == tid; val := newsize; }
 
-yield procedure {:layer 0} ReadNewsize({:linear "tid"} tid: X) returns (val: int) refines AtomicReadNewsize;
+yield procedure {:layer 0} ReadNewsize({:linear "tid"} tid: X) returns (val: int);
+refines AtomicReadNewsize;
 
 action {:layer 1} AtomicWriteNewsize({:linear "tid"} tid: X, val: int)
 modifies newsize, ghostLock;
 { assert tid != nil; assert lock == tid && ghostLock == nil; newsize := val; ghostLock := tid; }
 
-yield procedure {:layer 0} WriteNewsize({:linear "tid"} tid: X, val: int) refines AtomicWriteNewsize;
+yield procedure {:layer 0} WriteNewsize({:linear "tid"} tid: X, val: int);
+refines AtomicWriteNewsize;
 
 action {:layer 1} AtomicWriteCurrsize({:linear "tid"} tid: X, val: int)
 modifies currsize, ghostLock;
 { assert tid != nil; assert lock == tid && ghostLock == tid; currsize := val; ghostLock := nil; }
 
-yield procedure {:layer 0} WriteCurrsize({:linear "tid"} tid: X, val: int) refines AtomicWriteCurrsize;
+yield procedure {:layer 0} WriteCurrsize({:linear "tid"} tid: X, val: int);
+refines AtomicWriteCurrsize;
 
 action {:layer 1} AtomicReadCacheEntry({:linear "tid"} tid: X, index: int)
 { assert 0 <= index && index < currsize; }
 
-yield procedure {:layer 0} ReadCacheEntry({:linear "tid"} tid: X, index: int) refines AtomicReadCacheEntry;
+yield procedure {:layer 0} ReadCacheEntry({:linear "tid"} tid: X, index: int);
+refines AtomicReadCacheEntry;
 
 -> action {:layer 1} AtomicWriteCacheEntry({:linear "tid"} tid: X, index: int)
 { assert tid != nil; assert currsize <= index && ghostLock == tid; }
 
-yield procedure {:layer 0} WriteCacheEntry({:linear "tid"} tid: X, index: int) refines AtomicWriteCacheEntry;
+yield procedure {:layer 0} WriteCacheEntry({:linear "tid"} tid: X, index: int);
+refines AtomicWriteCacheEntry;
 
 -> action {:layer 1} atomic_acquire({:linear "tid"} tid: X)
 modifies lock;
 { assert tid != nil; assume lock == nil; lock := tid; }
 
-yield procedure {:layer 0} acquire({:linear "tid"} tid: X) refines atomic_acquire;
+yield procedure {:layer 0} acquire({:linear "tid"} tid: X);
+refines atomic_acquire;
 
 <- action {:layer 1} atomic_release({:linear "tid"} tid: X)
 modifies lock;
 { assert tid != nil; assert lock == tid; lock := nil; }
 
-yield procedure {:layer 0} release({:linear "tid"} tid: X) refines atomic_release;
+yield procedure {:layer 0} release({:linear "tid"} tid: X);
+refines atomic_release;
 
 action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} tid: X)
 modifies unallocated;
 { assume tid != nil; assume unallocated[tid]; unallocated[tid] := false; }
 
-yield procedure {:layer 0} AllocateLow() returns ({:linear "tid"} tid: X) refines AtomicAllocateLow;
+yield procedure {:layer 0} AllocateLow() returns ({:linear "tid"} tid: X);
+refines AtomicAllocateLow;

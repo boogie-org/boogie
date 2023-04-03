@@ -19,7 +19,8 @@ var {:layer 0,3} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId) refines MAIN' using INV
+action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId)
+refines MAIN' using INV;
 creates PRODUCER, CONSUMER;
 eliminates CONSUMER using CONSUMER';
 {
@@ -150,7 +151,8 @@ modifies channels;
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-main ({:linear_in "cid"} cid: ChannelId) refines MAIN
+main ({:linear_in "cid"} cid: ChannelId)
+refines MAIN;
 {
   var {:linear "cid"} send_handle, receive_handle: ChannelHandle;
 
@@ -160,7 +162,8 @@ main ({:linear_in "cid"} cid: ChannelId) refines MAIN
 }
 
 yield procedure {:layer 1}
-producer (x:int, {:linear_in "cid"} send_handle: ChannelHandle) refines PRODUCER
+producer (x:int, {:linear_in "cid"} send_handle: ChannelHandle)
+refines PRODUCER;
 {
   if (*)
   {
@@ -174,7 +177,8 @@ producer (x:int, {:linear_in "cid"} send_handle: ChannelHandle) refines PRODUCER
 }
 
 yield procedure {:layer 1}
-consumer (x:int, {:linear_in "cid"} receive_handle: ChannelHandle) refines CONSUMER
+consumer (x:int, {:linear_in "cid"} receive_handle: ChannelHandle)
+refines CONSUMER;
 {
   var x': int;
 
@@ -230,7 +234,11 @@ modifies channels;
   receive_handle := Receive(cid);
 }
 
-yield procedure {:layer 0} send (m: int, {:linear "cid"} send_handle: ChannelHandle) refines SEND;
-yield procedure {:layer 0} receive ({:linear "cid"} receive_handle: ChannelHandle) returns (m: int) refines RECEIVE;
-yield procedure {:layer 0} split({:linear_in "cid"} cid: ChannelId)
-  returns ({:linear "cid"} send_handle: ChannelHandle, {:linear "cid"} receive_handle: ChannelHandle) refines SPLIT;
+yield procedure {:layer 0} send (m: int, {:linear "cid"} send_handle: ChannelHandle);
+refines SEND;
+
+yield procedure {:layer 0} receive ({:linear "cid"} receive_handle: ChannelHandle) returns (m: int);
+refines RECEIVE;
+
+yield procedure {:layer 0} split({:linear_in "cid"} cid: ChannelId) returns ({:linear "cid"} send_handle: ChannelHandle, {:linear "cid"} receive_handle: ChannelHandle);
+refines SPLIT;

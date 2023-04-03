@@ -49,7 +49,8 @@ modifies unallocated;
 }
 
 yield procedure {:layer 1}
-Allocate() returns ({:layer 1} {:linear "tid"} tid: int, i: int) refines AtomicAllocate
+Allocate() returns ({:layer 1} {:linear "tid"} tid: int, i: int)
+refines AtomicAllocate;
 ensures {:layer 1} tid == i;
 preserves call Yield1();
 {
@@ -63,7 +64,8 @@ action {:layer 2,2} AtomicRead({:linear "tid"} tid: int, i: int) returns (val: i
 }
 
 yield procedure {:layer 1}
-Read({:layer 1} {:linear "tid"} tid: int, i: int) returns (val: int) refines AtomicRead
+Read({:layer 1} {:linear "tid"} tid: int, i: int) returns (val: int)
+refines AtomicRead;
 requires {:layer 1} tid == i;
 preserves call Yield1();
 {
@@ -77,7 +79,8 @@ modifies a;
 }
 
 yield procedure {:layer 1}
-Write({:layer 1} {:linear "tid"} tid: int, i: int, val: int) refines AtomicWrite
+Write({:layer 1} {:linear "tid"} tid: int, i: int, val: int)
+refines AtomicWrite;
 requires {:layer 1} tid == i;
 preserves call Yield1();
 {
@@ -107,9 +110,14 @@ modifies count;
   count := i + 1;
 }
 
-yield procedure {:layer 0} ReadLow(i: int) returns (val: int) refines AtomicReadLow;
-yield procedure {:layer 0} WriteLow(i: int, val: int) refines AtomicWriteLow;
-yield procedure {:layer 0} AllocateLow() returns (i: int) refines AtomicAllocateLow;
+yield procedure {:layer 0} ReadLow(i: int) returns (val: int);
+refines AtomicReadLow;
+
+yield procedure {:layer 0} WriteLow(i: int, val: int);
+refines AtomicWriteLow;
+
+yield procedure {:layer 0} AllocateLow() returns (i: int);
+refines AtomicAllocateLow;
 
 // We can prove that this primitive procedure preserves the permission invariant locally.
 // We only need to use its specification and the definitions of TidCollector and TidSetCollector.

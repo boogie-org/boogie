@@ -12,7 +12,8 @@ modifies x;
 {
   x := x + 1;
 }
-yield procedure {:layer 4} Client({:hide}{:linear_in "tid"} tid:Tid) refines A_Client
+yield procedure {:layer 4} Client({:hide}{:linear_in "tid"} tid:Tid)
+refines A_Client;
 requires {:layer 4} tid != nil;
 {
   call GetLockAndCallback(tid);
@@ -46,7 +47,8 @@ modifies l, x;
   x := x + 1;
   l := nil;
 }
-yield procedure {:layer 2} Callback ({:linear_in "tid"} tid:Tid) refines A_Callback
+yield procedure {:layer 2} Callback ({:linear_in "tid"} tid:Tid)
+refines A_Callback;
 {
   var tmp:int;
   call tmp := read_x_lock(tid);
@@ -56,28 +58,33 @@ yield procedure {:layer 2} Callback ({:linear_in "tid"} tid:Tid) refines A_Callb
 
 <-> action {:layer 2} A_read_x_lock ({:linear "tid"} tid:Tid) returns (v:int)
 { assert tid != nil && l == tid; v := x; }
-yield procedure {:layer 1} read_x_lock ({:linear "tid"} tid:Tid) returns (v:int) refines A_read_x_lock
+yield procedure {:layer 1} read_x_lock ({:linear "tid"} tid:Tid) returns (v:int)
+refines A_read_x_lock;
 { call v := read_x(); }
 
 <-> action {:layer 2} A_write_x_lock (v:int, {:linear "tid"} tid:Tid)
 modifies x;
 { assert tid != nil && l == tid; x := v; }
-yield procedure {:layer 1} write_x_lock (v:int, {:linear "tid"} tid:Tid) refines A_write_x_lock
+yield procedure {:layer 1} write_x_lock (v:int, {:linear "tid"} tid:Tid)
+refines A_write_x_lock;
 { call write_x(v); }
 
 action {:layer 1} A_read_x () returns (v:int)
 { v := x; }
-yield procedure {:layer 0} read_x () returns (v:int) refines A_read_x;
+yield procedure {:layer 0} read_x () returns (v:int);
+refines A_read_x;
 
 action {:layer 1} A_write_x (v:int)
 modifies x;
 { x := v; }
-yield procedure {:layer 0} write_x (v:int) refines A_write_x;
+yield procedure {:layer 0} write_x (v:int);
+refines A_write_x;
 
 // -----------------------------------------------------------------------------
 
 action {:layer 3}
-A_GetLockAndCallback ({:linear_in "tid"} tid:Tid) refines A_GetLockAndCallback' using INV
+A_GetLockAndCallback ({:linear_in "tid"} tid:Tid)
+refines A_GetLockAndCallback' using INV;
 creates A_Callback;
 modifies l;
 {
@@ -86,7 +93,8 @@ modifies l;
   l := tid;
   call create_async(A_Callback(tid));
 }
-yield procedure {:layer 2} GetLockAndCallback ({:linear_in "tid"} tid:Tid) refines A_GetLockAndCallback
+yield procedure {:layer 2} GetLockAndCallback ({:linear_in "tid"} tid:Tid)
+refines A_GetLockAndCallback;
 {
   call GetLock(tid);
   async call Callback(tid);
@@ -99,7 +107,8 @@ modifies l;
   assume l == nil;
   l := tid;
 }
-yield procedure {:layer 1} GetLock ({:linear "tid"} tid:Tid) refines A_GetLock
+yield procedure {:layer 1} GetLock ({:linear "tid"} tid:Tid)
+refines A_GetLock;
 {
   var success:bool;
   while (true)
@@ -118,7 +127,8 @@ modifies l;
   assert tid != nil && l == tid;
   l := nil;
 }
-yield procedure {:layer 1} ReleaseLock ({:linear_in "tid"} tid:Tid) refines A_ReleaseLock
+yield procedure {:layer 1} ReleaseLock ({:linear_in "tid"} tid:Tid)
+refines A_ReleaseLock;
 {
   call write_l(nil);
 }
@@ -133,9 +143,11 @@ modifies l;
     success := false;
   }
 }
-yield procedure {:layer 0} cas_l (oldval:Tid, newval:Tid) returns (success:bool) refines A_cas_l;
+yield procedure {:layer 0} cas_l (oldval:Tid, newval:Tid) returns (success:bool);
+refines A_cas_l;
 
 action {:layer 1} A_write_l (v:Tid)
 modifies l;
 { l := v; }
-yield procedure {:layer 0} write_l (v:Tid) refines A_write_l;
+yield procedure {:layer 0} write_l (v:Tid);
+refines A_write_l;

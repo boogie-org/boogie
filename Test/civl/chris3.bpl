@@ -3,11 +3,13 @@
 
 action {:layer 95} skip() { }
 
-yield procedure {:layer 94} H() refines skip
+yield procedure {:layer 94} H()
+refines skip;
 {
 }
 
-yield procedure {:layer 94} A() refines skip
+yield procedure {:layer 94} A()
+refines skip;
 {
 }
 

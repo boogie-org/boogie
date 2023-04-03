@@ -43,11 +43,13 @@ modifies x;
 {
     x := x + 1;
 }
-yield procedure {:layer 0} _incr_x() refines atomic_incr_x;
+yield procedure {:layer 0} _incr_x();
+refines atomic_incr_x;
 
 action {:layer 1,1} atomic_incr_y()
 modifies y;
 {
     y := y + 1;
 }
-yield procedure {:layer 0} _incr_y() refines atomic_incr_y;
+yield procedure {:layer 0} _incr_y();
+refines atomic_incr_y;

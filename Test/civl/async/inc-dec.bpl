@@ -59,5 +59,8 @@ modifies x;
 modifies x;
 { x := x - 1; }
 
-yield procedure {:layer 0} inc () refines inc_atomic;
-yield procedure {:layer 0} dec () refines dec_atomic;
+yield procedure {:layer 0} inc ();
+refines inc_atomic;
+
+yield procedure {:layer 0} dec ();
+refines dec_atomic;

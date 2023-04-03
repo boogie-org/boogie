@@ -20,7 +20,8 @@ function {:inline} WhiteOrLighter(i:int) returns(bool) { i <= 1 }
 yield invariant {:layer 2} YieldColorOnlyGetsDarker(old_Color: int);
 invariant Color >= old_Color;
 
-yield procedure {:layer 2} WriteBarrier({:linear "tid"} tid:Tid) refines AtomicWriteBarrier
+yield procedure {:layer 2} WriteBarrier({:linear "tid"} tid:Tid)
+refines AtomicWriteBarrier;
 requires call YieldColorOnlyGetsDarker(WHITE());
 ensures call YieldColorOnlyGetsDarker(GRAY());
 {
@@ -30,7 +31,8 @@ ensures call YieldColorOnlyGetsDarker(GRAY());
   if (WhiteOrLighter(colorLocal)) { call WriteBarrierSlow(tid); }
 }
 
-yield procedure {:layer 1} WriteBarrierSlow({:linear "tid"} tid:Tid) refines AtomicWriteBarrier
+yield procedure {:layer 1} WriteBarrierSlow({:linear "tid"} tid:Tid)
+refines AtomicWriteBarrier;
 {
   var colorLocal:int;
   call AcquireLock(tid);
@@ -84,8 +86,17 @@ action {:layer 1,2} AtomicGetColorNoLock() returns (col:int)
   col := Color;
 }
 
-yield procedure {:layer 0} AcquireLock({:linear "tid"} tid: Tid) refines AtomicAcquireLock;
-yield procedure {:layer 0} ReleaseLock({:linear "tid"} tid: Tid) refines AtomicReleaseLock;
-yield procedure {:layer 0} SetColorLocked({:linear "tid"} tid:Tid, newCol:int) refines AtomicSetColorLocked;
-yield procedure {:layer 0} GetColorLocked({:linear "tid"} tid:Tid) returns (col:int) refines AtomicGetColorLocked;
-yield procedure {:layer 0} GetColorNoLock() returns (col:int) refines AtomicGetColorNoLock;
+yield procedure {:layer 0} AcquireLock({:linear "tid"} tid: Tid);
+refines AtomicAcquireLock;
+
+yield procedure {:layer 0} ReleaseLock({:linear "tid"} tid: Tid);
+refines AtomicReleaseLock;
+
+yield procedure {:layer 0} SetColorLocked({:linear "tid"} tid:Tid, newCol:int);
+refines AtomicSetColorLocked;
+
+yield procedure {:layer 0} GetColorLocked({:linear "tid"} tid:Tid) returns (col:int);
+refines AtomicGetColorLocked;
+
+yield procedure {:layer 0} GetColorNoLock() returns (col:int);
+refines AtomicGetColorNoLock;

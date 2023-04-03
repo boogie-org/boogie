@@ -30,25 +30,29 @@ action {:layer 1} AtomicLock(tid: X)
 modifies l;
 { assume l == nil; l := tid; }
 
-yield procedure {:layer 0} Lock(tid: X) refines AtomicLock;
+yield procedure {:layer 0} Lock(tid: X);
+refines AtomicLock;
 
 action {:layer 1} AtomicUnlock()
 modifies l;
 { l := nil; }
 
-yield procedure {:layer 0} Unlock() refines AtomicUnlock;
+yield procedure {:layer 0} Unlock();
+refines AtomicUnlock;
 
 action {:layer 1} AtomicSet(val: int)
 modifies x;
 { x := val; }
 
-yield procedure {:layer 0} Set(val: int) refines AtomicSet;
+yield procedure {:layer 0} Set(val: int);
+refines AtomicSet;
 
 action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xl: X)
 modifies unallocated;
 { assume xl != nil; assume unallocated[xl]; unallocated[xl] := false; }
 
-yield procedure {:layer 0} AllocateLow() returns ({:linear "tid"} xl: X) refines AtomicAllocateLow;
+yield procedure {:layer 0} AllocateLow() returns ({:linear "tid"} xl: X);
+refines AtomicAllocateLow;
 
 yield procedure {:layer 1} foo({:linear_in "tid"} tid: X, val: int)
 requires {:layer 1} tid != nil;

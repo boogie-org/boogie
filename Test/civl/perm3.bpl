@@ -23,13 +23,15 @@ action {:layer 1} AtomicSetG(val:int)
 modifies g;
 { g := val; }
 
-yield procedure {:layer 0} SetG(val:int) refines AtomicSetG;
+yield procedure {:layer 0} SetG(val:int);
+refines AtomicSetG;
 
 action {:layer 1} AtomicIncrG()
 modifies g;
 { g := g + 1; }
 
-yield procedure {:layer 0} IncrG() refines AtomicIncrG;
+yield procedure {:layer 0} IncrG();
+refines AtomicIncrG;
 
 yield invariant {:layer 1} Yield({:linear "Perm"} p: [int]bool, v: int);
 invariant p[0];

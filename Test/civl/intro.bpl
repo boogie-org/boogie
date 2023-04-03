@@ -11,13 +11,15 @@ action {:layer 2,2} atomic_write_y (y':int)
 modifies y;
 { y := y'; }
 
-yield procedure {:layer 1} read_y () returns ({:layer 0,1} v:int) refines atomic_read_y
+yield procedure {:layer 1} read_y () returns ({:layer 0,1} v:int)
+refines atomic_read_y;
 requires call Yield_xy();
 {
   call v := read_x();
 }
 
-yield procedure {:layer 1} write_y (y':int) refines atomic_write_y
+yield procedure {:layer 1} write_y (y':int)
+refines atomic_write_y;
 requires call Yield_xy();
 {
   call write_x(y');
@@ -37,12 +39,14 @@ action {:layer 1,1} atomic_write_x (x':int)
 modifies x;
 { x := x'; }
 
-yield procedure {:layer 0} read_x () returns ({:layer 0} v:int) refines atomic_read_x
+yield procedure {:layer 0} read_x () returns ({:layer 0} v:int)
+refines atomic_read_x;
 {
   call v := intro_read_x();
 }
 
-yield procedure {:layer 0} write_x (x':int) refines atomic_write_x
+yield procedure {:layer 0} write_x (x':int)
+refines atomic_write_x;
 {
   call intro_write_x(x');
 }

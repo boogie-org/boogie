@@ -6,13 +6,15 @@ const MainTid: X;
 
 var {:layer 0,2} x: int;
 
-yield procedure {:layer 0} Incr() refines AtomicIncr;
+yield procedure {:layer 0} Incr();
+refines AtomicIncr;
 
 <- action {:layer 1} AtomicIncr()
 modifies x;
 { x := x + 1; }
 
-yield procedure {:layer 1} IncrBy2() refines AtomicIncrBy2
+yield procedure {:layer 1} IncrBy2()
+refines AtomicIncrBy2;
 {
   par Incr() | Incr();
 }

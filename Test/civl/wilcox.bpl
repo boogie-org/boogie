@@ -8,13 +8,15 @@ link action{:layer 1} GhostRead() returns (oldx: int)
 
 var {:layer 0,2} x: int;
 
-yield procedure {:layer 0} IncX() refines AtomicIncX;
+yield procedure {:layer 0} IncX();
+refines AtomicIncX;
 
 <-> action {:layer 1} AtomicIncX()
 modifies x;
 { x := x + 1; }
 
-yield procedure {:layer 1} SlowAdd(n: int) refines AtomicSlowAdd
+yield procedure {:layer 1} SlowAdd(n: int)
+refines AtomicSlowAdd;
 requires {:layer 1} n >= 0;
 {
     var i: int;

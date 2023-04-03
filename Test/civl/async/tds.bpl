@@ -48,7 +48,8 @@ const c: int;
 const n: int;
 axiom 0 <= n;
 
-yield procedure {:layer 4} main({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool) refines atomic_main
+yield procedure {:layer 4} main({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool)
+refines atomic_main;
 {
     var i: int;
     var sid: int;
@@ -65,11 +66,13 @@ link action {:layer 3} StatusSnapshot() returns (snapshot: [int]int)
   snapshot := status;
 }
 
-yield procedure {:layer 2} Alloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool) refines AtomicAlloc;
+yield procedure {:layer 2} Alloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool);
+refines AtomicAlloc;
 <-> action {:layer 3} AtomicAlloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool)
 { assert tidq[i]; id := i; tidq' := tidq[i := false]; }
 
-yield procedure {:layer 3} server3({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool) refines atomic_server
+yield procedure {:layer 3} server3({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool)
+refines atomic_server;
 {
     var i: int;
     var {:layer 3} snapshot: [int]int;
@@ -96,9 +99,11 @@ modifies status;
     assert status[i] == DEFAULT;
     status[i] := CREATED;
 }
-yield procedure {:layer 2} server2({:linear "tid"} i: int) refines atomic_server2;
+yield procedure {:layer 2} server2({:linear "tid"} i: int);
+refines atomic_server2;
 
-yield procedure {:layer 3} client3({:linear "tid"} id: int) refines atomic_client
+yield procedure {:layer 3} client3({:linear "tid"} id: int)
+refines atomic_client;
 {
     call client2();
 }
@@ -109,9 +114,11 @@ modifies status;
     assume (forall i: int :: 0 <= i && i < n ==> status[i] == CREATED);
     status := (lambda j: int :: if (0 <= j && j < n) then PROCESSED else status[j]);
 }
-yield procedure {:layer 2} client2() refines atomic_client2;
+yield procedure {:layer 2} client2();
+refines atomic_client2;
 
-yield procedure {:layer 3} master3({:linear "tid"} id: int) refines atomic_master
+yield procedure {:layer 3} master3({:linear "tid"} id: int)
+refines atomic_master;
 {
     call master2();
 }
@@ -122,4 +129,5 @@ modifies status;
     assert (forall i: int :: 0 <= i && i < n ==> status[i] == PROCESSED);
     status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
-yield procedure {:layer 2} master2() refines atomic_master2;
+yield procedure {:layer 2} master2();
+refines atomic_master2;

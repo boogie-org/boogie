@@ -11,13 +11,15 @@ action {:layer 1} AtomicIncr()
 modifies g;
 { g := g + 1; }
 
-yield procedure {:layer 0} Incr() refines AtomicIncr;
+yield procedure {:layer 0} Incr();
+refines AtomicIncr;
 
 action {:layer 1} AtomicSet(v: int)
 modifies g;
 { g := v; }
 
-yield procedure {:layer 0} Set(v: int) refines AtomicSet;
+yield procedure {:layer 0} Set(v: int);
+refines AtomicSet;
 
 yield invariant {:layer 1} PC(old_g: int);
 invariant g == old_g;

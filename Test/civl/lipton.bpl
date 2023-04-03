@@ -21,5 +21,8 @@ modifies c;
 modifies c;
 { c := c + 1; }
 
-yield procedure {:layer 0} p () refines P;
-yield procedure {:layer 0} v () refines V;
+yield procedure {:layer 0} p ();
+refines P;
+
+yield procedure {:layer 0} v ();
+refines V;

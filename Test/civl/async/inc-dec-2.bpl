@@ -14,7 +14,8 @@ var {:layer 0,1} x : int;
 
 action {:layer 2} skip () {}
 
-yield procedure {:layer 1} Main () refines skip
+yield procedure {:layer 1} Main ()
+refines skip;
 {
   var i : int;
   var {:layer 1} old_x: int;
@@ -46,5 +47,8 @@ modifies x;
 modifies x;
 { x := x - 1; }
 
-yield procedure {:layer 0} inc () refines inc_atomic;
-yield procedure {:layer 0} dec () refines dec_atomic;
+yield procedure {:layer 0} inc ();
+refines inc_atomic;
+
+yield procedure {:layer 0} dec ();
+refines dec_atomic;

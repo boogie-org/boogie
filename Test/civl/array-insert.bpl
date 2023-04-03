@@ -35,7 +35,8 @@ modifies A, count;
   count := count + 1;
 }
 
-yield procedure {:layer 1} insert ({:linear "tid"} tid:Tid, v:int) refines INSERT
+yield procedure {:layer 1} insert ({:linear "tid"} tid:Tid, v:int)
+refines INSERT;
 requires {:layer 1} tid != nil;
 {
   var idx:int; // index at which v is written
@@ -126,9 +127,20 @@ modifies lock;
   lock := nil;
 }
 
-yield procedure {:layer 0} read_A ({:linear "tid"} tid:Tid, i:int) returns (v:int) refines READ_A;
-yield procedure {:layer 0} write_A ({:linear "tid"} tid:Tid, i:int, v:int) refines WRITE_A;
-yield procedure {:layer 0} read_count ({:linear "tid"} tid:Tid) returns (c:int) refines READ_COUNT;
-yield procedure {:layer 0} write_count ({:linear "tid"} tid:Tid, c:int) refines WRITE_COUNT;
-yield procedure {:layer 0} acquire ({:linear "tid"} tid:Tid) refines ACQUIRE;
-yield procedure {:layer 0} release ({:linear "tid"} tid:Tid) refines RELEASE;
+yield procedure {:layer 0} read_A ({:linear "tid"} tid:Tid, i:int) returns (v:int);
+refines READ_A;
+
+yield procedure {:layer 0} write_A ({:linear "tid"} tid:Tid, i:int, v:int);
+refines WRITE_A;
+
+yield procedure {:layer 0} read_count ({:linear "tid"} tid:Tid) returns (c:int);
+refines READ_COUNT;
+
+yield procedure {:layer 0} write_count ({:linear "tid"} tid:Tid, c:int);
+refines WRITE_COUNT;
+
+yield procedure {:layer 0} acquire ({:linear "tid"} tid:Tid);
+refines ACQUIRE;
+
+yield procedure {:layer 0} release ({:linear "tid"} tid:Tid);
+refines RELEASE;

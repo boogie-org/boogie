@@ -105,7 +105,8 @@ modifies channel, terminated, leader;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool) refines MAIN3 using INV2
+action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+refines MAIN3 using INV2;
 creates P;
 eliminates P using P';
 modifies channel;
@@ -144,7 +145,8 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool) refines MAIN2 using INV1
+action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+refines MAIN2 using INV1;
 creates PInit;
 {
   assert Init(pids, channel, terminated, id, leader);
@@ -203,7 +205,8 @@ yield invariant {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
 invariant Init(pids, channel, terminated, id, leader);
 
 yield procedure {:layer 1}
-main ({:linear_in "pid"} pids:[int]bool) refines MAIN1
+main ({:linear_in "pid"} pids:[int]bool)
+refines MAIN1;
 requires call YieldInit(pids);
 {
   var {:pending_async}{:layer 1} PAs:[PInit]int;
@@ -224,7 +227,8 @@ requires call YieldInit(pids);
   }
 }
 
-yield procedure {:layer 1} pinit ({:linear_in "pid"} pid:int) refines PInit
+yield procedure {:layer 1} pinit ({:linear_in "pid"} pid:int)
+refines PInit;
 requires {:layer 1} Pid(pid);
 {
   var m:int;
@@ -234,7 +238,8 @@ requires {:layer 1} Pid(pid);
   async call p(pid);
 }
 
-yield procedure {:layer 1} p ({:linear_in "pid"} pid:int) refines P
+yield procedure {:layer 1} p ({:linear_in "pid"} pid:int)
+refines P;
 requires {:layer 1} Pid(pid);
 {
   var m:int;
@@ -289,10 +294,17 @@ modifies channel;
   channel[pid][m] := channel[pid][m] - 1;
 }
 
-yield procedure {:layer 0} get_id({:linear "pid"} pid:int) returns (i:int) refines GET_ID;
-yield procedure {:layer 0} set_leader({:linear "pid"} pid:int) refines SET_LEADER;
-yield procedure {:layer 0} send(pid:int, m:int) refines SEND;
-yield procedure {:layer 0} receive(pid:int) returns (m:int) refines RECEIVE;
+yield procedure {:layer 0} get_id({:linear "pid"} pid:int) returns (i:int);
+refines GET_ID;
+
+yield procedure {:layer 0} set_leader({:linear "pid"} pid:int);
+refines SET_LEADER;
+
+yield procedure {:layer 0} send(pid:int, m:int);
+refines SEND;
+
+yield procedure {:layer 0} receive(pid:int) returns (m:int);
+refines RECEIVE;
 
 <-> action {:layer 1}
 LINEAR_TRANSFER(i:int, {:linear_in "pid"} pids:[int]bool)
@@ -304,4 +316,5 @@ returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
 }
 
 yield procedure {:layer 0} linear_transfer(i:int, {:linear_in "pid"} pids:[int]bool)
-returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool) refines LINEAR_TRANSFER;
+returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool);
+refines LINEAR_TRANSFER;

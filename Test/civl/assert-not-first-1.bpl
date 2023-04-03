@@ -18,5 +18,8 @@ action {:layer 1} FOO(b: bool, i: int) returns (o: int) {
     }
 }
 
-yield procedure {:layer 0} bar(b: bool, i: int) returns (o: int) refines BAR;
-yield procedure {:layer 0} foo(b: bool, i: int) returns (o: int) refines FOO;
+yield procedure {:layer 0} bar(b: bool, i: int) returns (o: int);
+refines BAR;
+
+yield procedure {:layer 0} foo(b: bool, i: int) returns (o: int);
+refines FOO;

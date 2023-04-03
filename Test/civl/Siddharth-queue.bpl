@@ -52,8 +52,8 @@ action {:layer 2} pop_atomic(this: Invoc) returns (k: Key)
 
 // ---------- Implementation:
 
-yield procedure {:layer 1} pop(this: Invoc)
-  returns (k: Key) refines pop_atomic
+yield procedure {:layer 1} pop(this: Invoc) returns (k: Key)
+refines pop_atomic;
 {
   var {:layer 1} my_vis: SetInvoc;
 

@@ -38,5 +38,8 @@ modifies x;
   x := x - 1;
 }
 
-yield procedure {:layer 0} geq0_inc () refines GEQ0_INC;
-yield procedure {:layer 0} geq0_dec () refines GEQ0_DEC;
+yield procedure {:layer 0} geq0_inc ();
+refines GEQ0_INC;
+
+yield procedure {:layer 0} geq0_dec ();
+refines GEQ0_DEC;

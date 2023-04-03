@@ -76,10 +76,17 @@ modifies rwlock;
     rwlock := RwLock(None(), rwlock->readers);
 }
 
-yield procedure {:layer 0} acquire_read({:linear "tid"} tid: Tid) refines atomic_acquire_read;
-yield procedure {:layer 0} release_read({:linear "tid"} tid: Tid) refines atomic_release_read;
-yield procedure {:layer 0} acquire_write({:linear "tid"} tid: Tid) refines atomic_acquire_write;
-yield procedure {:layer 0} release_write({:linear "tid"} tid: Tid) refines atomic_release_write;
+yield procedure {:layer 0} acquire_read({:linear "tid"} tid: Tid);
+refines atomic_acquire_read;
+
+yield procedure {:layer 0} release_read({:linear "tid"} tid: Tid);
+refines atomic_release_read;
+
+yield procedure {:layer 0} acquire_write({:linear "tid"} tid: Tid);
+refines atomic_acquire_write;
+
+yield procedure {:layer 0} release_write({:linear "tid"} tid: Tid);
+refines atomic_release_write;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -106,8 +113,11 @@ modifies memory;
     memory[a] := v;
 }
 
-yield procedure {:layer 0} read({:linear "tid"} tid: Tid, a: Addr) returns (v: Val) refines atomic_read;
-yield procedure {:layer 0} write({:linear "tid"} tid: Tid, a: Addr, v: Val) refines atomic_write;
+yield procedure {:layer 0} read({:linear "tid"} tid: Tid, a: Addr) returns (v: Val);
+refines atomic_read;
+
+yield procedure {:layer 0} write({:linear "tid"} tid: Tid, a: Addr, v: Val);
+refines atomic_write;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -117,7 +127,8 @@ yield procedure {:layer 0} write({:linear "tid"} tid: Tid, a: Addr, v: Val) refi
 // mover types of the callees.
 
 yield procedure {:layer 1}
-read2({:hide}{:linear "tid"} tid: Tid, a1: Addr, a2: Addr) returns (v1: Val, v2: Val) refines atomic_read2
+read2({:hide}{:linear "tid"} tid: Tid, a1: Addr, a2: Addr) returns (v1: Val, v2: Val)
+refines atomic_read2;
 {
     call acquire_read(tid);
     call v1 := read(tid, a1);
@@ -126,7 +137,8 @@ read2({:hide}{:linear "tid"} tid: Tid, a1: Addr, a2: Addr) returns (v1: Val, v2:
 }
 
 yield procedure {:layer 1}
-write2({:hide}{:linear "tid"} tid: Tid, a1: Addr, a2: Addr, v1: Val, v2: Val) refines atomic_write2
+write2({:hide}{:linear "tid"} tid: Tid, a1: Addr, a2: Addr, v1: Val, v2: Val)
+refines atomic_write2;
 {
     call acquire_write(tid);
     call write(tid, a1, v1);

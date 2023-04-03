@@ -28,7 +28,8 @@ action {:layer 1} AtomicIncr()
 modifies x;
 { x := x + 1; }
 
-yield procedure {:layer 0} Incr() refines AtomicIncr;
+yield procedure {:layer 0} Incr();
+refines AtomicIncr;
 
 yield invariant {:layer 1} Yield({:linear "Perm"} p: [int]bool, v: int);
 invariant p[1];

@@ -27,14 +27,17 @@ yield procedure {:layer 1} baz2()
 action {:layer 1,1} atomic_A()
 {
 }
-yield procedure {:layer 0} A() refines atomic_A;
+yield procedure {:layer 0} A();
+refines atomic_A;
 
 <- action {:layer 1,1} atomic_L()
 {
 }
-yield procedure {:layer 0} L() refines atomic_L;
+yield procedure {:layer 0} L();
+refines atomic_L;
 
 -> action {:layer 1,1} atomic_R()
 {
 }
-yield procedure {:layer 0} R() refines atomic_R;
+yield procedure {:layer 0} R();
+refines atomic_R;

@@ -11,13 +11,15 @@ action {:layer 1} AtomicSetG(val:int)
 modifies g;
 { g := val; }
 
-yield procedure {:layer 0} SetG(val:int) refines AtomicSetG;
+yield procedure {:layer 0} SetG(val:int);
+refines AtomicSetG;
 
 action {:layer 1} AtomicSetH(val:int)
 modifies h;
 { h := val; }
 
-yield procedure {:layer 0} SetH(val:int) refines AtomicSetH;
+yield procedure {:layer 0} SetH(val:int);
+refines AtomicSetH;
 
 yield invariant {:layer 1} Yield({:linear "1"} x: [int]bool);
 invariant x == MapConst(true) && g == 0;
@@ -32,7 +34,8 @@ action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xls: int)
 modifies unallocated;
 { assume xls != 0 && unallocated[xls]; unallocated[xls] := false; }
 
-yield procedure {:layer 0} AllocateLow() returns ({:linear "tid"} xls: int) refines AtomicAllocateLow;
+yield procedure {:layer 0} AllocateLow() returns ({:linear "tid"} xls: int);
+refines AtomicAllocateLow;
 
 yield procedure {:layer 1} A({:linear_in "tid"} tid_in: int, {:linear_in "1"} x: [int]bool, {:linear_in "2"} y: [int]bool) returns ({:linear "tid"} tid_out: int)
 requires {:layer 1} x == MapConst(true);

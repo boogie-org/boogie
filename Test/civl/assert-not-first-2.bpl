@@ -12,4 +12,5 @@ action {:layer 1} FOO(arr: [int]int) {
     assert arr[x] == 1;
 }
 
-yield procedure {:layer 0} foo(arr: [int]int) refines FOO;
+yield procedure {:layer 0} foo(arr: [int]int);
+refines FOO;

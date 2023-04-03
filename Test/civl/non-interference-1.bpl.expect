@@ -1,4 +1,4 @@
-non-interference-1.bpl(23,1): Error: Non-interference check failed
+non-interference-1.bpl(25,1): Error: Non-interference check failed
 Execution trace:
     non-interference-1.bpl(7,3): anon0
     non-interference-1.bpl(12,5): inline$AtomicIncr$0$anon0

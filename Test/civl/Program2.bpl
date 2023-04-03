@@ -27,4 +27,5 @@ modifies x;
   x := x + val;
 }
 
-yield procedure {:layer 0} Incr(val: int) refines AtomicIncr;
+yield procedure {:layer 0} Incr(val: int);
+refines AtomicIncr;

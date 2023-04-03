@@ -57,7 +57,8 @@ pure procedure SizeLemma2<T>(X: [T]bool, Y: [T]bool);
 requires MapDiff(X, Y) == MapConst(false);
 ensures Size(Y) == Size(X) + Size(MapDiff(Y, X));
 
-yield procedure {:layer 0} DecrementFreeSpace({:linear "tid"} tid: Tid) refines atomic_DecrementFreeSpace;
+yield procedure {:layer 0} DecrementFreeSpace({:linear "tid"} tid: Tid);
+refines atomic_DecrementFreeSpace;
 
 action {:layer 1} atomic_DecrementFreeSpace({:linear "tid"} tid: Tid)
 modifies freeSpace, allocMap;
@@ -82,7 +83,8 @@ action Reserve(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bije
                     allocMap->ptrToTid[ptr := tid]);
 }
 
-yield procedure {:layer 0} AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool) refines atomic_AllocIfPtrFree;
+yield procedure {:layer 0} AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool);
+refines atomic_AllocIfPtrFree;
 
 action {:layer 1} atomic_AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
 modifies isFree, allocMap;
@@ -126,7 +128,8 @@ action Alloc(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Biject
                     allocMap'->ptrToTid);
 }
 
-yield procedure {:layer 0} Reclaim() returns (ptr: int) refines atomic_Reclaim;
+yield procedure {:layer 0} Reclaim() returns (ptr: int);
+refines atomic_Reclaim;
 
 action {:layer 1} atomic_Reclaim() returns (ptr: int)
 modifies freeSpace, isFree;

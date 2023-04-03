@@ -10,15 +10,20 @@ modifies x;
 modifies x;
 { x := x - 1; }
 
-yield procedure {:layer 0} Incr() refines AtomicIncr;
-yield procedure {:layer 0} Decr() refines AtomicDecr;
+yield procedure {:layer 0} Incr();
+refines AtomicIncr;
 
-yield procedure {:layer 1} AsyncIncr() refines AtomicIncr
+yield procedure {:layer 0} Decr();
+refines AtomicDecr;
+
+yield procedure {:layer 1} AsyncIncr()
+refines AtomicIncr;
 {
   async call {:sync} Incr();
 }
 
-yield procedure {:layer 1} AsyncDecr() refines AtomicDecr
+yield procedure {:layer 1} AsyncDecr()
+refines AtomicDecr;
 {
   async call {:sync} Decr();
 }
