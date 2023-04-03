@@ -20,18 +20,18 @@ type Key;
 
 // ---------- Primitives for manipulating logical/abstract state
 
-procedure {:intro} {:layer 1} intro_readLin() returns (s: SetInvoc)
+link action {:layer 1} intro_readLin() returns (s: SetInvoc)
 {
   s := Set_ofSeq(lin);
 }
 
-procedure {:intro} {:layer 1} intro_write_vis(n: Invoc, s: SetInvoc)
+link action {:layer 1} intro_write_vis(n: Invoc, s: SetInvoc)
   modifies vis;
 {
   vis[n] := s;
 }
 
-procedure {:intro} {:layer 1} intro_writeLin(n: Invoc)
+link action {:layer 1} intro_writeLin(n: Invoc)
   modifies lin;
 {
   lin := Seq_append(lin, n);
@@ -39,7 +39,7 @@ procedure {:intro} {:layer 1} intro_writeLin(n: Invoc)
 
 // ---------- Specification program:
 
-procedure {:atomic} {:layer 2} pop_atomic(this: Invoc) returns (k: Key)
+action {:layer 2} pop_atomic(this: Invoc) returns (k: Key)
   modifies lin, vis;
 {
   var my_vis: SetInvoc;
@@ -52,8 +52,8 @@ procedure {:atomic} {:layer 2} pop_atomic(this: Invoc) returns (k: Key)
 
 // ---------- Implementation:
 
-procedure {:yields} {:layer 1} {:refines "pop_atomic"} pop(this: Invoc)
-  returns (k: Key)
+yield procedure {:layer 1} pop(this: Invoc) returns (k: Key)
+refines pop_atomic;
 {
   var {:layer 1} my_vis: SetInvoc;
 

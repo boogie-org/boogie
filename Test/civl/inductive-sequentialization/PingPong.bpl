@@ -22,9 +22,6 @@ var {:layer 0,3} channel: [ChannelId]ChannelPair;
 // Left permission is used to receive from the left channel and send to the right channel.
 // Right permission is used to receive from the right channel and send to the left channel.
 datatype {:linear "cid"} ChannelHandle { Left(cid: ChannelId), Right(cid: ChannelId) }
-function {:inline} ChannelId(p: ChannelHandle) : ChannelId {
-  p->cid
-}
 
 function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [ChannelHandle]bool {
   MapConst(false)[Left(cid) := true][Right(cid) := true]
@@ -35,16 +32,15 @@ function {:inline} EmptyChannel () : [int]int
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 3}
+action {:layer 3}
 MAIN' ({:linear_in "cid"} cid: ChannelId)
 {
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
 }
 
-procedure {:layer 2}
-{:creates "PING", "PONG"}
-{:IS_invariant}{:elim "PING","PING'"}{:elim "PONG","PONG'"}
+invariant action {:layer 2}
 INV ({:linear_in "cid"} cid: ChannelId)
+creates PING, PONG;
 modifies channel;
 {
   var {:pool "INV"} c: int;
@@ -73,49 +69,31 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:IS_abstraction}{:layer 2}
-{:creates "PING"}
-PING' (x: int, {:linear_in "cid"} left: ChannelHandle)
+abstract action {:layer 2} PING' (x: int, {:linear_in "cid"} p: ChannelHandle)
+creates PING;
 modifies channel;
 {
-  var cid: ChannelId;
-  var left_channel: [int]int;
-  var right_channel: [int]int;
-
-  cid := ChannelId(left);
-  left_channel := channel[cid]->left;
-  right_channel := channel[cid]->right;
-
-  assert (exists {:pool "INV"} m:int :: left_channel[m] > 0);
-  assert (forall m:int :: right_channel[m] == 0);
-  call PING(x, left);
-
+  assert (exists {:pool "INV"} m:int :: channel[p->cid]->left[m] > 0);
+  assert (forall m:int :: channel[p->cid]->right[m] == 0);
+  call PING(x, p);
 }
 
-procedure {:IS_abstraction}{:layer 2}
-{:creates "PONG"}
-PONG' (y: int, {:linear_in "cid"} right: ChannelHandle)
+abstract action {:layer 2} PONG' (y: int, {:linear_in "cid"} p: ChannelHandle)
+creates PONG;
 modifies channel;
 {
-  var cid: ChannelId;
-  var left_channel: [int]int;
-  var right_channel: [int]int;
-
-  cid := ChannelId(right);
-  left_channel := channel[cid]->left;
-  right_channel := channel[cid]->right;
-
-  assert (exists {:pool "INV"} m:int :: right_channel[m] > 0);
-  assert (forall m:int :: left_channel[m] == 0);
-  call PONG(y, right);
+  assert (exists {:pool "INV"} m:int :: channel[p->cid]->right[m] > 0);
+  assert (forall m:int :: channel[p->cid]->left[m] == 0);
+  call PONG(y, p);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 2}
-{:creates "PING", "PONG"}
-{:IS "MAIN'","INV"}
+action {:layer 2}
 MAIN ({:linear_in "cid"} cid: ChannelId)
+refines MAIN' using INV;
+creates PING, PONG;
+eliminates PING using PING', PONG using PONG';
 modifies channel;
 {
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
@@ -124,22 +102,18 @@ modifies channel;
   call create_async(PONG(1, Right(cid)));
 }
 
-procedure {:atomic}{:layer 2}
-{:pending_async}
-{:creates "PING"}
-PING (x: int, {:linear_in "cid"} left: ChannelHandle)
+async action {:layer 2} PING (x: int, {:linear_in "cid"} p: ChannelHandle)
+creates PING;
 modifies channel;
 {
-  var cid: ChannelId;
   var left_channel: [int]int;
   var right_channel: [int]int;
 
-  cid := ChannelId(left);
-  left_channel := channel[cid]->left;
-  right_channel := channel[cid]->right;
+  left_channel := channel[p->cid]->left;
+  right_channel := channel[p->cid]->right;
 
   assert x > 0;
-  assert left is Left;
+  assert p is Left;
   assert (forall m:int :: left_channel[m] > 0 ==> m == x); // assertion to discharge
 
   assume left_channel[x] > 0;
@@ -148,31 +122,27 @@ modifies channel;
   if (*)
   {
     right_channel[x+1] := right_channel[x+1] + 1;
-    call create_async(PING(x+1, left));
+    call create_async(PING(x+1, p));
   }
   else
   {
     right_channel[0] := right_channel[0] + 1;
   }
-  channel[cid] := ChannelPair(left_channel, right_channel);
+  channel[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
-procedure {:atomic}{:layer 2}
-{:pending_async}
-{:creates "PONG"}
-PONG (y: int, {:linear_in "cid"} right: ChannelHandle)
+async action {:layer 2} PONG (y: int, {:linear_in "cid"} p: ChannelHandle)
+creates PONG;
 modifies channel;
 {
-  var cid: ChannelId;
   var left_channel: [int]int;
   var right_channel: [int]int;
 
-  cid := ChannelId(right);
-  left_channel := channel[cid]->left;
-  right_channel := channel[cid]->right;
+  left_channel := channel[p->cid]->left;
+  right_channel := channel[p->cid]->right;
 
   assert y > 0;
-  assert right is Right;
+  assert p is Right;
   assert (forall m:int :: right_channel[m] > 0 ==> m == y || m == 0); // assertion to discharge
 
   if (*)
@@ -180,20 +150,21 @@ modifies channel;
     assume right_channel[y] > 0;
     right_channel[y] := right_channel[y] - 1;
     left_channel[y] := left_channel[y] + 1;
-    call create_async(PONG(y+1, right));
+    call create_async(PONG(y+1, p));
   }
   else
   {
     assume right_channel[0] > 0;
     right_channel[0] := right_channel[0] - 1;
   }
-  channel[cid] := ChannelPair(left_channel, right_channel);
+  channel[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:yields}{:layer 1}{:refines "MAIN"}
+yield procedure {:layer 1}
 main ({:linear_in "cid"} cid: ChannelId)
+refines MAIN;
 {
   var {:linear "cid"} left: ChannelHandle;
   var {:linear "cid"} right: ChannelHandle;
@@ -204,87 +175,89 @@ main ({:linear_in "cid"} cid: ChannelId)
   async call pong(1, right);
 }
 
-procedure {:yields}{:layer 1}{:refines "PING"}
-ping (x: int, {:linear_in "cid"} left: ChannelHandle)
+yield procedure {:layer 1}
+ping (x: int, {:linear_in "cid"} p: ChannelHandle)
+refines PING;
 {
   var x': int;
 
-  call x' := receive(left);
+  call x' := receive(p);
   assert {:layer 1} x' == x; // low-level assertion to discharge
   if (*)
   {
-    call send(left, x'+1);
-    async call ping(x'+1, left);
+    call send(p, x'+1);
+    async call ping(x'+1, p);
   }
   else
   {
-    call send(left, 0);
+    call send(p, 0);
   }
 }
 
-procedure {:yields}{:layer 1}{:refines "PONG"}
-pong (y: int, {:linear_in "cid"} right: ChannelHandle)
+yield procedure {:layer 1}
+pong (y: int, {:linear_in "cid"} p: ChannelHandle)
+refines PONG;
 {
   var y': int;
 
-  call y' := receive(right);
+  call y' := receive(p);
   if (y' != 0)
   {
     assert {:layer 1} y' == y; // low-level assertion to discharge
-    call send(right, y');
-    async call pong(y'+1, right);
+    call send(p, y');
+    async call pong(y'+1, p);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Bidirectional channels
 
-procedure {:right}{:layer 1} RECEIVE (permission: ChannelHandle) returns (m: int)
+-> action {:layer 1} RECEIVE (p: ChannelHandle) returns (m: int)
 modifies channel;
 {
-  var cid: ChannelId;
   var left_channel: [int]int;
   var right_channel: [int]int;
 
-  cid := ChannelId(permission);
-  left_channel := channel[cid]->left;
-  right_channel := channel[cid]->right;
-  if (permission is Left) {
+  left_channel := channel[p->cid]->left;
+  right_channel := channel[p->cid]->right;
+  if (p is Left) {
     assume left_channel[m] > 0;
     left_channel[m] := left_channel[m] - 1;
   } else {
     assume right_channel[m] > 0;
     right_channel[m] := right_channel[m] - 1;
   }
-  channel[cid] := ChannelPair(left_channel, right_channel);
+  channel[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
-procedure {:left}{:layer 1} SEND (permission: ChannelHandle, m: int)
+<- action {:layer 1} SEND (p: ChannelHandle, m: int)
 modifies channel;
 {
-  var cid: ChannelId;
   var left_channel: [int]int;
   var right_channel: [int]int;
 
-  cid := ChannelId(permission);
-  left_channel := channel[cid]->left;
-  right_channel := channel[cid]->right;
-  if (permission is Left) {
+  left_channel := channel[p->cid]->left;
+  right_channel := channel[p->cid]->right;
+  if (p is Left) {
     right_channel[m] := right_channel[m] + 1;
   } else {
     left_channel[m] := left_channel[m] + 1;
   }
-  channel[cid] := ChannelPair(left_channel, right_channel);
+  channel[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
-procedure {:both}{:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
+<-> action {:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
   returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle)
 {
   left := Left(cid);
   right := Right(cid);
 }
 
-procedure {:yields}{:layer 0}{:refines "RECEIVE"} receive (permission: ChannelHandle) returns (m: int);
-procedure {:yields}{:layer 0}{:refines "SEND"} send (permission: ChannelHandle, m: int);
-procedure {:yields}{:layer 0}{:refines "SPLIT"} split({:linear_in "cid"} cid: ChannelId)
-  returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle);
+yield procedure {:layer 0} receive (p: ChannelHandle) returns (m: int);
+refines RECEIVE;
+
+yield procedure {:layer 0} send (p: ChannelHandle, m: int);
+refines SEND;
+
+yield procedure {:layer 0} split({:linear_in "cid"} cid: ChannelId) returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle);
+refines SPLIT;

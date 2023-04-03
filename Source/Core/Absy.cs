@@ -3083,53 +3083,28 @@ namespace Microsoft.Boogie
 
   public class Procedure : DeclWithFormals
   {
-    public List<Requires> /*!*/
-      Requires;
+    public bool IsPure;
 
-    public List<IdentifierExpr> /*!*/
-      Modifies;
+    public List<Requires> Requires;
 
-    public List<Ensures> /*!*/
-      Ensures;
+    public List<IdentifierExpr> Modifies;
 
-    [ContractInvariantMethod]
-    void ObjectInvariant()
+    public List<Ensures> Ensures;
+
+    public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
+      List<Variable> inParams, List<Variable> outParams, bool isPure,
+      List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures)
+      : this(tok, name, typeParams, inParams, outParams, isPure, requires, modifies, ensures, null)
     {
-      Contract.Invariant(Requires != null);
-      Contract.Invariant(Modifies != null);
-      Contract.Invariant(Ensures != null);
     }
 
-    public Procedure(IToken /*!*/ tok, string /*!*/ name, List<TypeVariable> /*!*/ typeParams,
-      List<Variable> /*!*/ inParams, List<Variable> /*!*/ outParams,
-      List<Requires> /*!*/ requires, List<IdentifierExpr> /*!*/ modifies, List<Ensures> /*!*/ ensures)
-      : this(tok, name, typeParams, inParams, outParams, requires, modifies, ensures, null)
-    {
-      Contract.Requires(tok != null);
-      Contract.Requires(name != null);
-      Contract.Requires(typeParams != null);
-      Contract.Requires(inParams != null);
-      Contract.Requires(outParams != null);
-      Contract.Requires(requires != null);
-      Contract.Requires(modifies != null);
-      Contract.Requires(ensures != null);
-      //:this(tok, name, typeParams, inParams, outParams, requires, modifies, ensures, null);
-    }
-
-    public Procedure(IToken /*!*/ tok, string /*!*/ name, List<TypeVariable> /*!*/ typeParams,
-      List<Variable> /*!*/ inParams, List<Variable> /*!*/ outParams,
-      List<Requires> /*!*/ @requires, List<IdentifierExpr> /*!*/ @modifies, List<Ensures> /*!*/ @ensures, QKeyValue kv
+    public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
+      List<Variable> inParams, List<Variable> outParams, bool isPure,
+      List<Requires> @requires, List<IdentifierExpr> @modifies, List<Ensures> @ensures, QKeyValue kv
     )
       : base(tok, name, typeParams, inParams, outParams)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(name != null);
-      Contract.Requires(typeParams != null);
-      Contract.Requires(inParams != null);
-      Contract.Requires(outParams != null);
-      Contract.Requires(@requires != null);
-      Contract.Requires(@modifies != null);
-      Contract.Requires(@ensures != null);
+      this.IsPure = isPure;
       this.Requires = @requires;
       this.Modifies = @modifies;
       this.Ensures = @ensures;
@@ -3138,8 +3113,7 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
-      stream.Write(this, level, "procedure ");
+      stream.Write(this, level, IsPure ? "pure procedure " : "procedure ");
       EmitAttributes(stream);
       stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
       EmitSignature(stream, false);
@@ -3147,7 +3121,7 @@ namespace Microsoft.Boogie
 
       level++;
 
-      foreach (Requires /*!*/ e in this.Requires)
+      foreach (Requires e in this.Requires)
       {
         Contract.Assert(e != null);
         e.Emit(stream, level);
@@ -3160,7 +3134,7 @@ namespace Microsoft.Boogie
         stream.WriteLine(";");
       }
 
-      foreach (Ensures /*!*/ e in this.Ensures)
+      foreach (Ensures e in this.Ensures)
       {
         Contract.Assert(e != null);
         e.Emit(stream, level);
@@ -3172,19 +3146,27 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddProcedure(this);
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.PushVarContext();
 
-      foreach (IdentifierExpr /*!*/ ide in Modifies)
+      if (Modifies.Any())
       {
-        Contract.Assert(ide != null);
-        ide.Resolve(rc);
+        if (IsPure)
+        {
+          rc.Error(this, "unnecessary modifies clause for pure procedure");
+        }
+        else
+        {
+          foreach (IdentifierExpr ide in Modifies)
+          {
+            Contract.Assert(ide != null);
+            ide.Resolve(rc);
+          }
+        }
       }
 
       int previousTypeBinderState = rc.TypeBinderState;
@@ -3192,10 +3174,14 @@ namespace Microsoft.Boogie
       {
         RegisterTypeParameters(rc);
 
+        if (IsPure)
+        {
+          rc.StateMode = ResolutionContext.State.StateLess;
+        }
         RegisterFormals(InParams, rc);
         ResolveFormals(InParams,
           rc); // "where" clauses of in-parameters are resolved without the out-parameters in scope
-        foreach (Requires /*!*/ e in Requires)
+        foreach (Requires e in Requires)
         {
           Contract.Assert(e != null);
           e.Resolve(rc);
@@ -3205,8 +3191,11 @@ namespace Microsoft.Boogie
         ResolveFormals(OutParams,
           rc); // "where" clauses of out-parameters are resolved with both in- and out-parameters in scope
 
-        rc.StateMode = ResolutionContext.State.Two;
-        foreach (Ensures /*!*/ e in Ensures)
+        if (!IsPure)
+        {
+          rc.StateMode = ResolutionContext.State.Two;
+        }
+        foreach (Ensures e in Ensures)
         {
           Contract.Assert(e != null);
           e.Resolve(rc);
@@ -3233,9 +3222,8 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       base.Typecheck(tc);
-      foreach (IdentifierExpr /*!*/ ide in Modifies)
+      foreach (IdentifierExpr ide in Modifies)
       {
         Contract.Assert(ide != null);
         Contract.Assume(ide.Decl != null);
@@ -3243,31 +3231,24 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, "modifies list contains constant: {0}", ide.Name);
         }
-
         ide.Typecheck(tc);
       }
 
-      foreach (Requires /*!*/ e in Requires)
+      foreach (Requires e in Requires)
       {
         Contract.Assert(e != null);
         e.Typecheck(tc);
       }
 
-      bool oldYields = tc.Yields;
-      tc.Yields = QKeyValue.FindBoolAttribute(Attributes, CivlAttributes.YIELDS);
-      foreach (Ensures /*!*/ e in Ensures)
+      foreach (Ensures e in Ensures)
       {
         Contract.Assert(e != null);
         e.Typecheck(tc);
       }
-
-      tc.Yields = oldYields;
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitProcedure(this);
     }
   }
@@ -3283,7 +3264,7 @@ namespace Microsoft.Boogie
     }
 
     public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
-      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), requires, new List<IdentifierExpr>(),
+      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false, requires, new List<IdentifierExpr>(),
         requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
     {
     }
@@ -3294,7 +3275,7 @@ namespace Microsoft.Boogie
       Async,
       Invariant,
       Link,
-      Proxy,
+      Abstract,
       None
   }
 
@@ -3329,34 +3310,77 @@ namespace Microsoft.Boogie
 
   public enum MoverType
   {
-    Non,
+    Atomic,
     Right,
     Left,
-    Both
+    Both,
+    None
+  }
+
+  public class ElimDecl : Absy
+  {
+    public ActionDeclRef target;
+    public ActionDeclRef abstraction;
+
+    public ElimDecl(IToken tok, ActionDeclRef target, ActionDeclRef abstraction) : base(tok)
+    {
+      this.target = target;
+      this.abstraction = abstraction;
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      target.Resolve(rc);
+      abstraction.Resolve(rc);
+      if (abstraction.actionDecl != null && abstraction.actionDecl.actionQualifier != ActionQualifier.Abstract)
+      {
+        rc.Error(this, $"Action must be abstract: {abstraction.actionName}");
+      }
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      throw new NotImplementedException();
+    }
   }
 
   public class ActionDecl : Procedure
   {
-    private MoverType moverType;
-    private ActionQualifier actionQualifier;
-    private List<ActionDeclRef> creates;
-    private ActionDeclRef refinedAction;
+    public MoverType moverType;
+    public ActionQualifier actionQualifier;
+    public List<ActionDeclRef> creates;
+    public ActionDeclRef refinedAction;
+    public ActionDeclRef invariantAction;
+    public List<ElimDecl> eliminates;
+    public DatatypeTypeCtorDecl pendingAsyncCtorDecl;
+    public int PendingAsyncStartIndex;
 
     public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
-      List<Variable> inParams, List<Variable> outParams, List<ActionDeclRef> creates, ActionDeclRef refinedAction,
-      List<IdentifierExpr> modifies, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      new List<Requires>(), modifies, new List<Ensures>(), kv)
+      List<Variable> inParams, List<Variable> outParams,
+      List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
+      List<ElimDecl> eliminates,
+      List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
+      new List<TypeVariable>(), inParams, outParams,
+      false, new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
       this.moverType = moverType;
       this.actionQualifier = actionQualifier;
       this.creates = creates;
       this.refinedAction = refinedAction;
+      this.invariantAction = invariantAction;
+      this.eliminates = eliminates;
+      this.pendingAsyncCtorDecl = pendingAsyncCtorDecl;
+      this.PendingAsyncStartIndex = outParams.Count;
     }
 
     public override void Resolve(ResolutionContext rc)
     {
       base.Resolve(rc);
-      if (moverType != MoverType.Non)
+      if (actionQualifier == ActionQualifier.Async && OutParams.Count > 0)
+      {
+        rc.Error(this, $"Async action may not have output parameters");
+      }
+      if (moverType != MoverType.None)
       {
         if (actionQualifier == ActionQualifier.Invariant)
         {
@@ -3366,9 +3390,9 @@ namespace Microsoft.Boogie
         {
           rc.Error(this, "Mover may not be a link action");
         }
-        if (actionQualifier == ActionQualifier.Proxy)
+        if (actionQualifier == ActionQualifier.Abstract)
         {
-          rc.Error(this, "Mover may not be a proxy action");
+          rc.Error(this, "Mover may not be an abstract action");
         }
       }
       if (creates.Any())
@@ -3382,39 +3406,235 @@ namespace Microsoft.Boogie
           rc.Error(this, "Right mover may not create pending asyncs");
         }
       }
-      creates.Iter(create => create.Resolve(rc));
+      creates.Iter(create =>
+      {
+        create.Resolve(rc);
+        if (create.actionDecl.actionQualifier != ActionQualifier.Async)
+        {
+          rc.Error(this, $"{create.actionName} in creates list must be an async action");
+        }
+      });
+      if (refinedAction != null)
+      {
+        if (actionQualifier != ActionQualifier.None)
+        {
+          rc.Error(this, "A refining action may not have any qualifiers on it");
+        }
+        refinedAction.Resolve(rc);
+        invariantAction.Resolve(rc);
+        if (invariantAction.actionDecl != null &&
+            invariantAction.actionDecl.actionQualifier != ActionQualifier.Invariant)
+        {
+          rc.Error(this, "Expected an invariant action");
+        }
+      }
+      eliminates.Iter(elim =>
+      {
+        elim.Resolve(rc);
+      });
+      if (eliminates.Any())
+      {
+        if (eliminates.Select(elim => elim.target.actionDecl).Distinct().Count() != eliminates.Count)
+        {
+          rc.Error(this, "Each eliminates pair must be distinct in the first action");
+        }
+        if (refinedAction == null)
+        {
+          rc.Error(this, "Eliminates clause must be accompanied by refinement specification");
+        }
+      }
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      base.Typecheck(tc);
+      if (invariantAction != null)
+      {
+        var refinedProc = refinedAction.actionDecl;
+        var invariantProc = invariantAction.actionDecl;
+
+        var actionCreates = creates.Select(x => x.actionDecl).ToHashSet();
+        var refinedActionCreates = refinedProc.creates.Select(x => x.actionDecl).ToHashSet();
+        var invariantCreates = invariantProc.creates.Select(x => x.actionDecl).ToHashSet();
+        if (!actionCreates.IsSubsetOf(invariantCreates))
+        {
+          tc.Error(this, $"Pending asyncs created by refining action must be subset of those created by invariant action {invariantProc.Name}");
+        }
+        if (!refinedActionCreates.IsSubsetOf(invariantCreates))
+        {
+          tc.Error(this, $"Pending asyncs created by refined action must be subset of those created by invariant action {invariantProc.Name}");
+        }
+        var actionModifies = new HashSet<Variable>(Modifies.Select(ie => ie.Decl));
+        var refinedActionModifies = new HashSet<Variable>(refinedProc.Modifies.Select(ie => ie.Decl));
+        var invariantModifies = new HashSet<Variable>(invariantProc.Modifies.Select(ie => ie.Decl));
+        if (!actionModifies.IsSubsetOf(invariantModifies))
+        {
+          tc.Error(this, $"Modifies of {Name} must be subset of modifies of {invariantProc.Name}");
+        }
+        if (!refinedActionModifies.IsSubsetOf(invariantModifies))
+        {
+          tc.Error(this, $"Modifies of {refinedProc.Name} must be subset of modifies of {invariantProc.Name}");
+        }
+        foreach (var elimProc in invariantCreates.Except(refinedActionCreates))
+        {
+          var elimCreates = elimProc.creates.Select(x => x.actionDecl).ToHashSet();
+          if (!elimCreates.IsSubsetOf(invariantCreates))
+          {
+            tc.Error(this,
+              $"Pending asyncs created by eliminated action {elimProc.Name} must be subset of those created by invariant action {invariantProc.Name}");
+          }
+          var targetModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
+          if (!targetModifies.IsSubsetOf(invariantModifies))
+          {
+            tc.Error(this, $"Modifies of {elimProc.Name} must be subset of modifies of {invariantProc.Name}");
+          }
+        }
+
+        foreach (var elim in eliminates)
+        {
+          if (!invariantCreates.Contains(elim.target.actionDecl))
+          {
+            tc.Error(this, $"Eliminated action must be created by invariant {invariantAction.actionName}");
+          }
+          var targetProc = elim.target.actionDecl;
+          var absProc = elim.target.actionDecl;
+          var targetModifies = new HashSet<Variable>(targetProc.Modifies.Select(ie => ie.Decl));
+          var absModifies = new HashSet<Variable>(absProc.Modifies.Select(ie => ie.Decl));
+          if (!absModifies.IsSubsetOf(targetModifies))
+          {
+            tc.Error(elim, $"Modifies list of {absProc.Name} must be subset of modifies list of {targetProc.Name}");
+          }
+        }
+      }
+    }
+
+    public Dictionary<ActionDecl, ActionDecl> EliminationMap()
+    {
+      var refinedProc = refinedAction.actionDecl;
+      var invariantProc = invariantAction.actionDecl;
+      var refinedActionCreates = refinedProc.creates.Select(x => x.actionDecl).ToHashSet();
+      var invariantCreates = invariantProc.creates.Select(x => x.actionDecl).ToHashSet();
+      var elimMap = invariantCreates.Except(refinedActionCreates).ToDictionary(x => x, x => x);
+      foreach (var elimDecl in eliminates)
+      {
+        elimMap[elimDecl.target.actionDecl] = elimDecl.abstraction.actionDecl;
+      }
+      return elimMap;
+    }
+
+    public IEnumerable<ActionDeclRef> ActionDeclRefs()
+    {
+      return creates.Append(refinedAction).Append(invariantAction);
+    }
+
+    public DatatypeConstructor PendingAsyncCtor => pendingAsyncCtorDecl.GetConstructor(Name);
+
+    public CtorType PendingAsyncType => new (pendingAsyncCtorDecl.tok, pendingAsyncCtorDecl, new List<Type>());
+
+    public MapType PendingAsyncMultisetType => new(Token.NoToken, new List<TypeVariable>(),
+      new List<Type> { PendingAsyncType }, Type.Int);
+
+    public Function PendingAsyncAdd => pendingAsyncAdd;
+    private Function pendingAsyncAdd;
+
+    public Function PendingAsyncConst => pendingAsyncConst;
+    private Function pendingAsyncConst;
+
+    public Function PendingAsyncIte => pendingAsyncIte;
+    private Function pendingAsyncIte;
+
+    // This method is needed to ensure that all support monomorphized functions can be generated during Civl type checking.
+    // Otherwise, during later passes, monomorphization might be invoked and cause program.TopLevelDeclarations to be modified
+    // while an iteration is being done on it.
+    public void Initialize(Monomorphizer monomorphizer)
+    {
+      if (pendingAsyncCtorDecl == null)
+      {
+        return;
+      }
+      pendingAsyncAdd =
+        monomorphizer.InstantiateFunction("MapAdd", new Dictionary<string, Type> { { "T", PendingAsyncType } });
+      pendingAsyncConst = monomorphizer.InstantiateFunction("MapConst",
+        new Dictionary<string, Type> { { "T", PendingAsyncType }, { "U", Type.Int } });
+      pendingAsyncIte = monomorphizer.InstantiateFunction("MapIte",
+        new Dictionary<string, Type> { { "T", PendingAsyncType }, { "U", Type.Int } });
     }
   }
-
+  
   public class YieldProcedureDecl : Procedure
   {
-    private List<CallCmd> yieldRequires;
-    private List<CallCmd> yieldEnsures;
-    private ActionDeclRef refinedAction;
+    public MoverType moverType;
+    public List<CallCmd> yieldRequires;
+    public List<CallCmd> yieldEnsures;
+    public List<CallCmd> yieldPreserves;
+    public ActionDeclRef refinedAction;
 
-    public YieldProcedureDecl(IToken tok, string name, List<Variable> inParams, List<Variable> outParams,
-      List<Requires> requires, List<CallCmd> yieldRequires, List<Ensures> ensures, List<CallCmd> yieldEnsures,
+    public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams, List<Variable> outParams,
+      List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
+      List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      requires, null, ensures, kv)
+      false, requires, modifies, ensures, kv)
     {
+      this.moverType = moverType;
       this.yieldRequires = yieldRequires;
       this.yieldEnsures = yieldEnsures;
+      this.yieldPreserves = yieldPreserves;
       this.refinedAction = refinedAction;
     }
 
     public override void Resolve(ResolutionContext rc)
     {
       base.Resolve(rc);
+      var oldStateMode = rc.StateMode;
+      rc.StateMode = ResolutionContext.State.Two;
+      rc.PushVarContext();
+      RegisterFormals(InParams, rc);
       yieldRequires.Iter(callCmd => callCmd.Resolve(rc));
+      yieldPreserves.Iter(callCmd => callCmd.Resolve(rc));
+      RegisterFormals(OutParams, rc);
       yieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
-      refinedAction.Resolve(rc);
+      rc.PopVarContext();
+      rc.StateMode = oldStateMode;
+      if (refinedAction != null)
+      {
+        refinedAction.Resolve(rc);
+      }
+      if (moverType == MoverType.None)
+      {
+        if (Modifies.Any())
+        {
+          rc.Error(this, "Yielding procedure has non-empty modifies clause but no mover type");
+        }
+      }
+      else
+      {
+        if (refinedAction != null)
+        {
+          rc.Error(this, "Yielding procedure with a mover type cannot have a refines annotation");
+        }
+      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
       base.Typecheck(tc);
+      var oldProc = tc.Proc;
+      tc.Proc = this;
       yieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
       yieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
+      yieldPreserves.Iter(callCmd => callCmd.Typecheck(tc));
+      Contract.Assert(tc.Proc == this);
+      tc.Proc = oldProc;
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitYieldProcedureDecl(this);
+    }
+
+    public IEnumerable<CallCmd> CallCmds()
+    {
+      return yieldEnsures.Union(yieldPreserves).Union(yieldRequires);
     }
   }
 
@@ -3427,7 +3647,7 @@ namespace Microsoft.Boogie
     public LoopProcedure(Implementation impl, Block header,
       List<Variable> inputs, List<Variable> outputs, List<IdentifierExpr> globalMods)
       : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
-        new List<TypeVariable>(), inputs, outputs,
+        new List<TypeVariable>(), inputs, outputs, false,
         new List<Requires>(), globalMods, new List<Ensures>())
     {
       enclosingImpl = impl;
@@ -3456,16 +3676,15 @@ namespace Microsoft.Boogie
 
   public class Implementation : DeclWithFormals {
 
-    public List<Variable> /*!*/
-      LocVars;
+    public List<Variable> LocVars;
 
     [Rep] public StmtList StructuredStmts;
-    [Rep] public List<Block /*!*/> /*!*/ Blocks;
+    [Rep] public List<Block> Blocks;
     public Procedure Proc;
 
     // Blocks before applying passification etc.
     // Both are used only when /inline is set.
-    public List<Block /*!*/> OriginalBlocks;
+    public List<Block> OriginalBlocks;
     public List<Variable> OriginalLocVars;
 
     public readonly ISet<byte[]> AssertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
@@ -3962,7 +4181,7 @@ namespace Microsoft.Boogie
 
         ResolveAttributes(rc);
 
-        rc.StateMode = ResolutionContext.State.Two;
+        rc.StateMode = Proc.IsPure ? ResolutionContext.State.StateLess : ResolutionContext.State.Two;
         foreach (Block b in Blocks)
         {
           b.Resolve(rc);
@@ -4013,18 +4232,14 @@ namespace Microsoft.Boogie
         v.Typecheck(tc);
       }
 
-      List<IdentifierExpr> oldFrame = tc.Frame;
-      bool oldYields = tc.Yields;
-      tc.Frame = Proc.Modifies;
-      tc.Yields = QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS);
+      var oldProc = tc.Proc;
+      tc.Proc = Proc;
       foreach (Block b in Blocks)
       {
         b.Typecheck(tc);
       }
-
-      Contract.Assert(tc.Frame == Proc.Modifies);
-      tc.Frame = oldFrame;
-      tc.Yields = oldYields;
+      Contract.Assert(tc.Proc == Proc);
+      tc.Proc = oldProc;
     }
 
     void MatchFormals(List<Variable> /*!*/ implFormals, List<Variable> /*!*/ procFormals, string /*!*/ inout,

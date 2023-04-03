@@ -780,6 +780,10 @@ namespace Microsoft.Boogie
 
           // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
           List<Cmd> ssHead = new List<Cmd>();
+          foreach (CallCmd yield in wcmd.Yields)
+          {
+            ssHead.Add(yield);
+          }
           foreach (PredicateCmd inv in wcmd.Invariants)
           {
             ssHead.Add(inv);
@@ -1089,11 +1093,11 @@ namespace Microsoft.Boogie
   {
     [Peer] public Expr Guard;
 
-    public List<PredicateCmd /*!*/> /*!*/
-      Invariants;
+    public List<PredicateCmd> Invariants;
 
-    public StmtList /*!*/
-      Body;
+    public List<CallCmd> Yields;
+
+    public StmtList Body;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -1103,7 +1107,7 @@ namespace Microsoft.Boogie
     }
 
 
-    public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd /*!*/> /*!*/ invariants, StmtList /*!*/ body)
+    public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<CallCmd> yields, StmtList body)
       : base(tok)
     {
       Contract.Requires(cce.NonNullElements(invariants));
@@ -1111,6 +1115,7 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
       this.Guard = guard;
       this.Invariants = invariants;
+      this.Yields = yields;
       this.Body = body;
     }
 
@@ -2914,16 +2919,16 @@ namespace Microsoft.Boogie
       {
         if (!tc.Yields)
         {
-          tc.Error(this, "enclosing procedure of a parallel call must yield");
+          tc.Error(this, "calling procedure of a parallel call must yield");
         }
 
         foreach (CallCmd callCmd in CallCmds)
         {
-          if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELDS) &&
-              callCmd.Proc is not YieldInvariantDecl)
+          if (callCmd.Proc is YieldProcedureDecl || callCmd.Proc is YieldInvariantDecl)
           {
-            tc.Error(callCmd, "target procedure of a parallel call must yield");
+            continue;
           }
+          tc.Error(callCmd, "target procedure of a parallel call must yield");
         }
       }
 
@@ -3309,14 +3314,78 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
         actualTypeParams);
 
-      if (!tc.Options.DoModSetAnalysis && IsAsync)
+      if (tc.Proc.IsPure && !Proc.IsPure)
+      {
+        tc.Error(this, "pure procedure may only call a pure procedure");
+      }
+      if (tc.Yields)
+      {
+        if (Proc is YieldProcedureDecl || Proc is YieldInvariantDecl || Proc.IsPure ||
+            (Proc is ActionDecl actionDecl && actionDecl.actionQualifier == ActionQualifier.Link))
+        {
+          // call is fine
+        }
+        else
+        {
+          tc.Error(this,
+            "a yielding procedure may only call yield procedures, yield invariants, pure procedures, or link actions");
+        }
+      }
+      else if (tc.Proc is ActionDecl callerActionDecl)
+      {
+        if (CivlPrimitives.Linear.Contains(Proc.Name))
+        {
+          // ok
+        }
+        else if (CivlPrimitives.Async.Contains(Proc.Name))
+        {
+          var type = TypeProxy.FollowProxy(TypeParameters[Proc.TypeParameters[0]].Expanded);
+          if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+          {
+            if (callerActionDecl.creates.All(x => x.actionName != datatypeTypeCtorDecl.Name))
+            {
+              tc.Error(this, "primitive instantiated on type not in the creates clause of caller");
+            }
+          }
+          else
+          {
+            tc.Error(this, "type parameter to primitive call must be instantiated with a pending async type");
+          }
+        }
+        else if (Proc is ActionDecl calleeActionDecl)
+        {
+          if (calleeActionDecl.actionQualifier == ActionQualifier.Invariant)
+          {
+            tc.Error(this, "an invariant action may not be called");
+          }
+          foreach (var actionDeclRef in calleeActionDecl.creates)
+          {
+            if (callerActionDecl.creates.All(x => x.actionDecl != actionDeclRef.actionDecl))
+            {
+              tc.Error(actionDeclRef, "callee creates a pending async not in the creates clause of caller");
+            }
+          }
+        }
+        else
+        {
+          tc.Error(this, "an action may only call actions or pending async primitives");
+        }
+      }
+      else
+      {
+        Debug.Assert(tc.Proc.GetType() == typeof(Procedure));
+        if (Proc.GetType() != typeof(Procedure))
+        {
+          tc.Error(this, "a procedure may only call other procedures");
+        }
+      }
+      if (IsAsync)
       {
         if (!tc.Yields)
         {
-          tc.Error(this, "enclosing procedure of an async call must yield");
+          tc.Error(this, "calling procedure of an async call must yield");
         }
-
-        if (!QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS))
+        if (Proc is not YieldProcedureDecl)
         {
           tc.Error(this, "target procedure of an async call must yield");
         }

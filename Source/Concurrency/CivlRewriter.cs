@@ -5,22 +5,6 @@ namespace Microsoft.Boogie
 {
   public class CivlRewriter
   {
-    public static void AddPendingAsyncTypes(Program program)
-    {
-      var pendingAsyncProcs = program.TopLevelDeclarations.OfType<Procedure>()
-        .Where(proc => proc.HasAttribute(CivlAttributes.PENDING_ASYNC)).ToList();
-      var datatypeTypeCtorDecls = pendingAsyncProcs.Select(CreatePendingAsyncType);
-      program.AddTopLevelDeclarations(datatypeTypeCtorDecls);
-    }
-
-    private static DatatypeTypeCtorDecl CreatePendingAsyncType(Procedure proc)
-    {
-      var fields = proc.InParams.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList();
-      var datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(proc.tok, proc.Name, new List<TypeVariable>(), null);
-      datatypeTypeCtorDecl.AddConstructor(proc.tok, proc.Name, fields);
-      return datatypeTypeCtorDecl;
-    }
-
     public static void Transform(ConcurrencyOptions options, CivlTypeChecker civlTypeChecker)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
@@ -51,8 +35,7 @@ namespace Microsoft.Boogie
         InductiveSequentializationChecker.AddCheckers(civlTypeChecker, decls);
       }
 
-      foreach (AtomicAction action in civlTypeChecker.procToAtomicAction.Values.Union(
-                 civlTypeChecker.procToIsAbstraction.Values))
+      foreach (var action in civlTypeChecker.AtomicActions)
       {
         action.AddTriggerAssumes(program, options);
       }

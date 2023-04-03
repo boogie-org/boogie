@@ -13,7 +13,7 @@ var {:layer 0,2} lock:Tid;
 function {:inline} sorted (A:[int]int, count:int) : bool
 { (forall i:int, j:int :: 0 <= i && i <= j && j < count ==> A[i] <= A[j]) }
 
-procedure {:atomic}{:layer 2} INSERT ({:linear "tid"} tid:Tid, v:int)
+action {:layer 2} INSERT ({:linear "tid"} tid:Tid, v:int)
 modifies A, count;
 {
   var idx:int; // index at which v is written
@@ -35,7 +35,8 @@ modifies A, count;
   count := count + 1;
 }
 
-procedure {:layer 1}{:yields}{:refines "INSERT"} insert ({:linear "tid"} tid:Tid, v:int)
+yield procedure {:layer 1} insert ({:linear "tid"} tid:Tid, v:int)
+refines INSERT;
 requires {:layer 1} tid != nil;
 {
   var idx:int; // index at which v is written
@@ -72,46 +73,46 @@ requires {:layer 1} tid != nil;
   call write_A(tid, idx, v);
   call write_count(tid, c+1);
 
-  // let's see if we can proof that A is still sorted
+  // let's see if we can prove that A is still sorted
   assert {:layer 1} sorted(A, count);
 
   call release(tid);
 }
 
-procedure {:intro} {:layer 1} snapshot () returns (snapshot: [int]int)
+link action {:layer 1} snapshot () returns (snapshot: [int]int)
 {
    snapshot := A;
 }
 
 // =============================================================================
 
-procedure {:both}{:layer 1} READ_A ({:linear "tid"} tid:Tid, i:int) returns (v:int)
+<-> action {:layer 1} READ_A ({:linear "tid"} tid:Tid, i:int) returns (v:int)
 {
   assert tid != nil && lock == tid;
   v := A[i];
 }
 
-procedure {:both}{:layer 1} WRITE_A ({:linear "tid"} tid:Tid, i:int, v:int)
+<-> action {:layer 1} WRITE_A ({:linear "tid"} tid:Tid, i:int, v:int)
 modifies A;
 {
   assert tid != nil && lock == tid;
   A[i] := v;
 }
 
-procedure {:both}{:layer 1} READ_COUNT ({:linear "tid"} tid:Tid) returns (c:int)
+<-> action {:layer 1} READ_COUNT ({:linear "tid"} tid:Tid) returns (c:int)
 {
   assert tid != nil && lock == tid;
   c := count;
 }
 
-procedure {:both}{:layer 1} WRITE_COUNT ({:linear "tid"} tid:Tid, c:int)
+<-> action {:layer 1} WRITE_COUNT ({:linear "tid"} tid:Tid, c:int)
 modifies count;
 {
   assert tid != nil && lock == tid;
   count := c;
 }
 
-procedure {:right}{:layer 1} ACQUIRE ({:linear "tid"} tid:Tid)
+-> action {:layer 1} ACQUIRE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
   assert tid != nil;
@@ -119,16 +120,27 @@ modifies lock;
   lock := tid;
 }
 
-procedure {:left}{:layer 1} RELEASE ({:linear "tid"} tid:Tid)
+<- action {:layer 1} RELEASE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
   assert tid != nil && lock == tid;
   lock := nil;
 }
 
-procedure {:yields}{:layer 0}{:refines "READ_A"} read_A ({:linear "tid"} tid:Tid, i:int) returns (v:int);
-procedure {:yields}{:layer 0}{:refines "WRITE_A"} write_A ({:linear "tid"} tid:Tid, i:int, v:int);
-procedure {:yields}{:layer 0}{:refines "READ_COUNT"} read_count ({:linear "tid"} tid:Tid) returns (c:int);
-procedure {:yields}{:layer 0}{:refines "WRITE_COUNT"} write_count ({:linear "tid"} tid:Tid, c:int);
-procedure {:yields}{:layer 0}{:refines "ACQUIRE"} acquire ({:linear "tid"} tid:Tid);
-procedure {:yields}{:layer 0}{:refines "RELEASE"} release ({:linear "tid"} tid:Tid);
+yield procedure {:layer 0} read_A ({:linear "tid"} tid:Tid, i:int) returns (v:int);
+refines READ_A;
+
+yield procedure {:layer 0} write_A ({:linear "tid"} tid:Tid, i:int, v:int);
+refines WRITE_A;
+
+yield procedure {:layer 0} read_count ({:linear "tid"} tid:Tid) returns (c:int);
+refines READ_COUNT;
+
+yield procedure {:layer 0} write_count ({:linear "tid"} tid:Tid, c:int);
+refines WRITE_COUNT;
+
+yield procedure {:layer 0} acquire ({:linear "tid"} tid:Tid);
+refines ACQUIRE;
+
+yield procedure {:layer 0} release ({:linear "tid"} tid:Tid);
+refines RELEASE;

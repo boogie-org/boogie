@@ -8,7 +8,8 @@ const GcTid:int;
 
 type {:linear "tid"} X = int;
 
-procedure {:yields} {:layer 100} {:yield_requires "Yield", tid} Initialize({:linear "tid"} tid:int)
+yield procedure {:layer 100} Initialize({:linear "tid"} tid:int)
+requires call Yield(tid);
 {
     call GarbageCollect(tid);
 
@@ -19,7 +20,7 @@ procedure {:yields} {:layer 100} {:yield_requires "Yield", tid} Initialize({:lin
     call Yield(tid);
 }
 
-procedure {:yields} {:layer 100} GarbageCollect({:linear "tid"} tid:int)
+yield procedure {:layer 100} GarbageCollect({:linear "tid"} tid:int)
 requires{:layer 100} tid == GcTid;
 {
     call Yield(tid);

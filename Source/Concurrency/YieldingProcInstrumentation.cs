@@ -493,7 +493,7 @@ namespace Microsoft.Boogie
                   {
                     var targetBlock = refinementBlocks[callCmd];
                     FixUpImplRefinementCheckingBlock(targetBlock,
-                      IsCallMarked(callCmd)
+                      CivlAttributes.IsCallMarked(callCmd)
                         ? returnCheckerBlock
                         : unchangedCheckerBlock);
                     targetBlocks.Add(targetBlock);
@@ -566,14 +566,9 @@ namespace Microsoft.Boogie
       gotoCmd.AddTarget(refinementCheckerBlock);
     }
 
-    private bool IsCallMarked(CallCmd callCmd)
-    {
-      return callCmd.HasAttribute(CivlAttributes.REFINES);
-    }
-
     private bool IsParCallMarked(ParCallCmd parCallCmd)
     {
-      return parCallCmd.CallCmds.Any(callCmd => IsCallMarked(callCmd));
+      return parCallCmd.CallCmds.Any(callCmd => CivlAttributes.IsCallMarked(callCmd));
     }
 
     private void SplitBlocks(Implementation impl)
@@ -762,9 +757,9 @@ namespace Microsoft.Boogie
       }
 
       HashSet<AtomicAction> pendingAsyncsToCheck = new HashSet<AtomicAction>(
-        civlTypeChecker.procToAtomicAction.Values
+        civlTypeChecker.MoverActions
           .Where(a => a.layerRange.Contains(layerNum) && a.HasPendingAsyncs)
-          .SelectMany(a => a.pendingAsyncs));
+          .SelectMany(a => a.pendingAsyncs).Select(a => civlTypeChecker.procToAtomicAction[a]));
 
       foreach (var action in pendingAsyncsToCheck)
       {

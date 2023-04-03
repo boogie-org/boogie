@@ -24,7 +24,7 @@ procedure C()
 
 function f(X): X;
 
-procedure {:yields} {:layer 1} D()
+yield procedure {:layer 1} D()
 {
     var {:linear "D"} a: X;
     var {:linear "D"} x: X;
@@ -63,12 +63,12 @@ procedure {:yields} {:layer 1} D()
     call c, x := E(a, x);
 }
 
-procedure {:yields} {:layer 1} E({:linear_in "D"} a: X, {:linear_in "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
+yield procedure {:layer 1} E({:linear_in "D"} a: X, {:linear_in "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
 {
     c := a;
 }
 
-procedure {:yields} {:layer 1} F({:linear_in "D"} a: X) returns ({:linear "D"} c: X);
+yield procedure {:layer 1} F({:linear_in "D"} a: X) returns ({:linear "D"} c: X);
 
 var {:linear "x"} g:int;
 
@@ -83,22 +83,22 @@ modifies g;
   g := r;
 }
 
-procedure {:yields} {:layer 1} I({:linear_in ""} x:int) returns({:linear ""} x':int)
+yield procedure {:layer 1} I({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
   x' := x;
 }
 
-procedure {:yields} {:layer 1} J()
+yield procedure {:layer 1} J()
 {
 }
 
-procedure {:yields} {:layer 1} P1({:linear_in ""} x:int) returns({:linear ""} x':int)
+yield procedure {:layer 1} P1({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
   par x' := I(x) | J();
   call x' := I(x');
 }
 
-procedure {:yields} {:layer 1} P2({:linear_in ""} x:int) returns({:linear ""} x':int)
+yield procedure {:layer 1} P2({:linear_in ""} x:int) returns({:linear ""} x':int)
 {
   call x' := I(x);
   par x' := I(x') | J();

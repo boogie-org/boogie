@@ -137,11 +137,11 @@ namespace Microsoft.Boogie
 
       if (atomicAction.HasPendingAsyncs)
       {
-        atomicAction.pendingAsyncs.Iter(action =>
+        atomicAction.pendingAsyncs.Iter(decl =>
         {
           Variable collectedPAs =
-            civlTypeChecker.implToPendingAsyncCollector[originalImpl][action.pendingAsyncType];
-          alwaysMap[atomicAction.PAs(action.pendingAsyncType)] = Expr.Ident(collectedPAs);
+            civlTypeChecker.implToPendingAsyncCollector[originalImpl][decl.PendingAsyncType];
+          alwaysMap[atomicAction.PAs(decl.PendingAsyncType)] = Expr.Ident(collectedPAs);
           LocalVariable copy = Old(collectedPAs);
           newLocalVars.Add(copy);
           oldOutputMap[collectedPAs] = copy;

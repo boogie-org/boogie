@@ -25,12 +25,10 @@ var {:layer 1} done : [int]bool;
 // #############################################################################
 
 // Main procedures that spawns all processes
-procedure {:yields} {:layer 1}
-{:yield_preserves "yield_ind_inv"}
-Main()
+yield procedure {:layer 1} Main()
+preserves call yield_ind_inv();
 {
   var i: int;
-  assert {:layer 1} Trigger(0);
   i := 0;
   while (i < N)
   invariant {:layer 1} ind_inv(done, y, x);
@@ -41,19 +39,18 @@ Main()
 }
 
 // Code of process i
-procedure {:yields} {:layer 1}
-{:yield_preserves "yield_ind_inv"}
+yield procedure {:layer 1}
 Proc(i: int)
+preserves call yield_ind_inv();
 {
   call update_x(i);
   call Yield(i);
   call update_y(i);
   call mark_done(i);
-  assert {:layer 1} Trigger((i-1) mod N);
 }
 
 // Introduction action that gives meaning to the introduced variable done
-procedure {:intro} {:layer 1} mark_done(i: int)
+link action {:layer 1} mark_done(i: int)
 modifies done;
 {
   done := done[i:=true];
@@ -63,34 +60,37 @@ modifies done;
 
 // Low-level atomic actions
 
-procedure {:layer 1}{:atomic} atomic_update_x(i: int)
+action {:layer 1} atomic_update_x(i: int)
 modifies x;
 {
   x[i] := 1;
 }
 
-procedure {:layer 1}{:atomic} atomic_update_y(i: int)
+action {:layer 1} atomic_update_y(i: int)
 modifies y;
 {
   y[i] := x[(i-1) mod N];
 }
 
-procedure {:layer 0}{:yields}{:refines "atomic_update_x"} update_x(i: int);
-procedure {:layer 0}{:yields}{:refines "atomic_update_y"} update_y(i: int);
+yield procedure {:layer 0} update_x(i: int);
+refines atomic_update_x;
+
+yield procedure {:layer 0} update_y(i: int);
+refines atomic_update_y;
 
 // #############################################################################
 
 // Process IDs range from 0 to N-1
-function in_range(i: int): bool
+function {:inline} in_range(i: int): bool
 {
   0 <= i && i < N
 }
 
 // The core correctness property of the system. If all the processes
 // have finished, there's at least one element of y equal to 1.
-function safety(done: [int]bool, y: [int]int): bool
+function {:inline} safety(done: [int]bool, y: [int]int): bool
 {
-  (forall i : int :: {Trigger(i)}{in_range(i)} in_range(i) ==> done[i])
+  (forall i : int :: in_range(i) ==> done[i])
   ==>
   (exists i : int :: in_range(i) && y[i] == 1)
 }
@@ -98,7 +98,7 @@ function safety(done: [int]bool, y: [int]int): bool
 // Records that all completed processes have their x equal to 1.
 // This is weaker than the corresponding inductive invariant
 // conjunct in other tools for the same algorithm.
-function x_inv(done: [int]bool, x: [int]int): bool
+function {:inline} x_inv(done: [int]bool, x: [int]int): bool
 {
   (forall i : int :: in_range(i) && done[i] ==> x[i] == 1)
 }
@@ -107,16 +107,13 @@ function x_inv(done: [int]bool, x: [int]int): bool
 // this should probably be considered part of the global inductive
 // invariant. I think the assert x[i] == 1 in Proc is also, in some sense,
 // part of the global inductive invariant.
-function ind_inv(done: [int]bool, y: [int]int, x: [int]int): bool
+function {:inline} ind_inv(done: [int]bool, y: [int]int, x: [int]int): bool
 {
   safety(done, y) && x_inv(done, x)
 }
 
 yield invariant {:layer 1} yield_ind_inv();
 invariant ind_inv(done, y, x);
-
-// Dummy function to supply hints for quantifier reasoning
-function Trigger(i: int) : bool { true }
 
 yield invariant {:layer 1} Yield(i: int);
 invariant x[i] == 1;

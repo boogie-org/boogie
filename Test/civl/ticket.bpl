@@ -42,7 +42,7 @@ invariant Inv2(T, s, cs);
 // ###########################################################################
 // Main program
 
-procedure {:yields} {:layer 2} main ({:linear_in "tid"} xls':[X]bool)
+yield procedure {:layer 2} main ({:linear_in "tid"} xls':[X]bool)
 requires {:layer 2} xls' == MapConst(true);
 {
   var {:linear "tid"} tid: X;
@@ -52,27 +52,30 @@ requires {:layer 2} xls' == MapConst(true);
   xls := xls';
 
   while (*)
-  invariant {:yields} {:yield_loop "Yield1"} {:yield_loop "Yield2"} true;
+  invariant {:yields} true;
+  invariant call Yield1();
+  invariant call Yield2();
   {
     par xls, tid := Allocate(xls) | Yield1() | Yield2();
     async call Customer(tid);
   }
 }
 
-procedure {:yields} {:layer 2} Allocate ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X)
+yield procedure {:layer 2} Allocate ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X)
 ensures {:layer 1,2} xl != nil;
 {
   call xls, xl := AllocateLow(xls');
 }
 
-procedure {:yields} {:layer 2}
-{:yield_requires "Yield1"}
-{:yield_requires "Yield2"}
-Customer ({:linear_in "tid"} tid: X)
+yield procedure {:layer 2} Customer ({:linear_in "tid"} tid: X)
+requires call Yield1();
+requires call Yield2();
 requires {:layer 2} tid != nil;
 {
   while (*)
-  invariant {:yields} {:yield_loop "Yield1"} {:yield_loop "Yield2"} true;
+  invariant {:yields} true;
+  invariant call Yield1();
+  invariant call Yield2();
   {
     call Enter(tid);
     par Yield1() | Yield2() | YieldSpec(tid);
@@ -80,11 +83,10 @@ requires {:layer 2} tid != nil;
   }
 }
 
-procedure {:yields} {:layer 2}
-{:yield_preserves "Yield1"}
-{:yield_preserves "Yield2"}
-{:yield_ensures   "YieldSpec", tid}
-Enter ({:linear "tid"} tid: X)
+yield procedure {:layer 2} Enter ({:linear "tid"} tid: X)
+preserves call Yield1();
+preserves call Yield2();
+ensures   call YieldSpec(tid);
 requires {:layer 2} tid != nil;
 {
   var m: int;
@@ -98,22 +100,24 @@ requires {:layer 2} tid != nil;
 
 // Note how GetTicketAbstract becomes a right mover
 
-procedure {:atomic} {:layer 2} AtomicInitAbstract ({:linear "tid"} xls:[X]bool)
+action {:layer 2} AtomicInitAbstract ({:linear "tid"} xls:[X]bool)
 modifies cs, s, T;
 { assert xls == MapConst(true); cs := nil; s := 0; T := RightOpen(0); }
 
-procedure {:yields} {:layer 1} {:yield_ensures "Yield1"} {:refines "AtomicInitAbstract"}
-InitAbstract ({:linear "tid"} xls:[X]bool)
+yield procedure {:layer 1} InitAbstract ({:linear "tid"} xls:[X]bool)
+refines AtomicInitAbstract;
+ensures call Yield1();
 {
   call Init(xls);
 }
 
-procedure {:right} {:layer 2} AtomicGetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
+-> action {:layer 2} AtomicGetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
 modifies T;
 { assume !T[m]; T[m] := true; }
 
-procedure {:yields} {:layer 1} {:yield_preserves "Yield1"} {:refines "AtomicGetTicketAbstract"}
-GetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
+yield procedure {:layer 1} GetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
+refines AtomicGetTicketAbstract;
+preserves call Yield1();
 {
   call m := GetTicket(tid);
 }
@@ -121,31 +125,36 @@ GetTicketAbstract ({:linear "tid"} tid: X) returns (m: int)
 // ###########################################################################
 // Primitive atomic actions
 
-procedure {:atomic} {:layer 1} AtomicInit ({:linear "tid"} xls:[X]bool)
+action {:layer 1} AtomicInit ({:linear "tid"} xls:[X]bool)
 modifies cs, t, s, T;
 { assert xls == MapConst(true); cs := nil; t := 0; s := 0; T := RightOpen(0); }
 
-procedure {:yields} {:layer 0} {:refines "AtomicInit"} Init ({:linear "tid"} xls:[X]bool);
+yield procedure {:layer 0} Init ({:linear "tid"} xls:[X]bool);
+refines AtomicInit;
 
-procedure {:atomic} {:layer 1} AtomicGetTicket ({:linear "tid"} tid: X) returns (m: int)
+action {:layer 1} AtomicGetTicket ({:linear "tid"} tid: X) returns (m: int)
 modifies t, T;
 { m := t; t := t + 1; T[m] := true; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicGetTicket"} GetTicket ({:linear "tid"} tid: X) returns (m: int);
+yield procedure {:layer 0} GetTicket ({:linear "tid"} tid: X) returns (m: int);
+refines AtomicGetTicket;
 
-procedure {:atomic} {:layer 1,2} AtomicWaitAndEnter ({:linear "tid"} tid: X, m:int)
+action {:layer 1,2} AtomicWaitAndEnter ({:linear "tid"} tid: X, m:int)
 modifies cs;
 { assume m == s; cs := tid; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicWaitAndEnter"} WaitAndEnter ({:linear "tid"} tid: X, m:int);
+yield procedure {:layer 0} WaitAndEnter ({:linear "tid"} tid: X, m:int);
+refines AtomicWaitAndEnter;
 
-procedure {:atomic} {:layer 1,2} AtomicLeave ({:linear "tid"} tid: X)
+action {:layer 1,2} AtomicLeave ({:linear "tid"} tid: X)
 modifies cs, s;
 { assert cs == tid; s := s + 1; cs := nil; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicLeave"} Leave ({:linear "tid"} tid: X);
+yield procedure {:layer 0} Leave ({:linear "tid"} tid: X);
+refines AtomicLeave;
 
-procedure {:atomic} {:layer 1,2} AtomicAllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X)
+action {:layer 1,2} AtomicAllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X)
 { assume xl != nil && xls'[xl]; xls := xls'[xl := false]; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
+yield procedure {:layer 0} AllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);
+refines AtomicAllocateLow;

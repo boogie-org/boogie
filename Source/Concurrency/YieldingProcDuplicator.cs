@@ -19,7 +19,6 @@ namespace Microsoft.Boogie
 
     private Dictionary<Procedure, Procedure> procToDuplicate; /* Original -> Duplicate */
     private AbsyMap absyMap; /* Duplicate -> Original */
-    private HashSet<Procedure> yieldingProcs;
     private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
 
     private Dictionary<CallCmd, CallCmd> refinementCallCmds; // rewritten -> original
@@ -33,7 +32,6 @@ namespace Microsoft.Boogie
       this.layerNum = layerNum;
       this.procToDuplicate = new Dictionary<Procedure, Procedure>();
       this.absyMap = new AbsyMap();
-      this.yieldingProcs = new HashSet<Procedure>();
       this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
       this.refinementBlocks = new Dictionary<CallCmd, Block>();
     }
@@ -47,27 +45,21 @@ namespace Microsoft.Boogie
       {
         YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[node];
         Debug.Assert(layerNum <= yieldingProc.upperLayer);
-
-        Procedure proc = (Procedure) node.Clone();
-        proc.Name = civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}");
-        proc.InParams = this.VisitVariableSeq(node.InParams);
-        proc.OutParams = this.VisitVariableSeq(node.OutParams);
-        proc.Requires = this.VisitRequiresSeq(node.Requires);
-        proc.Ensures = this.VisitEnsuresSeq(node.Ensures);
-        if (yieldingProc is MoverProc moverProc && yieldingProc.upperLayer == layerNum)
-        {
-          proc.Modifies = moverProc.modifiedGlobalVars.Select(g => Expr.Ident(g)).ToList();
-        }
-        else
-        {
-          proc.Modifies = civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList();
-          yieldingProcs.Add(proc);
-        }
-
+        var proc = new Procedure(
+          node.tok,
+          civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}"),
+          new List<TypeVariable>(),
+          VisitVariableSeq(node.InParams),
+          VisitVariableSeq(node.OutParams),
+          false,
+          VisitRequiresSeq(node.Requires),
+          (yieldingProc is MoverProc moverProc && yieldingProc.upperLayer == layerNum
+            ? moverProc.modifiedGlobalVars.Select(g => Expr.Ident(g))
+            : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
+          VisitEnsuresSeq(node.Ensures));
         procToDuplicate[node] = proc;
         absyMap[proc] = node;
       }
-
       return procToDuplicate[node];
     }
 
@@ -255,18 +247,18 @@ namespace Microsoft.Boogie
 
     private void ProcessCallCmd(CallCmd newCall)
     {
-      if (civlTypeChecker.procToIntroductionAction.ContainsKey(newCall.Proc))
+      if (newCall.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } actionDecl)
       {
-        var introductionAction = civlTypeChecker.procToIntroductionAction[newCall.Proc];
-        if (introductionAction.LayerNum == layerNum)
+        var linkAction = civlTypeChecker.procToAtomicAction[actionDecl];
+        if (linkAction.LayerNum == layerNum)
         {
-          InjectGate(introductionAction, newCall);
+          InjectGate(linkAction, newCall);
           newCmdSeq.Add(newCall);
         }
         return;
       }
 
-      if (civlTypeChecker.procToLemmaProc.ContainsKey(newCall.Proc))
+      if (newCall.Proc.IsPure)
       {
         if (civlTypeChecker.FindLayers(newCall.Attributes)[0] == layerNum)
         {
@@ -495,34 +487,34 @@ namespace Microsoft.Boogie
     private void CollectReturnedPendingAsyncs(CallCmd newCall, AtomicAction calleeRefinedAction)
     {
       // Inject pending async collection
-      newCall.Outs.AddRange(calleeRefinedAction.pendingAsyncs.Select(action => Expr.Ident(ReturnedPAs(action.pendingAsyncType))));
+      newCall.Outs.AddRange(calleeRefinedAction.pendingAsyncs.Select(decl => Expr.Ident(ReturnedPAs(decl.PendingAsyncType))));
       if (!IsRefinementLayer)
       {
         return;
       }
 
-      calleeRefinedAction.pendingAsyncs.Iter(action =>
+      calleeRefinedAction.pendingAsyncs.Iter(decl =>
       {
-        if (RefinedAction.pendingAsyncs.Contains(action))
+        if (RefinedAction.pendingAsyncs.Contains(decl))
         {
-          newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs(action.pendingAsyncType),
-            ExprHelper.FunctionCall(action.pendingAsyncAdd, Expr.Ident(CollectedPAs(action.pendingAsyncType)),
-              Expr.Ident(ReturnedPAs(action.pendingAsyncType)))));
+          newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs(decl.PendingAsyncType),
+            ExprHelper.FunctionCall(decl.PendingAsyncAdd, Expr.Ident(CollectedPAs(decl.PendingAsyncType)),
+              Expr.Ident(ReturnedPAs(decl.PendingAsyncType)))));
         }
         else
         {
           newCmdSeq.Add(CmdHelper.AssertCmd(newCall.tok,
-            Expr.Eq(Expr.Ident(ReturnedPAs(action.pendingAsyncType)), ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0))),
-            $"Pending asyncs to action {action.impl.Name} created by this call are not summarized"));
+            Expr.Eq(Expr.Ident(ReturnedPAs(decl.PendingAsyncType)), ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0))),
+            $"Pending asyncs to action {decl.Name} created by this call are not summarized"));
         }
       });
     }
 
-    private Expr EmptyPendingAsyncMultisetExpr(Func<CtorType, Variable> pendingAsyncMultisets, IEnumerable<AsyncAction> asyncActions)
+    private Expr EmptyPendingAsyncMultisetExpr(Func<CtorType, Variable> pendingAsyncMultisets, IEnumerable<ActionDecl> asyncActions)
     {
-      var returnExpr = Expr.And(asyncActions.Select(action =>
-        Expr.Eq(Expr.Ident(pendingAsyncMultisets(action.pendingAsyncType)),
-          ExprHelper.FunctionCall(action.pendingAsyncConst, Expr.Literal(0)))).ToList());
+      var returnExpr = Expr.And(asyncActions.Select(decl =>
+        Expr.Eq(Expr.Ident(pendingAsyncMultisets(decl.PendingAsyncType)),
+          ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)))).ToList());
       returnExpr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
       return returnExpr;
     }
@@ -578,8 +570,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      var asyncAction = (AsyncAction)calleeRefinedAction;
-      if (RefinedAction.pendingAsyncs.Contains(asyncAction))
+      if (RefinedAction.pendingAsyncs.Contains(calleeRefinedAction.proc))
       {
         Expr[] newIns = new Expr[calleeRefinedAction.proc.InParams.Count];
         for (int i = 0, j = 0; i < calleeProc.proc.InParams.Count; i++)
@@ -590,8 +581,8 @@ namespace Microsoft.Boogie
             j++;
           }
         }
-        var collectedPAs = CollectedPAs(asyncAction.pendingAsyncType);
-        var pa = ExprHelper.FunctionCall(asyncAction.pendingAsyncCtor, newIns);
+        var collectedPAs = CollectedPAs(calleeRefinedAction.proc.PendingAsyncType);
+        var pa = ExprHelper.FunctionCall(calleeRefinedAction.proc.PendingAsyncCtor, newIns);
         var inc = Expr.Add(Expr.Select(Expr.Ident(collectedPAs), pa), Expr.Literal(1));
         var add = CmdHelper.AssignCmd(collectedPAs, Expr.Store(Expr.Ident(collectedPAs), pa, inc));
         newCmdSeq.Add(add);

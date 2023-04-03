@@ -12,9 +12,10 @@ var {:layer 0,1} x : int;
 // ###########################################################################
 // Main
 
-procedure {:atomic} {:layer 2} skip () {}
+action {:layer 2} skip () {}
 
-procedure {:yields} {:layer 1} {:refines "skip"} Main ()
+yield procedure {:layer 1} Main ()
+refines skip;
 {
   var i : int;
   var {:layer 1} old_x: int;
@@ -30,7 +31,7 @@ procedure {:yields} {:layer 1} {:refines "skip"} Main ()
   }
 }
 
-procedure {:intro} {:layer 1} snapshot_x() returns (snapshot: int)
+link action {:layer 1} snapshot_x() returns (snapshot: int)
 {
    snapshot := x;
 }
@@ -38,13 +39,16 @@ procedure {:intro} {:layer 1} snapshot_x() returns (snapshot: int)
 // ###########################################################################
 // Low level atomic actions
 
-procedure {:left} {:layer 1} inc_atomic ()
+<- action {:layer 1} inc_atomic ()
 modifies x;
 { x := x + 1; }
 
-procedure {:left} {:layer 1} dec_atomic ()
+<- action {:layer 1} dec_atomic ()
 modifies x;
 { x := x - 1; }
 
-procedure {:yields} {:layer 0} {:refines "inc_atomic"} inc ();
-procedure {:yields} {:layer 0} {:refines "dec_atomic"} dec ();
+yield procedure {:layer 0} inc ();
+refines inc_atomic;
+
+yield procedure {:layer 0} dec ();
+refines dec_atomic;

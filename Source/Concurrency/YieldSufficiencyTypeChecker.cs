@@ -16,7 +16,7 @@ namespace Microsoft.Boogie
     private const string L = "L"; // left mover action
     private const string R = "R"; // right mover action
     private const string N = "N"; // non mover action
-    private const string P = "P"; // private access (local variable, introduction action, lemma, ...)
+    private const string P = "P"; // private access (local variable, link action, pure procedure, ...)
     private const string M = "M"; // modification of global variables
     private const string A = "A"; // async call
     
@@ -60,7 +60,7 @@ namespace Microsoft.Boogie
     {
       switch (moverType)
       {
-        case MoverType.Non:
+        case MoverType.Atomic:
           return N;
         case MoverType.Both:
           return B;
@@ -279,7 +279,7 @@ namespace Microsoft.Boogie
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
       {
-        if (yieldingProc.moverType == MoverType.Non && simulationRelation[initialState].Count == 0)
+        if (yieldingProc.MoverType == MoverType.Atomic && simulationRelation[initialState].Count == 0)
         {
           return false;
         }
@@ -403,8 +403,8 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabel(CallCmd callCmd)
       {
-        if (civlTypeChecker.procToIntroductionAction.ContainsKey(callCmd.Proc) ||
-            civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
+        if (callCmd.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } ||
+            callCmd.Proc.IsPure)
         {
           return P;
         }
@@ -419,12 +419,12 @@ namespace Microsoft.Boogie
         {
           if (callee is MoverProc && callee.upperLayer == currLayerNum)
           {
-            return MoverTypeToLabel(callee.moverType);
+            return MoverTypeToLabel(callee.MoverType);
           }
 
           if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum && callCmd.HasAttribute(CivlAttributes.SYNC))
           {
-            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).moverType);
+            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).proc.moverType);
           }
 
           return L;
@@ -433,12 +433,12 @@ namespace Microsoft.Boogie
         {
           if (callee is MoverProc && callee.upperLayer == currLayerNum)
           {
-            return MoverTypeToLabel(callee.moverType);
+            return MoverTypeToLabel(callee.MoverType);
           }
 
           if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
           {
-            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).moverType);
+            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).proc.moverType);
           }
 
           return Y;
@@ -473,8 +473,7 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabelAsync(CallCmd callCmd)
       {
-        if (civlTypeChecker.procToIntroductionAction.ContainsKey(callCmd.Proc) ||
-            civlTypeChecker.procToLemmaProc.ContainsKey(callCmd.Proc))
+        if (callCmd.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } || callCmd.Proc.IsPure)
         {
           return P;
         }

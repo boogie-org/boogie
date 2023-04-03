@@ -60,9 +60,7 @@ function {:inline} Init(pids:[int]bool, channel:[int][int]int,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 4}
-MAIN3 ({:linear_in "pid"} pids:[int]bool)
-returns ()
+action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
 modifies channel, terminated, leader;
 {
   assert Init(pids, channel, terminated, id, leader);
@@ -70,10 +68,9 @@ modifies channel, terminated, leader;
   assume (forall i:int :: Pid(i) && i != Max(id) ==> !leader[i]);
 }
 
-procedure {:layer 3}
-{:creates "P"}
-{:IS_invariant}{:elim "P", "P'"}
+invariant action {:layer 3}
 INV2 ({:linear_in "pid"} pids:[int]bool)
+creates P;
 modifies channel, terminated, leader;
 {
   var {:pool "INV2"} k: int;
@@ -98,9 +95,8 @@ modifies channel, terminated, leader;
   assume (forall i:int :: Pid(i) && i != Max(id) ==> !leader[i]);
 }
 
-procedure {:IS_abstraction}{:layer 3}
-{:creates "P"}
-P' ({:linear_in "pid"} pid:int)
+abstract action {:layer 3} P' ({:linear_in "pid"} pid:int)
+creates P;
 modifies channel, terminated, leader;
 {
   assert (forall j:int :: Pid(j) && Between(Max(id), j, pid) ==> terminated[j]);
@@ -109,10 +105,10 @@ modifies channel, terminated, leader;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 3}
-{:creates "P"}
-{:IS "MAIN3","INV2"}
-MAIN2 ({:linear_in "pid"} pids:[int]bool)
+action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+refines MAIN3 using INV2;
+creates P;
+eliminates P using P';
 modifies channel;
 {
   assert Init(pids, channel, terminated, id, leader);
@@ -125,10 +121,9 @@ modifies channel;
   assume (forall i:int, msg:int :: Pid(i) && channel[i][msg] > 0 ==> msg == id[Prev(i)]);
 }
 
-procedure {:layer 2}
-{:creates "PInit", "P"}
-{:IS_invariant}{:elim "PInit"}
+invariant action {:layer 2}
 INV1 ({:linear_in "pid"} pids:[int]bool)
+creates PInit, P;
 modifies channel;
 {
   var {:pool "INV1"} k: int;
@@ -150,10 +145,9 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 2}
-{:creates "PInit"}
-{:IS "MAIN2","INV1"}
-MAIN1 ({:linear_in "pid"} pids:[int]bool)
+action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+refines MAIN2 using INV1;
+creates PInit;
 {
   assert Init(pids, channel, terminated, id, leader);
 
@@ -161,10 +155,8 @@ MAIN1 ({:linear_in "pid"} pids:[int]bool)
   call create_asyncs((lambda pa:PInit :: Pid(pa->pid)));
 }
 
-procedure {:left}{:layer 2}
-{:pending_async}
-{:creates "P"}
-PInit ({:linear_in "pid"} pid:int)
+async <- action {:layer 2} PInit ({:linear_in "pid"} pid:int)
+creates P;
 modifies channel;
 {
   assert Pid(pid);
@@ -172,10 +164,8 @@ modifies channel;
   call create_async(P(pid));
 }
 
-procedure {:atomic}{:layer 2, 3}
-{:pending_async}
-{:creates "P"}
-P ({:linear_in "pid"} pid:int)
+async action {:layer 2, 3} P ({:linear_in "pid"} pid:int)
+creates P;
 modifies channel, terminated, leader;
 {
   var msg:int;
@@ -214,8 +204,10 @@ modifies channel, terminated, leader;
 yield invariant {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
 invariant Init(pids, channel, terminated, id, leader);
 
-procedure {:yields}{:layer 1}{:yield_requires "YieldInit", pids}{:refines "MAIN1"}
+yield procedure {:layer 1}
 main ({:linear_in "pid"} pids:[int]bool)
+refines MAIN1;
+requires call YieldInit(pids);
 {
   var {:pending_async}{:layer 1} PAs:[PInit]int;
   var {:linear "pid"} pid:int;
@@ -235,8 +227,8 @@ main ({:linear_in "pid"} pids:[int]bool)
   }
 }
 
-procedure {:yields}{:layer 1}{:refines "PInit"}
-pinit ({:linear_in "pid"} pid:int)
+yield procedure {:layer 1} pinit ({:linear_in "pid"} pid:int)
+refines PInit;
 requires {:layer 1} Pid(pid);
 {
   var m:int;
@@ -246,8 +238,8 @@ requires {:layer 1} Pid(pid);
   async call p(pid);
 }
 
-procedure {:yields}{:layer 1}{:refines "P"}
-p ({:linear_in "pid"} pid:int)
+yield procedure {:layer 1} p ({:linear_in "pid"} pid:int)
+refines P;
 requires {:layer 1} Pid(pid);
 {
   var m:int;
@@ -270,7 +262,7 @@ requires {:layer 1} Pid(pid);
   }
 }
 
-procedure {:intro}{:layer 1} set_terminated(pid:int)
+link action {:layer 1} set_terminated(pid:int)
 modifies terminated;
 {
   terminated[pid] := true;
@@ -278,36 +270,43 @@ modifies terminated;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:both}{:layer 1} GET_ID({:linear "pid"} pid:int) returns (i:int)
+<-> action {:layer 1} GET_ID({:linear "pid"} pid:int) returns (i:int)
 {
   i := id[pid];
 }
 
-procedure {:both}{:layer 1} SET_LEADER({:linear "pid"} pid:int)
+<-> action {:layer 1} SET_LEADER({:linear "pid"} pid:int)
 modifies leader;
 {
   leader[pid] := true;
 }
 
-procedure {:left}{:layer 1} SEND(pid:int, m:int)
+<- action {:layer 1} SEND(pid:int, m:int)
 modifies channel;
 {
   channel[pid][m] := channel[pid][m] + 1;
 }
 
-procedure {:right}{:layer 1} RECEIVE(pid:int) returns (m:int)
+-> action {:layer 1} RECEIVE(pid:int) returns (m:int)
 modifies channel;
 {
   assume channel[pid][m] > 0;
   channel[pid][m] := channel[pid][m] - 1;
 }
 
-procedure {:yields}{:layer 0}{:refines "GET_ID"} get_id({:linear "pid"} pid:int) returns (i:int);
-procedure {:yields}{:layer 0}{:refines "SET_LEADER"} set_leader({:linear "pid"} pid:int);
-procedure {:yields}{:layer 0}{:refines "SEND"} send(pid:int, m:int);
-procedure {:yields}{:layer 0}{:refines "RECEIVE"} receive(pid:int) returns (m:int);
+yield procedure {:layer 0} get_id({:linear "pid"} pid:int) returns (i:int);
+refines GET_ID;
 
-procedure {:both}{:layer 1}
+yield procedure {:layer 0} set_leader({:linear "pid"} pid:int);
+refines SET_LEADER;
+
+yield procedure {:layer 0} send(pid:int, m:int);
+refines SEND;
+
+yield procedure {:layer 0} receive(pid:int) returns (m:int);
+refines RECEIVE;
+
+<-> action {:layer 1}
 LINEAR_TRANSFER(i:int, {:linear_in "pid"} pids:[int]bool)
 returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
 {
@@ -316,5 +315,6 @@ returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
   pids' := pids[i := false];
 }
 
-procedure {:yields}{:layer 0}{:refines "LINEAR_TRANSFER"} linear_transfer(i:int, {:linear_in "pid"} pids:[int]bool)
+yield procedure {:layer 0} linear_transfer(i:int, {:linear_in "pid"} pids:[int]bool)
 returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool);
+refines LINEAR_TRANSFER;
