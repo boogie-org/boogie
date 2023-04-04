@@ -12,7 +12,6 @@ namespace Microsoft.Boogie;
 /// </summary>
 public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 {
-  private readonly int threadCount;
   private readonly AsyncQueue<Task> queue = new();
   private readonly HashSet<Thread> threads;
 
@@ -21,12 +20,12 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     return new CustomStackSizePoolTaskScheduler(stackSize, threadCount);
   }
   
-  private CustomStackSizePoolTaskScheduler(int stackSize, int threadCount)
+  private CustomStackSizePoolTaskScheduler(int stackSize, int maximumConcurrencyLevel)
   {
-    this.threadCount = threadCount;
+    MaximumConcurrencyLevel = maximumConcurrencyLevel;
 
     threads = new HashSet<Thread>();
-    for (int i = 0; i < threadCount; i++)
+    for (int i = 0; i < maximumConcurrencyLevel; i++)
     {
       var thread = new Thread(WorkLoop, stackSize) { IsBackground = true };
       threads.Add(thread);
@@ -50,7 +49,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     return false;
   }
 
-  public override int MaximumConcurrencyLevel => threadCount;
+  public override int MaximumConcurrencyLevel { get; }
 
   protected override IEnumerable<Task> GetScheduledTasks()
   {
