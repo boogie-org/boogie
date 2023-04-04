@@ -14,7 +14,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 {
   private readonly int threadCount;
   private readonly AsyncQueue<Task> queue = new();
-  private readonly Thread[] threads;
+  private readonly HashSet<Thread> threads;
 
   public static CustomStackSizePoolTaskScheduler Create(int stackSize, int threadCount)
   {
@@ -25,12 +25,15 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
   {
     this.threadCount = threadCount;
 
-    threads = new Thread[this.threadCount];
-    for (int i = 0; i < threads.Length; i++)
+    threads = new HashSet<Thread>();
+    for (int i = 0; i < threadCount; i++)
     {
-      threads[i] = new Thread(WorkLoop, stackSize) { IsBackground = true };
-      threads[i].Start();
+      var thread = new Thread(WorkLoop, stackSize) { IsBackground = true };
+      threads.Add(thread);
+      thread.Start();
     }
+
+    var b = 3;
   }
 
   protected override void QueueTask(Task task)
@@ -40,7 +43,11 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
   {
-    return TryExecuteTask(task);
+    if (threads.Contains(Thread.CurrentThread)) {
+      return TryExecuteTask(task);
+    }
+
+    return false;
   }
 
   public override int MaximumConcurrencyLevel => threadCount;
