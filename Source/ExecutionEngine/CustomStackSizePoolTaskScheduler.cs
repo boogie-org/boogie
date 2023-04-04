@@ -31,8 +31,6 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
       threads.Add(thread);
       thread.Start();
     }
-
-    var b = 3;
   }
 
   protected override void QueueTask(Task task)

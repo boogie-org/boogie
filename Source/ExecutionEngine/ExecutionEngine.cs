@@ -575,7 +575,7 @@ namespace Microsoft.Boogie
       {
         return await RunHoudini(program, stats, er);
       }
-      var stablePrioritizedImpls = GetPrioritizedImplementations(program).ToList();
+      var stablePrioritizedImpls = GetPrioritizedImplementations(program);
 
       if (1 < Options.VerifySnapshots)
       {
