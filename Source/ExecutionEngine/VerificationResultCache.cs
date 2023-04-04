@@ -211,7 +211,7 @@ namespace Microsoft.Boogie
               eai.SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
-                var p = ExecutionEngine.CachedProgram(vr.ProgramId);
+                var p = engine.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
                   eai.Inject(impl, p);

@@ -53,12 +53,12 @@ namespace Microsoft.Boogie
 
     public readonly VerificationResultCache Cache;
 
-    static readonly MemoryCache programCache = new MemoryCache("ProgramCache");
+    private readonly MemoryCache programCache = new MemoryCache("ProgramCache");
 
     static readonly CacheItemPolicy policy = new CacheItemPolicy
       { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
-    public static Program CachedProgram(string programId) {
+    public Program CachedProgram(string programId) {
       var result = programCache.Get(programId) as Program;
       return result;
     }
