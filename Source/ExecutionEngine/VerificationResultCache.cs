@@ -171,7 +171,8 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public static void Inject(ExecutionEngine engine, Program program, IEnumerable<Implementation> implementations, string requestId,
+    public static void Inject(ExecutionEngine engine, Program program, 
+      IReadOnlyList<Implementation> implementations, string requestId,
       string programId, out long[] cachingActionCounts)
     {
       var eai = new CachedVerificationResultInjector(engine.Options, program);
