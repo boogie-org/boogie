@@ -78,7 +78,7 @@ namespace Microsoft.Boogie
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
-      SkipAtomicAction = new AtomicAction(skipProcedure, skipImplementation, LayerRange.MinMax, null, this);
+      SkipAtomicAction = new AtomicAction(skipImplementation, LayerRange.MinMax, null, this);
       SkipAtomicAction.CompleteInitialization(this);
     }
 
@@ -280,14 +280,6 @@ namespace Microsoft.Boogie
       var actionProcToLayerRange = new Dictionary<ActionDecl, LayerRange>();
       foreach (var proc in actionProcs)
       {
-        Implementation impl = actionProcToImpl[proc];
-        impl.PruneUnreachableBlocks(Options);
-        Graph<Block> cfg = Program.GraphFromImpl(impl);
-        if (!Graph<Block>.Acyclic(cfg))
-        {
-          Error(proc, "Action body cannot have loops");
-          continue;
-        }
         LayerRange layerRange = ToLayerRange(FindLayers(proc.Attributes), proc);
         actionProcToLayerRange.Add(proc, layerRange);
       }
@@ -349,23 +341,23 @@ namespace Microsoft.Boogie
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.actionQualifier == ActionQualifier.Link)
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, null, this);
+          procToAtomicAction[proc] = new AtomicAction(impl, layerRange, null, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Invariant)
         {
-          procToInvariantAction[proc] = new InvariantAction(proc, impl, layerRange, this);
+          procToInvariantAction[proc] = new InvariantAction(impl, layerRange, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Abstract)
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, null, this);
+          procToAtomicAction[proc] = new AtomicAction(impl, layerRange, null, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Async)
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, null, this);
+          procToAtomicAction[proc] = new AtomicAction(impl, layerRange, null, this);
         }
         else
         {
-          procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, null, this);
+          procToAtomicAction[proc] = new AtomicAction(impl, layerRange, null, this);
         }
       }
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
@@ -435,7 +427,7 @@ namespace Microsoft.Boogie
       var refinedAction = procToAtomicAction[refinedProc];
       Implementation impl = actionProcToImpl[proc];
       LayerRange layerRange = actionProcToLayerRange[proc];
-      procToAtomicAction[proc] = new AtomicAction(proc, impl, layerRange, refinedAction, this);
+      procToAtomicAction[proc] = new AtomicAction(impl, layerRange, refinedAction, this);
     }
 
     private void TypeCheckYieldInvariants()

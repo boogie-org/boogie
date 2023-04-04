@@ -4240,6 +4240,15 @@ namespace Microsoft.Boogie
       }
       Contract.Assert(tc.Proc == Proc);
       tc.Proc = oldProc;
+
+      if (Proc is ActionDecl)
+      {
+        var cfg = Program.GraphFromImpl(this);
+        if (!Graph<Block>.Acyclic(cfg))
+        {
+          tc.Error(this, "action implementation may not have loops");
+        }
+      }
     }
 
     void MatchFormals(List<Variable> /*!*/ implFormals, List<Variable> /*!*/ procFormals, string /*!*/ inout,

@@ -64,7 +64,7 @@ namespace Microsoft.Boogie
 
   public abstract class Action
   {
-    public ActionDecl proc;
+    public ActionDecl proc => (ActionDecl)impl.Proc;
     public Implementation impl;
     public LayerRange layerRange;
     public List<AssertCmd> gate;
@@ -74,9 +74,8 @@ namespace Microsoft.Boogie
     public List<ActionDecl> pendingAsyncs;
     public Function inputOutputRelation;
 
-    protected Action(ActionDecl proc, Implementation impl, LayerRange layerRange, CivlTypeChecker civlTypeChecker)
+    protected Action(Implementation impl, LayerRange layerRange, CivlTypeChecker civlTypeChecker)
     {
-      this.proc = proc;
       this.impl = impl;
       this.layerRange = layerRange;
 
@@ -341,8 +340,8 @@ namespace Microsoft.Boogie
     
     public Dictionary<Variable, Function> triggerFunctions;
 
-    public AtomicAction(ActionDecl proc, Implementation impl, LayerRange layerRange, AtomicAction refinedAction,
-      CivlTypeChecker civlTypeChecker) : base(proc, impl, layerRange, civlTypeChecker)
+    public AtomicAction(Implementation impl, LayerRange layerRange, AtomicAction refinedAction,
+      CivlTypeChecker civlTypeChecker) : base(impl, layerRange, civlTypeChecker)
     {
       this.refinedAction = refinedAction;
     }
@@ -427,8 +426,8 @@ namespace Microsoft.Boogie
   {
     public DatatypeTypeCtorDecl choiceDatatypeTypeCtorDecl;
 
-    public InvariantAction(ActionDecl proc, Implementation impl, LayerRange layerRange, CivlTypeChecker civlTypeChecker)
-      : base(proc, impl, layerRange, civlTypeChecker)
+    public InvariantAction(Implementation impl, LayerRange layerRange, CivlTypeChecker civlTypeChecker)
+      : base(impl, layerRange, civlTypeChecker)
     {
       var choiceDatatypeName = $"Choice_{impl.Name}";
       choiceDatatypeTypeCtorDecl =

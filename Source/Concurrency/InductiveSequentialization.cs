@@ -151,10 +151,9 @@ namespace Microsoft.Boogie
      * There are two parts to the assumption, one for leftMover and the other for action.
      * Both parts are stated in the context of the input-output relation of the invariant action.
      * - The invocation of leftMover is identical to the choice made by the invariant.
-     * - The invocation of action is such that either:
+     * - If action is being eliminated, then the invocation of action is such that either:
      *   (1) the permissions in the invocation are disjoint from the permissions in the invariant invocation, or
-     *   (2) the invocation is one of the pending asyncs created by the invariant invocation, or
-     *   (3) the permissions in the invocation is contained in the permissions of one of the pending asyncs created by the invariant invocation.
+     *   (2) the permissions in the invocation is contained in the permissions of one of the pending asyncs created by the invariant invocation.
      */
     public Expr GenerateMoverCheckAssumption(AtomicAction action, List<Variable> actionArgs, AtomicAction leftMover, List<Variable> leftMoverArgs)
     {
@@ -170,8 +169,6 @@ namespace Microsoft.Boogie
               linearTypeChecker.DisjointnessExprForPermissions(domain,
                 domainToPermissionExprsForInvariant[domain].Concat(domainToPermissionExprsForAction[domain]))
           ).ToList());
-        var actionPA =
-          ExprHelper.FunctionCall(action.proc.PendingAsyncCtor, actionArgs.Select(v => Expr.Ident(v)).ToArray());
         var pendingAsyncExprs = invariantAction.pendingAsyncs.Select(pendingAsync =>
         {
           var pendingAsyncFormalMap =
@@ -204,11 +201,7 @@ namespace Microsoft.Boogie
             pendingAsyncFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
             Expr.And(conjuncts.Concat(new[] { membershipExpr, pendingAsyncTransitionRelationExpr })));
         });
-        actionExpr = Expr.Or(new[]
-          {
-            disjointnessExpr, Expr.Gt(Expr.Select(PAs(action.proc.PendingAsyncType), actionPA), Expr.Literal(0))
-          }
-          .Concat(pendingAsyncExprs));
+        actionExpr = Expr.Or(pendingAsyncExprs.Append(disjointnessExpr));
       }
 
       var asyncLeftMover = elim.First(x => x.Value == leftMover).Key;
@@ -342,11 +335,6 @@ namespace Microsoft.Boogie
         map[formal] = Expr.Ident(to.PAs(pendingAsyncType));
       }
       return Substituter.SubstitutionFromDictionary(map);
-    }
-
-    private Expr GetInvariantTransitionRelationWithChoice()
-    {
-      return TransitionRelationComputation.Refinement(civlTypeChecker, invariantAction, frame);
     }
 
     private Expr GetTransitionRelation(Action action)
