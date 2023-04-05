@@ -3,7 +3,7 @@
   <!-- Target framework and package configuration -->
   <PropertyGroup>
     <Version>2.9.5</Version>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>Boogie</Authors>
     <RepositoryUrl>https://github.com/boogie-org/boogie</RepositoryUrl>
