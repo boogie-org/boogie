@@ -272,11 +272,6 @@ namespace Microsoft.Boogie
     private void TypeCheckActions()
     {
       var actionProcs = program.Procedures.OfType<ActionDecl>().ToHashSet();
-      var actionProcToImpl = new Dictionary<ActionDecl, Implementation>();
-      foreach (var impl in program.Implementations.Where(impl => impl.Proc is ActionDecl))
-      {
-        actionProcToImpl.Add((ActionDecl)impl.Proc, impl);
-      }
       var actionProcToLayerRange = new Dictionary<ActionDecl, LayerRange>();
       foreach (var proc in actionProcs)
       {
@@ -309,9 +304,9 @@ namespace Microsoft.Boogie
       
       // Type check action bodies
       var actionImplVisitor = new ActionImplVisitor(this, actionProcToLayerRange);
-      foreach (var impl in actionProcToImpl.Values)
+      foreach (var proc in actionProcs)
       {
-        actionImplVisitor.VisitImplementation(impl);
+        actionImplVisitor.VisitImplementation(proc.impl);
       }
       if (!actionImplVisitor.IsCallGraphAcyclic())
       {
@@ -337,7 +332,7 @@ namespace Microsoft.Boogie
         // In this loop, we create all link, invariant, and abstraction actions,
         // but only those atomic actions (pending async or otherwise) that do not refine
         // another action.
-        Implementation impl = actionProcToImpl[proc];
+        Implementation impl = proc.impl;
         LayerRange layerRange = actionProcToLayerRange[proc];
         if (proc.actionQualifier == ActionQualifier.Link)
         {
@@ -365,7 +360,7 @@ namespace Microsoft.Boogie
       // Therefore, only the type AtomicAction will be created now.
       actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        CreateActionsThatRefineAnotherAction(proc, actionProcToImpl, actionProcToLayerRange);
+        CreateActionsThatRefineAnotherAction(proc, actionProcToLayerRange);
       });
 
       // Inline atomic actions
@@ -377,17 +372,17 @@ namespace Microsoft.Boogie
       });
       actionProcs.Iter(proc =>
       {
-        var impl = actionProcToImpl[proc];
+        var impl = proc.impl;
         impl.OriginalBlocks = impl.Blocks;
         impl.OriginalLocVars = impl.LocVars;
       });
       actionProcs.Iter(proc =>
       {
-        Inliner.ProcessImplementation(Options, program, actionProcToImpl[proc]);
+        Inliner.ProcessImplementation(Options, program, proc.impl);
       });
       actionProcs.Iter(proc =>
       {
-        var impl = actionProcToImpl[proc];
+        var impl = proc.impl;
         impl.OriginalBlocks = null;
         impl.OriginalLocVars = null;
       });
@@ -414,18 +409,16 @@ namespace Microsoft.Boogie
       });
     }
 
-    void CreateActionsThatRefineAnotherAction(ActionDecl proc, 
-      Dictionary<ActionDecl, Implementation> actionProcToImpl,
-      Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
+    void CreateActionsThatRefineAnotherAction(ActionDecl proc, Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
     {
       if (procToAtomicAction.ContainsKey(proc))
       {
         return;
       }
       var refinedProc = proc.refinedAction.actionDecl;
-      CreateActionsThatRefineAnotherAction(refinedProc, actionProcToImpl, actionProcToLayerRange);
+      CreateActionsThatRefineAnotherAction(refinedProc, actionProcToLayerRange);
       var refinedAction = procToAtomicAction[refinedProc];
-      Implementation impl = actionProcToImpl[proc];
+      Implementation impl = proc.impl;
       LayerRange layerRange = actionProcToLayerRange[proc];
       procToAtomicAction[proc] = new AtomicAction(impl, layerRange, refinedAction, this);
     }
@@ -958,7 +951,6 @@ namespace Microsoft.Boogie
     {
       private CivlTypeChecker civlTypeChecker;
       private Dictionary<ActionDecl, LayerRange> actionProcToLayerRange;
-      private Dictionary<ActionDecl, HashSet<string>> actionProcToCreates;
       private Graph<Procedure> callGraph;
       private ActionDecl proc;
 
@@ -966,8 +958,6 @@ namespace Microsoft.Boogie
       {
         this.civlTypeChecker = civlTypeChecker;
         this.actionProcToLayerRange = actionProcToLayerRange;
-        this.actionProcToCreates = civlTypeChecker.program.TopLevelDeclarations.OfType<ActionDecl>().ToDictionary(proc => proc,
-          proc => new HashSet<string>(proc.creates.Select(actionDeclRef => actionDeclRef.actionName)));
         this.callGraph = new Graph<Procedure>();
       }
 

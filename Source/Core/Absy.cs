@@ -3355,6 +3355,8 @@ namespace Microsoft.Boogie
     public DatatypeTypeCtorDecl pendingAsyncCtorDecl;
     public int PendingAsyncStartIndex;
 
+    public Implementation impl; // set when the implementation of this action is resolved
+
     public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
       List<Variable> inParams, List<Variable> outParams,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
@@ -4149,6 +4151,10 @@ namespace Microsoft.Boogie
       if (Proc == null)
       {
         rc.Error(this, "implementation given for undeclared procedure: {0}", this.Name);
+      }
+      else if (Proc is ActionDecl actionDecl)
+      {
+        actionDecl.impl = this;
       }
 
       int previousTypeBinderState = rc.TypeBinderState;
