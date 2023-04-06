@@ -9,7 +9,7 @@ namespace Microsoft.Boogie
   {
     public ActionDecl proc => (ActionDecl)impl.Proc;
     public Implementation impl;
-    public LayerRange layerRange;
+    public LayerRange layerRange => proc.layerRange;
     public List<AssertCmd> gate;
     public HashSet<Variable> gateUsedGlobalVars;
     public HashSet<Variable> actionUsedGlobalVars;
@@ -17,11 +17,10 @@ namespace Microsoft.Boogie
     public List<ActionDecl> pendingAsyncs;
     public Function inputOutputRelation;
 
-    protected Action(Implementation impl, LayerRange layerRange, CivlTypeChecker civlTypeChecker)
+    protected Action(Implementation impl, CivlTypeChecker civlTypeChecker)
     {
       this.impl = impl;
-      this.layerRange = layerRange;
-
+      
       // We usually declare the Boogie procedure and implementation of an atomic action together.
       // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
       // we copy them into the implementation parameters here.
@@ -283,8 +282,7 @@ namespace Microsoft.Boogie
     
     public Dictionary<Variable, Function> triggerFunctions;
 
-    public AtomicAction(Implementation impl, LayerRange layerRange, AtomicAction refinedAction,
-      CivlTypeChecker civlTypeChecker) : base(impl, layerRange, civlTypeChecker)
+    public AtomicAction(Implementation impl, AtomicAction refinedAction, CivlTypeChecker civlTypeChecker) : base(impl, civlTypeChecker)
     {
       this.refinedAction = refinedAction;
     }
@@ -369,8 +367,7 @@ namespace Microsoft.Boogie
   {
     public DatatypeTypeCtorDecl choiceDatatypeTypeCtorDecl;
 
-    public InvariantAction(Implementation impl, LayerRange layerRange, CivlTypeChecker civlTypeChecker)
-      : base(impl, layerRange, civlTypeChecker)
+    public InvariantAction(Implementation impl, CivlTypeChecker civlTypeChecker) : base(impl, civlTypeChecker)
     {
       var choiceDatatypeName = $"Choice_{impl.Name}";
       choiceDatatypeTypeCtorDecl =
@@ -431,12 +428,12 @@ namespace Microsoft.Boogie
 
   public class YieldingLoop
   {
-    public int upperLayer;
+    public int layer;
     public List<CallCmd> yieldInvariants;
 
-    public YieldingLoop(int upperLayer, List<CallCmd> yieldInvariants)
+    public YieldingLoop(int layer, List<CallCmd> yieldInvariants)
     {
-      this.upperLayer = upperLayer;
+      this.layer = layer;
       this.yieldInvariants = yieldInvariants;
     }
   }
@@ -444,14 +441,13 @@ namespace Microsoft.Boogie
   public abstract class YieldingProc
   {
     public YieldProcedureDecl proc;
-    public int upperLayer;
+    public int layer => proc.layer;
     public List<CallCmd> yieldRequires;
     public List<CallCmd> yieldEnsures;
 
-    public YieldingProc(YieldProcedureDecl proc, int upperLayer, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
+    public YieldingProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
     {
       this.proc = proc;
-      this.upperLayer = upperLayer;
       this.yieldRequires = yieldRequires;
       this.yieldEnsures = yieldEnsures;
     }
@@ -467,8 +463,8 @@ namespace Microsoft.Boogie
   {
     public HashSet<Variable> modifiedGlobalVars;
 
-    public MoverProc(YieldProcedureDecl proc, int upperLayer, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
-      : base(proc, upperLayer, yieldRequires, yieldEnsures)
+    public MoverProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
+      : base(proc, yieldRequires, yieldEnsures)
     {
       modifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
     }
@@ -481,9 +477,9 @@ namespace Microsoft.Boogie
     public AtomicAction refinedAction;
     public HashSet<Variable> hiddenFormals;
 
-    public ActionProc(YieldProcedureDecl proc, AtomicAction refinedAction, int upperLayer, HashSet<Variable> hiddenFormals,
+    public ActionProc(YieldProcedureDecl proc, AtomicAction refinedAction, HashSet<Variable> hiddenFormals,
       List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
-      : base(proc, upperLayer, yieldRequires, yieldEnsures)
+      : base(proc, yieldRequires, yieldEnsures)
     {
       this.refinedAction = refinedAction;
       this.hiddenFormals = hiddenFormals;
@@ -493,7 +489,7 @@ namespace Microsoft.Boogie
 
     public AtomicAction RefinedActionAtLayer(int layer)
     {
-      Debug.Assert(layer >= upperLayer);
+      Debug.Assert(layer >= base.layer);
       var action = refinedAction;
       while (action != null)
       {

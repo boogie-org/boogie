@@ -65,13 +65,14 @@ namespace Microsoft.Boogie
       var skipProcedure = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, ActionQualifier.None,
         new List<Variable>(), new List<Variable>(), new List<ActionDeclRef>(), null, null, new List<ElimDecl>(),
         new List<IdentifierExpr>(), null, null);
+      skipProcedure.layerRange = LayerRange.MinMax;
       var skipImplementation = DeclHelper.Implementation(
         skipProcedure,
         new List<Variable>(),
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
-      SkipAtomicAction = new AtomicAction(skipImplementation, LayerRange.MinMax, null, this);
+      SkipAtomicAction = new AtomicAction(skipImplementation, null, this);
       SkipAtomicAction.CompleteInitialization(this);
     }
 
@@ -156,7 +157,7 @@ namespace Microsoft.Boogie
     {
       // List of all layers where refinement happens
       var yieldingProcsWithImpls = procToYieldingProc.Keys.Intersect(program.Implementations.Select(i => i.Proc));
-      allRefinementLayers = yieldingProcsWithImpls.Select(p => procToYieldingProc[p].upperLayer).OrderBy(l => l)
+      allRefinementLayers = yieldingProcsWithImpls.Select(p => procToYieldingProc[p].layer).OrderBy(l => l)
         .Distinct().ToList();
 
       var allInductiveSequentializationLayers =
@@ -298,26 +299,25 @@ namespace Microsoft.Boogie
         // but only those atomic actions (pending async or otherwise) that do not refine
         // another action.
         Implementation impl = proc.impl;
-        LayerRange layerRange = proc.layerRange;
         if (proc.actionQualifier == ActionQualifier.Link)
         {
-          procToAtomicAction[proc] = new AtomicAction(impl, layerRange, null, this);
+          procToAtomicAction[proc] = new AtomicAction(impl, null, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Invariant)
         {
-          procToInvariantAction[proc] = new InvariantAction(impl, layerRange, this);
+          procToInvariantAction[proc] = new InvariantAction(impl, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Abstract)
         {
-          procToAtomicAction[proc] = new AtomicAction(impl, layerRange, null, this);
+          procToAtomicAction[proc] = new AtomicAction(impl, null, this);
         }
         else if (proc.actionQualifier == ActionQualifier.Async)
         {
-          procToAtomicAction[proc] = new AtomicAction(impl, layerRange, null, this);
+          procToAtomicAction[proc] = new AtomicAction(impl, null, this);
         }
         else
         {
-          procToAtomicAction[proc] = new AtomicAction(impl, layerRange, null, this);
+          procToAtomicAction[proc] = new AtomicAction(impl, null, this);
         }
       }
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
@@ -385,7 +385,7 @@ namespace Microsoft.Boogie
       var refinedAction = procToAtomicAction[refinedProc];
       Implementation impl = proc.impl;
       LayerRange layerRange = proc.layerRange;
-      procToAtomicAction[proc] = new AtomicAction(impl, layerRange, refinedAction, this);
+      procToAtomicAction[proc] = new AtomicAction(impl, refinedAction, this);
     }
 
     private void TypeCheckYieldInvariants()
@@ -463,7 +463,7 @@ namespace Microsoft.Boogie
           }
           var hiddenFormals =
             new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
-          var actionProc = new ActionProc(proc, refinedAction, upperLayer, hiddenFormals, yieldRequires, yieldEnsures);
+          var actionProc = new ActionProc(proc, refinedAction, hiddenFormals, yieldRequires, yieldEnsures);
           CheckRefinementSignature(actionProc);
           procToYieldingProc[proc] = actionProc;
         }
@@ -475,7 +475,7 @@ namespace Microsoft.Boogie
               $"All variables in the modifies clause of a mover procedure must be available at its disappearing layer");
             continue;
           }
-          procToYieldingProc[proc] = new MoverProc(proc, upperLayer, yieldRequires, yieldEnsures);
+          procToYieldingProc[proc] = new MoverProc(proc, yieldRequires, yieldEnsures);
         }
         else // proc refines the skip action
         {
@@ -485,7 +485,7 @@ namespace Microsoft.Boogie
           }
           var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams)
             .Where(x => x.layerRange.upperLayerNum == upperLayer));
-          var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals, yieldRequires, yieldEnsures);
+          var actionProc = new ActionProc(proc, SkipAtomicAction, hiddenFormals, yieldRequires, yieldEnsures);
           procToYieldingProc[proc] = actionProc;
         }
 
@@ -523,7 +523,7 @@ namespace Microsoft.Boogie
 
         foreach (var header in graph.Headers)
         {
-          int yieldingLayer = procToYieldingProc[impl.Proc].upperLayer;
+          int yieldingLayer = procToYieldingProc[impl.Proc].layer;
           var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
             cmd is PredicateCmd predCmd && predCmd.HasAttribute(CivlAttributes.YIELDS));
           if (yieldCmd == null)
@@ -643,7 +643,7 @@ namespace Microsoft.Boogie
     {
       var signatureMatcher = new SignatureMatcher(actionProc.proc, actionProc.refinedAction.proc, checkingContext);
       Func<Variable, bool> isRemainingVariable = x =>
-        x.layerRange.upperLayerNum == actionProc.upperLayer &&
+        x.layerRange.upperLayerNum == actionProc.layer &&
         !actionProc.hiddenFormals.Contains(x);
       var procInParams = actionProc.proc.InParams.Where(isRemainingVariable).ToList();
       var procOutParams = actionProc.proc.OutParams.Where(isRemainingVariable).ToList();
@@ -675,7 +675,7 @@ namespace Microsoft.Boogie
         implToPendingAsyncCollector[impl] = new Dictionary<CtorType, Variable>();
         foreach (Variable v in impl.LocVars)
         {
-          int upperLayer = procToYieldingProc[impl.Proc].upperLayer;
+          int upperLayer = procToYieldingProc[impl.Proc].layer;
           var layer = v.layerRange.lowerLayerNum;
           if (v.HasAttribute(CivlAttributes.PENDING_ASYNC))
           {
@@ -735,12 +735,12 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      return layerNum <= yieldingLoops[block].upperLayer;
+      return layerNum <= yieldingLoops[block].layer;
     }
 
     public bool FormalRemainsInAction(ActionProc actionProc, Variable param)
     {
-      return param.layerRange.Contains(actionProc.upperLayer) && !actionProc.hiddenFormals.Contains(param);
+      return param.layerRange.Contains(actionProc.layer) && !actionProc.hiddenFormals.Contains(param);
     }
 
     public IEnumerable<AtomicAction> LinkActions =>
@@ -1030,13 +1030,13 @@ namespace Microsoft.Boogie
         VisitRequiresSeq(node.Requires);
         foreach (var callCmd in yieldRequires)
         {
-          VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer,
+          VisitYieldInvariantCallCmd(callCmd, yieldingProc.layer,
             ((YieldInvariantDecl)callCmd.Proc).layer);
         }
 
         foreach (var callCmd in yieldEnsures)
         {
-          VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer,
+          VisitYieldInvariantCallCmd(callCmd, yieldingProc.layer,
             ((YieldInvariantDecl)callCmd.Proc).layer);
         }
 
@@ -1078,7 +1078,7 @@ namespace Microsoft.Boogie
         VisitSpecPre();
         base.VisitEnsures(ensures);
         VisitSpecPost(ensures);
-        if (!(yieldingProc is MoverProc && ensures.Layers.All(x => x == yieldingProc.upperLayer)))
+        if (!(yieldingProc is MoverProc && ensures.Layers.All(x => x == yieldingProc.layer)))
         {
           CheckAccessToGlobalVariables(ensures);
         }
@@ -1090,7 +1090,7 @@ namespace Microsoft.Boogie
         VisitSpecPre();
         base.VisitRequires(requires);
         VisitSpecPost(requires);
-        if (!(yieldingProc is MoverProc && requires.Layers.All(x => x == yieldingProc.upperLayer)))
+        if (!(yieldingProc is MoverProc && requires.Layers.All(x => x == yieldingProc.layer)))
         {
           CheckAccessToGlobalVariables(requires);
         }
@@ -1118,7 +1118,7 @@ namespace Microsoft.Boogie
       {
         localVariableAccesses = new List<IdentifierExpr>();
         var cmd = base.VisitAssumeCmd(node);
-        var fullLayerRange = new LayerRange(LayerRange.Min, yieldingProc.upperLayer);
+        var fullLayerRange = new LayerRange(LayerRange.Min, yieldingProc.layer);
         if (!localVariableAccesses.TrueForAll(x => x.Decl.layerRange.Equals(fullLayerRange)))
         {
           civlTypeChecker.checkingContext.Error(node,
@@ -1191,10 +1191,10 @@ namespace Microsoft.Boogie
 
         foreach (var layer in specLayers)
         {
-          if (layer > yieldingProc.upperLayer)
+          if (layer > yieldingProc.layer)
           {
             civlTypeChecker.checkingContext.Error(node,
-              "Specification layer {0} is greater than enclosing procedure layer {1}", layer, yieldingProc.upperLayer);
+              "Specification layer {0} is greater than enclosing procedure layer {1}", layer, yieldingProc.layer);
           }
 
           foreach (var ie in globalVariableAccesses)
@@ -1277,15 +1277,15 @@ namespace Microsoft.Boogie
         }
         else if (call.Proc is YieldInvariantDecl yieldInvariant)
         {
-          VisitYieldInvariantCallCmd(call, callerProc.upperLayer, yieldInvariant.layer);
+          VisitYieldInvariantCallCmd(call, callerProc.layer, yieldInvariant.layer);
         }
         else if (call.Proc.IsPure)
         {
-          VisitPureProcCallCmd(call, callerProc.upperLayer);
+          VisitPureProcCallCmd(call, callerProc.layer);
         }
         else if (call.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } actionDecl)
         {
-          VisitLinkActionCallCmd(call, callerProc.upperLayer, civlTypeChecker.procToAtomicAction[actionDecl]);
+          VisitLinkActionCallCmd(call, callerProc.layer, civlTypeChecker.procToAtomicAction[actionDecl]);
         }
         else
         {
@@ -1301,7 +1301,7 @@ namespace Microsoft.Boogie
 
       private void VisitYieldingProcCallCmd(CallCmd call, YieldingProc callerProc, YieldingProc calleeProc)
       {
-        if (callerProc.upperLayer < calleeProc.upperLayer)
+        if (callerProc.layer < calleeProc.layer)
         {
           civlTypeChecker.Error(call, "This call cannot have a callee with higher layer than the caller");
           return;
@@ -1313,17 +1313,17 @@ namespace Microsoft.Boogie
           {
             if (call.HasAttribute(CivlAttributes.SYNC))
             {
-              Require(callerProc.upperLayer > calleeProc.upperLayer, call,
+              Require(callerProc.layer > calleeProc.layer, call,
                 "Called procedure in synchronized call must disappear at lower layer than caller");
               Require(calleeProc.IsLeftMover, call, "Synchronized call must be a left mover");
             }
             else
             {
               Require(callerProc is ActionProc, call, "Caller must be an action procedure");
-              var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.upperLayer + 1);
+              var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.layer + 1);
               if (highestRefinedAction == null)
               {
-                civlTypeChecker.Error(call, $"Called action is not available at layer {callerProc.upperLayer + 1}");
+                civlTypeChecker.Error(call, $"Called action is not available at layer {callerProc.layer + 1}");
               }
               else if (highestRefinedAction != civlTypeChecker.SkipAtomicAction)
               {
@@ -1333,12 +1333,12 @@ namespace Microsoft.Boogie
             }
           }
 
-          if (callerProc.upperLayer > calleeProc.upperLayer)
+          if (callerProc.layer > calleeProc.layer)
           {
-            var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.upperLayer);
+            var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.layer);
             if (highestRefinedAction == null)
             {
-              civlTypeChecker.Error(call, $"Called action is not available at layer {callerProc.upperLayer}");
+              civlTypeChecker.Error(call, $"Called action is not available at layer {callerProc.layer}");
             }
             else if (highestRefinedAction.HasPendingAsyncs)
             {
@@ -1363,7 +1363,7 @@ namespace Microsoft.Boogie
         }
         else if (calleeProc is MoverProc)
         {
-          Require(callerProc.upperLayer == calleeProc.upperLayer, call,
+          Require(callerProc.layer == calleeProc.layer, call,
             "The layer of the caller must be equal to the layer of the callee");
           if (call.IsAsync)
           {
@@ -1392,7 +1392,7 @@ namespace Microsoft.Boogie
           var formalLayerRange = formal.layerRange;
           if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc)
           {
-            formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.upperLayer);
+            formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.layer);
           }
 
           foreach (var ie in localVariableAccesses)
@@ -1422,7 +1422,7 @@ namespace Microsoft.Boogie
           var formalLayerRange = formal.layerRange;
           if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc)
           {
-            formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.upperLayer);
+            formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.layer);
           }
 
           if (actualLayerRange.Subset(formalLayerRange))
@@ -1506,7 +1506,7 @@ namespace Microsoft.Boogie
             {
               if (callee is ActionProc actionProc)
               {
-                mods = actionProc.RefinedActionAtLayer(caller.upperLayer).modifiedGlobalVars;
+                mods = actionProc.RefinedActionAtLayer(caller.layer).modifiedGlobalVars;
               }
               else if (callee is MoverProc moverProc)
               {
@@ -1520,7 +1520,7 @@ namespace Microsoft.Boogie
             else if (callCmd.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } actionDecl)
             {
               var linkAction = civlTypeChecker.procToAtomicAction[actionDecl];
-              if (caller.upperLayer == linkAction.LayerNum)
+              if (caller.layer == linkAction.LayerNum)
               {
                 mods = new HashSet<Variable>(callCmd.Proc.Modifies.Select(ie => ie.Decl));
               }

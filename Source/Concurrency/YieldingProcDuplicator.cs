@@ -44,7 +44,7 @@ namespace Microsoft.Boogie
       if (!procToDuplicate.ContainsKey(node))
       {
         YieldingProc yieldingProc = civlTypeChecker.procToYieldingProc[node];
-        Debug.Assert(layerNum <= yieldingProc.upperLayer);
+        Debug.Assert(layerNum <= yieldingProc.layer);
         var proc = new Procedure(
           node.tok,
           civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}"),
@@ -53,7 +53,7 @@ namespace Microsoft.Boogie
           VisitVariableSeq(node.OutParams),
           false,
           VisitRequiresSeq(node.Requires),
-          (yieldingProc is MoverProc moverProc && yieldingProc.upperLayer == layerNum
+          (yieldingProc is MoverProc moverProc && yieldingProc.layer == layerNum
             ? moverProc.modifiedGlobalVars.Select(g => Expr.Ident(g))
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
           VisitEnsuresSeq(node.Ensures));
@@ -115,7 +115,7 @@ namespace Microsoft.Boogie
 
     private Implementation enclosingImpl;
     private YieldingProc enclosingYieldingProc;
-    private bool IsRefinementLayer => layerNum == enclosingYieldingProc.upperLayer;
+    private bool IsRefinementLayer => layerNum == enclosingYieldingProc.layer;
     private AtomicAction RefinedAction => ((ActionProc)enclosingYieldingProc).refinedAction;
     private List<Cmd> newCmdSeq;
 
@@ -147,7 +147,7 @@ namespace Microsoft.Boogie
       Debug.Assert(civlTypeChecker.procToYieldingProc.ContainsKey(impl.Proc));
       enclosingImpl = impl;
       enclosingYieldingProc = civlTypeChecker.procToYieldingProc[impl.Proc];
-      Debug.Assert(layerNum <= enclosingYieldingProc.upperLayer);
+      Debug.Assert(layerNum <= enclosingYieldingProc.layer);
 
       returnedPAs = new Dictionary<CtorType, Variable>();
 
@@ -283,7 +283,7 @@ namespace Microsoft.Boogie
 
       if (newCall.IsAsync)
       {
-        if (yieldingProc.upperLayer < layerNum)
+        if (yieldingProc.layer < layerNum)
         {
           Debug.Assert(yieldingProc is ActionProc);
           var actionProc = (ActionProc)yieldingProc;
@@ -299,7 +299,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
+          if (yieldingProc is MoverProc && yieldingProc.layer == layerNum)
           {
             // synchronize the called mover procedure
             AddDuplicateCall(newCall, false);
@@ -320,17 +320,17 @@ namespace Microsoft.Boogie
       // handle synchronous calls to yielding procedures
       if (yieldingProc is MoverProc moverProc)
       {
-        AddDuplicateCall(newCall, moverProc.upperLayer > layerNum);
+        AddDuplicateCall(newCall, moverProc.layer > layerNum);
       }
       else if (yieldingProc is ActionProc actionProc)
       {
-        if (actionProc.upperLayer < layerNum)
+        if (actionProc.layer < layerNum)
         {
           AddActionCall(newCall, actionProc);
         }
         else
         {
-          if (IsRefinementLayer && layerNum == actionProc.upperLayer &&
+          if (IsRefinementLayer && layerNum == actionProc.layer &&
               actionProc.RefinedActionAtLayer(layerNum) != civlTypeChecker.SkipAtomicAction)
           {
             refinementCallCmds[newCall] = (CallCmd) VisitCallCmd(newCall);
@@ -355,8 +355,8 @@ namespace Microsoft.Boogie
         if (civlTypeChecker.procToYieldingProc.ContainsKey(callCmd.Proc))
         {
           var yieldingProc = civlTypeChecker.procToYieldingProc[callCmd.Proc];
-          if (layerNum > yieldingProc.upperLayer && yieldingProc is ActionProc ||
-              layerNum == yieldingProc.upperLayer && yieldingProc is MoverProc)
+          if (layerNum > yieldingProc.layer && yieldingProc is ActionProc ||
+              layerNum == yieldingProc.layer && yieldingProc is MoverProc)
           {
             if (callCmds.Count > 0)
             {
@@ -377,7 +377,7 @@ namespace Microsoft.Boogie
           var yieldingProc = civlTypeChecker.procToYieldingProc[callCmd.Proc];
           if (yieldingProc is ActionProc actionProc)
           {
-            if (IsRefinementLayer && layerNum == actionProc.upperLayer &&
+            if (IsRefinementLayer && layerNum == actionProc.layer &&
                 actionProc.RefinedActionAtLayer(layerNum) != civlTypeChecker.SkipAtomicAction)
             {
               refinementCallCmds[callCmd] = (CallCmd) VisitCallCmd(callCmd);
@@ -556,7 +556,7 @@ namespace Microsoft.Boogie
     private void AddPendingAsync(CallCmd newCall, ActionProc calleeProc)
     {
       AtomicAction calleeRefinedAction;
-      if (calleeProc.upperLayer == enclosingYieldingProc.upperLayer)
+      if (calleeProc.layer == enclosingYieldingProc.layer)
       {
         calleeRefinedAction = calleeProc.refinedAction;
       }

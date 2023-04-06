@@ -1057,7 +1057,7 @@ namespace Microsoft.Boogie
 
     protected LayerRange ToLayerRange(TypecheckingContext tc, LayerRange defaultLayerRange = null)
     {
-      // We return min-max range for invalid declarations in order to proceed with type checking.
+      // We return min-max range for declarations that do not explicitly specify a range
       if (defaultLayerRange == null)
       {
         defaultLayerRange = LayerRange.MinMax;

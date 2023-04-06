@@ -347,7 +347,7 @@ namespace Microsoft.Boogie
         // But this is fine because a mover procedure at its disappearing layer does not have a yield in it.
         linearPermissionInstrumentation.AddDisjointnessAndWellFormedAssumptions(impl);
         var yieldingProc = GetYieldingProc(impl);
-        if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
+        if (yieldingProc is MoverProc && yieldingProc.layer == layerNum)
         {
           continue;
         }
@@ -360,7 +360,7 @@ namespace Microsoft.Boogie
     {
       // initialize refinementInstrumentation
       var yieldingProc = GetYieldingProc(impl);
-      if (yieldingProc.upperLayer == this.layerNum)
+      if (yieldingProc.layer == this.layerNum)
       {
         refinementInstrumentation = new ActionRefinementInstrumentation(
           civlTypeChecker,

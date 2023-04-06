@@ -3965,7 +3965,6 @@ namespace Microsoft.Boogie
         {
           return verifiedUnder;
         }
-
         verifiedUnder = QKeyValue.FindExprAttribute(Attributes, "verified_under");
         return verifiedUnder;
       }
@@ -3992,37 +3991,26 @@ namespace Microsoft.Boogie
       set { errorDataEnhanced = value; }
     }
 
-    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv = null)
+    public AssertCmd(IToken tok, Expr expr, ProofObligationDescription description, QKeyValue kv = null)
       : base(tok, expr, kv)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
       errorDataEnhanced = GenerateBoundVarMiningStrategy(expr);
       Description = description;
     }
 
-    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, QKeyValue kv = null)
+    public AssertCmd(IToken tok, Expr expr, QKeyValue kv = null)
       : this(tok, expr, new AssertionDescription(), kv) { }
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, level, "assert ");
       EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);
       stream.WriteLine(";");
     }
 
-    public override void Resolve(ResolutionContext rc)
-    {
-      //Contract.Requires(rc != null);
-      (this as ICarriesAttributes).ResolveAttributes(rc);
-      base.Resolve(rc);
-    }
-
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       (this as ICarriesAttributes).TypecheckAttributes(tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null); // follows from Expr.Typecheck postcondition
@@ -4044,7 +4032,7 @@ namespace Microsoft.Boogie
       return new ListOfMiningStrategies(l);
     }
 
-    public static List<MiningStrategy> /*!*/ GenerateBoundVarListForMining(Expr expr, List<MiningStrategy> l)
+    public static List<MiningStrategy> GenerateBoundVarListForMining(Expr expr, List<MiningStrategy> l)
     {
       Contract.Requires(l != null);
       Contract.Requires(expr != null);
@@ -4058,7 +4046,7 @@ namespace Microsoft.Boogie
       else if (expr is NAryExpr)
       {
         NAryExpr e = (NAryExpr) expr;
-        foreach (Expr /*!*/ arg in e.Args)
+        foreach (Expr arg in e.Args)
         {
           Contract.Assert(arg != null);
           l = GenerateBoundVarListForMining(arg, l);
@@ -4096,8 +4084,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitAssertCmd(this);
     }
   }

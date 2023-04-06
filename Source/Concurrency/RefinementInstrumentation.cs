@@ -74,7 +74,7 @@ namespace Microsoft.Boogie
       this.tok = impl.tok;
       this.oldGlobalMap = new Dictionary<Variable, Variable>();
       ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
-      this.layerNum = actionProc.upperLayer;
+      this.layerNum = actionProc.layer;
       foreach (Variable v in civlTypeChecker.GlobalVariables)
       {
         var layerRange = v.layerRange;
