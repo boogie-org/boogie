@@ -277,7 +277,7 @@ namespace Microsoft.Boogie
           layers.AddRange(kv.Params.Select(o => ((LiteralExpr)o).asBigNum.ToIntSafe));
         }
       }
-      return layers;
+      return layers.Distinct().OrderBy(l => l).ToList();
     }
   }
 
@@ -2902,6 +2902,8 @@ namespace Microsoft.Boogie
     public readonly bool Free;
 
     private Expr _condition;
+    
+    public List<int> Layers;
 
     public ProofObligationDescription Description { get; set; } = new RequiresDescription();
 
@@ -2996,6 +2998,7 @@ namespace Microsoft.Boogie
     {
       this.Condition.Resolve(rc);
       (this as ICarriesAttributes).ResolveAttributes(rc);
+      Layers = (this as ICarriesAttributes).FindLayers();
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -3024,18 +3027,12 @@ namespace Microsoft.Boogie
 
     public Expr Condition
     {
-      get
-      {
-        Contract.Ensures(Contract.Result<Expr>() != null);
-        return this._condition;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this._condition = value;
-      }
+      get => this._condition;
+      set => this._condition = value;
     }
-
+    
+    public List<int> Layers;
+    
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -3112,6 +3109,7 @@ namespace Microsoft.Boogie
     {
       this.Condition.Resolve(rc);
       (this as ICarriesAttributes).ResolveAttributes(rc);
+      Layers = (this as ICarriesAttributes).FindLayers();
     }
 
     public override void Typecheck(TypecheckingContext tc)

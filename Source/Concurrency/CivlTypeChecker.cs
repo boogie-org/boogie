@@ -24,8 +24,6 @@ namespace Microsoft.Boogie
 
     public List<InductiveSequentialization> inductiveSequentializations;
 
-    public Dictionary<Absy, HashSet<int>> absyToLayerNums;
-    
     public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
     
     // These collections are for convenience in later phases and are only initialized at the end of type checking.
@@ -44,7 +42,6 @@ namespace Microsoft.Boogie
       this.linearTypeChecker = new LinearTypeChecker(this);
 
       this.yieldingLoops = new Dictionary<Block, YieldingLoop>();
-      this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
       this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
       this.procToInvariantAction = new Dictionary<ActionDecl, InvariantAction>();
       this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
@@ -162,17 +159,6 @@ namespace Microsoft.Boogie
       allRefinementLayers = yieldingProcsWithImpls.Select(p => procToYieldingProc[p].upperLayer).OrderBy(l => l)
         .Distinct().ToList();
 
-      foreach (var kv in absyToLayerNums)
-      {
-        foreach (var layer in kv.Value)
-        {
-          if (!allRefinementLayers.Contains(layer))
-          {
-            Error(kv.Key, $"No refinement at layer {layer}");
-          }
-        }
-      }
-
       var allInductiveSequentializationLayers =
         inductiveSequentializations.Select(x => x.invariantAction.layerRange.upperLayerNum).ToList();
 
@@ -185,7 +171,7 @@ namespace Microsoft.Boogie
 
       foreach (var g in GlobalVariables)
       {
-        var layerRange = GlobalVariableLayerRange(g);
+        var layerRange = g.layerRange;
         if (allInductiveSequentializationLayers.Contains(layerRange.lowerLayerNum))
         {
           Error(g, $"Global variable {g.Name} cannot be introduced at layer with IS");
@@ -217,7 +203,7 @@ namespace Microsoft.Boogie
     
     private void TypeCheckLinkAction(ActionDecl proc)
     {
-      if (proc.Modifies.Any(ie => GlobalVariableLayerRange(ie.Decl).lowerLayerNum != proc.layerRange.lowerLayerNum))
+      if (proc.Modifies.Any(ie => ie.Decl.layerRange.lowerLayerNum != proc.layerRange.lowerLayerNum))
       {
         Error(proc, "Link actions can modify a global variable only on its lower layer");
       }
@@ -483,7 +469,7 @@ namespace Microsoft.Boogie
         }
         else if (moverType != MoverType.None) // proc is a mover procedure
         {
-          if (!proc.Modifies.All(ie => GlobalVariableLayerRange(ie.Decl).Contains(upperLayer)))
+          if (!proc.Modifies.All(ie => ie.Decl.layerRange.Contains(upperLayer)))
           {
             Error(proc,
               $"All variables in the modifies clause of a mover procedure must be available at its disappearing layer");
@@ -546,7 +532,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            var layers = ((ICarriesAttributes)yieldCmd).FindLayers();
+            var layers = yieldCmd.Layers;
             header.Cmds.Remove(yieldCmd);
             if (layers.Any())
             {
@@ -585,7 +571,7 @@ namespace Microsoft.Boogie
 
           foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
           {
-            if (absyToLayerNums[predCmd].Min() <= yieldingLayer &&
+            if (predCmd.Layers.Min() <= yieldingLayer &&
                 VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
             {
               Error(predCmd,
@@ -657,7 +643,7 @@ namespace Microsoft.Boogie
     {
       var signatureMatcher = new SignatureMatcher(actionProc.proc, actionProc.refinedAction.proc, checkingContext);
       Func<Variable, bool> isRemainingVariable = x =>
-        LocalVariableLayerRange(x).upperLayerNum == actionProc.upperLayer &&
+        x.layerRange.upperLayerNum == actionProc.upperLayer &&
         !actionProc.hiddenFormals.Contains(x);
       var procInParams = actionProc.proc.InParams.Where(isRemainingVariable).ToList();
       var procOutParams = actionProc.proc.OutParams.Where(isRemainingVariable).ToList();
@@ -752,20 +738,9 @@ namespace Microsoft.Boogie
       return layerNum <= yieldingLoops[block].upperLayer;
     }
 
-    public LayerRange GlobalVariableLayerRange(Variable g)
-    {
-      return g.layerRange;
-    }
-
-    public LayerRange LocalVariableLayerRange(Variable l)
-    {
-      return l.layerRange;
-    }
-
     public bool FormalRemainsInAction(ActionProc actionProc, Variable param)
     {
-      return LocalVariableLayerRange(param).Contains(actionProc.upperLayer) &&
-             !actionProc.hiddenFormals.Contains(param);
+      return param.layerRange.Contains(actionProc.upperLayer) && !actionProc.hiddenFormals.Contains(param);
     }
 
     public IEnumerable<AtomicAction> LinkActions =>
@@ -822,7 +797,7 @@ namespace Microsoft.Boogie
         var layerRange = proc.layerRange;
         if (node.Decl is GlobalVariable)
         {
-          var globalVarLayerRange = civlTypeChecker.GlobalVariableLayerRange(node.Decl);
+          var globalVarLayerRange = node.Decl.layerRange;
           if (!layerRange.Subset(globalVarLayerRange) ||
               globalVarLayerRange.lowerLayerNum == layerRange.lowerLayerNum && proc.actionQualifier != ActionQualifier.Link)
             // a global variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
@@ -885,7 +860,7 @@ namespace Microsoft.Boogie
       {
         if (node.Decl is GlobalVariable)
         {
-          civlTypeChecker.Require(civlTypeChecker.GlobalVariableLayerRange(node.Decl).Contains(layerNum),
+          civlTypeChecker.Require(node.Decl.layerRange.Contains(layerNum),
             node, $"Global variable not available at layer {layerNum}");
         }
 
@@ -1103,7 +1078,10 @@ namespace Microsoft.Boogie
         VisitSpecPre();
         base.VisitEnsures(ensures);
         VisitSpecPost(ensures);
-        CheckAccessToGlobalVariables(ensures);
+        if (!(yieldingProc is MoverProc && ensures.Layers.All(x => x == yieldingProc.upperLayer)))
+        {
+          CheckAccessToGlobalVariables(ensures);
+        }
         return ensures;
       }
 
@@ -1112,16 +1090,15 @@ namespace Microsoft.Boogie
         VisitSpecPre();
         base.VisitRequires(requires);
         VisitSpecPost(requires);
-        CheckAccessToGlobalVariables(requires);
+        if (!(yieldingProc is MoverProc && requires.Layers.All(x => x == yieldingProc.upperLayer)))
+        {
+          CheckAccessToGlobalVariables(requires);
+        }
         return requires;
       }
 
       private void CheckAccessToGlobalVariables(Absy absy)
       {
-        if (yieldingProc is MoverProc && civlTypeChecker.absyToLayerNums[absy].All(x => x == yieldingProc.upperLayer))
-        {
-          return;
-        }
         if (VariableCollector.Collect(absy, true).OfType<GlobalVariable>().Any())
         {
           civlTypeChecker.Error(absy,
@@ -1142,8 +1119,7 @@ namespace Microsoft.Boogie
         localVariableAccesses = new List<IdentifierExpr>();
         var cmd = base.VisitAssumeCmd(node);
         var fullLayerRange = new LayerRange(LayerRange.Min, yieldingProc.upperLayer);
-        if (!localVariableAccesses.TrueForAll(x =>
-          civlTypeChecker.LocalVariableLayerRange(x.Decl).Equals(fullLayerRange)))
+        if (!localVariableAccesses.TrueForAll(x => x.Decl.layerRange.Equals(fullLayerRange)))
         {
           civlTypeChecker.checkingContext.Error(node,
             "Local variables accessed in assume command must be available at all layers where the enclosing procedure exists");
@@ -1161,11 +1137,10 @@ namespace Microsoft.Boogie
           var lhs = node.Lhss[i].DeepAssignedVariable;
           if (lhs is LocalVariable lhsLocalVariable)
           {
-            var lhsLayerRange = civlTypeChecker.LocalVariableLayerRange(lhsLocalVariable);
+            var lhsLayerRange = lhsLocalVariable.layerRange;
             localVariableAccesses = new List<IdentifierExpr>();
             base.Visit(node.Rhss[i]);
-            if (!localVariableAccesses.TrueForAll(x =>
-              lhsLayerRange.Subset(civlTypeChecker.LocalVariableLayerRange(x.Decl))))
+            if (!localVariableAccesses.TrueForAll(x => lhsLayerRange.Subset(x.Decl.layerRange)))
             {
               civlTypeChecker.checkingContext.Error(node,
                 $"Variables accessed in the source of assignment to {lhs} must exist at all layers where {lhs} exists");
@@ -1183,9 +1158,8 @@ namespace Microsoft.Boogie
         base.Visit(node.Rhs);
         node.UnpackedLhs.Select(ie => ie.Decl).OfType<LocalVariable>().Iter(lhs =>
         {
-          var lhsLayerRange = civlTypeChecker.LocalVariableLayerRange(lhs);
-          if (!localVariableAccesses.TrueForAll(x =>
-                lhsLayerRange.Subset(civlTypeChecker.LocalVariableLayerRange(x.Decl))))
+          var lhsLayerRange = lhs.layerRange;
+          if (!localVariableAccesses.TrueForAll(x => lhsLayerRange.Subset(x.Decl.layerRange)))
           {
             civlTypeChecker.checkingContext.Error(node,
               $"Variables accessed in the unpacked expression must exist at all layers where {lhs} exists");
@@ -1208,14 +1182,12 @@ namespace Microsoft.Boogie
         {
           return;
         }
-        var specLayers = node.FindLayers().Distinct().OrderBy(l => l).ToList();
+        var specLayers = node.FindLayers();
         if (specLayers.Count == 0)
         {
           civlTypeChecker.Error(node, "Specification layer(s) not present");
           return;
         }
-
-        civlTypeChecker.absyToLayerNums[node] = new HashSet<int>(specLayers);
 
         foreach (var layer in specLayers)
         {
@@ -1227,7 +1199,7 @@ namespace Microsoft.Boogie
 
           foreach (var ie in globalVariableAccesses)
           {
-            if (!civlTypeChecker.GlobalVariableLayerRange(ie.Decl).Contains(layer))
+            if (!ie.Decl.layerRange.Contains(layer))
             {
               civlTypeChecker.checkingContext.Error(ie, "Global variable {0} is not available at layer {1}", ie.Name,
                 layer);
@@ -1236,7 +1208,7 @@ namespace Microsoft.Boogie
 
           foreach (var ie in localVariableAccesses)
           {
-            if (!civlTypeChecker.LocalVariableLayerRange(ie.Decl).Contains(layer))
+            if (!ie.Decl.layerRange.Contains(layer))
             {
               civlTypeChecker.checkingContext.Error(ie, "Local variable {0} is not available at layer {1}", ie.Name,
                 layer);
@@ -1417,7 +1389,7 @@ namespace Microsoft.Boogie
           Visit(call.Ins[i]);
 
           var formal = call.Proc.InParams[i];
-          var formalLayerRange = civlTypeChecker.LocalVariableLayerRange(formal);
+          var formalLayerRange = formal.layerRange;
           if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc)
           {
             formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.upperLayer);
@@ -1425,7 +1397,7 @@ namespace Microsoft.Boogie
 
           foreach (var ie in localVariableAccesses)
           {
-            var actualLayerRange = civlTypeChecker.LocalVariableLayerRange(ie.Decl);
+            var actualLayerRange = ie.Decl.layerRange;
             if (formalLayerRange.Subset(actualLayerRange))
             {
               continue;
@@ -1445,9 +1417,9 @@ namespace Microsoft.Boogie
           // Visitor only called to check for global variable accesses
           Visit(actualIdentifierExpr);
 
-          var actualLayerRange = civlTypeChecker.LocalVariableLayerRange(actualIdentifierExpr.Decl);
+          var actualLayerRange = actualIdentifierExpr.Decl.layerRange;
           var formal = call.Proc.OutParams[i];
-          var formalLayerRange = civlTypeChecker.LocalVariableLayerRange(formal);
+          var formalLayerRange = formal.layerRange;
           if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc)
           {
             formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.upperLayer);
@@ -1472,7 +1444,7 @@ namespace Microsoft.Boogie
 
       private void VisitPureProcCallCmd(CallCmd call, int callerProcUpperLayer)
       {
-        var calledLayers = ((ICarriesAttributes)call).FindLayers();
+        var calledLayers = call.Layers;
         if (calledLayers.Count != 1)
         {
           civlTypeChecker.checkingContext.Error(call, "Call to pure procedure must be annotated with a layer");
@@ -1489,8 +1461,7 @@ namespace Microsoft.Boogie
         VisitYieldInvariantCallCmd(call, callerProcUpperLayer, calleeLayerNum);
         CheckCallOutputs(call, callerProcUpperLayer, calleeLayerNum);
         Require(callerProcUpperLayer == calleeLayerNum ||
-                linkAction.modifiedGlobalVars.All(v =>
-                  civlTypeChecker.GlobalVariableLayerRange(v).upperLayerNum == calleeLayerNum),
+                linkAction.modifiedGlobalVars.All(v => v.layerRange.upperLayerNum == calleeLayerNum),
           call, $"All modified variables of callee must be hidden at layer {calleeLayerNum}");
       }
 
@@ -1516,11 +1487,11 @@ namespace Microsoft.Boogie
 
       private void CheckCallOutputs(CallCmd call, int callerProcUpperLayer, int calleeLayerNum)
       {
-        Require(call.Outs.All(ie => civlTypeChecker.LocalVariableLayerRange(ie.Decl).lowerLayerNum == calleeLayerNum),
+        Require(call.Outs.All(ie => ie.Decl.layerRange.lowerLayerNum == calleeLayerNum),
           call,
           $"All output variables must be introduced at layer {calleeLayerNum}");
         Require(callerProcUpperLayer == calleeLayerNum ||
-                call.Outs.All(ie => civlTypeChecker.LocalVariableLayerRange(ie.Decl).upperLayerNum == calleeLayerNum),
+                call.Outs.All(ie => ie.Decl.layerRange.upperLayerNum == calleeLayerNum),
           call, $"All output variables of call must be hidden at layer {calleeLayerNum}");
       }
 

@@ -1546,6 +1546,8 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(CmdContracts))]
   public abstract class Cmd : Absy
   {
+    public List<int> Layers;
+    
     public byte[] Checksum { get; internal set; }
     public byte[] SugaredCmdChecksum { get; internal set; }
     public bool IrrelevantForChecksumComputation { get; set; }
@@ -3196,6 +3198,8 @@ namespace Microsoft.Boogie
         }
       }
 
+      (this as ICarriesAttributes).ResolveAttributes(rc);
+      Layers = (this as ICarriesAttributes).FindLayers();
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
       {
@@ -3840,9 +3844,9 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       Expr.Resolve(rc);
-
+      (this as ICarriesAttributes).ResolveAttributes(rc);
+      Layers = (this as ICarriesAttributes).FindLayers();
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
       {
@@ -3852,7 +3856,6 @@ namespace Microsoft.Boogie
 
     public override void AddAssignedVariables(List<Variable> vars)
     {
-      //Contract.Requires(vars != null);
     }
   }
 

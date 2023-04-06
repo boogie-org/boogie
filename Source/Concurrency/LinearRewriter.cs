@@ -17,22 +17,9 @@ public class LinearRewriter
 
   private LinearRewriter(CivlTypeChecker civlTypeChecker, Procedure proc)
   {
-    int? LayerNum()
-    {
-      if (proc is not YieldProcedureDecl)
-      {
-        return null;
-      }
-      var layers = ((ICarriesAttributes)proc).FindLayers();
-      if (layers.Count == 0)
-      {
-        return null;
-      }
-      return layers[0];
-    }
     this.civlTypeChecker = civlTypeChecker;
     this.proc = proc;
-    this.layerNum = LayerNum();
+    this.layerNum = proc is YieldProcedureDecl decl ? decl.layer : null;
   }
   
   public static bool IsPrimitive(DeclWithFormals decl)

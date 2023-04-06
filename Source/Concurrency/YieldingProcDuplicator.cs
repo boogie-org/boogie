@@ -84,8 +84,8 @@ namespace Microsoft.Boogie
       {
         return requires;
       }
-
-      if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
+      
+      if (!node.Layers.Contains(layerNum))
       {
         requires.Condition = Expr.True;
       }
@@ -100,8 +100,8 @@ namespace Microsoft.Boogie
       {
         return ensures;
       }
-
-      if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
+      
+      if (!node.Layers.Contains(layerNum))
       {
         ensures.Condition = Expr.True;
       }
@@ -195,7 +195,7 @@ namespace Microsoft.Boogie
     public override Cmd VisitAssertCmd(AssertCmd node)
     {
       AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
-      if (!civlTypeChecker.absyToLayerNums[node].Contains(layerNum))
+      if (!node.Layers.Contains(layerNum))
       {
         assertCmd.Expr = Expr.True;
       }
@@ -260,7 +260,7 @@ namespace Microsoft.Boogie
 
       if (newCall.Proc.IsPure)
       {
-        if (((ICarriesAttributes)newCall).FindLayers()[0] == layerNum)
+        if (newCall.Layers[0] == layerNum)
         {
           newCmdSeq.Add(newCall);
         }
