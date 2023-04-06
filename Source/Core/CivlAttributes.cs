@@ -1,9 +1,67 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
 {
+  public class LayerRange
+  {
+    public static int Min = 0;
+    public static int Max = int.MaxValue;
+    public static LayerRange MinMax = new LayerRange(Min, Max);
+
+    public int lowerLayerNum;
+    public int upperLayerNum;
+
+    public LayerRange(int layer) : this(layer, layer)
+    {
+    }
+
+    public LayerRange(int lower, int upper)
+    {
+      Debug.Assert(lower <= upper);
+      this.lowerLayerNum = lower;
+      this.upperLayerNum = upper;
+    }
+
+    public bool Contains(int layerNum)
+    {
+      return lowerLayerNum <= layerNum && layerNum <= upperLayerNum;
+    }
+
+    public bool Subset(LayerRange other)
+    {
+      return other.lowerLayerNum <= lowerLayerNum && upperLayerNum <= other.upperLayerNum;
+    }
+
+    public bool OverlapsWith(LayerRange other)
+    {
+      return lowerLayerNum <= other.upperLayerNum && other.lowerLayerNum <= upperLayerNum;
+    }
+
+    public override string ToString()
+    {
+      return $"[{lowerLayerNum}, {upperLayerNum}]";
+    }
+
+    public override bool Equals(object obj)
+    {
+      LayerRange other = obj as LayerRange;
+      if (obj == null)
+      {
+        return false;
+      }
+
+      return lowerLayerNum == other.lowerLayerNum && upperLayerNum == other.upperLayerNum;
+    }
+
+    public override int GetHashCode()
+    {
+      return (23 * 31 + lowerLayerNum) * 31 + upperLayerNum;
+    }
+  }
+
   public static class CivlAttributes
   {
     public const string LAYER = "layer";

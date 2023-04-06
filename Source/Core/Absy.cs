@@ -250,6 +250,35 @@ namespace Microsoft.Boogie
   public interface ICarriesAttributes
   {
     QKeyValue Attributes { get; set; }
+
+    public void ResolveAttributes(ResolutionContext rc)
+    {
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
+      {
+        kv.Resolve(rc);
+      }
+    }
+
+    public void TypecheckAttributes(TypecheckingContext rc)
+    {
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
+      {
+        kv.Typecheck(rc);
+      }
+    }
+
+    public List<int> FindLayers()
+    {
+      List<int> layers = new List<int>();
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
+      {
+        if (kv.Key == CivlAttributes.LAYER)
+        {
+          layers.AddRange(kv.Params.Select(o => ((LiteralExpr)o).asBigNum.ToIntSafe));
+        }
+      }
+      return layers;
+    }
   }
 
   [ContractClassFor(typeof(Absy))]
@@ -878,24 +907,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    protected void ResolveAttributes(ResolutionContext rc)
-    {
-      Contract.Requires(rc != null);
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        kv.Resolve(rc);
-      }
-    }
-
-    protected void TypecheckAttributes(TypecheckingContext rc)
-    {
-      Contract.Requires(rc != null);
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        kv.Typecheck(rc);
-      }
-    }
-
     /// <summary>
     /// If the declaration has an attribute {:name} or {:name true}, then set "result" to "true" and return "true".
     /// If the declaration has an attribute {:name false}, then set "result" to "false" and return "true".
@@ -1044,6 +1055,44 @@ namespace Microsoft.Boogie
       }
     }
 
+    protected LayerRange ToLayerRange(TypecheckingContext tc, LayerRange defaultLayerRange = null)
+    {
+      // We return min-max range for invalid declarations in order to proceed with type checking.
+      if (defaultLayerRange == null)
+      {
+        defaultLayerRange = LayerRange.MinMax;
+      }
+      List<int> layerNums = (this as ICarriesAttributes).FindLayers();
+      if (layerNums.Count == 0)
+      {
+        return defaultLayerRange;
+      }
+      if (layerNums.Count == 1)
+      {
+        return new LayerRange(layerNums[0], layerNums[0]);
+      }
+      if (layerNums.Count == 2)
+      {
+        if (layerNums[0] <= layerNums[1])
+        {
+          return new LayerRange(layerNums[0], layerNums[1]);
+        }
+      }
+      tc.Error(this, "invalid layer range");
+      return defaultLayerRange;
+    }
+
+    protected int ToLayer(ResolutionContext rc)
+    {
+      List<int> layers = (this as ICarriesAttributes).FindLayers();
+      if (layers.Count == 1)
+      {
+        return layers[0];
+      }
+      rc.Error(this, "expected single layer number");
+      return 0;
+    }
+
     public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
     public abstract void Register(ResolutionContext /*!*/ rc);
 
@@ -1187,7 +1236,7 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      ResolveAttributes(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       rc.StateMode = ResolutionContext.State.StateLess;
       Expr.Resolve(rc);
       rc.StateMode = ResolutionContext.State.Single;
@@ -1196,7 +1245,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null); // follows from postcondition of Expr.Typecheck
       if (!Expr.Type.Unify(Type.Bool))
@@ -1322,13 +1371,13 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      ResolveAttributes(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -1608,7 +1657,7 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      ResolveAttributes(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
 
       int previousState = rc.TypeBinderState;
       try
@@ -1630,7 +1679,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
     }
 
     public static void ResolveTypeSynonyms(List<TypeSynonymDecl /*!*/> /*!*/ synonymDecls, ResolutionContext /*!*/ rc)
@@ -1769,8 +1818,9 @@ namespace Microsoft.Boogie
 
   public abstract class Variable : NamedDeclaration
   {
-    private TypedIdent /*!*/
-      typedIdent;
+    private TypedIdent typedIdent;
+
+    public LayerRange layerRange;
 
     public TypedIdent TypedIdent
     {
@@ -1792,7 +1842,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(this.typedIdent != null);
     }
 
-    public Variable(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
+    public Variable(IToken tok, TypedIdent typedIdent)
       : base(tok, typedIdent.Name)
     {
       Contract.Requires(tok != null);
@@ -1800,7 +1850,7 @@ namespace Microsoft.Boogie
       this.typedIdent = typedIdent;
     }
 
-    public Variable(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent, QKeyValue kv)
+    public Variable(IToken tok, TypedIdent typedIdent, QKeyValue kv)
       : base(tok, typedIdent.Name)
     {
       Contract.Requires(tok != null);
@@ -1813,7 +1863,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, level, "var ");
       EmitVitals(stream, level, true);
       stream.WriteLine(";");
@@ -1821,7 +1870,6 @@ namespace Microsoft.Boogie
 
     public void EmitVitals(TokenTextWriter stream, int level, bool emitAttributes, bool emitType = true)
     {
-      Contract.Requires(stream != null);
       if (emitAttributes)
       {
         EmitAttributes(stream);
@@ -1838,14 +1886,12 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       this.TypedIdent.Resolve(rc);
-      ResolveAttributes(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
     }
 
     public void ResolveWhere(ResolutionContext rc)
     {
-      Contract.Requires(rc != null);
       if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && this.TypedIdent.WhereExpr != null)
       {
         rc.Error(tok, "assumption variable may not be declared with a where clause");
@@ -1859,12 +1905,27 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       this.TypedIdent.Typecheck(tc);
       if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && !this.TypedIdent.Type.IsBool)
       {
         tc.Error(tok, "assumption variable must be of type 'bool'");
+      }
+      if (tc.Proc is YieldProcedureDecl yieldProcedureDecl)
+      {
+        layerRange = ToLayerRange(tc, new LayerRange(LayerRange.Min, yieldProcedureDecl.layer));
+        if (layerRange.upperLayerNum > yieldProcedureDecl.layer)
+        {
+          tc.Error(this, "hidden layer of local variable may not be more than the layer of its procedure");
+        }
+      }
+      else if (tc.Proc is YieldInvariantDecl yieldInvariantDecl)
+      {
+        layerRange = new LayerRange(yieldInvariantDecl.layer);
+      }
+      else
+      {
+        layerRange = ToLayerRange(tc);
       }
     }
   }
@@ -1973,14 +2034,14 @@ namespace Microsoft.Boogie
 
   public class GlobalVariable : Variable
   {
-    public GlobalVariable(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
+    public GlobalVariable(IToken tok, TypedIdent typedIdent)
       : base(tok, typedIdent)
     {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
     }
 
-    public GlobalVariable(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent, QKeyValue kv)
+    public GlobalVariable(IToken tok, TypedIdent typedIdent, QKeyValue kv)
       : base(tok, typedIdent, kv)
     {
       Contract.Requires(tok != null);
@@ -1994,14 +2055,11 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddVariable(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitGlobalVariable(this);
     }
   }
@@ -2484,7 +2542,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       foreach (Formal /*!*/ p in InParams)
       {
         Contract.Assert(p != null);
@@ -2674,7 +2732,7 @@ namespace Microsoft.Boogie
         rc.PushVarContext();
         RegisterFormals(InParams, rc);
         RegisterFormals(OutParams, rc);
-        ResolveAttributes(rc);
+        (this as ICarriesAttributes).ResolveAttributes(rc);
         if (Body != null)
         {
           Contract.Assert(DefinitionBody == null);
@@ -2843,12 +2901,11 @@ namespace Microsoft.Boogie
   {
     public readonly bool Free;
 
-    private Expr /*!*/
-      _condition;
+    private Expr _condition;
 
     public ProofObligationDescription Description { get; set; } = new RequiresDescription();
 
-    public Expr /*!*/ Condition
+    public Expr Condition
     {
       get
       {
@@ -2907,21 +2964,18 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(condition != null);
       Contract.Requires(token != null);
-      //:this(token, free, condition, comment, null);
     }
 
     public Requires(bool free, Expr condition)
       : this(Token.NoToken, free, condition, null)
     {
       Contract.Requires(condition != null);
-      //:this(Token.NoToken, free, condition, null);
     }
 
     public Requires(bool free, Expr condition, string comment)
       : this(Token.NoToken, free, condition, comment)
     {
       Contract.Requires(condition != null);
-      //:this(Token.NoToken, free, condition, comment);
     }
 
     public void Emit(TokenTextWriter stream, int level)
@@ -2940,13 +2994,12 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       this.Condition.Resolve(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       this.Condition.Typecheck(tc);
       Contract.Assert(this.Condition.Type != null); // follows from postcondition of Expr.Typecheck
       if (!this.Condition.Type.Unify(Type.Bool))
@@ -2967,10 +3020,9 @@ namespace Microsoft.Boogie
 
     public ProofObligationDescription Description { get; set; } = new EnsuresDescription();
 
-    private Expr /*!*/
-      _condition;
+    private Expr _condition;
 
-    public Expr /*!*/ Condition
+    public Expr Condition
     {
       get
       {
@@ -3012,7 +3064,7 @@ namespace Microsoft.Boogie
       return Free && QKeyValue.FindBoolAttribute(this.Attributes, "always_assume");
     }
 
-    public Ensures(IToken token, bool free, Expr /*!*/ condition, string comment, QKeyValue kv)
+    public Ensures(IToken token, bool free, Expr condition, string comment, QKeyValue kv)
       : base(token)
     {
       Contract.Requires(condition != null);
@@ -3028,21 +3080,18 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(condition != null);
       Contract.Requires(token != null);
-      //:this(token, free, condition, comment, null);
     }
 
     public Ensures(bool free, Expr condition)
       : this(Token.NoToken, free, condition, null)
     {
       Contract.Requires(condition != null);
-      //:this(Token.NoToken, free, condition, null);
     }
 
     public Ensures(bool free, Expr condition, string comment)
       : this(Token.NoToken, free, condition, comment)
     {
       Contract.Requires(condition != null);
-      //:this(Token.NoToken, free, condition, comment);
     }
 
     public void Emit(TokenTextWriter stream, int level)
@@ -3061,8 +3110,8 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       this.Condition.Resolve(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -3202,7 +3251,7 @@ namespace Microsoft.Boogie
         }
 
         rc.StateMode = ResolutionContext.State.Single;
-        ResolveAttributes(rc);
+        (this as ICarriesAttributes).ResolveAttributes(rc);
 
         Type.CheckBoundVariableOccurrences(TypeParameters,
           InParams.Select(Item => Item.TypedIdent.Type).ToList(),
@@ -3255,18 +3304,18 @@ namespace Microsoft.Boogie
 
   public class YieldInvariantDecl : Procedure
   {
-    private int layerNum;
-
-    public int LayerNum
-    {
-      get { return layerNum; }
-      set { layerNum = value; }
-    }
+    public int layer;
 
     public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
       base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false, requires, new List<IdentifierExpr>(),
         requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
     {
+    }
+
+    public override void Register(ResolutionContext rc)
+    {
+      base.Register(rc);
+      layer = ToLayer(rc);
     }
   }
 
@@ -3356,6 +3405,7 @@ namespace Microsoft.Boogie
     public int PendingAsyncStartIndex;
 
     public Implementation impl; // set when the implementation of this action is resolved
+    public LayerRange layerRange; // set during type checking
 
     public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
       List<Variable> inParams, List<Variable> outParams,
@@ -3508,6 +3558,8 @@ namespace Microsoft.Boogie
           }
         }
       }
+
+      layerRange = ToLayerRange(tc);
     }
 
     public Dictionary<ActionDecl, ActionDecl> EliminationMap()
@@ -3571,6 +3623,8 @@ namespace Microsoft.Boogie
     public List<CallCmd> yieldPreserves;
     public ActionDeclRef refinedAction;
 
+    public int layer; // set during type checking
+
     public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams, List<Variable> outParams,
       List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
       List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
@@ -3617,11 +3671,17 @@ namespace Microsoft.Boogie
       }
     }
 
+    public override void Register(ResolutionContext rc)
+    {
+      base.Register(rc);
+      layer = ToLayer(rc);
+    }
+
     public override void Typecheck(TypecheckingContext tc)
     {
-      base.Typecheck(tc);
       var oldProc = tc.Proc;
       tc.Proc = this;
+      base.Typecheck(tc);
       yieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
       yieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
       yieldPreserves.Iter(callCmd => callCmd.Typecheck(tc));
@@ -4185,7 +4245,7 @@ namespace Microsoft.Boogie
           b.Register(rc);
         }
 
-        ResolveAttributes(rc);
+        (this as ICarriesAttributes).ResolveAttributes(rc);
 
         rc.StateMode = Proc.IsPure ? ResolutionContext.State.StateLess : ResolutionContext.State.Two;
         foreach (Block b in Blocks)
@@ -4232,14 +4292,13 @@ namespace Microsoft.Boogie
         MatchFormals(this.OutParams, Proc.OutParams, "out", tc);
       }
 
+      var oldProc = tc.Proc;
+      tc.Proc = Proc;
       foreach (Variable /*!*/ v in LocVars)
       {
         Contract.Assert(v != null);
         v.Typecheck(tc);
       }
-
-      var oldProc = tc.Proc;
-      tc.Proc = Proc;
       foreach (Block b in Blocks)
       {
         b.Typecheck(tc);

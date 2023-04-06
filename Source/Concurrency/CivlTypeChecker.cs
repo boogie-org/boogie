@@ -14,8 +14,6 @@ namespace Microsoft.Boogie
 
     // Don't access directly!
     // Use public access methods.
-    private Dictionary<Variable, LayerRange> globalVarToLayerRange;
-    private Dictionary<Variable, LayerRange> localVarToLayerRange;
     private string namePrefix;
 
     public Dictionary<Block, YieldingLoop> yieldingLoops;
@@ -32,7 +30,7 @@ namespace Microsoft.Boogie
     
     // These collections are for convenience in later phases and are only initialized at the end of type checking.
     public List<int> allRefinementLayers;
-    public IEnumerable<Variable> GlobalVariables => globalVarToLayerRange.Keys;
+    public IEnumerable<Variable> GlobalVariables => program.GlobalVariables;
     
     public LinearTypeChecker linearTypeChecker;
 
@@ -45,8 +43,6 @@ namespace Microsoft.Boogie
       this.Options = options;
       this.linearTypeChecker = new LinearTypeChecker(this);
 
-      this.globalVarToLayerRange = new Dictionary<Variable, LayerRange>();
-      this.localVarToLayerRange = new Dictionary<Variable, LayerRange>();
       this.yieldingLoops = new Dictionary<Block, YieldingLoop>();
       this.absyToLayerNums = new Dictionary<Absy, HashSet<int>>();
       this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
@@ -128,7 +124,6 @@ namespace Microsoft.Boogie
         return;
       }
       
-      TypeCheckGlobalVariables();
       TypeCheckYieldInvariants();
       TypeCheckActions();
       if (checkingContext.ErrorCount > 0)
@@ -203,25 +198,15 @@ namespace Microsoft.Boogie
       }
     }
 
-    private void TypeCheckGlobalVariables()
-    {
-      foreach (var g in program.GlobalVariables)
-      {
-        globalVarToLayerRange[g] = ToLayerRange(FindLayers(g.Attributes), g);
-      }
-    }
-
-    private void TypeCheckCreates(
-      HashSet<ActionDecl> actionProcs,
-      Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
+    private void TypeCheckCreates(HashSet<ActionDecl> actionProcs)
     {
       actionProcs.Iter(proc =>
       {
         proc.creates.Iter(actionDeclRef =>
         {
           var pendingAsync = actionDeclRef.actionDecl;
-          var actionLayerRange = actionProcToLayerRange[proc];
-          var pendingAsyncLayerRange = actionProcToLayerRange[pendingAsync];
+          var actionLayerRange = proc.layerRange;
+          var pendingAsyncLayerRange = pendingAsync.layerRange;
           if (!actionLayerRange.Subset(pendingAsyncLayerRange))
           {
             Error(proc, $"Pending async {pendingAsync.Name} is not available on all layers of {proc.Name}");
@@ -230,24 +215,24 @@ namespace Microsoft.Boogie
       }); 
     }
     
-    private void TypeCheckLinkAction(Procedure proc, LayerRange layerRange)
+    private void TypeCheckLinkAction(ActionDecl proc)
     {
-      if (proc.Modifies.Any(ie => GlobalVariableLayerRange(ie.Decl).lowerLayerNum != layerRange.lowerLayerNum))
+      if (proc.Modifies.Any(ie => GlobalVariableLayerRange(ie.Decl).lowerLayerNum != proc.layerRange.lowerLayerNum))
       {
         Error(proc, "Link actions can modify a global variable only on its lower layer");
       }
     }
 
-    private void TypeCheckActionRefinement(ActionDecl proc, Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
+    private void TypeCheckActionRefinement(ActionDecl proc)
     {
-      var layer = actionProcToLayerRange[proc].upperLayerNum;
+      var layer = proc.layerRange.upperLayerNum;
       var refinedProc = proc.refinedAction.actionDecl;
-      if (!actionProcToLayerRange[refinedProc].Contains(layer + 1))
+      if (!refinedProc.layerRange.Contains(layer + 1))
       {
         Error(refinedProc, $"Refined action does not exist at layer {layer + 1}");
       }
       var invariantProc = proc.invariantAction.actionDecl;
-      if (!actionProcToLayerRange[invariantProc].Contains(layer))
+      if (!invariantProc.layerRange.Contains(layer))
       {
         Error(invariantProc, $"Invariant action does not exist at layer {layer}");
       }
@@ -256,12 +241,12 @@ namespace Microsoft.Boogie
       foreach (var elimDecl in proc.eliminates)
       {
         var elimProc = elimDecl.target.actionDecl;
-        if (!actionProcToLayerRange[elimProc].Contains(layer))
+        if (!elimProc.layerRange.Contains(layer))
         {
           Error(elimDecl, $"Action {elimProc.Name} does not exist at layer {layer}");
         }
         var absProc = elimDecl.abstraction.actionDecl;
-        if (!actionProcToLayerRange[absProc].Contains(layer))
+        if (!absProc.layerRange.Contains(layer))
         {
           Error(elimDecl, $"Action {absProc.Name} does not exist at layer {layer}");
         }
@@ -272,15 +257,9 @@ namespace Microsoft.Boogie
     private void TypeCheckActions()
     {
       var actionProcs = program.Procedures.OfType<ActionDecl>().ToHashSet();
-      var actionProcToLayerRange = new Dictionary<ActionDecl, LayerRange>();
-      foreach (var proc in actionProcs)
-      {
-        LayerRange layerRange = ToLayerRange(FindLayers(proc.Attributes), proc);
-        actionProcToLayerRange.Add(proc, layerRange);
-      }
 
       // type check creates lists
-      TypeCheckCreates(actionProcs, actionProcToLayerRange);
+      TypeCheckCreates(actionProcs);
       if (checkingContext.ErrorCount > 0)
       {
         return;
@@ -289,13 +268,13 @@ namespace Microsoft.Boogie
       // type check link actions
       actionProcs.Where(proc => proc.actionQualifier == ActionQualifier.Link).Iter(proc =>
       {
-        TypeCheckLinkAction(proc, actionProcToLayerRange[proc]);
+        TypeCheckLinkAction(proc);
       });
 
       // type check action refinements
       actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        TypeCheckActionRefinement(proc, actionProcToLayerRange);
+        TypeCheckActionRefinement(proc);
       });
       if (checkingContext.ErrorCount > 0)
       {
@@ -303,7 +282,7 @@ namespace Microsoft.Boogie
       }
       
       // Type check action bodies
-      var actionImplVisitor = new ActionImplVisitor(this, actionProcToLayerRange);
+      var actionImplVisitor = new ActionImplVisitor(this);
       foreach (var proc in actionProcs)
       {
         actionImplVisitor.VisitImplementation(proc.impl);
@@ -333,7 +312,7 @@ namespace Microsoft.Boogie
         // but only those atomic actions (pending async or otherwise) that do not refine
         // another action.
         Implementation impl = proc.impl;
-        LayerRange layerRange = actionProcToLayerRange[proc];
+        LayerRange layerRange = proc.layerRange;
         if (proc.actionQualifier == ActionQualifier.Link)
         {
           procToAtomicAction[proc] = new AtomicAction(impl, layerRange, null, this);
@@ -360,7 +339,7 @@ namespace Microsoft.Boogie
       // Therefore, only the type AtomicAction will be created now.
       actionProcs.Where(proc => proc.refinedAction != null).Iter(proc =>
       {
-        CreateActionsThatRefineAnotherAction(proc, actionProcToLayerRange);
+        CreateActionsThatRefineAnotherAction(proc);
       });
 
       // Inline atomic actions
@@ -409,17 +388,17 @@ namespace Microsoft.Boogie
       });
     }
 
-    void CreateActionsThatRefineAnotherAction(ActionDecl proc, Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
+    void CreateActionsThatRefineAnotherAction(ActionDecl proc)
     {
       if (procToAtomicAction.ContainsKey(proc))
       {
         return;
       }
       var refinedProc = proc.refinedAction.actionDecl;
-      CreateActionsThatRefineAnotherAction(refinedProc, actionProcToLayerRange);
+      CreateActionsThatRefineAnotherAction(refinedProc);
       var refinedAction = procToAtomicAction[refinedProc];
       Implementation impl = proc.impl;
-      LayerRange layerRange = actionProcToLayerRange[proc];
+      LayerRange layerRange = proc.layerRange;
       procToAtomicAction[proc] = new AtomicAction(impl, layerRange, refinedAction, this);
     }
 
@@ -427,18 +406,10 @@ namespace Microsoft.Boogie
     {
       foreach (var yieldInvariant in program.TopLevelDeclarations.OfType<YieldInvariantDecl>())
       {
-        var layers = FindLayers(yieldInvariant.Attributes);
-        if (layers.Count != 1)
-        {
-          Error(yieldInvariant, "A yield invariant must be annotated with a single layer");
-          continue;
-        }
-        yieldInvariant.LayerNum = layers[0];
-        var visitor = new YieldInvariantVisitor(this, layers[0]);
+        var visitor = new YieldInvariantVisitor(this, yieldInvariant.layer);
         visitor.VisitProcedure(yieldInvariant);
         foreach (var param in yieldInvariant.InParams)
         {
-          localVarToLayerRange[param] = new LayerRange(yieldInvariant.LayerNum);
           var linearKind = LinearDomainCollector.FindLinearKind(param);
           if (linearKind == LinearKind.LINEAR_IN || linearKind == LinearKind.LINEAR_OUT)
           {
@@ -491,23 +462,7 @@ namespace Microsoft.Boogie
     {
       foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>())
       {
-        int upperLayer; // must be initialized by the following code, otherwise it is an error
-        List<int> layers = FindLayers(proc.Attributes);
-        if (layers.Count == 1)
-        {
-          upperLayer = layers[0];
-        }
-        else
-        {
-          Error(proc, "Expected single layer number for yielding procedure");
-          continue;
-        }
-
-        foreach (var param in Enumerable.Union(proc.InParams, proc.OutParams))
-        {
-          localVarToLayerRange[param] = FindLocalVariableLayerRange(proc, param, upperLayer);
-        }
-        
+        int upperLayer = proc.layer;
         MoverType moverType = proc.moverType;
 
         TypeCheckYieldingPrePostDecls(proc, out var yieldRequires, out var yieldEnsures);
@@ -543,7 +498,7 @@ namespace Microsoft.Boogie
             procToAtomicAction[SkipAtomicAction.proc] = SkipAtomicAction;
           }
           var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams)
-            .Where(x => localVarToLayerRange[x].upperLayerNum == upperLayer));
+            .Where(x => x.layerRange.upperLayerNum == upperLayer));
           var actionProc = new ActionProc(proc, SkipAtomicAction, upperLayer, hiddenFormals, yieldRequires, yieldEnsures);
           procToYieldingProc[proc] = actionProc;
         }
@@ -591,7 +546,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            var layers = FindLayers(yieldCmd.Attributes);
+            var layers = ((ICarriesAttributes)yieldCmd).FindLayers();
             header.Cmds.Remove(yieldCmd);
             if (layers.Any())
             {
@@ -620,7 +575,7 @@ namespace Microsoft.Boogie
           foreach (var callCmd in yieldInvariants.Where(callCmd => YieldInvariantCallChecker.CheckLoop(this, callCmd, header)))
           {
             var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-            var calleeLayerNum = yieldInvariant.LayerNum;
+            var calleeLayerNum = yieldInvariant.layer;
             if (calleeLayerNum > yieldingLayer)
             {
               Error(callCmd, $"Loop must yield at layer {calleeLayerNum} of the called yield invariant");
@@ -735,8 +690,7 @@ namespace Microsoft.Boogie
         foreach (Variable v in impl.LocVars)
         {
           int upperLayer = procToYieldingProc[impl.Proc].upperLayer;
-          localVarToLayerRange[v] = FindLocalVariableLayerRange(impl, v, upperLayer);
-          var layer = localVarToLayerRange[v].lowerLayerNum;
+          var layer = v.layerRange.lowerLayerNum;
           if (v.HasAttribute(CivlAttributes.PENDING_ASYNC))
           {
             if (!pendingAsyncMultisetTypes.Contains(v.TypedIdent.Type))
@@ -768,130 +722,24 @@ namespace Microsoft.Boogie
         // (i.e., layer declarations are only taken from procedures, not implementations)
         for (int i = 0; i < impl.Proc.InParams.Count; i++)
         {
-          Variable v = impl.Proc.InParams[i];
-          if (localVarToLayerRange.ContainsKey(v))
-          {
-            localVarToLayerRange[impl.InParams[i]] = localVarToLayerRange[v];
-          }
+          impl.InParams[i].layerRange = impl.Proc.InParams[i].layerRange;
         }
 
         for (int i = 0; i < impl.Proc.OutParams.Count; i++)
         {
-          Variable v = impl.Proc.OutParams[i];
-          if (localVarToLayerRange.ContainsKey(v))
-          {
-            localVarToLayerRange[impl.OutParams[i]] = localVarToLayerRange[v];
-          }
+          impl.OutParams[i].layerRange = impl.Proc.OutParams[i].layerRange;
         }
       }
 
-      // Also add parameters of atomic actions to localVarToLayerRange,
-      // assigning to them the layer range of the action.
+      // Also copy the layer range of each action to its parameters
       foreach (var a in procToAtomicAction.Values)
       {
         foreach (var v in a.proc.InParams.Union(a.proc.OutParams).Union(a.impl.InParams).Union(a.impl.OutParams))
         {
-          localVarToLayerRange[v] = a.layerRange;
+          v.layerRange = a.layerRange;
         }
       }
     }
-
-    #region Helpers for attribute parsing
-    
-    public List<int> FindLayers(QKeyValue kv)
-    {
-      List<int> layers = new List<int>();
-      for (; kv != null; kv = kv.Next)
-      {
-        if (kv.Key == CivlAttributes.LAYER)
-        {
-          layers.AddRange(TypeCheckLayers(kv));
-        }
-      }
-      return layers;
-    }
-
-    private List<int> TypeCheckLayers(QKeyValue kv)
-    {
-      var layers = new List<int>();
-      foreach (var o in kv.Params)
-      {
-        var layerNum = TypeCheckLayer(kv, o);
-        if (layerNum.HasValue)
-        {
-          layers.Add(layerNum.Value);
-        }
-      }
-      return layers;
-    }
-
-    private int? TypeCheckLayer(QKeyValue kv, object o)
-    {
-      if (o is LiteralExpr l && l.isBigNum)
-      {
-        var n = l.asBigNum;
-        if (n.IsNegative)
-        {
-          Error(kv, "Layer must be non-negative");
-        }
-        else if (!n.InInt32)
-        {
-          Error(kv, "Layer is too large (max value is Int32.MaxValue)");
-        }
-        else
-        {
-          return l.asBigNum.ToIntSafe;
-        }
-      }
-      else
-      {
-        Error(kv, "Layer must be a non-negative integer");
-      }
-      return null;
-    }
-
-    private LayerRange ToLayerRange(List<int> layerNums, Absy absy, LayerRange defaultLayerRange = null)
-    {
-      // We return min-max range for invalid declarations in order to proceed with type checking.
-      if (defaultLayerRange == null)
-      {
-        defaultLayerRange = LayerRange.MinMax;
-      }
-
-      if (layerNums.Count == 0)
-      {
-        return defaultLayerRange;
-      }
-
-      if (layerNums.Count == 1)
-      {
-        return new LayerRange(layerNums[0], layerNums[0]);
-      }
-
-      if (layerNums.Count == 2)
-      {
-        if (layerNums[0] <= layerNums[1])
-        {
-          return new LayerRange(layerNums[0], layerNums[1]);
-        }
-      }
-
-      Error(absy, "Invalid layer range");
-      return defaultLayerRange;
-    }
-
-    private LayerRange FindLocalVariableLayerRange(Declaration decl, Variable v, int enclosingProcLayerNum)
-    {
-      var layerRange = ToLayerRange(FindLayers(v.Attributes), v, new LayerRange(LayerRange.Min, enclosingProcLayerNum));
-      if (layerRange.upperLayerNum > enclosingProcLayerNum)
-      {
-        Error(decl,
-          "Hidden layer of local variable cannot be greater than the disappearing layer of enclosing procedure");
-      }
-      return layerRange;
-    }
-
-    #endregion
 
     #region Public access methods
 
@@ -906,14 +754,12 @@ namespace Microsoft.Boogie
 
     public LayerRange GlobalVariableLayerRange(Variable g)
     {
-      Debug.Assert(globalVarToLayerRange.ContainsKey(g));
-      return globalVarToLayerRange[g];
+      return g.layerRange;
     }
 
     public LayerRange LocalVariableLayerRange(Variable l)
     {
-      Debug.Assert(localVarToLayerRange.ContainsKey(l));
-      return localVarToLayerRange[l];
+      return l.layerRange;
     }
 
     public bool FormalRemainsInAction(ActionProc actionProc, Variable param)
@@ -950,14 +796,12 @@ namespace Microsoft.Boogie
     private class ActionImplVisitor : ReadOnlyVisitor
     {
       private CivlTypeChecker civlTypeChecker;
-      private Dictionary<ActionDecl, LayerRange> actionProcToLayerRange;
       private Graph<Procedure> callGraph;
       private ActionDecl proc;
 
-      public ActionImplVisitor(CivlTypeChecker civlTypeChecker, Dictionary<ActionDecl, LayerRange> actionProcToLayerRange)
+      public ActionImplVisitor(CivlTypeChecker civlTypeChecker)
       {
         this.civlTypeChecker = civlTypeChecker;
-        this.actionProcToLayerRange = actionProcToLayerRange;
         this.callGraph = new Graph<Procedure>();
       }
 
@@ -975,7 +819,7 @@ namespace Microsoft.Boogie
       
       public override Expr VisitIdentifierExpr(IdentifierExpr node)
       {
-        var layerRange = actionProcToLayerRange[proc];
+        var layerRange = proc.layerRange;
         if (node.Decl is GlobalVariable)
         {
           var globalVarLayerRange = civlTypeChecker.GlobalVariableLayerRange(node.Decl);
@@ -996,11 +840,11 @@ namespace Microsoft.Boogie
       {
         if (node.Proc is ActionDecl actionDecl)
         {
-          if (!actionProcToLayerRange[proc].Subset(actionProcToLayerRange[actionDecl]))
+          if (!proc.layerRange.Subset(actionDecl.layerRange))
           {
             civlTypeChecker.Error(node, "Caller layer range must be subset of callee layer range");
           }
-          else if (actionProcToLayerRange[proc].lowerLayerNum == actionProcToLayerRange[actionDecl].lowerLayerNum &&
+          else if (proc.layerRange.lowerLayerNum == actionDecl.layerRange.lowerLayerNum &&
                    actionDecl.actionQualifier == ActionQualifier.Link &&
                    proc.actionQualifier != ActionQualifier.Link)
           {
@@ -1212,13 +1056,13 @@ namespace Microsoft.Boogie
         foreach (var callCmd in yieldRequires)
         {
           VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer,
-            ((YieldInvariantDecl)callCmd.Proc).LayerNum);
+            ((YieldInvariantDecl)callCmd.Proc).layer);
         }
 
         foreach (var callCmd in yieldEnsures)
         {
           VisitYieldInvariantCallCmd(callCmd, yieldingProc.upperLayer,
-            ((YieldInvariantDecl)callCmd.Proc).LayerNum);
+            ((YieldInvariantDecl)callCmd.Proc).layer);
         }
 
         yieldingProc = null;
@@ -1364,7 +1208,7 @@ namespace Microsoft.Boogie
         {
           return;
         }
-        var specLayers = civlTypeChecker.FindLayers(node.Attributes).Distinct().OrderBy(l => l).ToList();
+        var specLayers = node.FindLayers().Distinct().OrderBy(l => l).ToList();
         if (specLayers.Count == 0)
         {
           civlTypeChecker.Error(node, "Specification layer(s) not present");
@@ -1461,7 +1305,7 @@ namespace Microsoft.Boogie
         }
         else if (call.Proc is YieldInvariantDecl yieldInvariant)
         {
-          VisitYieldInvariantCallCmd(call, callerProc.upperLayer, yieldInvariant.LayerNum);
+          VisitYieldInvariantCallCmd(call, callerProc.upperLayer, yieldInvariant.layer);
         }
         else if (call.Proc.IsPure)
         {
@@ -1628,7 +1472,7 @@ namespace Microsoft.Boogie
 
       private void VisitPureProcCallCmd(CallCmd call, int callerProcUpperLayer)
       {
-        var calledLayers = civlTypeChecker.FindLayers(call.Attributes);
+        var calledLayers = ((ICarriesAttributes)call).FindLayers();
         if (calledLayers.Count != 1)
         {
           civlTypeChecker.checkingContext.Error(call, "Call to pure procedure must be annotated with a layer");
@@ -1660,10 +1504,10 @@ namespace Microsoft.Boogie
         }
 
         Require(
-          globalVariableAccesses.All(ie => civlTypeChecker.globalVarToLayerRange[ie.Decl].Contains(calleeLayerNum)),
+          globalVariableAccesses.All(ie => ie.Decl.layerRange.Contains(calleeLayerNum)),
           call,
           $"A global variable used in input to the call not available at layer {calleeLayerNum}");
-        Require(localVariableAccesses.All(ie => civlTypeChecker.localVarToLayerRange[ie.Decl].Contains(calleeLayerNum)),
+        Require(localVariableAccesses.All(ie => ie.Decl.layerRange.Contains(calleeLayerNum)),
           call,
           $"A local variable used in input to the call not available at layer {calleeLayerNum}");
         localVariableAccesses = null;

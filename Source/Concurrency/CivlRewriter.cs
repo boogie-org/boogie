@@ -11,11 +11,11 @@ namespace Microsoft.Boogie
       Program program = linearTypeChecker.program;
 
       // Store the original declarations of yielding procedures, which will be removed after desugaring below.
-      var origProc = program.TopLevelDeclarations.OfType<Procedure>()
-        .Where(p => civlTypeChecker.procToYieldingProc.ContainsKey(p));
-      var origImpl = program.TopLevelDeclarations.OfType<Implementation>()
-        .Where(i => civlTypeChecker.procToYieldingProc.ContainsKey(i.Proc));
-      List<Declaration> originalDecls = Enumerable.Union<Declaration>(origProc, origImpl).ToList();
+      var origYieldProcs = program.TopLevelDeclarations.OfType<YieldProcedureDecl>();
+      var origYieldImpls = program.TopLevelDeclarations.OfType<Implementation>()
+        .Where(impl => impl.Proc is YieldProcedureDecl);
+      var origYieldInvariants = program.TopLevelDeclarations.OfType<YieldInvariantDecl>();
+      var originalDecls = origYieldProcs.Union<Declaration>(origYieldImpls).Union(origYieldInvariants).ToHashSet();
 
       // Commutativity checks
       List<Declaration> decls = new List<Declaration>();

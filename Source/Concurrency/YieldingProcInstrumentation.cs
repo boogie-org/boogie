@@ -201,7 +201,7 @@ namespace Microsoft.Boogie
 
       foreach (var yieldInvariant in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>())
       {
-        if (layerNum == yieldInvariant.LayerNum)
+        if (layerNum == yieldInvariant.layer)
         {
           noninterferenceCheckerDecls.AddRange(
             NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
@@ -230,7 +230,7 @@ namespace Microsoft.Boogie
       foreach (var callCmd in yieldInvariants)
       {
         var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-        if (layerNum == yieldInvariant.LayerNum)
+        if (layerNum == yieldInvariant.layer)
         {
           Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
             .ToDictionary(x => x.Item1, x => x.Item2);
@@ -278,7 +278,7 @@ namespace Microsoft.Boogie
         foreach (var callCmd in GetYieldingProc(impl).yieldRequires)
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-          if (layerNum == yieldInvariant.LayerNum)
+          if (layerNum == yieldInvariant.layer)
           {
             Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(yieldInvariant.InParams
               .Zip(callCmd.Ins)
@@ -303,7 +303,7 @@ namespace Microsoft.Boogie
         foreach (var callCmd in yieldingProc.yieldRequires)
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-          if (layerNum == yieldInvariant.LayerNum)
+          if (layerNum == yieldInvariant.layer)
           {
             Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => x.Item2);
@@ -320,7 +320,7 @@ namespace Microsoft.Boogie
         foreach (var callCmd in yieldingProc.yieldEnsures)
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-          if (layerNum == yieldInvariant.LayerNum)
+          if (layerNum == yieldInvariant.layer)
           {
             Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => x.Item2);

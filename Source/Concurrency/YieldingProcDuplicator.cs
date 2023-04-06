@@ -260,7 +260,7 @@ namespace Microsoft.Boogie
 
       if (newCall.Proc.IsPure)
       {
-        if (civlTypeChecker.FindLayers(newCall.Attributes)[0] == layerNum)
+        if (((ICarriesAttributes)newCall).FindLayers()[0] == layerNum)
         {
           newCmdSeq.Add(newCall);
         }
@@ -269,7 +269,7 @@ namespace Microsoft.Boogie
 
       if (newCall.Proc is YieldInvariantDecl yieldInvariant)
       {
-        if (layerNum == yieldInvariant.LayerNum)
+        if (layerNum == yieldInvariant.layer)
         {
           var parCallCmd = new ParCallCmd(newCall.tok, new List<CallCmd> {newCall});
           absyMap[parCallCmd] = absyMap[newCall];
@@ -391,7 +391,7 @@ namespace Microsoft.Boogie
         else
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-          if (layerNum == yieldInvariant.LayerNum)
+          if (layerNum == yieldInvariant.layer)
           {
             callCmds.Add(callCmd);
           }

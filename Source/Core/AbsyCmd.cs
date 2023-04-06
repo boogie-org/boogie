@@ -1683,24 +1683,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static void ResolveAttributes(QKeyValue attributes, ResolutionContext rc)
-    {
-      Contract.Requires(rc != null);
-      for (QKeyValue kv = attributes; kv != null; kv = kv.Next)
-      {
-        kv.Resolve(rc);
-      }
-    }
-
-    public static void TypecheckAttributes(QKeyValue attributes, TypecheckingContext tc)
-    {
-      Contract.Requires(tc != null);
-      for (QKeyValue kv = attributes; kv != null; kv = kv.Next)
-      {
-        kv.Typecheck(tc);
-      }
-    }
-
     [Pure]
     public override string ToString() {
       Contract.Ensures(Contract.Result<string>() != null);
@@ -1883,7 +1865,7 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      ResolveAttributes(Attributes, rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       if (Lhss.Count != Rhss.Count)
       {
         rc.Error(this,
@@ -1956,7 +1938,7 @@ namespace Microsoft.Boogie
     {
       int errorCount = tc.ErrorCount;
 
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       foreach (AssignLhs /*!*/ e in Lhss)
       {
         Contract.Assert(e != null);
@@ -2435,7 +2417,7 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       lhs.Typecheck(tc);
       rhs.Typecheck(tc);
       this.CheckAssignments(tc);
@@ -2869,7 +2851,7 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      ResolveAttributes(Attributes, rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       foreach (CallCmd callCmd in CallCmds)
       {
         callCmd.Resolve(rc);
@@ -2914,7 +2896,7 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       if (!tc.Options.DoModSetAnalysis)
       {
         if (!tc.Yields)
@@ -3145,7 +3127,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      ResolveAttributes(Attributes, rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       Proc = rc.LookUpProcedure(callee);
       if (Proc == null)
       {
@@ -3255,7 +3237,7 @@ namespace Microsoft.Boogie
       Contract.Assume(this.Proc !=
                       null); // we assume the CallCmd has been successfully resolved before calling this Typecheck method
 
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
 
       // typecheck in-parameters
       foreach (Expr e in Ins)
@@ -4031,14 +4013,14 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      ResolveAttributes(Attributes, rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       base.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null); // follows from Expr.Typecheck postcondition
       if (!Expr.Type.Unify(Type.Bool))
@@ -4239,14 +4221,14 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      ResolveAttributes(Attributes, rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       base.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null); // follows from Expr.Typecheck postcondition
       if (!Expr.Type.Unify(Type.Bool))

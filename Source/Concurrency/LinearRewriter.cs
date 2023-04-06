@@ -23,7 +23,7 @@ public class LinearRewriter
       {
         return null;
       }
-      var layers = civlTypeChecker.FindLayers(proc.Attributes);
+      var layers = ((ICarriesAttributes)proc).FindLayers();
       if (layers.Count == 0)
       {
         return null;

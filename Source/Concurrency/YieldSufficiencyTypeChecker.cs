@@ -411,7 +411,7 @@ namespace Microsoft.Boogie
 
         if (callCmd.Proc is YieldInvariantDecl yieldInvariant)
         {
-          return yieldInvariant.LayerNum == currLayerNum ? Y : P;
+          return yieldInvariant.layer == currLayerNum ? Y : P;
         }
 
         YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
@@ -480,7 +480,7 @@ namespace Microsoft.Boogie
 
         if (callCmd.Proc is YieldInvariantDecl yieldInvariant)
         {
-          return yieldInvariant.LayerNum == currLayerNum ? Y : P;
+          return yieldInvariant.layer == currLayerNum ? Y : P;
         }
 
         YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
