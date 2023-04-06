@@ -69,8 +69,8 @@ namespace Microsoft.Boogie
       checkerPool = new CheckerPool(options);
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
       
-      //var largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
-      var largeThreadScheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
+      var largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
+      //var largeThreadScheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
       largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.None, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
