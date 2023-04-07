@@ -44,14 +44,14 @@ class LinearityChecker
 
     private IdentifierExpr PAs(AtomicAction action, int pendingAsyncIndex)
     {
-      return Expr.Ident(action.impl.OutParams[action.proc.PendingAsyncStartIndex + pendingAsyncIndex]);
+      return Expr.Ident(action.Impl.OutParams[action.ActionDecl.PendingAsyncStartIndex + pendingAsyncIndex]);
     }
     
     private void AddChecker(Action action, List<Declaration> decls)
     {
       // Note: The implementation should be used as the variables in the
       //       gate are bound to implementation and not to the procedure.
-      Implementation impl = action.impl;
+      Implementation impl = action.Impl;
       List<Variable> inputs = impl.InParams;
       List<Variable> outputs = impl.OutParams;
 
@@ -60,7 +60,7 @@ class LinearityChecker
       var ctorTypeToSecondPA = new Dictionary<CtorType, IdentifierExpr>();
       if (action is AtomicAction x && x.HasPendingAsyncs)
       {
-        x.pendingAsyncs.Iter(y =>
+        x.PendingAsyncs.Iter(y =>
         {
           var paLocal1 = civlTypeChecker.LocalVariable($"pa1_{y.PendingAsyncType.Decl.Name}", y.PendingAsyncType);
           var paLocal2 = civlTypeChecker.LocalVariable($"pa2_{y.PendingAsyncType.Decl.Name}", y.PendingAsyncType);
@@ -71,17 +71,17 @@ class LinearityChecker
         });
       }
 
-      List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
+      List<Requires> requires = action.Gate.Select(a => new Requires(false, a.Expr)).ToList();
       List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
 
       foreach (var domain in linearTypeChecker.NameLinearDomains)
       {
         // Linear in vars
-        var inVars = linearTypeChecker.FilterVariables(domain,inputs.Union(action.modifiedGlobalVars))
+        var inVars = linearTypeChecker.FilterVariables(domain,inputs.Union(action.ModifiedGlobalVars))
           .Where(x => InKinds.Contains(LinearDomainCollector.FindLinearKind(x))).Select(Expr.Ident).ToList();
         
         // Linear out vars
-        var outVars = linearTypeChecker.FilterVariables(domain, inputs.Union(outputs).Union(action.modifiedGlobalVars))
+        var outVars = linearTypeChecker.FilterVariables(domain, inputs.Union(outputs).Union(action.ModifiedGlobalVars))
           .Where(x => OutKinds.Contains(LinearDomainCollector.FindLinearKind(x))).Select(Expr.Ident).ToList();
 
         // First kind
@@ -98,7 +98,7 @@ class LinearityChecker
 
         if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
         {
-          var pendingAsyncs = atomicAction.pendingAsyncs;
+          var pendingAsyncs = atomicAction.PendingAsyncs;
           
           for (int i = 0; i < pendingAsyncs.Count; i++)
           {
@@ -196,7 +196,7 @@ class LinearityChecker
         {
           cmds.Add(CmdHelper.AssumeCmd(lc.assume));
         }
-        cmds.Add(CmdHelper.AssertCmd(action.proc.tok, lc.assert, lc.message));
+        cmds.Add(CmdHelper.AssertCmd(action.ActionDecl.tok, lc.assert, lc.message));
         var block = BlockHelper.Block($"{lc.domainName}_{lc.checkName}", cmds);
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
@@ -207,14 +207,14 @@ class LinearityChecker
       blocks.Add(
         BlockHelper.Block(
           "init",
-          new List<Cmd> { CmdHelper.CallCmd(action.proc, inputs, outputs) },
+          new List<Cmd> { CmdHelper.CallCmd(action.ActionDecl, inputs, outputs) },
           checkerBlocks));
       blocks.AddRange(checkerBlocks);
 
       // Create the whole check procedure
-      string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.proc.Name}");
+      string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.ActionDecl.Name}");
       Procedure linCheckerProc = DeclHelper.Procedure(checkerName,
-        inputs, outputs, requires, action.proc.Modifies, new List<Ensures>());
+        inputs, outputs, requires, action.ActionDecl.Modifies, new List<Ensures>());
       Implementation linCheckImpl = DeclHelper.Implementation(linCheckerProc,
         inputs, outputs, locals, blocks);
       decls.Add(linCheckImpl);

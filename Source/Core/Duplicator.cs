@@ -528,10 +528,10 @@ namespace Microsoft.Boogie
       var actionDeclRefsInActionDecls = newProgram.TopLevelDeclarations.OfType<ActionDecl>()
         .SelectMany(decl => decl.ActionDeclRefs());
       var actionDeclRefsInYieldProcedureDecls = newProgram.TopLevelDeclarations.OfType<YieldProcedureDecl>()
-        .Select(decl => decl.refinedAction);
+        .Select(decl => decl.RefinedAction);
       foreach (var actionDeclRef in actionDeclRefsInActionDecls.Union(actionDeclRefsInYieldProcedureDecls))
       {
-        actionDeclRef.actionDecl = (ActionDecl)OldToNewProcedureMap[actionDeclRef.actionDecl];
+        actionDeclRef.ActionDecl = (ActionDecl)OldToNewProcedureMap[actionDeclRef.ActionDecl];
       }
 
       OldToNewProcedureMap = null; // This Visitor could be used for other things later so remove the map.

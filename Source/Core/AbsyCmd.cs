@@ -3307,7 +3307,7 @@ namespace Microsoft.Boogie
       if (tc.Yields)
       {
         if (Proc is YieldProcedureDecl || Proc is YieldInvariantDecl || Proc.IsPure ||
-            (Proc is ActionDecl actionDecl && actionDecl.actionQualifier == ActionQualifier.Link))
+            (Proc is ActionDecl actionDecl && actionDecl.ActionQualifier == ActionQualifier.Link))
         {
           // call is fine
         }
@@ -3328,7 +3328,7 @@ namespace Microsoft.Boogie
           var type = TypeProxy.FollowProxy(TypeParameters[Proc.TypeParameters[0]].Expanded);
           if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
           {
-            if (callerActionDecl.creates.All(x => x.actionName != datatypeTypeCtorDecl.Name))
+            if (callerActionDecl.Creates.All(x => x.ActionName != datatypeTypeCtorDecl.Name))
             {
               tc.Error(this, "primitive instantiated on type not in the creates clause of caller");
             }
@@ -3340,13 +3340,13 @@ namespace Microsoft.Boogie
         }
         else if (Proc is ActionDecl calleeActionDecl)
         {
-          if (calleeActionDecl.actionQualifier == ActionQualifier.Invariant)
+          if (calleeActionDecl.ActionQualifier == ActionQualifier.Invariant)
           {
             tc.Error(this, "an invariant action may not be called");
           }
-          foreach (var actionDeclRef in calleeActionDecl.creates)
+          foreach (var actionDeclRef in calleeActionDecl.Creates)
           {
-            if (callerActionDecl.creates.All(x => x.actionDecl != actionDeclRef.actionDecl))
+            if (callerActionDecl.Creates.All(x => x.ActionDecl != actionDeclRef.ActionDecl))
             {
               tc.Error(actionDeclRef, "callee creates a pending async not in the creates clause of caller");
             }

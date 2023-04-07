@@ -82,30 +82,30 @@ namespace Microsoft.Boogie
       AtomicAction first, AtomicAction second,
       HashSet<Variable> frame)
     {
-      var triggers = first.triggerFunctions.Union(second.triggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);
+      var triggers = first.TriggerFunctions.Union(second.TriggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);
       return ComputeTransitionRelation(
         civlTypeChecker,
-        first.secondImpl, second.firstImpl,
+        first.SecondImpl, second.FirstImpl,
         frame, triggers, false,
-        string.Format("Transition relation of {0} ∘ {1}", first.proc.Name, second.proc.Name));
+        string.Format("Transition relation of {0} ∘ {1}", first.ActionDecl.Name, second.ActionDecl.Name));
     }
 
     public static Expr Refinement(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
     {
       return ComputeTransitionRelation(
         civlTypeChecker,
-        action.impl, null,
+        action.Impl, null,
         frame, null, false,
-        string.Format("Transition relation of {0}", action.proc.Name));
+        string.Format("Transition relation of {0}", action.ActionDecl.Name));
     }
 
     public static Expr Cooperation(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
     {
       return ComputeTransitionRelation(
         civlTypeChecker,
-        action.impl, null,
+        action.Impl, null,
         frame, null, true,
-        string.Format("Cooperation expression of {0}", action.proc.Name));
+        string.Format("Cooperation expression of {0}", action.ActionDecl.Name));
     }
 
     private void EnumeratePaths()

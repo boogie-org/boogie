@@ -74,7 +74,7 @@ namespace Microsoft.Boogie
       this.tok = impl.tok;
       this.oldGlobalMap = new Dictionary<Variable, Variable>();
       ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
-      this.layerNum = actionProc.layer;
+      this.layerNum = actionProc.Layer;
       foreach (Variable v in civlTypeChecker.GlobalVariables)
       {
         var layerRange = v.layerRange;
@@ -114,12 +114,12 @@ namespace Microsoft.Boogie
       // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
       // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
       // we need to substitute the parameters.
-      AtomicAction atomicAction = actionProc.refinedAction;
-      Implementation atomicActionImpl = atomicAction.impl;
+      AtomicAction atomicAction = actionProc.RefinedAction;
+      Implementation atomicActionImpl = atomicAction.Impl;
       Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
       for (int i = 0, j = 0; i < impl.InParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.InParams[i]))
+        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.Proc.InParams[i]))
         {
           alwaysMap[atomicActionImpl.InParams[j]] = Expr.Ident(impl.InParams[i]);
           j++;
@@ -128,7 +128,7 @@ namespace Microsoft.Boogie
 
       for (int i = 0, j = 0; i < impl.OutParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.OutParams[i]))
+        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.Proc.OutParams[i]))
         {
           alwaysMap[atomicActionImpl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
           j++;
@@ -137,7 +137,7 @@ namespace Microsoft.Boogie
 
       if (atomicAction.HasPendingAsyncs)
       {
-        atomicAction.pendingAsyncs.Iter(decl =>
+        atomicAction.PendingAsyncs.Iter(decl =>
         {
           Variable collectedPAs =
             civlTypeChecker.implToPendingAsyncCollector[originalImpl][decl.PendingAsyncType];
@@ -152,7 +152,7 @@ namespace Microsoft.Boogie
       Substitution forold = Substituter.SubstitutionFromDictionary(foroldMap);
       Expr transitionRelationExpr = GetTransitionRelation(atomicAction);
       transitionRelation = Substituter.ApplyReplacingOldExprs(always, forold, transitionRelationExpr);
-      Expr gateExpr = Expr.And(atomicAction.gate.Select(g => g.Expr));
+      Expr gateExpr = Expr.And(atomicAction.Gate.Select(g => g.Expr));
       gateExpr.Type = Type.Bool;
       gate = Substituter.Apply(always, gateExpr);
     }

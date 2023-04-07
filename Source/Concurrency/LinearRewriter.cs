@@ -19,7 +19,7 @@ public class LinearRewriter
   {
     this.civlTypeChecker = civlTypeChecker;
     this.proc = proc;
-    this.layerNum = proc is YieldProcedureDecl decl ? decl.layer : null;
+    this.layerNum = proc is YieldProcedureDecl decl ? decl.Layer : null;
   }
   
   public static bool IsPrimitive(DeclWithFormals decl)
