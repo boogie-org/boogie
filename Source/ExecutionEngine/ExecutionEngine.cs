@@ -53,12 +53,12 @@ namespace Microsoft.Boogie
 
     public readonly VerificationResultCache Cache;
 
-    static readonly MemoryCache programCache = new MemoryCache("ProgramCache");
+    private readonly MemoryCache programCache = new MemoryCache("ProgramCache");
 
     static readonly CacheItemPolicy policy = new CacheItemPolicy
       { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
-    public static Program CachedProgram(string programId) {
+    public Program CachedProgram(string programId) {
       var result = programCache.Get(programId) as Program;
       return result;
     }
@@ -70,7 +70,8 @@ namespace Microsoft.Boogie
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
       
       var largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
-      largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskContinuationOptions.None, largeThreadScheduler);
+      //var largeThreadScheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
+      largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.None, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
     public static ExecutionEngine CreateWithoutSharedCache(ExecutionEngineOptions options) {

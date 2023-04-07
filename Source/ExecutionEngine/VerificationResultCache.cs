@@ -171,7 +171,8 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public static void Inject(ExecutionEngine engine, Program program, IEnumerable<Implementation> implementations, string requestId,
+    public static void Inject(ExecutionEngine engine, Program program, 
+      IReadOnlyList<Implementation> implementations, string requestId,
       string programId, out long[] cachingActionCounts)
     {
       var eai = new CachedVerificationResultInjector(engine.Options, program);
@@ -211,7 +212,7 @@ namespace Microsoft.Boogie
               eai.SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
-                var p = ExecutionEngine.CachedProgram(vr.ProgramId);
+                var p = engine.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
                   eai.Inject(impl, p);
