@@ -47,6 +47,8 @@ public class AsyncQueue<T>
     }
   }
 
+  public int Size => items.Count;
+
   public Task<T> Dequeue(CancellationToken cancellationToken)
   {
     lock (myLock) {

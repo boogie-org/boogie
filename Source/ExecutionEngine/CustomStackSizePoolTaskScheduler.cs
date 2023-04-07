@@ -12,24 +12,24 @@ namespace Microsoft.Boogie;
 /// </summary>
 public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 {
-  private readonly int threadCount;
   private readonly AsyncQueue<Task> queue = new();
-  private readonly Thread[] threads;
+  private readonly HashSet<Thread> threads;
 
   public static CustomStackSizePoolTaskScheduler Create(int stackSize, int threadCount)
   {
     return new CustomStackSizePoolTaskScheduler(stackSize, threadCount);
   }
   
-  private CustomStackSizePoolTaskScheduler(int stackSize, int threadCount)
+  private CustomStackSizePoolTaskScheduler(int stackSize, int maximumConcurrencyLevel)
   {
-    this.threadCount = threadCount;
+    MaximumConcurrencyLevel = maximumConcurrencyLevel;
 
-    threads = new Thread[this.threadCount];
-    for (int i = 0; i < threads.Length; i++)
+    threads = new HashSet<Thread>();
+    for (int i = 0; i < maximumConcurrencyLevel; i++)
     {
-      threads[i] = new Thread(WorkLoop, stackSize) { IsBackground = true };
-      threads[i].Start();
+      var thread = new Thread(WorkLoop, stackSize) { IsBackground = true };
+      threads.Add(thread);
+      thread.Start();
     }
   }
 
@@ -40,10 +40,14 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
   {
-    return TryExecuteTask(task);
+    if (threads.Contains(Thread.CurrentThread)) {
+      return TryExecuteTask(task);
+    }
+
+    return false;
   }
 
-  public override int MaximumConcurrencyLevel => threadCount;
+  public override int MaximumConcurrencyLevel { get; }
 
   protected override IEnumerable<Task> GetScheduledTasks()
   {
