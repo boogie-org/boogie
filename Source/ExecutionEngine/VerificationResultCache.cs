@@ -212,7 +212,7 @@ namespace Microsoft.Boogie
               eai.SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
-                var p = engine.CachedProgram(vr.ProgramId);
+                var p = engine.Cache.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
                   eai.Inject(impl, p);
@@ -678,7 +678,14 @@ namespace Microsoft.Boogie
 
   public sealed class VerificationResultCache
   {
-    private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
+
+    private readonly MemoryCache programCache = new("ProgramCache");
+    private readonly MemoryCache Cache = new("VerificationResultCache");
+
+    public Program CachedProgram(string programId) {
+      var result = programCache.Get(programId) as Program;
+      return result;
+    }
 
     private readonly CacheItemPolicy Policy = new CacheItemPolicy
       {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
@@ -748,6 +755,11 @@ namespace Microsoft.Boogie
 
       Lookup(impl, runDiagnosticsOnTimeout, out var priority);
       return priority;
+    }
+
+    public void SetProgram(string programId, Program program, CacheItemPolicy policy)
+    {
+      programCache.Set(programId, program, policy);
     }
   }
 }

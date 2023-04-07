@@ -53,15 +53,8 @@ namespace Microsoft.Boogie
 
     public readonly VerificationResultCache Cache;
 
-    private readonly MemoryCache programCache = new MemoryCache("ProgramCache");
-
     static readonly CacheItemPolicy policy = new CacheItemPolicy
       { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
-
-    public Program CachedProgram(string programId) {
-      var result = programCache.Get(programId) as Program;
-      return result;
-    }
 
     public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache) {
       Options = options;
@@ -585,7 +578,7 @@ namespace Microsoft.Boogie
       if (1 < Options.VerifySnapshots && programId != null)
       {
         program.FreezeTopLevelDeclarations();
-        programCache.Set(programId, program, policy);
+        this.Cache.SetProgram(programId, program, policy);
       }
 
       TraceCachingForBenchmarking(stats, requestId, start);
