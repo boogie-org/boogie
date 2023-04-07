@@ -1907,24 +1907,7 @@ namespace Microsoft.Boogie
   ---- Civl ------------------------------------------------------------------
 
      {:yields}
-       Yielding procedure.
-     {:yields N1, N2, ...}
        Yielding loop.
-
-     {:atomic}
-     {:right}
-     {:left}
-     {:both}
-       Mover type of atomic action or mover procedure.
-
-     {:intro}
-       Introduction action.
-
-     {:lemma}
-       Lemma procedure.
-
-     {:yield_invariant}
-       Yield invariant.
 
      {:layer N}
      {:layer M, N}
@@ -1934,14 +1917,11 @@ namespace Microsoft.Boogie
      {:hide}
        Hidden input/output parameter.
 
-     {:yield_requires ""inv"", e0, e1, ...}
-     {:yield_ensures ""inv"", e0, e1, ...}
-     {:yield_preserves ""inv"", e0, e1, ...}
-     {:yield_loop ""inv"", e0, e1, ...}
-       Invocation of yield invariant.
+     {:pending_async}
+       Local variable collecting pending asyncs in yielding procedure.
 
-     {:refines ""action""}
-       Refined atomic action of a yielding procedure.
+     {:sync}
+       Synchronized async call.
 
      {:linear ""domain""}
        Permission type for domain.
@@ -1950,29 +1930,7 @@ namespace Microsoft.Boogie
 
      {:linear_in ""domain""}
      {:linear_out ""domain""}
-       Linear input/output parameter.
-
-     {:pending_async}
-       Atomic action that may be created as a pending async.
-       Local variable collecting pending asyncs in yielding procedure.
-     {:creates ""action1"", ""action2"", ...}
-       Pending asyncs created by an atomic action.
-
-     {:sync}
-       Synchronized async call.
-
-     {:IS ""B"", ""I""}
-       Apply inductive sequentialization to convert annotated action into
-       action B using invariant action I
-     {:elim ""A""}
-     {:elim ""A"", ""A'""}
-       by eliminating multiple actions A (optionally using abstraction A').
-
-     {:IS_invariant}
-     {:IS_abstraction}
-       Annotated actions are only used as invariant actions or abstractions in
-       inductive sequentialization. These are exempt from the overall pool of
-       actions for commutativity checking.";
+       Linear input/output parameter.";
 
     protected override string HelpHeader =>
       base.HelpHeader + @"

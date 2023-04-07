@@ -248,6 +248,15 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    public virtual List<CallCmd> VisitCallCmdSeq(List<CallCmd> callCmds)
+    {
+      for (int i = 0; i < callCmds.Count; i++)
+      {
+        callCmds[i] = (CallCmd)VisitCallCmd(callCmds[i]);
+      }
+      return callCmds;
+    }
+
     public virtual Cmd VisitParCallCmd(ParCallCmd node)
     {
       Contract.Requires(node != null);
@@ -631,6 +640,31 @@ namespace Microsoft.Boogie
       node.Requires = this.VisitRequiresSeq(node.Requires);
       VisitAttributes(node);
       return node;
+    }
+
+    public virtual ActionDeclRef VisitActionDeclRef(ActionDeclRef node)
+    {
+      return node;
+    }
+
+    public virtual Procedure VisitActionDecl(ActionDecl node)
+    {
+      for (int i = 0; i < node.Creates.Count; i++)
+      {
+        node.Creates[i] = VisitActionDeclRef(node.Creates[i]);
+      }
+      node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
+      node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
+      return VisitProcedure(node);
+    }
+
+    public virtual Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
+    {
+      node.YieldEnsures = this.VisitCallCmdSeq(node.YieldEnsures);
+      node.YieldPreserves = this.VisitCallCmdSeq(node.YieldPreserves);
+      node.YieldRequires = this.VisitCallCmdSeq(node.YieldRequires);
+      node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
+      return VisitProcedure(node);
     }
 
     public virtual Program VisitProgram(Program node)

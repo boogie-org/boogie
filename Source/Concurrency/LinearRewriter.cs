@@ -5,35 +5,35 @@ namespace Microsoft.Boogie;
 
 public class LinearRewriter
 {
-  private static HashSet<string> primitives = new HashSet<string>()
-  {
-    "Lheap_Empty", "Lheap_Split", "Lheap_Transfer", "Lheap_Read", "Lheap_Write","Lheap_Add", "Lheap_Remove",
-    "Lset_Empty", "Lset_Split", "Lset_Transfer",
-    "Lval_Split", "Lval_Transfer",
-  };
+  private CivlTypeChecker civlTypeChecker;
 
-  private Monomorphizer monomorphizer;
-
-  private ConcurrencyOptions options;
-
-  private List<IdentifierExpr> frame;
+  private Procedure proc;
   
+  private Monomorphizer monomorphizer => civlTypeChecker.program.monomorphizer;
+  
+  private ConcurrencyOptions options => civlTypeChecker.Options;
+
   private int? layerNum;
 
-  public LinearRewriter(ConcurrencyOptions options, Monomorphizer monomorphizer, List<IdentifierExpr> frame, int? layerNum)
+  private LinearRewriter(CivlTypeChecker civlTypeChecker, Procedure proc)
   {
-    this.monomorphizer = monomorphizer;
-    this.options = options;
-    this.frame = frame;
-    this.layerNum = layerNum;
+    this.civlTypeChecker = civlTypeChecker;
+    this.proc = proc;
+    this.layerNum = proc is YieldProcedureDecl decl ? decl.Layer : null;
   }
   
   public static bool IsPrimitive(DeclWithFormals decl)
   {
-    return primitives.Contains(decl.Name);
+    return CivlPrimitives.Linear.Contains(decl.Name);
   }
-  
-  public List<Cmd> RewriteCmdSeq(List<Cmd> cmdSeq)
+
+  public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)
+  {
+    var linearRewriter = new LinearRewriter(civlTypeChecker, impl.Proc);
+    impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
+  }
+
+  private List<Cmd> RewriteCmdSeq(List<Cmd> cmdSeq)
   {
     var newCmdSeq = new List<Cmd>();
     foreach (var cmd in cmdSeq)
@@ -50,7 +50,7 @@ public class LinearRewriter
     return newCmdSeq;
   }
 
-  public List<Cmd> RewriteCallCmd(CallCmd callCmd)
+  private List<Cmd> RewriteCallCmd(CallCmd callCmd)
   {
     switch (monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
@@ -461,7 +461,7 @@ public class LinearRewriter
       return;
     }
     var tc = new TypecheckingContext(null, options);
-    tc.Frame = frame;
+    tc.Proc = proc;
     absys.Iter(absy => absy.Typecheck(tc));
   }
 }

@@ -780,6 +780,10 @@ namespace Microsoft.Boogie
 
           // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
           List<Cmd> ssHead = new List<Cmd>();
+          foreach (CallCmd yield in wcmd.Yields)
+          {
+            ssHead.Add(yield);
+          }
           foreach (PredicateCmd inv in wcmd.Invariants)
           {
             ssHead.Add(inv);
@@ -1089,11 +1093,11 @@ namespace Microsoft.Boogie
   {
     [Peer] public Expr Guard;
 
-    public List<PredicateCmd /*!*/> /*!*/
-      Invariants;
+    public List<PredicateCmd> Invariants;
 
-    public StmtList /*!*/
-      Body;
+    public List<CallCmd> Yields;
+
+    public StmtList Body;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -1103,7 +1107,7 @@ namespace Microsoft.Boogie
     }
 
 
-    public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd /*!*/> /*!*/ invariants, StmtList /*!*/ body)
+    public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<CallCmd> yields, StmtList body)
       : base(tok)
     {
       Contract.Requires(cce.NonNullElements(invariants));
@@ -1111,6 +1115,7 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
       this.Guard = guard;
       this.Invariants = invariants;
+      this.Yields = yields;
       this.Body = body;
     }
 
@@ -1541,6 +1546,8 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(CmdContracts))]
   public abstract class Cmd : Absy
   {
+    public List<int> Layers;
+    
     public byte[] Checksum { get; internal set; }
     public byte[] SugaredCmdChecksum { get; internal set; }
     public bool IrrelevantForChecksumComputation { get; set; }
@@ -1675,24 +1682,6 @@ namespace Microsoft.Boogie
       {
         kv.Emit(stream);
         stream.Write(" ");
-      }
-    }
-
-    public static void ResolveAttributes(QKeyValue attributes, ResolutionContext rc)
-    {
-      Contract.Requires(rc != null);
-      for (QKeyValue kv = attributes; kv != null; kv = kv.Next)
-      {
-        kv.Resolve(rc);
-      }
-    }
-
-    public static void TypecheckAttributes(QKeyValue attributes, TypecheckingContext tc)
-    {
-      Contract.Requires(tc != null);
-      for (QKeyValue kv = attributes; kv != null; kv = kv.Next)
-      {
-        kv.Typecheck(tc);
       }
     }
 
@@ -1878,7 +1867,7 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      ResolveAttributes(Attributes, rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       if (Lhss.Count != Rhss.Count)
       {
         rc.Error(this,
@@ -1951,7 +1940,7 @@ namespace Microsoft.Boogie
     {
       int errorCount = tc.ErrorCount;
 
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       foreach (AssignLhs /*!*/ e in Lhss)
       {
         Contract.Assert(e != null);
@@ -2430,7 +2419,7 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       lhs.Typecheck(tc);
       rhs.Typecheck(tc);
       this.CheckAssignments(tc);
@@ -2864,7 +2853,7 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      ResolveAttributes(Attributes, rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       foreach (CallCmd callCmd in CallCmds)
       {
         callCmd.Resolve(rc);
@@ -2909,21 +2898,21 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       if (!tc.Options.DoModSetAnalysis)
       {
         if (!tc.Yields)
         {
-          tc.Error(this, "enclosing procedure of a parallel call must yield");
+          tc.Error(this, "calling procedure of a parallel call must yield");
         }
 
         foreach (CallCmd callCmd in CallCmds)
         {
-          if (!QKeyValue.FindBoolAttribute(callCmd.Proc.Attributes, CivlAttributes.YIELDS) &&
-              callCmd.Proc is not YieldInvariantDecl)
+          if (callCmd.Proc is YieldProcedureDecl || callCmd.Proc is YieldInvariantDecl)
           {
-            tc.Error(callCmd, "target procedure of a parallel call must yield");
+            continue;
           }
+          tc.Error(callCmd, "target procedure of a parallel call must yield");
         }
       }
 
@@ -3140,7 +3129,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      ResolveAttributes(Attributes, rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       Proc = rc.LookUpProcedure(callee);
       if (Proc == null)
       {
@@ -3209,6 +3198,8 @@ namespace Microsoft.Boogie
         }
       }
 
+      (this as ICarriesAttributes).ResolveAttributes(rc);
+      Layers = (this as ICarriesAttributes).FindLayers();
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
       {
@@ -3250,7 +3241,7 @@ namespace Microsoft.Boogie
       Contract.Assume(this.Proc !=
                       null); // we assume the CallCmd has been successfully resolved before calling this Typecheck method
 
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
 
       // typecheck in-parameters
       foreach (Expr e in Ins)
@@ -3309,14 +3300,78 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
         actualTypeParams);
 
-      if (!tc.Options.DoModSetAnalysis && IsAsync)
+      if (tc.Proc.IsPure && !Proc.IsPure)
+      {
+        tc.Error(this, "pure procedure may only call a pure procedure");
+      }
+      if (tc.Yields)
+      {
+        if (Proc is YieldProcedureDecl || Proc is YieldInvariantDecl || Proc.IsPure ||
+            (Proc is ActionDecl actionDecl && actionDecl.ActionQualifier == ActionQualifier.Link))
+        {
+          // call is fine
+        }
+        else
+        {
+          tc.Error(this,
+            "a yielding procedure may only call yield procedures, yield invariants, pure procedures, or link actions");
+        }
+      }
+      else if (tc.Proc is ActionDecl callerActionDecl)
+      {
+        if (CivlPrimitives.Linear.Contains(Proc.Name))
+        {
+          // ok
+        }
+        else if (CivlPrimitives.Async.Contains(Proc.Name))
+        {
+          var type = TypeProxy.FollowProxy(TypeParameters[Proc.TypeParameters[0]].Expanded);
+          if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+          {
+            if (callerActionDecl.Creates.All(x => x.ActionName != datatypeTypeCtorDecl.Name))
+            {
+              tc.Error(this, "primitive instantiated on type not in the creates clause of caller");
+            }
+          }
+          else
+          {
+            tc.Error(this, "type parameter to primitive call must be instantiated with a pending async type");
+          }
+        }
+        else if (Proc is ActionDecl calleeActionDecl)
+        {
+          if (calleeActionDecl.ActionQualifier == ActionQualifier.Invariant)
+          {
+            tc.Error(this, "an invariant action may not be called");
+          }
+          foreach (var actionDeclRef in calleeActionDecl.Creates)
+          {
+            if (callerActionDecl.Creates.All(x => x.ActionDecl != actionDeclRef.ActionDecl))
+            {
+              tc.Error(actionDeclRef, "callee creates a pending async not in the creates clause of caller");
+            }
+          }
+        }
+        else
+        {
+          tc.Error(this, "an action may only call actions or pending async primitives");
+        }
+      }
+      else
+      {
+        Debug.Assert(tc.Proc.GetType() == typeof(Procedure));
+        if (Proc.GetType() != typeof(Procedure))
+        {
+          tc.Error(this, "a procedure may only call other procedures");
+        }
+      }
+      if (IsAsync)
       {
         if (!tc.Yields)
         {
-          tc.Error(this, "enclosing procedure of an async call must yield");
+          tc.Error(this, "calling procedure of an async call must yield");
         }
-
-        if (!QKeyValue.FindBoolAttribute(Proc.Attributes, CivlAttributes.YIELDS))
+        if (Proc is not YieldProcedureDecl)
         {
           tc.Error(this, "target procedure of an async call must yield");
         }
@@ -3789,9 +3844,9 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       Expr.Resolve(rc);
-
+      (this as ICarriesAttributes).ResolveAttributes(rc);
+      Layers = (this as ICarriesAttributes).FindLayers();
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
       {
@@ -3801,7 +3856,6 @@ namespace Microsoft.Boogie
 
     public override void AddAssignedVariables(List<Variable> vars)
     {
-      //Contract.Requires(vars != null);
     }
   }
 
@@ -3911,7 +3965,6 @@ namespace Microsoft.Boogie
         {
           return verifiedUnder;
         }
-
         verifiedUnder = QKeyValue.FindExprAttribute(Attributes, "verified_under");
         return verifiedUnder;
       }
@@ -3938,38 +3991,27 @@ namespace Microsoft.Boogie
       set { errorDataEnhanced = value; }
     }
 
-    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, ProofObligationDescription description, QKeyValue kv = null)
+    public AssertCmd(IToken tok, Expr expr, ProofObligationDescription description, QKeyValue kv = null)
       : base(tok, expr, kv)
     {
-      Contract.Requires(tok != null);
-      Contract.Requires(expr != null);
       errorDataEnhanced = GenerateBoundVarMiningStrategy(expr);
       Description = description;
     }
 
-    public AssertCmd(IToken /*!*/ tok, Expr /*!*/ expr, QKeyValue kv = null)
+    public AssertCmd(IToken tok, Expr expr, QKeyValue kv = null)
       : this(tok, expr, new AssertionDescription(), kv) { }
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, level, "assert ");
       EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);
       stream.WriteLine(";");
     }
 
-    public override void Resolve(ResolutionContext rc)
-    {
-      //Contract.Requires(rc != null);
-      ResolveAttributes(Attributes, rc);
-      base.Resolve(rc);
-    }
-
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null); // follows from Expr.Typecheck postcondition
       if (!Expr.Type.Unify(Type.Bool))
@@ -3990,7 +4032,7 @@ namespace Microsoft.Boogie
       return new ListOfMiningStrategies(l);
     }
 
-    public static List<MiningStrategy> /*!*/ GenerateBoundVarListForMining(Expr expr, List<MiningStrategy> l)
+    public static List<MiningStrategy> GenerateBoundVarListForMining(Expr expr, List<MiningStrategy> l)
     {
       Contract.Requires(l != null);
       Contract.Requires(expr != null);
@@ -4004,7 +4046,7 @@ namespace Microsoft.Boogie
       else if (expr is NAryExpr)
       {
         NAryExpr e = (NAryExpr) expr;
-        foreach (Expr /*!*/ arg in e.Args)
+        foreach (Expr arg in e.Args)
         {
           Contract.Assert(arg != null);
           l = GenerateBoundVarListForMining(arg, l);
@@ -4042,8 +4084,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitAssertCmd(this);
     }
   }
@@ -4170,14 +4210,14 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      ResolveAttributes(Attributes, rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       base.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(Attributes, tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null); // follows from Expr.Typecheck postcondition
       if (!Expr.Type.Unify(Type.Bool))

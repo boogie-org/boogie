@@ -339,7 +339,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      return civlTypeChecker.IsAction(enclosingProc) || civlTypeChecker.IsLemmaProcedure(enclosingProc);
+      return enclosingProc is ActionDecl || enclosingProc.IsPure;
     }
 
     private IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
@@ -562,7 +562,7 @@ namespace Microsoft.Boogie
         var formalKind = LinearDomainCollector.FindLinearKind(formal);
         if (formalKind == LinearKind.ORDINARY)
         {
-          Error(node, "Only a linear variable can be passed to a linear parameter");
+          Error(node, $"Only linear parameter can be assigned to a linear variable: {formal}");
           continue;
         }
         if (LinearDomainCollector.FindDomainName(formal) != LinearDomainCollector.FindDomainName(actual.Decl))
@@ -581,7 +581,7 @@ namespace Microsoft.Boogie
             Error(node, $"Primitive assigns to input variable: {formal}");
           }
           else if (modifiedArgument is GlobalVariable &&
-                   !civlTypeChecker.IsYieldingProcedure(enclosingProc) &&
+                   enclosingProc is not YieldProcedureDecl &&
                    enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
           {
             Error(node,
@@ -627,21 +627,7 @@ namespace Microsoft.Boogie
         var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
         impls.Iter(impl =>
         {
-          int? LayerNum(Procedure proc)
-          {
-            if (!civlTypeChecker.IsYieldingProcedure(proc))
-            {
-              return null;
-            }
-            var layers = civlTypeChecker.FindLayers(proc.Attributes);
-            if (layers.Count == 0)
-            {
-              return null;
-            }
-            return layers[0];
-          }
-          var linearRewriter = new LinearRewriter(civlTypeChecker.Options, program.monomorphizer, impl.Proc.Modifies, LayerNum(impl.Proc));
-          impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
+          LinearRewriter.Rewrite(civlTypeChecker, impl);
         }); 
       }
     }

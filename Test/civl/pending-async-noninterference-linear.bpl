@@ -6,15 +6,16 @@ var {:layer 0,1} x:[int]int;
 yield invariant {:layer 1} yield_x({:linear "tid"} tid:int);
 invariant x[tid] == 0;
 
-procedure {:atomic}{:layer 1} {:pending_async} A ({:linear "tid"} tid:int)
+async action {:layer 1} A ({:linear "tid"} tid:int)
 modifies x;
 {
   x[tid] := 1;
 }
 
-procedure {:left}{:layer 1} {:creates "A"} ASYNC_A ({:linear_in "tid"} tid:int)
+<- action {:layer 1} ASYNC_A ({:linear_in "tid"} tid:int)
+ creates A;
 {
   call create_async(A(tid));
 }
 
-procedure {:yields}{:layer 1} dummy () {}
+yield procedure {:layer 1} dummy () {}

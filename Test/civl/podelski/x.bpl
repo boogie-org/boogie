@@ -6,38 +6,40 @@ var {:layer 0,1} x:int;
 yield invariant {:layer 1} Inv ();
 invariant x >= 0;
 
-procedure {:yields}{:layer 1}
-{:yield_requires "Inv"}
-main ()
+yield procedure {:layer 1} main ()
+requires call Inv();
 {
   while (*)
-  invariant {:yields} {:yield_loop "Inv"} true;
+  invariant {:yields} true;
+  invariant call Inv();
   {
     async call incdec();
   }
 }
 
-procedure {:yields}{:layer 1}
-{:yield_preserves "Inv"}
-incdec()
+yield procedure {:layer 1} incdec()
+preserves call Inv();
 {
   call geq0_inc();
   call geq0_dec();
 }
 
-procedure {:right}{:layer 1} GEQ0_INC ()
+-> action {:layer 1} GEQ0_INC ()
 modifies x;
 {
   assert x >= 0;
   x := x + 1;
 }
 
-procedure {:atomic}{:layer 1} GEQ0_DEC ()
+action {:layer 1} GEQ0_DEC ()
 modifies x;
 {
   assert x >= 0;
   x := x - 1;
 }
 
-procedure {:yields}{:layer 0}{:refines "GEQ0_INC"} geq0_inc ();
-procedure {:yields}{:layer 0}{:refines "GEQ0_DEC"} geq0_dec ();
+yield procedure {:layer 0} geq0_inc ();
+refines GEQ0_INC;
+
+yield procedure {:layer 0} geq0_dec ();
+refines GEQ0_DEC;

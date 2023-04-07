@@ -447,8 +447,6 @@ namespace Microsoft.Boogie
 
     public override Procedure VisitProcedure(Procedure node)
     {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Procedure>() != null);
       Procedure newProcedure = null;
       if (OldToNewProcedureMap != null && OldToNewProcedureMap.ContainsKey(node))
       {
@@ -462,15 +460,52 @@ namespace Microsoft.Boogie
           OldToNewProcedureMap[node] = newProcedure;
         }
       }
+      return newProcedure;
+    }
 
+    public override ActionDeclRef VisitActionDeclRef(ActionDeclRef node)
+    {
+      return base.VisitActionDeclRef((ActionDeclRef)node.Clone());
+    }
+
+    public override Procedure VisitActionDecl(ActionDecl node)
+    {
+      Procedure newProcedure = null;
+      if (OldToNewProcedureMap != null && OldToNewProcedureMap.ContainsKey(node))
+      {
+        newProcedure = OldToNewProcedureMap[node];
+      }
+      else
+      {
+        newProcedure = base.VisitActionDecl((ActionDecl) node.Clone());
+        if (OldToNewProcedureMap != null)
+        {
+          OldToNewProcedureMap[node] = newProcedure;
+        }
+      }
+      return newProcedure;
+    }
+
+    public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
+    {
+      Procedure newProcedure = null;
+      if (OldToNewProcedureMap != null && OldToNewProcedureMap.ContainsKey(node))
+      {
+        newProcedure = OldToNewProcedureMap[node];
+      }
+      else
+      {
+        newProcedure = base.VisitYieldProcedureDecl((YieldProcedureDecl) node.Clone());
+        if (OldToNewProcedureMap != null)
+        {
+          OldToNewProcedureMap[node] = newProcedure;
+        }
+      }
       return newProcedure;
     }
 
     public override Program VisitProgram(Program node)
     {
-      //Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<Program>() != null);
-
       // If cloning an entire program we need to ensure that
       // Implementation.Proc gets resolved to the right Procedure
       // (i.e. we don't duplicate Procedure twice) and CallCmds
@@ -482,9 +517,21 @@ namespace Microsoft.Boogie
       // We need to make sure that CallCmds get resolved to call Procedures we duplicated
       // instead of pointing to procedures in the old program
       var callCmds = newProgram.Blocks().SelectMany(b => b.Cmds).OfType<CallCmd>();
-      foreach (var callCmd in callCmds)
+      var yieldCallCmds = newProgram.TopLevelDeclarations.OfType<YieldProcedureDecl>()
+        .SelectMany(decl => decl.CallCmds());
+      foreach (var callCmd in callCmds.Union(yieldCallCmds))
       {
         callCmd.Proc = OldToNewProcedureMap[callCmd.Proc];
+      }
+
+      // We need to make sure that ActionDeclRefs are resolved to the new ActionDecls.
+      var actionDeclRefsInActionDecls = newProgram.TopLevelDeclarations.OfType<ActionDecl>()
+        .SelectMany(decl => decl.ActionDeclRefs());
+      var actionDeclRefsInYieldProcedureDecls = newProgram.TopLevelDeclarations.OfType<YieldProcedureDecl>()
+        .Select(decl => decl.RefinedAction);
+      foreach (var actionDeclRef in actionDeclRefsInActionDecls.Union(actionDeclRefsInYieldProcedureDecls))
+      {
+        actionDeclRef.ActionDecl = (ActionDecl)OldToNewProcedureMap[actionDeclRef.ActionDecl];
       }
 
       OldToNewProcedureMap = null; // This Visitor could be used for other things later so remove the map.

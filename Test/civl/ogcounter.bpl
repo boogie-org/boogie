@@ -6,24 +6,26 @@ const MainTid: X;
 
 var {:layer 0,2} x: int;
 
-procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
+yield procedure {:layer 0} Incr();
+refines AtomicIncr;
 
-procedure {:left} {:layer 1} AtomicIncr()
+<- action {:layer 1} AtomicIncr()
 modifies x;
 { x := x + 1; }
 
-procedure {:yields} {:layer 1} {:refines "AtomicIncrBy2"} IncrBy2()
+yield procedure {:layer 1} IncrBy2()
+refines AtomicIncrBy2;
 {
   par Incr() | Incr();
 }
 
-procedure {:left} {:layer 2} AtomicIncrBy2()
+<- action {:layer 2} AtomicIncrBy2()
 modifies x;
 { x := x + 2; }
 
-procedure {:yields} {:layer 2}
-{:yield_requires "YieldPre", tid} {:yield_ensures "YieldPost"}
-EqualTo2({:linear "tid"} tid: X)
+yield procedure {:layer 2} EqualTo2({:linear "tid"} tid: X)
+requires call YieldPre(tid);
+ensures call YieldPost();
 {
   call IncrBy2();
 }

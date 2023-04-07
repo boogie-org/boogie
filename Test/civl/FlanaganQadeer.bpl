@@ -6,13 +6,13 @@ var {:layer 0,1} l: X;
 var {:layer 0,1} x: int;
 var {:layer 0,1}{:linear "tid"} unallocated:[X]bool;
 
-procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: X)
+yield procedure {:layer 1} Allocate() returns ({:linear "tid"} xl: X)
 ensures {:layer 1} xl != nil;
 {
     call xl := AllocateLow();
 }
 
-procedure {:yields} {:layer 1} main()
+yield procedure {:layer 1} main()
 {
     var {:linear "tid"} tid: X;
     var val: int;
@@ -26,31 +26,35 @@ procedure {:yields} {:layer 1} main()
     }
 }
 
-procedure {:atomic} {:layer 1} AtomicLock(tid: X)
+action {:layer 1} AtomicLock(tid: X)
 modifies l;
 { assume l == nil; l := tid; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicLock"} Lock(tid: X);
+yield procedure {:layer 0} Lock(tid: X);
+refines AtomicLock;
 
-procedure {:atomic} {:layer 1} AtomicUnlock()
+action {:layer 1} AtomicUnlock()
 modifies l;
 { l := nil; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicUnlock"} Unlock();
+yield procedure {:layer 0} Unlock();
+refines AtomicUnlock;
 
-procedure {:atomic} {:layer 1} AtomicSet(val: int)
+action {:layer 1} AtomicSet(val: int)
 modifies x;
 { x := val; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicSet"} Set(val: int);
+yield procedure {:layer 0} Set(val: int);
+refines AtomicSet;
 
-procedure {:atomic} {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xl: X)
+action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xl: X)
 modifies unallocated;
 { assume xl != nil; assume unallocated[xl]; unallocated[xl] := false; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicAllocateLow"} AllocateLow() returns ({:linear "tid"} xl: X);
+yield procedure {:layer 0} AllocateLow() returns ({:linear "tid"} xl: X);
+refines AtomicAllocateLow;
 
-procedure {:yields} {:layer 1} foo({:linear_in "tid"} tid: X, val: int)
+yield procedure {:layer 1} foo({:linear_in "tid"} tid: X, val: int)
 requires {:layer 1} tid != nil;
 {
     call Lock(tid);

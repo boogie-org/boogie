@@ -391,8 +391,6 @@ namespace Microsoft.Boogie
         return PipelineOutcome.Done;
       }
 
-      CivlRewriter.AddPendingAsyncTypes(program);
-
       var errorCount = program.Resolve(Options);
       if (errorCount != 0)
       {

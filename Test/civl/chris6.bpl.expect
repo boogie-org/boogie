@@ -1,5 +1,5 @@
-chris6.bpl(11,3): Error: this assertion could not be proved
+chris6.bpl(12,3): Error: this assertion could not be proved
 Execution trace:
-    chris6.bpl(11,3): anon0
+    chris6.bpl(12,3): anon0
 
 Boogie program verifier finished with 2 verified, 1 error

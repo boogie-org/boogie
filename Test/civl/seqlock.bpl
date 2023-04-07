@@ -15,20 +15,21 @@ function {:inline} isOdd (x:int) : bool { x mod 2 != 0 }
 // Implementation of atomic read and write operations (to variables x and y)
 // using a seqlock (comprising variables lock and seq).
 
-procedure {:atomic}{:layer 3} READ () returns (v:int, w:int)
+action {:layer 3} READ () returns (v:int, w:int)
 {
   v := x;
   w := y;
 }
 
-procedure {:atomic}{:layer 3} WRITE (v:int, w:int)
+action {:layer 3} WRITE (v:int, w:int)
 modifies x, y;
 {
   x := v;
   y := w;
 }
 
-procedure {:layer 2}{:yields}{:refines "READ"} read () returns (v:int, w:int)
+yield procedure {:layer 2} read () returns (v:int, w:int)
+refines READ;
 {
   var seq1:int;
   var seq2:int;
@@ -47,9 +48,10 @@ procedure {:layer 2}{:yields}{:refines "READ"} read () returns (v:int, w:int)
   }
 }
 
-procedure {:layer 2}{:yields}{:refines "WRITE"}
-{:yield_preserves "SeqLockInv"}
+yield procedure {:layer 2}
 write ({:hide}{:linear "tid"} tid:Tid, v:int, w:int)
+refines WRITE;
+preserves call SeqLockInv();
 {
   call acquire(tid);
   call locked_inc_seq(tid);
@@ -76,12 +78,12 @@ invariant lock == Some(tid);
 // * Increments of seq and writes of x and y are lock-protected, and writes only
 //   happen when seq is odd.
 
-procedure {:right}{:layer 2} STALE_READ_SEQ () returns (r:int)
+-> action {:layer 2} STALE_READ_SEQ () returns (r:int)
 {
   assume r <= seq;
 }
 
-procedure {:right}{:layer 2} STALE_READ_X (seq1:int) returns (r:int)
+-> action {:layer 2} STALE_READ_X (seq1:int) returns (r:int)
 {
   assert seq >= seq1;
   if (isEven(seq) && seq == seq1) {
@@ -89,7 +91,7 @@ procedure {:right}{:layer 2} STALE_READ_X (seq1:int) returns (r:int)
   }
 }
 
-procedure {:right}{:layer 2} STALE_READ_Y (seq1:int) returns (r:int)
+-> action {:layer 2} STALE_READ_Y (seq1:int) returns (r:int)
 {
   assert seq >= seq1;
   if (isEven(seq) && seq == seq1) {
@@ -97,14 +99,14 @@ procedure {:right}{:layer 2} STALE_READ_Y (seq1:int) returns (r:int)
   }
 }
 
-procedure {:atomic}{:layer 2} LOCKED_INC_SEQ ({:linear "tid"} tid:Tid)
+action {:layer 2} LOCKED_INC_SEQ ({:linear "tid"} tid:Tid)
 modifies seq;
 {
   assert lock == Some(tid);
   seq := seq + 1;
 }
 
-procedure {:both}{:layer 2} LOCKED_WRITE_X ({:linear "tid"} tid:Tid, v:int)
+<-> action {:layer 2} LOCKED_WRITE_X ({:linear "tid"} tid:Tid, v:int)
 modifies x;
 {
   assert isOdd(seq);
@@ -112,7 +114,7 @@ modifies x;
   x := v;
 }
 
-procedure {:both}{:layer 2} LOCKED_WRITE_Y ({:linear "tid"} tid:Tid, v:int)
+<-> action {:layer 2} LOCKED_WRITE_Y ({:linear "tid"} tid:Tid, v:int)
 modifies y;
 {
   assert isOdd(seq);
@@ -120,17 +122,28 @@ modifies y;
   y := v;
 }
 
-procedure {:yields}{:layer 1}{:refines "STALE_READ_SEQ"} stale_read_seq () returns (r:int)
+yield procedure {:layer 1} stale_read_seq () returns (r:int)
+refines STALE_READ_SEQ;
 { call r := read_seq(); }
-procedure {:yields}{:layer 1}{:refines "STALE_READ_X"} stale_read_x ({:layer 1} seq1:int) returns (r:int)
+
+yield procedure {:layer 1} stale_read_x ({:layer 1} seq1:int) returns (r:int)
+refines STALE_READ_X;
 { call r := read_x(); }
-procedure {:yields}{:layer 1}{:refines "STALE_READ_Y"} stale_read_y ({:layer 1} seq1:int) returns (r:int)
+
+yield procedure {:layer 1} stale_read_y ({:layer 1} seq1:int) returns (r:int)
+refines STALE_READ_Y;
 { call r := read_y(); }
-procedure {:yields}{:layer 1}{:refines "LOCKED_INC_SEQ"} locked_inc_seq ({:layer 1}{:linear "tid"} tid:Tid)
+
+yield procedure {:layer 1} locked_inc_seq ({:layer 1}{:linear "tid"} tid:Tid)
+refines LOCKED_INC_SEQ;
 { call inc_seq(); }
-procedure {:yields}{:layer 1}{:refines "LOCKED_WRITE_X"} locked_write_x ({:layer 1}{:linear "tid"} tid:Tid, v:int)
+
+yield procedure {:layer 1} locked_write_x ({:layer 1}{:linear "tid"} tid:Tid, v:int)
+refines LOCKED_WRITE_X;
 { call write_x(v); }
-procedure {:yields}{:layer 1}{:refines "LOCKED_WRITE_Y"} locked_write_y ({:layer 1}{:linear "tid"} tid:Tid, v:int)
+
+yield procedure {:layer 1} locked_write_y ({:layer 1}{:linear "tid"} tid:Tid, v:int)
+refines LOCKED_WRITE_Y;
 { call write_y(v); }
 
 // =============================================================================
@@ -139,58 +152,73 @@ procedure {:yields}{:layer 1}{:refines "LOCKED_WRITE_Y"} locked_write_y ({:layer
 // * read and increment of seq
 // * acquire and release of lock
 
-procedure {:atomic}{:layer 1} READ_X () returns (r:int)
+action {:layer 1} READ_X () returns (r:int)
 {
   r := x;
 }
 
-procedure {:atomic}{:layer 1} READ_Y () returns (r:int)
+action {:layer 1} READ_Y () returns (r:int)
 {
   r := y;
 }
 
-procedure {:atomic}{:layer 1} WRITE_X (v:int)
+action {:layer 1} WRITE_X (v:int)
 modifies x;
 {
   x := v;
 }
 
-procedure {:atomic}{:layer 1} WRITE_Y (v:int)
+action {:layer 1} WRITE_Y (v:int)
 modifies y;
 {
   y := v;
 }
 
-procedure {:atomic}{:layer 1,2} READ_SEQ () returns (r:int)
+action {:layer 1,2} READ_SEQ () returns (r:int)
 {
   r := seq;
 }
 
-procedure {:atomic}{:layer 1} INC_SEQ ()
+action {:layer 1} INC_SEQ ()
 modifies seq;
 {
   seq := seq + 1;
 }
 
-procedure {:right}{:layer 1,2} ACQUIRE ({:linear "tid"} tid:Tid)
+-> action {:layer 1,2} ACQUIRE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
   assume lock == None();
   lock := Some(tid);
 }
 
-procedure {:left}{:layer 1,2} RELEASE ({:linear "tid"} tid:Tid)
+<- action {:layer 1,2} RELEASE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
   assert lock == Some(tid);
   lock := None();
 }
 
-procedure {:yields}{:layer 0}{:refines "READ_X"} read_x () returns (r:int);
-procedure {:yields}{:layer 0}{:refines "READ_Y"} read_y () returns (r:int);
-procedure {:yields}{:layer 0}{:refines "WRITE_X"} write_x (v:int);
-procedure {:yields}{:layer 0}{:refines "WRITE_Y"} write_y (v:int);
-procedure {:yields}{:layer 0}{:refines "READ_SEQ"} read_seq () returns (r:int);
-procedure {:yields}{:layer 0}{:refines "INC_SEQ"} inc_seq ();
-procedure {:yields}{:layer 0}{:refines "ACQUIRE"} acquire ({:linear "tid"} tid:Tid);
-procedure {:yields}{:layer 0}{:refines "RELEASE"} release ({:linear "tid"} tid:Tid);
+yield procedure {:layer 0} read_x () returns (r:int);
+refines READ_X;
+
+yield procedure {:layer 0} read_y () returns (r:int);
+refines READ_Y;
+
+yield procedure {:layer 0} write_x (v:int);
+refines WRITE_X;
+
+yield procedure {:layer 0} write_y (v:int);
+refines WRITE_Y;
+
+yield procedure {:layer 0} read_seq () returns (r:int);
+refines READ_SEQ;
+
+yield procedure {:layer 0} inc_seq ();
+refines INC_SEQ;
+
+yield procedure {:layer 0} acquire ({:linear "tid"} tid:Tid);
+refines ACQUIRE;
+
+yield procedure {:layer 0} release ({:linear "tid"} tid:Tid);
+refines RELEASE;

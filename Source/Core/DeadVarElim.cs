@@ -53,10 +53,7 @@ namespace Microsoft.Boogie
     private CoreOptions options;
     private Procedure enclosingProc;
 
-    private Dictionary<Procedure /*!*/, HashSet<Variable /*!*/> /*!*/> /*!*/
-      modSets;
-
-    private HashSet<Procedure> yieldingProcs;
+    private Dictionary<Procedure, HashSet<Variable>> modSets;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -68,8 +65,7 @@ namespace Microsoft.Boogie
     public ModSetCollector(CoreOptions options)
     {
       this.options = options;
-      modSets = new Dictionary<Procedure /*!*/, HashSet<Variable /*!*/> /*!*/>();
-      yieldingProcs = new HashSet<Procedure>();
+      modSets = new Dictionary<Procedure, HashSet<Variable>>();
     }
 
     private bool moreProcessingRequired;
@@ -133,14 +129,6 @@ namespace Microsoft.Boogie
         foreach (Variable v in modSets[x])
         {
           x.Modifies.Add(new IdentifierExpr(v.tok, v));
-        }
-      }
-
-      foreach (Procedure x in yieldingProcs)
-      {
-        if (!QKeyValue.FindBoolAttribute(x.Attributes, CivlAttributes.YIELDS))
-        {
-          x.AddAttribute(CivlAttributes.YIELDS);
         }
       }
 
@@ -237,44 +225,6 @@ namespace Microsoft.Boogie
         foreach (Variable var in modSets[callee])
         {
           ProcessVariable(var);
-        }
-      }
-
-      if (!yieldingProcs.Contains(enclosingProc) && (yieldingProcs.Contains(callCmd.Proc) || callCmd.IsAsync))
-      {
-        yieldingProcs.Add(enclosingProc);
-        moreProcessingRequired = true;
-      }
-
-      if (callCmd.IsAsync)
-      {
-        if (!yieldingProcs.Contains(callCmd.Proc))
-        {
-          yieldingProcs.Add(callCmd.Proc);
-          moreProcessingRequired = true;
-        }
-      }
-
-      return ret;
-    }
-
-    public override Cmd VisitParCallCmd(ParCallCmd node)
-    {
-      //Contract.Requires(callCmd != null);
-      Contract.Ensures(Contract.Result<Cmd>() != null);
-      Cmd ret = base.VisitParCallCmd(node);
-      if (!yieldingProcs.Contains(enclosingProc))
-      {
-        yieldingProcs.Add(enclosingProc);
-        moreProcessingRequired = true;
-      }
-
-      foreach (CallCmd callCmd in node.CallCmds)
-      {
-        if (!yieldingProcs.Contains(callCmd.Proc))
-        {
-          yieldingProcs.Add(callCmd.Proc);
-          moreProcessingRequired = true;
         }
       }
 

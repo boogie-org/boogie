@@ -14,47 +14,54 @@ const max : int;
 
 axiom (max > 0);
 
-procedure {:right} {:layer 1,2} atomic_acquire(i : int, {:linear "tid"} tid: X)
+-> action {:layer 1,2} atomic_acquire(i : int, {:linear "tid"} tid: X)
 modifies lock;
 { assert 0 <= i && i < max; assert tid != nil && tid != done; assume lock[i] == nil; lock[i] := tid; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_acquire"} acquire(i : int, {:linear "tid"} tid: X);
+yield procedure {:layer 0} acquire(i : int, {:linear "tid"} tid: X);
+refines atomic_acquire;
 
-procedure {:left} {:layer 1,2} atomic_release(i : int, {:linear "tid"} tid: X)
+<- action {:layer 1,2} atomic_release(i : int, {:linear "tid"} tid: X)
 modifies lock;
 { assert 0 <= i && i < max; assert lock[i] == tid; assert tid != nil && tid != done; lock[i] := nil; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_release"} release(i : int, {:linear "tid"} tid: X);
+yield procedure {:layer 0} release(i : int, {:linear "tid"} tid: X);
+refines atomic_release;
 
-procedure {:both} {:layer 1} atomic_getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int)
+<-> action {:layer 1} atomic_getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int)
 { assert 0 <= j && j < max; assert tid != nil && tid != done; assert lock[j] == tid; elt_j := elt[j]; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_getElt"} getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int);
+yield procedure {:layer 0} getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int);
+refines atomic_getElt;
 
-procedure {:both} {:layer 1} atomic_setElt(j : int, x : int, {:linear "tid"} tid: X)
+<-> action {:layer 1} atomic_setElt(j : int, x : int, {:linear "tid"} tid: X)
 modifies elt, owner;
 { assert x != null && owner[j] == nil; assert 0 <= j && j < max; assert lock[j] == tid; assert tid != nil && tid != done; elt[j] := x; owner[j] := tid; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_setElt"} setElt(j : int, x : int, {:linear "tid"} tid: X);
+yield procedure {:layer 0} setElt(j : int, x : int, {:linear "tid"} tid: X);
+refines atomic_setElt;
 
-procedure {:left} {:layer 1,2} atomic_setEltToNull(j : int, {:linear "tid"} tid: X)
+<- action {:layer 1,2} atomic_setEltToNull(j : int, {:linear "tid"} tid: X)
 modifies elt, owner;
 { assert owner[j] == tid && lock[j] == tid; assert 0 <= j && j < max; assert !valid[j]; assert tid != nil  && tid != done; elt[j] := null; owner[j] := nil; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_setEltToNull"} setEltToNull(j : int, {:linear "tid"} tid: X);
+yield procedure {:layer 0} setEltToNull(j : int, {:linear "tid"} tid: X);
+refines atomic_setEltToNull;
 
-procedure {:both} {:layer 1,2} atomic_setValid(j : int, {:linear "tid"} tid: X)
+<-> action {:layer 1,2} atomic_setValid(j : int, {:linear "tid"} tid: X)
 modifies valid, owner;
 { assert 0 <= j && j < max; assert lock[j] == tid; assert tid != nil && tid != done; assert owner[j] == tid; valid[j] := true; owner[j] := done; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_setValid"} setValid(j : int, {:linear "tid"} tid: X);
+yield procedure {:layer 0} setValid(j : int, {:linear "tid"} tid: X);
+refines atomic_setValid;
 
-procedure {:both} {:layer 1,2} atomic_isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool)
+<-> action {:layer 1,2} atomic_isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool)
 { assert 0 <= j && j < max; assert lock[j] == tid; assert tid != nil && tid != done; fnd := (elt[j] == x) && valid[j]; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_isEltThereAndValid"} isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool);
+yield procedure {:layer 0} isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool);
+refines atomic_isEltThereAndValid;
 
-procedure {:right} {:layer 2} AtomicFindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
+-> action {:layer 2} AtomicFindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
 modifies elt, owner;
 {
   assert tid != nil && tid != done;
@@ -71,10 +78,11 @@ modifies elt, owner;
   }
 }
 
-procedure {:yields} {:layer 1} {:refines "AtomicFindSlot"}
-{:yield_preserves "Yield1"}
+yield procedure {:layer 1}
 FindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
+refines AtomicFindSlot;
 requires {:layer 1} x != null && tid != nil && tid != done;
+preserves call Yield1();
 {
   var j : int;
   var elt_j : int;
@@ -83,7 +91,8 @@ requires {:layer 1} x != null && tid != nil && tid != done;
 
   j := 0;
   while(j < max)
-  invariant {:yields} {:yield_loop "Yield1"} true;
+  invariant {:yields} true;
+  invariant call Yield1();
   invariant {:layer 1} 0 <= j;
   {
     call acquire(j, tid);
@@ -109,7 +118,7 @@ requires {:layer 1} x != null && tid != nil && tid != done;
   return;
 }
 
-procedure {:atomic} {:layer 3} AtomicInsert(x : int, {:linear "tid"} tid: X) returns (result : bool)
+action {:layer 3} AtomicInsert(x : int, {:linear "tid"} tid: X) returns (result : bool)
 modifies elt, valid, owner;
 {
   var r:int;
@@ -127,10 +136,12 @@ modifies elt, valid, owner;
   }
 }
 
-procedure {:yields} {:layer 2} {:refines "AtomicInsert"}
-{:yield_preserves "Yield1"} {:yield_preserves "Yield2"}
+yield procedure {:layer 2}
 Insert(x : int, {:linear "tid"} tid: X) returns (result : bool)
+refines AtomicInsert;
 requires {:layer 1,2} x != null && tid != nil && tid != done;
+preserves call Yield1();
+preserves call Yield2();
 {
   var i: int;
   par Yield1() | Yield2();
@@ -155,7 +166,7 @@ requires {:layer 1,2} x != null && tid != nil && tid != done;
   return;
 }
 
-procedure {:atomic} {:layer 3} AtomicInsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
+action {:layer 3} AtomicInsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
 modifies elt, valid, owner;
 {
   var rx:int;
@@ -178,10 +189,12 @@ modifies elt, valid, owner;
   }
 }
 
-procedure {:yields} {:layer 2} {:refines "AtomicInsertPair"}
-{:yield_preserves "Yield1"} {:yield_preserves "Yield2"}
+yield procedure {:layer 2}
 InsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
+refines AtomicInsertPair;
 requires {:layer 1,2} x != null && y != null && tid != nil && tid != done;
+preserves call Yield1();
+preserves call Yield2();
 {
   var i : int;
   var j : int;
@@ -227,7 +240,7 @@ requires {:layer 1,2} x != null && y != null && tid != nil && tid != done;
   return;
 }
 
-procedure {:atomic} {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
+action {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
 {
   assert tid != nil && tid != done;
   assert x != null;
@@ -235,10 +248,14 @@ procedure {:atomic} {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old
   assume !found ==> (forall ii:int :: 0 <= ii && ii < max ==> !(old_valid[ii] && old_elt[ii] == x));
 }
 
-procedure {:yields} {:layer 2} {:refines "AtomicLookUp"}
-{:yield_preserves "Yield1"} {:yield_preserves "Yield2"} {:yield_requires "YieldLookUp1", old_valid, old_elt} {:yield_requires "YieldLookUp2", old_valid, old_elt}
+yield procedure {:layer 2}
 LookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
+refines AtomicLookUp;
 requires {:layer 1} {:layer 2} (tid != nil && tid != done);
+preserves call Yield1();
+preserves call Yield2();
+preserves call YieldLookUp1(old_valid, old_elt);
+preserves call YieldLookUp2(old_valid, old_elt);
 {
   var j : int;
   var isThere : bool;
@@ -248,10 +265,11 @@ requires {:layer 1} {:layer 2} (tid != nil && tid != done);
   j := 0;
 
   while(j < max)
-  invariant {:yields}
-  {:yield_loop "Yield1"} {:yield_loop "Yield2"}
-  {:yield_loop "YieldLookUp1", old_valid, old_elt} {:yield_loop "YieldLookUp2", old_valid, old_elt}
-  true;
+  invariant {:yields} true;
+  invariant call Yield1();
+  invariant call Yield2();
+  invariant call YieldLookUp1(old_valid, old_elt);
+  invariant call YieldLookUp2(old_valid, old_elt);
   invariant {:layer 1} {:layer 2} (forall ii:int :: 0 <= ii && ii < j ==> !(old_valid[ii] && old_elt[ii] == x));
   invariant {:layer 1} {:layer 2} 0 <= j;
   {

@@ -6,17 +6,19 @@ axiom n > 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 1} {:pending_async} A () {}
-procedure {:atomic}{:layer 1} {:pending_async} B () {}
+async action {:layer 1} A () {}
+async action {:layer 1} B () {}
 
-procedure {:left}{:layer 1} {:creates "A"} C ()
+<- action {:layer 1} C ()
+creates A;
 {
   call create_async(A());
   // create undeclared pending async to B
   call create_async(B());
 }
 
-procedure {:left}{:layer 1} {:creates "A", "B"} D ()
+<- action {:layer 1} D ()
+creates A, B;
 {
   // do nothing
 }

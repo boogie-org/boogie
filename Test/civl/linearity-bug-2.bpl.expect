@@ -1,7 +1,7 @@
-linearity-bug-2.bpl(6,32): Error: Potential linearity violation in outputs for domain lin.
+linearity-bug-2.bpl(6,19): Error: Potential linearity violation in outputs for domain lin.
 Execution trace:
-    linearity-bug-2.bpl(6,32): inline$atomic_foo$0$Entry
+    linearity-bug-2.bpl(6,19): inline$atomic_foo$0$Entry
     linearity-bug-2.bpl(8,10): inline$atomic_foo$0$anon0
-    linearity-bug-2.bpl(6,32): inline$atomic_foo$0$Return
+    linearity-bug-2.bpl(6,19): inline$atomic_foo$0$Return
 
 Boogie program verifier finished with 0 verified, 1 error
