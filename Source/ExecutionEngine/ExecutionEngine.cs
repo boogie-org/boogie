@@ -70,7 +70,6 @@ namespace Microsoft.Boogie
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
       
       var largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
-      //var largeThreadScheduler = new ThreadTaskScheduler(16 * 1024 * 1024);
       largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.None, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
@@ -956,16 +955,17 @@ namespace Microsoft.Boogie
       }
 
       var houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
-      var houdini = new Houdini.Houdini(Options.OutputWriter, Options, program, houdiniStats);
+      var outputWriter = Options.OutputWriter;
+      var houdini = new Houdini.Houdini(outputWriter, Options, program, houdiniStats);
       var outcome = await houdini.PerformHoudiniInference();
       houdini.Close();
 
       if (Options.PrintAssignment)
       {
-        await Options.OutputWriter.WriteLineAsync("Assignment computed by Houdini:");
+        await outputWriter.WriteLineAsync("Assignment computed by Houdini:");
         foreach (var x in outcome.assignment)
         {
-          await Options.OutputWriter.WriteLineAsync(x.Key + " = " + x.Value);
+          await outputWriter.WriteLineAsync(x.Key + " = " + x.Value);
         }
       }
 
@@ -980,19 +980,19 @@ namespace Microsoft.Boogie
           }
         }
 
-        await Options.OutputWriter.WriteLineAsync("Number of true assignments = " + numTrueAssigns);
-        await Options.OutputWriter.WriteLineAsync("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
-        await Options.OutputWriter.WriteLineAsync("Prover time = " + houdiniStats.proverTime.ToString("F2"));
-        await Options.OutputWriter.WriteLineAsync("Unsat core prover time = " + houdiniStats.unsatCoreProverTime.ToString("F2"));
-        await Options.OutputWriter.WriteLineAsync("Number of prover queries = " + houdiniStats.numProverQueries);
-        await Options.OutputWriter.WriteLineAsync("Number of unsat core prover queries = " + houdiniStats.numUnsatCoreProverQueries);
-        await Options.OutputWriter.WriteLineAsync("Number of unsat core prunings = " + houdiniStats.numUnsatCorePrunings);
+        await outputWriter.WriteLineAsync("Number of true assignments = " + numTrueAssigns);
+        await outputWriter.WriteLineAsync("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
+        await outputWriter.WriteLineAsync("Prover time = " + houdiniStats.proverTime.ToString("F2"));
+        await outputWriter.WriteLineAsync("Unsat core prover time = " + houdiniStats.unsatCoreProverTime.ToString("F2"));
+        await outputWriter.WriteLineAsync("Number of prover queries = " + houdiniStats.numProverQueries);
+        await outputWriter.WriteLineAsync("Number of unsat core prover queries = " + houdiniStats.numUnsatCoreProverQueries);
+        await outputWriter.WriteLineAsync("Number of unsat core prunings = " + houdiniStats.numUnsatCorePrunings);
       }
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, Options.OutputWriter, Options.TimeLimit, er);
-        ProcessErrors(Options.Printer, x.errors, x.outcome, Options.OutputWriter, er);
+        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, outputWriter, Options.TimeLimit, er);
+        ProcessErrors(Options.Printer, x.errors, x.outcome, outputWriter, er);
       }
 
       return PipelineOutcome.Done;
