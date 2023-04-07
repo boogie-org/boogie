@@ -3,8 +3,8 @@
 
 var {:layer 0,1} x:int;
 
-procedure {:yield_invariant} {:layer 1} yield_x(n: int);
-requires x >= n;
+yield invariant {:layer 1} yield_x(n: int);
+invariant x >= n;
 
 procedure {:atomic}{:layer 1} {:pending_async} A ()
 modifies x;

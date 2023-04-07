@@ -12,7 +12,7 @@ procedure {:yields} {:layer 3}
 Customer({:linear "tid"} tid: X)
 {
   while (*)
-  invariant {:yields} {:layer 1,2,3} {:yield_loop "Yield", tid} true;
+  invariant {:yields} {:yield_loop "Yield", tid} true;
   {
     call Enter(tid);
     call Leave(tid);
@@ -22,8 +22,8 @@ Customer({:linear "tid"} tid: X)
 function {:inline} InvLock(lock: X, b: bool) : bool
 { lock != nil <==> b }
 
-procedure {:yield_invariant} {:layer 2} Yield({:linear "tid"} tid: X);
-requires tid != nil && InvLock(lock, b);
+yield invariant {:layer 2} Yield({:linear "tid"} tid: X);
+invariant tid != nil && InvLock(lock, b);
 
 procedure {:right} {:layer 3} AtomicEnter({:linear "tid"} tid: X)
 modifies lock;
@@ -56,7 +56,7 @@ procedure {:yields} {:layer 1} {:refines "AtomicLowerEnter"} LowerEnter({:linear
   var status: bool;
 
   while (true)
-  invariant {:yields} {:layer 1} true;
+  invariant {:yields} true;
   {
     call status := CAS(false, true);
     if (status) {

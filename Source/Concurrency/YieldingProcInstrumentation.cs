@@ -199,35 +199,14 @@ namespace Microsoft.Boogie
         return;
       }
 
-      foreach (var proc in civlTypeChecker.procToYieldInvariant.Keys)
+      foreach (var yieldInvariant in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>())
       {
-        var yieldInvariant = civlTypeChecker.procToYieldInvariant[proc];
         if (layerNum == yieldInvariant.LayerNum)
         {
           noninterferenceCheckerDecls.AddRange(
             NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
-              layerNum, absyMap, proc, new List<Variable>()));
+              layerNum, absyMap, yieldInvariant, new List<Variable>()));
         }
-      }
-
-      foreach (var impl in absyMap.Keys.OfType<Implementation>())
-      {
-        noninterferenceCheckerDecls.AddRange(
-          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
-          layerNum, absyMap, impl, impl.LocVars));
-      }
-
-      foreach (var proc in absyMap.Keys.OfType<Procedure>())
-      {
-        var yieldingProc = civlTypeChecker.procToYieldingProc[absyMap.Original(proc)];
-        if (yieldingProc is MoverProc && yieldingProc.upperLayer == layerNum)
-        {
-          continue;
-        }
-
-        noninterferenceCheckerDecls.AddRange(
-          NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
-            layerNum, absyMap, proc, new List<Variable>()));
       }
     }
 
@@ -250,13 +229,13 @@ namespace Microsoft.Boogie
       var inlinedYieldInvariants = new List<Cmd>();
       foreach (var callCmd in yieldInvariants)
       {
-        var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
         if (layerNum == yieldInvariant.LayerNum)
         {
-          Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins)
+          Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
             .ToDictionary(x => x.Item1, x => x.Item2);
           Substitution subst = Substituter.SubstitutionFromDictionary(map);
-          foreach (Requires req in callCmd.Proc.Requires)
+          foreach (Requires req in yieldInvariant.Requires)
           {
             var newExpr = Substituter.Apply(subst, req.Condition);
             if (req.Free)
@@ -270,7 +249,6 @@ namespace Microsoft.Boogie
           }
         }
       }
-
       return inlinedYieldInvariants;
     }
 
@@ -299,13 +277,13 @@ namespace Microsoft.Boogie
 
         foreach (var callCmd in GetYieldingProc(impl).yieldRequires)
         {
-          var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.LayerNum)
           {
-            Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(callCmd.Proc.InParams
+            Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(yieldInvariant.InParams
               .Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => (Expr) ExprHelper.Old(x.Item2)));
-            callCmd.Proc.Requires.ForEach(req => initCmds.Add(new AssumeCmd(req.tok,
+            yieldInvariant.Requires.ForEach(req => initCmds.Add(new AssumeCmd(req.tok,
               Substituter.Apply(procToImplInParams,
                 Substituter.Apply(callFormalsToActuals, req.Condition)))));
           }
@@ -324,13 +302,13 @@ namespace Microsoft.Boogie
         var yieldingProc = GetYieldingProc(impl);
         foreach (var callCmd in yieldingProc.yieldRequires)
         {
-          var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.LayerNum)
           {
-            Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins)
+            Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => x.Item2);
             Substitution subst = Substituter.SubstitutionFromDictionary(map);
-            foreach (Requires req in callCmd.Proc.Requires)
+            foreach (Requires req in yieldInvariant.Requires)
             {
               impl.Proc.Requires.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
                 null,
@@ -341,13 +319,13 @@ namespace Microsoft.Boogie
 
         foreach (var callCmd in yieldingProc.yieldEnsures)
         {
-          var yieldInvariant = civlTypeChecker.procToYieldInvariant[callCmd.Proc];
+          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.LayerNum)
           {
-            Dictionary<Variable, Expr> map = callCmd.Proc.InParams.Zip(callCmd.Ins)
+            Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => x.Item2);
             Substitution subst = Substituter.SubstitutionFromDictionary(map);
-            foreach (Requires req in callCmd.Proc.Requires)
+            foreach (Requires req in yieldInvariant.Requires)
             {
               impl.Proc.Ensures.Add(new Ensures(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
                 null,
@@ -417,14 +395,8 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-
       var originalBlock = absyMap.Original(b);
-      if (!civlTypeChecker.yieldingLoops.ContainsKey(originalBlock))
-      {
-        return false;
-      }
-
-      return civlTypeChecker.yieldingLoops[originalBlock].layers.Contains(layerNum);
+      return civlTypeChecker.IsYieldingLoopHeader(originalBlock, layerNum);
     }
 
     private void ComputeYieldingLoops(

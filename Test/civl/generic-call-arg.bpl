@@ -8,4 +8,4 @@ procedure
 {:yield_requires "A", MapConst(false)}
 B();
 
-procedure {:yield_invariant} {:layer 1} A(x: [int]bool);
+yield invariant {:layer 1} A(x: [int]bool);

@@ -831,9 +831,11 @@ namespace Microsoft.Boogie
       var afterRunningStates = VerifyImplementationWithoutCaching(processedProgram, stats, er, cancellationToken,
         programId, implementation, traceWriter).Do(status =>
       {
-        if (status is Completed completed && 0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
-        {
-          Cache.Insert(implementation, completed.Result);
+        if (status is Completed completed) {
+          if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum)) {
+            Cache.Insert(implementation, completed.Result);
+          }
+          Options.Printer.ReportEndVerifyImplementation(implementation, completed.Result);
         }
       });
       return Observable.Return(new Running()).Concat(afterRunningStates);

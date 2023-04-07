@@ -54,7 +54,7 @@ modifies joinedNodes, voteInfo, decision;
       assume
         (forall r: Round :: r < 1 || r > k ==> voteInfo[r] is None) &&
         (forall r: Round :: r < 1 || r > k ==> decision[r] is None);
-      call create_asyncs((lambda pa: A_StartRound :: pa->r == pa->r_lin && k < pa->r && pa->r <= numRounds));
+      call create_asyncs((lambda {:pool "A_StartRound"} pa: A_StartRound :: pa->r == pa->r_lin && k < pa->r && pa->r <= numRounds));
       call set_choice(A_StartRound(k+1, k+1));
   } else if (*) {
       assume
@@ -77,9 +77,10 @@ modifies joinedNodes, voteInfo, decision;
       assume
         {:add_to_pool "Node", m}
         {:add_to_pool "A_Vote", A_Vote(k+1, numNodes, voteInfo[k+1]->t->value, VotePerm(k+1, numNodes))}
+        {:add_to_pool "A_StartRound", A_StartRound(numRounds, numRounds)}
         0 <= m && m <= numNodes &&
         (forall n: Node :: n < 1 || n > m ==> !voteInfo[k+1]->t->ns[n]);
-      call create_asyncs((lambda pa: A_StartRound :: pa->r == pa->r_lin && k+1 < pa->r && pa->r <= numRounds));
+      call create_asyncs((lambda {:pool "A_StartRound"} pa: A_StartRound :: pa->r == pa->r_lin && k+1 < pa->r && pa->r <= numRounds));
       call create_async(A_Conclude(k+1, voteInfo[k+1]->t->value, ConcludePerm(k+1)));
       call create_asyncs((lambda {:pool "A_Vote"} pa: A_Vote :: pa->r == k+1 && m < pa->n && pa->n <= numNodes && pa->v == voteInfo[k+1]->t->value && pa->p == VotePerm(k+1, pa->n)));
       if (m == numNodes) { call set_choice(A_Conclude(k+1, voteInfo[k+1]->t->value, ConcludePerm(k+1))); }

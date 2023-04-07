@@ -2,8 +2,8 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,1} x:int;
 
-procedure {:yield_invariant} {:layer 1} yield_x(n: int);
-requires x >= n;
+yield invariant {:layer 1} yield_x(n: int);
+invariant x >= n;
 
 procedure {:yields} {:layer 1}
 {:yield_requires "yield_x", 5}

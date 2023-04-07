@@ -33,4 +33,4 @@ modifies a;
 
 procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
 
-procedure {:yield_invariant} {:layer 1} Yield();
+yield invariant {:layer 1} Yield();

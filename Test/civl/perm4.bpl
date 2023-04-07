@@ -19,8 +19,8 @@ modifies h;
 
 procedure {:yields} {:layer 0} {:refines "AtomicSetH"} SetH(val:int);
 
-procedure {:yield_invariant} {:layer 1} Yield({:linear "1"} x: [int]bool);
-requires x == MapConst(true) && g == 0;
+yield invariant {:layer 1} Yield({:linear "1"} x: [int]bool);
+invariant x == MapConst(true) && g == 0;
 
 procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} xl: int)
 ensures {:layer 1} xl != 0;
@@ -79,10 +79,10 @@ requires {:layer 1} y_in != MapConst(false);
     call SetH(1);
 }
 
-procedure {:yield_invariant} {:layer 1} Yield_g(x: [int]bool);
-requires x == MapConst(true);
-requires g == 0;
+yield invariant {:layer 1} Yield_g(x: [int]bool);
+invariant x == MapConst(true);
+invariant g == 0;
 
-procedure {:yield_invariant} {:layer 1} Yield_h({:linear "2"} y: [int]bool);
-requires y == MapConst(true);
-requires h == 0;
+yield invariant {:layer 1} Yield_h({:linear "2"} y: [int]bool);
+invariant y == MapConst(true);
+invariant h == 0;

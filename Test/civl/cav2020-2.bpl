@@ -7,8 +7,8 @@ var {:layer 0, 1} b: bool;
 var {:layer 0, 3} count: int;
 var {:layer 1, 2} l: Option Tid;
 
-procedure {:yield_invariant} {:layer 1} LockInv();
-requires b <==> (l != None());
+yield invariant {:layer 1} LockInv();
+invariant b <==> (l != None());
 
 procedure {:atomic} {:layer 3,3} IncrSpec()
 modifies count;
