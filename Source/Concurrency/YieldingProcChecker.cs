@@ -21,7 +21,7 @@ namespace Microsoft.Boogie
 
         foreach (var procToYieldingProc in civlTypeChecker.procToYieldingProc)
         {
-          if (procToYieldingProc.Value.upperLayer >= layerNum)
+          if (procToYieldingProc.Value.Layer >= layerNum)
           {
             duplicator.VisitProcedure(procToYieldingProc.Key);
           }
@@ -30,7 +30,7 @@ namespace Microsoft.Boogie
         foreach (Implementation impl in program.Implementations)
         {
           if (civlTypeChecker.procToYieldingProc.TryGetValue(impl.Proc, out var yieldingProc) &&
-              yieldingProc.upperLayer >= layerNum)
+              yieldingProc.Layer >= layerNum)
           {
             duplicator.VisitImplementation(impl);
           }

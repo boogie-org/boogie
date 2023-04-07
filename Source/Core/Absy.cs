@@ -250,6 +250,35 @@ namespace Microsoft.Boogie
   public interface ICarriesAttributes
   {
     QKeyValue Attributes { get; set; }
+
+    public void ResolveAttributes(ResolutionContext rc)
+    {
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
+      {
+        kv.Resolve(rc);
+      }
+    }
+
+    public void TypecheckAttributes(TypecheckingContext rc)
+    {
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
+      {
+        kv.Typecheck(rc);
+      }
+    }
+
+    public List<int> FindLayers()
+    {
+      List<int> layers = new List<int>();
+      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
+      {
+        if (kv.Key == CivlAttributes.LAYER)
+        {
+          layers.AddRange(kv.Params.Select(o => ((LiteralExpr)o).asBigNum.ToIntSafe));
+        }
+      }
+      return layers.Distinct().OrderBy(l => l).ToList();
+    }
   }
 
   [ContractClassFor(typeof(Absy))]
@@ -878,24 +907,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    protected void ResolveAttributes(ResolutionContext rc)
-    {
-      Contract.Requires(rc != null);
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        kv.Resolve(rc);
-      }
-    }
-
-    protected void TypecheckAttributes(TypecheckingContext rc)
-    {
-      Contract.Requires(rc != null);
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        kv.Typecheck(rc);
-      }
-    }
-
     /// <summary>
     /// If the declaration has an attribute {:name} or {:name true}, then set "result" to "true" and return "true".
     /// If the declaration has an attribute {:name false}, then set "result" to "false" and return "true".
@@ -1044,6 +1055,44 @@ namespace Microsoft.Boogie
       }
     }
 
+    protected LayerRange ToLayerRange(TypecheckingContext tc, LayerRange defaultLayerRange = null)
+    {
+      // We return min-max range for declarations that do not explicitly specify a range
+      if (defaultLayerRange == null)
+      {
+        defaultLayerRange = LayerRange.MinMax;
+      }
+      List<int> layerNums = (this as ICarriesAttributes).FindLayers();
+      if (layerNums.Count == 0)
+      {
+        return defaultLayerRange;
+      }
+      if (layerNums.Count == 1)
+      {
+        return new LayerRange(layerNums[0], layerNums[0]);
+      }
+      if (layerNums.Count == 2)
+      {
+        if (layerNums[0] <= layerNums[1])
+        {
+          return new LayerRange(layerNums[0], layerNums[1]);
+        }
+      }
+      tc.Error(this, "invalid layer range");
+      return defaultLayerRange;
+    }
+
+    protected int ToLayer(ResolutionContext rc)
+    {
+      List<int> layers = (this as ICarriesAttributes).FindLayers();
+      if (layers.Count == 1)
+      {
+        return layers[0];
+      }
+      rc.Error(this, "expected single layer number");
+      return 0;
+    }
+
     public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
     public abstract void Register(ResolutionContext /*!*/ rc);
 
@@ -1187,7 +1236,7 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      ResolveAttributes(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
       rc.StateMode = ResolutionContext.State.StateLess;
       Expr.Resolve(rc);
       rc.StateMode = ResolutionContext.State.Single;
@@ -1196,7 +1245,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null); // follows from postcondition of Expr.Typecheck
       if (!Expr.Type.Unify(Type.Bool))
@@ -1322,13 +1371,13 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      ResolveAttributes(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
@@ -1608,7 +1657,7 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      ResolveAttributes(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
 
       int previousState = rc.TypeBinderState;
       try
@@ -1630,7 +1679,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
     }
 
     public static void ResolveTypeSynonyms(List<TypeSynonymDecl /*!*/> /*!*/ synonymDecls, ResolutionContext /*!*/ rc)
@@ -1769,8 +1818,9 @@ namespace Microsoft.Boogie
 
   public abstract class Variable : NamedDeclaration
   {
-    private TypedIdent /*!*/
-      typedIdent;
+    private TypedIdent typedIdent;
+
+    public LayerRange layerRange;
 
     public TypedIdent TypedIdent
     {
@@ -1792,7 +1842,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(this.typedIdent != null);
     }
 
-    public Variable(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
+    public Variable(IToken tok, TypedIdent typedIdent)
       : base(tok, typedIdent.Name)
     {
       Contract.Requires(tok != null);
@@ -1800,7 +1850,7 @@ namespace Microsoft.Boogie
       this.typedIdent = typedIdent;
     }
 
-    public Variable(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent, QKeyValue kv)
+    public Variable(IToken tok, TypedIdent typedIdent, QKeyValue kv)
       : base(tok, typedIdent.Name)
     {
       Contract.Requires(tok != null);
@@ -1813,7 +1863,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, level, "var ");
       EmitVitals(stream, level, true);
       stream.WriteLine(";");
@@ -1821,7 +1870,6 @@ namespace Microsoft.Boogie
 
     public void EmitVitals(TokenTextWriter stream, int level, bool emitAttributes, bool emitType = true)
     {
-      Contract.Requires(stream != null);
       if (emitAttributes)
       {
         EmitAttributes(stream);
@@ -1838,14 +1886,12 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       this.TypedIdent.Resolve(rc);
-      ResolveAttributes(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
     }
 
     public void ResolveWhere(ResolutionContext rc)
     {
-      Contract.Requires(rc != null);
       if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && this.TypedIdent.WhereExpr != null)
       {
         rc.Error(tok, "assumption variable may not be declared with a where clause");
@@ -1859,12 +1905,27 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       this.TypedIdent.Typecheck(tc);
       if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && !this.TypedIdent.Type.IsBool)
       {
         tc.Error(tok, "assumption variable must be of type 'bool'");
+      }
+      if (tc.Proc is YieldProcedureDecl yieldProcedureDecl)
+      {
+        layerRange = ToLayerRange(tc, new LayerRange(LayerRange.Min, yieldProcedureDecl.Layer));
+        if (layerRange.upperLayerNum > yieldProcedureDecl.Layer)
+        {
+          tc.Error(this, "hidden layer of local variable may not be more than the layer of its procedure");
+        }
+      }
+      else if (tc.Proc is YieldInvariantDecl yieldInvariantDecl)
+      {
+        layerRange = new LayerRange(yieldInvariantDecl.Layer);
+      }
+      else
+      {
+        layerRange = ToLayerRange(tc);
       }
     }
   }
@@ -1973,14 +2034,14 @@ namespace Microsoft.Boogie
 
   public class GlobalVariable : Variable
   {
-    public GlobalVariable(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
+    public GlobalVariable(IToken tok, TypedIdent typedIdent)
       : base(tok, typedIdent)
     {
       Contract.Requires(tok != null);
       Contract.Requires(typedIdent != null);
     }
 
-    public GlobalVariable(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent, QKeyValue kv)
+    public GlobalVariable(IToken tok, TypedIdent typedIdent, QKeyValue kv)
       : base(tok, typedIdent, kv)
     {
       Contract.Requires(tok != null);
@@ -1994,14 +2055,11 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddVariable(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitGlobalVariable(this);
     }
   }
@@ -2484,7 +2542,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      TypecheckAttributes(tc);
+      (this as ICarriesAttributes).TypecheckAttributes(tc);
       foreach (Formal /*!*/ p in InParams)
       {
         Contract.Assert(p != null);
@@ -2674,7 +2732,7 @@ namespace Microsoft.Boogie
         rc.PushVarContext();
         RegisterFormals(InParams, rc);
         RegisterFormals(OutParams, rc);
-        ResolveAttributes(rc);
+        (this as ICarriesAttributes).ResolveAttributes(rc);
         if (Body != null)
         {
           Contract.Assert(DefinitionBody == null);
@@ -2843,12 +2901,13 @@ namespace Microsoft.Boogie
   {
     public readonly bool Free;
 
-    private Expr /*!*/
-      _condition;
+    private Expr _condition;
+    
+    public List<int> Layers;
 
     public ProofObligationDescription Description { get; set; } = new RequiresDescription();
 
-    public Expr /*!*/ Condition
+    public Expr Condition
     {
       get
       {
@@ -2907,21 +2966,18 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(condition != null);
       Contract.Requires(token != null);
-      //:this(token, free, condition, comment, null);
     }
 
     public Requires(bool free, Expr condition)
       : this(Token.NoToken, free, condition, null)
     {
       Contract.Requires(condition != null);
-      //:this(Token.NoToken, free, condition, null);
     }
 
     public Requires(bool free, Expr condition, string comment)
       : this(Token.NoToken, free, condition, comment)
     {
       Contract.Requires(condition != null);
-      //:this(Token.NoToken, free, condition, comment);
     }
 
     public void Emit(TokenTextWriter stream, int level)
@@ -2940,13 +2996,13 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       this.Condition.Resolve(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
+      Layers = (this as ICarriesAttributes).FindLayers();
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       this.Condition.Typecheck(tc);
       Contract.Assert(this.Condition.Type != null); // follows from postcondition of Expr.Typecheck
       if (!this.Condition.Type.Unify(Type.Bool))
@@ -2967,23 +3023,16 @@ namespace Microsoft.Boogie
 
     public ProofObligationDescription Description { get; set; } = new EnsuresDescription();
 
-    private Expr /*!*/
-      _condition;
+    private Expr _condition;
 
-    public Expr /*!*/ Condition
+    public Expr Condition
     {
-      get
-      {
-        Contract.Ensures(Contract.Result<Expr>() != null);
-        return this._condition;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this._condition = value;
-      }
+      get => this._condition;
+      set => this._condition = value;
     }
-
+    
+    public List<int> Layers;
+    
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
@@ -3012,7 +3061,7 @@ namespace Microsoft.Boogie
       return Free && QKeyValue.FindBoolAttribute(this.Attributes, "always_assume");
     }
 
-    public Ensures(IToken token, bool free, Expr /*!*/ condition, string comment, QKeyValue kv)
+    public Ensures(IToken token, bool free, Expr condition, string comment, QKeyValue kv)
       : base(token)
     {
       Contract.Requires(condition != null);
@@ -3028,21 +3077,18 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(condition != null);
       Contract.Requires(token != null);
-      //:this(token, free, condition, comment, null);
     }
 
     public Ensures(bool free, Expr condition)
       : this(Token.NoToken, free, condition, null)
     {
       Contract.Requires(condition != null);
-      //:this(Token.NoToken, free, condition, null);
     }
 
     public Ensures(bool free, Expr condition, string comment)
       : this(Token.NoToken, free, condition, comment)
     {
       Contract.Requires(condition != null);
-      //:this(Token.NoToken, free, condition, comment);
     }
 
     public void Emit(TokenTextWriter stream, int level)
@@ -3061,8 +3107,9 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       this.Condition.Resolve(rc);
+      (this as ICarriesAttributes).ResolveAttributes(rc);
+      Layers = (this as ICarriesAttributes).FindLayers();
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -3202,7 +3249,7 @@ namespace Microsoft.Boogie
         }
 
         rc.StateMode = ResolutionContext.State.Single;
-        ResolveAttributes(rc);
+        (this as ICarriesAttributes).ResolveAttributes(rc);
 
         Type.CheckBoundVariableOccurrences(TypeParameters,
           InParams.Select(Item => Item.TypedIdent.Type).ToList(),
@@ -3255,18 +3302,18 @@ namespace Microsoft.Boogie
 
   public class YieldInvariantDecl : Procedure
   {
-    private int layerNum;
-
-    public int LayerNum
-    {
-      get { return layerNum; }
-      set { layerNum = value; }
-    }
+    public int Layer; // set during resolution
 
     public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
       base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false, requires, new List<IdentifierExpr>(),
         requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
     {
+    }
+
+    public override void Register(ResolutionContext rc)
+    {
+      base.Register(rc);
+      Layer = ToLayer(rc);
     }
   }
 
@@ -3281,24 +3328,24 @@ namespace Microsoft.Boogie
 
   public class ActionDeclRef : Absy
   {
-    public string actionName;
-    public ActionDecl actionDecl;
+    public string ActionName;
+    public ActionDecl ActionDecl;
 
     public ActionDeclRef(IToken tok, string name) : base(tok)
     {
-      actionName = name;
+      ActionName = name;
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      if (actionDecl != null)
+      if (ActionDecl != null)
       {
         return;
       }
-      actionDecl = rc.LookUpProcedure(actionName) as ActionDecl;
-      if (actionDecl == null)
+      ActionDecl = rc.LookUpProcedure(ActionName) as ActionDecl;
+      if (ActionDecl == null)
       {
-        rc.Error(this, "undeclared action: {0}", actionName);
+        rc.Error(this, "undeclared action: {0}", ActionName);
       }
     }
 
@@ -3319,22 +3366,22 @@ namespace Microsoft.Boogie
 
   public class ElimDecl : Absy
   {
-    public ActionDeclRef target;
-    public ActionDeclRef abstraction;
+    public ActionDeclRef Target;
+    public ActionDeclRef Abstraction;
 
     public ElimDecl(IToken tok, ActionDeclRef target, ActionDeclRef abstraction) : base(tok)
     {
-      this.target = target;
-      this.abstraction = abstraction;
+      this.Target = target;
+      this.Abstraction = abstraction;
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      target.Resolve(rc);
-      abstraction.Resolve(rc);
-      if (abstraction.actionDecl != null && abstraction.actionDecl.actionQualifier != ActionQualifier.Abstract)
+      Target.Resolve(rc);
+      Abstraction.Resolve(rc);
+      if (Abstraction.ActionDecl != null && Abstraction.ActionDecl.ActionQualifier != ActionQualifier.Abstract)
       {
-        rc.Error(this, $"Action must be abstract: {abstraction.actionName}");
+        rc.Error(this, $"Action must be abstract: {Abstraction.ActionName}");
       }
     }
 
@@ -3346,14 +3393,17 @@ namespace Microsoft.Boogie
 
   public class ActionDecl : Procedure
   {
-    public MoverType moverType;
-    public ActionQualifier actionQualifier;
-    public List<ActionDeclRef> creates;
-    public ActionDeclRef refinedAction;
-    public ActionDeclRef invariantAction;
-    public List<ElimDecl> eliminates;
-    public DatatypeTypeCtorDecl pendingAsyncCtorDecl;
+    public MoverType MoverType;
+    public ActionQualifier ActionQualifier;
+    public List<ActionDeclRef> Creates;
+    public ActionDeclRef RefinedAction;
+    public ActionDeclRef InvariantAction;
+    public List<ElimDecl> Eliminates;
+    public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
     public int PendingAsyncStartIndex;
+
+    public Implementation Impl; // set when the implementation of this action is resolved
+    public LayerRange LayerRange; // set during type checking
 
     public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
       List<Variable> inParams, List<Variable> outParams,
@@ -3363,82 +3413,82 @@ namespace Microsoft.Boogie
       new List<TypeVariable>(), inParams, outParams,
       false, new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
-      this.moverType = moverType;
-      this.actionQualifier = actionQualifier;
-      this.creates = creates;
-      this.refinedAction = refinedAction;
-      this.invariantAction = invariantAction;
-      this.eliminates = eliminates;
-      this.pendingAsyncCtorDecl = pendingAsyncCtorDecl;
+      this.MoverType = moverType;
+      this.ActionQualifier = actionQualifier;
+      this.Creates = creates;
+      this.RefinedAction = refinedAction;
+      this.InvariantAction = invariantAction;
+      this.Eliminates = eliminates;
+      this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
       this.PendingAsyncStartIndex = outParams.Count;
     }
 
     public override void Resolve(ResolutionContext rc)
     {
       base.Resolve(rc);
-      if (actionQualifier == ActionQualifier.Async && OutParams.Count > 0)
+      if (ActionQualifier == ActionQualifier.Async && OutParams.Count > 0)
       {
         rc.Error(this, $"Async action may not have output parameters");
       }
-      if (moverType != MoverType.None)
+      if (MoverType != MoverType.None)
       {
-        if (actionQualifier == ActionQualifier.Invariant)
+        if (ActionQualifier == ActionQualifier.Invariant)
         {
           rc.Error(this, "Mover may not be a invariant action");
         }
-        if (actionQualifier == ActionQualifier.Link)
+        if (ActionQualifier == ActionQualifier.Link)
         {
           rc.Error(this, "Mover may not be a link action");
         }
-        if (actionQualifier == ActionQualifier.Abstract)
+        if (ActionQualifier == ActionQualifier.Abstract)
         {
           rc.Error(this, "Mover may not be an abstract action");
         }
       }
-      if (creates.Any())
+      if (Creates.Any())
       {
-        if (actionQualifier == ActionQualifier.Link)
+        if (ActionQualifier == ActionQualifier.Link)
         {
           rc.Error(this, "Link action may not create pending asyncs");
         }
-        if (moverType == MoverType.Right || moverType == MoverType.Both)
+        if (MoverType == MoverType.Right || MoverType == MoverType.Both)
         {
           rc.Error(this, "Right mover may not create pending asyncs");
         }
       }
-      creates.Iter(create =>
+      Creates.Iter(create =>
       {
         create.Resolve(rc);
-        if (create.actionDecl.actionQualifier != ActionQualifier.Async)
+        if (create.ActionDecl.ActionQualifier != ActionQualifier.Async)
         {
-          rc.Error(this, $"{create.actionName} in creates list must be an async action");
+          rc.Error(this, $"{create.ActionName} in creates list must be an async action");
         }
       });
-      if (refinedAction != null)
+      if (RefinedAction != null)
       {
-        if (actionQualifier != ActionQualifier.None)
+        if (ActionQualifier != ActionQualifier.None)
         {
           rc.Error(this, "A refining action may not have any qualifiers on it");
         }
-        refinedAction.Resolve(rc);
-        invariantAction.Resolve(rc);
-        if (invariantAction.actionDecl != null &&
-            invariantAction.actionDecl.actionQualifier != ActionQualifier.Invariant)
+        RefinedAction.Resolve(rc);
+        InvariantAction.Resolve(rc);
+        if (InvariantAction.ActionDecl != null &&
+            InvariantAction.ActionDecl.ActionQualifier != ActionQualifier.Invariant)
         {
           rc.Error(this, "Expected an invariant action");
         }
       }
-      eliminates.Iter(elim =>
+      Eliminates.Iter(elim =>
       {
         elim.Resolve(rc);
       });
-      if (eliminates.Any())
+      if (Eliminates.Any())
       {
-        if (eliminates.Select(elim => elim.target.actionDecl).Distinct().Count() != eliminates.Count)
+        if (Eliminates.Select(elim => elim.Target.ActionDecl).Distinct().Count() != Eliminates.Count)
         {
           rc.Error(this, "Each eliminates pair must be distinct in the first action");
         }
-        if (refinedAction == null)
+        if (RefinedAction == null)
         {
           rc.Error(this, "Eliminates clause must be accompanied by refinement specification");
         }
@@ -3448,14 +3498,14 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       base.Typecheck(tc);
-      if (invariantAction != null)
+      if (InvariantAction != null)
       {
-        var refinedProc = refinedAction.actionDecl;
-        var invariantProc = invariantAction.actionDecl;
+        var refinedProc = RefinedAction.ActionDecl;
+        var invariantProc = InvariantAction.ActionDecl;
 
-        var actionCreates = creates.Select(x => x.actionDecl).ToHashSet();
-        var refinedActionCreates = refinedProc.creates.Select(x => x.actionDecl).ToHashSet();
-        var invariantCreates = invariantProc.creates.Select(x => x.actionDecl).ToHashSet();
+        var actionCreates = Creates.Select(x => x.ActionDecl).ToHashSet();
+        var refinedActionCreates = refinedProc.Creates.Select(x => x.ActionDecl).ToHashSet();
+        var invariantCreates = invariantProc.Creates.Select(x => x.ActionDecl).ToHashSet();
         if (!actionCreates.IsSubsetOf(invariantCreates))
         {
           tc.Error(this, $"Pending asyncs created by refining action must be subset of those created by invariant action {invariantProc.Name}");
@@ -3477,7 +3527,7 @@ namespace Microsoft.Boogie
         }
         foreach (var elimProc in invariantCreates.Except(refinedActionCreates))
         {
-          var elimCreates = elimProc.creates.Select(x => x.actionDecl).ToHashSet();
+          var elimCreates = elimProc.Creates.Select(x => x.ActionDecl).ToHashSet();
           if (!elimCreates.IsSubsetOf(invariantCreates))
           {
             tc.Error(this,
@@ -3490,14 +3540,14 @@ namespace Microsoft.Boogie
           }
         }
 
-        foreach (var elim in eliminates)
+        foreach (var elim in Eliminates)
         {
-          if (!invariantCreates.Contains(elim.target.actionDecl))
+          if (!invariantCreates.Contains(elim.Target.ActionDecl))
           {
-            tc.Error(this, $"Eliminated action must be created by invariant {invariantAction.actionName}");
+            tc.Error(this, $"Eliminated action must be created by invariant {InvariantAction.ActionName}");
           }
-          var targetProc = elim.target.actionDecl;
-          var absProc = elim.target.actionDecl;
+          var targetProc = elim.Target.ActionDecl;
+          var absProc = elim.Target.ActionDecl;
           var targetModifies = new HashSet<Variable>(targetProc.Modifies.Select(ie => ie.Decl));
           var absModifies = new HashSet<Variable>(absProc.Modifies.Select(ie => ie.Decl));
           if (!absModifies.IsSubsetOf(targetModifies))
@@ -3506,30 +3556,32 @@ namespace Microsoft.Boogie
           }
         }
       }
+
+      LayerRange = ToLayerRange(tc);
     }
 
     public Dictionary<ActionDecl, ActionDecl> EliminationMap()
     {
-      var refinedProc = refinedAction.actionDecl;
-      var invariantProc = invariantAction.actionDecl;
-      var refinedActionCreates = refinedProc.creates.Select(x => x.actionDecl).ToHashSet();
-      var invariantCreates = invariantProc.creates.Select(x => x.actionDecl).ToHashSet();
+      var refinedProc = RefinedAction.ActionDecl;
+      var invariantProc = InvariantAction.ActionDecl;
+      var refinedActionCreates = refinedProc.Creates.Select(x => x.ActionDecl).ToHashSet();
+      var invariantCreates = invariantProc.Creates.Select(x => x.ActionDecl).ToHashSet();
       var elimMap = invariantCreates.Except(refinedActionCreates).ToDictionary(x => x, x => x);
-      foreach (var elimDecl in eliminates)
+      foreach (var elimDecl in Eliminates)
       {
-        elimMap[elimDecl.target.actionDecl] = elimDecl.abstraction.actionDecl;
+        elimMap[elimDecl.Target.ActionDecl] = elimDecl.Abstraction.ActionDecl;
       }
       return elimMap;
     }
 
     public IEnumerable<ActionDeclRef> ActionDeclRefs()
     {
-      return creates.Append(refinedAction).Append(invariantAction);
+      return Creates.Append(RefinedAction).Append(InvariantAction);
     }
 
-    public DatatypeConstructor PendingAsyncCtor => pendingAsyncCtorDecl.GetConstructor(Name);
+    public DatatypeConstructor PendingAsyncCtor => PendingAsyncCtorDecl.GetConstructor(Name);
 
-    public CtorType PendingAsyncType => new (pendingAsyncCtorDecl.tok, pendingAsyncCtorDecl, new List<Type>());
+    public CtorType PendingAsyncType => new (PendingAsyncCtorDecl.tok, PendingAsyncCtorDecl, new List<Type>());
 
     public MapType PendingAsyncMultisetType => new(Token.NoToken, new List<TypeVariable>(),
       new List<Type> { PendingAsyncType }, Type.Int);
@@ -3548,7 +3600,7 @@ namespace Microsoft.Boogie
     // while an iteration is being done on it.
     public void Initialize(Monomorphizer monomorphizer)
     {
-      if (pendingAsyncCtorDecl == null)
+      if (PendingAsyncCtorDecl == null)
       {
         return;
       }
@@ -3563,11 +3615,13 @@ namespace Microsoft.Boogie
   
   public class YieldProcedureDecl : Procedure
   {
-    public MoverType moverType;
-    public List<CallCmd> yieldRequires;
-    public List<CallCmd> yieldEnsures;
-    public List<CallCmd> yieldPreserves;
-    public ActionDeclRef refinedAction;
+    public MoverType MoverType;
+    public List<CallCmd> YieldRequires;
+    public List<CallCmd> YieldEnsures;
+    public List<CallCmd> YieldPreserves;
+    public ActionDeclRef RefinedAction;
+
+    public int Layer; // set during type checking
 
     public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams, List<Variable> outParams,
       List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
@@ -3575,11 +3629,11 @@ namespace Microsoft.Boogie
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
       false, requires, modifies, ensures, kv)
     {
-      this.moverType = moverType;
-      this.yieldRequires = yieldRequires;
-      this.yieldEnsures = yieldEnsures;
-      this.yieldPreserves = yieldPreserves;
-      this.refinedAction = refinedAction;
+      this.MoverType = moverType;
+      this.YieldRequires = yieldRequires;
+      this.YieldEnsures = yieldEnsures;
+      this.YieldPreserves = yieldPreserves;
+      this.RefinedAction = refinedAction;
     }
 
     public override void Resolve(ResolutionContext rc)
@@ -3589,17 +3643,17 @@ namespace Microsoft.Boogie
       rc.StateMode = ResolutionContext.State.Two;
       rc.PushVarContext();
       RegisterFormals(InParams, rc);
-      yieldRequires.Iter(callCmd => callCmd.Resolve(rc));
-      yieldPreserves.Iter(callCmd => callCmd.Resolve(rc));
+      YieldRequires.Iter(callCmd => callCmd.Resolve(rc));
+      YieldPreserves.Iter(callCmd => callCmd.Resolve(rc));
       RegisterFormals(OutParams, rc);
-      yieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
+      YieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
       rc.PopVarContext();
       rc.StateMode = oldStateMode;
-      if (refinedAction != null)
+      if (RefinedAction != null)
       {
-        refinedAction.Resolve(rc);
+        RefinedAction.Resolve(rc);
       }
-      if (moverType == MoverType.None)
+      if (MoverType == MoverType.None)
       {
         if (Modifies.Any())
         {
@@ -3608,21 +3662,27 @@ namespace Microsoft.Boogie
       }
       else
       {
-        if (refinedAction != null)
+        if (RefinedAction != null)
         {
           rc.Error(this, "Yielding procedure with a mover type cannot have a refines annotation");
         }
       }
     }
 
+    public override void Register(ResolutionContext rc)
+    {
+      base.Register(rc);
+      Layer = ToLayer(rc);
+    }
+
     public override void Typecheck(TypecheckingContext tc)
     {
-      base.Typecheck(tc);
       var oldProc = tc.Proc;
       tc.Proc = this;
-      yieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
-      yieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
-      yieldPreserves.Iter(callCmd => callCmd.Typecheck(tc));
+      base.Typecheck(tc);
+      YieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
+      YieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
+      YieldPreserves.Iter(callCmd => callCmd.Typecheck(tc));
       Contract.Assert(tc.Proc == this);
       tc.Proc = oldProc;
     }
@@ -3634,7 +3694,7 @@ namespace Microsoft.Boogie
 
     public IEnumerable<CallCmd> CallCmds()
     {
-      return yieldEnsures.Union(yieldPreserves).Union(yieldRequires);
+      return YieldEnsures.Union(YieldPreserves).Union(YieldRequires);
     }
   }
 
@@ -4150,6 +4210,10 @@ namespace Microsoft.Boogie
       {
         rc.Error(this, "implementation given for undeclared procedure: {0}", this.Name);
       }
+      else if (Proc is ActionDecl actionDecl)
+      {
+        actionDecl.Impl = this;
+      }
 
       int previousTypeBinderState = rc.TypeBinderState;
       try
@@ -4179,7 +4243,7 @@ namespace Microsoft.Boogie
           b.Register(rc);
         }
 
-        ResolveAttributes(rc);
+        (this as ICarriesAttributes).ResolveAttributes(rc);
 
         rc.StateMode = Proc.IsPure ? ResolutionContext.State.StateLess : ResolutionContext.State.Two;
         foreach (Block b in Blocks)
@@ -4226,20 +4290,28 @@ namespace Microsoft.Boogie
         MatchFormals(this.OutParams, Proc.OutParams, "out", tc);
       }
 
+      var oldProc = tc.Proc;
+      tc.Proc = Proc;
       foreach (Variable /*!*/ v in LocVars)
       {
         Contract.Assert(v != null);
         v.Typecheck(tc);
       }
-
-      var oldProc = tc.Proc;
-      tc.Proc = Proc;
       foreach (Block b in Blocks)
       {
         b.Typecheck(tc);
       }
       Contract.Assert(tc.Proc == Proc);
       tc.Proc = oldProc;
+
+      if (Proc is ActionDecl)
+      {
+        var cfg = Program.GraphFromImpl(this);
+        if (!Graph<Block>.Acyclic(cfg))
+        {
+          tc.Error(this, "action implementation may not have loops");
+        }
+      }
     }
 
     void MatchFormals(List<Variable> /*!*/ implFormals, List<Variable> /*!*/ procFormals, string /*!*/ inout,

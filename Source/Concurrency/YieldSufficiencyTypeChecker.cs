@@ -89,7 +89,7 @@ namespace Microsoft.Boogie
         Graph<Block> implGraph = Program.GraphFromImpl(impl);
         implGraph.ComputeLoops();
 
-        foreach (int layerNum in civlTypeChecker.allRefinementLayers.Where(l => l <= yieldingProc.upperLayer))
+        foreach (int layerNum in civlTypeChecker.allRefinementLayers.Where(l => l <= yieldingProc.Layer))
         {
           new PerLayerYieldSufficiencyTypeChecker(civlTypeChecker, yieldingProc, impl, layerNum, implGraph, moverProcedureCallGraph)
             .TypeCheckLayer();
@@ -120,7 +120,7 @@ namespace Microsoft.Boogie
               continue;
             }
 
-            Debug.Assert(callerProc.upperLayer == calleeProc.upperLayer);
+            Debug.Assert(callerProc.Layer == calleeProc.Layer);
             moverProcedureCallGraph.AddEdge(callerProc, calleeProc);
           }
         }
@@ -274,7 +274,7 @@ namespace Microsoft.Boogie
 
       private bool IsMoverProcedure
       {
-        get { return yieldingProc is MoverProc && yieldingProc.upperLayer == currLayerNum; }
+        get { return yieldingProc is MoverProc && yieldingProc.Layer == currLayerNum; }
       }
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
@@ -403,7 +403,7 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabel(CallCmd callCmd)
       {
-        if (callCmd.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } ||
+        if (callCmd.Proc is ActionDecl { ActionQualifier: ActionQualifier.Link } ||
             callCmd.Proc.IsPure)
         {
           return P;
@@ -411,34 +411,34 @@ namespace Microsoft.Boogie
 
         if (callCmd.Proc is YieldInvariantDecl yieldInvariant)
         {
-          return yieldInvariant.LayerNum == currLayerNum ? Y : P;
+          return yieldInvariant.Layer == currLayerNum ? Y : P;
         }
 
         YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
         if (callCmd.IsAsync)
         {
-          if (callee is MoverProc && callee.upperLayer == currLayerNum)
+          if (callee is MoverProc && callee.Layer == currLayerNum)
           {
             return MoverTypeToLabel(callee.MoverType);
           }
 
-          if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum && callCmd.HasAttribute(CivlAttributes.SYNC))
+          if (callee is ActionProc actionProc && callee.Layer < currLayerNum && callCmd.HasAttribute(CivlAttributes.SYNC))
           {
-            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).proc.moverType);
+            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).ActionDecl.MoverType);
           }
 
           return L;
         }
         else
         {
-          if (callee is MoverProc && callee.upperLayer == currLayerNum)
+          if (callee is MoverProc && callee.Layer == currLayerNum)
           {
             return MoverTypeToLabel(callee.MoverType);
           }
 
-          if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
+          if (callee is ActionProc actionProc && callee.Layer < currLayerNum)
           {
-            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).proc.moverType);
+            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).ActionDecl.MoverType);
           }
 
           return Y;
@@ -473,29 +473,29 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabelAsync(CallCmd callCmd)
       {
-        if (callCmd.Proc is ActionDecl { actionQualifier: ActionQualifier.Link } || callCmd.Proc.IsPure)
+        if (callCmd.Proc is ActionDecl { ActionQualifier: ActionQualifier.Link } || callCmd.Proc.IsPure)
         {
           return P;
         }
 
         if (callCmd.Proc is YieldInvariantDecl yieldInvariant)
         {
-          return yieldInvariant.LayerNum == currLayerNum ? Y : P;
+          return yieldInvariant.Layer == currLayerNum ? Y : P;
         }
 
         YieldingProc callee = civlTypeChecker.procToYieldingProc[callCmd.Proc];
         if (callCmd.IsAsync)
         {
-          if (callee is MoverProc && callee.upperLayer == currLayerNum)
+          if (callee is MoverProc && callee.Layer == currLayerNum)
           {
-            return ModifiesGlobalLabel(callee.proc.Modifies);
+            return ModifiesGlobalLabel(callee.Proc.Modifies);
           }
 
-          if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
+          if (callee is ActionProc actionProc && callee.Layer < currLayerNum)
           {
             if (callCmd.HasAttribute(CivlAttributes.SYNC))
             {
-              return ModifiesGlobalLabel(actionProc.RefinedActionAtLayer(currLayerNum).modifiedGlobalVars);
+              return ModifiesGlobalLabel(actionProc.RefinedActionAtLayer(currLayerNum).ModifiedGlobalVars);
             }
             else
             {
@@ -507,14 +507,14 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (callee is MoverProc && callee.upperLayer == currLayerNum)
+          if (callee is MoverProc && callee.Layer == currLayerNum)
           {
-            return ModifiesGlobalLabel(callee.proc.Modifies);
+            return ModifiesGlobalLabel(callee.Proc.Modifies);
           }
 
-          if (callee is ActionProc actionProc && callee.upperLayer < currLayerNum)
+          if (callee is ActionProc actionProc && callee.Layer < currLayerNum)
           {
-            return ModifiesGlobalLabel(actionProc.RefinedActionAtLayer(currLayerNum).modifiedGlobalVars);
+            return ModifiesGlobalLabel(actionProc.RefinedActionAtLayer(currLayerNum).ModifiedGlobalVars);
           }
 
           return Y;

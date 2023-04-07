@@ -649,21 +649,21 @@ namespace Microsoft.Boogie
 
     public virtual Procedure VisitActionDecl(ActionDecl node)
     {
-      for (int i = 0; i < node.creates.Count; i++)
+      for (int i = 0; i < node.Creates.Count; i++)
       {
-        node.creates[i] = VisitActionDeclRef(node.creates[i]);
+        node.Creates[i] = VisitActionDeclRef(node.Creates[i]);
       }
-      node.refinedAction = VisitActionDeclRef(node.refinedAction);
-      node.invariantAction = VisitActionDeclRef(node.invariantAction);
+      node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
+      node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
       return VisitProcedure(node);
     }
 
     public virtual Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
     {
-      node.yieldEnsures = this.VisitCallCmdSeq(node.yieldEnsures);
-      node.yieldPreserves = this.VisitCallCmdSeq(node.yieldPreserves);
-      node.yieldRequires = this.VisitCallCmdSeq(node.yieldRequires);
-      node.refinedAction = VisitActionDeclRef(node.refinedAction);
+      node.YieldEnsures = this.VisitCallCmdSeq(node.YieldEnsures);
+      node.YieldPreserves = this.VisitCallCmdSeq(node.YieldPreserves);
+      node.YieldRequires = this.VisitCallCmdSeq(node.YieldRequires);
+      node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
       return VisitProcedure(node);
     }
 
