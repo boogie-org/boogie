@@ -77,7 +77,7 @@ namespace Microsoft.Boogie
       this.layerNum = actionProc.Layer;
       foreach (Variable v in civlTypeChecker.GlobalVariables)
       {
-        var layerRange = v.layerRange;
+        var layerRange = v.LayerRange;
         if (layerRange.lowerLayerNum <= layerNum && layerNum < layerRange.upperLayerNum)
         {
           this.oldGlobalMap[v] = oldGlobalMap[v];

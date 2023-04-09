@@ -1297,7 +1297,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       if (Decl != null)
       {
         // already resolved, but re-resolve type just in case it came from an unresolved type
@@ -1327,14 +1326,12 @@ namespace Microsoft.Boogie
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      //Contract.Requires(freeVars != null);
       Contract.Assume(this.Decl != null);
       freeVars.Add(Decl);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       if (this.Decl != null)
       {
         // sanity check

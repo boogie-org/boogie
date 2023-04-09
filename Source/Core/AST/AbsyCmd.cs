@@ -3351,6 +3351,16 @@ namespace Microsoft.Boogie
               tc.Error(actionDeclRef, "callee creates a pending async not in the creates clause of caller");
             }
           }
+          if (!callerActionDecl.LayerRange.Subset(calleeActionDecl.LayerRange))
+          {
+            tc.Error(this, "caller layer range must be subset of callee layer range");
+          }
+          else if (callerActionDecl.LayerRange.lowerLayerNum == calleeActionDecl.LayerRange.lowerLayerNum &&
+                   calleeActionDecl.ActionQualifier == ActionQualifier.Link &&
+                   callerActionDecl.ActionQualifier != ActionQualifier.Link)
+          {
+            tc.Error(this, "lower layer of caller must be greater that lower layer of callee");
+          }
         }
         else
         {

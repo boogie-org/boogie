@@ -739,6 +739,8 @@ namespace Microsoft.Boogie
         cce.EndExpose();
       }
     }
+
+    public Procedure Proc;
   }
 
   public class TypecheckingContext : CheckingContext

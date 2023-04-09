@@ -132,7 +132,7 @@ namespace Microsoft.Boogie
 
       return civlTypeChecker.linearTypeChecker.AvailableLinearVars(absyMap[absy]).Where(v =>
         !(v is GlobalVariable) &&
-        v.layerRange.Contains(layerNum));
+        v.LayerRange.Contains(layerNum));
     }
 
     private IEnumerable<Variable> FilterInParams(IEnumerable<Variable> locals)
@@ -148,14 +148,14 @@ namespace Microsoft.Boogie
     private IEnumerable<Variable> Filter(IEnumerable<Variable> locals, Predicate<LinearKind> pred)
     {
       return locals.Where(v =>
-        pred(LinearDomainCollector.FindLinearKind(v)) && v.layerRange.Contains(layerNum));
+        pred(LinearDomainCollector.FindLinearKind(v)) && v.LayerRange.Contains(layerNum));
     }
 
     private IEnumerable<Variable> LinearGlobalVars()
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       return linearTypeChecker.program.GlobalVariables.Where(v =>
-        LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR && v.layerRange.Contains(layerNum));
+        LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR && v.LayerRange.Contains(layerNum));
     }
 
     private Variable MapVariable(Variable v)
