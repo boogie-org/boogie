@@ -497,8 +497,7 @@ namespace Microsoft.Boogie
     public void Close()
     {
       if (disposeWriter) {
-        this.writer.Close();
-        
+        writer.Close();
       }
     }
 
