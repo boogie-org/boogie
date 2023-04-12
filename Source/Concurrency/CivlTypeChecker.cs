@@ -130,7 +130,7 @@ namespace Microsoft.Boogie
       }
 
       TypeCheckYieldingProcedureDecls();
-      TypeCheckLocalVariables();
+      TypeCheckLocalPendingAsyncCollectors();
       if (checkingContext.ErrorCount > 0)
       {
         return;
@@ -329,7 +329,6 @@ namespace Microsoft.Boogie
       CreateActionsThatRefineAnotherAction(refinedProc);
       var refinedAction = procToAtomicAction[refinedProc];
       Implementation impl = proc.Impl;
-      LayerRange layerRange = proc.LayerRange;
       procToAtomicAction[proc] = new AtomicAction(impl, refinedAction, this);
     }
 
@@ -607,58 +606,40 @@ namespace Microsoft.Boogie
       signatureMatcher.MatchFormals(original.OutParams, abstraction.OutParams, SignatureMatcher.OUT);
     }
 
-    private void TypeCheckLocalVariables()
+    private void TypeCheckLocalPendingAsyncCollectors()
     {
       var pendingAsyncProcs = program.TopLevelDeclarations.OfType<ActionDecl>()
         .Where(proc => proc.ActionQualifier == ActionQualifier.Async).Select(proc => proc.Name).ToHashSet();
       var pendingAsyncMultisetTypes = program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
         .Where(decl => pendingAsyncProcs.Contains(decl.Name)).Select(decl =>
           TypeHelper.MapType(TypeHelper.CtorType(decl), Type.Int)).ToHashSet();
-      foreach (Implementation impl in program.Implementations.Where(i => procToYieldingProc.ContainsKey(i.Proc)))
+      foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
       {
-        // then we collect the layers of local variables in implementations
+        var proc = (YieldProcedureDecl)impl.Proc;
         implToPendingAsyncCollector[impl] = new Dictionary<CtorType, Variable>();
-        foreach (Variable v in impl.LocVars)
+        foreach (Variable v in impl.LocVars.Where(v => v.HasAttribute(CivlAttributes.PENDING_ASYNC)))
         {
-          int upperLayer = procToYieldingProc[impl.Proc].Layer;
-          var layer = v.LayerRange.lowerLayerNum;
-          if (v.HasAttribute(CivlAttributes.PENDING_ASYNC))
+          if (!pendingAsyncMultisetTypes.Contains(v.TypedIdent.Type))
           {
-            if (!pendingAsyncMultisetTypes.Contains(v.TypedIdent.Type))
+            Error(v, "pending async collector is of incorrect type");
+          }
+          else if (v.LayerRange.lowerLayerNum != proc.Layer)
+          {
+            Error(v, "pending async collector must be introduced at the layer of the enclosing procedure");
+          }
+          else
+          {
+            var mapType = (MapType)v.TypedIdent.Type;
+            var ctorType = (CtorType)mapType.Arguments[0];
+            if (implToPendingAsyncCollector[impl].ContainsKey(ctorType))
             {
-              Error(v, "Pending async collector is of incorrect type");
-            }
-            else if (layer != upperLayer)
-            {
-              Error(v,
-                "Pending async collector must be introduced at the disappearing layer of the enclosing procedure");
+              Error(v, "duplicate pending async collector");
             }
             else
             {
-              var mapType = (MapType)v.TypedIdent.Type;
-              var ctorType = (CtorType)mapType.Arguments[0];
-              if (implToPendingAsyncCollector[impl].ContainsKey(ctorType))
-              {
-                Error(v, "Duplicate pending async collector");
-              }
-              else
-              {
-                implToPendingAsyncCollector[impl][ctorType] = v;
-              }
+              implToPendingAsyncCollector[impl][ctorType] = v;
             }
           }
-        }
-
-        // and finally just copy the layer information from procedure parameters to their corresponding implementation parameter
-        // (i.e., layer declarations are only taken from procedures, not implementations)
-        for (int i = 0; i < impl.Proc.InParams.Count; i++)
-        {
-          impl.InParams[i].LayerRange = impl.Proc.InParams[i].LayerRange;
-        }
-
-        for (int i = 0; i < impl.Proc.OutParams.Count; i++)
-        {
-          impl.OutParams[i].LayerRange = impl.Proc.OutParams[i].LayerRange;
         }
       }
     }

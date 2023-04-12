@@ -1524,8 +1524,7 @@ namespace Microsoft.Boogie
     }
 
     /// <summary>
-    /// Given a sequence of Formal declarations, returns sequence of Formals like the given one but without where clauses
-    /// and without any attributes.
+    /// Given a sequence of Formal declarations, returns sequence of Formals like the given one but without where clauses.
     /// The Type of each Formal is cloned.
     /// </summary>
     public static List<Variable> StripWhereClauses(List<Variable> w)
@@ -1538,7 +1537,7 @@ namespace Microsoft.Boogie
         Contract.Assert(v != null);
         Formal f = (Formal) v;
         TypedIdent ti = f.TypedIdent;
-        s.Add(new Formal(f.tok, new TypedIdent(ti.tok, ti.Name, ti.Type.CloneUnresolved()), f.InComing, null));
+        s.Add(new Formal(f.tok, new TypedIdent(ti.tok, ti.Name, ti.Type.CloneUnresolved()), f.InComing, v.Attributes));
       }
 
       return s;

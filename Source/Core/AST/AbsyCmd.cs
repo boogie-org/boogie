@@ -3359,7 +3359,7 @@ namespace Microsoft.Boogie
                    calleeActionDecl.ActionQualifier == ActionQualifier.Link &&
                    callerActionDecl.ActionQualifier != ActionQualifier.Link)
           {
-            tc.Error(this, "lower layer of caller must be greater that lower layer of callee");
+            tc.Error(this, "lower layer of caller must be greater than lower layer of callee");
           }
         }
         else
