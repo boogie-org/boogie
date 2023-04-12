@@ -661,15 +661,6 @@ namespace Microsoft.Boogie
           impl.OutParams[i].LayerRange = impl.Proc.OutParams[i].LayerRange;
         }
       }
-
-      // Also copy the layer range of each action to its parameters
-      foreach (var a in procToAtomicAction.Values)
-      {
-        foreach (var v in a.ActionDecl.InParams.Union(a.ActionDecl.OutParams).Union(a.Impl.InParams).Union(a.Impl.OutParams))
-        {
-          v.LayerRange = a.LayerRange;
-        }
-      }
     }
 
     #region Public access methods

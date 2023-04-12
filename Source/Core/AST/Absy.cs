@@ -1329,9 +1329,9 @@ namespace Microsoft.Boogie
       {
         LayerRange = new LayerRange(yieldInvariantDecl.Layer);
       }
-      else
+      else if (rc.Proc is ActionDecl actionDecl)
       {
-        LayerRange = ToLayerRange(rc, LayerRange.MinMax);
+        LayerRange = actionDecl.LayerRange;
       }
     }
 
@@ -2869,7 +2869,11 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
+      var oldProc = rc.Proc;
+      rc.Proc = this;
       base.Resolve(rc);
+      Contract.Assert(rc.Proc == this);
+      rc.Proc = oldProc;
       if (ActionQualifier == ActionQualifier.Async && OutParams.Count > 0)
       {
         rc.Error(this, $"async action may not have output parameters");
@@ -3625,7 +3629,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, level, "implementation ");
       EmitAttributes(stream);
       stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
@@ -3680,13 +3683,11 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       // nothing to register
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       if (Proc != null)
       {
         // already resolved
@@ -3709,12 +3710,11 @@ namespace Microsoft.Boogie
         RegisterTypeParameters(rc);
 
         rc.PushVarContext();
-        RegisterFormals(InParams, rc);
-        RegisterFormals(OutParams, rc);
-
         var oldProc = rc.Proc;
         rc.Proc = Proc;
-        foreach (Variable /*!*/ v in LocVars)
+        RegisterFormals(InParams, rc);
+        RegisterFormals(OutParams, rc);
+        foreach (Variable v in LocVars)
         {
           Contract.Assert(v != null);
           v.Register(rc);
@@ -3723,7 +3723,7 @@ namespace Microsoft.Boogie
         Contract.Assert(rc.Proc == Proc);
         rc.Proc = oldProc;
 
-        foreach (Variable /*!*/ v in LocVars)
+        foreach (Variable v in LocVars)
         {
           Contract.Assert(v != null);
           v.ResolveWhere(rc);
