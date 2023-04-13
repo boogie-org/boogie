@@ -161,7 +161,7 @@ namespace Microsoft.Boogie
         .Distinct().ToList();
 
       var allInductiveSequentializationLayers =
-        inductiveSequentializations.Select(x => x.invariantAction.LayerRange.upperLayerNum).ToList();
+        inductiveSequentializations.Select(x => x.invariantAction.LayerRange.UpperLayer).ToList();
 
       var intersect = allRefinementLayers.Intersect(allInductiveSequentializationLayers).ToList();
       if (intersect.Any())
@@ -173,12 +173,12 @@ namespace Microsoft.Boogie
       foreach (var g in GlobalVariables)
       {
         var layerRange = g.LayerRange;
-        if (allInductiveSequentializationLayers.Contains(layerRange.lowerLayerNum))
+        if (allInductiveSequentializationLayers.Contains(layerRange.LowerLayer))
         {
           Error(g, $"Global variable {g.Name} cannot be introduced at layer with IS");
         }
 
-        if (allInductiveSequentializationLayers.Contains(layerRange.upperLayerNum))
+        if (allInductiveSequentializationLayers.Contains(layerRange.UpperLayer))
         {
           Error(g, $"Global variable {g.Name} cannot be hidden at layer with IS");
         }
@@ -343,15 +343,13 @@ namespace Microsoft.Boogie
           var linearKind = LinearDomainCollector.FindLinearKind(param);
           if (linearKind == LinearKind.LINEAR_IN || linearKind == LinearKind.LINEAR_OUT)
           {
-            Error(param, "Parameter to yield invariant can only be :linear");
+            Error(param, "parameter to yield invariant may only be :linear");
           }
         }
       }
     }
 
-    private void TypeCheckYieldingPrePostDecls(YieldProcedureDecl proc,
-      out List<CallCmd> yieldRequires,
-      out List<CallCmd> yieldEnsures)
+    private void TypeCheckYieldingPrePostDecls(YieldProcedureDecl proc, out List<CallCmd> yieldRequires, out List<CallCmd> yieldEnsures)
     {
       yieldRequires = new List<CallCmd>();
       yieldEnsures = new List<CallCmd>();
@@ -392,31 +390,32 @@ namespace Microsoft.Boogie
     {
       foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>())
       {
-        int upperLayer = proc.Layer;
-        MoverType moverType = proc.MoverType;
-
         TypeCheckYieldingPrePostDecls(proc, out var yieldRequires, out var yieldEnsures);
 
         if (proc.RefinedAction != null) // proc is an action procedure
         {
           AtomicAction refinedAction = procToAtomicAction[proc.RefinedAction.ActionDecl];
-          if (!refinedAction.LayerRange.Contains(upperLayer + 1))
+          if (!refinedAction.LayerRange.Contains(proc.Layer + 1))
           {
-            checkingContext.Error(proc, "Refined atomic action must be available at layer {0}", upperLayer + 1);
+            Error(proc, $"refined atomic action must be available at layer {proc.Layer + 1}");
             continue;
           }
           var hiddenFormals =
             new HashSet<Variable>(proc.InParams.Concat(proc.OutParams).Where(x => x.HasAttribute(CivlAttributes.HIDE)));
-          var actionProc = new ActionProc(proc, refinedAction, hiddenFormals, yieldRequires, yieldEnsures);
+          if (hiddenFormals.Any(x => x.LayerRange.UpperLayer < proc.Layer))
+          {
+            Error(proc, $"all hidden variables must be available at layer {proc.Layer}");
+            continue;
+          }
+          var actionProc = new ActionProc(proc, yieldRequires, yieldEnsures, refinedAction, hiddenFormals);
           CheckRefinementSignature(actionProc);
           procToYieldingProc[proc] = actionProc;
         }
-        else if (moverType != MoverType.None) // proc is a mover procedure
+        else if (proc.MoverType != MoverType.None) // proc is a mover procedure
         {
-          if (!proc.Modifies.All(ie => ie.Decl.LayerRange.Contains(upperLayer)))
+          if (!proc.Modifies.All(ie => ie.Decl.LayerRange.Contains(proc.Layer)))
           {
-            Error(proc,
-              $"All variables in the modifies clause of a mover procedure must be available at its disappearing layer");
+            Error(proc, $"all modified variables of a mover procedure must be available at layer {proc.Layer}");
             continue;
           }
           procToYieldingProc[proc] = new MoverProc(proc, yieldRequires, yieldEnsures);
@@ -428,8 +427,8 @@ namespace Microsoft.Boogie
             procToAtomicAction[SkipAtomicAction.ActionDecl] = SkipAtomicAction;
           }
           var hiddenFormals = new HashSet<Variable>(proc.InParams.Concat(proc.OutParams)
-            .Where(x => x.LayerRange.upperLayerNum == upperLayer));
-          var actionProc = new ActionProc(proc, SkipAtomicAction, hiddenFormals, yieldRequires, yieldEnsures);
+            .Where(x => x.LayerRange.UpperLayer == proc.Layer));
+          var actionProc = new ActionProc(proc, yieldRequires, yieldEnsures, SkipAtomicAction, hiddenFormals);
           procToYieldingProc[proc] = actionProc;
         }
 
@@ -459,12 +458,6 @@ namespace Microsoft.Boogie
       {
         var graph = Program.GraphFromImpl(impl);
         graph.ComputeLoops();
-        if (!graph.Reducible)
-        {
-          Error(impl, "Irreducible flow graphs are unsupported.");
-          continue;
-        }
-
         foreach (var header in graph.Headers)
         {
           int yieldingLayer = procToYieldingProc[impl.Proc].Layer;
@@ -482,13 +475,13 @@ namespace Microsoft.Boogie
             {
               if (layers.Count > 1)
               {
-                Error(header, "Expected layer attribute to indicate the highest yielding layer of this loop");
+                Error(header, "expected layer attribute to indicate the highest yielding layer of this loop");
                 continue;
               }
               if (layers[0] > yieldingLayer)
               {
                 Error(header,
-                  "Yielding layer of loop must not be more than the disappearing layer of enclosing procedure");
+                  "yielding layer of loop must not be more than the disappearing layer of enclosing procedure");
                 continue;
               }
               yieldingLayer = layers[0];
@@ -500,7 +493,7 @@ namespace Microsoft.Boogie
           header.Cmds.RemoveRange(0, yieldInvariants.Count);
           if (yieldInvariants.Any() && yieldCmd == null)
           {
-            Error(header, "Expected :yields attribute on this loop");
+            Error(header, "expected :yields attribute on this loop");
           }
           foreach (var callCmd in yieldInvariants.Where(callCmd => YieldInvariantCallChecker.CheckLoop(this, callCmd, header)))
           {
@@ -508,7 +501,7 @@ namespace Microsoft.Boogie
             var calleeLayerNum = yieldInvariant.Layer;
             if (calleeLayerNum > yieldingLayer)
             {
-              Error(callCmd, $"Loop must yield at layer {calleeLayerNum} of the called yield invariant");
+              Error(callCmd, $"loop must yield at layer {calleeLayerNum} of the called yield invariant");
             }
           }
           yieldingLoops[header] = new YieldingLoop(yieldingLayer, yieldInvariants);
@@ -519,7 +512,7 @@ namespace Microsoft.Boogie
                 VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
             {
               Error(predCmd,
-                "This invariant may not access a global variable since one of its layers is a yielding layer of its loop");
+                "invariant may not access a global variable since one of its layers is a yielding layer of its loop");
             }
           }
         }
@@ -587,7 +580,7 @@ namespace Microsoft.Boogie
     {
       var signatureMatcher = new SignatureMatcher(actionProc.Proc, actionProc.RefinedAction.ActionDecl, checkingContext);
       Func<Variable, bool> isRemainingVariable = x =>
-        x.LayerRange.upperLayerNum == actionProc.Layer &&
+        x.LayerRange.UpperLayer == actionProc.Layer &&
         !actionProc.HiddenFormals.Contains(x);
       var procInParams = actionProc.Proc.InParams.Where(isRemainingVariable).ToList();
       var procOutParams = actionProc.Proc.OutParams.Where(isRemainingVariable).ToList();
@@ -623,7 +616,7 @@ namespace Microsoft.Boogie
           {
             Error(v, "pending async collector is of incorrect type");
           }
-          else if (v.LayerRange.lowerLayerNum != proc.Layer)
+          else if (v.LayerRange.LowerLayer != proc.Layer)
           {
             Error(v, "pending async collector must be introduced at the layer of the enclosing procedure");
           }
@@ -716,7 +709,7 @@ namespace Microsoft.Boogie
         {
           var globalVarLayerRange = node.Decl.LayerRange;
           if (!layerRange.Subset(globalVarLayerRange) ||
-              globalVarLayerRange.lowerLayerNum == layerRange.lowerLayerNum && proc.ActionQualifier != ActionQualifier.Link)
+              globalVarLayerRange.LowerLayer == layerRange.LowerLayer && proc.ActionQualifier != ActionQualifier.Link)
             // a global variable introduced at layer n is visible to an atomic action only at layer n+1 or higher
             // thus, a global variable with layer range [n,n] is not accessible by an atomic action
             // however, a link action may access the global variable at layer n
@@ -848,7 +841,7 @@ namespace Microsoft.Boogie
       {
         if (node.Decl is GlobalVariable && insideOldExpr == 0)
         {
-          civlTypeChecker.Error(node, "Global variable must be wrapped inside old expression");
+          civlTypeChecker.Error(node, "global variable must be accessed inside old expression");
         }
 
         return node;
@@ -863,7 +856,7 @@ namespace Microsoft.Boogie
             var decl = ((IdentifierExpr) actual).Decl;
             if (!availableLinearVars.Contains(decl))
             {
-              civlTypeChecker.Error(actual, "Argument must be available");
+              civlTypeChecker.Error(actual, "argument must be available");
             }
           }
         }
@@ -931,14 +924,11 @@ namespace Microsoft.Boogie
         VisitRequiresSeq(node.Requires);
         foreach (var callCmd in yieldRequires)
         {
-          VisitYieldInvariantCallCmd(callCmd, yieldingProc.Layer,
-            ((YieldInvariantDecl)callCmd.Proc).Layer);
+          VisitYieldInvariantCallCmd(callCmd, yieldingProc.Layer, ((YieldInvariantDecl)callCmd.Proc).Layer);
         }
-
         foreach (var callCmd in yieldEnsures)
         {
-          VisitYieldInvariantCallCmd(callCmd, yieldingProc.Layer,
-            ((YieldInvariantDecl)callCmd.Proc).Layer);
+          VisitYieldInvariantCallCmd(callCmd, yieldingProc.Layer, ((YieldInvariantDecl)callCmd.Proc).Layer);
         }
 
         yieldingProc = null;
@@ -1003,7 +993,7 @@ namespace Microsoft.Boogie
         if (VariableCollector.Collect(absy, true).OfType<GlobalVariable>().Any())
         {
           civlTypeChecker.Error(absy,
-            "This specification may not access a global variable since one of its layers is a yielding layer of its procedure");
+            "specification may not access a global variable since one of its layers is a yielding layer of its procedure");
         }
       }
 
@@ -1172,7 +1162,7 @@ namespace Microsoft.Boogie
       {
         YieldingProc callerProc = yieldingProc;
 
-        if (civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc))
+        if (call.Proc is YieldProcedureDecl)
         {
           VisitYieldingProcCallCmd(call, callerProc, civlTypeChecker.procToYieldingProc[call.Proc]);
         }
@@ -1204,7 +1194,7 @@ namespace Microsoft.Boogie
       {
         if (callerProc.Layer < calleeProc.Layer)
         {
-          civlTypeChecker.Error(call, "This call cannot have a callee with higher layer than the caller");
+          civlTypeChecker.Error(call, "layer of callee must be no more than layer of caller");
           return;
         }
 
@@ -1215,21 +1205,21 @@ namespace Microsoft.Boogie
             if (call.HasAttribute(CivlAttributes.SYNC))
             {
               Require(callerProc.Layer > calleeProc.Layer, call,
-                "Called procedure in synchronized call must disappear at lower layer than caller");
-              Require(calleeProc.IsLeftMover, call, "Synchronized call must be a left mover");
+                "layer of callee in synchronized call must be less than layer of caller");
+              Require(calleeProc.IsLeftMover, call, "callee in synchronized call must be a left mover");
             }
             else
             {
-              Require(callerProc is ActionProc, call, "Caller must be an action procedure");
+              Require(callerProc is ActionProc, call, "caller must not be a mover procedure");
               var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.Layer + 1);
               if (highestRefinedAction == null)
               {
-                civlTypeChecker.Error(call, $"Called action is not available at layer {callerProc.Layer + 1}");
+                civlTypeChecker.Error(call, $"called action is not available at layer {callerProc.Layer + 1}");
               }
               else if (highestRefinedAction != civlTypeChecker.SkipAtomicAction)
               {
                 Require(highestRefinedAction.ActionDecl.ActionQualifier == ActionQualifier.Async, call,
-                  $"No pending-async constructor available for the atomic action {highestRefinedAction.ActionDecl.Name}");
+                  $"action {highestRefinedAction.ActionDecl.Name} refined by callee must be async");
               }
             }
           }
@@ -1239,19 +1229,19 @@ namespace Microsoft.Boogie
             var highestRefinedAction = calleeActionProc.RefinedActionAtLayer(callerProc.Layer);
             if (highestRefinedAction == null)
             {
-              civlTypeChecker.Error(call, $"Called action is not available at layer {callerProc.Layer}");
+              civlTypeChecker.Error(call, $"called action is not available at layer {callerProc.Layer}");
             }
             else if (highestRefinedAction.HasPendingAsyncs)
             {
-              Require(callerProc is ActionProc, call, "Caller must be an action procedure");
+              Require(callerProc is ActionProc, call, "caller must not be a mover procedure");
             }
           }
-          else // callerProc.upperLayer == calleeProc.upperLayer
+          else // callerProc.Layer == calleeProc.Layer
           {
-            Require(callerProc is ActionProc, call, "Caller must be an action procedure");
+            Require(callerProc is ActionProc, call, "caller must not be a mover procedure");
             ActionProc callerActionProc = (ActionProc) callerProc;
             Require(call.IsAsync || calleeActionProc.RefinedAction.Gate.Count == 0, call,
-              "Atomic action refined by callee may not have a gate");
+              "atomic action refined by callee may not have a gate");
             HashSet<string> calleeOutputs = new HashSet<string>(call.Outs.Select(ie => ie.Decl.Name));
             HashSet<string> visibleCallerOutputsAtDisappearingLayer = new HashSet<string>(callerActionProc
               .Proc.OutParams.Where(x => !callerActionProc.HiddenFormals.Contains(x))
@@ -1259,17 +1249,16 @@ namespace Microsoft.Boogie
             Require(
               visibleCallerOutputsAtDisappearingLayer.IsSubsetOf(calleeOutputs) ||
               !visibleCallerOutputsAtDisappearingLayer.Overlaps(calleeOutputs), call,
-              $"Visible outputs of caller at disappearing layer must be either included in or disjoint from call outputs");
+              $"visible outputs of caller at the caller layer must be either subset of or disjoint from call outputs");
           }
         }
         else if (calleeProc is MoverProc)
         {
-          Require(callerProc.Layer == calleeProc.Layer, call,
-            "The layer of the caller must be equal to the layer of the callee");
+          Require(callerProc.Layer == calleeProc.Layer, call, "layer of caller must be equal to layer of callee");
           if (call.IsAsync)
           {
-            Require(call.HasAttribute(CivlAttributes.SYNC), call, "Async call to mover procedure must be synchronized");
-            Require(calleeProc.IsLeftMover, call, "Synchronized call must be a left mover");
+            Require(call.HasAttribute(CivlAttributes.SYNC), call, "async call to mover procedure must be synchronized");
+            Require(calleeProc.IsLeftMover, call, "callee in synchronized call must be a left mover");
           }
         }
         else
@@ -1293,7 +1282,7 @@ namespace Microsoft.Boogie
           var formalLayerRange = formal.LayerRange;
           if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc)
           {
-            formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.Layer);
+            formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerProc.Layer);
           }
 
           foreach (var ie in localVariableAccesses)
@@ -1323,7 +1312,7 @@ namespace Microsoft.Boogie
           var formalLayerRange = formal.LayerRange;
           if (!hiddenFormals.Contains(formal) && calleeProc is ActionProc)
           {
-            formalLayerRange = new LayerRange(formalLayerRange.lowerLayerNum, callerProc.Layer);
+            formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerProc.Layer);
           }
 
           if (actualLayerRange.Subset(formalLayerRange))
@@ -1336,34 +1325,33 @@ namespace Microsoft.Boogie
         }
       }
 
-      private void VisitYieldInvariantCallCmd(CallCmd call, int callerProcUpperLayer, int calleeLayerNum)
+      private void VisitYieldInvariantCallCmd(CallCmd call, int callerProcLayer, int calleeLayerNum)
       {
-        Require(calleeLayerNum <= callerProcUpperLayer, call,
-          "The layer of the callee must be no more than the disappearing layer of the caller");
+        Require(calleeLayerNum <= callerProcLayer, call, "layer of callee must be no more than layer of caller");
         CheckCallInputs(call, calleeLayerNum);
       }
 
-      private void VisitPureProcCallCmd(CallCmd call, int callerProcUpperLayer)
+      private void VisitPureProcCallCmd(CallCmd call, int callerProcLayer)
       {
         var calledLayers = call.Layers;
         if (calledLayers.Count != 1)
         {
-          civlTypeChecker.checkingContext.Error(call, "Call to pure procedure must be annotated with a layer");
+          civlTypeChecker.checkingContext.Error(call, "call to pure procedure must be annotated with a layer");
           return;
         }
-        var layerNum = calledLayers[0];
-        VisitYieldInvariantCallCmd(call, callerProcUpperLayer, layerNum);
-        CheckCallOutputs(call, callerProcUpperLayer, layerNum);
+        var calleeLayerNum = calledLayers[0];
+        VisitYieldInvariantCallCmd(call, callerProcLayer, calleeLayerNum);
+        CheckCallOutputs(call, calleeLayerNum);
       }
 
-      private void VisitLinkActionCallCmd(CallCmd call, int callerProcUpperLayer, AtomicAction linkAction)
+      private void VisitLinkActionCallCmd(CallCmd call, int callerProcLayer, AtomicAction linkAction)
       {
         var calleeLayerNum = linkAction.LowerLayer;
-        VisitYieldInvariantCallCmd(call, callerProcUpperLayer, calleeLayerNum);
-        CheckCallOutputs(call, callerProcUpperLayer, calleeLayerNum);
-        Require(callerProcUpperLayer == calleeLayerNum ||
-                linkAction.ModifiedGlobalVars.All(v => v.LayerRange.upperLayerNum == calleeLayerNum),
-          call, $"All modified variables of callee must be hidden at layer {calleeLayerNum}");
+        VisitYieldInvariantCallCmd(call, callerProcLayer, calleeLayerNum);
+        CheckCallOutputs(call, calleeLayerNum);
+        Require(callerProcLayer == calleeLayerNum ||
+                linkAction.ModifiedGlobalVars.All(v => v.LayerRange.UpperLayer == calleeLayerNum),
+          call, $"all modified variables of callee must be hidden at layer {calleeLayerNum}");
       }
 
       private void CheckCallInputs(CallCmd call, int calleeLayerNum)
@@ -1386,14 +1374,12 @@ namespace Microsoft.Boogie
         globalVariableAccesses = null;
       }
 
-      private void CheckCallOutputs(CallCmd call, int callerProcUpperLayer, int calleeLayerNum)
+      private void CheckCallOutputs(CallCmd call, int calleeLayerNum)
       {
-        Require(call.Outs.All(ie => ie.Decl.LayerRange.lowerLayerNum == calleeLayerNum),
-          call,
-          $"All output variables must be introduced at layer {calleeLayerNum}");
-        Require(callerProcUpperLayer == calleeLayerNum ||
-                call.Outs.All(ie => ie.Decl.LayerRange.upperLayerNum == calleeLayerNum),
-          call, $"All output variables of call must be hidden at layer {calleeLayerNum}");
+        Require(call.Outs.All(ie => ie.Decl.LayerRange.LowerLayer == calleeLayerNum),
+          call, $"all output variables must be introduced at layer {calleeLayerNum}");
+        Require(call.Outs.All(ie => ie.Decl.LayerRange.UpperLayer == calleeLayerNum),
+          call, $"all output variables of call must be hidden at layer {calleeLayerNum}");
       }
 
       private void CheckMoverProcModifiesClause(Implementation impl)

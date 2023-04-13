@@ -11,8 +11,8 @@ namespace Microsoft.Boogie
     public static int Max = int.MaxValue;
     public static LayerRange MinMax = new LayerRange(Min, Max);
 
-    public int lowerLayerNum;
-    public int upperLayerNum;
+    public int LowerLayer;
+    public int UpperLayer;
 
     public LayerRange(int layer) : this(layer, layer)
     {
@@ -21,28 +21,28 @@ namespace Microsoft.Boogie
     public LayerRange(int lower, int upper)
     {
       Debug.Assert(lower <= upper);
-      this.lowerLayerNum = lower;
-      this.upperLayerNum = upper;
+      this.LowerLayer = lower;
+      this.UpperLayer = upper;
     }
 
     public bool Contains(int layerNum)
     {
-      return lowerLayerNum <= layerNum && layerNum <= upperLayerNum;
+      return LowerLayer <= layerNum && layerNum <= UpperLayer;
     }
 
     public bool Subset(LayerRange other)
     {
-      return other.lowerLayerNum <= lowerLayerNum && upperLayerNum <= other.upperLayerNum;
+      return other.LowerLayer <= LowerLayer && UpperLayer <= other.UpperLayer;
     }
 
     public bool OverlapsWith(LayerRange other)
     {
-      return lowerLayerNum <= other.upperLayerNum && other.lowerLayerNum <= upperLayerNum;
+      return LowerLayer <= other.UpperLayer && other.LowerLayer <= UpperLayer;
     }
 
     public override string ToString()
     {
-      return $"[{lowerLayerNum}, {upperLayerNum}]";
+      return $"[{LowerLayer}, {UpperLayer}]";
     }
 
     public override bool Equals(object obj)
@@ -53,12 +53,12 @@ namespace Microsoft.Boogie
         return false;
       }
 
-      return lowerLayerNum == other.lowerLayerNum && upperLayerNum == other.upperLayerNum;
+      return LowerLayer == other.LowerLayer && UpperLayer == other.UpperLayer;
     }
 
     public override int GetHashCode()
     {
-      return (23 * 31 + lowerLayerNum) * 31 + upperLayerNum;
+      return (23 * 31 + LowerLayer) * 31 + UpperLayer;
     }
   }
 

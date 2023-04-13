@@ -3355,7 +3355,7 @@ namespace Microsoft.Boogie
           {
             tc.Error(this, "caller layer range must be subset of callee layer range");
           }
-          else if (callerActionDecl.LayerRange.lowerLayerNum == calleeActionDecl.LayerRange.lowerLayerNum &&
+          else if (callerActionDecl.LayerRange.LowerLayer == calleeActionDecl.LayerRange.LowerLayer &&
                    calleeActionDecl.ActionQualifier == ActionQualifier.Link &&
                    callerActionDecl.ActionQualifier != ActionQualifier.Link)
           {

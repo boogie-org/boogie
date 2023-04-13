@@ -1320,7 +1320,7 @@ namespace Microsoft.Boogie
       if (rc.Proc is YieldProcedureDecl yieldProcedureDecl)
       {
         LayerRange = ToLayerRange(rc, new LayerRange(LayerRange.Min, yieldProcedureDecl.Layer));
-        if (LayerRange.upperLayerNum > yieldProcedureDecl.Layer)
+        if (LayerRange.UpperLayer > yieldProcedureDecl.Layer)
         {
           rc.Error(this, "hidden layer of local variable may not be more than the layer of its procedure");
         }
@@ -2959,7 +2959,7 @@ namespace Microsoft.Boogie
       {
         Modifies.Iter(ie =>
         {
-          if (ie.Decl.LayerRange.lowerLayerNum != LayerRange.lowerLayerNum)
+          if (ie.Decl.LayerRange.LowerLayer != LayerRange.LowerLayer)
           {
             tc.Error(this,
               $"lower layer of modified global variable does not match lower layer of link action: {ie.Name}");
@@ -2971,7 +2971,7 @@ namespace Microsoft.Boogie
       {
         var refinedProc = RefinedAction.ActionDecl;
         var invariantProc = InvariantAction.ActionDecl;
-        var layer = LayerRange.upperLayerNum;
+        var layer = LayerRange.UpperLayer;
         if (!refinedProc.LayerRange.Contains(layer + 1))
         {
           tc.Error(refinedProc, $"refined action does not exist at layer {layer + 1}");
@@ -3795,12 +3795,23 @@ namespace Microsoft.Boogie
       Contract.Assert(tc.Proc == Proc);
       tc.Proc = oldProc;
 
-      if (Proc is ActionDecl)
+      if (Proc is ActionDecl || Proc is YieldProcedureDecl)
       {
-        var cfg = Program.GraphFromImpl(this);
-        if (!Graph<Block>.Acyclic(cfg))
+        var graph = Program.GraphFromImpl(this);
+        if (!Graph<Block>.Acyclic(graph))
         {
-          tc.Error(this, "action implementation may not have loops");
+          if (Proc is ActionDecl)
+          {
+            tc.Error(this, "action implementation may not have loops");
+          }
+          else // Proc is YieldProcedureDecl
+          {
+            graph.ComputeLoops();
+            if (!graph.Reducible)
+            {
+              tc.Error(this, "irreducible control flow graph not allowed");
+            }
+          }
         }
       }
     }

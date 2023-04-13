@@ -80,11 +80,6 @@ namespace Microsoft.Boogie
       impl.ComputePredecessorsForBlocks();
       var graph = Program.GraphFromImpl(impl);
       graph.ComputeLoops();
-      if (!graph.Reducible)
-      {
-        throw new Exception("Irreducible flow graphs are unsupported.");
-      }
-
       var loopHeaders = new HashSet<Block>(graph.Headers);
       foreach (var header in loopHeaders)
       {

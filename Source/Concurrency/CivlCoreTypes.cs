@@ -59,7 +59,7 @@ namespace Microsoft.Boogie
     
     public LayerRange LayerRange => ActionDecl.LayerRange;
 
-    public int LowerLayer => LayerRange.lowerLayerNum;
+    public int LowerLayer => LayerRange.LowerLayer;
 
     public bool HasPendingAsyncs => PendingAsyncs.Count > 0;
 
@@ -480,8 +480,8 @@ namespace Microsoft.Boogie
     public AtomicAction RefinedAction;
     public HashSet<Variable> HiddenFormals;
 
-    public ActionProc(YieldProcedureDecl proc, AtomicAction refinedAction, HashSet<Variable> hiddenFormals,
-      List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
+    public ActionProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures,
+      AtomicAction refinedAction, HashSet<Variable> hiddenFormals)
       : base(proc, yieldRequires, yieldEnsures)
     {
       this.RefinedAction = refinedAction;
@@ -496,7 +496,7 @@ namespace Microsoft.Boogie
       var action = RefinedAction;
       while (action != null)
       {
-        if (layer <= action.LayerRange.upperLayerNum)
+        if (layer <= action.LayerRange.UpperLayer)
         {
           return action;
         }
