@@ -323,42 +323,20 @@ namespace Microsoft.Boogie
       procToAtomicAction[proc] = new AtomicAction(impl, refinedAction, this);
     }
     
-    private static T StripOld<T>(T cmd) where T : Cmd
-    {
-      var emptySubst = Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>());
-      return (T) Substituter.ApplyReplacingOldExprs(emptySubst, emptySubst, cmd);
-    }
-
     private void TypeCheckYieldingProcedureDecls()
     {
       foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>())
       {
-        var yieldRequires = new List<CallCmd>();
-        var yieldEnsures = new List<CallCmd>();
-        foreach (var callCmd in proc.YieldRequires)
-        {
-          yieldRequires.Add(StripOld(callCmd));
-        }
-        foreach (var callCmd in proc.YieldEnsures)
-        {
-          yieldEnsures.Add(callCmd);
-        }
-        foreach (var callCmd in proc.YieldPreserves)
-        {
-          yieldRequires.Add(StripOld(callCmd));
-          yieldEnsures.Add(callCmd);
-        }
-        
         if (proc.RefinedAction != null) // proc is an action procedure
         {
           AtomicAction refinedAction = procToAtomicAction[proc.RefinedAction.ActionDecl];
-          var actionProc = new ActionProc(proc, yieldRequires, yieldEnsures, refinedAction);
+          var actionProc = new ActionProc(proc, refinedAction);
           CheckRefinementSignature(proc);
           procToYieldingProc[proc] = actionProc;
         }
         else if (proc.MoverType != MoverType.None) // proc is a mover procedure
         {
-          procToYieldingProc[proc] = new MoverProc(proc, yieldRequires, yieldEnsures);
+          procToYieldingProc[proc] = new MoverProc(proc);
         }
         else // proc refines the skip action
         {
@@ -366,7 +344,7 @@ namespace Microsoft.Boogie
           {
             procToAtomicAction[SkipAtomicAction.ActionDecl] = SkipAtomicAction;
           }
-          var actionProc = new ActionProc(proc, yieldRequires, yieldEnsures, SkipAtomicAction);
+          var actionProc = new ActionProc(proc, SkipAtomicAction);
           procToYieldingProc[proc] = actionProc;
         }
       }

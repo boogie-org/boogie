@@ -443,14 +443,10 @@ namespace Microsoft.Boogie
   public abstract class YieldingProc
   {
     public YieldProcedureDecl Proc;
-    public List<CallCmd> YieldRequires;
-    public List<CallCmd> YieldEnsures;
-    
-    public YieldingProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
+
+    public YieldingProc(YieldProcedureDecl proc)
     {
       this.Proc = proc;
-      this.YieldRequires = yieldRequires;
-      this.YieldEnsures = yieldEnsures;
     }
 
     public int Layer => Proc.Layer;
@@ -464,8 +460,7 @@ namespace Microsoft.Boogie
 
   public class MoverProc : YieldingProc
   {
-    public MoverProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
-      : base(proc, yieldRequires, yieldEnsures)
+    public MoverProc(YieldProcedureDecl proc) : base(proc)
     {
     }
 
@@ -478,8 +473,7 @@ namespace Microsoft.Boogie
   {
     public AtomicAction RefinedAction;
 
-    public ActionProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, AtomicAction refinedAction)
-      : base(proc, yieldRequires, yieldEnsures)
+    public ActionProc(YieldProcedureDecl proc, AtomicAction refinedAction) : base(proc)
     {
       this.RefinedAction = refinedAction;
     }

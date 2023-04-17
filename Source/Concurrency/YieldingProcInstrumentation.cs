@@ -275,7 +275,7 @@ namespace Microsoft.Boogie
         impl.Proc.Requires.ForEach(req =>
           initCmds.Add(new AssumeCmd(req.tok, Substituter.Apply(procToImplInParams, req.Condition))));
 
-        foreach (var callCmd in GetYieldingProc(impl).YieldRequires)
+        foreach (var callCmd in GetYieldingProc(impl).Proc.DesugaredYieldRequires)
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.Layer)
@@ -300,7 +300,7 @@ namespace Microsoft.Boogie
       foreach (var impl in absyMap.Keys.OfType<Implementation>())
       {
         var yieldingProc = GetYieldingProc(impl);
-        foreach (var callCmd in yieldingProc.YieldRequires)
+        foreach (var callCmd in yieldingProc.Proc.DesugaredYieldRequires)
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.Layer)
@@ -317,7 +317,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        foreach (var callCmd in yieldingProc.YieldEnsures)
+        foreach (var callCmd in yieldingProc.Proc.DesugaredYieldEnsures)
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.Layer)

@@ -3146,7 +3146,7 @@ namespace Microsoft.Boogie
       return visitor.VisitActionDecl(this);
     }
   }
-  
+
   public class YieldProcedureDecl : Procedure
   {
     public MoverType MoverType;
@@ -3158,7 +3158,8 @@ namespace Microsoft.Boogie
     public int Layer; // set during registration
     public HashSet<Variable> HiddenFormals; // set during resolution
 
-    public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams, List<Variable> outParams,
+    public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams,
+      List<Variable> outParams,
       List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
       List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
@@ -3176,11 +3177,11 @@ namespace Microsoft.Boogie
       base.Register(rc);
       Layer = ToLayer(rc);
     }
-    
+
     public override void Resolve(ResolutionContext rc)
     {
       base.Resolve(rc);
-      
+
       var oldStateMode = rc.StateMode;
       rc.Proc = this;
       rc.StateMode = ResolutionContext.State.Two;
@@ -3201,11 +3202,12 @@ namespace Microsoft.Boogie
             .Where(x => x.LayerRange.UpperLayer == Layer && x.HasAttribute(CivlAttributes.HIDE)))
           : new HashSet<Variable>(InParams.Concat(OutParams).Where(x => x.LayerRange.UpperLayer == Layer));
       }
-      
+
       if (RefinedAction != null)
       {
         RefinedAction.Resolve(rc);
       }
+
       if (MoverType == MoverType.None)
       {
         if (Modifies.Any())
@@ -3228,6 +3230,7 @@ namespace Microsoft.Boogie
       {
         tc.Error(this, $"refined atomic action must be available at layer {Layer + 1}");
       }
+
       if (MoverType != MoverType.None)
       {
         Modifies.Where(ie => !ie.Decl.LayerRange.Contains(Layer)).Iter(ie =>
@@ -3255,11 +3258,11 @@ namespace Microsoft.Boogie
     {
       return YieldEnsures.Union(YieldPreserves).Union(YieldRequires);
     }
-    
+
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
     public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
-    
+
     public ActionDecl RefinedActionAtLayer(int layer)
     {
       Debug.Assert(layer >= Layer);
@@ -3272,9 +3275,61 @@ namespace Microsoft.Boogie
         {
           return actionDecl;
         }
+
         actionDeclRef = actionDecl.RefinedAction;
       }
+
       return null;
+    }
+
+    private static T StripOld<T>(T cmd) where T : Cmd
+    {
+      var emptySubst = Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>());
+      return (T)Substituter.ApplyReplacingOldExprs(emptySubst, emptySubst, cmd);
+    }
+
+    private List<CallCmd> desugaredYieldRequires;
+
+    public List<CallCmd> DesugaredYieldRequires
+    {
+      get
+      {
+        if (desugaredYieldRequires == null)
+        {
+          desugaredYieldRequires = new List<CallCmd>();
+          foreach (var callCmd in YieldRequires)
+          {
+            desugaredYieldRequires.Add(StripOld(callCmd));
+          }
+          foreach (var callCmd in YieldPreserves)
+          {
+            desugaredYieldRequires.Add(StripOld(callCmd));
+          }
+        }
+        return desugaredYieldRequires;
+      }
+    }
+
+    private List<CallCmd> desugaredYieldEnsures;
+
+    public List<CallCmd> DesugaredYieldEnsures
+    {
+      get
+      {
+        if (desugaredYieldEnsures == null)
+        {
+          desugaredYieldEnsures = new List<CallCmd>();
+          foreach (var callCmd in YieldEnsures)
+          {
+            desugaredYieldEnsures.Add(callCmd);
+          }
+          foreach (var callCmd in YieldPreserves)
+          {
+            desugaredYieldEnsures.Add(callCmd);
+          }
+        }
+        return desugaredYieldEnsures;
+      }
     }
   }
 
