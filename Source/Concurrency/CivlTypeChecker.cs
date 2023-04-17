@@ -343,7 +343,7 @@ namespace Microsoft.Boogie
         {
           AtomicAction refinedAction = procToAtomicAction[proc.RefinedAction.ActionDecl];
           var actionProc = new ActionProc(proc, yieldRequires, yieldEnsures, refinedAction);
-          CheckRefinementSignature(actionProc);
+          CheckRefinementSignature(proc);
           procToYieldingProc[proc] = actionProc;
         }
         else if (proc.MoverType != MoverType.None) // proc is a mover procedure
@@ -496,17 +496,16 @@ namespace Microsoft.Boogie
       }
     }
 
-    private void CheckRefinementSignature(ActionProc actionProc)
+    private void CheckRefinementSignature(YieldProcedureDecl proc)
     {
-      var signatureMatcher = new SignatureMatcher(actionProc.Proc, actionProc.RefinedAction.ActionDecl, checkingContext);
-      Func<Variable, bool> isRemainingVariable = x =>
-        x.LayerRange.UpperLayer == actionProc.Layer &&
-        !actionProc.HiddenFormals.Contains(x);
-      var procInParams = actionProc.Proc.InParams.Where(isRemainingVariable).ToList();
-      var procOutParams = actionProc.Proc.OutParams.Where(isRemainingVariable).ToList();
-      var actionInParams = actionProc.RefinedAction.ActionDecl.InParams;
-      var actionOutParams = actionProc.RefinedAction.ActionDecl.OutParams
-        .SkipEnd(actionProc.RefinedAction.PendingAsyncs.Count).ToList();
+      bool IsRemainingVariable(Variable x) => x.LayerRange.UpperLayer == proc.Layer && !proc.HiddenFormals.Contains(x);
+
+      var refinedActionDecl = proc.RefinedAction.ActionDecl;
+      var signatureMatcher = new SignatureMatcher(proc, refinedActionDecl, checkingContext);
+      var procInParams = proc.InParams.Where(IsRemainingVariable).ToList();
+      var procOutParams = proc.OutParams.Where(IsRemainingVariable).ToList();
+      var actionInParams = refinedActionDecl.InParams;
+      var actionOutParams = refinedActionDecl.OutParams.SkipEnd(refinedActionDecl.Creates.Count).ToList();
       signatureMatcher.MatchFormals(procInParams, actionInParams, SignatureMatcher.IN);
       signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
     }
