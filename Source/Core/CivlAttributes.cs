@@ -40,6 +40,22 @@ namespace Microsoft.Boogie
       return LowerLayer <= other.UpperLayer && other.LowerLayer <= UpperLayer;
     }
 
+    public static LayerRange Union(LayerRange first, LayerRange second)
+    {
+      return new LayerRange(Math.Min(first.LowerLayer, second.LowerLayer), Math.Max(first.UpperLayer, second.UpperLayer));
+    }
+    
+    public static LayerRange Union(List<LayerRange> layerRanges)
+    {
+      Debug.Assert(layerRanges.Any());
+      var unionLayerRange = layerRanges.First();
+      foreach (var layerRange in layerRanges)
+      {
+        unionLayerRange = Union(unionLayerRange, layerRange);
+      }
+      return unionLayerRange;
+    }
+    
     public override string ToString()
     {
       return $"[{LowerLayer}, {UpperLayer}]";

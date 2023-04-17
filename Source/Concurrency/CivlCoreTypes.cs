@@ -464,29 +464,27 @@ namespace Microsoft.Boogie
 
   public class MoverProc : YieldingProc
   {
-    public HashSet<Variable> ModifiedGlobalVars;
-
     public MoverProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
       : base(proc, yieldRequires, yieldEnsures)
     {
-      ModifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
     }
 
     public override MoverType MoverType => Proc.MoverType;
+    
+    public IEnumerable<Variable> ModifiedVars => Proc.ModifiedVars;
   }
 
   public class ActionProc : YieldingProc
   {
     public AtomicAction RefinedAction;
-    public HashSet<Variable> HiddenFormals;
 
-    public ActionProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures,
-      AtomicAction refinedAction, HashSet<Variable> hiddenFormals)
+    public ActionProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, AtomicAction refinedAction)
       : base(proc, yieldRequires, yieldEnsures)
     {
       this.RefinedAction = refinedAction;
-      this.HiddenFormals = hiddenFormals;
     }
+
+    public HashSet<Variable> HiddenFormals => Proc.HiddenFormals;
 
     public override MoverType MoverType => RefinedAction.ActionDecl.MoverType;
 

@@ -747,6 +747,9 @@ namespace Microsoft.Boogie
   {
     public CoreOptions Options { get; }
     public Procedure Proc;
+    public LayerRange ExpectedLayerRange;
+    public bool GlobalAccessOnlyInOld;
+    public int InsideOld;
 
     public TypecheckingContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)
@@ -760,5 +763,7 @@ namespace Microsoft.Boogie
     }
 
     public bool Yields => Proc is YieldProcedureDecl;
+
+    public bool GlobalAccessOk => !GlobalAccessOnlyInOld || 0 < InsideOld;
   }
 }

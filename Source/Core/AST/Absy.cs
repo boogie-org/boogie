@@ -4,6 +4,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Security.Cryptography;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.GraphUtil;
 
@@ -2427,11 +2428,24 @@ namespace Microsoft.Boogie
       this.Condition.Resolve(rc);
       (this as ICarriesAttributes).ResolveAttributes(rc);
       Layers = (this as ICarriesAttributes).FindLayers();
+      if (rc.Proc is YieldProcedureDecl yieldProcedureDecl)
+      {
+        if (Layers.Count == 0)
+        {
+          rc.Error(this, "expected layers");
+        }
+        else if (Layers[^1] > yieldProcedureDecl.Layer)
+        {
+          rc.Error(this, $"each layer must not be more than {yieldProcedureDecl.Layer}");
+        }
+      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      tc.ExpectedLayerRange = Layers == null || Layers.Count == 0 ? null : new LayerRange(Layers[0], Layers[^1]);
       this.Condition.Typecheck(tc);
+      tc.ExpectedLayerRange = null;
       Contract.Assert(this.Condition.Type != null); // follows from postcondition of Expr.Typecheck
       if (!this.Condition.Type.Unify(Type.Bool))
       {
@@ -2538,11 +2552,24 @@ namespace Microsoft.Boogie
       this.Condition.Resolve(rc);
       (this as ICarriesAttributes).ResolveAttributes(rc);
       Layers = (this as ICarriesAttributes).FindLayers();
+      if (rc.Proc is YieldProcedureDecl yieldProcedureDecl)
+      {
+        if (Layers.Count == 0)
+        {
+          rc.Error(this, "expected layers");
+        }
+        else if (Layers[^1] > yieldProcedureDecl.Layer)
+        {
+          rc.Error(this, $"each layer must not be more than {yieldProcedureDecl.Layer}");
+        }
+      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      tc.ExpectedLayerRange = Layers == null || Layers.Count == 0 ? null : new LayerRange(Layers[0], Layers[^1]);
       this.Condition.Typecheck(tc);
+      tc.ExpectedLayerRange = null;
       Contract.Assert(this.Condition.Type != null); // follows from postcondition of Expr.Typecheck
       if (!this.Condition.Type.Unify(Type.Bool))
       {
@@ -2563,7 +2590,9 @@ namespace Microsoft.Boogie
     public List<Requires> Requires;
 
     public List<IdentifierExpr> Modifies;
-
+    
+    public IEnumerable<Variable> ModifiedVars => Modifies.Select(ie => ie.Decl).Distinct();
+    
     public List<Ensures> Ensures;
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
@@ -2746,11 +2775,23 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      var oldProc = rc.Proc;
       rc.Proc = this;
       base.Resolve(rc);
-      Contract.Assert(rc.Proc == this);
-      rc.Proc = oldProc;
+      rc.Proc = null;
+    }
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      var oldProc = tc.Proc;
+      tc.Proc = this;
+      base.Typecheck(tc);
+      Contract.Assert(tc.Proc == this);
+      tc.Proc = oldProc;
+    }
+    
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitYieldInvariantDecl(this);
     }
   }
 
@@ -2868,11 +2909,9 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      var oldProc = rc.Proc;
       rc.Proc = this;
       base.Resolve(rc);
-      Contract.Assert(rc.Proc == this);
-      rc.Proc = oldProc;
+      rc.Proc = null;
       if (ActionQualifier == ActionQualifier.Async && OutParams.Count > 0)
       {
         rc.Error(this, $"async action may not have output parameters");
@@ -3064,6 +3103,11 @@ namespace Microsoft.Boogie
       return Creates.Append(RefinedAction).Append(InvariantAction);
     }
 
+    public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
+
+    public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
+    
+    
     public DatatypeConstructor PendingAsyncCtor => PendingAsyncCtorDecl.GetConstructor(Name);
 
     public CtorType PendingAsyncType => new (PendingAsyncCtorDecl.tok, PendingAsyncCtorDecl, new List<Type>());
@@ -3096,6 +3140,11 @@ namespace Microsoft.Boogie
       pendingAsyncIte = monomorphizer.InstantiateFunction("MapIte",
         new Dictionary<string, Type> { { "T", PendingAsyncType }, { "U", Type.Int } });
     }
+    
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      return visitor.VisitActionDecl(this);
+    }
   }
   
   public class YieldProcedureDecl : Procedure
@@ -3107,6 +3156,7 @@ namespace Microsoft.Boogie
     public ActionDeclRef RefinedAction;
 
     public int Layer; // set during registration
+    public HashSet<Variable> HiddenFormals; // set during resolution
 
     public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams, List<Variable> outParams,
       List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
@@ -3130,8 +3180,7 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       base.Resolve(rc);
-
-      var oldProc = rc.Proc;
+      
       var oldStateMode = rc.StateMode;
       rc.Proc = this;
       rc.StateMode = ResolutionContext.State.Two;
@@ -3143,9 +3192,16 @@ namespace Microsoft.Boogie
       YieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
       rc.PopVarContext();
       rc.StateMode = oldStateMode;
-      Contract.Assert(rc.Proc == this);
-      rc.Proc = oldProc;
+      rc.Proc = null;
 
+      if (MoverType == MoverType.None)
+      {
+        HiddenFormals = RefinedAction != null
+          ? new HashSet<Variable>(InParams.Concat(OutParams)
+            .Where(x => x.LayerRange.UpperLayer == Layer && x.HasAttribute(CivlAttributes.HIDE)))
+          : new HashSet<Variable>(InParams.Concat(OutParams).Where(x => x.LayerRange.UpperLayer == Layer));
+      }
+      
       if (RefinedAction != null)
       {
         RefinedAction.Resolve(rc);
@@ -3168,6 +3224,18 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      if (RefinedAction != null && !RefinedAction.ActionDecl.LayerRange.Contains(Layer + 1))
+      {
+        tc.Error(this, $"refined atomic action must be available at layer {Layer + 1}");
+      }
+      if (MoverType != MoverType.None)
+      {
+        Modifies.Where(ie => !ie.Decl.LayerRange.Contains(Layer)).Iter(ie =>
+        {
+          tc.Error(this, $"modified variable of mover procedure must be available at layer {Layer}: {ie.Decl.Name}");
+        });
+      }
+
       var oldProc = tc.Proc;
       tc.Proc = this;
       base.Typecheck(tc);
@@ -3186,6 +3254,27 @@ namespace Microsoft.Boogie
     public IEnumerable<CallCmd> CallCmds()
     {
       return YieldEnsures.Union(YieldPreserves).Union(YieldRequires);
+    }
+    
+    public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
+
+    public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
+    
+    public ActionDecl RefinedActionAtLayer(int layer)
+    {
+      Debug.Assert(layer >= Layer);
+      Debug.Assert(RefinedAction != null);
+      var actionDeclRef = RefinedAction;
+      while (actionDeclRef != null)
+      {
+        var actionDecl = actionDeclRef.ActionDecl;
+        if (layer <= actionDecl.LayerRange.UpperLayer)
+        {
+          return actionDecl;
+        }
+        actionDeclRef = actionDecl.RefinedAction;
+      }
+      return null;
     }
   }
 
@@ -3709,7 +3798,6 @@ namespace Microsoft.Boogie
         RegisterTypeParameters(rc);
 
         rc.PushVarContext();
-        var oldProc = rc.Proc;
         rc.Proc = Proc;
         RegisterFormals(InParams, rc);
         RegisterFormals(OutParams, rc);
@@ -3719,8 +3807,7 @@ namespace Microsoft.Boogie
           v.Register(rc);
           v.Resolve(rc);
         }
-        Contract.Assert(rc.Proc == Proc);
-        rc.Proc = oldProc;
+        rc.Proc = null;
 
         foreach (Variable v in LocVars)
         {
@@ -3735,13 +3822,14 @@ namespace Microsoft.Boogie
         }
 
         (this as ICarriesAttributes).ResolveAttributes(rc);
-
+        
+        rc.Proc = Proc;
         rc.StateMode = Proc.IsPure ? ResolutionContext.State.StateLess : ResolutionContext.State.Two;
         foreach (Block b in Blocks)
         {
           b.Resolve(rc);
         }
-
+        rc.Proc = null;
         rc.StateMode = ResolutionContext.State.Single;
 
         rc.PopProcedureContext();

@@ -1755,10 +1755,9 @@ namespace Microsoft.Boogie
   {
     public QKeyValue Attributes { get; set; }
 
-    private List<AssignLhs /*!*/> /*!*/
-      _lhss;
+    private List<AssignLhs> _lhss;
 
-    public IList<AssignLhs /*!*/> /*!*/ Lhss
+    public IList<AssignLhs> Lhss
     {
       get
       {
@@ -1781,10 +1780,9 @@ namespace Microsoft.Boogie
       this._lhss[index] = lhs;
     }
 
-    private List<Expr /*!*/> /*!*/
-      _rhss;
+    private List<Expr> _rhss;
 
-    public IList<Expr /*!*/> /*!*/ Rhss
+    public IList<Expr> Rhss
     {
       get
       {
@@ -1814,9 +1812,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(cce.NonNullElements(this._rhss));
     }
 
-
-    public AssignCmd(IToken tok, IList<AssignLhs /*!*/> /*!*/ lhss,
-      IList<Expr /*!*/> /*!*/ rhss, QKeyValue kv)
+    public AssignCmd(IToken tok, IList<AssignLhs> lhss, IList<Expr> rhss, QKeyValue kv)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -1827,7 +1823,7 @@ namespace Microsoft.Boogie
       this.Attributes = kv;
     }
 
-    public AssignCmd(IToken tok, IList<AssignLhs /*!*/> /*!*/ lhss, IList<Expr /*!*/> /*!*/ rhss)
+    public AssignCmd(IToken tok, IList<AssignLhs> lhss, IList<Expr> rhss)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -1941,16 +1937,32 @@ namespace Microsoft.Boogie
       int errorCount = tc.ErrorCount;
 
       (this as ICarriesAttributes).TypecheckAttributes(tc);
+
+      var expectedLayerRanges = new List<LayerRange>();
+      if (tc.Proc is YieldProcedureDecl)
+      {
+        foreach (var e in Lhss.Where(e => e.DeepAssignedVariable is GlobalVariable))
+        {
+          tc.Error(e, $"global variable directly modified in a yield procedure: {e.DeepAssignedVariable.Name}");
+        }
+        expectedLayerRanges = Lhss.Select(e => e.DeepAssignedVariable.LayerRange).ToList();
+      }
+
       foreach (AssignLhs /*!*/ e in Lhss)
       {
         Contract.Assert(e != null);
         e.Typecheck(tc);
       }
 
-      foreach (Expr /*!*/ e in Rhss)
+      for (int i = 0; i < Rhss.Count; i++)
       {
+        var e = Rhss[i];
         Contract.Assert(e != null);
+        tc.GlobalAccessOnlyInOld = true;
+        tc.ExpectedLayerRange = tc.Proc is YieldProcedureDecl ? expectedLayerRanges[i] : null;
         e.Typecheck(tc);
+        tc.GlobalAccessOnlyInOld = false;
+        tc.ExpectedLayerRange = null;
       }
 
       if (tc.ErrorCount > errorCount)
@@ -2420,8 +2432,28 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
+
+      LayerRange expectedLayerRange = null;
+      if (tc.Proc is YieldProcedureDecl)
+      {
+        UnpackedLhs.Select(ie => ie.Decl).Iter(v =>
+        {
+          if (v is GlobalVariable)
+          {
+            tc.Error(v, $"global variable directly modified in a yield procedure: {v.Name}");
+          }
+        });
+        expectedLayerRange = LayerRange.Union(UnpackedLhs.Select(ie => ie.Decl.LayerRange).ToList());
+      }
+
       lhs.Typecheck(tc);
+      
+      tc.GlobalAccessOnlyInOld = true;
+      tc.ExpectedLayerRange = expectedLayerRange;
       rhs.Typecheck(tc);
+      tc.GlobalAccessOnlyInOld = false;
+      tc.ExpectedLayerRange = null;
+      
       this.CheckAssignments(tc);
       Type ltype = lhs.Type;
       Type rtype = rhs.Type;
@@ -2894,6 +2926,10 @@ namespace Microsoft.Boogie
           }
         }
       }
+      if (CallCmds.Count(CivlAttributes.IsCallMarked) > 1)
+      {
+        rc.Error(this, "at most one arm of a parallel call may be annotated with :mark");
+      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -3065,7 +3101,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, level, "");
       if (IsFree)
       {
@@ -3122,7 +3157,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       if (Proc != null)
       {
         // already resolved
@@ -3200,10 +3234,340 @@ namespace Microsoft.Boogie
 
       (this as ICarriesAttributes).ResolveAttributes(rc);
       Layers = (this as ICarriesAttributes).FindLayers();
+
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
       {
         rc.AddStatementId(tok, id);
+      }
+      
+      if (rc.Proc.GetType() == typeof(Procedure))
+      {
+        if (Proc.GetType() != typeof(Procedure))
+        {
+          rc.Error(this, "a procedure may only call other procedures");
+        }
+      }
+      if (rc.Proc.IsPure && !Proc.IsPure)
+      {
+        rc.Error(this, "pure procedure may only call a pure procedure");
+      }
+      if (rc.Proc is YieldProcedureDecl)
+      {
+        if (Proc is YieldProcedureDecl || Proc is YieldInvariantDecl ||
+            Proc is ActionDecl { ActionQualifier: ActionQualifier.Link } || Proc.IsPure)
+        {
+          // call ok
+        }
+        else
+        {
+          rc.Error(this,
+            "a yielding procedure may only call yield procedures, yield invariants, link actions, or pure procedures");
+        }
+      }
+      if (IsAsync)
+      {
+        if (rc.Proc is not YieldProcedureDecl)
+        {
+          rc.Error(this, "calling procedure of an async call must yield");
+        }
+        if (Proc is not YieldProcedureDecl)
+        {
+          rc.Error(this, "target procedure of an async call must yield");
+        }
+      }
+      // checking calls from atomic actions need type information, hence postponed to type checking
+    }
+
+    private List<LayerRange> TypecheckCallCmdInYieldProcedureDecl(TypecheckingContext tc)
+    {
+      if (tc.Proc is not YieldProcedureDecl callerDecl)
+      {
+        return null;
+      }
+      
+      var callerModifiedVars = new HashSet<Variable>(callerDecl.ModifiedVars);
+
+      void CheckModifies(IEnumerable<Variable> modifiedVars)
+      {
+        if (callerDecl.MoverType == MoverType.None)
+        {
+          return;
+        }
+        foreach (var v in modifiedVars.Where(v => !callerModifiedVars.Contains(v)))
+        {
+          tc.Error(this, $"modified variable does not appear in modifies clause of mover procedure: {v.Name}");
+        }
+      }
+      
+      LayerRange FormalLayerRange(Variable formal)
+      {
+        LayerRange formalLayerRange;
+        switch (Proc)
+        {
+          case YieldInvariantDecl yieldInvariantDecl:
+            formalLayerRange = new LayerRange(yieldInvariantDecl.Layer);
+            break;
+          case ActionDecl { ActionQualifier: ActionQualifier.Link } actionDecl:
+            formalLayerRange = new LayerRange(actionDecl.LayerRange.LowerLayer);
+            break;
+          case YieldProcedureDecl calleeDecl:
+          {
+            formalLayerRange = formal.LayerRange;
+            if (calleeDecl.MoverType == MoverType.None && formalLayerRange.UpperLayer == calleeDecl.Layer &&
+                !calleeDecl.HiddenFormals.Contains(formal))
+            {
+              formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
+            }
+            break;
+          }
+          default:
+            Debug.Assert(Proc.IsPure);
+            formalLayerRange = new LayerRange(Layers[0]);
+            break;
+        }
+        return formalLayerRange;
+      }
+
+      // check layers
+      if (Proc is YieldProcedureDecl calleeDecl)
+      {
+        var isSynchronized = this.HasAttribute(CivlAttributes.SYNC);
+        if (calleeDecl.Layer > callerDecl.Layer)
+        {
+          tc.Error(this, "layer of callee must not be more than layer of caller");
+        }
+        else if (calleeDecl.MoverType == MoverType.None)
+        {
+          if (callerDecl.Layer > calleeDecl.Layer)
+          {
+            if (calleeDecl.RefinedAction != null)
+            {
+              var highestRefinedActionDecl = calleeDecl.RefinedActionAtLayer(callerDecl.Layer);
+              if (highestRefinedActionDecl == null)
+              {
+                tc.Error(this, $"called action is not available at layer {callerDecl.Layer}");
+              }
+              else
+              {
+                CheckModifies(highestRefinedActionDecl.ModifiedVars);
+                if (highestRefinedActionDecl.Creates.Any())
+                {
+                  if (callerDecl.MoverType != MoverType.None)
+                  {
+                    tc.Error(this, "caller must not be a mover procedure");
+                  }
+                }
+                else if (IsAsync && isSynchronized)
+                {
+                  // check that entire chain of refined actions all the way to highestRefinedAction is comprised of left movers
+                  var actionDeclRef = calleeDecl.RefinedAction;
+                  while (actionDeclRef != null)
+                  {
+                    var actionDecl = actionDeclRef.ActionDecl;
+                    if (!actionDecl.IsLeftMover)
+                    {
+                      tc.Error(this,
+                        $"callee abstraction in synchronized call must be a left mover: {actionDecl.Name}");
+                    }
+                    else if (actionDecl != highestRefinedActionDecl)
+                    {
+                      actionDeclRef = actionDecl.RefinedAction;
+                    }
+                    else
+                    {
+                      actionDeclRef = null;
+                    }
+                  }
+                }
+              }
+            }
+          }
+          else // callerDecl.Layer == calleeDecl.Layer
+          {
+            if (callerDecl.MoverType != MoverType.None)
+            {
+              tc.Error(this, "caller must not be a mover procedure");
+            }
+            else if (!IsAsync)
+            {
+              if (calleeDecl.RefinedAction != null)
+              {
+                calleeDecl.OutParams.Where(x => calleeDecl.HiddenFormals.Contains(x)).Iter(x =>
+                {
+                  tc.Error(this,
+                    $"hidden output variable not allowed for callee with the same layer as caller: {x.Name}");
+                });
+              }
+            }
+            else if (isSynchronized)
+            {
+              tc.Error(this, "layer of callee in synchronized call must be less than layer of caller");
+            }
+          }
+
+          if (IsAsync && !isSynchronized)
+          {
+            if (callerDecl.MoverType != MoverType.None)
+            {
+              tc.Error(this, "caller must not be a mover procedure");
+            }
+            else if (calleeDecl.RefinedAction != null)
+            {
+              var highestRefinedAction = calleeDecl.RefinedActionAtLayer(callerDecl.Layer + 1);
+              if (highestRefinedAction == null)
+              {
+                tc.Error(this, $"called action is not available at layer {callerDecl.Layer + 1}");
+              }
+              else if (highestRefinedAction.ActionQualifier != ActionQualifier.Async)
+              {
+                tc.Error(this, $"action {highestRefinedAction.Name} refined by callee must be async");
+              }
+            }
+          }
+        }
+        else // calleeDecl.MoverType != MoverType.None
+        {
+          if (callerDecl.Layer > calleeDecl.Layer)
+          {
+            tc.Error(this, "layer of caller must be equal to layer of callee");
+          }
+          else
+          {
+            CheckModifies(calleeDecl.ModifiedVars);
+            if (IsAsync)
+            {
+              if (!isSynchronized)
+              {
+                tc.Error(this, "async call to mover procedure must be synchronized");
+              }
+              else if (!calleeDecl.IsLeftMover)
+              {
+                tc.Error(this, "callee in synchronized call must be a left mover");
+              }
+            }
+          }
+        }
+      }
+      else if (Proc is YieldInvariantDecl yieldInvariantDecl)
+      {
+        if (yieldInvariantDecl.Layer > callerDecl.Layer)
+        {
+          tc.Error(this, "layer of callee must not be more than layer of caller");
+        }
+      }
+      else if (Proc is ActionDecl { ActionQualifier: ActionQualifier.Link } actionDecl)
+      {
+        var calleeLayer = actionDecl.LayerRange.LowerLayer;
+        if (calleeLayer > callerDecl.Layer)
+        {
+          tc.Error(this, "layer of callee must not be more than layer of caller");
+        }
+        else if (calleeLayer < callerDecl.Layer)
+        {
+          actionDecl.Modifies.Iter(ie =>
+          {
+            if (ie.Decl.LayerRange.UpperLayer != calleeLayer)
+            {
+              tc.Error(this, $"modified variable of callee must be hidden at layer {calleeLayer}: {ie.Decl.Name}");
+            }
+          });
+        }
+        else
+        {
+          CheckModifies(actionDecl.ModifiedVars);
+        }
+      }
+      else
+      {
+        Debug.Assert(Proc.IsPure);
+        if (Layers.Count != 1)
+        {
+          tc.Error(this, "call to pure procedure must be annotated with a layer");
+        }
+        else
+        {
+          if (Layers[0] > callerDecl.Layer)
+          {
+            tc.Error(this, "layer of callee must not be more than layer of caller");
+          }
+        }
+      }
+      
+      var expectedLayerRanges = Proc.InParams.Select(FormalLayerRange).ToList();
+      for (int i = 0; i < Proc.OutParams.Count; i++)
+      {
+        var formal = Proc.OutParams[i];
+        var actual = Outs[i];
+        if (actual.Decl is GlobalVariable)
+        {
+          tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
+        }
+        else
+        {
+          var formalLayerRange = FormalLayerRange(formal);
+          if (!actual.Decl.LayerRange.Subset(formalLayerRange))
+          {
+            tc.Error(this, $"variable must be available only within layers in {formalLayerRange}: {actual.Decl.Name}");
+          }
+        }
+      }
+      return expectedLayerRanges;
+    }
+
+    private void TypecheckCallCmdInActionDecl(TypecheckingContext tc)
+    {
+      if (tc.Proc is not ActionDecl callerActionDecl)
+      {
+        return;
+      }
+
+      if (CivlPrimitives.Linear.Contains(Proc.Name))
+      {
+        // ok
+      }
+      else if (CivlPrimitives.Async.Contains(Proc.Name))
+      {
+        var type = TypeProxy.FollowProxy(TypeParameters[Proc.TypeParameters[0]].Expanded);
+        if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+        {
+          if (callerActionDecl.Creates.All(x => x.ActionName != datatypeTypeCtorDecl.Name))
+          {
+            tc.Error(this, "primitive instantiated on type not in the creates clause of caller");
+          }
+        }
+        else
+        {
+          tc.Error(this, "type parameter to primitive call must be instantiated with a pending async type");
+        }
+      }
+      else if (Proc is ActionDecl calleeActionDecl)
+      {
+        if (calleeActionDecl.ActionQualifier == ActionQualifier.Invariant)
+        {
+          tc.Error(this, "an invariant action may not be called");
+        }
+        foreach (var actionDeclRef in calleeActionDecl.Creates)
+        {
+          if (callerActionDecl.Creates.All(x => x.ActionDecl != actionDeclRef.ActionDecl))
+          {
+            tc.Error(actionDeclRef, "callee creates a pending async not in the creates clause of caller");
+          }
+        }
+        if (!callerActionDecl.LayerRange.Subset(calleeActionDecl.LayerRange))
+        {
+          tc.Error(this, "caller layer range must be subset of callee layer range");
+        }
+        else if (callerActionDecl.LayerRange.LowerLayer == calleeActionDecl.LayerRange.LowerLayer &&
+                 calleeActionDecl.ActionQualifier == ActionQualifier.Link &&
+                 callerActionDecl.ActionQualifier != ActionQualifier.Link)
+        {
+          tc.Error(this, "lower layer of caller must be greater than lower layer of callee");
+        }
+      }
+      else
+      {
+        tc.Error(this, "an action may only call actions or pending async primitives");
       }
     }
 
@@ -3237,23 +3601,30 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       Contract.Assume(this.Proc !=
                       null); // we assume the CallCmd has been successfully resolved before calling this Typecheck method
 
       (this as ICarriesAttributes).TypecheckAttributes(tc);
 
+      List<LayerRange> expectedLayerRanges = TypecheckCallCmdInYieldProcedureDecl(tc);
+      
       // typecheck in-parameters
-      foreach (Expr e in Ins)
+      for (int i = 0; i < Ins.Count; i++)
       {
+        var e = Ins[i];
         if (e != null)
         {
+          tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl && Proc is YieldProcedureDecl;
+          tc.ExpectedLayerRange = expectedLayerRanges?[i];
           e.Typecheck(tc);
+          tc.GlobalAccessOnlyInOld = false;
+          tc.ExpectedLayerRange = null;
         }
       }
 
-      foreach (Expr e in Outs)
+      for (int i = 0; i < Outs.Count; i++)
       {
+        var e = Outs[i];
         if (e != null)
         {
           e.Typecheck(tc);
@@ -3300,92 +3671,7 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
         actualTypeParams);
 
-      if (tc.Proc.IsPure && !Proc.IsPure)
-      {
-        tc.Error(this, "pure procedure may only call a pure procedure");
-      }
-      if (tc.Yields)
-      {
-        if (Proc is YieldProcedureDecl || Proc is YieldInvariantDecl || Proc.IsPure ||
-            (Proc is ActionDecl actionDecl && actionDecl.ActionQualifier == ActionQualifier.Link))
-        {
-          // call is fine
-        }
-        else
-        {
-          tc.Error(this,
-            "a yielding procedure may only call yield procedures, yield invariants, pure procedures, or link actions");
-        }
-      }
-      else if (tc.Proc is ActionDecl callerActionDecl)
-      {
-        if (CivlPrimitives.Linear.Contains(Proc.Name))
-        {
-          // ok
-        }
-        else if (CivlPrimitives.Async.Contains(Proc.Name))
-        {
-          var type = TypeProxy.FollowProxy(TypeParameters[Proc.TypeParameters[0]].Expanded);
-          if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
-          {
-            if (callerActionDecl.Creates.All(x => x.ActionName != datatypeTypeCtorDecl.Name))
-            {
-              tc.Error(this, "primitive instantiated on type not in the creates clause of caller");
-            }
-          }
-          else
-          {
-            tc.Error(this, "type parameter to primitive call must be instantiated with a pending async type");
-          }
-        }
-        else if (Proc is ActionDecl calleeActionDecl)
-        {
-          if (calleeActionDecl.ActionQualifier == ActionQualifier.Invariant)
-          {
-            tc.Error(this, "an invariant action may not be called");
-          }
-          foreach (var actionDeclRef in calleeActionDecl.Creates)
-          {
-            if (callerActionDecl.Creates.All(x => x.ActionDecl != actionDeclRef.ActionDecl))
-            {
-              tc.Error(actionDeclRef, "callee creates a pending async not in the creates clause of caller");
-            }
-          }
-          if (!callerActionDecl.LayerRange.Subset(calleeActionDecl.LayerRange))
-          {
-            tc.Error(this, "caller layer range must be subset of callee layer range");
-          }
-          else if (callerActionDecl.LayerRange.LowerLayer == calleeActionDecl.LayerRange.LowerLayer &&
-                   calleeActionDecl.ActionQualifier == ActionQualifier.Link &&
-                   callerActionDecl.ActionQualifier != ActionQualifier.Link)
-          {
-            tc.Error(this, "lower layer of caller must be greater than lower layer of callee");
-          }
-        }
-        else
-        {
-          tc.Error(this, "an action may only call actions or pending async primitives");
-        }
-      }
-      else
-      {
-        Debug.Assert(tc.Proc.GetType() == typeof(Procedure));
-        if (Proc.GetType() != typeof(Procedure))
-        {
-          tc.Error(this, "a procedure may only call other procedures");
-        }
-      }
-      if (IsAsync)
-      {
-        if (!tc.Yields)
-        {
-          tc.Error(this, "calling procedure of an async call must yield");
-        }
-        if (Proc is not YieldProcedureDecl)
-        {
-          tc.Error(this, "target procedure of an async call must yield");
-        }
-      }
+      TypecheckCallCmdInActionDecl(tc);
     }
 
     private IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ TypeParamSubstitution()
@@ -3857,6 +4143,17 @@ namespace Microsoft.Boogie
       Expr.Resolve(rc);
       (this as ICarriesAttributes).ResolveAttributes(rc);
       Layers = (this as ICarriesAttributes).FindLayers();
+      if (rc.Proc is YieldProcedureDecl yieldProcedureDecl && this is AssertCmd && !this.HasAttribute(CivlAttributes.YIELDS))
+      {
+        if (Layers.Count == 0)
+        {
+          rc.Error(this, "expected layers");
+        }
+        else if (Layers[^1] > yieldProcedureDecl.Layer)
+        {
+          rc.Error(this, $"each layer must not be more than {yieldProcedureDecl.Layer}");
+        }
+      }
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
       {
@@ -4022,7 +4319,9 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
+      tc.ExpectedLayerRange = Layers == null || Layers.Count == 0 ? null : new LayerRange(Layers[0], Layers[^1]);
       Expr.Typecheck(tc);
+      tc.ExpectedLayerRange = null;
       Contract.Assert(Expr.Type != null); // follows from Expr.Typecheck postcondition
       if (!Expr.Type.Unify(Type.Bool))
       {
@@ -4219,16 +4518,18 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       (this as ICarriesAttributes).ResolveAttributes(rc);
       base.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       (this as ICarriesAttributes).TypecheckAttributes(tc);
+      tc.ExpectedLayerRange = tc.Proc is YieldProcedureDecl decl ? new LayerRange(0, decl.Layer) : null;
+      tc.GlobalAccessOnlyInOld = true;
       Expr.Typecheck(tc);
+      tc.ExpectedLayerRange = null;
+      tc.GlobalAccessOnlyInOld = false;
       Contract.Assert(Expr.Type != null); // follows from Expr.Typecheck postcondition
       if (!Expr.Type.Unify(Type.Bool))
       {
@@ -4238,8 +4539,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitAssumeCmd(this);
     }
   }

@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
           false,
           VisitRequiresSeq(node.Requires),
           (yieldingProc is MoverProc moverProc && yieldingProc.Layer == layerNum
-            ? moverProc.ModifiedGlobalVars.Select(g => Expr.Ident(g))
+            ? moverProc.ModifiedVars.Select(g => Expr.Ident(g))
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
           VisitEnsuresSeq(node.Ensures));
         procToDuplicate[node] = proc;
