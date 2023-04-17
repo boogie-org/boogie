@@ -424,7 +424,9 @@ namespace Microsoft.Boogie
 
           if (callee is ActionProc actionProc && callee.Layer < currLayerNum && callCmd.HasAttribute(CivlAttributes.SYNC))
           {
-            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).ActionDecl.MoverType);
+            return MoverTypeToLabel(actionProc.Proc.RefinedAction == null
+              ? MoverType.Both
+              : actionProc.Proc.RefinedActionAtLayer(currLayerNum).MoverType);
           }
 
           return L;
@@ -438,7 +440,9 @@ namespace Microsoft.Boogie
 
           if (callee is ActionProc actionProc && callee.Layer < currLayerNum)
           {
-            return MoverTypeToLabel(actionProc.RefinedActionAtLayer(currLayerNum).ActionDecl.MoverType);
+            return MoverTypeToLabel(actionProc.Proc.RefinedAction == null
+              ? MoverType.Both
+              : actionProc.Proc.RefinedActionAtLayer(currLayerNum).MoverType);
           }
 
           return Y;
@@ -495,7 +499,9 @@ namespace Microsoft.Boogie
           {
             if (callCmd.HasAttribute(CivlAttributes.SYNC))
             {
-              return ModifiesGlobalLabel(actionProc.RefinedActionAtLayer(currLayerNum).ModifiedGlobalVars);
+              return ModifiesGlobalLabel(actionProc.Proc.RefinedAction == null
+                ? Enumerable.Empty<Variable>()
+                : actionProc.Proc.RefinedActionAtLayer(currLayerNum).ModifiedVars);
             }
             else
             {
@@ -514,7 +520,9 @@ namespace Microsoft.Boogie
 
           if (callee is ActionProc actionProc && callee.Layer < currLayerNum)
           {
-            return ModifiesGlobalLabel(actionProc.RefinedActionAtLayer(currLayerNum).ModifiedGlobalVars);
+            return ModifiesGlobalLabel(actionProc.Proc.RefinedAction == null
+              ? Enumerable.Empty<Variable>()
+              : actionProc.Proc.RefinedActionAtLayer(currLayerNum).ModifiedVars);
           }
 
           return Y;

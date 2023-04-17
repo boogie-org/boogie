@@ -330,8 +330,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (IsRefinementLayer && layerNum == actionProc.Layer &&
-              actionProc.RefinedActionAtLayer(layerNum) != civlTypeChecker.SkipAtomicAction)
+          if (IsRefinementLayer && layerNum == actionProc.Layer && actionProc.Proc.RefinedAction != null)
           {
             refinementCallCmds[newCall] = (CallCmd) VisitCallCmd(newCall);
           }
@@ -377,8 +376,7 @@ namespace Microsoft.Boogie
           var yieldingProc = civlTypeChecker.procToYieldingProc[callCmd.Proc];
           if (yieldingProc is ActionProc actionProc)
           {
-            if (IsRefinementLayer && layerNum == actionProc.Layer &&
-                actionProc.RefinedActionAtLayer(layerNum) != civlTypeChecker.SkipAtomicAction)
+            if (IsRefinementLayer && layerNum == actionProc.Layer && actionProc.Proc.RefinedAction != null)
             {
               refinementCallCmds[callCmd] = (CallCmd) VisitCallCmd(callCmd);
             }
@@ -555,24 +553,17 @@ namespace Microsoft.Boogie
 
     private void AddPendingAsync(CallCmd newCall, ActionProc calleeProc)
     {
-      AtomicAction calleeRefinedAction;
-      if (calleeProc.Layer == enclosingYieldingProc.Layer)
-      {
-        calleeRefinedAction = calleeProc.RefinedAction;
-      }
-      else
-      {
-        calleeRefinedAction = calleeProc.RefinedActionAtLayer(layerNum);
-      }
-
-      if (calleeRefinedAction == civlTypeChecker.SkipAtomicAction)
+      if (calleeProc.Proc.RefinedAction == null)
       {
         return;
       }
+      var calleeRefinedAction = calleeProc.Layer == enclosingYieldingProc.Layer
+        ? calleeProc.Proc.RefinedAction.ActionDecl
+        : calleeProc.Proc.RefinedActionAtLayer(layerNum);
 
-      if (RefinedAction.PendingAsyncs.Contains(calleeRefinedAction.ActionDecl))
+      if (RefinedAction.PendingAsyncs.Contains(calleeRefinedAction))
       {
-        Expr[] newIns = new Expr[calleeRefinedAction.ActionDecl.InParams.Count];
+        Expr[] newIns = new Expr[calleeRefinedAction.InParams.Count];
         for (int i = 0, j = 0; i < calleeProc.Proc.InParams.Count; i++)
         {
           if (civlTypeChecker.FormalRemainsInAction(calleeProc, calleeProc.Proc.InParams[i]))
@@ -581,8 +572,8 @@ namespace Microsoft.Boogie
             j++;
           }
         }
-        var collectedPAs = CollectedPAs(calleeRefinedAction.ActionDecl.PendingAsyncType);
-        var pa = ExprHelper.FunctionCall(calleeRefinedAction.ActionDecl.PendingAsyncCtor, newIns);
+        var collectedPAs = CollectedPAs(calleeRefinedAction.PendingAsyncType);
+        var pa = ExprHelper.FunctionCall(calleeRefinedAction.PendingAsyncCtor, newIns);
         var inc = Expr.Add(Expr.Select(Expr.Ident(collectedPAs), pa), Expr.Literal(1));
         var add = CmdHelper.AssignCmd(collectedPAs, Expr.Store(Expr.Ident(collectedPAs), pa, inc));
         newCmdSeq.Add(add);
