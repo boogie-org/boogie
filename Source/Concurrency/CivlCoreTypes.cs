@@ -487,21 +487,6 @@ namespace Microsoft.Boogie
     public HashSet<Variable> HiddenFormals => Proc.HiddenFormals;
 
     public override MoverType MoverType => RefinedAction.ActionDecl.MoverType;
-
-    public AtomicAction RefinedActionAtLayer(int layer)
-    {
-      Debug.Assert(layer >= base.Layer);
-      var action = RefinedAction;
-      while (action != null)
-      {
-        if (layer <= action.LayerRange.UpperLayer)
-        {
-          return action;
-        }
-        action = action.RefinedAction;
-      }
-      return null;
-    }
   }
 
   /// <summary>

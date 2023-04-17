@@ -406,7 +406,9 @@ namespace Microsoft.Boogie
 
     private void AddActionCall(CallCmd newCall, ActionProc calleeActionProc)
     {
-      var calleeRefinedAction = calleeActionProc.RefinedActionAtLayer(layerNum);
+      var calleeRefinedAction = calleeActionProc.Proc.RefinedAction == null
+        ? civlTypeChecker.SkipAtomicAction
+        : civlTypeChecker.procToAtomicAction[calleeActionProc.Proc.RefinedActionAtLayer(layerNum)];
 
       newCall.IsAsync = false;
       newCall.Proc = calleeRefinedAction.ActionDecl;

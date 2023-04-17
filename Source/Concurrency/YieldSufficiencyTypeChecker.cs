@@ -298,41 +298,6 @@ namespace Microsoft.Boogie
         return true;
       }
 
-      private bool IsRecursiveMoverProcedureCall(CallCmd call)
-      {
-        MoverProc source = null;
-        if (civlTypeChecker.procToYieldingProc.ContainsKey(call.Proc))
-        {
-          source = civlTypeChecker.procToYieldingProc[call.Proc] as MoverProc;
-        }
-
-        if (source == null)
-        {
-          return false;
-        }
-
-        MoverProc target = (MoverProc) yieldingProc;
-
-        HashSet<MoverProc> frontier = new HashSet<MoverProc> {source};
-        HashSet<MoverProc> visited = new HashSet<MoverProc>();
-
-        while (frontier.Count > 0)
-        {
-          var curr = frontier.First();
-          frontier.Remove(curr);
-          visited.Add(curr);
-
-          if (curr == target)
-          {
-            return true;
-          }
-
-          frontier.UnionWith(moverProcedureCallGraph.Successors(curr).Except(visited));
-        }
-
-        return false;
-      }
-
       private void ComputeGraph()
       {
         atomicityLabels = new Dictionary<Tuple<Absy, Absy>, string>();

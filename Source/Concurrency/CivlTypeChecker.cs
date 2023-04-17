@@ -70,6 +70,16 @@ namespace Microsoft.Boogie
       skipProcedure.Impl = skipImplementation;
       SkipAtomicAction = new AtomicAction(skipImplementation, null, this);
       SkipAtomicAction.CompleteInitialization(this);
+      /*
+      program.TopLevelDeclarations.OfType<YieldProcedureDecl>().Where(decl => decl.RefinedAction == null).Iter(decl =>
+      {
+        decl.RefinedAction = new ActionDeclRef(Token.NoToken, skipProcedure.Name)
+        {
+          ActionDecl = skipProcedure
+        };
+      });
+      procToAtomicAction[skipProcedure] = SkipAtomicAction;
+      */
     }
 
     public string AddNamePrefix(string name)
