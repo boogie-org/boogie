@@ -3389,18 +3389,7 @@ namespace Microsoft.Boogie
             {
               tc.Error(this, "caller must not be a mover procedure");
             }
-            else if (!IsAsync)
-            {
-              if (calleeDecl.RefinedAction != null)
-              {
-                calleeDecl.OutParams.Where(x => calleeDecl.HiddenFormals.Contains(x)).Iter(x =>
-                {
-                  tc.Error(this,
-                    $"hidden output variable not allowed for callee with the same layer as caller: {x.Name}");
-                });
-              }
-            }
-            else if (isSynchronized)
+            else if (IsAsync && isSynchronized)
             {
               tc.Error(this, "layer of callee in synchronized call must be less than layer of caller");
             }
