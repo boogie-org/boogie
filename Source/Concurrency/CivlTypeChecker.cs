@@ -358,13 +358,14 @@ namespace Microsoft.Boogie
     
     private void TypeCheckLoopAnnotations()
     {
-      foreach (var impl in program.Implementations.Where(impl => procToYieldingProc.ContainsKey(impl.Proc)))
+      foreach (var impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
       {
+        var yieldingProc = (YieldProcedureDecl)impl.Proc;
+        var yieldingLayer = yieldingProc.Layer;
         var graph = Program.GraphFromImpl(impl);
         graph.ComputeLoops();
         foreach (var header in graph.Headers)
         {
-          int yieldingLayer = procToYieldingProc[impl.Proc].Layer;
           var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
             cmd is PredicateCmd predCmd && predCmd.HasAttribute(CivlAttributes.YIELDS));
           if (yieldCmd == null)
