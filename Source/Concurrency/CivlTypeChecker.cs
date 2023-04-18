@@ -68,7 +68,14 @@ namespace Microsoft.Boogie
       skipProcedure.Impl = skipImplementation;
       SkipAtomicAction = new AtomicAction(skipImplementation, null, this);
       SkipAtomicAction.CompleteInitialization(this);
+      if (program.TopLevelDeclarations.OfType<YieldProcedureDecl>().Any())
+      {
+        procToAtomicAction[skipProcedure] = SkipAtomicAction;
+        program.AddTopLevelDeclaration(skipProcedure);
+        program.AddTopLevelDeclaration(skipImplementation);
+      }
       /*
+      // TBD: Why does the following code create problems?
       program.TopLevelDeclarations.OfType<YieldProcedureDecl>().Where(decl => decl.RefinedAction == null).Iter(decl =>
       {
         decl.RefinedAction = new ActionDeclRef(Token.NoToken, skipProcedure.Name)
@@ -76,7 +83,6 @@ namespace Microsoft.Boogie
           ActionDecl = skipProcedure
         };
       });
-      procToAtomicAction[skipProcedure] = SkipAtomicAction;
       */
     }
 
@@ -323,25 +329,9 @@ namespace Microsoft.Boogie
     
     private void TypeCheckYieldingProcedureDecls()
     {
-      foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>().Where(proc => !proc.HasMoverType))
+      foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>().Where(proc => proc.RefinedAction != null))
       {
-        if (proc.RefinedAction != null)
-        {
-          CheckRefinementSignature(proc);
-        }
-        else // proc refines the skip action
-        {
-          if (!procToAtomicAction.ContainsKey(SkipAtomicAction.ActionDecl))
-          {
-            procToAtomicAction[SkipAtomicAction.ActionDecl] = SkipAtomicAction;
-          }
-        }
-      }
-
-      if (procToAtomicAction.ContainsKey(SkipAtomicAction.ActionDecl))
-      {
-        program.AddTopLevelDeclaration(SkipAtomicAction.ActionDecl);
-        program.AddTopLevelDeclaration(SkipAtomicAction.Impl);
+        CheckRefinementSignature(proc);
       }
     }
     
