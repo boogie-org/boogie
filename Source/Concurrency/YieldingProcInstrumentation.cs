@@ -151,10 +151,10 @@ namespace Microsoft.Boogie
       return civlTypeChecker.LocalVariable($"global_old_{v.Name}", v.TypedIdent.Type);
     }
     
-    private YieldingProc GetYieldingProc(Implementation impl)
+    private YieldProcedureDecl GetYieldingProc(Implementation impl)
     {
       var originalImpl = absyMap.Original(impl);
-      return civlTypeChecker.procToYieldingProc[originalImpl.Proc];
+      return (YieldProcedureDecl)originalImpl.Proc;
     }
 
     private Implementation WrapperNoninterferenceCheckerImpl()
@@ -275,7 +275,7 @@ namespace Microsoft.Boogie
         impl.Proc.Requires.ForEach(req =>
           initCmds.Add(new AssumeCmd(req.tok, Substituter.Apply(procToImplInParams, req.Condition))));
 
-        foreach (var callCmd in GetYieldingProc(impl).Proc.DesugaredYieldRequires)
+        foreach (var callCmd in GetYieldingProc(impl).DesugaredYieldRequires)
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.Layer)
@@ -300,7 +300,7 @@ namespace Microsoft.Boogie
       foreach (var impl in absyMap.Keys.OfType<Implementation>())
       {
         var yieldingProc = GetYieldingProc(impl);
-        foreach (var callCmd in yieldingProc.Proc.DesugaredYieldRequires)
+        foreach (var callCmd in yieldingProc.DesugaredYieldRequires)
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.Layer)
@@ -317,7 +317,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        foreach (var callCmd in yieldingProc.Proc.DesugaredYieldEnsures)
+        foreach (var callCmd in yieldingProc.DesugaredYieldEnsures)
         {
           var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
           if (layerNum == yieldInvariant.Layer)
@@ -347,7 +347,7 @@ namespace Microsoft.Boogie
         // But this is fine because a mover procedure at its disappearing layer does not have a yield in it.
         linearPermissionInstrumentation.AddDisjointnessAndWellFormedAssumptions(impl);
         var yieldingProc = GetYieldingProc(impl);
-        if (yieldingProc is MoverProc && yieldingProc.Layer == layerNum)
+        if (yieldingProc.HasMoverType && yieldingProc.Layer == layerNum)
         {
           continue;
         }

@@ -555,9 +555,9 @@ namespace Microsoft.Boogie
       return layerNum <= yieldingLoops[block].Layer;
     }
 
-    public bool FormalRemainsInAction(ActionProc actionProc, Variable param)
+    public bool FormalRemainsInAction(YieldProcedureDecl yieldProcedureDecl, Variable param)
     {
-      return param.LayerRange.Contains(actionProc.Layer) && !actionProc.HiddenFormals.Contains(param);
+      return param.LayerRange.Contains(yieldProcedureDecl.Layer) && !yieldProcedureDecl.HiddenFormals.Contains(param);
     }
 
     public IEnumerable<AtomicAction> LinkActions =>

@@ -73,8 +73,9 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.tok = impl.tok;
       this.oldGlobalMap = new Dictionary<Variable, Variable>();
-      ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
-      this.layerNum = actionProc.Layer;
+      var yieldProcedureDecl = (YieldProcedureDecl)originalImpl.Proc;
+      //ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
+      this.layerNum = yieldProcedureDecl.Layer;
       foreach (Variable v in civlTypeChecker.GlobalVariables)
       {
         var layerRange = v.LayerRange;
@@ -114,14 +115,14 @@ namespace Microsoft.Boogie
       // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
       // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
       // we need to substitute the parameters.
-      AtomicAction atomicAction = actionProc.Proc.RefinedAction == null
+      AtomicAction atomicAction = yieldProcedureDecl.RefinedAction == null
         ? civlTypeChecker.SkipAtomicAction
-        : civlTypeChecker.procToAtomicAction[actionProc.Proc.RefinedAction.ActionDecl];
+        : civlTypeChecker.procToAtomicAction[yieldProcedureDecl.RefinedAction.ActionDecl];
       Implementation atomicActionImpl = atomicAction.Impl;
       Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
       for (int i = 0, j = 0; i < impl.InParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.Proc.InParams[i]))
+        if (civlTypeChecker.FormalRemainsInAction(yieldProcedureDecl, yieldProcedureDecl.InParams[i]))
         {
           alwaysMap[atomicActionImpl.InParams[j]] = Expr.Ident(impl.InParams[i]);
           j++;
@@ -130,7 +131,7 @@ namespace Microsoft.Boogie
 
       for (int i = 0, j = 0; i < impl.OutParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.Proc.OutParams[i]))
+        if (civlTypeChecker.FormalRemainsInAction(yieldProcedureDecl, yieldProcedureDecl.OutParams[i]))
         {
           alwaysMap[atomicActionImpl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
           j++;
