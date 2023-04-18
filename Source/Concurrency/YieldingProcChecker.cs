@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Boogie
 {
@@ -19,18 +20,18 @@ namespace Microsoft.Boogie
 
         YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum);
 
-        foreach (var procToYieldingProc in civlTypeChecker.procToYieldingProc)
+        foreach (var yieldProcedureDecl in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldProcedureDecl>())
         {
-          if (procToYieldingProc.Value.Layer >= layerNum)
+          if (yieldProcedureDecl.Layer >= layerNum)
           {
-            duplicator.VisitProcedure(procToYieldingProc.Key);
+            duplicator.VisitProcedure(yieldProcedureDecl);
           }
         }
 
-        foreach (Implementation impl in program.Implementations)
+        foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
         {
-          if (civlTypeChecker.procToYieldingProc.TryGetValue(impl.Proc, out var yieldingProc) &&
-              yieldingProc.Layer >= layerNum)
+          var yieldProcedureDecl = (YieldProcedureDecl)impl.Proc;
+          if (yieldProcedureDecl.Layer >= layerNum)
           {
             duplicator.VisitImplementation(impl);
           }
