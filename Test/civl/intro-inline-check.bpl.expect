@@ -1,2 +1,2 @@
-intro-inline-check.bpl(9,4): Error: Lower layer of caller must be greater that lower layer of callee
+intro-inline-check.bpl(9,4): Error: lower layer of caller must be greater than lower layer of callee
 1 type checking errors detected in intro-inline-check.bpl

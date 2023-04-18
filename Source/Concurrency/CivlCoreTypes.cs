@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 
@@ -59,7 +58,7 @@ namespace Microsoft.Boogie
     
     public LayerRange LayerRange => ActionDecl.LayerRange;
 
-    public int LowerLayer => LayerRange.lowerLayerNum;
+    public int LowerLayer => LayerRange.LowerLayer;
 
     public bool HasPendingAsyncs => PendingAsyncs.Count > 0;
 
@@ -437,72 +436,6 @@ namespace Microsoft.Boogie
     {
       this.Layer = layer;
       this.YieldInvariants = yieldInvariants;
-    }
-  }
-
-  public abstract class YieldingProc
-  {
-    public YieldProcedureDecl Proc;
-    public List<CallCmd> YieldRequires;
-    public List<CallCmd> YieldEnsures;
-    
-    public YieldingProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
-    {
-      this.Proc = proc;
-      this.YieldRequires = yieldRequires;
-      this.YieldEnsures = yieldEnsures;
-    }
-
-    public int Layer => Proc.Layer;
-    
-    public abstract MoverType MoverType { get; }
-
-    public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
-
-    public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
-  }
-
-  public class MoverProc : YieldingProc
-  {
-    public HashSet<Variable> ModifiedGlobalVars;
-
-    public MoverProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
-      : base(proc, yieldRequires, yieldEnsures)
-    {
-      ModifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
-    }
-
-    public override MoverType MoverType => Proc.MoverType;
-  }
-
-  public class ActionProc : YieldingProc
-  {
-    public AtomicAction RefinedAction;
-    public HashSet<Variable> HiddenFormals;
-
-    public ActionProc(YieldProcedureDecl proc, AtomicAction refinedAction, HashSet<Variable> hiddenFormals,
-      List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
-      : base(proc, yieldRequires, yieldEnsures)
-    {
-      this.RefinedAction = refinedAction;
-      this.HiddenFormals = hiddenFormals;
-    }
-
-    public override MoverType MoverType => RefinedAction.ActionDecl.MoverType;
-
-    public AtomicAction RefinedActionAtLayer(int layer)
-    {
-      Debug.Assert(layer >= base.Layer);
-      var action = RefinedAction;
-      while (action != null)
-      {
-        if (layer <= action.LayerRange.upperLayerNum)
-        {
-          return action;
-        }
-        action = action.RefinedAction;
-      }
-      return null;
     }
   }
 

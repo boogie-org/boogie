@@ -80,11 +80,6 @@ namespace Microsoft.Boogie
       impl.ComputePredecessorsForBlocks();
       var graph = Program.GraphFromImpl(impl);
       graph.ComputeLoops();
-      if (!graph.Reducible)
-      {
-        throw new Exception("Irreducible flow graphs are unsupported.");
-      }
-
       var loopHeaders = new HashSet<Block>(graph.Headers);
       foreach (var header in loopHeaders)
       {
@@ -132,7 +127,7 @@ namespace Microsoft.Boogie
 
       return civlTypeChecker.linearTypeChecker.AvailableLinearVars(absyMap[absy]).Where(v =>
         !(v is GlobalVariable) &&
-        v.layerRange.Contains(layerNum));
+        v.LayerRange.Contains(layerNum));
     }
 
     private IEnumerable<Variable> FilterInParams(IEnumerable<Variable> locals)
@@ -148,14 +143,14 @@ namespace Microsoft.Boogie
     private IEnumerable<Variable> Filter(IEnumerable<Variable> locals, Predicate<LinearKind> pred)
     {
       return locals.Where(v =>
-        pred(LinearDomainCollector.FindLinearKind(v)) && v.layerRange.Contains(layerNum));
+        pred(LinearDomainCollector.FindLinearKind(v)) && v.LayerRange.Contains(layerNum));
     }
 
     private IEnumerable<Variable> LinearGlobalVars()
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       return linearTypeChecker.program.GlobalVariables.Where(v =>
-        LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR && v.layerRange.Contains(layerNum));
+        LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR && v.LayerRange.Contains(layerNum));
     }
 
     private Variable MapVariable(Variable v)

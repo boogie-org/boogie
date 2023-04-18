@@ -667,6 +667,11 @@ namespace Microsoft.Boogie
       return VisitProcedure(node);
     }
 
+    public virtual Procedure VisitYieldInvariantDecl(YieldInvariantDecl node)
+    {
+      return VisitProcedure(node);
+    }
+    
     public virtual Program VisitProgram(Program node)
     {
       Contract.Requires(node != null);
