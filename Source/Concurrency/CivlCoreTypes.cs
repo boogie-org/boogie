@@ -456,6 +456,10 @@ namespace Microsoft.Boogie
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
     public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
+    
+    public IEnumerable<Variable> ModifiedVars => Proc.ModifiedVars;
+    
+    public HashSet<Variable> HiddenFormals => Proc.HiddenFormals;
   }
 
   public class MoverProc : YieldingProc
@@ -463,8 +467,6 @@ namespace Microsoft.Boogie
     public MoverProc(YieldProcedureDecl proc) : base(proc)
     {
     }
-
-    public IEnumerable<Variable> ModifiedVars => Proc.ModifiedVars;
   }
 
   public class ActionProc : YieldingProc
@@ -472,8 +474,6 @@ namespace Microsoft.Boogie
     public ActionProc(YieldProcedureDecl proc) : base(proc)
     {
     }
-
-    public HashSet<Variable> HiddenFormals => Proc.HiddenFormals;
   }
 
   /// <summary>

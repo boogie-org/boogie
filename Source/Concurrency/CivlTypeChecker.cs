@@ -334,7 +334,7 @@ namespace Microsoft.Boogie
           CheckRefinementSignature(proc);
           procToYieldingProc[proc] = actionProc;
         }
-        else if (proc.MoverType != MoverType.None) // proc is a mover procedure
+        else if (proc.HasMoverType) // proc is a mover procedure
         {
           procToYieldingProc[proc] = new MoverProc(proc);
         }

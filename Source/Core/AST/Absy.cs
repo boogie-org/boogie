@@ -2916,7 +2916,7 @@ namespace Microsoft.Boogie
       {
         rc.Error(this, $"async action may not have output parameters");
       }
-      if (MoverType != MoverType.None)
+      if (HasMoverType)
       {
         if (ActionQualifier == ActionQualifier.Invariant)
         {
@@ -3103,6 +3103,8 @@ namespace Microsoft.Boogie
       return Creates.Append(RefinedAction).Append(InvariantAction);
     }
 
+    public bool HasMoverType => MoverType != MoverType.None;
+    
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
     public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
@@ -3195,7 +3197,7 @@ namespace Microsoft.Boogie
       rc.StateMode = oldStateMode;
       rc.Proc = null;
 
-      if (MoverType == MoverType.None)
+      if (!HasMoverType)
       {
         HiddenFormals = RefinedAction != null
           ? new HashSet<Variable>(InParams.Concat(OutParams)
@@ -3208,7 +3210,7 @@ namespace Microsoft.Boogie
         RefinedAction.Resolve(rc);
       }
 
-      if (MoverType == MoverType.None)
+      if (!HasMoverType)
       {
         if (Modifies.Any())
         {
@@ -3231,7 +3233,7 @@ namespace Microsoft.Boogie
         tc.Error(this, $"refined atomic action must be available at layer {Layer + 1}");
       }
 
-      if (MoverType != MoverType.None)
+      if (HasMoverType)
       {
         Modifies.Where(ie => !ie.Decl.LayerRange.Contains(Layer)).Iter(ie =>
         {
@@ -3259,6 +3261,8 @@ namespace Microsoft.Boogie
       return YieldEnsures.Union(YieldPreserves).Union(YieldRequires);
     }
 
+    public bool HasMoverType => MoverType != MoverType.None;
+    
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
     public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;

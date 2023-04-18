@@ -3290,7 +3290,7 @@ namespace Microsoft.Boogie
 
       void CheckModifies(IEnumerable<Variable> modifiedVars)
       {
-        if (callerDecl.MoverType == MoverType.None)
+        if (!callerDecl.HasMoverType)
         {
           return;
         }
@@ -3314,7 +3314,7 @@ namespace Microsoft.Boogie
           case YieldProcedureDecl calleeDecl:
           {
             formalLayerRange = formal.LayerRange;
-            if (calleeDecl.MoverType == MoverType.None && formalLayerRange.UpperLayer == calleeDecl.Layer &&
+            if (!calleeDecl.HasMoverType && formalLayerRange.UpperLayer == calleeDecl.Layer &&
                 !calleeDecl.HiddenFormals.Contains(formal))
             {
               formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
@@ -3337,7 +3337,7 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, "layer of callee must not be more than layer of caller");
         }
-        else if (calleeDecl.MoverType == MoverType.None)
+        else if (!calleeDecl.HasMoverType)
         {
           if (callerDecl.Layer > calleeDecl.Layer)
           {
@@ -3353,7 +3353,7 @@ namespace Microsoft.Boogie
                 CheckModifies(highestRefinedActionDecl.ModifiedVars);
                 if (highestRefinedActionDecl.Creates.Any())
                 {
-                  if (callerDecl.MoverType != MoverType.None)
+                  if (callerDecl.HasMoverType)
                   {
                     tc.Error(this, "caller must not be a mover procedure");
                   }
@@ -3385,7 +3385,7 @@ namespace Microsoft.Boogie
           }
           else // callerDecl.Layer == calleeDecl.Layer
           {
-            if (callerDecl.MoverType != MoverType.None)
+            if (callerDecl.HasMoverType)
             {
               tc.Error(this, "caller must not be a mover procedure");
             }
@@ -3397,7 +3397,7 @@ namespace Microsoft.Boogie
 
           if (IsAsync && !isSynchronized)
           {
-            if (callerDecl.MoverType != MoverType.None)
+            if (callerDecl.HasMoverType)
             {
               tc.Error(this, "caller must not be a mover procedure");
             }
@@ -3415,7 +3415,7 @@ namespace Microsoft.Boogie
             }
           }
         }
-        else // calleeDecl.MoverType != MoverType.None
+        else // calleeDecl.HasMoverType
         {
           if (callerDecl.Layer > calleeDecl.Layer)
           {
