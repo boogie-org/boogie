@@ -272,10 +272,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      private bool IsMoverProcedure
-      {
-        get { return yieldingProc is MoverProc && yieldingProc.Layer == currLayerNum; }
-      }
+      private bool IsMoverProcedure => yieldingProc is MoverProc && yieldingProc.Layer == currLayerNum;
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
       {

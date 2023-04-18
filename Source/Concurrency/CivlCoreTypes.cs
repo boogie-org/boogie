@@ -450,8 +450,8 @@ namespace Microsoft.Boogie
     }
 
     public int Layer => Proc.Layer;
-    
-    public abstract MoverType MoverType { get; }
+
+    public MoverType MoverType => Proc.MoverType;
 
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
@@ -464,23 +464,16 @@ namespace Microsoft.Boogie
     {
     }
 
-    public override MoverType MoverType => Proc.MoverType;
-    
     public IEnumerable<Variable> ModifiedVars => Proc.ModifiedVars;
   }
 
   public class ActionProc : YieldingProc
   {
-    public AtomicAction RefinedAction;
-
-    public ActionProc(YieldProcedureDecl proc, AtomicAction refinedAction) : base(proc)
+    public ActionProc(YieldProcedureDecl proc) : base(proc)
     {
-      this.RefinedAction = refinedAction;
     }
 
     public HashSet<Variable> HiddenFormals => Proc.HiddenFormals;
-
-    public override MoverType MoverType => RefinedAction.ActionDecl.MoverType;
   }
 
   /// <summary>

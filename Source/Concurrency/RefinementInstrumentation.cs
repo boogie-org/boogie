@@ -114,7 +114,9 @@ namespace Microsoft.Boogie
       // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
       // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
       // we need to substitute the parameters.
-      AtomicAction atomicAction = actionProc.RefinedAction;
+      AtomicAction atomicAction = actionProc.Proc.RefinedAction == null
+        ? civlTypeChecker.SkipAtomicAction
+        : civlTypeChecker.procToAtomicAction[actionProc.Proc.RefinedAction.ActionDecl];
       Implementation atomicActionImpl = atomicAction.Impl;
       Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
       for (int i = 0, j = 0; i < impl.InParams.Count; i++)

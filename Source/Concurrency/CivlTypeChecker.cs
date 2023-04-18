@@ -330,7 +330,7 @@ namespace Microsoft.Boogie
         if (proc.RefinedAction != null) // proc is an action procedure
         {
           AtomicAction refinedAction = procToAtomicAction[proc.RefinedAction.ActionDecl];
-          var actionProc = new ActionProc(proc, refinedAction);
+          var actionProc = new ActionProc(proc);
           CheckRefinementSignature(proc);
           procToYieldingProc[proc] = actionProc;
         }
@@ -344,7 +344,7 @@ namespace Microsoft.Boogie
           {
             procToAtomicAction[SkipAtomicAction.ActionDecl] = SkipAtomicAction;
           }
-          var actionProc = new ActionProc(proc, SkipAtomicAction);
+          var actionProc = new ActionProc(proc);
           procToYieldingProc[proc] = actionProc;
         }
       }

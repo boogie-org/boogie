@@ -116,7 +116,17 @@ namespace Microsoft.Boogie
     private Implementation enclosingImpl;
     private YieldingProc enclosingYieldingProc;
     private bool IsRefinementLayer => layerNum == enclosingYieldingProc.Layer;
-    private AtomicAction RefinedAction => ((ActionProc)enclosingYieldingProc).RefinedAction;
+    private AtomicAction RefinedAction
+    {
+      get
+      {
+        var actionProc = (ActionProc)enclosingYieldingProc;
+        return actionProc.Proc.RefinedAction == null
+          ? civlTypeChecker.SkipAtomicAction
+          : civlTypeChecker.procToAtomicAction[actionProc.Proc.RefinedAction.ActionDecl];
+      }
+    }
+
     private List<Cmd> newCmdSeq;
 
     private Dictionary<CtorType, Variable> returnedPAs;
