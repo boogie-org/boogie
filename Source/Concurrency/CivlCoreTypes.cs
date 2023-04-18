@@ -440,42 +440,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  public abstract class YieldingProc
-  {
-    public YieldProcedureDecl Proc;
-
-    public YieldingProc(YieldProcedureDecl proc)
-    {
-      this.Proc = proc;
-    }
-
-    public int Layer => Proc.Layer;
-
-    public MoverType MoverType => Proc.MoverType;
-
-    public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
-
-    public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
-    
-    public IEnumerable<Variable> ModifiedVars => Proc.ModifiedVars;
-    
-    public HashSet<Variable> HiddenFormals => Proc.HiddenFormals;
-  }
-
-  public class MoverProc : YieldingProc
-  {
-    public MoverProc(YieldProcedureDecl proc) : base(proc)
-    {
-    }
-  }
-
-  public class ActionProc : YieldingProc
-  {
-    public ActionProc(YieldProcedureDecl proc) : base(proc)
-    {
-    }
-  }
-
   /// <summary>
   /// Creates first/second copies of atomic actions used in commutativity checks
   /// (i.e., all non-global variables are prefixed with first_ resp. second_).

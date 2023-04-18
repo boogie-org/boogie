@@ -17,7 +17,6 @@ namespace Microsoft.Boogie
     public Dictionary<Block, YieldingLoop> yieldingLoops;
     public Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
     private Dictionary<ActionDecl, InvariantAction> procToInvariantAction;
-    public Dictionary<Procedure, YieldingProc> procToYieldingProc;
     public List<InductiveSequentialization> inductiveSequentializations;
     public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
     
@@ -39,7 +38,6 @@ namespace Microsoft.Boogie
       this.yieldingLoops = new Dictionary<Block, YieldingLoop>();
       this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
       this.procToInvariantAction = new Dictionary<ActionDecl, InvariantAction>();
-      this.procToYieldingProc = new Dictionary<Procedure, YieldingProc>();
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
 
@@ -325,18 +323,11 @@ namespace Microsoft.Boogie
     
     private void TypeCheckYieldingProcedureDecls()
     {
-      foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>())
+      foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>().Where(proc => !proc.HasMoverType))
       {
-        if (proc.RefinedAction != null) // proc is an action procedure
+        if (proc.RefinedAction != null)
         {
-          AtomicAction refinedAction = procToAtomicAction[proc.RefinedAction.ActionDecl];
-          var actionProc = new ActionProc(proc);
           CheckRefinementSignature(proc);
-          procToYieldingProc[proc] = actionProc;
-        }
-        else if (proc.HasMoverType) // proc is a mover procedure
-        {
-          procToYieldingProc[proc] = new MoverProc(proc);
         }
         else // proc refines the skip action
         {
@@ -344,8 +335,6 @@ namespace Microsoft.Boogie
           {
             procToAtomicAction[SkipAtomicAction.ActionDecl] = SkipAtomicAction;
           }
-          var actionProc = new ActionProc(proc);
-          procToYieldingProc[proc] = actionProc;
         }
       }
 
