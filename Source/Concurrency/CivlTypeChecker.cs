@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 
@@ -326,7 +325,7 @@ namespace Microsoft.Boogie
       Implementation impl = proc.Impl;
       procToAtomicAction[proc] = new AtomicAction(impl, refinedAction, this);
     }
-    
+
     private void TypeCheckYieldingProcedureDecls()
     {
       foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>().Where(proc => proc.RefinedAction != null))
@@ -334,7 +333,7 @@ namespace Microsoft.Boogie
         CheckRefinementSignature(proc);
       }
     }
-    
+
     private void TypeCheckLoopAnnotations()
     {
       foreach (var impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
