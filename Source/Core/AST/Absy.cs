@@ -3158,7 +3158,7 @@ namespace Microsoft.Boogie
     public ActionDeclRef RefinedAction;
 
     public int Layer; // set during registration
-    public HashSet<Variable> HiddenFormals; // set during resolution
+    public HashSet<Variable> VisibleFormals; // set during resolution
 
     public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams,
       List<Variable> outParams,
@@ -3199,10 +3199,10 @@ namespace Microsoft.Boogie
 
       if (!HasMoverType)
       {
-        HiddenFormals = RefinedAction != null
-          ? new HashSet<Variable>(InParams.Concat(OutParams)
-            .Where(x => x.LayerRange.UpperLayer == Layer && x.HasAttribute(CivlAttributes.HIDE)))
-          : new HashSet<Variable>(InParams.Concat(OutParams).Where(x => x.LayerRange.UpperLayer == Layer));
+        VisibleFormals = RefinedAction == null
+          ? new HashSet<Variable>()
+          : new HashSet<Variable>(InParams.Concat(OutParams)
+            .Where(x => x.LayerRange.UpperLayer == Layer && !x.HasAttribute(CivlAttributes.HIDE)));
       }
 
       if (RefinedAction != null)

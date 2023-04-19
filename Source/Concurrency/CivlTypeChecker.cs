@@ -465,12 +465,10 @@ namespace Microsoft.Boogie
 
     private void CheckRefinementSignature(YieldProcedureDecl proc)
     {
-      bool IsRemainingVariable(Variable x) => x.LayerRange.UpperLayer == proc.Layer && !proc.HiddenFormals.Contains(x);
-
       var refinedActionDecl = proc.RefinedAction.ActionDecl;
       var signatureMatcher = new SignatureMatcher(proc, refinedActionDecl, checkingContext);
-      var procInParams = proc.InParams.Where(IsRemainingVariable).ToList();
-      var procOutParams = proc.OutParams.Where(IsRemainingVariable).ToList();
+      var procInParams = proc.InParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
+      var procOutParams = proc.OutParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
       var actionInParams = refinedActionDecl.InParams;
       var actionOutParams = refinedActionDecl.OutParams.SkipEnd(refinedActionDecl.Creates.Count).ToList();
       signatureMatcher.MatchFormals(procInParams, actionInParams, SignatureMatcher.IN);
@@ -532,11 +530,6 @@ namespace Microsoft.Boogie
         return false;
       }
       return layerNum <= yieldingLoops[block].Layer;
-    }
-
-    public bool FormalRemainsInAction(YieldProcedureDecl yieldProcedureDecl, Variable param)
-    {
-      return param.LayerRange.Contains(yieldProcedureDecl.Layer) && !yieldProcedureDecl.HiddenFormals.Contains(param);
     }
 
     public IEnumerable<AtomicAction> LinkActions =>

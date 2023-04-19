@@ -420,7 +420,7 @@ namespace Microsoft.Boogie
       var newOuts = new List<IdentifierExpr>();
       for (int i = 0; i < calleeActionProc.InParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(calleeActionProc, calleeActionProc.InParams[i]))
+        if (calleeActionProc.VisibleFormals.Contains(calleeActionProc.InParams[i]))
         {
           newIns.Add(newCall.Ins[i]);
         }
@@ -428,7 +428,7 @@ namespace Microsoft.Boogie
 
       for (int i = 0; i < calleeActionProc.OutParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(calleeActionProc, calleeActionProc.OutParams[i]))
+        if (calleeActionProc.VisibleFormals.Contains(calleeActionProc.OutParams[i]))
         {
           newOuts.Add(newCall.Outs[i]);
         }
@@ -567,7 +567,7 @@ namespace Microsoft.Boogie
         Expr[] newIns = new Expr[calleeRefinedAction.InParams.Count];
         for (int i = 0, j = 0; i < calleeProc.InParams.Count; i++)
         {
-          if (civlTypeChecker.FormalRemainsInAction(calleeProc, calleeProc.InParams[i]))
+          if (calleeProc.VisibleFormals.Contains(calleeProc.InParams[i]))
           {
             newIns[j] = newCall.Ins[i];
             j++;
