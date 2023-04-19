@@ -3149,6 +3149,18 @@ namespace Microsoft.Boogie
     }
   }
 
+  public class YieldingLoop
+  {
+    public int Layer;
+    public List<CallCmd> YieldInvariants;
+
+    public YieldingLoop(int layer, List<CallCmd> yieldInvariants)
+    {
+      this.Layer = layer;
+      this.YieldInvariants = yieldInvariants;
+    }
+  }
+  
   public class YieldProcedureDecl : Procedure
   {
     public MoverType MoverType;
@@ -3159,6 +3171,7 @@ namespace Microsoft.Boogie
 
     public int Layer; // set during registration
     public HashSet<Variable> VisibleFormals; // set during resolution
+    public Dictionary<Block, YieldingLoop> YieldingLoops; // empty initially, filled up during type checking
 
     public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams,
       List<Variable> outParams,
@@ -3172,6 +3185,8 @@ namespace Microsoft.Boogie
       this.YieldEnsures = yieldEnsures;
       this.YieldPreserves = yieldPreserves;
       this.RefinedAction = refinedAction;
+      
+      this.YieldingLoops = new Dictionary<Block, YieldingLoop>();
     }
 
     public override void Register(ResolutionContext rc)
@@ -3334,6 +3349,15 @@ namespace Microsoft.Boogie
         }
         return desugaredYieldEnsures;
       }
+    }
+    
+    public bool IsYieldingLoopHeader(Block block, int layerNum)
+    {
+      if (!YieldingLoops.ContainsKey(block))
+      {
+        return false;
+      }
+      return layerNum <= YieldingLoops[block].Layer;
     }
   }
 
@@ -3958,8 +3982,76 @@ namespace Microsoft.Boogie
             {
               tc.Error(this, "irreducible control flow graph not allowed");
             }
+            else
+            {
+              TypecheckLoopAnnotations(tc, graph);
+            }
           }
         }
+      }
+    }
+
+    private void TypecheckLoopAnnotations(TypecheckingContext tc, Graph<Block> graph)
+    {
+      var yieldingProc = (YieldProcedureDecl)Proc;
+      var yieldingLayer = yieldingProc.Layer;
+      foreach (var header in graph.Headers)
+      {
+        var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
+          cmd is PredicateCmd predCmd && predCmd.HasAttribute(CivlAttributes.YIELDS));
+        if (yieldCmd == null)
+        {
+          yieldingLayer = int.MinValue;
+        }
+        else
+        {
+          var layers = yieldCmd.Layers;
+          header.Cmds.Remove(yieldCmd);
+          if (layers.Any())
+          {
+            if (layers.Count > 1)
+            {
+              tc.Error(header, "expected layer attribute to indicate the highest yielding layer of this loop");
+              continue;
+            }
+            if (layers[0] > yieldingLayer)
+            {
+              tc.Error(header,
+                "yielding layer of loop must not be more than the layer of enclosing procedure");
+              continue;
+            }
+            yieldingLayer = layers[0];
+          }
+        }
+
+        var yieldInvariants = header.Cmds
+          .TakeWhile(cmd => cmd is CallCmd { Proc: YieldInvariantDecl }).OfType<CallCmd>()
+          .ToList();
+        header.Cmds.RemoveRange(0, yieldInvariants.Count);
+        if (yieldInvariants.Any() && yieldCmd == null)
+        {
+          tc.Error(header, "expected :yields attribute on this loop");
+        }
+        foreach (var callCmd in yieldInvariants)
+        {
+          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
+          var calleeLayerNum = yieldInvariant.Layer;
+          if (calleeLayerNum > yieldingLayer)
+          {
+            tc.Error(callCmd, $"loop must yield at layer {calleeLayerNum} of the called yield invariant");
+          }
+        }
+        foreach (var predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd).OfType<PredicateCmd>())
+        {
+          if (predCmd.Layers.Min() <= yieldingLayer &&
+              VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
+          {
+            tc.Error(predCmd,
+              "invariant may not access a global variable since one of its layers is a yielding layer of its loop");
+          }
+        }
+        
+        yieldingProc.YieldingLoops[header] = new YieldingLoop(yieldingLayer, yieldInvariants);
       }
     }
 

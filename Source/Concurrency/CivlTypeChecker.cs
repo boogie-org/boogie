@@ -12,11 +12,11 @@ namespace Microsoft.Boogie
     public LinearTypeChecker linearTypeChecker;
     public List<int> allRefinementLayers;
     public AtomicAction SkipAtomicAction;
-
-    public Dictionary<Block, YieldingLoop> yieldingLoops;
+    
     public Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
     private Dictionary<ActionDecl, InvariantAction> procToInvariantAction;
     public List<InductiveSequentialization> inductiveSequentializations;
+
     public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
     
     private string namePrefix;
@@ -33,8 +33,7 @@ namespace Microsoft.Boogie
         .Where(impl => impl.Proc is YieldProcedureDecl)
         .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer)
         .OrderBy(layer => layer).Distinct().ToList();
-
-      this.yieldingLoops = new Dictionary<Block, YieldingLoop>();
+      
       this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
       this.procToInvariantAction = new Dictionary<ActionDecl, InvariantAction>();
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
@@ -137,26 +136,19 @@ namespace Microsoft.Boogie
         return;
       }
 
-      TypeCheckYieldingProcedureDecls();
-      TypeCheckLocalPendingAsyncCollectors();
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
-      
-      TypeCheckLoopAnnotations();
+      TypeCheckYieldingProcedures();
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
 
       TypeCheckRefinementLayers();
-      AttributeEraser.Erase(this);
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
 
+      AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
     }
 
@@ -236,11 +228,7 @@ namespace Microsoft.Boogie
       }
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
       // Earlier type checking guarantees that each such action is not a pending async action.
-      // Therefore, only the type AtomicAction will be created now.
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
-      {
-        CreateActionsThatRefineAnotherAction(proc);
-      });
+      actionDecls.Where(proc => proc.RefinedAction != null).Iter(CreateActionsThatRefineAnotherAction);
 
       // Inline atomic actions
       CivlUtil.AddInlineAttribute(SkipAtomicAction.ActionDecl);
@@ -266,7 +254,7 @@ namespace Microsoft.Boogie
         impl.OriginalLocVars = null;
       });
       
-      // Construct transition and input-output relation.
+      // Construct transition and input-output relation
       procToAtomicAction.Values.Iter(action =>
       {
         action.CompleteInitialization(this, true);
@@ -301,88 +289,22 @@ namespace Microsoft.Boogie
       procToAtomicAction[proc] = new AtomicAction(impl, refinedAction, this);
     }
 
-    private void TypeCheckYieldingProcedureDecls()
+    private void TypeCheckYieldingProcedures()
     {
-      foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>().Where(proc => proc.RefinedAction != null))
+      foreach (var yieldingProc in program.Procedures.OfType<YieldProcedureDecl>())
       {
-        SignatureMatcher.CheckRefinementSignature(proc, checkingContext);
-      }
-    }
-
-    private void TypeCheckLoopAnnotations()
-    {
-      foreach (var impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
-      {
-        var yieldingProc = (YieldProcedureDecl)impl.Proc;
-        var yieldingLayer = yieldingProc.Layer;
-        var graph = Program.GraphFromImpl(impl);
-        graph.ComputeLoops();
-        foreach (var header in graph.Headers)
+        foreach (var (header, yieldingLoop) in yieldingProc.YieldingLoops)
         {
-          var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
-            cmd is PredicateCmd predCmd && predCmd.HasAttribute(CivlAttributes.YIELDS));
-          if (yieldCmd == null)
-          {
-            yieldingLayer = int.MinValue;
-          }
-          else
-          {
-            var layers = yieldCmd.Layers;
-            header.Cmds.Remove(yieldCmd);
-            if (layers.Any())
-            {
-              if (layers.Count > 1)
-              {
-                Error(header, "expected layer attribute to indicate the highest yielding layer of this loop");
-                continue;
-              }
-              if (layers[0] > yieldingLayer)
-              {
-                Error(header,
-                  "yielding layer of loop must not be more than the disappearing layer of enclosing procedure");
-                continue;
-              }
-              yieldingLayer = layers[0];
-            }
-          }
-          var yieldInvariants = header.Cmds
-            .TakeWhile(cmd => cmd is CallCmd callCmd && callCmd.Proc is YieldInvariantDecl).OfType<CallCmd>()
-            .ToList();
-          header.Cmds.RemoveRange(0, yieldInvariants.Count);
-          if (yieldInvariants.Any() && yieldCmd == null)
-          {
-            Error(header, "expected :yields attribute on this loop");
-          }
-
           var availableLinearVarsAtHeader = new HashSet<Variable>(linearTypeChecker.AvailableLinearVars(header));
-          foreach (var callCmd in yieldInvariants.Where(callCmd =>
-                     linearTypeChecker.CheckLinearParameters(callCmd, availableLinearVarsAtHeader) == 0))
-          {
-            var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-            var calleeLayerNum = yieldInvariant.Layer;
-            if (calleeLayerNum > yieldingLayer)
-            {
-              Error(callCmd, $"loop must yield at layer {calleeLayerNum} of the called yield invariant");
-            }
-          }
-
-          yieldingLoops[header] = new YieldingLoop(yieldingLayer, yieldInvariants);
-
-          foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
-          {
-            if (predCmd.Layers.Min() <= yieldingLayer &&
-                VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
-            {
-              Error(predCmd,
-                "invariant may not access a global variable since one of its layers is a yielding layer of its loop");
-            }
-          }
+          yieldingLoop.YieldInvariants.Iter(callCmd => linearTypeChecker.CheckLinearParameters(callCmd, availableLinearVarsAtHeader));
+        }
+        if (yieldingProc.RefinedAction != null)
+        {
+          SignatureMatcher.CheckRefinementSignature(yieldingProc, checkingContext);
         }
       }
-    }
-    
-    private void TypeCheckLocalPendingAsyncCollectors()
-    {
+      
+      // local collectors for pending asyncs
       var pendingAsyncProcs = program.TopLevelDeclarations.OfType<ActionDecl>()
         .Where(proc => proc.ActionQualifier == ActionQualifier.Async).Select(proc => proc.Name).ToHashSet();
       var pendingAsyncMultisetTypes = program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
@@ -521,16 +443,7 @@ namespace Microsoft.Boogie
     }
     
     #region Public access methods
-
-    public bool IsYieldingLoopHeader(Block block, int layerNum)
-    {
-      if (!yieldingLoops.ContainsKey(block))
-      {
-        return false;
-      }
-      return layerNum <= yieldingLoops[block].Layer;
-    }
-
+    
     public IEnumerable<AtomicAction> LinkActions =>
       procToAtomicAction.Values.Where(action => action.ActionDecl.ActionQualifier == ActionQualifier.Link);
 
