@@ -427,18 +427,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class YieldingLoop
-  {
-    public int Layer;
-    public List<CallCmd> YieldInvariants;
-
-    public YieldingLoop(int layer, List<CallCmd> yieldInvariants)
-    {
-      this.Layer = layer;
-      this.YieldInvariants = yieldInvariants;
-    }
-  }
-
   /// <summary>
   /// Creates first/second copies of atomic actions used in commutativity checks
   /// (i.e., all non-global variables are prefixed with first_ resp. second_).

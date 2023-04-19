@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
       Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
       for (int i = 0, j = 0; i < impl.InParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(yieldProcedureDecl, yieldProcedureDecl.InParams[i]))
+        if (yieldProcedureDecl.VisibleFormals.Contains(yieldProcedureDecl.InParams[i]))
         {
           alwaysMap[atomicActionImpl.InParams[j]] = Expr.Ident(impl.InParams[i]);
           j++;
@@ -131,7 +131,7 @@ namespace Microsoft.Boogie
 
       for (int i = 0, j = 0; i < impl.OutParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(yieldProcedureDecl, yieldProcedureDecl.OutParams[i]))
+        if (yieldProcedureDecl.VisibleFormals.Contains(yieldProcedureDecl.OutParams[i]))
         {
           alwaysMap[atomicActionImpl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
           j++;

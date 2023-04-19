@@ -12,11 +12,11 @@ namespace Microsoft.Boogie
     public LinearTypeChecker linearTypeChecker;
     public List<int> allRefinementLayers;
     public AtomicAction SkipAtomicAction;
-
-    public Dictionary<Block, YieldingLoop> yieldingLoops;
+    
     public Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
     private Dictionary<ActionDecl, InvariantAction> procToInvariantAction;
     public List<InductiveSequentialization> inductiveSequentializations;
+
     public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
     
     private string namePrefix;
@@ -33,8 +33,7 @@ namespace Microsoft.Boogie
         .Where(impl => impl.Proc is YieldProcedureDecl)
         .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer)
         .OrderBy(layer => layer).Distinct().ToList();
-
-      this.yieldingLoops = new Dictionary<Block, YieldingLoop>();
+      
       this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
       this.procToInvariantAction = new Dictionary<ActionDecl, InvariantAction>();
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
@@ -137,65 +136,20 @@ namespace Microsoft.Boogie
         return;
       }
 
-      TypeCheckYieldingProcedureDecls();
-      TypeCheckLocalPendingAsyncCollectors();
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
-      
-      TypeCheckLoopAnnotations();
+      TypeCheckYieldingProcedures();
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
 
       TypeCheckRefinementLayers();
-      AttributeEraser.Erase(this);
       if (checkingContext.ErrorCount > 0)
       {
         return;
       }
 
+      AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
-    }
-
-    private void TypeCheckRefinementLayers()
-    {
-      var allInductiveSequentializationLayers =
-        inductiveSequentializations.Select(x => x.invariantAction.LayerRange.UpperLayer).ToList();
-      var intersect = allRefinementLayers.Intersect(allInductiveSequentializationLayers).ToList();
-      if (intersect.Any())
-      {
-        checkingContext.Error(Token.NoToken,
-          $"procedure refinement and action refinement layers must be disjoint but the following layers mix the two: {string.Join(",", intersect)}");
-      }
-      foreach (var g in GlobalVariables)
-      {
-        var layerRange = g.LayerRange;
-        if (allInductiveSequentializationLayers.Contains(layerRange.LowerLayer))
-        {
-          Error(g, $"global variable {g.Name} cannot be introduced at action refinement layer");
-        }
-        if (allInductiveSequentializationLayers.Contains(layerRange.UpperLayer))
-        {
-          Error(g, $"global variable {g.Name} cannot be hidden at action refinement layer");
-        }
-      }
-    }
-
-    private void TypeCheckActionRefinement(ActionDecl proc)
-    {
-      var refinedProc = proc.RefinedAction.ActionDecl;
-      var invariantProc = proc.InvariantAction.ActionDecl;
-      CheckInductiveSequentializationAbstractionSignature(proc, invariantProc);
-      CheckInductiveSequentializationAbstractionSignature(proc, refinedProc);
-      foreach (var elimDecl in proc.Eliminates)
-      {
-        var targetProc = elimDecl.Target.ActionDecl;
-        var absProc = elimDecl.Abstraction.ActionDecl;
-        CheckInductiveSequentializationAbstractionSignature(targetProc, absProc);
-      }
     }
 
     private void TypeCheckActions()
@@ -216,7 +170,20 @@ namespace Microsoft.Boogie
       {
         Error(program, "call graph over atomic actions must be acyclic");
       }
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(TypeCheckActionRefinement);
+
+      actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
+      {
+        var refinedProc = proc.RefinedAction.ActionDecl;
+        var invariantProc = proc.InvariantAction.ActionDecl;
+        SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(proc, invariantProc, checkingContext);
+        SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(proc, refinedProc, checkingContext);
+        foreach (var elimDecl in proc.Eliminates)
+        {
+          var targetProc = elimDecl.Target.ActionDecl;
+          var absProc = elimDecl.Abstraction.ActionDecl;
+          SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(targetProc, absProc, checkingContext);
+        }
+      });
       if (checkingContext.ErrorCount > 0)
       {
         return;
@@ -261,11 +228,7 @@ namespace Microsoft.Boogie
       }
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
       // Earlier type checking guarantees that each such action is not a pending async action.
-      // Therefore, only the type AtomicAction will be created now.
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
-      {
-        CreateActionsThatRefineAnotherAction(proc);
-      });
+      actionDecls.Where(proc => proc.RefinedAction != null).Iter(CreateActionsThatRefineAnotherAction);
 
       // Inline atomic actions
       CivlUtil.AddInlineAttribute(SkipAtomicAction.ActionDecl);
@@ -291,7 +254,7 @@ namespace Microsoft.Boogie
         impl.OriginalLocVars = null;
       });
       
-      // Construct transition and input-output relation.
+      // Construct transition and input-output relation
       procToAtomicAction.Values.Iter(action =>
       {
         action.CompleteInitialization(this, true);
@@ -313,7 +276,7 @@ namespace Microsoft.Boogie
       });
     }
 
-    void CreateActionsThatRefineAnotherAction(ActionDecl proc)
+    private void CreateActionsThatRefineAnotherAction(ActionDecl proc)
     {
       if (procToAtomicAction.ContainsKey(proc))
       {
@@ -326,103 +289,119 @@ namespace Microsoft.Boogie
       procToAtomicAction[proc] = new AtomicAction(impl, refinedAction, this);
     }
 
-    private void TypeCheckYieldingProcedureDecls()
+    private void TypeCheckYieldingProcedures()
     {
-      foreach (var proc in program.Procedures.OfType<YieldProcedureDecl>().Where(proc => proc.RefinedAction != null))
+      foreach (var yieldingProc in program.Procedures.OfType<YieldProcedureDecl>())
       {
-        CheckRefinementSignature(proc);
-      }
-    }
-
-    private void TypeCheckLoopAnnotations()
-    {
-      foreach (var impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
-      {
-        var yieldingProc = (YieldProcedureDecl)impl.Proc;
-        var yieldingLayer = yieldingProc.Layer;
-        var graph = Program.GraphFromImpl(impl);
-        graph.ComputeLoops();
-        foreach (var header in graph.Headers)
+        foreach (var (header, yieldingLoop) in yieldingProc.YieldingLoops)
         {
-          var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
-            cmd is PredicateCmd predCmd && predCmd.HasAttribute(CivlAttributes.YIELDS));
-          if (yieldCmd == null)
+          var availableLinearVarsAtHeader = new HashSet<Variable>(linearTypeChecker.AvailableLinearVars(header));
+          yieldingLoop.YieldInvariants.Iter(callCmd => linearTypeChecker.CheckLinearParameters(callCmd, availableLinearVarsAtHeader));
+        }
+        if (yieldingProc.RefinedAction != null)
+        {
+          SignatureMatcher.CheckRefinementSignature(yieldingProc, checkingContext);
+        }
+      }
+      
+      // local collectors for pending asyncs
+      var pendingAsyncProcs = program.TopLevelDeclarations.OfType<ActionDecl>()
+        .Where(proc => proc.ActionQualifier == ActionQualifier.Async).Select(proc => proc.Name).ToHashSet();
+      var pendingAsyncMultisetTypes = program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
+        .Where(decl => pendingAsyncProcs.Contains(decl.Name)).Select(decl =>
+          TypeHelper.MapType(TypeHelper.CtorType(decl), Type.Int)).ToHashSet();
+      foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
+      {
+        var proc = (YieldProcedureDecl)impl.Proc;
+        implToPendingAsyncCollector[impl] = new Dictionary<CtorType, Variable>();
+        foreach (Variable v in impl.LocVars.Where(v => v.HasAttribute(CivlAttributes.PENDING_ASYNC)))
+        {
+          if (!pendingAsyncMultisetTypes.Contains(v.TypedIdent.Type))
           {
-            yieldingLayer = int.MinValue;
+            Error(v, "pending async collector is of incorrect type");
+          }
+          else if (v.LayerRange.LowerLayer != proc.Layer)
+          {
+            Error(v, "pending async collector must be introduced at the layer of the enclosing procedure");
           }
           else
           {
-            var layers = yieldCmd.Layers;
-            header.Cmds.Remove(yieldCmd);
-            if (layers.Any())
+            var mapType = (MapType)v.TypedIdent.Type;
+            var ctorType = (CtorType)mapType.Arguments[0];
+            if (implToPendingAsyncCollector[impl].ContainsKey(ctorType))
             {
-              if (layers.Count > 1)
-              {
-                Error(header, "expected layer attribute to indicate the highest yielding layer of this loop");
-                continue;
-              }
-              if (layers[0] > yieldingLayer)
-              {
-                Error(header,
-                  "yielding layer of loop must not be more than the disappearing layer of enclosing procedure");
-                continue;
-              }
-              yieldingLayer = layers[0];
+              Error(v, "duplicate pending async collector");
             }
-          }
-          var yieldInvariants = header.Cmds
-            .TakeWhile(cmd => cmd is CallCmd callCmd && callCmd.Proc is YieldInvariantDecl).OfType<CallCmd>()
-            .ToList();
-          header.Cmds.RemoveRange(0, yieldInvariants.Count);
-          if (yieldInvariants.Any() && yieldCmd == null)
-          {
-            Error(header, "expected :yields attribute on this loop");
-          }
-
-          var availableLinearVarsAtHeader = new HashSet<Variable>(linearTypeChecker.AvailableLinearVars(header));
-          foreach (var callCmd in yieldInvariants.Where(callCmd =>
-                     linearTypeChecker.CheckLinearParameters(callCmd, availableLinearVarsAtHeader) == 0))
-          {
-            var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-            var calleeLayerNum = yieldInvariant.Layer;
-            if (calleeLayerNum > yieldingLayer)
+            else
             {
-              Error(callCmd, $"loop must yield at layer {calleeLayerNum} of the called yield invariant");
-            }
-          }
-
-          yieldingLoops[header] = new YieldingLoop(yieldingLayer, yieldInvariants);
-
-          foreach (PredicateCmd predCmd in header.Cmds.TakeWhile(cmd => cmd is PredicateCmd))
-          {
-            if (predCmd.Layers.Min() <= yieldingLayer &&
-                VariableCollector.Collect(predCmd, true).OfType<GlobalVariable>().Any())
-            {
-              Error(predCmd,
-                "invariant may not access a global variable since one of its layers is a yielding layer of its loop");
+              implToPendingAsyncCollector[impl][ctorType] = v;
             }
           }
         }
       }
     }
 
+    private void TypeCheckRefinementLayers()
+    {
+      var allInductiveSequentializationLayers =
+        inductiveSequentializations.Select(x => x.invariantAction.LayerRange.UpperLayer).ToList();
+      var intersect = allRefinementLayers.Intersect(allInductiveSequentializationLayers).ToList();
+      if (intersect.Any())
+      {
+        checkingContext.Error(Token.NoToken,
+          $"procedure refinement and action refinement layers must be disjoint but the following layers mix the two: {string.Join(",", intersect)}");
+      }
+      foreach (var g in GlobalVariables)
+      {
+        var layerRange = g.LayerRange;
+        if (allInductiveSequentializationLayers.Contains(layerRange.LowerLayer))
+        {
+          Error(g, $"global variable {g.Name} cannot be introduced at action refinement layer");
+        }
+        if (allInductiveSequentializationLayers.Contains(layerRange.UpperLayer))
+        {
+          Error(g, $"global variable {g.Name} cannot be hidden at action refinement layer");
+        }
+      }
+    }
+    
     private class SignatureMatcher
     {
-      public static string IN = "in";
-      public static string OUT = "out";
+      public static void CheckRefinementSignature(YieldProcedureDecl proc, CheckingContext checkingContext)
+      {
+        var refinedActionDecl = proc.RefinedAction.ActionDecl;
+        var signatureMatcher = new SignatureMatcher(proc, refinedActionDecl, checkingContext);
+        var procInParams = proc.InParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
+        var procOutParams = proc.OutParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
+        var actionInParams = refinedActionDecl.InParams;
+        var actionOutParams = refinedActionDecl.OutParams.SkipEnd(refinedActionDecl.Creates.Count).ToList();
+        signatureMatcher.MatchFormals(procInParams, actionInParams, SignatureMatcher.IN);
+        signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
+      }
 
+      public static void CheckInductiveSequentializationAbstractionSignature(Procedure original, Procedure abstraction,
+        CheckingContext checkingContext)
+      {
+        // Input and output parameters have to match exactly
+        var signatureMatcher = new SignatureMatcher(original, abstraction, checkingContext);
+        signatureMatcher.MatchFormals(original.InParams, abstraction.InParams, SignatureMatcher.IN);
+        signatureMatcher.MatchFormals(original.OutParams, abstraction.OutParams, SignatureMatcher.OUT);
+      }
+
+      private static string IN = "in";
+      private static string OUT = "out";
       private DeclWithFormals decl1;
       private DeclWithFormals decl2;
       private CheckingContext checkingContext;
 
-      public SignatureMatcher(DeclWithFormals decl1, DeclWithFormals decl2, CheckingContext checkingContext)
+      private SignatureMatcher(DeclWithFormals decl1, DeclWithFormals decl2, CheckingContext checkingContext)
       {
         this.decl1 = decl1;
         this.decl2 = decl2;
         this.checkingContext = checkingContext;
       }
 
-      public void MatchFormals(List<Variable> formals1, List<Variable> formals2,
+      private void MatchFormals(List<Variable> formals1, List<Variable> formals2,
         string inout, bool checkLinearity = true)
       {
         if (formals1.Count != formals2.Count)
@@ -462,83 +441,9 @@ namespace Microsoft.Boogie
         }
       }
     }
-
-    private void CheckRefinementSignature(YieldProcedureDecl proc)
-    {
-      bool IsRemainingVariable(Variable x) => x.LayerRange.UpperLayer == proc.Layer && !proc.HiddenFormals.Contains(x);
-
-      var refinedActionDecl = proc.RefinedAction.ActionDecl;
-      var signatureMatcher = new SignatureMatcher(proc, refinedActionDecl, checkingContext);
-      var procInParams = proc.InParams.Where(IsRemainingVariable).ToList();
-      var procOutParams = proc.OutParams.Where(IsRemainingVariable).ToList();
-      var actionInParams = refinedActionDecl.InParams;
-      var actionOutParams = refinedActionDecl.OutParams.SkipEnd(refinedActionDecl.Creates.Count).ToList();
-      signatureMatcher.MatchFormals(procInParams, actionInParams, SignatureMatcher.IN);
-      signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
-    }
-
-    private void CheckInductiveSequentializationAbstractionSignature(Procedure original, Procedure abstraction)
-    {
-      // Input and output parameters have to match exactly
-      var signatureMatcher = new SignatureMatcher(original, abstraction, checkingContext);
-      signatureMatcher.MatchFormals(original.InParams, abstraction.InParams, SignatureMatcher.IN);
-      signatureMatcher.MatchFormals(original.OutParams, abstraction.OutParams, SignatureMatcher.OUT);
-    }
-
-    private void TypeCheckLocalPendingAsyncCollectors()
-    {
-      var pendingAsyncProcs = program.TopLevelDeclarations.OfType<ActionDecl>()
-        .Where(proc => proc.ActionQualifier == ActionQualifier.Async).Select(proc => proc.Name).ToHashSet();
-      var pendingAsyncMultisetTypes = program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
-        .Where(decl => pendingAsyncProcs.Contains(decl.Name)).Select(decl =>
-          TypeHelper.MapType(TypeHelper.CtorType(decl), Type.Int)).ToHashSet();
-      foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
-      {
-        var proc = (YieldProcedureDecl)impl.Proc;
-        implToPendingAsyncCollector[impl] = new Dictionary<CtorType, Variable>();
-        foreach (Variable v in impl.LocVars.Where(v => v.HasAttribute(CivlAttributes.PENDING_ASYNC)))
-        {
-          if (!pendingAsyncMultisetTypes.Contains(v.TypedIdent.Type))
-          {
-            Error(v, "pending async collector is of incorrect type");
-          }
-          else if (v.LayerRange.LowerLayer != proc.Layer)
-          {
-            Error(v, "pending async collector must be introduced at the layer of the enclosing procedure");
-          }
-          else
-          {
-            var mapType = (MapType)v.TypedIdent.Type;
-            var ctorType = (CtorType)mapType.Arguments[0];
-            if (implToPendingAsyncCollector[impl].ContainsKey(ctorType))
-            {
-              Error(v, "duplicate pending async collector");
-            }
-            else
-            {
-              implToPendingAsyncCollector[impl][ctorType] = v;
-            }
-          }
-        }
-      }
-    }
-
+    
     #region Public access methods
-
-    public bool IsYieldingLoopHeader(Block block, int layerNum)
-    {
-      if (!yieldingLoops.ContainsKey(block))
-      {
-        return false;
-      }
-      return layerNum <= yieldingLoops[block].Layer;
-    }
-
-    public bool FormalRemainsInAction(YieldProcedureDecl yieldProcedureDecl, Variable param)
-    {
-      return param.LayerRange.Contains(yieldProcedureDecl.Layer) && !yieldProcedureDecl.HiddenFormals.Contains(param);
-    }
-
+    
     public IEnumerable<AtomicAction> LinkActions =>
       procToAtomicAction.Values.Where(action => action.ActionDecl.ActionQualifier == ActionQualifier.Link);
 

@@ -97,7 +97,7 @@ namespace Microsoft.Boogie
       private Dictionary<Tuple<Absy, Absy>, string> asyncLabels;
       private Absy initialState;
       private HashSet<Absy> finalStates;
-
+      
       public PerLayerYieldSufficiencyTypeChecker(CivlTypeChecker civlTypeChecker, YieldProcedureDecl yieldingProc,
         Implementation impl, int currLayerNum)
       {
@@ -163,7 +163,7 @@ namespace Microsoft.Boogie
         }
 
         var yieldingLoopHeaders = new HashSet<Block>(graph.Headers.OfType<Block>()
-          .Where(header => civlTypeChecker.IsYieldingLoopHeader(header, currLayerNum)));
+          .Where(header => yieldingProc.IsYieldingLoopHeader(header, currLayerNum)));
         foreach (var header in parentLoopHeader.Keys)
         {
           var parentHeader = parentLoopHeader[header];
@@ -260,7 +260,7 @@ namespace Microsoft.Boogie
           // Block entry edge
           Absy blockEntry = block.Cmds.Count == 0 ? (Absy) block.TransferCmd : (Absy) block.Cmds[0];
           var entryEdge = new Tuple<Absy, Absy>(block, blockEntry);
-          var entryLabel = civlTypeChecker.IsYieldingLoopHeader(block, currLayerNum) ? Y : P;
+          var entryLabel = yieldingProc.IsYieldingLoopHeader(block, currLayerNum) ? Y : P;
           atomicityLabels[entryEdge] = entryLabel;
           asyncLabels[entryEdge] = entryLabel;
 

@@ -2926,10 +2926,6 @@ namespace Microsoft.Boogie
           }
         }
       }
-      if (CallCmds.Count(CivlAttributes.IsCallMarked) > 1)
-      {
-        rc.Error(this, "at most one arm of a parallel call may be annotated with :mark");
-      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -2951,10 +2947,31 @@ namespace Microsoft.Boogie
           tc.Error(callCmd, "target procedure of a parallel call must yield");
         }
       }
-
       foreach (CallCmd callCmd in CallCmds)
       {
         callCmd.Typecheck(tc);
+      }
+
+      var markedCallCount = CallCmds.Count(CivlAttributes.IsCallMarked);
+      if (markedCallCount > 0)
+      {
+        if (markedCallCount > 1)
+        {
+          tc.Error(this, "at most one arm of a parallel call may be annotated with :mark");
+        }
+        var callerDecl = (YieldProcedureDecl)tc.Proc;
+        CallCmds.Iter(callCmd =>
+        {
+          if (!CivlAttributes.IsCallMarked(callCmd) && callCmd.Proc is YieldProcedureDecl calleeDecl &&
+              callerDecl.Layer == calleeDecl.Layer)
+          {
+            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).Iter(
+              ie =>
+              {
+                tc.Error(ie, $"unmarked call modifies visible output variable of the caller: {ie.Decl}");
+              });
+          }
+        });
       }
     }
 
@@ -3311,11 +3328,10 @@ namespace Microsoft.Boogie
           case ActionDecl { ActionQualifier: ActionQualifier.Link } actionDecl:
             formalLayerRange = new LayerRange(actionDecl.LayerRange.LowerLayer);
             break;
-          case YieldProcedureDecl calleeDecl:
+          case YieldProcedureDecl yieldProcedureDecl:
           {
             formalLayerRange = formal.LayerRange;
-            if (!calleeDecl.HasMoverType && formalLayerRange.UpperLayer == calleeDecl.Layer &&
-                !calleeDecl.HiddenFormals.Contains(formal))
+            if (!yieldProcedureDecl.HasMoverType && yieldProcedureDecl.VisibleFormals.Contains(formal))
             {
               formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
             }
