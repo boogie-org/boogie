@@ -293,7 +293,10 @@ private class BvBounds : Expr {
 			}
 			case 34: case 35: case 40: case 41: case 42: case 43: case 44: case 45: case 46: {
 				ActionDecl(out ac, out im, out dt);
-				Pgm.AddTopLevelDeclaration(ac); Pgm.AddTopLevelDeclaration(im);
+				Pgm.AddTopLevelDeclaration(ac);
+				if (im != null) {
+				 Pgm.AddTopLevelDeclaration(im);
+				}
 				if (dt != null) {
 				 Pgm.AddTopLevelDeclaration(dt);
 				}
@@ -575,6 +578,7 @@ private class BvBounds : Expr {
 		StmtList stmtList;
 		QKeyValue kv = null;
 		datatypeTypeCtorDecl = null;
+		impl = null;
 		
 		if (StartOf(4)) {
 			ActionQualifierDecl(ref actionQualifier);
@@ -596,17 +600,25 @@ private class BvBounds : Expr {
 			Get();
 			ProcFormals(false, true, out outs);
 		}
-		while (StartOf(6)) {
-			SpecAction(ref refinedAction, ref invariantAction, mods, creates, elims);
-		}
-		ImplBody(out locals, out stmtList);
-		if (actionQualifier == ActionQualifier.Async) {
-		 datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, new List<TypeVariable>(), null);
-		 datatypeTypeCtorDecl.AddConstructor(name, name.val, ins.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList());
-		}
+		if (la.kind == 10) {
+			Get();
+			while (StartOf(6)) {
+				SpecAction(ref refinedAction, ref invariantAction, mods, creates, elims);
+			}
+		} else if (StartOf(7)) {
+			while (StartOf(6)) {
+				SpecAction(ref refinedAction, ref invariantAction, mods, creates, elims);
+			}
+			ImplBody(out locals, out stmtList);
+			if (actionQualifier == ActionQualifier.Async) {
+			 datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, new List<TypeVariable>(), null);
+			 datatypeTypeCtorDecl.AddConstructor(name, name.val, ins.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList());
+			}
+			impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+			                              locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
+			
+		} else SynErr(125);
 		actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, invariantAction, elims, mods, datatypeTypeCtorDecl, kv);
-		impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
-		                                locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 		
 	}
 
@@ -656,18 +668,18 @@ private class BvBounds : Expr {
 		}
 		if (la.kind == 10) {
 			Get();
-			while (StartOf(7)) {
+			while (StartOf(8)) {
 				SpecYieldPrePost(ref refinedAction, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods);
 			}
-		} else if (StartOf(8)) {
-			while (StartOf(7)) {
+		} else if (StartOf(9)) {
+			while (StartOf(8)) {
 				SpecYieldPrePost(ref refinedAction, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods);
 			}
 			ImplBody(out locals, out stmtList);
 			impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
 			                         locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
-		} else SynErr(125);
+		} else SynErr(126);
 		ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, mods, post, yieldRequires, yieldEnsures, yieldPreserves, refinedAction, kv); 
 	}
 
@@ -692,18 +704,18 @@ private class BvBounds : Expr {
 		ProcSignature(true, out x, out typeParams, out ins, out outs, out kv);
 		if (la.kind == 10) {
 			Get();
-			while (StartOf(9)) {
+			while (StartOf(10)) {
 				Spec(pre, mods, post);
 			}
-		} else if (StartOf(10)) {
-			while (StartOf(9)) {
+		} else if (StartOf(11)) {
+			while (StartOf(10)) {
 				Spec(pre, mods, post);
 			}
 			ImplBody(out locals, out stmtList);
 			impl = new Implementation(x, x.val, typeParams.ConvertAll(tp => new TypeVariable(tp.tok, tp.Name)),
 			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
-		} else SynErr(126);
+		} else SynErr(127);
 		proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, mods, post, kv); 
 	}
 
@@ -755,7 +767,7 @@ private class BvBounds : Expr {
 		
 		Expect(11);
 		if (la.kind == 1 || la.kind == 26) {
-			AttrsIdsTypeWheres(allowWhereClauses, allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); });
+			AttrsIdsTypeWheres(true, allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); });
 		}
 		Expect(12);
 	}
@@ -803,18 +815,18 @@ private class BvBounds : Expr {
 
 	void Type(out Bpl.Type/*!*/ ty) {
 		Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken/*!*/ tok; ty = dummyType; 
-		if (StartOf(11)) {
+		if (StartOf(12)) {
 			TypeAtom(out ty);
 		} else if (la.kind == 1) {
 			Ident(out tok);
 			List<Bpl.Type>/*!*/ args = new List<Bpl.Type> (); 
-			if (StartOf(12)) {
+			if (StartOf(13)) {
 				TypeArgs(args);
 			}
 			ty = new UnresolvedTypeIdentifier (tok, tok.val, args); 
 		} else if (la.kind == 19 || la.kind == 21) {
 			MapType(out ty);
-		} else SynErr(127);
+		} else SynErr(128);
 	}
 
 	void AttributesIdsTypeWhere(bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
@@ -878,7 +890,7 @@ private class BvBounds : Expr {
 			Get();
 			Type(out ty);
 			Expect(12);
-		} else SynErr(128);
+		} else SynErr(129);
 	}
 
 	void Ident(out IToken/*!*/ x) {
@@ -892,23 +904,23 @@ private class BvBounds : Expr {
 
 	void TypeArgs(List<Bpl.Type>/*!*/ ts) {
 		Contract.Requires(ts != null); IToken/*!*/ tok; Bpl.Type/*!*/ ty; 
-		if (StartOf(11)) {
+		if (StartOf(12)) {
 			TypeAtom(out ty);
 			ts.Add(ty); 
-			if (StartOf(12)) {
+			if (StartOf(13)) {
 				TypeArgs(ts);
 			}
 		} else if (la.kind == 1) {
 			Ident(out tok);
 			List<Bpl.Type>/*!*/ args = new List<Bpl.Type> ();
 			ts.Add(new UnresolvedTypeIdentifier (tok, tok.val, args)); 
-			if (StartOf(12)) {
+			if (StartOf(13)) {
 				TypeArgs(ts);
 			}
 		} else if (la.kind == 19 || la.kind == 21) {
 			MapType(out ty);
 			ts.Add(ty); 
-		} else SynErr(129);
+		} else SynErr(130);
 	}
 
 	void MapType(out Bpl.Type/*!*/ ty) {
@@ -924,7 +936,7 @@ private class BvBounds : Expr {
 		}
 		Expect(19);
 		if (tok == null) tok = t;  
-		if (StartOf(12)) {
+		if (StartOf(13)) {
 			Types(arguments);
 		}
 		Expect(20);
@@ -1069,7 +1081,7 @@ private class BvBounds : Expr {
 		} else if (la.kind == 46) {
 			Get();
 			actionQualifier = ActionQualifier.Abstract; 
-		} else SynErr(130);
+		} else SynErr(131);
 	}
 
 	void MoverQualifier(ref MoverType moverType) {
@@ -1085,7 +1097,7 @@ private class BvBounds : Expr {
 		} else if (la.kind == 43) {
 			Get();
 			moverType = MoverType.Atomic; 
-		} else SynErr(131);
+		} else SynErr(132);
 	}
 
 	void SpecAction(ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAction, List<IdentifierExpr> mods, List<ActionDeclRef> creates, List<ElimDecl> elims) {
@@ -1097,7 +1109,7 @@ private class BvBounds : Expr {
 			SpecCreates(creates);
 		} else if (la.kind == 38) {
 			SpecEliminates(elims);
-		} else SynErr(132);
+		} else SynErr(133);
 	}
 
 	void ImplBody(out List<Variable>/*!*/ locals, out StmtList/*!*/ stmtList) {
@@ -1179,7 +1191,7 @@ private class BvBounds : Expr {
 		} else if (la.kind == 48) {
 			Get();
 			tok = t; 
-			if (StartOf(13)) {
+			if (StartOf(14)) {
 				while (la.kind == 26) {
 					Attribute(ref kv);
 				}
@@ -1188,11 +1200,11 @@ private class BvBounds : Expr {
 			} else if (la.kind == 44 || la.kind == 54 || la.kind == 66) {
 				CallCmd(out cmd);
 				yieldRequires.Add((CallCmd)cmd); 
-			} else SynErr(133);
+			} else SynErr(134);
 		} else if (la.kind == 49) {
 			Get();
 			tok = t; 
-			if (StartOf(13)) {
+			if (StartOf(14)) {
 				while (la.kind == 26) {
 					Attribute(ref kv);
 				}
@@ -1201,7 +1213,7 @@ private class BvBounds : Expr {
 			} else if (la.kind == 44 || la.kind == 54 || la.kind == 66) {
 				CallCmd(out cmd);
 				yieldEnsures.Add((CallCmd)cmd); 
-			} else SynErr(134);
+			} else SynErr(135);
 		} else if (la.kind == 50) {
 			Get();
 			tok = t; 
@@ -1214,7 +1226,7 @@ private class BvBounds : Expr {
 				Idents(out ms);
 				foreach(IToken m in ms) { mods.Add(new IdentifierExpr(m, m.val)); } 
 			}
-		} else SynErr(135);
+		} else SynErr(136);
 		Expect(10);
 	}
 
@@ -1266,7 +1278,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			SpecPrePost(true, pre, post);
 		} else if (la.kind == 48 || la.kind == 49) {
 			SpecPrePost(false, pre, post);
-		} else SynErr(136);
+		} else SynErr(137);
 	}
 
 	void SpecPrePost(bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post) {
@@ -1289,7 +1301,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Proposition(out e);
 			Expect(10);
 			post.Add(new Ensures(tok, free, e, null, kv)); 
-		} else SynErr(137);
+		} else SynErr(138);
 	}
 
 	void StmtList(out StmtList/*!*/ stmtList) {
@@ -1302,8 +1314,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		StructuredCmd ec = null;  StructuredCmd/*!*/ ecn;
 		TransferCmd tc = null;  TransferCmd/*!*/ tcn;
 		
-		while (StartOf(14)) {
-			if (StartOf(15)) {
+		while (StartOf(15)) {
+			if (StartOf(16)) {
 				LabelOrCmd(out c, out label);
 				Contract.Assert(c == null || label == null);
 				if (c != null) {
@@ -1420,7 +1432,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			c = cn; 
 			break;
 		}
-		default: SynErr(138); break;
+		default: SynErr(139); break;
 		}
 	}
 
@@ -1437,7 +1449,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 61) {
 			BreakCmd(out bcmd);
 			ec = bcmd; 
-		} else SynErr(139);
+		} else SynErr(140);
 	}
 
 	void TransferCmd(out TransferCmd/*!*/ tc) {
@@ -1457,7 +1469,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 56) {
 			Get();
 			tc = new ReturnCmd(t); 
-		} else SynErr(140);
+		} else SynErr(141);
 		Expect(10);
 	}
 
@@ -1482,7 +1494,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				Get();
 				StmtList(out els);
 				elseOption = els; 
-			} else SynErr(141);
+			} else SynErr(142);
 		}
 		ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); 
 	}
@@ -1509,7 +1521,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			while (la.kind == 26) {
 				Attribute(ref kv);
 			}
-			if (StartOf(16)) {
+			if (StartOf(17)) {
 				Expression(out e);
 				if (isFree) {
 				 invariants.Add(new AssumeCmd(z, e, kv));
@@ -1521,7 +1533,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			} else if (la.kind == 44 || la.kind == 54 || la.kind == 66) {
 				CallCmd(out cmd);
 				yields.Add((CallCmd)cmd); 
-			} else SynErr(142);
+			} else SynErr(143);
 			Expect(10);
 		}
 		Expect(26);
@@ -1549,10 +1561,10 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		if (la.kind == 60) {
 			Get();
 			e = null; 
-		} else if (StartOf(16)) {
+		} else if (StartOf(17)) {
 			Expression(out ee);
 			e = ee; 
-		} else SynErr(143);
+		} else SynErr(144);
 		Expect(12);
 	}
 
@@ -1587,7 +1599,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Expect(10);
 			c = new UnpackCmd(x, lhsExpr, e0, kv);
 			
-		} else if (StartOf(17)) {
+		} else if (StartOf(18)) {
 			lhss = new List<AssignLhs/*!*/>(); 
 			lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); 
 			while (la.kind == 19 || la.kind == 41) {
@@ -1630,7 +1642,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			}
 			Expect(10);
 			c = new AssignCmd(x, lhss, rhss, kv); 
-		} else SynErr(144);
+		} else SynErr(145);
 	}
 
 	void ParCallCmd(out Cmd d) {
@@ -1658,7 +1670,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		
 		Expect(19);
 		x = t; 
-		if (StartOf(16)) {
+		if (StartOf(17)) {
 			Expression(out e);
 			indexes.Add(e); 
 			while (la.kind == 14) {
@@ -1693,7 +1705,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Ident(out first);
 		if (la.kind == 11) {
 			Get();
-			if (StartOf(16)) {
+			if (StartOf(17)) {
 				Expression(out en);
 				es.Add(en); 
 				while (la.kind == 14) {
@@ -1719,7 +1731,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Expect(65);
 			Ident(out first);
 			Expect(11);
-			if (StartOf(16)) {
+			if (StartOf(17)) {
 				Expression(out en);
 				es.Add(en); 
 				while (la.kind == 14) {
@@ -1730,7 +1742,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			}
 			Expect(12);
 			c = new CallCmd(x, first.val, es, ids, kv); ((CallCmd) c).IsFree = isFree; ((CallCmd) c).IsAsync = isAsync; 
-		} else SynErr(145);
+		} else SynErr(146);
 	}
 
 	void Expressions(out List<Expr>/*!*/ es) {
@@ -1747,7 +1759,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void ImpliesExpression(bool noExplies, out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
 		LogicalExpression(out e0);
-		if (StartOf(18)) {
+		if (StartOf(19)) {
 			if (la.kind == 71 || la.kind == 72) {
 				ImpliesOp();
 				x = t; 
@@ -1775,13 +1787,13 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 70) {
 			Get();
-		} else SynErr(146);
+		} else SynErr(147);
 	}
 
 	void LogicalExpression(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
 		RelationalExpression(out e0);
-		if (StartOf(19)) {
+		if (StartOf(20)) {
 			if (la.kind == 75 || la.kind == 76) {
 				AndOp();
 				x = t; 
@@ -1813,7 +1825,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 72) {
 			Get();
-		} else SynErr(147);
+		} else SynErr(148);
 	}
 
 	void ExpliesOp() {
@@ -1821,13 +1833,13 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 74) {
 			Get();
-		} else SynErr(148);
+		} else SynErr(149);
 	}
 
 	void RelationalExpression(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
 		BvTerm(out e0);
-		if (StartOf(20)) {
+		if (StartOf(21)) {
 			RelOp(out x, out op);
 			BvTerm(out e1);
 			e0 = Expr.Binary(x, op, e0, e1); 
@@ -1839,7 +1851,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 76) {
 			Get();
-		} else SynErr(149);
+		} else SynErr(150);
 	}
 
 	void OrOp() {
@@ -1847,7 +1859,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 78) {
 			Get();
-		} else SynErr(150);
+		} else SynErr(151);
 	}
 
 	void BvTerm(out Expr/*!*/ e0) {
@@ -1909,7 +1921,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			x = t; op=BinaryOperator.Opcode.Ge; 
 			break;
 		}
-		default: SynErr(151); break;
+		default: SynErr(152); break;
 		}
 	}
 
@@ -1926,7 +1938,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	void Factor(out Expr/*!*/ e0) {
 		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
 		Power(out e0);
-		while (StartOf(21)) {
+		while (StartOf(22)) {
 			MulOp(out x, out op);
 			Power(out e1);
 			e0 = Expr.Binary(x, op, e0, e1); 
@@ -1941,7 +1953,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 88) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.Sub; 
-		} else SynErr(152);
+		} else SynErr(153);
 	}
 
 	void Power(out Expr/*!*/ e0) {
@@ -1969,7 +1981,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 91) {
 			Get();
 			x = t; op=BinaryOperator.Opcode.RealDiv; 
-		} else SynErr(153);
+		} else SynErr(154);
 	}
 
 	void IsConstructor(out Expr/*!*/ e0) {
@@ -1999,9 +2011,9 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			x = t; 
 			UnaryExpression(out e);
 			e = Expr.Unary(x, UnaryOperator.Opcode.Not, e); 
-		} else if (StartOf(22)) {
+		} else if (StartOf(23)) {
 			CoercionExpression(out e);
-		} else SynErr(154);
+		} else SynErr(155);
 	}
 
 	void NegOp() {
@@ -2009,7 +2021,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 95) {
 			Get();
-		} else SynErr(155);
+		} else SynErr(156);
 	}
 
 	void CoercionExpression(out Expr/*!*/ e) {
@@ -2021,7 +2033,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		while (la.kind == 13) {
 			Get();
 			x = t; 
-			if (StartOf(12)) {
+			if (StartOf(13)) {
 				Type(out coercedTo);
 				e = Expr.CoerceType(x, e, coercedTo); 
 			} else if (la.kind == 3) {
@@ -2033,7 +2045,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				 e = new BvBounds(x, bn, ((LiteralExpr)e).asBigNum);
 				}
 				
-			} else SynErr(156);
+			} else SynErr(157);
 		}
 	}
 
@@ -2051,8 +2063,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				x = t; allArgs = new List<Expr> ();
 				allArgs.Add(e);
 				store = false; bvExtract = false; 
-				if (StartOf(23)) {
-					if (StartOf(16)) {
+				if (StartOf(24)) {
+					if (StartOf(17)) {
 						Expression(out index0);
 						if (index0 is BvBounds)
 						 bvExtract = true;
@@ -2105,7 +2117,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 					Expression(out e1);
 					Expect(12);
 					e = new NAryExpr(x, new FieldUpdate(id, id.val), new List<Expr> { e, e1 }); 
-				} else SynErr(157);
+				} else SynErr(158);
 			}
 		}
 	}
@@ -2217,12 +2229,12 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			id = new IdentifierExpr(x, x.val);  e = id; 
 			if (la.kind == 11) {
 				Get();
-				if (StartOf(16)) {
+				if (StartOf(17)) {
 					Expressions(out es);
 					e = new NAryExpr(x, new FunctionCall(id), es); 
 				} else if (la.kind == 12) {
 					e = new NAryExpr(x, new FunctionCall(id), new List<Expr>()); 
-				} else SynErr(158);
+				} else SynErr(159);
 				Expect(12);
 			}
 			break;
@@ -2256,7 +2268,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 		case 11: {
 			Get();
-			if (StartOf(16)) {
+			if (StartOf(17)) {
 				Expression(out e);
 				if (e is BvBounds)
 				 this.SemErr("parentheses around bitvector bounds are not allowed"); 
@@ -2282,7 +2294,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				 e = new LambdaExpr(x, typeParams, ds, kv, e); 
 			} else if (la.kind == 9) {
 				LetExpr(out e);
-			} else SynErr(159);
+			} else SynErr(160);
 			Expect(12);
 			break;
 		}
@@ -2295,7 +2307,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			e = new CodeExpr(locals, blocks); 
 			break;
 		}
-		default: SynErr(160); break;
+		default: SynErr(161); break;
 		}
 	}
 
@@ -2307,7 +2319,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else if (la.kind == 6) {
 			Get();
 			s = t.val; 
-		} else SynErr(161);
+		} else SynErr(162);
 		try {
 		 n = BigDec.FromString(s);
 		} catch (FormatException) {
@@ -2351,7 +2363,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 		} else if (la.kind == 113) {
 			Get();
-		} else SynErr(162);
+		} else SynErr(163);
 	}
 
 	void QuantifierBody(IToken/*!*/ q, out List<TypeVariable>/*!*/ typeParams, out List<Variable>/*!*/ ds,
@@ -2369,7 +2381,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			}
 		} else if (la.kind == 1 || la.kind == 26) {
 			BoundVars(out ds);
-		} else SynErr(163);
+		} else SynErr(164);
 		QSep();
 		while (la.kind == 26) {
 			AttributeOrTrigger(ref kv, ref trig);
@@ -2382,7 +2394,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 		} else if (la.kind == 115) {
 			Get();
-		} else SynErr(164);
+		} else SynErr(165);
 	}
 
 	void Lambda() {
@@ -2390,7 +2402,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 		} else if (la.kind == 117) {
 			Get();
-		} else SynErr(165);
+		} else SynErr(166);
 	}
 
 	void LetExpr(out Expr/*!*/ letexpr) {
@@ -2470,7 +2482,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		
 		Ident(out x);
 		Expect(13);
-		while (StartOf(15)) {
+		while (StartOf(16)) {
 			LabelOrCmd(out c, out label);
 			Contract.Assert(c == null || label == null);
 			if (c != null) {
@@ -2493,7 +2505,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 			Expression(out e);
 			b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); 
-		} else SynErr(166);
+		} else SynErr(167);
 		Expect(10);
 	}
 
@@ -2508,7 +2520,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 			Expect(1);
 			key = t.val;  parameters = new List<object/*!*/>(); 
-			if (StartOf(16)) {
+			if (StartOf(17)) {
 				AttributeParameter(out param);
 				parameters.Add(param); 
 				while (la.kind == 14) {
@@ -2536,7 +2548,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			 }
 			}
 			
-		} else if (StartOf(16)) {
+		} else if (StartOf(17)) {
 			Expression(out e);
 			es = new List<Expr> { e }; 
 			while (la.kind == 14) {
@@ -2550,7 +2562,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			 trig.AddLast(new Trigger(tok, true, es, null));
 			}
 			
-		} else SynErr(167);
+		} else SynErr(168);
 		Expect(27);
 	}
 
@@ -2562,10 +2574,10 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		if (la.kind == 4) {
 			Get();
 			o = t.val.Substring(1, t.val.Length-2); 
-		} else if (StartOf(16)) {
+		} else if (StartOf(17)) {
 			Expression(out e);
 			o = e; 
-		} else SynErr(168);
+		} else SynErr(169);
 	}
 
 	void QSep() {
@@ -2573,7 +2585,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			Get();
 		} else if (la.kind == 119) {
 			Get();
-		} else SynErr(169);
+		} else SynErr(170);
 	}
 
 	void LetVar(out Variable/*!*/ v) {
@@ -2609,6 +2621,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
+		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_x,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_x,_T, _x,_x,_T,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x},
@@ -2775,51 +2788,52 @@ public class Errors {
 			case 122: s = "invalid Consts"; break;
 			case 123: s = "invalid Function"; break;
 			case 124: s = "invalid Function"; break;
-			case 125: s = "invalid YieldProcedureDecl"; break;
-			case 126: s = "invalid Procedure"; break;
-			case 127: s = "invalid Type"; break;
-			case 128: s = "invalid TypeAtom"; break;
-			case 129: s = "invalid TypeArgs"; break;
-			case 130: s = "invalid ActionQualifierDecl"; break;
-			case 131: s = "invalid MoverQualifier"; break;
-			case 132: s = "invalid SpecAction"; break;
-			case 133: s = "invalid SpecYieldPrePost"; break;
+			case 125: s = "invalid ActionDecl"; break;
+			case 126: s = "invalid YieldProcedureDecl"; break;
+			case 127: s = "invalid Procedure"; break;
+			case 128: s = "invalid Type"; break;
+			case 129: s = "invalid TypeAtom"; break;
+			case 130: s = "invalid TypeArgs"; break;
+			case 131: s = "invalid ActionQualifierDecl"; break;
+			case 132: s = "invalid MoverQualifier"; break;
+			case 133: s = "invalid SpecAction"; break;
 			case 134: s = "invalid SpecYieldPrePost"; break;
 			case 135: s = "invalid SpecYieldPrePost"; break;
-			case 136: s = "invalid Spec"; break;
-			case 137: s = "invalid SpecPrePost"; break;
-			case 138: s = "invalid LabelOrCmd"; break;
-			case 139: s = "invalid StructuredCmd"; break;
-			case 140: s = "invalid TransferCmd"; break;
-			case 141: s = "invalid IfCmd"; break;
-			case 142: s = "invalid WhileCmd"; break;
-			case 143: s = "invalid Guard"; break;
-			case 144: s = "invalid LabelOrAssign"; break;
-			case 145: s = "invalid CallParams"; break;
-			case 146: s = "invalid EquivOp"; break;
-			case 147: s = "invalid ImpliesOp"; break;
-			case 148: s = "invalid ExpliesOp"; break;
-			case 149: s = "invalid AndOp"; break;
-			case 150: s = "invalid OrOp"; break;
-			case 151: s = "invalid RelOp"; break;
-			case 152: s = "invalid AddOp"; break;
-			case 153: s = "invalid MulOp"; break;
-			case 154: s = "invalid UnaryExpression"; break;
-			case 155: s = "invalid NegOp"; break;
-			case 156: s = "invalid CoercionExpression"; break;
-			case 157: s = "invalid ArrayExpression"; break;
-			case 158: s = "invalid AtomExpression"; break;
+			case 136: s = "invalid SpecYieldPrePost"; break;
+			case 137: s = "invalid Spec"; break;
+			case 138: s = "invalid SpecPrePost"; break;
+			case 139: s = "invalid LabelOrCmd"; break;
+			case 140: s = "invalid StructuredCmd"; break;
+			case 141: s = "invalid TransferCmd"; break;
+			case 142: s = "invalid IfCmd"; break;
+			case 143: s = "invalid WhileCmd"; break;
+			case 144: s = "invalid Guard"; break;
+			case 145: s = "invalid LabelOrAssign"; break;
+			case 146: s = "invalid CallParams"; break;
+			case 147: s = "invalid EquivOp"; break;
+			case 148: s = "invalid ImpliesOp"; break;
+			case 149: s = "invalid ExpliesOp"; break;
+			case 150: s = "invalid AndOp"; break;
+			case 151: s = "invalid OrOp"; break;
+			case 152: s = "invalid RelOp"; break;
+			case 153: s = "invalid AddOp"; break;
+			case 154: s = "invalid MulOp"; break;
+			case 155: s = "invalid UnaryExpression"; break;
+			case 156: s = "invalid NegOp"; break;
+			case 157: s = "invalid CoercionExpression"; break;
+			case 158: s = "invalid ArrayExpression"; break;
 			case 159: s = "invalid AtomExpression"; break;
 			case 160: s = "invalid AtomExpression"; break;
-			case 161: s = "invalid Dec"; break;
-			case 162: s = "invalid Forall"; break;
-			case 163: s = "invalid QuantifierBody"; break;
-			case 164: s = "invalid Exists"; break;
-			case 165: s = "invalid Lambda"; break;
-			case 166: s = "invalid SpecBlock"; break;
-			case 167: s = "invalid AttributeOrTrigger"; break;
-			case 168: s = "invalid AttributeParameter"; break;
-			case 169: s = "invalid QSep"; break;
+			case 161: s = "invalid AtomExpression"; break;
+			case 162: s = "invalid Dec"; break;
+			case 163: s = "invalid Forall"; break;
+			case 164: s = "invalid QuantifierBody"; break;
+			case 165: s = "invalid Exists"; break;
+			case 166: s = "invalid Lambda"; break;
+			case 167: s = "invalid SpecBlock"; break;
+			case 168: s = "invalid AttributeOrTrigger"; break;
+			case 169: s = "invalid AttributeParameter"; break;
+			case 170: s = "invalid QSep"; break;
 
 			default: s = "error " + n; break;
 		}
