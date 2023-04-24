@@ -72,16 +72,14 @@ namespace Microsoft.Boogie
         program.AddTopLevelDeclaration(skipProcedure);
         program.AddTopLevelDeclaration(skipImplementation);
       }
-      /*
-      // TBD: Why does the following code create problems?
-      program.TopLevelDeclarations.OfType<YieldProcedureDecl>().Where(decl => decl.RefinedAction == null).Iter(decl =>
-      {
-        decl.RefinedAction = new ActionDeclRef(Token.NoToken, skipProcedure.Name)
+      program.TopLevelDeclarations.OfType<YieldProcedureDecl>()
+        .Where(decl => !decl.HasMoverType && decl.RefinedAction == null).Iter(decl =>
         {
-          ActionDecl = skipProcedure
-        };
-      });
-      */
+          decl.RefinedAction = new ActionDeclRef(Token.NoToken, skipProcedure.Name)
+          {
+            ActionDecl = skipProcedure
+          };
+        });
     }
 
     public string AddNamePrefix(string name)
