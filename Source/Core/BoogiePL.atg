@@ -270,7 +270,7 @@ ProcFormals<.bool incoming, bool allowWhereClauses, out List<Variable>/*!*/ ds.>
      var context = allowWhereClauses ? "procedure formals" : "the 'implementation' copies of formals";
   .)
   "("
-  [ AttrsIdsTypeWheres<true, allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); }>
+  [ AttrsIdsTypeWheres<allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); }>
   ]
   ")"
   .
@@ -282,7 +282,7 @@ BoundVars<.out List<Variable>/*!*/ ds.>
     ds = new List<Variable>();
     var dsx = ds;
   .)
-  AttrsIdsTypeWheres<true, false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } >
+  AttrsIdsTypeWheres<false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } >
   .
 
 /*------------------------------------------------------------------------*/
@@ -299,10 +299,10 @@ IdsType<.out List<TypedIdent>/*!*/ tyds.>
   .
 
 /* AttrsIdsTypeWheres is used with the declarations of formals and bound variables */
-AttrsIdsTypeWheres<. bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action .>
+AttrsIdsTypeWheres<. bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action .>
 =
-  AttributesIdsTypeWhere<allowAttributes, allowWhereClauses, context, action>
-  { "," AttributesIdsTypeWhere<allowAttributes, allowWhereClauses, context, action> }
+  AttributesIdsTypeWhere<allowWhereClauses, context, action>
+  { "," AttributesIdsTypeWhere<allowWhereClauses, context, action> }
   .
 
 IdsTypeWheres<. bool allowWhereClauses, string context, System.Action<TypedIdent> action .>
@@ -311,14 +311,9 @@ IdsTypeWheres<. bool allowWhereClauses, string context, System.Action<TypedIdent
   { "," IdsTypeWhere<allowWhereClauses, context, action> }
   .
 
-AttributesIdsTypeWhere<. bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action .>
+AttributesIdsTypeWhere<. bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action .>
 = (. QKeyValue kv = null; .)
-  { Attribute<ref kv>    (. if (!allowAttributes) {
-                              kv = null;
-                              this.SemErr("attributes are not allowed on " + context);
-                            }
-                         .)
-  }
+  { Attribute<ref kv> }
   IdsTypeWhere<allowWhereClauses, context, delegate(TypedIdent tyd) { action(tyd, kv); }>
   .
 

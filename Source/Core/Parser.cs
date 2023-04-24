@@ -767,16 +767,16 @@ private class BvBounds : Expr {
 		
 		Expect(11);
 		if (la.kind == 1 || la.kind == 26) {
-			AttrsIdsTypeWheres(true, allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); });
+			AttrsIdsTypeWheres(allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); });
 		}
 		Expect(12);
 	}
 
-	void AttrsIdsTypeWheres(bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
-		AttributesIdsTypeWhere(allowAttributes, allowWhereClauses, context, action);
+	void AttrsIdsTypeWheres(bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
+		AttributesIdsTypeWhere(allowWhereClauses, context, action);
 		while (la.kind == 14) {
 			Get();
-			AttributesIdsTypeWhere(allowAttributes, allowWhereClauses, context, action);
+			AttributesIdsTypeWhere(allowWhereClauses, context, action);
 		}
 	}
 
@@ -786,7 +786,7 @@ private class BvBounds : Expr {
 		ds = new List<Variable>();
 		var dsx = ds;
 		
-		AttrsIdsTypeWheres(true, false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } );
+		AttrsIdsTypeWheres(false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } );
 	}
 
 	void IdsType(out List<TypedIdent>/*!*/ tyds) {
@@ -829,15 +829,10 @@ private class BvBounds : Expr {
 		} else SynErr(128);
 	}
 
-	void AttributesIdsTypeWhere(bool allowAttributes, bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
+	void AttributesIdsTypeWhere(bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
 		QKeyValue kv = null; 
 		while (la.kind == 26) {
 			Attribute(ref kv);
-			if (!allowAttributes) {
-			 kv = null;
-			 this.SemErr("attributes are not allowed on " + context);
-			}
-			
 		}
 		IdsTypeWhere(allowWhereClauses, context, delegate(TypedIdent tyd) { action(tyd, kv); });
 	}

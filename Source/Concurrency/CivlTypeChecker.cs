@@ -64,7 +64,7 @@ namespace Microsoft.Boogie
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
       skipProcedure.LayerRange = LayerRange.MinMax;
       skipProcedure.Impl = skipImplementation;
-      SkipAtomicAction = new AtomicAction(skipImplementation, null, this);
+      SkipAtomicAction = new AtomicAction(skipProcedure, null, this);
       SkipAtomicAction.CompleteInitialization(this);
       if (program.TopLevelDeclarations.OfType<YieldProcedureDecl>().Any())
       {
@@ -142,12 +142,6 @@ namespace Microsoft.Boogie
         return;
       }
 
-      TypeCheckRefinementLayers();
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
-
       AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
     }
@@ -199,31 +193,18 @@ namespace Microsoft.Boogie
       actionDecls.Iter(proc => proc.Initialize(program.monomorphizer));
       
       // Create all actions
-      foreach (var proc in actionDecls.Where(proc => proc.RefinedAction == null))
+      foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
       {
         // In this loop, we create all link, invariant, and abstraction actions,
         // but only those atomic actions (pending async or otherwise) that do not refine
         // another action.
-        Implementation impl = proc.Impl;
-        if (proc.ActionQualifier == ActionQualifier.Link)
+        if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
         {
-          procToAtomicAction[proc] = new AtomicAction(impl, null, this);
-        }
-        else if (proc.ActionQualifier == ActionQualifier.Invariant)
-        {
-          procToInvariantAction[proc] = new InvariantAction(impl, this);
-        }
-        else if (proc.ActionQualifier == ActionQualifier.Abstract)
-        {
-          procToAtomicAction[proc] = new AtomicAction(impl, null, this);
-        }
-        else if (proc.ActionQualifier == ActionQualifier.Async)
-        {
-          procToAtomicAction[proc] = new AtomicAction(impl, null, this);
+          procToInvariantAction[actionDecl] = new InvariantAction(actionDecl, this);
         }
         else
         {
-          procToAtomicAction[proc] = new AtomicAction(impl, null, this);
+          procToAtomicAction[actionDecl] = new AtomicAction(actionDecl, null, this);
         }
       }
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
@@ -276,17 +257,16 @@ namespace Microsoft.Boogie
       });
     }
 
-    private void CreateActionsThatRefineAnotherAction(ActionDecl proc)
+    private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl)
     {
-      if (procToAtomicAction.ContainsKey(proc))
+      if (procToAtomicAction.ContainsKey(actionDecl))
       {
         return;
       }
-      var refinedProc = proc.RefinedAction.ActionDecl;
+      var refinedProc = actionDecl.RefinedAction.ActionDecl;
       CreateActionsThatRefineAnotherAction(refinedProc);
       var refinedAction = procToAtomicAction[refinedProc];
-      Implementation impl = proc.Impl;
-      procToAtomicAction[proc] = new AtomicAction(impl, refinedAction, this);
+      procToAtomicAction[actionDecl] = new AtomicAction(actionDecl, refinedAction, this);
     }
 
     private void TypeCheckYieldingProcedures()
@@ -341,30 +321,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    private void TypeCheckRefinementLayers()
-    {
-      var allInductiveSequentializationLayers =
-        inductiveSequentializations.Select(x => x.invariantAction.LayerRange.UpperLayer).ToList();
-      var intersect = allRefinementLayers.Intersect(allInductiveSequentializationLayers).ToList();
-      if (intersect.Any())
-      {
-        checkingContext.Error(Token.NoToken,
-          $"procedure refinement and action refinement layers must be disjoint but the following layers mix the two: {string.Join(",", intersect)}");
-      }
-      foreach (var g in GlobalVariables)
-      {
-        var layerRange = g.LayerRange;
-        if (allInductiveSequentializationLayers.Contains(layerRange.LowerLayer))
-        {
-          Error(g, $"global variable {g.Name} cannot be introduced at action refinement layer");
-        }
-        if (allInductiveSequentializationLayers.Contains(layerRange.UpperLayer))
-        {
-          Error(g, $"global variable {g.Name} cannot be hidden at action refinement layer");
-        }
-      }
-    }
-    
     private class SignatureMatcher
     {
       public static void CheckRefinementSignature(YieldProcedureDecl proc, CheckingContext checkingContext)

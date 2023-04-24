@@ -2810,7 +2810,7 @@ namespace Microsoft.Boogie
     {
       foreach (Requires e in this.Requires)
       {
-        stream.Write(this,  level, "invariant ");
+        stream.Write(this, level, "invariant ");
         e.Condition.Emit(stream);
         stream.WriteLine(";");
       }
