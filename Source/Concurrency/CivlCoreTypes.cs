@@ -6,7 +6,7 @@ namespace Microsoft.Boogie
 {
   public abstract class Action
   {
-    public Implementation Impl;
+    public ActionDecl ActionDecl;
     public List<AssertCmd> Gate;
     public HashSet<Variable> UsedGlobalVarsInGate;
     public HashSet<Variable> UsedGlobalVarsInAction;
@@ -14,47 +14,33 @@ namespace Microsoft.Boogie
     public List<ActionDecl> PendingAsyncs;
     public Function InputOutputRelation;
 
-    protected Action(Implementation impl, CivlTypeChecker civlTypeChecker)
+    protected Action(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker)
     {
-      this.Impl = impl;
-      
-      // We usually declare the Boogie procedure and implementation of an atomic action together.
-      // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
-      // we copy them into the implementation parameters here.
-      for (int i = 0; i < ActionDecl.InParams.Count; i++)
-      {
-        impl.InParams[i].Attributes = ActionDecl.InParams[i].Attributes;
-      }
-
-      for (int i = 0; i < ActionDecl.OutParams.Count; i++)
-      {
-        impl.OutParams[i].Attributes = ActionDecl.OutParams[i].Attributes;
-      }
-      
+      this.ActionDecl = actionDecl;
       this.PendingAsyncs = ActionDecl.Creates.Select(x => x.ActionDecl).ToList();
       var lhss = new List<IdentifierExpr>();
       var rhss = new List<Expr>();
       PendingAsyncs.Iter(decl =>
       {
         var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
-        impl.OutParams.Add(pa);
         ActionDecl.OutParams.Add(pa);
+        Impl.OutParams.Add(pa);
         lhss.Add(Expr.Ident(pa));
         rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
         var paLocal = civlTypeChecker.LocalVariable($"local_PAs_{decl.Name}", decl.PendingAsyncMultisetType);
-        impl.LocVars.Add(paLocal);
+        Impl.LocVars.Add(paLocal);
       });
       if (PendingAsyncs.Any())
       {
         var tc = new TypecheckingContext(null, civlTypeChecker.Options);
         var assignCmd = CmdHelper.AssignCmd(lhss, rhss);
         assignCmd.Typecheck(tc);
-        impl.Blocks[0].Cmds.Insert(0, assignCmd);
+        Impl.Blocks[0].Cmds.Insert(0, assignCmd);
       }
       DesugarCreateAsyncs(civlTypeChecker);
     }
 
-    public ActionDecl ActionDecl => (ActionDecl)Impl.Proc;
+    public Implementation Impl => ActionDecl.Impl;
     
     public LayerRange LayerRange => ActionDecl.LayerRange;
 
@@ -283,7 +269,8 @@ namespace Microsoft.Boogie
     
     public Dictionary<Variable, Function> TriggerFunctions;
 
-    public AtomicAction(Implementation impl, AtomicAction refinedAction, CivlTypeChecker civlTypeChecker) : base(impl, civlTypeChecker)
+    public AtomicAction(ActionDecl actionDecl, AtomicAction refinedAction, CivlTypeChecker civlTypeChecker) :
+      base(actionDecl, civlTypeChecker)
     {
       this.RefinedAction = refinedAction;
     }
@@ -368,9 +355,9 @@ namespace Microsoft.Boogie
   {
     public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
 
-    public InvariantAction(Implementation impl, CivlTypeChecker civlTypeChecker) : base(impl, civlTypeChecker)
+    public InvariantAction(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker) : base(actionDecl, civlTypeChecker)
     {
-      var choiceDatatypeName = $"Choice_{impl.Name}";
+      var choiceDatatypeName = $"Choice_{ActionDecl.Name}";
       ChoiceDatatypeTypeCtorDecl =
         new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
       PendingAsyncs.Iter(elim =>
@@ -381,8 +368,8 @@ namespace Microsoft.Boogie
       });
       civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
       var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
-      impl.OutParams.Add(choice);
       ActionDecl.OutParams.Add(choice);
+      Impl.OutParams.Add(choice);
       DesugarSetChoice(civlTypeChecker, choice);
     }
 

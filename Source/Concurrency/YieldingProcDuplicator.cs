@@ -115,10 +115,9 @@ namespace Microsoft.Boogie
     private Implementation enclosingImpl;
     private YieldProcedureDecl enclosingYieldingProc;
     private bool IsRefinementLayer => layerNum == enclosingYieldingProc.Layer;
+
     private AtomicAction RefinedAction =>
-      enclosingYieldingProc.RefinedAction == null
-        ? civlTypeChecker.SkipAtomicAction
-        : civlTypeChecker.procToAtomicAction[enclosingYieldingProc.RefinedAction.ActionDecl];
+      civlTypeChecker.procToAtomicAction[enclosingYieldingProc.RefinedAction.ActionDecl];
 
     private List<Cmd> newCmdSeq;
 
@@ -405,9 +404,7 @@ namespace Microsoft.Boogie
 
     private void AddActionCall(CallCmd newCall, YieldProcedureDecl calleeActionProc)
     {
-      var calleeRefinedAction = calleeActionProc.RefinedAction == null
-        ? civlTypeChecker.SkipAtomicAction
-        : civlTypeChecker.procToAtomicAction[calleeActionProc.RefinedActionAtLayer(layerNum)];
+      var calleeRefinedAction = civlTypeChecker.procToAtomicAction[calleeActionProc.RefinedActionAtLayer(layerNum)];
 
       newCall.IsAsync = false;
       newCall.Proc = calleeRefinedAction.ActionDecl;
@@ -554,7 +551,7 @@ namespace Microsoft.Boogie
 
     private void AddPendingAsync(CallCmd newCall, YieldProcedureDecl calleeProc)
     {
-      if (calleeProc.RefinedAction == null)
+      if (calleeProc.RefinedAction.ActionDecl == civlTypeChecker.SkipAtomicAction.ActionDecl)
       {
         return;
       }

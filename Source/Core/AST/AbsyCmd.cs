@@ -1133,7 +1133,12 @@ namespace Microsoft.Boogie
 
       stream.WriteLine(")");
 
-      foreach (PredicateCmd inv in Invariants)
+      foreach (var yield in Yields)
+      {
+        stream.Write(level + 1, "invariant");
+        yield.Emit(stream, level + 1);
+      }
+      foreach (var inv in Invariants)
       {
         if (inv is AssumeCmd)
         {

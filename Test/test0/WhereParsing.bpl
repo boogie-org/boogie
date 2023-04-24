@@ -31,6 +31,6 @@ procedure {:myProcAttr} Attr(x: int, {:myParamAttr x, y} y: bool) returns (z: in
 }
 
 procedure BadAttrs(x: int);
-implementation BadAttrs({:myParamAttr} x: int)  // error: attributes not allowed in implementation decl
+implementation BadAttrs({:myParamAttr} x: int)  // attributes allowed in implementation decl
 {
 }

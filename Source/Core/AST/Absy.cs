@@ -2615,16 +2615,13 @@ namespace Microsoft.Boogie
       this.Attributes = kv;
     }
 
-    public override void Emit(TokenTextWriter stream, int level)
+    protected virtual void EmitBegin(TokenTextWriter stream, int level)
     {
       stream.Write(this, level, IsPure ? "pure procedure " : "procedure ");
-      EmitAttributes(stream);
-      stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
-      EmitSignature(stream, false);
-      stream.WriteLine(";");
+    }
 
-      level++;
-
+    protected virtual void EmitEnd(TokenTextWriter stream, int level)
+    {
       foreach (Requires e in this.Requires)
       {
         Contract.Assert(e != null);
@@ -2643,7 +2640,17 @@ namespace Microsoft.Boogie
         Contract.Assert(e != null);
         e.Emit(stream, level);
       }
+    }
 
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      EmitBegin(stream, level);
+      EmitAttributes(stream);
+      stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
+      EmitSignature(stream, false);
+      stream.WriteLine(";");
+      level++;
+      EmitEnd(stream, level);
       stream.WriteLine();
       stream.WriteLine();
     }
@@ -2792,6 +2799,21 @@ namespace Microsoft.Boogie
     public override Absy StdDispatch(StandardVisitor visitor)
     {
       return visitor.VisitYieldInvariantDecl(this);
+    }
+
+    protected override void EmitBegin(TokenTextWriter stream, int level)
+    {
+      stream.Write(this, "yield invariant ");
+    }
+
+    protected override void EmitEnd(TokenTextWriter stream, int level)
+    {
+      foreach (Requires e in this.Requires)
+      {
+        stream.Write(this, level, "invariant ");
+        e.Condition.Emit(stream);
+        stream.WriteLine(";");
+      }
     }
   }
 
@@ -3084,6 +3106,59 @@ namespace Microsoft.Boogie
       }
     }
 
+    protected override void EmitBegin(TokenTextWriter stream, int level)
+    {
+      switch (ActionQualifier)
+      {
+        case ActionQualifier.Abstract:
+          stream.Write(level, "abstract ");
+          break;
+        case ActionQualifier.Async:
+          stream.Write(level, "async ");
+          break;
+        case ActionQualifier.Invariant:
+          stream.Write(level, "invariant ");
+          break;
+        case ActionQualifier.Link:
+          stream.Write(level, "link ");
+          break;
+      }
+      switch (MoverType)
+      {
+        case MoverType.Both:
+          stream.Write(level, "<-> ");
+          break;
+        case MoverType.Left:
+          stream.Write(level, "<- ");
+          break;
+        case MoverType.Right:
+          stream.Write(level, "-> ");
+          break;
+      }
+      stream.Write(level, " action ");
+    }
+
+    protected override void EmitEnd(TokenTextWriter stream, int level)
+    {
+      if (RefinedAction != null)
+      {
+        stream.Write(level, $"refines {RefinedAction.ActionName}");
+        if (InvariantAction == null)
+        {
+          stream.WriteLine(";");
+        }
+        else
+        {
+          stream.WriteLine($" using {InvariantAction.ActionName};");
+        }
+      }
+      if (Creates.Any())
+      {
+        stream.WriteLine(level, $"creates {string.Join(",", Creates.Select(x => x.ActionName))};");
+      }
+      base.EmitEnd(stream, level);
+    }
+
     public Dictionary<ActionDecl, ActionDecl> EliminationMap()
     {
       var refinedProc = RefinedAction.ActionDecl;
@@ -3269,6 +3344,35 @@ namespace Microsoft.Boogie
     public override Absy StdDispatch(StandardVisitor visitor)
     {
       return visitor.VisitYieldProcedureDecl(this);
+    }
+
+    protected override void EmitBegin(TokenTextWriter stream, int level)
+    {
+      stream.Write(this, "yield procedure ");
+    }
+
+    protected override void EmitEnd(TokenTextWriter stream, int level)
+    {
+      if (RefinedAction != null)
+      {
+        stream.WriteLine($"refines {RefinedAction.ActionName};");
+      }
+      foreach (var yieldRequires in YieldRequires)
+      {
+        stream.Write("requires");
+        yieldRequires.Emit(stream, level);
+      }
+      foreach (var yieldEnsures in YieldEnsures)
+      {
+        stream.Write("ensures");
+        yieldEnsures.Emit(stream, level);
+      }
+      foreach (var yieldPreserves in YieldPreserves)
+      {
+        stream.Write("preserves");
+        yieldPreserves.Emit(stream, level);
+      }
+      base.EmitEnd(stream, level);
     }
 
     public IEnumerable<CallCmd> CallCmds()
