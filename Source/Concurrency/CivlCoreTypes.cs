@@ -17,28 +17,14 @@ namespace Microsoft.Boogie
     protected Action(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker)
     {
       this.ActionDecl = actionDecl;
-      
-      // We usually declare the Boogie procedure and implementation of an atomic action together.
-      // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
-      // we copy them into the implementation parameters here.
-      for (int i = 0; i < ActionDecl.InParams.Count; i++)
-      {
-        Impl.InParams[i].Attributes = ActionDecl.InParams[i].Attributes;
-      }
-
-      for (int i = 0; i < ActionDecl.OutParams.Count; i++)
-      {
-        Impl.OutParams[i].Attributes = ActionDecl.OutParams[i].Attributes;
-      }
-      
       this.PendingAsyncs = ActionDecl.Creates.Select(x => x.ActionDecl).ToList();
       var lhss = new List<IdentifierExpr>();
       var rhss = new List<Expr>();
       PendingAsyncs.Iter(decl =>
       {
         var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
-        Impl.OutParams.Add(pa);
         ActionDecl.OutParams.Add(pa);
+        Impl.OutParams.Add(pa);
         lhss.Add(Expr.Ident(pa));
         rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
         var paLocal = civlTypeChecker.LocalVariable($"local_PAs_{decl.Name}", decl.PendingAsyncMultisetType);
