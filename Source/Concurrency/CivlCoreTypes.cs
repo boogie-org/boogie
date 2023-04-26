@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 
@@ -7,7 +6,7 @@ namespace Microsoft.Boogie
 {
   public abstract class Action
   {
-    public Implementation Impl;
+    public ActionDecl ActionDecl;
     public List<AssertCmd> Gate;
     public HashSet<Variable> UsedGlobalVarsInGate;
     public HashSet<Variable> UsedGlobalVarsInAction;
@@ -15,51 +14,37 @@ namespace Microsoft.Boogie
     public List<ActionDecl> PendingAsyncs;
     public Function InputOutputRelation;
 
-    protected Action(Implementation impl, CivlTypeChecker civlTypeChecker)
+    protected Action(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker)
     {
-      this.Impl = impl;
-      
-      // We usually declare the Boogie procedure and implementation of an atomic action together.
-      // Since Boogie only stores the supplied attributes (in particular linearity) in the procedure parameters,
-      // we copy them into the implementation parameters here.
-      for (int i = 0; i < ActionDecl.InParams.Count; i++)
-      {
-        impl.InParams[i].Attributes = ActionDecl.InParams[i].Attributes;
-      }
-
-      for (int i = 0; i < ActionDecl.OutParams.Count; i++)
-      {
-        impl.OutParams[i].Attributes = ActionDecl.OutParams[i].Attributes;
-      }
-      
+      this.ActionDecl = actionDecl;
       this.PendingAsyncs = ActionDecl.Creates.Select(x => x.ActionDecl).ToList();
       var lhss = new List<IdentifierExpr>();
       var rhss = new List<Expr>();
       PendingAsyncs.Iter(decl =>
       {
         var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
-        impl.OutParams.Add(pa);
         ActionDecl.OutParams.Add(pa);
+        Impl.OutParams.Add(pa);
         lhss.Add(Expr.Ident(pa));
         rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
         var paLocal = civlTypeChecker.LocalVariable($"local_PAs_{decl.Name}", decl.PendingAsyncMultisetType);
-        impl.LocVars.Add(paLocal);
+        Impl.LocVars.Add(paLocal);
       });
       if (PendingAsyncs.Any())
       {
         var tc = new TypecheckingContext(null, civlTypeChecker.Options);
         var assignCmd = CmdHelper.AssignCmd(lhss, rhss);
         assignCmd.Typecheck(tc);
-        impl.Blocks[0].Cmds.Insert(0, assignCmd);
+        Impl.Blocks[0].Cmds.Insert(0, assignCmd);
       }
       DesugarCreateAsyncs(civlTypeChecker);
     }
 
-    public ActionDecl ActionDecl => (ActionDecl)Impl.Proc;
+    public Implementation Impl => ActionDecl.Impl;
     
     public LayerRange LayerRange => ActionDecl.LayerRange;
 
-    public int LowerLayer => LayerRange.lowerLayerNum;
+    public int LowerLayer => LayerRange.LowerLayer;
 
     public bool HasPendingAsyncs => PendingAsyncs.Count > 0;
 
@@ -284,7 +269,8 @@ namespace Microsoft.Boogie
     
     public Dictionary<Variable, Function> TriggerFunctions;
 
-    public AtomicAction(Implementation impl, AtomicAction refinedAction, CivlTypeChecker civlTypeChecker) : base(impl, civlTypeChecker)
+    public AtomicAction(ActionDecl actionDecl, AtomicAction refinedAction, CivlTypeChecker civlTypeChecker) :
+      base(actionDecl, civlTypeChecker)
     {
       this.RefinedAction = refinedAction;
     }
@@ -369,9 +355,9 @@ namespace Microsoft.Boogie
   {
     public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
 
-    public InvariantAction(Implementation impl, CivlTypeChecker civlTypeChecker) : base(impl, civlTypeChecker)
+    public InvariantAction(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker) : base(actionDecl, civlTypeChecker)
     {
-      var choiceDatatypeName = $"Choice_{impl.Name}";
+      var choiceDatatypeName = $"Choice_{ActionDecl.Name}";
       ChoiceDatatypeTypeCtorDecl =
         new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
       PendingAsyncs.Iter(elim =>
@@ -382,8 +368,8 @@ namespace Microsoft.Boogie
       });
       civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
       var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
-      impl.OutParams.Add(choice);
       ActionDecl.OutParams.Add(choice);
+      Impl.OutParams.Add(choice);
       DesugarSetChoice(civlTypeChecker, choice);
     }
 
@@ -425,84 +411,6 @@ namespace Microsoft.Boogie
         }
         block.Cmds = newCmds;
       });
-    }
-  }
-
-  public class YieldingLoop
-  {
-    public int Layer;
-    public List<CallCmd> YieldInvariants;
-
-    public YieldingLoop(int layer, List<CallCmd> yieldInvariants)
-    {
-      this.Layer = layer;
-      this.YieldInvariants = yieldInvariants;
-    }
-  }
-
-  public abstract class YieldingProc
-  {
-    public YieldProcedureDecl Proc;
-    public List<CallCmd> YieldRequires;
-    public List<CallCmd> YieldEnsures;
-    
-    public YieldingProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
-    {
-      this.Proc = proc;
-      this.YieldRequires = yieldRequires;
-      this.YieldEnsures = yieldEnsures;
-    }
-
-    public int Layer => Proc.Layer;
-    
-    public abstract MoverType MoverType { get; }
-
-    public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
-
-    public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
-  }
-
-  public class MoverProc : YieldingProc
-  {
-    public HashSet<Variable> ModifiedGlobalVars;
-
-    public MoverProc(YieldProcedureDecl proc, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
-      : base(proc, yieldRequires, yieldEnsures)
-    {
-      ModifiedGlobalVars = new HashSet<Variable>(proc.Modifies.Select(ie => ie.Decl));
-    }
-
-    public override MoverType MoverType => Proc.MoverType;
-  }
-
-  public class ActionProc : YieldingProc
-  {
-    public AtomicAction RefinedAction;
-    public HashSet<Variable> HiddenFormals;
-
-    public ActionProc(YieldProcedureDecl proc, AtomicAction refinedAction, HashSet<Variable> hiddenFormals,
-      List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures)
-      : base(proc, yieldRequires, yieldEnsures)
-    {
-      this.RefinedAction = refinedAction;
-      this.HiddenFormals = hiddenFormals;
-    }
-
-    public override MoverType MoverType => RefinedAction.ActionDecl.MoverType;
-
-    public AtomicAction RefinedActionAtLayer(int layer)
-    {
-      Debug.Assert(layer >= base.Layer);
-      var action = RefinedAction;
-      while (action != null)
-      {
-        if (layer <= action.LayerRange.upperLayerNum)
-        {
-          return action;
-        }
-        action = action.RefinedAction;
-      }
-      return null;
     }
   }
 

@@ -1297,7 +1297,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       if (Decl != null)
       {
         // already resolved, but re-resolve type just in case it came from an unresolved type
@@ -1327,14 +1326,12 @@ namespace Microsoft.Boogie
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      //Contract.Requires(freeVars != null);
       Contract.Assume(this.Decl != null);
       freeVars.Add(Decl);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       if (this.Decl != null)
       {
         // sanity check
@@ -1349,6 +1346,51 @@ namespace Microsoft.Boogie
         }
 
         Type = Decl.TypedIdent.Type;
+        if (Decl is Constant || Decl is BoundVariable)
+        {
+          return;
+        }
+
+        // Decl is GlobalVariable or LocalVariable or Formal
+        if (tc.Proc is ActionDecl actionDecl)
+        {
+          if (Decl is GlobalVariable)
+          {
+            var globalVarLayerRange = Decl.LayerRange;
+            if (actionDecl.ActionQualifier != ActionQualifier.Link)
+            {
+              // a global variable introduced at layer n is visible to an action only at layer n+1 or higher
+              // unless the action is a link action
+              globalVarLayerRange =
+                new LayerRange(globalVarLayerRange.LowerLayer + 1, globalVarLayerRange.UpperLayer);
+            }
+            if (!actionDecl.LayerRange.Subset(globalVarLayerRange))
+            {
+              tc.Error(this, $"variable not available across layers in {actionDecl.LayerRange}: {Decl.Name}");
+            }
+          }
+        }
+        else if (tc.Proc is YieldInvariantDecl yieldInvariantDecl)
+        {
+          if (Decl is GlobalVariable)
+          {
+            if (!Decl.LayerRange.Contains(yieldInvariantDecl.Layer))
+            {
+              tc.Error(this, $"variable not available at layer {yieldInvariantDecl.Layer}: {Decl.Name}");
+            }
+          }
+        }
+        else if (tc.Proc is YieldProcedureDecl)
+        {
+          if (Decl is GlobalVariable && !tc.GlobalAccessOk)
+          {
+            tc.Error(this, $"global variable must be accessed inside old expression: {Decl.Name}");
+          }
+          if (tc.ExpectedLayerRange != null && !tc.ExpectedLayerRange.Subset(Decl.LayerRange))
+          {
+            tc.Error(this, $"variable not available across layers in {tc.ExpectedLayerRange}: {Decl.Name}");
+          }
+        }
       }
     }
 
@@ -1517,8 +1559,9 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
+      tc.InsideOld++;
       Expr.Typecheck(tc);
+      tc.InsideOld--;
       Type = Expr.Type;
     }
 
