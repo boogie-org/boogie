@@ -65,7 +65,6 @@ namespace Microsoft.Boogie
       skipProcedure.LayerRange = LayerRange.MinMax;
       skipProcedure.Impl = skipImplementation;
       SkipAtomicAction = new AtomicAction(skipProcedure, null, this);
-      SkipAtomicAction.CompleteInitialization(this);
       if (program.TopLevelDeclarations.OfType<YieldProcedureDecl>().Any())
       {
         procToAtomicAction[skipProcedure] = SkipAtomicAction;
@@ -236,11 +235,11 @@ namespace Microsoft.Boogie
       // Construct transition and input-output relation
       procToAtomicAction.Values.Iter(action =>
       {
-        action.CompleteInitialization(this, true);
+        action.CompleteInitialization(this);
       });
       procToInvariantAction.Values.Iter(action =>
       {
-        action.CompleteInitialization(this, true);
+        action.CompleteInitialization(this);
       });
       
       // Construct inductive sequentializations

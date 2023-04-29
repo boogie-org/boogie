@@ -65,47 +65,44 @@ namespace Microsoft.Boogie
     // The flag initializeInputOutputRelation is added just so the Boogie function representing the input-output relation
     // of SkipAtomicAction (not needed) is not injected into TopLevelDeclarations. This trick ensures that if the input
     // program does not use Civl features then the program is not modified.
-    public virtual void CompleteInitialization(CivlTypeChecker civlTypeChecker, bool initializeInputOutputRelation = false)
+    public virtual void CompleteInitialization(CivlTypeChecker civlTypeChecker)
     {
       Gate = HoistAsserts(Impl, civlTypeChecker.Options);
       UsedGlobalVarsInGate = new HashSet<Variable>(VariableCollector.Collect(Gate).Where(x => x is GlobalVariable));
       UsedGlobalVarsInAction = new HashSet<Variable>(VariableCollector.Collect(Impl).Where(x => x is GlobalVariable));
       ModifiedGlobalVars = new HashSet<Variable>(ActionDecl.Modifies.Select(x => x.Decl));
-
-      if (initializeInputOutputRelation)
+      
+      var alwaysMap = new Dictionary<Variable, Expr>();
+      var foroldMap = new Dictionary<Variable, Expr>();
+      civlTypeChecker.program.GlobalVariables.Iter(g =>
       {
-        var alwaysMap = new Dictionary<Variable, Expr>();
-        var foroldMap = new Dictionary<Variable, Expr>();
-        civlTypeChecker.program.GlobalVariables.Iter(g =>
-        {
-          alwaysMap[g] = Expr.Ident(civlTypeChecker.BoundVariable(g.Name, g.TypedIdent.Type));
-          foroldMap[g] = Expr.Ident(civlTypeChecker.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
-        });
-        Impl.InParams.Concat(Impl.OutParams).Iter(v =>
-        {
-          alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
-        });
-        var always = Substituter.SubstitutionFromDictionary(alwaysMap);
-        var forold = Substituter.SubstitutionFromDictionary(foroldMap);
-        var transitionRelationExpr =
-          Substituter.ApplyReplacingOldExprs(always, forold,
-            TransitionRelationComputation.Refinement(civlTypeChecker, this, new HashSet<Variable>(ModifiedGlobalVars)));
-        var gateExprs = Gate.Select(assertCmd =>
-          Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
-        var transitionRelationInputs = Impl.InParams.Concat(Impl.OutParams)
-          .Select(key => alwaysMap[key]).OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
-        InputOutputRelation = new Function(Token.NoToken, $"Civl_InputOutputRelation_{ActionDecl.Name}",
-          new List<TypeVariable>(),
-          transitionRelationInputs, VarHelper.Formal(TypedIdent.NoName, Type.Bool, false), null,
-          new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
-        var existsVars = foroldMap.Values
-          .Concat(alwaysMap.Keys.Where(key => key is GlobalVariable).Select(key => alwaysMap[key]))
-          .OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
-        InputOutputRelation.Body =
-          ExprHelper.ExistsExpr(existsVars, Expr.And(gateExprs.Append(transitionRelationExpr)));
-        CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, InputOutputRelation.Body);
-        civlTypeChecker.program.AddTopLevelDeclaration(InputOutputRelation);
-      }
+        alwaysMap[g] = Expr.Ident(civlTypeChecker.BoundVariable(g.Name, g.TypedIdent.Type));
+        foroldMap[g] = Expr.Ident(civlTypeChecker.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
+      });
+      Impl.InParams.Concat(Impl.OutParams).Iter(v =>
+      {
+        alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
+      });
+      var always = Substituter.SubstitutionFromDictionary(alwaysMap);
+      var forold = Substituter.SubstitutionFromDictionary(foroldMap);
+      var transitionRelationExpr =
+        Substituter.ApplyReplacingOldExprs(always, forold,
+          TransitionRelationComputation.Refinement(civlTypeChecker, this, new HashSet<Variable>(ModifiedGlobalVars)));
+      var gateExprs = Gate.Select(assertCmd =>
+        Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
+      var transitionRelationInputs = Impl.InParams.Concat(Impl.OutParams)
+        .Select(key => alwaysMap[key]).OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
+      InputOutputRelation = new Function(Token.NoToken, $"Civl_InputOutputRelation_{ActionDecl.Name}",
+        new List<TypeVariable>(),
+        transitionRelationInputs, VarHelper.Formal(TypedIdent.NoName, Type.Bool, false), null,
+        new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
+      var existsVars = foroldMap.Values
+        .Concat(alwaysMap.Keys.Where(key => key is GlobalVariable).Select(key => alwaysMap[key]))
+        .OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
+      InputOutputRelation.Body =
+        ExprHelper.ExistsExpr(existsVars, Expr.And(gateExprs.Append(transitionRelationExpr)));
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, InputOutputRelation.Body);
+      civlTypeChecker.program.AddTopLevelDeclaration(InputOutputRelation);
     }
 
     private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker)
@@ -275,9 +272,9 @@ namespace Microsoft.Boogie
       this.RefinedAction = refinedAction;
     }
 
-    public override void CompleteInitialization(CivlTypeChecker civlTypeChecker, bool initializeInputOutputRelation = false)
+    public override void CompleteInitialization(CivlTypeChecker civlTypeChecker)
     {
-      base.CompleteInitialization(civlTypeChecker, initializeInputOutputRelation);
+      base.CompleteInitialization(civlTypeChecker);
 
       AtomicActionDuplicator.SetupCopy(this, ref FirstGate, ref FirstImpl, "first_");
       AtomicActionDuplicator.SetupCopy(this, ref SecondGate, ref SecondImpl, "second_");
