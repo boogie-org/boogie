@@ -18,26 +18,26 @@ namespace Microsoft.Boogie
     {
       this.ActionDecl = actionDecl;
       this.PendingAsyncs = ActionDecl.Creates.Select(x => x.ActionDecl).ToList();
-      var lhss = new List<IdentifierExpr>();
-      var rhss = new List<Expr>();
-      PendingAsyncs.Iter(decl =>
-      {
-        var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
-        ActionDecl.OutParams.Add(pa);
-        Impl.OutParams.Add(pa);
-        lhss.Add(Expr.Ident(pa));
-        rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
-        var paLocal = civlTypeChecker.LocalVariable($"local_PAs_{decl.Name}", decl.PendingAsyncMultisetType);
-        Impl.LocVars.Add(paLocal);
-      });
       if (PendingAsyncs.Any())
       {
+        var lhss = new List<IdentifierExpr>();
+        var rhss = new List<Expr>();
+        PendingAsyncs.Iter(decl =>
+        {
+          var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
+          ActionDecl.OutParams.Add(pa);
+          Impl.OutParams.Add(pa);
+          lhss.Add(Expr.Ident(pa));
+          rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
+          var paLocal = civlTypeChecker.LocalVariable($"local_PAs_{decl.Name}", decl.PendingAsyncMultisetType);
+          Impl.LocVars.Add(paLocal);
+        });
         var tc = new TypecheckingContext(null, civlTypeChecker.Options);
         var assignCmd = CmdHelper.AssignCmd(lhss, rhss);
         assignCmd.Typecheck(tc);
         Impl.Blocks[0].Cmds.Insert(0, assignCmd);
+        DesugarCreateAsyncs(civlTypeChecker);
       }
-      DesugarCreateAsyncs(civlTypeChecker);
     }
 
     public Implementation Impl => ActionDecl.Impl;

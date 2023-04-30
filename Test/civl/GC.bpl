@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //
 
-// RUN: %parallel-boogie /vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type {:linear "tid"} X = int;
