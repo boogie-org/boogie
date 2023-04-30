@@ -551,7 +551,7 @@ namespace Microsoft.Boogie
 
     private void AddPendingAsync(CallCmd newCall, YieldProcedureDecl calleeProc)
     {
-      if (calleeProc.RefinedAction.ActionDecl == civlTypeChecker.SkipAtomicAction.ActionDecl)
+      if (calleeProc.RefinedAction.ActionDecl == civlTypeChecker.SkipActionDecl)
       {
         return;
       }

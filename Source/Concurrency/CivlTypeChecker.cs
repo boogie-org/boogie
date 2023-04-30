@@ -11,7 +11,7 @@ namespace Microsoft.Boogie
     public Program program;
     public LinearTypeChecker linearTypeChecker;
     public List<int> allRefinementLayers;
-    public AtomicAction SkipAtomicAction;
+    public ActionDecl SkipActionDecl;
     
     public Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
     private Dictionary<ActionDecl, InvariantAction> procToInvariantAction;
@@ -53,30 +53,28 @@ namespace Microsoft.Boogie
         }
       }
 
-      var skipProcedure = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, ActionQualifier.None,
+      SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, ActionQualifier.None,
         new List<Variable>(), new List<Variable>(), new List<ActionDeclRef>(), null, null, new List<ElimDecl>(),
         new List<IdentifierExpr>(), null, null);
       var skipImplementation = DeclHelper.Implementation(
-        skipProcedure,
+        SkipActionDecl,
         new List<Variable>(),
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
-      skipProcedure.LayerRange = LayerRange.MinMax;
-      skipProcedure.Impl = skipImplementation;
-      SkipAtomicAction = new AtomicAction(skipProcedure, null, this);
+      SkipActionDecl.LayerRange = LayerRange.MinMax;
+      SkipActionDecl.Impl = skipImplementation;
       if (program.TopLevelDeclarations.OfType<YieldProcedureDecl>().Any())
       {
-        procToAtomicAction[skipProcedure] = SkipAtomicAction;
-        program.AddTopLevelDeclaration(skipProcedure);
+        program.AddTopLevelDeclaration(SkipActionDecl);
         program.AddTopLevelDeclaration(skipImplementation);
       }
       program.TopLevelDeclarations.OfType<YieldProcedureDecl>()
         .Where(decl => !decl.HasMoverType && decl.RefinedAction == null).Iter(decl =>
         {
-          decl.RefinedAction = new ActionDeclRef(Token.NoToken, skipProcedure.Name)
+          decl.RefinedAction = new ActionDeclRef(Token.NoToken, SkipActionDecl.Name)
           {
-            ActionDecl = skipProcedure
+            ActionDecl = SkipActionDecl
           };
         });
     }
@@ -209,7 +207,7 @@ namespace Microsoft.Boogie
       actionDecls.Where(proc => proc.RefinedAction != null).Iter(CreateActionsThatRefineAnotherAction);
 
       // Inline atomic actions
-      CivlUtil.AddInlineAttribute(SkipAtomicAction.ActionDecl);
+      CivlUtil.AddInlineAttribute(SkipActionDecl);
       actionDecls.Iter(proc =>
       {
         CivlAttributes.RemoveAttributes(proc, new HashSet<string> { "inline" });
