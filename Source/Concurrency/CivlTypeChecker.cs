@@ -125,7 +125,7 @@ namespace Microsoft.Boogie
         return;
       }
       
-      TypeCheckActions();
+      var actionDecls = TypeCheckActions();
       if (checkingContext.ErrorCount > 0)
       {
         return;
@@ -137,11 +137,13 @@ namespace Microsoft.Boogie
         return;
       }
 
+      InlineAtomicActions(actionDecls);
+      CreateAtomicActionsAndInductiveSequentializations(actionDecls);
       AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
     }
 
-    private void TypeCheckActions()
+    private HashSet<ActionDecl> TypeCheckActions()
     {
       var actionDecls = program.Procedures.OfType<ActionDecl>().ToHashSet();
       var callGraph = new Graph<Procedure>();
@@ -159,7 +161,6 @@ namespace Microsoft.Boogie
       {
         Error(program, "call graph over atomic actions must be acyclic");
       }
-
       actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
       {
         var refinedProc = proc.RefinedAction.ActionDecl;
@@ -173,40 +174,11 @@ namespace Microsoft.Boogie
           SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(targetProc, absProc, checkingContext);
         }
       });
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
+      return actionDecls;
+    }
 
-      // Four-step initialization process for actions:
-      // First, initialize all action decls so that all the pending async machinery is set up.
-      // Second, create all actions which also desugars set_choice and variations of create_async.
-      // Third, inline actions. This step must be done after the desugaring.
-      // Fourth, construct the transition and input-output relation for all actions.
-      
-      // Initialize ActionDecls
-      actionDecls.Iter(proc => proc.Initialize(program.monomorphizer));
-      
-      // Create all actions
-      foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
-      {
-        // In this loop, we create all link, invariant, and abstraction actions,
-        // but only those atomic actions (pending async or otherwise) that do not refine
-        // another action.
-        if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
-        {
-          procToInvariantAction[actionDecl] = new InvariantAction(actionDecl, this);
-        }
-        else
-        {
-          procToAtomicAction[actionDecl] = new AtomicAction(actionDecl, null, this);
-        }
-      }
-      // Now we create all atomic actions that refine other actions via an inductive sequentialization.
-      // Earlier type checking guarantees that each such action is not a pending async action.
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(CreateActionsThatRefineAnotherAction);
-
-      // Inline atomic actions
+    private void InlineAtomicActions(HashSet<ActionDecl> actionDecls)
+    {
       CivlUtil.AddInlineAttribute(SkipActionDecl);
       actionDecls.Iter(proc =>
       {
@@ -229,7 +201,32 @@ namespace Microsoft.Boogie
         impl.OriginalBlocks = null;
         impl.OriginalLocVars = null;
       });
-      
+    }
+
+    private void CreateAtomicActionsAndInductiveSequentializations(HashSet<ActionDecl> actionDecls)
+    {
+      // First, initialize all action decls so that all the pending async machinery is set up.
+      // Second, create all actions which also desugars variations of create_async and set_choice.
+      // Third, construct the transition and input-output relation for all actions.
+
+      // Initialize ActionDecls
+      actionDecls.Iter(proc => proc.Initialize(program.monomorphizer));
+
+      // Create all actions that do not refine another action
+      foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
+      {
+        if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
+        {
+          procToInvariantAction[actionDecl] = new InvariantAction(actionDecl, this);
+        }
+        else
+        {
+          procToAtomicAction[actionDecl] = new AtomicAction(actionDecl, null, this);
+        }
+      }
+      // Now we create all atomic actions that refine other actions via an inductive sequentialization.
+      actionDecls.Where(proc => proc.RefinedAction != null).Iter(CreateActionsThatRefineAnotherAction);
+
       // Construct transition and input-output relation
       procToAtomicAction.Values.Iter(action =>
       {

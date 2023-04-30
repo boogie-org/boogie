@@ -3536,6 +3536,10 @@ namespace Microsoft.Boogie
       {
         // ok
       }
+      else if (Proc.OriginalDeclWithFormals != null && CivlPrimitives.Async.Contains(Proc.OriginalDeclWithFormals.Name))
+      {
+        // ok
+      }
       else if (CivlPrimitives.Async.Contains(Proc.Name))
       {
         var type = TypeProxy.FollowProxy(TypeParameters[Proc.TypeParameters[0]].Expanded);

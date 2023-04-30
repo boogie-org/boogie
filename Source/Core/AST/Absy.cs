@@ -746,6 +746,10 @@ namespace Microsoft.Boogie
 
   public class TypeCtorDecl : NamedDeclaration
   {
+    // If this declaration is a monomorphized instance, OriginalTypeCtorDecl
+    // points to the original from which this declaration was instantiated.
+    public TypeCtorDecl OriginalTypeCtorDecl;
+
     public readonly int Arity;
 
     public TypeCtorDecl(IToken /*!*/ tok, string /*!*/ name, int Arity)
@@ -1643,6 +1647,10 @@ namespace Microsoft.Boogie
 
   public abstract class DeclWithFormals : NamedDeclaration
   {
+    // If this declaration is a monomorphized instance, OriginalDeclWithFormals
+    // points to the original from which this declaration was instantiated.
+    public DeclWithFormals OriginalDeclWithFormals;
+
     public List<TypeVariable> /*!*/
       TypeParameters;
 
