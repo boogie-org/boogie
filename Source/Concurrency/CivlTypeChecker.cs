@@ -400,8 +400,8 @@ namespace Microsoft.Boogie
     public IEnumerable<AtomicAction> LinkActions =>
       procToAtomicAction.Values.Where(action => action.ActionDecl.ActionQualifier == ActionQualifier.Link);
 
-    public IEnumerable<AtomicAction> MoverActions => procToAtomicAction.Values.Where(action =>
-      action.ActionDecl.ActionQualifier != ActionQualifier.Abstract && action.ActionDecl.ActionQualifier != ActionQualifier.Link);
+    public IEnumerable<AtomicAction> MoverActions => procToAtomicAction.Keys
+      .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => procToAtomicAction[actionDecl]);
 
     public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values;
 
