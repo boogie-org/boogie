@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
       List<Cmd> cmds = GetGateAsserts(invariantAction, null,
           $"Gate of {invariantAction.ActionDecl.Name} fails in IS conclusion check against {outputAction.ActionDecl.Name}")
         .ToList<Cmd>();
-      cmds.Add(GetCallCmd(invariantAction));
+      cmds.Add(GetInvariantCallCmd());
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
       cmds.Add(GetCheck(inputAction.ActionDecl.tok, Substituter.Apply(subst, GetTransitionRelation(outputAction)),
         $"IS conclusion of {inputAction.ActionDecl.Name} failed"));
@@ -94,7 +94,7 @@ namespace Microsoft.Boogie
       var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr)).ToList();
       var locals = new List<Variable>();
       List<Cmd> cmds = new List<Cmd>();
-      cmds.Add(GetCallCmd(invariantAction));
+      cmds.Add(GetInvariantCallCmd());
       cmds.Add(CmdHelper.AssumeCmd(ChoiceTest(pendingAsyncType)));
       cmds.Add(CmdHelper.AssumeCmd(Expr.Gt(Expr.Select(PAs(pendingAsyncType), Choice(pendingAsyncType)),
         Expr.Literal(0))));
@@ -229,13 +229,10 @@ namespace Microsoft.Boogie
         Expr.And(new[] { invariantTransitionRelationExpr, actionExpr, leftMoverExpr }));
     }
 
-    private CallCmd GetCallCmd(Action callee)
+    private CallCmd GetInvariantCallCmd()
     {
-      return CmdHelper.CallCmd(
-        callee.ActionDecl,
-        invariantAction.Impl.InParams,
-        invariantAction.Impl.OutParams.GetRange(0, callee.Impl.OutParams.Count)
-      );
+      return CmdHelper.CallCmd(invariantAction.ActionDecl, invariantAction.Impl.InParams,
+        invariantAction.Impl.OutParams);
     }
 
     private AssertCmd GetCheck(IToken tok, Expr expr, string msg)
