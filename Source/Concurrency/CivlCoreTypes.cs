@@ -74,7 +74,7 @@ namespace Microsoft.Boogie
       Gate = HoistAsserts(Impl, civlTypeChecker.Options);
       UsedGlobalVarsInGate = new HashSet<Variable>(VariableCollector.Collect(Gate).Where(x => x is GlobalVariable));
       UsedGlobalVarsInAction = new HashSet<Variable>(VariableCollector.Collect(Impl).Where(x => x is GlobalVariable));
-      ModifiedGlobalVars = new HashSet<Variable>(ActionDecl.Modifies.Select(x => x.Decl));
+      ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
       
       var alwaysMap = new Dictionary<Variable, Expr>();
       var foroldMap = new Dictionary<Variable, Expr>();
