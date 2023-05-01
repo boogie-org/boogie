@@ -28,7 +28,8 @@ namespace Microsoft.Boogie
         decls.AddRange(new Declaration[] { x.Impl, x.Impl.Proc, x.InputOutputRelation });
         if (x.ImplWithChoice != null)
         {
-          decls.AddRange(new Declaration[] { x.ImplWithChoice, x.ImplWithChoice.Proc });
+          decls.AddRange(new Declaration[]
+            { x.ImplWithChoice, x.ImplWithChoice.Proc, x.InputOutputRelationWithChoice });
         }
       });
 

@@ -24,6 +24,7 @@ namespace Microsoft.Boogie
     
     public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
     public Implementation ImplWithChoice;
+    public Function InputOutputRelationWithChoice;
 
     public Action(ActionDecl actionDecl, Action refinedAction, CivlTypeChecker civlTypeChecker)
     {
@@ -77,6 +78,10 @@ namespace Microsoft.Boogie
       ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
 
       InputOutputRelation = ComputeInputOutputRelation(civlTypeChecker, Impl);
+      if (ImplWithChoice != null)
+      {
+        InputOutputRelationWithChoice = ComputeInputOutputRelation(civlTypeChecker, ImplWithChoice);
+      }
 
       AtomicActionDuplicator.SetupCopy(this, ref FirstGate, ref FirstImpl, "first_");
       AtomicActionDuplicator.SetupCopy(this, ref SecondGate, ref SecondImpl, "second_");
@@ -156,7 +161,7 @@ namespace Microsoft.Boogie
         Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
       var transitionRelationInputs = impl.InParams.Concat(impl.OutParams)
         .Select(key => alwaysMap[key]).OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
-      var inputOutputRelation = new Function(Token.NoToken, $"Civl_InputOutputRelation_{Name}",
+      var inputOutputRelation = new Function(Token.NoToken, $"Civl_InputOutputRelation_{impl.Name}",
         new List<TypeVariable>(),
         transitionRelationInputs, VarHelper.Formal(TypedIdent.NoName, Type.Bool, false), null,
         new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
