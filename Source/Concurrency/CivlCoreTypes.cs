@@ -29,11 +29,7 @@ namespace Microsoft.Boogie
     {
       this.ActionDecl = actionDecl;
       this.RefinedAction = refinedAction;
-      this.Impl = new Duplicator().VisitImplementation(actionDecl.Impl);
-      this.Impl.Attributes = null;
-      this.Impl.Proc = new Procedure(actionDecl.tok, actionDecl.Name, actionDecl.TypeParameters, actionDecl.InParams,
-        actionDecl.OutParams, actionDecl.IsPure, actionDecl.Requires, actionDecl.Modifies, actionDecl.Ensures);
-      CivlUtil.AddInlineAttribute(this.Impl.Proc);
+      this.Impl = CreateDuplicateImplementation(actionDecl);
       this.PendingAsyncs = actionDecl.Creates.Select(x => x.ActionDecl).ToList();
       if (PendingAsyncs.Any())
       {
@@ -53,7 +49,7 @@ namespace Microsoft.Boogie
         var assignCmd = CmdHelper.AssignCmd(lhss, rhss);
         assignCmd.Typecheck(tc);
         Impl.Blocks[0].Cmds.Insert(0, assignCmd);
-        DesugarCreateAsyncs(civlTypeChecker);
+        DesugarCreateAsyncs(civlTypeChecker, Impl);
 
         if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
         {
@@ -70,7 +66,7 @@ namespace Microsoft.Boogie
           var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
           Impl.Proc.OutParams.Add(choice);
           Impl.OutParams.Add(choice);
-          DesugarSetChoice(civlTypeChecker, choice);
+          DesugarSetChoice(civlTypeChecker, Impl, choice);
         }
       }
       CompleteInitialization(civlTypeChecker);
@@ -102,18 +98,33 @@ namespace Microsoft.Boogie
       return Impl.OutParams.Skip(ActionDecl.PendingAsyncStartIndex).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
     }
 
-    public Variable LocalPAs(CtorType pendingAsyncType)
+    public bool HasAssumeCmd => Impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
+
+    public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
+    {
+      return ChoiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
+    }
+
+    private Variable LocalPAs(CtorType pendingAsyncType)
     {
       var pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
       return Impl.LocVars.Last(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
     }
     
-    public bool HasAssumeCmd => Impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
+    private static Implementation CreateDuplicateImplementation(ActionDecl actionDecl)
+    {
+      var impl = new Duplicator().VisitImplementation(actionDecl.Impl);
+      impl.Attributes = null;
+      impl.Proc = new Procedure(actionDecl.tok, actionDecl.Name, actionDecl.TypeParameters, actionDecl.InParams,
+        actionDecl.OutParams, actionDecl.IsPure, actionDecl.Requires, actionDecl.Modifies, actionDecl.Ensures);
+      CivlUtil.AddInlineAttribute(impl.Proc);
+      return impl;
+    }
 
     // The flag initializeInputOutputRelation is added just so the Boogie function representing the input-output relation
     // of SkipAtomicAction (not needed) is not injected into TopLevelDeclarations. This trick ensures that if the input
     // program does not use Civl features then the program is not modified.
-    public void CompleteInitialization(CivlTypeChecker civlTypeChecker)
+    private void CompleteInitialization(CivlTypeChecker civlTypeChecker)
     {
       Gate = HoistAsserts(Impl, civlTypeChecker.Options);
       UsedGlobalVarsInGate = new HashSet<Variable>(VariableCollector.Collect(Gate).Where(x => x is GlobalVariable));
@@ -157,9 +168,9 @@ namespace Microsoft.Boogie
       DeclareTriggerFunctions();
     }
 
-    private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker)
+    private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
-      Impl.Blocks.Iter(block =>
+      impl.Blocks.Iter(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
@@ -209,15 +220,10 @@ namespace Microsoft.Boogie
         block.Cmds = newCmds;
       });
     }
-    
-    public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
-    {
-      return ChoiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
-    }
 
-    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Variable choice)
+    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl, Variable choice)
     {
-      Impl.Blocks.Iter(block =>
+      impl.Blocks.Iter(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
