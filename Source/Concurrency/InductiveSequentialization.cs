@@ -41,7 +41,7 @@ namespace Microsoft.Boogie
       
       var subst = GetSubstitution(inputAction, invariantAction);
       List<Cmd> cmds = GetGateAsserts(inputAction, subst,
-          $"Gate of {inputAction.ActionDecl.Name} fails in IS base check against invariant {invariantAction.ActionDecl.Name}")
+          $"Gate of {inputAction.Name} fails in IS base check against invariant {invariantAction.Name}")
         .ToList<Cmd>();
 
       // Construct call to inputAction
@@ -64,10 +64,10 @@ namespace Microsoft.Boogie
         cmds.Add(CmdHelper.AssignCmd(lhss, rhss));
       }
       
-      cmds.Add(GetCheck(inputAction.ActionDecl.tok, GetTransitionRelation(invariantAction),
-        $"IS base of {inputAction.ActionDecl.Name} failed"));
+      cmds.Add(GetCheck(inputAction.tok, GetTransitionRelation(invariantAction),
+        $"IS base of {inputAction.Name} failed"));
 
-      return GetCheckerTuple($"IS_base_{inputAction.ActionDecl.Name}", requires, new List<Variable>(), cmds);
+      return GetCheckerTuple($"IS_base_{inputAction.Name}", requires, new List<Variable>(), cmds);
     }
 
     public Tuple<Procedure, Implementation> GenerateConclusionChecker(AtomicAction inputAction)
@@ -77,14 +77,14 @@ namespace Microsoft.Boogie
       var requires = outputAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
 
       List<Cmd> cmds = GetGateAsserts(invariantAction, null,
-          $"Gate of {invariantAction.ActionDecl.Name} fails in IS conclusion check against {outputAction.ActionDecl.Name}")
+          $"Gate of {invariantAction.Name} fails in IS conclusion check against {outputAction.Name}")
         .ToList<Cmd>();
       cmds.Add(GetInvariantCallCmd());
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
-      cmds.Add(GetCheck(inputAction.ActionDecl.tok, Substituter.Apply(subst, GetTransitionRelation(outputAction)),
-        $"IS conclusion of {inputAction.ActionDecl.Name} failed"));
+      cmds.Add(GetCheck(inputAction.tok, Substituter.Apply(subst, GetTransitionRelation(outputAction)),
+        $"IS conclusion of {inputAction.Name} failed"));
 
-      return GetCheckerTuple($"IS_conclusion_{inputAction.ActionDecl.Name}", requires, new List<Variable>(), cmds);
+      return GetCheckerTuple($"IS_conclusion_{inputAction.Name}", requires, new List<Variable>(), cmds);
     }
 
     public Tuple<Procedure, Implementation> GenerateStepChecker(AtomicAction pendingAsync)
@@ -111,7 +111,7 @@ namespace Microsoft.Boogie
       }
       var subst = Substituter.SubstitutionFromDictionary(map);
       cmds.AddRange(GetGateAsserts(abs, subst,
-        $"Gate of {abs.ActionDecl.Name} fails in IS induction step for invariant {invariantAction.ActionDecl.Name}"));
+        $"Gate of {abs.Name} fails in IS induction step for invariant {invariantAction.Name}"));
 
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
       if (abs.HasPendingAsyncs)
@@ -133,10 +133,10 @@ namespace Microsoft.Boogie
         cmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
       }
 
-      cmds.Add(GetCheck(invariantAction.ActionDecl.tok, GetTransitionRelation(invariantAction),
-        $"IS step of {invariantAction.ActionDecl.Name} with {abs.ActionDecl.Name} failed"));
+      cmds.Add(GetCheck(invariantAction.tok, GetTransitionRelation(invariantAction),
+        $"IS step of {invariantAction.Name} with {abs.Name} failed"));
       
-      return GetCheckerTuple($"IS_step_{invariantAction.ActionDecl.Name}_{abs.ActionDecl.Name}", requires, locals, cmds);
+      return GetCheckerTuple($"IS_step_{invariantAction.Name}_{abs.Name}", requires, locals, cmds);
     }
 
     /*
@@ -217,7 +217,7 @@ namespace Microsoft.Boogie
 
       var invariantFormalMap =
         invariantAction.Impl.InParams.Concat(invariantAction.Impl.OutParams).ToDictionary(v => v,
-          v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{invariantAction.ActionDecl.Name}_{v.Name}",
+          v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{invariantAction.Name}_{v.Name}",
             v.TypedIdent.Type)));
       var invariantFormalSubst = Substituter.SubstitutionFromDictionary(invariantFormalMap);
       actionExpr = Substituter.Apply(invariantFormalSubst, actionExpr);
@@ -402,7 +402,7 @@ namespace Microsoft.Boogie
 
       var subst = InductiveSequentialization.GetSubstitution(action, abs);
       List<Cmd> cmds = InductiveSequentialization.GetGateAsserts(action, subst,
-        $"Abstraction {abs.ActionDecl.Name} fails gate of {action.ActionDecl.Name}").ToList<Cmd>();
+        $"Abstraction {abs.Name} fails gate of {action.Name}").ToList<Cmd>();
       cmds.Add(
         CmdHelper.CallCmd(
           action.ActionDecl,
@@ -411,15 +411,15 @@ namespace Microsoft.Boogie
         ));
       cmds.Add(
         CmdHelper.AssertCmd(
-          abs.ActionDecl.tok,
+          abs.tok,
           TransitionRelationComputation.Refinement(civlTypeChecker, abs, frame),
-          $"Abstraction {abs.ActionDecl.Name} does not summarize {action.ActionDecl.Name}"
+          $"Abstraction {abs.Name} does not summarize {action.Name}"
         ));
 
       var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
 
       var proc = DeclHelper.Procedure(
-        civlTypeChecker.AddNamePrefix($"AbstractionCheck_{action.ActionDecl.Name}_{abs.ActionDecl.Name}"),
+        civlTypeChecker.AddNamePrefix($"AbstractionCheck_{action.Name}_{abs.Name}"),
         abs.Impl.InParams,
         abs.Impl.OutParams,
         requires,

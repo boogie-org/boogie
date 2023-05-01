@@ -40,6 +40,10 @@ namespace Microsoft.Boogie
       }
     }
 
+    public IToken tok => ActionDecl.tok;
+
+    public string Name => ActionDecl.Name;
+
     public Implementation Impl => ActionDecl.Impl;
     
     public LayerRange LayerRange => ActionDecl.LayerRange;
@@ -92,7 +96,7 @@ namespace Microsoft.Boogie
         Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
       var transitionRelationInputs = Impl.InParams.Concat(Impl.OutParams)
         .Select(key => alwaysMap[key]).OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
-      InputOutputRelation = new Function(Token.NoToken, $"Civl_InputOutputRelation_{ActionDecl.Name}",
+      InputOutputRelation = new Function(Token.NoToken, $"Civl_InputOutputRelation_{Name}",
         new List<TypeVariable>(),
         transitionRelationInputs, VarHelper.Formal(TypedIdent.NoName, Type.Bool, false), null,
         new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
@@ -354,7 +358,7 @@ namespace Microsoft.Boogie
 
     public InvariantAction(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker) : base(actionDecl, civlTypeChecker)
     {
-      var choiceDatatypeName = $"Choice_{ActionDecl.Name}";
+      var choiceDatatypeName = $"Choice_{Name}";
       ChoiceDatatypeTypeCtorDecl =
         new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
       PendingAsyncs.Iter(elim =>

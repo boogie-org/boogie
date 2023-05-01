@@ -473,7 +473,7 @@ namespace Microsoft.Boogie
         else
         {
           newCmdSeq.Add(CmdHelper.AssertCmd(assertCmd.tok, expr,
-            $"this gate of {action.ActionDecl.Name} could not be proved"));
+            $"this gate of {action.Name} could not be proved"));
         }
       }
 
