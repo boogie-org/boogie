@@ -68,7 +68,7 @@ namespace Microsoft.Boogie
           ImplWithChoice.OutParams.Add(choice);
           DesugarSetChoice(civlTypeChecker, ImplWithChoice, choice);
         }
-        DesugarSetChoice(civlTypeChecker, Impl);
+        DropSetChoice(civlTypeChecker, Impl);
       }
 
       Gate = HoistAsserts(Impl, civlTypeChecker.Options);
@@ -222,7 +222,7 @@ namespace Microsoft.Boogie
       });
     }
 
-    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
+    private void DropSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
       impl.Blocks.Iter(block =>
       {
