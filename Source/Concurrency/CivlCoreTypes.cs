@@ -73,6 +73,7 @@ namespace Microsoft.Boogie
           DesugarSetChoice(civlTypeChecker, choice);
         }
       }
+      CompleteInitialization(civlTypeChecker);
     }
 
     public IToken tok => ActionDecl.tok;
@@ -112,7 +113,7 @@ namespace Microsoft.Boogie
     // The flag initializeInputOutputRelation is added just so the Boogie function representing the input-output relation
     // of SkipAtomicAction (not needed) is not injected into TopLevelDeclarations. This trick ensures that if the input
     // program does not use Civl features then the program is not modified.
-    public virtual void CompleteInitialization(CivlTypeChecker civlTypeChecker)
+    public void CompleteInitialization(CivlTypeChecker civlTypeChecker)
     {
       Gate = HoistAsserts(Impl, civlTypeChecker.Options);
       UsedGlobalVarsInGate = new HashSet<Variable>(VariableCollector.Collect(Gate).Where(x => x is GlobalVariable));
