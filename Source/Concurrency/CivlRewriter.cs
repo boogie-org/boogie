@@ -25,7 +25,7 @@ namespace Microsoft.Boogie
       var decls = new List<Declaration>();
       civlTypeChecker.AtomicActions.Iter(x =>
       {
-        decls.AddRange(new Declaration[] { x.Impl, x.Impl.Proc });
+        decls.AddRange(new Declaration[] { x.Impl, x.Impl.Proc, x.InputOutputRelation });
         if (x.ImplWithChoice != null)
         {
           decls.AddRange(new Declaration[] { x.ImplWithChoice, x.ImplWithChoice.Proc });
