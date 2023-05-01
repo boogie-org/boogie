@@ -22,11 +22,14 @@ namespace Microsoft.Boogie
         .Union(origYieldImpls).Union(origYieldInvariants).ToHashSet();
 
       // Commutativity checks
-      List<Declaration> decls = new List<Declaration>();
+      var decls = new List<Declaration>();
       civlTypeChecker.AtomicActions.Iter(x =>
       {
-        decls.Add(x.Impl);
-        decls.Add(x.Impl.Proc);
+        decls.AddRange(new Declaration[] { x.Impl, x.Impl.Proc });
+        if (x.ImplWithChoice != null)
+        {
+          decls.AddRange(new Declaration[] { x.ImplWithChoice, x.ImplWithChoice.Proc });
+        }
       });
 
       if (!options.TrustMoverTypes)

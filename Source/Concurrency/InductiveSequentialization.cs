@@ -16,8 +16,6 @@ namespace Microsoft.Boogie
     private IdentifierExpr choice;
     private Dictionary<CtorType, Variable> newPAs;
 
-    private ConcurrencyOptions Options => civlTypeChecker.Options;
-
     public InductiveSequentialization(CivlTypeChecker civlTypeChecker, Action targetAction,
       Action invariantAction, Dictionary<Action, Action> elim)
     {
@@ -30,7 +28,7 @@ namespace Microsoft.Boogie
       // - the modified set of each of each eliminated and abstract action associated with this invariant.
       // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
       frame = new HashSet<Variable>(invariantAction.ModifiedGlobalVars);
-      choice = Expr.Ident(invariantAction.Impl.OutParams.Last());
+      choice = Expr.Ident(invariantAction.ImplWithChoice.OutParams.Last());
       newPAs = invariantAction.PendingAsyncs.ToDictionary(decl => decl.PendingAsyncType,
         decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
     }
@@ -79,7 +77,8 @@ namespace Microsoft.Boogie
       List<Cmd> cmds = GetGateAsserts(invariantAction, null,
           $"Gate of {invariantAction.Name} fails in IS conclusion check against {outputAction.Name}")
         .ToList<Cmd>();
-      cmds.Add(GetInvariantCallCmd());
+      cmds.Add(CmdHelper.CallCmd(invariantAction.Impl.Proc, invariantAction.Impl.InParams,
+        invariantAction.Impl.OutParams));
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
       cmds.Add(GetCheck(inputAction.tok, Substituter.Apply(subst, GetTransitionRelation(outputAction)),
         $"IS conclusion of {inputAction.Name} failed"));
@@ -94,7 +93,8 @@ namespace Microsoft.Boogie
       var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr)).ToList();
       var locals = new List<Variable>();
       List<Cmd> cmds = new List<Cmd>();
-      cmds.Add(GetInvariantCallCmd());
+      cmds.Add(CmdHelper.CallCmd(invariantAction.ImplWithChoice.Proc, invariantAction.ImplWithChoice.InParams,
+        invariantAction.ImplWithChoice.OutParams));
       cmds.Add(CmdHelper.AssumeCmd(ChoiceTest(pendingAsyncType)));
       cmds.Add(CmdHelper.AssumeCmd(Expr.Gt(Expr.Select(PAs(pendingAsyncType), Choice(pendingAsyncType)),
         Expr.Literal(0))));
@@ -222,17 +222,11 @@ namespace Microsoft.Boogie
       var invariantFormalSubst = Substituter.SubstitutionFromDictionary(invariantFormalMap);
       actionExpr = Substituter.Apply(invariantFormalSubst, actionExpr);
       leftMoverExpr = Substituter.Apply(invariantFormalSubst, leftMoverExpr);
-      var invariantTransitionRelationExpr = ExprHelper.FunctionCall(invariantAction.InputOutputRelation,
-        invariantAction.Impl.InParams.Concat(invariantAction.Impl.OutParams).Select(v => invariantFormalMap[v]).ToList());
+      var invariantTransitionRelationExpr = Substituter.Apply(invariantFormalSubst,
+        TransitionRelationComputation.Refinement(civlTypeChecker, invariantAction.ImplWithChoice, frame));
       return ExprHelper.ExistsExpr(
         invariantFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
         Expr.And(new[] { invariantTransitionRelationExpr, actionExpr, leftMoverExpr }));
-    }
-
-    private CallCmd GetInvariantCallCmd()
-    {
-      return CmdHelper.CallCmd(invariantAction.Impl.Proc, invariantAction.Impl.InParams,
-        invariantAction.Impl.OutParams);
     }
 
     private AssertCmd GetCheck(IToken tok, Expr expr, string msg)
@@ -336,12 +330,7 @@ namespace Microsoft.Boogie
 
     private Expr GetTransitionRelation(Action action)
     {
-      var tr = TransitionRelationComputation.Refinement(civlTypeChecker, action, frame);
-      if (action == invariantAction)
-      {
-        return new ChoiceEraser(invariantAction.Impl.OutParams.Last()).VisitExpr(tr);
-      }
-      return tr;
+      return TransitionRelationComputation.Refinement(civlTypeChecker, action.Impl, frame);
     }
 
     // TODO: Check that choice only occurs as one side of a positive equality.
@@ -412,7 +401,7 @@ namespace Microsoft.Boogie
       cmds.Add(
         CmdHelper.AssertCmd(
           abs.tok,
-          TransitionRelationComputation.Refinement(civlTypeChecker, abs, frame),
+          TransitionRelationComputation.Refinement(civlTypeChecker, abs.Impl, frame),
           $"Abstraction {abs.Name} does not summarize {action.Name}"
         ));
 

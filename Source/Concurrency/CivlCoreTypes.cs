@@ -7,6 +7,7 @@ namespace Microsoft.Boogie
   public class Action
   {
     public ActionDecl ActionDecl;
+    public Action RefinedAction;
     public Implementation Impl;
     public List<AssertCmd> Gate;
     public HashSet<Variable> UsedGlobalVarsInGate;
@@ -14,23 +15,22 @@ namespace Microsoft.Boogie
     public HashSet<Variable> ModifiedGlobalVars;
     public List<ActionDecl> PendingAsyncs;
     public Function InputOutputRelation;
-    public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
-
-    public Action RefinedAction;
 
     public List<AssertCmd> FirstGate;
     public Implementation FirstImpl;
     public List<AssertCmd> SecondGate;
     public Implementation SecondImpl;
-
     public Dictionary<Variable, Function> TriggerFunctions;
+    
+    public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
+    public Implementation ImplWithChoice;
 
     public Action(ActionDecl actionDecl, Action refinedAction, CivlTypeChecker civlTypeChecker)
     {
-      this.ActionDecl = actionDecl;
-      this.RefinedAction = refinedAction;
-      this.Impl = CreateDuplicateImplementation(actionDecl);
-      this.PendingAsyncs = actionDecl.Creates.Select(x => x.ActionDecl).ToList();
+      ActionDecl = actionDecl;
+      RefinedAction = refinedAction;
+      Impl = CreateDuplicateImplementation(actionDecl.Impl, actionDecl.Name);
+      PendingAsyncs = actionDecl.Creates.Select(x => x.ActionDecl).ToList();
       if (PendingAsyncs.Any())
       {
         var lhss = new List<IdentifierExpr>();
@@ -50,9 +50,9 @@ namespace Microsoft.Boogie
         assignCmd.Typecheck(tc);
         Impl.Blocks[0].Cmds.Insert(0, assignCmd);
         DesugarCreateAsyncs(civlTypeChecker, Impl);
-
         if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
         {
+          ImplWithChoice = CreateDuplicateImplementation(Impl, $"{Name}_With_Choice");
           var choiceDatatypeName = $"Choice_{Name}";
           ChoiceDatatypeTypeCtorDecl =
             new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
@@ -64,10 +64,11 @@ namespace Microsoft.Boogie
           });
           civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
           var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
-          Impl.Proc.OutParams.Add(choice);
-          Impl.OutParams.Add(choice);
-          DesugarSetChoice(civlTypeChecker, Impl, choice);
+          ImplWithChoice.Proc.OutParams.Add(choice);
+          ImplWithChoice.OutParams.Add(choice);
+          DesugarSetChoice(civlTypeChecker, ImplWithChoice, choice);
         }
+        DesugarSetChoice(civlTypeChecker, Impl);
       }
       CompleteInitialization(civlTypeChecker);
     }
@@ -111,14 +112,16 @@ namespace Microsoft.Boogie
       return Impl.LocVars.Last(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
     }
     
-    private static Implementation CreateDuplicateImplementation(ActionDecl actionDecl)
+    private static Implementation CreateDuplicateImplementation(Implementation impl, string name)
     {
-      var impl = new Duplicator().VisitImplementation(actionDecl.Impl);
-      impl.Attributes = null;
-      impl.Proc = new Procedure(actionDecl.tok, actionDecl.Name, actionDecl.TypeParameters, actionDecl.InParams,
-        actionDecl.OutParams, actionDecl.IsPure, actionDecl.Requires, actionDecl.Modifies, actionDecl.Ensures);
-      CivlUtil.AddInlineAttribute(impl.Proc);
-      return impl;
+      var proc = impl.Proc;
+      var duplicateImpl = new Duplicator().VisitImplementation(impl);
+      duplicateImpl.Name = name;
+      duplicateImpl.Attributes = null;
+      duplicateImpl.Proc = new Procedure(proc.tok, name, proc.TypeParameters, proc.InParams,
+        proc.OutParams, proc.IsPure, proc.Requires, proc.Modifies, proc.Ensures);
+      CivlUtil.AddInlineAttribute(duplicateImpl.Proc);
+      return duplicateImpl;
     }
 
     // The flag initializeInputOutputRelation is added just so the Boogie function representing the input-output relation
@@ -146,7 +149,7 @@ namespace Microsoft.Boogie
       var forold = Substituter.SubstitutionFromDictionary(foroldMap);
       var transitionRelationExpr =
         Substituter.ApplyReplacingOldExprs(always, forold,
-          TransitionRelationComputation.Refinement(civlTypeChecker, this, new HashSet<Variable>(ModifiedGlobalVars)));
+          TransitionRelationComputation.Refinement(civlTypeChecker, this.Impl, new HashSet<Variable>(ModifiedGlobalVars)));
       var gateExprs = Gate.Select(assertCmd =>
         Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
       var transitionRelationInputs = Impl.InParams.Concat(Impl.OutParams)
@@ -221,6 +224,27 @@ namespace Microsoft.Boogie
       });
     }
 
+    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
+    {
+      impl.Blocks.Iter(block =>
+      {
+        var newCmds = new List<Cmd>();
+        foreach (var cmd in block.Cmds)
+        {
+          if (cmd is CallCmd callCmd)
+          {
+            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            if (originalProcName == "set_choice")
+            {
+              continue;
+            }
+          }
+          newCmds.Add(cmd);
+        }
+        block.Cmds = newCmds;
+      });
+    }
+
     private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl, Variable choice)
     {
       impl.Blocks.Iter(block =>
@@ -230,8 +254,8 @@ namespace Microsoft.Boogie
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProc = (Procedure)civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc);
-            if (originalProc.Name == "set_choice")
+            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            if (originalProcName == "set_choice")
             {
               var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
               var pendingAsync = PendingAsyncs.First(decl => decl.PendingAsyncType.Equals(pendingAsyncType));
