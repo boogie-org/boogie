@@ -124,7 +124,7 @@ namespace Microsoft.Boogie
 
     private CallCmd ActionCallCmd(AtomicAction action, DeclWithFormals paramProvider)
     {
-      return CmdHelper.CallCmd(action.ActionDecl, paramProvider.InParams, paramProvider.OutParams);
+      return CmdHelper.CallCmd(action.Impl.Proc, paramProvider.InParams, paramProvider.OutParams);
     }
 
     private void CreateCommutativityChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)

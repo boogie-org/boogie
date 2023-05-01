@@ -773,7 +773,7 @@ namespace Microsoft.Boogie
 
         cmds.AddRange(CreateUpdatesToOldGlobalVars());
         cmds.AddRange(CreateUpdatesToPermissionCollector(action.Impl));
-        cmds.Add(CmdHelper.CallCmd(action.ActionDecl, inputs, outputs));
+        cmds.Add(CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs));
         cmds.AddRange(CreateCallToYieldProc());
         var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
 

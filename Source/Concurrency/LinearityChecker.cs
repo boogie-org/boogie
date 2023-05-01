@@ -207,14 +207,14 @@ class LinearityChecker
       blocks.Add(
         BlockHelper.Block(
           "init",
-          new List<Cmd> { CmdHelper.CallCmd(action.ActionDecl, inputs, outputs) },
+          new List<Cmd> { CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
           checkerBlocks));
       blocks.AddRange(checkerBlocks);
 
       // Create the whole check procedure
       string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.Name}");
       Procedure linCheckerProc = DeclHelper.Procedure(checkerName,
-        inputs, outputs, requires, action.ActionDecl.Modifies, new List<Ensures>());
+        inputs, outputs, requires, action.Impl.Proc.Modifies, new List<Ensures>());
       Implementation linCheckImpl = DeclHelper.Implementation(linCheckerProc,
         inputs, outputs, locals, blocks);
       decls.Add(linCheckImpl);

@@ -369,7 +369,7 @@ namespace Microsoft.Boogie
       });
       civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
       var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
-      ActionDecl.OutParams.Add(choice);
+      Impl.Proc.OutParams.Add(choice);
       Impl.OutParams.Add(choice);
       DesugarSetChoice(civlTypeChecker, choice);
     }

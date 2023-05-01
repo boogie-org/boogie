@@ -116,13 +116,12 @@ namespace Microsoft.Boogie
       // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
       // we need to substitute the parameters.
       AtomicAction atomicAction = civlTypeChecker.procToAtomicAction[yieldProcedureDecl.RefinedAction.ActionDecl];
-      Implementation atomicActionImpl = atomicAction.Impl;
       Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
       for (int i = 0, j = 0; i < impl.InParams.Count; i++)
       {
         if (yieldProcedureDecl.VisibleFormals.Contains(yieldProcedureDecl.InParams[i]))
         {
-          alwaysMap[atomicActionImpl.InParams[j]] = Expr.Ident(impl.InParams[i]);
+          alwaysMap[atomicAction.Impl.InParams[j]] = Expr.Ident(impl.InParams[i]);
           j++;
         }
       }
@@ -131,7 +130,7 @@ namespace Microsoft.Boogie
       {
         if (yieldProcedureDecl.VisibleFormals.Contains(yieldProcedureDecl.OutParams[i]))
         {
-          alwaysMap[atomicActionImpl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
+          alwaysMap[atomicAction.Impl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
           j++;
         }
       }

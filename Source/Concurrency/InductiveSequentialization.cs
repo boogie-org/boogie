@@ -50,7 +50,7 @@ namespace Microsoft.Boogie
       var outputVars = new List<Variable>(invariantAction.Impl.OutParams.Take(invariantAction.ActionDecl.PendingAsyncStartIndex));
       outputVars.AddRange(inputAction.PendingAsyncs.Select(action =>
         invariantAction.Impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.PendingAsyncType]]));
-      cmds.Add(CmdHelper.CallCmd(inputAction.ActionDecl, invariantAction.Impl.InParams, outputVars));
+      cmds.Add(CmdHelper.CallCmd(inputAction.Impl.Proc, invariantAction.Impl.InParams, outputVars));
       
       // Assign empty multiset to the rest
       var remainderPendingAsyncs = invariantAction.PendingAsyncs.Except(inputAction.PendingAsyncs);
@@ -123,7 +123,7 @@ namespace Microsoft.Boogie
           outputExprs.Add(ie);
         });
       }
-      cmds.Add(CmdHelper.CallCmd(abs.ActionDecl, inputExprs, outputExprs));
+      cmds.Add(CmdHelper.CallCmd(abs.Impl.Proc, inputExprs, outputExprs));
       if (abs.HasPendingAsyncs)
       {
         var lhss = abs.PendingAsyncs.Select(decl => new SimpleAssignLhs(Token.NoToken, PAs(decl.PendingAsyncType)))
@@ -231,7 +231,7 @@ namespace Microsoft.Boogie
 
     private CallCmd GetInvariantCallCmd()
     {
-      return CmdHelper.CallCmd(invariantAction.ActionDecl, invariantAction.Impl.InParams,
+      return CmdHelper.CallCmd(invariantAction.Impl.Proc, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams);
     }
 
@@ -405,7 +405,7 @@ namespace Microsoft.Boogie
         $"Abstraction {abs.Name} fails gate of {action.Name}").ToList<Cmd>();
       cmds.Add(
         CmdHelper.CallCmd(
-          action.ActionDecl,
+          action.Impl.Proc,
           abs.Impl.InParams,
           abs.Impl.OutParams
         ));
@@ -423,7 +423,7 @@ namespace Microsoft.Boogie
         abs.Impl.InParams,
         abs.Impl.OutParams,
         requires,
-        action.ActionDecl.Modifies,
+        action.Impl.Proc.Modifies,
         new List<Ensures>());
       var impl = DeclHelper.Implementation(
         proc,

@@ -407,7 +407,7 @@ namespace Microsoft.Boogie
       var calleeRefinedAction = civlTypeChecker.procToAtomicAction[calleeActionProc.RefinedActionAtLayer(layerNum)];
 
       newCall.IsAsync = false;
-      newCall.Proc = calleeRefinedAction.ActionDecl;
+      newCall.Proc = calleeRefinedAction.Impl.Proc;
       newCall.callee = newCall.Proc.Name;
 
       // We drop the hidden parameters of the procedure from the call to the action.
@@ -452,7 +452,7 @@ namespace Microsoft.Boogie
       }
 
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-      for (int i = 0; i < action.ActionDecl.InParams.Count; i++)
+      for (int i = 0; i < action.Impl.InParams.Count; i++)
       {
         // Parameters come from the implementation that defines the action
         map[action.Impl.InParams[i]] = callCmd.Ins[i];
