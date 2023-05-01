@@ -14,7 +14,6 @@ namespace Microsoft.Boogie
     public ActionDecl SkipActionDecl;
     
     public Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
-    private Dictionary<ActionDecl, InvariantAction> procToInvariantAction;
     public List<InductiveSequentialization> inductiveSequentializations;
 
     public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
@@ -35,7 +34,6 @@ namespace Microsoft.Boogie
         .OrderBy(layer => layer).Distinct().ToList();
       
       this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
-      this.procToInvariantAction = new Dictionary<ActionDecl, InvariantAction>();
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
 
@@ -215,14 +213,7 @@ namespace Microsoft.Boogie
       // Create all actions that do not refine another action
       foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
       {
-        if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
-        {
-          procToInvariantAction[actionDecl] = new InvariantAction(actionDecl, this);
-        }
-        else
-        {
-          procToAtomicAction[actionDecl] = new AtomicAction(actionDecl, null, this);
-        }
+        procToAtomicAction[actionDecl] = new AtomicAction(actionDecl, null, this);
       }
       // Now we create all atomic actions that refine other actions via an inductive sequentialization.
       actionDecls.Where(proc => proc.RefinedAction != null).Iter(CreateActionsThatRefineAnotherAction);
@@ -232,17 +223,13 @@ namespace Microsoft.Boogie
       {
         action.CompleteInitialization(this);
       });
-      procToInvariantAction.Values.Iter(action =>
-      {
-        action.CompleteInitialization(this);
-      });
-      
+
       // Construct inductive sequentializations
       actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
       {
         var action = procToAtomicAction[proc];
         var invariantProc = proc.InvariantAction.ActionDecl;
-        var invariantAction = procToInvariantAction[invariantProc];
+        var invariantAction = procToAtomicAction[invariantProc];
         var elim = new Dictionary<AtomicAction, AtomicAction>(proc.EliminationMap().Select(x =>
           KeyValuePair.Create(procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
         inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
@@ -399,8 +386,6 @@ namespace Microsoft.Boogie
       .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => procToAtomicAction[actionDecl]);
 
     public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values;
-
-    public IEnumerable<InvariantAction> InvariantActions => procToInvariantAction.Values;
 
     public void Error(Absy node, string message)
     {

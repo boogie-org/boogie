@@ -28,11 +28,6 @@ namespace Microsoft.Boogie
         decls.Add(x.Impl);
         decls.Add(x.Impl.Proc);
       });
-      civlTypeChecker.InvariantActions.Iter(x =>
-      {
-        decls.Add(x.Impl);
-        decls.Add(x.Impl.Proc);
-      });
 
       if (!options.TrustMoverTypes)
       {

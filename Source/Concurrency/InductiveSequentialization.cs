@@ -9,7 +9,7 @@ namespace Microsoft.Boogie
   {
     public CivlTypeChecker civlTypeChecker;
     public AtomicAction targetAction;
-    public InvariantAction invariantAction;
+    public AtomicAction invariantAction;
     public Dictionary<AtomicAction, AtomicAction> elim;
 
     private HashSet<Variable> frame;
@@ -19,7 +19,7 @@ namespace Microsoft.Boogie
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
     public InductiveSequentialization(CivlTypeChecker civlTypeChecker, AtomicAction targetAction,
-      InvariantAction invariantAction, Dictionary<AtomicAction, AtomicAction> elim)
+      AtomicAction invariantAction, Dictionary<AtomicAction, AtomicAction> elim)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.targetAction = targetAction;
