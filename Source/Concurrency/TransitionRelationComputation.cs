@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
 
     public static Expr Commutativity(
       CivlTypeChecker civlTypeChecker, 
-      AtomicAction first, AtomicAction second,
+      Action first, Action second,
       HashSet<Variable> frame)
     {
       var triggers = first.TriggerFunctions.Union(second.TriggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);

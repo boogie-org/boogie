@@ -62,7 +62,7 @@ namespace Microsoft.Boogie
     private IToken tok;
     private int layerNum;
 
-    private Dictionary<AtomicAction, Expr> transitionRelationCache;
+    private Dictionary<Action, Expr> transitionRelationCache;
 
     public ActionRefinementInstrumentation(
       CivlTypeChecker civlTypeChecker,
@@ -96,7 +96,7 @@ namespace Microsoft.Boogie
         newLocalVars.Add(eval);
       }
 
-      this.transitionRelationCache = new Dictionary<AtomicAction, Expr>();
+      this.transitionRelationCache = new Dictionary<Action, Expr>();
 
       oldOutputMap = new Dictionary<Variable, Variable>();
       foreach (Variable f in impl.OutParams)
@@ -115,7 +115,7 @@ namespace Microsoft.Boogie
       // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
       // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
       // we need to substitute the parameters.
-      AtomicAction atomicAction = civlTypeChecker.procToAtomicAction[yieldProcedureDecl.RefinedAction.ActionDecl];
+      var atomicAction = civlTypeChecker.procToAtomicAction[yieldProcedureDecl.RefinedAction.ActionDecl];
       Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
       for (int i = 0, j = 0; i < impl.InParams.Count; i++)
       {
@@ -300,7 +300,7 @@ namespace Microsoft.Boogie
       return new List<Cmd>();
     }
 
-    private Expr GetTransitionRelation(AtomicAction atomicAction)
+    private Expr GetTransitionRelation(Action atomicAction)
     {
       if (!transitionRelationCache.ContainsKey(atomicAction))
       {

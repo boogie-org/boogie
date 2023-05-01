@@ -756,7 +756,7 @@ namespace Microsoft.Boogie
         yield break;
       }
 
-      HashSet<AtomicAction> pendingAsyncsToCheck = new HashSet<AtomicAction>(
+      var pendingAsyncsToCheck = new HashSet<Action>(
         civlTypeChecker.MoverActions
           .Where(a => a.LayerRange.Contains(layerNum) && a.HasPendingAsyncs)
           .SelectMany(a => a.PendingAsyncs).Select(a => civlTypeChecker.procToAtomicAction[a]));

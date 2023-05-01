@@ -116,7 +116,7 @@ namespace Microsoft.Boogie
     private YieldProcedureDecl enclosingYieldingProc;
     private bool IsRefinementLayer => layerNum == enclosingYieldingProc.Layer;
 
-    private AtomicAction RefinedAction =>
+    private Action RefinedAction =>
       civlTypeChecker.procToAtomicAction[enclosingYieldingProc.RefinedAction.ActionDecl];
 
     private List<Cmd> newCmdSeq;
@@ -481,7 +481,7 @@ namespace Microsoft.Boogie
       newCmdSeq.Add(new CommentCmd("injected gate >>>"));
     }
 
-    private void CollectReturnedPendingAsyncs(CallCmd newCall, AtomicAction calleeRefinedAction)
+    private void CollectReturnedPendingAsyncs(CallCmd newCall, Action calleeRefinedAction)
     {
       // Inject pending async collection
       newCall.Outs.AddRange(calleeRefinedAction.PendingAsyncs.Select(decl => Expr.Ident(ReturnedPAs(decl.PendingAsyncType))));

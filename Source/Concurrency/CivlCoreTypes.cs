@@ -4,7 +4,7 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-  public abstract class Action
+  public class Action
   {
     public ActionDecl ActionDecl;
     public Implementation Impl;
@@ -16,9 +16,19 @@ namespace Microsoft.Boogie
     public Function InputOutputRelation;
     public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
 
-    protected Action(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker)
+    public Action RefinedAction;
+
+    public List<AssertCmd> FirstGate;
+    public Implementation FirstImpl;
+    public List<AssertCmd> SecondGate;
+    public Implementation SecondImpl;
+
+    public Dictionary<Variable, Function> TriggerFunctions;
+
+    public Action(ActionDecl actionDecl, Action refinedAction, CivlTypeChecker civlTypeChecker)
     {
       this.ActionDecl = actionDecl;
+      this.RefinedAction = refinedAction;
       this.Impl = new Duplicator().VisitImplementation(actionDecl.Impl);
       this.Impl.Attributes = null;
       this.Impl.Proc = new Procedure(actionDecl.tok, actionDecl.Name, actionDecl.TypeParameters, actionDecl.InParams,
@@ -75,6 +85,16 @@ namespace Microsoft.Boogie
 
     public bool HasPendingAsyncs => PendingAsyncs.Count > 0;
 
+    public bool IsRightMover => ActionDecl.MoverType == MoverType.Right || ActionDecl.MoverType == MoverType.Both;
+
+    public bool IsLeftMover => ActionDecl.MoverType == MoverType.Left || ActionDecl.MoverType == MoverType.Both;
+
+    public bool TriviallyCommutesWith(Action other)
+    {
+      return !this.ModifiedGlobalVars.Intersect(other.UsedGlobalVarsInAction).Any() &&
+             !this.UsedGlobalVarsInAction.Intersect(other.ModifiedGlobalVars).Any();
+    }
+
     public Variable PAs(CtorType pendingAsyncType)
     {
       var pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
@@ -130,6 +150,10 @@ namespace Microsoft.Boogie
         ExprHelper.ExistsExpr(existsVars, Expr.And(gateExprs.Append(transitionRelationExpr)));
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, InputOutputRelation.Body);
       civlTypeChecker.program.AddTopLevelDeclaration(InputOutputRelation);
+
+      AtomicActionDuplicator.SetupCopy(this, ref FirstGate, ref FirstImpl, "first_");
+      AtomicActionDuplicator.SetupCopy(this, ref SecondGate, ref SecondImpl, "second_");
+      DeclareTriggerFunctions();
     }
 
     private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker)
@@ -320,44 +344,7 @@ namespace Microsoft.Boogie
       return new AssertCmd(assertCmd.tok,
         ExprHelper.ForallExpr(varMapping.Values.ToList(), SubstitutionHelper.Apply(varMapping, assertCmd.Expr)));
     }
-  }
-
-  public class AtomicAction : Action
-  {
-    public AtomicAction RefinedAction;
-
-    public List<AssertCmd> FirstGate;
-    public Implementation FirstImpl;
-    public List<AssertCmd> SecondGate;
-    public Implementation SecondImpl;
     
-    public Dictionary<Variable, Function> TriggerFunctions;
-
-    public AtomicAction(ActionDecl actionDecl, AtomicAction refinedAction, CivlTypeChecker civlTypeChecker) :
-      base(actionDecl, civlTypeChecker)
-    {
-      this.RefinedAction = refinedAction;
-    }
-
-    public override void CompleteInitialization(CivlTypeChecker civlTypeChecker)
-    {
-      base.CompleteInitialization(civlTypeChecker);
-
-      AtomicActionDuplicator.SetupCopy(this, ref FirstGate, ref FirstImpl, "first_");
-      AtomicActionDuplicator.SetupCopy(this, ref SecondGate, ref SecondImpl, "second_");
-      DeclareTriggerFunctions();
-    }
-
-    public bool IsRightMover => ActionDecl.MoverType == MoverType.Right || ActionDecl.MoverType == MoverType.Both;
-
-    public bool IsLeftMover => ActionDecl.MoverType == MoverType.Left || ActionDecl.MoverType == MoverType.Both;
-
-    public bool TriviallyCommutesWith(AtomicAction other)
-    {
-      return !this.ModifiedGlobalVars.Intersect(other.UsedGlobalVarsInAction).Any() &&
-             !this.UsedGlobalVarsInAction.Intersect(other.ModifiedGlobalVars).Any();
-    }
-
     private void DeclareTriggerFunctions()
     {
       TriggerFunctions = new Dictionary<Variable, Function>();
@@ -429,7 +416,7 @@ namespace Microsoft.Boogie
     private List<Variable> outParamsCopy;
     private List<Variable> localsCopy;
 
-    public static void SetupCopy(AtomicAction action, ref List<AssertCmd> gateCopy, ref Implementation implCopy,
+    public static void SetupCopy(Action action, ref List<AssertCmd> gateCopy, ref Implementation implCopy,
       string prefix)
     {
       var aad = new AtomicActionDuplicator(prefix, action);
@@ -443,7 +430,7 @@ namespace Microsoft.Boogie
       implCopy = aad.VisitImplementation(action.Impl);
     }
 
-    private AtomicActionDuplicator(string prefix, AtomicAction action)
+    private AtomicActionDuplicator(string prefix, Action action)
     {
       this.prefix = prefix;
       subst = new Dictionary<Variable, Expr>();

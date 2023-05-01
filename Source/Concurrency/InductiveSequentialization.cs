@@ -8,9 +8,9 @@ namespace Microsoft.Boogie
   public class InductiveSequentialization
   {
     public CivlTypeChecker civlTypeChecker;
-    public AtomicAction targetAction;
-    public AtomicAction invariantAction;
-    public Dictionary<AtomicAction, AtomicAction> elim;
+    public Action targetAction;
+    public Action invariantAction;
+    public Dictionary<Action, Action> elim;
 
     private HashSet<Variable> frame;
     private IdentifierExpr choice;
@@ -18,8 +18,8 @@ namespace Microsoft.Boogie
 
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
-    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, AtomicAction targetAction,
-      AtomicAction invariantAction, Dictionary<AtomicAction, AtomicAction> elim)
+    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, Action targetAction,
+      Action invariantAction, Dictionary<Action, Action> elim)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.targetAction = targetAction;
@@ -35,7 +35,7 @@ namespace Microsoft.Boogie
         decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
     }
 
-    public Tuple<Procedure, Implementation> GenerateBaseCaseChecker(AtomicAction inputAction)
+    public Tuple<Procedure, Implementation> GenerateBaseCaseChecker(Action inputAction)
     {
       var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr)).ToList();
       
@@ -70,7 +70,7 @@ namespace Microsoft.Boogie
       return GetCheckerTuple($"IS_base_{inputAction.Name}", requires, new List<Variable>(), cmds);
     }
 
-    public Tuple<Procedure, Implementation> GenerateConclusionChecker(AtomicAction inputAction)
+    public Tuple<Procedure, Implementation> GenerateConclusionChecker(Action inputAction)
     {
       var outputAction = inputAction.RefinedAction;
       var subst = GetSubstitution(outputAction, invariantAction);
@@ -87,7 +87,7 @@ namespace Microsoft.Boogie
       return GetCheckerTuple($"IS_conclusion_{inputAction.Name}", requires, new List<Variable>(), cmds);
     }
 
-    public Tuple<Procedure, Implementation> GenerateStepChecker(AtomicAction pendingAsync)
+    public Tuple<Procedure, Implementation> GenerateStepChecker(Action pendingAsync)
     {
       var pendingAsyncType = pendingAsync.ActionDecl.PendingAsyncType;
       var pendingAsyncCtor = pendingAsync.ActionDecl.PendingAsyncCtor;
@@ -100,7 +100,7 @@ namespace Microsoft.Boogie
         Expr.Literal(0))));
       cmds.Add(RemoveChoice(pendingAsyncType));
 
-      AtomicAction abs = elim[pendingAsync];
+      Action abs = elim[pendingAsync];
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
       List<Expr> inputExprs = new List<Expr>();
       for (int i = 0; i < abs.Impl.InParams.Count; i++)
@@ -155,7 +155,7 @@ namespace Microsoft.Boogie
      *   (1) the permissions in the invocation are disjoint from the permissions in the invariant invocation, or
      *   (2) the permissions in the invocation is contained in the permissions of one of the pending asyncs created by the invariant invocation.
      */
-    public Expr GenerateMoverCheckAssumption(AtomicAction action, List<Variable> actionArgs, AtomicAction leftMover, List<Variable> leftMoverArgs)
+    public Expr GenerateMoverCheckAssumption(Action action, List<Variable> actionArgs, Action leftMover, List<Variable> leftMoverArgs)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       Expr actionExpr = Expr.True;
@@ -394,7 +394,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static Tuple<Procedure, Implementation> GenerateAbstractionChecker(CivlTypeChecker civlTypeChecker, AtomicAction action, AtomicAction abs)
+    private static Tuple<Procedure, Implementation> GenerateAbstractionChecker(CivlTypeChecker civlTypeChecker, Action action, Action abs)
     {
       var requires = abs.Gate.Select(g => new Requires(false, g.Expr)).ToList();
       // The type checker ensures that the modified set of abs is a subset of the modified set of action.

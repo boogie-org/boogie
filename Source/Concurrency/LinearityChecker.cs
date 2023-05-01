@@ -42,7 +42,7 @@ class LinearityChecker
       }
     }
 
-    private IdentifierExpr PAs(AtomicAction action, int pendingAsyncIndex)
+    private IdentifierExpr PAs(Action action, int pendingAsyncIndex)
     {
       return Expr.Ident(action.Impl.OutParams[action.ActionDecl.PendingAsyncStartIndex + pendingAsyncIndex]);
     }
@@ -58,7 +58,7 @@ class LinearityChecker
       var locals = new List<Variable>();
       var ctorTypeToFirstPA = new Dictionary<CtorType, IdentifierExpr>();
       var ctorTypeToSecondPA = new Dictionary<CtorType, IdentifierExpr>();
-      if (action is AtomicAction x && x.HasPendingAsyncs)
+      if (action is Action x && x.HasPendingAsyncs)
       {
         x.PendingAsyncs.Iter(y =>
         {
@@ -96,7 +96,7 @@ class LinearityChecker
             "variables"));
         }
 
-        if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
+        if (action is Action atomicAction && atomicAction.HasPendingAsyncs)
         {
           var pendingAsyncs = atomicAction.PendingAsyncs;
           

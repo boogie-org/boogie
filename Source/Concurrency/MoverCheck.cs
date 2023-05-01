@@ -9,17 +9,17 @@ namespace Microsoft.Boogie
     CivlTypeChecker civlTypeChecker;
     List<Declaration> decls;
 
-    HashSet<Tuple<AtomicAction, AtomicAction>> commutativityCheckerCache;
-    HashSet<Tuple<AtomicAction, AtomicAction>> gatePreservationCheckerCache;
-    HashSet<Tuple<AtomicAction, AtomicAction>> failurePreservationCheckerCache;
+    HashSet<Tuple<Action, Action>> commutativityCheckerCache;
+    HashSet<Tuple<Action, Action>> gatePreservationCheckerCache;
+    HashSet<Tuple<Action, Action>> failurePreservationCheckerCache;
 
     private MoverCheck(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.decls = decls;
-      this.commutativityCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
-      this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
-      this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
+      this.commutativityCheckerCache = new HashSet<Tuple<Action, Action>>();
+      this.gatePreservationCheckerCache = new HashSet<Tuple<Action, Action>>();
+      this.failurePreservationCheckerCache = new HashSet<Tuple<Action, Action>>();
     }
 
     private ConcurrencyOptions Options => civlTypeChecker.Options;
@@ -109,25 +109,25 @@ namespace Microsoft.Boogie
       this.decls.Add(proc);
     }
 
-    private void CreateRightMoverCheckers(AtomicAction rightMover, AtomicAction action)
+    private void CreateRightMoverCheckers(Action rightMover, Action action)
     {
       CreateCommutativityChecker(rightMover, action);
       CreateGatePreservationChecker(action, rightMover);
     }
 
-    private void CreateLeftMoverCheckers(AtomicAction action, AtomicAction leftMover)
+    private void CreateLeftMoverCheckers(Action action, Action leftMover)
     {
       CreateCommutativityChecker(action, leftMover);
       CreateGatePreservationChecker(leftMover, action);
       CreateFailurePreservationChecker(action, leftMover);
     }
 
-    private CallCmd ActionCallCmd(AtomicAction action, DeclWithFormals paramProvider)
+    private CallCmd ActionCallCmd(Action action, DeclWithFormals paramProvider)
     {
       return CmdHelper.CallCmd(action.Impl.Proc, paramProvider.InParams, paramProvider.OutParams);
     }
 
-    private void CreateCommutativityChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
+    private void CreateCommutativityChecker(Action first, Action second, Expr extraAssumption = null)
     {
       if (first == second && first.FirstImpl.InParams.Count == 0 && first.FirstImpl.OutParams.Count == 0)
       {
@@ -194,7 +194,7 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
+    private void CreateGatePreservationChecker(Action first, Action second, Expr extraAssumption = null)
     {
       if (!first.UsedGlobalVarsInGate.Intersect(second.ModifiedGlobalVars).Any())
       {
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
+    private void CreateFailurePreservationChecker(Action first, Action second, Expr extraAssumption = null)
     {
       if (!first.UsedGlobalVarsInGate.Intersect(second.ModifiedGlobalVars).Any())
       {
