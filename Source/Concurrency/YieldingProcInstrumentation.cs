@@ -756,7 +756,7 @@ namespace Microsoft.Boogie
         yield break;
       }
 
-      HashSet<AtomicAction> pendingAsyncsToCheck = new HashSet<AtomicAction>(
+      var pendingAsyncsToCheck = new HashSet<Action>(
         civlTypeChecker.MoverActions
           .Where(a => a.LayerRange.Contains(layerNum) && a.HasPendingAsyncs)
           .SelectMany(a => a.PendingAsyncs).Select(a => civlTypeChecker.procToAtomicAction[a]));
@@ -773,11 +773,11 @@ namespace Microsoft.Boogie
 
         cmds.AddRange(CreateUpdatesToOldGlobalVars());
         cmds.AddRange(CreateUpdatesToPermissionCollector(action.Impl));
-        cmds.Add(CmdHelper.CallCmd(action.ActionDecl, inputs, outputs));
+        cmds.Add(CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs));
         cmds.AddRange(CreateCallToYieldProc());
         var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
 
-        var name = civlTypeChecker.AddNamePrefix($"PendingAsyncNoninterferenceChecker_{action.ActionDecl.Name}_{layerNum}");
+        var name = civlTypeChecker.AddNamePrefix($"PendingAsyncNoninterferenceChecker_{action.Name}_{layerNum}");
         var proc = DeclHelper.Procedure(name, inputs, outputs, requires, modifies, ensures);
         var impl = DeclHelper.Implementation(proc, inputs, outputs, locals, blocks);
         yield return proc;

@@ -42,7 +42,7 @@ class LinearityChecker
       }
     }
 
-    private IdentifierExpr PAs(AtomicAction action, int pendingAsyncIndex)
+    private IdentifierExpr PAs(Action action, int pendingAsyncIndex)
     {
       return Expr.Ident(action.Impl.OutParams[action.ActionDecl.PendingAsyncStartIndex + pendingAsyncIndex]);
     }
@@ -58,7 +58,7 @@ class LinearityChecker
       var locals = new List<Variable>();
       var ctorTypeToFirstPA = new Dictionary<CtorType, IdentifierExpr>();
       var ctorTypeToSecondPA = new Dictionary<CtorType, IdentifierExpr>();
-      if (action is AtomicAction x && x.HasPendingAsyncs)
+      if (action is Action x && x.HasPendingAsyncs)
       {
         x.PendingAsyncs.Iter(y =>
         {
@@ -96,7 +96,7 @@ class LinearityChecker
             "variables"));
         }
 
-        if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
+        if (action is Action atomicAction && atomicAction.HasPendingAsyncs)
         {
           var pendingAsyncs = atomicAction.PendingAsyncs;
           
@@ -196,7 +196,7 @@ class LinearityChecker
         {
           cmds.Add(CmdHelper.AssumeCmd(lc.assume));
         }
-        cmds.Add(CmdHelper.AssertCmd(action.ActionDecl.tok, lc.assert, lc.message));
+        cmds.Add(CmdHelper.AssertCmd(action.tok, lc.assert, lc.message));
         var block = BlockHelper.Block($"{lc.domainName}_{lc.checkName}", cmds);
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
@@ -207,14 +207,14 @@ class LinearityChecker
       blocks.Add(
         BlockHelper.Block(
           "init",
-          new List<Cmd> { CmdHelper.CallCmd(action.ActionDecl, inputs, outputs) },
+          new List<Cmd> { CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
           checkerBlocks));
       blocks.AddRange(checkerBlocks);
 
       // Create the whole check procedure
-      string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.ActionDecl.Name}");
+      string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.Name}");
       Procedure linCheckerProc = DeclHelper.Procedure(checkerName,
-        inputs, outputs, requires, action.ActionDecl.Modifies, new List<Ensures>());
+        inputs, outputs, requires, action.Impl.Proc.Modifies, new List<Ensures>());
       Implementation linCheckImpl = DeclHelper.Implementation(linCheckerProc,
         inputs, outputs, locals, blocks);
       decls.Add(linCheckImpl);

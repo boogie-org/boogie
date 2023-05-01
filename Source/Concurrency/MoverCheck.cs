@@ -9,17 +9,17 @@ namespace Microsoft.Boogie
     CivlTypeChecker civlTypeChecker;
     List<Declaration> decls;
 
-    HashSet<Tuple<AtomicAction, AtomicAction>> commutativityCheckerCache;
-    HashSet<Tuple<AtomicAction, AtomicAction>> gatePreservationCheckerCache;
-    HashSet<Tuple<AtomicAction, AtomicAction>> failurePreservationCheckerCache;
+    HashSet<Tuple<Action, Action>> commutativityCheckerCache;
+    HashSet<Tuple<Action, Action>> gatePreservationCheckerCache;
+    HashSet<Tuple<Action, Action>> failurePreservationCheckerCache;
 
     private MoverCheck(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.decls = decls;
-      this.commutativityCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
-      this.gatePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
-      this.failurePreservationCheckerCache = new HashSet<Tuple<AtomicAction, AtomicAction>>();
+      this.commutativityCheckerCache = new HashSet<Tuple<Action, Action>>();
+      this.gatePreservationCheckerCache = new HashSet<Tuple<Action, Action>>();
+      this.failurePreservationCheckerCache = new HashSet<Tuple<Action, Action>>();
     }
 
     private ConcurrencyOptions Options => civlTypeChecker.Options;
@@ -109,25 +109,25 @@ namespace Microsoft.Boogie
       this.decls.Add(proc);
     }
 
-    private void CreateRightMoverCheckers(AtomicAction rightMover, AtomicAction action)
+    private void CreateRightMoverCheckers(Action rightMover, Action action)
     {
       CreateCommutativityChecker(rightMover, action);
       CreateGatePreservationChecker(action, rightMover);
     }
 
-    private void CreateLeftMoverCheckers(AtomicAction action, AtomicAction leftMover)
+    private void CreateLeftMoverCheckers(Action action, Action leftMover)
     {
       CreateCommutativityChecker(action, leftMover);
       CreateGatePreservationChecker(leftMover, action);
       CreateFailurePreservationChecker(action, leftMover);
     }
 
-    private CallCmd ActionCallCmd(AtomicAction action, DeclWithFormals paramProvider)
+    private CallCmd ActionCallCmd(Action action, DeclWithFormals paramProvider)
     {
-      return CmdHelper.CallCmd(action.ActionDecl, paramProvider.InParams, paramProvider.OutParams);
+      return CmdHelper.CallCmd(action.Impl.Proc, paramProvider.InParams, paramProvider.OutParams);
     }
 
-    private void CreateCommutativityChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
+    private void CreateCommutativityChecker(Action first, Action second, Expr extraAssumption = null)
     {
       if (first == second && first.FirstImpl.InParams.Count == 0 && first.FirstImpl.OutParams.Count == 0)
       {
@@ -144,7 +144,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      string checkerName = $"CommutativityChecker_{first.ActionDecl.Name}_{second.ActionDecl.Name}";
+      string checkerName = $"CommutativityChecker_{first.Name}_{second.Name}";
 
       HashSet<Variable> frame = new HashSet<Variable>();
       frame.UnionWith(first.UsedGlobalVarsInGate);
@@ -177,9 +177,9 @@ namespace Microsoft.Boogie
           .Union(frame)));
       // TODO: add further disjointness expressions?
       AssertCmd commutativityCheck = CmdHelper.AssertCmd(
-        first.ActionDecl.tok,
+        first.tok,
         Expr.Imp(Expr.And(linearityAssumes), transitionRelation),
-        $"Commutativity check between {first.ActionDecl.Name} and {second.ActionDecl.Name} failed");
+        $"Commutativity check between {first.Name} and {second.Name} failed");
 
       List<Cmd> cmds = new List<Cmd>
       {
@@ -194,7 +194,7 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateGatePreservationChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
+    private void CreateGatePreservationChecker(Action first, Action second, Expr extraAssumption = null)
     {
       if (!first.UsedGlobalVarsInGate.Intersect(second.ModifiedGlobalVars).Any())
       {
@@ -225,7 +225,7 @@ namespace Microsoft.Boogie
         requires.Add(new Requires(false, extraAssumption));
       }
 
-      string checkerName = $"GatePreservationChecker_{first.ActionDecl.Name}_{second.ActionDecl.Name}";
+      string checkerName = $"GatePreservationChecker_{first.Name}_{second.Name}";
 
       List<Variable> inputs = Enumerable.Union(first.FirstImpl.InParams, second.SecondImpl.InParams).ToList();
       List<Variable> outputs = Enumerable.Union(first.FirstImpl.OutParams, second.SecondImpl.OutParams).ToList();
@@ -241,7 +241,7 @@ namespace Microsoft.Boogie
           CmdHelper.AssertCmd(
             assertCmd.tok,
             Expr.Imp(Expr.And(linearityAssumes), assertCmd.Expr),
-            $"Gate of {first.ActionDecl.Name} not preserved by {second.ActionDecl.Name}"
+            $"Gate of {first.Name} not preserved by {second.Name}"
           )
         );
       }
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateFailurePreservationChecker(AtomicAction first, AtomicAction second, Expr extraAssumption = null)
+    private void CreateFailurePreservationChecker(Action first, Action second, Expr extraAssumption = null)
     {
       if (!first.UsedGlobalVarsInGate.Intersect(second.ModifiedGlobalVars).Any())
       {
@@ -287,11 +287,11 @@ namespace Microsoft.Boogie
         linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.InParams.Union(second.SecondImpl.OutParams)
           .Union(frame));
       AssertCmd gateFailureCheck = CmdHelper.AssertCmd(
-        first.ActionDecl.tok,
+        first.tok,
         Expr.Imp(Expr.And(linearityAssumes), firstNegatedGate),
-        $"Gate failure of {first.ActionDecl.Name} not preserved by {second.ActionDecl.Name}");
+        $"Gate failure of {first.Name} not preserved by {second.Name}");
 
-      string checkerName = $"FailurePreservationChecker_{first.ActionDecl.Name}_{second.ActionDecl.Name}";
+      string checkerName = $"FailurePreservationChecker_{first.Name}_{second.Name}";
 
       List<Variable> inputs = Enumerable.Union(first.FirstImpl.InParams, second.SecondImpl.InParams).ToList();
       List<Variable> outputs = Enumerable.Union(first.FirstImpl.OutParams, second.SecondImpl.OutParams).ToList();
@@ -311,7 +311,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      string checkerName = $"CooperationChecker_{action.ActionDecl.Name}";
+      string checkerName = $"CooperationChecker_{action.Name}";
 
       Implementation impl = action.Impl;
       HashSet<Variable> frame = new HashSet<Variable>();
@@ -327,9 +327,9 @@ namespace Microsoft.Boogie
       }
 
       AssertCmd cooperationCheck = CmdHelper.AssertCmd(
-        action.ActionDecl.tok,
+        action.tok,
         TransitionRelationComputation.Cooperation(civlTypeChecker, action, frame),
-        $"Cooperation check for {action.ActionDecl.Name} failed");
+        $"Cooperation check for {action.Name} failed");
 
       AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(),
         new List<Variable>(), requires, new List<Cmd> { cooperationCheck });

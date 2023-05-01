@@ -114,7 +114,7 @@ modifies channel;
 
   assert x > 0;
   assert p is Left;
-  assert (forall m:int :: left_channel[m] > 0 ==> m == x); // assertion to discharge
+  assert (forall {:pool "INV"} m:int :: {:add_to_pool "INV", m} left_channel[m] > 0 ==> m == x); // assertion to discharge
 
   assume left_channel[x] > 0;
   left_channel[x] := left_channel[x] - 1;
@@ -143,7 +143,7 @@ modifies channel;
 
   assert y > 0;
   assert p is Right;
-  assert (forall m:int :: right_channel[m] > 0 ==> m == y || m == 0); // assertion to discharge
+  assert (forall {:pool "INV"} m:int :: {:add_to_pool "INV", m} right_channel[m] > 0 ==> m == y || m == 0); // assertion to discharge
 
   if (*)
   {

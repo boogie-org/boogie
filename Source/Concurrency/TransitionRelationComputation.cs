@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
 
     public static Expr Commutativity(
       CivlTypeChecker civlTypeChecker, 
-      AtomicAction first, AtomicAction second,
+      Action first, Action second,
       HashSet<Variable> frame)
     {
       var triggers = first.TriggerFunctions.Union(second.TriggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);
@@ -87,7 +87,7 @@ namespace Microsoft.Boogie
         civlTypeChecker,
         first.SecondImpl, second.FirstImpl,
         frame, triggers, false,
-        string.Format("Transition relation of {0} ∘ {1}", first.ActionDecl.Name, second.ActionDecl.Name));
+        string.Format("Transition relation of {0} ∘ {1}", first.Name, second.Name));
     }
 
     public static Expr Refinement(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
@@ -96,7 +96,7 @@ namespace Microsoft.Boogie
         civlTypeChecker,
         action.Impl, null,
         frame, null, false,
-        string.Format("Transition relation of {0}", action.ActionDecl.Name));
+        string.Format("Transition relation of {0}", action.Name));
     }
 
     public static Expr Cooperation(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
@@ -105,7 +105,7 @@ namespace Microsoft.Boogie
         civlTypeChecker,
         action.Impl, null,
         frame, null, true,
-        string.Format("Cooperation expression of {0}", action.ActionDecl.Name));
+        string.Format("Cooperation expression of {0}", action.Name));
     }
 
     private void EnumeratePaths()

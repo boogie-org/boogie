@@ -116,7 +116,7 @@ namespace Microsoft.Boogie
     private YieldProcedureDecl enclosingYieldingProc;
     private bool IsRefinementLayer => layerNum == enclosingYieldingProc.Layer;
 
-    private AtomicAction RefinedAction =>
+    private Action RefinedAction =>
       civlTypeChecker.procToAtomicAction[enclosingYieldingProc.RefinedAction.ActionDecl];
 
     private List<Cmd> newCmdSeq;
@@ -252,6 +252,7 @@ namespace Microsoft.Boogie
         var linkAction = civlTypeChecker.procToAtomicAction[actionDecl];
         if (linkAction.LowerLayer == layerNum)
         {
+          newCall.Proc = linkAction.Impl.Proc;
           InjectGate(linkAction, newCall);
           newCmdSeq.Add(newCall);
         }
@@ -407,7 +408,7 @@ namespace Microsoft.Boogie
       var calleeRefinedAction = civlTypeChecker.procToAtomicAction[calleeActionProc.RefinedActionAtLayer(layerNum)];
 
       newCall.IsAsync = false;
-      newCall.Proc = calleeRefinedAction.ActionDecl;
+      newCall.Proc = calleeRefinedAction.Impl.Proc;
       newCall.callee = newCall.Proc.Name;
 
       // We drop the hidden parameters of the procedure from the call to the action.
@@ -452,7 +453,7 @@ namespace Microsoft.Boogie
       }
 
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-      for (int i = 0; i < action.ActionDecl.InParams.Count; i++)
+      for (int i = 0; i < action.Impl.InParams.Count; i++)
       {
         // Parameters come from the implementation that defines the action
         map[action.Impl.InParams[i]] = callCmd.Ins[i];
@@ -473,14 +474,14 @@ namespace Microsoft.Boogie
         else
         {
           newCmdSeq.Add(CmdHelper.AssertCmd(assertCmd.tok, expr,
-            $"this gate of {action.ActionDecl.Name} could not be proved"));
+            $"this gate of {action.Name} could not be proved"));
         }
       }
 
       newCmdSeq.Add(new CommentCmd("injected gate >>>"));
     }
 
-    private void CollectReturnedPendingAsyncs(CallCmd newCall, AtomicAction calleeRefinedAction)
+    private void CollectReturnedPendingAsyncs(CallCmd newCall, Action calleeRefinedAction)
     {
       // Inject pending async collection
       newCall.Outs.AddRange(calleeRefinedAction.PendingAsyncs.Select(decl => Expr.Ident(ReturnedPAs(decl.PendingAsyncType))));
@@ -551,7 +552,7 @@ namespace Microsoft.Boogie
 
     private void AddPendingAsync(CallCmd newCall, YieldProcedureDecl calleeProc)
     {
-      if (calleeProc.RefinedAction.ActionDecl == civlTypeChecker.SkipAtomicAction.ActionDecl)
+      if (calleeProc.RefinedAction.ActionDecl == civlTypeChecker.SkipActionDecl)
       {
         return;
       }

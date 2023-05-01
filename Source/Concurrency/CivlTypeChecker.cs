@@ -11,10 +11,9 @@ namespace Microsoft.Boogie
     public Program program;
     public LinearTypeChecker linearTypeChecker;
     public List<int> allRefinementLayers;
-    public AtomicAction SkipAtomicAction;
+    public ActionDecl SkipActionDecl;
     
-    public Dictionary<ActionDecl, AtomicAction> procToAtomicAction;
-    private Dictionary<ActionDecl, InvariantAction> procToInvariantAction;
+    public Dictionary<ActionDecl, Action> procToAtomicAction;
     public List<InductiveSequentialization> inductiveSequentializations;
 
     public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
@@ -34,8 +33,7 @@ namespace Microsoft.Boogie
         .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer)
         .OrderBy(layer => layer).Distinct().ToList();
       
-      this.procToAtomicAction = new Dictionary<ActionDecl, AtomicAction>();
-      this.procToInvariantAction = new Dictionary<ActionDecl, InvariantAction>();
+      this.procToAtomicAction = new Dictionary<ActionDecl, Action>();
       this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
 
@@ -53,31 +51,28 @@ namespace Microsoft.Boogie
         }
       }
 
-      var skipProcedure = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, ActionQualifier.None,
+      SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, ActionQualifier.None,
         new List<Variable>(), new List<Variable>(), new List<ActionDeclRef>(), null, null, new List<ElimDecl>(),
         new List<IdentifierExpr>(), null, null);
       var skipImplementation = DeclHelper.Implementation(
-        skipProcedure,
+        SkipActionDecl,
         new List<Variable>(),
         new List<Variable>(),
         new List<Variable>(),
         new List<Block> { BlockHelper.Block("init", new List<Cmd>()) });
-      skipProcedure.LayerRange = LayerRange.MinMax;
-      skipProcedure.Impl = skipImplementation;
-      SkipAtomicAction = new AtomicAction(skipProcedure, null, this);
-      SkipAtomicAction.CompleteInitialization(this);
+      SkipActionDecl.LayerRange = LayerRange.MinMax;
+      SkipActionDecl.Impl = skipImplementation;
       if (program.TopLevelDeclarations.OfType<YieldProcedureDecl>().Any())
       {
-        procToAtomicAction[skipProcedure] = SkipAtomicAction;
-        program.AddTopLevelDeclaration(skipProcedure);
+        program.AddTopLevelDeclaration(SkipActionDecl);
         program.AddTopLevelDeclaration(skipImplementation);
       }
       program.TopLevelDeclarations.OfType<YieldProcedureDecl>()
         .Where(decl => !decl.HasMoverType && decl.RefinedAction == null).Iter(decl =>
         {
-          decl.RefinedAction = new ActionDeclRef(Token.NoToken, skipProcedure.Name)
+          decl.RefinedAction = new ActionDeclRef(Token.NoToken, SkipActionDecl.Name)
           {
-            ActionDecl = skipProcedure
+            ActionDecl = SkipActionDecl
           };
         });
     }
@@ -128,7 +123,7 @@ namespace Microsoft.Boogie
         return;
       }
       
-      TypeCheckActions();
+      var actionDecls = TypeCheckActions();
       if (checkingContext.ErrorCount > 0)
       {
         return;
@@ -140,11 +135,14 @@ namespace Microsoft.Boogie
         return;
       }
 
+      InlineAtomicActions(actionDecls);
+      CreateAtomicActions(actionDecls);
+      CreateInductiveSequentializations(actionDecls);
       AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
     }
 
-    private void TypeCheckActions()
+    private HashSet<ActionDecl> TypeCheckActions()
     {
       var actionDecls = program.Procedures.OfType<ActionDecl>().ToHashSet();
       var callGraph = new Graph<Procedure>();
@@ -162,7 +160,6 @@ namespace Microsoft.Boogie
       {
         Error(program, "call graph over atomic actions must be acyclic");
       }
-
       actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
       {
         var refinedProc = proc.RefinedAction.ActionDecl;
@@ -176,95 +173,7 @@ namespace Microsoft.Boogie
           SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(targetProc, absProc, checkingContext);
         }
       });
-      if (checkingContext.ErrorCount > 0)
-      {
-        return;
-      }
-
-      // Four-step initialization process for actions:
-      // First, initialize all action decls so that all the pending async machinery is set up.
-      // Second, create all actions which also desugars set_choice and variations of create_async.
-      // Third, inline actions. This step must be done after the desugaring.
-      // Fourth, construct the transition and input-output relation for all actions.
-      
-      // Initialize ActionDecls
-      actionDecls.Iter(proc => proc.Initialize(program.monomorphizer));
-      
-      // Create all actions
-      foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
-      {
-        // In this loop, we create all link, invariant, and abstraction actions,
-        // but only those atomic actions (pending async or otherwise) that do not refine
-        // another action.
-        if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
-        {
-          procToInvariantAction[actionDecl] = new InvariantAction(actionDecl, this);
-        }
-        else
-        {
-          procToAtomicAction[actionDecl] = new AtomicAction(actionDecl, null, this);
-        }
-      }
-      // Now we create all atomic actions that refine other actions via an inductive sequentialization.
-      // Earlier type checking guarantees that each such action is not a pending async action.
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(CreateActionsThatRefineAnotherAction);
-
-      // Inline atomic actions
-      CivlUtil.AddInlineAttribute(SkipAtomicAction.ActionDecl);
-      actionDecls.Iter(proc =>
-      {
-        CivlAttributes.RemoveAttributes(proc, new HashSet<string> { "inline" });
-        CivlUtil.AddInlineAttribute(proc);
-      });
-      actionDecls.Iter(proc =>
-      {
-        var impl = proc.Impl;
-        impl.OriginalBlocks = impl.Blocks;
-        impl.OriginalLocVars = impl.LocVars;
-      });
-      actionDecls.Iter(proc =>
-      {
-        Inliner.ProcessImplementation(Options, program, proc.Impl);
-      });
-      actionDecls.Iter(proc =>
-      {
-        var impl = proc.Impl;
-        impl.OriginalBlocks = null;
-        impl.OriginalLocVars = null;
-      });
-      
-      // Construct transition and input-output relation
-      procToAtomicAction.Values.Iter(action =>
-      {
-        action.CompleteInitialization(this, true);
-      });
-      procToInvariantAction.Values.Iter(action =>
-      {
-        action.CompleteInitialization(this, true);
-      });
-      
-      // Construct inductive sequentializations
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
-      {
-        var action = procToAtomicAction[proc];
-        var invariantProc = proc.InvariantAction.ActionDecl;
-        var invariantAction = procToInvariantAction[invariantProc];
-        var elim = new Dictionary<AtomicAction, AtomicAction>(proc.EliminationMap().Select(x =>
-          KeyValuePair.Create(procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
-        inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
-      });
-    }
-
-    private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl)
-    {
-      if (procToAtomicAction.ContainsKey(actionDecl))
-      {
-        return;
-      }
-      var refinedProc = actionDecl.RefinedAction.ActionDecl;
-      CreateActionsThatRefineAnotherAction(refinedProc);
-      var refinedAction = procToAtomicAction[refinedProc];
-      procToAtomicAction[actionDecl] = new AtomicAction(actionDecl, refinedAction, this);
+      return actionDecls;
     }
 
     private void TypeCheckYieldingProcedures()
@@ -317,6 +226,72 @@ namespace Microsoft.Boogie
           }
         }
       }
+    }
+    
+    private void InlineAtomicActions(HashSet<ActionDecl> actionDecls)
+    {
+      CivlUtil.AddInlineAttribute(SkipActionDecl);
+      actionDecls.Iter(proc =>
+      {
+        CivlAttributes.RemoveAttributes(proc, new HashSet<string> { "inline" });
+        CivlUtil.AddInlineAttribute(proc);
+      });
+      actionDecls.Iter(proc =>
+      {
+        var impl = proc.Impl;
+        impl.OriginalBlocks = impl.Blocks;
+        impl.OriginalLocVars = impl.LocVars;
+      });
+      actionDecls.Iter(proc =>
+      {
+        Inliner.ProcessImplementation(Options, program, proc.Impl);
+      });
+      actionDecls.Iter(proc =>
+      {
+        var impl = proc.Impl;
+        impl.OriginalBlocks = null;
+        impl.OriginalLocVars = null;
+      });
+    }
+
+    private void CreateAtomicActions(HashSet<ActionDecl> actionDecls)
+    {
+      // Initialize ActionDecls so that all the pending async machinery is set up.
+      actionDecls.Iter(proc => proc.Initialize(program.monomorphizer));
+
+      // Create all actions that do not refine another action.
+      foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
+      {
+        procToAtomicAction[actionDecl] = new Action(actionDecl, null, this);
+      }
+      
+      // Create all atomic actions that refine other actions via an inductive sequentialization.
+      actionDecls.Where(proc => proc.RefinedAction != null).Iter(CreateActionsThatRefineAnotherAction);
+    }
+    
+    private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl)
+    {
+      if (procToAtomicAction.ContainsKey(actionDecl))
+      {
+        return;
+      }
+      var refinedProc = actionDecl.RefinedAction.ActionDecl;
+      CreateActionsThatRefineAnotherAction(refinedProc);
+      var refinedAction = procToAtomicAction[refinedProc];
+      procToAtomicAction[actionDecl] = new Action(actionDecl, refinedAction, this);
+    }
+
+    private void CreateInductiveSequentializations(HashSet<ActionDecl> actionDecls)
+    {
+      actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
+      {
+        var action = procToAtomicAction[proc];
+        var invariantProc = proc.InvariantAction.ActionDecl;
+        var invariantAction = procToAtomicAction[invariantProc];
+        var elim = new Dictionary<Action, Action>(proc.EliminationMap().Select(x =>
+          KeyValuePair.Create(procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
+        inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
+      });
     }
 
     private class SignatureMatcher
@@ -398,13 +373,13 @@ namespace Microsoft.Boogie
     
     #region Public access methods
     
-    public IEnumerable<AtomicAction> LinkActions =>
+    public IEnumerable<Action> LinkActions =>
       procToAtomicAction.Values.Where(action => action.ActionDecl.ActionQualifier == ActionQualifier.Link);
 
-    public IEnumerable<AtomicAction> MoverActions => procToAtomicAction.Values.Where(action =>
-      action.ActionDecl.ActionQualifier != ActionQualifier.Abstract && action.ActionDecl.ActionQualifier != ActionQualifier.Link);
+    public IEnumerable<Action> MoverActions => procToAtomicAction.Keys
+      .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => procToAtomicAction[actionDecl]);
 
-    public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values;
+    public IEnumerable<Action> AtomicActions => procToAtomicAction.Values;
 
     public void Error(Absy node, string message)
     {
@@ -473,7 +448,7 @@ namespace Microsoft.Boogie
         return base.VisitDeclaration(node);
       }
 
-      public void VisitAtomicAction(AtomicAction action)
+      public void VisitAtomicAction(Action action)
       {
         Visit(action.FirstImpl);
         Visit(action.SecondImpl);
