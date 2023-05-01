@@ -252,6 +252,7 @@ namespace Microsoft.Boogie
         var linkAction = civlTypeChecker.procToAtomicAction[actionDecl];
         if (linkAction.LowerLayer == layerNum)
         {
+          newCall.Proc = linkAction.Impl.Proc;
           InjectGate(linkAction, newCall);
           newCmdSeq.Add(newCall);
         }

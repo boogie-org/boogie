@@ -10,15 +10,30 @@ namespace Microsoft.Boogie
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       Program program = linearTypeChecker.program;
 
-      // Store the original declarations of yielding procedures, which will be removed after desugaring below.
+      // Store the original declarations that should be removed after desugaring below.
+      var origActionDecls = program.TopLevelDeclarations.OfType<ActionDecl>();
+      var origActionImpls = program.TopLevelDeclarations.OfType<Implementation>()
+        .Where(impl => impl.Proc is ActionDecl);
       var origYieldProcs = program.TopLevelDeclarations.OfType<YieldProcedureDecl>();
       var origYieldImpls = program.TopLevelDeclarations.OfType<Implementation>()
         .Where(impl => impl.Proc is YieldProcedureDecl);
       var origYieldInvariants = program.TopLevelDeclarations.OfType<YieldInvariantDecl>();
-      var originalDecls = origYieldProcs.Union<Declaration>(origYieldImpls).Union(origYieldInvariants).ToHashSet();
+      var originalDecls = origActionDecls.Union<Declaration>(origActionImpls).Union(origYieldProcs)
+        .Union(origYieldImpls).Union(origYieldInvariants).ToHashSet();
 
       // Commutativity checks
       List<Declaration> decls = new List<Declaration>();
+      civlTypeChecker.AtomicActions.Iter(x =>
+      {
+        decls.Add(x.Impl);
+        decls.Add(x.Impl.Proc);
+      });
+      civlTypeChecker.InvariantActions.Iter(x =>
+      {
+        decls.Add(x.Impl);
+        decls.Add(x.Impl.Proc);
+      });
+
       if (!options.TrustMoverTypes)
       {
         MoverCheck.AddCheckers(civlTypeChecker, decls);

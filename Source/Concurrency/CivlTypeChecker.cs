@@ -400,6 +400,8 @@ namespace Microsoft.Boogie
 
     public IEnumerable<AtomicAction> AtomicActions => procToAtomicAction.Values;
 
+    public IEnumerable<InvariantAction> InvariantActions => procToInvariantAction.Values;
+
     public void Error(Absy node, string message)
     {
       checkingContext.Error(node, message);

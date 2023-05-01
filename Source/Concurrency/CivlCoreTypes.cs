@@ -17,7 +17,12 @@ namespace Microsoft.Boogie
     protected Action(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker)
     {
       this.ActionDecl = actionDecl;
-      this.PendingAsyncs = ActionDecl.Creates.Select(x => x.ActionDecl).ToList();
+      this.Impl = new Duplicator().VisitImplementation(actionDecl.Impl);
+      this.Impl.Attributes = null;
+      this.Impl.Proc = new Procedure(actionDecl.tok, actionDecl.Name, actionDecl.TypeParameters, actionDecl.InParams,
+        actionDecl.OutParams, actionDecl.IsPure, actionDecl.Requires, actionDecl.Modifies, actionDecl.Ensures);
+      CivlUtil.AddInlineAttribute(this.Impl.Proc);
+      this.PendingAsyncs = actionDecl.Creates.Select(x => x.ActionDecl).ToList();
       if (PendingAsyncs.Any())
       {
         var lhss = new List<IdentifierExpr>();
@@ -25,7 +30,7 @@ namespace Microsoft.Boogie
         PendingAsyncs.Iter(decl =>
         {
           var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
-          ActionDecl.OutParams.Add(pa);
+          Impl.Proc.OutParams.Add(pa);
           Impl.OutParams.Add(pa);
           lhss.Add(Expr.Ident(pa));
           rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
@@ -44,7 +49,7 @@ namespace Microsoft.Boogie
 
     public string Name => ActionDecl.Name;
 
-    public Implementation Impl => ActionDecl.Impl;
+    public Implementation Impl;
     
     public LayerRange LayerRange => ActionDecl.LayerRange;
 
