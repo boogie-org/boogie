@@ -7,12 +7,14 @@ namespace Microsoft.Boogie
   public abstract class Action
   {
     public ActionDecl ActionDecl;
+    public Implementation Impl;
     public List<AssertCmd> Gate;
     public HashSet<Variable> UsedGlobalVarsInGate;
     public HashSet<Variable> UsedGlobalVarsInAction;
     public HashSet<Variable> ModifiedGlobalVars;
     public List<ActionDecl> PendingAsyncs;
     public Function InputOutputRelation;
+    public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
 
     protected Action(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker)
     {
@@ -42,6 +44,24 @@ namespace Microsoft.Boogie
         assignCmd.Typecheck(tc);
         Impl.Blocks[0].Cmds.Insert(0, assignCmd);
         DesugarCreateAsyncs(civlTypeChecker);
+
+        if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
+        {
+          var choiceDatatypeName = $"Choice_{Name}";
+          ChoiceDatatypeTypeCtorDecl =
+            new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
+          PendingAsyncs.Iter(elim =>
+          {
+            var field = new TypedIdent(Token.NoToken, elim.Name, elim.PendingAsyncType);
+            ChoiceDatatypeTypeCtorDecl.AddConstructor(Token.NoToken, $"{choiceDatatypeName}_{elim.Name}",
+              new List<TypedIdent>() { field });
+          });
+          civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
+          var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
+          Impl.Proc.OutParams.Add(choice);
+          Impl.OutParams.Add(choice);
+          DesugarSetChoice(civlTypeChecker, choice);
+        }
       }
     }
 
@@ -49,8 +69,6 @@ namespace Microsoft.Boogie
 
     public string Name => ActionDecl.Name;
 
-    public Implementation Impl;
-    
     public LayerRange LayerRange => ActionDecl.LayerRange;
 
     public int LowerLayer => LayerRange.LowerLayer;
@@ -167,6 +185,46 @@ namespace Microsoft.Boogie
       });
     }
     
+    public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
+    {
+      return ChoiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
+    }
+
+    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Variable choice)
+    {
+      Impl.Blocks.Iter(block =>
+      {
+        var newCmds = new List<Cmd>();
+        foreach (var cmd in block.Cmds)
+        {
+          if (cmd is CallCmd callCmd)
+          {
+            var originalProc = (Procedure)civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc);
+            if (originalProc.Name == "set_choice")
+            {
+              var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+              var pendingAsync = PendingAsyncs.First(decl => decl.PendingAsyncType.Equals(pendingAsyncType));
+              var tc = new TypecheckingContext(null, civlTypeChecker.Options);
+              var emptyExpr = Expr.Eq(Expr.Ident(PAs(pendingAsyncType)),
+                ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)));
+              var memberExpr = Expr.Gt(Expr.Select(Expr.Ident(PAs(pendingAsyncType)), callCmd.Ins[0]),
+                Expr.Literal(0));
+              var assertCmd = CmdHelper.AssertCmd(cmd.tok, Expr.Or(emptyExpr, memberExpr),
+                "Choice is not a created pending async");
+              assertCmd.Typecheck(tc);
+              newCmds.Add(assertCmd);
+              var assignCmd = CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(Expr.Ident(choice), pendingAsyncType.Decl.Name), callCmd.Ins[0]);
+              assignCmd.Typecheck(tc);
+              newCmds.Add(assignCmd);
+              continue;
+            }
+          }
+          newCmds.Add(cmd);
+        }
+        block.Cmds = newCmds;
+      });
+    }
+
     /*
      * HoistAsserts computes the weakest liberal precondition (wlp) of the body
      * of impl as a collection of AssertCmd's. As a side effect, all AssertCmd's
@@ -359,64 +417,8 @@ namespace Microsoft.Boogie
 
   public class InvariantAction : Action
   {
-    public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
-
     public InvariantAction(ActionDecl actionDecl, CivlTypeChecker civlTypeChecker) : base(actionDecl, civlTypeChecker)
     {
-      var choiceDatatypeName = $"Choice_{Name}";
-      ChoiceDatatypeTypeCtorDecl =
-        new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
-      PendingAsyncs.Iter(elim =>
-      {
-        var field = new TypedIdent(Token.NoToken, elim.Name, elim.PendingAsyncType);
-        ChoiceDatatypeTypeCtorDecl.AddConstructor(Token.NoToken, $"{choiceDatatypeName}_{elim.Name}",
-          new List<TypedIdent>() { field });
-      });
-      civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
-      var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
-      Impl.Proc.OutParams.Add(choice);
-      Impl.OutParams.Add(choice);
-      DesugarSetChoice(civlTypeChecker, choice);
-    }
-
-    public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
-    {
-      return ChoiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
-    }
-    
-    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Variable choice)
-    {
-      Impl.Blocks.Iter(block =>
-      {
-        var newCmds = new List<Cmd>();
-        foreach (var cmd in block.Cmds)
-        {
-          if (cmd is CallCmd callCmd)
-          {
-            var originalProc = (Procedure)civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc);
-            if (originalProc.Name == "set_choice")
-            {
-              var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-              var pendingAsync = PendingAsyncs.First(decl => decl.PendingAsyncType.Equals(pendingAsyncType));
-              var tc = new TypecheckingContext(null, civlTypeChecker.Options);
-              var emptyExpr = Expr.Eq(Expr.Ident(PAs(pendingAsyncType)),
-                ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)));
-              var memberExpr = Expr.Gt(Expr.Select(Expr.Ident(PAs(pendingAsyncType)), callCmd.Ins[0]),
-                Expr.Literal(0));
-              var assertCmd = CmdHelper.AssertCmd(cmd.tok, Expr.Or(emptyExpr, memberExpr),
-                "Choice is not a created pending async");
-              assertCmd.Typecheck(tc);
-              newCmds.Add(assertCmd);
-              var assignCmd = CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(Expr.Ident(choice), pendingAsyncType.Decl.Name), callCmd.Ins[0]);
-              assignCmd.Typecheck(tc);
-              newCmds.Add(assignCmd);
-              continue;
-            }
-          }
-          newCmds.Add(cmd);
-        }
-        block.Cmds = newCmds;
-      });
     }
   }
 
