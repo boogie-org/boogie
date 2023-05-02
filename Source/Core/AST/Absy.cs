@@ -2936,15 +2936,15 @@ namespace Microsoft.Boogie
       rc.Proc = this;
       base.Resolve(rc);
       rc.Proc = null;
-      if (ActionQualifier == ActionQualifier.Async && OutParams.Count > 0)
+      if (ActionQualifier == ActionQualifier.Async)
       {
-        rc.Error(this, $"async action may not have output parameters");
-      }
-      if (HasMoverType)
-      {
-        if (ActionQualifier == ActionQualifier.Link)
+        if (MoverType == MoverType.None)
         {
-          rc.Error(this, "mover may not be a link action");
+          rc.Error(this, "missing mover type");
+        }
+        if (OutParams.Count > 0)
+        {
+          rc.Error(this, $"async action may not have output parameters");
         }
       }
       if (Creates.Any())
@@ -3301,9 +3301,16 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      if (RefinedAction != null && !RefinedAction.ActionDecl.LayerRange.Contains(Layer + 1))
+      if (RefinedAction != null)
       {
-        tc.Error(this, $"refined atomic action must be available at layer {Layer + 1}");
+        if (!RefinedAction.ActionDecl.HasMoverType)
+        {
+          tc.Error(this, "refined atomic action must have mover type");
+        }
+        if (!RefinedAction.ActionDecl.LayerRange.Contains(Layer + 1))
+        {
+          tc.Error(this, $"refined atomic action must be available at layer {Layer + 1}");
+        }
       }
 
       if (HasMoverType)
