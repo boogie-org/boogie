@@ -7,6 +7,7 @@ namespace Microsoft.Boogie
   public class Action
   {
     public ActionDecl ActionDecl;
+    public Action RefinedAction;
     public Implementation Impl;
     public List<AssertCmd> Gate;
     public HashSet<Variable> UsedGlobalVarsInGate;
@@ -14,27 +15,23 @@ namespace Microsoft.Boogie
     public HashSet<Variable> ModifiedGlobalVars;
     public List<ActionDecl> PendingAsyncs;
     public Function InputOutputRelation;
-    public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
-
-    public Action RefinedAction;
 
     public List<AssertCmd> FirstGate;
     public Implementation FirstImpl;
     public List<AssertCmd> SecondGate;
     public Implementation SecondImpl;
-
     public Dictionary<Variable, Function> TriggerFunctions;
+    
+    public DatatypeTypeCtorDecl ChoiceDatatypeTypeCtorDecl;
+    public Implementation ImplWithChoice;
+    public Function InputOutputRelationWithChoice;
 
     public Action(ActionDecl actionDecl, Action refinedAction, CivlTypeChecker civlTypeChecker)
     {
-      this.ActionDecl = actionDecl;
-      this.RefinedAction = refinedAction;
-      this.Impl = new Duplicator().VisitImplementation(actionDecl.Impl);
-      this.Impl.Attributes = null;
-      this.Impl.Proc = new Procedure(actionDecl.tok, actionDecl.Name, actionDecl.TypeParameters, actionDecl.InParams,
-        actionDecl.OutParams, actionDecl.IsPure, actionDecl.Requires, actionDecl.Modifies, actionDecl.Ensures);
-      CivlUtil.AddInlineAttribute(this.Impl.Proc);
-      this.PendingAsyncs = actionDecl.Creates.Select(x => x.ActionDecl).ToList();
+      ActionDecl = actionDecl;
+      RefinedAction = refinedAction;
+      Impl = CreateDuplicateImplementation(actionDecl.Impl, actionDecl.Name);
+      PendingAsyncs = actionDecl.Creates.Select(x => x.ActionDecl).ToList();
       if (PendingAsyncs.Any())
       {
         var lhss = new List<IdentifierExpr>();
@@ -53,10 +50,10 @@ namespace Microsoft.Boogie
         var assignCmd = CmdHelper.AssignCmd(lhss, rhss);
         assignCmd.Typecheck(tc);
         Impl.Blocks[0].Cmds.Insert(0, assignCmd);
-        DesugarCreateAsyncs(civlTypeChecker);
-
+        DesugarCreateAsyncs(civlTypeChecker, Impl);
         if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
         {
+          ImplWithChoice = CreateDuplicateImplementation(Impl, $"{Name}_With_Choice");
           var choiceDatatypeName = $"Choice_{Name}";
           ChoiceDatatypeTypeCtorDecl =
             new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
@@ -68,12 +65,27 @@ namespace Microsoft.Boogie
           });
           civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
           var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
-          Impl.Proc.OutParams.Add(choice);
-          Impl.OutParams.Add(choice);
-          DesugarSetChoice(civlTypeChecker, choice);
+          ImplWithChoice.Proc.OutParams.Add(choice);
+          ImplWithChoice.OutParams.Add(choice);
+          DesugarSetChoice(civlTypeChecker, ImplWithChoice, choice);
         }
+        DropSetChoice(civlTypeChecker, Impl);
       }
-      CompleteInitialization(civlTypeChecker);
+
+      Gate = HoistAsserts(Impl, civlTypeChecker.Options);
+      UsedGlobalVarsInGate = new HashSet<Variable>(VariableCollector.Collect(Gate).Where(x => x is GlobalVariable));
+      UsedGlobalVarsInAction = new HashSet<Variable>(VariableCollector.Collect(Impl).Where(x => x is GlobalVariable));
+      ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
+
+      InputOutputRelation = ComputeInputOutputRelation(civlTypeChecker, Impl);
+      if (ImplWithChoice != null)
+      {
+        InputOutputRelationWithChoice = ComputeInputOutputRelation(civlTypeChecker, ImplWithChoice);
+      }
+
+      AtomicActionDuplicator.SetupCopy(this, ref FirstGate, ref FirstImpl, "first_");
+      AtomicActionDuplicator.SetupCopy(this, ref SecondGate, ref SecondImpl, "second_");
+      DeclareTriggerFunctions();
     }
 
     public IToken tok => ActionDecl.tok;
@@ -102,24 +114,34 @@ namespace Microsoft.Boogie
       return Impl.OutParams.Skip(ActionDecl.PendingAsyncStartIndex).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
     }
 
-    public Variable LocalPAs(CtorType pendingAsyncType)
+    public bool HasAssumeCmd => Impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
+
+    public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
+    {
+      return ChoiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
+    }
+
+    private Variable LocalPAs(CtorType pendingAsyncType)
     {
       var pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
       return Impl.LocVars.Last(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
     }
     
-    public bool HasAssumeCmd => Impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));
-
-    // The flag initializeInputOutputRelation is added just so the Boogie function representing the input-output relation
-    // of SkipAtomicAction (not needed) is not injected into TopLevelDeclarations. This trick ensures that if the input
-    // program does not use Civl features then the program is not modified.
-    public void CompleteInitialization(CivlTypeChecker civlTypeChecker)
+    private static Implementation CreateDuplicateImplementation(Implementation impl, string name)
     {
-      Gate = HoistAsserts(Impl, civlTypeChecker.Options);
-      UsedGlobalVarsInGate = new HashSet<Variable>(VariableCollector.Collect(Gate).Where(x => x is GlobalVariable));
-      UsedGlobalVarsInAction = new HashSet<Variable>(VariableCollector.Collect(Impl).Where(x => x is GlobalVariable));
-      ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
-      
+      var duplicateImpl = new Duplicator().VisitImplementation(impl);
+      var proc = duplicateImpl.Proc;
+      duplicateImpl.Name = name;
+      duplicateImpl.Attributes = null;
+      // in case impl.Proc is ActionDecl, convert to Procedure
+      duplicateImpl.Proc = new Procedure(proc.tok, name, proc.TypeParameters, proc.InParams,
+        proc.OutParams, proc.IsPure, proc.Requires, proc.Modifies, proc.Ensures);
+      CivlUtil.AddInlineAttribute(duplicateImpl.Proc);
+      return duplicateImpl;
+    }
+
+    private Function ComputeInputOutputRelation(CivlTypeChecker civlTypeChecker, Implementation impl)
+    {
       var alwaysMap = new Dictionary<Variable, Expr>();
       var foroldMap = new Dictionary<Variable, Expr>();
       civlTypeChecker.program.GlobalVariables.Iter(g =>
@@ -127,7 +149,7 @@ namespace Microsoft.Boogie
         alwaysMap[g] = Expr.Ident(civlTypeChecker.BoundVariable(g.Name, g.TypedIdent.Type));
         foroldMap[g] = Expr.Ident(civlTypeChecker.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
       });
-      Impl.InParams.Concat(Impl.OutParams).Iter(v =>
+      impl.InParams.Concat(impl.OutParams).Iter(v =>
       {
         alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
       });
@@ -135,31 +157,27 @@ namespace Microsoft.Boogie
       var forold = Substituter.SubstitutionFromDictionary(foroldMap);
       var transitionRelationExpr =
         Substituter.ApplyReplacingOldExprs(always, forold,
-          TransitionRelationComputation.Refinement(civlTypeChecker, this, new HashSet<Variable>(ModifiedGlobalVars)));
+          TransitionRelationComputation.Refinement(civlTypeChecker, impl, new HashSet<Variable>(ModifiedGlobalVars)));
       var gateExprs = Gate.Select(assertCmd =>
         Substituter.ApplyReplacingOldExprs(always, forold, ExprHelper.Old(assertCmd.Expr)));
-      var transitionRelationInputs = Impl.InParams.Concat(Impl.OutParams)
+      var transitionRelationInputs = impl.InParams.Concat(impl.OutParams)
         .Select(key => alwaysMap[key]).OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
-      InputOutputRelation = new Function(Token.NoToken, $"Civl_InputOutputRelation_{Name}",
+      var inputOutputRelation = new Function(Token.NoToken, $"Civl_InputOutputRelation_{impl.Name}",
         new List<TypeVariable>(),
         transitionRelationInputs, VarHelper.Formal(TypedIdent.NoName, Type.Bool, false), null,
         new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
       var existsVars = foroldMap.Values
         .Concat(alwaysMap.Keys.Where(key => key is GlobalVariable).Select(key => alwaysMap[key]))
         .OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
-      InputOutputRelation.Body =
+      inputOutputRelation.Body =
         ExprHelper.ExistsExpr(existsVars, Expr.And(gateExprs.Append(transitionRelationExpr)));
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, InputOutputRelation.Body);
-      civlTypeChecker.program.AddTopLevelDeclaration(InputOutputRelation);
-
-      AtomicActionDuplicator.SetupCopy(this, ref FirstGate, ref FirstImpl, "first_");
-      AtomicActionDuplicator.SetupCopy(this, ref SecondGate, ref SecondImpl, "second_");
-      DeclareTriggerFunctions();
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputOutputRelation.Body);
+      return inputOutputRelation;
     }
 
-    private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker)
+    private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
-      Impl.Blocks.Iter(block =>
+      impl.Blocks.Iter(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
@@ -209,23 +227,39 @@ namespace Microsoft.Boogie
         block.Cmds = newCmds;
       });
     }
-    
-    public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
-    {
-      return ChoiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
-    }
 
-    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Variable choice)
+    private void DropSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
-      Impl.Blocks.Iter(block =>
+      impl.Blocks.Iter(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProc = (Procedure)civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc);
-            if (originalProc.Name == "set_choice")
+            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            if (originalProcName == "set_choice")
+            {
+              continue;
+            }
+          }
+          newCmds.Add(cmd);
+        }
+        block.Cmds = newCmds;
+      });
+    }
+
+    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl, Variable choice)
+    {
+      impl.Blocks.Iter(block =>
+      {
+        var newCmds = new List<Cmd>();
+        foreach (var cmd in block.Cmds)
+        {
+          if (cmd is CallCmd callCmd)
+          {
+            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            if (originalProcName == "set_choice")
             {
               var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
               var pendingAsync = PendingAsyncs.First(decl => decl.PendingAsyncType.Equals(pendingAsyncType));

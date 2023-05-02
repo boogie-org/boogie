@@ -305,7 +305,7 @@ namespace Microsoft.Boogie
       if (!transitionRelationCache.ContainsKey(atomicAction))
       {
         transitionRelationCache[atomicAction] =
-          TransitionRelationComputation.Refinement(civlTypeChecker, atomicAction, new HashSet<Variable>(this.oldGlobalMap.Keys));
+          TransitionRelationComputation.Refinement(civlTypeChecker, atomicAction.Impl, new HashSet<Variable>(this.oldGlobalMap.Keys));
       }
       return transitionRelationCache[atomicAction];
     }

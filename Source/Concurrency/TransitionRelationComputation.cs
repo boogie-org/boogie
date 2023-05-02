@@ -87,16 +87,16 @@ namespace Microsoft.Boogie
         civlTypeChecker,
         first.SecondImpl, second.FirstImpl,
         frame, triggers, false,
-        string.Format("Transition relation of {0} ∘ {1}", first.Name, second.Name));
+        $"Transition relation of {first.Name} ∘ {second.Name}");
     }
 
-    public static Expr Refinement(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
+    public static Expr Refinement(CivlTypeChecker civlTypeChecker, Implementation impl, HashSet<Variable> frame)
     {
       return ComputeTransitionRelation(
         civlTypeChecker,
-        action.Impl, null,
+        impl, null,
         frame, null, false,
-        string.Format("Transition relation of {0}", action.Name));
+        $"Transition relation of {impl.Name}");
     }
 
     public static Expr Cooperation(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
@@ -105,7 +105,7 @@ namespace Microsoft.Boogie
         civlTypeChecker,
         action.Impl, null,
         frame, null, true,
-        string.Format("Cooperation expression of {0}", action.Name));
+        $"Cooperation expression of {action.Name}");
     }
 
     private void EnumeratePaths()
@@ -293,10 +293,10 @@ namespace Microsoft.Boogie
               assignments.Add(new Assignment(var, expr));
             }
           }
-          else if (cmd is AssumeCmd assumeCmd)
+          else if (cmd is PredicateCmd predCmd)
           {
             var sub = SubstitutionHelper.FromVariableMap(LatestCopies());
-            assumes.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, assumeCmd.Expr));
+            assumes.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, predCmd.Expr));
           }
           else if (cmd is HavocCmd havocCmd)
           {
