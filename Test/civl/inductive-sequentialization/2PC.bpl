@@ -217,7 +217,7 @@ creates COORDINATOR1, PARTICIPANT1;
   call create_asyncs((lambda pa:PARTICIPANT1 :: pid(pa->pid)));
 }
 
-async action {:layer 2,3} PARTICIPANT1 ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2,3} PARTICIPANT1 ({:linear_in "pid"} pid:int)
 creates PARTICIPANT2;
 modifies RequestChannel, VoteChannel, votes;
 {
@@ -236,7 +236,7 @@ modifies RequestChannel, VoteChannel, votes;
   call create_async(PARTICIPANT2(pid));
 }
 
-async action {:layer 2,5} PARTICIPANT2 ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2,5} PARTICIPANT2 ({:linear_in "pid"} pid:int)
 modifies DecisionChannel, decisions;
 {
   var d:decision;
@@ -257,7 +257,7 @@ modifies RequestChannel;
   call create_async(COORDINATOR2(0));
 }
 
-async action {:layer 2,4} COORDINATOR2 ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2,4} COORDINATOR2 ({:linear_in "pid"} pid:int)
 modifies VoteChannel, DecisionChannel, decisions;
 {
   var dec:decision;

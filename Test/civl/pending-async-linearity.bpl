@@ -3,10 +3,10 @@
 
 type {:linear "pid"} Pid = int;
 
-async action {:layer 1} A ({:linear_in "pid"} pid:int)
+async >-< action {:layer 1} A ({:linear_in "pid"} pid:int)
 {}
 
-async action {:layer 1} B ({:linear_in "pid"} pid:int)
+async >-< action {:layer 1} B ({:linear_in "pid"} pid:int)
 {}
 
 >-< action {:layer 1} M0 (pid:int)

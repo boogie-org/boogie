@@ -6,8 +6,8 @@ axiom n > 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async action {:layer 1} A () {}
-async action {:layer 1} B () {}
+async >-< action {:layer 1} A () {}
+async >-< action {:layer 1} B () {}
 
 <- action {:layer 1} C ()
 creates A;

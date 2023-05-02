@@ -1,4 +1,4 @@
-async action {:layer 2} A_StartRound(r: Round, {:linear_in "perm"} r_lin: Round)
+async >-< action {:layer 2} A_StartRound(r: Round, {:linear_in "perm"} r_lin: Round)
 creates A_Join, A_Propose;
 {
   assert r == r_lin;
@@ -14,7 +14,7 @@ creates A_Join, A_Propose;
   call create_async(A_Propose(r, ProposePermissions(r)));
 }
 
-async action {:layer 2} A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
+async >-< action {:layer 2} A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
 creates A_Vote, A_Conclude;
 modifies voteInfo;
 {
@@ -46,7 +46,7 @@ modifies voteInfo;
   }
 }
 
-async action {:layer 2} A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
+async >-< action {:layer 2} A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
 modifies decision;
 {
   var {:pool "NodeSet"} q: NodeSet;
@@ -64,7 +64,7 @@ modifies decision;
   }
 }
 
-async action {:layer 2} A_Join(r: Round, n: Node, {:linear_in "perm"} p: Permission)
+async >-< action {:layer 2} A_Join(r: Round, n: Node, {:linear_in "perm"} p: Permission)
 modifies joinedNodes;
 {
   assert Round(r);
@@ -81,7 +81,7 @@ modifies joinedNodes;
   }
 }
 
-async action {:layer 2} A_Vote(r: Round, n: Node, v: Value, {:linear_in "perm"} p: Permission)
+async >-< action {:layer 2} A_Vote(r: Round, n: Node, v: Value, {:linear_in "perm"} p: Permission)
 modifies joinedNodes, voteInfo;
 {
   assert Round(r);

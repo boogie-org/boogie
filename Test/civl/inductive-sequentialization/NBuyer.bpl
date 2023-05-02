@@ -245,14 +245,14 @@ creates SellerInit, FirstBuyerInit, MiddleBuyer, LastBuyer;
   call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
 }
 
-async action {:layer 2,3} SellerInit ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2,3} SellerInit ({:linear_in "pid"} pid:int)
 creates SellerFinish;
 {
   assert sellerID(pid);
   call create_async(SellerFinish(pid));
 }
 
-async action {:layer 2,5} SellerFinish ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2,5} SellerFinish ({:linear_in "pid"} pid:int)
 modifies DecisionChannel;
 {
   var dec:bool;
@@ -262,14 +262,14 @@ modifies DecisionChannel;
   DecisionChannel[dec] := DecisionChannel[dec] - 1;
 }
 
-async action {:layer 2,4} FirstBuyerInit ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2,4} FirstBuyerInit ({:linear_in "pid"} pid:int)
 creates FirstBuyer;
 {
   assert firstBuyerID(pid);
   call create_async(FirstBuyer(pid));
 }
 
-async action {:layer 2,4} FirstBuyer ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2,4} FirstBuyer ({:linear_in "pid"} pid:int)
 modifies RemainderChannel, contribution;
 {
   var rem:int;
@@ -283,7 +283,7 @@ modifies RemainderChannel, contribution;
   RemainderChannel[nextBuyer(pid)][rem] := RemainderChannel[nextBuyer(pid)][rem] + 1;
 }
 
-async action {:layer 2,4} MiddleBuyer ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2,4} MiddleBuyer ({:linear_in "pid"} pid:int)
 modifies RemainderChannel, contribution;
 {
   var rem:int;
@@ -300,7 +300,7 @@ modifies RemainderChannel, contribution;
   RemainderChannel[nextBuyer(pid)][rem] := RemainderChannel[nextBuyer(pid)][rem] + 1;
 }
 
-async action {:layer 2,4} LastBuyer ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2,4} LastBuyer ({:linear_in "pid"} pid:int)
 modifies RemainderChannel, DecisionChannel, contribution;
 {
   var rem:int;

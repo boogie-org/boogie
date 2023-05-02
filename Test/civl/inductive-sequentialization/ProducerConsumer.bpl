@@ -105,7 +105,7 @@ modifies channels;
   assume {:add_to_pool "INV2", channels[send_handle->cid]} true;
 }
 
-async action {:layer 2} CONSUMER (x: int, {:linear_in "cid"} receive_handle: ChannelHandle)
+async >-< action {:layer 2} CONSUMER (x: int, {:linear_in "cid"} receive_handle: ChannelHandle)
 creates CONSUMER;
 modifies channels;
 {

@@ -19,7 +19,7 @@ refines SPEC;
   async call a(true, 1, 2.3); // This call is still to procedure a when it is turned into a pending async.
 }
 
-async action {:layer 1,2} A (i:int) { }
+async >-< action {:layer 1,2} A (i:int) { }
 
 yield procedure {:layer 0} a ({:hide} b:bool, i:int, {:hide} r:real);
 refines A;

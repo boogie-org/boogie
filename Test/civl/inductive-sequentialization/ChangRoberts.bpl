@@ -164,7 +164,7 @@ modifies channel;
   call create_async(P(pid));
 }
 
-async action {:layer 2, 3} P ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2, 3} P ({:linear_in "pid"} pid:int)
 creates P;
 modifies channel, terminated, leader;
 {

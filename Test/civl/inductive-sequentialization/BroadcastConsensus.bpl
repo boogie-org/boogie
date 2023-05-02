@@ -163,7 +163,7 @@ modifies CH;
   CH := CH[value[i] := CH[value[i]] + 1];
 }
 
-async action {:layer 2,3} COLLECT({:linear_in "collect"} i:pid)
+async >-< action {:layer 2,3} COLLECT({:linear_in "collect"} i:pid)
 modifies decision;
 {
   var received_values:[val]int;

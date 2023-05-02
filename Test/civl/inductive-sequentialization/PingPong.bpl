@@ -102,7 +102,7 @@ modifies channel;
   call create_async(PONG(1, Right(cid)));
 }
 
-async action {:layer 2} PING (x: int, {:linear_in "cid"} p: ChannelHandle)
+async >-< action {:layer 2} PING (x: int, {:linear_in "cid"} p: ChannelHandle)
 creates PING;
 modifies channel;
 {
@@ -131,7 +131,7 @@ modifies channel;
   channel[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
-async action {:layer 2} PONG (y: int, {:linear_in "cid"} p: ChannelHandle)
+async >-< action {:layer 2} PONG (y: int, {:linear_in "cid"} p: ChannelHandle)
 creates PONG;
 modifies channel;
 {

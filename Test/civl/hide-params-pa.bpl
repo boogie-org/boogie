@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-async action {:layer 2} SKIP () returns () { }
+async >-< action {:layer 2} SKIP () returns () { }
 
 yield procedure {:layer 1} b ()
 refines SKIP;

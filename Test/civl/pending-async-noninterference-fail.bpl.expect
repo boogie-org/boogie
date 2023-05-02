@@ -1,7 +1,7 @@
 pending-async-noninterference-fail.bpl(7,1): Error: Non-interference check failed
 Execution trace:
-    pending-async-noninterference-fail.bpl(9,25): inline$A$0$Entry
+    pending-async-noninterference-fail.bpl(9,29): inline$A$0$Entry
     pending-async-noninterference-fail.bpl(12,5): inline$A$0$anon0
-    pending-async-noninterference-fail.bpl(9,25): inline$A$0$Return
+    pending-async-noninterference-fail.bpl(9,29): inline$A$0$Return
 
 Boogie program verifier finished with 1 verified, 1 error
