@@ -21,7 +21,7 @@ yield procedure {:layer 1} q()
   call Incr(3);
 }
 
-action {:layer 1,1} AtomicIncr(val: int)
+>-< action {:layer 1,1} AtomicIncr(val: int)
 modifies x;
 {
   x := x + val;

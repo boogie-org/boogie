@@ -13,7 +13,7 @@ var {:layer 0,2} lock:Tid;
 function {:inline} sorted (A:[int]int, count:int) : bool
 { (forall i:int, j:int :: 0 <= i && i <= j && j < count ==> A[i] <= A[j]) }
 
-action {:layer 2} INSERT ({:linear "tid"} tid:Tid, v:int)
+>-< action {:layer 2} INSERT ({:linear "tid"} tid:Tid, v:int)
 modifies A, count;
 {
   var idx:int; // index at which v is written

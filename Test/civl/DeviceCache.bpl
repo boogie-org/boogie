@@ -125,7 +125,7 @@ preserves call YieldToReadCache(tid, old(currsize));
     }
 }
 
-action {:layer 1} AtomicInit({:linear_in "tid"} xls:[X]bool)
+>-< action {:layer 1} AtomicInit({:linear_in "tid"} xls:[X]bool)
 modifies currsize, newsize, lock, ghostLock;
 { assert xls == MapConst(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; }
 
@@ -144,21 +144,21 @@ refines AtomicReadCurrsize;
 yield procedure {:layer 0} ReadNewsize({:linear "tid"} tid: X) returns (val: int);
 refines AtomicReadNewsize;
 
-action {:layer 1} AtomicWriteNewsize({:linear "tid"} tid: X, val: int)
+>-< action {:layer 1} AtomicWriteNewsize({:linear "tid"} tid: X, val: int)
 modifies newsize, ghostLock;
 { assert tid != nil; assert lock == tid && ghostLock == nil; newsize := val; ghostLock := tid; }
 
 yield procedure {:layer 0} WriteNewsize({:linear "tid"} tid: X, val: int);
 refines AtomicWriteNewsize;
 
-action {:layer 1} AtomicWriteCurrsize({:linear "tid"} tid: X, val: int)
+>-< action {:layer 1} AtomicWriteCurrsize({:linear "tid"} tid: X, val: int)
 modifies currsize, ghostLock;
 { assert tid != nil; assert lock == tid && ghostLock == tid; currsize := val; ghostLock := nil; }
 
 yield procedure {:layer 0} WriteCurrsize({:linear "tid"} tid: X, val: int);
 refines AtomicWriteCurrsize;
 
-action {:layer 1} AtomicReadCacheEntry({:linear "tid"} tid: X, index: int)
+>-< action {:layer 1} AtomicReadCacheEntry({:linear "tid"} tid: X, index: int)
 { assert 0 <= index && index < currsize; }
 
 yield procedure {:layer 0} ReadCacheEntry({:linear "tid"} tid: X, index: int);
@@ -184,7 +184,7 @@ modifies lock;
 yield procedure {:layer 0} release({:linear "tid"} tid: X);
 refines atomic_release;
 
-action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} tid: X)
+>-< action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} tid: X)
 modifies unallocated;
 { assume tid != nil; assume unallocated[tid]; unallocated[tid] := false; }
 

@@ -151,13 +151,13 @@ refines atomic_write2;
 // We can prove that the above procedures perform their operations on two memory
 // locations atomically.
 
-action {:layer 2} atomic_read2(a1: Addr, a2: Addr) returns (v1: Val, v2: Val)
+>-< action {:layer 2} atomic_read2(a1: Addr, a2: Addr) returns (v1: Val, v2: Val)
 {
     v1 := memory[a1];
     v2 := memory[a2];
 }
 
-action {:layer 2} atomic_write2(a1: Addr, a2:Addr, v1: Val, v2: Val)
+>-< action {:layer 2} atomic_write2(a1: Addr, a2:Addr, v1: Val, v2: Val)
 modifies memory;
 {
     memory[a1] := v1;

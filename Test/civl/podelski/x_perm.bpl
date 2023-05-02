@@ -117,7 +117,7 @@ preserves call Inv();
   call geq0_dec(b);
 }
 
-action {:layer 1} GEQ0_INC ({:linear_in "perm"} a:A, {:linear "perm"} b:B)
+>-< action {:layer 1} GEQ0_INC ({:linear_in "perm"} a:A, {:linear "perm"} b:B)
 modifies x, As;
 {
   assert x >= 0;
@@ -126,7 +126,7 @@ modifies x, As;
   As[a] := true;
 }
 
-action {:layer 1} GEQ0_DEC ({:linear_in "perm"} b:B)
+>-< action {:layer 1} GEQ0_DEC ({:linear_in "perm"} b:B)
 modifies x, Bs;
 {
   assert x >= 0;

@@ -10,7 +10,7 @@ const unique FINISHED: int;
 
 var status:[int]int;
 
-action {:layer 5} atomic_main({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool)
+>-< action {:layer 5} atomic_main({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool)
 modifies status;
 {
     assert id == c;
@@ -108,7 +108,7 @@ refines atomic_client;
     call client2();
 }
 
-action {:layer 3} atomic_client2()
+>-< action {:layer 3} atomic_client2()
 modifies status;
 {
     assume (forall i: int :: 0 <= i && i < n ==> status[i] == CREATED);
@@ -123,7 +123,7 @@ refines atomic_master;
     call master2();
 }
 
-action {:layer 3} atomic_master2()
+>-< action {:layer 3} atomic_master2()
 modifies status;
 {
     assert (forall i: int :: 0 <= i && i < n ==> status[i] == PROCESSED);

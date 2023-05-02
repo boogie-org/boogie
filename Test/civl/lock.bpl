@@ -21,7 +21,7 @@ yield procedure {:layer 2} Customer()
     }
 }
 
-action {:layer 2} AtomicEnter()
+>-< action {:layer 2} AtomicEnter()
 modifies b;
 { assume !b; b := true; }
 
@@ -40,7 +40,7 @@ refines AtomicEnter;
     }
 }
 
-action {:layer 1,2} AtomicCAS(prev: bool, next: bool) returns (status: bool)
+>-< action {:layer 1,2} AtomicCAS(prev: bool, next: bool) returns (status: bool)
 modifies b;
 {
   if (b == prev) {
@@ -54,7 +54,7 @@ modifies b;
 yield procedure {:layer 0} CAS(prev: bool, next: bool) returns (status: bool);
 refines AtomicCAS;
 
-action {:layer 1,2} AtomicLeave()
+>-< action {:layer 1,2} AtomicLeave()
 modifies b;
 { b := false; }
 

@@ -66,7 +66,7 @@ function value_card(v:val, value:[pid]val, i:pid, j:pid) : int
 // would like the MAIN action(s) to take a single parameter as follows:
 //     {:linear_in "broadcast"}{:linear_in "collect"} pids:[pid]bool
 
-action {:layer 4}
+>-< action {:layer 4}
 MAIN''({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 modifies CH, decision;
 {
@@ -78,7 +78,7 @@ modifies CH, decision;
   decision := (lambda i:pid :: if pid(i) then max(CH) else old(decision)[i]);
 }
 
-invariant action {:layer 3}
+action {:layer 3}
 INV_COLLECT_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 creates COLLECT;
 modifies CH, decision;
@@ -103,7 +103,7 @@ modifies CH, decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3}
+>-< action {:layer 3}
 MAIN'({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 refines MAIN'' using INV_COLLECT_ELIM;
 creates COLLECT;
@@ -120,7 +120,7 @@ modifies CH;
   call create_asyncs(AllCollects());
 }
 
-action {:layer 2}
+>-< action {:layer 2}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 refines MAIN' using INV_BROADCAST_ELIM;
 creates BROADCAST, COLLECT;
@@ -134,7 +134,7 @@ creates BROADCAST, COLLECT;
   call create_asyncs(AllCollects());
 }
 
-invariant action {:layer 2}
+action {:layer 2}
 INV_BROADCAST_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 creates BROADCAST, COLLECT;
 modifies CH;
@@ -163,7 +163,7 @@ modifies CH;
   CH := CH[value[i] := CH[value[i]] + 1];
 }
 
-async action {:layer 2,3} COLLECT({:linear_in "collect"} i:pid)
+async >-< action {:layer 2,3} COLLECT({:linear_in "collect"} i:pid)
 modifies decision;
 {
   var received_values:[val]int;
@@ -174,7 +174,7 @@ modifies decision;
   decision[i] := max(received_values);
 }
 
-abstract action {:layer 3} COLLECT'({:linear_in "collect"} i:pid)
+action {:layer 3} COLLECT'({:linear_in "collect"} i:pid)
 modifies decision;
 {
   assert CH == (lambda v:val :: value_card(v, value, 1, n));

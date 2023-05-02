@@ -26,7 +26,7 @@ namespace Microsoft.Boogie
     public Implementation ImplWithChoice;
     public Function InputOutputRelationWithChoice;
 
-    public Action(ActionDecl actionDecl, Action refinedAction, CivlTypeChecker civlTypeChecker)
+    public Action(CivlTypeChecker civlTypeChecker, ActionDecl actionDecl, Action refinedAction, bool isInvariant)
     {
       ActionDecl = actionDecl;
       RefinedAction = refinedAction;
@@ -51,7 +51,7 @@ namespace Microsoft.Boogie
         assignCmd.Typecheck(tc);
         Impl.Blocks[0].Cmds.Insert(0, assignCmd);
         DesugarCreateAsyncs(civlTypeChecker, Impl);
-        if (actionDecl.ActionQualifier == ActionQualifier.Invariant)
+        if (isInvariant)
         {
           ImplWithChoice = CreateDuplicateImplementation(Impl, $"{Name}_With_Choice");
           var choiceDatatypeName = $"Choice_{Name}";

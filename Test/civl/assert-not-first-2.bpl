@@ -7,7 +7,7 @@ requires {:layer 1} (forall x: int :: arr[x] == 1);
     call foo(arr);
 }
 
-action {:layer 1} FOO(arr: [int]int) {
+>-< action {:layer 1} FOO(arr: [int]int) {
     var x: int;
     assert arr[x] == 1;
 }

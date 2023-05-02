@@ -15,7 +15,7 @@ function {:inline} perm (p : int) : bool
 // ###########################################################################
 // Main (process A sends initial proposal)
 
-action {:layer 3} atomic_agree ({:linear_in "lin"} p : int)
+>-< action {:layer 3} atomic_agree ({:linear_in "lin"} p : int)
 modifies val_a, val_b;
 {
   havoc val_a, val_b;
@@ -120,14 +120,14 @@ refines atomic_set_val_b_perm;
 // ###########################################################################
 // Primitive atomic actions
 
-action {:layer 1} atomic_get_val_a () returns (ret : int)
+>-< action {:layer 1} atomic_get_val_a () returns (ret : int)
 { ret := val_a; }
 
-action {:layer 1} atomic_set_val_a (val : int)
+>-< action {:layer 1} atomic_set_val_a (val : int)
 modifies val_a;
 { val_a := val; }
 
-action {:layer 1} atomic_set_val_b (val : int)
+>-< action {:layer 1} atomic_set_val_b (val : int)
 modifies val_b;
 { val_b := val; }
 

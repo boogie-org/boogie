@@ -32,13 +32,13 @@ function {:inline} EmptyChannel () : [int]int
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3}
+>-< action {:layer 3}
 MAIN' ({:linear_in "cid"} cid: ChannelId)
 {
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
 }
 
-invariant action {:layer 2}
+action {:layer 2}
 INV ({:linear_in "cid"} cid: ChannelId)
 creates PING, PONG;
 modifies channel;
@@ -69,7 +69,7 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-abstract action {:layer 2} PING' (x: int, {:linear_in "cid"} p: ChannelHandle)
+action {:layer 2} PING' (x: int, {:linear_in "cid"} p: ChannelHandle)
 creates PING;
 modifies channel;
 {
@@ -78,7 +78,7 @@ modifies channel;
   call PING(x, p);
 }
 
-abstract action {:layer 2} PONG' (y: int, {:linear_in "cid"} p: ChannelHandle)
+action {:layer 2} PONG' (y: int, {:linear_in "cid"} p: ChannelHandle)
 creates PONG;
 modifies channel;
 {
@@ -89,7 +89,7 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2}
+>-< action {:layer 2}
 MAIN ({:linear_in "cid"} cid: ChannelId)
 refines MAIN' using INV;
 creates PING, PONG;
@@ -102,7 +102,7 @@ modifies channel;
   call create_async(PONG(1, Right(cid)));
 }
 
-async action {:layer 2} PING (x: int, {:linear_in "cid"} p: ChannelHandle)
+async >-< action {:layer 2} PING (x: int, {:linear_in "cid"} p: ChannelHandle)
 creates PING;
 modifies channel;
 {
@@ -131,7 +131,7 @@ modifies channel;
   channel[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
-async action {:layer 2} PONG (y: int, {:linear_in "cid"} p: ChannelHandle)
+async >-< action {:layer 2} PONG (y: int, {:linear_in "cid"} p: ChannelHandle)
 creates PONG;
 modifies channel;
 {

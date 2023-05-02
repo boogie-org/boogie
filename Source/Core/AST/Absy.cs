@@ -2828,9 +2828,7 @@ namespace Microsoft.Boogie
   public enum ActionQualifier
   {
       Async,
-      Invariant,
       Link,
-      Abstract,
       None
   }
 
@@ -2887,10 +2885,6 @@ namespace Microsoft.Boogie
     {
       Target.Resolve(rc);
       Abstraction.Resolve(rc);
-      if (Abstraction.ActionDecl != null && Abstraction.ActionDecl.ActionQualifier != ActionQualifier.Abstract)
-      {
-        rc.Error(this, $"action must be abstract: {Abstraction.ActionName}");
-      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -2942,23 +2936,15 @@ namespace Microsoft.Boogie
       rc.Proc = this;
       base.Resolve(rc);
       rc.Proc = null;
-      if (ActionQualifier == ActionQualifier.Async && OutParams.Count > 0)
+      if (ActionQualifier == ActionQualifier.Async)
       {
-        rc.Error(this, $"async action may not have output parameters");
-      }
-      if (HasMoverType)
-      {
-        if (ActionQualifier == ActionQualifier.Invariant)
+        if (MoverType == MoverType.None)
         {
-          rc.Error(this, "mover may not be a invariant action");
+          rc.Error(this, "missing mover type");
         }
-        if (ActionQualifier == ActionQualifier.Link)
+        if (OutParams.Count > 0)
         {
-          rc.Error(this, "mover may not be a link action");
-        }
-        if (ActionQualifier == ActionQualifier.Abstract)
-        {
-          rc.Error(this, "mover may not be an abstract action");
+          rc.Error(this, $"async action may not have output parameters");
         }
       }
       if (Creates.Any())
@@ -2988,11 +2974,6 @@ namespace Microsoft.Boogie
         }
         RefinedAction.Resolve(rc);
         InvariantAction.Resolve(rc);
-        if (InvariantAction.ActionDecl != null &&
-            InvariantAction.ActionDecl.ActionQualifier != ActionQualifier.Invariant)
-        {
-          rc.Error(this, "expected invariant action");
-        }
       }
       Eliminates.Iter(elim =>
       {
@@ -3118,14 +3099,8 @@ namespace Microsoft.Boogie
     {
       switch (ActionQualifier)
       {
-        case ActionQualifier.Abstract:
-          stream.Write(level, "abstract ");
-          break;
         case ActionQualifier.Async:
           stream.Write(level, "async ");
-          break;
-        case ActionQualifier.Invariant:
-          stream.Write(level, "invariant ");
           break;
         case ActionQualifier.Link:
           stream.Write(level, "link ");
@@ -3326,9 +3301,16 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      if (RefinedAction != null && !RefinedAction.ActionDecl.LayerRange.Contains(Layer + 1))
+      if (RefinedAction != null)
       {
-        tc.Error(this, $"refined atomic action must be available at layer {Layer + 1}");
+        if (!RefinedAction.ActionDecl.HasMoverType)
+        {
+          tc.Error(this, "refined atomic action must have mover type");
+        }
+        if (!RefinedAction.ActionDecl.LayerRange.Contains(Layer + 1))
+        {
+          tc.Error(this, $"refined atomic action must be available at layer {Layer + 1}");
+        }
       }
 
       if (HasMoverType)

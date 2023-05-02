@@ -160,21 +160,21 @@ var {:layer 1, 2} {:linear "mem"} pool:lmap;
 var {:layer 0, 1} mem:[int]int;
 var {:layer 0, 1} unallocated:[int]bool;
 
-action {:layer 1} atomic_ReadLow (i:int) returns (o:int)
+>-< action {:layer 1} atomic_ReadLow (i:int) returns (o:int)
 { o := mem[i]; }
 
-action {:layer 1} atomic_WriteLow (i:int, o:int)
+>-< action {:layer 1} atomic_WriteLow (i:int, o:int)
 modifies mem;
 { mem[i] := o; }
 
-action {:layer 1} atomic_PickAddr () returns (i:int)
+>-< action {:layer 1} atomic_PickAddr () returns (i:int)
 modifies unallocated;
 {
   assume unallocated[i];
   unallocated[i] := false;
 }
 
-action {:layer 1} atomic_ReturnAddr (i:int)
+>-< action {:layer 1} atomic_ReturnAddr (i:int)
 modifies unallocated;
 { unallocated[i] := true; }
 

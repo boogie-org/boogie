@@ -7,7 +7,7 @@ requires {:layer 1} (forall x: int :: arr[x] == 1);
     call foo(arr, i);
 }
 
-action {:layer 1} FOO(arr: [int]int, i: int) {
+>-< action {:layer 1} FOO(arr: [int]int, i: int) {
     var x: int;
     x := i;
     havoc x;

@@ -10,7 +10,7 @@ yield procedure {:layer 1} main ()
   call write_x_1(true);
 }
 
-action {:layer 1,1} atomic_write_x_1 (x':bool)
+>-< action {:layer 1,1} atomic_write_x_1 (x':bool)
 modifies y;
 { y := x'; }
 
@@ -19,7 +19,7 @@ refines atomic_write_x_1;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 1,1} atomic_write_x_2 (x':int, foo:int)
+>-< action {:layer 1,1} atomic_write_x_2 (x':int, foo:int)
 modifies x;
 { x := x'; }
 
@@ -29,7 +29,7 @@ refines atomic_write_x_2;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 1,1} atomic_write_x_3 ({:linear "lin"} x':int)
+>-< action {:layer 1,1} atomic_write_x_3 ({:linear "lin"} x':int)
 modifies x;
 { x := x'; }
 
@@ -38,7 +38,7 @@ refines atomic_write_x_3;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 1,1} atomic_write_x_4 (x':int)
+>-< action {:layer 1,1} atomic_write_x_4 (x':int)
 modifies x;
 { x := x'; }
 

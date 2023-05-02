@@ -50,7 +50,7 @@ refines AtomicAlloc;
 <-> action {:layer 1} AtomicAlloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool)
 { assert tidq[i]; id := i; tidq' := tidq[i := false]; }
 
-action {:layer 2} AtomicMain({:linear_in "tid"} tids: [int]bool)
+>-< action {:layer 2} AtomicMain({:linear_in "tid"} tids: [int]bool)
 modifies status;
 {
     assert (forall i: int :: 0 <= i && i < n <==> tids[i]);

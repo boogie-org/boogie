@@ -118,7 +118,7 @@ preserves call Yield1();
   return;
 }
 
-action {:layer 3} AtomicInsert(x : int, {:linear "tid"} tid: X) returns (result : bool)
+>-< action {:layer 3} AtomicInsert(x : int, {:linear "tid"} tid: X) returns (result : bool)
 modifies elt, valid, owner;
 {
   var r:int;
@@ -166,7 +166,7 @@ preserves call Yield2();
   return;
 }
 
-action {:layer 3} AtomicInsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
+>-< action {:layer 3} AtomicInsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
 modifies elt, valid, owner;
 {
   var rx:int;
@@ -240,7 +240,7 @@ preserves call Yield2();
   return;
 }
 
-action {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
+>-< action {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
 {
   assert tid != nil && tid != done;
   assert x != null;

@@ -12,7 +12,7 @@ var {:layer 0,1} x : int;
 // ###########################################################################
 // Main
 
-action {:layer 2} skip () {}
+>-< action {:layer 2} skip () {}
 
 yield procedure {:layer 1} Main ()
 refines skip;

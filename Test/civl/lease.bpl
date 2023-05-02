@@ -79,7 +79,7 @@ modifies network, external;
 yield procedure {:layer 1} SendExternal({:linear "me"} me:int, dst:int, payload:lockMsg);
 refines AtomicSendExternal;
 
-action {:layer 2} AtomicAddHistory(l:int)
+>-< action {:layer 2} AtomicAddHistory(l:int)
 modifies history;
 {
         history  := addHistory(history, l);
@@ -122,7 +122,7 @@ function Inv(network:[msg]bool, nodes:[int]node, history:history):bool
 && (forall m:msg :: network[m] ==> InvMsg(network, nodes, history, m))
 }
 
-action {:layer 3} AtomicGrant({:linear "me"} me:int) returns(dst:int, epoch:int)
+>-< action {:layer 3} AtomicGrant({:linear "me"} me:int) returns(dst:int, epoch:int)
 modifies history;
 {
         history := addHistory(history, dst);
@@ -144,7 +144,7 @@ preserves call YieldInv();
   call SendInternal(me, dst, transfer(epoch + 1));
 }
 
-action {:layer 3} AtomicAccept({:linear "me"} me:int, dst:int) returns(epoch:int)
+>-< action {:layer 3} AtomicAccept({:linear "me"} me:int, dst:int) returns(epoch:int)
 modifies external;
 {
         // specify that the message source (me) must appear at right epoch in history:

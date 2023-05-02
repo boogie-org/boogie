@@ -22,7 +22,7 @@ modifies x;
   x := 1;
 }
 
-action {:layer 1} ASSERTION()
+>-< action {:layer 1} ASSERTION()
 {
   assert x == 0;
 }

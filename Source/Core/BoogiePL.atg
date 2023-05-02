@@ -666,11 +666,6 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeC
      impl = null;
    .)
   [ ActionQualifierDecl<ref actionQualifier> ]
-  (. 
-    if (actionQualifier == ActionQualifier.None || actionQualifier == ActionQualifier.Async) {
-      moverType = MoverType.Atomic;
-    }
-  .)
   [ MoverQualifier <ref moverType> ]
   "action"
   { Attribute<ref kv> }
@@ -751,9 +746,7 @@ MoverQualifier<ref MoverType moverType>
 ActionQualifierDecl<ref ActionQualifier actionQualifier>
 = (
     "async" (. actionQualifier = ActionQualifier.Async; .)
-  | "invariant" (. actionQualifier = ActionQualifier.Invariant; .)
   | "link" (. actionQualifier = ActionQualifier.Link; .)
-  | "abstract" (. actionQualifier = ActionQualifier.Abstract; .)
   )
   .
 

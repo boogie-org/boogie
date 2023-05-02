@@ -256,29 +256,34 @@ namespace Microsoft.Boogie
 
     private void CreateAtomicActions(HashSet<ActionDecl> actionDecls)
     {
+      var invariantActionDecls = actionDecls.Where(decl => decl.InvariantAction != null)
+        .Select(decl => decl.InvariantAction.ActionDecl).ToHashSet();
+
       // Initialize ActionDecls so that all the pending async machinery is set up.
       actionDecls.Iter(proc => proc.Initialize(program.monomorphizer));
 
       // Create all actions that do not refine another action.
       foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
       {
-        procToAtomicAction[actionDecl] = new Action(actionDecl, null, this);
+        procToAtomicAction[actionDecl] = new Action(this, actionDecl, null, invariantActionDecls.Contains(actionDecl));
       }
       
       // Create all atomic actions that refine other actions via an inductive sequentialization.
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(CreateActionsThatRefineAnotherAction);
+      actionDecls.Where(proc => proc.RefinedAction != null)
+        .Iter(decl => CreateActionsThatRefineAnotherAction(decl, invariantActionDecls));
     }
     
-    private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl)
+    private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl, HashSet<ActionDecl> invariantActionDecls)
     {
       if (procToAtomicAction.ContainsKey(actionDecl))
       {
         return;
       }
       var refinedProc = actionDecl.RefinedAction.ActionDecl;
-      CreateActionsThatRefineAnotherAction(refinedProc);
+      CreateActionsThatRefineAnotherAction(refinedProc, invariantActionDecls);
       var refinedAction = procToAtomicAction[refinedProc];
-      procToAtomicAction[actionDecl] = new Action(actionDecl, refinedAction, this);
+      procToAtomicAction[actionDecl] =
+        new Action(this, actionDecl, refinedAction, invariantActionDecls.Contains(actionDecl));
     }
 
     private void CreateInductiveSequentializations(HashSet<ActionDecl> actionDecls)

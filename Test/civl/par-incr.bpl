@@ -22,7 +22,7 @@ refines AtomicIncr2;
 
 yield invariant {:layer 1} Yield();
 
-action {:layer 3} AtomicIncr4()
+>-< action {:layer 3} AtomicIncr4()
 modifies x;
 { x := x + 4; }
 

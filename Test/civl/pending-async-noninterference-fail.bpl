@@ -6,7 +6,7 @@ var {:layer 0,1} x:int;
 yield invariant {:layer 1} yield_x(n: int);
 invariant x >= n;
 
-async action {:layer 1} A ()
+async >-< action {:layer 1} A ()
 modifies x;
 {
   x := x - 1;

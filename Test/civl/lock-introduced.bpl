@@ -47,7 +47,7 @@ preserves call Yield(tid);
   call LowerLeave();
 }
 
-action {:layer 2} AtomicLowerEnter({:linear "tid"} tid: X)
+>-< action {:layer 2} AtomicLowerEnter({:linear "tid"} tid: X)
 modifies b, lock;
 { assume !b; b := true; lock := tid; }
 
@@ -67,7 +67,7 @@ refines AtomicLowerEnter;
   }
 }
 
-action {:layer 2} AtomicLowerLeave()
+>-< action {:layer 2} AtomicLowerLeave()
 modifies b, lock;
 { b := false; lock := nil; }
 
@@ -82,7 +82,7 @@ link action{:layer 1} SetLock(v: X)
 modifies lock;
 { lock := v; }
 
-action {:layer 1} AtomicCAS(prev: bool, next: bool) returns (status: bool)
+>-< action {:layer 1} AtomicCAS(prev: bool, next: bool) returns (status: bool)
 modifies b;
 {
   if (b == prev) {
@@ -93,7 +93,7 @@ modifies b;
   }
 }
 
-action {:layer 1} AtomicSET(next: bool)
+>-< action {:layer 1} AtomicSET(next: bool)
 modifies b;
 { b := next; }
 

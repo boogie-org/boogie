@@ -3,7 +3,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async action {:layer 1,2} A () {}
+async >-< action {:layer 1,2} A () {}
 
 <- action {:layer 1} B ()
 creates A;
@@ -36,7 +36,7 @@ refines TEST1;
   call b();
 }
 
-action {:layer 2} TEST1 ()
+>-< action {:layer 2} TEST1 ()
 creates A;
 {
   call create_multi_asyncs(MapConst(0)[A() := 2]);
@@ -52,7 +52,7 @@ refines TEST2;
   call b();
 }
 
-action {:layer 2} TEST2 ()
+>-< action {:layer 2} TEST2 ()
 creates A;
 {
   call create_async(A());
@@ -67,7 +67,7 @@ refines TEST3;
   call c(true);
 }
 
-action {:layer 2} TEST3 () returns () {}
+>-< action {:layer 2} TEST3 () returns () {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -78,7 +78,7 @@ refines TEST4;
   call c(false);
 }
 
-action {:layer 2} TEST4 () returns () {}
+>-< action {:layer 2} TEST4 () returns () {}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -99,7 +99,7 @@ refines TEST5;
   }
 }
 
-action {:layer 2} TEST5 ()
+>-< action {:layer 2} TEST5 ()
 creates A;
 {
   call create_multi_asyncs(MapConst(0)[A() := 10]);

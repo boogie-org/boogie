@@ -32,7 +32,7 @@ modifies t;
   t := t + 1;
 }
 
-action {:layer 1} INC_S ()
+>-< action {:layer 1} INC_S ()
 modifies s;
 {
   assert s < t;

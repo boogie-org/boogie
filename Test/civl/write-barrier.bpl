@@ -41,7 +41,7 @@ refines AtomicWriteBarrier;
   call ReleaseLock(tid);
 }
 
-action {:layer 2,3} AtomicWriteBarrier({:linear "tid"} tid:Tid)
+>-< action {:layer 2,3} AtomicWriteBarrier({:linear "tid"} tid:Tid)
 modifies Color;
 {
   assert tid != nil;
@@ -66,7 +66,7 @@ modifies lock;
   lock := nil;
 }
 
-action {:layer 1,1} AtomicSetColorLocked({:linear "tid"} tid:Tid, newCol:int)
+>-< action {:layer 1,1} AtomicSetColorLocked({:linear "tid"} tid:Tid, newCol:int)
 modifies Color;
 {
   assert tid != nil;
@@ -81,7 +81,7 @@ modifies Color;
   col := Color;
 }
 
-action {:layer 1,2} AtomicGetColorNoLock() returns (col:int)
+>-< action {:layer 1,2} AtomicGetColorNoLock() returns (col:int)
 {
   col := Color;
 }

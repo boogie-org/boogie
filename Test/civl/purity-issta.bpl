@@ -9,7 +9,7 @@ axiom 0 <= max;
 var {:layer 0,1} l: [int]X;
 var {:layer 0,2} status: [int]bool;
 
-action {:layer 2} atomic_Alloc({:linear "tid"} tid: X) returns (r: int)
+>-< action {:layer 2} atomic_Alloc({:linear "tid"} tid: X) returns (r: int)
 modifies status;
 {
   assert tid != nil;
@@ -21,7 +21,7 @@ modifies status;
   }
 }
 
-action {:layer 2} atomic_Free({:linear "tid"} tid: X, i: int)
+>-< action {:layer 2} atomic_Free({:linear "tid"} tid: X, i: int)
 modifies status;
 { assert tid != nil; status[i] := true; }
 

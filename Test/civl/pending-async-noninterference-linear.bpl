@@ -6,7 +6,7 @@ var {:layer 0,1} x:[int]int;
 yield invariant {:layer 1} yield_x({:linear "tid"} tid:int);
 invariant x[tid] == 0;
 
-async action {:layer 1} A ({:linear "tid"} tid:int)
+async >-< action {:layer 1} A ({:linear "tid"} tid:int)
 modifies x;
 {
   x[tid] := 1;

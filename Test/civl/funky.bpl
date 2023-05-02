@@ -43,14 +43,14 @@ modifies B;
 yield procedure {:layer 0} LockB({:linear "tid"} tid: X);
 refines AtomicLockB;
 
-action {:layer 1,2} AtomicIncrB({:linear "tid"} tid: X)
+>-< action {:layer 1,2} AtomicIncrB({:linear "tid"} tid: X)
 modifies counter;
 { assert tid != nil && B == tid; counter := counter + 1; }
 
 yield procedure {:layer 0} IncrB({:linear "tid"} tid: X);
 refines AtomicIncrB;
 
-action {:layer 1} AtomicDecrB({:linear "tid"} tid: X)
+>-< action {:layer 1} AtomicDecrB({:linear "tid"} tid: X)
 modifies counter;
 { assert tid != nil && B == tid; counter := counter - 1; }
 
@@ -64,13 +64,13 @@ modifies B;
 yield procedure {:layer 0} UnlockB({:linear "tid"} tid: X);
 refines AtomicUnlockB;
 
-action {:layer 1,3} AtomicAssertA({:linear "tid"} tid: X)
+>-< action {:layer 1,3} AtomicAssertA({:linear "tid"} tid: X)
 { assert tid != nil && A == tid; assert counter >= -1; }
 
 yield procedure {:layer 0} AssertA({:linear "tid"} tid: X);
 refines AtomicAssertA;
 
-action {:layer 1,3} AtomicAssertB({:linear "tid"} tid: X)
+>-< action {:layer 1,3} AtomicAssertB({:linear "tid"} tid: X)
 { assert tid != nil && A == tid && B == tid; assert counter == 0; }
 
 yield procedure {:layer 0} AssertB({:linear "tid"} tid: X);

@@ -1,6 +1,6 @@
-linear_out_bug.bpl(10,21): Error: Commutativity check between AddAddr and RemoveAddr_2 failed
+linear_out_bug.bpl(10,25): Error: Commutativity check between AddAddr and RemoveAddr_2 failed
 Execution trace:
-    linear_out_bug.bpl(10,21): inline$AddAddr$0$Entry
+    linear_out_bug.bpl(10,25): inline$AddAddr$0$Entry
     linear_out_bug.bpl(13,14): inline$AddAddr$0$anon0
     linear_out_bug.bpl(28,14): inline$RemoveAddr_2$0$anon0
     linear_out_bug.bpl(25,22): inline$RemoveAddr_2$0$Return

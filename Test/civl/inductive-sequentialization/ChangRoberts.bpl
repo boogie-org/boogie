@@ -60,7 +60,7 @@ function {:inline} Init(pids:[int]bool, channel:[int][int]int,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
 modifies channel, terminated, leader;
 {
   assert Init(pids, channel, terminated, id, leader);
@@ -68,7 +68,7 @@ modifies channel, terminated, leader;
   assume (forall i:int :: Pid(i) && i != Max(id) ==> !leader[i]);
 }
 
-invariant action {:layer 3}
+action {:layer 3}
 INV2 ({:linear_in "pid"} pids:[int]bool)
 creates P;
 modifies channel, terminated, leader;
@@ -95,7 +95,7 @@ modifies channel, terminated, leader;
   assume (forall i:int :: Pid(i) && i != Max(id) ==> !leader[i]);
 }
 
-abstract action {:layer 3} P' ({:linear_in "pid"} pid:int)
+action {:layer 3} P' ({:linear_in "pid"} pid:int)
 creates P;
 modifies channel, terminated, leader;
 {
@@ -105,7 +105,7 @@ modifies channel, terminated, leader;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN3 using INV2;
 creates P;
 eliminates P using P';
@@ -121,7 +121,7 @@ modifies channel;
   assume (forall i:int, msg:int :: Pid(i) && channel[i][msg] > 0 ==> msg == id[Prev(i)]);
 }
 
-invariant action {:layer 2}
+action {:layer 2}
 INV1 ({:linear_in "pid"} pids:[int]bool)
 creates PInit, P;
 modifies channel;
@@ -145,7 +145,7 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN2 using INV1;
 creates PInit;
 {
@@ -164,7 +164,7 @@ modifies channel;
   call create_async(P(pid));
 }
 
-async action {:layer 2, 3} P ({:linear_in "pid"} pid:int)
+async >-< action {:layer 2, 3} P ({:linear_in "pid"} pid:int)
 creates P;
 modifies channel, terminated, leader;
 {
