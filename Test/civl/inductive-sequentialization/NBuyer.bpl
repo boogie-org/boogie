@@ -58,7 +58,7 @@ modifies contribution;
   havoc contribution;
 }
 
-invariant action {:layer 5}
+action {:layer 5}
 INV4 ({:linear_in "pid"} pids:[int]bool)
 creates SellerFinish;
 modifies DecisionChannel, contribution;
@@ -72,7 +72,7 @@ modifies DecisionChannel, contribution;
   }
 }
 
-abstract action {:layer 5} SellerFinish' ({:linear_in "pid"} pid:int)
+action {:layer 5} SellerFinish' ({:linear_in "pid"} pid:int)
 modifies DecisionChannel;
 {
   assert DecisionChannel == MapConst(0)[(sum(contribution, 1, n) == price) := 1];
@@ -93,7 +93,7 @@ modifies DecisionChannel, contribution;
   call create_async(SellerFinish(0));
 }
 
-invariant action {:layer 4}
+action {:layer 4}
 INV3 ({:linear_in "pid"} pids:[int]bool)
 creates SellerFinish, FirstBuyer, MiddleBuyer, LastBuyer;
 modifies RemainderChannel, DecisionChannel, contribution;
@@ -141,7 +141,7 @@ modifies RemainderChannel, DecisionChannel, contribution;
   }
 }
 
-abstract action {:layer 4} FirstBuyer' ({:linear_in "pid"} pid:int)
+action {:layer 4} FirstBuyer' ({:linear_in "pid"} pid:int)
 modifies RemainderChannel, contribution;
 {
   assert DecisionChannel == MapConst(0);
@@ -149,7 +149,7 @@ modifies RemainderChannel, contribution;
   call FirstBuyer(pid);
 }
 
-abstract action {:layer 4} MiddleBuyer' ({:linear_in "pid"} pid:int)
+action {:layer 4} MiddleBuyer' ({:linear_in "pid"} pid:int)
 modifies RemainderChannel, contribution;
 {
   assert (forall r:int :: RemainderChannel[pid][r] > 0 ==> r == price - sum(contribution, 1, pid - 1));
@@ -159,7 +159,7 @@ modifies RemainderChannel, contribution;
   call MiddleBuyer(pid);
 }
 
-abstract action {:layer 4} LastBuyer' ({:linear_in "pid"} pid:int)
+action {:layer 4} LastBuyer' ({:linear_in "pid"} pid:int)
 modifies RemainderChannel, DecisionChannel, contribution;
 {
   assert (forall r:int :: RemainderChannel[pid][r] > 0 ==> r == price - sum(contribution, 1, pid - 1));
@@ -184,7 +184,7 @@ eliminates FirstBuyer using FirstBuyer', MiddleBuyer using MiddleBuyer', LastBuy
   call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
 }
 
-invariant action {:layer 3} INV2 ({:linear_in "pid"} pids:[int]bool)
+action {:layer 3} INV2 ({:linear_in "pid"} pids:[int]bool)
 creates SellerInit, SellerFinish, FirstBuyer, MiddleBuyer, LastBuyer;
 {
   assert Init(pids, RemainderChannel, DecisionChannel, contribution);
@@ -214,7 +214,7 @@ creates SellerInit, FirstBuyer, MiddleBuyer, LastBuyer;
   call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
 }
 
-invariant action {:layer 2}
+action {:layer 2}
 INV1 ({:linear_in "pid"} pids:[int]bool)
 creates SellerInit, FirstBuyerInit, FirstBuyer, MiddleBuyer, LastBuyer;
 {

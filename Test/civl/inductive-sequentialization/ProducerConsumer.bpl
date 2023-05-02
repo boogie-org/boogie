@@ -39,7 +39,7 @@ modifies channels;
   channels[cid] := channel;
 }
 
-invariant action {:layer 2}
+action {:layer 2}
 INV ({:linear_in "cid"} cid: ChannelId)
 creates PRODUCER, CONSUMER;
 modifies channels;
@@ -134,7 +134,7 @@ modifies channels;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-abstract action {:layer 2} CONSUMER' (x:int, {:linear_in "cid"} receive_handle: ChannelHandle)
+action {:layer 2} CONSUMER' (x:int, {:linear_in "cid"} receive_handle: ChannelHandle)
 creates CONSUMER;
 modifies channels;
 {

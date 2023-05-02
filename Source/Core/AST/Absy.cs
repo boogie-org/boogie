@@ -2828,9 +2828,7 @@ namespace Microsoft.Boogie
   public enum ActionQualifier
   {
       Async,
-      Invariant,
       Link,
-      Abstract,
       None
   }
 
@@ -2887,10 +2885,6 @@ namespace Microsoft.Boogie
     {
       Target.Resolve(rc);
       Abstraction.Resolve(rc);
-      if (Abstraction.ActionDecl != null && Abstraction.ActionDecl.ActionQualifier != ActionQualifier.Abstract)
-      {
-        rc.Error(this, $"action must be abstract: {Abstraction.ActionName}");
-      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -2948,17 +2942,9 @@ namespace Microsoft.Boogie
       }
       if (HasMoverType)
       {
-        if (ActionQualifier == ActionQualifier.Invariant)
-        {
-          rc.Error(this, "mover may not be a invariant action");
-        }
         if (ActionQualifier == ActionQualifier.Link)
         {
           rc.Error(this, "mover may not be a link action");
-        }
-        if (ActionQualifier == ActionQualifier.Abstract)
-        {
-          rc.Error(this, "mover may not be an abstract action");
         }
       }
       if (Creates.Any())
@@ -2988,11 +2974,6 @@ namespace Microsoft.Boogie
         }
         RefinedAction.Resolve(rc);
         InvariantAction.Resolve(rc);
-        if (InvariantAction.ActionDecl != null &&
-            InvariantAction.ActionDecl.ActionQualifier != ActionQualifier.Invariant)
-        {
-          rc.Error(this, "expected invariant action");
-        }
       }
       Eliminates.Iter(elim =>
       {
@@ -3118,14 +3099,8 @@ namespace Microsoft.Boogie
     {
       switch (ActionQualifier)
       {
-        case ActionQualifier.Abstract:
-          stream.Write(level, "abstract ");
-          break;
         case ActionQualifier.Async:
           stream.Write(level, "async ");
-          break;
-        case ActionQualifier.Invariant:
-          stream.Write(level, "invariant ");
           break;
         case ActionQualifier.Link:
           stream.Write(level, "link ");

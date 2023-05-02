@@ -3557,10 +3557,6 @@ namespace Microsoft.Boogie
       }
       else if (Proc is ActionDecl calleeActionDecl)
       {
-        if (calleeActionDecl.ActionQualifier == ActionQualifier.Invariant)
-        {
-          tc.Error(this, "an invariant action may not be called");
-        }
         foreach (var actionDeclRef in calleeActionDecl.Creates)
         {
           if (callerActionDecl.Creates.All(x => x.ActionDecl != actionDeclRef.ActionDecl))

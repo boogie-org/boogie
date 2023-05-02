@@ -17,7 +17,7 @@ creates INC, DEC;
 {
 }
 
-invariant action {:layer 1}
+action {:layer 1}
 INV ()
 creates INC, DEC;
 modifies x;

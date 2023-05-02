@@ -9,7 +9,7 @@ refines A_Inc;
   call Service();
 }
 
-invariant action {:layer 1} INV()
+action {:layer 1} INV()
 creates A_Inc;
 modifies x;
 {

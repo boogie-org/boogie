@@ -26,7 +26,7 @@ modifies x;
   x := x + 1;
 }
 
-invariant action {:layer 3} INV({:linear_in "tid"} tid:Tid)
+action {:layer 3} INV({:linear_in "tid"} tid:Tid)
 creates A_Callback;
 modifies l, x;
 {

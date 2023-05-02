@@ -7,7 +7,7 @@ var {:layer 0,2} x:int;
 modifies x;
 { assert 0 <= n; x := x + n; }
 
-invariant action {:layer 1} INV(n: int)
+action {:layer 1} INV(n: int)
 creates A_Inc;
 modifies x;
 {

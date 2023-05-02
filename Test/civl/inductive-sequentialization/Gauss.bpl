@@ -23,7 +23,7 @@ modifies x;
   x := x + (n * (n+1)) div 2;
 }
 
-invariant action {:layer 1} INV (n: int)
+action {:layer 1} INV (n: int)
 creates ADD;
 modifies x;
 {
