@@ -129,8 +129,8 @@ namespace Microsoft.Boogie
     
     private static Implementation CreateDuplicateImplementation(Implementation impl, string name)
     {
-      var proc = impl.Proc;
       var duplicateImpl = new Duplicator().VisitImplementation(impl);
+      var proc = duplicateImpl.Proc;
       duplicateImpl.Name = name;
       duplicateImpl.Attributes = null;
       duplicateImpl.Proc = new Procedure(proc.tok, name, proc.TypeParameters, proc.InParams,

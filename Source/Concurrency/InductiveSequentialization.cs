@@ -174,10 +174,10 @@ namespace Microsoft.Boogie
           ).ToList());
         var pendingAsyncExprs = invariantAction.PendingAsyncs.Select(pendingAsync =>
         {
-          var pendingAsyncFormalMap =
-            pendingAsync.InParams.Concat(pendingAsync.OutParams).ToDictionary(v => v,
-              v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{pendingAsync.Name}_{v.Name}",
-                v.TypedIdent.Type)));
+          var pendingAsyncAction = civlTypeChecker.procToAtomicAction[pendingAsync];
+          var pendingAsyncActionParams = pendingAsyncAction.Impl.Proc.InParams.Concat(pendingAsyncAction.Impl.Proc.OutParams).ToList();
+          var pendingAsyncFormalMap = pendingAsyncActionParams.ToDictionary(v => v,
+            v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{pendingAsync.Name}_{v.Name}", v.TypedIdent.Type)));
           var subst = Substituter.SubstitutionFromDictionary(pendingAsyncFormalMap);
           var domainToPermissionExprsForPendingAsyncAction =
             linearTypeChecker.PermissionExprs(pendingAsync.InParams).ToDictionary(
@@ -192,9 +192,8 @@ namespace Microsoft.Boogie
                 : new List<Expr>());
             return linearTypeChecker.SubsetExprForPermissions(domain, lhs, rhs);
           });
-          var pendingAsyncTransitionRelationExpr = ExprHelper.FunctionCall(civlTypeChecker.procToAtomicAction[pendingAsync].InputOutputRelation,
-            pendingAsync.InParams.Concat(pendingAsync.OutParams).Select(v => pendingAsyncFormalMap[v])
-              .ToList());
+          var pendingAsyncTransitionRelationExpr = ExprHelper.FunctionCall(pendingAsyncAction.InputOutputRelation,
+            pendingAsyncActionParams.Select(v => pendingAsyncFormalMap[v]).ToList());
           var membershipExpr =
             Expr.Gt(
               Expr.Select(PAs(pendingAsync.PendingAsyncType),
