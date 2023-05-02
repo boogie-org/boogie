@@ -133,6 +133,7 @@ namespace Microsoft.Boogie
       var proc = duplicateImpl.Proc;
       duplicateImpl.Name = name;
       duplicateImpl.Attributes = null;
+      // in case impl.Proc is ActionDecl, convert to Procedure
       duplicateImpl.Proc = new Procedure(proc.tok, name, proc.TypeParameters, proc.InParams,
         proc.OutParams, proc.IsPure, proc.Requires, proc.Modifies, proc.Ensures);
       CivlUtil.AddInlineAttribute(duplicateImpl.Proc);
