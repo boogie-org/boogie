@@ -65,7 +65,8 @@ namespace Microsoft.Boogie
       cmds.Add(GetCheck(inputAction.tok, GetTransitionRelation(invariantAction),
         $"IS base of {inputAction.Name} failed"));
 
-      return GetCheckerTuple($"IS_base_{inputAction.Name}", requires, new List<Variable>(), cmds);
+      return GetCheckerTuple($"IS_base_{inputAction.Name}", requires, invariantAction.Impl.InParams,
+        invariantAction.Impl.OutParams, new List<Variable>(), cmds);
     }
 
     public Tuple<Procedure, Implementation> GenerateConclusionChecker(Action inputAction)
@@ -83,7 +84,8 @@ namespace Microsoft.Boogie
       cmds.Add(GetCheck(inputAction.tok, Substituter.Apply(subst, GetTransitionRelation(outputAction)),
         $"IS conclusion of {inputAction.Name} failed"));
 
-      return GetCheckerTuple($"IS_conclusion_{inputAction.Name}", requires, new List<Variable>(), cmds);
+      return GetCheckerTuple($"IS_conclusion_{inputAction.Name}", requires, invariantAction.Impl.InParams,
+        invariantAction.Impl.OutParams, new List<Variable>(), cmds);
     }
 
     public Tuple<Procedure, Implementation> GenerateStepChecker(Action pendingAsync)
@@ -135,8 +137,9 @@ namespace Microsoft.Boogie
 
       cmds.Add(GetCheck(invariantAction.tok, GetTransitionRelation(invariantAction),
         $"IS step of {invariantAction.Name} with {abs.Name} failed"));
-      
-      return GetCheckerTuple($"IS_step_{invariantAction.Name}_{abs.Name}", requires, locals, cmds);
+
+      return GetCheckerTuple($"IS_step_{invariantAction.Name}_{abs.Name}", requires,
+        invariantAction.ImplWithChoice.InParams, invariantAction.ImplWithChoice.OutParams, locals, cmds);
     }
 
     /*
@@ -216,14 +219,14 @@ namespace Microsoft.Boogie
       });
 
       var invariantFormalMap =
-        invariantAction.Impl.InParams.Concat(invariantAction.Impl.OutParams).ToDictionary(v => v,
+        invariantAction.ImplWithChoice.InParams.Concat(invariantAction.ImplWithChoice.OutParams).ToDictionary(v => v,
           v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{invariantAction.Name}_{v.Name}",
             v.TypedIdent.Type)));
       var invariantFormalSubst = Substituter.SubstitutionFromDictionary(invariantFormalMap);
       actionExpr = Substituter.Apply(invariantFormalSubst, actionExpr);
       leftMoverExpr = Substituter.Apply(invariantFormalSubst, leftMoverExpr);
-      var invariantTransitionRelationExpr = Substituter.Apply(invariantFormalSubst,
-        TransitionRelationComputation.Refinement(civlTypeChecker, invariantAction.ImplWithChoice, frame));
+      var invariantTransitionRelationExpr = ExprHelper.FunctionCall(invariantAction.InputOutputRelationWithChoice,
+        invariantAction.ImplWithChoice.InParams.Concat(invariantAction.ImplWithChoice.OutParams).Select(v => invariantFormalMap[v]).ToList());
       return ExprHelper.ExistsExpr(
         invariantFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
         Expr.And(new[] { invariantTransitionRelationExpr, actionExpr, leftMoverExpr }));
@@ -249,12 +252,12 @@ namespace Microsoft.Boogie
     }
 
     private Tuple<Procedure, Implementation> GetCheckerTuple(string checkerName,
-      List<Requires> requires, List<Variable> locals, List<Cmd> cmds)
+      List<Requires> requires, List<Variable> inParams, List<Variable> outParams, List<Variable> locals, List<Cmd> cmds)
     {
       var proc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix(checkerName),
-        invariantAction.Impl.InParams,
-        invariantAction.Impl.OutParams,
+        inParams,
+        outParams,
         requires,
         frame.Select(Expr.Ident).ToList(),
         new List<Ensures>());
