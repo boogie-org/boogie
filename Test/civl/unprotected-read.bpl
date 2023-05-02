@@ -20,12 +20,12 @@ modifies lock;
 modifies lock;
 { assert tid != nil && lock == tid; lock := nil; }
 
-action {:layer 1} Write({:linear "tid"} tid:Tid, val:int)
+>-< action {:layer 1} Write({:linear "tid"} tid:Tid, val:int)
 modifies x;
 { assert tid != nil && lock == tid; x := val; }
 
 <-> action {:layer 1} ReadLock({:linear "tid"} tid:Tid) returns (val:int)
 { assert tid != nil && lock == tid; val := x; }
 
-action {:layer 1} ReadNoLock() returns (val:int)
+>-< action {:layer 1} ReadNoLock() returns (val:int)
 { val := x; }

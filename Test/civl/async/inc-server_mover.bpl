@@ -78,11 +78,11 @@ refines Client_IncDone_atomic;
 // ###########################################################################
 // Low-level atomic actions
 
-action {:layer 8} inc_x_atomic ()
+>-< action {:layer 8} inc_x_atomic ()
 modifies x;
 { x := x + 1; }
 
-action {:layer 8} Assertion_atomic ()
+>-< action {:layer 8} Assertion_atomic ()
 { assert x == y + 1; }
 
 yield procedure {:layer 7} inc_x ();

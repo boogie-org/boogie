@@ -303,13 +303,13 @@ ensures MaxRound(r, MapOr(ns1, ns2), voteInfo) ==
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 1} A_SetDecision(round: Round, value: Value)
+>-< action {:layer 1} A_SetDecision(round: Round, value: Value)
 modifies decision;
 {
   decision[round] := Some(value);
 }
 
-action {:layer 1} A_JoinUpdate(r: Round, n: Node)
+>-< action {:layer 1} A_JoinUpdate(r: Round, n: Node)
 returns (join:bool, lastVoteRound: Round, lastVoteValue: Value)
 modifies acceptorState;
 {
@@ -325,7 +325,7 @@ modifies acceptorState;
   }
 }
 
-action {:layer 1} A_VoteUpdate(r: Round, n: Node, v: Value)
+>-< action {:layer 1} A_VoteUpdate(r: Round, n: Node, v: Value)
 returns (vote:bool)
 modifies acceptorState;
 {

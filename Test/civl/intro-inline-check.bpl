@@ -3,7 +3,7 @@
 
 var {:layer 1} g: int;
 
-action {:layer 1} A()
+>-< action {:layer 1} A()
 modifies g;
 {
     call I();

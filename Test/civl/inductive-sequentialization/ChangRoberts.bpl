@@ -60,7 +60,7 @@ function {:inline} Init(pids:[int]bool, channel:[int][int]int,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
 modifies channel, terminated, leader;
 {
   assert Init(pids, channel, terminated, id, leader);
@@ -105,7 +105,7 @@ modifies channel, terminated, leader;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN3 using INV2;
 creates P;
 eliminates P using P';
@@ -145,7 +145,7 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN2 using INV1;
 creates PInit;
 {

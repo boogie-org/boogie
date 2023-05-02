@@ -38,7 +38,7 @@ requires call yield_y(0);
     assert {:layer 1} 0 <= x && 0 <= y;
 }
 
-action {:layer 1,1} atomic_incr_x()
+>-< action {:layer 1,1} atomic_incr_x()
 modifies x;
 {
     x := x + 1;
@@ -46,7 +46,7 @@ modifies x;
 yield procedure {:layer 0} _incr_x();
 refines atomic_incr_x;
 
-action {:layer 1,1} atomic_incr_y()
+>-< action {:layer 1,1} atomic_incr_y()
 modifies y;
 {
     y := y + 1;

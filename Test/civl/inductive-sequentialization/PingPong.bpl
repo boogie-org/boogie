@@ -32,7 +32,7 @@ function {:inline} EmptyChannel () : [int]int
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3}
+>-< action {:layer 3}
 MAIN' ({:linear_in "cid"} cid: ChannelId)
 {
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
@@ -89,7 +89,7 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2}
+>-< action {:layer 2}
 MAIN ({:linear_in "cid"} cid: ChannelId)
 refines MAIN' using INV;
 creates PING, PONG;

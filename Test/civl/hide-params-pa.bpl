@@ -19,7 +19,7 @@ refines SKIP;
   // call i', returnedPAs := A(i);
 }
 
-action {:layer 1} A (i:int) returns (i':int)
+>-< action {:layer 1} A (i:int) returns (i':int)
 {
   assert i > 0;
   assume i' > i;

@@ -7,11 +7,11 @@ requires {:layer 1} b ==> i >= 0;
     call o := bar(b, i);
 }
 
-action {:layer 1} BAR(b: bool, i: int) returns (o: int) {
+>-< action {:layer 1} BAR(b: bool, i: int) returns (o: int) {
     call o := FOO(b, i);
 }
 
-action {:layer 1} FOO(b: bool, i: int) returns (o: int) {
+>-< action {:layer 1} FOO(b: bool, i: int) returns (o: int) {
     if (b) {
         o := i + 1;
         assert o > 0;

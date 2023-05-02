@@ -6,7 +6,7 @@ yield procedure {:layer 2} Havoc()
 {
 }
 
-action {:layer 2,3} AtomicRecover()
+>-< action {:layer 2,3} AtomicRecover()
 { assert x == 5; }
 
 yield procedure {:layer 1} Recover()

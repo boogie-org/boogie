@@ -56,7 +56,7 @@ requires {:layer 1, 2} l->val == Left(i) && r->val == Right(i);
     }
 }
 
-action {:layer 2} AtomicEnter#1(i: int, {:linear_in} l: Lval Perm, r: Lval Perm)
+>-< action {:layer 2} AtomicEnter#1(i: int, {:linear_in} l: Lval Perm, r: Lval Perm)
 modifies usersInDriver;
 {
     assume !stoppingFlag;
@@ -123,7 +123,7 @@ preserves call Inv1();
     call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->dom);
 }
 
-action {:layer 2} AtomicWaitAndStop()
+>-< action {:layer 2} AtomicWaitAndStop()
 modifies stopped;
 {
     assume usersInDriver->dom == MapConst(false);
@@ -153,7 +153,7 @@ modifies usersInDriver;
 
 /// primitive actions
 
-action {:layer 1} AtomicEnter()
+>-< action {:layer 1} AtomicEnter()
 modifies pendingIo;
 {
     assume !stoppingFlag;
@@ -162,7 +162,7 @@ modifies pendingIo;
 yield procedure {:layer 0} Enter();
 refines AtomicEnter;
 
-action {:layer 1} AtomicCheckAssert()
+>-< action {:layer 1} AtomicCheckAssert()
 {
     assert !stopped;
 }
@@ -181,7 +181,7 @@ modifies stoppingFlag;
 yield procedure {:layer 0} SetStoppingFlag(i: Lval int);
 refines AtomicSetStoppingFlag;
 
-action {:layer 1} AtomicDeleteReference()
+>-< action {:layer 1} AtomicDeleteReference()
 modifies pendingIo, stoppingEvent;
 {
     pendingIo := pendingIo - 1;
@@ -192,7 +192,7 @@ modifies pendingIo, stoppingEvent;
 yield procedure {:layer 0} DeleteReference();
 refines AtomicDeleteReference;
 
-action {:layer 1} AtomicWaitOnStoppingEvent()
+>-< action {:layer 1} AtomicWaitOnStoppingEvent()
 {
     assume stoppingEvent;
 }

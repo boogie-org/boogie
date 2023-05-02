@@ -9,12 +9,12 @@ var {:layer 0,1} lock_y: Tid;
 var {:layer 0,2} x: int;
 var {:layer 0,2} y: int;
 
-action {:layer 2} GET_X (tid: Lval Tid) returns (v: int)
+>-< action {:layer 2} GET_X (tid: Lval Tid) returns (v: int)
 {
   v := x;
 }
 
-action {:layer 2} SET_BOTH (tid: Lval Tid, v: int, w: int)
+>-< action {:layer 2} SET_BOTH (tid: Lval Tid, v: int, w: int)
 modifies x, y;
 {
   x := v;

@@ -21,7 +21,7 @@ yield procedure {:layer 2} Customer()
     }
 }
 
-action {:layer 2} AtomicEnter()
+>-< action {:layer 2} AtomicEnter()
 modifies b;
 { assume b == 0; b := 1; }
 
@@ -48,13 +48,13 @@ refines AtomicEnter;
     }
 }
 
-action {:layer 1,2} AtomicRead() returns (val: int)
+>-< action {:layer 1,2} AtomicRead() returns (val: int)
 { val := b; }
 
 yield procedure {:layer 0} Read() returns (val: int);
 refines AtomicRead;
 
-action {:layer 1,2} AtomicCAS(prev: int, next: int) returns (_old: int)
+>-< action {:layer 1,2} AtomicCAS(prev: int, next: int) returns (_old: int)
 modifies b;
 {
   _old := b;
@@ -66,7 +66,7 @@ modifies b;
 yield procedure {:layer 0} CAS(prev: int, next: int) returns (_old: int);
 refines AtomicCAS;
 
-action {:layer 1,2} AtomicLeave()
+>-< action {:layer 1,2} AtomicLeave()
 modifies b;
 { b := 0; }
 

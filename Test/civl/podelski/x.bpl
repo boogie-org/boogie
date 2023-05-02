@@ -31,7 +31,7 @@ modifies x;
   x := x + 1;
 }
 
-action {:layer 1} GEQ0_DEC ()
+>-< action {:layer 1} GEQ0_DEC ()
 modifies x;
 {
   assert x >= 0;

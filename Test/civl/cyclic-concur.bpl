@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,2} x : int;
 
-action {:layer 2} MAIN ()
+>-< action {:layer 2} MAIN ()
 modifies x;
 {
   havoc x;

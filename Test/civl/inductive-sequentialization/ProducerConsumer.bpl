@@ -19,7 +19,7 @@ var {:layer 0,3} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId)
+>-< action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId)
 refines MAIN' using INV;
 creates PRODUCER, CONSUMER;
 eliminates CONSUMER using CONSUMER';
@@ -29,7 +29,7 @@ eliminates CONSUMER using CONSUMER';
   call create_async(CONSUMER(1, Receive(cid)));
 }
 
-action {:layer 3} MAIN' ({:linear_in "cid"} cid: ChannelId)
+>-< action {:layer 3} MAIN' ({:linear_in "cid"} cid: ChannelId)
 modifies channels;
 {
   var channel: Channel;
@@ -192,7 +192,7 @@ refines CONSUMER;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 1} SEND (m: int, {:linear "cid"} send_handle: ChannelHandle)
+>-< action {:layer 1} SEND (m: int, {:linear "cid"} send_handle: ChannelHandle)
 modifies channels;
 {
   var channel: Channel;
@@ -209,7 +209,7 @@ modifies channels;
   channels[send_handle->cid] := Channel(C, head, tail);
 }
 
-action {:layer 1} RECEIVE ({:linear "cid"} receive_handle: ChannelHandle) returns (m:int)
+>-< action {:layer 1} RECEIVE ({:linear "cid"} receive_handle: ChannelHandle) returns (m:int)
 modifies channels;
 {
   var channel: Channel;

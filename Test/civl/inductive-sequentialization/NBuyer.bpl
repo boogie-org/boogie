@@ -50,7 +50,7 @@ function {:inline} Init(pids:[int]bool, RemainderChannel:[int][int]int, Decision
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 6}
+>-< action {:layer 6}
 MAIN5 ({:linear_in "pid"} pids:[int]bool)
 modifies contribution;
 {
@@ -81,7 +81,7 @@ modifies DecisionChannel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN5 using INV4;
 creates SellerFinish;
 eliminates SellerFinish using SellerFinish';
@@ -170,7 +170,7 @@ modifies RemainderChannel, DecisionChannel, contribution;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN4 using INV3;
 creates SellerFinish, FirstBuyer, MiddleBuyer, LastBuyer;
 eliminates FirstBuyer using FirstBuyer', MiddleBuyer using MiddleBuyer', LastBuyer using LastBuyer';
@@ -203,7 +203,7 @@ creates SellerInit, SellerFinish, FirstBuyer, MiddleBuyer, LastBuyer;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN3 using INV2;
 creates SellerInit, FirstBuyer, MiddleBuyer, LastBuyer;
 {
@@ -234,7 +234,7 @@ creates SellerInit, FirstBuyerInit, FirstBuyer, MiddleBuyer, LastBuyer;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN2 using INV1;
 creates SellerInit, FirstBuyerInit, MiddleBuyer, LastBuyer;
 {
@@ -455,13 +455,13 @@ preserves call YieldInv();
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 1} SET_CONTRIBUTION({:linear "pid"} pid:int, c:int)
+>-< action {:layer 1} SET_CONTRIBUTION({:linear "pid"} pid:int, c:int)
 modifies contribution;
 {
   contribution[pid] := c;
 }
 
-action {:layer 1} ASSERT_SUM()
+>-< action {:layer 1} ASSERT_SUM()
 {
   assert sum(contribution, 1, n) == price;
 }

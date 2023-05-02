@@ -7,7 +7,7 @@ var {:layer 0,2} {:linear "addr"} Addrs:[int]bool;
 // linear_out parameter of RemoveAddr was still part of the disjointness
 // expression in the post-state.
 
-action {:layer 1,2} AddAddr({:linear_in "addr"} i: int)
+>-< action {:layer 1,2} AddAddr({:linear_in "addr"} i: int)
 modifies Addrs;
 {
     Addrs[i] := true;

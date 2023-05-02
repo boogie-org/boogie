@@ -100,7 +100,7 @@ requires {:layer 2} tid != nil;
 
 // Note how GetTicketAbstract becomes a right mover
 
-action {:layer 2} AtomicInitAbstract ({:linear "tid"} xls:[X]bool)
+>-< action {:layer 2} AtomicInitAbstract ({:linear "tid"} xls:[X]bool)
 modifies cs, s, T;
 { assert xls == MapConst(true); cs := nil; s := 0; T := RightOpen(0); }
 
@@ -125,35 +125,35 @@ preserves call Yield1();
 // ###########################################################################
 // Primitive atomic actions
 
-action {:layer 1} AtomicInit ({:linear "tid"} xls:[X]bool)
+>-< action {:layer 1} AtomicInit ({:linear "tid"} xls:[X]bool)
 modifies cs, t, s, T;
 { assert xls == MapConst(true); cs := nil; t := 0; s := 0; T := RightOpen(0); }
 
 yield procedure {:layer 0} Init ({:linear "tid"} xls:[X]bool);
 refines AtomicInit;
 
-action {:layer 1} AtomicGetTicket ({:linear "tid"} tid: X) returns (m: int)
+>-< action {:layer 1} AtomicGetTicket ({:linear "tid"} tid: X) returns (m: int)
 modifies t, T;
 { m := t; t := t + 1; T[m] := true; }
 
 yield procedure {:layer 0} GetTicket ({:linear "tid"} tid: X) returns (m: int);
 refines AtomicGetTicket;
 
-action {:layer 1,2} AtomicWaitAndEnter ({:linear "tid"} tid: X, m:int)
+>-< action {:layer 1,2} AtomicWaitAndEnter ({:linear "tid"} tid: X, m:int)
 modifies cs;
 { assume m == s; cs := tid; }
 
 yield procedure {:layer 0} WaitAndEnter ({:linear "tid"} tid: X, m:int);
 refines AtomicWaitAndEnter;
 
-action {:layer 1,2} AtomicLeave ({:linear "tid"} tid: X)
+>-< action {:layer 1,2} AtomicLeave ({:linear "tid"} tid: X)
 modifies cs, s;
 { assert cs == tid; s := s + 1; cs := nil; }
 
 yield procedure {:layer 0} Leave ({:linear "tid"} tid: X);
 refines AtomicLeave;
 
-action {:layer 1,2} AtomicAllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X)
+>-< action {:layer 1,2} AtomicAllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X)
 { assume xl != nil && xls'[xl]; xls := xls'[xl := false]; }
 
 yield procedure {:layer 0} AllocateLow ({:linear_in "tid"} xls':[X]bool) returns ({:linear "tid"} xls: [X]bool, {:linear "tid"} xl: X);

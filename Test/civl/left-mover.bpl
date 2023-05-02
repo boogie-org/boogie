@@ -8,15 +8,15 @@ modifies x;
 { x := x + 1; }
 
 // Error: Gate failure of ass_eq_1 not preserved by inc
-action {:layer 1} ass_eq_1 ()
+>-< action {:layer 1} ass_eq_1 ()
 { assert x == 1; }
 
 // Correct
-action {:layer 1} ass_leq_1 ()
+>-< action {:layer 1} ass_leq_1 ()
 { assert x <= 1; }
 
 // Error: init and inc do not commute
-action {:layer 1} init ()
+>-< action {:layer 1} init ()
 modifies x;
 { x := 0; }
 

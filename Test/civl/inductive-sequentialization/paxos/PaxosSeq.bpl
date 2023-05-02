@@ -1,4 +1,4 @@
-action {:layer 2} A_Paxos({:linear_in "perm"} rs: [Round]bool)
+>-< action {:layer 2} A_Paxos({:linear_in "perm"} rs: [Round]bool)
 refines A_Paxos' using INV;
 creates A_StartRound;
 {
@@ -12,7 +12,7 @@ creates A_StartRound;
   call create_asyncs((lambda pa: A_StartRound :: pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds));
 }
 
-action {:layer 3} A_Paxos'({:linear_in "perm"} rs: [Round]bool)
+>-< action {:layer 3} A_Paxos'({:linear_in "perm"} rs: [Round]bool)
 modifies joinedNodes, voteInfo, decision;
 {
   assert Init(rs, joinedNodes, voteInfo, decision);

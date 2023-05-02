@@ -66,7 +66,7 @@ function value_card(v:val, value:[pid]val, i:pid, j:pid) : int
 // would like the MAIN action(s) to take a single parameter as follows:
 //     {:linear_in "broadcast"}{:linear_in "collect"} pids:[pid]bool
 
-action {:layer 4}
+>-< action {:layer 4}
 MAIN''({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 modifies CH, decision;
 {
@@ -103,7 +103,7 @@ modifies CH, decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3}
+>-< action {:layer 3}
 MAIN'({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 refines MAIN'' using INV_COLLECT_ELIM;
 creates COLLECT;
@@ -120,7 +120,7 @@ modifies CH;
   call create_asyncs(AllCollects());
 }
 
-action {:layer 2}
+>-< action {:layer 2}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 refines MAIN' using INV_BROADCAST_ELIM;
 creates BROADCAST, COLLECT;

@@ -43,7 +43,7 @@ function {:inline} Init(pids:[int]bool, RequestChannel:[int]int, VoteChannel:[vo
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 6}
+>-< action {:layer 6}
 MAIN5 ({:linear_in "pid"} pids:[int]bool)
 modifies RequestChannel, VoteChannel, votes, decisions;
 {
@@ -86,7 +86,7 @@ modifies DecisionChannel, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN5 using INV4;
 creates PARTICIPANT2;
 eliminates PARTICIPANT2 using PARTICIPANT2';
@@ -134,7 +134,7 @@ modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN4 using INV3;
 creates COORDINATOR2, PARTICIPANT2;
 modifies RequestChannel, VoteChannel, votes;
@@ -174,7 +174,7 @@ modifies RequestChannel, VoteChannel, votes;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN3 using INV2;
 creates COORDINATOR2, PARTICIPANT1;
 modifies RequestChannel;
@@ -208,7 +208,7 @@ modifies RequestChannel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+>-< action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN2 using INV1;
 creates COORDINATOR1, PARTICIPANT1;
 {

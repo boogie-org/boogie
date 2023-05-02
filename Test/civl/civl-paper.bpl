@@ -90,7 +90,7 @@ preserves call InvLock();
   call Release(tid);
 }
 
-action {:layer 2} AtomicAcquire({:linear "tid"} tid: X)
+>-< action {:layer 2} AtomicAcquire({:linear "tid"} tid: X)
 modifies lock;
 { assume lock == nil; lock := tid; }
 
@@ -113,7 +113,7 @@ preserves call InvLock();
     }
 }
 
-action {:layer 2} AtomicRelease({:linear "tid"} tid: X)
+>-< action {:layer 2} AtomicRelease({:linear "tid"} tid: X)
 modifies lock;
 { lock := nil; }
 
@@ -124,14 +124,14 @@ preserves call InvLock();
     call CLEAR(tid, false);
 }
 
-action {:layer 1,2} AtomicTransferToGlobal({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)
+>-< action {:layer 1,2} AtomicTransferToGlobal({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap)
 modifies g;
 { g := l; }
 
 yield procedure {:layer 0} TransferToGlobal({:linear "tid"} tid: X, {:linear_in "mem"} l: lmap);
 refines AtomicTransferToGlobal;
 
-action {:layer 1,2} AtomicTransferFromGlobal({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
+>-< action {:layer 1,2} AtomicTransferFromGlobal({:linear "tid"} tid: X) returns ({:linear "mem"} l: lmap)
 modifies g;
 { l := g; g := emptyDom(g); }
 
@@ -150,7 +150,7 @@ refines AtomicLoad;
 yield procedure {:layer 0} Store({:linear_in "mem"} l_in: lmap, a: int, v: int) returns ({:linear "mem"} l_out: lmap);
 refines AtomicStore;
 
-action {:layer 1} AtomicCAS(tid: X, prev: bool, next: bool) returns (status: bool)
+>-< action {:layer 1} AtomicCAS(tid: X, prev: bool, next: bool) returns (status: bool)
 modifies b, lock;
 {
   if (*) {
@@ -163,7 +163,7 @@ modifies b, lock;
 yield procedure {:layer 0} CAS(tid: X, prev: bool, next: bool) returns (status: bool);
 refines AtomicCAS;
 
-action {:layer 1} AtomicCLEAR(tid: X, next: bool)
+>-< action {:layer 1} AtomicCLEAR(tid: X, next: bool)
 modifies b, lock;
 { b := next; lock := nil; }
 

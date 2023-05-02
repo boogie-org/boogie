@@ -190,7 +190,7 @@ link action {:layer 10} GhostRead_10() returns (snapshot: GState)
    snapshot := state;
 }
 
-action {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
+>-< action {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
 modifies state;
 {
   var {:pool "A"} x: XState;
@@ -369,7 +369,7 @@ refines atomic_Participant_Commit;
 yield procedure {:layer 7} Participant_Abort (xid : Xid, mid : Mid);
 refines atomic_Participant_Abort;
 
-action {:layer 8,9} atomic_SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair)
+>-< action {:layer 8,9} atomic_SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair)
 modifies state;
 {
   assert pair(xid, mid, pair);
@@ -377,7 +377,7 @@ modifies state;
   state[xid][mid] := ABORTED();
 }
 
-action {:layer 8} atomic_StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool)
+>-< action {:layer 8} atomic_StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool)
 modifies votes, state, B;
 {
   assert !UnallocatedXids[xid];
@@ -392,7 +392,7 @@ modifies votes, state, B;
   }
 }
 
-action {:layer 8} atomic_StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool)
+>-< action {:layer 8} atomic_StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool)
 modifies votes, state;
 {
   assert !UnallocatedXids[xid];
@@ -432,7 +432,7 @@ yield procedure {:layer 7} TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"}
 returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair);
 refines atomic_TransferPair;
 
-action {:layer 8,10} atomic_AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool)
+>-< action {:layer 8,10} atomic_AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool)
 modifies UnallocatedXids;
 {
   assume UnallocatedXids[xid];

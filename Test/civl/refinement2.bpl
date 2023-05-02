@@ -16,7 +16,7 @@ refines atomic_incr;
     par incr() | {:mark} nop() | nop();
 }
 
-action {:layer 1,2} atomic_incr()
+>-< action {:layer 1,2} atomic_incr()
 modifies x;
 {
     x := x + 1;
@@ -24,7 +24,7 @@ modifies x;
 yield procedure {:layer 1} incr();
 refines atomic_incr;
 
-action {:layer 1,2} atomic_nop()
+>-< action {:layer 1,2} atomic_nop()
 {
 }
 yield procedure {:layer 1} nop();

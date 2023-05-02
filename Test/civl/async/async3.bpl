@@ -20,7 +20,7 @@ modifies x;
   }
 }
 
-action {:layer 1} A_Service()
+>-< action {:layer 1} A_Service()
 refines A_Inc using INV;
 creates A_Inc;
 {

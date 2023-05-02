@@ -24,7 +24,7 @@ yield procedure {:layer 1} baz2()
     par A() | R();
 }
 
-action {:layer 1,1} atomic_A()
+>-< action {:layer 1,1} atomic_A()
 {
 }
 yield procedure {:layer 0} A();

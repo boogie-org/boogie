@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-action {:layer 1,2} SPEC ()
+>-< action {:layer 1,2} SPEC ()
 creates A;
 {
   call create_async(A(1));

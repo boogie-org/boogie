@@ -213,7 +213,7 @@ refines AtomicThreadStateGetE;
 // VarState
 yield procedure {:layer 0} VarStateSetW({:linear "tid"} tid:Tid, x : Var, e:Epoch);
 refines AtomicVarStateSetW;
-action {:layer 1,20} AtomicVarStateSetW({:linear "tid"} tid:Tid, x : Var, e:Epoch)
+>-< action {:layer 1,20} AtomicVarStateSetW({:linear "tid"} tid:Tid, x : Var, e:Epoch)
 modifies sx.W;
 { assert ValidTid(tid); assert shadow.Lock[ShadowableVar(x)] == tid; sx.W[x] := e; }
 
@@ -224,18 +224,18 @@ refines AtomicVarStateGetW;
 
 yield procedure {:layer 0} VarStateGetWNoLock({:linear "tid"} tid:Tid, x : Var) returns (e:Epoch);
 refines AtomicVarStateGetWNoLock;
-action {:layer 1,20} AtomicVarStateGetWNoLock({:linear "tid"} tid:Tid, x : Var) returns (e:Epoch)
+>-< action {:layer 1,20} AtomicVarStateGetWNoLock({:linear "tid"} tid:Tid, x : Var) returns (e:Epoch)
 { assert ValidTid(tid); e := sx.W[x]; }
 
 yield procedure {:layer 0} VarStateSetR({:linear "tid"} tid:Tid, x : Var, e:Epoch);
 refines AtomicVarStateSetR;
-action {:layer 1,20} AtomicVarStateSetR({:linear "tid"} tid:Tid, x : Var, e:Epoch)
+>-< action {:layer 1,20} AtomicVarStateSetR({:linear "tid"} tid:Tid, x : Var, e:Epoch)
 modifies sx.R;
 { assert ValidTid(tid); assert shadow.Lock[ShadowableVar(x)] == tid; assert sx.R[x] != SHARED; sx.R[x] := e; }
 
 yield procedure {:layer 0} VarStateGetRNoLock({:linear "tid"} tid:Tid, x : Var) returns (e:Epoch);
 refines AtomicVarStateGetRNoLock;
-action {:layer 1,20} AtomicVarStateGetRNoLock({:linear "tid"} tid:Tid, x : Var) returns (e:Epoch)
+>-< action {:layer 1,20} AtomicVarStateGetRNoLock({:linear "tid"} tid:Tid, x : Var) returns (e:Epoch)
 { assert ValidTid(tid); e := sx.R[x]; }
 
 yield procedure {:layer 0} VarStateGetR({:linear "tid"} tid:Tid, x : Var) returns (e:Epoch);
@@ -271,7 +271,7 @@ refines AtomicVCGetElem;
 
 yield procedure {:layer 0} VCGetElemShared({:linear "tid" } tid: Tid, x : Var) returns (e: Epoch);
 refines AtomicVCGetElemShared;
-action {:layer 1,20} AtomicVCGetElemShared({:linear "tid" } tid: Tid, x : Var) returns (e: Epoch)
+>-< action {:layer 1,20} AtomicVCGetElemShared({:linear "tid" } tid: Tid, x : Var) returns (e: Epoch)
 {
    assert sx.R[x] == SHARED;
    assert ValidTid(tid);
@@ -547,7 +547,7 @@ yield invariant {:layer 20} Yield_FTPreserved_20({:linear "tid"} tid:Tid, old.sh
 invariant ValidTid(tid);
 invariant FTPreserved(tid, old.shadow.Lock, old.shadow.VC, old.sx.W, old.sx.R, shadow.Lock, shadow.VC, sx.W, sx.R);
 
-action {:layer 21,30} AtomicFork({:linear "tid"} tid:Tid, uid : Tid)
+>-< action {:layer 21,30} AtomicFork({:linear "tid"} tid:Tid, uid : Tid)
 modifies shadow.VC;
 {
     var v1,v2: Shadowable;
@@ -589,7 +589,7 @@ ensures call Yield_VCPreserved_20(tid, ShadowableTid(tid), ShadowableTid(uid), o
   assume {:add_to_pool "A", shadow.VC[ShadowableTid(uid)], shadow.VC[ShadowableTid(tid)]} true;
 }
 
-action {:layer 21,30} AtomicJoin({:linear "tid"} tid:Tid, uid : Tid)
+>-< action {:layer 21,30} AtomicJoin({:linear "tid"} tid:Tid, uid : Tid)
 modifies shadow.VC;
 {
     var v1, v2: Shadowable;
@@ -626,7 +626,7 @@ ensures call Yield_VCPreserved_20(tid, ShadowableTid(tid), ShadowableTid(tid), o
 }
 
 
-action {:layer 21,30} AtomicAcquire({:linear "tid"} tid: Tid, l: Lock)
+>-< action {:layer 21,30} AtomicAcquire({:linear "tid"} tid: Tid, l: Lock)
 modifies shadow.VC;
 {
     var v1, v2: Shadowable;
@@ -658,7 +658,7 @@ ensures call Yield_VCPreserved_20(tid, ShadowableTid(tid), ShadowableTid(tid), o
   call VC.Join(tid, ShadowableTid(tid), ShadowableLock(l));
 }
 
-action {:layer 21,30} AtomicRelease({:linear "tid"} tid: Tid, l: Lock)
+>-< action {:layer 21,30} AtomicRelease({:linear "tid"} tid: Tid, l: Lock)
 modifies shadow.VC;
 {
     var v1,v2: Shadowable;
@@ -707,7 +707,7 @@ ensures call Yield_VCPreserved_20(tid, ShadowableTid(tid), ShadowableLock(l), ol
 }
 
 
-action {:layer 21,30} AtomicWrite({:linear "tid"} tid:Tid, x : Var) returns (ok : bool)
+>-< action {:layer 21,30} AtomicWrite({:linear "tid"} tid:Tid, x : Var) returns (ok : bool)
 modifies sx.W;
 {
              var st : Shadowable;
@@ -812,7 +812,7 @@ preserves call Yield_FTPreserved_20(tid, old(shadow.Lock), old(shadow.VC), old(s
 }
 
 
-action {:layer 21,30} AtomicRead({:linear "tid"} tid:Tid, x : Var) returns (ok : bool)
+>-< action {:layer 21,30} AtomicRead({:linear "tid"} tid:Tid, x : Var) returns (ok : bool)
 modifies sx.R, shadow.VC;
 {
              var st : Shadowable;
@@ -1019,7 +1019,7 @@ requires call Yield_ThreadState_30(tid);
 
 yield procedure {:layer 0} ReleaseJoinLock({:linear "tid"} tid:Tid, uid: Tid);
 refines AtomicReleaseJoinLock;
-action {:layer 1,30} AtomicReleaseJoinLock({:linear "tid"} tid:Tid, uid: Tid)
+>-< action {:layer 1,30} AtomicReleaseJoinLock({:linear "tid"} tid:Tid, uid: Tid)
 modifies shadow.Lock;
 {
     assert ValidTid(tid);
@@ -1031,7 +1031,7 @@ modifies shadow.Lock;
 
 yield procedure {:layer 0} ChooseThreadToJoin({:linear "tid"} tid:Tid) returns (uid: Tid);
 refines AtomicChooseThreadToJoin;
-action {:layer 1,30} AtomicChooseThreadToJoin({:linear "tid"} tid:Tid) returns (uid: Tid)
+>-< action {:layer 1,30} AtomicChooseThreadToJoin({:linear "tid"} tid:Tid) returns (uid: Tid)
 modifies shadow.Lock, thread.HasJoined;
 {
     assert thread.State[tid] == RUNNING() && ValidTid(tid);
@@ -1044,7 +1044,7 @@ modifies shadow.Lock, thread.HasJoined;
 
 yield procedure {:layer 0} AllocTid({:linear "tid"} tid:Tid) returns (uid: Tid);
 refines AtomicAllocTid;
-action {:layer 1,30} AtomicAllocTid({:linear "tid"} tid:Tid) returns (uid: Tid)
+>-< action {:layer 1,30} AtomicAllocTid({:linear "tid"} tid:Tid) returns (uid: Tid)
 modifies thread.State, thread.ForkedBy, shadow.Lock;
 {
     assert thread.State[tid] == RUNNING() && ValidTid(tid);
@@ -1059,7 +1059,7 @@ modifies thread.State, thread.ForkedBy, shadow.Lock;
 
 yield procedure {:layer 0} StartThread({:linear "tid"} tid:Tid, uid: Tid);
 refines AtomicStartThread;
-action {:layer 1,30} AtomicStartThread({:linear "tid"} tid:Tid, uid: Tid)
+>-< action {:layer 1,30} AtomicStartThread({:linear "tid"} tid:Tid, uid: Tid)
 modifies thread.State, shadow.Lock;
 {
     assert ValidTid(tid);
@@ -1073,7 +1073,7 @@ modifies thread.State, shadow.Lock;
 
 yield procedure {:layer 0} ChooseLockToAcquire({:linear "tid"} tid:Tid) returns (l: Lock);
 refines AtomicChooseLockToAcquire;
-action {:layer 1,30} AtomicChooseLockToAcquire({:linear "tid"} tid:Tid) returns (l: Lock)
+>-< action {:layer 1,30} AtomicChooseLockToAcquire({:linear "tid"} tid:Tid) returns (l: Lock)
 modifies shadow.Lock;
 {
     assert ValidTid(tid);
@@ -1083,7 +1083,7 @@ modifies shadow.Lock;
 
 yield procedure {:layer 0} ChooseLockToRelease({:linear "tid"} tid:Tid) returns (l: Lock);
 refines AtomicChooseLockToRelease;
-action {:layer 1,30} AtomicChooseLockToRelease({:linear "tid"} tid:Tid) returns (l: Lock)
+>-< action {:layer 1,30} AtomicChooseLockToRelease({:linear "tid"} tid:Tid) returns (l: Lock)
 {
     assert ValidTid(tid);
     assume shadow.Lock[ShadowableLock(l)] == tid;
@@ -1091,7 +1091,7 @@ action {:layer 1,30} AtomicChooseLockToRelease({:linear "tid"} tid:Tid) returns 
 
 yield procedure {:layer 0} ReleaseChosenLock({:linear "tid"} tid:Tid, l: Lock);
 refines AtomicReleaseChosenLock;
-action {:layer 1,30} AtomicReleaseChosenLock({:linear "tid"} tid:Tid, l: Lock)
+>-< action {:layer 1,30} AtomicReleaseChosenLock({:linear "tid"} tid:Tid, l: Lock)
 modifies shadow.Lock;
 {
     assert ValidTid(tid);

@@ -10,7 +10,7 @@ var {:linear "tid"} {:layer 0,1} S : TidSet;
 // commutativity checker procedure contained t and thus made the whole
 // postcondition 'vacuously' (because t is added to A) true.
 
-action {:layer 1} atomic_inc_n ({:linear_in "tid"} t : Tid)
+>-< action {:layer 1} atomic_inc_n ({:linear_in "tid"} t : Tid)
 modifies S, n;
 { assert !S[t]; S[t] := true; n := n + 1; }
 

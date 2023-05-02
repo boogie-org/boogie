@@ -27,7 +27,7 @@ yield procedure {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"
   call Incr();
 }
 
-action {:layer 1} AtomicIncr()
+>-< action {:layer 1} AtomicIncr()
 modifies a;
 { a := a + 1; }
 

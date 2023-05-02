@@ -583,10 +583,6 @@ private class BvBounds : Expr {
 		if (StartOf(4)) {
 			ActionQualifierDecl(ref actionQualifier);
 		}
-		if (actionQualifier == ActionQualifier.None || actionQualifier == ActionQualifier.Async) {
-		 moverType = MoverType.Atomic;
-		}
-		
 		if (StartOf(5)) {
 			MoverQualifier(ref moverType);
 		}
