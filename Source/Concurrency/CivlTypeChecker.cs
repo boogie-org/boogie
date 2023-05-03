@@ -10,17 +10,14 @@ namespace Microsoft.Boogie
     public CheckingContext checkingContext;
     public Program program;
     public LinearTypeChecker linearTypeChecker;
-    public List<int> allRefinementLayers;
+    public List<int> AllRefinementLayers;
     public ActionDecl SkipActionDecl;
     
-    public Dictionary<ActionDecl, Action> procToAtomicAction;
-    public List<InductiveSequentialization> inductiveSequentializations;
-    public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
+    private Dictionary<ActionDecl, Action> procToAtomicAction;
+    private List<InductiveSequentialization> inductiveSequentializations;
+    private Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollectors;
     private HashSet<ActionDecl> linkActionDecls;
-
     private string namePrefix;
-
-    public IEnumerable<Variable> GlobalVariables => program.GlobalVariables;
 
     public CivlTypeChecker(ConcurrencyOptions options, Program program)
     {
@@ -28,14 +25,14 @@ namespace Microsoft.Boogie
       this.program = program;
       this.Options = options;
       this.linearTypeChecker = new LinearTypeChecker(this);
-      this.allRefinementLayers = program.TopLevelDeclarations.OfType<Implementation>()
+      this.AllRefinementLayers = program.TopLevelDeclarations.OfType<Implementation>()
         .Where(impl => impl.Proc is YieldProcedureDecl)
         .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer)
         .OrderBy(layer => layer).Distinct().ToList();
       
       this.procToAtomicAction = new Dictionary<ActionDecl, Action>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
-      this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
+      this.implToPendingAsyncCollectors = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.linkActionDecls = new HashSet<ActionDecl>();
 
       IEnumerable<string> declNames = program.TopLevelDeclarations.OfType<NamedDeclaration>().Select(x => x.Name);
@@ -96,24 +93,6 @@ namespace Microsoft.Boogie
     public Formal Formal(string name, Type type, bool incoming)
     {
       return VarHelper.Formal($"{namePrefix}{name}", type, incoming);
-    }
-    
-    private class VariableNameCollector : ReadOnlyVisitor
-    {
-      private HashSet<string> localVarNames = new HashSet<string>();
-
-      public static HashSet<string> Collect(Program program)
-      {
-        var collector = new VariableNameCollector();
-        collector.VisitProgram(program);
-        return collector.localVarNames;
-      }
-
-      public override Variable VisitVariable(Variable node)
-      {
-        localVarNames.Add(node.Name);
-        return node;
-      }
     }
 
     public void TypeCheck()
@@ -201,7 +180,7 @@ namespace Microsoft.Boogie
       foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
       {
         var proc = (YieldProcedureDecl)impl.Proc;
-        implToPendingAsyncCollector[impl] = new Dictionary<CtorType, Variable>();
+        implToPendingAsyncCollectors[impl] = new Dictionary<CtorType, Variable>();
         foreach (Variable v in impl.LocVars.Where(v => v.HasAttribute(CivlAttributes.PENDING_ASYNC)))
         {
           if (!pendingAsyncMultisetTypes.Contains(v.TypedIdent.Type))
@@ -216,13 +195,13 @@ namespace Microsoft.Boogie
           {
             var mapType = (MapType)v.TypedIdent.Type;
             var ctorType = (CtorType)mapType.Arguments[0];
-            if (implToPendingAsyncCollector[impl].ContainsKey(ctorType))
+            if (implToPendingAsyncCollectors[impl].ContainsKey(ctorType))
             {
               Error(v, "duplicate pending async collector");
             }
             else
             {
-              implToPendingAsyncCollector[impl][ctorType] = v;
+              implToPendingAsyncCollectors[impl][ctorType] = v;
             }
           }
         }
@@ -383,6 +362,8 @@ namespace Microsoft.Boogie
     }
     
     #region Public access methods
+
+    public IEnumerable<Variable> GlobalVariables => program.GlobalVariables;
     
     public IEnumerable<Action> LinkActions =>
       procToAtomicAction.Values.Where(action => linkActionDecls.Contains(action.ActionDecl));
@@ -392,6 +373,18 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Action> AtomicActions => procToAtomicAction.Values;
 
+    public Action Action(ActionDecl actionDecl)
+    {
+      return procToAtomicAction[actionDecl];
+    }
+    
+    public IEnumerable<InductiveSequentialization> InductiveSequentializations => inductiveSequentializations;
+
+    public Dictionary<CtorType, Variable> PendingAsyncCollectors(Implementation impl)
+    {
+      return implToPendingAsyncCollectors[impl];
+    }
+
     public void Error(Absy node, string message)
     {
       checkingContext.Error(node, message);
@@ -399,6 +392,24 @@ namespace Microsoft.Boogie
 
     #endregion
 
+    private class VariableNameCollector : ReadOnlyVisitor
+    {
+      private HashSet<string> localVarNames = new HashSet<string>();
+
+      public static HashSet<string> Collect(Program program)
+      {
+        var collector = new VariableNameCollector();
+        collector.VisitProgram(program);
+        return collector.localVarNames;
+      }
+
+      public override Variable VisitVariable(Variable node)
+      {
+        localVarNames.Add(node.Name);
+        return node;
+      }
+    }
+    
     private class AttributeEraser : ReadOnlyVisitor
     {
       public static void Erase(CivlTypeChecker civlTypeChecker)

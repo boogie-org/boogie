@@ -115,7 +115,7 @@ namespace Microsoft.Boogie
       // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
       // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
       // we need to substitute the parameters.
-      var atomicAction = civlTypeChecker.procToAtomicAction[yieldProcedureDecl.RefinedAction.ActionDecl];
+      var atomicAction = civlTypeChecker.Action(yieldProcedureDecl.RefinedAction.ActionDecl);
       Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
       for (int i = 0, j = 0; i < impl.InParams.Count; i++)
       {
@@ -140,7 +140,7 @@ namespace Microsoft.Boogie
         atomicAction.PendingAsyncs.Iter(decl =>
         {
           Variable collectedPAs =
-            civlTypeChecker.implToPendingAsyncCollector[originalImpl][decl.PendingAsyncType];
+            civlTypeChecker.PendingAsyncCollectors(originalImpl)[decl.PendingAsyncType];
           alwaysMap[atomicAction.PAs(decl.PendingAsyncType)] = Expr.Ident(collectedPAs);
           LocalVariable copy = Old(collectedPAs);
           newLocalVars.Add(copy);

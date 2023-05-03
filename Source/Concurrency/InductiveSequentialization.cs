@@ -174,7 +174,7 @@ namespace Microsoft.Boogie
           ).ToList());
         var pendingAsyncExprs = invariantAction.PendingAsyncs.Select(pendingAsync =>
         {
-          var pendingAsyncAction = civlTypeChecker.procToAtomicAction[pendingAsync];
+          var pendingAsyncAction = civlTypeChecker.Action(pendingAsync);
           var pendingAsyncActionParams = pendingAsyncAction.Impl.Proc.InParams.Concat(pendingAsyncAction.Impl.Proc.OutParams).ToList();
           var pendingAsyncFormalMap = pendingAsyncActionParams.ToDictionary(v => v,
             v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{pendingAsync.Name}_{v.Name}", v.TypedIdent.Type)));
@@ -364,7 +364,7 @@ namespace Microsoft.Boogie
   {
     public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
-      foreach (var x in civlTypeChecker.inductiveSequentializations)
+      foreach (var x in civlTypeChecker.InductiveSequentializations)
       {
         AddCheck(x.GenerateBaseCaseChecker(x.targetAction), decls);
         AddCheck(x.GenerateConclusionChecker(x.targetAction), decls);
@@ -374,7 +374,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      var absChecks = civlTypeChecker.inductiveSequentializations
+      var absChecks = civlTypeChecker.InductiveSequentializations
         .SelectMany(x => x.elim)
         .Where(kv => kv.Key != kv.Value)
         .Distinct();

@@ -116,8 +116,7 @@ namespace Microsoft.Boogie
     private YieldProcedureDecl enclosingYieldingProc;
     private bool IsRefinementLayer => layerNum == enclosingYieldingProc.Layer;
 
-    private Action RefinedAction =>
-      civlTypeChecker.procToAtomicAction[enclosingYieldingProc.RefinedAction.ActionDecl];
+    private Action RefinedAction => civlTypeChecker.Action(enclosingYieldingProc.RefinedAction.ActionDecl);
 
     private List<Cmd> newCmdSeq;
 
@@ -135,11 +134,11 @@ namespace Microsoft.Boogie
 
     private Variable CollectedPAs(CtorType pendingAsyncType)
     {
-      if (!civlTypeChecker.implToPendingAsyncCollector[enclosingImpl].TryGetValue(pendingAsyncType, out var collectedPAs))
+      if (!civlTypeChecker.PendingAsyncCollectors(enclosingImpl).TryGetValue(pendingAsyncType, out var collectedPAs))
       {
         collectedPAs = civlTypeChecker.LocalVariable($"collectedPAs_{pendingAsyncType.Decl.Name}",
           TypeHelper.MapType(pendingAsyncType, Type.Int));
-        civlTypeChecker.implToPendingAsyncCollector[enclosingImpl][pendingAsyncType] = collectedPAs;
+        civlTypeChecker.PendingAsyncCollectors(enclosingImpl)[pendingAsyncType] = collectedPAs;
       }
       return collectedPAs;
     }
@@ -177,7 +176,7 @@ namespace Microsoft.Boogie
       if (!enclosingYieldingProc.HasMoverType && RefinedAction.HasPendingAsyncs && IsRefinementLayer)
       {
         var assumeExpr = EmptyPendingAsyncMultisetExpr(CollectedPAs, RefinedAction.PendingAsyncs);
-        newImpl.LocVars.AddRange(civlTypeChecker.implToPendingAsyncCollector[impl].Values.Except(impl.LocVars));
+        newImpl.LocVars.AddRange(civlTypeChecker.PendingAsyncCollectors(impl).Values.Except(impl.LocVars));
         newImpl.Blocks.First().Cmds.Insert(0, CmdHelper.AssumeCmd(assumeExpr));
       }
 
@@ -249,7 +248,7 @@ namespace Microsoft.Boogie
     {
       if (newCall.Proc is ActionDecl actionDecl)
       {
-        var linkAction = civlTypeChecker.procToAtomicAction[actionDecl];
+        var linkAction = civlTypeChecker.Action(actionDecl);
         if (linkAction.LowerLayer == layerNum)
         {
           newCall.Proc = linkAction.Impl.Proc;
@@ -405,7 +404,7 @@ namespace Microsoft.Boogie
 
     private void AddActionCall(CallCmd newCall, YieldProcedureDecl calleeActionProc)
     {
-      var calleeRefinedAction = civlTypeChecker.procToAtomicAction[calleeActionProc.RefinedActionAtLayer(layerNum)];
+      var calleeRefinedAction = civlTypeChecker.Action(calleeActionProc.RefinedActionAtLayer(layerNum));
 
       newCall.IsAsync = false;
       newCall.Proc = calleeRefinedAction.Impl.Proc;
