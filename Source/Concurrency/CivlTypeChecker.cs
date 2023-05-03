@@ -13,7 +13,7 @@ namespace Microsoft.Boogie
     public List<int> AllRefinementLayers;
     public ActionDecl SkipActionDecl;
     
-    private Dictionary<ActionDecl, Action> procToAtomicAction;
+    private Dictionary<ActionDecl, Action> actionDeclToAction;
     private List<InductiveSequentialization> inductiveSequentializations;
     private Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollectors;
     private HashSet<ActionDecl> linkActionDecls;
@@ -30,7 +30,7 @@ namespace Microsoft.Boogie
         .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer)
         .OrderBy(layer => layer).Distinct().ToList();
       
-      this.procToAtomicAction = new Dictionary<ActionDecl, Action>();
+      this.actionDeclToAction = new Dictionary<ActionDecl, Action>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
       this.implToPendingAsyncCollectors = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.linkActionDecls = new HashSet<ActionDecl>();
@@ -250,7 +250,7 @@ namespace Microsoft.Boogie
       // Create all actions that do not refine another action.
       foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
       {
-        procToAtomicAction[actionDecl] = new Action(this, actionDecl, null, invariantActionDecls.Contains(actionDecl));
+        actionDeclToAction[actionDecl] = new Action(this, actionDecl, null, invariantActionDecls.Contains(actionDecl));
       }
       
       // Create all atomic actions that refine other actions via an inductive sequentialization.
@@ -260,14 +260,14 @@ namespace Microsoft.Boogie
     
     private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl, HashSet<ActionDecl> invariantActionDecls)
     {
-      if (procToAtomicAction.ContainsKey(actionDecl))
+      if (actionDeclToAction.ContainsKey(actionDecl))
       {
         return;
       }
       var refinedProc = actionDecl.RefinedAction.ActionDecl;
       CreateActionsThatRefineAnotherAction(refinedProc, invariantActionDecls);
-      var refinedAction = procToAtomicAction[refinedProc];
-      procToAtomicAction[actionDecl] =
+      var refinedAction = actionDeclToAction[refinedProc];
+      actionDeclToAction[actionDecl] =
         new Action(this, actionDecl, refinedAction, invariantActionDecls.Contains(actionDecl));
     }
 
@@ -275,11 +275,11 @@ namespace Microsoft.Boogie
     {
       actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
       {
-        var action = procToAtomicAction[proc];
+        var action = actionDeclToAction[proc];
         var invariantProc = proc.InvariantAction.ActionDecl;
-        var invariantAction = procToAtomicAction[invariantProc];
+        var invariantAction = actionDeclToAction[invariantProc];
         var elim = new Dictionary<Action, Action>(proc.EliminationMap().Select(x =>
-          KeyValuePair.Create(procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
+          KeyValuePair.Create(actionDeclToAction[x.Key], actionDeclToAction[x.Value])));
         inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
       });
     }
@@ -366,16 +366,16 @@ namespace Microsoft.Boogie
     public IEnumerable<Variable> GlobalVariables => program.GlobalVariables;
     
     public IEnumerable<Action> LinkActions =>
-      procToAtomicAction.Values.Where(action => linkActionDecls.Contains(action.ActionDecl));
+      actionDeclToAction.Values.Where(action => linkActionDecls.Contains(action.ActionDecl));
 
-    public IEnumerable<Action> MoverActions => procToAtomicAction.Keys
-      .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => procToAtomicAction[actionDecl]);
+    public IEnumerable<Action> MoverActions => actionDeclToAction.Keys
+      .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => actionDeclToAction[actionDecl]);
 
-    public IEnumerable<Action> AtomicActions => procToAtomicAction.Values;
+    public IEnumerable<Action> AtomicActions => actionDeclToAction.Values;
 
     public Action Action(ActionDecl actionDecl)
     {
-      return procToAtomicAction[actionDecl];
+      return actionDeclToAction[actionDecl];
     }
     
     public IEnumerable<InductiveSequentialization> InductiveSequentializations => inductiveSequentializations;
