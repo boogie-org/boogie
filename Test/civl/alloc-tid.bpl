@@ -121,7 +121,7 @@ refines AtomicAllocateLow;
 
 // We can prove that this primitive procedure preserves the permission invariant locally.
 // We only need to use its specification and the definitions of TidCollector and TidSetCollector.
-link action {:layer 1} MakeLinear(i: int) returns ({:linear "tid"} tid: int)
+action {:layer 1} MakeLinear(i: int) returns ({:linear "tid"} tid: int)
 modifies unallocated;
 {
   assert unallocated[i];

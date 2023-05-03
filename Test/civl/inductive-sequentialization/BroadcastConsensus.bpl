@@ -193,7 +193,7 @@ function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
   (forall i:pid :: MultisetSubsetEq(MultisetEmpty, CH_low[i]) && MultisetSubsetEq(CH_low[i], CH))
 }
 
-link action {:layer 1} intro (i:pid)
+action {:layer 1} intro (i:pid)
 modifies CH;
 {
   CH := CH[value[i] := CH[value[i]] + 1];
@@ -201,7 +201,7 @@ modifies CH;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-link action {:layer 1} Snapshot() returns (snapshot:[pid][val]int)
+action {:layer 1} Snapshot() returns (snapshot:[pid][val]int)
 {
   snapshot := CH_low;
 }

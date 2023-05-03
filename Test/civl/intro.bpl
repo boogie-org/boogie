@@ -26,7 +26,7 @@ requires call Yield_xy();
   call set_y_to_x();
 }
 
-link action {:layer 1} set_y_to_x ()
+action {:layer 1} set_y_to_x ()
 modifies y;
 {
   y := x;
@@ -51,10 +51,10 @@ refines atomic_write_x;
   call intro_write_x(x');
 }
 
-link action {:layer 0} intro_read_x () returns (v:int)
+action {:layer 0} intro_read_x () returns (v:int)
 { v := x; }
 
-link action {:layer 0} intro_write_x (x':int)
+action {:layer 0} intro_write_x (x':int)
 modifies x;
 { x := x'; }
 

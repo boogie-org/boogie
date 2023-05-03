@@ -112,7 +112,7 @@ modifies count;
 yield procedure {:layer 0} WRITE(v: int);
 refines atomic_WRITE;
 
-link action {:layer 1} set_l(v: Option Tid)
+action {:layer 1} set_l(v: Option Tid)
 modifies l;
 {
     l := v;

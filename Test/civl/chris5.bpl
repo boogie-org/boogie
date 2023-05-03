@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 1,1} g:int;
 
-link action {:layer 1} P(x:int)
+action {:layer 1} P(x:int)
 {
   assert x == 0;
 }

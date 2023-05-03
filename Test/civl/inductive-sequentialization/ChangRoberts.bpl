@@ -262,7 +262,7 @@ requires {:layer 1} Pid(pid);
   }
 }
 
-link action {:layer 1} set_terminated(pid:int)
+action {:layer 1} set_terminated(pid:int)
 modifies terminated;
 {
   terminated[pid] := true;

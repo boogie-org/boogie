@@ -318,8 +318,7 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabel(CallCmd callCmd)
       {
-        if (callCmd.Proc is ActionDecl { ActionQualifier: ActionQualifier.Link } ||
-            callCmd.Proc.IsPure)
+        if (callCmd.Proc is ActionDecl || callCmd.Proc.IsPure)
         {
           return P;
         }
@@ -388,7 +387,7 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabelAsync(CallCmd callCmd)
       {
-        if (callCmd.Proc is ActionDecl { ActionQualifier: ActionQualifier.Link } || callCmd.Proc.IsPure)
+        if (callCmd.Proc is ActionDecl || callCmd.Proc.IsPure)
         {
           return P;
         }

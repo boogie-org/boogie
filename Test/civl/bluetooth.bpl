@@ -139,13 +139,13 @@ preserves call Inv1();
 
 /// introduction actions
 
-link action {:layer 1, 2} AddToBarrier(i: int, {:linear_in} l: Lval Perm)
+action {:layer 1, 2} AddToBarrier(i: int, {:linear_in} l: Lval Perm)
 modifies usersInDriver;
 {
     call Lval_Transfer(l, usersInDriver);
 }
 
-link action {:layer 1, 2} RemoveFromBarrier(i: int, {:linear_out} l: Lval Perm)
+action {:layer 1, 2} RemoveFromBarrier(i: int, {:linear_out} l: Lval Perm)
 modifies usersInDriver;
 {
     call Lval_Split(l, usersInDriver);

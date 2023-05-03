@@ -128,7 +128,7 @@ ensures call YieldMem(l', i);
   call l' := WriteLinear(l, i, o);
 }
 
-link action {:layer 1} AllocLinear (i:int) returns ({:linear "mem"} l:lmap)
+action {:layer 1} AllocLinear (i:int) returns ({:linear "mem"} l:lmap)
 modifies pool;
 {
   assert dom(pool)[i];
@@ -136,14 +136,14 @@ modifies pool;
   l := Add(Empty(mem), i);
 }
 
-link action {:layer 1} FreeLinear ({:linear_in "mem"} l:lmap, i:int)
+action {:layer 1} FreeLinear ({:linear_in "mem"} l:lmap, i:int)
 modifies pool;
 {
   assert dom(l)[i];
   pool := Add(pool, i);
 }
 
-link action {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
+action {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
 {
   assert dom(l)[i];
   l' := cons(dom(l), map(l)[i := o]);

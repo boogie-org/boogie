@@ -79,7 +79,7 @@ requires {:layer 1} tid != nil;
   call release(tid);
 }
 
-link action {:layer 1} snapshot () returns (snapshot: [int]int)
+action {:layer 1} snapshot () returns (snapshot: [int]int)
 {
    snapshot := A;
 }

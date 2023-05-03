@@ -247,7 +247,7 @@ namespace Microsoft.Boogie
 
     private void ProcessCallCmd(CallCmd newCall)
     {
-      if (newCall.Proc is ActionDecl { ActionQualifier: ActionQualifier.Link } actionDecl)
+      if (newCall.Proc is ActionDecl actionDecl)
       {
         var linkAction = civlTypeChecker.procToAtomicAction[actionDecl];
         if (linkAction.LowerLayer == layerNum)

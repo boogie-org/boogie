@@ -40,7 +40,7 @@ modifies status;
 yield procedure {:layer 0} FinishTask({:linear "tid"} tid: int);
 refines AtomicFinishTask;
 
-link action {:layer 1} StatusSnapshot() returns (snapshot: [int]int)
+action {:layer 1} StatusSnapshot() returns (snapshot: [int]int)
 {
   snapshot := status;
 }

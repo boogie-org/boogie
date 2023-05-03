@@ -15,9 +15,9 @@ namespace Microsoft.Boogie
     
     public Dictionary<ActionDecl, Action> procToAtomicAction;
     public List<InductiveSequentialization> inductiveSequentializations;
-
     public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
-    
+    private HashSet<ActionDecl> linkActionDecls;
+
     private string namePrefix;
 
     public IEnumerable<Variable> GlobalVariables => program.GlobalVariables;
@@ -34,8 +34,9 @@ namespace Microsoft.Boogie
         .OrderBy(layer => layer).Distinct().ToList();
       
       this.procToAtomicAction = new Dictionary<ActionDecl, Action>();
-      this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
+      this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
+      this.linkActionDecls = new HashSet<ActionDecl>();
 
       IEnumerable<string> declNames = program.TopLevelDeclarations.OfType<NamedDeclaration>().Select(x => x.Name);
       IEnumerable<string> localVarNames = VariableNameCollector.Collect(program);
@@ -51,7 +52,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, ActionQualifier.None,
+      SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both,
         new List<Variable>(), new List<Variable>(), new List<ActionDeclRef>(), null, null, new List<ElimDecl>(),
         new List<IdentifierExpr>(), null, null);
       var skipImplementation = DeclHelper.Implementation(
@@ -193,7 +194,7 @@ namespace Microsoft.Boogie
       
       // local collectors for pending asyncs
       var pendingAsyncProcs = program.TopLevelDeclarations.OfType<ActionDecl>()
-        .Where(proc => proc.ActionQualifier == ActionQualifier.Async).Select(proc => proc.Name).ToHashSet();
+        .Where(proc => proc.MaybePendingAsync).Select(proc => proc.Name).ToHashSet();
       var pendingAsyncMultisetTypes = program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
         .Where(decl => pendingAsyncProcs.Contains(decl.Name)).Select(decl =>
           TypeHelper.MapType(TypeHelper.CtorType(decl), Type.Int)).ToHashSet();
@@ -225,6 +226,11 @@ namespace Microsoft.Boogie
             }
           }
         }
+        impl.Blocks.Iter(block =>
+        {
+          block.Cmds.OfType<CallCmd>().Select(callCmd => callCmd.Proc).OfType<ActionDecl>()
+            .Iter(actionDecl => linkActionDecls.Add(actionDecl));
+        });
       }
     }
     
@@ -379,7 +385,7 @@ namespace Microsoft.Boogie
     #region Public access methods
     
     public IEnumerable<Action> LinkActions =>
-      procToAtomicAction.Values.Where(action => action.ActionDecl.ActionQualifier == ActionQualifier.Link);
+      procToAtomicAction.Values.Where(action => linkActionDecls.Contains(action.ActionDecl));
 
     public IEnumerable<Action> MoverActions => procToAtomicAction.Keys
       .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => procToAtomicAction[actionDecl]);

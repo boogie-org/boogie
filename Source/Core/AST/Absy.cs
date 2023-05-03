@@ -2825,13 +2825,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  public enum ActionQualifier
-  {
-      Async,
-      Link,
-      None
-  }
-
   public class ActionDeclRef : Absy
   {
     public string ActionName;
@@ -2896,7 +2889,6 @@ namespace Microsoft.Boogie
   public class ActionDecl : Procedure
   {
     public MoverType MoverType;
-    public ActionQualifier ActionQualifier;
     public List<ActionDeclRef> Creates;
     public ActionDeclRef RefinedAction;
     public ActionDeclRef InvariantAction;
@@ -2907,7 +2899,7 @@ namespace Microsoft.Boogie
     public Implementation Impl; // set when the implementation of this action is resolved
     public LayerRange LayerRange; // set during registration
 
-    public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
+    public ActionDecl(IToken tok, string name, MoverType moverType,
       List<Variable> inParams, List<Variable> outParams,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
       List<ElimDecl> eliminates,
@@ -2916,7 +2908,6 @@ namespace Microsoft.Boogie
       false, new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
       this.MoverType = moverType;
-      this.ActionQualifier = actionQualifier;
       this.Creates = creates;
       this.RefinedAction = refinedAction;
       this.InvariantAction = invariantAction;
@@ -2936,23 +2927,8 @@ namespace Microsoft.Boogie
       rc.Proc = this;
       base.Resolve(rc);
       rc.Proc = null;
-      if (ActionQualifier == ActionQualifier.Async)
-      {
-        if (MoverType == MoverType.None)
-        {
-          rc.Error(this, "missing mover type");
-        }
-        if (OutParams.Count > 0)
-        {
-          rc.Error(this, $"async action may not have output parameters");
-        }
-      }
       if (Creates.Any())
       {
-        if (ActionQualifier == ActionQualifier.Link)
-        {
-          rc.Error(this, "link action may not create pending asyncs");
-        }
         if (MoverType == MoverType.Right || MoverType == MoverType.Both)
         {
           rc.Error(this, "right mover may not create pending asyncs");
@@ -2961,17 +2937,13 @@ namespace Microsoft.Boogie
       Creates.Iter(create =>
       {
         create.Resolve(rc);
-        if (create.ActionDecl.ActionQualifier != ActionQualifier.Async)
+        if (!create.ActionDecl.MaybePendingAsync)
         {
-          rc.Error(this, $"{create.ActionName} in creates list must be an async action");
+          rc.Error(create, $"{create.ActionName} must be an async action");
         }
       });
       if (RefinedAction != null)
       {
-        if (ActionQualifier != ActionQualifier.None)
-        {
-          rc.Error(this, "refining action may not have any qualifiers on it");
-        }
         RefinedAction.Resolve(rc);
         InvariantAction.Resolve(rc);
       }
@@ -3005,16 +2977,13 @@ namespace Microsoft.Boogie
         }
       });
 
-      if (ActionQualifier == ActionQualifier.Link)
+      if (RefinedAction != null)
       {
-        Modifies.Iter(ie =>
+        var pendingAsync = RefinedAction.ActionDecl;
+        if (!pendingAsync.HasMoverType)
         {
-          if (ie.Decl.LayerRange.LowerLayer != LayerRange.LowerLayer)
-          {
-            tc.Error(this,
-              $"lower layer of modified global variable does not match lower layer of link action: {ie.Name}");
-          }
-        });
+          tc.Error(this, $"pending async {pendingAsync.Name} must have a mover type");
+        }
       }
       
       if (InvariantAction != null)
@@ -3097,25 +3066,23 @@ namespace Microsoft.Boogie
 
     protected override void EmitBegin(TokenTextWriter stream, int level)
     {
-      switch (ActionQualifier)
+      if (MaybePendingAsync)
       {
-        case ActionQualifier.Async:
-          stream.Write(level, "async ");
-          break;
-        case ActionQualifier.Link:
-          stream.Write(level, "link ");
-          break;
+        stream.Write(level, "async ");
       }
       switch (MoverType)
       {
+        case MoverType.Atomic:
+          stream.Write(level, ">-<");
+          break;
         case MoverType.Both:
-          stream.Write(level, "<-> ");
+          stream.Write(level, "<->");
           break;
         case MoverType.Left:
-          stream.Write(level, "<- ");
+          stream.Write(level, "<-");
           break;
         case MoverType.Right:
-          stream.Write(level, "-> ");
+          stream.Write(level, "->");
           break;
       }
       stream.Write(level, " action ");
@@ -3161,12 +3128,13 @@ namespace Microsoft.Boogie
       return Creates.Append(RefinedAction).Append(InvariantAction);
     }
 
+    public bool MaybePendingAsync => PendingAsyncCtorDecl != null;
+
     public bool HasMoverType => MoverType != MoverType.None;
     
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
     public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
-    
     
     public DatatypeConstructor PendingAsyncCtor => PendingAsyncCtorDecl.GetConstructor(Name);
 
@@ -3303,13 +3271,14 @@ namespace Microsoft.Boogie
     {
       if (RefinedAction != null)
       {
-        if (!RefinedAction.ActionDecl.HasMoverType)
+        var refinedActionDecl = RefinedAction.ActionDecl;
+        if (!refinedActionDecl.HasMoverType)
         {
-          tc.Error(this, "refined atomic action must have mover type");
+          tc.Error(this, $"refined action {refinedActionDecl.Name} must have a mover type");
         }
-        if (!RefinedAction.ActionDecl.LayerRange.Contains(Layer + 1))
+        if (!refinedActionDecl.LayerRange.Contains(Layer + 1))
         {
-          tc.Error(this, $"refined atomic action must be available at layer {Layer + 1}");
+          tc.Error(this, $"refined action {refinedActionDecl.Name} must be available at layer {Layer + 1}");
         }
       }
 

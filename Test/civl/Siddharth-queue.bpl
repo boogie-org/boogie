@@ -20,18 +20,18 @@ type Key;
 
 // ---------- Primitives for manipulating logical/abstract state
 
-link action {:layer 1} intro_readLin() returns (s: SetInvoc)
+action {:layer 1} intro_readLin() returns (s: SetInvoc)
 {
   s := Set_ofSeq(lin);
 }
 
-link action {:layer 1} intro_write_vis(n: Invoc, s: SetInvoc)
+action {:layer 1} intro_write_vis(n: Invoc, s: SetInvoc)
   modifies vis;
 {
   vis[n] := s;
 }
 
-link action {:layer 1} intro_writeLin(n: Invoc)
+action {:layer 1} intro_writeLin(n: Invoc)
   modifies lin;
 {
   lin := Seq_append(lin, n);
