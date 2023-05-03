@@ -2894,7 +2894,6 @@ namespace Microsoft.Boogie
     public ActionDeclRef InvariantAction;
     public List<ElimDecl> Eliminates;
     public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
-    public int PendingAsyncStartIndex;
 
     public Implementation Impl; // set when the implementation of this action is resolved
     public LayerRange LayerRange; // set during registration
@@ -2913,7 +2912,6 @@ namespace Microsoft.Boogie
       this.InvariantAction = invariantAction;
       this.Eliminates = eliminates;
       this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
-      this.PendingAsyncStartIndex = outParams.Count;
     }
 
     public override void Register(ResolutionContext rc)

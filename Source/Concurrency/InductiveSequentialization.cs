@@ -43,9 +43,10 @@ namespace Microsoft.Boogie
         .ToList<Cmd>();
 
       // Construct call to inputAction
-      var pendingAsyncTypeToOutputParamIndex = invariantAction.PendingAsyncs.Select((action, i) => (action, i))
-        .ToDictionary(tuple => tuple.action.PendingAsyncType, tuple => tuple.action.PendingAsyncStartIndex + tuple.i);
-      var outputVars = new List<Variable>(invariantAction.Impl.OutParams.Take(invariantAction.ActionDecl.PendingAsyncStartIndex));
+      var pendingAsyncTypeToOutputParamIndex = invariantAction.PendingAsyncs.Select(x => x.PendingAsyncType)
+          .Zip(Enumerable.Range(invariantAction.PendingAsyncStartIndex, invariantAction.PendingAsyncs.Count))
+          .ToDictionary(tuple => tuple.Item1, tuple => tuple.Item2);
+      var outputVars = new List<Variable>(invariantAction.Impl.OutParams.Take(invariantAction.PendingAsyncStartIndex));
       outputVars.AddRange(inputAction.PendingAsyncs.Select(action =>
         invariantAction.Impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.PendingAsyncType]]));
       cmds.Add(CmdHelper.CallCmd(inputAction.Impl.Proc, invariantAction.Impl.InParams, outputVars));
@@ -308,7 +309,7 @@ namespace Microsoft.Boogie
 
     public static Substitution GetSubstitution(Action from, Action to)
     {
-      Debug.Assert(from.ActionDecl.PendingAsyncStartIndex == to.ActionDecl.PendingAsyncStartIndex);
+      Debug.Assert(from.PendingAsyncStartIndex == to.PendingAsyncStartIndex);
       Debug.Assert(from.Impl.InParams.Count == to.Impl.InParams.Count);
       Debug.Assert(from.Impl.OutParams.Count <= to.Impl.OutParams.Count);
       
@@ -317,11 +318,11 @@ namespace Microsoft.Boogie
       {
         map[from.Impl.InParams[i]] = Expr.Ident(to.Impl.InParams[i]);
       }
-      for (int i = 0; i < from.ActionDecl.PendingAsyncStartIndex; i++)
+      for (int i = 0; i < from.PendingAsyncStartIndex; i++)
       {
         map[from.Impl.OutParams[i]] = Expr.Ident(to.Impl.OutParams[i]);
       }
-      for (int i = from.ActionDecl.PendingAsyncStartIndex; i < from.Impl.OutParams.Count; i++)
+      for (int i = from.PendingAsyncStartIndex; i < from.Impl.OutParams.Count; i++)
       {
         var formal = from.Impl.OutParams[i];
         var pendingAsyncType = (CtorType)((MapType)formal.TypedIdent.Type).Arguments[0];
