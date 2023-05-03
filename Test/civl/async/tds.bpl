@@ -61,7 +61,7 @@ refines atomic_main;
     call master3(id);
 }
 
-link action {:layer 3} StatusSnapshot() returns (snapshot: [int]int)
+action {:layer 3} StatusSnapshot() returns (snapshot: [int]int)
 {
   snapshot := status;
 }

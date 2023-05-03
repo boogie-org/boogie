@@ -759,7 +759,7 @@ namespace Microsoft.Boogie
       var pendingAsyncsToCheck = new HashSet<Action>(
         civlTypeChecker.MoverActions
           .Where(a => a.LayerRange.Contains(layerNum) && a.HasPendingAsyncs)
-          .SelectMany(a => a.PendingAsyncs).Select(a => civlTypeChecker.procToAtomicAction[a]));
+          .SelectMany(a => a.PendingAsyncs).Select(a => civlTypeChecker.Action(a)));
 
       foreach (var action in pendingAsyncsToCheck)
       {

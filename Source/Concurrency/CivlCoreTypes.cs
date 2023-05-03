@@ -102,6 +102,8 @@ namespace Microsoft.Boogie
 
     public bool IsLeftMover => ActionDecl.MoverType == MoverType.Left || ActionDecl.MoverType == MoverType.Both;
 
+    public int PendingAsyncStartIndex => ActionDecl.OutParams.Count;
+
     public bool TriviallyCommutesWith(Action other)
     {
       return !this.ModifiedGlobalVars.Intersect(other.UsedGlobalVarsInAction).Any() &&
@@ -111,7 +113,7 @@ namespace Microsoft.Boogie
     public Variable PAs(CtorType pendingAsyncType)
     {
       var pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
-      return Impl.OutParams.Skip(ActionDecl.PendingAsyncStartIndex).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
+      return Impl.OutParams.Skip(PendingAsyncStartIndex).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
     }
 
     public bool HasAssumeCmd => Impl.Blocks.Any(b => b.Cmds.Any(c => c is AssumeCmd));

@@ -180,12 +180,12 @@ requires call YieldConsistent_10();
 // ###########################################################################
 // Event Handlers
 
-link action {:layer 8} GhostRead_8() returns (snapshot: GState)
+action {:layer 8} GhostRead_8() returns (snapshot: GState)
 {
    snapshot := state;
 }
 
-link action {:layer 10} GhostRead_10() returns (snapshot: GState)
+action {:layer 10} GhostRead_10() returns (snapshot: GState)
 {
    snapshot := state;
 }

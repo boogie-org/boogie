@@ -398,17 +398,17 @@ requires call YieldCoordinator();
   }
 }
 
-link action {:layer 1} Snapshot_RequestChannel() returns (snapshot:[int]int)
+action {:layer 1} Snapshot_RequestChannel() returns (snapshot:[int]int)
 {
   snapshot := RequestChannel;
 }
 
-link action {:layer 1} Snapshot_VoteChannel() returns (snapshot:[vote]int)
+action {:layer 1} Snapshot_VoteChannel() returns (snapshot:[vote]int)
 {
   snapshot := VoteChannel;
 }
 
-link action {:layer 1} Snapshot_DecisionChannel() returns (snapshot:[int][decision]int)
+action {:layer 1} Snapshot_DecisionChannel() returns (snapshot:[int][decision]int)
 {
   snapshot := DecisionChannel;
 }

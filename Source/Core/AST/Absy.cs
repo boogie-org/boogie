@@ -2825,13 +2825,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  public enum ActionQualifier
-  {
-      Async,
-      Link,
-      None
-  }
-
   public class ActionDeclRef : Absy
   {
     public string ActionName;
@@ -2896,18 +2889,16 @@ namespace Microsoft.Boogie
   public class ActionDecl : Procedure
   {
     public MoverType MoverType;
-    public ActionQualifier ActionQualifier;
     public List<ActionDeclRef> Creates;
     public ActionDeclRef RefinedAction;
     public ActionDeclRef InvariantAction;
     public List<ElimDecl> Eliminates;
     public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
-    public int PendingAsyncStartIndex;
 
     public Implementation Impl; // set when the implementation of this action is resolved
     public LayerRange LayerRange; // set during registration
 
-    public ActionDecl(IToken tok, string name, MoverType moverType, ActionQualifier actionQualifier,
+    public ActionDecl(IToken tok, string name, MoverType moverType,
       List<Variable> inParams, List<Variable> outParams,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
       List<ElimDecl> eliminates,
@@ -2916,13 +2907,11 @@ namespace Microsoft.Boogie
       false, new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
       this.MoverType = moverType;
-      this.ActionQualifier = actionQualifier;
       this.Creates = creates;
       this.RefinedAction = refinedAction;
       this.InvariantAction = invariantAction;
       this.Eliminates = eliminates;
       this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
-      this.PendingAsyncStartIndex = outParams.Count;
     }
 
     public override void Register(ResolutionContext rc)
@@ -2936,23 +2925,8 @@ namespace Microsoft.Boogie
       rc.Proc = this;
       base.Resolve(rc);
       rc.Proc = null;
-      if (ActionQualifier == ActionQualifier.Async)
-      {
-        if (MoverType == MoverType.None)
-        {
-          rc.Error(this, "missing mover type");
-        }
-        if (OutParams.Count > 0)
-        {
-          rc.Error(this, $"async action may not have output parameters");
-        }
-      }
       if (Creates.Any())
       {
-        if (ActionQualifier == ActionQualifier.Link)
-        {
-          rc.Error(this, "link action may not create pending asyncs");
-        }
         if (MoverType == MoverType.Right || MoverType == MoverType.Both)
         {
           rc.Error(this, "right mover may not create pending asyncs");
@@ -2961,18 +2935,18 @@ namespace Microsoft.Boogie
       Creates.Iter(create =>
       {
         create.Resolve(rc);
-        if (create.ActionDecl.ActionQualifier != ActionQualifier.Async)
+        if (create.ActionDecl is { MaybePendingAsync: false })
         {
-          rc.Error(this, $"{create.ActionName} in creates list must be an async action");
+          rc.Error(create, $"{create.ActionName} must be an async action");
         }
       });
       if (RefinedAction != null)
       {
-        if (ActionQualifier != ActionQualifier.None)
-        {
-          rc.Error(this, "refining action may not have any qualifiers on it");
-        }
         RefinedAction.Resolve(rc);
+        if (RefinedAction.ActionDecl is { HasMoverType: false })
+        {
+          rc.Error(this, $"refined action {RefinedAction.ActionDecl.Name} must have a mover type");
+        }
         InvariantAction.Resolve(rc);
       }
       Eliminates.Iter(elim =>
@@ -2981,13 +2955,13 @@ namespace Microsoft.Boogie
       });
       if (Eliminates.Any())
       {
-        if (Eliminates.Select(elim => elim.Target.ActionDecl).Distinct().Count() != Eliminates.Count)
-        {
-          rc.Error(this, "each eliminates pair must be distinct in the first action");
-        }
         if (RefinedAction == null)
         {
           rc.Error(this, "eliminates clause must be accompanied by refinement specification");
+        }
+        if (Eliminates.Select(elim => elim.Target.ActionDecl).Distinct().Count() != Eliminates.Count)
+        {
+          rc.Error(this, "each eliminates pair must be distinct in the first action");
         }
       }
     }
@@ -3005,54 +2979,42 @@ namespace Microsoft.Boogie
         }
       });
 
-      if (ActionQualifier == ActionQualifier.Link)
-      {
-        Modifies.Iter(ie =>
-        {
-          if (ie.Decl.LayerRange.LowerLayer != LayerRange.LowerLayer)
-          {
-            tc.Error(this,
-              $"lower layer of modified global variable does not match lower layer of link action: {ie.Name}");
-          }
-        });
-      }
-      
       if (InvariantAction != null)
       {
-        var refinedProc = RefinedAction.ActionDecl;
-        var invariantProc = InvariantAction.ActionDecl;
+        var refinedActionDecl = RefinedAction.ActionDecl;
+        var invariantActionDecl = InvariantAction.ActionDecl;
         var layer = LayerRange.UpperLayer;
-        if (!refinedProc.LayerRange.Contains(layer + 1))
+        if (!refinedActionDecl.LayerRange.Contains(layer + 1))
         {
-          tc.Error(refinedProc, $"refined action does not exist at layer {layer + 1}");
+          tc.Error(refinedActionDecl, $"refined action does not exist at layer {layer + 1}");
         }
-        if (!invariantProc.LayerRange.Contains(layer))
+        if (!invariantActionDecl.LayerRange.Contains(layer))
         {
-          tc.Error(invariantProc, $"invariant action does not exist at layer {layer}");
+          tc.Error(invariantActionDecl, $"invariant action does not exist at layer {layer}");
         }
         var actionCreates = Creates.Select(x => x.ActionDecl).ToHashSet();
-        var refinedActionCreates = refinedProc.Creates.Select(x => x.ActionDecl).ToHashSet();
-        var invariantCreates = invariantProc.Creates.Select(x => x.ActionDecl).ToHashSet();
+        var refinedActionCreates = refinedActionDecl.Creates.Select(x => x.ActionDecl).ToHashSet();
+        var invariantCreates = invariantActionDecl.Creates.Select(x => x.ActionDecl).ToHashSet();
         if (!actionCreates.IsSubsetOf(invariantCreates))
         {
           tc.Error(this,
-            $"each pending async created by refining action must also be created by invariant action {invariantProc.Name}");
+            $"each pending async created by refining action must also be created by invariant action {invariantActionDecl.Name}");
         }
         if (!refinedActionCreates.IsSubsetOf(invariantCreates))
         {
           tc.Error(this,
-            $"each pending async created by refined action must also be created by invariant action {invariantProc.Name}");
+            $"each pending async created by refined action must also be created by invariant action {invariantActionDecl.Name}");
         }
         var actionModifies = new HashSet<Variable>(Modifies.Select(ie => ie.Decl));
-        var refinedActionModifies = new HashSet<Variable>(refinedProc.Modifies.Select(ie => ie.Decl));
-        var invariantModifies = new HashSet<Variable>(invariantProc.Modifies.Select(ie => ie.Decl));
+        var refinedActionModifies = new HashSet<Variable>(refinedActionDecl.Modifies.Select(ie => ie.Decl));
+        var invariantModifies = new HashSet<Variable>(invariantActionDecl.Modifies.Select(ie => ie.Decl));
         if (!actionModifies.IsSubsetOf(invariantModifies))
         {
-          tc.Error(this, $"modifies of {Name} must be subset of modifies of {invariantProc.Name}");
+          tc.Error(this, $"modifies of {Name} must be subset of modifies of {invariantActionDecl.Name}");
         }
         if (!refinedActionModifies.IsSubsetOf(invariantModifies))
         {
-          tc.Error(this, $"modifies of {refinedProc.Name} must be subset of modifies of {invariantProc.Name}");
+          tc.Error(this, $"modifies of {refinedActionDecl.Name} must be subset of modifies of {invariantActionDecl.Name}");
         }
         foreach (var elimProc in invariantCreates.Except(refinedActionCreates))
         {
@@ -3060,36 +3022,35 @@ namespace Microsoft.Boogie
           if (!elimCreates.IsSubsetOf(invariantCreates))
           {
             tc.Error(this,
-              $"each pending async created by eliminated action {elimProc.Name} must also be created by invariant action {invariantProc.Name}");
+              $"each pending async created by eliminated action {elimProc.Name} must also be created by invariant action {invariantActionDecl.Name}");
           }
           var targetModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
           if (!targetModifies.IsSubsetOf(invariantModifies))
           {
-            tc.Error(this, $"modifies of {elimProc.Name} must be subset of modifies of {invariantProc.Name}");
+            tc.Error(this, $"modifies of {elimProc.Name} must be subset of modifies of {invariantActionDecl.Name}");
           }
         }
-
         foreach (var elimDecl in Eliminates)
         {
           if (!invariantCreates.Contains(elimDecl.Target.ActionDecl))
           {
             tc.Error(this, $"eliminated action must be created by invariant {InvariantAction.ActionName}");
           }
-          var targetProc = elimDecl.Target.ActionDecl;
-          var absProc = elimDecl.Abstraction.ActionDecl;
-          var targetModifies = new HashSet<Variable>(targetProc.Modifies.Select(ie => ie.Decl));
-          var absModifies = new HashSet<Variable>(absProc.Modifies.Select(ie => ie.Decl));
+          var targetActionDecl = elimDecl.Target.ActionDecl;
+          var abstractionActionDecl = elimDecl.Abstraction.ActionDecl;
+          var targetModifies = new HashSet<Variable>(targetActionDecl.Modifies.Select(ie => ie.Decl));
+          var absModifies = new HashSet<Variable>(abstractionActionDecl.Modifies.Select(ie => ie.Decl));
           if (!absModifies.IsSubsetOf(targetModifies))
           {
-            tc.Error(elimDecl, $"modifies of {absProc.Name} must be subset of modifies of {targetProc.Name}");
+            tc.Error(elimDecl, $"modifies of {abstractionActionDecl.Name} must be subset of modifies of {targetActionDecl.Name}");
           }
-          if (!targetProc.LayerRange.Contains(layer))
+          if (!targetActionDecl.LayerRange.Contains(layer))
           {
-            tc.Error(elimDecl, $"action {targetProc.Name} does not exist at layer {layer}");
+            tc.Error(elimDecl, $"action {targetActionDecl.Name} does not exist at layer {layer}");
           }
-          if (!absProc.LayerRange.Contains(layer))
+          if (!abstractionActionDecl.LayerRange.Contains(layer))
           {
-            tc.Error(elimDecl, $"action {absProc.Name} does not exist at layer {layer}");
+            tc.Error(elimDecl, $"action {abstractionActionDecl.Name} does not exist at layer {layer}");
           }
         }
       }
@@ -3097,25 +3058,23 @@ namespace Microsoft.Boogie
 
     protected override void EmitBegin(TokenTextWriter stream, int level)
     {
-      switch (ActionQualifier)
+      if (MaybePendingAsync)
       {
-        case ActionQualifier.Async:
-          stream.Write(level, "async ");
-          break;
-        case ActionQualifier.Link:
-          stream.Write(level, "link ");
-          break;
+        stream.Write(level, "async ");
       }
       switch (MoverType)
       {
+        case MoverType.Atomic:
+          stream.Write(level, ">-<");
+          break;
         case MoverType.Both:
-          stream.Write(level, "<-> ");
+          stream.Write(level, "<->");
           break;
         case MoverType.Left:
-          stream.Write(level, "<- ");
+          stream.Write(level, "<-");
           break;
         case MoverType.Right:
-          stream.Write(level, "-> ");
+          stream.Write(level, "->");
           break;
       }
       stream.Write(level, " action ");
@@ -3161,12 +3120,13 @@ namespace Microsoft.Boogie
       return Creates.Append(RefinedAction).Append(InvariantAction);
     }
 
+    public bool MaybePendingAsync => PendingAsyncCtorDecl != null;
+
     public bool HasMoverType => MoverType != MoverType.None;
     
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
     public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
-    
     
     public DatatypeConstructor PendingAsyncCtor => PendingAsyncCtorDecl.GetConstructor(Name);
 
@@ -3281,6 +3241,10 @@ namespace Microsoft.Boogie
       if (RefinedAction != null)
       {
         RefinedAction.Resolve(rc);
+        if (RefinedAction.ActionDecl is { HasMoverType: false })
+        {
+          rc.Error(this, $"refined action {RefinedAction.ActionDecl.Name} must have a mover type");
+        }
       }
 
       if (!HasMoverType)
@@ -3303,13 +3267,9 @@ namespace Microsoft.Boogie
     {
       if (RefinedAction != null)
       {
-        if (!RefinedAction.ActionDecl.HasMoverType)
-        {
-          tc.Error(this, "refined atomic action must have mover type");
-        }
         if (!RefinedAction.ActionDecl.LayerRange.Contains(Layer + 1))
         {
-          tc.Error(this, $"refined atomic action must be available at layer {Layer + 1}");
+          tc.Error(this, $"refined action {RefinedAction.ActionDecl.Name} must be available at layer {Layer + 1}");
         }
       }
 

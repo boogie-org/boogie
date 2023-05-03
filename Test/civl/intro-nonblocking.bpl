@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-link action {:layer 1} intro (x:int)
+action {:layer 1} intro (x:int)
 {
   assume x == 0;
 }

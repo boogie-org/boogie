@@ -31,7 +31,7 @@ refines skip;
   }
 }
 
-link action {:layer 1} snapshot_x() returns (snapshot: int)
+action {:layer 1} snapshot_x() returns (snapshot: int)
 {
    snapshot := x;
 }

@@ -44,7 +44,7 @@ class LinearityChecker
 
     private IdentifierExpr PAs(Action action, int pendingAsyncIndex)
     {
-      return Expr.Ident(action.Impl.OutParams[action.ActionDecl.PendingAsyncStartIndex + pendingAsyncIndex]);
+      return Expr.Ident(action.Impl.OutParams[action.PendingAsyncStartIndex + pendingAsyncIndex]);
     }
     
     private void AddChecker(Action action, List<Declaration> decls)

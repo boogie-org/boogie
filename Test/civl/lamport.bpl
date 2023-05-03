@@ -50,7 +50,7 @@ preserves call yield_ind_inv();
 }
 
 // Introduction action that gives meaning to the introduced variable done
-link action {:layer 1} mark_done(i: int)
+action {:layer 1} mark_done(i: int)
 modifies done;
 {
   done := done[i:=true];

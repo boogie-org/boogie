@@ -10,17 +10,14 @@ namespace Microsoft.Boogie
     public CheckingContext checkingContext;
     public Program program;
     public LinearTypeChecker linearTypeChecker;
-    public List<int> allRefinementLayers;
+    public List<int> AllRefinementLayers;
     public ActionDecl SkipActionDecl;
     
-    public Dictionary<ActionDecl, Action> procToAtomicAction;
-    public List<InductiveSequentialization> inductiveSequentializations;
-
-    public Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollector;
-    
+    private Dictionary<ActionDecl, Action> actionDeclToAction;
+    private List<InductiveSequentialization> inductiveSequentializations;
+    private Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollectors;
+    private HashSet<ActionDecl> linkActionDecls;
     private string namePrefix;
-
-    public IEnumerable<Variable> GlobalVariables => program.GlobalVariables;
 
     public CivlTypeChecker(ConcurrencyOptions options, Program program)
     {
@@ -28,14 +25,15 @@ namespace Microsoft.Boogie
       this.program = program;
       this.Options = options;
       this.linearTypeChecker = new LinearTypeChecker(this);
-      this.allRefinementLayers = program.TopLevelDeclarations.OfType<Implementation>()
+      this.AllRefinementLayers = program.TopLevelDeclarations.OfType<Implementation>()
         .Where(impl => impl.Proc is YieldProcedureDecl)
         .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer)
         .OrderBy(layer => layer).Distinct().ToList();
       
-      this.procToAtomicAction = new Dictionary<ActionDecl, Action>();
-      this.implToPendingAsyncCollector = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
+      this.actionDeclToAction = new Dictionary<ActionDecl, Action>();
       this.inductiveSequentializations = new List<InductiveSequentialization>();
+      this.implToPendingAsyncCollectors = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
+      this.linkActionDecls = new HashSet<ActionDecl>();
 
       IEnumerable<string> declNames = program.TopLevelDeclarations.OfType<NamedDeclaration>().Select(x => x.Name);
       IEnumerable<string> localVarNames = VariableNameCollector.Collect(program);
@@ -51,7 +49,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, ActionQualifier.None,
+      SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both,
         new List<Variable>(), new List<Variable>(), new List<ActionDeclRef>(), null, null, new List<ElimDecl>(),
         new List<IdentifierExpr>(), null, null);
       var skipImplementation = DeclHelper.Implementation(
@@ -95,24 +93,6 @@ namespace Microsoft.Boogie
     public Formal Formal(string name, Type type, bool incoming)
     {
       return VarHelper.Formal($"{namePrefix}{name}", type, incoming);
-    }
-    
-    private class VariableNameCollector : ReadOnlyVisitor
-    {
-      private HashSet<string> localVarNames = new HashSet<string>();
-
-      public static HashSet<string> Collect(Program program)
-      {
-        var collector = new VariableNameCollector();
-        collector.VisitProgram(program);
-        return collector.localVarNames;
-      }
-
-      public override Variable VisitVariable(Variable node)
-      {
-        localVarNames.Add(node.Name);
-        return node;
-      }
     }
 
     public void TypeCheck()
@@ -193,14 +173,14 @@ namespace Microsoft.Boogie
       
       // local collectors for pending asyncs
       var pendingAsyncProcs = program.TopLevelDeclarations.OfType<ActionDecl>()
-        .Where(proc => proc.ActionQualifier == ActionQualifier.Async).Select(proc => proc.Name).ToHashSet();
+        .Where(proc => proc.MaybePendingAsync).Select(proc => proc.Name).ToHashSet();
       var pendingAsyncMultisetTypes = program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>()
         .Where(decl => pendingAsyncProcs.Contains(decl.Name)).Select(decl =>
           TypeHelper.MapType(TypeHelper.CtorType(decl), Type.Int)).ToHashSet();
       foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
       {
         var proc = (YieldProcedureDecl)impl.Proc;
-        implToPendingAsyncCollector[impl] = new Dictionary<CtorType, Variable>();
+        implToPendingAsyncCollectors[impl] = new Dictionary<CtorType, Variable>();
         foreach (Variable v in impl.LocVars.Where(v => v.HasAttribute(CivlAttributes.PENDING_ASYNC)))
         {
           if (!pendingAsyncMultisetTypes.Contains(v.TypedIdent.Type))
@@ -215,16 +195,21 @@ namespace Microsoft.Boogie
           {
             var mapType = (MapType)v.TypedIdent.Type;
             var ctorType = (CtorType)mapType.Arguments[0];
-            if (implToPendingAsyncCollector[impl].ContainsKey(ctorType))
+            if (implToPendingAsyncCollectors[impl].ContainsKey(ctorType))
             {
               Error(v, "duplicate pending async collector");
             }
             else
             {
-              implToPendingAsyncCollector[impl][ctorType] = v;
+              implToPendingAsyncCollectors[impl][ctorType] = v;
             }
           }
         }
+        impl.Blocks.Iter(block =>
+        {
+          block.Cmds.OfType<CallCmd>().Select(callCmd => callCmd.Proc).OfType<ActionDecl>()
+            .Iter(actionDecl => linkActionDecls.Add(actionDecl));
+        });
       }
     }
     
@@ -265,7 +250,7 @@ namespace Microsoft.Boogie
       // Create all actions that do not refine another action.
       foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
       {
-        procToAtomicAction[actionDecl] = new Action(this, actionDecl, null, invariantActionDecls.Contains(actionDecl));
+        actionDeclToAction[actionDecl] = new Action(this, actionDecl, null, invariantActionDecls.Contains(actionDecl));
       }
       
       // Create all atomic actions that refine other actions via an inductive sequentialization.
@@ -275,14 +260,14 @@ namespace Microsoft.Boogie
     
     private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl, HashSet<ActionDecl> invariantActionDecls)
     {
-      if (procToAtomicAction.ContainsKey(actionDecl))
+      if (actionDeclToAction.ContainsKey(actionDecl))
       {
         return;
       }
       var refinedProc = actionDecl.RefinedAction.ActionDecl;
       CreateActionsThatRefineAnotherAction(refinedProc, invariantActionDecls);
-      var refinedAction = procToAtomicAction[refinedProc];
-      procToAtomicAction[actionDecl] =
+      var refinedAction = actionDeclToAction[refinedProc];
+      actionDeclToAction[actionDecl] =
         new Action(this, actionDecl, refinedAction, invariantActionDecls.Contains(actionDecl));
     }
 
@@ -290,11 +275,11 @@ namespace Microsoft.Boogie
     {
       actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
       {
-        var action = procToAtomicAction[proc];
+        var action = actionDeclToAction[proc];
         var invariantProc = proc.InvariantAction.ActionDecl;
-        var invariantAction = procToAtomicAction[invariantProc];
+        var invariantAction = actionDeclToAction[invariantProc];
         var elim = new Dictionary<Action, Action>(proc.EliminationMap().Select(x =>
-          KeyValuePair.Create(procToAtomicAction[x.Key], procToAtomicAction[x.Value])));
+          KeyValuePair.Create(actionDeclToAction[x.Key], actionDeclToAction[x.Value])));
         inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
       });
     }
@@ -377,14 +362,28 @@ namespace Microsoft.Boogie
     }
     
     #region Public access methods
+
+    public IEnumerable<Variable> GlobalVariables => program.GlobalVariables;
     
     public IEnumerable<Action> LinkActions =>
-      procToAtomicAction.Values.Where(action => action.ActionDecl.ActionQualifier == ActionQualifier.Link);
+      actionDeclToAction.Values.Where(action => linkActionDecls.Contains(action.ActionDecl));
 
-    public IEnumerable<Action> MoverActions => procToAtomicAction.Keys
-      .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => procToAtomicAction[actionDecl]);
+    public IEnumerable<Action> MoverActions => actionDeclToAction.Keys
+      .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => actionDeclToAction[actionDecl]);
 
-    public IEnumerable<Action> AtomicActions => procToAtomicAction.Values;
+    public IEnumerable<Action> AtomicActions => actionDeclToAction.Values;
+
+    public Action Action(ActionDecl actionDecl)
+    {
+      return actionDeclToAction[actionDecl];
+    }
+    
+    public IEnumerable<InductiveSequentialization> InductiveSequentializations => inductiveSequentializations;
+
+    public Dictionary<CtorType, Variable> PendingAsyncCollectors(Implementation impl)
+    {
+      return implToPendingAsyncCollectors[impl];
+    }
 
     public void Error(Absy node, string message)
     {
@@ -393,6 +392,24 @@ namespace Microsoft.Boogie
 
     #endregion
 
+    private class VariableNameCollector : ReadOnlyVisitor
+    {
+      private HashSet<string> localVarNames = new HashSet<string>();
+
+      public static HashSet<string> Collect(Program program)
+      {
+        var collector = new VariableNameCollector();
+        collector.VisitProgram(program);
+        return collector.localVarNames;
+      }
+
+      public override Variable VisitVariable(Variable node)
+      {
+        localVarNames.Add(node.Name);
+        return node;
+      }
+    }
+    
     private class AttributeEraser : ReadOnlyVisitor
     {
       public static void Erase(CivlTypeChecker civlTypeChecker)

@@ -651,8 +651,8 @@ Invariant<.List<Requires> invariants.>
 
 ActionDecl<out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeCtorDecl datatypeTypeCtorDecl>
 = (. IToken name = null;
+     bool isAsync = false;
      MoverType moverType = MoverType.None;
-     ActionQualifier actionQualifier = ActionQualifier.None;
      List<Variable> ins, outs = new List<Variable>();
      List<IdentifierExpr> mods = new List<IdentifierExpr>();
      List<ActionDeclRef> creates = new List<ActionDeclRef>();
@@ -665,7 +665,7 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeC
      datatypeTypeCtorDecl = null;
      impl = null;
    .)
-  [ ActionQualifierDecl<ref actionQualifier> ]
+  [ "async" (. isAsync = true; .) ]
   [ MoverQualifier <ref moverType> ]
   "action"
   { Attribute<ref kv> }
@@ -677,16 +677,27 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeC
   | { SpecAction<ref refinedAction, ref invariantAction, mods, creates, elims> }
     ImplBody<out locals, out stmtList>
     (.
-       if (actionQualifier == ActionQualifier.Async) {
-         datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, new List<TypeVariable>(), null);
-         datatypeTypeCtorDecl.AddConstructor(name, name.val, ins.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList());
-       }
        impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
                                       locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
     .)
   )
   (.
-     actionDecl = new ActionDecl(name, name.val, moverType, actionQualifier, ins, outs, creates, refinedAction, invariantAction, elims, mods, datatypeTypeCtorDecl, kv);
+     if (isAsync) {
+       if (moverType == MoverType.None)
+       {
+         this.SemErr("async action must have a mover type");
+       }
+       else if (outs.Count > 0)
+       {
+         this.SemErr("async action must not have output parameters");
+       }
+       else
+       {
+         datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, new List<TypeVariable>(), null);
+         datatypeTypeCtorDecl.AddConstructor(name, name.val, ins.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList());
+       }
+     }
+     actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, creates, refinedAction, invariantAction, elims, mods, datatypeTypeCtorDecl, kv);
   .)
   .
 
@@ -740,13 +751,6 @@ MoverQualifier<ref MoverType moverType>
     | "->"  (. moverType = MoverType.Right; .)
     | "<->" (. moverType = MoverType.Both; .)
     | ">-<" (. moverType = MoverType.Atomic; .)
-  )
-  .
-
-ActionQualifierDecl<ref ActionQualifier actionQualifier>
-= (
-    "async" (. actionQualifier = ActionQualifier.Async; .)
-  | "link" (. actionQualifier = ActionQualifier.Link; .)
   )
   .
 
@@ -1194,10 +1198,8 @@ CallCmd<out Cmd c>
      bool isFree = false;
      c = null;
   .)
-  [ "async"          (. isAsync = true;  .)
-  ]
-  [ "free"          (. isFree = true;  .)
-  ]
+  [ "async" (. isAsync = true; .) ]
+  [ "free"  (. isFree = true; .) ]
   "call"                          (. x = t; .)
   CallParams<isAsync, isFree, x, out c> (. .)
   .

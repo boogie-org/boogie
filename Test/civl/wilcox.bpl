@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-link action{:layer 1} GhostRead() returns (oldx: int)
+action{:layer 1} GhostRead() returns (oldx: int)
 {
    oldx := x;
 }

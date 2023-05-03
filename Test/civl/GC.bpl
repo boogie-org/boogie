@@ -1898,17 +1898,17 @@ refines AtomicLockRelease;
     call PrimitiveLockZero();
 }
 
-link action {:layer 96} GhostReadMem() returns (snapMem: [int][fld]int)
+action {:layer 96} GhostReadMem() returns (snapMem: [int][fld]int)
 {
     snapMem := mem;
 }
 
-link action {:layer 99} GhostReadColor99() returns (snapColor: [int]int)
+action {:layer 99} GhostReadColor99() returns (snapColor: [int]int)
 {
     snapColor := Color;
 }
 
-link action {:layer 100} GhostReadColor100() returns (snapColor: [int]int)
+action {:layer 100} GhostReadColor100() returns (snapColor: [int]int)
 {
     snapColor := Color;
 }
@@ -2087,43 +2087,43 @@ modifies lock;
 yield procedure {:layer 0} PrimitiveLockZero();
 refines AtomicPrimitiveLockZero;
 
-link action {:layer 99} SetMemAbs1(x: idx, f: fld, y: idx)
+action {:layer 99} SetMemAbs1(x: idx, f: fld, y: idx)
 modifies memAbs;
 {
     memAbs[rootAbs[x]][f] := rootAbs[y];
 }
 
-link action {:layer 99} SetRootAbs1(x: idx, f: fld, y: idx)
+action {:layer 99} SetRootAbs1(x: idx, f: fld, y: idx)
 modifies rootAbs;
 {
     rootAbs[y] := memAbs[rootAbs[x]][f];
 }
 
-link action {:layer 99} SetMemAbs2(absPtr: obj)
+action {:layer 99} SetMemAbs2(absPtr: obj)
 modifies memAbs;
 {
     memAbs[absPtr] := (lambda z: int :: if (fieldAddr(z)) then absPtr else memAbs[absPtr][z]);
 }
 
-link action {:layer 99} SetRootAbs2(y: idx, absPtr: obj)
+action {:layer 99} SetRootAbs2(y: idx, absPtr: obj)
 modifies rootAbs;
 {
     rootAbs[y] := absPtr;
 }
 
-link action {:layer 95} SetToAbs1()
+action {:layer 95} SetToAbs1()
 modifies toAbs;
 {
     toAbs := (lambda x: int :: if memAddr(x) && White(Color[x]) then nil else toAbs[x]);
 }
 
-link action {:layer 95} SetToAbs2(i: int, o: obj)
+action {:layer 95} SetToAbs2(i: int, o: obj)
 modifies toAbs;
 {
     toAbs[i] := o;
 }
 
-link action {:layer 95} SetToAbs3()
+action {:layer 95} SetToAbs3()
 modifies toAbs;
 {
     toAbs := (lambda i:int :: if memAddr(i) then nil else Int(i));

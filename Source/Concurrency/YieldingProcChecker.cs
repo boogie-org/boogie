@@ -10,7 +10,7 @@ namespace Microsoft.Boogie
       Program program = civlTypeChecker.program;
 
       // Generate the refinement checks for every layer
-      foreach (int layerNum in civlTypeChecker.allRefinementLayers)
+      foreach (int layerNum in civlTypeChecker.AllRefinementLayers)
       {
         if (civlTypeChecker.Options.TrustLayersDownto <= layerNum ||
             layerNum <= civlTypeChecker.Options.TrustLayersUpto)

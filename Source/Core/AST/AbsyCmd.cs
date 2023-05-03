@@ -3276,15 +3276,14 @@ namespace Microsoft.Boogie
       }
       if (rc.Proc is YieldProcedureDecl)
       {
-        if (Proc is YieldProcedureDecl || Proc is YieldInvariantDecl ||
-            Proc is ActionDecl { ActionQualifier: ActionQualifier.Link } || Proc.IsPure)
+        if (Proc.IsPure || Proc is YieldProcedureDecl || Proc is YieldInvariantDecl || Proc is ActionDecl)
         {
           // call ok
         }
         else
         {
           rc.Error(this,
-            "a yielding procedure may only call yield procedures, yield invariants, link actions, or pure procedures");
+            "a yielding procedure may only call pure procedures, yield procedures, yield invariants, or link actions");
         }
       }
       if (IsAsync)
@@ -3307,7 +3306,7 @@ namespace Microsoft.Boogie
       {
         return null;
       }
-      
+
       var callerModifiedVars = new HashSet<Variable>(callerDecl.ModifiedVars);
 
       void CheckModifies(IEnumerable<Variable> modifiedVars)
@@ -3330,7 +3329,7 @@ namespace Microsoft.Boogie
           case YieldInvariantDecl yieldInvariantDecl:
             formalLayerRange = new LayerRange(yieldInvariantDecl.Layer);
             break;
-          case ActionDecl { ActionQualifier: ActionQualifier.Link } actionDecl:
+          case ActionDecl actionDecl:
             formalLayerRange = new LayerRange(actionDecl.LayerRange.LowerLayer);
             break;
           case YieldProcedureDecl yieldProcedureDecl:
@@ -3429,9 +3428,9 @@ namespace Microsoft.Boogie
               {
                 tc.Error(this, $"called action is not available at layer {callerDecl.Layer + 1}");
               }
-              else if (highestRefinedAction.ActionQualifier != ActionQualifier.Async)
+              else if (!highestRefinedAction.MaybePendingAsync)
               {
-                tc.Error(this, $"action {highestRefinedAction.Name} refined by callee must be async");
+                tc.Error(this, $"action {highestRefinedAction.Name} refined by callee must be eligible to be a pending async");
               }
             }
           }
@@ -3466,9 +3465,17 @@ namespace Microsoft.Boogie
           tc.Error(this, "layer of callee must not be more than layer of caller");
         }
       }
-      else if (Proc is ActionDecl { ActionQualifier: ActionQualifier.Link } actionDecl)
+      else if (Proc is ActionDecl actionDecl)
       {
+        // link call
         var calleeLayer = actionDecl.LayerRange.LowerLayer;
+        actionDecl.Modifies.Iter(ie =>
+        {
+          if (ie.Decl.LayerRange.LowerLayer != calleeLayer)
+          {
+            tc.Error(this, $"modified variable of callee introduced below the lower layer of callee: {ie.Decl}");
+          }
+        });
         if (calleeLayer > callerDecl.Layer)
         {
           tc.Error(this, "layer of callee must not be more than layer of caller");
@@ -3504,7 +3511,6 @@ namespace Microsoft.Boogie
         }
       }
       
-      var expectedLayerRanges = Proc.InParams.Select(FormalLayerRange).ToList();
       for (int i = 0; i < Proc.OutParams.Count; i++)
       {
         var formal = Proc.OutParams[i];
@@ -3522,7 +3528,7 @@ namespace Microsoft.Boogie
           }
         }
       }
-      return expectedLayerRanges;
+      return Proc.InParams.Select(FormalLayerRange).ToList();
     }
 
     private void TypecheckCallCmdInActionDecl(TypecheckingContext tc)
@@ -3569,8 +3575,7 @@ namespace Microsoft.Boogie
           tc.Error(this, "caller layer range must be subset of callee layer range");
         }
         else if (callerActionDecl.LayerRange.LowerLayer == calleeActionDecl.LayerRange.LowerLayer &&
-                 calleeActionDecl.ActionQualifier == ActionQualifier.Link &&
-                 callerActionDecl.ActionQualifier != ActionQualifier.Link)
+                 callerActionDecl.HasMoverType && !calleeActionDecl.HasMoverType)
         {
           tc.Error(this, "lower layer of caller must be greater than lower layer of callee");
         }
@@ -3616,7 +3621,12 @@ namespace Microsoft.Boogie
 
       (this as ICarriesAttributes).TypecheckAttributes(tc);
 
+      var errorCount = tc.ErrorCount;
       List<LayerRange> expectedLayerRanges = TypecheckCallCmdInYieldProcedureDecl(tc);
+      if (errorCount < tc.ErrorCount)
+      {
+        return;
+      }
       
       // typecheck in-parameters
       for (int i = 0; i < Ins.Count; i++)
