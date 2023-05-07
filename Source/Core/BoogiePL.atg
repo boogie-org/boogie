@@ -731,7 +731,7 @@ SpecRefinedAction<ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAc
        this.SemErr("a refines specification already exists");
      }
   .)
-  "using" Ident<out m> (. invariantAction = new ActionDeclRef(m, m.val); .)
+  ["using" Ident<out m> (. invariantAction = new ActionDeclRef(m, m.val); .)]
   ";"
   .
 

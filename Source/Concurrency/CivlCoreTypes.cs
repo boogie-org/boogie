@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Boogie.GraphUtil;
 
@@ -121,6 +122,45 @@ namespace Microsoft.Boogie
     public DatatypeConstructor ChoiceConstructor(CtorType pendingAsyncType)
     {
       return ChoiceDatatypeTypeCtorDecl.Constructors.First(x => x.InParams[0].TypedIdent.Type.Equals(pendingAsyncType));
+    }
+
+    public IEnumerable<AssertCmd> GetGateAsserts(Substitution subst, string msg)
+    {
+      foreach (var gate in Gate)
+      {
+        AssertCmd cmd = subst != null ? (AssertCmd) Substituter.Apply(subst, gate) : new AssertCmd(gate.tok, gate.Expr);
+        cmd.Description = new FailureOnlyDescription(msg);
+        yield return cmd;
+      }
+    }
+
+    public Expr GetTransitionRelation(CivlTypeChecker civlTypeChecker, HashSet<Variable> frame)
+    {
+      return TransitionRelationComputation.Refinement(civlTypeChecker, Impl, frame);
+    }
+
+    public Substitution GetSubstitution(Action to)
+    {
+      Debug.Assert(PendingAsyncStartIndex == to.PendingAsyncStartIndex);
+      Debug.Assert(Impl.InParams.Count == to.Impl.InParams.Count);
+      Debug.Assert(Impl.OutParams.Count <= to.Impl.OutParams.Count);
+
+      Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+      for (int i = 0; i < Impl.InParams.Count; i++)
+      {
+        map[Impl.InParams[i]] = Expr.Ident(to.Impl.InParams[i]);
+      }
+      for (int i = 0; i < PendingAsyncStartIndex; i++)
+      {
+        map[Impl.OutParams[i]] = Expr.Ident(to.Impl.OutParams[i]);
+      }
+      for (int i = PendingAsyncStartIndex; i < Impl.OutParams.Count; i++)
+      {
+        var formal = Impl.OutParams[i];
+        var pendingAsyncType = (CtorType)((MapType)formal.TypedIdent.Type).Arguments[0];
+        map[formal] = Expr.Ident(to.PAs(pendingAsyncType));
+      }
+      return Substituter.SubstitutionFromDictionary(map);
     }
 
     private Variable LocalPAs(CtorType pendingAsyncType)

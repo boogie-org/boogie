@@ -1147,9 +1147,11 @@ private class BvBounds : Expr {
 		 this.SemErr("a refines specification already exists");
 		}
 		
-		Expect(38);
-		Ident(out m);
-		invariantAction = new ActionDeclRef(m, m.val); 
+		if (la.kind == 38) {
+			Get();
+			Ident(out m);
+			invariantAction = new ActionDeclRef(m, m.val); 
+		}
 		Expect(10);
 	}
 

@@ -84,7 +84,7 @@ namespace Microsoft.Boogie
 
     // used to skip leading type annotations (subexpressions of the
     // resulting type might still contain annotations)
-    internal virtual Type /*!*/ Expanded
+    public virtual Type /*!*/ Expanded
     {
       get
       {
@@ -3334,7 +3334,7 @@ namespace Microsoft.Boogie
     }
 
     // used to skip leading type annotations
-    internal override Type /*!*/ Expanded
+    public override Type /*!*/ Expanded
     {
       get
       {
