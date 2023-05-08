@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
@@ -36,14 +37,92 @@ namespace Microsoft.Boogie
 
   public class InlineSequentialization : Sequentialization
   {
+    private Implementation inlinedImpl;
+
     public InlineSequentialization(CivlTypeChecker civlTypeChecker, Action targetAction)
       : base(civlTypeChecker, targetAction)
     {
+      inlinedImpl = CreateInlinedImplementation();
     }
 
     public override List<Declaration> GenerateCheckers()
     {
-      throw new NotImplementedException();
+      return new List<Declaration>(new Declaration[] { inlinedImpl, inlinedImpl.Proc });
+    }
+
+    private Implementation CreateInlinedImplementation()
+    {
+      var eliminatedActionDecls = targetAction.ActionDecl.EliminationMap().Keys.ToHashSet();
+      var graph = new Graph<ActionDecl>();
+      eliminatedActionDecls.Iter(actionDecl =>
+      {
+        graph.AddSource(actionDecl);
+        actionDecl.CreateActionDecls.Intersect(eliminatedActionDecls).Iter(x => graph.AddEdge(x,actionDecl));
+      });
+      var eliminatedPendingAsyncs = new Dictionary<CtorType, Implementation>();
+      var decls = new List<Declaration>();
+      graph.TopologicalSort().Iter(actionDecl =>
+      {
+        var impl = Action.CreateDuplicateImplementation(actionDecl.Impl, $"{actionDecl.Name}_RefinementCheck");
+        eliminatedPendingAsyncs[actionDecl.PendingAsyncType] = impl;
+        decls.Add(impl);
+        decls.Add(impl.Proc);
+      });
+      var inlinedImpl = Action.CreateDuplicateImplementation(targetAction.ActionDecl.Impl,
+        $"{targetAction.ActionDecl.Name}_RefinementCheck");
+      CivlAttributes.RemoveAttributes(inlinedImpl.Proc, new HashSet<string> { "inline" });
+      decls.Add(inlinedImpl);
+      decls.Add(inlinedImpl.Proc);
+      decls.OfType<Implementation>().Iter(impl =>
+      {
+        var modifies = impl.Proc.Modifies.Select(ie => ie.Decl).ToHashSet();
+        impl.Blocks.Iter(block =>
+        {
+          for (int i = 0; i < block.Cmds.Count; i++)
+          {
+            block.Cmds[i] = Transform(eliminatedPendingAsyncs, block.Cmds[i], modifies);
+          }
+        });
+        impl.Proc.Modifies = modifies.Select(v => Expr.Ident(v)).ToList();
+      });
+      var oldTopLevelDeclarations = new List<Declaration>(civlTypeChecker.program.TopLevelDeclarations);
+      civlTypeChecker.program.AddTopLevelDeclarations(decls);
+      decls.OfType<Implementation>().Iter(impl =>
+      {
+        impl.OriginalBlocks = impl.Blocks;
+        impl.OriginalLocVars = impl.LocVars;
+      });
+      Inliner.ProcessImplementation(civlTypeChecker.Options, civlTypeChecker.program, inlinedImpl);
+      civlTypeChecker.program.TopLevelDeclarations = oldTopLevelDeclarations;
+      decls.OfType<Implementation>().Iter(impl =>
+      {
+        impl.OriginalBlocks = null;
+        impl.OriginalLocVars = null;
+      });
+      return inlinedImpl;
+    }
+
+    private Cmd Transform(Dictionary<CtorType, Implementation> eliminatedPendingAsyncs, Cmd cmd, HashSet<Variable> modifies)
+    {
+      if (cmd is CallCmd callCmd && callCmd.Proc.OriginalDeclWithFormals is { Name: "create_async" })
+      {
+        var pendingAsyncType =
+          (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+        var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl)pendingAsyncType.Decl;
+        if (eliminatedPendingAsyncs.ContainsKey(pendingAsyncType))
+        {
+          var newCallee = eliminatedPendingAsyncs[pendingAsyncType].Proc;
+          var newIns = datatypeTypeCtorDecl.Constructors[0].InParams
+            .Select(x => (Expr)ExprHelper.FieldAccess(callCmd.Ins[0], x.Name)).ToList();
+          var newCallCmd = new CallCmd(callCmd.tok, newCallee.Name, newIns, new List<IdentifierExpr>())
+          {
+            Proc = newCallee
+          };
+          modifies.UnionWith(newCallee.Modifies.Select(ie => ie.Decl));
+          return newCallCmd;
+        }
+      }
+      return cmd;
     }
   }
 

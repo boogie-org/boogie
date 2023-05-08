@@ -169,7 +169,7 @@ namespace Microsoft.Boogie
       return Impl.LocVars.Last(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
     }
     
-    private static Implementation CreateDuplicateImplementation(Implementation impl, string name)
+    public static Implementation CreateDuplicateImplementation(Implementation impl, string name)
     {
       var duplicateImpl = new Duplicator().VisitImplementation(impl);
       var proc = duplicateImpl.Proc;

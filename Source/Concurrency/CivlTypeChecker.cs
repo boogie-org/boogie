@@ -190,7 +190,7 @@ namespace Microsoft.Boogie
           }
 
           visited.Add(actionDecl);
-          var hitOnStack = actionDecl.CreateActionDecls.FirstOrDefault(x => frontier.Contains(actionDecl));
+          var hitOnStack = actionDecl.CreateActionDecls.FirstOrDefault(x => frontier.Contains(x));
           if (hitOnStack != null)
           {
             Error(x,
