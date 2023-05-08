@@ -9,19 +9,8 @@ refines A_Inc;
   call Service();
 }
 
-action {:layer 1} INV()
-creates A_Inc;
-modifies x;
-{
-  if (*) {
-    call create_async(A_Inc());
-  } else {
-    x := x + 1;
-  }
-}
-
 >-< action {:layer 1} A_Service()
-refines A_Inc using INV;
+refines A_Inc;
 creates A_Inc;
 {
   call create_async(A_Inc());

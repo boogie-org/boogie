@@ -48,7 +48,7 @@ namespace Microsoft.Boogie
       {
         Action.DesugarCreateAsyncs(civlTypeChecker, inlinedImpl, refinedAction.ActionDecl);
       }
-      var subst = refinedAction.GetSubstitution(refinedAction);
+      var subst = refinedAction.GetSubstitution(targetAction);
       inlinedImpl.Proc.Requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
       inlinedImpl.Proc.Ensures = new List<Ensures>(new[]
       {
