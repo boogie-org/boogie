@@ -32,25 +32,9 @@ namespace Microsoft.Boogie
       ActionDecl = actionDecl;
       RefinedAction = refinedAction;
       Impl = CreateDuplicateImplementation(actionDecl.Impl, actionDecl.Name);
-      PendingAsyncs = actionDecl.Creates.Select(x => x.ActionDecl).ToList();
+      PendingAsyncs = actionDecl.CreateActionDecls.ToList();
       if (PendingAsyncs.Any())
       {
-        var lhss = new List<IdentifierExpr>();
-        var rhss = new List<Expr>();
-        PendingAsyncs.Iter(decl =>
-        {
-          var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
-          Impl.Proc.OutParams.Add(pa);
-          Impl.OutParams.Add(pa);
-          lhss.Add(Expr.Ident(pa));
-          rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
-          var paLocal = civlTypeChecker.LocalVariable($"local_PAs_{decl.Name}", decl.PendingAsyncMultisetType);
-          Impl.LocVars.Add(paLocal);
-        });
-        var tc = new TypecheckingContext(null, civlTypeChecker.Options);
-        var assignCmd = CmdHelper.AssignCmd(lhss, rhss);
-        assignCmd.Typecheck(tc);
-        Impl.Blocks[0].Cmds.Insert(0, assignCmd);
         DesugarCreateAsyncs(civlTypeChecker, Impl);
         if (isInvariant)
         {
@@ -65,10 +49,7 @@ namespace Microsoft.Boogie
               new List<TypedIdent>() { field });
           });
           civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
-          var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
-          ImplWithChoice.Proc.OutParams.Add(choice);
-          ImplWithChoice.OutParams.Add(choice);
-          DesugarSetChoice(civlTypeChecker, ImplWithChoice, choice);
+          DesugarSetChoice(civlTypeChecker, ImplWithChoice);
         }
         DropSetChoice(civlTypeChecker, Impl);
       }
@@ -163,12 +144,6 @@ namespace Microsoft.Boogie
       return Substituter.SubstitutionFromDictionary(map);
     }
 
-    private Variable LocalPAs(CtorType pendingAsyncType)
-    {
-      var pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
-      return Impl.LocVars.Last(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
-    }
-    
     public static Implementation CreateDuplicateImplementation(Implementation impl, string name)
     {
       var duplicateImpl = new Duplicator().VisitImplementation(impl);
@@ -219,6 +194,20 @@ namespace Microsoft.Boogie
 
     private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
+      var lhss = new List<IdentifierExpr>();
+      var rhss = new List<Expr>();
+      PendingAsyncs.Iter(decl =>
+      {
+        var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
+        impl.Proc.OutParams.Add(pa);
+        impl.OutParams.Add(pa);
+        lhss.Add(Expr.Ident(pa));
+        rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
+      });
+      var tc = new TypecheckingContext(null, civlTypeChecker.Options);
+      var assignCmd = CmdHelper.AssignCmd(lhss, rhss);
+      assignCmd.Typecheck(tc);
+      impl.Blocks[0].Cmds.Insert(0, assignCmd);
       impl.Blocks.Iter(block =>
       {
         var newCmds = new List<Cmd>();
@@ -246,21 +235,6 @@ namespace Microsoft.Boogie
                   pendingAsyncMultiset));
               assignCmd.Typecheck(tc);
               newCmds.Add(assignCmd);
-              continue;
-            }
-            if (callCmd.Proc is ActionDecl actionDecl)
-            {
-              newCmds.Add(callCmd);
-              actionDecl.Creates.Iter(actionDeclRef =>
-              {
-                var pendingAsync = actionDeclRef.ActionDecl;
-                var pendingAsyncType = pendingAsync.PendingAsyncType;
-                callCmd.Outs.Add(Expr.Ident(LocalPAs(pendingAsyncType)));
-                var assignCmd = CmdHelper.AssignCmd(PAs(pendingAsyncType),
-                  ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(PAs(pendingAsyncType)),
-                    Expr.Ident(LocalPAs(pendingAsyncType))));
-                newCmds.Add(assignCmd);
-              });
               continue;
             }
           }
@@ -291,8 +265,11 @@ namespace Microsoft.Boogie
       });
     }
 
-    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl, Variable choice)
+    private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
+      var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
+      impl.Proc.OutParams.Add(choice);
+      impl.OutParams.Add(choice);
       impl.Blocks.Iter(block =>
       {
         var newCmds = new List<Cmd>();
