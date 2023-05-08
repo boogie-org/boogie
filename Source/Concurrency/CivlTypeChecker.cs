@@ -14,7 +14,7 @@ namespace Microsoft.Boogie
     public ActionDecl SkipActionDecl;
     
     private Dictionary<ActionDecl, Action> actionDeclToAction;
-    private List<InductiveSequentialization> inductiveSequentializations;
+    private List<Sequentialization> sequentializations;
     private Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollectors;
     private HashSet<ActionDecl> linkActionDecls;
     private string namePrefix;
@@ -31,7 +31,7 @@ namespace Microsoft.Boogie
         .OrderBy(layer => layer).Distinct().ToList();
       
       this.actionDeclToAction = new Dictionary<ActionDecl, Action>();
-      this.inductiveSequentializations = new List<InductiveSequentialization>();
+      this.sequentializations = new List<Sequentialization>();
       this.implToPendingAsyncCollectors = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.linkActionDecls = new HashSet<ActionDecl>();
 
@@ -117,7 +117,7 @@ namespace Microsoft.Boogie
 
       InlineAtomicActions(actionDecls);
       CreateAtomicActions(actionDecls);
-      CreateInductiveSequentializations(actionDecls);
+      CreateSequentializations(actionDecls);
       AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
     }
@@ -140,17 +140,16 @@ namespace Microsoft.Boogie
       {
         Error(program, "call graph over atomic actions must be acyclic");
       }
-      actionDecls.Where(proc => proc.InvariantAction != null).Iter(proc =>
+      actionDecls.Where(proc => proc.RefinedAction != null).Iter(actionDecl =>
       {
-        var refinedProc = proc.RefinedAction.ActionDecl;
-        var invariantProc = proc.InvariantAction.ActionDecl;
-        SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(proc, invariantProc, checkingContext);
-        SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(proc, refinedProc, checkingContext);
-        foreach (var elimDecl in proc.Eliminates)
+        SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.RefinedAction.ActionDecl, checkingContext);
+        foreach (var elimDecl in actionDecl.Eliminates)
         {
-          var targetProc = elimDecl.Target.ActionDecl;
-          var absProc = elimDecl.Abstraction.ActionDecl;
-          SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(targetProc, absProc, checkingContext);
+          SignatureMatcher.CheckSequentializationSignature(elimDecl.Target.ActionDecl, elimDecl.Abstraction.ActionDecl, checkingContext);
+        }
+        if (actionDecl.InvariantAction != null)
+        {
+          SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.InvariantAction.ActionDecl, checkingContext);
         }
       });
       TypeCheckInlineSequentializations(actionDecls);
@@ -341,16 +340,20 @@ namespace Microsoft.Boogie
         new Action(this, actionDecl, refinedAction, invariantActionDecls.Contains(actionDecl));
     }
 
-    private void CreateInductiveSequentializations(HashSet<ActionDecl> actionDecls)
+    private void CreateSequentializations(HashSet<ActionDecl> actionDecls)
     {
-      actionDecls.Where(actionDecl => actionDecl.InvariantAction != null).Iter(actionDecl =>
+      actionDecls.Where(actionDecl => actionDecl.RefinedAction != null).Iter(actionDecl =>
       {
         var action = actionDeclToAction[actionDecl];
-        var invariantProc = actionDecl.InvariantAction.ActionDecl;
-        var invariantAction = actionDeclToAction[invariantProc];
-        var elim = new Dictionary<Action, Action>(actionDecl.EliminationMap().Select(x =>
-          KeyValuePair.Create(actionDeclToAction[x.Key], actionDeclToAction[x.Value])));
-        inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
+        if (actionDecl.InvariantAction == null)
+        {
+          sequentializations.Add(new InlineSequentialization(this, action));
+        }
+        else
+        {
+          var invariantActionDecl = actionDecl.InvariantAction.ActionDecl;
+          sequentializations.Add(new InductiveSequentialization(this, action, actionDeclToAction[invariantActionDecl]));
+        }
       });
     }
 
@@ -368,8 +371,7 @@ namespace Microsoft.Boogie
         signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
       }
 
-      public static void CheckInductiveSequentializationAbstractionSignature(Procedure original, Procedure abstraction,
-        CheckingContext checkingContext)
+      public static void CheckSequentializationSignature(Procedure original, Procedure abstraction, CheckingContext checkingContext)
       {
         // Input and output parameters have to match exactly
         var signatureMatcher = new SignatureMatcher(original, abstraction, checkingContext);
@@ -390,8 +392,7 @@ namespace Microsoft.Boogie
         this.checkingContext = checkingContext;
       }
 
-      private void MatchFormals(List<Variable> formals1, List<Variable> formals2,
-        string inout, bool checkLinearity = true)
+      private void MatchFormals(List<Variable> formals1, List<Variable> formals2, string inout, bool checkLinearity = true)
       {
         if (formals1.Count != formals2.Count)
         {
@@ -448,7 +449,7 @@ namespace Microsoft.Boogie
       return actionDeclToAction[actionDecl];
     }
     
-    public IEnumerable<InductiveSequentialization> InductiveSequentializations => inductiveSequentializations;
+    public IEnumerable<Sequentialization> Sequentializations => sequentializations;
 
     public Dictionary<CtorType, Variable> PendingAsyncCollectors(Implementation impl)
     {

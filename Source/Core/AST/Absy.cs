@@ -3108,10 +3108,22 @@ namespace Microsoft.Boogie
     public Dictionary<ActionDecl, ActionDecl> EliminationMap()
     {
       var refinedProc = RefinedAction.ActionDecl;
-      var invariantProc = InvariantAction.ActionDecl;
       var refinedActionCreates = refinedProc.CreateActionDecls.ToHashSet();
-      var invariantCreates = invariantProc.CreateActionDecls.ToHashSet();
-      var elimMap = invariantCreates.Except(refinedActionCreates).ToDictionary(x => x, x => x);
+      HashSet<ActionDecl> FixpointCreates()
+      {
+        var currCreates = new HashSet<ActionDecl>(refinedActionCreates);
+        var frontier = CreateActionDecls.ToHashSet().Except(currCreates);
+        while (frontier.Any())
+        {
+          currCreates.UnionWith(frontier);
+          frontier = frontier.SelectMany(actionDecl => actionDecl.CreateActionDecls).Except(currCreates);
+        }
+        return currCreates;
+      }
+      var allCreates = InvariantAction == null
+        ? FixpointCreates()
+        : InvariantAction.ActionDecl.CreateActionDecls.ToHashSet();
+      var elimMap = allCreates.Except(refinedActionCreates).ToDictionary(x => x, x => x);
       foreach (var elimDecl in Eliminates)
       {
         elimMap[elimDecl.Target.ActionDecl] = elimDecl.Abstraction.ActionDecl;

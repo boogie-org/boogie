@@ -51,10 +51,10 @@ namespace Microsoft.Boogie
       }
 
       var inductiveSequentializationMoverChecks =
-        from IS in civlTypeChecker.InductiveSequentializations
-        from leftMover in IS.elim.Values
+        from IS in civlTypeChecker.Sequentializations
+        from leftMover in IS.Abstractions
         from action in civlTypeChecker.MoverActions
-        where action.LayerRange.Contains(IS.invariantAction.LayerRange.UpperLayer)
+        where action.LayerRange.Contains(IS.Layer)
         let extraAssumption1 = IS.GenerateMoverCheckAssumption(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
         let extraAssumption2 = IS.GenerateMoverCheckAssumption(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
         select new {action, leftMover, extraAssumption1, extraAssumption2};
@@ -77,7 +77,7 @@ namespace Microsoft.Boogie
         moverChecking.CreateCooperationChecker(action);
       }
 
-      foreach (var action in civlTypeChecker.InductiveSequentializations.SelectMany(IS => IS.elim.Values)
+      foreach (var action in civlTypeChecker.Sequentializations.SelectMany(IS => IS.Abstractions)
                  .Where(a => !a.IsLeftMover).Distinct())
       {
         moverChecking.CreateCooperationChecker(action);
