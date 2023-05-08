@@ -142,87 +142,72 @@ namespace Microsoft.Boogie
       }
       actionDecls.Where(proc => proc.RefinedAction != null).Iter(actionDecl =>
       {
-        SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.RefinedAction.ActionDecl, checkingContext);
+        SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.RefinedAction.ActionDecl,
+          checkingContext);
         foreach (var elimDecl in actionDecl.Eliminates)
         {
-          SignatureMatcher.CheckSequentializationSignature(elimDecl.Target.ActionDecl, elimDecl.Abstraction.ActionDecl, checkingContext);
+          SignatureMatcher.CheckSequentializationSignature(elimDecl.Target.ActionDecl, elimDecl.Abstraction.ActionDecl,
+            checkingContext);
         }
         if (actionDecl.InvariantAction != null)
         {
-          SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.InvariantAction.ActionDecl, checkingContext);
+          SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.InvariantAction.ActionDecl,
+            checkingContext);
         }
       });
-      TypeCheckInlineSequentializations(actionDecls);
+      actionDecls.Where(x => x.RefinedAction != null && x.InvariantAction == null)
+        .Iter(x => TypeCheckInlineSequentializations(x));
       return actionDecls;
     }
 
-    private void TypeCheckInlineSequentializations(HashSet<ActionDecl> actionDecls)
+    private void TypeCheckInlineSequentializations(ActionDecl actionDecl)
     {
-      actionDecls.Where(x => x.RefinedAction != null && x.InvariantAction == null).Iter(x =>
+      // compute eliminated actions and  check that there is no async call cycle among eliminated actions
+      var refinedActionCreates = new HashSet<ActionDecl>(actionDecl.RefinedAction.ActionDecl.CreateActionDecls);
+      var refinedActionCreateNames = refinedActionCreates.Select(x => x.Name).ToHashSet();
+      var stack = new Stack<ActionDecl>();
+      var frontier = new HashSet<ActionDecl>(); // hashset representation of stack for efficient membership check
+      var visited = new HashSet<ActionDecl>();
+      void Push(ActionDecl item)
       {
-        // compute eliminated actions
-        // check that there is no async call cycle among eliminated actions
-        var refinedActionCreates = new HashSet<ActionDecl>(x.RefinedAction.ActionDecl.CreateActionDecls);
-        var stack = new Stack<ActionDecl>();
-        var frontier = new HashSet<ActionDecl>();
-        var visited = new HashSet<ActionDecl>();
+        stack.Push(item);
+        frontier.Add(item);
+      }
+      void Pop(ActionDecl item)
+      {
+        stack.Pop();
+        frontier.Remove(item);
+      }
 
-        void Push(ActionDecl actionDecl)
+      Push(actionDecl);
+      while (stack.Count != 0)
+      {
+        var item = stack.Peek();
+        if (visited.Contains(item))
         {
-          stack.Push(actionDecl);
-          frontier.Add(actionDecl);
+          Pop(item);
+          continue;
         }
-
-        void Pop(ActionDecl actionDecl)
+        item.Impl.Blocks.SelectMany(block => block.Cmds.OfType<CallCmd>().Where(callCmd =>
+          callCmd.Proc.OriginalDeclWithFormals is { Name: "create_asyncs" or "create_multi_asyncs" })).Iter(callCmd =>
         {
-          stack.Pop();
-          frontier.Remove(actionDecl);
-        }
-
-        Push(x);
-        while (stack.Count != 0)
-        {
-          var actionDecl = stack.Peek();
-          if (visited.Contains(actionDecl))
+          var pendingAsyncType = (CtorType)program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+          if (!refinedActionCreateNames.Contains(pendingAsyncType.Decl.Name))
           {
-            Pop(actionDecl);
-            continue;
+            Error(callCmd, "created asyncs must be in the creates list of refined action");
           }
-
-          visited.Add(actionDecl);
-          var hitOnStack = actionDecl.CreateActionDecls.FirstOrDefault(x => frontier.Contains(x));
-          if (hitOnStack != null)
-          {
-            Error(x,
-              $"async call cycle detected: {string.Join(",", stack.TakeWhile(elem => elem != hitOnStack).Append(hitOnStack).Select(elem => elem.Name))}");
-            break;
-          }
-
-          Pop(actionDecl);
-          actionDecl.CreateActionDecls.Except(refinedActionCreates).Iter(Push);
-        }
-
-        var refinedActionCreateNames = refinedActionCreates.Select(x => x.Name).ToHashSet();
-        foreach (var actionDecl in visited)
+        });
+        visited.Add(item);
+        var hitOnStack = item.CreateActionDecls.FirstOrDefault(x => frontier.Contains(x));
+        if (hitOnStack != null)
         {
-          foreach (var block in actionDecl.Impl.Blocks)
-          {
-            foreach (var callCmd in block.Cmds.OfType<CallCmd>().Where(callCmd =>
-                       callCmd.Proc.OriginalDeclWithFormals is
-                       {
-                         Name: "create_asyncs" or "create_multi_asyncs"
-                       }))
-            {
-              var calleeProc = callCmd.Proc.OriginalDeclWithFormals;
-              var type = (CtorType)TypeProxy.FollowProxy(callCmd.TypeParameters[calleeProc.TypeParameters[0]].Expanded);
-              if (!refinedActionCreateNames.Contains(type.Decl.Name))
-              {
-                Error(callCmd, "created asyncs must be in the creates list of refined action");
-              }
-            }
-          }
+          var callCycle = stack.TakeWhile(elem => elem != hitOnStack).Append(hitOnStack).Select(elem => elem.Name);
+          Error(actionDecl, $"async call cycle detected: {string.Join(",", callCycle)}");
+          break;
         }
-      });
+        Pop(item);
+        item.CreateActionDecls.Except(refinedActionCreates).Iter(Push);
+      }
     }
 
     private void TypeCheckYieldingProcedures()

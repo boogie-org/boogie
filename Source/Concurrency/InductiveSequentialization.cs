@@ -48,7 +48,16 @@ namespace Microsoft.Boogie
       {
         Action.DesugarCreateAsyncs(civlTypeChecker, inlinedImpl, refinedAction.ActionDecl);
       }
-      var subst = refinedAction.GetSubstitution(targetAction);
+      Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+      for (int i = 0; i < refinedAction.Impl.InParams.Count; i++)
+      {
+        map[refinedAction.Impl.InParams[i]] = Expr.Ident(inlinedImpl.Proc.InParams[i]);
+      }
+      for (int i = 0; i < refinedAction.Impl.OutParams.Count; i++)
+      {
+        map[refinedAction.Impl.OutParams[i]] = Expr.Ident(inlinedImpl.Proc.OutParams[i]);
+      }
+      var subst = Substituter.SubstitutionFromDictionary(map);
       inlinedImpl.Proc.Requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
       inlinedImpl.Proc.Ensures = new List<Ensures>(new[]
       {
@@ -64,18 +73,20 @@ namespace Microsoft.Boogie
 
     private Implementation CreateInlinedImplementation()
     {
-      var eliminatedActionDecls = targetAction.ActionDecl.EliminationMap().Keys.ToHashSet();
+      var eliminatedActionDecls = targetAction.ActionDecl.EliminationMap();
+      var eliminatedActions = eliminatedActionDecls.Keys.ToHashSet();
       var graph = new Graph<ActionDecl>();
-      eliminatedActionDecls.Iter(actionDecl =>
+      eliminatedActions.Iter(actionDecl =>
       {
         graph.AddSource(actionDecl);
-        actionDecl.CreateActionDecls.Intersect(eliminatedActionDecls).Iter(x => graph.AddEdge(x,actionDecl));
+        actionDecl.CreateActionDecls.Intersect(eliminatedActions).Iter(x => graph.AddEdge(x, actionDecl));
       });
       var eliminatedPendingAsyncs = new Dictionary<CtorType, Implementation>();
       var decls = new List<Declaration>();
       graph.TopologicalSort().Iter(actionDecl =>
       {
-        var impl = Action.CreateDuplicateImplementation(actionDecl.Impl, $"{actionDecl.Name}_RefinementCheck");
+        var impl = Action.CreateDuplicateImplementation(eliminatedActionDecls[actionDecl].Impl,
+          $"{actionDecl.Name}_RefinementCheck");
         eliminatedPendingAsyncs[actionDecl.PendingAsyncType] = impl;
         decls.Add(impl);
         decls.Add(impl.Proc);
@@ -118,8 +129,7 @@ namespace Microsoft.Boogie
     {
       if (cmd is CallCmd callCmd && callCmd.Proc.OriginalDeclWithFormals is { Name: "create_async" })
       {
-        var pendingAsyncType =
-          (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+        var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
         var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl)pendingAsyncType.Decl;
         if (eliminatedPendingAsyncs.ContainsKey(pendingAsyncType))
         {

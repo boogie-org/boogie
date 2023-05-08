@@ -2958,9 +2958,9 @@ namespace Microsoft.Boogie
       });
       if (Eliminates.Any())
       {
-        if (InvariantAction == null)
+        if (RefinedAction == null)
         {
-          rc.Error(this, "eliminates clause must be accompanied by invariant specification");
+          rc.Error(this, "eliminates clause must be accompanied by refinement specification");
         }
         if (Eliminates.Select(elim => elim.Target.ActionDecl).Distinct().Count() != Eliminates.Count)
         {
