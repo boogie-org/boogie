@@ -21,17 +21,48 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Action> Abstractions => elim.Values;
 
-    public IEnumerable<Tuple<Action, Action>> AbstractionChecks =>
+    private IEnumerable<Tuple<Action, Action>> AbstractionChecks =>
       elim.Where(kv => kv.Key != kv.Value).Select(kv => Tuple.Create(kv.Key, kv.Value));
 
     public int Layer => targetAction.LayerRange.UpperLayer;
 
-    public abstract List<Declaration> GenerateCheckers();
+    protected abstract List<Declaration> GenerateCheckers();
 
     public virtual Expr GenerateMoverCheckAssumption(Action action, List<Variable> actionArgs, Action leftMover,
       List<Variable> leftMoverArgs)
     {
       return Expr.True;
+    }
+
+    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+    {
+      foreach (var x in civlTypeChecker.Sequentializations)
+      {
+        decls.AddRange(x.GenerateCheckers());
+      }
+      foreach (var tuple in civlTypeChecker.Sequentializations.SelectMany(x => x.AbstractionChecks).Distinct())
+      {
+        decls.AddRange(GenerateAbstractionChecker(civlTypeChecker, tuple.Item1, tuple.Item2));
+      }
+    }
+
+    private static List<Declaration> GenerateAbstractionChecker(CivlTypeChecker civlTypeChecker, Action action, Action abs)
+    {
+      var requires = abs.Gate.Select(g => new Requires(false, g.Expr)).ToList();
+      // The type checker ensures that the modified set of abs is a subset of the modified set of action.
+      var frame = new HashSet<Variable>(action.ModifiedGlobalVars);
+
+      var subst = action.GetSubstitution(abs);
+      var cmds = action.GetGateAsserts(subst, $"Abstraction {abs.Name} fails gate of {action.Name}").ToList<Cmd>();
+      cmds.Add(CmdHelper.CallCmd(action.Impl.Proc, abs.Impl.InParams, abs.Impl.OutParams));
+      cmds.Add(CmdHelper.AssertCmd(abs.tok, abs.GetTransitionRelation(civlTypeChecker, frame),
+        $"Abstraction {abs.Name} does not summarize {action.Name}"));
+
+      var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
+      var proc = DeclHelper.Procedure(civlTypeChecker.AddNamePrefix($"AbstractionCheck_{action.Name}_{abs.Name}"),
+        abs.Impl.InParams, abs.Impl.OutParams, requires, action.Impl.Proc.Modifies, new List<Ensures>());
+      var impl = DeclHelper.Implementation(proc, proc.InParams, proc.OutParams, new List<Variable>(), blocks);
+      return new List<Declaration>(new Declaration[] { proc, impl });
     }
   }
 
@@ -66,7 +97,7 @@ namespace Microsoft.Boogie
       });
     }
 
-    public override List<Declaration> GenerateCheckers()
+    protected override List<Declaration> GenerateCheckers()
     {
       return new List<Declaration>(new Declaration[] { inlinedImpl, inlinedImpl.Proc });
     }
@@ -444,7 +475,7 @@ namespace Microsoft.Boogie
       return AssignCmd.MapAssign(Token.NoToken, PAs(pendingAsyncType), new List<Expr> { Choice(pendingAsyncType) }, rhs);
     }
 
-    public override List<Declaration> GenerateCheckers()
+    protected override List<Declaration> GenerateCheckers()
     {
       var decls = new List<Declaration>();
       decls.AddRange(GenerateBaseCaseChecker());
@@ -454,40 +485,6 @@ namespace Microsoft.Boogie
         decls.AddRange(GenerateStepChecker(elim));
       }
       return decls;
-    }
-  }
-
-  public static class InductiveSequentializationChecker
-  {
-    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
-    {
-      foreach (var x in civlTypeChecker.Sequentializations)
-      {
-        decls.AddRange(x.GenerateCheckers());
-      }
-      foreach (var tuple in civlTypeChecker.Sequentializations.SelectMany(x => x.AbstractionChecks).Distinct())
-      {
-        decls.AddRange(GenerateAbstractionChecker(civlTypeChecker, tuple.Item1, tuple.Item2));
-      }
-    }
-
-    private static List<Declaration> GenerateAbstractionChecker(CivlTypeChecker civlTypeChecker, Action action, Action abs)
-    {
-      var requires = abs.Gate.Select(g => new Requires(false, g.Expr)).ToList();
-      // The type checker ensures that the modified set of abs is a subset of the modified set of action.
-      var frame = new HashSet<Variable>(action.ModifiedGlobalVars);
-
-      var subst = action.GetSubstitution(abs);
-      var cmds = action.GetGateAsserts(subst, $"Abstraction {abs.Name} fails gate of {action.Name}").ToList<Cmd>();
-      cmds.Add(CmdHelper.CallCmd(action.Impl.Proc, abs.Impl.InParams, abs.Impl.OutParams));
-      cmds.Add(CmdHelper.AssertCmd(abs.tok, abs.GetTransitionRelation(civlTypeChecker, frame),
-        $"Abstraction {abs.Name} does not summarize {action.Name}"));
-
-      var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
-      var proc = DeclHelper.Procedure(civlTypeChecker.AddNamePrefix($"AbstractionCheck_{action.Name}_{abs.Name}"),
-        abs.Impl.InParams, abs.Impl.OutParams, requires, action.Impl.Proc.Modifies, new List<Ensures>());
-      var impl = DeclHelper.Implementation(proc, proc.InParams, proc.OutParams, new List<Variable>(), blocks);
-      return new List<Declaration>(new Declaration[] { proc, impl });
     }
   }
 }

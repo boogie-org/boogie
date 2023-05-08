@@ -410,9 +410,9 @@ namespace Microsoft.Boogie
     
     public int TrustLayersDownto { get; set; } = int.MaxValue;
 
-    public bool TrustInductiveSequentialization {
-      get => trustInductiveSequentialization;
-      set => trustInductiveSequentialization = value;
+    public bool TrustSequentialization {
+      get => trustSequentialization;
+      set => trustSequentialization = value;
     }
 
     public bool RemoveEmptyBlocks { get; set; } = true;
@@ -555,7 +555,7 @@ namespace Microsoft.Boogie
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
     private bool trustRefinement = false;
-    private bool trustInductiveSequentialization = false;
+    private bool trustSequentialization = false;
     private int enhancedErrorMessages = 0;
     private int stagedHoudiniThreads = 1;
     private uint timeLimitPerAssertionInPercent = 10;
@@ -1314,7 +1314,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustMoverTypes", x => trustMoverTypes = x) ||
               ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
               ps.CheckBooleanFlag("trustRefinement", x => trustRefinement = x) ||
-              ps.CheckBooleanFlag("trustInductiveSequentialization", x => trustInductiveSequentialization = x) ||
+              ps.CheckBooleanFlag("trustSequentialization", x => trustSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
               ps.CheckBooleanFlag("prune", x => Prune = x) ||
@@ -1806,8 +1806,8 @@ namespace Microsoft.Boogie
                 do not verify layers <n> and below
   /trustLayersDownto:<n>
                 do not verify layers <n> and above
-  /trustInductiveSequentialization
-                do not perform inductive sequentialization checks
+  /trustSequentialization
+                do not perform sequentialization checks
   /civlDesugaredFile:<file>
                 print plain Boogie program to <file>
 

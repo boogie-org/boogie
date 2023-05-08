@@ -342,7 +342,7 @@ namespace Microsoft.Boogie
         actionDeclToAction[actionDecl] = new Action(this, actionDecl, null, invariantActionDecls.Contains(actionDecl));
       }
       
-      // Create all atomic actions that refine other actions via an inductive sequentialization.
+      // Create all atomic actions that refine other actions.
       actionDecls.Where(proc => proc.RefinedAction != null)
         .Iter(decl => CreateActionsThatRefineAnotherAction(decl, invariantActionDecls));
     }
