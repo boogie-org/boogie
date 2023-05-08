@@ -156,7 +156,7 @@ namespace Microsoft.Boogie
 
       // Construct call to inputAction
       var pendingAsyncTypeToOutputParamIndex = invariantAction.PendingAsyncs.Select(x => x.PendingAsyncType)
-          .Zip(Enumerable.Range(invariantAction.PendingAsyncStartIndex, invariantAction.PendingAsyncs.Count))
+          .Zip(Enumerable.Range(invariantAction.PendingAsyncStartIndex, invariantAction.PendingAsyncs.Count()))
           .ToDictionary(tuple => tuple.Item1, tuple => tuple.Item2);
       var outputVars = new List<Variable>(invariantAction.Impl.OutParams.Take(invariantAction.PendingAsyncStartIndex));
       outputVars.AddRange(targetAction.PendingAsyncs.Select(action =>

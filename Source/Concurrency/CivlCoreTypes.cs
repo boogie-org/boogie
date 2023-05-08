@@ -14,7 +14,6 @@ namespace Microsoft.Boogie
     public HashSet<Variable> UsedGlobalVarsInGate;
     public HashSet<Variable> UsedGlobalVarsInAction;
     public HashSet<Variable> ModifiedGlobalVars;
-    public List<ActionDecl> PendingAsyncs;
     public Function InputOutputRelation;
 
     public List<AssertCmd> FirstGate;
@@ -32,7 +31,6 @@ namespace Microsoft.Boogie
       ActionDecl = actionDecl;
       RefinedAction = refinedAction;
       Impl = CreateDuplicateImplementation(actionDecl.Impl, actionDecl.Name);
-      PendingAsyncs = actionDecl.CreateActionDecls.ToList();
       if (PendingAsyncs.Any())
       {
         DesugarCreateAsyncs(civlTypeChecker, Impl);
@@ -78,7 +76,9 @@ namespace Microsoft.Boogie
 
     public int LowerLayer => LayerRange.LowerLayer;
 
-    public bool HasPendingAsyncs => PendingAsyncs.Count > 0;
+    public IEnumerable<ActionDecl> PendingAsyncs => ActionDecl.CreateActionDecls;
+    
+    public bool HasPendingAsyncs => PendingAsyncs.Any();
 
     public bool IsRightMover => ActionDecl.MoverType == MoverType.Right || ActionDecl.MoverType == MoverType.Both;
 
@@ -194,10 +194,12 @@ namespace Microsoft.Boogie
 
     private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
+      var pendingAsyncTypeToActionDecl = new Dictionary<CtorType, ActionDecl>();
       var lhss = new List<IdentifierExpr>();
       var rhss = new List<Expr>();
       PendingAsyncs.Iter(decl =>
       {
+        pendingAsyncTypeToActionDecl[decl.PendingAsyncType] = decl;
         var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
         impl.Proc.OutParams.Add(pa);
         impl.OutParams.Add(pa);
@@ -205,9 +207,9 @@ namespace Microsoft.Boogie
         rhss.Add(ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)));
       });
       var tc = new TypecheckingContext(null, civlTypeChecker.Options);
-      var assignCmd = CmdHelper.AssignCmd(lhss, rhss);
-      assignCmd.Typecheck(tc);
-      impl.Blocks[0].Cmds.Insert(0, assignCmd);
+      var initAssignCmd = CmdHelper.AssignCmd(lhss, rhss);
+      initAssignCmd.Typecheck(tc);
+      impl.Blocks[0].Cmds.Insert(0, initAssignCmd);
       impl.Blocks.Iter(block =>
       {
         var newCmds = new List<Cmd>();
@@ -220,8 +222,7 @@ namespace Microsoft.Boogie
             {
               var pendingAsyncType =
                 (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-              var pendingAsync = PendingAsyncs.First(decl => decl.PendingAsyncType.Equals(pendingAsyncType));
-              var tc = new TypecheckingContext(null, civlTypeChecker.Options);
+              var pendingAsync = pendingAsyncTypeToActionDecl[pendingAsyncType];
               var pendingAsyncMultiset = originalProc.Name == "create_async"
                 ? Expr.Store(ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)), callCmd.Ins[0],
                   Expr.Literal(1))
@@ -230,11 +231,12 @@ namespace Microsoft.Boogie
                     ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(1)),
                     ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)))
                   : callCmd.Ins[0];
-              var assignCmd = CmdHelper.AssignCmd(PAs(pendingAsyncType),
-                ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(PAs(pendingAsyncType)),
+              var pendingAsyncCollector = PAs(pendingAsyncType);
+              var updateAssignCmd = CmdHelper.AssignCmd(pendingAsyncCollector,
+                ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(pendingAsyncCollector),
                   pendingAsyncMultiset));
-              assignCmd.Typecheck(tc);
-              newCmds.Add(assignCmd);
+              updateAssignCmd.Typecheck(tc);
+              newCmds.Add(updateAssignCmd);
               continue;
             }
           }

@@ -96,9 +96,9 @@ class LinearityChecker
             "variables"));
         }
 
-        if (action is Action atomicAction && atomicAction.HasPendingAsyncs)
+        if (action is Action { HasPendingAsyncs: true } atomicAction)
         {
-          var pendingAsyncs = atomicAction.PendingAsyncs;
+          var pendingAsyncs = new List<ActionDecl>(atomicAction.PendingAsyncs);
           
           for (int i = 0; i < pendingAsyncs.Count; i++)
           {
