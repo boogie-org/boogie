@@ -188,15 +188,7 @@ namespace Microsoft.Boogie
           Pop(item);
           continue;
         }
-        item.Impl.Blocks.SelectMany(block => block.Cmds.OfType<CallCmd>().Where(callCmd =>
-          callCmd.Proc.OriginalDeclWithFormals is { Name: "create_asyncs" or "create_multi_asyncs" })).Iter(callCmd =>
-        {
-          var pendingAsyncType = (CtorType)program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-          if (!refinedActionCreateNames.Contains(pendingAsyncType.Decl.Name))
-          {
-            Error(callCmd, "created asyncs must be in the creates list of refined action");
-          }
-        });
+        CheckAsyncToSyncSafety(item, refinedActionCreateNames);
         visited.Add(item);
         var hitOnStack = item.CreateActionDecls.FirstOrDefault(x => frontier.Contains(x));
         if (hitOnStack != null)
@@ -208,6 +200,49 @@ namespace Microsoft.Boogie
         Pop(item);
         item.CreateActionDecls.Except(refinedActionCreates).Iter(Push);
       }
+    }
+
+    private void CheckAsyncToSyncSafety(ActionDecl actionDecl, HashSet<string> refinedActionCreateNames)
+    {
+      actionDecl.Impl.Blocks.SelectMany(block => block.Cmds.OfType<CallCmd>().Where(callCmd =>
+        callCmd.Proc.OriginalDeclWithFormals is { Name: "create_asyncs" or "create_multi_asyncs" })).Iter(callCmd =>
+      {
+        var pendingAsyncType = (CtorType)program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+        if (!refinedActionCreateNames.Contains(pendingAsyncType.Decl.Name))
+        {
+          Error(callCmd, "unable to eliminate unbounded pending asyncs without invariant specification");
+        }
+      });
+
+      var graph = Program.GraphFromImpl(actionDecl.Impl, false);
+      var blocksLeadingToModifiedGlobals = new HashSet<Block>();
+      graph.TopologicalSort().Iter(block =>
+      {
+        var modifiedGlobals = block.TransferCmd is GotoCmd gotoCmd &&
+                              gotoCmd.labelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
+        for (int i = block.Cmds.Count - 1; 0 <= i; i--)
+        {
+          var cmd = block.Cmds[i];
+          if (modifiedGlobals && cmd is CallCmd callCmd && callCmd.Proc.OriginalDeclWithFormals is { Name: "create_async" })
+          {
+            var pendingAsyncType = (CtorType)program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+            if (!refinedActionCreateNames.Contains(pendingAsyncType.Decl.Name))
+            {
+              Error(callCmd, "unable to eliminate pending async since a global is modified subsequently");
+            }
+          }
+          var assignedVariables = new List<Variable>();
+          cmd.AddAssignedVariables(assignedVariables);
+          if (assignedVariables.OfType<GlobalVariable>().Any())
+          {
+            modifiedGlobals = true;
+          }
+        }
+        if (modifiedGlobals)
+        {
+          blocksLeadingToModifiedGlobals.Add(block);
+        }
+      });
     }
 
     private void TypeCheckYieldingProcedures()
