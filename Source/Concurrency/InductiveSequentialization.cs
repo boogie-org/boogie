@@ -43,6 +43,18 @@ namespace Microsoft.Boogie
       : base(civlTypeChecker, targetAction)
     {
       inlinedImpl = CreateInlinedImplementation();
+      var refinedAction = targetAction.RefinedAction;
+      if (refinedAction.HasPendingAsyncs)
+      {
+        Action.DesugarCreateAsyncs(civlTypeChecker, inlinedImpl, refinedAction.ActionDecl);
+      }
+      var subst = refinedAction.GetSubstitution(refinedAction);
+      inlinedImpl.Proc.Requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
+      inlinedImpl.Proc.Ensures = new List<Ensures>(new[]
+      {
+        new Ensures(false, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, inlinedImpl.Proc.ModifiedVars.ToHashSet())),
+          $"Refinement check of {targetAction.Name} failed")
+      });
     }
 
     public override List<Declaration> GenerateCheckers()
@@ -184,16 +196,16 @@ namespace Microsoft.Boogie
 
     private List<Declaration> GenerateConclusionChecker()
     {
-      var outputAction = targetAction.RefinedAction;
-      var subst = outputAction.GetSubstitution(invariantAction);
-      var requires = outputAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
+      var refinedAction = targetAction.RefinedAction;
+      var subst = refinedAction.GetSubstitution(invariantAction);
+      var requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
 
       var cmds = invariantAction.GetGateAsserts(null,
-        $"Gate of {invariantAction.Name} fails in IS conclusion check against {outputAction.Name}").ToList<Cmd>();
+        $"Gate of {invariantAction.Name} fails in IS conclusion check against {refinedAction.Name}").ToList<Cmd>();
       cmds.Add(CmdHelper.CallCmd(invariantAction.Impl.Proc, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams));
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
-      cmds.Add(GetCheck(targetAction.tok, Substituter.Apply(subst, outputAction.GetTransitionRelation(civlTypeChecker, frame)),
+      cmds.Add(GetCheck(targetAction.tok, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)),
         $"IS conclusion of {targetAction.Name} failed"));
 
       return GetCheckerTuple($"IS_conclusion_{targetAction.Name}", requires, invariantAction.Impl.InParams,

@@ -33,7 +33,7 @@ namespace Microsoft.Boogie
       Impl = CreateDuplicateImplementation(actionDecl.Impl, actionDecl.Name);
       if (PendingAsyncs.Any())
       {
-        DesugarCreateAsyncs(civlTypeChecker, Impl);
+        DesugarCreateAsyncs(civlTypeChecker, Impl, ActionDecl);
         if (isInvariant)
         {
           ImplWithChoice = CreateDuplicateImplementation(Impl, $"{Name}_With_Choice");
@@ -192,12 +192,13 @@ namespace Microsoft.Boogie
       return inputOutputRelation;
     }
 
-    private void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker, Implementation impl)
+    public static void DesugarCreateAsyncs(CivlTypeChecker civlTypeChecker, Implementation impl, ActionDecl actionDecl)
     {
+      Debug.Assert(impl.OutParams.Count == actionDecl.OutParams.Count);
       var pendingAsyncTypeToActionDecl = new Dictionary<CtorType, ActionDecl>();
       var lhss = new List<IdentifierExpr>();
       var rhss = new List<Expr>();
-      PendingAsyncs.Iter(decl =>
+      actionDecl.CreateActionDecls.Iter(decl =>
       {
         pendingAsyncTypeToActionDecl[decl.PendingAsyncType] = decl;
         var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
@@ -231,7 +232,8 @@ namespace Microsoft.Boogie
                     ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(1)),
                     ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)))
                   : callCmd.Ins[0];
-              var pendingAsyncCollector = PAs(pendingAsyncType);
+              var pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
+              var pendingAsyncCollector = impl.OutParams.Skip(actionDecl.OutParams.Count).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
               var updateAssignCmd = CmdHelper.AssignCmd(pendingAsyncCollector,
                 ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(pendingAsyncCollector),
                   pendingAsyncMultiset));
