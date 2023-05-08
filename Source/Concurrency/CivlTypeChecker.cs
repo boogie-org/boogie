@@ -14,7 +14,7 @@ namespace Microsoft.Boogie
     public ActionDecl SkipActionDecl;
     
     private Dictionary<ActionDecl, Action> actionDeclToAction;
-    private List<InductiveSequentialization> inductiveSequentializations;
+    private List<Sequentialization> sequentializations;
     private Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollectors;
     private HashSet<ActionDecl> linkActionDecls;
     private string namePrefix;
@@ -31,7 +31,7 @@ namespace Microsoft.Boogie
         .OrderBy(layer => layer).Distinct().ToList();
       
       this.actionDeclToAction = new Dictionary<ActionDecl, Action>();
-      this.inductiveSequentializations = new List<InductiveSequentialization>();
+      this.sequentializations = new List<Sequentialization>();
       this.implToPendingAsyncCollectors = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
       this.linkActionDecls = new HashSet<ActionDecl>();
 
@@ -117,7 +117,7 @@ namespace Microsoft.Boogie
 
       InlineAtomicActions(actionDecls);
       CreateAtomicActions(actionDecls);
-      CreateInductiveSequentializations(actionDecls);
+      CreateSequentializations(actionDecls);
       AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
     }
@@ -140,20 +140,109 @@ namespace Microsoft.Boogie
       {
         Error(program, "call graph over atomic actions must be acyclic");
       }
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
+      actionDecls.Where(proc => proc.RefinedAction != null).Iter(actionDecl =>
       {
-        var refinedProc = proc.RefinedAction.ActionDecl;
-        var invariantProc = proc.InvariantAction.ActionDecl;
-        SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(proc, invariantProc, checkingContext);
-        SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(proc, refinedProc, checkingContext);
-        foreach (var elimDecl in proc.Eliminates)
+        SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.RefinedAction.ActionDecl,
+          checkingContext);
+        foreach (var elimDecl in actionDecl.Eliminates)
         {
-          var targetProc = elimDecl.Target.ActionDecl;
-          var absProc = elimDecl.Abstraction.ActionDecl;
-          SignatureMatcher.CheckInductiveSequentializationAbstractionSignature(targetProc, absProc, checkingContext);
+          SignatureMatcher.CheckSequentializationSignature(elimDecl.Target.ActionDecl, elimDecl.Abstraction.ActionDecl,
+            checkingContext);
+        }
+        if (actionDecl.InvariantAction != null)
+        {
+          SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.InvariantAction.ActionDecl,
+            checkingContext);
         }
       });
+      actionDecls.Where(x => x.RefinedAction != null && x.InvariantAction == null)
+        .Iter(x => TypeCheckInlineSequentializations(x));
       return actionDecls;
+    }
+
+    private void TypeCheckInlineSequentializations(ActionDecl actionDecl)
+    {
+      // compute eliminated actions and  check that there is no async call cycle among eliminated actions
+      var refinedActionCreates = new HashSet<ActionDecl>(actionDecl.RefinedAction.ActionDecl.CreateActionDecls);
+      var refinedActionCreateNames = refinedActionCreates.Select(x => x.Name).ToHashSet();
+      var stack = new Stack<ActionDecl>();
+      var frontier = new HashSet<ActionDecl>(); // hashset representation of stack for efficient membership check
+      var visited = new HashSet<ActionDecl>();
+      void Push(ActionDecl item)
+      {
+        stack.Push(item);
+        frontier.Add(item);
+      }
+      void Pop(ActionDecl item)
+      {
+        stack.Pop();
+        frontier.Remove(item);
+      }
+
+      Push(actionDecl);
+      while (stack.Count != 0)
+      {
+        var item = stack.Peek();
+        if (visited.Contains(item))
+        {
+          Pop(item);
+          continue;
+        }
+        CheckAsyncToSyncSafety(item, refinedActionCreateNames);
+        visited.Add(item);
+        var hitOnStack = item.CreateActionDecls.FirstOrDefault(x => frontier.Contains(x));
+        if (hitOnStack != null)
+        {
+          var callCycle = stack.TakeWhile(elem => elem != hitOnStack).Append(hitOnStack).Select(elem => elem.Name);
+          Error(actionDecl, $"async call cycle detected: {string.Join(",", callCycle)}");
+          break;
+        }
+        Pop(item);
+        item.CreateActionDecls.Except(refinedActionCreates).Iter(Push);
+      }
+    }
+
+    private void CheckAsyncToSyncSafety(ActionDecl actionDecl, HashSet<string> refinedActionCreateNames)
+    {
+      actionDecl.Impl.Blocks.SelectMany(block => block.Cmds.OfType<CallCmd>().Where(callCmd =>
+        callCmd.Proc.OriginalDeclWithFormals is { Name: "create_asyncs" or "create_multi_asyncs" })).Iter(callCmd =>
+      {
+        var pendingAsyncType = (CtorType)program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+        if (!refinedActionCreateNames.Contains(pendingAsyncType.Decl.Name))
+        {
+          Error(callCmd, "unable to eliminate unbounded pending asyncs without invariant specification");
+        }
+      });
+
+      var graph = Program.GraphFromImpl(actionDecl.Impl, false);
+      var blocksLeadingToModifiedGlobals = new HashSet<Block>();
+      graph.TopologicalSort().Iter(block =>
+      {
+        var modifiedGlobals = block.TransferCmd is GotoCmd gotoCmd &&
+                              gotoCmd.labelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
+        for (int i = block.Cmds.Count - 1; 0 <= i; i--)
+        {
+          var cmd = block.Cmds[i];
+          if (modifiedGlobals && cmd is CallCmd callCmd && callCmd.Proc.OriginalDeclWithFormals is { Name: "create_async" })
+          {
+            var pendingAsyncType = (CtorType)program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+            if (!refinedActionCreateNames.Contains(pendingAsyncType.Decl.Name))
+            {
+              Error(callCmd, "unable to eliminate pending async since a global is modified subsequently");
+            }
+          }
+          var assignedVariables = new List<Variable>();
+          cmd.AddAssignedVariables(assignedVariables);
+          if (assignedVariables.OfType<GlobalVariable>().Any())
+          {
+            modifiedGlobals = true;
+          }
+        }
+        if (modifiedGlobals)
+        {
+          blocksLeadingToModifiedGlobals.Add(block);
+        }
+      });
     }
 
     private void TypeCheckYieldingProcedures()
@@ -253,7 +342,7 @@ namespace Microsoft.Boogie
         actionDeclToAction[actionDecl] = new Action(this, actionDecl, null, invariantActionDecls.Contains(actionDecl));
       }
       
-      // Create all atomic actions that refine other actions via an inductive sequentialization.
+      // Create all atomic actions that refine other actions.
       actionDecls.Where(proc => proc.RefinedAction != null)
         .Iter(decl => CreateActionsThatRefineAnotherAction(decl, invariantActionDecls));
     }
@@ -271,16 +360,20 @@ namespace Microsoft.Boogie
         new Action(this, actionDecl, refinedAction, invariantActionDecls.Contains(actionDecl));
     }
 
-    private void CreateInductiveSequentializations(HashSet<ActionDecl> actionDecls)
+    private void CreateSequentializations(HashSet<ActionDecl> actionDecls)
     {
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(proc =>
+      actionDecls.Where(actionDecl => actionDecl.RefinedAction != null).Iter(actionDecl =>
       {
-        var action = actionDeclToAction[proc];
-        var invariantProc = proc.InvariantAction.ActionDecl;
-        var invariantAction = actionDeclToAction[invariantProc];
-        var elim = new Dictionary<Action, Action>(proc.EliminationMap().Select(x =>
-          KeyValuePair.Create(actionDeclToAction[x.Key], actionDeclToAction[x.Value])));
-        inductiveSequentializations.Add(new InductiveSequentialization(this, action, invariantAction, elim));
+        var action = actionDeclToAction[actionDecl];
+        if (actionDecl.InvariantAction == null)
+        {
+          sequentializations.Add(new InlineSequentialization(this, action));
+        }
+        else
+        {
+          var invariantActionDecl = actionDecl.InvariantAction.ActionDecl;
+          sequentializations.Add(new InductiveSequentialization(this, action, actionDeclToAction[invariantActionDecl]));
+        }
       });
     }
 
@@ -298,8 +391,7 @@ namespace Microsoft.Boogie
         signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
       }
 
-      public static void CheckInductiveSequentializationAbstractionSignature(Procedure original, Procedure abstraction,
-        CheckingContext checkingContext)
+      public static void CheckSequentializationSignature(Procedure original, Procedure abstraction, CheckingContext checkingContext)
       {
         // Input and output parameters have to match exactly
         var signatureMatcher = new SignatureMatcher(original, abstraction, checkingContext);
@@ -320,8 +412,7 @@ namespace Microsoft.Boogie
         this.checkingContext = checkingContext;
       }
 
-      private void MatchFormals(List<Variable> formals1, List<Variable> formals2,
-        string inout, bool checkLinearity = true)
+      private void MatchFormals(List<Variable> formals1, List<Variable> formals2, string inout, bool checkLinearity = true)
       {
         if (formals1.Count != formals2.Count)
         {
@@ -378,7 +469,7 @@ namespace Microsoft.Boogie
       return actionDeclToAction[actionDecl];
     }
     
-    public IEnumerable<InductiveSequentialization> InductiveSequentializations => inductiveSequentializations;
+    public IEnumerable<Sequentialization> Sequentializations => sequentializations;
 
     public Dictionary<CtorType, Variable> PendingAsyncCollectors(Implementation impl)
     {

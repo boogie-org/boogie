@@ -6,7 +6,7 @@ var {:layer 0,2} x:int;
 ////////////////////////////////////////////////////////////////////////////////
 
 >-< action {:layer 1} MAIN ()
-refines MAIN' using INV;
+refines MAIN';
 creates INC, DEC;
 {
   call create_async(INC());
@@ -15,15 +15,6 @@ creates INC, DEC;
 
 >-< action {:layer 2} MAIN' ()
 {
-}
-
-action {:layer 1}
-INV ()
-creates INC, DEC;
-modifies x;
-{
-  if (*) { call create_async(INC()); } else { x := x + 1; }
-  if (*) { call create_async(DEC()); } else { x := x - 1; }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

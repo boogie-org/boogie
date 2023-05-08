@@ -439,7 +439,7 @@ namespace Microsoft.Boogie
 
       if (calleeRefinedAction.HasPendingAsyncs)
       {
-        Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count - calleeRefinedAction.PendingAsyncs.Count);
+        Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count - calleeRefinedAction.PendingAsyncs.Count());
         CollectReturnedPendingAsyncs(newCall, calleeRefinedAction);
       }
     }

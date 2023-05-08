@@ -44,9 +44,9 @@ namespace Microsoft.Boogie
       // Linear type checks
       LinearityChecker.AddCheckers(civlTypeChecker, decls);
 
-      if (!options.TrustInductiveSequentialization)
+      if (!options.TrustSequentialization)
       {
-        InductiveSequentializationChecker.AddCheckers(civlTypeChecker, decls);
+        Sequentialization.AddCheckers(civlTypeChecker, decls);
       }
 
       foreach (var action in civlTypeChecker.AtomicActions)

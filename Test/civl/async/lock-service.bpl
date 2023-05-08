@@ -26,20 +26,6 @@ modifies x;
   x := x + 1;
 }
 
-action {:layer 3} INV({:linear_in "tid"} tid:Tid)
-creates A_Callback;
-modifies l, x;
-{
-  assert tid != nil;
-  assume l == nil;
-  if (*) {
-    l := tid;
-    call create_async(A_Callback(tid));
-  } else {
-    x := x + 1;
-  }
-}
-
 async <- action {:layer 3} A_Callback ({:linear_in "tid"} tid:Tid)
 modifies l, x;
 {
@@ -84,7 +70,7 @@ refines A_write_x;
 
 >-< action {:layer 3}
 A_GetLockAndCallback ({:linear_in "tid"} tid:Tid)
-refines A_GetLockAndCallback' using INV;
+refines A_GetLockAndCallback';
 creates A_Callback;
 modifies l;
 {

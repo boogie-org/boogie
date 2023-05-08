@@ -3549,7 +3549,7 @@ namespace Microsoft.Boogie
       else if (CivlPrimitives.Async.Contains(Proc.Name))
       {
         var type = TypeProxy.FollowProxy(TypeParameters[Proc.TypeParameters[0]].Expanded);
-        if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+        if (type is CtorType { Decl: DatatypeTypeCtorDecl datatypeTypeCtorDecl })
         {
           if (callerActionDecl.Creates.All(x => x.ActionName != datatypeTypeCtorDecl.Name))
           {

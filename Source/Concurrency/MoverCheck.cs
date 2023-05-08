@@ -50,22 +50,22 @@ namespace Microsoft.Boogie
         }
       }
 
-      var inductiveSequentializationMoverChecks =
-        from IS in civlTypeChecker.InductiveSequentializations
-        from leftMover in IS.elim.Values
+      var sequentializationMoverChecks =
+        from sequentialization in civlTypeChecker.Sequentializations
+        from leftMover in sequentialization.Abstractions
         from action in civlTypeChecker.MoverActions
-        where action.LayerRange.Contains(IS.invariantAction.LayerRange.UpperLayer)
-        let extraAssumption1 = IS.GenerateMoverCheckAssumption(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
-        let extraAssumption2 = IS.GenerateMoverCheckAssumption(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
+        where action.LayerRange.Contains(sequentialization.Layer)
+        let extraAssumption1 = sequentialization.GenerateMoverCheckAssumption(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
+        let extraAssumption2 = sequentialization.GenerateMoverCheckAssumption(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
         select new {action, leftMover, extraAssumption1, extraAssumption2};
 
       /*
-       * It is important that the mover checks required for inductive sequentialization are the last ones
+       * It is important that the mover checks required for sequentialization are the last ones
        * to be generated. Each of these mover checks may add an extra assumption. Since mover checks are
        * cached, if a mover check has already been generated then one generated here with the extra
        * assumption will get dropped. As a result, we preserve overall soundness.
        */
-      foreach (var moverCheck in inductiveSequentializationMoverChecks)
+      foreach (var moverCheck in sequentializationMoverChecks)
       {
         moverChecking.CreateCommutativityChecker(moverCheck.action, moverCheck.leftMover, moverCheck.extraAssumption1);
         moverChecking.CreateGatePreservationChecker(moverCheck.leftMover, moverCheck.action, moverCheck.extraAssumption2);
@@ -77,7 +77,7 @@ namespace Microsoft.Boogie
         moverChecking.CreateCooperationChecker(action);
       }
 
-      foreach (var action in civlTypeChecker.InductiveSequentializations.SelectMany(IS => IS.elim.Values)
+      foreach (var action in civlTypeChecker.Sequentializations.SelectMany(sequentialization => sequentialization.Abstractions)
                  .Where(a => !a.IsLeftMover).Distinct())
       {
         moverChecking.CreateCooperationChecker(action);

@@ -2947,6 +2947,9 @@ namespace Microsoft.Boogie
         {
           rc.Error(this, $"refined action {RefinedAction.ActionDecl.Name} must have a mover type");
         }
+      }
+      if (InvariantAction != null)
+      {
         InvariantAction.Resolve(rc);
       }
       Eliminates.Iter(elim =>
@@ -2979,78 +2982,79 @@ namespace Microsoft.Boogie
         }
       });
 
-      if (InvariantAction != null)
+      if (RefinedAction != null)
       {
-        var refinedActionDecl = RefinedAction.ActionDecl;
-        var invariantActionDecl = InvariantAction.ActionDecl;
         var layer = LayerRange.UpperLayer;
+        var refinedActionDecl = RefinedAction.ActionDecl;
         if (!refinedActionDecl.LayerRange.Contains(layer + 1))
         {
           tc.Error(refinedActionDecl, $"refined action does not exist at layer {layer + 1}");
         }
-        if (!invariantActionDecl.LayerRange.Contains(layer))
+        if (InvariantAction != null)
         {
-          tc.Error(invariantActionDecl, $"invariant action does not exist at layer {layer}");
-        }
-        var actionCreates = Creates.Select(x => x.ActionDecl).ToHashSet();
-        var refinedActionCreates = refinedActionDecl.Creates.Select(x => x.ActionDecl).ToHashSet();
-        var invariantCreates = invariantActionDecl.Creates.Select(x => x.ActionDecl).ToHashSet();
-        if (!actionCreates.IsSubsetOf(invariantCreates))
-        {
-          tc.Error(this,
-            $"each pending async created by refining action must also be created by invariant action {invariantActionDecl.Name}");
-        }
-        if (!refinedActionCreates.IsSubsetOf(invariantCreates))
-        {
-          tc.Error(this,
-            $"each pending async created by refined action must also be created by invariant action {invariantActionDecl.Name}");
-        }
-        var actionModifies = new HashSet<Variable>(Modifies.Select(ie => ie.Decl));
-        var refinedActionModifies = new HashSet<Variable>(refinedActionDecl.Modifies.Select(ie => ie.Decl));
-        var invariantModifies = new HashSet<Variable>(invariantActionDecl.Modifies.Select(ie => ie.Decl));
-        if (!actionModifies.IsSubsetOf(invariantModifies))
-        {
-          tc.Error(this, $"modifies of {Name} must be subset of modifies of {invariantActionDecl.Name}");
-        }
-        if (!refinedActionModifies.IsSubsetOf(invariantModifies))
-        {
-          tc.Error(this, $"modifies of {refinedActionDecl.Name} must be subset of modifies of {invariantActionDecl.Name}");
-        }
-        foreach (var elimProc in invariantCreates.Except(refinedActionCreates))
-        {
-          var elimCreates = elimProc.Creates.Select(x => x.ActionDecl).ToHashSet();
-          if (!elimCreates.IsSubsetOf(invariantCreates))
+          var actionCreates = CreateActionDecls.ToHashSet();
+          var refinedActionCreates = refinedActionDecl.CreateActionDecls.ToHashSet();
+          var invariantActionDecl = InvariantAction.ActionDecl;
+          if (!invariantActionDecl.LayerRange.Contains(layer))
+          {
+            tc.Error(invariantActionDecl, $"invariant action does not exist at layer {layer}");
+          }
+          var invariantCreates = invariantActionDecl.CreateActionDecls.ToHashSet();
+          if (!actionCreates.IsSubsetOf(invariantCreates))
           {
             tc.Error(this,
-              $"each pending async created by eliminated action {elimProc.Name} must also be created by invariant action {invariantActionDecl.Name}");
+              $"each pending async created by refining action must also be created by invariant action {invariantActionDecl.Name}");
           }
-          var targetModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
-          if (!targetModifies.IsSubsetOf(invariantModifies))
+          if (!refinedActionCreates.IsSubsetOf(invariantCreates))
           {
-            tc.Error(this, $"modifies of {elimProc.Name} must be subset of modifies of {invariantActionDecl.Name}");
+            tc.Error(this,
+              $"each pending async created by refined action must also be created by invariant action {invariantActionDecl.Name}");
           }
-        }
-        foreach (var elimDecl in Eliminates)
-        {
-          if (!invariantCreates.Contains(elimDecl.Target.ActionDecl))
+          var actionModifies = new HashSet<Variable>(Modifies.Select(ie => ie.Decl));
+          var refinedActionModifies = new HashSet<Variable>(refinedActionDecl.Modifies.Select(ie => ie.Decl));
+          var invariantModifies = new HashSet<Variable>(invariantActionDecl.Modifies.Select(ie => ie.Decl));
+          if (!actionModifies.IsSubsetOf(invariantModifies))
           {
-            tc.Error(this, $"eliminated action must be created by invariant {InvariantAction.ActionName}");
+            tc.Error(this, $"modifies of {Name} must be subset of modifies of {invariantActionDecl.Name}");
           }
-          var targetActionDecl = elimDecl.Target.ActionDecl;
-          var abstractionActionDecl = elimDecl.Abstraction.ActionDecl;
-          var targetModifies = new HashSet<Variable>(targetActionDecl.Modifies.Select(ie => ie.Decl));
-          var absModifies = new HashSet<Variable>(abstractionActionDecl.Modifies.Select(ie => ie.Decl));
-          if (!absModifies.IsSubsetOf(targetModifies))
+          if (!refinedActionModifies.IsSubsetOf(invariantModifies))
           {
-            tc.Error(elimDecl, $"modifies of {abstractionActionDecl.Name} must be subset of modifies of {targetActionDecl.Name}");
+            tc.Error(this,
+              $"modifies of {refinedActionDecl.Name} must be subset of modifies of {invariantActionDecl.Name}");
           }
-          if (!targetActionDecl.LayerRange.Contains(layer))
+          foreach (var elimProc in invariantCreates.Except(refinedActionCreates))
           {
-            tc.Error(elimDecl, $"action {targetActionDecl.Name} does not exist at layer {layer}");
+            var elimCreates = elimProc.CreateActionDecls.ToHashSet();
+            if (!elimCreates.IsSubsetOf(invariantCreates))
+            {
+              tc.Error(this,
+                $"each pending async created by eliminated action {elimProc.Name} must also be created by invariant action {invariantActionDecl.Name}");
+            }
+            var targetModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
+            if (!targetModifies.IsSubsetOf(invariantModifies))
+            {
+              tc.Error(this, $"modifies of {elimProc.Name} must be subset of modifies of {invariantActionDecl.Name}");
+            }
           }
-          if (!abstractionActionDecl.LayerRange.Contains(layer))
+          foreach (var elimDecl in Eliminates)
           {
-            tc.Error(elimDecl, $"action {abstractionActionDecl.Name} does not exist at layer {layer}");
+            var targetActionDecl = elimDecl.Target.ActionDecl;
+            var abstractionActionDecl = elimDecl.Abstraction.ActionDecl;
+            var targetModifies = new HashSet<Variable>(targetActionDecl.Modifies.Select(ie => ie.Decl));
+            var absModifies = new HashSet<Variable>(abstractionActionDecl.Modifies.Select(ie => ie.Decl));
+            if (!invariantCreates.Contains(targetActionDecl))
+            {
+              tc.Error(this, $"eliminated action must be created by invariant {InvariantAction.ActionName}");
+            }
+            if (!abstractionActionDecl.LayerRange.Contains(layer))
+            {
+              tc.Error(elimDecl, $"action {abstractionActionDecl.Name} does not exist at layer {layer}");
+            }
+            if (!absModifies.IsSubsetOf(targetModifies))
+            {
+              tc.Error(elimDecl,
+                $"modifies of {abstractionActionDecl.Name} must be subset of modifies of {targetActionDecl.Name}");
+            }
           }
         }
       }
@@ -3104,10 +3108,22 @@ namespace Microsoft.Boogie
     public Dictionary<ActionDecl, ActionDecl> EliminationMap()
     {
       var refinedProc = RefinedAction.ActionDecl;
-      var invariantProc = InvariantAction.ActionDecl;
-      var refinedActionCreates = refinedProc.Creates.Select(x => x.ActionDecl).ToHashSet();
-      var invariantCreates = invariantProc.Creates.Select(x => x.ActionDecl).ToHashSet();
-      var elimMap = invariantCreates.Except(refinedActionCreates).ToDictionary(x => x, x => x);
+      var refinedActionCreates = refinedProc.CreateActionDecls.ToHashSet();
+      HashSet<ActionDecl> FixpointCreates()
+      {
+        var currCreates = new HashSet<ActionDecl>(refinedActionCreates);
+        var frontier = CreateActionDecls.ToHashSet().Except(currCreates);
+        while (frontier.Any())
+        {
+          currCreates.UnionWith(frontier);
+          frontier = frontier.SelectMany(actionDecl => actionDecl.CreateActionDecls).Except(currCreates);
+        }
+        return currCreates;
+      }
+      var allCreates = InvariantAction == null
+        ? FixpointCreates()
+        : InvariantAction.ActionDecl.CreateActionDecls.ToHashSet();
+      var elimMap = allCreates.Except(refinedActionCreates).ToDictionary(x => x, x => x);
       foreach (var elimDecl in Eliminates)
       {
         elimMap[elimDecl.Target.ActionDecl] = elimDecl.Abstraction.ActionDecl;
@@ -3119,6 +3135,8 @@ namespace Microsoft.Boogie
     {
       return Creates.Append(RefinedAction).Append(InvariantAction);
     }
+
+    public IEnumerable<ActionDecl> CreateActionDecls => Creates.Select(x => x.ActionDecl);
 
     public bool MaybePendingAsync => PendingAsyncCtorDecl != null;
 
