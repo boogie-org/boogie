@@ -280,6 +280,14 @@ namespace Microsoft.Boogie
       }
       return layers.Distinct().OrderBy(l => l).ToList();
     }
+
+    public static void CopyAttribute(ICarriesAttributes src, string attr, ICarriesAttributes dest)
+    {
+      var attrArgs = QKeyValue.FindAttribute(src.Attributes, kv => kv.Key == attr);
+      if (attrArgs is not null) {
+        dest.Attributes = new QKeyValue(attrArgs.tok, attrArgs.Key, attrArgs.Params, dest.Attributes);
+      }
+    }
   }
 
   [ContractClassFor(typeof(Absy))]

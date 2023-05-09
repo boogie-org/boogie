@@ -1381,7 +1381,11 @@ namespace VC
             assumption = Expr.And(assumption, assumptions[i]);
           }
 
-          passiveCmds.Add(new AssumeCmd(c.tok, assumption));
+          var assumeCmd = new AssumeCmd(c.tok, assumption);
+          // Copy any {:id ...} from the assignment to the assumption, so
+          // we can track it as a "necessary assumption".
+          ICarriesAttributes.CopyAttribute(assign, "id", assumeCmd);
+          passiveCmds.Add(assumeCmd);
         }
 
         if (currentImplementation != null
