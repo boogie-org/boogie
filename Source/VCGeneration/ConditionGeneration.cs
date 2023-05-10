@@ -253,7 +253,10 @@ namespace VC
       {
         Contract.Assert(req != null);
         Expr e = Substituter.Apply(formalProcImplSubst, req.Condition);
-        Cmd c = new AssumeCmd(req.tok, e);
+        AssumeCmd c = new AssumeCmd(req.tok, e);
+        // Copy any {:id ...} from the precondition to the assumption, so
+        // we can track it as a "necessary assumption".
+        ICarriesAttributes.CopyAttribute(req, "id", c);
         c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null)
