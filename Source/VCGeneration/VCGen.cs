@@ -751,7 +751,11 @@ namespace VC
 
               b.Attributes = c.Attributes;
               prefixOfPredicateCmdsMaintained.Add(b);
-              header.Cmds[i] = new AssumeCmd(c.tok, c.Expr);
+              // Copy any {:id ...} from the invariant to the assumption, so
+              // we can track it as a "necessary assumption".
+              AssumeCmd assume = new AssumeCmd(c.tok, c.Expr);
+              ICarriesAttributes.CopyStringAttributeWithSuffix(c.tok, c, "id", "$assume", assume);
+              header.Cmds[i] = assume;
             }
             else
             {

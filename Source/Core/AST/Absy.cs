@@ -288,6 +288,14 @@ namespace Microsoft.Boogie
         dest.Attributes = new QKeyValue(attrArgs.tok, attrArgs.Key, attrArgs.Params, dest.Attributes);
       }
     }
+
+    public static void CopyStringAttributeWithSuffix(IToken tok, ICarriesAttributes src, string attr, string suffix, ICarriesAttributes dest)
+    {
+      var arg = QKeyValue.FindStringAttribute(src.Attributes, attr);
+      if (arg is not null) {
+        dest.Attributes = new QKeyValue(tok, attr, new List<object>( ){arg + suffix}, dest.Attributes);
+      }
+    }
   }
 
   [ContractClassFor(typeof(Absy))]
