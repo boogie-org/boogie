@@ -24,6 +24,7 @@ namespace VC
     int maxCounterExamples,
     List<Counterexample> counterExamples,
     List<AssertCmd> asserts,
+    ISet<string> core,
     int resourceCount
   ) {
     public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, ProverInterface.Outcome> perAssertOutcome,

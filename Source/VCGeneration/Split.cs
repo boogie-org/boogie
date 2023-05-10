@@ -1274,15 +1274,16 @@ namespace VC
 
         var resourceCount = await checker.GetProverResourceCount();
         var result = new VCResult(
-          SplitIndex + 1,
-          iteration,
-          checker.ProverStart,
-          outcome,
-          checker.ProverRunTime,
-          checker.Options.ErrorLimit,
-          Counterexamples,
-          Asserts,
-          resourceCount);
+          vcNum: SplitIndex + 1,
+          iteration: iteration,
+          startTime: checker.ProverStart,
+          outcome: outcome,
+          runTime: checker.ProverRunTime,
+          maxCounterExamples: checker.Options.ErrorLimit,
+          counterExamples: Counterexamples,
+          asserts: Asserts,
+          core: new HashSet<string>(),
+          resourceCount: resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
