@@ -10,7 +10,7 @@ var {:layer 1, 2} l: Option Tid;
 yield invariant {:layer 1} LockInv();
 invariant b <==> (l != None());
 
->-< action {:layer 3,3} IncrSpec()
+atomic action {:layer 3,3} IncrSpec()
 modifies count;
 {
     count := count + 1;
@@ -27,7 +27,7 @@ preserves call LockInv();
     call Release(tid);
 }
 
--> action {:layer 2,2} AcquireSpec({:linear "tid"} tid: Tid)
+right action {:layer 2,2} AcquireSpec({:linear "tid"} tid: Tid)
 modifies l;
 {
     assume l == None();
@@ -47,7 +47,7 @@ preserves call LockInv();
     }
 }
 
-<- action {:layer 2,2} ReleaseSpec({:linear "tid"} tid: Tid)
+left action {:layer 2,2} ReleaseSpec({:linear "tid"} tid: Tid)
 modifies l;
 {
     assert l == Some(tid);
@@ -63,7 +63,7 @@ preserves call LockInv();
     call set_l(None());
 }
 
-<-> action {:layer 2,2} ReadSpec({:linear "tid"} tid: Tid) returns (v: int)
+both action {:layer 2,2} ReadSpec({:linear "tid"} tid: Tid) returns (v: int)
 {
     assert l == Some(tid);
     v := count;
@@ -74,7 +74,7 @@ refines ReadSpec;
     call v := READ();
 }
 
-<-> action {:layer 2,2} WriteSpec({:linear "tid"} tid: Tid, v: int)
+both action {:layer 2,2} WriteSpec({:linear "tid"} tid: Tid, v: int)
 modifies count;
 {
     assert l == Some(tid);
@@ -86,7 +86,7 @@ refines WriteSpec;
     call WRITE(v);
 }
 
->-< action {:layer 1,1} atomic_CAS(old_b: bool, new_b: bool) returns (success: bool)
+atomic action {:layer 1,1} atomic_CAS(old_b: bool, new_b: bool) returns (success: bool)
 modifies b;
 {
     success := b == old_b;
@@ -97,14 +97,14 @@ modifies b;
 yield procedure {:layer 0} CAS(old_b: bool, new_b: bool) returns (success: bool);
 refines atomic_CAS;
 
->-< action {:layer 1,1} atomic_READ() returns (v: int)
+atomic action {:layer 1,1} atomic_READ() returns (v: int)
 {
     v := count;
 }
 yield procedure {:layer 0} READ() returns (v: int);
 refines atomic_READ;
 
->-< action {:layer 1,1} atomic_WRITE(v: int)
+atomic action {:layer 1,1} atomic_WRITE(v: int)
 modifies count;
 {
     count := v;

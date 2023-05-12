@@ -11,7 +11,7 @@ var {:layer 0,2} x: int;
 yield procedure {:layer 0} IncX();
 refines AtomicIncX;
 
-<-> action {:layer 1} AtomicIncX()
+both action {:layer 1} AtomicIncX()
 modifies x;
 { x := x + 1; }
 
@@ -35,6 +35,6 @@ requires {:layer 1} n >= 0;
     assert {:layer 1} i == n;
 }
 
-<-> action {:layer 2} AtomicSlowAdd(n: int)
+both action {:layer 2} AtomicSlowAdd(n: int)
 modifies x;
 { x := x + n; }

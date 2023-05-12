@@ -25,14 +25,14 @@ preserves call Inv();
   call inc_s();
 }
 
--> action {:layer 1} INC_T ()
+right action {:layer 1} INC_T ()
 modifies t;
 {
   assert s <= t;
   t := t + 1;
 }
 
->-< action {:layer 1} INC_S ()
+atomic action {:layer 1} INC_S ()
 modifies s;
 {
   assert s < t;

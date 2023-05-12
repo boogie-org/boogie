@@ -8,7 +8,7 @@ refines A_Inc;
   async call {:sync} Callback();
 }
 
-<-> action {:layer 1,2} A_Inc ()
+both action {:layer 1,2} A_Inc ()
 modifies x;
 { x := x + 1; }
 yield procedure {:layer 0} Callback ();

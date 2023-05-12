@@ -15,7 +15,7 @@ function {:inline} perm (p : int) : bool
 // ###########################################################################
 // Main (process A sends initial proposal)
 
->-< action {:layer 3} atomic_agree ({:linear_in "lin"} p : int)
+atomic action {:layer 3} atomic_agree ({:linear_in "lin"} p : int)
 modifies val_a, val_b;
 {
   havoc val_a, val_b;
@@ -34,7 +34,7 @@ requires {:layer 2} perm(p);
 // ###########################################################################
 // Event handlers of process B
 
-yield <- procedure {:layer 2} propose_by_a (val : int, {:linear_in "lin"} p : int)
+yield left procedure {:layer 2} propose_by_a (val : int, {:linear_in "lin"} p : int)
 requires {:layer 2} perm(p);
 requires {:layer 2} val_a == val;
 ensures {:layer 2} val_a == val_b;
@@ -54,7 +54,7 @@ modifies val_a, val_b;
   }
 }
 
-yield <- procedure {:layer 2} ack_by_a({:linear_in "lin"} p : int)
+yield left procedure {:layer 2} ack_by_a({:linear_in "lin"} p : int)
 requires {:layer 2} perm(p);
 requires {:layer 2} val_a == val_b;
 ensures {:layer 2} val_a == val_b;
@@ -64,7 +64,7 @@ ensures {:layer 2} val_a == val_b;
 // ###########################################################################
 // Event handlers of process A
 
-yield <- procedure {:layer 2} propose_by_b (val : int, {:linear_in "lin"} p : int)
+yield left procedure {:layer 2} propose_by_b (val : int, {:linear_in "lin"} p : int)
 requires {:layer 2} perm(p);
 requires {:layer 2} val_b == val;
 ensures {:layer 2} val_a == val_b;
@@ -84,7 +84,7 @@ modifies val_a, val_b;
   }
 }
 
-yield <- procedure {:layer 2} ack_by_b({:linear_in "lin"} p : int)
+yield left procedure {:layer 2} ack_by_b({:linear_in "lin"} p : int)
 requires {:layer 2} perm(p);
 requires {:layer 2} val_a == val_b;
 ensures {:layer 2} val_a == val_b;
@@ -94,14 +94,14 @@ ensures {:layer 2} val_a == val_b;
 // ###########################################################################
 // Abstracted atomic actions with permissions
 
-<-> action {:layer 2} atomic_get_val_a_perm ({:linear "lin"} p : int) returns (ret : int)
+both action {:layer 2} atomic_get_val_a_perm ({:linear "lin"} p : int) returns (ret : int)
 { assert perm(p); ret := val_a; }
 
-<-> action {:layer 2} atomic_set_val_a_perm (val : int, {:linear "lin"} p : int)
+both action {:layer 2} atomic_set_val_a_perm (val : int, {:linear "lin"} p : int)
 modifies val_a;
 { assert perm(p); val_a := val; }
 
-<-> action {:layer 2} atomic_set_val_b_perm (val : int, {:linear "lin"} p : int)
+both action {:layer 2} atomic_set_val_b_perm (val : int, {:linear "lin"} p : int)
 modifies val_b;
 { assert perm(p); val_b := val; }
 
@@ -120,14 +120,14 @@ refines atomic_set_val_b_perm;
 // ###########################################################################
 // Primitive atomic actions
 
->-< action {:layer 1} atomic_get_val_a () returns (ret : int)
+atomic action {:layer 1} atomic_get_val_a () returns (ret : int)
 { ret := val_a; }
 
->-< action {:layer 1} atomic_set_val_a (val : int)
+atomic action {:layer 1} atomic_set_val_a (val : int)
 modifies val_a;
 { val_a := val; }
 
->-< action {:layer 1} atomic_set_val_b (val : int)
+atomic action {:layer 1} atomic_set_val_b (val : int)
 modifies val_b;
 { val_b := val; }
 

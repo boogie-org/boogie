@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
->-< action {:layer 95} skip() { }
+atomic action {:layer 95} skip() { }
 
 yield procedure {:layer 94} H()
 refines skip;

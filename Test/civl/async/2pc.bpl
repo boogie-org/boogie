@@ -190,7 +190,7 @@ action {:layer 10} GhostRead_10() returns (snapshot: GState)
    snapshot := state;
 }
 
->-< action {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
+atomic action {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
 modifies state;
 {
   var {:pool "A"} x: XState;
@@ -232,7 +232,7 @@ preserves call YieldConsistent_10();
 
 // ---------------------------------------------------------------------------
 
-<- action {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+left action {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
   var {:pool "A"} x: XState;
@@ -262,7 +262,7 @@ requires call YieldInv_9(xid);
 
 // ---------------------------------------------------------------------------
 
-<- action {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+left action {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state, B;
 {
   var {:pool "A"} x: XState;
@@ -311,7 +311,7 @@ requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
   assert {:layer 8} {:add_to_pool "A", state[xid]} true;
 }
 
-<- action {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+left action {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
 modifies state;
 {
   var {:pool "A"} x: XState;
@@ -369,7 +369,7 @@ refines atomic_Participant_Commit;
 yield procedure {:layer 7} Participant_Abort (xid : Xid, mid : Mid);
 refines atomic_Participant_Abort;
 
->-< action {:layer 8,9} atomic_SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair)
+atomic action {:layer 8,9} atomic_SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair)
 modifies state;
 {
   assert pair(xid, mid, pair);
@@ -377,7 +377,7 @@ modifies state;
   state[xid][mid] := ABORTED();
 }
 
->-< action {:layer 8} atomic_StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool)
+atomic action {:layer 8} atomic_StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool)
 modifies votes, state, B;
 {
   assert !UnallocatedXids[xid];
@@ -392,7 +392,7 @@ modifies votes, state, B;
   }
 }
 
->-< action {:layer 8} atomic_StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool)
+atomic action {:layer 8} atomic_StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool)
 modifies votes, state;
 {
   assert !UnallocatedXids[xid];
@@ -404,7 +404,7 @@ modifies votes, state;
 
 // ---------------------------------------------------------------------------
 
-<- action {:layer 8} atomic_Participant_Commit (xid : Xid, mid : Mid)
+left action {:layer 8} atomic_Participant_Commit (xid : Xid, mid : Mid)
 modifies state;
 {
   assert participantMid(mid);
@@ -413,7 +413,7 @@ modifies state;
   state[xid][mid] := COMMITTED();
 }
 
-<- action {:layer 8} atomic_Participant_Abort (xid : Xid, mid : Mid)
+left action {:layer 8} atomic_Participant_Abort (xid : Xid, mid : Mid)
 modifies state;
 {
   assert participantMid(mid);
@@ -432,7 +432,7 @@ yield procedure {:layer 7} TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"}
 returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair);
 refines atomic_TransferPair;
 
->-< action {:layer 8,10} atomic_AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool)
+atomic action {:layer 8,10} atomic_AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool)
 modifies UnallocatedXids;
 {
   assume UnallocatedXids[xid];
@@ -441,7 +441,7 @@ modifies UnallocatedXids;
   UnallocatedXids[xid] := false;
 }
 
-<-> action {:layer 8,10} atomic_TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"} inPairs: [Pair]bool) returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair)
+both action {:layer 8,10} atomic_TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"} inPairs: [Pair]bool) returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair)
 {
   assert inPairs[Pair(xid, mid)];
   pair := Pair(xid, mid);

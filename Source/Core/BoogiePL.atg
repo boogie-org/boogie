@@ -747,10 +747,10 @@ SpecAction<.ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAction, 
   
 MoverQualifier<ref MoverType moverType>
 = (
-    "<-"  (. moverType = MoverType.Left; .)
-    | "->"  (. moverType = MoverType.Right; .)
-    | "<->" (. moverType = MoverType.Both; .)
-    | ">-<" (. moverType = MoverType.Atomic; .)
+      "left"   (. moverType = MoverType.Left; .)
+    | "right"  (. moverType = MoverType.Right; .)
+    | "both"   (. moverType = MoverType.Both; .)
+    | "atomic" (. moverType = MoverType.Atomic; .)
   )
   .
 
@@ -1783,10 +1783,17 @@ LetVar<.out Variable/*!*/ v.>
 /*------------------------------------------------------------------------*/
 Ident<out IToken/*!*/ x>
 =(.Contract.Ensures(Contract.ValueAtReturn(out x) != null);.)
-  ident            (.  x = t;
-                       if (x.val.StartsWith("\\"))
-                         x.val = x.val.Substring(1);
-                    .)
+  ( ident
+  | "atomic"   (. t.kind = _ident; .) // convert to ident
+  | "both"     (. t.kind = _ident; .) // convert to ident
+  | "left"     (. t.kind = _ident; .) // convert to ident
+  | "right"    (. t.kind = _ident; .) // convert to ident
+  )
+  (.
+    x = t;
+    if (x.val.StartsWith("\\"))
+      x.val = x.val.Substring(1);
+  .)
   .
 
 /*------------------------------------------------------------------------*/

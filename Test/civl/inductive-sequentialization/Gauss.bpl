@@ -5,7 +5,7 @@ var {:layer 0,2} x:int;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 1} SUM (n: int)
+atomic action {:layer 1} SUM (n: int)
 refines MAIN' using INV;
 creates ADD;
 modifies x;
@@ -16,7 +16,7 @@ modifies x;
   call create_asyncs((lambda pa: ADD :: 1 <= pa->i && pa->i <= n));
 }
 
->-< action {:layer 2} MAIN' (n: int)
+atomic action {:layer 2} MAIN' (n: int)
 modifies x;
 {
   assert n >= 0;
@@ -42,7 +42,7 @@ modifies x;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async <- action {:layer 1} ADD (i: int)
+async left action {:layer 1} ADD (i: int)
 modifies x;
 {
   x := x + i;

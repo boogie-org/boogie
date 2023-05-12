@@ -13,7 +13,7 @@ yield procedure {:layer 1} foo()
 
 yield procedure {:layer 0} A();
 refines atomic_A;
->-< action {:layer 1,1} atomic_A()
+atomic action {:layer 1,1} atomic_A()
 modifies g;
 {
     g := g - 1;

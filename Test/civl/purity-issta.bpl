@@ -9,7 +9,7 @@ axiom 0 <= max;
 var {:layer 0,1} l: [int]X;
 var {:layer 0,2} status: [int]bool;
 
->-< action {:layer 2} atomic_Alloc({:linear "tid"} tid: X) returns (r: int)
+atomic action {:layer 2} atomic_Alloc({:linear "tid"} tid: X) returns (r: int)
 modifies status;
 {
   assert tid != nil;
@@ -21,7 +21,7 @@ modifies status;
   }
 }
 
->-< action {:layer 2} atomic_Free({:linear "tid"} tid: X, i: int)
+atomic action {:layer 2} atomic_Free({:linear "tid"} tid: X, i: int)
 modifies status;
 { assert tid != nil; status[i] := true; }
 
@@ -58,18 +58,18 @@ refines atomic_Free;
   call release(tid, i);
 }
 
--> action {:layer 1} atomic_acquire({:linear "tid"} tid: X, i: int)
+right action {:layer 1} atomic_acquire({:linear "tid"} tid: X, i: int)
 modifies l;
 { assert tid != nil; assume l[i] == nil; l[i] := tid; }
 
-<- action {:layer 1} atomic_release({:linear "tid"} tid: X, i: int)
+left action {:layer 1} atomic_release({:linear "tid"} tid: X, i: int)
 modifies l;
 { assert tid != nil; assert l[i] == tid; l[i] := nil; }
 
-<-> action {:layer 1} atomic_Read({:linear "tid"} tid: X, i: int) returns (val: bool)
+both action {:layer 1} atomic_Read({:linear "tid"} tid: X, i: int) returns (val: bool)
 { assert tid != nil; assert l[i] == tid; val := status[i]; }
 
-<-> action {:layer 1} atomic_Write({:linear "tid"} tid: X, i: int, val: bool)
+both action {:layer 1} atomic_Write({:linear "tid"} tid: X, i: int, val: bool)
 modifies status;
 { assert tid != nil; assert l[i] == tid; status[i] := val; }
 

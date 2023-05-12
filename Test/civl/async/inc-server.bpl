@@ -27,7 +27,7 @@ requires call Yield_9(p);
 // ###########################################################################
 // Event Handlers
 
-<- action {:layer 10,11} inc_x_high_atomic ({:linear_in "lin"} p : int)
+left action {:layer 10,11} inc_x_high_atomic ({:linear_in "lin"} p : int)
 modifies x;
 { x := x + 1; }
 
@@ -52,11 +52,11 @@ invariant perm(p) && x == y;
 // ###########################################################################
 // Abstracted low-level atomic actions (i.e., enriched with permissions)
 
->-< action {:layer 9} inc_x_perm_atomic ({:linear "lin"} p : int)
+atomic action {:layer 9} inc_x_perm_atomic ({:linear "lin"} p : int)
 modifies x;
 { assert perm(p); x := x + 1; }
 
-<- action {:layer 9} Client_IncDone_atomic ({:linear_in "lin"} p : int)
+left action {:layer 9} Client_IncDone_atomic ({:linear_in "lin"} p : int)
 { assert perm(p) && x == y + 1; }
 
 yield procedure {:layer 8} inc_x_perm ({:linear "lin"} p : int)
@@ -74,11 +74,11 @@ refines Client_IncDone_atomic;
 // ###########################################################################
 // Low-level atomic actions
 
->-< action {:layer 8} inc_x_atomic ()
+atomic action {:layer 8} inc_x_atomic ()
 modifies x;
 { x := x + 1; }
 
->-< action {:layer 8} Assertion_atomic ()
+atomic action {:layer 8} Assertion_atomic ()
 { assert x == y + 1; }
 
 yield procedure {:layer 7} inc_x ();

@@ -2,11 +2,11 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,2} x: int;
 
-<- action {:layer 1,2} AtomicIncr()
+left action {:layer 1,2} AtomicIncr()
 modifies x;
 { x := x + 1; }
 
-<- action {:layer 1,2} AtomicDecr()
+left action {:layer 1,2} AtomicDecr()
 modifies x;
 { x := x - 1; }
 

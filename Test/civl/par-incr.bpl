@@ -3,14 +3,14 @@
 
 var {:layer 0,3} x: int;
 
--> action {:layer 1} AtomicIncr()
+right action {:layer 1} AtomicIncr()
 modifies x;
 { x := x + 1; }
 
 yield procedure {:layer 0} Incr();
 refines AtomicIncr;
 
--> action {:layer 2} AtomicIncr2()
+right action {:layer 2} AtomicIncr2()
 modifies x;
 { x := x + 2; }
 
@@ -22,7 +22,7 @@ refines AtomicIncr2;
 
 yield invariant {:layer 1} Yield();
 
->-< action {:layer 3} AtomicIncr4()
+atomic action {:layer 3} AtomicIncr4()
 modifies x;
 { x := x + 4; }
 

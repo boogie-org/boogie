@@ -16,13 +16,13 @@ requires call Yield_Q(tid1);
   call assertion();
 }
 
-<- action {:layer 1} WRITE()
+left action {:layer 1} WRITE()
 modifies x;
 {
   x := 1;
 }
 
->-< action {:layer 1} ASSERTION()
+atomic action {:layer 1} ASSERTION()
 {
   assert x == 0;
 }

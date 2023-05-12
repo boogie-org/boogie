@@ -66,7 +66,7 @@ function value_card(v:val, value:[pid]val, i:pid, j:pid) : int
 // would like the MAIN action(s) to take a single parameter as follows:
 //     {:linear_in "broadcast"}{:linear_in "collect"} pids:[pid]bool
 
->-< action {:layer 4}
+atomic action {:layer 4}
 MAIN''({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 modifies CH, decision;
 {
@@ -103,7 +103,7 @@ modifies CH, decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 3}
+atomic action {:layer 3}
 MAIN'({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 refines MAIN'' using INV_COLLECT_ELIM;
 creates COLLECT;
@@ -120,7 +120,7 @@ modifies CH;
   call create_asyncs(AllCollects());
 }
 
->-< action {:layer 2}
+atomic action {:layer 2}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 refines MAIN' using INV_BROADCAST_ELIM;
 creates BROADCAST, COLLECT;
@@ -156,14 +156,14 @@ modifies CH;
   call set_choice(BROADCAST(k+1));
 }
 
-async <- action {:layer 2} BROADCAST({:linear_in "broadcast"} i:pid)
+async left action {:layer 2} BROADCAST({:linear_in "broadcast"} i:pid)
 modifies CH;
 {
   assert pid(i);
   CH := CH[value[i] := CH[value[i]] + 1];
 }
 
-async >-< action {:layer 2,3} COLLECT({:linear_in "collect"} i:pid)
+async atomic action {:layer 2,3} COLLECT({:linear_in "collect"} i:pid)
 modifies decision;
 {
   var received_values:[val]int;
@@ -298,31 +298,31 @@ requires {:layer 1} pid(i);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-<-> action {:layer 1} GET_VALUE(i:pid) returns (v:val)
+both action {:layer 1} GET_VALUE(i:pid) returns (v:val)
 {
   v := value[i];
 }
 
-<-> action {:layer 1} SET_DECISION({:linear_in "collect"} i:pid, d:val)
+both action {:layer 1} SET_DECISION({:linear_in "collect"} i:pid, d:val)
 modifies decision;
 {
   decision[i] := d;
 }
 
-<- action {:layer 1} SEND(v:val, i:pid)
+left action {:layer 1} SEND(v:val, i:pid)
 modifies CH_low;
 {
   CH_low[i][v] := CH_low[i][v] + 1;
 }
 
--> action {:layer 1} RECEIVE(i:pid) returns (v:val)
+right action {:layer 1} RECEIVE(i:pid) returns (v:val)
 modifies CH_low;
 {
   assume CH_low[i][v] > 0;
   CH_low[i][v] := CH_low[i][v] - 1;
 }
 
-<-> action {:layer 1}
+both action {:layer 1}
 LINEAR_TRANSFER(i:pid, {:linear_in "broadcast"} ss:[pid]bool, {:linear_in "collect"} rr:[pid]bool)
 returns ({:linear "broadcast"} s:pid, {:linear "collect"} r:pid, {:linear "broadcast"} ss':[pid]bool, {:linear "collect"} rr':[pid]bool)
 {

@@ -41,7 +41,7 @@ ensures call Yield2(tid, old(a)[tid] + 1);
   call Write(tid, i, t + 1);
 }
 
->-< action {:layer 2,2} AtomicAllocate() returns ({:linear "tid"} tid: int, i: int)
+atomic action {:layer 2,2} AtomicAllocate() returns ({:linear "tid"} tid: int, i: int)
 modifies unallocated;
 {
   assume unallocated[tid];
@@ -58,7 +58,7 @@ preserves call Yield1();
   call tid := MakeLinear(i);
 }
 
->-< action {:layer 2,2} AtomicRead({:linear "tid"} tid: int, i: int) returns (val: int)
+atomic action {:layer 2,2} AtomicRead({:linear "tid"} tid: int, i: int) returns (val: int)
 {
   val := a[tid];
 }
@@ -72,7 +72,7 @@ preserves call Yield1();
   call val := ReadLow(i);
 }
 
->-< action {:layer 2,2} AtomicWrite({:linear "tid"} tid: int, i: int, val: int)
+atomic action {:layer 2,2} AtomicWrite({:linear "tid"} tid: int, i: int, val: int)
 modifies a;
 {
   a[tid] := val;
@@ -92,18 +92,18 @@ function {:inline} AllocInv(count: int, unallocated:[int]bool): (bool)
   (forall x: int :: unallocated[x] || x < count)
 }
 
->-< action {:layer 1,1} AtomicReadLow(i: int) returns (val: int)
+atomic action {:layer 1,1} AtomicReadLow(i: int) returns (val: int)
 {
   val := a[i];
 }
 
->-< action {:layer 1,1} AtomicWriteLow(i: int, val: int)
+atomic action {:layer 1,1} AtomicWriteLow(i: int, val: int)
 modifies a;
 {
   a[i] := val;
 }
 
->-< action {:layer 1,1} AtomicAllocateLow() returns (i: int)
+atomic action {:layer 1,1} AtomicAllocateLow() returns (i: int)
 modifies count;
 {
   i := count;

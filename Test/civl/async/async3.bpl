@@ -9,7 +9,7 @@ refines A_Inc;
   call Service();
 }
 
->-< action {:layer 1} A_Service()
+atomic action {:layer 1} A_Service()
 refines A_Inc;
 creates A_Inc;
 {
@@ -21,7 +21,7 @@ refines A_Service;
   async call Callback();
 }
 
-async <-> action {:layer 1,3} A_Inc ()
+async both action {:layer 1,3} A_Inc ()
 modifies x;
 { x := x + 1; }
 yield procedure {:layer 0} Callback ();

@@ -62,7 +62,7 @@ requires {:layer 2} dom(local_in)[i];
   }
 }
 
--> action {:layer 2} atomic_Alloc() returns ({:linear "mem"} l:lmap, i:int)
+right action {:layer 2} atomic_Alloc() returns ({:linear "mem"} l:lmap, i:int)
 modifies pool;
 {
   var m:[int]int;
@@ -81,7 +81,7 @@ ensures call YieldMem(l, i);
   call l := AllocLinear(i);
 }
 
-<- action {:layer 2} atomic_Free({:linear_in "mem"} l:lmap, i:int)
+left action {:layer 2} atomic_Free({:linear_in "mem"} l:lmap, i:int)
 modifies pool;
 {
   assert dom(l)[i];
@@ -97,13 +97,13 @@ preserves call Yield();
   call ReturnAddr(i);
 }
 
-<-> action {:layer 2} atomic_Read ({:linear "mem"} l:lmap, i:int) returns (o:int)
+both action {:layer 2} atomic_Read ({:linear "mem"} l:lmap, i:int) returns (o:int)
 {
   assert dom(l)[i];
   o := map(l)[i];
 }
 
-<-> action {:layer 2} atomic_Write ({:linear_in "mem"} l:lmap, i:int, o:int) returns ({:linear "mem"} l':lmap)
+both action {:layer 2} atomic_Write ({:linear_in "mem"} l:lmap, i:int, o:int) returns ({:linear "mem"} l':lmap)
 {
   assert dom(l)[i];
   l' := cons(dom(l), map(l)[i := o]);
@@ -160,21 +160,21 @@ var {:layer 1, 2} {:linear "mem"} pool:lmap;
 var {:layer 0, 1} mem:[int]int;
 var {:layer 0, 1} unallocated:[int]bool;
 
->-< action {:layer 1} atomic_ReadLow (i:int) returns (o:int)
+atomic action {:layer 1} atomic_ReadLow (i:int) returns (o:int)
 { o := mem[i]; }
 
->-< action {:layer 1} atomic_WriteLow (i:int, o:int)
+atomic action {:layer 1} atomic_WriteLow (i:int, o:int)
 modifies mem;
 { mem[i] := o; }
 
->-< action {:layer 1} atomic_PickAddr () returns (i:int)
+atomic action {:layer 1} atomic_PickAddr () returns (i:int)
 modifies unallocated;
 {
   assume unallocated[i];
   unallocated[i] := false;
 }
 
->-< action {:layer 1} atomic_ReturnAddr (i:int)
+atomic action {:layer 1} atomic_ReturnAddr (i:int)
 modifies unallocated;
 { unallocated[i] := true; }
 

@@ -19,14 +19,14 @@ requires {:layer 1} Permissions == MapConst(true);
   async call PB(Permissions);
 }
 
->-< action {:layer 1} AtomicSetG(val:int)
+atomic action {:layer 1} AtomicSetG(val:int)
 modifies g;
 { g := val; }
 
 yield procedure {:layer 0} SetG(val:int);
 refines AtomicSetG;
 
->-< action {:layer 1} AtomicIncrG()
+atomic action {:layer 1} AtomicIncrG()
 modifies g;
 { g := g + 1; }
 

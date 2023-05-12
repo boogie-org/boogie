@@ -117,7 +117,7 @@ requires call YieldInvChannels();
   async call Propose(r, ps');
 }
 
-yield -> procedure {:layer 1} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, {:layer 1} ns: NodeSet)
+yield right procedure {:layer 1} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, {:layer 1} ns: NodeSet)
 modifies permJoinChannel, joinChannel;
 requires {:layer 1} Round(r);
 requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
@@ -303,13 +303,13 @@ ensures MaxRound(r, MapOr(ns1, ns2), voteInfo) ==
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 1} A_SetDecision(round: Round, value: Value)
+atomic action {:layer 1} A_SetDecision(round: Round, value: Value)
 modifies decision;
 {
   decision[round] := Some(value);
 }
 
->-< action {:layer 1} A_JoinUpdate(r: Round, n: Node)
+atomic action {:layer 1} A_JoinUpdate(r: Round, n: Node)
 returns (join:bool, lastVoteRound: Round, lastVoteValue: Value)
 modifies acceptorState;
 {
@@ -325,7 +325,7 @@ modifies acceptorState;
   }
 }
 
->-< action {:layer 1} A_VoteUpdate(r: Round, n: Node, v: Value)
+atomic action {:layer 1} A_VoteUpdate(r: Round, n: Node, v: Value)
 returns (vote:bool)
 modifies acceptorState;
 {
@@ -350,13 +350,13 @@ refines A_VoteUpdate;
 
 //// Channel send/receive actions
 
-<- action {:layer 1} A_SendJoinResponse(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value)
+left action {:layer 1} A_SendJoinResponse(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value)
 modifies joinChannel;
 {
   joinChannel[round][JoinResponse(from, lastVoteRound, lastVoteValue)] := joinChannel[round][JoinResponse(from, lastVoteRound, lastVoteValue)] + 1;
 }
 
--> action {:layer 1} A_ReceiveJoinResponse(round: Round)
+right action {:layer 1} A_ReceiveJoinResponse(round: Round)
 returns (joinResponse: JoinResponse)
 modifies joinChannel;
 {
@@ -364,13 +364,13 @@ modifies joinChannel;
   joinChannel[round][joinResponse] := joinChannel[round][joinResponse] - 1;
 }
 
-<- action {:layer 1} A_SendVoteResponse(round: Round, from: Node)
+left action {:layer 1} A_SendVoteResponse(round: Round, from: Node)
 modifies voteChannel;
 {
   voteChannel[round][VoteResponse(from)] := voteChannel[round][VoteResponse(from)] + 1;
 }
 
--> action {:layer 1} A_ReceiveVoteResponse(round: Round)
+right action {:layer 1} A_ReceiveVoteResponse(round: Round)
 returns (voteResponse: VoteResponse)
 modifies voteChannel;
 {

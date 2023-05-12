@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,2} x : int;
 
->-< action {:layer 2} MAIN ()
+atomic action {:layer 2} MAIN ()
 modifies x;
 {
   havoc x;
@@ -16,7 +16,7 @@ refines MAIN;
   async call {:sync} a();
 }
 
-yield <- procedure {:layer 1} a ()
+yield left procedure {:layer 1} a ()
 modifies x;
 ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 0;
 {
@@ -24,7 +24,7 @@ ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 0;
   async call {:sync} b();
 }
 
-yield <- procedure {:layer 1} b ()
+yield left procedure {:layer 1} b ()
 modifies x;
 ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 5;
 {
@@ -32,7 +32,7 @@ ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 5;
   async call {:sync} c();
 }
 
-yield <- procedure {:layer 1} c ()
+yield left procedure {:layer 1} c ()
 modifies x;
 ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 3;
 {
@@ -45,7 +45,7 @@ ensures {:layer 1} x > old(x) && (x - old(x)) mod 6 == 3;
 // ###########################################################################
 // Low level atomic actions
 
-<- action {:layer 1} ADD (n:int)
+left action {:layer 1} ADD (n:int)
 modifies x;
 { x := x + n; }
 

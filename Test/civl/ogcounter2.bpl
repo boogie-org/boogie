@@ -10,41 +10,41 @@ var {:layer 2,3} lock: X;
 
 var {:layer 1,4}{:linear "tid"} unallocated:[X]bool;
 
--> action {:layer 2,4} AtomicAllocTid() returns ({:linear "tid"} tid: X)
+right action {:layer 2,4} AtomicAllocTid() returns ({:linear "tid"} tid: X)
 modifies unallocated;
 { assume tid != Nil && unallocated[tid]; unallocated[tid] := false; }
 
 yield procedure {:layer 1} AllocTid() returns ({:linear "tid"} tid: X);
 refines AtomicAllocTid;
 
--> action {:layer 3} atomic_acq({:linear "tid"} tid: X)
+right action {:layer 3} atomic_acq({:linear "tid"} tid: X)
 modifies lock;
 { assert tid != Nil; assume lock == Nil; lock := tid; }
 
 yield procedure {:layer 2} acq({:linear "tid"} tid: X);
 refines atomic_acq;
 
-<- action {:layer 3} atomic_rel({:linear "tid"} tid: X)
+left action {:layer 3} atomic_rel({:linear "tid"} tid: X)
 modifies lock;
 { assert tid != Nil && lock == tid; lock := Nil; }
 
 yield procedure {:layer 2} rel({:linear "tid"} tid: X);
 refines atomic_rel;
 
-<-> action {:layer 3} atomic_read({:linear "tid"} tid: X) returns (v: int)
+both action {:layer 3} atomic_read({:linear "tid"} tid: X) returns (v: int)
 { assert tid != Nil && lock == tid; v := x; }
 
 yield procedure {:layer 2} read({:linear "tid"} tid: X) returns (v: int);
 refines atomic_read;
 
-<-> action {:layer 3} atomic_write({:linear "tid"} tid: X, v: int)
+both action {:layer 3} atomic_write({:linear "tid"} tid: X, v: int)
 modifies x;
 { assert tid != Nil && lock == tid; x := v; }
 
 yield procedure {:layer 2} write({:linear "tid"} tid: X, v: int);
 refines atomic_write;
 
-<- action {:layer 4} AtomicIncr({:linear "tid"} tid: X)
+left action {:layer 4} AtomicIncr({:linear "tid"} tid: X)
 modifies x;
 { x := x + 1; }
 
@@ -60,7 +60,7 @@ requires {:layer 3} tid != Nil;
   call rel(tid);
 }
 
-<- action {:layer 5} AtomicIncrBy2()
+left action {:layer 5} AtomicIncrBy2()
 modifies x;
 { x := x + 2; }
 

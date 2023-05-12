@@ -4,10 +4,10 @@
 var {:layer 1,2} y:int;
 var {:layer 0,1} x:int;
 
->-< action {:layer 2,2} atomic_read_y () returns (v:int)
+atomic action {:layer 2,2} atomic_read_y () returns (v:int)
 { v := y; }
 
->-< action {:layer 2,2} atomic_write_y (y':int)
+atomic action {:layer 2,2} atomic_write_y (y':int)
 modifies y;
 { y := y'; }
 
@@ -32,10 +32,10 @@ modifies y;
   y := x;
 }
 
->-< action {:layer 1,1} atomic_read_x () returns (v:int)
+atomic action {:layer 1,1} atomic_read_x () returns (v:int)
 { v := x; }
 
->-< action {:layer 1,1} atomic_write_x (x':int)
+atomic action {:layer 1,1} atomic_write_x (x':int)
 modifies x;
 { x := x'; }
 

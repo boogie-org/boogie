@@ -39,7 +39,7 @@ action {:layer 1} intro_writeLin(n: Invoc)
 
 // ---------- Specification program:
 
->-< action {:layer 2} pop_atomic(this: Invoc) returns (k: Key)
+atomic action {:layer 2} pop_atomic(this: Invoc) returns (k: Key)
   modifies lin, vis;
 {
   var my_vis: SetInvoc;

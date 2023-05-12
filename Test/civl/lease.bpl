@@ -35,7 +35,7 @@ function nextNode(me:int):int;
 
 ////// primitive actions //////
 
-<-> action {:layer 2} AtomicGetNode({:linear "me"} me:int) returns(n:node)
+both action {:layer 2} AtomicGetNode({:linear "me"} me:int) returns(n:node)
 {
         n := nodes[me];
 }
@@ -43,7 +43,7 @@ function nextNode(me:int):int;
 yield procedure {:layer 1} GetNode({:linear "me"} me:int) returns(n:node);
 refines AtomicGetNode;
 
-<-> action {:layer 2} AtomicSetNode({:linear "me"} me:int, n:node)
+both action {:layer 2} AtomicSetNode({:linear "me"} me:int, n:node)
 modifies nodes;
 {
         nodes := nodes[me := n];
@@ -52,7 +52,7 @@ modifies nodes;
 yield procedure {:layer 1} SetNode({:linear "me"} me:int, n:node);
 refines AtomicSetNode;
 
--> action {:layer 2} AtomicRecv({:linear "me"} me:int) returns(m:msg)
+right action {:layer 2} AtomicRecv({:linear "me"} me:int) returns(m:msg)
 {
         assume network[m] && m->dst == me;
 }
@@ -60,7 +60,7 @@ refines AtomicSetNode;
 yield procedure {:layer 1} Recv({:linear "me"} me:int) returns(m:msg);
 refines AtomicRecv;
 
-<- action {:layer 2} AtomicSendInternal({:linear "me"} me:int, dst:int, payload:lockMsg)
+left action {:layer 2} AtomicSendInternal({:linear "me"} me:int, dst:int, payload:lockMsg)
 modifies network;
 {
         network := network[msg(me, dst, payload) := true];
@@ -69,7 +69,7 @@ modifies network;
 yield procedure {:layer 1} SendInternal({:linear "me"} me:int, dst:int, payload:lockMsg);
 refines AtomicSendInternal;
 
-<- action {:layer 2} AtomicSendExternal({:linear "me"} me:int, dst:int, payload:lockMsg)
+left action {:layer 2} AtomicSendExternal({:linear "me"} me:int, dst:int, payload:lockMsg)
 modifies network, external;
 {
         network  := network [msg(me, dst, payload) := true];
@@ -79,7 +79,7 @@ modifies network, external;
 yield procedure {:layer 1} SendExternal({:linear "me"} me:int, dst:int, payload:lockMsg);
 refines AtomicSendExternal;
 
->-< action {:layer 2} AtomicAddHistory(l:int)
+atomic action {:layer 2} AtomicAddHistory(l:int)
 modifies history;
 {
         history  := addHistory(history, l);
@@ -122,7 +122,7 @@ function Inv(network:[msg]bool, nodes:[int]node, history:history):bool
 && (forall m:msg :: network[m] ==> InvMsg(network, nodes, history, m))
 }
 
->-< action {:layer 3} AtomicGrant({:linear "me"} me:int) returns(dst:int, epoch:int)
+atomic action {:layer 3} AtomicGrant({:linear "me"} me:int) returns(dst:int, epoch:int)
 modifies history;
 {
         history := addHistory(history, dst);
@@ -144,7 +144,7 @@ preserves call YieldInv();
   call SendInternal(me, dst, transfer(epoch + 1));
 }
 
->-< action {:layer 3} AtomicAccept({:linear "me"} me:int, dst:int) returns(epoch:int)
+atomic action {:layer 3} AtomicAccept({:linear "me"} me:int, dst:int) returns(epoch:int)
 modifies external;
 {
         // specify that the message source (me) must appear at right epoch in history:

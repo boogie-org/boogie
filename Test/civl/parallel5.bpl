@@ -7,7 +7,7 @@ var {:layer 0,1} a:[int]int;
 
 yield procedure {:layer 1} Allocate() returns ({:linear "tid"} tid: int);
 
->-< action {:layer 1} AtomicWrite(idx: int, val: int)
+atomic action {:layer 1} AtomicWrite(idx: int, val: int)
 modifies a;
 { a[idx] := val; }
 

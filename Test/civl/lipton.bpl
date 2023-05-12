@@ -13,11 +13,11 @@ yield procedure {:layer 1} Thread ()
   call v();
 }
 
--> action {:layer 1} P ()
+right action {:layer 1} P ()
 modifies c;
 { assume c > 0; c := c - 1; }
 
-<- action {:layer 1} V ()
+left action {:layer 1} V ()
 modifies c;
 { c := c + 1; }
 

@@ -52,13 +52,13 @@ refines INCR;
   }
 }
 
-<-> action {:layer 1,2} INCR ()
+both action {:layer 1,2} INCR ()
 modifies x;
 {
   x := x + 1;
 }
 
-<-> action {:layer 1,2} DECR ()
+both action {:layer 1,2} DECR ()
 modifies x;
 {
   x := x - 1;
