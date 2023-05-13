@@ -244,6 +244,31 @@ namespace Microsoft.Boogie
       }
       return node;
     }
+
+    public override Type VisitBvTypeProxy(BvTypeProxy node)
+    {
+      if (node.ProxyFor == null)
+      {
+        isMonomorphizable = false;
+      }
+      else
+      {
+        Visit(TypeProxy.FollowProxy(node));
+      }
+      return node;
+    }
+
+    public override Expr VisitBvConcatExpr(BvConcatExpr node)
+    {
+      Visit(node.Type);
+      return base.VisitBvConcatExpr(node);
+    }
+
+    public override Expr VisitBvExtractExpr(BvExtractExpr node)
+    {
+      Visit(node.Type);
+      return base.VisitBvExtractExpr(node);
+    }
   }
 
   class InstantiationHintCollector : ReadOnlyVisitor
@@ -748,6 +773,16 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    public override Type VisitFloatType(FloatType node)
+    {
+      return node;
+    }
+
+    public override Type VisitBvType(BvType node)
+    {
+      return node;
+    }
+
     public override Type VisitTypeVariable(TypeVariable node)
     {
       return node;
@@ -1041,6 +1076,11 @@ namespace Microsoft.Boogie
       return VisitType(TypeProxy.FollowProxy(node));
     }
 
+    public override Type VisitBvTypeProxy(BvTypeProxy node)
+    {
+      return VisitType(TypeProxy.FollowProxy(node));
+    }
+
     public override Expr VisitExpr(Expr node)
     {
       node = base.VisitExpr(node);
@@ -1159,7 +1199,7 @@ namespace Microsoft.Boogie
       public bool IsPolymorphic(Type type)
       {
         type = TypeProxy.FollowProxy(type).Expanded;
-        if (type is BasicType)
+        if (type is BasicType or BvType or FloatType)
         {
           return false;
         }
