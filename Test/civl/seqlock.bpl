@@ -15,13 +15,13 @@ function {:inline} isOdd (x:int) : bool { x mod 2 != 0 }
 // Implementation of atomic read and write operations (to variables x and y)
 // using a seqlock (comprising variables lock and seq).
 
->-< action {:layer 3} READ () returns (v:int, w:int)
+atomic action {:layer 3} READ () returns (v:int, w:int)
 {
   v := x;
   w := y;
 }
 
->-< action {:layer 3} WRITE (v:int, w:int)
+atomic action {:layer 3} WRITE (v:int, w:int)
 modifies x, y;
 {
   x := v;
@@ -78,12 +78,12 @@ invariant lock == Some(tid);
 // * Increments of seq and writes of x and y are lock-protected, and writes only
 //   happen when seq is odd.
 
--> action {:layer 2} STALE_READ_SEQ () returns (r:int)
+right action {:layer 2} STALE_READ_SEQ () returns (r:int)
 {
   assume r <= seq;
 }
 
--> action {:layer 2} STALE_READ_X (seq1:int) returns (r:int)
+right action {:layer 2} STALE_READ_X (seq1:int) returns (r:int)
 {
   assert seq >= seq1;
   if (isEven(seq) && seq == seq1) {
@@ -91,7 +91,7 @@ invariant lock == Some(tid);
   }
 }
 
--> action {:layer 2} STALE_READ_Y (seq1:int) returns (r:int)
+right action {:layer 2} STALE_READ_Y (seq1:int) returns (r:int)
 {
   assert seq >= seq1;
   if (isEven(seq) && seq == seq1) {
@@ -99,14 +99,14 @@ invariant lock == Some(tid);
   }
 }
 
->-< action {:layer 2} LOCKED_INC_SEQ ({:linear "tid"} tid:Tid)
+atomic action {:layer 2} LOCKED_INC_SEQ ({:linear "tid"} tid:Tid)
 modifies seq;
 {
   assert lock == Some(tid);
   seq := seq + 1;
 }
 
-<-> action {:layer 2} LOCKED_WRITE_X ({:linear "tid"} tid:Tid, v:int)
+both action {:layer 2} LOCKED_WRITE_X ({:linear "tid"} tid:Tid, v:int)
 modifies x;
 {
   assert isOdd(seq);
@@ -114,7 +114,7 @@ modifies x;
   x := v;
 }
 
-<-> action {:layer 2} LOCKED_WRITE_Y ({:linear "tid"} tid:Tid, v:int)
+both action {:layer 2} LOCKED_WRITE_Y ({:linear "tid"} tid:Tid, v:int)
 modifies y;
 {
   assert isOdd(seq);
@@ -152,47 +152,47 @@ refines LOCKED_WRITE_Y;
 // * read and increment of seq
 // * acquire and release of lock
 
->-< action {:layer 1} READ_X () returns (r:int)
+atomic action {:layer 1} READ_X () returns (r:int)
 {
   r := x;
 }
 
->-< action {:layer 1} READ_Y () returns (r:int)
+atomic action {:layer 1} READ_Y () returns (r:int)
 {
   r := y;
 }
 
->-< action {:layer 1} WRITE_X (v:int)
+atomic action {:layer 1} WRITE_X (v:int)
 modifies x;
 {
   x := v;
 }
 
->-< action {:layer 1} WRITE_Y (v:int)
+atomic action {:layer 1} WRITE_Y (v:int)
 modifies y;
 {
   y := v;
 }
 
->-< action {:layer 1,2} READ_SEQ () returns (r:int)
+atomic action {:layer 1,2} READ_SEQ () returns (r:int)
 {
   r := seq;
 }
 
->-< action {:layer 1} INC_SEQ ()
+atomic action {:layer 1} INC_SEQ ()
 modifies seq;
 {
   seq := seq + 1;
 }
 
--> action {:layer 1,2} ACQUIRE ({:linear "tid"} tid:Tid)
+right action {:layer 1,2} ACQUIRE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
   assume lock == None();
   lock := Some(tid);
 }
 
-<- action {:layer 1,2} RELEASE ({:linear "tid"} tid:Tid)
+left action {:layer 1,2} RELEASE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
   assert lock == Some(tid);

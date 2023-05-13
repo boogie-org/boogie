@@ -10,40 +10,40 @@ const unique r: int;
 
 yield procedure {:layer 0} P0({:linear "tid"} tid: int);
 refines AtomicP0;
-<- action {:layer 1} AtomicP0({:linear "tid"} tid: int)
+left action {:layer 1} AtomicP0({:linear "tid"} tid: int)
 modifies x;
 { assert tid == p; assert x == 0; x := 1; }
 
 yield procedure {:layer 0} Q0({:linear "tid"} tid: int);
 refines AtomicQ0;
->-< action {:layer 1} AtomicQ0({:linear "tid"} tid: int)
+atomic action {:layer 1} AtomicQ0({:linear "tid"} tid: int)
 modifies x;
 { assert tid == q; assume x == 1; x := 2; }
 
 yield procedure {:layer 0} R0({:linear "tid"} tid: int);
 refines AtomicR0;
->-< action {:layer 1,3} AtomicR0({:linear "tid"} tid: int)
+atomic action {:layer 1,3} AtomicR0({:linear "tid"} tid: int)
 modifies x;
 { assert tid == r; assume x == 2; x := 3; }
 
 yield procedure {:layer 1} P1({:linear_in "tid"} tid: int)
 refines AtomicP1;
 {  async call {:sync} P0(tid);  }
->-< action {:layer 2,3} AtomicP1({:linear_in "tid"} tid: int)
+atomic action {:layer 2,3} AtomicP1({:linear_in "tid"} tid: int)
 modifies x;
 { assert tid == p; assert x == 0; x := 1; }
 
 yield procedure {:layer 1} Q1({:linear "tid"} tid: int)
 refines AtomicQ1;
 {  call Q0(tid);  }
-<- action {:layer 2,3} AtomicQ1({:linear "tid"} tid: int)
+left action {:layer 2,3} AtomicQ1({:linear "tid"} tid: int)
 modifies x;
 { assert tid == q; assert x == 1; x := 2; }
 
 yield procedure {:layer 3} R3({:linear "tid"} tid: int)
 refines AtomicR3;
 {  call R0(tid);  }
-<- action {:layer 4} AtomicR3({:linear "tid"} tid: int)
+left action {:layer 4} AtomicR3({:linear "tid"} tid: int)
 modifies x;
 { assert tid == r; assert x == 2; x := 3; }
 
@@ -53,7 +53,7 @@ refines AtomicMain3;
     call P1(tidp);
     async call {:sync} Q1(tidq);
 }
->-< action {:layer 4} AtomicMain3({:linear_in "tid"} tidp: int, {:linear_in "tid"} tidq: int)
+atomic action {:layer 4} AtomicMain3({:linear_in "tid"} tidp: int, {:linear_in "tid"} tidq: int)
 modifies x;
 { assert tidp == p && tidq == q; assert x == 0; x := 2; }
 
@@ -63,6 +63,6 @@ refines AtomicMain4;
     call Main3(tidp, tidq);
     async call {:sync} R3(tidr);
 }
->-< action {:layer 5} AtomicMain4({:linear_in "tid"} tidp: int, {:linear_in "tid"} tidq: int, {:linear_in "tid"} tidr: int)
+atomic action {:layer 5} AtomicMain4({:linear_in "tid"} tidp: int, {:linear_in "tid"} tidq: int, {:linear_in "tid"} tidr: int)
 modifies x;
 { assert tidp == p && tidq == q && tidr == r; assert x == 0; x := 3; }

@@ -60,7 +60,7 @@ ensures Size(Y) == Size(X) + Size(MapDiff(Y, X));
 yield procedure {:layer 0} DecrementFreeSpace({:linear "tid"} tid: Tid);
 refines atomic_DecrementFreeSpace;
 
->-< action {:layer 1} atomic_DecrementFreeSpace({:linear "tid"} tid: Tid)
+atomic action {:layer 1} atomic_DecrementFreeSpace({:linear "tid"} tid: Tid)
 modifies freeSpace, allocMap;
 {
     var ptr: int;
@@ -72,7 +72,7 @@ modifies freeSpace, allocMap;
     call allocMap := Reserve(allocMap, tid, ptr);
 }
 
->-< action Reserve(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
+atomic action Reserve(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
     assert !allocMap->domain[tid];
     assert !allocMap->range[ptr];
     assert memAddr(ptr);
@@ -86,7 +86,7 @@ modifies freeSpace, allocMap;
 yield procedure {:layer 0} AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool);
 refines atomic_AllocIfPtrFree;
 
->-< action {:layer 1} atomic_AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
+atomic action {:layer 1} atomic_AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
 modifies isFree, allocMap;
 {
     var tid': Tid;
@@ -102,7 +102,7 @@ modifies isFree, allocMap;
     }
 }
 
->-< action Alloc(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
+atomic action Alloc(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
     var tid': Tid;
     var ptr': int;
     assert allocMap->domain[tid];
@@ -131,7 +131,7 @@ modifies isFree, allocMap;
 yield procedure {:layer 0} Reclaim() returns (ptr: int);
 refines atomic_Reclaim;
 
->-< action {:layer 1} atomic_Reclaim() returns (ptr: int)
+atomic action {:layer 1} atomic_Reclaim() returns (ptr: int)
 modifies freeSpace, isFree;
 {
     assume memAddr(ptr) && !isFree[ptr];

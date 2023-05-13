@@ -32,7 +32,7 @@ function {:inline} EmptyChannel () : [int]int
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 3}
+atomic action {:layer 3}
 MAIN' ({:linear_in "cid"} cid: ChannelId)
 {
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
@@ -89,7 +89,7 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 2}
+atomic action {:layer 2}
 MAIN ({:linear_in "cid"} cid: ChannelId)
 refines MAIN' using INV;
 creates PING, PONG;
@@ -102,7 +102,7 @@ modifies channel;
   call create_async(PONG(1, Right(cid)));
 }
 
-async >-< action {:layer 2} PING (x: int, {:linear_in "cid"} p: ChannelHandle)
+async atomic action {:layer 2} PING (x: int, {:linear_in "cid"} p: ChannelHandle)
 creates PING;
 modifies channel;
 {
@@ -131,7 +131,7 @@ modifies channel;
   channel[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
-async >-< action {:layer 2} PONG (y: int, {:linear_in "cid"} p: ChannelHandle)
+async atomic action {:layer 2} PONG (y: int, {:linear_in "cid"} p: ChannelHandle)
 creates PONG;
 modifies channel;
 {
@@ -212,7 +212,7 @@ refines PONG;
 ////////////////////////////////////////////////////////////////////////////////
 // Bidirectional channels
 
--> action {:layer 1} RECEIVE (p: ChannelHandle) returns (m: int)
+right action {:layer 1} RECEIVE (p: ChannelHandle) returns (m: int)
 modifies channel;
 {
   var left_channel: [int]int;
@@ -230,7 +230,7 @@ modifies channel;
   channel[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
-<- action {:layer 1} SEND (p: ChannelHandle, m: int)
+left action {:layer 1} SEND (p: ChannelHandle, m: int)
 modifies channel;
 {
   var left_channel: [int]int;
@@ -246,7 +246,7 @@ modifies channel;
   channel[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
-<-> action {:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
+both action {:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
   returns ({:linear "cid"} left: ChannelHandle, {:linear "cid"} right: ChannelHandle)
 {
   left := Left(cid);

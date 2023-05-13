@@ -10,7 +10,7 @@ const unique FINISHED: int;
 
 var status:[int]int;
 
->-< action {:layer 5} atomic_main({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool)
+atomic action {:layer 5} atomic_main({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool)
 modifies status;
 {
     assert id == c;
@@ -19,7 +19,7 @@ modifies status;
     status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
 
-<- action {:layer 4} atomic_server({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool)
+left action {:layer 4} atomic_server({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool)
 modifies status;
 {
     assert id == c;
@@ -28,7 +28,7 @@ modifies status;
     status := (lambda j: int :: if (0 <= j && j < n) then CREATED else status[j]);
 }
 
-<- action {:layer 4} atomic_client({:linear "tid"} id: int)
+left action {:layer 4} atomic_client({:linear "tid"} id: int)
 modifies status;
 {
     assert id == c;
@@ -36,7 +36,7 @@ modifies status;
     status := (lambda j: int :: if (0 <= j && j < n) then PROCESSED else status[j]);
 }
 
-<- action {:layer 4} atomic_master({:linear "tid"} id: int)
+left action {:layer 4} atomic_master({:linear "tid"} id: int)
 modifies status;
 {
     assert id == c;
@@ -68,7 +68,7 @@ action {:layer 3} StatusSnapshot() returns (snapshot: [int]int)
 
 yield procedure {:layer 2} Alloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool);
 refines AtomicAlloc;
-<-> action {:layer 3} AtomicAlloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool)
+both action {:layer 3} AtomicAlloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool)
 { assert tidq[i]; id := i; tidq' := tidq[i := false]; }
 
 yield procedure {:layer 3} server3({:linear "tid"} id: int, {:linear_in "tid"} tids: [int]bool)
@@ -93,7 +93,7 @@ refines atomic_server;
     }
 }
 
-<- action {:layer 3} atomic_server2({:linear "tid"} i: int)
+left action {:layer 3} atomic_server2({:linear "tid"} i: int)
 modifies status;
 {
     assert status[i] == DEFAULT;
@@ -108,7 +108,7 @@ refines atomic_client;
     call client2();
 }
 
->-< action {:layer 3} atomic_client2()
+atomic action {:layer 3} atomic_client2()
 modifies status;
 {
     assume (forall i: int :: 0 <= i && i < n ==> status[i] == CREATED);
@@ -123,7 +123,7 @@ refines atomic_master;
     call master2();
 }
 
->-< action {:layer 3} atomic_master2()
+atomic action {:layer 3} atomic_master2()
 modifies status;
 {
     assert (forall i: int :: 0 <= i && i < n ==> status[i] == PROCESSED);

@@ -49,14 +49,14 @@ var {:layer 0,1} barrierOn: bool;
 var {:layer 0,1} barrierCounter: int;
 var {:layer 0,1} {:linear "perm"} mutatorsInBarrier: [int]bool;
 
->-< action {:layer 1} AtomicIsBarrierOn() returns (b: bool)
+atomic action {:layer 1} AtomicIsBarrierOn() returns (b: bool)
 {
     b := barrierOn;
 }
 yield procedure {:layer 0} IsBarrierOn() returns (b: bool);
 refines AtomicIsBarrierOn;
 
->-< action {:layer 1} AtomicEnterBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
+atomic action {:layer 1} AtomicEnterBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
 modifies barrierCounter, mutatorsInBarrier;
 {
     assert IsMutator(i);
@@ -67,7 +67,7 @@ modifies barrierCounter, mutatorsInBarrier;
 yield procedure {:layer 0} EnterBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm);
 refines AtomicEnterBarrier;
 
->-< action {:layer 1} AtomicWaitForBarrierRelease({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
+atomic action {:layer 1} AtomicWaitForBarrierRelease({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
 modifies barrierCounter, mutatorsInBarrier;
 {
     assert p == Right(i) && mutatorsInBarrier[i];
@@ -78,7 +78,7 @@ modifies barrierCounter, mutatorsInBarrier;
 yield procedure {:layer 0} WaitForBarrierRelease({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int);
 refines AtomicWaitForBarrierRelease;
 
->-< action {:layer 1} AtomicSetBarrier(b: bool)
+atomic action {:layer 1} AtomicSetBarrier(b: bool)
 modifies barrierOn;
 {
     barrierOn := b;
@@ -86,7 +86,7 @@ modifies barrierOn;
 yield procedure {:layer 0} SetBarrier(b: bool);
 refines AtomicSetBarrier;
 
->-< action {:layer 1} AtomicWaitBarrier()
+atomic action {:layer 1} AtomicWaitBarrier()
 {
     assume barrierCounter == 0;
 }

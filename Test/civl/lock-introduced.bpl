@@ -25,7 +25,7 @@ function {:inline} InvLock(lock: X, b: bool) : bool
 yield invariant {:layer 2} Yield({:linear "tid"} tid: X);
 invariant tid != nil && InvLock(lock, b);
 
--> action {:layer 3} AtomicEnter({:linear "tid"} tid: X)
+right action {:layer 3} AtomicEnter({:linear "tid"} tid: X)
 modifies lock;
 { assume lock == nil && tid != nil; lock := tid; }
 
@@ -36,7 +36,7 @@ preserves call Yield(tid);
   call LowerEnter(tid);
 }
 
-<- action {:layer 3} AtomicLeave({:linear "tid"} tid:X)
+left action {:layer 3} AtomicLeave({:linear "tid"} tid:X)
 modifies lock;
 { assert lock == tid && tid != nil; lock := nil; }
 
@@ -47,7 +47,7 @@ preserves call Yield(tid);
   call LowerLeave();
 }
 
->-< action {:layer 2} AtomicLowerEnter({:linear "tid"} tid: X)
+atomic action {:layer 2} AtomicLowerEnter({:linear "tid"} tid: X)
 modifies b, lock;
 { assume !b; b := true; lock := tid; }
 
@@ -67,7 +67,7 @@ refines AtomicLowerEnter;
   }
 }
 
->-< action {:layer 2} AtomicLowerLeave()
+atomic action {:layer 2} AtomicLowerLeave()
 modifies b, lock;
 { b := false; lock := nil; }
 
@@ -82,7 +82,7 @@ action{:layer 1} SetLock(v: X)
 modifies lock;
 { lock := v; }
 
->-< action {:layer 1} AtomicCAS(prev: bool, next: bool) returns (status: bool)
+atomic action {:layer 1} AtomicCAS(prev: bool, next: bool) returns (status: bool)
 modifies b;
 {
   if (b == prev) {
@@ -93,7 +93,7 @@ modifies b;
   }
 }
 
->-< action {:layer 1} AtomicSET(next: bool)
+atomic action {:layer 1} AtomicSET(next: bool)
 modifies b;
 { b := next; }
 

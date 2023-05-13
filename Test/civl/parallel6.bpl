@@ -18,13 +18,13 @@ refines atomic_incr_by_two;
     par incr() | decr() | Yield() | incr();
     call incr();
 }
-<-> action {:layer 1,2} atomic_incr_by_two()
+both action {:layer 1,2} atomic_incr_by_two()
 modifies x;
 {
     x := x + 2;
 }
 
-<-> action {:layer 1,1} atomic_incr()
+both action {:layer 1,1} atomic_incr()
 modifies x;
 {
     x := x + 1;
@@ -32,7 +32,7 @@ modifies x;
 yield procedure {:layer 0} incr();
 refines atomic_incr;
 
-<-> action {:layer 1,1} atomic_decr()
+both action {:layer 1,1} atomic_decr()
 modifies x;
 {
     x := x - 1;

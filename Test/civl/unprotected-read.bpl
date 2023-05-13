@@ -12,20 +12,20 @@ var {:layer 0,1} x:int;
 
 ////////////////////////////////////////////////////////////////////////////////
 
--> action {:layer 1} Acquire({:linear "tid"} tid:Tid)
+right action {:layer 1} Acquire({:linear "tid"} tid:Tid)
 modifies lock;
 { assert tid != nil; assume lock == nil; lock := tid; }
 
-<- action {:layer 1} Release({:linear "tid"} tid:Tid)
+left action {:layer 1} Release({:linear "tid"} tid:Tid)
 modifies lock;
 { assert tid != nil && lock == tid; lock := nil; }
 
->-< action {:layer 1} Write({:linear "tid"} tid:Tid, val:int)
+atomic action {:layer 1} Write({:linear "tid"} tid:Tid, val:int)
 modifies x;
 { assert tid != nil && lock == tid; x := val; }
 
-<-> action {:layer 1} ReadLock({:linear "tid"} tid:Tid) returns (val:int)
+both action {:layer 1} ReadLock({:linear "tid"} tid:Tid) returns (val:int)
 { assert tid != nil && lock == tid; val := x; }
 
->-< action {:layer 1} ReadNoLock() returns (val:int)
+atomic action {:layer 1} ReadNoLock() returns (val:int)
 { val := x; }

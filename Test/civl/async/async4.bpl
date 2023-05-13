@@ -3,7 +3,7 @@
 
 var {:layer 0,2} x:int;
 
-<-> action {:layer 2} A_Add (n: int)
+both action {:layer 2} A_Add (n: int)
 modifies x;
 { assert 0 <= n; x := x + n; }
 
@@ -18,7 +18,7 @@ modifies x;
   call create_multi_asyncs(MapConst(0)[A_Inc() := n - i]);
 }
 
->-< action {:layer 1} Async_Add(n: int)
+atomic action {:layer 1} Async_Add(n: int)
 refines A_Add using INV;
 creates A_Inc;
 {
@@ -27,6 +27,6 @@ creates A_Inc;
   call create_multi_asyncs(MapConst(0)[A_Inc() := n]);
 }
 
-async <-> action {:layer 1,2} A_Inc ()
+async both action {:layer 1,2} A_Inc ()
 modifies x;
 { x := x + 1; }

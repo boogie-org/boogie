@@ -24,14 +24,14 @@ preserves call Inv();
   call geq0_dec();
 }
 
--> action {:layer 1} GEQ0_INC ()
+right action {:layer 1} GEQ0_INC ()
 modifies x;
 {
   assert x >= 0;
   x := x + 1;
 }
 
->-< action {:layer 1} GEQ0_DEC ()
+atomic action {:layer 1} GEQ0_DEC ()
 modifies x;
 {
   assert x >= 0;

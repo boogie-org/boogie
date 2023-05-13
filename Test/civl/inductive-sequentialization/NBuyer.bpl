@@ -50,7 +50,7 @@ function {:inline} Init(pids:[int]bool, RemainderChannel:[int][int]int, Decision
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 6}
+atomic action {:layer 6}
 MAIN5 ({:linear_in "pid"} pids:[int]bool)
 modifies contribution;
 {
@@ -67,7 +67,7 @@ modifies DecisionChannel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN5;
 creates SellerFinish;
 eliminates SellerFinish using SellerFinish';
@@ -156,7 +156,7 @@ modifies RemainderChannel, DecisionChannel, contribution;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN4 using INV3;
 creates SellerFinish, FirstBuyer, MiddleBuyer, LastBuyer;
 eliminates FirstBuyer using FirstBuyer', MiddleBuyer using MiddleBuyer', LastBuyer using LastBuyer';
@@ -172,7 +172,7 @@ eliminates FirstBuyer using FirstBuyer', MiddleBuyer using MiddleBuyer', LastBuy
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN3;
 creates SellerInit, FirstBuyer, MiddleBuyer, LastBuyer;
 {
@@ -185,7 +185,7 @@ creates SellerInit, FirstBuyer, MiddleBuyer, LastBuyer;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN2;
 creates SellerInit, FirstBuyerInit, MiddleBuyer, LastBuyer;
 {
@@ -196,14 +196,14 @@ creates SellerInit, FirstBuyerInit, MiddleBuyer, LastBuyer;
   call create_asyncs((lambda pa:MiddleBuyer :: middleBuyerID(pa->pid)));
 }
 
-async >-< action {:layer 2,3} SellerInit ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2,3} SellerInit ({:linear_in "pid"} pid:int)
 creates SellerFinish;
 {
   assert sellerID(pid);
   call create_async(SellerFinish(pid));
 }
 
-async >-< action {:layer 2,5} SellerFinish ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2,5} SellerFinish ({:linear_in "pid"} pid:int)
 modifies DecisionChannel;
 {
   var dec:bool;
@@ -213,14 +213,14 @@ modifies DecisionChannel;
   DecisionChannel[dec] := DecisionChannel[dec] - 1;
 }
 
-async >-< action {:layer 2,4} FirstBuyerInit ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2,4} FirstBuyerInit ({:linear_in "pid"} pid:int)
 creates FirstBuyer;
 {
   assert firstBuyerID(pid);
   call create_async(FirstBuyer(pid));
 }
 
-async >-< action {:layer 2,4} FirstBuyer ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2,4} FirstBuyer ({:linear_in "pid"} pid:int)
 modifies RemainderChannel, contribution;
 {
   var rem:int;
@@ -234,7 +234,7 @@ modifies RemainderChannel, contribution;
   RemainderChannel[nextBuyer(pid)][rem] := RemainderChannel[nextBuyer(pid)][rem] + 1;
 }
 
-async >-< action {:layer 2,4} MiddleBuyer ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2,4} MiddleBuyer ({:linear_in "pid"} pid:int)
 modifies RemainderChannel, contribution;
 {
   var rem:int;
@@ -251,7 +251,7 @@ modifies RemainderChannel, contribution;
   RemainderChannel[nextBuyer(pid)][rem] := RemainderChannel[nextBuyer(pid)][rem] + 1;
 }
 
-async >-< action {:layer 2,4} LastBuyer ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2,4} LastBuyer ({:linear_in "pid"} pid:int)
 modifies RemainderChannel, DecisionChannel, contribution;
 {
   var rem:int;
@@ -406,63 +406,63 @@ preserves call YieldInv();
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 1} SET_CONTRIBUTION({:linear "pid"} pid:int, c:int)
+atomic action {:layer 1} SET_CONTRIBUTION({:linear "pid"} pid:int, c:int)
 modifies contribution;
 {
   contribution[pid] := c;
 }
 
->-< action {:layer 1} ASSERT_SUM()
+atomic action {:layer 1} ASSERT_SUM()
 {
   assert sum(contribution, 1, n) == price;
 }
 
-<- action {:layer 1} SEND_REQUEST()
+left action {:layer 1} SEND_REQUEST()
 modifies RequestChannel;
 {
   RequestChannel := RequestChannel + 1;
 }
 
--> action {:layer 1} RECEIVE_REQUEST()
+right action {:layer 1} RECEIVE_REQUEST()
 modifies RequestChannel;
 {
   assume RequestChannel > 0;
   RequestChannel := RequestChannel - 1;
 }
 
-<- action {:layer 1} SEND_QUOTE(pid:int, q:int)
+left action {:layer 1} SEND_QUOTE(pid:int, q:int)
 modifies QuoteChannel;
 {
   QuoteChannel[pid][q] := QuoteChannel[pid][q] + 1;
 }
 
--> action {:layer 1} RECEIVE_QUOTE(pid:int) returns (q:int)
+right action {:layer 1} RECEIVE_QUOTE(pid:int) returns (q:int)
 modifies QuoteChannel;
 {
   assume QuoteChannel[pid][q] > 0;
   QuoteChannel[pid][q] := QuoteChannel[pid][q] - 1;
 }
 
-<- action {:layer 1} SEND_REMAINDER(pid:int, r:int)
+left action {:layer 1} SEND_REMAINDER(pid:int, r:int)
 modifies RemainderChannel;
 {
   RemainderChannel[pid][r] := RemainderChannel[pid][r] + 1;
 }
 
--> action {:layer 1} RECEIVE_REMAINDER(pid:int) returns (r:int)
+right action {:layer 1} RECEIVE_REMAINDER(pid:int) returns (r:int)
 modifies RemainderChannel;
 {
   assume RemainderChannel[pid][r] > 0;
   RemainderChannel[pid][r] := RemainderChannel[pid][r] - 1;
 }
 
-<- action {:layer 1} SEND_DECISION(d:bool)
+left action {:layer 1} SEND_DECISION(d:bool)
 modifies DecisionChannel;
 {
   DecisionChannel[d] := DecisionChannel[d] + 1;
 }
 
--> action {:layer 1} RECEIVE_DECISION() returns (d:bool)
+right action {:layer 1} RECEIVE_DECISION() returns (d:bool)
 modifies DecisionChannel;
 {
   assume DecisionChannel[d] > 0;
@@ -499,7 +499,7 @@ refines SEND_DECISION;
 yield procedure {:layer 0} receive_decision() returns (d:bool);
 refines RECEIVE_DECISION;
 
-<-> action {:layer 1}
+both action {:layer 1}
 LINEAR_TRANSFER(i:int, {:linear_in "pid"} pids:[int]bool)
 returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
 {

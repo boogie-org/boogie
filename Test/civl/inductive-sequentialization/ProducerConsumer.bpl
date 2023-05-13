@@ -19,7 +19,7 @@ var {:layer 0,3} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId)
+atomic action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId)
 refines MAIN' using INV;
 creates PRODUCER, CONSUMER;
 eliminates CONSUMER using CONSUMER';
@@ -29,7 +29,7 @@ eliminates CONSUMER using CONSUMER';
   call create_async(CONSUMER(1, Receive(cid)));
 }
 
->-< action {:layer 3} MAIN' ({:linear_in "cid"} cid: ChannelId)
+atomic action {:layer 3} MAIN' ({:linear_in "cid"} cid: ChannelId)
 modifies channels;
 {
   var channel: Channel;
@@ -77,7 +77,7 @@ modifies channels;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async <- action {:layer 2} PRODUCER (x: int, {:linear_in "cid"} send_handle: ChannelHandle)
+async left action {:layer 2} PRODUCER (x: int, {:linear_in "cid"} send_handle: ChannelHandle)
 creates PRODUCER;
 modifies channels;
 {
@@ -105,7 +105,7 @@ modifies channels;
   assume {:add_to_pool "INV2", channels[send_handle->cid]} true;
 }
 
-async >-< action {:layer 2} CONSUMER (x: int, {:linear_in "cid"} receive_handle: ChannelHandle)
+async atomic action {:layer 2} CONSUMER (x: int, {:linear_in "cid"} receive_handle: ChannelHandle)
 creates CONSUMER;
 modifies channels;
 {
@@ -192,7 +192,7 @@ refines CONSUMER;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 1} SEND (m: int, {:linear "cid"} send_handle: ChannelHandle)
+atomic action {:layer 1} SEND (m: int, {:linear "cid"} send_handle: ChannelHandle)
 modifies channels;
 {
   var channel: Channel;
@@ -209,7 +209,7 @@ modifies channels;
   channels[send_handle->cid] := Channel(C, head, tail);
 }
 
->-< action {:layer 1} RECEIVE ({:linear "cid"} receive_handle: ChannelHandle) returns (m:int)
+atomic action {:layer 1} RECEIVE ({:linear "cid"} receive_handle: ChannelHandle) returns (m:int)
 modifies channels;
 {
   var channel: Channel;
@@ -227,7 +227,7 @@ modifies channels;
   channels[receive_handle->cid] := Channel(C, head, tail);
 }
 
-<-> action {:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
+both action {:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
   returns ({:linear "cid"} send_handle: ChannelHandle, {:linear "cid"} receive_handle: ChannelHandle)
 {
   send_handle := Send(cid);

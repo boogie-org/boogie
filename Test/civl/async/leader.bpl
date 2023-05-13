@@ -51,7 +51,7 @@ function {:inline} all_decided' (r_bound:int, init_val:[int]int, dec_dom:[int]bo
 // ###########################################################################
 // Main
 
->-< action {:layer 2} main_atomic ({:linear_in "Perm"} perms:[Perm]bool)
+atomic action {:layer 2} main_atomic ({:linear_in "Perm"} perms:[Perm]bool)
 modifies col_dom, col_val, dec_dom, dec_val;
 {
   havoc dec_dom, dec_val;
@@ -83,7 +83,7 @@ ensures call YieldAllDecided();
   }
 }
 
-yield <- procedure {:layer 1} P (s:int, {:linear_in "Perm"} perms:[Perm]bool)
+yield left procedure {:layer 1} P (s:int, {:linear_in "Perm"} perms:[Perm]bool)
 requires {:layer 1} perms == s_perms_eq(s);
 requires {:layer 1} inv_val(s, init_val, col_dom, col_val);
 ensures  {:layer 1} inv_val(s+1, init_val, col_dom, col_val);
@@ -109,7 +109,7 @@ modifies col_dom, col_val, dec_dom, dec_val;
   }
 }
 
-<- action {:layer 1} Q_atomic (r:int, s:int, v:int, {:linear_in "Perm"} p:Perm)
+left action {:layer 1} Q_atomic (r:int, s:int, v:int, {:linear_in "Perm"} p:Perm)
 modifies col_dom, col_val, dec_dom, dec_val;
 {
   assert is_perm(s,r,p);
@@ -121,7 +121,7 @@ modifies col_dom, col_val, dec_dom, dec_val;
   }
 }
 
-<-> action {:layer 1} read_init_val_atomic (pid:Pid) returns (v:int)
+both action {:layer 1} read_init_val_atomic (pid:Pid) returns (v:int)
 {
   v := init_val[pid];
 }
@@ -140,12 +140,12 @@ function {:inline} s_perms_eq (s:Pid) : [Perm]bool { (lambda p:Perm :: p->s == s
 function {:inline} s_perms_geq (s:Pid) : [Perm]bool { (lambda p:Perm :: is_pid(p->s) && is_pid(p->r) && p->s >= s) }
 function {:inline} s_r_perms_geq (s:Pid, r:Pid) : [Perm]bool { (lambda p:Perm :: p->s == s && is_pid(p->r) && p->r >= r) }
 
-yield <-> procedure {:layer 1} split_perms_sender (s:Pid, {:linear_in "Perm"} perms_in:[Perm]bool) returns ({:linear "Perm"} perms_out_1:[Perm]bool, {:linear "Perm"} perms_out_2:[Perm]bool);
+yield both procedure {:layer 1} split_perms_sender (s:Pid, {:linear_in "Perm"} perms_in:[Perm]bool) returns ({:linear "Perm"} perms_out_1:[Perm]bool, {:linear "Perm"} perms_out_2:[Perm]bool);
 requires {:layer 1} perms_in == s_perms_geq(s);
 ensures {:layer 1} perms_out_1 == s_perms_geq(s+1);
 ensures {:layer 1} perms_out_2 == s_perms_eq(s);
 
-yield <-> procedure {:layer 1} split_perms_receiver (s:Pid, r:Pid, {:linear_in "Perm"} perms_in:[Perm]bool) returns ({:linear "Perm"} perms_out_1:[Perm]bool, {:linear "Perm"} perms_out_2:Perm);
+yield both procedure {:layer 1} split_perms_receiver (s:Pid, r:Pid, {:linear_in "Perm"} perms_in:[Perm]bool) returns ({:linear "Perm"} perms_out_1:[Perm]bool, {:linear "Perm"} perms_out_2:Perm);
 requires {:layer 1} perms_in ==  s_r_perms_geq(s,r);
 ensures {:layer 1} perms_out_1 == s_r_perms_geq(s,r+1);
 ensures {:layer 1} is_perm(s,r,perms_out_2);

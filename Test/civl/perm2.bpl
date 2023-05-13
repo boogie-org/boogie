@@ -7,14 +7,14 @@ var {:layer 0,1} g: int;
 var {:layer 0,1} h: int;
 var {:layer 0,1}{:linear "tid"} unallocated:[int]bool;
 
->-< action {:layer 1} AtomicSetG(val:int)
+atomic action {:layer 1} AtomicSetG(val:int)
 modifies g;
 {g := val; }
 
 yield procedure {:layer 0} SetG(val:int);
 refines AtomicSetG;
 
->-< action {:layer 1} AtomicSetH(val:int)
+atomic action {:layer 1} AtomicSetH(val:int)
 modifies h;
 { h := val; }
 
@@ -27,7 +27,7 @@ ensures {:layer 1} xl != 0;
     call xl := AllocateLow();
 }
 
->-< action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xls: int)
+atomic action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xls: int)
 modifies unallocated;
 { assume xls != 0; assume unallocated[xls]; unallocated[xls] := false; }
 

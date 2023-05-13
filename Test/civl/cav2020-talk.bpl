@@ -37,7 +37,7 @@ requires call yield_y(0);
     assert {:layer 1} x >= 2 && y >= 2;
 }
 
->-< action {:layer 1,1} atomic_inc_x()
+atomic action {:layer 1,1} atomic_inc_x()
 modifies x;
 {
     x := x + 1;
@@ -45,7 +45,7 @@ modifies x;
 yield procedure {:layer 0} inc_x();
 refines atomic_inc_x;
 
->-< action {:layer 1,1} atomic_inc_y()
+atomic action {:layer 1,1} atomic_inc_y()
 modifies y;
 {
     y := y + 1;

@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 var {:layer 0,2} x: int;
 
--> action {:layer 1} AtomicIncr()
+right action {:layer 1} AtomicIncr()
 modifies x;
 { x := x + 1; }
 
@@ -14,7 +14,7 @@ action {:layer 1} ghost(y: int) returns (z: int)
   z := y + 1;
 }
 
--> action {:layer 2} AtomicIncr2()
+right action {:layer 2} AtomicIncr2()
 modifies x;
 { x := x + 2; }
 

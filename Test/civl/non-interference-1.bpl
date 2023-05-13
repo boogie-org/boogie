@@ -7,14 +7,14 @@ yield procedure {:layer 1} PB()
   call Incr();
 }
 
->-< action {:layer 1} AtomicIncr()
+atomic action {:layer 1} AtomicIncr()
 modifies g;
 { g := g + 1; }
 
 yield procedure {:layer 0} Incr();
 refines AtomicIncr;
 
->-< action {:layer 1} AtomicSet(v: int)
+atomic action {:layer 1} AtomicSet(v: int)
 modifies g;
 { g := v; }
 

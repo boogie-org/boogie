@@ -27,7 +27,7 @@ var {:layer 0, 1} rwlock: RwLock;
 
 // Acquiring a read lock is possible if there is no writer, and has the effect
 // of adding us to `readers`.
--> action {:layer 1, 1} atomic_acquire_read({:linear "tid"} tid: Tid)
+right action {:layer 1, 1} atomic_acquire_read({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assume rwlock->writer == None();
@@ -36,7 +36,7 @@ modifies rwlock;
 
 // Acquiring a write lock is possbile if there is no other writer and no reader,
 // and has the effect of storing us as the `writer`.
--> action {:layer 1, 1} atomic_acquire_write({:linear "tid"} tid: Tid)
+right action {:layer 1, 1} atomic_acquire_write({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assume rwlock->writer == None();
@@ -61,7 +61,7 @@ function {:inline} holds_write_lock(tid: Tid, rwlock: RwLock): bool
 }
 
 // Releasing a read lock takes us out of `readers`.
-<- action {:layer 1, 1} atomic_release_read({:linear "tid"} tid: Tid)
+left action {:layer 1, 1} atomic_release_read({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assert holds_read_lock(tid, rwlock);
@@ -69,7 +69,7 @@ modifies rwlock;
 }
 
 // Releasing a write lock takes us out of `writer`.
-<- action {:layer 1, 1} atomic_release_write({:linear "tid"} tid: Tid)
+left action {:layer 1, 1} atomic_release_write({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assert holds_write_lock(tid, rwlock);
@@ -100,13 +100,13 @@ type Val;
 
 var {:layer 0, 2} memory: [Addr]Val;
 
-<-> action {:layer 1,1} atomic_read({:linear "tid"} tid: Tid, a: Addr) returns (v: Val)
+both action {:layer 1,1} atomic_read({:linear "tid"} tid: Tid, a: Addr) returns (v: Val)
 {
     assert holds_read_lock(tid, rwlock);
     v := memory[a];
 }
 
-<-> action {:layer 1,1} atomic_write({:linear "tid"} tid: Tid, a: Addr, v: Val)
+both action {:layer 1,1} atomic_write({:linear "tid"} tid: Tid, a: Addr, v: Val)
 modifies memory;
 {
     assert holds_write_lock(tid, rwlock);
@@ -151,13 +151,13 @@ refines atomic_write2;
 // We can prove that the above procedures perform their operations on two memory
 // locations atomically.
 
->-< action {:layer 2} atomic_read2(a1: Addr, a2: Addr) returns (v1: Val, v2: Val)
+atomic action {:layer 2} atomic_read2(a1: Addr, a2: Addr) returns (v1: Val, v2: Val)
 {
     v1 := memory[a1];
     v2 := memory[a2];
 }
 
->-< action {:layer 2} atomic_write2(a1: Addr, a2:Addr, v1: Val, v2: Val)
+atomic action {:layer 2} atomic_write2(a1: Addr, a2:Addr, v1: Val, v2: Val)
 modifies memory;
 {
     memory[a1] := v1;

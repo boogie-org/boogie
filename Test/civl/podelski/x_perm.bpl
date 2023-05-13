@@ -86,7 +86,7 @@ requires call Inv();
   }
 }
 
-<-> action {:layer 1} TRANSFER_AB (x:int, {:linear_in "perm"} abs:[AB]bool) returns ({:linear "perm"} ab:AB, {:linear "perm"} abs':[AB]bool)
+both action {:layer 1} TRANSFER_AB (x:int, {:linear_in "perm"} abs:[AB]bool) returns ({:linear "perm"} ab:AB, {:linear "perm"} abs':[AB]bool)
 {
   assert !abs[AB(-x)];
   assert abs[AB(x)];
@@ -94,7 +94,7 @@ requires call Inv();
   ab := AB(x);
 }
 
-<-> action {:layer 1} SPLIT_AB ({:linear_in "perm"} ab:AB) returns ({:linear "perm"} a:A, {:linear "perm"} b:B)
+both action {:layer 1} SPLIT_AB ({:linear_in "perm"} ab:AB) returns ({:linear "perm"} a:A, {:linear "perm"} b:B)
 {
   assert ab->x != 0;
   a := A(ab->x);
@@ -117,7 +117,7 @@ preserves call Inv();
   call geq0_dec(b);
 }
 
->-< action {:layer 1} GEQ0_INC ({:linear_in "perm"} a:A, {:linear "perm"} b:B)
+atomic action {:layer 1} GEQ0_INC ({:linear_in "perm"} a:A, {:linear "perm"} b:B)
 modifies x, As;
 {
   assert x >= 0;
@@ -126,7 +126,7 @@ modifies x, As;
   As[a] := true;
 }
 
->-< action {:layer 1} GEQ0_DEC ({:linear_in "perm"} b:B)
+atomic action {:layer 1} GEQ0_DEC ({:linear_in "perm"} b:B)
 modifies x, Bs;
 {
   assert x >= 0;

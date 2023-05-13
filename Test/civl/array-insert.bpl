@@ -13,7 +13,7 @@ var {:layer 0,2} lock:Tid;
 function {:inline} sorted (A:[int]int, count:int) : bool
 { (forall i:int, j:int :: 0 <= i && i <= j && j < count ==> A[i] <= A[j]) }
 
->-< action {:layer 2} INSERT ({:linear "tid"} tid:Tid, v:int)
+atomic action {:layer 2} INSERT ({:linear "tid"} tid:Tid, v:int)
 modifies A, count;
 {
   var idx:int; // index at which v is written
@@ -86,33 +86,33 @@ action {:layer 1} snapshot () returns (snapshot: [int]int)
 
 // =============================================================================
 
-<-> action {:layer 1} READ_A ({:linear "tid"} tid:Tid, i:int) returns (v:int)
+both action {:layer 1} READ_A ({:linear "tid"} tid:Tid, i:int) returns (v:int)
 {
   assert tid != nil && lock == tid;
   v := A[i];
 }
 
-<-> action {:layer 1} WRITE_A ({:linear "tid"} tid:Tid, i:int, v:int)
+both action {:layer 1} WRITE_A ({:linear "tid"} tid:Tid, i:int, v:int)
 modifies A;
 {
   assert tid != nil && lock == tid;
   A[i] := v;
 }
 
-<-> action {:layer 1} READ_COUNT ({:linear "tid"} tid:Tid) returns (c:int)
+both action {:layer 1} READ_COUNT ({:linear "tid"} tid:Tid) returns (c:int)
 {
   assert tid != nil && lock == tid;
   c := count;
 }
 
-<-> action {:layer 1} WRITE_COUNT ({:linear "tid"} tid:Tid, c:int)
+both action {:layer 1} WRITE_COUNT ({:linear "tid"} tid:Tid, c:int)
 modifies count;
 {
   assert tid != nil && lock == tid;
   count := c;
 }
 
--> action {:layer 1} ACQUIRE ({:linear "tid"} tid:Tid)
+right action {:layer 1} ACQUIRE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
   assert tid != nil;
@@ -120,7 +120,7 @@ modifies lock;
   lock := tid;
 }
 
-<- action {:layer 1} RELEASE ({:linear "tid"} tid:Tid)
+left action {:layer 1} RELEASE ({:linear "tid"} tid:Tid)
 modifies lock;
 {
   assert tid != nil && lock == tid;

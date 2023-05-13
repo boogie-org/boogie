@@ -24,7 +24,7 @@ requires call Yield(permVar_in, 0);
   call Yield(permVar_out, 1);
 }
 
->-< action {:layer 1} AtomicIncr()
+atomic action {:layer 1} AtomicIncr()
 modifies x;
 { x := x + 1; }
 

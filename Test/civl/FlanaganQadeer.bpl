@@ -26,28 +26,28 @@ yield procedure {:layer 1} main()
     }
 }
 
->-< action {:layer 1} AtomicLock(tid: X)
+atomic action {:layer 1} AtomicLock(tid: X)
 modifies l;
 { assume l == nil; l := tid; }
 
 yield procedure {:layer 0} Lock(tid: X);
 refines AtomicLock;
 
->-< action {:layer 1} AtomicUnlock()
+atomic action {:layer 1} AtomicUnlock()
 modifies l;
 { l := nil; }
 
 yield procedure {:layer 0} Unlock();
 refines AtomicUnlock;
 
->-< action {:layer 1} AtomicSet(val: int)
+atomic action {:layer 1} AtomicSet(val: int)
 modifies x;
 { x := val; }
 
 yield procedure {:layer 0} Set(val: int);
 refines AtomicSet;
 
->-< action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xl: X)
+atomic action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xl: X)
 modifies unallocated;
 { assume xl != nil; assume unallocated[xl]; unallocated[xl] := false; }
 

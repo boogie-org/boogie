@@ -16,7 +16,7 @@ requires {:layer 1} N >= 0;
   async call {:sync} dec_by_N(N);
 }
 
-yield <- procedure {:layer 1} inc_by_N (N: int)
+yield left procedure {:layer 1} inc_by_N (N: int)
 modifies x;
 requires {:layer 1} N >= 0;
 ensures {:layer 1} x == old(x) + N;
@@ -32,7 +32,7 @@ ensures {:layer 1} x == old(x) + N;
   }
 }
 
-yield <- procedure {:layer 1} dec_by_N (N: int)
+yield left procedure {:layer 1} dec_by_N (N: int)
 modifies x;
 requires {:layer 1} N >= 0;
 ensures {:layer 1} x == old(x) - N;
@@ -51,11 +51,11 @@ ensures {:layer 1} x == old(x) - N;
 // ###########################################################################
 // Low level atomic actions
 
-<-> action {:layer 1} atomic_inc ()
+both action {:layer 1} atomic_inc ()
 modifies x;
 { x := x + 1; }
 
-<-> action {:layer 1} atomic_dec ()
+both action {:layer 1} atomic_dec ()
 modifies x;
 { x := x - 1; }
 

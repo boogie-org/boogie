@@ -43,7 +43,7 @@ function {:inline} Init(pids:[int]bool, RequestChannel:[int]int, VoteChannel:[vo
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 6}
+atomic action {:layer 6}
 MAIN5 ({:linear_in "pid"} pids:[int]bool)
 modifies RequestChannel, VoteChannel, votes, decisions;
 {
@@ -86,7 +86,7 @@ modifies DecisionChannel, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 5} MAIN4 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN5 using INV4;
 creates PARTICIPANT2;
 eliminates PARTICIPANT2 using PARTICIPANT2';
@@ -106,7 +106,7 @@ modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN4;
 creates COORDINATOR2, PARTICIPANT2;
 modifies RequestChannel, VoteChannel, votes;
@@ -146,7 +146,7 @@ modifies RequestChannel, VoteChannel, votes;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN3 using INV2;
 creates COORDINATOR2, PARTICIPANT1;
 modifies RequestChannel;
@@ -161,7 +161,7 @@ modifies RequestChannel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN2;
 creates COORDINATOR1, PARTICIPANT1;
 {
@@ -170,7 +170,7 @@ creates COORDINATOR1, PARTICIPANT1;
   call create_asyncs((lambda pa:PARTICIPANT1 :: pid(pa->pid)));
 }
 
-async >-< action {:layer 2,3} PARTICIPANT1 ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2,3} PARTICIPANT1 ({:linear_in "pid"} pid:int)
 creates PARTICIPANT2;
 modifies RequestChannel, VoteChannel, votes;
 {
@@ -189,7 +189,7 @@ modifies RequestChannel, VoteChannel, votes;
   call create_async(PARTICIPANT2(pid));
 }
 
-async >-< action {:layer 2,5} PARTICIPANT2 ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2,5} PARTICIPANT2 ({:linear_in "pid"} pid:int)
 modifies DecisionChannel, decisions;
 {
   var d:decision;
@@ -201,7 +201,7 @@ modifies DecisionChannel, decisions;
   decisions[pid] := d;
 }
 
-async <- action {:layer 2} COORDINATOR1 ({:linear_in "pid"} pid:int)
+async left action {:layer 2} COORDINATOR1 ({:linear_in "pid"} pid:int)
 creates COORDINATOR2;
 modifies RequestChannel;
 {
@@ -210,7 +210,7 @@ modifies RequestChannel;
   call create_async(COORDINATOR2(0));
 }
 
-async >-< action {:layer 2,4} COORDINATOR2 ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2,4} COORDINATOR2 ({:linear_in "pid"} pid:int)
 modifies VoteChannel, DecisionChannel, decisions;
 {
   var dec:decision;
@@ -368,51 +368,51 @@ action {:layer 1} Snapshot_DecisionChannel() returns (snapshot:[int][decision]in
 
 ////////////////////////////////////////////////////////////////////////////////
 
-<-> action {:layer 1} SET_VOTE({:linear "pid"} pid:int, v:vote)
+both action {:layer 1} SET_VOTE({:linear "pid"} pid:int, v:vote)
 modifies votes;
 {
   votes[pid] := v;
 }
 
-<-> action {:layer 1} SET_DECISION({:linear "pid"} pid:int, d:decision)
+both action {:layer 1} SET_DECISION({:linear "pid"} pid:int, d:decision)
 modifies decisions;
 {
   decisions[pid] := d;
 }
 
-<- action {:layer 1} SEND_REQUEST(pid:int)
+left action {:layer 1} SEND_REQUEST(pid:int)
 modifies RequestChannel;
 {
   RequestChannel[pid] := RequestChannel[pid] + 1;
 }
 
--> action {:layer 1} RECEIVE_REQ(pid:int)
+right action {:layer 1} RECEIVE_REQ(pid:int)
 modifies RequestChannel;
 {
   assume RequestChannel[pid] > 0;
   RequestChannel[pid] := RequestChannel[pid] - 1;
 }
 
-<- action {:layer 1} SEND_VOTE(v:vote)
+left action {:layer 1} SEND_VOTE(v:vote)
 modifies VoteChannel;
 {
   VoteChannel[v] := VoteChannel[v] + 1;
 }
 
--> action {:layer 1} RECEIVE_VOTE() returns (v:vote)
+right action {:layer 1} RECEIVE_VOTE() returns (v:vote)
 modifies VoteChannel;
 {
   assume VoteChannel[v] > 0;
   VoteChannel[v] := VoteChannel[v] - 1;
 }
 
-<- action {:layer 1} SEND_DECISION(pid:int, d:decision)
+left action {:layer 1} SEND_DECISION(pid:int, d:decision)
 modifies DecisionChannel;
 {
   DecisionChannel[pid][d] := DecisionChannel[pid][d] + 1;
 }
 
--> action {:layer 1} RECEIVE_DECISION(pid:int) returns (d:decision)
+right action {:layer 1} RECEIVE_DECISION(pid:int) returns (d:decision)
 modifies DecisionChannel;
 {
   assume DecisionChannel[pid][d] > 0;
@@ -443,7 +443,7 @@ refines SEND_DECISION;
 yield procedure {:layer 0} receive_decision(pid:int) returns (d:decision);
 refines RECEIVE_DECISION;
 
-<-> action {:layer 1}
+both action {:layer 1}
 LINEAR_TRANSFER(i:int, {:linear_in "pid"} pids:[int]bool)
 returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
 {

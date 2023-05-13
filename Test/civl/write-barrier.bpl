@@ -41,7 +41,7 @@ refines AtomicWriteBarrier;
   call ReleaseLock(tid);
 }
 
->-< action {:layer 2,3} AtomicWriteBarrier({:linear "tid"} tid:Tid)
+atomic action {:layer 2,3} AtomicWriteBarrier({:linear "tid"} tid:Tid)
 modifies Color;
 {
   assert tid != nil;
@@ -50,7 +50,7 @@ modifies Color;
   }
 }
 
--> action {:layer 1,1} AtomicAcquireLock({:linear "tid"} tid: Tid)
+right action {:layer 1,1} AtomicAcquireLock({:linear "tid"} tid: Tid)
 modifies lock;
 {
   assert tid != nil;
@@ -58,7 +58,7 @@ modifies lock;
   lock := tid;
 }
 
-<- action {:layer 1,1} AtomicReleaseLock({:linear "tid"} tid: Tid)
+left action {:layer 1,1} AtomicReleaseLock({:linear "tid"} tid: Tid)
 modifies lock;
 {
   assert tid != nil;
@@ -66,7 +66,7 @@ modifies lock;
   lock := nil;
 }
 
->-< action {:layer 1,1} AtomicSetColorLocked({:linear "tid"} tid:Tid, newCol:int)
+atomic action {:layer 1,1} AtomicSetColorLocked({:linear "tid"} tid:Tid, newCol:int)
 modifies Color;
 {
   assert tid != nil;
@@ -74,14 +74,14 @@ modifies Color;
   Color := newCol;
 }
 
-<-> action {:layer 1,1} AtomicGetColorLocked({:linear "tid"} tid:Tid) returns (col:int)
+both action {:layer 1,1} AtomicGetColorLocked({:linear "tid"} tid:Tid) returns (col:int)
 {
   assert tid != nil;
   assert lock == tid;
   col := Color;
 }
 
->-< action {:layer 1,2} AtomicGetColorNoLock() returns (col:int)
+atomic action {:layer 1,2} AtomicGetColorNoLock() returns (col:int)
 {
   col := Color;
 }

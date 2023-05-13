@@ -14,54 +14,54 @@ const max : int;
 
 axiom (max > 0);
 
--> action {:layer 1,2} atomic_acquire(i : int, {:linear "tid"} tid: X)
+right action {:layer 1,2} atomic_acquire(i : int, {:linear "tid"} tid: X)
 modifies lock;
 { assert 0 <= i && i < max; assert tid != nil && tid != done; assume lock[i] == nil; lock[i] := tid; }
 
 yield procedure {:layer 0} acquire(i : int, {:linear "tid"} tid: X);
 refines atomic_acquire;
 
-<- action {:layer 1,2} atomic_release(i : int, {:linear "tid"} tid: X)
+left action {:layer 1,2} atomic_release(i : int, {:linear "tid"} tid: X)
 modifies lock;
 { assert 0 <= i && i < max; assert lock[i] == tid; assert tid != nil && tid != done; lock[i] := nil; }
 
 yield procedure {:layer 0} release(i : int, {:linear "tid"} tid: X);
 refines atomic_release;
 
-<-> action {:layer 1} atomic_getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int)
+both action {:layer 1} atomic_getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int)
 { assert 0 <= j && j < max; assert tid != nil && tid != done; assert lock[j] == tid; elt_j := elt[j]; }
 
 yield procedure {:layer 0} getElt(j : int, {:linear "tid"} tid: X) returns (elt_j:int);
 refines atomic_getElt;
 
-<-> action {:layer 1} atomic_setElt(j : int, x : int, {:linear "tid"} tid: X)
+both action {:layer 1} atomic_setElt(j : int, x : int, {:linear "tid"} tid: X)
 modifies elt, owner;
 { assert x != null && owner[j] == nil; assert 0 <= j && j < max; assert lock[j] == tid; assert tid != nil && tid != done; elt[j] := x; owner[j] := tid; }
 
 yield procedure {:layer 0} setElt(j : int, x : int, {:linear "tid"} tid: X);
 refines atomic_setElt;
 
-<- action {:layer 1,2} atomic_setEltToNull(j : int, {:linear "tid"} tid: X)
+left action {:layer 1,2} atomic_setEltToNull(j : int, {:linear "tid"} tid: X)
 modifies elt, owner;
 { assert owner[j] == tid && lock[j] == tid; assert 0 <= j && j < max; assert !valid[j]; assert tid != nil  && tid != done; elt[j] := null; owner[j] := nil; }
 
 yield procedure {:layer 0} setEltToNull(j : int, {:linear "tid"} tid: X);
 refines atomic_setEltToNull;
 
-<-> action {:layer 1,2} atomic_setValid(j : int, {:linear "tid"} tid: X)
+both action {:layer 1,2} atomic_setValid(j : int, {:linear "tid"} tid: X)
 modifies valid, owner;
 { assert 0 <= j && j < max; assert lock[j] == tid; assert tid != nil && tid != done; assert owner[j] == tid; valid[j] := true; owner[j] := done; }
 
 yield procedure {:layer 0} setValid(j : int, {:linear "tid"} tid: X);
 refines atomic_setValid;
 
-<-> action {:layer 1,2} atomic_isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool)
+both action {:layer 1,2} atomic_isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool)
 { assert 0 <= j && j < max; assert lock[j] == tid; assert tid != nil && tid != done; fnd := (elt[j] == x) && valid[j]; }
 
 yield procedure {:layer 0} isEltThereAndValid(j : int, x : int, {:linear "tid"} tid: X) returns (fnd:bool);
 refines atomic_isEltThereAndValid;
 
--> action {:layer 2} AtomicFindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
+right action {:layer 2} AtomicFindSlot(x : int, {:linear "tid"} tid: X) returns (r : int)
 modifies elt, owner;
 {
   assert tid != nil && tid != done;
@@ -118,7 +118,7 @@ preserves call Yield1();
   return;
 }
 
->-< action {:layer 3} AtomicInsert(x : int, {:linear "tid"} tid: X) returns (result : bool)
+atomic action {:layer 3} AtomicInsert(x : int, {:linear "tid"} tid: X) returns (result : bool)
 modifies elt, valid, owner;
 {
   var r:int;
@@ -166,7 +166,7 @@ preserves call Yield2();
   return;
 }
 
->-< action {:layer 3} AtomicInsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
+atomic action {:layer 3} AtomicInsertPair(x : int, y : int, {:linear "tid"} tid: X) returns (result : bool)
 modifies elt, valid, owner;
 {
   var rx:int;
@@ -240,7 +240,7 @@ preserves call Yield2();
   return;
 }
 
->-< action {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
+atomic action {:layer 3} AtomicLookUp(x : int, {:linear "tid"} tid: X, old_valid:[int]bool, old_elt:[int]int) returns (found : bool)
 {
   assert tid != nil && tid != done;
   assert x != null;

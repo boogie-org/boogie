@@ -3,7 +3,7 @@
 
 var {:layer 0, 2} count: int;
 
->-< action {:layer 2} AtomicInc()
+atomic action {:layer 2} AtomicInc()
 modifies count;
 {
     count := count + 1;
@@ -26,7 +26,7 @@ refines AtomicInc;
     }
 }
 
->-< action {:layer 1} AtomicCAS(prev: int, next: int) returns (status: bool)
+atomic action {:layer 1} AtomicCAS(prev: int, next: int) returns (status: bool)
 modifies count;
 {
     if (count == prev) {
@@ -39,7 +39,7 @@ modifies count;
 yield procedure {:layer 0} CAS(prev: int, next: int) returns (status: bool);
 refines AtomicCAS;
 
->-< action {:layer 1} AtomicRead() returns (val: int)
+atomic action {:layer 1} AtomicRead() returns (val: int)
 {
     val := count;
 }

@@ -1,14 +1,14 @@
-left-mover.bpl(11,23): Error: Gate failure of ass_eq_1 not preserved by inc
+left-mover.bpl(11,26): Error: Gate failure of ass_eq_1 not preserved by inc
 Execution trace:
-    left-mover.bpl(6,22): inline$inc$0$Entry
+    left-mover.bpl(6,24): inline$inc$0$Entry
     left-mover.bpl(8,5): inline$inc$0$anon0
-    left-mover.bpl(6,22): inline$inc$0$Return
-left-mover.bpl(19,23): Error: Commutativity check between init and inc failed
+    left-mover.bpl(6,24): inline$inc$0$Return
+left-mover.bpl(19,26): Error: Commutativity check between init and inc failed
 Execution trace:
-    left-mover.bpl(19,23): inline$init$0$Entry
+    left-mover.bpl(19,26): inline$init$0$Entry
     left-mover.bpl(8,5): inline$inc$0$anon0
-    left-mover.bpl(6,22): inline$inc$0$Return
-left-mover.bpl(26,22): Error: Cooperation check for block failed
+    left-mover.bpl(6,24): inline$inc$0$Return
+left-mover.bpl(26,24): Error: Cooperation check for block failed
 Execution trace:
     (0,0): init
 

@@ -60,7 +60,7 @@ function {:inline} Init(pids:[int]bool, channel:[int][int]int,
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
 modifies channel, terminated, leader;
 {
   assert Init(pids, channel, terminated, id, leader);
@@ -105,7 +105,7 @@ modifies channel, terminated, leader;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN3 using INV2;
 creates P;
 eliminates P using P';
@@ -145,7 +145,7 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
 refines MAIN2 using INV1;
 creates PInit;
 {
@@ -155,7 +155,7 @@ creates PInit;
   call create_asyncs((lambda pa:PInit :: Pid(pa->pid)));
 }
 
-async <- action {:layer 2} PInit ({:linear_in "pid"} pid:int)
+async left action {:layer 2} PInit ({:linear_in "pid"} pid:int)
 creates P;
 modifies channel;
 {
@@ -164,7 +164,7 @@ modifies channel;
   call create_async(P(pid));
 }
 
-async >-< action {:layer 2, 3} P ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2, 3} P ({:linear_in "pid"} pid:int)
 creates P;
 modifies channel, terminated, leader;
 {
@@ -270,24 +270,24 @@ modifies terminated;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-<-> action {:layer 1} GET_ID({:linear "pid"} pid:int) returns (i:int)
+both action {:layer 1} GET_ID({:linear "pid"} pid:int) returns (i:int)
 {
   i := id[pid];
 }
 
-<-> action {:layer 1} SET_LEADER({:linear "pid"} pid:int)
+both action {:layer 1} SET_LEADER({:linear "pid"} pid:int)
 modifies leader;
 {
   leader[pid] := true;
 }
 
-<- action {:layer 1} SEND(pid:int, m:int)
+left action {:layer 1} SEND(pid:int, m:int)
 modifies channel;
 {
   channel[pid][m] := channel[pid][m] + 1;
 }
 
--> action {:layer 1} RECEIVE(pid:int) returns (m:int)
+right action {:layer 1} RECEIVE(pid:int) returns (m:int)
 modifies channel;
 {
   assume channel[pid][m] > 0;
@@ -306,7 +306,7 @@ refines SEND;
 yield procedure {:layer 0} receive(pid:int) returns (m:int);
 refines RECEIVE;
 
-<-> action {:layer 1}
+both action {:layer 1}
 LINEAR_TRANSFER(i:int, {:linear_in "pid"} pids:[int]bool)
 returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
 {

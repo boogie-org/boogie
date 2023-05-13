@@ -9,12 +9,12 @@ var {:layer 0,1} lock_y: Tid;
 var {:layer 0,2} x: int;
 var {:layer 0,2} y: int;
 
->-< action {:layer 2} GET_X (tid: Lval Tid) returns (v: int)
+atomic action {:layer 2} GET_X (tid: Lval Tid) returns (v: int)
 {
   v := x;
 }
 
->-< action {:layer 2} SET_BOTH (tid: Lval Tid, v: int, w: int)
+atomic action {:layer 2} SET_BOTH (tid: Lval Tid, v: int, w: int)
 modifies x, y;
 {
   x := v;
@@ -42,7 +42,7 @@ requires {:layer 1} tid->val != nil;
   call release_y(tid);
 }
 
--> action {:layer 1} ACQUIRE_X (tid: Lval Tid)
+right action {:layer 1} ACQUIRE_X (tid: Lval Tid)
 modifies lock_x;
 {
   assert tid->val != nil;
@@ -50,14 +50,14 @@ modifies lock_x;
   lock_x := tid->val;
 }
 
-<- action {:layer 1} RELEASE_X (tid: Lval Tid)
+left action {:layer 1} RELEASE_X (tid: Lval Tid)
 modifies lock_x;
 {
   assert tid->val != nil && lock_x == tid->val;
   lock_x := nil;
 }
 
--> action {:layer 1} ACQUIRE_Y (tid: Lval Tid)
+right action {:layer 1} ACQUIRE_Y (tid: Lval Tid)
 modifies lock_y;
 {
   assert tid->val != nil;
@@ -65,28 +65,28 @@ modifies lock_y;
   lock_y := tid->val;
 }
 
-<- action {:layer 1} RELEASE_Y (tid: Lval Tid)
+left action {:layer 1} RELEASE_Y (tid: Lval Tid)
 modifies lock_y;
 {
   assert tid->val != nil && lock_y == tid->val;
   lock_y := nil;
 }
 
-<-> action {:layer 1} WRITE_X (tid: Lval Tid, v: int)
+both action {:layer 1} WRITE_X (tid: Lval Tid, v: int)
 modifies x;
 {
   assert tid->val != nil && lock_x == tid->val;
   x := v;
 }
 
-<-> action {:layer 1} WRITE_Y (tid: Lval Tid, v: int)
+both action {:layer 1} WRITE_Y (tid: Lval Tid, v: int)
 modifies y;
 {
   assert tid->val != nil && lock_y == tid->val;
   y := v;
 }
 
-<-> action {:layer 1} READ_X (tid: Lval Tid) returns (r: int)
+both action {:layer 1} READ_X (tid: Lval Tid) returns (r: int)
 {
   assert tid->val != nil && lock_x == tid->val;
   r := x;

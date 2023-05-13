@@ -9,7 +9,7 @@ var {:layer 0,2} x: int;
 yield procedure {:layer 0} Incr();
 refines AtomicIncr;
 
-<- action {:layer 1} AtomicIncr()
+left action {:layer 1} AtomicIncr()
 modifies x;
 { x := x + 1; }
 
@@ -19,7 +19,7 @@ refines AtomicIncrBy2;
   par Incr() | Incr();
 }
 
-<- action {:layer 2} AtomicIncrBy2()
+left action {:layer 2} AtomicIncrBy2()
 modifies x;
 { x := x + 2; }
 

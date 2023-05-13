@@ -5,7 +5,7 @@ var {:layer 0,2} x:int;
 
 ////////////////////////////////////////////////////////////////////////////////
 
->-< action {:layer 1} MAIN ()
+atomic action {:layer 1} MAIN ()
 refines MAIN';
 creates INC, DEC;
 {
@@ -13,19 +13,19 @@ creates INC, DEC;
   call create_async(DEC());
 }
 
->-< action {:layer 2} MAIN' ()
+atomic action {:layer 2} MAIN' ()
 {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async <- action {:layer 1} INC ()
+async left action {:layer 1} INC ()
 modifies x;
 {
   x := x + 1;
 }
 
-async <- action {:layer 1} DEC ()
+async left action {:layer 1} DEC ()
 modifies x;
 {
   x := x - 1;

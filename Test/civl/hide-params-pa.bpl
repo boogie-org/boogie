@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-async >-< action {:layer 2} SKIP () returns () { }
+async atomic action {:layer 2} SKIP () returns () { }
 
 yield procedure {:layer 1} b ()
 refines SKIP;
@@ -19,7 +19,7 @@ refines SKIP;
   // call i', returnedPAs := A(i);
 }
 
->-< action {:layer 1} A (i:int) returns (i':int)
+atomic action {:layer 1} A (i:int) returns (i':int)
 {
   assert i > 0;
   assume i' > i;

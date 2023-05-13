@@ -60,13 +60,13 @@ modifies done;
 
 // Low-level atomic actions
 
->-< action {:layer 1} atomic_update_x(i: int)
+atomic action {:layer 1} atomic_update_x(i: int)
 modifies x;
 {
   x[i] := 1;
 }
 
->-< action {:layer 1} atomic_update_y(i: int)
+atomic action {:layer 1} atomic_update_y(i: int)
 modifies y;
 {
   y[i] := x[(i-1) mod N];
