@@ -284,6 +284,11 @@ namespace Microsoft.Boogie
       return base.VisitExprSeq(new List<Expr>(list));
     }
 
+    public override Type VisitFloatType(FloatType node)
+    {
+      return (FloatType) node.Clone();
+    }
+
     public override Expr VisitForallExpr(ForallExpr node)
     {
       //Contract.Requires(node != null);
