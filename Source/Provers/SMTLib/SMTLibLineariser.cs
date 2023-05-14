@@ -128,12 +128,11 @@ namespace Microsoft.Boogie.SMTLib
       {
         TypeToStringHelper(syn.ExpandedType, sb);
       }
-      else
+      else if (t.IsMap)
       {
-        if (t.IsMap && LibOptions.UseArrayTheory)
+        MapType mapType = t.AsMap;
+        if (LibOptions.UseArrayTheory)
         {
-          MapType mapType = t.AsMap;
-          // Contract.Assert(m.MapArity == 1);
           sb.Append("(Array ");
           foreach (Type tp in mapType.Arguments)
           {
@@ -142,38 +141,36 @@ namespace Microsoft.Boogie.SMTLib
 
           sb.Append(TypeToString(mapType.Result)).Append(")");
         }
-        else if (t.IsMap)
+        else
         {
-          MapType m = t.AsMap;
           sb.Append('[');
-          for (int i = 0; i < m.MapArity; ++i)
+          for (int i = 0; i < mapType.MapArity; ++i)
           {
             if (i != 0)
             {
               sb.Append(',');
             }
 
-            TypeToStringHelper(m.Arguments[i], sb);
+            TypeToStringHelper(mapType.Arguments[i], sb);
           }
 
           sb.Append(']');
-          TypeToStringHelper(m.Result, sb);
+          TypeToStringHelper(mapType.Result, sb);
         }
-        else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv || t.IsRMode || t.IsString)
+      }
+      else if (t.IsBool || t.IsInt || t.IsReal || t.IsFloat || t.IsBv || t.IsRMode || t.IsString)
+      {
+        sb.Append(TypeToString(t));
+      }
+      else
+      {
+        var buffer = new StringWriter();
+        using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, LibOptions))
         {
-          sb.Append(TypeToString(t));
+          t.Emit(stream);
         }
-        else
-        {
-          System.IO.StringWriter buffer = new System.IO.StringWriter();
-          using (TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, LibOptions)
-          )
-          {
-            t.Emit(stream);
-          }
 
-          sb.Append(buffer.ToString());
-        }
+        sb.Append(buffer.ToString());
       }
     }
 
@@ -217,6 +214,10 @@ namespace Microsoft.Boogie.SMTLib
       else if (t.IsSeq)
       {
         return "(Seq " + TypeToString(t.AsCtor.Arguments[0]) + ")";
+      }
+      else if (t.IsMap && t.AsMap.Arguments.Count == 0)
+      {
+        return TypeToString(t.AsMap.Result);
       }
       else
       {
