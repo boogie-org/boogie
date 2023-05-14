@@ -316,7 +316,7 @@ namespace Microsoft.Boogie.SMTLib
 
         RegisterType(mapType.Result);
 
-        if (!options.UseArrayTheory)
+        if (!options.UseArrayTheory && mapType.Arguments.Count > 0)
         {
           AddDeclaration("(declare-sort " + TypeToString(type) + " 0)");
         }

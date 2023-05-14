@@ -19,7 +19,7 @@ namespace ExecutionEngineTests
     {
       SMTLibOptions smtLibOptions = CommandLineOptions.FromArguments(TextWriter.Null);
       VCExpressionGenerator vgen = new VCExpressionGenerator();
-      VCGenerationOptions genOptions = new VCGenerationOptions(new List<string>() { });
+      VCGenerationOptions genOptions = new VCGenerationOptions(smtLibOptions, new List<string>() { });
       var smtLibProverOptions = new SMTLibSolverOptions(smtLibOptions);
       smtLibProverOptions.Solver = SolverKind.NoOpWithZ3Options;
       var smtLibInteractiveTheoremProver = new SMTLibInteractiveTheoremProver(

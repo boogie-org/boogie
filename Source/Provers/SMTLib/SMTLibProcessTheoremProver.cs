@@ -1626,7 +1626,7 @@ namespace Microsoft.Boogie.SMTLib
         proverCommands.Add("external");
       }
 
-      VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
+      VCGenerationOptions genOptions = new VCGenerationOptions(options.LibOptions, proverCommands);
       return new SMTLibProverContext(gen, genOptions, options.LibOptions);
     }
 
