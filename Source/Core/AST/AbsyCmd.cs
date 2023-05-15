@@ -4003,6 +4003,8 @@ namespace Microsoft.Boogie
         Contract.Assert(e != null);
         Expr copy = Substituter.ApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, e.Condition);
         AssumeCmd assume = new AssumeCmd(this.tok, copy);
+        // TODO: fix the case where a given postcondition appears at multiple call sites
+        //ICarriesAttributes.CopyAttribute(e, "id", assume);
 
         #region stratified inlining support
 

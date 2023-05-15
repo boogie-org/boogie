@@ -57,6 +57,7 @@ namespace VC
           throw new cce.UnreachableException(); // unexpected case
       }
 
+      // TODO: track id here, too?
       return new AssumeCmd(assrt.tok, expr);
     }
 
@@ -730,6 +731,7 @@ namespace VC
               }
 
               b.Attributes = c.Attributes;
+              // TODO: once assertions have ids, add suffix to id, which will require a deep copy of the attributes
               prefixOfPredicateCmdsInit.Add(b);
 
               if (Options.ConcurrentHoudini)

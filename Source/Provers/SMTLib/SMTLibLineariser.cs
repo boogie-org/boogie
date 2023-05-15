@@ -398,7 +398,7 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
+      if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp) || node.Op.Equals(VCExpressionGenerator.NamedAssertOp))
       {
         var exprVar = node[0] as VCExprVar;
         NamedAssumes.Add(exprVar);

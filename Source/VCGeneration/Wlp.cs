@@ -109,6 +109,13 @@ namespace VC
         }
 
         VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
+        var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
+        if (aid != null)
+        {
+          var isTry = QKeyValue.FindBoolAttribute(ac.Attributes, "try");
+          var v = gen.Variable((isTry ? "try$$" : "assert$$") + aid, Microsoft.Boogie.Type.Bool);
+          C = gen.Function(VCExpressionGenerator.NamedAssertOp, v, gen.AndSimp(v, C));
+        }
 
         VCExpr VU = null;
         if (!isFullyVerified)

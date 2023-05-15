@@ -445,6 +445,7 @@ namespace Microsoft.Boogie
     public static readonly VCExprOp MinimizeOp = new VCExprCustomOp("minimize##dummy", 2, Type.Bool);
     public static readonly VCExprOp MaximizeOp = new VCExprCustomOp("maximize##dummy", 2, Type.Bool);
     public static readonly VCExprOp NamedAssumeOp = new VCExprCustomOp("named_assume##dummy", 2, Type.Bool);
+    public static readonly VCExprOp NamedAssertOp = new VCExprCustomOp("named_assert##dummy", 2, Type.Bool);
 
     public VCExprOp BoogieFunctionOp(Function func)
     {
