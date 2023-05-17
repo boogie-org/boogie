@@ -13,7 +13,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 {
   private readonly AsyncQueue<Task> queue = new();
   private readonly HashSet<Thread> threads;
-  private readonly CancellationTokenSource cancellationTokenSource = new();
+  private readonly CancellationTokenSource disposeTokenSource = new();
 
   public static CustomStackSizePoolTaskScheduler Create(int stackSize, int threadCount)
   {
@@ -64,7 +64,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     {
       try
       {
-        var task = await queue.Dequeue(cancellationTokenSource.Token);
+        var task = await queue.Dequeue(disposeTokenSource.Token);
         TryExecuteTask(task);
       }
       catch (TaskCanceledException)
@@ -76,7 +76,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   public void Dispose()
   {
-    cancellationTokenSource.Cancel();
+    disposeTokenSource.Cancel();
     foreach (var thread in threads)
     {
       thread.Join();
