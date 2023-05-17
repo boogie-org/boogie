@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
@@ -24,6 +25,31 @@ public class FakeDescription : ProofObligationDescription
 [TestFixture]
 public class ExecutionEngineTest {
 
+  [Test]
+  public async Task DisposeCleansUpThreads()
+  {
+    var options = new CommandLineOptions(TextWriter.Null, new ConsolePrinter());
+    options.VcsCores = 10;
+    var engine = new ExecutionEngine(options, new VerificationResultCache());
+    int afterAddition = Process.GetCurrentProcess().Threads.Count;
+
+    engine.Dispose();
+    for (int i = 0; i < 50; i++)
+    {
+      await Task.Delay(10);
+      int afterDispose = Process.GetCurrentProcess().Threads.Count;
+      if (afterDispose + 2 <= afterAddition)
+      {
+        // It's difficult to access the current managed threads and see if any of the ones we create with the ExecutionEngine are still there,
+        // More information on the difficulty: https://stackoverflow.com/questions/10315862/get-list-of-threads
+        // So we make this test less precise and only check that the number of OS threads has gone down by at least 2.
+        // We're expecting 10 threads to be removed, so even if some other code creates a few more threads we can still expect a drop of 2.
+        return;
+      }
+    }
+    Assert.Fail("Thread count didn't drop back down after waiting 500ms.");
+  }
+  
   [Test]
   public async Task GetImplementationTasksTest() {
     var programString = @"

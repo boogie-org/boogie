@@ -62,7 +62,7 @@ namespace Microsoft.Boogie
       checkerPool = new CheckerPool(options);
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
       
-      var largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
+      largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
       largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.None, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
@@ -87,6 +87,8 @@ namespace Microsoft.Boogie
 
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource =
       new ConcurrentDictionary<string, CancellationTokenSource>();
+
+    private readonly CustomStackSizePoolTaskScheduler largeThreadScheduler;
 
     public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null) {
@@ -1390,6 +1392,7 @@ namespace Microsoft.Boogie
     public void Dispose()
     {
       checkerPool.Dispose();
+      largeThreadScheduler.Dispose();
     }
   }
 }

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +13,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 {
   private readonly AsyncQueue<Task> queue = new();
   private readonly HashSet<Thread> threads;
+  private readonly CancellationTokenSource cancellationTokenSource = new();
 
   public static CustomStackSizePoolTaskScheduler Create(int stackSize, int threadCount)
   {
@@ -27,7 +27,11 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     threads = new HashSet<Thread>();
     for (int i = 0; i < maximumConcurrencyLevel; i++)
     {
-      var thread = new Thread(WorkLoop, stackSize) { IsBackground = true };
+      var thread = new Thread(WorkLoop, stackSize)
+      {
+        IsBackground = true,
+        Name = $"CustomStackSizePoolTaskScheduler thread #{i+1}/{maximumConcurrencyLevel}"
+      };
       threads.Add(thread);
       thread.Start();
     }
@@ -54,17 +58,25 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     return queue.Items;
   }
   
-  private void WorkLoop()
+  private async void WorkLoop()
   {
     while (true)
     {
-      var task = queue.Dequeue(CancellationToken.None).Result;
-      TryExecuteTask(task);
+      try
+      {
+        var task = await queue.Dequeue(cancellationTokenSource.Token);
+        TryExecuteTask(task);
+      }
+      catch (TaskCanceledException)
+      {
+        break;
+      }
     }
   }
 
   public void Dispose()
   {
+    cancellationTokenSource.Cancel();
     foreach (var thread in threads)
     {
       thread.Join();
