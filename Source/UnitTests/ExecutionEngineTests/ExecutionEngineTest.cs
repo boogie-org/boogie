@@ -30,15 +30,14 @@ public class ExecutionEngineTest {
   {
     var options = new CommandLineOptions(TextWriter.Null, new ConsolePrinter());
     options.VcsCores = 10;
+    int beforeCreation = Process.GetCurrentProcess().Threads.Count;
     var engine = new ExecutionEngine(options, new VerificationResultCache());
-    int afterAddition = Process.GetCurrentProcess().Threads.Count;
-
     engine.Dispose();
     for (int i = 0; i < 50; i++)
     {
       await Task.Delay(10);
       int afterDispose = Process.GetCurrentProcess().Threads.Count;
-      if (afterDispose + 2 <= afterAddition)
+      if (afterDispose + 2 <= beforeCreation + options.VcsCores)
       {
         // It's difficult to access the current managed threads and see if any of the ones we create with the ExecutionEngine are still there,
         // More information on the difficulty: https://stackoverflow.com/questions/10315862/get-list-of-threads
