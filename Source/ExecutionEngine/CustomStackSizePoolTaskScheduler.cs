@@ -60,7 +60,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
   
   private async void WorkLoop()
   {
-    while (true)
+    while (!disposeTokenSource.IsCancellationRequested)
     {
       try
       {
