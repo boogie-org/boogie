@@ -79,7 +79,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     disposeTokenSource.Cancel();
     foreach (var thread in threads)
     {
-      thread.Join();
+      thread.Join(TimeSpan.FromMilliseconds(100));
     }
   }
 }
