@@ -57,7 +57,7 @@ public class AsyncQueue<T>
       }
 
       var source = new TaskCompletionSource<T>();
-      cancellationToken.Register(() => source.SetCanceled(cancellationToken));
+      cancellationToken.Register(() => source.TrySetCanceled(cancellationToken));
       customers.Enqueue(source);
       // Ensure that the TrySetResult call in Enqueue completes immediately.
       return source.Task.ContinueWith(t => t.Result, cancellationToken,
