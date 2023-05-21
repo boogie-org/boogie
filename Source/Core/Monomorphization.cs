@@ -276,15 +276,15 @@ namespace Microsoft.Boogie
     /*
      * This visitor walks over a polymorphic quantifier to collect hints for instantiating its type parameters
      * in the field instantiationHints. This field maps each type parameter T of the quantifier to a dictionary
-     * that maps a polymorphic type/function D to a set of integers, such that each integer in the set is a
+     * that maps a polymorphic type/function/map D to a set of integers, such that each integer in the set is a
      * valid position in the list of type parameters of D. If position i is in the list corresponding to D,
      * then the concrete type at position i among instances of D is a hint for T.
      */
     
     private HashSet<TypeVariable> typeParameters;
-    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, HashSet<int>>> instantiationHints;
+    private Dictionary<TypeVariable, Dictionary<Absy, HashSet<int>>> instantiationHints;
 
-    public static Dictionary<TypeVariable, Dictionary<NamedDeclaration, HashSet<int>>> CollectInstantiationHints(QuantifierExpr quantifierExpr)
+    public static Dictionary<TypeVariable, Dictionary<Absy, HashSet<int>>> CollectInstantiationHints(QuantifierExpr quantifierExpr)
     {
       var instantiationHintCollector = new InstantiationHintCollector(quantifierExpr);
       instantiationHintCollector.VisitExpr(quantifierExpr);
@@ -295,11 +295,21 @@ namespace Microsoft.Boogie
     {
       typeParameters = new HashSet<TypeVariable>(quantifierExpr.TypeParameters);
       instantiationHints = quantifierExpr.TypeParameters.ToDictionary(typeParameter => typeParameter,
-        _ => new Dictionary<NamedDeclaration, HashSet<int>>());
+        _ => new Dictionary<Absy, HashSet<int>>());
     }
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
+      if (node.Fun is MapSelect)
+      {
+        var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
+        PopulateInstantiationHints(actualTypeParams, node.Args[0].Type);
+      }
+      if (node.Fun is MapStore)
+      {
+        var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
+        PopulateInstantiationHints(actualTypeParams, node.Type);
+      }
       if (node.Fun is FunctionCall functionCall)
       {
         var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
@@ -314,7 +324,7 @@ namespace Microsoft.Boogie
       return base.VisitCtorType(node);
     }
 
-    private void PopulateInstantiationHints(List<Type> actualTypeParams, NamedDeclaration decl)
+    private void PopulateInstantiationHints(List<Type> actualTypeParams, Absy decl)
     {
       for (int i = 0; i < actualTypeParams.Count; i++)
       {
@@ -392,7 +402,7 @@ namespace Microsoft.Boogie
   abstract class QuantifierExprMonomorphizer : BinderExprMonomorphizer
   {
     private QuantifierExpr quantifierExpr;
-    private Dictionary<TypeVariable, Dictionary<NamedDeclaration, HashSet<int>>> instantiationHints;
+    private Dictionary<TypeVariable, Dictionary<Absy, HashSet<int>>> instantiationHints;
 
     protected QuantifierExprMonomorphizer(QuantifierExpr quantifierExpr, MonomorphizationVisitor monomorphizationVisitor) :
       base(monomorphizationVisitor)
@@ -413,7 +423,7 @@ namespace Microsoft.Boogie
         var typeParameter = quantifierExpr.TypeParameters[typeParameterIndex];
         foreach (var (decl, actualIndexes) in instantiationHints[typeParameter])
         {
-          foreach (var actualTypeParameters in monomorphizationVisitor.NamedDeclarationInstantiations(decl))
+          foreach (var actualTypeParameters in monomorphizationVisitor.AbsyInstantiations(decl))
           {
             foreach (var actualIndex in actualIndexes)
             {
@@ -1429,7 +1439,7 @@ namespace Microsoft.Boogie
       return binderExprMonomorphizers.ToDictionary(x => x.BinderExpr, x => x);
     }
 
-    public IEnumerable<List<Type>> NamedDeclarationInstantiations(NamedDeclaration decl)
+    public IEnumerable<List<Type>> AbsyInstantiations(Absy decl)
     {
       if (decl is Function function)
       {
@@ -1438,6 +1448,10 @@ namespace Microsoft.Boogie
       if (decl is TypeCtorDecl typeCtorDecl)
       {
         return typeInstantiations[typeCtorDecl].Keys;
+      }
+      if (decl is MapType mapType)
+      {
+        return polymorphicMapInfos[mapType].Instances;
       }
       throw new cce.UnreachableException();
     }
