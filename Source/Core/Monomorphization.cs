@@ -300,17 +300,12 @@ namespace Microsoft.Boogie
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      if (node.Fun is MapSelect)
+      if (node.Fun is MapSelect or MapStore)
       {
         var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
         PopulateInstantiationHints(actualTypeParams, node.Args[0].Type);
       }
-      if (node.Fun is MapStore)
-      {
-        var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
-        PopulateInstantiationHints(actualTypeParams, node.Type);
-      }
-      if (node.Fun is FunctionCall functionCall)
+      else if (node.Fun is FunctionCall functionCall)
       {
         var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
         PopulateInstantiationHints(actualTypeParams, functionCall.Func);
@@ -923,13 +918,9 @@ namespace Microsoft.Boogie
         return returnExpr;
       }
       
-      if (returnExpr.Fun is MapSelect && returnExpr.TypeParameters.FormalTypeParams.Count > 0)
+      if (returnExpr.Fun is MapSelect or MapStore && returnExpr.TypeParameters.FormalTypeParams.Count > 0)
       {
         monomorphizationVisitor.RegisterPolymorphicMapType(returnExpr.Args[0].Type).PopulateField(actualTypeParams);
-      }
-      else if (returnExpr.Fun is MapStore && returnExpr.TypeParameters.FormalTypeParams.Count > 0)
-      {
-        monomorphizationVisitor.RegisterPolymorphicMapType(returnExpr.Type).PopulateField(actualTypeParams);
       }
       else if (returnExpr.Fun is IsConstructor isConstructor)
       {
