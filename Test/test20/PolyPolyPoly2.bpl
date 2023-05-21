@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -noVerify "%s" > "%t"
+// RUN: %parallel-boogie -typeEncoding:p -noVerify "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 const p: <a>[]a;

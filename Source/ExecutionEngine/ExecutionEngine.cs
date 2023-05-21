@@ -347,7 +347,6 @@ namespace Microsoft.Boogie
         if (Options.Libraries.Contains("base"))
         {
           Options.UseArrayTheory = true;
-          Options.Monomorphize = true;
         }
 
         return program;
@@ -416,12 +415,12 @@ namespace Microsoft.Boogie
       {
         Options.TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
       }
-      else if (Options.Monomorphize)
+      else if (Options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
       {
         var monomorphizableStatus = Monomorphizer.Monomorphize(Options, program);
         if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
         {
-          Options.TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
+          // all ok
         }
         else if (monomorphizableStatus == MonomorphizableStatus.UnhandledPolymorphism)
         {
@@ -436,20 +435,17 @@ namespace Microsoft.Boogie
       }
       else if (Options.UseArrayTheory)
       {
-        Options.OutputWriter.WriteLine(
-          "Option /useArrayTheory only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
+        Options.OutputWriter.WriteLine("Option /useArrayTheory only supported with monomorphic encoding");
         return PipelineOutcome.FatalError;
       } 
       else if (program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>().Any())
       {
-        Options.OutputWriter.WriteLine(
-          "Datatypes only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
+        Options.OutputWriter.WriteLine("Datatypes only supported with monomorphic encoding");
         return PipelineOutcome.FatalError;
       }
       else if (program.TopLevelDeclarations.OfType<Function>().Any(f => QKeyValue.FindBoolAttribute(f.Attributes, "define")))
       {
-        Options.OutputWriter.WriteLine(
-          "Functions with :define attribute only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
+        Options.OutputWriter.WriteLine("Functions with :define attribute only supported with monomorphic encoding");
         return PipelineOutcome.FatalError;
       }
 

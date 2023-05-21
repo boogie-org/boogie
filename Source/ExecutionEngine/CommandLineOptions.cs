@@ -511,10 +511,7 @@ namespace Microsoft.Boogie
 
     public bool ExtractLoopsUnrollIrreducible { get; set; } = true; // unroll irreducible loops? (set programmatically)
 
-
-    public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Predicates;
-
-    public bool Monomorphize { get; set; } = false;
+    public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Monomorphic;
 
     public bool ReflectAdd { get; set; } = false;
 
@@ -1083,14 +1080,6 @@ namespace Microsoft.Boogie
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 break;
             }
-          }
-
-          return true;
-
-        case "monomorphize":
-          if (ps.ConfirmArgumentCount(0))
-          {
-            Monomorphize = true;
           }
 
           return true;

@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /lib:base /monomorphize "%s" > "%t"
+// RUN: %parallel-boogie /lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // test for use of cycle of increasing types
 
