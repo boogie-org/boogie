@@ -428,11 +428,6 @@ namespace Microsoft.Boogie
           return PipelineOutcome.FatalError;
         }
       }
-      else if (Options.UseArrayTheory)
-      {
-        Options.OutputWriter.WriteLine("Option /useArrayTheory only supported with monomorphic encoding");
-        return PipelineOutcome.FatalError;
-      } 
       else if (program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>().Any())
       {
         Options.OutputWriter.WriteLine("Datatypes only supported with monomorphic encoding");

@@ -141,8 +141,6 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        var lastWord = words[^1];
-
         if (currModel == null)
         {
           throw BadModelException("model begin marker not found");
@@ -194,73 +192,96 @@ namespace Microsoft.Boogie
         if (words.Count == 3 && words[1] is string && ((string) words[1]) == "->")
         {
           var funName = (string) words[0];
-          
-          Model.Func fn;
-
+          var lastWord = words[^1];
           if (lastWord is "{")
           {
-            fn = currModel.MkFunc(funName, null);
-            while (true)
+            if (funName == "array-ext")
             {
-              var tuple = GetFunctionTokens(ReadLine());
-              if (tuple == null)
+              // internally used for extensional arrays (in Z3), skip to the end, and ignore
+              while (true)
               {
-                throw BadModelException("EOF in function table");
-              }
-
-              if (tuple.Count == 0)
-              {
-                continue;
-              }
-
-              string tuple0 = tuple[0] as string;
-              if (tuple.Count == 1)
-              {
-                if (tuple0 == "}")
+                var tuple = GetFunctionTokens(ReadLine());
+                if (tuple == null)
+                {
+                  throw BadModelException("EOF in function table");
+                }
+                if (tuple.Count == 0)
+                {
+                  continue;
+                }
+                string tuple0 = tuple[0] as string;
+                if (tuple.Count == 1 && tuple0 == "}")
                 {
                   break;
                 }
-
-                if (fn.Else != null) {
-                  throw BadModelException("multiple else cases");
-                }
-                fn.Else = GetElt(tuple[0]);
-                continue;
               }
-
-              string tuplePenultimate = tuple[^2] as string;
-              if (tuple.Count == 2 || tuplePenultimate != "->")
+            }
+            else
+            {
+              var fn = currModel.MkFunc(funName, null);
+              while (true)
               {
-                throw BadModelException("invalid function tuple definition");
-              }
-
-              var resultName = tuple[^1];
-
-              if (tuple0 == "else")
-              {
-                if (fn.Else != null) {
-                  throw BadModelException("multiple else cases");
-                }
-                if (resultName is not "#unspecified")
+                var tuple = GetFunctionTokens(ReadLine());
+                if (tuple == null)
                 {
-                  fn.Else = GetElt(resultName);
+                  throw BadModelException("EOF in function table");
                 }
-                continue;
-              }
 
-              fn.Arity = tuple.Count - 2;
-              var args = new Model.Element[(int) fn.Arity]; 
-              for (int i = 0; i < fn.Arity; ++i)
-              {
-                args[i] = GetElt(tuple[i]);
-              }
+                if (tuple.Count == 0)
+                {
+                  continue;
+                }
 
-              fn.AddApp(GetElt(resultName), args);
+                string tuple0 = tuple[0] as string;
+                if (tuple.Count == 1)
+                {
+                  if (tuple0 == "}")
+                  {
+                    break;
+                  }
+                  if (fn.Else != null)
+                  {
+                    throw BadModelException("multiple else cases");
+                  }
+                  fn.Else = GetElt(tuple[0]);
+                  continue;
+                }
+
+                string tuplePenultimate = tuple[^2] as string;
+                if (tuple.Count == 2 || tuplePenultimate != "->")
+                {
+                  throw BadModelException("invalid function tuple definition");
+                }
+
+                var resultName = tuple[^1];
+
+                if (tuple0 == "else")
+                {
+                  if (fn.Else != null)
+                  {
+                    throw BadModelException("multiple else cases");
+                  }
+                  if (resultName is not "#unspecified")
+                  {
+                    fn.Else = GetElt(resultName);
+                  }
+                  continue;
+                }
+
+                fn.Arity = tuple.Count - 2;
+                var args = new Model.Element[(int)fn.Arity];
+                for (int i = 0; i < fn.Arity; ++i)
+                {
+                  args[i] = GetElt(tuple[i]);
+                }
+
+                fn.AddApp(GetElt(resultName), args);
+              }
             }
           }
           else
           {
-            fn = currModel.MkFunc(funName, 0);
+            var fn = currModel.MkFunc(funName, 0);
             fn.SetConstant(GetElt(lastWord));
           }
         }

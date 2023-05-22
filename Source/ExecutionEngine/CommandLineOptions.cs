@@ -1065,6 +1065,10 @@ namespace Microsoft.Boogie
           {
             switch (args[ps.i])
             {
+              case "m":
+              case "monomorphic":
+                TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
+                break;
               case "p":
               case "predicates":
                 TypeEncodingMethod = CoreOptions.TypeEncoding.Predicates;
@@ -1852,18 +1856,17 @@ namespace Microsoft.Boogie
                 invocation during smoke test, defaults to 10.
   /causalImplies
                 Translate Boogie's A ==> B into prover's A ==> A && B.
-  /typeEncoding:<m>
+  /typeEncoding:<t>
                 Encoding of types when generating VC of a polymorphic program:
-                   p = predicates (default)
+                   m = monomorphic (default)
+                   p = predicates
                    a = arguments
                 Boogie automatically detects monomorphic programs and enables
                 monomorphic VC generation, thereby overriding the above option.
-  /monomorphize
-                Try to monomorphize program. An error is reported if
-                monomorphization is not possible. This feature is experimental!
-  /useArrayTheory
-                Use the SMT theory of arrays (as opposed to axioms). Supported
-                only for monomorphic programs.
+                If the latter two options are used, then arrays are handled via axioms.
+  /useArrayAxioms
+                If monomorphic type encoding is used, arrays are handled by default with
+                the SMT theory of arrays. This option allows the use of axioms instead.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
   /prune
@@ -1877,10 +1880,8 @@ namespace Microsoft.Boogie
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.
-
   /randomSeed:<s>
                 Supply the random seed for /randomizeVcIterations option.
-
   /randomizeVcIterations:<n>
                 Turn on randomization of the input that Boogie passes to the
                 SMT solver and turn on randomization in the SMT solver itself.
