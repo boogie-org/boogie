@@ -735,21 +735,9 @@ namespace Microsoft.Boogie.TypeErasure
       // the store function does not have any explicit type parameters
       Contract.Assert(explicitStoreParams.Count == 0);
 
-      if (AxBuilderPremisses.Options.UseArrayTheory)
-      {
-        select.AddAttribute("builtin", "select");
-        store.AddAttribute("builtin", "store");
-      }
-      else
-      {
-        AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store,
-          abstractedType.Result,
-          implicitSelectParams, explicitSelectParams,
-          originalInTypes));
-        AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store,
-          abstractedType.Result,
-          explicitSelectParams));
-      }
+      AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store, abstractedType.Result, implicitSelectParams,
+        explicitSelectParams, originalInTypes));
+      AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store, abstractedType.Result, explicitSelectParams));
     }
 
     protected void GenTypeAxiomParams(MapType /*!*/ abstractedType, TypeCtorDecl /*!*/ synonymDecl,
