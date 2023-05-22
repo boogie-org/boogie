@@ -11,7 +11,7 @@ procedure ReducingLambdaBodies() {
 
 	f := (lambda x: int :: x + a);
 	g := (lambda x: int :: a + x);
-	assert f == g; // should fail
+	assert f == g; // should pass
 }
 
 procedure ReducingLambdaBodies2() {
@@ -29,7 +29,7 @@ procedure ReducingLambdaBodies3() {
 	var f, g: [int,int]int;
 	f := (lambda x, y: int :: x + y);
 	g := (lambda x, y: int :: y + x);
-	assert f == g; // should fail
+	assert f == g; // should pass
 }
 
 procedure MultibleBoundVars() {
@@ -48,5 +48,5 @@ procedure Triggers'(w: int, w': int) {
 	b := (lambda y:int :: (forall v:int :: { g(v,w') } y == g(v,w')));
 	assert w == w' ==> a == b;
 	b := (lambda y:int :: (forall v:int :: y == g(v,w')));
-	assert w == w' ==> a == b; // should fail because triggers are different
+	assert w == w' ==> a == b;
 }

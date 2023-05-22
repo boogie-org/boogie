@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -monomorphize "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure {:inline 1} A_inline<T>(i: T) returns (j: T) {

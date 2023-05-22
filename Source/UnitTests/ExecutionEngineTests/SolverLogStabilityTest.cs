@@ -150,6 +150,7 @@ procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
       
       var options = CommandLineOptions.FromArguments(TextWriter.Null);
       options.NormalizeNames = true;
+      options.TypeEncodingMethod = CoreOptions.TypeEncoding.Predicates;
       
       var proverLog1 = await GetProverLogs.GetProverLogForProgram(options, procedure1);
       var proverLog2 = await GetProverLogs.GetProverLogForProgram(options, procedure2);
@@ -264,6 +265,7 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
 {procedure2}";
       var options = CommandLineOptions.FromArguments(TextWriter.Null);
       options.Prune = true;
+      options.TypeEncodingMethod = CoreOptions.TypeEncoding.Predicates;
       
       var proverLog1 = await GetProverLogs.GetProverLogForProgram(options, procedure1);
       options.ProcsToCheck.Add("M");

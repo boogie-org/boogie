@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+// RUN: %parallel-boogie /noVerify "%s" > "%t"
 
 // ==================================================
 // Preamble of State module.

@@ -1,6 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// RUN: %parallel-boogie -noVerify -print:- -pretty:0 -env:0 -printDesugared "%s" > "%t"
+// RUN: %parallel-boogie -typeEncoding:p -noVerify -print:- -pretty:0 -env:0 -printDesugared "%s" > "%t"
 // RUN: %diff "%s.print.expect" "%t"
 
 
@@ -21,4 +21,3 @@ procedure P() returns () {
   assert (forall x:int :: union(intSet0, intSet1)[x] ==
                                      (x == -5 || x == 0 || x == 2 || x == 3));
 }
-

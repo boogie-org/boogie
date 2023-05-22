@@ -68,7 +68,7 @@ namespace Microsoft.Boogie
     InstrumentationPlaces InstrumentInfer { get; }
     AiFlags Ai { get; }
     bool InstrumentWithAsserts { get; }
-    bool UseArrayTheory { get; set; }
+    bool UseArrayTheory { get; }
     TypeEncoding TypeEncodingMethod { get; set; }
     SubsumptionOption UseSubsumption { get; }
     int VcsCores { get; }

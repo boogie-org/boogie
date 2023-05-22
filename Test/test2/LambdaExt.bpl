@@ -1,5 +1,5 @@
-// RUN: %parallel-boogie "%s" > "%t"
-// RUN: %parallel-boogie -freeVarLambdaLifting "%s" >> "%t"
+// RUN: %parallel-boogie -typeEncoding:p "%s" > "%t"
+// RUN: %parallel-boogie -typeEncoding:p -freeVarLambdaLifting "%s" >> "%t"
 // RUN: %diff "%s.expect" "%t"
 // UNSUPPORTED: batch_mode
 

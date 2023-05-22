@@ -351,10 +351,7 @@ namespace Microsoft.Boogie
     public string PrintCFGPrefix { get; set; }
     public bool ForceBplErrors { get; set; } = false; // if true, boogie error is shown even if "msg" attribute is present
 
-    public bool UseArrayTheory {
-      get => useArrayTheory;
-      set => useArrayTheory = value;
-    }
+    public bool UseArrayTheory => !useArrayAxioms && TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic;
 
     public bool RelaxFocus { get; set; }
 
@@ -511,10 +508,7 @@ namespace Microsoft.Boogie
 
     public bool ExtractLoopsUnrollIrreducible { get; set; } = true; // unroll irreducible loops? (set programmatically)
 
-
-    public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Predicates;
-
-    public bool Monomorphize { get; set; } = false;
+    public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Monomorphic;
 
     public bool ReflectAdd { get; set; } = false;
 
@@ -540,7 +534,7 @@ namespace Microsoft.Boogie
 
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;
-    private bool useArrayTheory = false;
+    private bool useArrayAxioms = false;
     private bool doModSetAnalysis = false;
     private bool runDiagnosticsOnTimeout = false;
     private bool traceDiagnosticsOnTimeout = false;
@@ -1071,6 +1065,10 @@ namespace Microsoft.Boogie
           {
             switch (args[ps.i])
             {
+              case "m":
+              case "monomorphic":
+                TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
+                break;
               case "p":
               case "predicates":
                 TypeEncodingMethod = CoreOptions.TypeEncoding.Predicates;
@@ -1083,14 +1081,6 @@ namespace Microsoft.Boogie
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 break;
             }
-          }
-
-          return true;
-
-        case "monomorphize":
-          if (ps.ConfirmArgumentCount(0))
-          {
-            Monomorphize = true;
           }
 
           return true;
@@ -1295,7 +1285,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("vcsDumpSplits", x => VcsDumpSplits = x) ||
               ps.CheckBooleanFlag("dbgRefuted", x => DebugRefuted = x) ||
               ps.CheckBooleanFlag("reflectAdd", x => ReflectAdd = x) ||
-              ps.CheckBooleanFlag("useArrayTheory", x => useArrayTheory = x) ||
+              ps.CheckBooleanFlag("useArrayAxioms", x => useArrayAxioms = x) ||
               ps.CheckBooleanFlag("relaxFocus", x => RelaxFocus = x) ||
               ps.CheckBooleanFlag("doModSetAnalysis", x => doModSetAnalysis = x) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", x => runDiagnosticsOnTimeout = x) ||
@@ -1362,9 +1352,6 @@ namespace Microsoft.Boogie
 
       if (StratifiedInlining > 0)
       {
-        TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
-        UseArrayTheory = true;
-        UseAbstractInterpretation = false;
         if (ProverDllName == "SMTLib")
         {
           ErrorLimit = 1;
@@ -1869,18 +1856,17 @@ namespace Microsoft.Boogie
                 invocation during smoke test, defaults to 10.
   /causalImplies
                 Translate Boogie's A ==> B into prover's A ==> A && B.
-  /typeEncoding:<m>
+  /typeEncoding:<t>
                 Encoding of types when generating VC of a polymorphic program:
-                   p = predicates (default)
+                   m = monomorphic (default)
+                   p = predicates
                    a = arguments
                 Boogie automatically detects monomorphic programs and enables
                 monomorphic VC generation, thereby overriding the above option.
-  /monomorphize
-                Try to monomorphize program. An error is reported if
-                monomorphization is not possible. This feature is experimental!
-  /useArrayTheory
-                Use the SMT theory of arrays (as opposed to axioms). Supported
-                only for monomorphic programs.
+                If the latter two options are used, then arrays are handled via axioms.
+  /useArrayAxioms
+                If monomorphic type encoding is used, arrays are handled by default with
+                the SMT theory of arrays. This option allows the use of axioms instead.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
   /prune
@@ -1894,10 +1880,8 @@ namespace Microsoft.Boogie
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.
-
   /randomSeed:<s>
                 Supply the random seed for /randomizeVcIterations option.
-
   /randomizeVcIterations:<n>
                 Turn on randomization of the input that Boogie passes to the
                 SMT solver and turn on randomization in the SMT solver itself.
