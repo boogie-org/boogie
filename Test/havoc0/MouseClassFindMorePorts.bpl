@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /useArrayAxioms "%s" > "%t"
 // RUN: %diff success.expect "%t"
 type byte, name;
 function OneByteToInt(byte) returns (int);
@@ -90,9 +90,9 @@ axiom(forall f:[int]int, x:int, y:int, z:int :: {Inverse(f[x := y],z)} y == z ||
 axiom(forall x:int, S:[int]bool, M:[int]int :: {Dereference(S,M)[x]} Dereference(S,M)[x] ==> (exists y:int :: x == M[y] && S[y]));
 axiom(forall x:int, S:[int]bool, M:[int]int :: {M[x], S[x], Dereference(S,M)} S[x] ==> Dereference(S,M)[M[x]]);
 axiom(forall x:int, y:int, S:[int]bool, M:[int]int :: {Dereference(S,M[x := y])} !S[x] ==> Equal(Dereference(S,M[x := y]), Dereference(S,M)));
-axiom(forall x:int, y:int, S:[int]bool, M:[int]int :: {Dereference(S,M[x := y])} 
+axiom(forall x:int, y:int, S:[int]bool, M:[int]int :: {Dereference(S,M[x := y])}
      S[x] &&  Equal(Intersection(Inverse(M,M[x]), S), Singleton(x)) ==> Equal(Dereference(S,M[x := y]), Union(Difference(Dereference(S,M), Singleton(M[x])), Singleton(y))));
-axiom(forall x:int, y:int, S:[int]bool, M:[int]int :: {Dereference(S,M[x := y])} 
+axiom(forall x:int, y:int, S:[int]bool, M:[int]int :: {Dereference(S,M[x := y])}
      S[x] && !Equal(Intersection(Inverse(M,M[x]), S), Singleton(x)) ==> Equal(Dereference(S,M[x := y]), Union(Dereference(S,M), Singleton(y))));
 
 function Unified([name][int]int) returns ([int]int);
@@ -1291,12 +1291,12 @@ function _S_AssocClassList__GLOBALSInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {AssocClassList__GLOBALSInv(AssocClassList__GLOBALS(x))} AssocClassList__GLOBALSInv(AssocClassList__GLOBALS(x)) == x);
 axiom (forall x:int :: {AssocClassList__GLOBALSInv(x)} AssocClassList__GLOBALS(AssocClassList__GLOBALSInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_AssocClassList__GLOBALS(S)[x]} _S_AssocClassList__GLOBALS(S)[x] <==> S[AssocClassList__GLOBALSInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_AssocClassList__GLOBALSInv(S)[x]} _S_AssocClassList__GLOBALSInv(S)[x] <==> S[AssocClassList__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_AssocClassList__GLOBALS(S)} S[x] ==> _S_AssocClassList__GLOBALS(S)[AssocClassList__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_AssocClassList__GLOBALSInv(S)} S[x] ==> _S_AssocClassList__GLOBALSInv(S)[AssocClassList__GLOBALSInv(x)]);
-        
+
 axiom (forall x:int :: {AssocClassList__GLOBALS(x)} AssocClassList__GLOBALS(x) == x + 8);
 axiom (forall x:int :: {AssocClassList__GLOBALSInv(x)} AssocClassList__GLOBALSInv(x) == x - 8);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 8, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 8, 1) == AssocClassList__GLOBALSInv(x));
@@ -1308,12 +1308,12 @@ function _S_BaseClassName__GLOBALSInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {BaseClassName__GLOBALSInv(BaseClassName__GLOBALS(x))} BaseClassName__GLOBALSInv(BaseClassName__GLOBALS(x)) == x);
 axiom (forall x:int :: {BaseClassName__GLOBALSInv(x)} BaseClassName__GLOBALS(BaseClassName__GLOBALSInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_BaseClassName__GLOBALS(S)[x]} _S_BaseClassName__GLOBALS(S)[x] <==> S[BaseClassName__GLOBALSInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_BaseClassName__GLOBALSInv(S)[x]} _S_BaseClassName__GLOBALSInv(S)[x] <==> S[BaseClassName__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_BaseClassName__GLOBALS(S)} S[x] ==> _S_BaseClassName__GLOBALS(S)[BaseClassName__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_BaseClassName__GLOBALSInv(S)} S[x] ==> _S_BaseClassName__GLOBALSInv(S)[BaseClassName__GLOBALSInv(x)]);
-        
+
 axiom (forall x:int :: {BaseClassName__GLOBALS(x)} BaseClassName__GLOBALS(x) == x + 344);
 axiom (forall x:int :: {BaseClassName__GLOBALSInv(x)} BaseClassName__GLOBALSInv(x) == x - 344);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 344, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 344, 1) == BaseClassName__GLOBALSInv(x));
@@ -1325,12 +1325,12 @@ function _S_Buffer__UNICODE_STRINGInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Buffer__UNICODE_STRINGInv(Buffer__UNICODE_STRING(x))} Buffer__UNICODE_STRINGInv(Buffer__UNICODE_STRING(x)) == x);
 axiom (forall x:int :: {Buffer__UNICODE_STRINGInv(x)} Buffer__UNICODE_STRING(Buffer__UNICODE_STRINGInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Buffer__UNICODE_STRING(S)[x]} _S_Buffer__UNICODE_STRING(S)[x] <==> S[Buffer__UNICODE_STRINGInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Buffer__UNICODE_STRINGInv(S)[x]} _S_Buffer__UNICODE_STRINGInv(S)[x] <==> S[Buffer__UNICODE_STRING(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Buffer__UNICODE_STRING(S)} S[x] ==> _S_Buffer__UNICODE_STRING(S)[Buffer__UNICODE_STRING(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Buffer__UNICODE_STRINGInv(S)} S[x] ==> _S_Buffer__UNICODE_STRINGInv(S)[Buffer__UNICODE_STRINGInv(x)]);
-        
+
 axiom (forall x:int :: {Buffer__UNICODE_STRING(x)} Buffer__UNICODE_STRING(x) == x + 4);
 axiom (forall x:int :: {Buffer__UNICODE_STRINGInv(x)} Buffer__UNICODE_STRINGInv(x) == x - 4);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 4, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 4, 1) == Buffer__UNICODE_STRINGInv(x));
@@ -1342,12 +1342,12 @@ function _S_DataIn__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {DataIn__DEVICE_EXTENSIONInv(DataIn__DEVICE_EXTENSION(x))} DataIn__DEVICE_EXTENSIONInv(DataIn__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {DataIn__DEVICE_EXTENSIONInv(x)} DataIn__DEVICE_EXTENSION(DataIn__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_DataIn__DEVICE_EXTENSION(S)[x]} _S_DataIn__DEVICE_EXTENSION(S)[x] <==> S[DataIn__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_DataIn__DEVICE_EXTENSIONInv(S)[x]} _S_DataIn__DEVICE_EXTENSIONInv(S)[x] <==> S[DataIn__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_DataIn__DEVICE_EXTENSION(S)} S[x] ==> _S_DataIn__DEVICE_EXTENSION(S)[DataIn__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_DataIn__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_DataIn__DEVICE_EXTENSIONInv(S)[DataIn__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {DataIn__DEVICE_EXTENSION(x)} DataIn__DEVICE_EXTENSION(x) == x + 132);
 axiom (forall x:int :: {DataIn__DEVICE_EXTENSIONInv(x)} DataIn__DEVICE_EXTENSIONInv(x) == x - 132);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 132, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 132, 1) == DataIn__DEVICE_EXTENSIONInv(x));
@@ -1359,12 +1359,12 @@ function _S_DataOut__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {DataOut__DEVICE_EXTENSIONInv(DataOut__DEVICE_EXTENSION(x))} DataOut__DEVICE_EXTENSIONInv(DataOut__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {DataOut__DEVICE_EXTENSIONInv(x)} DataOut__DEVICE_EXTENSION(DataOut__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_DataOut__DEVICE_EXTENSION(S)[x]} _S_DataOut__DEVICE_EXTENSION(S)[x] <==> S[DataOut__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_DataOut__DEVICE_EXTENSIONInv(S)[x]} _S_DataOut__DEVICE_EXTENSIONInv(S)[x] <==> S[DataOut__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_DataOut__DEVICE_EXTENSION(S)} S[x] ==> _S_DataOut__DEVICE_EXTENSION(S)[DataOut__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_DataOut__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_DataOut__DEVICE_EXTENSIONInv(S)[DataOut__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {DataOut__DEVICE_EXTENSION(x)} DataOut__DEVICE_EXTENSION(x) == x + 136);
 axiom (forall x:int :: {DataOut__DEVICE_EXTENSIONInv(x)} DataOut__DEVICE_EXTENSIONInv(x) == x - 136);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 136, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 136, 1) == DataOut__DEVICE_EXTENSIONInv(x));
@@ -1376,12 +1376,12 @@ function _S_DeviceExtension__DEVICE_OBJECTInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {DeviceExtension__DEVICE_OBJECTInv(DeviceExtension__DEVICE_OBJECT(x))} DeviceExtension__DEVICE_OBJECTInv(DeviceExtension__DEVICE_OBJECT(x)) == x);
 axiom (forall x:int :: {DeviceExtension__DEVICE_OBJECTInv(x)} DeviceExtension__DEVICE_OBJECT(DeviceExtension__DEVICE_OBJECTInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_DeviceExtension__DEVICE_OBJECT(S)[x]} _S_DeviceExtension__DEVICE_OBJECT(S)[x] <==> S[DeviceExtension__DEVICE_OBJECTInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_DeviceExtension__DEVICE_OBJECTInv(S)[x]} _S_DeviceExtension__DEVICE_OBJECTInv(S)[x] <==> S[DeviceExtension__DEVICE_OBJECT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_DeviceExtension__DEVICE_OBJECT(S)} S[x] ==> _S_DeviceExtension__DEVICE_OBJECT(S)[DeviceExtension__DEVICE_OBJECT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_DeviceExtension__DEVICE_OBJECTInv(S)} S[x] ==> _S_DeviceExtension__DEVICE_OBJECTInv(S)[DeviceExtension__DEVICE_OBJECTInv(x)]);
-        
+
 axiom (forall x:int :: {DeviceExtension__DEVICE_OBJECT(x)} DeviceExtension__DEVICE_OBJECT(x) == x + 40);
 axiom (forall x:int :: {DeviceExtension__DEVICE_OBJECTInv(x)} DeviceExtension__DEVICE_OBJECTInv(x) == x - 40);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 40, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 40, 1) == DeviceExtension__DEVICE_OBJECTInv(x));
@@ -1393,12 +1393,12 @@ function _S_File__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {File__DEVICE_EXTENSIONInv(File__DEVICE_EXTENSION(x))} File__DEVICE_EXTENSIONInv(File__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {File__DEVICE_EXTENSIONInv(x)} File__DEVICE_EXTENSION(File__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_File__DEVICE_EXTENSION(S)[x]} _S_File__DEVICE_EXTENSION(S)[x] <==> S[File__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_File__DEVICE_EXTENSIONInv(S)[x]} _S_File__DEVICE_EXTENSIONInv(S)[x] <==> S[File__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_File__DEVICE_EXTENSION(S)} S[x] ==> _S_File__DEVICE_EXTENSION(S)[File__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_File__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_File__DEVICE_EXTENSIONInv(S)[File__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {File__DEVICE_EXTENSION(x)} File__DEVICE_EXTENSION(x) == x + 260);
 axiom (forall x:int :: {File__DEVICE_EXTENSIONInv(x)} File__DEVICE_EXTENSIONInv(x) == x - 260);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 260, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 260, 1) == File__DEVICE_EXTENSIONInv(x));
@@ -1410,12 +1410,12 @@ function _S_File__PORTInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {File__PORTInv(File__PORT(x))} File__PORTInv(File__PORT(x)) == x);
 axiom (forall x:int :: {File__PORTInv(x)} File__PORT(File__PORTInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_File__PORT(S)[x]} _S_File__PORT(S)[x] <==> S[File__PORTInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_File__PORTInv(S)[x]} _S_File__PORTInv(S)[x] <==> S[File__PORT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_File__PORT(S)} S[x] ==> _S_File__PORT(S)[File__PORT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_File__PORTInv(S)} S[x] ==> _S_File__PORTInv(S)[File__PORTInv(x)]);
-        
+
 axiom (forall x:int :: {File__PORT(x)} File__PORT(x) == x + 0);
 axiom (forall x:int :: {File__PORTInv(x)} File__PORTInv(x) == x - 0);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 0, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 0, 1) == File__PORTInv(x));
@@ -1427,12 +1427,12 @@ function _S_Flags__DEVICE_OBJECTInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Flags__DEVICE_OBJECTInv(Flags__DEVICE_OBJECT(x))} Flags__DEVICE_OBJECTInv(Flags__DEVICE_OBJECT(x)) == x);
 axiom (forall x:int :: {Flags__DEVICE_OBJECTInv(x)} Flags__DEVICE_OBJECT(Flags__DEVICE_OBJECTInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Flags__DEVICE_OBJECT(S)[x]} _S_Flags__DEVICE_OBJECT(S)[x] <==> S[Flags__DEVICE_OBJECTInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Flags__DEVICE_OBJECTInv(S)[x]} _S_Flags__DEVICE_OBJECTInv(S)[x] <==> S[Flags__DEVICE_OBJECT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Flags__DEVICE_OBJECT(S)} S[x] ==> _S_Flags__DEVICE_OBJECT(S)[Flags__DEVICE_OBJECT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Flags__DEVICE_OBJECTInv(S)} S[x] ==> _S_Flags__DEVICE_OBJECTInv(S)[Flags__DEVICE_OBJECTInv(x)]);
-        
+
 axiom (forall x:int :: {Flags__DEVICE_OBJECT(x)} Flags__DEVICE_OBJECT(x) == x + 28);
 axiom (forall x:int :: {Flags__DEVICE_OBJECTInv(x)} Flags__DEVICE_OBJECTInv(x) == x - 28);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 28, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 28, 1) == Flags__DEVICE_OBJECTInv(x));
@@ -1444,12 +1444,12 @@ function _S_Flink__LIST_ENTRYInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Flink__LIST_ENTRYInv(Flink__LIST_ENTRY(x))} Flink__LIST_ENTRYInv(Flink__LIST_ENTRY(x)) == x);
 axiom (forall x:int :: {Flink__LIST_ENTRYInv(x)} Flink__LIST_ENTRY(Flink__LIST_ENTRYInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Flink__LIST_ENTRY(S)[x]} _S_Flink__LIST_ENTRY(S)[x] <==> S[Flink__LIST_ENTRYInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Flink__LIST_ENTRYInv(S)[x]} _S_Flink__LIST_ENTRYInv(S)[x] <==> S[Flink__LIST_ENTRY(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Flink__LIST_ENTRY(S)} S[x] ==> _S_Flink__LIST_ENTRY(S)[Flink__LIST_ENTRY(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Flink__LIST_ENTRYInv(S)} S[x] ==> _S_Flink__LIST_ENTRYInv(S)[Flink__LIST_ENTRYInv(x)]);
-        
+
 axiom (forall x:int :: {Flink__LIST_ENTRY(x)} Flink__LIST_ENTRY(x) == x + 0);
 axiom (forall x:int :: {Flink__LIST_ENTRYInv(x)} Flink__LIST_ENTRYInv(x) == x - 0);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 0, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 0, 1) == Flink__LIST_ENTRYInv(x));
@@ -1461,12 +1461,12 @@ function _S_Free__PORTInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Free__PORTInv(Free__PORT(x))} Free__PORTInv(Free__PORT(x)) == x);
 axiom (forall x:int :: {Free__PORTInv(x)} Free__PORT(Free__PORTInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Free__PORT(S)[x]} _S_Free__PORT(S)[x] <==> S[Free__PORTInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Free__PORTInv(S)[x]} _S_Free__PORTInv(S)[x] <==> S[Free__PORT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Free__PORT(S)} S[x] ==> _S_Free__PORT(S)[Free__PORT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Free__PORTInv(S)} S[x] ==> _S_Free__PORTInv(S)[Free__PORTInv(x)]);
-        
+
 axiom (forall x:int :: {Free__PORT(x)} Free__PORT(x) == x + 11);
 axiom (forall x:int :: {Free__PORTInv(x)} Free__PORTInv(x) == x - 11);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 11, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 11, 1) == Free__PORTInv(x));
@@ -1478,12 +1478,12 @@ function _S_GrandMaster__GLOBALSInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {GrandMaster__GLOBALSInv(GrandMaster__GLOBALS(x))} GrandMaster__GLOBALSInv(GrandMaster__GLOBALS(x)) == x);
 axiom (forall x:int :: {GrandMaster__GLOBALSInv(x)} GrandMaster__GLOBALS(GrandMaster__GLOBALSInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_GrandMaster__GLOBALS(S)[x]} _S_GrandMaster__GLOBALS(S)[x] <==> S[GrandMaster__GLOBALSInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_GrandMaster__GLOBALSInv(S)[x]} _S_GrandMaster__GLOBALSInv(S)[x] <==> S[GrandMaster__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_GrandMaster__GLOBALS(S)} S[x] ==> _S_GrandMaster__GLOBALS(S)[GrandMaster__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_GrandMaster__GLOBALSInv(S)} S[x] ==> _S_GrandMaster__GLOBALSInv(S)[GrandMaster__GLOBALSInv(x)]);
-        
+
 axiom (forall x:int :: {GrandMaster__GLOBALS(x)} GrandMaster__GLOBALS(x) == x + 4);
 axiom (forall x:int :: {GrandMaster__GLOBALSInv(x)} GrandMaster__GLOBALSInv(x) == x - 4);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 4, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 4, 1) == GrandMaster__GLOBALSInv(x));
@@ -1495,12 +1495,12 @@ function _S_InitExtension__GLOBALSInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {InitExtension__GLOBALSInv(InitExtension__GLOBALS(x))} InitExtension__GLOBALSInv(InitExtension__GLOBALS(x)) == x);
 axiom (forall x:int :: {InitExtension__GLOBALSInv(x)} InitExtension__GLOBALS(InitExtension__GLOBALSInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_InitExtension__GLOBALS(S)[x]} _S_InitExtension__GLOBALS(S)[x] <==> S[InitExtension__GLOBALSInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_InitExtension__GLOBALSInv(S)[x]} _S_InitExtension__GLOBALSInv(S)[x] <==> S[InitExtension__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_InitExtension__GLOBALS(S)} S[x] ==> _S_InitExtension__GLOBALS(S)[InitExtension__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_InitExtension__GLOBALSInv(S)} S[x] ==> _S_InitExtension__GLOBALSInv(S)[InitExtension__GLOBALSInv(x)]);
-        
+
 axiom (forall x:int :: {InitExtension__GLOBALS(x)} InitExtension__GLOBALS(x) == x + 64);
 axiom (forall x:int :: {InitExtension__GLOBALSInv(x)} InitExtension__GLOBALSInv(x) == x - 64);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 64, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 64, 1) == InitExtension__GLOBALSInv(x));
@@ -1512,12 +1512,12 @@ function _S_InputData__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {InputData__DEVICE_EXTENSIONInv(InputData__DEVICE_EXTENSION(x))} InputData__DEVICE_EXTENSIONInv(InputData__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {InputData__DEVICE_EXTENSIONInv(x)} InputData__DEVICE_EXTENSION(InputData__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_InputData__DEVICE_EXTENSION(S)[x]} _S_InputData__DEVICE_EXTENSION(S)[x] <==> S[InputData__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_InputData__DEVICE_EXTENSIONInv(S)[x]} _S_InputData__DEVICE_EXTENSIONInv(S)[x] <==> S[InputData__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_InputData__DEVICE_EXTENSION(S)} S[x] ==> _S_InputData__DEVICE_EXTENSION(S)[InputData__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_InputData__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_InputData__DEVICE_EXTENSIONInv(S)[InputData__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {InputData__DEVICE_EXTENSION(x)} InputData__DEVICE_EXTENSION(x) == x + 128);
 axiom (forall x:int :: {InputData__DEVICE_EXTENSIONInv(x)} InputData__DEVICE_EXTENSIONInv(x) == x - 128);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 128, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 128, 1) == InputData__DEVICE_EXTENSIONInv(x));
@@ -1529,12 +1529,12 @@ function _S_LegacyDeviceList__GLOBALSInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {LegacyDeviceList__GLOBALSInv(LegacyDeviceList__GLOBALS(x))} LegacyDeviceList__GLOBALSInv(LegacyDeviceList__GLOBALS(x)) == x);
 axiom (forall x:int :: {LegacyDeviceList__GLOBALSInv(x)} LegacyDeviceList__GLOBALS(LegacyDeviceList__GLOBALSInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_LegacyDeviceList__GLOBALS(S)[x]} _S_LegacyDeviceList__GLOBALS(S)[x] <==> S[LegacyDeviceList__GLOBALSInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_LegacyDeviceList__GLOBALSInv(S)[x]} _S_LegacyDeviceList__GLOBALSInv(S)[x] <==> S[LegacyDeviceList__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_LegacyDeviceList__GLOBALS(S)} S[x] ==> _S_LegacyDeviceList__GLOBALS(S)[LegacyDeviceList__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_LegacyDeviceList__GLOBALSInv(S)} S[x] ==> _S_LegacyDeviceList__GLOBALSInv(S)[LegacyDeviceList__GLOBALSInv(x)]);
-        
+
 axiom (forall x:int :: {LegacyDeviceList__GLOBALS(x)} LegacyDeviceList__GLOBALS(x) == x + 864);
 axiom (forall x:int :: {LegacyDeviceList__GLOBALSInv(x)} LegacyDeviceList__GLOBALSInv(x) == x - 864);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 864, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 864, 1) == LegacyDeviceList__GLOBALSInv(x));
@@ -1546,12 +1546,12 @@ function _S_Length__UNICODE_STRINGInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Length__UNICODE_STRINGInv(Length__UNICODE_STRING(x))} Length__UNICODE_STRINGInv(Length__UNICODE_STRING(x)) == x);
 axiom (forall x:int :: {Length__UNICODE_STRINGInv(x)} Length__UNICODE_STRING(Length__UNICODE_STRINGInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Length__UNICODE_STRING(S)[x]} _S_Length__UNICODE_STRING(S)[x] <==> S[Length__UNICODE_STRINGInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Length__UNICODE_STRINGInv(S)[x]} _S_Length__UNICODE_STRINGInv(S)[x] <==> S[Length__UNICODE_STRING(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Length__UNICODE_STRING(S)} S[x] ==> _S_Length__UNICODE_STRING(S)[Length__UNICODE_STRING(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Length__UNICODE_STRINGInv(S)} S[x] ==> _S_Length__UNICODE_STRINGInv(S)[Length__UNICODE_STRINGInv(x)]);
-        
+
 axiom (forall x:int :: {Length__UNICODE_STRING(x)} Length__UNICODE_STRING(x) == x + 0);
 axiom (forall x:int :: {Length__UNICODE_STRINGInv(x)} Length__UNICODE_STRINGInv(x) == x - 0);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 0, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 0, 1) == Length__UNICODE_STRINGInv(x));
@@ -1563,12 +1563,12 @@ function _S_Link__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Link__DEVICE_EXTENSIONInv(Link__DEVICE_EXTENSION(x))} Link__DEVICE_EXTENSIONInv(Link__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {Link__DEVICE_EXTENSIONInv(x)} Link__DEVICE_EXTENSION(Link__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Link__DEVICE_EXTENSION(S)[x]} _S_Link__DEVICE_EXTENSION(S)[x] <==> S[Link__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Link__DEVICE_EXTENSIONInv(S)[x]} _S_Link__DEVICE_EXTENSIONInv(S)[x] <==> S[Link__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Link__DEVICE_EXTENSION(S)} S[x] ==> _S_Link__DEVICE_EXTENSION(S)[Link__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Link__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_Link__DEVICE_EXTENSIONInv(S)[Link__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {Link__DEVICE_EXTENSION(x)} Link__DEVICE_EXTENSION(x) == x + 252);
 axiom (forall x:int :: {Link__DEVICE_EXTENSIONInv(x)} Link__DEVICE_EXTENSIONInv(x) == x - 252);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 252, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 252, 1) == Link__DEVICE_EXTENSIONInv(x));
@@ -1580,12 +1580,12 @@ function _S_MaximumLength__UNICODE_STRINGInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {MaximumLength__UNICODE_STRINGInv(MaximumLength__UNICODE_STRING(x))} MaximumLength__UNICODE_STRINGInv(MaximumLength__UNICODE_STRING(x)) == x);
 axiom (forall x:int :: {MaximumLength__UNICODE_STRINGInv(x)} MaximumLength__UNICODE_STRING(MaximumLength__UNICODE_STRINGInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_MaximumLength__UNICODE_STRING(S)[x]} _S_MaximumLength__UNICODE_STRING(S)[x] <==> S[MaximumLength__UNICODE_STRINGInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_MaximumLength__UNICODE_STRINGInv(S)[x]} _S_MaximumLength__UNICODE_STRINGInv(S)[x] <==> S[MaximumLength__UNICODE_STRING(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_MaximumLength__UNICODE_STRING(S)} S[x] ==> _S_MaximumLength__UNICODE_STRING(S)[MaximumLength__UNICODE_STRING(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_MaximumLength__UNICODE_STRINGInv(S)} S[x] ==> _S_MaximumLength__UNICODE_STRINGInv(S)[MaximumLength__UNICODE_STRINGInv(x)]);
-        
+
 axiom (forall x:int :: {MaximumLength__UNICODE_STRING(x)} MaximumLength__UNICODE_STRING(x) == x + 2);
 axiom (forall x:int :: {MaximumLength__UNICODE_STRINGInv(x)} MaximumLength__UNICODE_STRINGInv(x) == x - 2);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 2, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 2, 1) == MaximumLength__UNICODE_STRINGInv(x));
@@ -1597,12 +1597,12 @@ function _S_Mutex__GLOBALSInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Mutex__GLOBALSInv(Mutex__GLOBALS(x))} Mutex__GLOBALSInv(Mutex__GLOBALS(x)) == x);
 axiom (forall x:int :: {Mutex__GLOBALSInv(x)} Mutex__GLOBALS(Mutex__GLOBALSInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Mutex__GLOBALS(S)[x]} _S_Mutex__GLOBALS(S)[x] <==> S[Mutex__GLOBALSInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Mutex__GLOBALSInv(S)[x]} _S_Mutex__GLOBALSInv(S)[x] <==> S[Mutex__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Mutex__GLOBALS(S)} S[x] ==> _S_Mutex__GLOBALS(S)[Mutex__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Mutex__GLOBALSInv(S)} S[x] ==> _S_Mutex__GLOBALSInv(S)[Mutex__GLOBALSInv(x)]);
-        
+
 axiom (forall x:int :: {Mutex__GLOBALS(x)} Mutex__GLOBALS(x) == x + 24);
 axiom (forall x:int :: {Mutex__GLOBALSInv(x)} Mutex__GLOBALSInv(x) == x - 24);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 24, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 24, 1) == Mutex__GLOBALSInv(x));
@@ -1614,12 +1614,12 @@ function _S_NumberLegacyPorts__GLOBALSInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {NumberLegacyPorts__GLOBALSInv(NumberLegacyPorts__GLOBALS(x))} NumberLegacyPorts__GLOBALSInv(NumberLegacyPorts__GLOBALS(x)) == x);
 axiom (forall x:int :: {NumberLegacyPorts__GLOBALSInv(x)} NumberLegacyPorts__GLOBALS(NumberLegacyPorts__GLOBALSInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_NumberLegacyPorts__GLOBALS(S)[x]} _S_NumberLegacyPorts__GLOBALS(S)[x] <==> S[NumberLegacyPorts__GLOBALSInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_NumberLegacyPorts__GLOBALSInv(S)[x]} _S_NumberLegacyPorts__GLOBALSInv(S)[x] <==> S[NumberLegacyPorts__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_NumberLegacyPorts__GLOBALS(S)} S[x] ==> _S_NumberLegacyPorts__GLOBALS(S)[NumberLegacyPorts__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_NumberLegacyPorts__GLOBALSInv(S)} S[x] ==> _S_NumberLegacyPorts__GLOBALSInv(S)[NumberLegacyPorts__GLOBALSInv(x)]);
-        
+
 axiom (forall x:int :: {NumberLegacyPorts__GLOBALS(x)} NumberLegacyPorts__GLOBALS(x) == x + 20);
 axiom (forall x:int :: {NumberLegacyPorts__GLOBALSInv(x)} NumberLegacyPorts__GLOBALSInv(x) == x - 20);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 20, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 20, 1) == NumberLegacyPorts__GLOBALSInv(x));
@@ -1631,12 +1631,12 @@ function _S_PnP__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {PnP__DEVICE_EXTENSIONInv(PnP__DEVICE_EXTENSION(x))} PnP__DEVICE_EXTENSIONInv(PnP__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {PnP__DEVICE_EXTENSIONInv(x)} PnP__DEVICE_EXTENSION(PnP__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_PnP__DEVICE_EXTENSION(S)[x]} _S_PnP__DEVICE_EXTENSION(S)[x] <==> S[PnP__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_PnP__DEVICE_EXTENSIONInv(S)[x]} _S_PnP__DEVICE_EXTENSIONInv(S)[x] <==> S[PnP__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_PnP__DEVICE_EXTENSION(S)} S[x] ==> _S_PnP__DEVICE_EXTENSION(S)[PnP__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_PnP__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_PnP__DEVICE_EXTENSIONInv(S)[PnP__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {PnP__DEVICE_EXTENSION(x)} PnP__DEVICE_EXTENSION(x) == x + 104);
 axiom (forall x:int :: {PnP__DEVICE_EXTENSIONInv(x)} PnP__DEVICE_EXTENSIONInv(x) == x - 104);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 104, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 104, 1) == PnP__DEVICE_EXTENSIONInv(x));
@@ -1648,12 +1648,12 @@ function _S_Port__PORTInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Port__PORTInv(Port__PORT(x))} Port__PORTInv(Port__PORT(x)) == x);
 axiom (forall x:int :: {Port__PORTInv(x)} Port__PORT(Port__PORTInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Port__PORT(S)[x]} _S_Port__PORT(S)[x] <==> S[Port__PORTInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Port__PORTInv(S)[x]} _S_Port__PORTInv(S)[x] <==> S[Port__PORT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Port__PORT(S)} S[x] ==> _S_Port__PORT(S)[Port__PORT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Port__PORTInv(S)} S[x] ==> _S_Port__PORTInv(S)[Port__PORTInv(x)]);
-        
+
 axiom (forall x:int :: {Port__PORT(x)} Port__PORT(x) == x + 4);
 axiom (forall x:int :: {Port__PORTInv(x)} Port__PORTInv(x) == x - 4);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 4, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 4, 1) == Port__PORTInv(x));
@@ -1665,12 +1665,12 @@ function _S_PortsServiced__GLOBALSInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {PortsServiced__GLOBALSInv(PortsServiced__GLOBALS(x))} PortsServiced__GLOBALSInv(PortsServiced__GLOBALS(x)) == x);
 axiom (forall x:int :: {PortsServiced__GLOBALSInv(x)} PortsServiced__GLOBALS(PortsServiced__GLOBALSInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_PortsServiced__GLOBALS(S)[x]} _S_PortsServiced__GLOBALS(S)[x] <==> S[PortsServiced__GLOBALSInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_PortsServiced__GLOBALSInv(S)[x]} _S_PortsServiced__GLOBALSInv(S)[x] <==> S[PortsServiced__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_PortsServiced__GLOBALS(S)} S[x] ==> _S_PortsServiced__GLOBALS(S)[PortsServiced__GLOBALS(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_PortsServiced__GLOBALSInv(S)} S[x] ==> _S_PortsServiced__GLOBALSInv(S)[PortsServiced__GLOBALSInv(x)]);
-        
+
 axiom (forall x:int :: {PortsServiced__GLOBALS(x)} PortsServiced__GLOBALS(x) == x + 60);
 axiom (forall x:int :: {PortsServiced__GLOBALSInv(x)} PortsServiced__GLOBALSInv(x) == x - 60);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 60, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 60, 1) == PortsServiced__GLOBALSInv(x));
@@ -1682,12 +1682,12 @@ function _S_Self__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Self__DEVICE_EXTENSIONInv(Self__DEVICE_EXTENSION(x))} Self__DEVICE_EXTENSIONInv(Self__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {Self__DEVICE_EXTENSIONInv(x)} Self__DEVICE_EXTENSION(Self__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Self__DEVICE_EXTENSION(S)[x]} _S_Self__DEVICE_EXTENSION(S)[x] <==> S[Self__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Self__DEVICE_EXTENSIONInv(S)[x]} _S_Self__DEVICE_EXTENSIONInv(S)[x] <==> S[Self__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Self__DEVICE_EXTENSION(S)} S[x] ==> _S_Self__DEVICE_EXTENSION(S)[Self__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Self__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_Self__DEVICE_EXTENSIONInv(S)[Self__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {Self__DEVICE_EXTENSION(x)} Self__DEVICE_EXTENSION(x) == x + 0);
 axiom (forall x:int :: {Self__DEVICE_EXTENSIONInv(x)} Self__DEVICE_EXTENSIONInv(x) == x - 0);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 0, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 0, 1) == Self__DEVICE_EXTENSIONInv(x));
@@ -1699,12 +1699,12 @@ function _S_SpinLock__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {SpinLock__DEVICE_EXTENSIONInv(SpinLock__DEVICE_EXTENSION(x))} SpinLock__DEVICE_EXTENSIONInv(SpinLock__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {SpinLock__DEVICE_EXTENSIONInv(x)} SpinLock__DEVICE_EXTENSION(SpinLock__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_SpinLock__DEVICE_EXTENSION(S)[x]} _S_SpinLock__DEVICE_EXTENSION(S)[x] <==> S[SpinLock__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_SpinLock__DEVICE_EXTENSIONInv(S)[x]} _S_SpinLock__DEVICE_EXTENSIONInv(S)[x] <==> S[SpinLock__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_SpinLock__DEVICE_EXTENSION(S)} S[x] ==> _S_SpinLock__DEVICE_EXTENSION(S)[SpinLock__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_SpinLock__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_SpinLock__DEVICE_EXTENSIONInv(S)[SpinLock__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {SpinLock__DEVICE_EXTENSION(x)} SpinLock__DEVICE_EXTENSION(x) == x + 152);
 axiom (forall x:int :: {SpinLock__DEVICE_EXTENSIONInv(x)} SpinLock__DEVICE_EXTENSIONInv(x) == x - 152);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 152, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 152, 1) == SpinLock__DEVICE_EXTENSIONInv(x));
@@ -1716,12 +1716,12 @@ function _S_StackSize__DEVICE_OBJECTInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {StackSize__DEVICE_OBJECTInv(StackSize__DEVICE_OBJECT(x))} StackSize__DEVICE_OBJECTInv(StackSize__DEVICE_OBJECT(x)) == x);
 axiom (forall x:int :: {StackSize__DEVICE_OBJECTInv(x)} StackSize__DEVICE_OBJECT(StackSize__DEVICE_OBJECTInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_StackSize__DEVICE_OBJECT(S)[x]} _S_StackSize__DEVICE_OBJECT(S)[x] <==> S[StackSize__DEVICE_OBJECTInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_StackSize__DEVICE_OBJECTInv(S)[x]} _S_StackSize__DEVICE_OBJECTInv(S)[x] <==> S[StackSize__DEVICE_OBJECT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_StackSize__DEVICE_OBJECT(S)} S[x] ==> _S_StackSize__DEVICE_OBJECT(S)[StackSize__DEVICE_OBJECT(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_StackSize__DEVICE_OBJECTInv(S)} S[x] ==> _S_StackSize__DEVICE_OBJECTInv(S)[StackSize__DEVICE_OBJECTInv(x)]);
-        
+
 axiom (forall x:int :: {StackSize__DEVICE_OBJECT(x)} StackSize__DEVICE_OBJECT(x) == x + 48);
 axiom (forall x:int :: {StackSize__DEVICE_OBJECTInv(x)} StackSize__DEVICE_OBJECTInv(x) == x - 48);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 48, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 48, 1) == StackSize__DEVICE_OBJECTInv(x));
@@ -1733,12 +1733,12 @@ function _S_Started__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {Started__DEVICE_EXTENSIONInv(Started__DEVICE_EXTENSION(x))} Started__DEVICE_EXTENSIONInv(Started__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {Started__DEVICE_EXTENSIONInv(x)} Started__DEVICE_EXTENSION(Started__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_Started__DEVICE_EXTENSION(S)[x]} _S_Started__DEVICE_EXTENSION(S)[x] <==> S[Started__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_Started__DEVICE_EXTENSIONInv(S)[x]} _S_Started__DEVICE_EXTENSIONInv(S)[x] <==> S[Started__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Started__DEVICE_EXTENSION(S)} S[x] ==> _S_Started__DEVICE_EXTENSION(S)[Started__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_Started__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_Started__DEVICE_EXTENSIONInv(S)[Started__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {Started__DEVICE_EXTENSION(x)} Started__DEVICE_EXTENSION(x) == x + 105);
 axiom (forall x:int :: {Started__DEVICE_EXTENSIONInv(x)} Started__DEVICE_EXTENSIONInv(x) == x - 105);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 105, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 105, 1) == Started__DEVICE_EXTENSIONInv(x));
@@ -1750,12 +1750,12 @@ function _S_TopPort__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {TopPort__DEVICE_EXTENSIONInv(TopPort__DEVICE_EXTENSION(x))} TopPort__DEVICE_EXTENSIONInv(TopPort__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {TopPort__DEVICE_EXTENSIONInv(x)} TopPort__DEVICE_EXTENSION(TopPort__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_TopPort__DEVICE_EXTENSION(S)[x]} _S_TopPort__DEVICE_EXTENSION(S)[x] <==> S[TopPort__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_TopPort__DEVICE_EXTENSIONInv(S)[x]} _S_TopPort__DEVICE_EXTENSIONInv(S)[x] <==> S[TopPort__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_TopPort__DEVICE_EXTENSION(S)} S[x] ==> _S_TopPort__DEVICE_EXTENSION(S)[TopPort__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_TopPort__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_TopPort__DEVICE_EXTENSIONInv(S)[TopPort__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {TopPort__DEVICE_EXTENSION(x)} TopPort__DEVICE_EXTENSION(x) == x + 8);
 axiom (forall x:int :: {TopPort__DEVICE_EXTENSIONInv(x)} TopPort__DEVICE_EXTENSIONInv(x) == x - 8);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 8, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 8, 1) == TopPort__DEVICE_EXTENSIONInv(x));
@@ -1767,12 +1767,12 @@ function _S_UnitId__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool);
 
 axiom (forall x:int :: {UnitId__DEVICE_EXTENSIONInv(UnitId__DEVICE_EXTENSION(x))} UnitId__DEVICE_EXTENSIONInv(UnitId__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {UnitId__DEVICE_EXTENSIONInv(x)} UnitId__DEVICE_EXTENSION(UnitId__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_UnitId__DEVICE_EXTENSION(S)[x]} _S_UnitId__DEVICE_EXTENSION(S)[x] <==> S[UnitId__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_UnitId__DEVICE_EXTENSIONInv(S)[x]} _S_UnitId__DEVICE_EXTENSIONInv(S)[x] <==> S[UnitId__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_UnitId__DEVICE_EXTENSION(S)} S[x] ==> _S_UnitId__DEVICE_EXTENSION(S)[UnitId__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_UnitId__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_UnitId__DEVICE_EXTENSIONInv(S)[UnitId__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {UnitId__DEVICE_EXTENSION(x)} UnitId__DEVICE_EXTENSION(x) == x + 176);
 axiom (forall x:int :: {UnitId__DEVICE_EXTENSIONInv(x)} UnitId__DEVICE_EXTENSIONInv(x) == x - 176);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 176, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 176, 1) == UnitId__DEVICE_EXTENSIONInv(x));
@@ -1784,18 +1784,18 @@ function _S_WaitWakeSpinLock__DEVICE_EXTENSIONInv([int]bool) returns ([int]bool)
 
 axiom (forall x:int :: {WaitWakeSpinLock__DEVICE_EXTENSIONInv(WaitWakeSpinLock__DEVICE_EXTENSION(x))} WaitWakeSpinLock__DEVICE_EXTENSIONInv(WaitWakeSpinLock__DEVICE_EXTENSION(x)) == x);
 axiom (forall x:int :: {WaitWakeSpinLock__DEVICE_EXTENSIONInv(x)} WaitWakeSpinLock__DEVICE_EXTENSION(WaitWakeSpinLock__DEVICE_EXTENSIONInv(x)) == x);
-        
+
 axiom (forall x:int, S:[int]bool :: {_S_WaitWakeSpinLock__DEVICE_EXTENSION(S)[x]} _S_WaitWakeSpinLock__DEVICE_EXTENSION(S)[x] <==> S[WaitWakeSpinLock__DEVICE_EXTENSIONInv(x)]);
 axiom (forall x:int, S:[int]bool :: {_S_WaitWakeSpinLock__DEVICE_EXTENSIONInv(S)[x]} _S_WaitWakeSpinLock__DEVICE_EXTENSIONInv(S)[x] <==> S[WaitWakeSpinLock__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_WaitWakeSpinLock__DEVICE_EXTENSION(S)} S[x] ==> _S_WaitWakeSpinLock__DEVICE_EXTENSION(S)[WaitWakeSpinLock__DEVICE_EXTENSION(x)]);
 axiom (forall x:int, S:[int]bool :: {S[x], _S_WaitWakeSpinLock__DEVICE_EXTENSIONInv(S)} S[x] ==> _S_WaitWakeSpinLock__DEVICE_EXTENSIONInv(S)[WaitWakeSpinLock__DEVICE_EXTENSIONInv(x)]);
-        
+
 axiom (forall x:int :: {WaitWakeSpinLock__DEVICE_EXTENSION(x)} WaitWakeSpinLock__DEVICE_EXTENSION(x) == x + 108);
 axiom (forall x:int :: {WaitWakeSpinLock__DEVICE_EXTENSIONInv(x)} WaitWakeSpinLock__DEVICE_EXTENSIONInv(x) == x - 108);
 axiom (forall x:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(x, 108, 1)} MINUS_BOTH_PTR_OR_BOTH_INT(x, 108, 1) == WaitWakeSpinLock__DEVICE_EXTENSIONInv(x));
 axiom (forall x:int :: {MINUS_LEFT_PTR(x, 1, 108)} MINUS_LEFT_PTR(x, 1, 108) == WaitWakeSpinLock__DEVICE_EXTENSIONInv(x));
-function MINUS_BOTH_PTR_OR_BOTH_INT(a:int, b:int, size:int) returns (int); 
-axiom  (forall a:int, b:int, size:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size)} 
+function MINUS_BOTH_PTR_OR_BOTH_INT(a:int, b:int, size:int) returns (int);
+axiom  (forall a:int, b:int, size:int :: {MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size)}
 size * MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size) <= a - b && a - b < size * (MINUS_BOTH_PTR_OR_BOTH_INT(a,b,size) + 1));
 
 function MINUS_LEFT_PTR(a:int, a_size:int, b:int) returns (int);
@@ -1807,23 +1807,23 @@ axiom (forall a:int, a_size:int, b:int :: {PLUS(a,a_size,b)} PLUS(a,a_size,b) ==
 function MULT(a:int, b:int) returns (int); // a*b
 axiom(forall a:int, b:int :: {MULT(a,b)} MULT(a,b) == a * b);
 
-function DIV(a:int, b:int) returns (int); // a/b	
-	      
+function DIV(a:int, b:int) returns (int); // a/b
+
 axiom(forall a:int, b:int :: {DIV(a,b)}
 a >= 0 && b > 0 ==> b * DIV(a,b) <= a && a < b * (DIV(a,b) + 1)
-); 
+);
 
 axiom(forall a:int, b:int :: {DIV(a,b)}
 a >= 0 && b < 0 ==> b * DIV(a,b) <= a && a < b * (DIV(a,b) - 1)
-); 
+);
 
 axiom(forall a:int, b:int :: {DIV(a,b)}
 a < 0 && b > 0 ==> b * DIV(a,b) >= a && a > b * (DIV(a,b) - 1)
-); 
+);
 
 axiom(forall a:int, b:int :: {DIV(a,b)}
 a < 0 && b < 0 ==> b * DIV(a,b) >= a && a > b * (DIV(a,b) + 1)
-); 
+);
 
 function BINARY_BOTH_INT(a:int, b:int) returns (int);
 
@@ -1923,7 +1923,7 @@ var Res_SPIN_LOCK:[int]int;
 
 ////////////////////
 // Between predicate
-//////////////////// 
+////////////////////
 function ReachBetween(f: [int]int, x: int, y: int, z: int) returns (bool);
 function ReachAvoiding(f: [int]int, x: int, y: int, z: int) returns (bool);
 
@@ -1949,8 +1949,8 @@ axiom(forall f: [int]int, x: int, z: int :: {ReachBetweenSet(f, x, z)} ReachBetw
 axiom(forall f: [int]int, x: int :: ReachBetween(f, x, x, x));
 
 // step
-//axiom(forall f: [int]int, x: int :: {f[x]} ReachBetween(f, x, f[x], f[x])); 
-axiom(forall f: [int]int, x: int, y: int, z: int, w:int :: {ReachBetween(f, y, z, w), f[x]} ReachBetween(f, x, f[x], f[x])); 
+//axiom(forall f: [int]int, x: int :: {f[x]} ReachBetween(f, x, f[x], f[x]));
+axiom(forall f: [int]int, x: int, y: int, z: int, w:int :: {ReachBetween(f, y, z, w), f[x]} ReachBetween(f, x, f[x], f[x]));
 
 // reach
 axiom(forall f: [int]int, x: int, y: int :: {f[x], ReachBetween(f, x, y, y)} ReachBetween(f, x, y, y) ==> x == y || ReachBetween(f, x, f[x], y));
@@ -1976,7 +1976,7 @@ axiom(forall f: [int]int, x: int, y: int, z: int, w: int :: {ReachBetween(f, x, 
 // transitive3
 axiom(forall f: [int]int, x: int, y: int, z: int, w: int :: {ReachBetween(f, x, y, z), ReachBetween(f, x, w, y)} ReachBetween(f, x, y, z) && ReachBetween(f, x, w, y) ==> ReachBetween(f, x, w, z) && ReachBetween(f, w, y, z));
 
-// This axiom is required to deal with the incompleteness of the trigger for the reflexive axiom.  
+// This axiom is required to deal with the incompleteness of the trigger for the reflexive axiom.
 // It cannot be proved using the rest of the axioms.
 axiom(forall f: [int]int, u:int, x: int :: {ReachBetween(f, u, x, x)} ReachBetween(f, u, x, x) ==> ReachBetween(f, u, u, x));
 
@@ -1986,7 +1986,7 @@ axiom(forall f: [int]int, x: int, y: int, z: int :: {ReachAvoiding(f, x, y, z)}{
 // update
 axiom(forall f: [int]int, u: int, v: int, x: int, p: int, q: int :: {ReachAvoiding(f[p := q], u, v, x)} ReachAvoiding(f[p := q], u, v, x) <==> ((ReachAvoiding(f, u, v, p) && ReachAvoiding(f, u, v, x)) || (ReachAvoiding(f, u, p, x) && p != x && ReachAvoiding(f, q, v, p) && ReachAvoiding(f, q, v, x))));
  ///////////////////////////////
- // Shifts for linking fields   
+ // Shifts for linking fields
  ///////////////////////////////
 function Shift_Flink__LIST_ENTRY(f: [int]int) returns ([int]int);
 axiom( forall f: [int]int, __x:int :: {f[Flink__LIST_ENTRY(__x)],Shift_Flink__LIST_ENTRY(f)} {Shift_Flink__LIST_ENTRY(f)[__x]} Shift_Flink__LIST_ENTRY(f)[__x] == f[Flink__LIST_ENTRY(__x)]);
@@ -2848,16 +2848,16 @@ free ensures(forall f:int :: {alloc[Base(f)]} old(alloc)[Base(f)] == UNALLOCATED
 
 modifies Res_DEVICE_STACK;
 
-//TAG: net change in resource DEVICE_STACK only for: 
+//TAG: net change in resource DEVICE_STACK only for:
 modifies Res_DEV_EXTN;
 
-//TAG: net change in resource DEV_EXTN only for: 
+//TAG: net change in resource DEV_EXTN only for:
 modifies Res_DEV_OBJ_INIT;
 
-//TAG: net change in resource DEV_OBJ_INIT only for: 
+//TAG: net change in resource DEV_OBJ_INIT only for:
 modifies Res_SPIN_LOCK;
 
-//TAG: net change in resource SPIN_LOCK only for: 
+//TAG: net change in resource SPIN_LOCK only for:
 
 //TAG: havoc memory locations by default
 modifies Mem;
@@ -3836,4 +3836,3 @@ call ExFreePoolWithTag (Mem[T.PUINT2][$fullClassName$14$4623.28$MouseClassFindMo
 goto label_1;
 
 }
-

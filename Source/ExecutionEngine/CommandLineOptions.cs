@@ -351,10 +351,7 @@ namespace Microsoft.Boogie
     public string PrintCFGPrefix { get; set; }
     public bool ForceBplErrors { get; set; } = false; // if true, boogie error is shown even if "msg" attribute is present
 
-    public bool UseArrayTheory {
-      get => useArrayTheory;
-      set => useArrayTheory = value;
-    }
+    public bool UseArrayTheory => !useArrayAxioms && TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic;
 
     public bool RelaxFocus { get; set; }
 
@@ -537,7 +534,7 @@ namespace Microsoft.Boogie
 
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;
-    private bool useArrayTheory = false;
+    private bool useArrayAxioms = false;
     private bool doModSetAnalysis = false;
     private bool runDiagnosticsOnTimeout = false;
     private bool traceDiagnosticsOnTimeout = false;
@@ -1284,7 +1281,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("vcsDumpSplits", x => VcsDumpSplits = x) ||
               ps.CheckBooleanFlag("dbgRefuted", x => DebugRefuted = x) ||
               ps.CheckBooleanFlag("reflectAdd", x => ReflectAdd = x) ||
-              ps.CheckBooleanFlag("useArrayTheory", x => useArrayTheory = x) ||
+              ps.CheckBooleanFlag("useArrayAxioms", x => useArrayAxioms = x) ||
               ps.CheckBooleanFlag("relaxFocus", x => RelaxFocus = x) ||
               ps.CheckBooleanFlag("doModSetAnalysis", x => doModSetAnalysis = x) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", x => runDiagnosticsOnTimeout = x) ||
@@ -1351,9 +1348,6 @@ namespace Microsoft.Boogie
 
       if (StratifiedInlining > 0)
       {
-        TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
-        UseArrayTheory = true;
-        UseAbstractInterpretation = false;
         if (ProverDllName == "SMTLib")
         {
           ErrorLimit = 1;

@@ -344,11 +344,6 @@ namespace Microsoft.Boogie
           program.AddTopLevelDeclarations(library.TopLevelDeclarations);
         }
 
-        if (Options.Libraries.Contains("base"))
-        {
-          Options.UseArrayTheory = true;
-        }
-
         return program;
       }
     }
