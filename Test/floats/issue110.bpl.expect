@@ -2,15 +2,15 @@ issue110.bpl(5,3): Error: this assertion could not be proved
 Execution trace:
     issue110.bpl(5,3): anon0
 *** MODEL
-a -> |T@[Int]float24e8!val!0|
+a -> (_ (as-array) (k!1))
 ControlFlow -> {
   0 0 -> 3
   0 2 -> (- 1)
   0 3 -> 2
   else -> (- 1)
 }
-Select__T@[Int]float24e8_ -> {
-  |T@[Int]float24e8!val!0| 0 -> (_ (+zero) 8 24)
+k!1 -> {
+  0 -> (_ (+zero) 8 24)
   else -> (_ (+zero) 8 24)
 }
 tickleBool -> {
@@ -19,7 +19,7 @@ tickleBool -> {
   else -> true
 }
 *** STATE <initial>
-  a -> |T@[Int]float24e8!val!0|
+  a -> (_ (as-array) (k!1))
 *** END_STATE
 *** END_MODEL
 

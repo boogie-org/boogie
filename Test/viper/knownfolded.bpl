@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" | %OutputCheck "%s"
+// RUN: %parallel-boogie -typeEncoding:p "%s" | %OutputCheck "%s"
 // CHECK-L: Boogie program verifier finished with 2 verified, 0 errors
 
 // ==================================================
@@ -369,7 +369,7 @@ function MultiSet#Disjoint<T>(MultiSet T, MultiSet T): bool;
 axiom (forall<T> a: MultiSet T, b: MultiSet T :: { MultiSet#Disjoint(a,b) }
   MultiSet#Disjoint(a,b) <==> (forall o: T :: {MultiSet#Select(a,o)} {MultiSet#Select(b,o)} MultiSet#Select(a,o) == 0 || MultiSet#Select(b,o) == 0));
 
-    
+
 
 // ==================================================
 // Translation of all fields
@@ -430,23 +430,23 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
   var perm: Perm;
   var newVersion: FrameType;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Assumptions about method arguments
     assume Heap[x, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Check definedness of (forall y: Ref :: { (y in xs) } (y in xs) ==> acc(P(y, b), write))
       if (*) {
         assume false;
       }
       assume state(Heap, Mask);
     havoc QPMask;
-    
+
     // -- Define Inverse Function
       assume (forall y_1: Ref ::
         { Heap[null, P(y_1, b_2)] } { Mask[null, P(y_1, b_2)] } { xs[y_1] }
@@ -456,13 +456,13 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
         { invRecv1(x_1_1, b_1_1) }
         (xs[invRecv1(x_1_1, b_1_1)] && NoPerm < FullPerm) && qpRange1(x_1_1, b_1_1) ==> invRecv1(x_1_1, b_1_1) == x_1_1 && b_2 == b_1_1
       );
-    
+
     // -- Define updated permissions
       assume (forall x_1_1: Ref, b_1_1: bool ::
         { QPMask[null, P(x_1_1, b_1_1)] }
         (xs[invRecv1(x_1_1, b_1_1)] && NoPerm < FullPerm) && qpRange1(x_1_1, b_1_1) ==> (NoPerm < FullPerm ==> invRecv1(x_1_1, b_1_1) == x_1_1 && b_2 == b_1_1) && QPMask[null, P(x_1_1, b_1_1)] == Mask[null, P(x_1_1, b_1_1)] + FullPerm
       );
-    
+
     // -- Define independent locations
       assume (forall <A, B> o_2: Ref, f_4: (Field A B) ::
         { Mask[o_2, f_4] } { QPMask[o_2, f_4] }
@@ -477,9 +477,9 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     assume state(Heap, Mask);
     assume xs[x];
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -496,7 +496,7 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
       PostMask[x, f_6] := PostMask[x, f_6] + perm;
       assume state(PostHeap, PostMask);
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of x.f == 0
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access x.f. (knownfolded.vpr@14.11) [55]"}
           HasDirectPerm(PostMask, x, f_6);
@@ -509,7 +509,7 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
       PostMask[x, g] := PostMask[x, g] + perm;
       assume state(PostHeap, PostMask);
       assume state(PostHeap, PostMask);
-      
+
       // -- Check definedness of x.g
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access x.g. (knownfolded.vpr@14.11) [56]"}
           HasDirectPerm(PostMask, x, g);
@@ -520,7 +520,7 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: unfold acc(P(x, b), write) -- knownfolded.vpr@16.3
     assume P#trigger(Heap, P(x, b_2));
     assume Heap[null, P(x, b_2)] == FrameFragment((if b_2 then FrameFragment(Heap[x, f_6]) else FrameFragment(Heap[x, g])));
@@ -532,7 +532,7 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
         perm <= Mask[null, P(x, b_2)];
     }
     Mask[null, P(x, b_2)] := Mask[null, P(x, b_2)] - perm;
-    
+
     // -- Update version of predicate
       if (!HasDirectPerm(Mask, null, P(x, b_2))) {
         havoc newVersion;
@@ -551,17 +551,17 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (b) -- knownfolded.vpr@18.3
     if (b_2) {
-      
+
       // -- Translating statement: x.f := 0 -- knownfolded.vpr@19.5
         assert {:msg "  Assignment might fail. There might be insufficient permission to access x.f. (knownfolded.vpr@19.5) [59]"}
           FullPerm == Mask[x, f_6];
         Heap[x, f_6] := 0;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: x.g := true -- knownfolded.vpr@21.5
         assert {:msg "  Assignment might fail. There might be insufficient permission to access x.g. (knownfolded.vpr@21.5) [60]"}
           FullPerm == Mask[x, g];
@@ -569,7 +569,7 @@ procedure known_folded_1(x: Ref, xs: (Set Ref), b_2: bool) returns ()
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     // Phase 1: pure assertions and fixed permissions
     if (b_2) {
@@ -617,23 +617,23 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
   var newVersion: FrameType;
   var freshVersion: FrameType;
   var ExhaleHeap: HeapType;
-  
+
   // -- Initializing the state
     Mask := ZeroMask;
     assume state(Heap, Mask);
-  
+
   // -- Assumptions about method arguments
     assume Heap[x, $allocated];
-  
+
   // -- Checked inhaling of precondition
-    
+
     // -- Check definedness of (forall y: Ref :: { (y in xs) } (y in xs) ==> acc(P(y, b), write))
       if (*) {
         assume false;
       }
       assume state(Heap, Mask);
     havoc QPMask;
-    
+
     // -- Define Inverse Function
       assume (forall y_1: Ref ::
         { Heap[null, P(y_1, b_2)] } { Mask[null, P(y_1, b_2)] } { xs[y_1] }
@@ -643,13 +643,13 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
         { invRecv2(x_1_1, b_1_1) }
         (xs[invRecv2(x_1_1, b_1_1)] && NoPerm < FullPerm) && qpRange2(x_1_1, b_1_1) ==> invRecv2(x_1_1, b_1_1) == x_1_1 && b_2 == b_1_1
       );
-    
+
     // -- Define updated permissions
       assume (forall x_1_1: Ref, b_1_1: bool ::
         { QPMask[null, P(x_1_1, b_1_1)] }
         (xs[invRecv2(x_1_1, b_1_1)] && NoPerm < FullPerm) && qpRange2(x_1_1, b_1_1) ==> (NoPerm < FullPerm ==> invRecv2(x_1_1, b_1_1) == x_1_1 && b_2 == b_1_1) && QPMask[null, P(x_1_1, b_1_1)] == Mask[null, P(x_1_1, b_1_1)] + FullPerm
       );
-    
+
     // -- Define independent locations
       assume (forall <A, B> o_2: Ref, f_4: (Field A B) ::
         { Mask[o_2, f_4] } { QPMask[o_2, f_4] }
@@ -664,9 +664,9 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     assume state(Heap, Mask);
     assume xs[x];
     assume state(Heap, Mask);
-  
+
   // -- Initializing of old state
-    
+
     // -- Initializing the old state
       assume Heap == old(Heap);
       assume Mask == old(Mask);
@@ -681,7 +681,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     PostMask[null, P(x, b_2)] := PostMask[null, P(x, b_2)] + perm;
     assume state(PostHeap, PostMask);
     assume state(PostHeap, PostMask);
-    
+
     // -- Check definedness of (unfolding acc(P(x, b), write) in (b ? x.f == 0 : x.g))
       UnfoldingHeap := PostHeap;
       UnfoldingMask := PostMask;
@@ -714,7 +714,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
         assert {:msg "  Contract might not be well-formed. There might be insufficient permission to access x.g. (knownfolded.vpr@31.11) [67]"}
           HasDirectPerm(UnfoldingMask, x, g);
       }
-      
+
       // -- Free assumptions
         if (b_2) {
           PostHeap[null, P#sm(x, b_2)][x, f_6] := true;
@@ -728,7 +728,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     } else {
       PostHeap[null, P#sm(x, b_2)][x, g] := true;
     }
-    
+
     // -- Execute unfolding (for extra information)
       UnfoldingHeap := PostHeap;
       UnfoldingMask := PostMask;
@@ -751,7 +751,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
       }
       assume state(UnfoldingHeap, UnfoldingMask);
     assume (if b_2 then PostHeap[x, f_6] == 0 else PostHeap[x, g]);
-    
+
     // -- Free assumptions
       if (b_2) {
         PostHeap[null, P#sm(x, b_2)][x, f_6] := true;
@@ -763,7 +763,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     // Stop execution
     assume false;
   }
-  
+
   // -- Translating statement: unfold acc(P(x, b), write) -- knownfolded.vpr@33.3
     assume P#trigger(Heap, P(x, b_2));
     assume Heap[null, P(x, b_2)] == FrameFragment((if b_2 then FrameFragment(Heap[x, f_6]) else FrameFragment(Heap[x, g])));
@@ -775,7 +775,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
         perm <= Mask[null, P(x, b_2)];
     }
     Mask[null, P(x, b_2)] := Mask[null, P(x, b_2)] - perm;
-    
+
     // -- Update version of predicate
       if (!HasDirectPerm(Mask, null, P(x, b_2))) {
         havoc newVersion;
@@ -794,17 +794,17 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: if (b) -- knownfolded.vpr@35.3
     if (b_2) {
-      
+
       // -- Translating statement: x.f := 0 -- knownfolded.vpr@36.5
         assert {:msg "  Assignment might fail. There might be insufficient permission to access x.f. (knownfolded.vpr@36.5) [70]"}
           FullPerm == Mask[x, f_6];
         Heap[x, f_6] := 0;
         assume state(Heap, Mask);
     } else {
-      
+
       // -- Translating statement: x.g := true -- knownfolded.vpr@38.5
         assert {:msg "  Assignment might fail. There might be insufficient permission to access x.g. (knownfolded.vpr@38.5) [71]"}
           FullPerm == Mask[x, g];
@@ -812,7 +812,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
         assume state(Heap, Mask);
     }
     assume state(Heap, Mask);
-  
+
   // -- Translating statement: fold acc(P(x, b), write) -- knownfolded.vpr@40.3
     // Phase 1: pure assertions and fixed permissions
     if (b_2) {
@@ -852,7 +852,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
     }
     assume state(Heap, Mask);
     assume state(Heap, Mask);
-  
+
   // -- Exhaling postcondition
     // Phase 1: pure assertions and fixed permissions
     perm := NoPerm;
@@ -862,7 +862,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
         perm <= Mask[null, P(x, b_2)];
     }
     Mask[null, P(x, b_2)] := Mask[null, P(x, b_2)] - perm;
-    
+
     // -- Execute unfolding (for extra information)
       UnfoldingHeap := Heap;
       UnfoldingMask := Mask;
@@ -887,7 +887,7 @@ procedure known_folded_2(x: Ref, xs: (Set Ref), b_2: bool) returns ()
       assert {:msg "  Postcondition of test2 could not be proved. Assertion x.g could not be proved. (knownfolded.vpr@31.11) [78]"}
         UnfoldingHeap[x, g];
     }
-    
+
     // -- Free assumptions
       if (b_2) {
         Heap[null, P#sm(x, b_2)][x, f_6] := true;
