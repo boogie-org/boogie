@@ -49,7 +49,8 @@ namespace Microsoft.Boogie.VCExprAST
     private string quantifierBindingNamePrefix;
     private string skolemConstantNamePrefix;
     internal VCExpressionGenerator vcExprGen;
-    internal Boogie2VCExprTranslator exprTranslator;
+    private Boogie2VCExprTranslator exprTranslator;
+    internal static Dictionary<string, Type> labelToType = new();
 
     public static VCExpr Instantiate(Implementation impl, VCExpressionGenerator vcExprGen, Boogie2VCExprTranslator exprTranslator, VCExpr vcExpr)
     {
@@ -178,33 +179,56 @@ namespace Microsoft.Boogie.VCExprAST
       return true;
     }
 
-    public void AddLambdaInstances(Dictionary<Function, HashSet<List<VCExpr>>> lambdaToInstances)
+    public void AddLambdaInstances(Dictionary<Function, HashSet<List<VCExpr>>> lambdaFunctionToInstances)
     {
-      AddDictionary(lambdaToInstances, this.lambdaToInstances);
+      AddDictionary(lambdaFunctionToInstances, this.lambdaToInstances);
     }
 
-    public static HashSet<string> FindInstantiationHints(ICarriesAttributes o)
+    public static HashSet<string> FindInstantiationHints(Variable v)
     {
       var labels = new HashSet<string>();
-      var iter = o.Attributes;
+      var iter = v.Attributes;
       while (iter != null)
       {
         if (iter.Key == "pool")
         {
-          iter.Params.OfType<string>().Iter(x => labels.Add(x));
+          var tok = iter.tok;
+          iter.Params.Iter(x =>
+          {
+            if (x is string poolName)
+            {
+              labels.Add(poolName);
+              if (labelToType.ContainsKey(poolName))
+              {
+                if (!v.TypedIdent.Type.Equals(labelToType[poolName]))
+                {
+                  Console.WriteLine(
+                    $"{tok.filename}({tok.line},{tok.col}): conflicting type for pool {poolName} used earlier with type {labelToType[poolName]}");
+                }
+              }
+              else
+              {
+                labelToType[poolName] = v.TypedIdent.Type;
+              }
+            }
+            else
+            {
+              Console.WriteLine($"{tok.filename}({tok.line},{tok.col}): expected pool name");
+            }
+          });
         }
         iter = iter.Next;
       }
       return labels;
     }
     
-    public static Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o, string attrName, Boogie2VCExprTranslator exprTranslator)
+    public static Dictionary<string, HashSet<VCExpr>> FindInstantiationSources(ICarriesAttributes o, Boogie2VCExprTranslator exprTranslator)
     {
       var freshInstances = new Dictionary<string, HashSet<VCExpr>>();
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == attrName && iter.Params.Count > 1)
+        if (iter.Key == "add_to_pool" && iter.Params.Count > 1)
         {
           var label = iter.Params[0] as string;
           if (label != null)
@@ -256,7 +280,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
       {
-        AddDictionary(FindInstantiationSources(predicateCmd, "add_to_pool", exprTranslator), labelToInstances);
+        AddDictionary(FindInstantiationSources(predicateCmd, exprTranslator), labelToInstances);
       }));
       vcExpr = Skolemizer.Skolemize(this, Polarity.Negative, vcExpr);
       while (labelToInstances.Count > 0 || lambdaToInstances.Count > 0)
@@ -803,18 +827,28 @@ namespace Microsoft.Boogie.VCExprAST
   {
     private bool hasInstances;
 
-    private void FindInstantiationSources(ICarriesAttributes o, string attrName)
+    private void FindInstantiationSources(ICarriesAttributes o)
     {
       var iter = o.Attributes;
       while (iter != null)
       {
-        if (iter.Key == attrName)
+        if (iter.Key == "add_to_pool")
         {
-          var label = iter.Params[0] as string;
-          var instance = iter.Params[1] as Expr;
-          if (label != null && instance != null)
+          if (iter.Params[0] is string poolName && QuantifierInstantiationEngine.labelToType.ContainsKey(poolName))
           {
-            hasInstances = true;
+            var tok = iter.tok;
+            var type = QuantifierInstantiationEngine.labelToType[poolName];
+            iter.Params.Skip(1).Iter(x =>
+            {
+              if (x is Expr e && e.Type.Equals(type))
+              {
+                hasInstances = true;
+              }
+              else
+              {
+                Console.WriteLine($"{tok.filename}({tok.line},{tok.col}): expected expression of type {type}");
+              }
+            });
           }
         }
         iter = iter.Next;
@@ -835,13 +869,13 @@ namespace Microsoft.Boogie.VCExprAST
     
     public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
     {
-      FindInstantiationSources(node, "add_to_pool");
+      FindInstantiationSources(node);
       return base.VisitQuantifierExpr(node);
     }
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
-      cmdSeq.OfType<PredicateCmd>().Iter(cmd => FindInstantiationSources(cmd, "add_to_pool"));
+      cmdSeq.OfType<PredicateCmd>().Iter(FindInstantiationSources);
       return base.VisitCmdSeq(cmdSeq);
     }
   }
