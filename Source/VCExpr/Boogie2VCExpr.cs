@@ -668,12 +668,12 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCQuantifierInfo>() != null);
       return new VCQuantifierInfo(
-        GetQid(node), 
+        GetQid(node),
         node.SkolemId,
-        QKeyValue.FindIntAttribute(node.Attributes, "weight", 1), 
+        QKeyValue.FindIntAttribute(node.Attributes, "weight", 1),
         Enumerable.Range(0, boundVars.Count)
           .ToDictionary(x => boundVars[x], x => QuantifierInstantiationEngine.FindInstantiationHints(node.Dummies[x])),
-        QuantifierInstantiationEngine.FindInstantiationSources(node, "add_to_pool", this));
+        QuantifierInstantiationEngine.FindInstantiationSources(node, this));
     }
 
     private string GetQid(QuantifierExpr node)
