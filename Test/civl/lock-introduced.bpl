@@ -78,7 +78,7 @@ refines AtomicLowerLeave;
   call SetLock(nil);
 }
 
-action{:layer 1} SetLock(v: X)
+action {:layer 1} SetLock(v: X)
 modifies lock;
 { lock := v; }
 

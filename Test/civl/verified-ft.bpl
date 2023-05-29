@@ -495,7 +495,7 @@ ensures call Yield_VCPreserved_10(tid, v1, v1, old(shadow.Lock), old(shadow.VC))
 }
 
 
-action{:layer 10} GhostRead() returns (lock : [Shadowable]Tid, data : [Shadowable] [Tid]Epoch)
+action {:layer 10} GhostRead() returns (lock : [Shadowable]Tid, data : [Shadowable] [Tid]Epoch)
 {
   lock := shadow.Lock;
   data := shadow.VC;

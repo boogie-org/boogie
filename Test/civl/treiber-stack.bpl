@@ -186,7 +186,7 @@ yield procedure {:layer 0}
 AllocTreiber() returns (ref_t: RefTreiber X);
 refines AtomicAllocTreiber;
 
-action{:layer 2} AddToUnusedNodes(success: bool, ref_t: RefTreiber X, ref_n: RefNode X)
+action {:layer 2} AddToUnusedNodes(success: bool, ref_t: RefTreiber X, ref_n: RefNode X)
 modifies unused;
 {
   if (!success) {
