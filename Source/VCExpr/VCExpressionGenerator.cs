@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 
@@ -573,60 +574,34 @@ namespace Microsoft.Boogie {
 
     // Maps
 
-    public VCExpr Select(params VCExpr[] allArgs) {
-      Contract.Requires(allArgs != null);
-      Contract.Requires((cce.NonNullElements(allArgs)));
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Function(new VCExprSelectOp(allArgs.Length - 1, 0),
-        HelperFuns.ToNonNullList(allArgs),
-        VCExprNAry.EMPTY_TYPE_LIST);
+    public VCExpr Select(params VCExpr[] allArgs)
+    {
+      return Select(allArgs.ToList(), VCExprNAry.EMPTY_TYPE_LIST);
     }
 
-    public VCExpr Select(VCExpr[] allArgs, Type[] typeArgs) {
-      Contract.Requires(1 <= allArgs.Length);
-      Contract.Requires(cce.NonNullElements(allArgs));
-      Contract.Requires(cce.NonNullElements(typeArgs));
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Function(new VCExprSelectOp(allArgs.Length - 1, typeArgs.Length),
-        allArgs, typeArgs);
+    public VCExpr Select(VCExpr[] allArgs, Type[] typeArgs)
+    {
+      return Select(allArgs.ToList(), typeArgs.ToList());
     }
 
-    public VCExpr Select(List<VCExpr> allArgs, List<Type> typeArgs) {
-      Contract.Requires(cce.NonNullElements(typeArgs));
-      Contract.Requires(cce.NonNullElements(allArgs));
-      Contract.Requires((1 <= allArgs.Count));
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Function(new VCExprSelectOp(allArgs.Count - 1, typeArgs.Count),
-        allArgs, typeArgs);
+    public VCExpr Select(List<VCExpr> allArgs, List<Type> typeArgs)
+    {
+      return Function(new VCExprSelectOp(allArgs.Count - 1, typeArgs.Count), allArgs, typeArgs);
     }
 
-    public VCExpr Store(params VCExpr[] allArgs) {
-      Contract.Requires(allArgs != null);
-      Contract.Requires(cce.NonNullElements(allArgs));
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Function(new VCExprStoreOp(allArgs.Length - 2, 0),
-        HelperFuns.ToNonNullList(allArgs),
-        VCExprNAry.EMPTY_TYPE_LIST);
+    public VCExpr Store(params VCExpr[] allArgs)
+    {
+      return Store(allArgs.ToList(), VCExprNAry.EMPTY_TYPE_LIST);
     }
 
-    public VCExpr Store(VCExpr[] allArgs, Type[] typeArgs) {
-      Contract.Requires(typeArgs != null);
-      Contract.Requires(allArgs != null);
-      Contract.Requires((2 <= allArgs.Length));
-      Contract.Requires(cce.NonNullElements(allArgs));
-      Contract.Requires(cce.NonNullElements(typeArgs));
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Function(new VCExprStoreOp(allArgs.Length - 2, typeArgs.Length),
-        allArgs, typeArgs);
+    public VCExpr Store(VCExpr[] allArgs, Type[] typeArgs)
+    {
+      return Store(allArgs.ToList(), typeArgs.ToList());
     }
 
-    public VCExpr Store(List<VCExpr> allArgs, List<Type /*!*/> /*!*/ typeArgs) {
-      Contract.Requires(cce.NonNullElements(typeArgs));
-      Contract.Requires(cce.NonNullElements(allArgs));
-      Contract.Requires((2 <= allArgs.Count));
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-      return Function(new VCExprStoreOp(allArgs.Count - 2, typeArgs.Count),
-        allArgs, typeArgs);
+    public VCExpr Store(List<VCExpr> allArgs, List<Type> typeArgs)
+    {
+      return Function(new VCExprStoreOp(allArgs.Count - 2, typeArgs.Count), allArgs, typeArgs);
     }
 
     // Quantifiers

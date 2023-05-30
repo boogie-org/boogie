@@ -22,7 +22,7 @@ type X; // module type parameter
 var {:layer 0, 4} ts: Lheap (Treiber X);
 var {:layer 2, 4} unused: [RefTreiber X][RefNode X]bool;
 
-procedure {:layer 4} {:atomic} AtomicPopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
+atomic action {:layer 4} AtomicPopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
 modifies ts;
 {
   var new_ref_n: RefNode X;
@@ -33,11 +33,11 @@ modifies ts;
     call Lheap_Write(ts->val[ref_t]->top, new_ref_n);
   }
 }
-procedure {:yields} {:layer 3} {:refines "AtomicPopIntermediate"}
-{:yield_preserves "YieldInv#2", ref_t}
-{:yield_preserves "YieldInv#3", ref_t}
+yield procedure {:layer 3}
 PopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
-requires {:layer 2} ts->dom[ref_t];
+refines AtomicPopIntermediate;
+preserves call YieldInv#2(ref_t);
+preserves call YieldInv#3(ref_t);
 {
   var ref_n, new_ref_n: RefNode X;
   var node: Node X;
@@ -52,7 +52,7 @@ requires {:layer 2} ts->dom[ref_t];
   call success := WriteTopOfStack#Pop(ref_t, ref_n, new_ref_n);
 }
 
-procedure {:layer 3} {:atomic} AtomicPushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
+atomic action {:layer 3} AtomicPushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
 modifies ts, unused;
 {
   var {:pool "A"} ref_n: RefNode X;
@@ -67,86 +67,93 @@ modifies ts, unused;
   }
   assume {:add_to_pool "A", new_ref_n} true;
 }
-procedure {:yields} {:layer 2} {:refines "AtomicPushIntermediate"}
+yield procedure {:layer 2}
 PushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
+refines AtomicPushIntermediate;
 {
   var ref_n, new_ref_n: RefNode X;
 
   call ref_n := ReadTopOfStack#Push(ref_t);
   call new_ref_n := AllocInStack(ref_t, Node(ref_n, x));
   call success := WriteTopOfStack(ref_t, ref_n, new_ref_n);
-  assert {:layer 2} {:add_to_pool "A", ref_n, new_ref_n} true;
+  assume {:add_to_pool "A", ref_n, new_ref_n} true;
   call AddToUnusedNodes(success, ref_t, new_ref_n);
 }
 
-procedure {:right} {:layer 3}
+right action {:layer 3}
 AtomicReadTopOfStack#Pop(ref_t: RefTreiber X) returns (ref_n: RefNode X)
 {
   assert ts->dom[ref_t];
   assume NilDomain(ts, ref_t, unused)[ref_n];
 }
-procedure {:yields} {:layer 2} {:refines "AtomicReadTopOfStack#Pop"}
-{:yield_preserves "YieldInv#2", ref_t}
+yield procedure {:layer 2}
 ReadTopOfStack#Pop(ref_t: RefTreiber X) returns (ref_n: RefNode X)
+refines AtomicReadTopOfStack#Pop;
+preserves call YieldInv#2(ref_t);
 {
   call ref_n := ReadTopOfStack(ref_t);
 }
 
-procedure {:right} {:layer 2}
+right action {:layer 2}
 AtomicReadTopOfStack#Push(ref_t: RefTreiber X) returns (ref_n: RefNode X)
 {
   assert ts->dom[ref_t];
 }
-procedure {:yields} {:layer 1} {:refines "AtomicReadTopOfStack#Push"}
+yield procedure {:layer 1}
 ReadTopOfStack#Push(ref_t: RefTreiber X) returns (ref_n: RefNode X)
+refines AtomicReadTopOfStack#Push;
 {
   call ref_n := ReadTopOfStack(ref_t);
 }
 
-procedure {:atomic} {:layer 1, 2}
+atomic action {:layer 1, 2}
 AtomicReadTopOfStack(ref_t: RefTreiber X) returns (ref_n: RefNode X)
 {
   assert ts->dom[ref_t];
   ref_n := ts->val[ref_t]->top;
 }
-procedure {:yields} {:layer 0} {:refines "AtomicReadTopOfStack"}
+yield procedure {:layer 0}
 ReadTopOfStack(ref_t: RefTreiber X) returns (ref_n: RefNode X);
+refines AtomicReadTopOfStack;
 
-procedure {:right} {:layer 1, 3}
+right action {:layer 1, 3}
 AtomicLoadNode(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X)
 {
   assert ts->dom[ref_t];
   assert ts->val[ref_t]->stack->dom[ref_n];
   node := ts->val[ref_t]->stack->val[ref_n];
 }
-procedure {:yields} {:layer 0} {:refines "AtomicLoadNode"}
+yield procedure {:layer 0}
 LoadNode(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X);
+refines AtomicLoadNode;
 
-procedure {:right} {:layer 1, 2}
+right action {:layer 1, 2}
 AtomicAllocInStack(ref_t: RefTreiber X, node: Node X) returns (ref_n: RefNode X)
 modifies ts;
 {
   assert ts->dom[ref_t];
   call ref_n := Lheap_Add(ts->val[ref_t]->stack, node);
 }
-procedure {:yields} {:layer 0} {:refines "AtomicAllocInStack"}
+yield procedure {:layer 0}
 AllocInStack(ref_t: RefTreiber X, node: Node X) returns (ref_n: RefNode X);
+refines AtomicAllocInStack;
 
-procedure {:atomic} {:layer 3}
+atomic action {:layer 3}
 AtomicWriteTopOfStack#Pop(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
 modifies ts;
 {
   assert NilDomain(ts, ref_t, unused)[new_ref_n];
   call r := AtomicWriteTopOfStack(ref_t, old_ref_n, new_ref_n);
 }
-procedure {:yields} {:layer 2} {:refines "AtomicWriteTopOfStack#Pop"}
-{:yield_preserves "YieldInv#2", ref_t}
+yield procedure {:layer 2}
 WriteTopOfStack#Pop(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
+refines AtomicWriteTopOfStack#Pop;
+preserves call YieldInv#2(ref_t);
 {
   call r := WriteTopOfStack(ref_t, old_ref_n, new_ref_n);
 }
 
-procedure {:atomic} {:layer 1, 3}
+atomic action {:layer 1, 3}
 AtomicWriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
 modifies ts;
 {
@@ -159,10 +166,11 @@ modifies ts;
     r := false;
   }
 }
-procedure {:yields} {:layer 0} {:refines "AtomicWriteTopOfStack"}
+yield procedure {:layer 0}
 WriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool);
+refines AtomicWriteTopOfStack;
 
-procedure {:atomic} {:layer 1, 4}
+atomic action {:layer 1, 4}
 AtomicAllocTreiber() returns (ref_t: RefTreiber X)
 modifies ts;
 {
@@ -174,10 +182,11 @@ modifies ts;
   treiber := Treiber(top, stack);
   call ref_t := Lheap_Add(ts, treiber);
 }
-procedure {:yields} {:layer 0} {:refines "AtomicAllocTreiber"}
+yield procedure {:layer 0}
 AllocTreiber() returns (ref_t: RefTreiber X);
+refines AtomicAllocTreiber;
 
-procedure {:intro} {:layer 2} AddToUnusedNodes(success: bool, ref_t: RefTreiber X, ref_n: RefNode X)
+action{:layer 2} AddToUnusedNodes(success: bool, ref_t: RefTreiber X, ref_n: RefNode X)
 modifies unused;
 {
   if (!success) {
@@ -193,11 +202,12 @@ function {:inline} NilDomain(ts: Lheap (Treiber X), ref_t: RefTreiber X, unused:
   Union(Singleton(Nil()), Domain(ts, ref_t, unused))
 }
 
-procedure {:yield_invariant} {:layer 2} YieldInv#2(ref_t: RefTreiber X);
-requires Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
-requires NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
+yield invariant {:layer 2} YieldInv#2(ref_t: RefTreiber X);
+invariant ts->dom[ref_t];
+invariant Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
+invariant NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
 
-procedure {:yield_invariant} {:layer 3} YieldInv#3(ref_t: RefTreiber X);
-requires Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
-requires NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
-requires (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDomain(ts, ref_t, unused)[ts->val[ref_t]->stack->val[ref_n]->next]);
+yield invariant {:layer 3} YieldInv#3(ref_t: RefTreiber X);
+invariant Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
+invariant NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
+invariant (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDomain(ts, ref_t, unused)[ts->val[ref_t]->stack->val[ref_n]->next]);

@@ -7,17 +7,17 @@ var {:layer 0, 1} b: bool;
 var {:layer 0, 3} count: int;
 var {:layer 1, 2} l: Option Tid;
 
-procedure {:yield_invariant} {:layer 1} LockInv();
-requires b <==> (l != None());
+yield invariant {:layer 1} LockInv();
+invariant b <==> (l != None());
 
-procedure {:atomic} {:layer 3,3} IncrSpec()
+atomic action {:layer 3,3} IncrSpec()
 modifies count;
 {
     count := count + 1;
 }
-procedure {:yields} {:layer 2} {:refines "IncrSpec"}
-{:yield_preserves "LockInv"}
-Incr({:layer 1,2} {:hide} {:linear "tid"} tid: Tid)
+yield procedure {:layer 2} Incr({:layer 1,2} {:hide} {:linear "tid"} tid: Tid)
+refines IncrSpec;
+preserves call LockInv();
 {
     var t: int;
 
@@ -27,15 +27,15 @@ Incr({:layer 1,2} {:hide} {:linear "tid"} tid: Tid)
     call Release(tid);
 }
 
-procedure {:right} {:layer 2,2} AcquireSpec({:linear "tid"} tid: Tid)
+right action {:layer 2,2} AcquireSpec({:linear "tid"} tid: Tid)
 modifies l;
 {
     assume l == None();
     l := Some(tid);
 }
-procedure {:yields} {:layer 1} {:refines "AcquireSpec"}
-{:yield_preserves "LockInv"}
-Acquire({:layer 1} {:linear "tid"} tid: Tid)
+yield procedure {:layer 1} Acquire({:layer 1} {:linear "tid"} tid: Tid)
+refines AcquireSpec;
+preserves call LockInv();
 {
     var t: bool;
 
@@ -43,19 +43,19 @@ Acquire({:layer 1} {:linear "tid"} tid: Tid)
     if (t) {
         call set_l(Some(tid));
     } else {
-        call {:refines} Acquire(tid);
+        call {:mark} Acquire(tid);
     }
 }
 
-procedure {:left} {:layer 2,2} ReleaseSpec({:linear "tid"} tid: Tid)
+left action {:layer 2,2} ReleaseSpec({:linear "tid"} tid: Tid)
 modifies l;
 {
     assert l == Some(tid);
     l := None();
 }
-procedure {:yields} {:layer 1} {:refines "ReleaseSpec"}
-{:yield_preserves "LockInv"}
-Release({:layer 1} {:linear "tid"} tid: Tid)
+yield procedure {:layer 1} Release({:layer 1} {:linear "tid"} tid: Tid)
+refines ReleaseSpec;
+preserves call LockInv();
 {
     var t: bool;
 
@@ -63,28 +63,30 @@ Release({:layer 1} {:linear "tid"} tid: Tid)
     call set_l(None());
 }
 
-procedure {:both} {:layer 2,2} ReadSpec({:linear "tid"} tid: Tid) returns (v: int)
+both action {:layer 2,2} ReadSpec({:linear "tid"} tid: Tid) returns (v: int)
 {
     assert l == Some(tid);
     v := count;
 }
-procedure {:yields} {:layer 1} {:refines "ReadSpec"} Read({:layer 1} {:linear "tid"} tid: Tid) returns (v: int)
+yield procedure {:layer 1} Read({:layer 1} {:linear "tid"} tid: Tid) returns (v: int)
+refines ReadSpec;
 {
     call v := READ();
 }
 
-procedure {:both} {:layer 2,2} WriteSpec({:linear "tid"} tid: Tid, v: int)
+both action {:layer 2,2} WriteSpec({:linear "tid"} tid: Tid, v: int)
 modifies count;
 {
     assert l == Some(tid);
     count := v;
 }
-procedure {:yields} {:layer 1} {:refines "WriteSpec"} Write({:layer 1} {:linear "tid"} tid: Tid, v: int)
+yield procedure {:layer 1} Write({:layer 1} {:linear "tid"} tid: Tid, v: int)
+refines WriteSpec;
 {
     call WRITE(v);
 }
 
-procedure {:atomic} {:layer 1,1} atomic_CAS(old_b: bool, new_b: bool) returns (success: bool)
+atomic action {:layer 1,1} atomic_CAS(old_b: bool, new_b: bool) returns (success: bool)
 modifies b;
 {
     success := b == old_b;
@@ -92,22 +94,25 @@ modifies b;
         b := new_b;
     }
 }
-procedure {:yields} {:layer 0} {:refines "atomic_CAS"} CAS(old_b: bool, new_b: bool) returns (success: bool);
+yield procedure {:layer 0} CAS(old_b: bool, new_b: bool) returns (success: bool);
+refines atomic_CAS;
 
-procedure {:atomic} {:layer 1,1} atomic_READ() returns (v: int)
+atomic action {:layer 1,1} atomic_READ() returns (v: int)
 {
     v := count;
 }
-procedure {:yields} {:layer 0} {:refines "atomic_READ"} READ() returns (v: int);
+yield procedure {:layer 0} READ() returns (v: int);
+refines atomic_READ;
 
-procedure {:atomic} {:layer 1,1} atomic_WRITE(v: int)
+atomic action {:layer 1,1} atomic_WRITE(v: int)
 modifies count;
 {
     count := v;
 }
-procedure {:yields} {:layer 0} {:refines "atomic_WRITE"} WRITE(v: int);
+yield procedure {:layer 0} WRITE(v: int);
+refines atomic_WRITE;
 
-procedure {:intro} {:layer 1} set_l(v: Option Tid)
+action {:layer 1} set_l(v: Option Tid)
 modifies l;
 {
     l := v;

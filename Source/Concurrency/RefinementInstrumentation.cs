@@ -62,7 +62,7 @@ namespace Microsoft.Boogie
     private IToken tok;
     private int layerNum;
 
-    private Dictionary<AtomicAction, Expr> transitionRelationCache;
+    private Dictionary<Action, Expr> transitionRelationCache;
 
     public ActionRefinementInstrumentation(
       CivlTypeChecker civlTypeChecker,
@@ -73,12 +73,13 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.tok = impl.tok;
       this.oldGlobalMap = new Dictionary<Variable, Variable>();
-      ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
-      this.layerNum = actionProc.upperLayer;
+      var yieldProcedureDecl = (YieldProcedureDecl)originalImpl.Proc;
+      //ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
+      this.layerNum = yieldProcedureDecl.Layer;
       foreach (Variable v in civlTypeChecker.GlobalVariables)
       {
-        var layerRange = civlTypeChecker.GlobalVariableLayerRange(v);
-        if (layerRange.lowerLayerNum <= layerNum && layerNum < layerRange.upperLayerNum)
+        var layerRange = v.LayerRange;
+        if (layerRange.LowerLayer <= layerNum && layerNum < layerRange.UpperLayer)
         {
           this.oldGlobalMap[v] = oldGlobalMap[v];
         }
@@ -95,7 +96,7 @@ namespace Microsoft.Boogie
         newLocalVars.Add(eval);
       }
 
-      this.transitionRelationCache = new Dictionary<AtomicAction, Expr>();
+      this.transitionRelationCache = new Dictionary<Action, Expr>();
 
       oldOutputMap = new Dictionary<Variable, Variable>();
       foreach (Variable f in impl.OutParams)
@@ -114,34 +115,33 @@ namespace Microsoft.Boogie
       // The parameters of an atomic action come from the implementation that denotes the atomic action specification.
       // To use the transition relation computed below in the context of the yielding procedure of the refinement check,
       // we need to substitute the parameters.
-      AtomicAction atomicAction = actionProc.refinedAction;
-      Implementation atomicActionImpl = atomicAction.impl;
+      var atomicAction = civlTypeChecker.Action(yieldProcedureDecl.RefinedAction.ActionDecl);
       Dictionary<Variable, Expr> alwaysMap = new Dictionary<Variable, Expr>();
       for (int i = 0, j = 0; i < impl.InParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.InParams[i]))
+        if (yieldProcedureDecl.VisibleFormals.Contains(yieldProcedureDecl.InParams[i]))
         {
-          alwaysMap[atomicActionImpl.InParams[j]] = Expr.Ident(impl.InParams[i]);
+          alwaysMap[atomicAction.Impl.InParams[j]] = Expr.Ident(impl.InParams[i]);
           j++;
         }
       }
 
       for (int i = 0, j = 0; i < impl.OutParams.Count; i++)
       {
-        if (civlTypeChecker.FormalRemainsInAction(actionProc, actionProc.proc.OutParams[i]))
+        if (yieldProcedureDecl.VisibleFormals.Contains(yieldProcedureDecl.OutParams[i]))
         {
-          alwaysMap[atomicActionImpl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
+          alwaysMap[atomicAction.Impl.OutParams[j]] = Expr.Ident(impl.OutParams[i]);
           j++;
         }
       }
 
       if (atomicAction.HasPendingAsyncs)
       {
-        atomicAction.pendingAsyncs.Iter(action =>
+        atomicAction.PendingAsyncs.Iter(decl =>
         {
           Variable collectedPAs =
-            civlTypeChecker.implToPendingAsyncCollector[originalImpl][action.pendingAsyncType];
-          alwaysMap[atomicAction.PAs(action.pendingAsyncType)] = Expr.Ident(collectedPAs);
+            civlTypeChecker.PendingAsyncCollectors(originalImpl)[decl.PendingAsyncType];
+          alwaysMap[atomicAction.PAs(decl.PendingAsyncType)] = Expr.Ident(collectedPAs);
           LocalVariable copy = Old(collectedPAs);
           newLocalVars.Add(copy);
           oldOutputMap[collectedPAs] = copy;
@@ -152,7 +152,7 @@ namespace Microsoft.Boogie
       Substitution forold = Substituter.SubstitutionFromDictionary(foroldMap);
       Expr transitionRelationExpr = GetTransitionRelation(atomicAction);
       transitionRelation = Substituter.ApplyReplacingOldExprs(always, forold, transitionRelationExpr);
-      Expr gateExpr = Expr.And(atomicAction.gate.Select(g => g.Expr));
+      Expr gateExpr = Expr.And(atomicAction.Gate.Select(g => g.Expr));
       gateExpr.Type = Type.Bool;
       gate = Substituter.Apply(always, gateExpr);
     }
@@ -300,12 +300,12 @@ namespace Microsoft.Boogie
       return new List<Cmd>();
     }
 
-    private Expr GetTransitionRelation(AtomicAction atomicAction)
+    private Expr GetTransitionRelation(Action atomicAction)
     {
       if (!transitionRelationCache.ContainsKey(atomicAction))
       {
         transitionRelationCache[atomicAction] =
-          TransitionRelationComputation.Refinement(civlTypeChecker, atomicAction, new HashSet<Variable>(this.oldGlobalMap.Keys));
+          TransitionRelationComputation.Refinement(civlTypeChecker, atomicAction.Impl, new HashSet<Variable>(this.oldGlobalMap.Keys));
       }
       return transitionRelationCache[atomicAction];
     }

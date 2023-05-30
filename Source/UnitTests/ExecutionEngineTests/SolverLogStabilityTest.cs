@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.IO;
+using System.Threading.Tasks;
 using Microsoft.Boogie;
 using NUnit.Framework;
 
@@ -42,7 +43,7 @@ procedure M(p: Person)
 {
 }";
 
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       options.NormalizeNames = true;
       options.EmitDebugInformation = false;
       
@@ -65,7 +66,7 @@ procedure M(x: int)
   assert (forall y:int :: x + y + x - y == 4);
 }";
       
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       
       var proverLog1 = await GetProverLogs.GetProverLogForProgram(options, procedure);
       Assert.True(proverLog1.Contains("skolemid"));
@@ -147,7 +148,7 @@ procedure M(x2: int, coloredBarrel: Barrel2 RGBColor2)
 }
 ";
       
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       options.NormalizeNames = true;
       
       var proverLog1 = await GetProverLogs.GetProverLogForProgram(options, procedure1);
@@ -177,7 +178,7 @@ procedure N(x: int)
       var procedure2And1 = $@"
 {procedure1}
 {procedure2}";
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       
       var proverLog1 = await GetProverLogs.GetProverLogForProgram(options, procedure1);
       options.ProcsToCheck.Add("M");
@@ -261,7 +262,7 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
       var procedure2And1 = $@"
 {procedure1}
 {procedure2}";
-      var options = CommandLineOptions.FromArguments();
+      var options = CommandLineOptions.FromArguments(TextWriter.Null);
       options.Prune = true;
       
       var proverLog1 = await GetProverLogs.GetProverLogForProgram(options, procedure1);

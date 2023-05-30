@@ -50,14 +50,14 @@ namespace VC
       this.outcome = outcome;
       this.vcGen = vcGen;
       var maxSplits = options.VcsMaxSplits;
-      VCGen.CheckIntAttributeOnImpl(Implementation, "vcs_max_splits", ref maxSplits);
+      VCGen.CheckIntAttributeOnImpl(run, "vcs_max_splits", ref maxSplits);
       
       maxKeepGoingSplits = options.VcsMaxKeepGoingSplits;
-      VCGen.CheckIntAttributeOnImpl(Implementation, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
+      VCGen.CheckIntAttributeOnImpl(run, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
       
       maxVcCost = options.VcsMaxCost;
       var tmpMaxVcCost = -1;
-      VCGen.CheckIntAttributeOnImpl(Implementation, "vcs_max_cost", ref tmpMaxVcCost);
+      VCGen.CheckIntAttributeOnImpl(run, "vcs_max_cost", ref tmpMaxVcCost);
       if (tmpMaxVcCost >= 0)
       {
         maxVcCost = tmpMaxVcCost;
@@ -143,7 +143,7 @@ namespace VC
       if (options.Trace && DoSplitting) {
         var splitNum = split.SplitIndex + 1;
         var splitIdxStr = options.RandomizeVcIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
-        run.TraceWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
+        run.OutputWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
       }
 
@@ -153,7 +153,7 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         run.Implementation.GetTimeLimit(options);
-      await split.BeginCheck(run.TraceWriter, checker, callback, mvInfo, timeout, Implementation.GetResourceLimit(options), cancellationToken);
+      await split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout, Implementation.GetResourceLimit(options), cancellationToken);
     }
 
     private Implementation Implementation => run.Implementation;
@@ -280,7 +280,7 @@ namespace VC
       if (maxKeepGoingSplits > 1) {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
         if (options.Trace) {
-          await run.TraceWriter.WriteLineAsync($"split {split.SplitIndex+1} was split into {newSplits.Count} parts");
+          await run.OutputWriter.WriteLineAsync($"split {split.SplitIndex+1} was split into {newSplits.Count} parts");
         }
         Contract.Assert(newSplits != null);
         maxVcCost = 1.0; // for future

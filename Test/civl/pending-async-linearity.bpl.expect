@@ -1,27 +1,27 @@
-pending-async-linearity.bpl(15,1): Error: Potential linearity violation in outputs and pending async of A for domain pid.
+pending-async-linearity.bpl(12,26): Error: Potential linearity violation in outputs and pending async of A for domain pid.
 Execution trace:
-    pending-async-linearity.bpl(15,1): inline$M0$0$Entry
-    pending-async-linearity.bpl(17,3): inline$M0$0$anon0
+    pending-async-linearity.bpl(12,26): inline$M0$0$Entry
+    pending-async-linearity.bpl(15,3): inline$M0$0$anon0
     (0,0): pid_single_A
-pending-async-linearity.bpl(27,1): Error: Potential linearity violation in outputs and pending async of A for domain pid.
+pending-async-linearity.bpl(24,26): Error: Potential linearity violation in outputs and pending async of A for domain pid.
 Execution trace:
-    pending-async-linearity.bpl(27,1): inline$M2$0$Entry
-    pending-async-linearity.bpl(29,3): inline$M2$0$anon0
+    pending-async-linearity.bpl(24,26): inline$M2$0$Entry
+    pending-async-linearity.bpl(27,3): inline$M2$0$anon0
     (0,0): pid_single_A
-pending-async-linearity.bpl(40,1): Error: Potential lnearity violation in pending asyncs of A and B for domain pid.
+pending-async-linearity.bpl(37,26): Error: Potential lnearity violation in pending asyncs of A and B for domain pid.
 Execution trace:
-    pending-async-linearity.bpl(40,1): inline$M4$0$Entry
-    pending-async-linearity.bpl(42,3): inline$M4$0$anon0
+    pending-async-linearity.bpl(37,26): inline$M4$0$Entry
+    pending-async-linearity.bpl(40,3): inline$M4$0$anon0
     (0,0): pid_distinct_A_B
-pending-async-linearity.bpl(47,1): Error: Potential linearity violation in outputs and pending async of A for domain pid.
+pending-async-linearity.bpl(44,26): Error: Potential linearity violation in outputs and pending async of A for domain pid.
 Execution trace:
-    pending-async-linearity.bpl(47,1): inline$M5$0$Entry
-    pending-async-linearity.bpl(50,11): inline$M5$0$anon0
+    pending-async-linearity.bpl(44,26): inline$M5$0$Entry
+    pending-async-linearity.bpl(47,11): inline$M5$0$anon0
     (0,0): pid_single_A
-pending-async-linearity.bpl(71,1): Error: Potential linearity violation in outputs and pending async of A for domain pid.
+pending-async-linearity.bpl(67,26): Error: Potential linearity violation in outputs and pending async of A for domain pid.
 Execution trace:
-    pending-async-linearity.bpl(71,1): inline$M8$0$Entry
-    pending-async-linearity.bpl(73,3): inline$M8$0$anon0
+    pending-async-linearity.bpl(67,26): inline$M8$0$Entry
+    pending-async-linearity.bpl(70,3): inline$M8$0$anon0
     (0,0): pid_single_A
 
 Boogie program verifier finished with 4 verified, 5 errors

@@ -4,22 +4,28 @@
 
 var {:layer 0,2} x: int;
 
-procedure {:yields} {:layer 1} {:refines "atomic_incr"} foo1() {
-    par {:refines} incr() | nop() | nop();
+yield procedure {:layer 1} foo1()
+refines atomic_incr;
+{
+    par {:mark} incr() | nop() | nop();
 }
 
-procedure {:yields} {:layer 1} {:refines "atomic_incr"} foo2() {
-    par incr() | {:refines} nop() | nop();
+yield procedure {:layer 1} foo2()
+refines atomic_incr;
+{
+    par incr() | {:mark} nop() | nop();
 }
 
-procedure {:atomic} {:layer 1,2} atomic_incr()
+atomic action {:layer 1,2} atomic_incr()
 modifies x;
 {
     x := x + 1;
 }
-procedure {:yields} {:layer 1} {:refines "atomic_incr"} incr();
+yield procedure {:layer 1} incr();
+refines atomic_incr;
 
-procedure {:atomic} {:layer 1,2} atomic_nop()
+atomic action {:layer 1,2} atomic_nop()
 {
 }
-procedure {:yields} {:layer 1} {:refines "atomic_nop"} nop();
+yield procedure {:layer 1} nop();
+refines atomic_nop;

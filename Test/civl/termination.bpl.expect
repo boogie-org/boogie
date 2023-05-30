@@ -1,2 +1,0 @@
-termination.bpl(9,31): Error: Implementation main fails atomicity check at layer 1. Transactions must be separated by yields.
-1 type checking errors detected in termination.bpl

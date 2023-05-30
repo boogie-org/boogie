@@ -1,17 +1,19 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure{:atomic}{:layer 95} skip() { }
+atomic action {:layer 95} skip() { }
 
-procedure{:yields}{:layer 94} {:refines "skip"} H()
+yield procedure {:layer 94} H()
+refines skip;
 {
 }
 
-procedure{:yields}{:layer 94} {:refines "skip"} A()
+yield procedure {:layer 94} A()
+refines skip;
 {
 }
 
-procedure{:yields}{:layer 95} P()
+yield procedure {:layer 95} P()
 {
   par A() | H();
 }

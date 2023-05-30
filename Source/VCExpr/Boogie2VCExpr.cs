@@ -1,44 +1,40 @@
 using System;
 using System.Text;
 using System.Linq;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
 
-// A translator from the Boogie AST to the VCExpr AST.
+// A translator from Boogie AST to VCExpr AST.
 
 namespace Microsoft.Boogie.VCExprAST {
   using Microsoft.Boogie;
 
   // TODO: in future we might use that for defining symbols for Boogie's conditional compilation 
-  public class VCGenerationOptions {
-    private readonly List<string /*!*/> /*!*/
-      SupportedProverCommands;
+  public class VCGenerationOptions
+  {
+    public readonly CoreOptions Options;
+    private readonly List<string> supportedProverCommands;
 
-    [ContractInvariantMethod]
-    void ObjectInvariant() {
-      Contract.Invariant(cce.NonNullElements(SupportedProverCommands));
+    public bool IsProverCommandSupported(string kind)
+    {
+      return supportedProverCommands.Contains(kind);
     }
 
-
-    public bool IsProverCommandSupported(string kind) {
-      Contract.Requires(kind != null);
-      return SupportedProverCommands.Contains(kind);
-    }
-
-    public bool IsAnyProverCommandSupported(string kinds) {
-      Contract.Requires(kinds != null);
-      if (kinds.IndexOf(',') < 0) {
+    public bool IsAnyProverCommandSupported(string kinds)
+    {
+      if (kinds.IndexOf(',') < 0)
+      {
         return IsProverCommandSupported(kinds);
       } else {
         return kinds.Split(',', ' ').Any(k => IsProverCommandSupported(k));
       }
     }
 
-    public VCGenerationOptions(List<string /*!*/> /*!*/ supportedProverCommands) {
-      Contract.Requires(cce.NonNullElements(supportedProverCommands));
-      this.SupportedProverCommands = supportedProverCommands;
+    public VCGenerationOptions(CoreOptions options, List<string> supportedProverCommands)
+    {
+      this.Options = options;
+      this.supportedProverCommands = supportedProverCommands;
     }
   }
 
@@ -1174,15 +1170,21 @@ namespace Microsoft.Boogie.VCExprAST {
       return TranslateFunctionCall(functionCall, this.args, this.typeArgs);
     }
 
-    public VCExpr Visit(MapSelect mapSelect) {
-      //Contract.Requires(mapSelect != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+    public VCExpr Visit(MapSelect mapSelect)
+    {
+      if (GenerationOptions.Options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic && args.Count == 1 && typeArgs.Count == 0)
+      {
+        return args[0];
+      }
       return Gen.Select(this.args, this.typeArgs);
     }
 
-    public VCExpr Visit(MapStore mapStore) {
-      //Contract.Requires(mapStore != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
+    public VCExpr Visit(MapStore mapStore)
+    {
+      if (GenerationOptions.Options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic && args.Count == 2 && typeArgs.Count == 0)
+      {
+        return args[1];
+      }
       return Gen.Store(this.args, this.typeArgs);
     }
 

@@ -539,7 +539,7 @@ namespace Microsoft.Boogie.SMTLib
         return;
       }
       
-      Console.WriteLine("Prover error: " + errors);
+      libOptions.OutputWriter.WriteLine("Prover error: " + errors);
 
       var handler = currentErrorHandler;
       handler?.OnProverError(errors);
@@ -1020,7 +1020,7 @@ namespace Microsoft.Boogie.SMTLib
           TimeSpan elapsed = end - start;
           if (elapsed.TotalSeconds > 0.5)
           {
-            Console.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
+            libOptions.OutputWriter.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
           }
         }
 
@@ -1626,7 +1626,7 @@ namespace Microsoft.Boogie.SMTLib
         proverCommands.Add("external");
       }
 
-      VCGenerationOptions genOptions = new VCGenerationOptions(proverCommands);
+      VCGenerationOptions genOptions = new VCGenerationOptions(options.LibOptions, proverCommands);
       return new SMTLibProverContext(gen, genOptions, options.LibOptions);
     }
 

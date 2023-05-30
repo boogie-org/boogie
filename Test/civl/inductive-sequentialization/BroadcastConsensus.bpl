@@ -66,7 +66,7 @@ function value_card(v:val, value:[pid]val, i:pid, j:pid) : int
 // would like the MAIN action(s) to take a single parameter as follows:
 //     {:linear_in "broadcast"}{:linear_in "collect"} pids:[pid]bool
 
-procedure {:atomic}{:layer 4}
+atomic action {:layer 4}
 MAIN''({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
 modifies CH, decision;
 {
@@ -78,10 +78,9 @@ modifies CH, decision;
   decision := (lambda i:pid :: if pid(i) then max(CH) else old(decision)[i]);
 }
 
-procedure {:layer 3}
-{:creates "COLLECT"}
-{:IS_invariant}{:elim "COLLECT","COLLECT'"}
+action {:layer 3}
 INV_COLLECT_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
+creates COLLECT;
 modifies CH, decision;
 {
   var {:pool "INV_COLLECT"} k: int;
@@ -104,10 +103,11 @@ modifies CH, decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 3}
-{:creates "COLLECT"}
-{:IS "MAIN''","INV_COLLECT_ELIM"}
+atomic action {:layer 3}
 MAIN'({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
+refines MAIN'' using INV_COLLECT_ELIM;
+creates COLLECT;
+eliminates COLLECT using COLLECT';
 modifies CH;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
@@ -120,10 +120,10 @@ modifies CH;
   call create_asyncs(AllCollects());
 }
 
-procedure {:atomic}{:layer 2}
-{:creates "BROADCAST", "COLLECT"}
-{:IS "MAIN'","INV_BROADCAST_ELIM"}
+atomic action {:layer 2}
 MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
+refines MAIN' using INV_BROADCAST_ELIM;
+creates BROADCAST, COLLECT;
 {
   assert pidsBroadcast == (lambda i:pid :: pid(i)) && pidsCollect == pidsBroadcast;
 
@@ -134,10 +134,9 @@ MAIN({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pi
   call create_asyncs(AllCollects());
 }
 
-procedure {:layer 2}
-{:creates "BROADCAST", "COLLECT"}
-{:IS_invariant}{:elim "BROADCAST"}
+action {:layer 2}
 INV_BROADCAST_ELIM({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
+creates BROADCAST, COLLECT;
 modifies CH;
 {
   var {:pool "INV_BROADCAST"} k: int;
@@ -157,18 +156,14 @@ modifies CH;
   call set_choice(BROADCAST(k+1));
 }
 
-procedure {:left}{:layer 2}
-{:pending_async}
-BROADCAST({:linear_in "broadcast"} i:pid)
+async left action {:layer 2} BROADCAST({:linear_in "broadcast"} i:pid)
 modifies CH;
 {
   assert pid(i);
   CH := CH[value[i] := CH[value[i]] + 1];
 }
 
-procedure {:atomic}{:layer 2,3}
-{:pending_async}
-COLLECT({:linear_in "collect"} i:pid)
+async atomic action {:layer 2,3} COLLECT({:linear_in "collect"} i:pid)
 modifies decision;
 {
   var received_values:[val]int;
@@ -179,7 +174,7 @@ modifies decision;
   decision[i] := max(received_values);
 }
 
-procedure {:IS_abstraction}{:layer 3} COLLECT'({:linear_in "collect"} i:pid)
+action {:layer 3} COLLECT'({:linear_in "collect"} i:pid)
 modifies decision;
 {
   assert CH == (lambda v:val :: value_card(v, value, 1, n));
@@ -190,12 +185,15 @@ modifies decision;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+yield invariant {:layer 1} YieldInv();
+invariant Inv(CH_low, CH);
+
 function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
 {
   (forall i:pid :: MultisetSubsetEq(MultisetEmpty, CH_low[i]) && MultisetSubsetEq(CH_low[i], CH))
 }
 
-procedure {:intro}{:layer 1} intro (i:pid)
+action {:layer 1} intro (i:pid)
 modifies CH;
 {
   CH := CH[value[i] := CH[value[i]] + 1];
@@ -203,16 +201,21 @@ modifies CH;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:intro}{:layer 1} Snapshot() returns (snapshot:[pid][val]int)
+action {:layer 1} Snapshot() returns (snapshot:[pid][val]int)
 {
   snapshot := CH_low;
 }
 
-procedure {:yields}{:layer 1}{:refines "MAIN"}
+yield invariant {:layer 1}
+YieldInit({:linear "broadcast"} pidsBroadcast:[pid]bool, {:linear "collect"} pidsCollect:[pid]bool);
+invariant pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
+invariant (forall ii:pid :: CH_low[ii] == MultisetEmpty);
+invariant CH == MultisetEmpty;
+
+yield procedure {:layer 1}
 Main({:linear_in "broadcast"} pidsBroadcast:[pid]bool, {:linear_in "collect"} pidsCollect:[pid]bool)
-requires {:layer 1} pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
-requires {:layer 1} (forall ii:pid :: CH_low[ii] == MultisetEmpty);
-requires {:layer 1} CH == MultisetEmpty;
+refines MAIN;
+requires call YieldInit(pidsBroadcast, pidsCollect);
 {
   var {:pending_async}{:layer 1} Broadcast_PAs:[BROADCAST]int;
   var {:pending_async}{:layer 1} Collect_PAs:[COLLECT]int;
@@ -226,7 +229,6 @@ requires {:layer 1} CH == MultisetEmpty;
   rr := pidsCollect;
   i := 1;
   while (i <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= i && i <= n + 1;
   invariant {:layer 1} ss == (lambda ii:pid :: pid(ii) && ii >= i) && ss == rr;
   invariant {:layer 1} Broadcast_PAs == ToMultiset(InitialBroadcastPAs(i));
@@ -241,7 +243,8 @@ requires {:layer 1} CH == MultisetEmpty;
   assert {:layer 1} Collect_PAs == ToMultiset(AllCollects());
 }
 
-procedure {:yields}{:layer 1}{:refines "BROADCAST"} Broadcast({:linear_in "broadcast"} i:pid)
+yield procedure {:layer 1} Broadcast({:linear_in "broadcast"} i:pid)
+refines BROADCAST;
 requires {:layer 1} pid(i);
 {
   var j: pid;
@@ -252,7 +255,6 @@ requires {:layer 1} pid(i);
   call v := get_value(i);
   j := 1;
   while (j <= n)
-  invariant {:layer 1}{:cooperates} true;
   invariant {:layer 1} 1 <= j && j <= n+1;
   invariant {:layer 1} CH_low == (lambda jj: pid :: (if pid(jj) && jj < j then MultisetPlus(old_CH_low[jj], MultisetSingleton(value[i])) else old_CH_low[jj]));
   {
@@ -262,9 +264,11 @@ requires {:layer 1} pid(i);
   call intro(i);
 }
 
-procedure {:yields}{:layer 1}{:refines "COLLECT"} Collect({:linear_in "collect"} i:pid)
+yield procedure {:layer 1}
+Collect({:linear_in "collect"} i:pid)
+refines COLLECT;
+requires call YieldInv();
 requires {:layer 1} pid(i);
-requires {:layer 1} Inv(CH_low, CH);
 {
   var j: pid;
   var d: val;
@@ -294,31 +298,31 @@ requires {:layer 1} Inv(CH_low, CH);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:both}{:layer 1} GET_VALUE(i:pid) returns (v:val)
+both action {:layer 1} GET_VALUE(i:pid) returns (v:val)
 {
   v := value[i];
 }
 
-procedure {:both}{:layer 1} SET_DECISION({:linear_in "collect"} i:pid, d:val)
+both action {:layer 1} SET_DECISION({:linear_in "collect"} i:pid, d:val)
 modifies decision;
 {
   decision[i] := d;
 }
 
-procedure {:left}{:layer 1} SEND(v:val, i:pid)
+left action {:layer 1} SEND(v:val, i:pid)
 modifies CH_low;
 {
   CH_low[i][v] := CH_low[i][v] + 1;
 }
 
-procedure {:right}{:layer 1} RECEIVE(i:pid) returns (v:val)
+right action {:layer 1} RECEIVE(i:pid) returns (v:val)
 modifies CH_low;
 {
   assume CH_low[i][v] > 0;
   CH_low[i][v] := CH_low[i][v] - 1;
 }
 
-procedure {:both}{:layer 1}
+both action {:layer 1}
 LINEAR_TRANSFER(i:pid, {:linear_in "broadcast"} ss:[pid]bool, {:linear_in "collect"} rr:[pid]bool)
 returns ({:linear "broadcast"} s:pid, {:linear "collect"} r:pid, {:linear "broadcast"} ss':[pid]bool, {:linear "collect"} rr':[pid]bool)
 {
@@ -327,12 +331,21 @@ returns ({:linear "broadcast"} s:pid, {:linear "collect"} r:pid, {:linear "broad
   ss', rr' := ss[i := false], rr[i := false];
 }
 
-procedure {:yields}{:layer 0}{:refines "GET_VALUE"} get_value(i:pid) returns (v:val);
-procedure {:yields}{:layer 0}{:refines "SET_DECISION"} set_decision({:linear_in "collect"} i:pid, d:val);
-procedure {:yields}{:layer 0}{:refines "SEND"} send(v:val, i:pid);
-procedure {:yields}{:layer 0}{:refines "RECEIVE"} receive(i:pid) returns (v:val);
-procedure {:yields}{:layer 0}{:refines "LINEAR_TRANSFER"} linear_transfer(i:pid, {:linear_in "broadcast"} ss:[pid]bool, {:linear_in "collect"} rr:[pid]bool)
+yield procedure {:layer 0} get_value(i:pid) returns (v:val);
+refines GET_VALUE;
+
+yield procedure {:layer 0} set_decision({:linear_in "collect"} i:pid, d:val);
+refines SET_DECISION;
+
+yield procedure {:layer 0} send(v:val, i:pid);
+refines SEND;
+
+yield procedure {:layer 0} receive(i:pid) returns (v:val);
+refines RECEIVE;
+
+yield procedure {:layer 0} linear_transfer(i:pid, {:linear_in "broadcast"} ss:[pid]bool, {:linear_in "collect"} rr:[pid]bool)
 returns ({:linear "broadcast"} s:pid, {:linear "collect"} r:pid, {:linear "broadcast"} ss':[pid]bool, {:linear "collect"} rr':[pid]bool);
+refines LINEAR_TRANSFER;
 
 ////////////////////////////////////////////////////////////////////////////////
 

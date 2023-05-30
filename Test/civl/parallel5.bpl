@@ -5,15 +5,16 @@ type {:linear "tid"} X = int;
 
 var {:layer 0,1} a:[int]int;
 
-procedure {:yields} {:layer 1} Allocate() returns ({:linear "tid"} tid: int);
+yield procedure {:layer 1} Allocate() returns ({:linear "tid"} tid: int);
 
-procedure {:atomic} {:layer 1} AtomicWrite(idx: int, val: int)
+atomic action {:layer 1} AtomicWrite(idx: int, val: int)
 modifies a;
 { a[idx] := val; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicWrite"} Write(idx: int, val: int);
+yield procedure {:layer 0} Write(idx: int, val: int);
+refines AtomicWrite;
 
-procedure {:yields} {:layer 1} main()
+yield procedure {:layer 1} main()
 {
     var {:linear "tid"} i: int;
     var {:linear "tid"} j: int;
@@ -23,7 +24,7 @@ procedure {:yields} {:layer 1} main()
     par i := u(i) | j := u(j);
 }
 
-procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
+yield procedure {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
 {
     i := i';
 
@@ -32,13 +33,16 @@ procedure {:yields} {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "
     assert {:layer 1} a[i] == 42;
 }
 
-procedure {:yields} {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
-ensures {:layer 1} a[i] == 42;
+yield procedure {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
+ensures call Yield_42(i, 42);
 {
     i := i';
 
     call Write(i, 42);
 }
 
-procedure {:yield_invariant} {:layer 1} Yield({:linear "tid"} i: int, old_a: [int]int);
-requires {:layer 1} old_a[i] == a[i];
+yield invariant {:layer 1} Yield({:linear "tid"} i: int, old_a: [int]int);
+invariant old_a[i] == a[i];
+
+yield invariant {:layer 1} Yield_42({:linear "tid"} i: int, v: int);
+invariant v == a[i];

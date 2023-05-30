@@ -1,9 +1,3 @@
-yield-requires-ensures-errors.bpl(12,30): Error: invalid type for argument 0 in call to yield_x: bool (expected: int)
-yield-requires-ensures-errors.bpl(13,29): Error: invalid type for argument 0 in call to yield_x: bool (expected: int)
-yield-requires-ensures-errors.bpl(20,0): Error: Only linear variable can be passed to linear parameter: a
-yield-requires-ensures-errors.bpl(19,28): Error: Output parameter cannot be accessed
-yield-requires-ensures-errors.bpl(27,0): Error: A local variable used in input to the call not available at layer 1
-yield-requires-ensures-errors.bpl(28,0): Error: A local variable used in input to the call not available at layer 1
-yield-requires-ensures-errors.bpl(36,35): Error: Argument must be available
-yield-requires-ensures-errors.bpl(37,34): Error: Argument must be available
-6 type checking errors detected in yield-requires-ensures-errors.bpl
+yield-requires-ensures-errors.bpl(12,22): Error: variable not available across layers in [1, 1]: a
+yield-requires-ensures-errors.bpl(13,21): Error: variable not available across layers in [1, 1]: a
+2 type checking errors detected in yield-requires-ensures-errors.bpl

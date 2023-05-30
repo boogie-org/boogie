@@ -24,24 +24,23 @@ function {:inline} PoolInv(unallocated:[int]bool, pool:lmap) : (bool)
   (forall x:int :: unallocated[x] ==> dom(pool)[x])
 }
 
-procedure {:yields} {:layer 2}
-{:yield_preserves "Yield"}
-Main ()
+yield procedure {:layer 2} Main ()
+preserves call Yield();
 {
   var {:layer 1,2} {:linear "mem"} l:lmap;
   var i:int;
   while (*)
-  invariant {:yields} {:layer 1,2} {:yield_loop "Yield"} true;
+    invariant {:yields} true;
+    invariant call Yield();
   {
     call  l, i := Alloc();
     async call Thread(l, i);
   }
 }
 
-procedure {:yields} {:layer 2}
-{:yield_requires "YieldMem", local_in, i}
-{:yield_ensures "Yield"}
-Thread ({:layer 1,2} {:linear_in "mem"} local_in:lmap, i:int)
+yield procedure {:layer 2} Thread ({:layer 1,2} {:linear_in "mem"} local_in:lmap, i:int)
+requires call YieldMem(local_in, i);
+ensures call Yield();
 requires {:layer 2} dom(local_in)[i];
 {
   var y, o:int;
@@ -52,7 +51,8 @@ requires {:layer 2} dom(local_in)[i];
   call o := Read(local, i);
   assert {:layer 2} o == 42;
   while (*)
-  invariant {:yields} {:layer 1,2} {:yield_loop "Yield"} true;
+  invariant {:yields} true;
+  invariant call Yield();
   {
     call l, y := Alloc();
     call l := Write(l, y, 42);
@@ -62,7 +62,7 @@ requires {:layer 2} dom(local_in)[i];
   }
 }
 
-procedure {:right} {:layer 2} atomic_Alloc() returns ({:linear "mem"} l:lmap, i:int)
+right action {:layer 2} atomic_Alloc() returns ({:linear "mem"} l:lmap, i:int)
 modifies pool;
 {
   var m:[int]int;
@@ -71,61 +71,64 @@ modifies pool;
   l := Add(Empty(m), i);
 }
 
-procedure {:yields} {:layer 1} {:refines "atomic_Alloc"}
-{:yield_requires "Yield"}
-{:yield_ensures "YieldMem", l, i}
+yield procedure {:layer 1}
 Alloc() returns ({:layer 1} {:linear "mem"} l:lmap, i:int)
+refines atomic_Alloc;
+requires call Yield();
+ensures call YieldMem(l, i);
 {
   call i := PickAddr();
   call l := AllocLinear(i);
 }
 
-procedure {:left} {:layer 2} atomic_Free({:linear_in "mem"} l:lmap, i:int)
+left action {:layer 2} atomic_Free({:linear_in "mem"} l:lmap, i:int)
 modifies pool;
 {
   assert dom(l)[i];
   pool := Add(pool, i);
 }
 
-procedure {:yields} {:layer 1} {:refines "atomic_Free"}
-{:yield_preserves "Yield"}
-Free({:layer 1} {:linear_in "mem"} l:lmap, i:int)
+yield procedure {:layer 1} Free({:layer 1} {:linear_in "mem"} l:lmap, i:int)
+refines atomic_Free;
 requires {:layer 1} dom(l)[i];
+preserves call Yield();
 {
   call FreeLinear(l, i);
   call ReturnAddr(i);
 }
 
-procedure {:both} {:layer 2} atomic_Read ({:linear "mem"} l:lmap, i:int) returns (o:int)
+both action {:layer 2} atomic_Read ({:linear "mem"} l:lmap, i:int) returns (o:int)
 {
   assert dom(l)[i];
   o := map(l)[i];
 }
 
-procedure {:both} {:layer 2} atomic_Write ({:linear_in "mem"} l:lmap, i:int, o:int) returns ({:linear "mem"} l':lmap)
+both action {:layer 2} atomic_Write ({:linear_in "mem"} l:lmap, i:int, o:int) returns ({:linear "mem"} l':lmap)
 {
   assert dom(l)[i];
   l' := cons(dom(l), map(l)[i := o]);
 }
 
-procedure {:yields} {:layer 1} {:refines "atomic_Read"}
-{:yield_requires "YieldMem", l, i}
-{:yield_ensures "Yield"}
+yield procedure {:layer 1}
 Read ({:layer 1} {:linear "mem"} l:lmap, i:int) returns (o:int)
+refines atomic_Read;
+requires call YieldMem(l, i);
+ensures call Yield();
 {
   call o := ReadLow(i);
 }
 
-procedure {:yields} {:layer 1} {:refines "atomic_Write"}
-{:yield_requires "YieldMem", l, i}
-{:yield_ensures "YieldMem", l', i}
+yield procedure {:layer 1}
 Write ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
+refines atomic_Write;
+requires call YieldMem(l, i);
+ensures call YieldMem(l', i);
 {
   call WriteLow(i, o);
   call l' := WriteLinear(l, i, o);
 }
 
-procedure {:intro} {:layer 1} AllocLinear (i:int) returns ({:linear "mem"} l:lmap)
+action {:layer 1} AllocLinear (i:int) returns ({:linear "mem"} l:lmap)
 modifies pool;
 {
   assert dom(pool)[i];
@@ -133,49 +136,56 @@ modifies pool;
   l := Add(Empty(mem), i);
 }
 
-procedure {:intro} {:layer 1} FreeLinear ({:linear_in "mem"} l:lmap, i:int)
+action {:layer 1} FreeLinear ({:linear_in "mem"} l:lmap, i:int)
 modifies pool;
 {
   assert dom(l)[i];
   pool := Add(pool, i);
 }
 
-procedure {:intro} {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
+action {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
 {
   assert dom(l)[i];
   l' := cons(dom(l), map(l)[i := o]);
 }
 
-procedure {:yield_invariant} {:layer 1} Yield ();
-requires PoolInv(unallocated, pool);
+yield invariant {:layer 1} Yield ();
+invariant PoolInv(unallocated, pool);
 
-procedure {:yield_invariant} {:layer 1} YieldMem ({:layer 1} {:linear "mem"} l:lmap, i:int);
-requires PoolInv(unallocated, pool);
-requires dom(l)[i] && map(l)[i] == mem[i];
+yield invariant {:layer 1} YieldMem ({:layer 1} {:linear "mem"} l:lmap, i:int);
+invariant PoolInv(unallocated, pool);
+invariant dom(l)[i] && map(l)[i] == mem[i];
 
 var {:layer 1, 2} {:linear "mem"} pool:lmap;
 var {:layer 0, 1} mem:[int]int;
 var {:layer 0, 1} unallocated:[int]bool;
 
-procedure {:atomic} {:layer 1} atomic_ReadLow (i:int) returns (o:int)
+atomic action {:layer 1} atomic_ReadLow (i:int) returns (o:int)
 { o := mem[i]; }
 
-procedure {:atomic} {:layer 1} atomic_WriteLow (i:int, o:int)
+atomic action {:layer 1} atomic_WriteLow (i:int, o:int)
 modifies mem;
 { mem[i] := o; }
 
-procedure {:atomic} {:layer 1} atomic_PickAddr () returns (i:int)
+atomic action {:layer 1} atomic_PickAddr () returns (i:int)
 modifies unallocated;
 {
   assume unallocated[i];
   unallocated[i] := false;
 }
 
-procedure {:atomic} {:layer 1} atomic_ReturnAddr (i:int)
+atomic action {:layer 1} atomic_ReturnAddr (i:int)
 modifies unallocated;
 { unallocated[i] := true; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_ReadLow"} ReadLow (i:int) returns (o:int);
-procedure {:yields} {:layer 0} {:refines "atomic_WriteLow"} WriteLow (i:int, o:int);
-procedure {:yields} {:layer 0} {:refines "atomic_PickAddr"} PickAddr () returns (i:int);
-procedure {:yields} {:layer 0} {:refines "atomic_ReturnAddr"} ReturnAddr (i:int);
+yield procedure {:layer 0} ReadLow (i:int) returns (o:int);
+refines atomic_ReadLow;
+
+yield procedure {:layer 0} WriteLow (i:int, o:int);
+refines atomic_WriteLow;
+
+yield procedure {:layer 0} PickAddr () returns (i:int);
+refines atomic_PickAddr;
+
+yield procedure {:layer 0} ReturnAddr (i:int);
+refines atomic_ReturnAddr;

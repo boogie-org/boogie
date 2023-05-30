@@ -12,9 +12,10 @@ var {:layer 0,1} x : int;
 // ###########################################################################
 // Main
 
-procedure {:atomic} {:layer 2} skip () {}
+atomic action {:layer 2} skip () {}
 
-procedure {:yields} {:layer 1} {:refines "skip"} Main ()
+yield procedure {:layer 1} Main ()
+refines skip;
 {
   var i : int;
   var {:layer 1} old_x: int;
@@ -22,7 +23,6 @@ procedure {:yields} {:layer 1} {:refines "skip"} Main ()
   i := 0;
   call old_x := snapshot_x();
   while (i != N)
-  invariant {:layer 1} {:cooperates} true;
   invariant {:layer 1} x == old_x;
   {
     async call {:sync} inc();
@@ -31,7 +31,7 @@ procedure {:yields} {:layer 1} {:refines "skip"} Main ()
   }
 }
 
-procedure {:intro} {:layer 1} snapshot_x() returns (snapshot: int)
+action {:layer 1} snapshot_x() returns (snapshot: int)
 {
    snapshot := x;
 }
@@ -39,13 +39,16 @@ procedure {:intro} {:layer 1} snapshot_x() returns (snapshot: int)
 // ###########################################################################
 // Low level atomic actions
 
-procedure {:left} {:layer 1} inc_atomic ()
+left action {:layer 1} inc_atomic ()
 modifies x;
 { x := x + 1; }
 
-procedure {:left} {:layer 1} dec_atomic ()
+left action {:layer 1} dec_atomic ()
 modifies x;
 { x := x - 1; }
 
-procedure {:yields} {:layer 0} {:refines "inc_atomic"} inc ();
-procedure {:yields} {:layer 0} {:refines "dec_atomic"} dec ();
+yield procedure {:layer 0} inc ();
+refines inc_atomic;
+
+yield procedure {:layer 0} dec ();
+refines dec_atomic;

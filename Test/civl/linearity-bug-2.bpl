@@ -3,7 +3,7 @@
 
 var {:linear "lin"} {:layer 1,2} set : [int]bool;
 
-procedure {:atomic} {:layer 2} atomic_foo ({:linear "lin"} i : int)
+atomic action {:layer 2} atomic_foo ({:linear "lin"} i : int)
 modifies set;
 { set[i] := true; }
 

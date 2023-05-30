@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
-using System;
 
 namespace Microsoft.Boogie
 {
@@ -80,33 +79,33 @@ namespace Microsoft.Boogie
 
     public static Expr Commutativity(
       CivlTypeChecker civlTypeChecker, 
-      AtomicAction first, AtomicAction second,
+      Action first, Action second,
       HashSet<Variable> frame)
     {
-      var triggers = first.triggerFunctions.Union(second.triggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);
+      var triggers = first.TriggerFunctions.Union(second.TriggerFunctions).ToDictionary(kv => kv.Key, kv => kv.Value);
       return ComputeTransitionRelation(
         civlTypeChecker,
-        first.secondImpl, second.firstImpl,
+        first.SecondImpl, second.FirstImpl,
         frame, triggers, false,
-        string.Format("Transition relation of {0} ∘ {1}", first.proc.Name, second.proc.Name));
+        $"Transition relation of {first.Name} ∘ {second.Name}");
     }
 
-    public static Expr Refinement(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
+    public static Expr Refinement(CivlTypeChecker civlTypeChecker, Implementation impl, HashSet<Variable> frame)
     {
       return ComputeTransitionRelation(
         civlTypeChecker,
-        action.impl, null,
+        impl, null,
         frame, null, false,
-        string.Format("Transition relation of {0}", action.proc.Name));
+        $"Transition relation of {impl.Name}");
     }
 
     public static Expr Cooperation(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
     {
       return ComputeTransitionRelation(
         civlTypeChecker,
-        action.impl, null,
+        action.Impl, null,
         frame, null, true,
-        string.Format("Cooperation expression of {0}", action.proc.Name));
+        $"Cooperation expression of {action.Name}");
     }
 
     private void EnumeratePaths()
@@ -294,10 +293,10 @@ namespace Microsoft.Boogie
               assignments.Add(new Assignment(var, expr));
             }
           }
-          else if (cmd is AssumeCmd assumeCmd)
+          else if (cmd is PredicateCmd predCmd)
           {
             var sub = SubstitutionHelper.FromVariableMap(LatestCopies());
-            assumes.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, assumeCmd.Expr));
+            assumes.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, predCmd.Expr));
           }
           else if (cmd is HavocCmd havocCmd)
           {

@@ -1,0 +1,3 @@
+yield-requires-ensures-errors-3.bpl(12,29): Error: argument must be available
+yield-requires-ensures-errors-3.bpl(12,9): Error: Only linear variable can be passed to linear parameter: a
+2 type checking errors detected in yield-requires-ensures-errors-3.bpl

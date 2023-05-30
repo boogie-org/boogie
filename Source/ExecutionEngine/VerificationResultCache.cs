@@ -142,22 +142,22 @@ namespace Microsoft.Boogie
         }
 
         if (options.TraceCachingForTesting || options.TraceCachingForBenchmarking) {
-          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false, options);
+          using var tokTxtWr = new TokenTextWriter("<console>", options.OutputWriter, false, false, options);
           var loc = currentImplementation.tok != null && currentImplementation.tok != Token.NoToken
             ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line,
               currentImplementation.tok.col)
             : "<unknown location>";
-          Console.Out.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.VerboseName, loc);
+          options.OutputWriter.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.VerboseName, loc);
           foreach (var a in axioms)
           {
-            Console.Out.Write("  >>> added axiom: ");
+            options.OutputWriter.Write("  >>> added axiom: ");
             a.Expr.Emit(tokTxtWr);
-            Console.Out.WriteLine();
+            options.OutputWriter.WriteLine();
           }
 
           foreach (var b in after)
           {
-            Console.Out.Write("  >>> added after assuming the current precondition: ");
+            options.OutputWriter.Write("  >>> added after assuming the current precondition: ");
             b.Emit(tokTxtWr, 0);
           }
         }
@@ -171,7 +171,8 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    public static void Inject(ExecutionEngine engine, Program program, IEnumerable<Implementation> implementations, string requestId,
+    public static void Inject(ExecutionEngine engine, Program program, 
+      IReadOnlyList<Implementation> implementations, string requestId,
       string programId, out long[] cachingActionCounts)
     {
       var eai = new CachedVerificationResultInjector(engine.Options, program);
@@ -211,7 +212,7 @@ namespace Microsoft.Boogie
               eai.SetErrorAndAssertionChecksumsInCachedSnapshot(impl, vr);
               if (vr.ProgramId != null)
               {
-                var p = ExecutionEngine.CachedProgram(vr.ProgramId);
+                var p = engine.Cache.CachedProgram(vr.ProgramId);
                 if (p != null)
                 {
                   eai.Inject(impl, p);
@@ -331,34 +332,34 @@ namespace Microsoft.Boogie
 
         node.ExtendDesugaring(options, before, beforePreconditionCheck, after);
         if (options.TraceCachingForTesting || options.TraceCachingForBenchmarking) {
-          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false, options);
+          using var tokTxtWr = new TokenTextWriter("<console>", options.OutputWriter, false, false, options);
           var loc = node.tok != null && node.tok != Token.NoToken
-            ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col)
+            ? $"{node.tok.filename}({node.tok.line},{node.tok.col})"
             : "<unknown location>";
-          Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.VerboseName,
+          options.OutputWriter.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.VerboseName,
             currentImplementation.VerboseName, loc);
           foreach (var a in axioms)
           {
-            Console.Out.Write("  >>> added axiom: ");
+            options.OutputWriter.Write("  >>> added axiom: ");
             a.Expr.Emit(tokTxtWr);
-            Console.Out.WriteLine();
+            options.OutputWriter.WriteLine();
           }
 
           foreach (var b in before)
           {
-            Console.Out.Write("  >>> added before: ");
+            options.OutputWriter.Write("  >>> added before: ");
             b.Emit(tokTxtWr, 0);
           }
 
           foreach (var b in beforePreconditionCheck)
           {
-            Console.Out.Write("  >>> added before precondition check: ");
+            options.OutputWriter.Write("  >>> added before precondition check: ");
             b.Emit(tokTxtWr, 0);
           }
 
           foreach (var a in after)
           {
-            Console.Out.Write("  >>> added after: ");
+            options.OutputWriter.Write("  >>> added after: ");
             a.Emit(tokTxtWr, 0);
           }
         }
@@ -476,7 +477,7 @@ namespace Microsoft.Boogie
       var end = DateTime.UtcNow;
       if (options.TraceCachingForDebugging)
       {
-        Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.",
+        options.OutputWriter.WriteLine("Collected other definition axioms within {0:F0} ms.",
           end.Subtract(start).TotalMilliseconds);
       }
     }
@@ -530,7 +531,7 @@ namespace Microsoft.Boogie
       var end = DateTime.UtcNow;
       if (options.TraceCachingForDebugging)
       {
-        Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        options.OutputWriter.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }
     }
 
@@ -677,7 +678,14 @@ namespace Microsoft.Boogie
 
   public sealed class VerificationResultCache
   {
-    private readonly MemoryCache Cache = new MemoryCache("VerificationResultCache");
+
+    private readonly MemoryCache programCache = new("ProgramCache");
+    private readonly MemoryCache Cache = new("VerificationResultCache");
+
+    public Program CachedProgram(string programId) {
+      var result = programCache.Get(programId) as Program;
+      return result;
+    }
 
     private readonly CacheItemPolicy Policy = new CacheItemPolicy
       {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
@@ -747,6 +755,11 @@ namespace Microsoft.Boogie
 
       Lookup(impl, runDiagnosticsOnTimeout, out var priority);
       return priority;
+    }
+
+    public void SetProgram(string programId, Program program, CacheItemPolicy policy)
+    {
+      programCache.Set(programId, program, policy);
     }
   }
 }

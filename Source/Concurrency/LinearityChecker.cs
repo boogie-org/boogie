@@ -15,8 +15,7 @@ class LinearityChecker
     public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       var linearityChecker = new LinearityChecker(civlTypeChecker);
-      foreach (var action in Enumerable.Concat<Action>(civlTypeChecker.procToAtomicAction.Values,
-        civlTypeChecker.procToIntroductionAction.Values))
+      foreach (var action in civlTypeChecker.MoverActions.Concat<Action>(civlTypeChecker.LinkActions))
       {
         linearityChecker.AddChecker(action, decls);
       }
@@ -43,46 +42,46 @@ class LinearityChecker
       }
     }
 
-    private IdentifierExpr PAs(AtomicAction action, int pendingAsyncIndex)
+    private IdentifierExpr PAs(Action action, int pendingAsyncIndex)
     {
-      return Expr.Ident(action.impl.OutParams[action.pendingAsyncStartIndex + pendingAsyncIndex]);
+      return Expr.Ident(action.Impl.OutParams[action.PendingAsyncStartIndex + pendingAsyncIndex]);
     }
     
     private void AddChecker(Action action, List<Declaration> decls)
     {
       // Note: The implementation should be used as the variables in the
       //       gate are bound to implementation and not to the procedure.
-      Implementation impl = action.impl;
+      Implementation impl = action.Impl;
       List<Variable> inputs = impl.InParams;
       List<Variable> outputs = impl.OutParams;
 
       var locals = new List<Variable>();
       var ctorTypeToFirstPA = new Dictionary<CtorType, IdentifierExpr>();
       var ctorTypeToSecondPA = new Dictionary<CtorType, IdentifierExpr>();
-      if (action is AtomicAction x && x.HasPendingAsyncs)
+      if (action is Action x && x.HasPendingAsyncs)
       {
-        x.pendingAsyncs.Iter(y =>
+        x.PendingAsyncs.Iter(y =>
         {
-          var paLocal1 = civlTypeChecker.LocalVariable($"pa1_{y.pendingAsyncType.Decl.Name}", y.pendingAsyncType);
-          var paLocal2 = civlTypeChecker.LocalVariable($"pa2_{y.pendingAsyncType.Decl.Name}", y.pendingAsyncType);
+          var paLocal1 = civlTypeChecker.LocalVariable($"pa1_{y.PendingAsyncType.Decl.Name}", y.PendingAsyncType);
+          var paLocal2 = civlTypeChecker.LocalVariable($"pa2_{y.PendingAsyncType.Decl.Name}", y.PendingAsyncType);
           locals.Add(paLocal1);
           locals.Add(paLocal2);
-          ctorTypeToFirstPA[y.pendingAsyncType] = Expr.Ident(paLocal1);
-          ctorTypeToSecondPA[y.pendingAsyncType] = Expr.Ident(paLocal2);
+          ctorTypeToFirstPA[y.PendingAsyncType] = Expr.Ident(paLocal1);
+          ctorTypeToSecondPA[y.PendingAsyncType] = Expr.Ident(paLocal2);
         });
       }
 
-      List<Requires> requires = action.gate.Select(a => new Requires(false, a.Expr)).ToList();
+      List<Requires> requires = action.Gate.Select(a => new Requires(false, a.Expr)).ToList();
       List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
 
       foreach (var domain in linearTypeChecker.NameLinearDomains)
       {
         // Linear in vars
-        var inVars = linearTypeChecker.FilterVariables(domain,inputs.Union(action.modifiedGlobalVars))
+        var inVars = linearTypeChecker.FilterVariables(domain,inputs.Union(action.ModifiedGlobalVars))
           .Where(x => InKinds.Contains(LinearDomainCollector.FindLinearKind(x))).Select(Expr.Ident).ToList();
         
         // Linear out vars
-        var outVars = linearTypeChecker.FilterVariables(domain, inputs.Union(outputs).Union(action.modifiedGlobalVars))
+        var outVars = linearTypeChecker.FilterVariables(domain, inputs.Union(outputs).Union(action.ModifiedGlobalVars))
           .Where(x => OutKinds.Contains(LinearDomainCollector.FindLinearKind(x))).Select(Expr.Ident).ToList();
 
         // First kind
@@ -97,15 +96,15 @@ class LinearityChecker
             "variables"));
         }
 
-        if (action is AtomicAction atomicAction && atomicAction.HasPendingAsyncs)
+        if (action is Action { HasPendingAsyncs: true } atomicAction)
         {
-          var pendingAsyncs = atomicAction.pendingAsyncs;
+          var pendingAsyncs = new List<ActionDecl>(atomicAction.PendingAsyncs);
           
           for (int i = 0; i < pendingAsyncs.Count; i++)
           {
             var pendingAsync = pendingAsyncs[i];
-            var pa1 = ctorTypeToFirstPA[pendingAsync.pendingAsyncType];
-            var pa2 = ctorTypeToSecondPA[pendingAsync.pendingAsyncType];
+            var pa1 = ctorTypeToFirstPA[pendingAsync.PendingAsyncType];
+            var pa2 = ctorTypeToSecondPA[pendingAsync.PendingAsyncType];
             var pendingAsyncLinearParams = PendingAsyncLinearParams(domain, pendingAsync, pa1);
 
             if (pendingAsyncLinearParams.Count == 0)
@@ -117,38 +116,38 @@ class LinearityChecker
             // Permissions in linear output variables + linear inputs of a single pending async
             // are a subset of permissions in linear input variables.
             var exactlyOnePA = Expr.And(
-              ExprHelper.IsConstructor(pa1, pendingAsync.pendingAsyncCtor.Name),
+              ExprHelper.IsConstructor(pa1, pendingAsync.PendingAsyncCtor.Name),
               Expr.Eq(Expr.Select(PAs(atomicAction, i), pa1), Expr.Literal(1)));
             var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
             linearityChecks.Add(new LinearityCheck(
               domain.DomainName,
               exactlyOnePA,
               outSubsetInExpr,
-              $"Potential linearity violation in outputs and pending async of {pendingAsync.proc.Name} for domain {domain.DomainName}.",
-              $"single_{pendingAsync.proc.Name}"));
+              $"Potential linearity violation in outputs and pending async of {pendingAsync.Name} for domain {domain.DomainName}.",
+              $"single_{pendingAsync.Name}"));
 
             // Third kind
             // If there are two identical pending asyncs, then their input permissions mut be empty.
             var twoIdenticalPAs = Expr.And(
-              ExprHelper.IsConstructor(pa1, pendingAsync.pendingAsyncCtor.Name),
+              ExprHelper.IsConstructor(pa1, pendingAsync.PendingAsyncCtor.Name),
               Expr.Ge(Expr.Select(PAs(atomicAction, i), pa1), Expr.Literal(2)));
             var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
             linearityChecks.Add(new LinearityCheck(
               domain.DomainName,
               twoIdenticalPAs,
               emptyPerms,
-              $"Potential linearity violation in identical pending asyncs of {pendingAsync.proc.Name} for domain {domain.DomainName}.",
-              $"identical_{pendingAsync.proc.Name}"));
+              $"Potential linearity violation in identical pending asyncs of {pendingAsync.Name} for domain {domain.DomainName}.",
+              $"identical_{pendingAsync.Name}"));
           }
           
           for (int i = 0; i < pendingAsyncs.Count; i++)
           {
             var pendingAsync1 = pendingAsyncs[i];
-            var pa1 = ctorTypeToFirstPA[pendingAsync1.pendingAsyncType];
+            var pa1 = ctorTypeToFirstPA[pendingAsync1.PendingAsyncType];
             for (int j = i; j < pendingAsyncs.Count; j++)
             {
               var pendingAsync2 = pendingAsyncs[j];
-              var pa2 = ctorTypeToSecondPA[pendingAsync2.pendingAsyncType];
+              var pa2 = ctorTypeToSecondPA[pendingAsync2.PendingAsyncType];
               var pendingAsyncLinearParams1 = PendingAsyncLinearParams(domain, pendingAsync1, pa1);
               var pendingAsyncLinearParams2 = PendingAsyncLinearParams(domain, pendingAsync2, pa2);
               
@@ -163,8 +162,8 @@ class LinearityChecker
               var membership = Expr.And(
                 i == j ? Expr.Neq(pa1, pa2) : Expr.True,
                 Expr.And(
-                  ExprHelper.IsConstructor(pa1, pendingAsync1.pendingAsyncCtor.Name),
-                  ExprHelper.IsConstructor(pa2, pendingAsync2.pendingAsyncCtor.Name)));
+                  ExprHelper.IsConstructor(pa1, pendingAsync1.PendingAsyncCtor.Name),
+                  ExprHelper.IsConstructor(pa2, pendingAsync2.PendingAsyncCtor.Name)));
 
               var existing = Expr.And(
                 Expr.Ge(Expr.Select(PAs(atomicAction, i), pa1), Expr.Literal(1)),
@@ -176,8 +175,8 @@ class LinearityChecker
                 domain.DomainName,
                 Expr.And(membership, existing),
                 noDuplication,
-                $"Potential lnearity violation in pending asyncs of {pendingAsync1.proc.Name} and {pendingAsync2.proc.Name} for domain {domain.DomainName}.",
-                $"distinct_{pendingAsync1.proc.Name}_{pendingAsync2.proc.Name}"));
+                $"Potential lnearity violation in pending asyncs of {pendingAsync1.Name} and {pendingAsync2.Name} for domain {domain.DomainName}.",
+                $"distinct_{pendingAsync1.Name}_{pendingAsync2.Name}"));
             }
           }
         }
@@ -197,7 +196,7 @@ class LinearityChecker
         {
           cmds.Add(CmdHelper.AssumeCmd(lc.assume));
         }
-        cmds.Add(CmdHelper.AssertCmd(action.proc.tok, lc.assert, lc.message));
+        cmds.Add(CmdHelper.AssertCmd(action.tok, lc.assert, lc.message));
         var block = BlockHelper.Block($"{lc.domainName}_{lc.checkName}", cmds);
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
@@ -208,23 +207,23 @@ class LinearityChecker
       blocks.Add(
         BlockHelper.Block(
           "init",
-          new List<Cmd> { CmdHelper.CallCmd(action.proc, inputs, outputs) },
+          new List<Cmd> { CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
           checkerBlocks));
       blocks.AddRange(checkerBlocks);
 
       // Create the whole check procedure
-      string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.proc.Name}");
+      string checkerName = civlTypeChecker.AddNamePrefix($"LinearityChecker_{action.Name}");
       Procedure linCheckerProc = DeclHelper.Procedure(checkerName,
-        inputs, outputs, requires, action.proc.Modifies, new List<Ensures>());
+        inputs, outputs, requires, action.Impl.Proc.Modifies, new List<Ensures>());
       Implementation linCheckImpl = DeclHelper.Implementation(linCheckerProc,
         inputs, outputs, locals, blocks);
       decls.Add(linCheckImpl);
       decls.Add(linCheckerProc);
     }
 
-    private List<Expr> PendingAsyncLinearParams(LinearDomain domain, AtomicAction pendingAsync, IdentifierExpr pa)
+    private List<Expr> PendingAsyncLinearParams(LinearDomain domain, ActionDecl pendingAsync, IdentifierExpr pa)
     {
-      var pendingAsyncLinearParams = linearTypeChecker.FilterVariables(domain, pendingAsync.proc.InParams)
+      var pendingAsyncLinearParams = linearTypeChecker.FilterVariables(domain, pendingAsync.InParams)
         .Where(v => InKinds.Contains(LinearDomainCollector.FindLinearKind(v)))
         .Select(v => ExprHelper.FieldAccess(pa, v.Name)).ToList<Expr>();
       // These expressions must be typechecked since the types are needed later in PermissionMultiset.

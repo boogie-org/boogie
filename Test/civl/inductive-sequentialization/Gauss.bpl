@@ -5,10 +5,9 @@ var {:layer 0,2} x:int;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:atomic}{:layer 1}
-{:creates "ADD"}
-{:IS "MAIN'","INV"}
-SUM (n: int)
+atomic action {:layer 1} SUM (n: int)
+refines MAIN' using INV;
+creates ADD;
 modifies x;
 {
   assert n >= 0;
@@ -17,18 +16,15 @@ modifies x;
   call create_asyncs((lambda pa: ADD :: 1 <= pa->i && pa->i <= n));
 }
 
-procedure {:atomic}{:layer 2}
-MAIN' (n: int)
+atomic action {:layer 2} MAIN' (n: int)
 modifies x;
 {
   assert n >= 0;
   x := x + (n * (n+1)) div 2;
 }
 
-procedure {:layer 1}
-{:creates "ADD"}
-{:IS_invariant}{:elim "ADD"}
-INV (n: int)
+action {:layer 1} INV (n: int)
+creates ADD;
 modifies x;
 {
   var {:pool "A"} i: int;
@@ -46,9 +42,7 @@ modifies x;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-procedure {:left}{:layer 1}
-{:pending_async}
-ADD (i: int)
+async left action {:layer 1} ADD (i: int)
 modifies x;
 {
   x := x + i;

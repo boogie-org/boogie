@@ -28,12 +28,16 @@ namespace VC
       }
 
       await checkersSemaphore.WaitAsync(cancellationToken);
-      if (!availableCheckers.TryTake(out var checker)) {
-        checker ??= CreateNewChecker();
+      try {
+        if (!availableCheckers.TryTake(out var checker)) {
+          checker ??= CreateNewChecker();
+        }
+        PrepareChecker(vcgen.program, split, checker);
+        return checker;
+      } catch (Exception) {
+        checkersSemaphore.Release();
+        throw;
       }
-
-      PrepareChecker(vcgen.program, split, checker);
-      return checker;
     }
 
     private int createdCheckers;

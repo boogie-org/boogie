@@ -1,42 +1,43 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure {:yield_invariant} {:layer 1} Yield();
+yield invariant {:layer 1} Yield();
 
-procedure {:yields} {:layer 1} foo()
+yield procedure {:layer 1} foo()
 {
     par A() | L();
-    call yield();
+    call Yield();
     par A() | bar();
-    call yield();
+    call Yield();
     par bar() | L();
 }
 
-procedure {:yields} {:layer 1} bar();
+yield procedure {:layer 1} bar();
 
-procedure {:yields} {:layer 1} baz1()
+yield procedure {:layer 1} baz1()
 {
     par L() | A();
 }
 
-procedure {:yields} {:layer 1} baz2()
+yield procedure {:layer 1} baz2()
 {
     par A() | R();
 }
 
-procedure {:atomic} {:layer 1,1} atomic_A()
+atomic action {:layer 1,1} atomic_A()
 {
 }
-procedure {:yields} {:layer 0} {:refines "atomic_A"} A();
+yield procedure {:layer 0} A();
+refines atomic_A;
 
-procedure {:left} {:layer 1,1} atomic_L()
+left action {:layer 1,1} atomic_L()
 {
 }
-procedure {:yields} {:layer 0} {:refines "atomic_L"} L();
+yield procedure {:layer 0} L();
+refines atomic_L;
 
-procedure {:right} {:layer 1,1} atomic_R()
+right action {:layer 1,1} atomic_R()
 {
 }
-procedure {:yields} {:layer 0} {:refines "atomic_R"} R();
-
-procedure {:yield_invariant} {:layer 1} yield();
+yield procedure {:layer 0} R();
+refines atomic_R;

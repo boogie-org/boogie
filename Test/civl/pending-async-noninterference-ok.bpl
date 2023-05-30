@@ -3,18 +3,19 @@
 
 var {:layer 0,1} x:int;
 
-procedure {:yield_invariant} {:layer 1} yield_x(n: int);
-requires x >= n;
+yield invariant {:layer 1} yield_x(n: int);
+invariant x >= n;
 
-procedure {:atomic}{:layer 1} {:pending_async} A ()
+async atomic action {:layer 1} A ()
 modifies x;
 {
   x := x + 1;
 }
 
-procedure {:left}{:layer 1} {:creates "A"} ASYNC_A ()
+left action {:layer 1} ASYNC_A ()
+creates A;
 {
   call create_async(A());
 }
 
-procedure {:yields}{:layer 1} dummy () {}
+yield procedure {:layer 1} dummy () {}

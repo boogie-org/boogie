@@ -739,13 +739,17 @@ namespace Microsoft.Boogie
         cce.EndExpose();
       }
     }
+
+    public Procedure Proc;
   }
 
   public class TypecheckingContext : CheckingContext
   {
     public CoreOptions Options { get; }
-    public List<IdentifierExpr> Frame; // used in checking the assignment targets of implementation bodies
-    public bool Yields;
+    public Procedure Proc;
+    public LayerRange ExpectedLayerRange;
+    public bool GlobalAccessOnlyInOld;
+    public int InsideOld;
 
     public TypecheckingContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)
@@ -755,9 +759,11 @@ namespace Microsoft.Boogie
 
     public bool InFrame(Variable v)
     {
-      Contract.Requires(v != null);
-      Contract.Requires(Frame != null);
-      return Frame.Any(f => f.Decl == v);
+      return Proc.Modifies.Any(f => f.Decl == v);
     }
+
+    public bool Yields => Proc is YieldProcedureDecl;
+
+    public bool GlobalAccessOk => !GlobalAccessOnlyInOld || 0 < InsideOld;
   }
 }

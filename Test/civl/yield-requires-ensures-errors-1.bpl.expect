@@ -1,0 +1,3 @@
+yield-requires-ensures-errors-1.bpl(10,22): Error: undeclared identifier: c
+yield-requires-ensures-errors-1.bpl(11,23): Error: undeclared identifier: c
+2 name resolution errors detected in yield-requires-ensures-errors-1.bpl

@@ -1,2 +1,2 @@
-InvalidFuncName.bpl(4,34): error: ident expected
+InvalidFuncName.bpl(4,34): error: invalid Ident
 1 parse errors detected in InvalidFuncName.bpl

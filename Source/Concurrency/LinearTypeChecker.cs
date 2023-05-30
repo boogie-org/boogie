@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -26,6 +27,45 @@ namespace Microsoft.Boogie
       program.GlobalVariables.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY);
     
     private Procedure enclosingProc;
+
+    public override Procedure VisitYieldInvariantDecl(YieldInvariantDecl node)
+    {
+      foreach (var v in node.InParams)
+      {
+        var linearKind = LinearDomainCollector.FindLinearKind(v);
+        if (linearKind == LinearKind.LINEAR_IN || linearKind == LinearKind.LINEAR_OUT)
+        {
+          Error(v, "parameter to yield invariant may only be :linear");
+        }
+      }
+      return base.VisitYieldInvariantDecl(node);
+    }
+
+    public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
+    {
+      node.YieldRequires.Iter(callCmd =>
+      {
+        var kinds = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_IN };
+        CheckLinearParameters(callCmd,
+          new HashSet<Variable>(node.InParams.Union(node.OutParams)
+            .Where(p => kinds.Contains(LinearDomainCollector.FindLinearKind(p)))));
+      });
+      node.YieldEnsures.Iter(callCmd =>
+      {
+        var kinds = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
+        CheckLinearParameters(callCmd,
+          new HashSet<Variable>(node.InParams.Union(node.OutParams)
+            .Where(p => kinds.Contains(LinearDomainCollector.FindLinearKind(p)))));
+      });
+      node.YieldPreserves.Iter(callCmd =>
+      {
+        var kinds = new List<LinearKind> { LinearKind.LINEAR };
+        CheckLinearParameters(callCmd,
+          new HashSet<Variable>(node.InParams.Union(node.OutParams)
+            .Where(p => kinds.Contains(LinearDomainCollector.FindLinearKind(p)))));
+      });
+      return base.VisitYieldProcedureDecl(node);
+    }
 
     public override Implementation VisitImplementation(Implementation node)
     {
@@ -339,7 +379,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      return civlTypeChecker.IsAction(enclosingProc) || civlTypeChecker.IsLemmaProcedure(enclosingProc);
+      return enclosingProc is ActionDecl || enclosingProc.IsPure;
     }
 
     private IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
@@ -497,9 +537,65 @@ namespace Microsoft.Boogie
         Error(node, "linear primitives may not be invoked in a parallel call");
         return node;
       }
+      HashSet<Variable> parallelCallInputVars = new HashSet<Variable>();
+      foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => callCmd.Proc is not YieldInvariantDecl))
+      {
+        for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+        {
+          if (LinearDomainCollector.FindLinearKind(callCmd.Proc.InParams[i]) == LinearKind.ORDINARY)
+          {
+            continue;
+          }
+          if (callCmd.Ins[i] is IdentifierExpr actual)
+          {
+            if (parallelCallInputVars.Contains(actual.Decl))
+            {
+              Error(node,
+                $"linear variable can occur only once as an input parameter of a parallel call: {actual.Decl.Name}");
+            }
+            else
+            {
+              parallelCallInputVars.Add(actual.Decl);
+            }
+          }
+        }
+      }
+      foreach (CallCmd callCmd in node.CallCmds.Where(callCmd => callCmd.Proc is YieldInvariantDecl))
+      {
+        for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
+        {
+          if (LinearDomainCollector.FindLinearKind(callCmd.Proc.InParams[i]) == LinearKind.ORDINARY)
+          {
+            continue;
+          }
+          if (callCmd.Ins[i] is IdentifierExpr actual && parallelCallInputVars.Contains(actual.Decl))
+          {
+            Error(node,
+              $"linear variable cannot be an input parameter to both a yield invariant and a procedure in a parallel call: {actual.Decl.Name}");
+          }
+        }
+      }
       return base.VisitParCallCmd(node);
     }
 
+    public int CheckLinearParameters(CallCmd callCmd, HashSet<Variable> availableLinearVarsAtCallCmd)
+    {
+      int errorCount = 0;
+      foreach (var (ie, formal) in callCmd.Ins.Zip(callCmd.Proc.InParams))
+      {
+        if (LinearDomainCollector.FindLinearKind(formal) == LinearKind.ORDINARY)
+        {
+          continue;
+        }
+        if (ie is IdentifierExpr actual && !availableLinearVarsAtCallCmd.Contains(actual.Decl))
+        {
+          Error(actual, "argument must be available");
+          errorCount++;
+        }
+      }
+      return errorCount;
+    }
+    
     public override Cmd VisitCallCmd(CallCmd node)
     {
       var isPrimitive = IsPrimitive(node.Proc);
@@ -562,7 +658,7 @@ namespace Microsoft.Boogie
         var formalKind = LinearDomainCollector.FindLinearKind(formal);
         if (formalKind == LinearKind.ORDINARY)
         {
-          Error(node, "Only a linear variable can be passed to a linear parameter");
+          Error(node, $"Only linear parameter can be assigned to a linear variable: {formal}");
           continue;
         }
         if (LinearDomainCollector.FindDomainName(formal) != LinearDomainCollector.FindDomainName(actual.Decl))
@@ -581,7 +677,7 @@ namespace Microsoft.Boogie
             Error(node, $"Primitive assigns to input variable: {formal}");
           }
           else if (modifiedArgument is GlobalVariable &&
-                   !civlTypeChecker.IsYieldingProcedure(enclosingProc) &&
+                   enclosingProc is not YieldProcedureDecl &&
                    enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
           {
             Error(node,
@@ -627,21 +723,7 @@ namespace Microsoft.Boogie
         var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
         impls.Iter(impl =>
         {
-          int? LayerNum(Procedure proc)
-          {
-            if (!civlTypeChecker.IsYieldingProcedure(proc))
-            {
-              return null;
-            }
-            var layers = civlTypeChecker.FindLayers(proc.Attributes);
-            if (layers.Count == 0)
-            {
-              return null;
-            }
-            return layers[0];
-          }
-          var linearRewriter = new LinearRewriter(civlTypeChecker.Options, program.monomorphizer, impl.Proc.Modifies, LayerNum(impl.Proc));
-          impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
+          LinearRewriter.Rewrite(civlTypeChecker, impl);
         }); 
       }
     }

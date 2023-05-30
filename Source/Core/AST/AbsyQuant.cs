@@ -424,6 +424,29 @@ namespace Microsoft.Boogie
         rc.Error(this, "attribute :verified_under accepts only one argument");
       }
 
+      if (Key == CivlAttributes.LAYER)
+      {
+        foreach (var o in Params)
+        {
+          if (o is LiteralExpr l && l.isBigNum)
+          {
+            var n = l.asBigNum;
+            if (n.IsNegative)
+            {
+              rc.Error(this, "layer must be non-negative");
+            }
+            else if (!n.InInt32)
+            {
+              rc.Error(this, "layer is too large (max value is Int32.MaxValue)");
+            }
+          }
+          else
+          {
+            rc.Error(this, "layer must be a non-negative integer");
+          }
+        }
+      }
+
       foreach (object p in Params)
       {
         if (p is Expr)

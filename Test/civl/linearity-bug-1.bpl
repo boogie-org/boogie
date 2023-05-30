@@ -10,16 +10,18 @@ var {:linear "tid"} {:layer 0,1} S : TidSet;
 // commutativity checker procedure contained t and thus made the whole
 // postcondition 'vacuously' (because t is added to A) true.
 
-procedure {:atomic} {:layer 1} atomic_inc_n ({:linear_in "tid"} t : Tid)
+atomic action {:layer 1} atomic_inc_n ({:linear_in "tid"} t : Tid)
 modifies S, n;
 { assert !S[t]; S[t] := true; n := n + 1; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_inc_n"} inc_n ({:linear_in "tid"} t : Tid);
+yield procedure {:layer 0} inc_n ({:linear_in "tid"} t : Tid);
+refines atomic_inc_n;
 
-procedure {:right} {:layer 1} atomic_read_n () returns (ret : int)
+right action {:layer 1} atomic_read_n () returns (ret : int)
 { ret := n; }
 
-procedure {:yields} {:layer 0} {:refines "atomic_read_n"} read_n () returns (ret : int);
+yield procedure {:layer 0} read_n () returns (ret : int);
+refines atomic_read_n;
 
 type {:linear "tid"} Tid = int;
 type TidSet = [Tid]bool;

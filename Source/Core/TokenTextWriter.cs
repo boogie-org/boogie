@@ -88,6 +88,7 @@ namespace Microsoft.Boogie
 
     // The original writer: where everything should finally end up.
     TextWriter actual_writer;
+    private readonly bool disposeWriter;
 
     public bool push(string type = null)
     {
@@ -303,6 +304,7 @@ namespace Microsoft.Boogie
       this.filename = filename;
       this.writer = new StreamWriter(filename);
       this.setTokens = setTokens;
+      this.disposeWriter = true;
     }
 
     public TokenTextWriter(string filename, TextWriter writer, bool setTokens, bool pretty, PrintOptions options)
@@ -315,6 +317,7 @@ namespace Microsoft.Boogie
       this.filename = filename;
       this.writer = writer;
       this.setTokens = setTokens;
+      this.disposeWriter = false;
     }
 
     public TokenTextWriter(string filename, TextWriter writer, bool pretty, CoreOptions options)
@@ -493,7 +496,9 @@ namespace Microsoft.Boogie
 
     public void Close()
     {
-      this.writer.Close();
+      if (disposeWriter) {
+        writer.Close();
+      }
     }
 
     public void Dispose()

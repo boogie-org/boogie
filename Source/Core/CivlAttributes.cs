@@ -1,63 +1,99 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
 {
+  public class LayerRange
+  {
+    public static int Min = 0;
+    public static int Max = int.MaxValue;
+    public static LayerRange MinMax = new LayerRange(Min, Max);
+
+    public int LowerLayer;
+    public int UpperLayer;
+
+    public LayerRange(int layer) : this(layer, layer)
+    {
+    }
+
+    public LayerRange(int lower, int upper)
+    {
+      Debug.Assert(lower <= upper);
+      this.LowerLayer = lower;
+      this.UpperLayer = upper;
+    }
+
+    public bool Contains(int layerNum)
+    {
+      return LowerLayer <= layerNum && layerNum <= UpperLayer;
+    }
+
+    public bool Subset(LayerRange other)
+    {
+      return other.LowerLayer <= LowerLayer && UpperLayer <= other.UpperLayer;
+    }
+
+    public bool OverlapsWith(LayerRange other)
+    {
+      return LowerLayer <= other.UpperLayer && other.LowerLayer <= UpperLayer;
+    }
+
+    public static LayerRange Union(LayerRange first, LayerRange second)
+    {
+      return new LayerRange(Math.Min(first.LowerLayer, second.LowerLayer), Math.Max(first.UpperLayer, second.UpperLayer));
+    }
+    
+    public static LayerRange Union(List<LayerRange> layerRanges)
+    {
+      Debug.Assert(layerRanges.Any());
+      var unionLayerRange = layerRanges.First();
+      foreach (var layerRange in layerRanges)
+      {
+        unionLayerRange = Union(unionLayerRange, layerRange);
+      }
+      return unionLayerRange;
+    }
+    
+    public override string ToString()
+    {
+      return $"[{LowerLayer}, {UpperLayer}]";
+    }
+
+    public override bool Equals(object obj)
+    {
+      LayerRange other = obj as LayerRange;
+      if (obj == null)
+      {
+        return false;
+      }
+
+      return LowerLayer == other.LowerLayer && UpperLayer == other.UpperLayer;
+    }
+
+    public override int GetHashCode()
+    {
+      return (23 * 31 + LowerLayer) * 31 + UpperLayer;
+    }
+  }
+
   public static class CivlAttributes
   {
     public const string LAYER = "layer";
-
     public const string YIELDS = "yields";
-
-    public const string YIELD_INVARIANT = "yield_invariant";
-    public const string YIELD_REQUIRES = "yield_requires";
-    public const string YIELD_ENSURES = "yield_ensures";
-    public const string YIELD_PRESERVES = "yield_preserves";
-    public const string YIELD_LOOP = "yield_loop";
-
-    public const string INTRO = "intro";
-
-    public const string ATOMIC = "atomic";
-    public const string LEFT = "left";
-    public const string RIGHT = "right";
-    public const string BOTH = "both";
-
-    public const string REFINES = "refines";
+    public const string MARK = "mark";
     public const string HIDE = "hide";
+    public const string PENDING_ASYNC = "pending_async";
+    public const string SYNC = "sync";
 
-    public const string COOPERATES = "cooperates";
+    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, MARK, HIDE, PENDING_ASYNC, SYNC };
 
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
     public const string LINEAR_OUT = "linear_out";
 
-    public const string LEMMA = "lemma";
-
-    public const string PENDING_ASYNC = "pending_async";
-    public const string SYNC = "sync";
-    public const string CREATES = "creates";
-
-    public const string IS = "IS";
-    public const string IS_INVARIANT = "IS_invariant";
-    public const string IS_ABSTRACTION = "IS_abstraction";
-    public const string ELIM = "elim";
-
-    private static string[] CIVL_ATTRIBUTES =
-    {
-      LAYER,
-      YIELDS,
-      YIELD_INVARIANT, YIELD_REQUIRES, YIELD_ENSURES, YIELD_PRESERVES, YIELD_LOOP,
-      INTRO,
-      ATOMIC, LEFT, RIGHT, BOTH,
-      REFINES, HIDE, COOPERATES,
-      LEMMA,
-      PENDING_ASYNC, SYNC, CREATES,
-      IS, IS_INVARIANT, IS_ABSTRACTION, ELIM
-    };
-
-    private static string[] LINEAR_ATTRIBUTES =
-      {LINEAR, LINEAR_IN, LINEAR_OUT};
+    private static string[] LINEAR_ATTRIBUTES = { LINEAR, LINEAR_IN, LINEAR_OUT };
 
     public static bool HasCivlAttribute(this ICarriesAttributes obj)
     {
@@ -133,5 +169,25 @@ namespace Microsoft.Boogie
     {
       RemoveAttributes(obj, LINEAR_ATTRIBUTES);
     }
+    
+    public static bool IsCallMarked(CallCmd callCmd)
+    {
+      return callCmd.HasAttribute(MARK);
+    }
+  }
+
+  public static class CivlPrimitives
+  {
+    public static HashSet<string> Linear = new()
+    {
+      "Lheap_Empty", "Lheap_Split", "Lheap_Transfer", "Lheap_Read", "Lheap_Write", "Lheap_Add", "Lheap_Remove",
+      "Lset_Empty", "Lset_Split", "Lset_Transfer",
+      "Lval_Split", "Lval_Transfer"
+    };
+
+    public static HashSet<string> Async = new()
+    {
+      "create_async", "create_asyncs", "create_multi_asyncs", "set_choice"
+    };
   }
 }

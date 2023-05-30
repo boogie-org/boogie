@@ -3,32 +3,41 @@
 type {:linear "tid"} Tid = int;
 var {:layer 0,1} x:int;
 
-procedure {:yields}{:layer 1} P({:linear_in "tid"} tid1:int, {:linear "tid"} tid2:int)
-requires {:layer 1} tid1 == 1;
-requires {:layer 1} tid2 == 2;
-requires {:layer 1} x == 0;
+yield procedure {:layer 1} P({:linear_in "tid"} tid1:int, {:linear "tid"} tid2:int)
+requires call Yield_P(tid1, tid2);
 {
   async call Q(tid1);
   call write(); // This action invalidates the precondition of the above async call
 }
 
-procedure {:yields}{:layer 1} Q({:linear "tid"} tid1:int)
-requires {:layer 1} tid1 == 1;
-requires {:layer 1} x == 0; // This precondition is not valid at the end of procedure P
+yield procedure {:layer 1} Q({:linear "tid"} tid1:int)
+requires call Yield_Q(tid1);
 {
   call assertion();
 }
 
-procedure {:left}{:layer 1} WRITE()
+left action {:layer 1} WRITE()
 modifies x;
 {
   x := 1;
 }
 
-procedure {:atomic}{:layer 1} ASSERTION()
+atomic action {:layer 1} ASSERTION()
 {
   assert x == 0;
 }
 
-procedure {:yields}{:layer 0}{:refines "WRITE"} write();
-procedure {:yields}{:layer 0}{:refines "ASSERTION"} assertion();
+yield procedure {:layer 0} write();
+refines WRITE;
+
+yield procedure {:layer 0} assertion();
+refines ASSERTION;
+
+yield invariant {:layer 1} Yield_P({:linear "tid"} tid1:int, {:linear "tid"} tid2:int);
+invariant tid1 == 1;
+invariant tid2 == 1;
+invariant x == 0;
+
+yield invariant {:layer 1} Yield_Q({:linear "tid"} tid1:int);
+invariant tid1 == 1;
+invariant x == 0; // This precondition is not valid at the end of procedure P

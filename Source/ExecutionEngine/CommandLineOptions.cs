@@ -9,289 +9,32 @@ using VC;
 
 namespace Microsoft.Boogie
 {
-
-  public class CommandLineOptionEngine
-  {
-    public string ToolName { get; set; }
-    public string DescriptiveToolName { get; set; }
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(ToolName != null);
-      Contract.Invariant(DescriptiveToolName != null);
-      Contract.Invariant(this._environment != null);
-      Contract.Invariant(cce.NonNullElements(this._files));
-      Contract.Invariant(this._fileTimestamp != null);
-    }
-
-    private string /*!*/ _environment = "";
-
-    public string Environment
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<string>() != null);
-        return this._environment;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this._environment = value;
-      }
-    }
-
-    private readonly List<string /*!*/> /*!*/ _files = new List<string /*!*/>();
-
-    public IList<string /*!*/> /*!*/ Files
-    {
-      get
-      {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<string>>()));
-        Contract.Ensures(Contract.Result<IList<string>>().IsReadOnly);
-        return this._files.AsReadOnly();
-      }
-    }
-
-    public bool VersionRequested = false;
-    public bool HelpRequested = false;
-    public bool AttributeHelpRequested = false;
-
-    public CommandLineOptionEngine(string toolName, string descriptiveName)
-    {
-      Contract.Requires(toolName != null);
-      Contract.Requires(descriptiveName != null);
-      ToolName = toolName;
-      DescriptiveToolName = descriptiveName;
-    }
-
-    public virtual string /*!*/ VersionNumber
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<string>() != null);
-        return cce.NonNull(cce
-          .NonNull(System.Diagnostics.FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly()
-            .Location)).FileVersion);
-      }
-    }
-
-    public virtual string /*!*/ VersionSuffix
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<string>() != null);
-        return " version " + VersionNumber + ", Copyright (c) 2003-2014, Microsoft.";
-      }
-    }
-
-    public virtual string /*!*/ Version
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<string>() != null);
-        return DescriptiveToolName + VersionSuffix;
-      }
-    }
-
-    private string /*!*/
-      _fileTimestamp = cce.NonNull(DateTime.Now.ToString("o")).Replace(':', '.');
-
-    public string FileTimestamp
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<string>() != null);
-        return this._fileTimestamp;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this._fileTimestamp = value;
-      }
-    }
-
-    public void ExpandFilename(string pattern, Action<string> setPattern, string logPrefix, string fileTimestamp)
-    {
-      if (pattern != null)
-      {
-        pattern = pattern.Replace("@PREFIX@", logPrefix).Replace("@TIME@", fileTimestamp);
-        string fn = Files.Count == 0 ? "" : Files[Files.Count - 1];
-        fn = Util.EscapeFilename(fn);
-        setPattern(pattern.Replace("@FILE@", fn));
-      }
-    }
-
-    /// <summary>
-    /// Process the option and modify "ps" accordingly.
-    /// Return true if the option is one that is recognized.
-    /// </summary>
-    protected virtual bool ParseOption(string name, CommandLineParseState ps)
-    {
-      Contract.Requires(name != null);
-      Contract.Requires(ps != null);
-
-      if (ps.CheckBooleanFlag("version", ref VersionRequested) ||
-          ps.CheckBooleanFlag("help", ref HelpRequested) ||
-          ps.CheckBooleanFlag("?", ref HelpRequested) ||
-          ps.CheckBooleanFlag("attrHelp", ref AttributeHelpRequested))
-      {
-        return true;
-      }
-
-      return false; // unrecognized option
-    }
-
-    protected virtual string HelpHeader =>
-      $"Usage: {ToolName} [ option ... ] [ filename ... ]" + @"
-
-  ---- General options -------------------------------------------------------
-
-  /version      print the " + ToolName + @" version number
-  /help         print this message
-  /attrHelp     print a message about supported declaration attributes";
-
-    protected virtual string HelpBody => "";
-
-    public virtual string Help =>
-      HelpHeader + HelpBody;
-
-    public virtual string AttributeHelp => "";
-
-    /// <summary>
-    /// This method is called after all parsing is done, if no parse errors were encountered.
-    /// </summary>
-    public virtual void ApplyDefaultOptions()
-    {
-    }
-
-    public virtual bool ProcessInfoFlags()
-    {
-      if (VersionRequested)
-      {
-        Console.WriteLine(Version);
-        return true;
-      }
-      if (HelpRequested)
-      {
-        Console.WriteLine(Help);
-        return true;
-      }
-      if (AttributeHelpRequested)
-      {
-        Console.WriteLine(AttributeHelp);
-        return true;
-      }
-      return false;
-    }
-
-    /// <summary>
-    /// Parses the command-line arguments "args" into the global flag variables.  Returns true
-    /// if there were no errors.
-    /// </summary>
-    public virtual bool Parse(string[] /*!*/ args)
-    {
-      Contract.Requires(cce.NonNullElements(args));
-
-      // save the command line options for the log files
-      Environment += "Command Line Options: " + args.Concat(" ");
-      args = cce.NonNull((string[]) args.Clone()); // the operations performed may mutate the array, so make a copy
-      var ps = InitializeCommandLineParseState(args);
-
-      while (ps.i < args.Length)
-      {
-        cce.LoopInvariant(ps.args == args);
-        string arg = args[ps.i];
-        Contract.Assert(arg != null);
-        ps.s = arg.Trim();
-
-        bool isOption = ps.s.StartsWith("-") || ps.s.StartsWith("/");
-        int colonIndex = ps.s.IndexOf(':');
-        if (0 <= colonIndex && isOption)
-        {
-          ps.hasColonArgument = true;
-          args[ps.i] = ps.s.Substring(colonIndex + 1);
-          ps.s = ps.s.Substring(0, colonIndex);
-        }
-        else
-        {
-          ps.i++;
-          ps.hasColonArgument = false;
-        }
-
-        ps.nextIndex = ps.i;
-
-        if (isOption)
-        {
-          if (!ParseOption(ps.s.Substring(1), ps))
-          {
-            if (Path.DirectorySeparatorChar == '/' && ps.s.StartsWith("/"))
-            {
-              AddFile(arg, ps);
-            }
-            else
-            {
-              UnknownSwitch(ps);
-            }
-          }
-        }
-        else
-        {
-          AddFile(arg, ps);
-        }
-
-        ps.i = ps.nextIndex;
-      }
-
-      if (ps.EncounteredErrors)
-      {
-        Console.Error.WriteLine("Use /help for available options");
-        return false;
-      }
-      else
-      {
-        this.ApplyDefaultOptions();
-        return true;
-      }
-    }
-
-    protected virtual void UnknownSwitch(CommandLineParseState ps) {
-      ps.Error("unknown switch: {0}", ps.s);
-    }
-
-    protected virtual void AddFile(string file, CommandLineParseState ps) {
-      this._files.Add(file);
-    }
-
-    protected virtual CommandLineParseState InitializeCommandLineParseState(string[] args) {
-      return new CommandLineParseState(args, ToolName);
-    }
-  }
-
   /// <summary>
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
   /// </summary>
   public class CommandLineOptions : CommandLineOptionEngine, ExecutionEngineOptions
   {
-    public static CommandLineOptions FromArguments(params string[] arguments)
+    public static CommandLineOptions FromArguments(TextWriter outputWriter, params string[] arguments)
     {
-      return FromArguments(new ConsolePrinter(), arguments);
+      return FromArguments(outputWriter, new ConsolePrinter(), arguments);
     }
 
-    public static CommandLineOptions FromArguments(OutputPrinter printer, params string[] arguments) {
-      var result = new CommandLineOptions(printer);
+    public static CommandLineOptions FromArguments(TextWriter outputWriter, OutputPrinter printer, params string[] arguments) {
+      var result = new CommandLineOptions(outputWriter, printer);
       result.Parse(arguments);
       return result;
     }
 
-    public CommandLineOptions(OutputPrinter printer)
-      : this("Boogie", "Boogie program verifier", printer) {
+    public CommandLineOptions(TextWriter outputWriter, OutputPrinter printer)
+      : this(outputWriter, "Boogie", "Boogie program verifier", printer)
+    {
     }
 
-    protected CommandLineOptions(string toolName, string descriptiveName, OutputPrinter printer)
-      : base(toolName, descriptiveName)
+    protected CommandLineOptions(TextWriter outputWriter, string toolName, string descriptiveName, OutputPrinter printer)
+      : base(toolName, descriptiveName, outputWriter)
     {
+      Contract.Requires(outputWriter != null);
       Contract.Requires(toolName != null);
       Contract.Requires(descriptiveName != null);
       Contract.Requires(printer.Options == null);
@@ -579,7 +322,6 @@ namespace Microsoft.Boogie
     public bool AlwaysAssumeFreeLoopInvariants { get; set; }
 
     public ExecutionEngineOptions.ShowEnvironment ShowEnv { get; set; } = ExecutionEngineOptions.ShowEnvironment.DuringPrint;
-
     public OutputPrinter Printer { get; set;  }
 
     public bool ShowVerifiedProcedureCount { get; set; } = true;
@@ -668,9 +410,9 @@ namespace Microsoft.Boogie
     
     public int TrustLayersDownto { get; set; } = int.MaxValue;
 
-    public bool TrustInductiveSequentialization {
-      get => trustInductiveSequentialization;
-      set => trustInductiveSequentialization = value;
+    public bool TrustSequentialization {
+      get => trustSequentialization;
+      set => trustSequentialization = value;
     }
 
     public bool RemoveEmptyBlocks { get; set; } = true;
@@ -783,7 +525,7 @@ namespace Microsoft.Boogie
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
     // is empty it means that all procedures should be checked.
-    public List<string> ProcsToCheck { get; } = new();
+    public List<string> ProcsToCheck { get; set; } = new();
     public List<string /*!*/> ProcsToIgnore { get; set; } = new();
 
     [ContractInvariantMethod]
@@ -813,7 +555,7 @@ namespace Microsoft.Boogie
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
     private bool trustRefinement = false;
-    private bool trustInductiveSequentialization = false;
+    private bool trustSequentialization = false;
     private int enhancedErrorMessages = 0;
     private int stagedHoudiniThreads = 1;
     private uint timeLimitPerAssertionInPercent = 10;
@@ -1572,7 +1314,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustMoverTypes", x => trustMoverTypes = x) ||
               ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
               ps.CheckBooleanFlag("trustRefinement", x => trustRefinement = x) ||
-              ps.CheckBooleanFlag("trustInductiveSequentialization", x => trustInductiveSequentialization = x) ||
+              ps.CheckBooleanFlag("trustSequentialization", x => trustSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
               ps.CheckBooleanFlag("prune", x => Prune = x) ||
@@ -1903,22 +1645,7 @@ namespace Microsoft.Boogie
   ---- Civl ------------------------------------------------------------------
 
      {:yields}
-       Yielding procedure.
-
-     {:atomic}
-     {:right}
-     {:left}
-     {:both}
-       Mover type of atomic action or mover procedure.
-
-     {:intro}
-       Introduction action.
-
-     {:lemma}
-       Lemma procedure.
-
-     {:yield_invariant}
-       Yield invariant.
+       Yielding loop.
 
      {:layer N}
      {:layer M, N}
@@ -1928,17 +1655,11 @@ namespace Microsoft.Boogie
      {:hide}
        Hidden input/output parameter.
 
-     {:yield_requires ""inv"", e0, e1, ...}
-     {:yield_ensures ""inv"", e0, e1, ...}
-     {:yield_preserves ""inv"", e0, e1, ...}
-     {:yield_loop ""inv"", e0, e1, ...}
-       Invocation of yield invariant.
+     {:pending_async}
+       Local variable collecting pending asyncs in yielding procedure.
 
-     {:refines ""action""}
-       Refined atomic action of a yielding procedure.
-
-     {:cooperates}
-       Cooperating loop or mover procedure.
+     {:sync}
+       Synchronized async call.
 
      {:linear ""domain""}
        Permission type for domain.
@@ -1947,29 +1668,7 @@ namespace Microsoft.Boogie
 
      {:linear_in ""domain""}
      {:linear_out ""domain""}
-       Linear input/output parameter.
-
-     {:pending_async}
-       Atomic action that may be created as a pending async.
-       Local variable collecting pending asyncs in yielding procedure.
-     {:creates ""action1"", ""action2"", ...}
-       Pending asyncs created by an atomic action.
-
-     {:sync}
-       Synchronized async call.
-
-     {:IS ""B"", ""I""}
-       Apply inductive sequentialization to convert annotated action into
-       action B using invariant action I
-     {:elim ""A""}
-     {:elim ""A"", ""A'""}
-       by eliminating multiple actions A (optionally using abstraction A').
-
-     {:IS_invariant}
-     {:IS_abstraction}
-       Annotated actions are only used as invariant actions or abstractions in
-       inductive sequentialization. These are exempt from the overall pool of
-       actions for commutativity checking.";
+       Linear input/output parameter.";
 
     protected override string HelpHeader =>
       base.HelpHeader + @"
@@ -2107,8 +1806,8 @@ namespace Microsoft.Boogie
                 do not verify layers <n> and below
   /trustLayersDownto:<n>
                 do not verify layers <n> and above
-  /trustInductiveSequentialization
-                do not perform inductive sequentialization checks
+  /trustSequentialization
+                do not perform sequentialization checks
   /civlDesugaredFile:<file>
                 print plain Boogie program to <file>
 

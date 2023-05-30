@@ -18,16 +18,19 @@ var {:layer 7,9} y : int;
 // ###########################################################################
 // Main
 
-procedure {:yields}{:layer 9} main ({:linear_in "lin"} p : int)
-requires {:layer 9} perm(p) && x == y;
+yield procedure {:layer 9} main ({:linear_in "lin"} p : int)
+requires call Yield_9(p);
 {
   async call {:sync} Server_Inc(p);
 }
 
+yield invariant {:layer 9} Yield_9({:linear "lin"} p : int);
+invariant perm(p) && x == y;
+
 // ###########################################################################
 // Event Handlers
 
-procedure {:yields}{:left}{:layer 9} Server_Inc ({:linear_in "lin"} p : int)
+yield left procedure {:layer 9} Server_Inc ({:linear_in "lin"} p : int)
 requires {:layer 9} perm(p) && x == y;
 ensures  {:layer 9} x == old(x) + 1;
 modifies x;
@@ -37,7 +40,7 @@ modifies x;
   call Yield_8();
 }
 
-procedure {:yields}{:left}{:layer 9} AsyncInc ({:linear_in "lin"} p : int)
+yield left procedure {:layer 9} AsyncInc ({:linear_in "lin"} p : int)
 requires {:layer 9} perm(p) && x == y;
 ensures  {:layer 9} x == old(x) + 1;
 modifies x;
@@ -48,24 +51,26 @@ modifies x;
   call Yield_8();
 }
 
-procedure {:yield_invariant}{:layer 8} Yield_8 ();
+yield invariant{:layer 8} Yield_8 ();
 
 // ###########################################################################
 // Abstracted low-level atomic actions (i.e., enriched with permissions)
 
-procedure {:left}{:layer 9} inc_x_perm_atomic ({:linear "lin"} p : int)
+left action {:layer 9} inc_x_perm_atomic ({:linear "lin"} p : int)
 modifies x;
 { assert perm(p); x := x + 1; }
 
-procedure {:left}{:layer 9} Client_IncDone_atomic ({:linear_in "lin"} p : int)
+left action {:layer 9} Client_IncDone_atomic ({:linear_in "lin"} p : int)
 { assert perm(p) && x == y + 1; }
 
-procedure {:yields}{:layer 8}{:refines "inc_x_perm_atomic"} inc_x_perm ({:linear "lin"} p : int)
+yield procedure {:layer 8} inc_x_perm ({:linear "lin"} p : int)
+refines inc_x_perm_atomic;
 {
   call inc_x();
 }
 
-procedure {:yields}{:layer 8}{:refines "Client_IncDone_atomic"} Client_IncDone ({:linear_in "lin"} p : int)
+yield procedure {:layer 8} Client_IncDone ({:linear_in "lin"} p : int)
+refines Client_IncDone_atomic;
 {
   call Assertion();
 }
@@ -73,12 +78,15 @@ procedure {:yields}{:layer 8}{:refines "Client_IncDone_atomic"} Client_IncDone (
 // ###########################################################################
 // Low-level atomic actions
 
-procedure {:atomic}{:layer 8} inc_x_atomic ()
+atomic action {:layer 8} inc_x_atomic ()
 modifies x;
 { x := x + 1; }
 
-procedure {:atomic}{:layer 8} Assertion_atomic ()
+atomic action {:layer 8} Assertion_atomic ()
 { assert x == y + 1; }
 
-procedure {:yields}{:layer 7}{:refines "inc_x_atomic"} inc_x ();
-procedure {:yields}{:layer 7}{:refines "Assertion_atomic"} Assertion ();
+yield procedure {:layer 7} inc_x ();
+refines inc_x_atomic;
+
+yield procedure {:layer 7} Assertion ();
+refines Assertion_atomic;

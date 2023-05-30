@@ -27,7 +27,7 @@ var {:layer 0, 1} rwlock: RwLock;
 
 // Acquiring a read lock is possible if there is no writer, and has the effect
 // of adding us to `readers`.
-procedure {:right}{:layer 1, 1} atomic_acquire_read({:linear "tid"} tid: Tid)
+right action {:layer 1, 1} atomic_acquire_read({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assume rwlock->writer == None();
@@ -36,7 +36,7 @@ modifies rwlock;
 
 // Acquiring a write lock is possbile if there is no other writer and no reader,
 // and has the effect of storing us as the `writer`.
-procedure {:right}{:layer 1, 1} atomic_acquire_write({:linear "tid"} tid: Tid)
+right action {:layer 1, 1} atomic_acquire_write({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assume rwlock->writer == None();
@@ -61,7 +61,7 @@ function {:inline} holds_write_lock(tid: Tid, rwlock: RwLock): bool
 }
 
 // Releasing a read lock takes us out of `readers`.
-procedure {:left}{:layer 1, 1} atomic_release_read({:linear "tid"} tid: Tid)
+left action {:layer 1, 1} atomic_release_read({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assert holds_read_lock(tid, rwlock);
@@ -69,17 +69,24 @@ modifies rwlock;
 }
 
 // Releasing a write lock takes us out of `writer`.
-procedure {:left}{:layer 1, 1} atomic_release_write({:linear "tid"} tid: Tid)
+left action {:layer 1, 1} atomic_release_write({:linear "tid"} tid: Tid)
 modifies rwlock;
 {
     assert holds_write_lock(tid, rwlock);
     rwlock := RwLock(None(), rwlock->readers);
 }
 
-procedure {:yields}{:layer 0}{:refines "atomic_acquire_read"} acquire_read({:linear "tid"} tid: Tid);
-procedure {:yields}{:layer 0}{:refines "atomic_release_read"} release_read({:linear "tid"} tid: Tid);
-procedure {:yields}{:layer 0}{:refines "atomic_acquire_write"} acquire_write({:linear "tid"} tid: Tid);
-procedure {:yields}{:layer 0}{:refines "atomic_release_write"} release_write({:linear "tid"} tid: Tid);
+yield procedure {:layer 0} acquire_read({:linear "tid"} tid: Tid);
+refines atomic_acquire_read;
+
+yield procedure {:layer 0} release_read({:linear "tid"} tid: Tid);
+refines atomic_release_read;
+
+yield procedure {:layer 0} acquire_write({:linear "tid"} tid: Tid);
+refines atomic_acquire_write;
+
+yield procedure {:layer 0} release_write({:linear "tid"} tid: Tid);
+refines atomic_release_write;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -93,21 +100,24 @@ type Val;
 
 var {:layer 0, 2} memory: [Addr]Val;
 
-procedure {:both}{:layer 1,1} atomic_read({:linear "tid"} tid: Tid, a: Addr) returns (v: Val)
+both action {:layer 1,1} atomic_read({:linear "tid"} tid: Tid, a: Addr) returns (v: Val)
 {
     assert holds_read_lock(tid, rwlock);
     v := memory[a];
 }
 
-procedure {:both}{:layer 1,1} atomic_write({:linear "tid"} tid: Tid, a: Addr, v: Val)
+both action {:layer 1,1} atomic_write({:linear "tid"} tid: Tid, a: Addr, v: Val)
 modifies memory;
 {
     assert holds_write_lock(tid, rwlock);
     memory[a] := v;
 }
 
-procedure {:yields}{:layer 0}{:refines "atomic_read"} read({:linear "tid"} tid: Tid, a: Addr) returns (v: Val);
-procedure {:yields}{:layer 0}{:refines "atomic_write"} write({:linear "tid"} tid: Tid, a: Addr, v: Val);
+yield procedure {:layer 0} read({:linear "tid"} tid: Tid, a: Addr) returns (v: Val);
+refines atomic_read;
+
+yield procedure {:layer 0} write({:linear "tid"} tid: Tid, a: Addr, v: Val);
+refines atomic_write;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -116,8 +126,9 @@ procedure {:yields}{:layer 0}{:refines "atomic_write"} write({:linear "tid"} tid
 // Notice that (at layer 1) there are no yield points between calls, due to the
 // mover types of the callees.
 
-procedure {:yields}{:layer 1}{:refines "atomic_read2"}
+yield procedure {:layer 1}
 read2({:hide}{:linear "tid"} tid: Tid, a1: Addr, a2: Addr) returns (v1: Val, v2: Val)
+refines atomic_read2;
 {
     call acquire_read(tid);
     call v1 := read(tid, a1);
@@ -125,8 +136,9 @@ read2({:hide}{:linear "tid"} tid: Tid, a1: Addr, a2: Addr) returns (v1: Val, v2:
     call release_read(tid);
 }
 
-procedure {:yields}{:layer 1}{:refines "atomic_write2"}
+yield procedure {:layer 1}
 write2({:hide}{:linear "tid"} tid: Tid, a1: Addr, a2: Addr, v1: Val, v2: Val)
+refines atomic_write2;
 {
     call acquire_write(tid);
     call write(tid, a1, v1);
@@ -139,13 +151,13 @@ write2({:hide}{:linear "tid"} tid: Tid, a1: Addr, a2: Addr, v1: Val, v2: Val)
 // We can prove that the above procedures perform their operations on two memory
 // locations atomically.
 
-procedure {:atomic}{:layer 2} atomic_read2(a1: Addr, a2: Addr) returns (v1: Val, v2: Val)
+atomic action {:layer 2} atomic_read2(a1: Addr, a2: Addr) returns (v1: Val, v2: Val)
 {
     v1 := memory[a1];
     v2 := memory[a2];
 }
 
-procedure {:atomic}{:layer 2} atomic_write2(a1: Addr, a2:Addr, v1: Val, v2: Val)
+atomic action {:layer 2} atomic_write2(a1: Addr, a2:Addr, v1: Val, v2: Val)
 modifies memory;
 {
     memory[a1] := v1;

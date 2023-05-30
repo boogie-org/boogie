@@ -3,8 +3,9 @@
 type {:linear "Perm"} X = int;
 var {:layer 0,1} x: int;
 
-procedure {:yields} {:layer 1}  {:yield_requires "Yield", permVar_in, 0}
+yield procedure {:layer 1}
 mainE({:linear_in "Perm"} permVar_in: [int]bool)
+requires call Yield(permVar_in, 0);
 {
     var {:linear "Perm"} permVar_out: [int]bool;
 
@@ -13,8 +14,9 @@ mainE({:linear_in "Perm"} permVar_in: [int]bool)
     async call foo(permVar_out);
 }
 
-procedure {:yields} {:layer 1} {:yield_requires "Yield", permVar_in, 0}
+yield procedure {:layer 1}
 foo({:linear_in "Perm"} permVar_in: [int]bool)
+requires call Yield(permVar_in, 0);
 {
   var {:linear "Perm"} permVar_out: [int]bool;
   permVar_out := permVar_in;
@@ -22,12 +24,13 @@ foo({:linear_in "Perm"} permVar_in: [int]bool)
   call Yield(permVar_out, 1);
 }
 
-procedure {:atomic} {:layer 1} AtomicIncr()
+atomic action {:layer 1} AtomicIncr()
 modifies x;
 { x := x + 1; }
 
-procedure {:yields} {:layer 0} {:refines "AtomicIncr"} Incr();
+yield procedure {:layer 0} Incr();
+refines AtomicIncr;
 
-procedure {:yield_invariant} {:layer 1} Yield({:linear "Perm"} p: [int]bool, v: int);
-requires p[1];
-requires x == v;
+yield invariant {:layer 1} Yield({:linear "Perm"} p: [int]bool, v: int);
+invariant p[1];
+invariant x == v;
