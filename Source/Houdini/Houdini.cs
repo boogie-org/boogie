@@ -490,8 +490,8 @@ namespace Microsoft.Boogie.Houdini
             Console.WriteLine("Generating VC for {0}", impl.Name);
           }
 
-          var session = new HoudiniSession(this, vcgen, proverInterface, program, 
-            new ImplementationRun(impl, traceWriter), stats, taskID: GetTaskID());
+          HoudiniSession session =
+            new HoudiniSession(traceWriter, this, vcgen, proverInterface, program, impl, stats, taskID: GetTaskID());
           houdiniSessions.Add(impl, session);
         }
         catch (VCGenException)

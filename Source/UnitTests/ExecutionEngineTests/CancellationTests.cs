@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using NUnit.Framework;
@@ -25,7 +24,7 @@ namespace ExecutionEngineTests
     
     [Test]
     public async Task InferAndVerifyCanBeCancelledWhileWaitingForProver() {
-      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      var options = CommandLineOptions.FromArguments();
       using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
       var infiniteProgram = GetProgram(executionEngine, SuperSlow);
       var terminatingProgram = GetProgram(executionEngine, Fast);

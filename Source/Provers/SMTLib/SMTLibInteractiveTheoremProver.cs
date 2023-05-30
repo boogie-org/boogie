@@ -335,7 +335,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       var popLater = false;
       if (libOptions.TraceDiagnosticsOnTimeout) {
-        libOptions.OutputWriter.WriteLine("Starting timeout diagnostics with initial time limit {0}.", options.TimeLimit);
+        Console.Out.WriteLine("Starting timeout diagnostics with initial time limit {0}.", options.TimeLimit);
       }
 
       SendThisVC("; begin timeout diagnostics");
@@ -407,10 +407,10 @@ namespace Microsoft.Boogie.SMTLib
       SendThisVC("; end timeout diagnostics");
 
       if (libOptions.TraceDiagnosticsOnTimeout) {
-        libOptions.OutputWriter.WriteLine("Terminated timeout diagnostics after {0:F0} ms and {1} prover queries.",
+        Console.Out.WriteLine("Terminated timeout diagnostics after {0:F0} ms and {1} prover queries.",
           end.Subtract(start).TotalMilliseconds, queries);
-        libOptions.OutputWriter.WriteLine("Outcome: {0}", result);
-        libOptions.OutputWriter.WriteLine("Unverified assertions: {0} (of {1})", unverified.Count,
+        Console.Out.WriteLine("Outcome: {0}", result);
+        Console.Out.WriteLine("Unverified assertions: {0} (of {1})", unverified.Count,
           ctx.TimeoutDiagnosticIDToAssertion.Keys.Count);
 
         var filename = "unknown";

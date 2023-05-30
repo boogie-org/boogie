@@ -57,7 +57,7 @@ namespace Microsoft.Boogie
           ne = VisitExpr(e);
           cache[e] = ne;
 #if DEBUG_ALPHA_RENAMING
-          var wr = new TokenTextWriter("<console>", options.OutputWriter, true);
+          var wr = new TokenTextWriter("<console>", Console.Out, true);
           Console.Write("nm( ");
           e.Emit(wr);
           Console.WriteLine(" )");

@@ -368,7 +368,7 @@ namespace VC
               BlockStats chs = GetBlockStats(ch);
               if (!chs.bigBlock)
               {
-                options.OutputWriter.WriteLine("non-big {0} accessed from {1}", ch, b);
+                Console.WriteLine("non-big {0} accessed from {1}", ch, b);
                 DumpDot(-1);
                 Contract.Assert(false);
                 throw new cce.UnreachableException();
@@ -760,7 +760,7 @@ namespace VC
         List<Block> tmp = Implementation.Blocks;
         Contract.Assert(tmp != null);
         Implementation.Blocks = blocks;
-        ConditionGeneration.EmitImpl(options, run, false);
+        ConditionGeneration.EmitImpl(options, Implementation, false);
         Implementation.Blocks = tmp;
       }
 
@@ -793,6 +793,13 @@ namespace VC
 
         Contract.Assume(false);
         throw new cce.UnreachableException();
+      }
+
+      private static void PrintSet<T> (HashSet<T> s) {
+        foreach(T i in s)
+        {
+          Console.WriteLine(i);
+        }
       }
 
       // Verify b with the last split in blockAssignments[b]
@@ -1157,29 +1164,29 @@ namespace VC
 
           if (splitStats)
           {
-            run.OutputWriter.WriteLine("{0} {1} -->", best.splitBlock == null ? "SLICE" : ("SPLIT@" + best.splitBlock.Label),
+            run.TraceWriter.WriteLine("{0} {1} -->", best.splitBlock == null ? "SLICE" : ("SPLIT@" + best.splitBlock.Label),
               best.Stats);
             if (best.splitBlock != null)
             {
               GotoCmd g = best.splitBlock.TransferCmd as GotoCmd;
               if (g != null)
               {
-                run.OutputWriter.Write("    exits: ");
+                run.TraceWriter.Write("    exits: ");
                 foreach (Block b in cce.NonNull(g.labelTargets))
                 {
                   Contract.Assert(b != null);
-                  run.OutputWriter.Write("{0} ", b.Label);
+                  run.TraceWriter.Write("{0} ", b.Label);
                 }
 
-                run.OutputWriter.WriteLine("");
-                run.OutputWriter.Write("    assumized: ");
+                run.TraceWriter.WriteLine("");
+                run.TraceWriter.Write("    assumized: ");
                 foreach (Block b in best.assumizedBranches)
                 {
                   Contract.Assert(b != null);
-                  run.OutputWriter.Write("{0} ", b.Label);
+                  run.TraceWriter.Write("{0} ", b.Label);
                 }
 
-                run.OutputWriter.WriteLine("");
+                run.TraceWriter.WriteLine("");
               }
             }
           }
@@ -1209,7 +1216,7 @@ namespace VC
             }
             catch (System.Exception e)
             {
-              run.OutputWriter.WriteLine(e);
+              Console.WriteLine(e);
               best.DumpDot(-1);
               s0.DumpDot(-2);
               s1.DumpDot(-3);
@@ -1222,8 +1229,8 @@ namespace VC
           {
             s0.ComputeBestSplit();
             s1.ComputeBestSplit();
-            run.OutputWriter.WriteLine("    --> {0}", s0.Stats);
-            run.OutputWriter.WriteLine("    --> {0}", s1.Stats);
+            run.TraceWriter.WriteLine("    --> {0}", s0.Stats);
+            run.TraceWriter.WriteLine("    --> {0}", s1.Stats);
           }
 
           if (initial.options.TraceVerify)
@@ -1268,7 +1275,7 @@ namespace VC
 
         if (options.Trace && SplitIndex >= 0)
         {
-          run.OutputWriter.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
+          run.TraceWriter.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
 
@@ -1333,7 +1340,7 @@ namespace VC
 
         if (options.TraceVerify && SplitIndex >= 0)
         {
-          run.OutputWriter.WriteLine("-- after split #{0}", SplitIndex);
+          run.TraceWriter.WriteLine("-- after split #{0}", SplitIndex);
           Print();
         }
 

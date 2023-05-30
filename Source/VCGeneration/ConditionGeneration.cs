@@ -222,9 +222,8 @@ namespace VC
     /// </summary>
     /// <param name="impl"></param>
     /// <param name="startCmds"></param>
-    protected static void InjectPreconditions(VCGenOptions options, ImplementationRun run, [Captured] List<Cmd> startCmds)
+    protected static void InjectPreconditions(VCGenOptions options, Implementation impl, [Captured] List<Cmd> startCmds)
     {
-      var impl = run.Implementation;
       Contract.Requires(impl != null);
       Contract.Requires(startCmds != null);
       Contract.Requires(impl.Proc != null);
@@ -232,7 +231,7 @@ namespace VC
       TokenTextWriter debugWriter = null;
       if (options.PrintWithUniqueASTIds)
       {
-        debugWriter = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options);
         debugWriter.WriteLine("Effective precondition:");
       }
 
@@ -285,10 +284,9 @@ namespace VC
     /// already been constructed for the implementation (and so
     /// is already an element of impl.Blocks)
     /// </param>
-    protected static void InjectPostConditions(VCGenOptions options, ImplementationRun run, Block unifiedExitBlock,
+    protected static void InjectPostConditions(VCGenOptions options, Implementation impl, Block unifiedExitBlock,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
     {
-      var impl = run.Implementation;
       Contract.Requires(impl != null);
       Contract.Requires(unifiedExitBlock != null);
       Contract.Requires(gotoCmdOrigins != null);
@@ -298,7 +296,7 @@ namespace VC
       TokenTextWriter debugWriter = null;
       if (options.PrintWithUniqueASTIds)
       {
-        debugWriter = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options);
         debugWriter.WriteLine("Effective postcondition:");
       }
 
@@ -344,9 +342,8 @@ namespace VC
     /// Get the pre-condition of an implementation, including the where clauses from the in-parameters.
     /// </summary>
     /// <param name="impl"></param>
-    protected static List<Cmd> GetPre(VCGenOptions options, ImplementationRun run)
+    protected static List<Cmd> GetPre(VCGenOptions options, Implementation impl)
     {
-      var impl = run.Implementation;
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
@@ -355,7 +352,7 @@ namespace VC
       TokenTextWriter debugWriter = null;
       if (options.PrintWithUniqueASTIds)
       {
-        debugWriter = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options);
         debugWriter.WriteLine("Effective precondition:");
       }
 
@@ -390,15 +387,14 @@ namespace VC
     /// Get the post-condition of an implementation.
     /// </summary>
     /// <param name="impl"></param>
-    protected static List<Cmd> GetPost(VCGenOptions options, ImplementationRun run)
+    protected static List<Cmd> GetPost(VCGenOptions options, Implementation impl)
     {
-      var impl = run.Implementation;
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       if (options.PrintWithUniqueASTIds)
       {
-        options.OutputWriter.WriteLine("Effective postcondition:");
+        Console.WriteLine("Effective postcondition:");
       }
 
       // Construct an Expr for the post-condition
@@ -419,14 +415,14 @@ namespace VC
 
           if (options.PrintWithUniqueASTIds)
           {
-            c.Emit(new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options), 1);
+            c.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options), 1);
           }
         }
       }
 
       if (options.PrintWithUniqueASTIds)
       {
-        options.OutputWriter.WriteLine();
+        Console.WriteLine();
       }
 
       return post;
@@ -438,16 +434,15 @@ namespace VC
     /// As a side effect, this method adds these where clauses to the out parameters.
     /// </summary>
     /// <param name="impl"></param>
-    protected static List<Cmd> GetParamWhereClauses(VCGenOptions options, ImplementationRun run)
+    protected static List<Cmd> GetParamWhereClauses(VCGenOptions options, Implementation impl)
     {
-      var impl = run.Implementation;
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
       Contract.Ensures(Contract.Result<List<Cmd>>() != null);
       TokenTextWriter debugWriter = null;
       if (options.PrintWithUniqueASTIds)
       {
-        debugWriter = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
+        debugWriter = new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options);
         debugWriter.WriteLine("Effective precondition from where-clauses:");
       }
 
@@ -545,11 +540,11 @@ namespace VC
         examples.Enqueue(ce);
       }
 
-      public override void OnUnreachableCode(ImplementationRun run)
+      public override void OnUnreachableCode(Implementation impl)
       {
         //Contract.Requires(impl != null);
-        run.OutputWriter.WriteLine("found unreachable code:");
-        EmitImpl(options, run, false);
+        System.Console.WriteLine("found unreachable code:");
+        EmitImpl(options, impl, false);
         // TODO report error about next to last in seq
       }
 
@@ -559,15 +554,14 @@ namespace VC
       }
     }
 
-    public static void EmitImpl(VCGenOptions options, ImplementationRun run, bool printDesugarings)
+    public static void EmitImpl(VCGenOptions options, Implementation impl, bool printDesugarings)
     {
-      var impl = run.Implementation;
       Contract.Requires(impl != null);
       int oldPrintUnstructured = options.PrintUnstructured;
       options.PrintUnstructured = 2; // print only the unstructured program
       bool oldPrintDesugaringSetting = options.PrintDesugarings;
       options.PrintDesugarings = printDesugarings;
-      impl.Emit(new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options), 0);
+      impl.Emit(new TokenTextWriter("<console>", Console.Out, /*setTokens=*/ false, /*pretty=*/ false, options), 0);
       options.PrintDesugarings = oldPrintDesugaringSetting;
       options.PrintUnstructured = oldPrintUnstructured;
     }
@@ -865,16 +859,16 @@ namespace VC
 
       var start = DateTime.UtcNow;
 
-      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(run.OutputWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo);
+      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(run.TraceWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo);
 
       var end = DateTime.UtcNow;
 
       if (Options.TraceCachingForDebugging)
       {
-        run.OutputWriter.WriteLine("Turned implementation into passive commands within {0:F0} ms.\n",
+        run.TraceWriter.WriteLine("Turned implementation into passive commands within {0:F0} ms.\n",
           end.Subtract(start).TotalMilliseconds);
 
-        var tokTxtWr = new TokenTextWriter("<console>", run.OutputWriter, false, false, Options);
+        var tokTxtWr = new TokenTextWriter("<console>", run.TraceWriter, false, false, Options);
         var pd = Options.PrintDesugarings;
         var pu = Options.PrintUnstructured;
         Options.PrintDesugarings = true;
@@ -892,8 +886,8 @@ namespace VC
 
       if (Options.TraceVerify)
       {
-        Options.OutputWriter.WriteLine("after conversion to passive commands");
-        EmitImpl(Options, run, true);
+        Console.WriteLine("after conversion to passive commands");
+        EmitImpl(Options, implementation, true);
       }
 
       #endregion
@@ -1654,7 +1648,7 @@ namespace VC
     }
   }
 
-  public record ImplementationRun(Implementation Implementation, TextWriter OutputWriter) {
+  public record ImplementationRun(Implementation Implementation, TextWriter TraceWriter) {
 
   }
 }

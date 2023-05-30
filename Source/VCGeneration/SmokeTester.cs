@@ -72,7 +72,7 @@ class SmokeTester
   void Emit()
   {
     TopologicalSortImpl();
-    ConditionGeneration.EmitImpl(Options, run, false);
+    ConditionGeneration.EmitImpl(Options, run.Implementation, false);
   }
 
   // this one copies forward
@@ -339,7 +339,7 @@ class SmokeTester
       copy.Cmds = seq;
       Implementation.Blocks = GetCopiedBlocks();
       TopologicalSortImpl();
-      callback.OnUnreachableCode(run);
+      callback.OnUnreachableCode(Implementation);
       Implementation.Blocks = backup;
       return true;
     }
@@ -489,7 +489,7 @@ class SmokeTester
     public override void OnProverWarning(string msg)
     {
       //Contract.Requires(msg != null);
-      callback.OnWarning(options, msg);
+      this.callback.OnWarning(msg);
     }
   }
 }

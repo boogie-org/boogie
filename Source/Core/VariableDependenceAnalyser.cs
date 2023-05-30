@@ -11,7 +11,7 @@ namespace Microsoft.Boogie
     void Analyse();
     VariableDescriptor MakeDescriptor(string proc, Variable v);
     HashSet<VariableDescriptor> DependsOn(VariableDescriptor v);
-    void Dump();
+    void dump();
     void ShowDependencyChain(VariableDescriptor source, VariableDescriptor target);
     bool VariableRelevantToAnalysis(Variable v, string proc);
     bool Ignoring(Variable v, string proc);
@@ -214,7 +214,7 @@ namespace Microsoft.Boogie
       var chain = ComputeDependencyChain(source, target, new HashSet<VariableDescriptor>());
       if (chain == null)
       {
-        options.OutputWriter.WriteLine("No chain between " + source + " and " + target);
+        Console.WriteLine("No chain between " + source + " and " + target);
       }
       else
       {
@@ -227,15 +227,15 @@ namespace Microsoft.Boogie
           }
           else
           {
-            options.OutputWriter.Write(" -> ");
+            Console.Write(" -> ");
           }
 
-          options.OutputWriter.Write(v);
+          Console.Write(v);
         }
       }
 
-      options.OutputWriter.WriteLine();
-      options.OutputWriter.WriteLine();
+      Console.WriteLine();
+      Console.WriteLine();
     }
 
     public void Analyse()
@@ -269,21 +269,21 @@ namespace Microsoft.Boogie
 
       if (options.Trace)
       {
-        options.OutputWriter.WriteLine("Variable dependence analysis: Initialising");
+        Console.WriteLine("Variable dependence analysis: Initialising");
       }
 
       Initialise();
 
       if (options.Trace)
       {
-        options.OutputWriter.WriteLine("Variable dependence analysis: Computing control dependence info");
+        Console.WriteLine("Variable dependence analysis: Computing control dependence info");
       }
 
       BlockToControllingBlocks = ComputeGlobalControlDependences();
 
       if (options.Trace)
       {
-        options.OutputWriter.WriteLine("Variable dependence analysis: Computing control dependence variables");
+        Console.WriteLine("Variable dependence analysis: Computing control dependence variables");
       }
 
       ControllingBlockToVariables = ComputeControllingVariables(BlockToControllingBlocks);
@@ -291,7 +291,7 @@ namespace Microsoft.Boogie
       {
         if (options.Trace)
         {
-          options.OutputWriter.WriteLine("Variable dependence analysis: Analysing " + Impl.Name);
+          Console.WriteLine("Variable dependence analysis: Analysing " + Impl.Name);
         }
 
         Analyse(Impl);
@@ -388,8 +388,8 @@ namespace Microsoft.Boogie
       {
         if (options.DebugStagedHoudini)
         {
-          options.OutputWriter.WriteLine("Adding dependence " + v + " -> " + n + ", reason: " + reason + "(" + tok.line + ":" +
-                                         tok.col + ")");
+          Console.WriteLine("Adding dependence " + v + " -> " + n + ", reason: " + reason + "(" + tok.line + ":" +
+                            tok.col + ")");
         }
 
         dependsOnNonTransitive.AddEdge(v, n);
@@ -658,7 +658,7 @@ namespace Microsoft.Boogie
       {
         if (options.Trace)
         {
-          options.OutputWriter.WriteLine("Variable dependence: computing SCCs");
+          Console.WriteLine("Variable dependence: computing SCCs");
         }
 
         Adjacency<VariableDescriptor> next = new Adjacency<VariableDescriptor>(dependsOnNonTransitive.Successors);
@@ -694,7 +694,7 @@ namespace Microsoft.Boogie
 
         if (options.Trace)
         {
-          options.OutputWriter.WriteLine("Variable dependence: SCCs computed!");
+          Console.WriteLine("Variable dependence: SCCs computed!");
         }
       }
 
@@ -721,13 +721,13 @@ namespace Microsoft.Boogie
       return DependsOnCache[vSCC];
     }
 
-    public void Dump()
+    public void dump()
     {
-      options.OutputWriter.WriteLine("Variable dependence information");
-      options.OutputWriter.WriteLine("===============================");
+      Console.WriteLine("Variable dependence information");
+      Console.WriteLine("===============================");
 
-      options.OutputWriter.WriteLine("Global variables");
-      options.OutputWriter.WriteLine("================");
+      Console.WriteLine("Global variables");
+      Console.WriteLine("================");
 
       foreach (var GlobalEntry in dependsOnNonTransitive.Nodes.Where(Item => Item is GlobalDescriptor))
       {
@@ -736,8 +736,8 @@ namespace Microsoft.Boogie
 
       foreach (var proc in Procedures())
       {
-        options.OutputWriter.WriteLine("Variables of " + proc);
-        options.OutputWriter.WriteLine("=====================");
+        Console.WriteLine("Variables of " + proc);
+        Console.WriteLine("=====================");
         foreach (var LocalEntry in dependsOnNonTransitive.Nodes.Where(Item => Item is LocalDescriptor
                                                                               && ((LocalDescriptor) Item).Proc.Equals(
                                                                                 proc)))
@@ -749,14 +749,14 @@ namespace Microsoft.Boogie
 
     private void dump(VariableDescriptor vd)
     {
-      options.OutputWriter.Write(vd + " <- {");
+      Console.Write(vd + " <- {");
       bool first = true;
 
       var SortedDependents = DependsOn(vd).ToList();
       SortedDependents.Sort();
       foreach (var Descriptor in SortedDependents)
       {
-        options.OutputWriter.Write((first ? "" : ",") + "\n  " + Descriptor);
+        Console.Write((first ? "" : ",") + "\n  " + Descriptor);
         if (first)
         {
           first = false;
@@ -764,7 +764,7 @@ namespace Microsoft.Boogie
       }
 
       Debug.Assert(!first);
-      options.OutputWriter.WriteLine("\n}\n");
+      Console.WriteLine("\n}\n");
     }
 
     private HashSet<string> Procedures()

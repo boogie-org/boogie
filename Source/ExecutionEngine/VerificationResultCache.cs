@@ -142,22 +142,22 @@ namespace Microsoft.Boogie
         }
 
         if (options.TraceCachingForTesting || options.TraceCachingForBenchmarking) {
-          using var tokTxtWr = new TokenTextWriter("<console>", options.OutputWriter, false, false, options);
+          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false, options);
           var loc = currentImplementation.tok != null && currentImplementation.tok != Token.NoToken
             ? string.Format("{0}({1},{2})", currentImplementation.tok.filename, currentImplementation.tok.line,
               currentImplementation.tok.col)
             : "<unknown location>";
-          options.OutputWriter.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.VerboseName, loc);
+          Console.Out.WriteLine("Processing implementation {0} (at {1}):", currentImplementation.VerboseName, loc);
           foreach (var a in axioms)
           {
-            options.OutputWriter.Write("  >>> added axiom: ");
+            Console.Out.Write("  >>> added axiom: ");
             a.Expr.Emit(tokTxtWr);
-            options.OutputWriter.WriteLine();
+            Console.Out.WriteLine();
           }
 
           foreach (var b in after)
           {
-            options.OutputWriter.Write("  >>> added after assuming the current precondition: ");
+            Console.Out.Write("  >>> added after assuming the current precondition: ");
             b.Emit(tokTxtWr, 0);
           }
         }
@@ -331,34 +331,34 @@ namespace Microsoft.Boogie
 
         node.ExtendDesugaring(options, before, beforePreconditionCheck, after);
         if (options.TraceCachingForTesting || options.TraceCachingForBenchmarking) {
-          using var tokTxtWr = new TokenTextWriter("<console>", options.OutputWriter, false, false, options);
+          using var tokTxtWr = new TokenTextWriter("<console>", Console.Out, false, false, options);
           var loc = node.tok != null && node.tok != Token.NoToken
-            ? $"{node.tok.filename}({node.tok.line},{node.tok.col})"
+            ? string.Format("{0}({1},{2})", node.tok.filename, node.tok.line, node.tok.col)
             : "<unknown location>";
-          options.OutputWriter.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.VerboseName,
+          Console.Out.WriteLine("Processing call to procedure {0} in implementation {1} (at {2}):", node.Proc.VerboseName,
             currentImplementation.VerboseName, loc);
           foreach (var a in axioms)
           {
-            options.OutputWriter.Write("  >>> added axiom: ");
+            Console.Out.Write("  >>> added axiom: ");
             a.Expr.Emit(tokTxtWr);
-            options.OutputWriter.WriteLine();
+            Console.Out.WriteLine();
           }
 
           foreach (var b in before)
           {
-            options.OutputWriter.Write("  >>> added before: ");
+            Console.Out.Write("  >>> added before: ");
             b.Emit(tokTxtWr, 0);
           }
 
           foreach (var b in beforePreconditionCheck)
           {
-            options.OutputWriter.Write("  >>> added before precondition check: ");
+            Console.Out.Write("  >>> added before precondition check: ");
             b.Emit(tokTxtWr, 0);
           }
 
           foreach (var a in after)
           {
-            options.OutputWriter.Write("  >>> added after: ");
+            Console.Out.Write("  >>> added after: ");
             a.Emit(tokTxtWr, 0);
           }
         }
@@ -476,7 +476,7 @@ namespace Microsoft.Boogie
       var end = DateTime.UtcNow;
       if (options.TraceCachingForDebugging)
       {
-        options.OutputWriter.WriteLine("Collected other definition axioms within {0:F0} ms.",
+        Console.Out.WriteLine("Collected other definition axioms within {0:F0} ms.",
           end.Subtract(start).TotalMilliseconds);
       }
     }
@@ -530,7 +530,7 @@ namespace Microsoft.Boogie
       var end = DateTime.UtcNow;
       if (options.TraceCachingForDebugging)
       {
-        options.OutputWriter.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
+        Console.Out.WriteLine("Collected dependencies within {0:F0} ms.", end.Subtract(start).TotalMilliseconds);
       }
     }
 

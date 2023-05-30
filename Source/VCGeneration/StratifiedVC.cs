@@ -487,7 +487,7 @@ namespace VC
       // Passify
       Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
-      vcgen.ConvertCFG2DAG(run);
+      vcgen.ConvertCFG2DAG(Implementation);
       vcgen.PassifyImpl(run, out mvInfo);
 
       VCExpressionGenerator gen = proverInterface.VCExprGen;
@@ -635,7 +635,7 @@ namespace VC
 
       Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
-      vcgen.ConvertCFG2DAG(run);
+      vcgen.ConvertCFG2DAG(Implementation);
       vcgen.PassifyImpl(run, out mvInfo);
 
       VCExpressionGenerator gen = proverInterface.VCExprGen;
@@ -655,7 +655,7 @@ namespace VC
 
       var absyIds = new ControlFlowIdMap<Absy>();
       
-      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(run.OutputWriter, options, absyIds, proverInterface.Context);
+      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(run.TraceWriter, options, absyIds, proverInterface.Context);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
       vcexpr = gen.Not(vcgen.GenerateVCAux(Implementation, controlFlowVariableExpr, absyIds, proverInterface.Context));
 

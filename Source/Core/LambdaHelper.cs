@@ -74,9 +74,9 @@ namespace Microsoft.Boogie
       functions = v.lambdaFunctions;
       if (options.TraceVerify)
       {
-        options.OutputWriter.WriteLine("Desugaring of lambda expressions produced {0} functions and {1} axioms:", functions.Count,
+        Console.WriteLine("Desugaring of lambda expressions produced {0} functions and {1} axioms:", functions.Count,
           axioms.Count);
-        TokenTextWriter wr = new TokenTextWriter("<console>", options.OutputWriter, /*pretty=*/ false, options);
+        TokenTextWriter wr = new TokenTextWriter("<console>", Console.Out, /*pretty=*/ false, options);
         foreach (Function f in functions)
         {
           f.Emit(wr, 0);
@@ -85,7 +85,7 @@ namespace Microsoft.Boogie
         foreach (var ax in axioms)
         {
           ax.Emit(wr, 0);
-          options.OutputWriter.WriteLine();
+          Console.WriteLine();
         }
       }
 
@@ -299,14 +299,14 @@ namespace Microsoft.Boogie
         {
           if (options.TraceVerify)
           {
-            options.OutputWriter.WriteLine("Old lambda: {0}", lam_str);
+            Console.WriteLine("Old lambda: {0}", lam_str);
           }
         }
         else
         {
           if (options.TraceVerify)
           {
-            options.OutputWriter.WriteLine("New lambda: {0}", lam_str);
+            Console.WriteLine("New lambda: {0}", lam_str);
           }
 
           Function fn = new Function(tok, FreshLambdaFunctionName(), freshTypeVars, formals, res,

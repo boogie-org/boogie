@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 
 namespace Microsoft.Boogie
 {
@@ -9,7 +8,6 @@ namespace Microsoft.Boogie
   /// superset of Boogie's options).
   /// </summary>
   public interface CoreOptions : PrintOptions {
-    public TextWriter OutputWriter { get; }
 
     public enum TypeEncoding
     {

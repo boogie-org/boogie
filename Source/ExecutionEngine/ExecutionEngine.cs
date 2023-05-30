@@ -123,7 +123,7 @@ namespace Microsoft.Boogie
     [Obsolete("Please inline this method call")]
     public bool ProcessProgram(Program program, string bplFileName,
       string programId = null) {
-      return ProcessProgram(Options.OutputWriter, program, bplFileName, programId).Result;
+      return ProcessProgram(Console.Out, program, bplFileName, programId).Result;
     }
 
     public async Task<bool> ProcessProgram(TextWriter output, Program program, string bplFileName, string programId = null)
@@ -145,7 +145,7 @@ namespace Microsoft.Boogie
       if (Options.PrintCFGPrefix != null) {
         foreach (var impl in program.Implementations) {
           using StreamWriter sw = new StreamWriter(Options.PrintCFGPrefix + "." + impl.Name + ".dot");
-          await sw.WriteAsync(program.ProcessLoops(Options, impl).ToDot());
+          sw.Write(program.ProcessLoops(Options, impl).ToDot());
         }
       }
 
@@ -215,7 +215,7 @@ namespace Microsoft.Boogie
       {
         if (Options.Trace)
         {
-          Options.OutputWriter.WriteLine("Coalescing blocks...");
+          Console.WriteLine("Coalescing blocks...");
         }
 
         Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
@@ -257,7 +257,7 @@ namespace Microsoft.Boogie
       }
 
       using (TokenTextWriter writer = filename == "-"
-        ? new TokenTextWriter("<console>", options.OutputWriter, setTokens, pretty, options)
+        ? new TokenTextWriter("<console>", Console.Out, setTokens, pretty, options)
         : new TokenTextWriter(filename, setTokens, pretty, options))
       {
         if (options.ShowEnv != ExecutionEngineOptions.ShowEnvironment.Never)
@@ -297,7 +297,7 @@ namespace Microsoft.Boogie
 
           if (Options.Trace)
           {
-            Options.OutputWriter.WriteLine("Parsing " + GetFileNameForConsole(Options, bplFileName));
+            Console.WriteLine("Parsing " + GetFileNameForConsole(Options, bplFileName));
           }
         }
 
@@ -308,7 +308,7 @@ namespace Microsoft.Boogie
             Options.UseBaseNameForFileName);
           if (programSnippet == null || errorCount != 0)
           {
-            Options.OutputWriter.WriteLine("{0} parse errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
+            Console.WriteLine("{0} parse errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
             okay = false;
           }
           else
@@ -318,7 +318,7 @@ namespace Microsoft.Boogie
         }
         catch (IOException e)
         {
-          Options.Printer.ErrorWriteLine(Options.OutputWriter, "Error opening file \"{0}\": {1}",
+          Options.Printer.ErrorWriteLine(Console.Out, "Error opening file \"{0}\": {1}",
             GetFileNameForConsole(Options, bplFileName), e.Message);
           okay = false;
         }
@@ -388,7 +388,7 @@ namespace Microsoft.Boogie
       var errorCount = program.Resolve(Options);
       if (errorCount != 0)
       {
-        Options.OutputWriter.WriteLine("{0} name resolution errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
+        Console.WriteLine("{0} name resolution errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
         return PipelineOutcome.ResolutionError;
       }
 
@@ -407,7 +407,7 @@ namespace Microsoft.Boogie
       errorCount = program.Typecheck(Options);
       if (errorCount != 0)
       {
-        Options.OutputWriter.WriteLine("{0} type checking errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
+        Console.WriteLine("{0} type checking errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
         return PipelineOutcome.TypeCheckingError;
       }
 
@@ -424,30 +424,30 @@ namespace Microsoft.Boogie
         }
         else if (monomorphizableStatus == MonomorphizableStatus.UnhandledPolymorphism)
         {
-          Options.OutputWriter.WriteLine("Unable to monomorphize input program: unhandled polymorphic features detected");
+          Console.WriteLine("Unable to monomorphize input program: unhandled polymorphic features detected");
           return PipelineOutcome.FatalError;
         }
         else
         {
-          Options.OutputWriter.WriteLine("Unable to monomorphize input program: expanding type cycle detected");
+          Console.WriteLine("Unable to monomorphize input program: expanding type cycle detected");
           return PipelineOutcome.FatalError;
         }
       }
       else if (Options.UseArrayTheory)
       {
-        Options.OutputWriter.WriteLine(
+        Console.WriteLine(
           "Option /useArrayTheory only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       } 
       else if (program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>().Any())
       {
-        Options.OutputWriter.WriteLine(
+        Console.WriteLine(
           "Datatypes only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       }
       else if (program.TopLevelDeclarations.OfType<Function>().Any(f => QKeyValue.FindBoolAttribute(f.Attributes, "define")))
       {
-        Options.OutputWriter.WriteLine(
+        Console.WriteLine(
           "Functions with :define attribute only supported for monomorphic programs, polymorphism is detected in input program, try using -monomorphize");
         return PipelineOutcome.FatalError;
       }
@@ -458,7 +458,7 @@ namespace Microsoft.Boogie
       civlTypeChecker.TypeCheck();
       if (civlTypeChecker.checkingContext.ErrorCount != 0)
       {
-        Options.OutputWriter.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.checkingContext.ErrorCount,
+        Console.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.checkingContext.ErrorCount,
           GetFileNameForConsole(Options, bplFileName));
         return PipelineOutcome.TypeCheckingError;
       }
@@ -479,7 +479,7 @@ namespace Microsoft.Boogie
 
       if (Options.Trace)
       {
-        Options.OutputWriter.WriteLine("Inlining...");
+        Console.WriteLine("Inlining...");
       }
 
       // Inline
@@ -527,7 +527,7 @@ namespace Microsoft.Boogie
       PipelineStatistics stats,
       string programId = null,
       ErrorReporterDelegate er = null, string requestId = null) {
-      return InferAndVerify(Options.OutputWriter, program, stats, programId, er, requestId).Result;
+      return InferAndVerify(Console.Out, program, stats, programId, er, requestId).Result;
     }
 
     /// <summary>
@@ -610,7 +610,7 @@ namespace Microsoft.Boogie
       var processedProgram = Options.ExtractLoops ? ExtractLoops(program) : new ProcessedProgram(program);
 
       if (Options.PrintInstrumented) {
-        program.Emit(new TokenTextWriter(Options.OutputWriter, Options.PrettyPrint, Options));
+        program.Emit(new TokenTextWriter(Console.Out, Options.PrettyPrint, Options));
       }
 
       program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
@@ -679,7 +679,7 @@ namespace Microsoft.Boogie
       } catch(TaskCanceledException) {
         outcome = PipelineOutcome.Cancelled;
       } catch(ProverException e) {
-        Options.Printer.ErrorWriteLine(output, "Fatal Error: ProverException: {0}", e.Message);
+        Options.Printer.ErrorWriteLine(Console.Out, "Fatal Error: ProverException: {0}", e.Message);
         outcome = PipelineOutcome.FatalError;
       }
       finally {
@@ -687,7 +687,7 @@ namespace Microsoft.Boogie
       }
 
       if (Options.PrintNecessaryAssumes && processedProgram.Program.NecessaryAssumes.Any()) {
-        Options.OutputWriter.WriteLine("Necessary assume command(s): {0}", string.Join(", ", processedProgram.Program.NecessaryAssumes.OrderBy(s => s)));
+        Console.WriteLine("Necessary assume command(s): {0}", string.Join(", ", processedProgram.Program.NecessaryAssumes.OrderBy(s => s)));
       }
 
       cce.NonNull(Options.TheProverFactory).Close();
@@ -767,27 +767,27 @@ namespace Microsoft.Boogie
 
         var printTimes = true;
 
-        Options.OutputWriter.WriteLine(CachedVerificationResultInjector.Statistics.Output(printTimes));
+        Console.Out.WriteLine(CachedVerificationResultInjector.Statistics.Output(printTimes));
 
-        Options.OutputWriter.WriteLine("Statistics per request as CSV:");
+        Console.Out.WriteLine("Statistics per request as CSV:");
         var actions = string.Join(", ", Enum.GetNames(typeof(VC.ConditionGeneration.CachingAction)));
-        Options.OutputWriter.WriteLine(
+        Console.Out.WriteLine(
           "Request ID{0}, Error, E (C), Inconclusive, I (C), Out of Memory, OoM (C), Timeout, T (C), Verified, V (C), {1}",
           printTimes ? ", Time (ms)" : "", actions);
         foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key))) {
           var s = StatisticsPerRequest[kv.Key];
           var cacs = s.CachingActionCounts;
-          var c = cacs != null ? ", " + cacs.Select(ac => $"{ac,3}").Concat(", ") : "";
-          var t = printTimes ? $", {kv.Value.TotalMilliseconds,8:F0}" : "";
-          Options.OutputWriter.WriteLine(
+          var c = cacs != null ? ", " + cacs.Select(ac => string.Format("{0,3}", ac)).Concat(", ") : "";
+          var t = printTimes ? string.Format(", {0,8:F0}", kv.Value.TotalMilliseconds) : "";
+          Console.Out.WriteLine(
             "{0,-19}{1}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}, {7,2}, {8,2}, {9,2}, {10,2}, {11,2}{12}", kv.Key, t,
             s.ErrorCount, s.CachedErrorCount, s.InconclusiveCount, s.CachedInconclusiveCount, s.OutOfMemoryCount,
             s.CachedOutOfMemoryCount, s.TimeoutCount, s.CachedTimeoutCount, s.VerifiedCount, s.CachedVerifiedCount, c);
         }
 
         if (printTimes) {
-          Options.OutputWriter.WriteLine();
-          Options.OutputWriter.WriteLine("Total time (ms) since first request: {0:F0}",
+          Console.Out.WriteLine();
+          Console.Out.WriteLine("Total time (ms) since first request: {0:F0}",
             end.Subtract(FirstRequestStart).TotalMilliseconds);
         }
       }
@@ -947,16 +947,16 @@ namespace Microsoft.Boogie
       }
 
       var houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
-      var houdini = new Houdini.Houdini(Options.OutputWriter, Options, program, houdiniStats);
+      var houdini = new Houdini.Houdini(Console.Out, Options, program, houdiniStats);
       var outcome = await houdini.PerformHoudiniInference();
       houdini.Close();
 
       if (Options.PrintAssignment)
       {
-        await Options.OutputWriter.WriteLineAsync("Assignment computed by Houdini:");
+        Console.WriteLine("Assignment computed by Houdini:");
         foreach (var x in outcome.assignment)
         {
-          await Options.OutputWriter.WriteLineAsync(x.Key + " = " + x.Value);
+          Console.WriteLine(x.Key + " = " + x.Value);
         }
       }
 
@@ -971,19 +971,19 @@ namespace Microsoft.Boogie
           }
         }
 
-        await Options.OutputWriter.WriteLineAsync("Number of true assignments = " + numTrueAssigns);
-        await Options.OutputWriter.WriteLineAsync("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
-        await Options.OutputWriter.WriteLineAsync("Prover time = " + houdiniStats.proverTime.ToString("F2"));
-        await Options.OutputWriter.WriteLineAsync("Unsat core prover time = " + houdiniStats.unsatCoreProverTime.ToString("F2"));
-        await Options.OutputWriter.WriteLineAsync("Number of prover queries = " + houdiniStats.numProverQueries);
-        await Options.OutputWriter.WriteLineAsync("Number of unsat core prover queries = " + houdiniStats.numUnsatCoreProverQueries);
-        await Options.OutputWriter.WriteLineAsync("Number of unsat core prunings = " + houdiniStats.numUnsatCorePrunings);
+        Console.WriteLine("Number of true assignments = " + numTrueAssigns);
+        Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
+        Console.WriteLine("Prover time = " + houdiniStats.proverTime.ToString("F2"));
+        Console.WriteLine("Unsat core prover time = " + houdiniStats.unsatCoreProverTime.ToString("F2"));
+        Console.WriteLine("Number of prover queries = " + houdiniStats.numProverQueries);
+        Console.WriteLine("Number of unsat core prover queries = " + houdiniStats.numUnsatCoreProverQueries);
+        Console.WriteLine("Number of unsat core prunings = " + houdiniStats.numUnsatCorePrunings);
       }
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, Options.OutputWriter, Options.TimeLimit, er);
-        ProcessErrors(Options.Printer, x.errors, x.outcome, Options.OutputWriter, er);
+        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, Console.Out, Options.TimeLimit, er);
+        ProcessErrors(Options.Printer, x.errors, x.outcome, Console.Out, er);
       }
 
       return PipelineOutcome.Done;
@@ -1001,15 +1001,15 @@ namespace Microsoft.Boogie
     private async Task<PipelineOutcome> RunStagedHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
     {
       Houdini.HoudiniSession.HoudiniStatistics houdiniStats = new Houdini.HoudiniSession.HoudiniStatistics();
-      var stagedHoudini = new Houdini.StagedHoudini(Options.OutputWriter, Options, program, houdiniStats, ProgramFromFile);
+      var stagedHoudini = new Houdini.StagedHoudini(Console.Out, Options, program, houdiniStats, ProgramFromFile);
       Houdini.HoudiniOutcome outcome = await stagedHoudini.PerformStagedHoudiniInference();
 
       if (Options.PrintAssignment)
       {
-        await Options.OutputWriter.WriteLineAsync("Assignment computed by Houdini:");
+        Console.WriteLine("Assignment computed by Houdini:");
         foreach (var x in outcome.assignment)
         {
-          await Options.OutputWriter.WriteLineAsync(x.Key + " = " + x.Value);
+          Console.WriteLine(x.Key + " = " + x.Value);
         }
       }
 
@@ -1024,19 +1024,19 @@ namespace Microsoft.Boogie
           }
         }
 
-        await Options.OutputWriter.WriteLineAsync("Number of true assignments = " + numTrueAssigns);
-        await Options.OutputWriter.WriteLineAsync("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
-        await Options.OutputWriter.WriteLineAsync("Prover time = " + houdiniStats.proverTime.ToString("F2"));
-        await Options.OutputWriter.WriteLineAsync("Unsat core prover time = " + houdiniStats.unsatCoreProverTime.ToString("F2"));
-        await Options.OutputWriter.WriteLineAsync("Number of prover queries = " + houdiniStats.numProverQueries);
-        await Options.OutputWriter.WriteLineAsync("Number of unsat core prover queries = " + houdiniStats.numUnsatCoreProverQueries);
-        await Options.OutputWriter.WriteLineAsync("Number of unsat core prunings = " + houdiniStats.numUnsatCorePrunings);
+        Console.WriteLine("Number of true assignments = " + numTrueAssigns);
+        Console.WriteLine("Number of false assignments = " + (outcome.assignment.Count - numTrueAssigns));
+        Console.WriteLine("Prover time = " + houdiniStats.proverTime.ToString("F2"));
+        Console.WriteLine("Unsat core prover time = " + houdiniStats.unsatCoreProverTime.ToString("F2"));
+        Console.WriteLine("Number of prover queries = " + houdiniStats.numProverQueries);
+        Console.WriteLine("Number of unsat core prover queries = " + houdiniStats.numUnsatCoreProverQueries);
+        Console.WriteLine("Number of unsat core prunings = " + houdiniStats.numUnsatCorePrunings);
       }
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, Options.OutputWriter, Options.TimeLimit, er);
-        ProcessErrors(Options.Printer, x.errors, x.outcome, Options.OutputWriter, er);
+        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, Console.Out, Options.TimeLimit, er);
+        ProcessErrors(Options.Printer, x.errors, x.outcome, Console.Out, er);
       }
 
       return PipelineOutcome.Done;

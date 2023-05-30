@@ -2,7 +2,6 @@
 using Microsoft.BaseTypes;
 using NUnit.Framework;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace CoreTests
@@ -13,7 +12,7 @@ namespace CoreTests
     [Test()]
     public void FunctionCall()
     {
-      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      var options = CommandLineOptions.FromArguments();
       var fc = CreateFunctionCall("bv8slt", Microsoft.Boogie.Type.Bool, new List<Microsoft.Boogie.Type>()
       {
         BasicType.GetBvType(8),
@@ -38,7 +37,7 @@ namespace CoreTests
     [Test()]
     public void FunctionCallTypeResolved()
     {
-      var options = CommandLineOptions.FromArguments(TextWriter.Null);
+      var options = CommandLineOptions.FromArguments();
       // This test case requires that function calls have been resolved
       // correctly and that the ShallowType is correct.
       // It's simpler to let the parser and resolver do all the work here

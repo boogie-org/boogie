@@ -163,16 +163,15 @@ namespace VC
       return vc;
     }
 
-    public static void CheckIntAttributeOnImpl(ImplementationRun run, string name, ref int val)
+    public static void CheckIntAttributeOnImpl(Implementation impl, string name, ref int val)
     {
-      var impl = run.Implementation;
       Contract.Requires(impl != null);
       Contract.Requires(name != null);
       if (impl.FindAttribute(name) == null || impl.CheckIntAttribute(name, ref val))
       {
         return;
       }
-      run.OutputWriter.WriteLine("ignoring ill-formed {:{0} ...} attribute on {1}, parameter should be an int", name, impl.Name);
+      Console.WriteLine("ignoring ill-formed {:{0} ...} attribute on {1}, parameter should be an int", name, impl.Name);
     }
 
     // If "expand" attribute is supplied, expand any assertion of conjunctions into multiple assertions, one per conjunct
@@ -366,7 +365,7 @@ namespace VC
       var data = implementationData.GetOrCreateValue(run.Implementation)!;
       if (!data.ConvertedToDAG) {
         data.ConvertedToDAG = true;
-        ConvertCFG2DAG(run);
+        ConvertCFG2DAG(run.Implementation);
       }
 
       SmokeTester smokeTester = null;
@@ -419,7 +418,7 @@ namespace VC
       TotalProverElapsedTime = worker.TotalProverElapsedTime;
       if (outcome == Outcome.Correct && smokeTester != null)
       {
-        await smokeTester.Test(run.OutputWriter);
+        await smokeTester.Test(run.TraceWriter);
       }
 
       callback.OnProgress?.Invoke("done", 0, 0, 1.0);
@@ -514,7 +513,7 @@ namespace VC
           Contract.Assert(absy != null);
           if (traceNodes.Contains(absy))
           {
-            options.OutputWriter.WriteLine("Warning: duplicate label: " + s + " read while tracing nodes");
+            System.Console.WriteLine("Warning: duplicate label: " + s + " read while tracing nodes");
           }
           else
           {
@@ -588,7 +587,7 @@ namespace VC
       public override void OnProverWarning(string msg)
       {
         //Contract.Requires(msg != null);
-        callback.OnWarning(options, msg);
+        callback.OnWarning(msg);
       }
     }
 
@@ -605,9 +604,8 @@ namespace VC
       }
     }
 
-    public void ConvertCFG2DAG(ImplementationRun run, Dictionary<Block, List<Block>> edgesCut = null, int taskID = -1)
+    public void ConvertCFG2DAG(Implementation impl, Dictionary<Block, List<Block>> edgesCut = null, int taskID = -1)
     {
-      var impl = run.Implementation;
       Contract.Requires(impl != null);
       impl.PruneUnreachableBlocks(Options); // This is needed for VCVariety.BlockNested, and is otherwise just an optimization
 
@@ -619,8 +617,8 @@ namespace VC
 
       if (Options.TraceVerify)
       {
-        run.OutputWriter.WriteLine("original implementation");
-        EmitImpl(Options, run, false);
+        Console.WriteLine("original implementation");
+        EmitImpl(Options, impl, false);
       }
 
       #endregion
@@ -629,8 +627,8 @@ namespace VC
 
       if (Options.TraceVerify)
       {
-        run.OutputWriter.WriteLine("after desugaring sugared commands like procedure calls");
-        EmitImpl(Options, run, true);
+        Console.WriteLine("after desugaring sugared commands like procedure calls");
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -657,8 +655,8 @@ namespace VC
 
       if (Options.TraceVerify)
       {
-        run.OutputWriter.WriteLine("after conversion into a DAG");
-        EmitImpl(Options, run, true);
+        Console.WriteLine("after conversion into a DAG");
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -994,7 +992,7 @@ namespace VC
 
           if (Options.TraceVerify)
           {
-            Options.OutputWriter.WriteLine("Applying k-induction rule with k=" + inductionK);
+            Console.WriteLine("Applying k-induction rule with k=" + inductionK);
           }
 
           #endregion
@@ -1242,8 +1240,8 @@ namespace VC
 
       if (Options.TraceVerify)
       {
-        Options.OutputWriter.WriteLine("after creating a unified exit block");
-        EmitImpl(Options, run, true);
+        Console.WriteLine("after creating a unified exit block");
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -1266,7 +1264,7 @@ namespace VC
         }
 
         // where clauses of in- and out-parameters
-        cc.AddRange(GetParamWhereClauses(Options, run));
+        cc.AddRange(GetParamWhereClauses(Options, impl));
         // where clauses of local variables
         foreach (Variable lvar in impl.LocVars)
         {
@@ -1287,10 +1285,10 @@ namespace VC
         }
 
         // add cc and the preconditions to new blocks preceding impl.Blocks[0]
-        InjectPreconditions(Options, run, cc);
+        InjectPreconditions(Options, impl, cc);
 
         // append postconditions, starting in exitBlock and continuing into other blocks, if needed
-        InjectPostConditions(Options, run, exitBlock, gotoCmdOrigins);
+        InjectPostConditions(Options, impl, exitBlock, gotoCmdOrigins);
       }
 
       #endregion
@@ -1306,8 +1304,8 @@ namespace VC
 
       if (Options.TraceVerify)
       {
-        Options.OutputWriter.WriteLine("after inserting pre- and post-conditions");
-        EmitImpl(Options, run, true);
+        Console.WriteLine("after inserting pre- and post-conditions");
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -1318,8 +1316,8 @@ namespace VC
 
       if (Options.TraceVerify)
       {
-        Options.OutputWriter.WriteLine("after adding empty blocks as needed to catch join assumptions");
-        EmitImpl(Options, run, true);
+        Console.WriteLine("after adding empty blocks as needed to catch join assumptions");
+        EmitImpl(Options, impl, true);
       }
 
       #endregion
@@ -1354,8 +1352,8 @@ namespace VC
 
         if (Options.TraceVerify)
         {
-          Options.OutputWriter.WriteLine("after peep-hole optimizations");
-          EmitImpl(Options, run, true);
+          Console.WriteLine("after peep-hole optimizations");
+          EmitImpl(Options, impl, true);
         }
 
         #endregion

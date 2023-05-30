@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
@@ -17,7 +16,7 @@ namespace ExecutionEngineTests
     [Test]
     public async Task NoNullPointerExceptionEvenIfConcurrencyRaces()
     {
-      SMTLibOptions smtLibOptions = CommandLineOptions.FromArguments(TextWriter.Null);
+      SMTLibOptions smtLibOptions = CommandLineOptions.FromArguments();
       VCExpressionGenerator vgen = new VCExpressionGenerator();
       VCGenerationOptions genOptions = new VCGenerationOptions(new List<string>() { });
       var smtLibProverOptions = new SMTLibSolverOptions(smtLibOptions);

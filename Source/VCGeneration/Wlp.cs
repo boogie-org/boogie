@@ -217,7 +217,7 @@ namespace VC
       }
       else
       {
-        ctxt.Options.OutputWriter.WriteLine(cmd.ToString());
+        Console.WriteLine(cmd.ToString());
         Contract.Assert(false);
         throw new cce.UnreachableException(); // unexpected command
       }

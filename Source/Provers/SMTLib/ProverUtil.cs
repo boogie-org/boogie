@@ -162,9 +162,9 @@ The generic options may or may not be used by the prover plugin.
       confirmedProverPath = proverPath;
       if (LibOptions.Trace)
       {
-        LibOptions.OutputWriter.WriteLine("[TRACE] Using prover: " + confirmedProverPath);
+        Console.WriteLine("[TRACE] Using prover: " + confirmedProverPath);
         if (BatchMode) {
-          LibOptions.OutputWriter.WriteLine("[TRACE] Running in batch mode.");
+          Console.WriteLine("[TRACE] Running in batch mode.");
         }
       }
 

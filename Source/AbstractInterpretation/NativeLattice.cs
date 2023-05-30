@@ -86,8 +86,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
       DateTime start = new DateTime(); // to please compiler's definite assignment rules
       if (options.Trace)
       {
-        options.OutputWriter.WriteLine();
-        options.OutputWriter.WriteLine("Running abstract interpretation...");
+        Console.WriteLine();
+        Console.WriteLine("Running abstract interpretation...");
         start = DateTime.UtcNow;
       }
 
@@ -117,8 +117,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
       {
         DateTime end = DateTime.UtcNow;
         TimeSpan elapsed = end - start;
-        options.OutputWriter.WriteLine("  [{0} s]", elapsed.TotalSeconds);
-        options.OutputWriter.Flush();
+        Console.WriteLine("  [{0} s]", elapsed.TotalSeconds);
+        Console.Out.Flush();
       }
     }
 

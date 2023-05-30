@@ -347,7 +347,7 @@ namespace Microsoft.Boogie.Houdini
     {
       if (options.DebugStagedHoudini)
       {
-        varDepAnalyser.Dump();
+        varDepAnalyser.dump();
 
         Console.WriteLine("Annotations and the variables they depend on");
         Console.WriteLine("============================================");
