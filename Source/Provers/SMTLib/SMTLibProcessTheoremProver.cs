@@ -539,7 +539,7 @@ namespace Microsoft.Boogie.SMTLib
         return;
       }
       
-      libOptions.OutputWriter.WriteLine("Prover error: " + errors);
+      Console.WriteLine("Prover error: " + errors);
 
       var handler = currentErrorHandler;
       handler?.OnProverError(errors);
@@ -1020,7 +1020,7 @@ namespace Microsoft.Boogie.SMTLib
           TimeSpan elapsed = end - start;
           if (elapsed.TotalSeconds > 0.5)
           {
-            libOptions.OutputWriter.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
+            Console.WriteLine("Linearising   [{0} s]", elapsed.TotalSeconds);
           }
         }
 

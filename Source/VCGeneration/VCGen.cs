@@ -429,7 +429,7 @@ namespace VC
 
     public class ErrorReporter : ProverInterface.ErrorHandler {
       private ProofRun split;
-      private new VCGenOptions options;
+      private VCGenOptions options;
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins;
 
       ControlFlowIdMap<Absy> absyIds;
