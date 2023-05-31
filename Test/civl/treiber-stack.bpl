@@ -1,6 +1,75 @@
 // RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+/*
+function AbsInv(ref_n: RefNode X, stack: Lheap (Node X)): Vec X
+{
+  if ref_n == Nil()
+  then
+    Vec_Empty()
+  else
+    (var n := stack->val[ref_n]; Vec_Append(AbsInv(n->next, stack), n->val))
+}
 
+var {:layer 4, 5} Stack: [RefTreiber X]Vec X;
+
+yield invariant {:layer 4} YieldInv#4(ref_t: RefTreiber X);
+invariant Stack[ref_t] == AbsInv(ts->val[ref_t]->top, ts->val[ref_t]->stack);
+
+atomic action {:layer 5} AtomicPush(ref_t: RefTreiber X, x: X) returns (success: bool)
+modifies Stack;
+{
+  var stack: Vec X;
+  stack := Stack[ref_t];
+  if (success) {
+    Stack[ref_t] := Vec_Append(stack, x);
+  }
+}
+yield procedure {:layer 4} Push(ref_t: RefTreiber X, x: X) returns (success: bool)
+refines AtomicPush;
+preserves call YieldInv#2(ref_t);
+{
+  call success := PushIntermediate(ref_t, x);
+  if (success) {
+    call PushIntro(ref_t, x);
+  }
+}
+
+atomic action {:layer 5} AtomicPop(ref_t: RefTreiber X) returns (success: bool, x: X)
+modifies Stack;
+{
+  var stack: Vec X;
+  stack := Stack[ref_t];
+  if (success) {
+    assume Vec_Len(stack) > 0;
+    x := Vec_Nth(stack, Vec_Len(stack) - 1);
+    Stack[ref_t] := Vec_Remove(stack);
+  }
+}
+yield procedure {:layer 4} Pop(ref_t: RefTreiber X) returns (success: bool, x: X)
+refines AtomicPop;
+preserves call YieldInv#2(ref_t);
+preserves call YieldInv#3(ref_t);
+preserves call YieldInv#4(ref_t);
+{
+  call success, x := PopIntermediate(ref_t);
+  if (success) {
+    call PopIntro(ref_t);
+  }
+}
+
+action {:layer 4} PushIntro(ref_t: RefTreiber X, x: X)
+modifies Stack;
+{
+  Stack[ref_t] := Vec_Append(Stack[ref_t], x);
+}
+
+action {:layer 4} PopIntro(ref_t: RefTreiber X)
+modifies Stack;
+{
+  assert Vec_Len(Stack[ref_t]) > 0;
+  Stack[ref_t] := Vec_Remove(Stack[ref_t]);
+}
+*/
 /*
 Highlights:
 - Nontrivial use of nested linear maps
@@ -52,13 +121,12 @@ preserves call YieldInv#3(ref_t);
   call success := WriteTopOfStack#Pop(ref_t, ref_n, new_ref_n);
 }
 
-atomic action {:layer 3} AtomicPushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
+atomic action {:layer 3, 4} AtomicPushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
 modifies ts, unused;
 {
   var {:pool "A"} ref_n: RefNode X;
   var {:pool "A"} new_ref_n: RefNode X;
-  assert ts->dom[ref_t];
-  assume {:add_to_pool "A", ref_n} true;
+  assume {:add_to_pool "A", ref_n} ts->dom[ref_t];
   call new_ref_n := Lheap_Add(ts->val[ref_t]->stack, Node(if success then ts->val[ref_t]->top else ref_n, x));
   if (success) {
     call Lheap_Write(ts->val[ref_t]->top, new_ref_n);
@@ -70,6 +138,7 @@ modifies ts, unused;
 yield procedure {:layer 2}
 PushIntermediate(ref_t: RefTreiber X, x: X) returns (success: bool)
 refines AtomicPushIntermediate;
+preserves call YieldInv#2(ref_t);
 {
   var ref_n, new_ref_n: RefNode X;
 
