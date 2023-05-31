@@ -3720,6 +3720,7 @@ namespace Microsoft.Boogie
       Dictionary<Variable, Expr> substMapBound = new Dictionary<Variable, Expr>();
       List<Variable> /*!*/
         tempVars = new List<Variable>();
+      string idAttr = QKeyValue.FindStringAttribute(Attributes, "id");
 
       // proc P(ins) returns (outs)
       //   requires Pre
@@ -3838,12 +3839,18 @@ namespace Microsoft.Boogie
             AssertCmd /*!*/
               a = new AssertRequiresCmd(this, reqCopy);
             Contract.Assert(a != null);
+
             if (Attributes != null)
             {
               // Inherit attributes of call.
               var attrCopy = (QKeyValue) cce.NonNull(Attributes.Clone());
               attrCopy = Substituter.Apply(s, attrCopy);
               a.Attributes = attrCopy;
+            }
+
+            // Do this after copying the attributes so it doesn't get overwritten
+            if (idAttr is not null) {
+              ICarriesAttributes.CopyStringAttributeWithSuffix(tok, req, "id", $"${idAttr}$requires", a);
             }
 
             a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
@@ -3857,6 +3864,11 @@ namespace Microsoft.Boogie
           AssumeCmd /*!*/
             a = new AssumeCmd(req.tok, Substituter.Apply(s, req.Condition));
           Contract.Assert(a != null);
+          // These probably won't have IDs, but copy if they do.
+          if (idAttr is not null) {
+            ICarriesAttributes.CopyStringAttributeWithSuffix(tok, req, "id", $"${idAttr}$requires_assumed", a);
+          }
+
           newBlockBody.Add(a);
         }
       }
@@ -4003,8 +4015,9 @@ namespace Microsoft.Boogie
         Contract.Assert(e != null);
         Expr copy = Substituter.ApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, e.Condition);
         AssumeCmd assume = new AssumeCmd(this.tok, copy);
-        // TODO: fix the case where a given postcondition appears at multiple call sites
-        //ICarriesAttributes.CopyAttribute(e, "id", assume);
+        if (idAttr is not null) {
+          ICarriesAttributes.CopyStringAttributeWithSuffix(tok, e, "id", $"${idAttr}$ensures", assume);
+        }
 
         #region stratified inlining support
 
@@ -4038,6 +4051,9 @@ namespace Microsoft.Boogie
             cout_exp = new IdentifierExpr(cce.NonNull(couts[i]).tok, cce.NonNull(couts[i]));
           Contract.Assert(cout_exp != null);
           AssignCmd assign = Cmd.SimpleAssign(param_i.tok, cce.NonNull(this.Outs[i]), cout_exp);
+          if (idAttr is not null) {
+            Attributes = new QKeyValue(param_i.tok, "id", new List<object>(){ $"{idAttr}$out{i}" }, Attributes);
+          }
           newBlockBody.Add(assign);
         }
       }

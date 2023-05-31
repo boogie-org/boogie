@@ -201,7 +201,9 @@ namespace Microsoft.Boogie
 
     public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
-    public bool ProduceUnsatCores => PrintNecessaryAssumes || EnableUnSatCoreExtract == 1 ||
+    public bool ProduceUnsatCores => PrintNecessaryAssumes ||
+                                     PrintVerificationCoverage ||
+                                     EnableUnSatCoreExtract == 1 ||
                                      ContractInfer && (UseUnsatCoreForContractInfer || ExplainHoudini);
 
     public bool BatchModeSolver { get; set; }
@@ -283,6 +285,11 @@ namespace Microsoft.Boogie
     public bool PrintNecessaryAssumes {
       get => printNecessaryAssumes;
       set => printNecessaryAssumes = value;
+    }
+
+    public bool PrintVerificationCoverage {
+      get => printVerificationCoverage;
+      set => printVerificationCoverage = value;
     }
 
     public int InlineDepth  { get; set; } = -1;
@@ -545,6 +552,7 @@ namespace Microsoft.Boogie
     private bool houdiniUseCrossDependencies = false;
     private bool useUnsatCoreForContractInfer = false;
     private bool printNecessaryAssumes = false;
+    private bool printVerificationCoverage = false;
     private bool useProverEvaluate;
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
@@ -1298,6 +1306,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", x => useUnsatCoreForContractInfer = x) ||
               ps.CheckBooleanFlag("printAssignment", x => PrintAssignment = x) ||
               ps.CheckBooleanFlag("printNecessaryAssumes", x => printNecessaryAssumes = x) ||
+              ps.CheckBooleanFlag("printVerificationCoverage", x => printVerificationCoverage = x) ||
               ps.CheckBooleanFlag("useProverEvaluate", x => useProverEvaluate = x) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", x => DeterministicExtractLoops = x) ||
               ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||

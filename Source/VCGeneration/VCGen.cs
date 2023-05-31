@@ -57,8 +57,11 @@ namespace VC
           throw new cce.UnreachableException(); // unexpected case
       }
 
-      // TODO: track id here, too?
-      return new AssumeCmd(assrt.tok, expr);
+      var assume = new AssumeCmd(assrt.tok, expr);
+      if (options.PrintVerificationCoverage) {
+        ICarriesAttributes.CopyAttribute(assrt, "id", assume);
+      }
+      return assume;
     }
 
     #region Soundness smoke tester
@@ -459,14 +462,12 @@ namespace VC
 
       Program program;
 
-      public IEnumerable<string> NecessaryAssumes
-      {
-        get { return program.NecessaryAssumes; }
-      }
+      public HashSet<string> CurrentCoveredElements { get; }
 
-      public override void AddNecessaryAssume(string id)
+      public override void AddCoveredElement(string id)
       {
-        program.NecessaryAssumes.Add(id);
+        program.AllCoveredElements.Add(id);
+        CurrentCoveredElements.Add(id);
       }
 
       public ErrorReporter(VCGenOptions options,
@@ -496,6 +497,7 @@ namespace VC
         this.program = program;
         this.split = split;
         this.options = options;
+        this.CurrentCoveredElements = new();
       }
 
       public override void OnModel(IList<string> labels /*!*/ /*!*/, Model model,
@@ -730,8 +732,13 @@ namespace VC
                 b = new LoopInitAssertCmd(c.tok, c.Expr, c);
               }
 
-              b.Attributes = c.Attributes;
-              // TODO: once assertions have ids, add suffix to id, which will require a deep copy of the attributes
+              b.Attributes = (QKeyValue)c.Attributes?.Clone();
+              if (Options.PrintVerificationCoverage) {
+                // Copy any {:id ...} from the invariant to the assertion that it's established, so
+                // we can track it as a "necessary assumption".
+                ICarriesAttributes.CopyStringAttributeWithSuffix(c.tok, c, "id", "$established", b);
+              }
+
               prefixOfPredicateCmdsInit.Add(b);
 
               if (Options.ConcurrentHoudini)
@@ -751,12 +758,21 @@ namespace VC
                 b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c);
               }
 
-              b.Attributes = c.Attributes;
+              b.Attributes = (QKeyValue)c.Attributes?.Clone();
+              if (Options.PrintVerificationCoverage) {
+                // Copy any {:id ...} from the invariant to the assertion that it's maintained, so
+                // we can track it as a "necessary assumption".
+                ICarriesAttributes.CopyStringAttributeWithSuffix(c.tok, c, "id", "$maintained", b);
+              }
+
               prefixOfPredicateCmdsMaintained.Add(b);
-              // Copy any {:id ...} from the invariant to the assumption, so
-              // we can track it as a "necessary assumption".
               AssumeCmd assume = new AssumeCmd(c.tok, c.Expr);
-              ICarriesAttributes.CopyStringAttributeWithSuffix(c.tok, c, "id", "$assume", assume);
+              if (Options.PrintVerificationCoverage) {
+                // Copy any {:id ...} from the invariant to the assumption used within the body, so
+                // we can track it as a "necessary assumption".
+                ICarriesAttributes.CopyStringAttributeWithSuffix(c.tok, c, "id", "$assume_in_body", assume);
+              }
+
               header.Cmds[i] = assume;
             }
             else

@@ -1271,6 +1271,10 @@ namespace VC
           run.OutputWriter.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
+        if (options.Trace && options.PrintVerificationCoverage) {
+          run.OutputWriter.WriteLine("Covered elements: {0}",
+            string.Join(", ", reporter.CurrentCoveredElements.OrderBy(s => s)));
+        }
 
         var resourceCount = await checker.GetProverResourceCount();
         var result = new VCResult(
@@ -1282,7 +1286,7 @@ namespace VC
           maxCounterExamples: checker.Options.ErrorLimit,
           counterExamples: Counterexamples,
           asserts: Asserts,
-          core: new HashSet<string>(),
+          coveredElements: reporter.CurrentCoveredElements,
           resourceCount: resourceCount);
         callback.OnVCResult(result);
 

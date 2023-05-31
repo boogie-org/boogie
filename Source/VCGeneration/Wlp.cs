@@ -110,10 +110,9 @@ namespace VC
 
         VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
         var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
-        if (aid != null)
+        if (aid != null && ctxt.Options.PrintVerificationCoverage)
         {
-          var isTry = QKeyValue.FindBoolAttribute(ac.Attributes, "try");
-          var v = gen.Variable((isTry ? "try$$" : "assert$$") + aid, Microsoft.Boogie.Type.Bool);
+          var v = gen.Variable($"assert$${aid}", Microsoft.Boogie.Type.Bool);
           C = gen.Function(VCExpressionGenerator.NamedAssertOp, v, gen.AndSimp(v, C));
         }
 
@@ -205,7 +204,7 @@ namespace VC
         var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
 
         var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
-        if (aid != null)
+        if (aid != null && (ctxt.Options.PrintVerificationCoverage || ctxt.Options.PrintNecessaryAssumes))
         {
           var isTry = QKeyValue.FindBoolAttribute(ac.Attributes, "try");
           var v = gen.Variable((isTry ? "try$$" : "assume$$") + aid, Microsoft.Boogie.Type.Bool);

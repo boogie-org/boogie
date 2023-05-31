@@ -254,9 +254,11 @@ namespace VC
         Contract.Assert(req != null);
         Expr e = Substituter.Apply(formalProcImplSubst, req.Condition);
         AssumeCmd c = new AssumeCmd(req.tok, e);
-        // Copy any {:id ...} from the precondition to the assumption, so
-        // we can track it as a "necessary assumption".
-        ICarriesAttributes.CopyAttribute(req, "id", c);
+        if (options.PrintVerificationCoverage) {
+          // Copy any {:id ...} from the precondition to the assumption, so
+          // we can track it as a "necessary assumption".
+          ICarriesAttributes.CopyAttribute(req, "id", c);
+        }
         c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null)
@@ -319,6 +321,11 @@ namespace VC
           ensCopy.Condition = e;
           AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
           c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
+          if (options.PrintVerificationCoverage) {
+            // Copy any {:id ...} from the precondition to the assumption, so
+            // we can track it as a "necessary assumption".
+            ICarriesAttributes.CopyAttribute(ens, "id", c);
+          }
           unifiedExitBlock.Cmds.Add(c);
           if (debugWriter != null)
           {
@@ -1385,9 +1392,11 @@ namespace VC
           }
 
           var assumeCmd = new AssumeCmd(c.tok, assumption);
-          // Copy any {:id ...} from the assignment to the assumption, so
-          // we can track it as a "necessary assumption".
-          ICarriesAttributes.CopyAttribute(assign, "id", assumeCmd);
+          if (Options.PrintVerificationCoverage) {
+            // Copy any {:id ...} from the assignment to the assumption, so
+            // we can track it as a "necessary assumption".
+            ICarriesAttributes.CopyAttribute(assign, "id", assumeCmd);
+          }
           passiveCmds.Add(assumeCmd);
         }
 
