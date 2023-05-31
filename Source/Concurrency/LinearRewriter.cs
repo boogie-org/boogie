@@ -302,11 +302,12 @@ public class LinearRewriter
     
     cmdSeq.Add(CmdHelper.HavocCmd(k));
     cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), k))));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Eq(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Val(path), k), v)));
     cmdSeq.Add(CmdHelper.AssignCmd(
       CmdHelper.ExprToAssignLhs(path),
       ExprHelper.FunctionCall(lheapConstructor,
         ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.True),
-        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Val(path), k, v))));
+        Val(path))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
