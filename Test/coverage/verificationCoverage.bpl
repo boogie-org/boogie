@@ -1,7 +1,7 @@
-// RUN: %boogie "%s" > "%t"
-// RUN: %diff "%s.expect.plain" "%t"
-// RUN: %boogie -printVerificationCoverage "%s" > "%t"
-// RUN: %diff "%s.expect.coverage" "%t"
+// RUN: %boogie "%s" > "%t.plain"
+// RUN: %diff "%s.expect.plain" "%t.plain"
+// RUN: %boogie -printVerificationCoverage "%s" > "%t.coverage"
+// RUN: %diff "%s.expect.coverage" "%t.coverage"
 
 procedure testRequiresAssign(n: int)
   requires {:id "r0"} n > 0; // covered
