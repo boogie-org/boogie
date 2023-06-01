@@ -6,7 +6,7 @@
 // UNSUPPORTED: batch_mode
 // CHECK-L: (set-option :timeout 4000)
 // CHECK-L: (set-option :timeout 8000)
-// CHECK-L: (set-option :timeout 2000)
+// CHECK-L: (set-option :timeout 1000)
 procedure TestTimeouts0(in: [int]int, len: int) returns (out: [int]int)
   requires in[0] == 0 && (forall i: int :: 0 <= i ==> in[i + 1] == in[i] + 1);
   requires 0 < len;
@@ -68,7 +68,7 @@ procedure TestTimeouts2(in: [int]int, len: int) returns (out: [int]int);
   requires 0 < len;
   ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
 
-implementation {:timeLimit 2} TestTimeouts2(in: [int]int, len: int) returns (out: [int]int)
+implementation {:timeLimit 1} TestTimeouts2(in: [int]int, len: int) returns (out: [int]int)
 {
     var i : int;
 
