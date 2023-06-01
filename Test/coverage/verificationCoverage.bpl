@@ -78,9 +78,9 @@ procedure testEnsuresCaller(n: int) returns (r: int)
 {
   var x: int;
   var y: int;
-  call {:id "call1"} x := testEnsuresCallee(n+1); // covered
-  call {:id "call2"} y := testEnsuresCallee(n+1); // covered
-  r := x + y; // covered
+  call {:id "call1"} x := testEnsuresCallee(n+1); // requires and ensures covered
+  call {:id "call2"} y := testEnsuresCallee(n+1); // requires and ensures covered
+  r := {:id "xy_sum"} x + y; // covered
 }
 
 procedure obviouslyUnconstrainedCode(x: int) returns (a: int, b: int)
@@ -102,6 +102,6 @@ procedure callContradictoryFunction(x: int) returns (r: int)
   requires {:id "xpos_caller"} x > 1; // covered
   ensures {:id "caller_ensures"} r < 0; // not covered
 {
-  call {:id "call_cont"} r := contradictoryEnsuresClause(x);
+  call {:id "call_cont"} r := contradictoryEnsuresClause(x); // requires and ensures covered
   r := {:id "unreachable_assignment"} r - 1; // not covered
 }
