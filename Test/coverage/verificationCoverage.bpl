@@ -2,6 +2,7 @@
 // RUN: %diff "%s.expect.plain" "%t.plain"
 // RUN: %boogie -printVerificationCoverage "%s" > "%t.coverage"
 // RUN: %diff "%s.expect.coverage" "%t.coverage"
+// UNSUPPORTED: batch_mode
 
 procedure testRequiresAssign(n: int)
   requires {:id "r0"} n > 0; // covered
