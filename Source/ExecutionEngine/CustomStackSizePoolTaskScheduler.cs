@@ -58,18 +58,21 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     return queue.Items;
   }
   
-  private async void WorkLoop()
+  private void WorkLoop()
   {
     while (!disposeTokenSource.IsCancellationRequested)
     {
       try
       {
-        var task = await queue.Dequeue(disposeTokenSource.Token);
+        var task = queue.Dequeue(disposeTokenSource.Token).Result;
         TryExecuteTask(task);
       }
-      catch (TaskCanceledException)
+      catch (AggregateException e)
       {
-        break;
+        if (e.InnerException is TaskCanceledException)
+        {
+          break;
+        }
       }
     }
   }
@@ -79,7 +82,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     disposeTokenSource.Cancel();
     foreach (var thread in threads)
     {
-      thread.Join(TimeSpan.FromMilliseconds(100));
+      thread.Join();
     }
   }
 }
