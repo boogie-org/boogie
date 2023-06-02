@@ -112,7 +112,7 @@ namespace VC
         var assertId = QKeyValue.FindStringAttribute(ac.Attributes, "id");
         if (assertId != null && ctxt.Options.PrintVerificationCoverage)
         {
-          var v = gen.Variable($"assert$${assertId}", Microsoft.Boogie.Type.Bool);
+          var v = gen.Variable(assertId, Microsoft.Boogie.Type.Bool, VCExprVarKind.Assert);
           C = gen.Function(VCExpressionGenerator.NamedAssertOp, v, gen.AndSimp(v, C));
         }
 
@@ -207,7 +207,7 @@ namespace VC
         if (assumeId != null && ctxt.Options.PrintVerificationCoverage)
         {
           var isTry = QKeyValue.FindBoolAttribute(ac.Attributes, "try");
-          var v = gen.Variable((isTry ? "try$$" : "assume$$") + assumeId, Microsoft.Boogie.Type.Bool);
+          var v = gen.Variable(assumeId, Microsoft.Boogie.Type.Bool, isTry ? VCExprVarKind.Try : VCExprVarKind.Assume);
           expr = gen.Function(VCExpressionGenerator.NamedAssumeOp, v, gen.ImpliesSimp(v, expr));
         }
 
@@ -215,7 +215,7 @@ namespace VC
         var softWeight = QKeyValue.FindIntAttribute(ac.Attributes, "soft", 0);
         if ((soft || 0 < softWeight) && assumeId != null)
         {
-          var v = gen.Variable("soft$$" + assumeId, Microsoft.Boogie.Type.Bool);
+          var v = gen.Variable(assumeId, Microsoft.Boogie.Type.Bool, VCExprVarKind.Soft);
           expr = gen.Function(new VCExprSoftOp(Math.Max(softWeight, 1)), v, gen.ImpliesSimp(v, expr));
         }
 

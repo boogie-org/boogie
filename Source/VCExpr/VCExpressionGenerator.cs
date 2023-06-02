@@ -781,12 +781,12 @@ namespace Microsoft.Boogie
 
     // Reference to a bound or free variable
 
-    public VCExprVar Variable(string name, Type type)
+    public VCExprVar Variable(string name, Type type, VCExprVarKind kind = VCExprVarKind.Normal)
     {
       Contract.Requires(type != null);
       Contract.Requires(name != null);
       Contract.Ensures(Contract.Result<VCExprVar>() != null);
-      return new VCExprVar(name, type);
+      return new VCExprVar(name, type, kind);
     }
   }
 }

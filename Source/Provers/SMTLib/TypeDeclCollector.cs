@@ -270,10 +270,7 @@ namespace Microsoft.Boogie.SMTLib
         RegisterType(node.Type);
         string decl =
           "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
-        if (!(printedName.StartsWith("assume$$") ||
-              printedName.StartsWith("assert$$") ||
-              printedName.StartsWith("soft$$") ||
-              printedName.StartsWith("try$$")))
+        if (node.VarKind == VCExprVarKind.Normal)
         {
           AddDeclaration(decl);
         }
