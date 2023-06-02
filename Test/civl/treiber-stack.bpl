@@ -8,10 +8,10 @@ Highlights:
 - Variable "unused" tracks nodes added to the stack linear map that do
   not logically become part of the stack
 - Push made atomic first before commutativity reasoning for the pop path
-
-The final layer that transforms the stack representation into a functional
-version is not done. We expect that the proof for this layer will use
-reasoning about node reachability.
+- The final layer transforms the stack into a functional version. The proof
+  for this layer uses an "abstraction function" specified as a pure procedure.
+  The termination proof for the abstraction remains to be done. We expect that
+  this termination proof will use reasoning about node reachability.
 */
 
 datatype Treiber<T> { Treiber(top: RefNode T, stack: Lheap (Node T)) }
@@ -19,8 +19,51 @@ type RefTreiber T = Ref (Treiber T);
 
 type X; // module type parameter
 
+var {:layer 4, 5} Stack: [RefTreiber X]Vec X;
 var {:layer 0, 4} ts: Lheap (Treiber X);
 var {:layer 2, 4} unused: [RefTreiber X][RefNode X]bool;
+
+atomic action {:layer 5} AtomicPush(ref_t: RefTreiber X, x: X) returns (success: bool)
+modifies Stack;
+{
+  if (success) {
+    Stack[ref_t] := Vec_Append(Stack[ref_t], x);
+  }
+}
+yield procedure {:layer 4} Push(ref_t: RefTreiber X, x: X) returns (success: bool)
+refines AtomicPush;
+preserves call YieldInv#2(ref_t);
+{
+  call success := PushIntermediate(ref_t, x);
+  if (success) {
+    call PushStack(ref_t, x);
+  }
+  call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack->val);
+}
+
+atomic action {:layer 5} AtomicPop(ref_t: RefTreiber X) returns (success: bool, x: X)
+modifies Stack;
+{
+  var stack: Vec X;
+  stack := Stack[ref_t];
+  if (success) {
+    assume Vec_Len(stack) > 0;
+    x := Vec_Nth(stack, Vec_Len(stack) - 1);
+    Stack[ref_t] := Vec_Remove(stack);
+  }
+}
+yield procedure {:layer 4} Pop(ref_t: RefTreiber X) returns (success: bool, x: X)
+refines AtomicPop;
+preserves call YieldInv#2(ref_t);
+preserves call YieldInv#3(ref_t);
+preserves call YieldInv#4(ref_t);
+{
+  call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack->val);
+  call success, x := PopIntermediate(ref_t);
+  if (success) {
+    call PopStack(ref_t);
+  }
+}
 
 atomic action {:layer 4} AtomicPopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
 modifies ts;
@@ -187,6 +230,19 @@ yield procedure {:layer 0}
 AllocTreiber() returns (ref_t: RefTreiber X);
 refines AtomicAllocTreiber;
 
+action {:layer 4} PushStack(ref_t: RefTreiber X, x: X)
+modifies Stack;
+{
+  Stack[ref_t] := Vec_Append(Stack[ref_t], x);
+}
+
+action {:layer 4} PopStack(ref_t: RefTreiber X)
+modifies Stack;
+{
+  assert Vec_Len(Stack[ref_t]) > 0;
+  Stack[ref_t] := Vec_Remove(Stack[ref_t]);
+}
+
 action {:layer 2} AddToUnusedNodes(success: bool, ref_t: RefTreiber X, ref_n: RefNode X)
 modifies unused;
 {
@@ -213,3 +269,13 @@ invariant ts->dom[ref_t];
 invariant Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
 invariant NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
 invariant (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDomain(ts, ref_t, unused)[ts->val[ref_t]->stack->val[ref_n]->next]);
+
+function Abs(ref_n: RefNode X, stackContents: [RefNode X]Node X): Vec X;
+pure procedure AbsDefinition(ref_n: RefNode X, stackContents: [RefNode X]Node X);
+ensures Abs(ref_n, stackContents) ==
+        if ref_n == Nil() then
+        Vec_Empty() else
+        (var n := stackContents[ref_n]; Vec_Append(Abs(n->next, stackContents), n->val));
+
+yield invariant {:layer 4} YieldInv#4(ref_t: RefTreiber X);
+invariant Stack[ref_t] == (var t := ts->val[ref_t]; Abs(t->top, t->stack->val));

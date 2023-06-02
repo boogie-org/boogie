@@ -2557,6 +2557,11 @@ namespace Microsoft.Boogie
       cmds.Add(new AssignCmd(tok, assignLhss, assignRhss));
       return new StateCmd(tok, new List<Variable>(), cmds);
     }
+
+    public void ResetDesugaring()
+    {
+      desugaring = null;
+    }
   }
 
   /// <summary>
@@ -2693,9 +2698,9 @@ namespace Microsoft.Boogie
   }
 
   [ContractClass(typeof(SugaredCmdContracts))]
-  abstract public class SugaredCmd : Cmd
+  public abstract class SugaredCmd : Cmd
   {
-    private Cmd desugaring; // null until desugared
+    protected Cmd desugaring; // null until desugared
 
     public SugaredCmd(IToken /*!*/ tok)
       : base(tok)
