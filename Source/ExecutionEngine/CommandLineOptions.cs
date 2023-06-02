@@ -1508,7 +1508,10 @@ namespace Microsoft.Boogie
 
      {:id <string>}
        Assign a unique ID to an implementation to be used for verification
-       result caching (default: ""<impl. name>:0"").
+       result caching (default: ""<impl. name>:0""), or assign a unique ID
+       to a statement or contract clause for use in identifying which program
+       elements were necessary to complete verification. The latter form is
+       used by the `/printVerificationCoverage` option.
 
      {:timeLimit N}
        Set the time limit for verifying a given implementation.
@@ -1896,6 +1899,12 @@ namespace Microsoft.Boogie
                 This option is implemented by renaming variables and reordering
                 declarations in the input, and by setting solver options that have
                 similar effects.
+  /printVerificationCoverage
+                Report which program elements labeled with an `{:id ...}` attribute
+                were necessary to complete verification. Assumptions, assertions,
+                requires clauses, ensures clauses, assignments, and calls can be
+                labeled for inclusion in this report. This generalizes and replaces
+                the previous (undocumented) `/printNecessaryAssertions` option.
 
   ---- Verification-condition splitting --------------------------------------
 
