@@ -294,13 +294,16 @@ public class LinearRewriter
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var nilFunc = monomorphizer.InstantiateFunction("Nil", instantiation);
     
     var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
     var v = callCmd.Ins[1];
     var k = callCmd.Outs[0];
-    
+
     cmdSeq.Add(CmdHelper.HavocCmd(k));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Neq(k, ExprHelper.FunctionCall(nilFunc))));
     cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), k))));
     cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Eq(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Val(path), k), v)));
     cmdSeq.Add(CmdHelper.AssignCmd(

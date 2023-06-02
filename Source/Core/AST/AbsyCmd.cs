@@ -2693,11 +2693,11 @@ namespace Microsoft.Boogie
   }
 
   [ContractClass(typeof(SugaredCmdContracts))]
-  abstract public class SugaredCmd : Cmd
+  public abstract class SugaredCmd : Cmd
   {
     private Cmd desugaring; // null until desugared
 
-    public SugaredCmd(IToken /*!*/ tok)
+    public SugaredCmd(IToken tok)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -2714,6 +2714,11 @@ namespace Microsoft.Boogie
       return desugaring;
     }
 
+    public void ResetDesugaring()
+    {
+      desugaring = null;
+    }
+    
     /// <summary>
     /// This method invokes "visitor.Visit" on the desugaring, and then updates the
     /// desugaring to the result thereof.  The method's intended use is for subclasses
