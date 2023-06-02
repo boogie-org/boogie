@@ -58,9 +58,9 @@ namespace VC
       }
 
       var assume = new AssumeCmd(assrt.tok, expr);
-      if (options.PrintVerificationCoverage) {
-        (assume as ICarriesAttributes).CopyIdFrom(assrt.tok, assrt);
-      }
+      // Copy any {:id ...} from the assertion to the assumption, so
+      // we can track it while analyzing verification coverage.
+      (assume as ICarriesAttributes).CopyIdFrom(assrt.tok, assrt);
       return assume;
     }
 
@@ -733,11 +733,9 @@ namespace VC
               }
 
               b.Attributes = (QKeyValue)c.Attributes?.Clone();
-              if (Options.PrintVerificationCoverage) {
-                // Copy any {:id ...} from the invariant to the assertion that it's established, so
-                // we can track it as a "necessary assumption".
-                (b as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$established");
-              }
+              // Copy any {:id ...} from the invariant to the assertion that it's established, so
+              // we can track it while analyzing verification coverage.
+              (b as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$established");
 
               prefixOfPredicateCmdsInit.Add(b);
 
@@ -759,19 +757,15 @@ namespace VC
               }
 
               b.Attributes = (QKeyValue)c.Attributes?.Clone();
-              if (Options.PrintVerificationCoverage) {
-                // Copy any {:id ...} from the invariant to the assertion that it's maintained, so
-                // we can track it as a "necessary assumption".
-                (b as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$maintained");
-              }
+              // Copy any {:id ...} from the invariant to the assertion that it's maintained, so
+              // we can track it while analyzing verification coverage.
+              (b as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$maintained");
 
               prefixOfPredicateCmdsMaintained.Add(b);
               AssumeCmd assume = new AssumeCmd(c.tok, c.Expr);
-              if (Options.PrintVerificationCoverage) {
-                // Copy any {:id ...} from the invariant to the assumption used within the body, so
-                // we can track it as a "necessary assumption".
-                (assume as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$assume_in_body");
-              }
+              // Copy any {:id ...} from the invariant to the assumption used within the body, so
+              // we can track it while analyzing verification coverage.
+              (assume as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$assume_in_body");
 
               header.Cmds[i] = assume;
             }

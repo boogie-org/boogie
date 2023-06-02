@@ -254,11 +254,9 @@ namespace VC
         Contract.Assert(req != null);
         Expr e = Substituter.Apply(formalProcImplSubst, req.Condition);
         AssumeCmd c = new AssumeCmd(req.tok, e);
-        if (options.PrintVerificationCoverage) {
-          // Copy any {:id ...} from the precondition to the assumption, so
-          // we can track it as a "necessary assumption".
-          (c as ICarriesAttributes).CopyIdFrom(req.tok, req);
-        }
+        // Copy any {:id ...} from the precondition to the assumption, so
+        // we can track it while analyzing verification coverage.
+        (c as ICarriesAttributes).CopyIdFrom(req.tok, req);
         c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null)
@@ -321,11 +319,9 @@ namespace VC
           ensCopy.Condition = e;
           AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
           c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
-          if (options.PrintVerificationCoverage) {
-            // Copy any {:id ...} from the postcondition to the assumption, so
-            // we can track it as a "necessary assumption".
-            (c as ICarriesAttributes).CopyIdFrom(ens.tok, ens);
-          }
+          // Copy any {:id ...} from the postcondition to the assumption, so
+          // we can track it while analyzing verification coverage.
+          (c as ICarriesAttributes).CopyIdFrom(ens.tok, ens);
           unifiedExitBlock.Cmds.Add(c);
           if (debugWriter != null)
           {
@@ -1392,11 +1388,9 @@ namespace VC
           }
 
           var assumeCmd = new AssumeCmd(c.tok, assumption);
-          if (Options.PrintVerificationCoverage) {
-            // Copy any {:id ...} from the assignment to the assumption, so
-            // we can track it as a "necessary assumption".
-            (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
-          }
+          // Copy any {:id ...} from the assignment to the assumption, so
+          // we can track it while analyzing verification coverage.
+          (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
           passiveCmds.Add(assumeCmd);
         }
 
