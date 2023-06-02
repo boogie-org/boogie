@@ -143,6 +143,7 @@ function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int
 /// linear maps
 type Ref _;
 datatype Lheap<V> { Lheap(dom: [Ref V]bool, val: [Ref V]V) }
+function Nil<V>(): Ref V;
 
 function {:inline} Lheap_WellFormed<V>(l: Lheap V): bool {
     l->val == MapIte(l->dom, l->val, MapConst(Default()))

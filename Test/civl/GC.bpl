@@ -53,7 +53,7 @@ function {:inline} RootScanBarrierInv(Set:[int]bool, rootScanBarrier: int) : boo
 
 type idx = int;
 type fld = int;
-datatype obj { Nil(), Obj(id:int), Int(i:int) }
+datatype obj { Null(), Obj(id:int), Int(i:int) }
 
 function {:inline} IDLE():int { 0 }
 function {:inline} MARK():int { 1 }
@@ -114,8 +114,8 @@ axiom 0 <= numRoots;
 function {:inline} rootAddr(i:int) returns (bool) { 0 <= i && i < numRoots }
 
 const nil: obj;
-axiom nil == Nil();
-axiom memAddrAbs(Nil());
+axiom nil == Null();
+axiom memAddrAbs(Null());
 axiom (forall i:int :: memAddrAbs(Obj(i)));
 axiom (forall i:int :: !memAddrAbs(Int(i)));
 
