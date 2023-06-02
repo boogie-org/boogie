@@ -889,9 +889,9 @@ namespace Microsoft.Boogie
           return cmd;
         }
         var copyCmd = BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
-        if (copyCmd is UnpackCmd unpackCmd)
+        if (copyCmd is SugaredCmd sugaredCmd)
         {
-          unpackCmd.ResetDesugaring();
+          sugaredCmd.ResetDesugaring();
         }
         return copyCmd;
       }

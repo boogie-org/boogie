@@ -2557,11 +2557,6 @@ namespace Microsoft.Boogie
       cmds.Add(new AssignCmd(tok, assignLhss, assignRhss));
       return new StateCmd(tok, new List<Variable>(), cmds);
     }
-
-    public void ResetDesugaring()
-    {
-      desugaring = null;
-    }
   }
 
   /// <summary>
@@ -2700,9 +2695,9 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(SugaredCmdContracts))]
   public abstract class SugaredCmd : Cmd
   {
-    protected Cmd desugaring; // null until desugared
+    private Cmd desugaring; // null until desugared
 
-    public SugaredCmd(IToken /*!*/ tok)
+    public SugaredCmd(IToken tok)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -2719,6 +2714,11 @@ namespace Microsoft.Boogie
       return desugaring;
     }
 
+    public void ResetDesugaring()
+    {
+      desugaring = null;
+    }
+    
     /// <summary>
     /// This method invokes "visitor.Visit" on the desugaring, and then updates the
     /// desugaring to the result thereof.  The method's intended use is for subclasses
