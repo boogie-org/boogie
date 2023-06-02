@@ -281,19 +281,30 @@ namespace Microsoft.Boogie
       return layers.Distinct().OrderBy(l => l).ToList();
     }
 
-    public static void CopyAttribute(ICarriesAttributes src, string attr, ICarriesAttributes dest)
+    // Look for {:name string} in list of attributes.
+    public string FindStringAttribute(string name)
     {
-      var attrArgs = QKeyValue.FindAttribute(src.Attributes, kv => kv.Key == attr);
-      if (attrArgs is not null) {
-        dest.Attributes = new QKeyValue(attrArgs.tok, attrArgs.Key, attrArgs.Params, dest.Attributes);
+      return QKeyValue.FindStringAttribute(Attributes, name);
+    }
+
+    public void AddStringAttribute(IToken tok, string name, string parameter)
+    {
+      Attributes = new QKeyValue(tok, name, new List<object>() {parameter}, Attributes);
+    }
+
+    public void CopyIdFrom(IToken tok, ICarriesAttributes src)
+    {
+      var id = src.FindStringAttribute("id");
+      if (id is not null) {
+        AddStringAttribute(tok, "id", id);
       }
     }
 
-    public static void CopyStringAttributeWithSuffix(IToken tok, ICarriesAttributes src, string attr, string suffix, ICarriesAttributes dest)
+    public void CopyIdWithSuffixFrom(IToken tok, ICarriesAttributes src, string suffix)
     {
-      var arg = QKeyValue.FindStringAttribute(src.Attributes, attr);
-      if (arg is not null) {
-        dest.Attributes = new QKeyValue(tok, attr, new List<object>( ){arg + suffix}, dest.Attributes);
+      var id = src.FindStringAttribute("id");
+      if (id is not null) {
+        AddStringAttribute(tok, "id", id + suffix);
       }
     }
   }
@@ -424,13 +435,6 @@ namespace Microsoft.Boogie
       }
 
       return res;
-    }
-
-    // Look for {:name string} in list of attributes.
-    public string FindStringAttribute(string name)
-    {
-      Contract.Requires(name != null);
-      return QKeyValue.FindStringAttribute(this.Attributes, name);
     }
 
     // Look for {:name N} in list of attributes. Return false if attribute
@@ -1826,7 +1830,7 @@ namespace Microsoft.Boogie
 
     public string Checksum
     {
-      get { return FindStringAttribute("checksum"); }
+      get { return (this as ICarriesAttributes).FindStringAttribute("checksum"); }
     }
 
     string dependencyChecksum;
@@ -3632,7 +3636,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var id = FindStringAttribute("id");
+        var id = (this as ICarriesAttributes).FindStringAttribute("id");
         if (id == null)
         {
           id = Name + GetHashCode().ToString() + ":0";

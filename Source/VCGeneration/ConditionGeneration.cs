@@ -257,7 +257,7 @@ namespace VC
         if (options.PrintVerificationCoverage) {
           // Copy any {:id ...} from the precondition to the assumption, so
           // we can track it as a "necessary assumption".
-          ICarriesAttributes.CopyAttribute(req, "id", c);
+          (c as ICarriesAttributes).CopyIdFrom(req.tok, req);
         }
         c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
@@ -324,7 +324,7 @@ namespace VC
           if (options.PrintVerificationCoverage) {
             // Copy any {:id ...} from the precondition to the assumption, so
             // we can track it as a "necessary assumption".
-            ICarriesAttributes.CopyAttribute(ens, "id", c);
+            (c as ICarriesAttributes).CopyIdFrom(ens.tok, ens);
           }
           unifiedExitBlock.Cmds.Add(c);
           if (debugWriter != null)
@@ -1395,7 +1395,7 @@ namespace VC
           if (Options.PrintVerificationCoverage) {
             // Copy any {:id ...} from the assignment to the assumption, so
             // we can track it as a "necessary assumption".
-            ICarriesAttributes.CopyAttribute(assign, "id", assumeCmd);
+            (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
           }
           passiveCmds.Add(assumeCmd);
         }

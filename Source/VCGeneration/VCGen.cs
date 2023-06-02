@@ -59,7 +59,7 @@ namespace VC
 
       var assume = new AssumeCmd(assrt.tok, expr);
       if (options.PrintVerificationCoverage) {
-        ICarriesAttributes.CopyAttribute(assrt, "id", assume);
+        (assume as ICarriesAttributes).CopyIdFrom(assrt.tok, assrt);
       }
       return assume;
     }
@@ -736,7 +736,7 @@ namespace VC
               if (Options.PrintVerificationCoverage) {
                 // Copy any {:id ...} from the invariant to the assertion that it's established, so
                 // we can track it as a "necessary assumption".
-                ICarriesAttributes.CopyStringAttributeWithSuffix(c.tok, c, "id", "$established", b);
+                (b as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$established");
               }
 
               prefixOfPredicateCmdsInit.Add(b);
@@ -762,7 +762,7 @@ namespace VC
               if (Options.PrintVerificationCoverage) {
                 // Copy any {:id ...} from the invariant to the assertion that it's maintained, so
                 // we can track it as a "necessary assumption".
-                ICarriesAttributes.CopyStringAttributeWithSuffix(c.tok, c, "id", "$maintained", b);
+                (b as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$maintained");
               }
 
               prefixOfPredicateCmdsMaintained.Add(b);
@@ -770,7 +770,7 @@ namespace VC
               if (Options.PrintVerificationCoverage) {
                 // Copy any {:id ...} from the invariant to the assumption used within the body, so
                 // we can track it as a "necessary assumption".
-                ICarriesAttributes.CopyStringAttributeWithSuffix(c.tok, c, "id", "$assume_in_body", assume);
+                (assume as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$assume_in_body");
               }
 
               header.Cmds[i] = assume;
