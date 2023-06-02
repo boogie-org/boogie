@@ -673,9 +673,6 @@ namespace Microsoft.Boogie
         CleanupRequest(requestId);
       }
 
-      if (Options.PrintNecessaryAssumes && processedProgram.Program.AllCoveredElements.Any()) {
-        Options.OutputWriter.WriteLine("Necessary assume command(s): {0}", string.Join(", ", processedProgram.Program.AllCoveredElements.OrderBy(s => s)));
-      }
       if (Options.PrintVerificationCoverage && processedProgram.Program.AllCoveredElements.Any()) {
         Options.OutputWriter.WriteLine("Elements covered by verification: {0}", string.Join(", ", processedProgram.Program.AllCoveredElements.OrderBy(s => s)));
       }

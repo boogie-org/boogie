@@ -201,8 +201,7 @@ namespace Microsoft.Boogie
 
     public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
-    public bool ProduceUnsatCores => PrintNecessaryAssumes ||
-                                     PrintVerificationCoverage ||
+    public bool ProduceUnsatCores => PrintVerificationCoverage ||
                                      EnableUnSatCoreExtract == 1 ||
                                      ContractInfer && (UseUnsatCoreForContractInfer || ExplainHoudini);
 
@@ -280,12 +279,6 @@ namespace Microsoft.Boogie
     }
 
     public bool PrintAssignment  { get; set; }
-
-    // TODO(wuestholz): Add documentation for this flag.
-    public bool PrintNecessaryAssumes {
-      get => printNecessaryAssumes;
-      set => printNecessaryAssumes = value;
-    }
 
     public bool PrintVerificationCoverage {
       get => printVerificationCoverage;
@@ -551,7 +544,6 @@ namespace Microsoft.Boogie
     private bool reverseHoudiniWorklist = false;
     private bool houdiniUseCrossDependencies = false;
     private bool useUnsatCoreForContractInfer = false;
-    private bool printNecessaryAssumes = false;
     private bool printVerificationCoverage = false;
     private bool useProverEvaluate;
     private bool trustMoverTypes = false;
@@ -1305,7 +1297,6 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("crossDependencies", x => houdiniUseCrossDependencies = x) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", x => useUnsatCoreForContractInfer = x) ||
               ps.CheckBooleanFlag("printAssignment", x => PrintAssignment = x) ||
-              ps.CheckBooleanFlag("printNecessaryAssumes", x => printNecessaryAssumes = x) ||
               ps.CheckBooleanFlag("printVerificationCoverage", x => printVerificationCoverage = x) ||
               ps.CheckBooleanFlag("useProverEvaluate", x => useProverEvaluate = x) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", x => DeterministicExtractLoops = x) ||

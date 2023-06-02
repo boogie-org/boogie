@@ -204,7 +204,7 @@ namespace VC
         var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
 
         var assumeId = QKeyValue.FindStringAttribute(ac.Attributes, "id");
-        if (assumeId != null && (ctxt.Options.PrintVerificationCoverage || ctxt.Options.PrintNecessaryAssumes))
+        if (assumeId != null && ctxt.Options.PrintVerificationCoverage)
         {
           var isTry = QKeyValue.FindBoolAttribute(ac.Attributes, "try");
           var v = gen.Variable((isTry ? "try$$" : "assume$$") + assumeId, Microsoft.Boogie.Type.Bool);

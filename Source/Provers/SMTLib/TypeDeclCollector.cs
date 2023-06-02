@@ -216,7 +216,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         var exprVar = node[0] as VCExprVar;
         AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
-        if (options.PrintNecessaryAssumes || options.PrintVerificationCoverage)
+        if (options.PrintVerificationCoverage)
         {
           AddDeclaration(string.Format("(assert (! {0} :named {1}))", exprVar.Name, "aux$$" + exprVar.Name));
         }
