@@ -10,8 +10,6 @@ Highlights:
 - Push made atomic first before commutativity reasoning for the pop path
 - The final layer transforms the stack into a functional version. The proof
   for this layer uses an "abstraction function" specified as a pure procedure.
-  The termination proof for the abstraction remains to be done. We expect that
-  this termination proof will use reasoning about node reachability.
 */
 
 datatype Treiber<T> { Treiber(top: RefNode T, stack: Lheap (Node T)) }
@@ -33,6 +31,7 @@ modifies Stack;
 yield procedure {:layer 4} Push(ref_t: RefTreiber X, x: X) returns (success: bool)
 refines AtomicPush;
 preserves call YieldInv#2(ref_t);
+preserves call YieldInv#4(ref_t);
 {
   call success := PushIntermediate(ref_t, x);
   if (success) {
@@ -270,12 +269,29 @@ invariant Subset(unused[ref_t], ts->val[ref_t]->stack->dom);
 invariant NilDomain(ts, ref_t, unused)[ts->val[ref_t]->top];
 invariant (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDomain(ts, ref_t, unused)[ts->val[ref_t]->stack->val[ref_n]->next]);
 
+// Boogie currently does not support termination proofs for functions or procedures.
+// The following is a manual encoding of the termination proof for the abstraction.
 function Abs(ref_n: RefNode X, stackContents: [RefNode X]Node X): Vec X;
 pure procedure AbsDefinition(ref_n: RefNode X, stackContents: [RefNode X]Node X);
+requires Between(stackContents, ref_n, ref_n, Nil());
 ensures Abs(ref_n, stackContents) ==
         if ref_n == Nil() then
         Vec_Empty() else
         (var n := stackContents[ref_n]; Vec_Append(Abs(n->next, stackContents), n->val));
+pure procedure AbsCompute(ref_n: RefNode X, stackContents: [RefNode X]Node X) returns (stack: Vec X)
+requires Between(stackContents, ref_n, ref_n, Nil());
+{
+    var n: Node X;
+    if (ref_n == Nil()) {
+        stack := Vec_Empty();
+    } else {
+        n := stackContents[ref_n];
+        assert Between(stackContents, ref_n, n->next, Nil()); // termination argument
+        call stack := AbsCompute(n->next, stackContents);
+        stack := Vec_Append(stack, n->val);
+    }
+}
 
 yield invariant {:layer 4} YieldInv#4(ref_t: RefTreiber X);
 invariant Stack[ref_t] == (var t := ts->val[ref_t]; Abs(t->top, t->stack->val));
+invariant (var t := ts->val[ref_t]; Between(t->stack->val, t->top, t->top, Nil()));
