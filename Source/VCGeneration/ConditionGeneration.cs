@@ -322,7 +322,7 @@ namespace VC
           AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
           c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
           if (options.PrintVerificationCoverage) {
-            // Copy any {:id ...} from the precondition to the assumption, so
+            // Copy any {:id ...} from the postcondition to the assumption, so
             // we can track it as a "necessary assumption".
             (c as ICarriesAttributes).CopyIdFrom(ens.tok, ens);
           }
