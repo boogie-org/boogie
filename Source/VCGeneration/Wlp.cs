@@ -109,10 +109,10 @@ namespace VC
         }
 
         VCExpr C = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
-        var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
-        if (aid != null && ctxt.Options.PrintVerificationCoverage)
+        var assertId = QKeyValue.FindStringAttribute(ac.Attributes, "id");
+        if (assertId != null && ctxt.Options.PrintVerificationCoverage)
         {
-          var v = gen.Variable($"assert$${aid}", Microsoft.Boogie.Type.Bool);
+          var v = gen.Variable($"assert$${assertId}", Microsoft.Boogie.Type.Bool);
           C = gen.Function(VCExpressionGenerator.NamedAssertOp, v, gen.AndSimp(v, C));
         }
 
@@ -203,19 +203,19 @@ namespace VC
 
         var expr = ctxt.Ctxt.BoogieExprTranslator.Translate(ac.Expr);
 
-        var aid = QKeyValue.FindStringAttribute(ac.Attributes, "id");
-        if (aid != null && (ctxt.Options.PrintVerificationCoverage || ctxt.Options.PrintNecessaryAssumes))
+        var assumeId = QKeyValue.FindStringAttribute(ac.Attributes, "id");
+        if (assumeId != null && (ctxt.Options.PrintVerificationCoverage || ctxt.Options.PrintNecessaryAssumes))
         {
           var isTry = QKeyValue.FindBoolAttribute(ac.Attributes, "try");
-          var v = gen.Variable((isTry ? "try$$" : "assume$$") + aid, Microsoft.Boogie.Type.Bool);
+          var v = gen.Variable((isTry ? "try$$" : "assume$$") + assumeId, Microsoft.Boogie.Type.Bool);
           expr = gen.Function(VCExpressionGenerator.NamedAssumeOp, v, gen.ImpliesSimp(v, expr));
         }
 
         var soft = QKeyValue.FindBoolAttribute(ac.Attributes, "soft");
         var softWeight = QKeyValue.FindIntAttribute(ac.Attributes, "soft", 0);
-        if ((soft || 0 < softWeight) && aid != null)
+        if ((soft || 0 < softWeight) && assumeId != null)
         {
-          var v = gen.Variable("soft$$" + aid, Microsoft.Boogie.Type.Bool);
+          var v = gen.Variable("soft$$" + assumeId, Microsoft.Boogie.Type.Bool);
           expr = gen.Function(new VCExprSoftOp(Math.Max(softWeight, 1)), v, gen.ImpliesSimp(v, expr));
         }
 
