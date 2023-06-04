@@ -254,24 +254,33 @@ invariant (forall ref_n: RefNode X :: Domain(ts, ref_t, unused)[ref_n] ==> NilDo
 // Boogie currently does not support termination proofs for functions or procedures.
 // The following is a manual encoding of the termination proof for the abstraction.
 function Abs(ref_n: RefNode X, stackContents: [RefNode X]Node X): Vec X;
-pure procedure AbsDefinition(ref_n: RefNode X, stackContents: [RefNode X]Node X);
+pure procedure AbsDefinition(ref_n: RefNode X, stackContents: [RefNode X]Node X)
 requires Between(stackContents, ref_n, ref_n, Nil());
 ensures Abs(ref_n, stackContents) ==
         if ref_n == Nil() then
         Vec_Empty() else
         (var n := stackContents[ref_n]; Vec_Append(Abs(n->next, stackContents), n->val));
+{
+  var stack: Vec X;
+  call stack := AbsCompute(ref_n, stackContents);
+}
 pure procedure AbsCompute(ref_n: RefNode X, stackContents: [RefNode X]Node X) returns (stack: Vec X)
 requires Between(stackContents, ref_n, ref_n, Nil());
+ensures stack ==
+        if ref_n == Nil() then
+        Vec_Empty() else
+        (var n := stackContents[ref_n]; Vec_Append(Abs(n->next, stackContents), n->val));
+free ensures stack == Abs(ref_n, stackContents); // trusted fact justified by induction
 {
-    var n: Node X;
-    if (ref_n == Nil()) {
-        stack := Vec_Empty();
-    } else {
-        n := stackContents[ref_n];
-        assert Between(stackContents, ref_n, n->next, Nil()); // termination argument
-        call stack := AbsCompute(n->next, stackContents);
-        stack := Vec_Append(stack, n->val);
-    }
+  var n: Node X;
+  if (ref_n == Nil()) {
+      stack := Vec_Empty();
+  } else {
+      n := stackContents[ref_n];
+      assert Between(stackContents, ref_n, n->next, Nil()); // termination argument for induction
+      call stack := AbsCompute(n->next, stackContents);
+      stack := Vec_Append(stack, n->val);
+  }
 }
 
 yield invariant {:layer 4} YieldInv#4(ref_t: RefTreiber X);
