@@ -704,78 +704,79 @@ namespace VC
         List<Cmd> prefixOfPredicateCmdsMaintained = new List<Cmd>();
         for (int i = 0, n = header.Cmds.Count; i < n; i++)
         {
-          PredicateCmd a = header.Cmds[i] as PredicateCmd;
-          if (a != null)
+          PredicateCmd predicateCmd = header.Cmds[i] as PredicateCmd;
+          if (predicateCmd != null)
           {
-            if (a is AssertCmd)
+            if (predicateCmd is AssertCmd)
             {
-              AssertCmd c = (AssertCmd) a;
-              AssertCmd b = null;
+              AssertCmd assertCmd = (AssertCmd) predicateCmd;
+              AssertCmd initAssertCmd = null;
 
               if (Options.ConcurrentHoudini)
               {
                 Contract.Assert(taskID >= 0);
                 if (Options.Cho[taskID].DisableLoopInvEntryAssert)
                 {
-                  b = new LoopInitAssertCmd(c.tok, Expr.True, c);
+                  initAssertCmd = new LoopInitAssertCmd(assertCmd.tok, Expr.True, assertCmd);
                 }
                 else
                 {
-                  b = new LoopInitAssertCmd(c.tok, c.Expr, c);
+                  initAssertCmd = new LoopInitAssertCmd(assertCmd.tok, assertCmd.Expr, assertCmd);
                 }
               }
               else
               {
-                b = new LoopInitAssertCmd(c.tok, c.Expr, c);
+                initAssertCmd = new LoopInitAssertCmd(assertCmd.tok, assertCmd.Expr, assertCmd);
               }
 
-              b.Attributes = (QKeyValue)c.Attributes?.Clone();
+              initAssertCmd.Attributes = (QKeyValue)assertCmd.Attributes?.Clone();
               // Copy any {:id ...} from the invariant to the assertion that it's established, so
               // we can track it while analyzing verification coverage.
-              (b as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$established");
+              (initAssertCmd as ICarriesAttributes).CopyIdWithSuffixFrom(assertCmd.tok, assertCmd, "$established");
 
-              prefixOfPredicateCmdsInit.Add(b);
+              prefixOfPredicateCmdsInit.Add(initAssertCmd);
 
+              LoopInvMaintainedAssertCmd maintainedAssertCmd;
               if (Options.ConcurrentHoudini)
               {
                 Contract.Assert(taskID >= 0);
                 if (Options.Cho[taskID].DisableLoopInvMaintainedAssert)
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, Expr.True, c);
+                  maintainedAssertCmd = new Bpl.LoopInvMaintainedAssertCmd(assertCmd.tok, Expr.True, assertCmd);
                 }
                 else
                 {
-                  b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c);
+                  maintainedAssertCmd = new Bpl.LoopInvMaintainedAssertCmd(assertCmd.tok, assertCmd.Expr, assertCmd);
                 }
               }
               else
               {
-                b = new Bpl.LoopInvMaintainedAssertCmd(c.tok, c.Expr, c);
+                maintainedAssertCmd = new Bpl.LoopInvMaintainedAssertCmd(assertCmd.tok, assertCmd.Expr, assertCmd);
               }
 
-              b.Attributes = (QKeyValue)c.Attributes?.Clone();
+              maintainedAssertCmd.Attributes = (QKeyValue)assertCmd.Attributes?.Clone();
               // Copy any {:id ...} from the invariant to the assertion that it's maintained, so
               // we can track it while analyzing verification coverage.
-              (b as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$maintained");
+              (maintainedAssertCmd as ICarriesAttributes).CopyIdWithSuffixFrom(assertCmd.tok, assertCmd, "$maintained");
 
-              prefixOfPredicateCmdsMaintained.Add(b);
-              AssumeCmd assume = new AssumeCmd(c.tok, c.Expr);
+              prefixOfPredicateCmdsMaintained.Add(maintainedAssertCmd);
+              AssumeCmd assume = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
               // Copy any {:id ...} from the invariant to the assumption used within the body, so
               // we can track it while analyzing verification coverage.
-              (assume as ICarriesAttributes).CopyIdWithSuffixFrom(c.tok, c, "$assume_in_body");
+              (assume as ICarriesAttributes).CopyIdWithSuffixFrom(assertCmd.tok, assertCmd, "$assume_in_body");
 
               header.Cmds[i] = assume;
             }
             else
             {
-              Contract.Assert(a is AssumeCmd);
+              Contract.Assert(predicateCmd is AssumeCmd);
               if (Options.AlwaysAssumeFreeLoopInvariants)
               {
                 // Usually, "free" stuff, like free loop invariants (and the assume statements
                 // that stand for such loop invariants) are ignored on the checking side.  This
                 // command-line option changes that behavior to always assume the conditions.
-                prefixOfPredicateCmdsInit.Add(a);
-                prefixOfPredicateCmdsMaintained.Add(a);
+                prefixOfPredicateCmdsInit.Add(predicateCmd);
+                prefixOfPredicateCmdsMaintained.Add(predicateCmd);
               }
             }
           }
