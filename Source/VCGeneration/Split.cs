@@ -1273,7 +1273,7 @@ namespace VC
         }
         if (options.Trace && options.TrackVerificationCoverage) {
           run.OutputWriter.WriteLine("Covered elements: {0}",
-            string.Join(", ", reporter.CurrentCoveredElements.OrderBy(s => s)));
+            string.Join(", ", CoveredElements.OrderBy(s => s)));
         }
 
         var resourceCount = await checker.GetProverResourceCount();
@@ -1286,7 +1286,7 @@ namespace VC
           maxCounterExamples: checker.Options.ErrorLimit,
           counterExamples: Counterexamples,
           asserts: Asserts,
-          coveredElements: reporter.CurrentCoveredElements,
+          coveredElements: CoveredElements,
           resourceCount: resourceCount);
         callback.OnVCResult(result);
 
@@ -1299,6 +1299,8 @@ namespace VC
       }
 
       public List<Counterexample> Counterexamples { get; } = new();
+
+      public HashSet<string> CoveredElements { get; } = new();
 
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".

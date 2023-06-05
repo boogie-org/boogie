@@ -462,12 +462,10 @@ namespace VC
 
       Program program;
 
-      public HashSet<string> CurrentCoveredElements { get; }
-
       public override void AddCoveredElement(string id)
       {
         program.AllCoveredElements.Add(id);
-        CurrentCoveredElements.Add(id);
+        split.CoveredElements.Add(id);
       }
 
       public ErrorReporter(VCGenOptions options,
@@ -497,7 +495,6 @@ namespace VC
         this.program = program;
         this.split = split;
         this.options = options;
-        this.CurrentCoveredElements = new();
       }
 
       public override void OnModel(IList<string> labels /*!*/ /*!*/, Model model,
