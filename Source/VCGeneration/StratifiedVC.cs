@@ -197,7 +197,7 @@ namespace VC
   }
 
   // Remove the uninterpreted function calls that substitute procedure calls
-  class RemoveProcedureCalls : MutatingVCExprVisitor<bool>
+  class RemoveProcedureCalls : MutatingVcExprVisitor<bool>
   {
     HashSet<string> procNames;
 
