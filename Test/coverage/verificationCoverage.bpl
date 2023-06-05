@@ -1,6 +1,6 @@
 // RUN: %boogie "%s" > "%t.plain"
 // RUN: %diff "%s.expect.plain" "%t.plain"
-// RUN: %boogie -printVerificationCoverage "%s" > "%t.coverage"
+// RUN: %boogie -trackVerificationCoverage "%s" > "%t.coverage"
 // RUN: %diff "%s.expect.coverage" "%t.coverage"
 // UNSUPPORTED: batch_mode
 
@@ -80,6 +80,7 @@ procedure testEnsuresCaller(n: int) returns (r: int)
   var y: int;
   call {:id "call1"} x := testEnsuresCallee(n+1); // requires and ensures covered
   call {:id "call2"} y := testEnsuresCallee(n+1); // requires and ensures covered
+  assert {:id "call2_tee1"} y > 0;
   r := {:id "xy_sum"} x + y; // covered
 }
 
