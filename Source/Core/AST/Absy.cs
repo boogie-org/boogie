@@ -280,6 +280,33 @@ namespace Microsoft.Boogie
       }
       return layers.Distinct().OrderBy(l => l).ToList();
     }
+
+    // Look for {:name string} in list of attributes.
+    public string FindStringAttribute(string name)
+    {
+      return QKeyValue.FindStringAttribute(Attributes, name);
+    }
+
+    public void AddStringAttribute(IToken tok, string name, string parameter)
+    {
+      Attributes = new QKeyValue(tok, name, new List<object>() {parameter}, Attributes);
+    }
+
+    public void CopyIdFrom(IToken tok, ICarriesAttributes src)
+    {
+      var id = src.FindStringAttribute("id");
+      if (id is not null) {
+        AddStringAttribute(tok, "id", id);
+      }
+    }
+
+    public void CopyIdWithSuffixFrom(IToken tok, ICarriesAttributes src, string suffix)
+    {
+      var id = src.FindStringAttribute("id");
+      if (id is not null) {
+        AddStringAttribute(tok, "id", id + suffix);
+      }
+    }
   }
 
   [ContractClassFor(typeof(Absy))]
@@ -408,13 +435,6 @@ namespace Microsoft.Boogie
       }
 
       return res;
-    }
-
-    // Look for {:name string} in list of attributes.
-    public string FindStringAttribute(string name)
-    {
-      Contract.Requires(name != null);
-      return QKeyValue.FindStringAttribute(this.Attributes, name);
     }
 
     // Look for {:name N} in list of attributes. Return false if attribute
@@ -1810,7 +1830,7 @@ namespace Microsoft.Boogie
 
     public string Checksum
     {
-      get { return FindStringAttribute("checksum"); }
+      get { return (this as ICarriesAttributes).FindStringAttribute("checksum"); }
     }
 
     string dependencyChecksum;
@@ -3616,7 +3636,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var id = FindStringAttribute("id");
+        var id = (this as ICarriesAttributes).FindStringAttribute("id");
         if (id == null)
         {
           id = Name + GetHashCode().ToString() + ":0";

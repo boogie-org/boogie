@@ -21,6 +21,7 @@
     <ProjectReference Include="..\Houdini\Houdini.csproj" />
     <ProjectReference Include="..\Model\Model.csproj" />
     <ProjectReference Include="..\VCGeneration\VCGeneration.csproj" />
+    <ProjectReference Include="..\Provers\SMTLib\SMTLib.csproj" />
   </ItemGroup>
 
 </Project>

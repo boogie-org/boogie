@@ -212,11 +212,11 @@ namespace Microsoft.Boogie.SMTLib
         AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
         AddDeclaration(string.Format("(assert-soft {0} :weight {1})", exprVar.Name, ((VCExprSoftOp) node.Op).Weight));
       }
-      else if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
+      else if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp) || node.Op.Equals(VCExpressionGenerator.NamedAssertOp))
       {
         var exprVar = node[0] as VCExprVar;
         AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
-        if (options.PrintNecessaryAssumes)
+        if (options.TrackVerificationCoverage)
         {
           AddDeclaration(string.Format("(assert (! {0} :named {1}))", exprVar.Name, "aux$$" + exprVar.Name));
         }
@@ -270,8 +270,7 @@ namespace Microsoft.Boogie.SMTLib
         RegisterType(node.Type);
         string decl =
           "(declare-fun " + printedName + " () " + TypeToString(node.Type) + ")";
-        if (!(printedName.StartsWith("assume$$") || printedName.StartsWith("soft$$") ||
-              printedName.StartsWith("try$$")))
+        if (node.VarKind == VCExprVarKind.Normal)
         {
           AddDeclaration(decl);
         }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -50,7 +51,7 @@ namespace Microsoft.Boogie.VCExprAST
     private string skolemConstantNamePrefix;
     internal VCExpressionGenerator vcExprGen;
     private Boogie2VCExprTranslator exprTranslator;
-    internal static Dictionary<string, Type> labelToType = new();
+    internal static ConcurrentDictionary<string, Type> labelToType = new();
 
     public static VCExpr Instantiate(Implementation impl, VCExpressionGenerator vcExprGen, Boogie2VCExprTranslator exprTranslator, VCExpr vcExpr)
     {

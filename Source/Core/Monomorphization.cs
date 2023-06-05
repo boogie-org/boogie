@@ -13,7 +13,7 @@ namespace Microsoft.Boogie
 
     public static bool DoesTypeCtorDeclNeedMonomorphization(TypeCtorDecl typeCtorDecl)
     {
-      return typeCtorDecl.Arity > 0 && typeCtorDecl.FindStringAttribute("builtin") == null;
+      return typeCtorDecl.Arity > 0 && (typeCtorDecl as ICarriesAttributes).FindStringAttribute("builtin") == null;
     }
 
     public static bool IsMonomorphic(Program program)

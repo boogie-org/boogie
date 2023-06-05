@@ -223,18 +223,18 @@ namespace Microsoft.Boogie.SMTLib
               if (resp.Name != "")
               {
                 usedNamedAssumes.Add(resp.Name);
-                if (libOptions.PrintNecessaryAssumes)
+                if (libOptions.TrackVerificationCoverage)
                 {
-                  reporter.AddNecessaryAssume(resp.Name.Substring("aux$$assume$$".Length));
+                  reporter.AddCoveredElement(resp.Name.Substring("aux$$assume$$".Length));
                 }
               }
 
               foreach (var arg in resp.Arguments)
               {
                 usedNamedAssumes.Add(arg.Name);
-                if (libOptions.PrintNecessaryAssumes)
+                if (libOptions.TrackVerificationCoverage)
                 {
-                  reporter.AddNecessaryAssume(arg.Name.Substring("aux$$assume$$".Length));
+                  reporter.AddCoveredElement(arg.Name.Substring("aux$$assume$$".Length));
                 }
               }
             }
