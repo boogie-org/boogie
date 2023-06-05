@@ -3720,7 +3720,7 @@ namespace Microsoft.Boogie
       Dictionary<Variable, Expr> substMapBound = new Dictionary<Variable, Expr>();
       List<Variable> /*!*/
         tempVars = new List<Variable>();
-      string id = (this as ICarriesAttributes).FindStringAttribute("id");
+      string callId = (this as ICarriesAttributes).FindStringAttribute("id");
 
       // proc P(ins) returns (outs)
       //   requires Pre
@@ -3849,8 +3849,8 @@ namespace Microsoft.Boogie
             }
 
             // Do this after copying the attributes so it doesn't get overwritten
-            if (id is not null) {
-              (a as ICarriesAttributes).CopyIdWithSuffixFrom(tok, req,  $"${id}$requires");
+            if (callId is not null) {
+              (a as ICarriesAttributes).CopyIdWithSuffixFrom(tok, req,  $"${callId}$requires");
             }
 
             a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
@@ -3865,8 +3865,8 @@ namespace Microsoft.Boogie
             a = new AssumeCmd(req.tok, Substituter.Apply(s, req.Condition));
           Contract.Assert(a != null);
           // These probably won't have IDs, but copy if they do.
-          if (id is not null) {
-            (a as ICarriesAttributes).CopyIdWithSuffixFrom(tok, req, $"${id}$requires_assumed");
+          if (callId is not null) {
+            (a as ICarriesAttributes).CopyIdWithSuffixFrom(tok, req, $"${callId}$requires_assumed");
           }
 
           newBlockBody.Add(a);
@@ -4031,8 +4031,8 @@ namespace Microsoft.Boogie
 
         #endregion
 
-        if (id is not null) {
-          (assume as ICarriesAttributes).CopyIdWithSuffixFrom(tok, e, $"${id}$ensures");
+        if (callId is not null) {
+          (assume as ICarriesAttributes).CopyIdWithSuffixFrom(tok, e, $"${callId}$ensures");
         }
 
         newBlockBody.Add(assume);
@@ -4052,8 +4052,8 @@ namespace Microsoft.Boogie
             cout_exp = new IdentifierExpr(cce.NonNull(couts[i]).tok, cce.NonNull(couts[i]));
           Contract.Assert(cout_exp != null);
           AssignCmd assign = Cmd.SimpleAssign(param_i.tok, cce.NonNull(this.Outs[i]), cout_exp);
-          if (id is not null) {
-            Attributes = new QKeyValue(param_i.tok, "id", new List<object>(){ $"{id}$out{i}" }, Attributes);
+          if (callId is not null) {
+            Attributes = new QKeyValue(param_i.tok, "id", new List<object>(){ $"{callId}$out{i}" }, Attributes);
           }
           newBlockBody.Add(assign);
         }
