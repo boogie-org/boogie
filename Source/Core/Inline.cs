@@ -865,11 +865,11 @@ namespace Microsoft.Boogie
       {
         Contract.Requires(cmd != null);
         Contract.Ensures(Contract.Result<TransferCmd>() != null);
-        if (cmd is GotoCmd gotocmd)
+        if (cmd is GotoCmd gotoCmd)
         {
-          Contract.Assert(gotocmd.labelNames != null);
+          Contract.Assert(gotoCmd.labelNames != null);
           List<String> labels = new List<String>();
-          labels.AddRange(gotocmd.labelNames);
+          labels.AddRange(gotoCmd.labelNames);
           return new GotoCmd(cmd.tok, labels);
         }
         else if (cmd is ReturnExprCmd returnExprCmd)
@@ -888,7 +888,12 @@ namespace Microsoft.Boogie
         {
           return cmd;
         }
-        return BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
+        var copyCmd = BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
+        if (copyCmd is SugaredCmd sugaredCmd)
+        {
+          sugaredCmd.ResetDesugaring();
+        }
+        return copyCmd;
       }
 
       public Expr CopyExpr(Expr expr)

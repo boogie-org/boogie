@@ -2693,11 +2693,11 @@ namespace Microsoft.Boogie
   }
 
   [ContractClass(typeof(SugaredCmdContracts))]
-  abstract public class SugaredCmd : Cmd
+  public abstract class SugaredCmd : Cmd
   {
     private Cmd desugaring; // null until desugared
 
-    public SugaredCmd(IToken /*!*/ tok)
+    public SugaredCmd(IToken tok)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -2714,6 +2714,11 @@ namespace Microsoft.Boogie
       return desugaring;
     }
 
+    public void ResetDesugaring()
+    {
+      desugaring = null;
+    }
+    
     /// <summary>
     /// This method invokes "visitor.Visit" on the desugaring, and then updates the
     /// desugaring to the result thereof.  The method's intended use is for subclasses
@@ -3300,13 +3305,8 @@ namespace Microsoft.Boogie
       // checking calls from atomic actions need type information, hence postponed to type checking
     }
 
-    private List<LayerRange> TypecheckCallCmdInYieldProcedureDecl(TypecheckingContext tc)
+    private void TypecheckCallCmdInYieldProcedureDecl(YieldProcedureDecl callerDecl, TypecheckingContext tc)
     {
-      if (tc.Proc is not YieldProcedureDecl callerDecl)
-      {
-        return null;
-      }
-
       var callerModifiedVars = new HashSet<Variable>(callerDecl.ModifiedVars);
 
       void CheckModifies(IEnumerable<Variable> modifiedVars)
@@ -3319,34 +3319,6 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, $"modified variable does not appear in modifies clause of mover procedure: {v.Name}");
         }
-      }
-      
-      LayerRange FormalLayerRange(Variable formal)
-      {
-        LayerRange formalLayerRange;
-        switch (Proc)
-        {
-          case YieldInvariantDecl yieldInvariantDecl:
-            formalLayerRange = new LayerRange(yieldInvariantDecl.Layer);
-            break;
-          case ActionDecl actionDecl:
-            formalLayerRange = new LayerRange(actionDecl.LayerRange.LowerLayer);
-            break;
-          case YieldProcedureDecl yieldProcedureDecl:
-          {
-            formalLayerRange = formal.LayerRange;
-            if (!yieldProcedureDecl.HasMoverType && yieldProcedureDecl.VisibleFormals.Contains(formal))
-            {
-              formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
-            }
-            break;
-          }
-          default:
-            Debug.Assert(Proc.IsPure);
-            formalLayerRange = new LayerRange(Layers[0]);
-            break;
-        }
-        return formalLayerRange;
       }
 
       // check layers
@@ -3510,25 +3482,6 @@ namespace Microsoft.Boogie
           }
         }
       }
-      
-      for (int i = 0; i < Proc.OutParams.Count; i++)
-      {
-        var formal = Proc.OutParams[i];
-        var actual = Outs[i];
-        if (actual.Decl is GlobalVariable)
-        {
-          tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
-        }
-        else
-        {
-          var formalLayerRange = FormalLayerRange(formal);
-          if (!actual.Decl.LayerRange.Subset(formalLayerRange))
-          {
-            tc.Error(this, $"variable must be available only within layers in {formalLayerRange}: {actual.Decl.Name}");
-          }
-        }
-      }
-      return Proc.InParams.Select(FormalLayerRange).ToList();
     }
 
     private void TypecheckCallCmdInActionDecl(TypecheckingContext tc)
@@ -3621,13 +3574,35 @@ namespace Microsoft.Boogie
 
       (this as ICarriesAttributes).TypecheckAttributes(tc);
 
-      var errorCount = tc.ErrorCount;
-      List<LayerRange> expectedLayerRanges = TypecheckCallCmdInYieldProcedureDecl(tc);
-      if (errorCount < tc.ErrorCount)
+      List<LayerRange> expectedLayerRanges = null;
+      if (tc.Proc is YieldProcedureDecl callerDecl)
       {
-        return;
+        var errorCount = tc.ErrorCount;
+        TypecheckCallCmdInYieldProcedureDecl(callerDecl, tc);
+        if (errorCount < tc.ErrorCount)
+        {
+          return;
+        }
+        for (int i = 0; i < Proc.OutParams.Count; i++)
+        {
+          var formal = Proc.OutParams[i];
+          var actual = Outs[i];
+          if (actual.Decl is GlobalVariable)
+          {
+            tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
+          }
+          else
+          {
+            var formalLayerRange = FormalLayerRange(callerDecl, formal);
+            if (!actual.Decl.LayerRange.Subset(formalLayerRange))
+            {
+              tc.Error(this, $"variable must be available only within layers in {formalLayerRange}: {actual.Decl.Name}");
+            }
+          }
+        }
+        expectedLayerRanges = Proc.InParams.Select(formal => FormalLayerRange(callerDecl, formal)).ToList();
       }
-      
+
       // typecheck in-parameters
       for (int i = 0; i < Ins.Count; i++)
       {
@@ -3692,6 +3667,34 @@ namespace Microsoft.Boogie
         actualTypeParams);
 
       TypecheckCallCmdInActionDecl(tc);
+    }
+
+    private LayerRange FormalLayerRange(YieldProcedureDecl callerDecl, Variable calleeFormal)
+    {
+      LayerRange formalLayerRange;
+      switch (Proc)
+      {
+        case YieldInvariantDecl yieldInvariantDecl:
+          formalLayerRange = new LayerRange(yieldInvariantDecl.Layer);
+          break;
+        case ActionDecl actionDecl:
+          formalLayerRange = new LayerRange(actionDecl.LayerRange.LowerLayer);
+          break;
+        case YieldProcedureDecl yieldProcedureDecl:
+        {
+          formalLayerRange = calleeFormal.LayerRange;
+          if (!yieldProcedureDecl.HasMoverType && yieldProcedureDecl.VisibleFormals.Contains(calleeFormal))
+          {
+            formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
+          }
+          break;
+        }
+        default:
+          Debug.Assert(Proc.IsPure);
+          formalLayerRange = new LayerRange(Layers[0]);
+          break;
+      }
+      return formalLayerRange;
     }
 
     private IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ TypeParamSubstitution()

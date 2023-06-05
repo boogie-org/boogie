@@ -4,7 +4,6 @@
 
 datatype Node<T> { Node(next: RefNode T, val: T) }
 type RefNode T = Ref (Node T);
-function Nil<T>(): RefNode T;
 
 function {:inline} Empty<T>(): [RefNode T]bool
 {
