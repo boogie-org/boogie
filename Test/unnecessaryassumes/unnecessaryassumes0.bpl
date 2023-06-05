@@ -1,5 +1,5 @@
 // We use boogie instead of parallel-boogie here to fix the order of the output from /printVerificationCoverage
-// RUN: %boogie /printVerificationCoverage "%s" > "%t"
+// RUN: %boogie /trackVerificationCoverage "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure test0(n: int)

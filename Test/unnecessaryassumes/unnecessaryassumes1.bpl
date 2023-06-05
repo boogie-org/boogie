@@ -1,5 +1,5 @@
-// We use boogie instead of parallel-boogie here to fix the order of the output from /printVerificationCoverage
-// RUN: %boogie /printVerificationCoverage "%s" > "%t"
+// We use boogie instead of parallel-boogie here to fix the order of the output from /trackVerificationCoverage
+// RUN: %boogie /trackVerificationCoverage "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // UNSUPPORTED: batch_mode
 
