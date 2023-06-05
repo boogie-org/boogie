@@ -11,6 +11,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Microsoft.Boogie.VCExprAST;
 using VC;
 using Set = Microsoft.Boogie.GSet<object>;
 
@@ -1099,7 +1100,7 @@ namespace VC
     /// In that case, it remembers the incarnation map BEFORE the havoc.
     /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary>
-    protected void TurnIntoPassiveCmd(TextWriter traceWriter, Cmd c, Block enclosingBlock, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
+    private void TurnIntoPassiveCmd(TextWriter traceWriter, Cmd c, Block enclosingBlock, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
       List<Cmd> passiveCmds, ModelViewInfo mvInfo)
     {
       Contract.Requires(c != null);
@@ -1110,373 +1111,21 @@ namespace VC
       Contract.Requires(mvInfo != null);
 
       AddDebugInfo(c, incarnationMap, passiveCmds);
-      Substitution incarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
+      var incarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
 
-      Microsoft.Boogie.VCExprAST.QuantifierInstantiationEngine.SubstituteIncarnationInInstantiationSources(c, incarnationSubst);
+      QuantifierInstantiationEngine.SubstituteIncarnationInInstantiationSources(c, incarnationSubst);
 
-      #region assert/assume P |--> assert/assume P[x := in(x)], out := in
-
-      if (c is PredicateCmd)
+      if (c is PredicateCmd predicateCmd)
       {
-        Contract.Assert(c is AssertCmd || c is AssumeCmd); // otherwise, unexpected PredicateCmd type
-
-        PredicateCmd pc = (PredicateCmd) c.Clone();
-        Contract.Assert(pc != null);
-
-        QKeyValue current = pc.Attributes;
-        while (current != null)
-        {
-          if (current.Key == "minimize" || current.Key == "maximize")
-          {
-            Contract.Assume(current.Params.Count == 1);
-            var param = current.Params[0] as Expr;
-            Contract.Assume(param != null && (param.Type.IsInt || param.Type.IsReal || param.Type.IsBv));
-            current.ClearParams();
-            current.AddParam(Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, param));
-          }
-
-          if (current.Key == "verified_under")
-          {
-            Contract.Assume(current.Params.Count == 1);
-            var param = current.Params[0] as Expr;
-            Contract.Assume(param != null && param.Type.IsBool);
-            current.ClearParams();
-            current.AddParam(Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, param));
-          }
-
-          current = current.Next;
-        }
-
-        Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
-        if (Options.ModelViewFile != null && pc is AssumeCmd captureStateAssumeCmd)
-        {
-          string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
-          if (description != null)
-          {
-            if (!mvInfo.BlockToCapturePointIndex.TryGetValue(enclosingBlock, out var points)) {
-              points = new List<(AssumeCmd, ModelViewInfo.Mapping)>();
-              mvInfo.BlockToCapturePointIndex[enclosingBlock] = points;
-            }
-            var mapping = new ModelViewInfo.Mapping(description, new Dictionary<Variable, Expr>(incarnationMap));
-            points.Add((captureStateAssumeCmd, mapping));
-          }
-        }
-
-        Contract.Assert(copy != null);
-        var dropCmd = false;
-        var relevantAssumpVars = currentImplementation != null
-          ? currentImplementation.RelevantInjectedAssumptionVariables(incarnationMap)
-          : new List<LocalVariable>();
-        var relevantDoomedAssumpVars = currentImplementation != null
-          ? currentImplementation.RelevantDoomedInjectedAssumptionVariables(incarnationMap)
-          : new List<LocalVariable>();
-        var checksum = pc.Checksum;
-        if (pc is AssertCmd)
-        {
-          var ac = (AssertCmd) pc;
-          ac.OrigExpr = ac.Expr;
-          Contract.Assert(ac.IncarnationMap == null);
-          ac.IncarnationMap = (Dictionary<Variable, Expr>) cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
-
-          var subsumption = Wlp.Subsumption(Options, ac);
-          if (relevantDoomedAssumpVars.Any())
-          {
-            TraceCachingAction(traceWriter, pc, CachingAction.DoNothingToAssert);
-          }
-          else if (currentImplementation != null
-                   && currentImplementation.HasCachedSnapshot
-                   && checksum != null
-                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
-                   && !currentImplementation.IsErrorChecksumInCachedSnapshot(checksum))
-          {
-            if (!currentImplementation.AnyErrorsInCachedSnapshot
-                && currentImplementation.InjectedAssumptionVariables.Count == 1
-                && relevantAssumpVars.Count == 1)
-            {
-              TraceCachingAction(traceWriter, pc, CachingAction.MarkAsPartiallyVerified);
-            }
-            else
-            {
-              var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out var isTrue);
-              TraceCachingAction(traceWriter, pc,
-                !isTrue ? CachingAction.MarkAsPartiallyVerified : CachingAction.MarkAsFullyVerified);
-              var litExpr = ac.Expr as LiteralExpr;
-              if (litExpr == null || !litExpr.IsTrue)
-              {
-                ac.MarkAsVerifiedUnder(assmVars);
-              }
-              else
-              {
-                dropCmd = true;
-              }
-            }
-          }
-          else if (currentImplementation != null
-                   && currentImplementation.HasCachedSnapshot
-                   && relevantAssumpVars.Count == 0
-                   && checksum != null
-                   && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
-                   && currentImplementation.IsErrorChecksumInCachedSnapshot(checksum))
-          {
-            TraceCachingAction(traceWriter, pc, CachingAction.RecycleError);
-            ac.MarkAsVerifiedUnder(Expr.True);
-            currentImplementation.AddRecycledFailingAssertion(ac);
-            pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(),
-              pc.Attributes);
-          }
-          else
-          {
-            TraceCachingAction(traceWriter, pc, CachingAction.DoNothingToAssert);
-          }
-        }
-        else if (pc is AssumeCmd
-                 && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot")
-                 && pc.SugaredCmdChecksum != null)
-        {
-          if (!relevantDoomedAssumpVars.Any()
-              && currentImplementation.HasCachedSnapshot
-              && currentImplementation.IsAssertionChecksumInCachedSnapshot(pc.SugaredCmdChecksum)
-              && !currentImplementation.IsErrorChecksumInCachedSnapshot(pc.SugaredCmdChecksum))
-          {
-            var assmVars = currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out var isTrue);
-            if (!isTrue)
-            {
-              copy = LiteralExpr.Imp(assmVars, copy);
-              TraceCachingAction(traceWriter, pc, CachingAction.MarkAsPartiallyVerified);
-            }
-            else
-            {
-              TraceCachingAction(traceWriter, pc, CachingAction.MarkAsFullyVerified);
-            }
-          }
-          else
-          {
-            TraceCachingAction(traceWriter, pc, CachingAction.DropAssume);
-            dropCmd = true;
-          }
-        }
-        else if (pc is AssumeCmd && QKeyValue.FindBoolAttribute(pc.Attributes, "assumption_variable_initialization"))
-        {
-          var identExpr = pc.Expr as IdentifierExpr;
-          if (identExpr != null && identExpr.Decl != null && !incarnationMap.ContainsKey(identExpr.Decl))
-          {
-            incarnationMap[identExpr.Decl] = LiteralExpr.True;
-            dropCmd = true;
-          }
-        }
-
-        pc.Expr = copy;
-        if (!dropCmd)
-        {
-          passiveCmds.Add(pc);
-        }
-      }
-
-      #endregion
-
-      #region x1 := E1, x2 := E2, ... |--> assume x1' = E1[in] & x2' = E2[in], out := in( x |-> x' ) [except as noted below]
-
-      else if (c is AssignCmd)
+        PacifyPredicateCmd(traceWriter, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, predicateCmd, incarnationSubst);
+      } else if (c is AssignCmd assignCmd)
       {
-        AssignCmd assign = ((AssignCmd) c).AsSimpleAssignCmd; // first remove map assignments
-        Contract.Assert(assign != null);
-
-        #region Substitute all variables in E with the current map
-
-        List<Expr> copies = new List<Expr>();
-        foreach (Expr e in assign.Rhss)
-        {
-          Contract.Assert(e != null);
-          copies.Add(Substituter.ApplyReplacingOldExprs(incarnationSubst,
-            oldFrameSubst,
-            e));
-        }
-
-        #endregion
-
-        List<Expr /*!>!*/> assumptions = new List<Expr>();
-        // it might be too slow to create a new dictionary each time ...
-        IDictionary<Variable, Expr> newIncarnationMappings =
-          new Dictionary<Variable, Expr>();
-
-        for (int i = 0; i < assign.Lhss.Count; ++i)
-        {
-          IdentifierExpr lhsIdExpr =
-            cce.NonNull((SimpleAssignLhs) assign.Lhss[i]).AssignedVariable;
-          Variable lhs = cce.NonNull(lhsIdExpr.Decl);
-          Contract.Assert(lhs != null);
-          Expr rhs = assign.Rhss[i];
-          Contract.Assert(rhs != null);
-
-          // don't create incarnations for assignments of literals or single variables.
-          if (rhs is LiteralExpr)
-          {
-            incarnationMap[lhs] = rhs;
-          }
-          else if (rhs is IdentifierExpr)
-          {
-            IdentifierExpr ie = (IdentifierExpr) rhs;
-            if (incarnationMap.ContainsKey(cce.NonNull(ie.Decl)))
-            {
-              newIncarnationMappings[lhs] = cce.NonNull((Expr) incarnationMap[ie.Decl]);
-            }
-            else
-            {
-              newIncarnationMappings[lhs] = ie;
-            }
-          }
-          else
-          {
-            IdentifierExpr x_prime_exp = null;
-
-            #region Make a new incarnation, x', for variable x, but only if x is *not* already an incarnation
-
-            if (lhs is Incarnation)
-            {
-              // incarnations are already written only once, no need to make an incarnation of an incarnation
-              x_prime_exp = lhsIdExpr;
-            }
-            else
-            {
-              Variable v = CreateIncarnation(lhs, c);
-              x_prime_exp = new IdentifierExpr(lhsIdExpr.tok, v);
-              newIncarnationMappings[lhs] = x_prime_exp;
-            }
-
-            #endregion
-
-            var nAryExpr = copies[i] as NAryExpr;
-            if (nAryExpr != null)
-            {
-              var binOp = nAryExpr.Fun as BinaryOperator;
-              if (binOp != null
-                  && binOp.Op == BinaryOperator.Opcode.And)
-              {
-                var arg0 = nAryExpr.Args[0] as LiteralExpr;
-                var arg1 = nAryExpr.Args[1] as LiteralExpr;
-                if ((arg0 != null && arg0.IsTrue) || (arg1 != null && arg1.IsFalse))
-                {
-                  // Replace the expressions "true && arg1" or "arg0 && false" by "arg1".
-                  copies[i] = nAryExpr.Args[1];
-                }
-              }
-            }
-
-            #region Create an assume command with the new variable
-
-            assumptions.Add(TypedExprEq(x_prime_exp, copies[i],
-              x_prime_exp.Decl != null && x_prime_exp.Decl.Name.Contains("a##cached##")));
-
-            #endregion
-          }
-        }
-
-        foreach (KeyValuePair<Variable, Expr> pair in newIncarnationMappings)
-        {
-          Contract.Assert(pair.Key != null && pair.Value != null);
-          incarnationMap[pair.Key] = pair.Value;
-        }
-
-        if (assumptions.Count > 0)
-        {
-          Expr assumption = assumptions[0];
-
-          for (int i = 1; i < assumptions.Count; ++i)
-          {
-            Contract.Assert(assumption != null);
-            assumption = Expr.And(assumption, assumptions[i]);
-          }
-
-          var assumeCmd = new AssumeCmd(c.tok, assumption);
-          // Copy any {:id ...} from the assignment to the assumption, so
-          // we can track it while analyzing verification coverage.
-          (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
-          passiveCmds.Add(assumeCmd);
-        }
-
-        if (currentImplementation != null
-            && currentImplementation.HasCachedSnapshot
-            && !currentImplementation.AnyErrorsInCachedSnapshot
-            && currentImplementation.DoomedInjectedAssumptionVariables.Count == 0
-            && currentImplementation.InjectedAssumptionVariables.Count == 1
-            && assign.Lhss.Count == 1)
-        {
-          var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
-          if (identExpr != null && identExpr.Decl != null &&
-              QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") &&
-              incarnationMap.TryGetValue(identExpr.Decl, out var incarnation))
-          {
-            TraceCachingAction(traceWriter, assign, CachingAction.AssumeNegationOfAssumptionVariable);
-            passiveCmds.Add(new AssumeCmd(c.tok, Expr.Not(incarnation)));
-          }
-        }
+        PacifyAssignCmd(traceWriter, incarnationMap, oldFrameSubst, passiveCmds, assignCmd, incarnationSubst);
       }
-
-      #endregion
-
-      #region havoc w |--> assume whereClauses, out := in( w |-> w' )
-
-      else if (c is HavocCmd)
+      else if (c is HavocCmd hc)
       {
-        if (this.preHavocIncarnationMap == null
-        ) // Save a copy of the incarnation map (at the top of a sequence of havoc statements)
-        {
-          this.preHavocIncarnationMap = new Dictionary<Variable, Expr>(incarnationMap);
-        }
-
-        HavocCmd hc = (HavocCmd) c;
-        Contract.Assert(c != null);
-        // If an assumption variable for postconditions is included here, it must have been assigned within a loop.
-        // We do not need to havoc it if we have performed a modular proof of the loop (i.e., using only the loop
-        // invariant) in the previous snapshot and, consequently, the corresponding assumption did not affect the
-        // anything after the loop. We can achieve this by simply not updating/adding it in the incarnation map.
-        List<IdentifierExpr> havocVars = hc.Vars.Where(v =>
-            !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##cached##")))
-          .ToList();
-        // First, compute the new incarnations
-        foreach (IdentifierExpr ie in havocVars)
-        {
-          Contract.Assert(ie != null);
-          if (!(ie.Decl is Incarnation))
-          {
-            Variable x = cce.NonNull(ie.Decl);
-            Variable x_prime = CreateIncarnation(x, c);
-            incarnationMap[x] = new IdentifierExpr(x_prime.tok, x_prime);
-          }
-        }
-
-        // Then, perform the assume of the where clauses, using the updated incarnations
-        Substitution updatedIncarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
-        foreach (IdentifierExpr ie in havocVars)
-        {
-          Contract.Assert(ie != null);
-          if (!(ie.Decl is Incarnation))
-          {
-            Variable x = cce.NonNull(ie.Decl);
-            Expr w = x.TypedIdent.WhereExpr;
-            if (w != null)
-            {
-              Expr copy = Substituter.ApplyReplacingOldExprs(updatedIncarnationSubst, oldFrameSubst, w);
-              passiveCmds.Add(new AssumeCmd(c.tok, copy));
-            }
-          }
-        }
-
-        // Add the following assume-statement for each assumption variable 'v', where 'v_post' is the new incarnation and 'v_pre' is the old one:
-        // assume v_post ==> v_pre;
-        foreach (IdentifierExpr ie in havocVars)
-        {
-          if (QKeyValue.FindBoolAttribute(ie.Decl.Attributes, "assumption"))
-          {
-            var preInc = (Expr) (preHavocIncarnationMap[ie.Decl].Clone());
-            var postInc = (Expr) (incarnationMap[ie.Decl].Clone());
-            passiveCmds.Add(new AssumeCmd(c.tok, Expr.Imp(postInc, preInc)));
-          }
-        }
+        PacifyHavocCmd(incarnationMap, oldFrameSubst, passiveCmds, hc);
       }
-
-      #endregion
-
       else if (c is CommentCmd)
       {
         // comments are just for debugging and don't affect verification
@@ -1489,54 +1138,416 @@ namespace VC
       }
       else if (c is StateCmd st)
       {
-        this.preHavocIncarnationMap = null; // we do not need to remember the previous incarnations
-
-        // account for any where clauses among the local variables
-        foreach (Variable v in st.Locals)
-        {
-          Contract.Assert(v != null);
-          Expr w = v.TypedIdent.WhereExpr;
-          if (w != null)
-          {
-            passiveCmds.Add(new AssumeCmd(v.tok, w));
-          }
-        }
-
-        // do the sub-commands
-        foreach (Cmd s in st.Cmds)
-        {
-          Contract.Assert(s != null);
-          TurnIntoPassiveCmd(traceWriter, s, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
-        }
-
-        // remove the local variables from the incarnation map
-        foreach (Variable v in st.Locals)
-        {
-          Contract.Assert(v != null);
-          incarnationMap.Remove(v);
-        }
+        PacifyStateCmd(traceWriter, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, st);
       }
-
-      #region There shouldn't be any other types of commands at this point
-
       else
       {
         Debug.Fail(
           "Internal Error: Passive transformation handed a command that is not one of assert,assume,havoc,assign.");
-      }
+      } 
 
-      #endregion
-
-
-      #region We remember if we have put an havoc statement into a passive form
-
+      // We remember if we have put an havoc statement into a passive form
       if (!(c is HavocCmd))
       {
         this.preHavocIncarnationMap = null;
       }
       // else: it has already been set by the case for the HavocCmd
+    }
+
+    private void PacifyStateCmd(TextWriter traceWriter, Block enclosingBlock, Dictionary<Variable, Expr> incarnationMap,
+      Substitution oldFrameSubst, List<Cmd> passiveCmds, ModelViewInfo mvInfo, StateCmd st)
+    {
+      this.preHavocIncarnationMap = null; // we do not need to remember the previous incarnations
+
+      // account for any where clauses among the local variables
+      foreach (Variable v in st.Locals)
+      {
+        Contract.Assert(v != null);
+        Expr w = v.TypedIdent.WhereExpr;
+        if (w != null)
+        {
+          passiveCmds.Add(new AssumeCmd(v.tok, w));
+        }
+      }
+
+      // do the sub-commands
+      foreach (Cmd s in st.Cmds)
+      {
+        Contract.Assert(s != null);
+        TurnIntoPassiveCmd(traceWriter, s, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+      }
+
+      // remove the local variables from the incarnation map
+      foreach (Variable v in st.Locals)
+      {
+        Contract.Assert(v != null);
+        incarnationMap.Remove(v);
+      }
+    }
+
+    /// <summary>
+    /// havoc w |--> assume whereClauses, out := in( w |-> w' )
+    /// </summary>
+    private void PacifyHavocCmd(Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst, List<Cmd> passiveCmds,
+      HavocCmd hc)
+    {
+      if (this.preHavocIncarnationMap == null
+         ) // Save a copy of the incarnation map (at the top of a sequence of havoc statements)
+      {
+        this.preHavocIncarnationMap = new Dictionary<Variable, Expr>(incarnationMap);
+      }
+
+      Contract.Assert(hc != null);
+      // If an assumption variable for postconditions is included here, it must have been assigned within a loop.
+      // We do not need to havoc it if we have performed a modular proof of the loop (i.e., using only the loop
+      // invariant) in the previous snapshot and, consequently, the corresponding assumption did not affect the
+      // anything after the loop. We can achieve this by simply not updating/adding it in the incarnation map.
+      List<IdentifierExpr> havocVars = hc.Vars.Where(v =>
+          !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##cached##")))
+        .ToList();
+      // First, compute the new incarnations
+      foreach (IdentifierExpr ie in havocVars)
+      {
+        Contract.Assert(ie != null);
+        if (!(ie.Decl is Incarnation))
+        {
+          Variable x = cce.NonNull(ie.Decl);
+          Variable x_prime = CreateIncarnation(x, c);
+          incarnationMap[x] = new IdentifierExpr(x_prime.tok, x_prime);
+        }
+      }
+
+      // Then, perform the assume of the where clauses, using the updated incarnations
+      Substitution updatedIncarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
+      foreach (IdentifierExpr ie in havocVars)
+      {
+        Contract.Assert(ie != null);
+        if (!(ie.Decl is Incarnation))
+        {
+          Variable x = cce.NonNull(ie.Decl);
+          Expr w = x.TypedIdent.WhereExpr;
+          if (w != null)
+          {
+            Expr copy = Substituter.ApplyReplacingOldExprs(updatedIncarnationSubst, oldFrameSubst, w);
+            passiveCmds.Add(new AssumeCmd(c.tok, copy));
+          }
+        }
+      }
+
+      // Add the following assume-statement for each assumption variable 'v', where 'v_post' is the new incarnation and 'v_pre' is the old one:
+      // assume v_post ==> v_pre;
+      foreach (IdentifierExpr ie in havocVars)
+      {
+        if (QKeyValue.FindBoolAttribute(ie.Decl.Attributes, "assumption"))
+        {
+          var preInc = (Expr)(preHavocIncarnationMap[ie.Decl].Clone());
+          var postInc = (Expr)(incarnationMap[ie.Decl].Clone());
+          passiveCmds.Add(new AssumeCmd(c.tok, Expr.Imp(postInc, preInc)));
+        }
+      }
+    }
+
+    private void PacifyAssignCmd(TextWriter traceWriter, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
+      List<Cmd> passiveCmds, AssignCmd assignCmd, Substitution incarnationSubst)
+    {
+      // x1 := E1, x2 := E2, ... |--> assume x1' = E1[in] & x2' = E2[in], out := in( x |-> x' ) [except as noted below]
+      AssignCmd assign = assignCmd.AsSimpleAssignCmd; // first remove map assignments
+      Contract.Assert(assign != null);
+
+      #region Substitute all variables in E with the current map
+
+      List<Expr> copies = new List<Expr>();
+      foreach (Expr e in assign.Rhss)
+      {
+        Contract.Assert(e != null);
+        copies.Add(Substituter.ApplyReplacingOldExprs(incarnationSubst,
+          oldFrameSubst,
+          e));
+      }
 
       #endregion
+
+      List<Expr /*!>!*/> assumptions = new List<Expr>();
+      // it might be too slow to create a new dictionary each time ...
+      IDictionary<Variable, Expr> newIncarnationMappings =
+        new Dictionary<Variable, Expr>();
+
+      for (int i = 0; i < assign.Lhss.Count; ++i)
+      {
+        IdentifierExpr lhsIdExpr =
+          cce.NonNull((SimpleAssignLhs)assign.Lhss[i]).AssignedVariable;
+        Variable lhs = cce.NonNull(lhsIdExpr.Decl);
+        Contract.Assert(lhs != null);
+        Expr rhs = assign.Rhss[i];
+        Contract.Assert(rhs != null);
+
+        // don't create incarnations for assignments of literals or single variables.
+        if (rhs is LiteralExpr)
+        {
+          incarnationMap[lhs] = rhs;
+        }
+        else if (rhs is IdentifierExpr)
+        {
+          IdentifierExpr ie = (IdentifierExpr)rhs;
+          if (incarnationMap.ContainsKey(cce.NonNull(ie.Decl)))
+          {
+            newIncarnationMappings[lhs] = cce.NonNull((Expr)incarnationMap[ie.Decl]);
+          }
+          else
+          {
+            newIncarnationMappings[lhs] = ie;
+          }
+        }
+        else
+        {
+          IdentifierExpr x_prime_exp = null;
+
+          #region Make a new incarnation, x', for variable x, but only if x is *not* already an incarnation
+
+          if (lhs is Incarnation)
+          {
+            // incarnations are already written only once, no need to make an incarnation of an incarnation
+            x_prime_exp = lhsIdExpr;
+          }
+          else
+          {
+            Variable v = CreateIncarnation(lhs, c);
+            x_prime_exp = new IdentifierExpr(lhsIdExpr.tok, v);
+            newIncarnationMappings[lhs] = x_prime_exp;
+          }
+
+          #endregion
+
+          var nAryExpr = copies[i] as NAryExpr;
+          if (nAryExpr != null)
+          {
+            var binOp = nAryExpr.Fun as BinaryOperator;
+            if (binOp != null
+                && binOp.Op == BinaryOperator.Opcode.And)
+            {
+              var arg0 = nAryExpr.Args[0] as LiteralExpr;
+              var arg1 = nAryExpr.Args[1] as LiteralExpr;
+              if ((arg0 != null && arg0.IsTrue) || (arg1 != null && arg1.IsFalse))
+              {
+                // Replace the expressions "true && arg1" or "arg0 && false" by "arg1".
+                copies[i] = nAryExpr.Args[1];
+              }
+            }
+          }
+
+          #region Create an assume command with the new variable
+
+          assumptions.Add(TypedExprEq(x_prime_exp, copies[i],
+            x_prime_exp.Decl != null && x_prime_exp.Decl.Name.Contains("a##cached##")));
+
+          #endregion
+        }
+      }
+
+      foreach (KeyValuePair<Variable, Expr> pair in newIncarnationMappings)
+      {
+        Contract.Assert(pair.Key != null && pair.Value != null);
+        incarnationMap[pair.Key] = pair.Value;
+      }
+
+      if (assumptions.Count > 0)
+      {
+        Expr assumption = assumptions[0];
+
+        for (int i = 1; i < assumptions.Count; ++i)
+        {
+          Contract.Assert(assumption != null);
+          assumption = Expr.And(assumption, assumptions[i]);
+        }
+
+        var assumeCmd = new AssumeCmd(assignCmd.tok, assumption);
+        // Copy any {:id ...} from the assignment to the assumption, so
+        // we can track it while analyzing verification coverage.
+        (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
+        passiveCmds.Add(assumeCmd);
+      }
+
+      if (currentImplementation != null
+          && currentImplementation.HasCachedSnapshot
+          && !currentImplementation.AnyErrorsInCachedSnapshot
+          && currentImplementation.DoomedInjectedAssumptionVariables.Count == 0
+          && currentImplementation.InjectedAssumptionVariables.Count == 1
+          && assign.Lhss.Count == 1)
+      {
+        var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
+        if (identExpr != null && identExpr.Decl != null &&
+            QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") &&
+            incarnationMap.TryGetValue(identExpr.Decl, out var incarnation))
+        {
+          TraceCachingAction(traceWriter, assign, CachingAction.AssumeNegationOfAssumptionVariable);
+          passiveCmds.Add(new AssumeCmd(c.tok, Expr.Not(incarnation)));
+        }
+      }
+    }
+
+    /// <summary>
+    /// assert/assume P |--> assert/assume P[x := in(x)], out := in
+    /// </summary>
+    private void PacifyPredicateCmd(TextWriter traceWriter, Block enclosingBlock, Dictionary<Variable, Expr> incarnationMap,
+      Substitution oldFrameSubst, List<Cmd> passiveCmds, ModelViewInfo mvInfo, PredicateCmd predicateCmd,
+      Substitution incarnationSubst)
+    {
+      Contract.Assert(c is AssertCmd || c is AssumeCmd); // otherwise, unexpected PredicateCmd type
+
+      PredicateCmd pc = (PredicateCmd)predicateCmd.Clone();
+      Contract.Assert(pc != null);
+
+      QKeyValue current = pc.Attributes;
+      while (current != null)
+      {
+        if (current.Key == "minimize" || current.Key == "maximize")
+        {
+          Contract.Assume(current.Params.Count == 1);
+          var param = current.Params[0] as Expr;
+          Contract.Assume(param != null && (param.Type.IsInt || param.Type.IsReal || param.Type.IsBv));
+          current.ClearParams();
+          current.AddParam(Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, param));
+        }
+
+        if (current.Key == "verified_under")
+        {
+          Contract.Assume(current.Params.Count == 1);
+          var param = current.Params[0] as Expr;
+          Contract.Assume(param != null && param.Type.IsBool);
+          current.ClearParams();
+          current.AddParam(Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, param));
+        }
+
+        current = current.Next;
+      }
+
+      Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
+      if (Options.ModelViewFile != null && pc is AssumeCmd captureStateAssumeCmd)
+      {
+        string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
+        if (description != null)
+        {
+          if (!mvInfo.BlockToCapturePointIndex.TryGetValue(enclosingBlock, out var points))
+          {
+            points = new List<(AssumeCmd, ModelViewInfo.Mapping)>();
+            mvInfo.BlockToCapturePointIndex[enclosingBlock] = points;
+          }
+
+          var mapping = new ModelViewInfo.Mapping(description, new Dictionary<Variable, Expr>(incarnationMap));
+          points.Add((captureStateAssumeCmd, mapping));
+        }
+      }
+
+      Contract.Assert(copy != null);
+      var dropCmd = false;
+      var relevantAssumpVars = currentImplementation != null
+        ? currentImplementation.RelevantInjectedAssumptionVariables(incarnationMap)
+        : new List<LocalVariable>();
+      var relevantDoomedAssumpVars = currentImplementation != null
+        ? currentImplementation.RelevantDoomedInjectedAssumptionVariables(incarnationMap)
+        : new List<LocalVariable>();
+      var checksum = pc.Checksum;
+      if (pc is AssertCmd)
+      {
+        var ac = (AssertCmd)pc;
+        ac.OrigExpr = ac.Expr;
+        Contract.Assert(ac.IncarnationMap == null);
+        ac.IncarnationMap = (Dictionary<Variable, Expr>)cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
+
+        var subsumption = Wlp.Subsumption(Options, ac);
+        if (relevantDoomedAssumpVars.Any())
+        {
+          TraceCachingAction(traceWriter, pc, CachingAction.DoNothingToAssert);
+        }
+        else if (currentImplementation != null
+                 && currentImplementation.HasCachedSnapshot
+                 && checksum != null
+                 && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
+                 && !currentImplementation.IsErrorChecksumInCachedSnapshot(checksum))
+        {
+          if (!currentImplementation.AnyErrorsInCachedSnapshot
+              && currentImplementation.InjectedAssumptionVariables.Count == 1
+              && relevantAssumpVars.Count == 1)
+          {
+            TraceCachingAction(traceWriter, pc, CachingAction.MarkAsPartiallyVerified);
+          }
+          else
+          {
+            var assmVars =
+              currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out var isTrue);
+            TraceCachingAction(traceWriter, pc,
+              !isTrue ? CachingAction.MarkAsPartiallyVerified : CachingAction.MarkAsFullyVerified);
+            var litExpr = ac.Expr as LiteralExpr;
+            if (litExpr == null || !litExpr.IsTrue)
+            {
+              ac.MarkAsVerifiedUnder(assmVars);
+            }
+            else
+            {
+              dropCmd = true;
+            }
+          }
+        }
+        else if (currentImplementation != null
+                 && currentImplementation.HasCachedSnapshot
+                 && relevantAssumpVars.Count == 0
+                 && checksum != null
+                 && currentImplementation.IsAssertionChecksumInCachedSnapshot(checksum)
+                 && currentImplementation.IsErrorChecksumInCachedSnapshot(checksum))
+        {
+          TraceCachingAction(traceWriter, pc, CachingAction.RecycleError);
+          ac.MarkAsVerifiedUnder(Expr.True);
+          currentImplementation.AddRecycledFailingAssertion(ac);
+          pc.Attributes = new QKeyValue(Token.NoToken, "recycled_failing_assertion", new List<object>(),
+            pc.Attributes);
+        }
+        else
+        {
+          TraceCachingAction(traceWriter, pc, CachingAction.DoNothingToAssert);
+        }
+      }
+      else if (pc is AssumeCmd
+               && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot")
+               && pc.SugaredCmdChecksum != null)
+      {
+        if (!relevantDoomedAssumpVars.Any()
+            && currentImplementation.HasCachedSnapshot
+            && currentImplementation.IsAssertionChecksumInCachedSnapshot(pc.SugaredCmdChecksum)
+            && !currentImplementation.IsErrorChecksumInCachedSnapshot(pc.SugaredCmdChecksum))
+        {
+          var assmVars =
+            currentImplementation.ConjunctionOfInjectedAssumptionVariables(incarnationMap, out var isTrue);
+          if (!isTrue)
+          {
+            copy = LiteralExpr.Imp(assmVars, copy);
+            TraceCachingAction(traceWriter, pc, CachingAction.MarkAsPartiallyVerified);
+          }
+          else
+          {
+            TraceCachingAction(traceWriter, pc, CachingAction.MarkAsFullyVerified);
+          }
+        }
+        else
+        {
+          TraceCachingAction(traceWriter, pc, CachingAction.DropAssume);
+          dropCmd = true;
+        }
+      }
+      else if (pc is AssumeCmd && QKeyValue.FindBoolAttribute(pc.Attributes, "assumption_variable_initialization"))
+      {
+        var identExpr = pc.Expr as IdentifierExpr;
+        if (identExpr != null && identExpr.Decl != null && !incarnationMap.ContainsKey(identExpr.Decl))
+        {
+          incarnationMap[identExpr.Decl] = LiteralExpr.True;
+          dropCmd = true;
+        }
+      }
+
+      pc.Expr = copy;
+      if (!dropCmd)
+      {
+        passiveCmds.Add(pc);
+      }
     }
 
     NAryExpr TypedExprEq(Expr e0, Expr e1, bool doNotResolveOverloading = false)
