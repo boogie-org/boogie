@@ -442,6 +442,8 @@ namespace Microsoft.Boogie
 
     public static readonly VCExprOp TimeoutDiagnosticsOp = new VCExprCustomOp("timeoutDiagnostics", 1, Type.Bool);
 
+    // These operators are temporarily added to VCExprs to track where labels for optimization and unsat
+    // core generation should go, but don't appear in the final SMT-Lib output.
     public static readonly VCExprOp MinimizeOp = new VCExprCustomOp("minimize##dummy", 2, Type.Bool);
     public static readonly VCExprOp MaximizeOp = new VCExprCustomOp("maximize##dummy", 2, Type.Bool);
     public static readonly VCExprOp NamedAssumeOp = new VCExprCustomOp("named_assume##dummy", 2, Type.Bool);
