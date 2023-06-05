@@ -201,7 +201,7 @@ namespace Microsoft.Boogie
 
     public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
-    public bool ProduceUnsatCores => PrintVerificationCoverage ||
+    public bool ProduceUnsatCores => TrackVerificationCoverage ||
                                      EnableUnSatCoreExtract == 1 ||
                                      ContractInfer && (UseUnsatCoreForContractInfer || ExplainHoudini);
 
@@ -280,9 +280,9 @@ namespace Microsoft.Boogie
 
     public bool PrintAssignment  { get; set; }
 
-    public bool PrintVerificationCoverage {
-      get => printVerificationCoverage;
-      set => printVerificationCoverage = value;
+    public bool TrackVerificationCoverage {
+      get => trackVerificationCoverage;
+      set => trackVerificationCoverage = value;
     }
 
     public int InlineDepth  { get; set; } = -1;
@@ -544,7 +544,7 @@ namespace Microsoft.Boogie
     private bool reverseHoudiniWorklist = false;
     private bool houdiniUseCrossDependencies = false;
     private bool useUnsatCoreForContractInfer = false;
-    private bool printVerificationCoverage = false;
+    private bool trackVerificationCoverage = false;
     private bool useProverEvaluate;
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
@@ -1297,7 +1297,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("crossDependencies", x => houdiniUseCrossDependencies = x) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", x => useUnsatCoreForContractInfer = x) ||
               ps.CheckBooleanFlag("printAssignment", x => PrintAssignment = x) ||
-              ps.CheckBooleanFlag("printVerificationCoverage", x => printVerificationCoverage = x) ||
+              ps.CheckBooleanFlag("trackVerificationCoverage", x => trackVerificationCoverage = x) ||
               ps.CheckBooleanFlag("useProverEvaluate", x => useProverEvaluate = x) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", x => DeterministicExtractLoops = x) ||
               ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||
@@ -1511,7 +1511,7 @@ namespace Microsoft.Boogie
        result caching (default: ""<impl. name>:0""), or assign a unique ID
        to a statement or contract clause for use in identifying which program
        elements were necessary to complete verification. The latter form is
-       used by the `/printVerificationCoverage` option.
+       used by the `/trackVerificationCoverage` option.
 
      {:timeLimit N}
        Set the time limit for verifying a given implementation.
@@ -1899,12 +1899,13 @@ namespace Microsoft.Boogie
                 This option is implemented by renaming variables and reordering
                 declarations in the input, and by setting solver options that have
                 similar effects.
-  /printVerificationCoverage
-                Report which program elements labeled with an `{:id ...}` attribute
-                were necessary to complete verification. Assumptions, assertions,
-                requires clauses, ensures clauses, assignments, and calls can be
-                labeled for inclusion in this report. This generalizes and replaces
-                the previous (undocumented) `/printNecessaryAssertions` option.
+  /trackVerificationCoverage
+                Track and report which program elements labeled with an
+                `{:id ...}` attribute were necessary to complete verification.
+                Assumptions, assertions, requires clauses, ensures clauses,
+                assignments, and calls can be labeled for inclusion in this
+                report. This generalizes and replaces the previous
+                (undocumented) `/printNecessaryAssertions` option.
 
   ---- Verification-condition splitting --------------------------------------
 

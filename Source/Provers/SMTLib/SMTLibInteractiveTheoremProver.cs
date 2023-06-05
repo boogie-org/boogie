@@ -223,7 +223,7 @@ namespace Microsoft.Boogie.SMTLib
               if (resp.Name != "")
               {
                 usedNamedAssumes.Add(resp.Name);
-                if (libOptions.PrintVerificationCoverage)
+                if (libOptions.TrackVerificationCoverage)
                 {
                   reporter.AddCoveredElement(resp.Name.Substring("aux$$assume$$".Length));
                 }
@@ -232,7 +232,7 @@ namespace Microsoft.Boogie.SMTLib
               foreach (var arg in resp.Arguments)
               {
                 usedNamedAssumes.Add(arg.Name);
-                if (libOptions.PrintVerificationCoverage)
+                if (libOptions.TrackVerificationCoverage)
                 {
                   reporter.AddCoveredElement(arg.Name.Substring("aux$$assume$$".Length));
                 }

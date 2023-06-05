@@ -1271,7 +1271,7 @@ namespace VC
           run.OutputWriter.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
-        if (options.Trace && options.PrintVerificationCoverage) {
+        if (options.Trace && options.TrackVerificationCoverage) {
           run.OutputWriter.WriteLine("Covered elements: {0}",
             string.Join(", ", reporter.CurrentCoveredElements.OrderBy(s => s)));
         }

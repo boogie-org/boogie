@@ -14,7 +14,7 @@ namespace Microsoft.Boogie
     bool ProduceUnsatCores { get; }
     bool ImmediatelyAcceptCommands { get; }
     bool RunningBoogieFromCommandLine { get; }
-    bool PrintVerificationCoverage { get; }
+    bool TrackVerificationCoverage { get; }
     string ProverPreamble { get; }
     bool TraceDiagnosticsOnTimeout { get; }
     uint TimeLimitPerAssertionInPercent { get; }
