@@ -1271,18 +1271,23 @@ namespace VC
           run.OutputWriter.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
+        if (options.Trace && options.TrackVerificationCoverage) {
+          run.OutputWriter.WriteLine("Covered elements: {0}",
+            string.Join(", ", CoveredElements.OrderBy(s => s)));
+        }
 
         var resourceCount = await checker.GetProverResourceCount();
         var result = new VCResult(
-          SplitIndex + 1,
-          iteration,
-          checker.ProverStart,
-          outcome,
-          checker.ProverRunTime,
-          checker.Options.ErrorLimit,
-          Counterexamples,
-          Asserts,
-          resourceCount);
+          vcNum: SplitIndex + 1,
+          iteration: iteration,
+          startTime: checker.ProverStart,
+          outcome: outcome,
+          runTime: checker.ProverRunTime,
+          maxCounterExamples: checker.Options.ErrorLimit,
+          counterExamples: Counterexamples,
+          asserts: Asserts,
+          coveredElements: CoveredElements,
+          resourceCount: resourceCount);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
@@ -1294,6 +1299,8 @@ namespace VC
       }
 
       public List<Counterexample> Counterexamples { get; } = new();
+
+      public HashSet<string> CoveredElements { get; } = new();
 
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".

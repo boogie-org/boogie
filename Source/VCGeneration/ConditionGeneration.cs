@@ -253,7 +253,10 @@ namespace VC
       {
         Contract.Assert(req != null);
         Expr e = Substituter.Apply(formalProcImplSubst, req.Condition);
-        Cmd c = new AssumeCmd(req.tok, e);
+        AssumeCmd c = new AssumeCmd(req.tok, e);
+        // Copy any {:id ...} from the precondition to the assumption, so
+        // we can track it while analyzing verification coverage.
+        (c as ICarriesAttributes).CopyIdFrom(req.tok, req);
         c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null)
@@ -316,6 +319,9 @@ namespace VC
           ensCopy.Condition = e;
           AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
           c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
+          // Copy any {:id ...} from the postcondition to the assumption, so
+          // we can track it while analyzing verification coverage.
+          (c as ICarriesAttributes).CopyIdFrom(ens.tok, ens);
           unifiedExitBlock.Cmds.Add(c);
           if (debugWriter != null)
           {
@@ -1381,7 +1387,11 @@ namespace VC
             assumption = Expr.And(assumption, assumptions[i]);
           }
 
-          passiveCmds.Add(new AssumeCmd(c.tok, assumption));
+          var assumeCmd = new AssumeCmd(c.tok, assumption);
+          // Copy any {:id ...} from the assignment to the assumption, so
+          // we can track it while analyzing verification coverage.
+          (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
+          passiveCmds.Add(assumeCmd);
         }
 
         if (currentImplementation != null
