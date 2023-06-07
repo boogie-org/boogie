@@ -149,7 +149,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            datatypeTypeCtorDecl.Constructors.Iter(constructor => constructor.InParams.Iter(v =>
+            datatypeTypeCtorDecl.Constructors.ForEach(constructor => constructor.InParams.ForEach(v =>
             {
               if (ContainsPermissionType(v.TypedIdent.Type))
               {

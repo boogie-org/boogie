@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
@@ -238,7 +239,7 @@ namespace Microsoft.Boogie.SMTLib
             Contract.Assert(printedName != null);
 
             Contract.Assert(f.OutParams.Count == 1);
-            var argTypes = f.InParams.MapConcat(p => TypeToStringReg(p.TypedIdent.Type), " ");
+            var argTypes = string.Join(" ", f.InParams.Select(p => TypeToStringReg(p.TypedIdent.Type)));
             string decl;
             if (RegisteredRelations.Contains(op.Func))
             {
@@ -368,7 +369,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (!KnownSelectFunctions.Contains(name))
       {
-        string decl = "(declare-fun " + name + " (" + node.Arguments.MapConcat(n => TypeToString(n.Type), " ") + ") " +
+        string decl = "(declare-fun " + name + " (" + string.Join(" ", node.Arguments.Select(n => TypeToString(n.Type))) + ") " +
                       TypeToString(node.Type) + ")";
         AddDeclaration(decl);
         KnownSelectFunctions.Add(name);
@@ -389,7 +390,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (!KnownStoreFunctions.Contains(name))
       {
-        string decl = "(declare-fun " + name + " (" + node.Arguments.MapConcat(n => TypeToString(n.Type), " ") + ") " +
+        string decl = "(declare-fun " + name + " (" + string.Join(" ", node.Arguments.Select(n => TypeToString(n.Type))) + ") " +
                       TypeToString(node.Type) + ")";
         AddDeclaration(decl);
 
@@ -401,9 +402,10 @@ namespace Microsoft.Boogie.SMTLib
           if (!KnownSelectFunctions.Contains(sel))
           {
             // need to declare it before reference
-            var args = node.Arguments.SkipEnd(1);
+            var args = node.Arguments.SkipLast(1);
             var ret = node.Arguments.Last();
-            string seldecl = "(declare-fun " + sel + " (" + args.MapConcat(n => TypeToString(n.Type), " ") + ") " +
+            Func<VCExpr, string> s = n => TypeToString(n.Type);
+            string seldecl = "(declare-fun " + sel + " (" + string.Join(" ", args.Select(s)) + ") " +
                              TypeToString(ret.Type) + ")";
             AddDeclaration(seldecl);
             KnownSelectFunctions.Add(sel);

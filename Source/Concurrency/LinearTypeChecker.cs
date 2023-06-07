@@ -43,21 +43,21 @@ namespace Microsoft.Boogie
 
     public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
     {
-      node.YieldRequires.Iter(callCmd =>
+      node.YieldRequires.ForEach(callCmd =>
       {
         var kinds = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_IN };
         CheckLinearParameters(callCmd,
           new HashSet<Variable>(node.InParams.Union(node.OutParams)
             .Where(p => kinds.Contains(LinearDomainCollector.FindLinearKind(p)))));
       });
-      node.YieldEnsures.Iter(callCmd =>
+      node.YieldEnsures.ForEach(callCmd =>
       {
         var kinds = new List<LinearKind> { LinearKind.LINEAR, LinearKind.LINEAR_OUT };
         CheckLinearParameters(callCmd,
           new HashSet<Variable>(node.InParams.Union(node.OutParams)
             .Where(p => kinds.Contains(LinearDomainCollector.FindLinearKind(p)))));
       });
-      node.YieldPreserves.Iter(callCmd =>
+      node.YieldPreserves.ForEach(callCmd =>
       {
         var kinds = new List<LinearKind> { LinearKind.LINEAR };
         CheckLinearParameters(callCmd,
@@ -721,7 +721,7 @@ namespace Microsoft.Boogie
       if (checkingContext.ErrorCount == 0 && program.monomorphizer != null)
       {
         var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
-        impls.Iter(impl =>
+        impls.ForEach(impl =>
         {
           LinearRewriter.Rewrite(civlTypeChecker, impl);
         }); 

@@ -157,7 +157,7 @@ namespace Microsoft.Boogie
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
             .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
-      foreach (AssertCmd assertCmd in Enumerable.Union(first.FirstGate, second.SecondGate))
+      foreach (AssertCmd assertCmd in first.FirstGate.Union(second.SecondGate))
       {
         requires.Add(new Requires(false, assertCmd.Expr));
       }
@@ -170,10 +170,8 @@ namespace Microsoft.Boogie
 
       var secondInParamsFiltered =
         second.SecondImpl.InParams.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_IN);
-      IEnumerable<Expr> linearityAssumes = Enumerable.Union(
-        linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(secondInParamsFiltered)
-          .Union(frame)),
-        linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams)
+      IEnumerable<Expr> linearityAssumes = linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(secondInParamsFiltered)
+        .Union(frame)).Union(linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams)
           .Union(frame)));
       // TODO: add further disjointness expressions?
       AssertCmd commutativityCheck = CmdHelper.AssertCmd(
@@ -188,8 +186,8 @@ namespace Microsoft.Boogie
       };
       cmds.Add(commutativityCheck);
 
-      List<Variable> inputs = Enumerable.Union(first.FirstImpl.InParams, second.SecondImpl.InParams).ToList();
-      List<Variable> outputs = Enumerable.Union(first.FirstImpl.OutParams, second.SecondImpl.OutParams).ToList();
+      List<Variable> inputs = first.FirstImpl.InParams.Union(second.SecondImpl.InParams).ToList();
+      List<Variable> outputs = first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams).ToList();
 
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
@@ -227,8 +225,8 @@ namespace Microsoft.Boogie
 
       string checkerName = $"GatePreservationChecker_{first.Name}_{second.Name}";
 
-      List<Variable> inputs = Enumerable.Union(first.FirstImpl.InParams, second.SecondImpl.InParams).ToList();
-      List<Variable> outputs = Enumerable.Union(first.FirstImpl.OutParams, second.SecondImpl.OutParams).ToList();
+      List<Variable> inputs = first.FirstImpl.InParams.Union(second.SecondImpl.InParams).ToList();
+      List<Variable> outputs = first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams).ToList();
 
       List<Cmd> cmds = new List<Cmd> { ActionCallCmd(second, second.SecondImpl) };
 
@@ -293,8 +291,8 @@ namespace Microsoft.Boogie
 
       string checkerName = $"FailurePreservationChecker_{first.Name}_{second.Name}";
 
-      List<Variable> inputs = Enumerable.Union(first.FirstImpl.InParams, second.SecondImpl.InParams).ToList();
-      List<Variable> outputs = Enumerable.Union(first.FirstImpl.OutParams, second.SecondImpl.OutParams).ToList();
+      List<Variable> inputs = first.FirstImpl.InParams.Union(second.SecondImpl.InParams).ToList();
+      List<Variable> outputs = first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams).ToList();
       var cmds = new List<Cmd>
       {
         ActionCallCmd(second, second.SecondImpl),

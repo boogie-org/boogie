@@ -110,7 +110,7 @@ namespace Microsoft.Boogie
       eliminatedActions.Iter(actionDecl =>
       {
         graph.AddSource(actionDecl);
-        actionDecl.CreateActionDecls.Intersect(eliminatedActions).Iter(x => graph.AddEdge(x, actionDecl));
+        CollectionExtensions.Iter(actionDecl.CreateActionDecls.Intersect(eliminatedActions), x => graph.AddEdge(x, actionDecl));
       });
       var eliminatedPendingAsyncs = new Dictionary<CtorType, Implementation>();
       var decls = new List<Declaration>();
@@ -130,7 +130,7 @@ namespace Microsoft.Boogie
       decls.OfType<Implementation>().Iter(impl =>
       {
         var modifies = impl.Proc.Modifies.Select(ie => ie.Decl).ToHashSet();
-        impl.Blocks.Iter(block =>
+        impl.Blocks.ForEach(block =>
         {
           for (int i = 0; i < block.Cmds.Count; i++)
           {

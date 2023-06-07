@@ -30,7 +30,7 @@ public class LinearRewriter
   public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)
   {
     var linearRewriter = new LinearRewriter(civlTypeChecker, impl.Proc);
-    impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
+    impl.Blocks.ForEach(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
   }
 
   private List<Cmd> RewriteCmdSeq(List<Cmd> cmdSeq)

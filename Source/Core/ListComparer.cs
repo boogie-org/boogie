@@ -25,7 +25,7 @@ namespace Microsoft.Boogie
     public int GetHashCode(List<T> l)
     {
       int hCode = 0;
-      l.Iter(x => { hCode = hCode ^ x.GetHashCode(); });
+      l.ForEach(x => { hCode ^= x.GetHashCode(); });
       return hCode.GetHashCode();
     }
   }

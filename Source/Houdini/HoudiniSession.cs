@@ -409,7 +409,7 @@ namespace Microsoft.Boogie.Houdini
         }
 
         var reason = new HashSet<string>();
-        unsatisfiedSoftAssumptions.Iter(i => reason.Add(softAssumptions[i].ToString()));
+        unsatisfiedSoftAssumptions.ForEach(i => reason.Add(softAssumptions[i].ToString()));
         if (Options.Trace)
         {
           Console.Write("Reason for removal of {0}: ", refutedConstant.Name);
@@ -442,9 +442,9 @@ namespace Microsoft.Boogie.Houdini
           break;
         }
 
-        unsatisfiedSoftAssumptions2.Iter(i => reason.Remove(softAssumptions2[i].ToString()));
+        unsatisfiedSoftAssumptions2.ForEach(i => reason.Remove(softAssumptions2[i].ToString()));
         var reason1 = new HashSet<string>(); //these are the reasons for inconsistency
-        unsatisfiedSoftAssumptions2.Iter(i => reason1.Add(softAssumptions2[i].ToString()));
+        unsatisfiedSoftAssumptions2.ForEach(i => reason1.Add(softAssumptions2[i].ToString()));
 
         if (Options.Trace)
         {

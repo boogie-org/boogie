@@ -161,7 +161,7 @@ namespace Microsoft.Boogie
     {
       var alwaysMap = new Dictionary<Variable, Expr>();
       var foroldMap = new Dictionary<Variable, Expr>();
-      civlTypeChecker.program.GlobalVariables.Iter(g =>
+      civlTypeChecker.program.GlobalVariables.ForEach(g =>
       {
         alwaysMap[g] = Expr.Ident(civlTypeChecker.BoundVariable(g.Name, g.TypedIdent.Type));
         foroldMap[g] = Expr.Ident(civlTypeChecker.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
@@ -211,7 +211,7 @@ namespace Microsoft.Boogie
       var initAssignCmd = CmdHelper.AssignCmd(lhss, rhss);
       initAssignCmd.Typecheck(tc);
       impl.Blocks[0].Cmds.Insert(0, initAssignCmd);
-      impl.Blocks.Iter(block =>
+      impl.Blocks.ForEach(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
@@ -250,7 +250,7 @@ namespace Microsoft.Boogie
 
     private void DropSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
-      impl.Blocks.Iter(block =>
+      impl.Blocks.ForEach(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
@@ -274,7 +274,7 @@ namespace Microsoft.Boogie
       var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
       impl.Proc.OutParams.Add(choice);
       impl.OutParams.Add(choice);
-      impl.Blocks.Iter(block =>
+      impl.Blocks.ForEach(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
@@ -440,7 +440,7 @@ namespace Microsoft.Boogie
           Impl.Blocks[0].Cmds.Insert(0, assume);
         }
       }
-      Impl.Blocks.Iter(block =>
+      Impl.Blocks.ForEach(block =>
       {
         block.Cmds = block.Cmds.SelectMany(cmd =>
         {

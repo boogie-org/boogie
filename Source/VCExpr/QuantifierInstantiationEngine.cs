@@ -655,7 +655,7 @@ namespace Microsoft.Boogie.VCExprAST
       var retExpr = (VCExprQuantifier) base.Visit(node, arg);
       retExpr.Info.instantiationExprs.Iter(kv =>
       {
-        kv.Value.Iter(expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
+        CollectionExtensions.Iter(kv.Value, expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
       });
       foreach (var x in node.BoundVars)
       {

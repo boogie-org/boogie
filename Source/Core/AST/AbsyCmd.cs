@@ -2970,13 +2970,12 @@ namespace Microsoft.Boogie
           tc.Error(this, "at most one arm of a parallel call may be annotated with :mark");
         }
         var callerDecl = (YieldProcedureDecl)tc.Proc;
-        CallCmds.Iter(callCmd =>
+        CallCmds.ForEach(callCmd =>
         {
           if (!CivlAttributes.IsCallMarked(callCmd) && callCmd.Proc is YieldProcedureDecl calleeDecl &&
               callerDecl.Layer == calleeDecl.Layer)
           {
-            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).Iter(
-              ie =>
+            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).Iter(ie =>
               {
                 tc.Error(ie, $"unmarked call modifies visible output variable of the caller: {ie.Decl}");
               });
@@ -3441,7 +3440,7 @@ namespace Microsoft.Boogie
       {
         // link call
         var calleeLayer = actionDecl.LayerRange.LowerLayer;
-        actionDecl.Modifies.Iter(ie =>
+        actionDecl.Modifies.ForEach(ie =>
         {
           if (ie.Decl.LayerRange.LowerLayer != calleeLayer)
           {
@@ -3454,7 +3453,7 @@ namespace Microsoft.Boogie
         }
         else if (calleeLayer < callerDecl.Layer)
         {
-          actionDecl.Modifies.Iter(ie =>
+          actionDecl.Modifies.ForEach(ie =>
           {
             if (ie.Decl.LayerRange.UpperLayer != calleeLayer)
             {

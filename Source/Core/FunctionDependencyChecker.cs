@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
                     var errorMsg = "Call cycle detected among functions";
                     var first = true;
                     var token = Token.NoToken;
-                    scc.Iter(function =>
+                    CollectionExtensions.Iter(scc, function =>
                     {
                         if (first)
                         {

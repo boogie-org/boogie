@@ -2,6 +2,7 @@ using Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Set = Microsoft.Boogie.GSet<object>; // for the purposes here, "object" really means "either Variable or TypeVariable"
 
 namespace Microsoft.Boogie

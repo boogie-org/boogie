@@ -252,7 +252,7 @@ namespace Microsoft.Boogie
         foreach (var (header, yieldingLoop) in yieldingProc.YieldingLoops)
         {
           var availableLinearVarsAtHeader = new HashSet<Variable>(linearTypeChecker.AvailableLinearVars(header));
-          yieldingLoop.YieldInvariants.Iter(callCmd => linearTypeChecker.CheckLinearParameters(callCmd, availableLinearVarsAtHeader));
+          yieldingLoop.YieldInvariants.ForEach(callCmd => linearTypeChecker.CheckLinearParameters(callCmd, availableLinearVarsAtHeader));
         }
         if (yieldingProc.RefinedAction != null)
         {
@@ -294,10 +294,9 @@ namespace Microsoft.Boogie
             }
           }
         }
-        impl.Blocks.Iter(block =>
+        impl.Blocks.ForEach(block =>
         {
-          block.Cmds.OfType<CallCmd>().Select(callCmd => callCmd.Proc).OfType<ActionDecl>()
-            .Iter(actionDecl => linkActionDecls.Add(actionDecl));
+          block.Cmds.OfType<CallCmd>().Select(callCmd => callCmd.Proc).OfType<ActionDecl>().Iter(actionDecl => linkActionDecls.Add(actionDecl));
         });
       }
     }
@@ -386,7 +385,7 @@ namespace Microsoft.Boogie
         var procInParams = proc.InParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
         var procOutParams = proc.OutParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
         var actionInParams = refinedActionDecl.InParams;
-        var actionOutParams = refinedActionDecl.OutParams.SkipEnd(refinedActionDecl.Creates.Count).ToList();
+        var actionOutParams = refinedActionDecl.OutParams.SkipLast(refinedActionDecl.Creates.Count).ToList();
         signatureMatcher.MatchFormals(procInParams, actionInParams, SignatureMatcher.IN);
         signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
       }
