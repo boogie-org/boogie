@@ -66,7 +66,7 @@ namespace Microsoft.Boogie
         program.AddTopLevelDeclaration(skipImplementation);
       }
       program.TopLevelDeclarations.OfType<YieldProcedureDecl>()
-        .Where(decl => !decl.HasMoverType && decl.RefinedAction == null).Iter(decl =>
+        .Where(decl => !decl.HasMoverType && decl.RefinedAction == null).ForEach(decl =>
         {
           decl.RefinedAction = new ActionDeclRef(Token.NoToken, SkipActionDecl.Name)
           {
@@ -140,7 +140,7 @@ namespace Microsoft.Boogie
       {
         Error(program, "call graph over atomic actions must be acyclic");
       }
-      actionDecls.Where(proc => proc.RefinedAction != null).Iter(actionDecl =>
+      actionDecls.Where(proc => proc.RefinedAction != null).ForEach(actionDecl =>
       {
         SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.RefinedAction.ActionDecl,
           checkingContext);
@@ -156,7 +156,7 @@ namespace Microsoft.Boogie
         }
       });
       actionDecls.Where(x => x.RefinedAction != null && x.InvariantAction == null)
-        .Iter(x => TypeCheckInlineSequentializations(x));
+        .ForEach(x => TypeCheckInlineSequentializations(x));
       return actionDecls;
     }
 
@@ -198,14 +198,14 @@ namespace Microsoft.Boogie
           break;
         }
         Pop(item);
-        item.CreateActionDecls.Except(refinedActionCreates).Iter(Push);
+        item.CreateActionDecls.Except(refinedActionCreates).ForEach(Push);
       }
     }
 
     private void CheckAsyncToSyncSafety(ActionDecl actionDecl, HashSet<string> refinedActionCreateNames)
     {
       actionDecl.Impl.Blocks.SelectMany(block => block.Cmds.OfType<CallCmd>().Where(callCmd =>
-        callCmd.Proc.OriginalDeclWithFormals is { Name: "create_asyncs" or "create_multi_asyncs" })).Iter(callCmd =>
+        callCmd.Proc.OriginalDeclWithFormals is { Name: "create_asyncs" or "create_multi_asyncs" })).ForEach(callCmd =>
       {
         var pendingAsyncType = (CtorType)program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
         if (!refinedActionCreateNames.Contains(pendingAsyncType.Decl.Name))
@@ -216,7 +216,7 @@ namespace Microsoft.Boogie
 
       var graph = Program.GraphFromImpl(actionDecl.Impl, false);
       var blocksLeadingToModifiedGlobals = new HashSet<Block>();
-      graph.TopologicalSort().Iter(block =>
+      graph.TopologicalSort().ForEach(block =>
       {
         var modifiedGlobals = block.TransferCmd is GotoCmd gotoCmd &&
                               gotoCmd.labelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
@@ -296,7 +296,7 @@ namespace Microsoft.Boogie
         }
         impl.Blocks.ForEach(block =>
         {
-          block.Cmds.OfType<CallCmd>().Select(callCmd => callCmd.Proc).OfType<ActionDecl>().Iter(actionDecl => linkActionDecls.Add(actionDecl));
+          block.Cmds.OfType<CallCmd>().Select(callCmd => callCmd.Proc).OfType<ActionDecl>().ForEach(actionDecl => linkActionDecls.Add(actionDecl));
         });
       }
     }
@@ -304,22 +304,22 @@ namespace Microsoft.Boogie
     private void InlineAtomicActions(HashSet<ActionDecl> actionDecls)
     {
       CivlUtil.AddInlineAttribute(SkipActionDecl);
-      actionDecls.Iter(proc =>
+      actionDecls.ForEach(proc =>
       {
         CivlAttributes.RemoveAttributes(proc, new HashSet<string> { "inline" });
         CivlUtil.AddInlineAttribute(proc);
       });
-      actionDecls.Iter(proc =>
+      actionDecls.ForEach(proc =>
       {
         var impl = proc.Impl;
         impl.OriginalBlocks = impl.Blocks;
         impl.OriginalLocVars = impl.LocVars;
       });
-      actionDecls.Iter(proc =>
+      actionDecls.ForEach(proc =>
       {
         Inliner.ProcessImplementation(Options, program, proc.Impl);
       });
-      actionDecls.Iter(proc =>
+      actionDecls.ForEach(proc =>
       {
         var impl = proc.Impl;
         impl.OriginalBlocks = null;
@@ -333,7 +333,7 @@ namespace Microsoft.Boogie
         .Select(decl => decl.InvariantAction.ActionDecl).ToHashSet();
 
       // Initialize ActionDecls so that all the pending async machinery is set up.
-      actionDecls.Iter(proc => proc.Initialize(program.monomorphizer));
+      actionDecls.ForEach(proc => proc.Initialize(program.monomorphizer));
 
       // Create all actions that do not refine another action.
       foreach (var actionDecl in actionDecls.Where(proc => proc.RefinedAction == null))
@@ -343,7 +343,7 @@ namespace Microsoft.Boogie
       
       // Create all atomic actions that refine other actions.
       actionDecls.Where(proc => proc.RefinedAction != null)
-        .Iter(decl => CreateActionsThatRefineAnotherAction(decl, invariantActionDecls));
+        .ForEach(decl => CreateActionsThatRefineAnotherAction(decl, invariantActionDecls));
     }
     
     private void CreateActionsThatRefineAnotherAction(ActionDecl actionDecl, HashSet<ActionDecl> invariantActionDecls)
@@ -361,7 +361,7 @@ namespace Microsoft.Boogie
 
     private void CreateSequentializations(HashSet<ActionDecl> actionDecls)
     {
-      actionDecls.Where(actionDecl => actionDecl.RefinedAction != null).Iter(actionDecl =>
+      actionDecls.Where(actionDecl => actionDecl.RefinedAction != null).ForEach(actionDecl =>
       {
         var action = actionDeclToAction[actionDecl];
         if (actionDecl.InvariantAction == null)

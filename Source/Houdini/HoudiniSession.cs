@@ -290,8 +290,8 @@ namespace Microsoft.Boogie.Houdini
       collector.examples.Clear();
 
       // debugging
-      houdiniAssertConstants.Iter(v => System.Diagnostics.Debug.Assert(assignment.ContainsKey(v)));
-      houdiniAssumeConstants.Iter(v => System.Diagnostics.Debug.Assert(assignment.ContainsKey(v)));
+      houdiniAssertConstants.ForEach(v => System.Diagnostics.Debug.Assert(assignment.ContainsKey(v)));
+      houdiniAssumeConstants.ForEach(v => System.Diagnostics.Debug.Assert(assignment.ContainsKey(v)));
       Contract.Assert(assignment.ContainsKey(refutedConstant));
       Contract.Assert(houdiniAssertConstants.Contains(refutedConstant));
 
@@ -413,7 +413,7 @@ namespace Microsoft.Boogie.Houdini
         if (Options.Trace)
         {
           Console.Write("Reason for removal of {0}: ", refutedConstant.Name);
-          reason.Iter(r => Console.Write("{0} ", r));
+          reason.ForEach(r => Console.Write("{0} ", r));
           Console.WriteLine();
         }
 
@@ -449,7 +449,7 @@ namespace Microsoft.Boogie.Houdini
         if (Options.Trace)
         {
           Console.Write("Revised reason for removal of {0}: ", refutedConstant.Name);
-          reason.Iter(r => Console.Write("{0} ", r));
+          reason.ForEach(r => Console.Write("{0} ", r));
           Console.WriteLine();
         }
 

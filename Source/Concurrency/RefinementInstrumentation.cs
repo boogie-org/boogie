@@ -137,7 +137,7 @@ namespace Microsoft.Boogie
 
       if (atomicAction.HasPendingAsyncs)
       {
-        atomicAction.PendingAsyncs.Iter(decl =>
+        atomicAction.PendingAsyncs.ForEach(decl =>
         {
           Variable collectedPAs =
             civlTypeChecker.PendingAsyncCollectors(originalImpl)[decl.PendingAsyncType];

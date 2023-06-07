@@ -577,7 +577,7 @@ public class LoopExtractor {
     foreach (Block /*!*/ source in g.BackEdgeNodes(header))
     {
       Contract.Assert(source != null);
-      g.NaturalLoops(header, source).Iter(b => allBlocksInNaturalLoops.Add(b));
+      g.NaturalLoops(header, source).ForEach(b => allBlocksInNaturalLoops.Add(b));
     }
 
     return allBlocksInNaturalLoops;

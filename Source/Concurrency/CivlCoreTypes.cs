@@ -40,7 +40,7 @@ namespace Microsoft.Boogie
           var choiceDatatypeName = $"Choice_{Name}";
           ChoiceDatatypeTypeCtorDecl =
             new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
-          PendingAsyncs.Iter(elim =>
+          PendingAsyncs.ForEach(elim =>
           {
             var field = new TypedIdent(Token.NoToken, elim.Name, elim.PendingAsyncType);
             ChoiceDatatypeTypeCtorDecl.AddConstructor(Token.NoToken, $"{choiceDatatypeName}_{elim.Name}",
@@ -166,7 +166,7 @@ namespace Microsoft.Boogie
         alwaysMap[g] = Expr.Ident(civlTypeChecker.BoundVariable(g.Name, g.TypedIdent.Type));
         foroldMap[g] = Expr.Ident(civlTypeChecker.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
       });
-      impl.InParams.Concat(impl.OutParams).Iter(v =>
+      impl.InParams.Concat(impl.OutParams).ForEach(v =>
       {
         alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
       });
@@ -198,7 +198,7 @@ namespace Microsoft.Boogie
       var pendingAsyncTypeToActionDecl = new Dictionary<CtorType, ActionDecl>();
       var lhss = new List<IdentifierExpr>();
       var rhss = new List<Expr>();
-      actionDecl.CreateActionDecls.Iter(decl =>
+      actionDecl.CreateActionDecls.ForEach(decl =>
       {
         pendingAsyncTypeToActionDecl[decl.PendingAsyncType] = decl;
         var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
@@ -449,7 +449,7 @@ namespace Microsoft.Boogie
           {
             var liveHavocVars = new HashSet<Variable>(havocCmd.Vars.Select(x => x.Decl)
               .Where(v => liveVariableAnalysis.IsLiveAfter(v, havocCmd)));
-            Impl.LocVars.Intersect(liveHavocVars).Iter(v =>
+            Impl.LocVars.Intersect(liveHavocVars).ForEach(v =>
             {
               newCmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(TriggerFunctions[v], Expr.Ident(v))));
             });

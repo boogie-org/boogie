@@ -210,7 +210,7 @@ namespace Microsoft.Boogie
       {
         var forallExpr = (ForallExpr) node.DefinitionAxiom.Expr;
         node.TypeParameters.Zip(forallExpr.TypeParameters)
-          .Iter(x => typeVariableDependencyGraph.AddEdge(x.First, x.Second));
+          .ForEach(x => typeVariableDependencyGraph.AddEdge(x.First, x.Second));
         VisitExpr(forallExpr.Body);
       }
       return base.VisitFunction(node);
@@ -219,7 +219,7 @@ namespace Microsoft.Boogie
     public override Implementation VisitImplementation(Implementation node)
     {
       node.Proc.TypeParameters.Zip(node.TypeParameters)
-        .Iter(x => typeVariableDependencyGraph.AddEdge(x.First, x.Second));
+        .ForEach(x => typeVariableDependencyGraph.AddEdge(x.First, x.Second));
       return base.VisitImplementation(node);
     }
 
@@ -382,7 +382,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      polymorphicMapInfo.Instances.Skip(instanceExprs.Count).Iter(x =>
+      polymorphicMapInfo.Instances.Skip(instanceExprs.Count).ForEach(x =>
         instanceExprs[x] = monomorphizationVisitor.InstantiateBinderExpr(lambdaExpr, x));
       return true;
     }
@@ -1300,7 +1300,7 @@ namespace Microsoft.Boogie
       this.program = program;
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
       nameToImplementation = new Dictionary<string, Implementation>();
-      program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).Iter(
+      program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).ForEach(
         impl =>
         {
           nameToImplementation.Add(impl.Name, impl);
@@ -1308,7 +1308,7 @@ namespace Microsoft.Boogie
         });
       procInstantiations = new Dictionary<Procedure, Dictionary<List<Type>, Procedure>>();
       nameToProcedure = new Dictionary<string, Procedure>();
-      program.TopLevelDeclarations.OfType<Procedure>().Where(proc => proc.TypeParameters.Count > 0).Iter(
+      program.TopLevelDeclarations.OfType<Procedure>().Where(proc => proc.TypeParameters.Count > 0).ForEach(
         proc =>
         {
           nameToProcedure.Add(proc.Name, proc);
@@ -1316,7 +1316,7 @@ namespace Microsoft.Boogie
         });
       functionInstantiations = new Dictionary<Function, Dictionary<List<Type>, Function>>();
       nameToFunction = new Dictionary<string, Function>();
-      program.TopLevelDeclarations.OfType<Function>().Where(function => function.TypeParameters.Count > 0).Iter(
+      program.TopLevelDeclarations.OfType<Function>().Where(function => function.TypeParameters.Count > 0).ForEach(
         function =>
         {
           nameToFunction.Add(function.Name, function);
@@ -1330,7 +1330,7 @@ namespace Microsoft.Boogie
       polymorphicMapInfos = new Dictionary<MapType, PolymorphicMapInfo>();
       nameToTypeCtorDecl = new Dictionary<string, TypeCtorDecl>();
       program.TopLevelDeclarations.OfType<TypeCtorDecl>()
-        .Where(typeCtorDecl => MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl)).Iter(
+        .Where(typeCtorDecl => MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl)).ForEach(
           typeCtorDecl =>
           {
             nameToTypeCtorDecl.Add(typeCtorDecl.Name, typeCtorDecl);
@@ -1339,7 +1339,7 @@ namespace Microsoft.Boogie
       visitedTypeCtorDecls = new HashSet<TypeCtorDecl>();
       visitedFunctions = new HashSet<Function>();
       procToImpl = new Dictionary<Procedure, Implementation>();
-      program.TopLevelDeclarations.OfType<Implementation>().Iter(impl => procToImpl[impl.Proc] = impl);
+      program.TopLevelDeclarations.OfType<Implementation>().ForEach(impl => procToImpl[impl.Proc] = impl);
       program.RemoveTopLevelDeclarations(decl => 
         decl is Implementation impl && implInstantiations.ContainsKey(impl) ||
         decl is Procedure proc && procInstantiations.ContainsKey(proc) ||
@@ -1356,7 +1356,7 @@ namespace Microsoft.Boogie
       // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
       var typeCtorDecls = new HashSet<TypeCtorDecl>();
-      monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.IsSkipVerification(options)).Iter(impl =>
+      monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.IsSkipVerification(options)).ForEach(impl =>
       {
         for (int i = ctorTypes.Count; i < impl.TypeParameters.Count; i++)
         {

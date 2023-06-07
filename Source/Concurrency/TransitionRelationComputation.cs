@@ -453,7 +453,7 @@ namespace Microsoft.Boogie
       private void AddBoundVariablesForRemainingVars()
       {
         existsVarMap = NotEliminatedVars.ToDictionary(v => v, v => (Variable) VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
-        existsVarMap.Iter(kv =>
+        existsVarMap.ForEach(kv =>
         {
           kv.Value.Attributes = copyToOriginalVar[kv.Key].Attributes;
         });

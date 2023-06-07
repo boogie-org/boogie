@@ -2441,7 +2441,7 @@ namespace Microsoft.Boogie
       LayerRange expectedLayerRange = null;
       if (tc.Proc is YieldProcedureDecl)
       {
-        UnpackedLhs.Select(ie => ie.Decl).Iter(v =>
+        UnpackedLhs.Select(ie => ie.Decl).ForEach(v =>
         {
           if (v is GlobalVariable)
           {
@@ -2477,7 +2477,7 @@ namespace Microsoft.Boogie
         tc.Error(tok, "left side of unpack command must be a constructor application");
       }
       var assignedVars = new HashSet<Variable>();
-      UnpackedLhs.Iter(ie =>
+      UnpackedLhs.ForEach(ie =>
       {
         if (assignedVars.Contains(ie.Decl))
         {
@@ -2520,7 +2520,7 @@ namespace Microsoft.Boogie
 
     public override void AddAssignedVariables(List<Variable> vars)
     {
-      lhs.Args.Cast<IdentifierExpr>().Iter(arg => vars.Add(arg.Decl));
+      lhs.Args.Cast<IdentifierExpr>().ForEach(arg => vars.Add(arg.Decl));
     }
 
     public override void Emit(TokenTextWriter stream, int level)
@@ -2975,7 +2975,7 @@ namespace Microsoft.Boogie
           if (!CivlAttributes.IsCallMarked(callCmd) && callCmd.Proc is YieldProcedureDecl calleeDecl &&
               callerDecl.Layer == calleeDecl.Layer)
           {
-            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).Iter(ie =>
+            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).ForEach(ie =>
               {
                 tc.Error(ie, $"unmarked call modifies visible output variable of the caller: {ie.Decl}");
               });

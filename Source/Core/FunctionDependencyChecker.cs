@@ -9,7 +9,7 @@ namespace Microsoft.Boogie
         {
             var checkingContext = new CheckingContext(null);
             var functionDependencyChecker = new FunctionDependencyChecker();
-            program.TopLevelDeclarations.OfType<Function>().Iter(function =>
+            program.TopLevelDeclarations.OfType<Function>().ForEach(function =>
             {
                 var expr = QKeyValue.FindExprAttribute(function.Attributes, "inline");
                 if (expr != null && expr.Type != Type.Bool)
@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
                 return false;
             }
             program.TopLevelDeclarations.OfType<Function>()
-                .Iter(function => functionDependencyChecker.VisitFunction(function));
+                .ForEach(function => functionDependencyChecker.VisitFunction(function));
             var functionDependencyGraph = functionDependencyChecker.functionDependencyGraph;
             var selfLoops = functionDependencyGraph.Edges.SelectMany(edge =>
                 edge.Item1 == edge.Item2 ? new[] {edge.Item1} : Enumerable.Empty<Function>()).ToHashSet();
@@ -46,7 +46,7 @@ namespace Microsoft.Boogie
                 functionDependencyGraph.Predecessors,
                 functionDependencyGraph.Successors);
             sccs.Compute();
-            sccs.Iter(scc =>
+            sccs.ForEach(scc =>
             {
                 if (scc.Count > 1 ||
                     scc.Count == 1 && selfLoops.Contains(scc.First()))
@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
                     var errorMsg = "Call cycle detected among functions";
                     var first = true;
                     var token = Token.NoToken;
-                    CollectionExtensions.Iter(scc, function =>
+                    CollectionExtensions.ForEach(scc, function =>
                     {
                         if (first)
                         {

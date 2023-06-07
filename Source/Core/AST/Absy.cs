@@ -911,7 +911,7 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      accessors.Where(kv => kv.Value.Count > 1).Iter(kv =>
+      accessors.Where(kv => kv.Value.Count > 1).ForEach(kv =>
       {
         var firstAccessor = kv.Value[0];
         var firstConstructor = constructors[firstAccessor.ConstructorIndex];
@@ -964,7 +964,7 @@ namespace Microsoft.Boogie
     private void EmitCommaSeparatedListOfStrings(TokenTextWriter stream, int level, IEnumerable<string> values)
     {
       bool first = true;
-      values.Iter(value =>
+      values.ForEach(value =>
       {
         if (!first)
         {
@@ -3313,7 +3313,7 @@ namespace Microsoft.Boogie
 
       if (HasMoverType)
       {
-        Modifies.Where(ie => !ie.Decl.LayerRange.Contains(Layer)).Iter(ie =>
+        Modifies.Where(ie => !ie.Decl.LayerRange.Contains(Layer)).ForEach(ie =>
         {
           tc.Error(this, $"modified variable of mover procedure must be available at layer {Layer}: {ie.Decl.Name}");
         });

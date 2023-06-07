@@ -124,7 +124,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          linearGlobalVariables.Except(end).Iter(g =>
+          linearGlobalVariables.Except(end).ForEach(g =>
           {
             Error(b.TransferCmd, $"Global variable {g.Name} must be available at a return");
           });
@@ -136,9 +136,9 @@ namespace Microsoft.Boogie
             }
             var kind = LinearDomainCollector.FindLinearKind(v);
             return kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_OUT;
-          }).Iter(v => { Error(b.TransferCmd, $"Input variable {v.Name} must be available at a return"); });
+          }).ForEach(v => { Error(b.TransferCmd, $"Input variable {v.Name} must be available at a return"); });
           node.OutParams.Except(end).Where(v => !SkipCheck(v))
-            .Iter(v => { Error(b.TransferCmd, $"Output variable {v.Name} must be available at a return"); });
+            .ForEach(v => { Error(b.TransferCmd, $"Output variable {v.Name} must be available at a return"); });
         }
       }
 
@@ -164,7 +164,7 @@ namespace Microsoft.Boogie
     private void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
     {
       callCmd.Outs.Where(ie => LinearDomainCollector.FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
-        .Iter(ie => start.Add(ie.Decl));
+        .ForEach(ie => start.Add(ie.Decl));
       for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
       {
         if (callCmd.Ins[i] is IdentifierExpr ie)
@@ -231,7 +231,7 @@ namespace Microsoft.Boogie
           assignCmd.Lhss
             .Where(assignLhs =>
               LinearDomainCollector.FindLinearKind(assignLhs.DeepAssignedVariable) != LinearKind.ORDINARY)
-            .Iter(assignLhs => start.Add(assignLhs.DeepAssignedVariable));
+            .ForEach(assignLhs => start.Add(assignLhs.DeepAssignedVariable));
         }
         else if (cmd is UnpackCmd unpackCmd)
         {
@@ -247,7 +247,7 @@ namespace Microsoft.Boogie
               start.Remove(ie.Decl);
               unpackCmd.UnpackedLhs
                 .Where(arg => LinearDomainCollector.FindLinearKind(arg.Decl) != LinearKind.ORDINARY)
-                .Iter(arg => start.Add(arg.Decl));
+                .ForEach(arg => start.Add(arg.Decl));
             }
           }
         }
@@ -255,7 +255,7 @@ namespace Microsoft.Boogie
         {
           if (!IsPrimitive(callCmd.Proc))
           {
-            linearGlobalVariables.Except(start).Iter(g =>
+            linearGlobalVariables.Except(start).ForEach(g =>
             {
               Error(cmd, $"Global variable {g.Name} must be available at a call");
             });
@@ -295,7 +295,7 @@ namespace Microsoft.Boogie
         }
         else if (cmd is ParCallCmd parCallCmd)
         {
-          linearGlobalVariables.Except(start).Iter(g =>
+          linearGlobalVariables.Except(start).ForEach(g =>
           {
             Error(cmd, $"Global variable {g.Name} must be available at a call");
           });
@@ -336,7 +336,7 @@ namespace Microsoft.Boogie
         else if (cmd is HavocCmd havocCmd)
         {
           havocCmd.Vars.Where(ie => LinearDomainCollector.FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
-            .Iter(ie => start.Remove(ie.Decl));
+            .ForEach(ie => start.Remove(ie.Decl));
         }
       }
 

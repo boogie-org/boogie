@@ -7,7 +7,7 @@ namespace Microsoft.Boogie
 {
   public static class CollectionExtensions
   {
-    public static void Iter<T>(this IEnumerable<T> coll, Action<T> action)
+    public static void ForEach<T>(this IEnumerable<T> coll, Action<T> action)
     {
       foreach (var e in coll)
       {
