@@ -420,7 +420,7 @@ namespace Microsoft.Boogie
       {
         foreach (Block source in g.BackEdgeNodes(header))
         {
-          g.NaturalLoops(header, source).Iter(b => allBlocksInNaturalLoops.Add(b));
+          g.NaturalLoops(header, source).ForEach(b => allBlocksInNaturalLoops.Add(b));
         }
       }
       return allBlocksInNaturalLoops;

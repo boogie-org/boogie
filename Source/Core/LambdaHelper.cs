@@ -2,6 +2,7 @@ using Core;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Set = Microsoft.Boogie.GSet<object>; // for the purposes here, "object" really means "either Variable or TypeVariable"
 
 namespace Microsoft.Boogie
@@ -32,7 +33,7 @@ namespace Microsoft.Boogie
       functionCall = pair.Item2;
       var currExpr = pair.Item1;
       // to the attributes of each dummy of currExpr, append the attributes of the corresponding dummy of expr 
-      currExpr.Dummies.Zip(expr.Dummies).Iter(x =>
+      currExpr.Dummies.Zip(expr.Dummies).ForEach(x =>
       {
         if (x.Item2.Attributes == null)
         {

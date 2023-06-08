@@ -30,7 +30,7 @@ public class LinearRewriter
   public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)
   {
     var linearRewriter = new LinearRewriter(civlTypeChecker, impl.Proc);
-    impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
+    impl.Blocks.ForEach(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
   }
 
   private List<Cmd> RewriteCmdSeq(List<Cmd> cmdSeq)
@@ -459,13 +459,13 @@ public class LinearRewriter
   private void ResolveAndTypecheck(CoreOptions options, IEnumerable<Absy> absys)
   {
     var rc = new ResolutionContext(null, options);
-    absys.Iter(absy => absy.Resolve(rc));
+    absys.ForEach(absy => absy.Resolve(rc));
     if (rc.ErrorCount != 0)
     {
       return;
     }
     var tc = new TypecheckingContext(null, options);
     tc.Proc = proc;
-    absys.Iter(absy => absy.Typecheck(tc));
+    absys.ForEach(absy => absy.Typecheck(tc));
   }
 }

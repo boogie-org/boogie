@@ -911,7 +911,7 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      accessors.Where(kv => kv.Value.Count > 1).Iter(kv =>
+      accessors.Where(kv => kv.Value.Count > 1).ForEach(kv =>
       {
         var firstAccessor = kv.Value[0];
         var firstConstructor = constructors[firstAccessor.ConstructorIndex];
@@ -964,7 +964,7 @@ namespace Microsoft.Boogie
     private void EmitCommaSeparatedListOfStrings(TokenTextWriter stream, int level, IEnumerable<string> values)
     {
       bool first = true;
-      values.Iter(value =>
+      values.ForEach(value =>
       {
         if (!first)
         {
@@ -987,7 +987,7 @@ namespace Microsoft.Boogie
       }
       stream.WriteLine(this, level, " {");
       bool firstConstructor = true;
-      constructors.Iter(constructor =>
+      constructors.ForEach(constructor =>
       {
         if (!firstConstructor)
         {
@@ -2952,7 +2952,7 @@ namespace Microsoft.Boogie
           rc.Error(this, "right mover may not create pending asyncs");
         }
       }
-      Creates.Iter(create =>
+      Creates.ForEach(create =>
       {
         create.Resolve(rc);
         if (create.ActionDecl is { MaybePendingAsync: false })
@@ -2972,7 +2972,7 @@ namespace Microsoft.Boogie
       {
         InvariantAction.Resolve(rc);
       }
-      Eliminates.Iter(elim =>
+      Eliminates.ForEach(elim =>
       {
         elim.Resolve(rc);
       });
@@ -2993,7 +2993,7 @@ namespace Microsoft.Boogie
     {
       base.Typecheck(tc);
       
-      Creates.Iter(actionDeclRef =>
+      Creates.ForEach(actionDeclRef =>
       {
         var pendingAsync = actionDeclRef.ActionDecl;
         if (!LayerRange.Subset(pendingAsync.LayerRange))
@@ -3260,10 +3260,10 @@ namespace Microsoft.Boogie
       rc.StateMode = ResolutionContext.State.Two;
       rc.PushVarContext();
       RegisterFormals(InParams, rc);
-      YieldRequires.Iter(callCmd => callCmd.Resolve(rc));
-      YieldPreserves.Iter(callCmd => callCmd.Resolve(rc));
+      YieldRequires.ForEach(callCmd => callCmd.Resolve(rc));
+      YieldPreserves.ForEach(callCmd => callCmd.Resolve(rc));
       RegisterFormals(OutParams, rc);
-      YieldEnsures.Iter(callCmd => callCmd.Resolve(rc));
+      YieldEnsures.ForEach(callCmd => callCmd.Resolve(rc));
       rc.PopVarContext();
       rc.StateMode = oldStateMode;
       rc.Proc = null;
@@ -3313,7 +3313,7 @@ namespace Microsoft.Boogie
 
       if (HasMoverType)
       {
-        Modifies.Where(ie => !ie.Decl.LayerRange.Contains(Layer)).Iter(ie =>
+        Modifies.Where(ie => !ie.Decl.LayerRange.Contains(Layer)).ForEach(ie =>
         {
           tc.Error(this, $"modified variable of mover procedure must be available at layer {Layer}: {ie.Decl.Name}");
         });
@@ -3322,9 +3322,9 @@ namespace Microsoft.Boogie
       var oldProc = tc.Proc;
       tc.Proc = this;
       base.Typecheck(tc);
-      YieldRequires.Iter(callCmd => callCmd.Typecheck(tc));
-      YieldEnsures.Iter(callCmd => callCmd.Typecheck(tc));
-      YieldPreserves.Iter(callCmd => callCmd.Typecheck(tc));
+      YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
+      YieldEnsures.ForEach(callCmd => callCmd.Typecheck(tc));
+      YieldPreserves.ForEach(callCmd => callCmd.Typecheck(tc));
       Contract.Assert(tc.Proc == this);
       tc.Proc = oldProc;
     }

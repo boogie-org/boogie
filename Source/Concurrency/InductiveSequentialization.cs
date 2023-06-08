@@ -107,14 +107,14 @@ namespace Microsoft.Boogie
       var eliminatedActionDecls = targetAction.ActionDecl.EliminationMap();
       var eliminatedActions = eliminatedActionDecls.Keys.ToHashSet();
       var graph = new Graph<ActionDecl>();
-      eliminatedActions.Iter(actionDecl =>
+      eliminatedActions.ForEach(actionDecl =>
       {
         graph.AddSource(actionDecl);
-        actionDecl.CreateActionDecls.Intersect(eliminatedActions).Iter(x => graph.AddEdge(x, actionDecl));
+        CollectionExtensions.ForEach(actionDecl.CreateActionDecls.Intersect(eliminatedActions), x => graph.AddEdge(x, actionDecl));
       });
       var eliminatedPendingAsyncs = new Dictionary<CtorType, Implementation>();
       var decls = new List<Declaration>();
-      graph.TopologicalSort().Iter(actionDecl =>
+      graph.TopologicalSort().ForEach(actionDecl =>
       {
         var impl = Action.CreateDuplicateImplementation(eliminatedActionDecls[actionDecl].Impl,
           $"{actionDecl.Name}_RefinementCheck");
@@ -127,10 +127,10 @@ namespace Microsoft.Boogie
       CivlAttributes.RemoveAttributes(inlinedImpl.Proc, new HashSet<string> { "inline" });
       decls.Add(inlinedImpl);
       decls.Add(inlinedImpl.Proc);
-      decls.OfType<Implementation>().Iter(impl =>
+      decls.OfType<Implementation>().ForEach(impl =>
       {
         var modifies = impl.Proc.Modifies.Select(ie => ie.Decl).ToHashSet();
-        impl.Blocks.Iter(block =>
+        impl.Blocks.ForEach(block =>
         {
           for (int i = 0; i < block.Cmds.Count; i++)
           {
@@ -141,14 +141,14 @@ namespace Microsoft.Boogie
       });
       var oldTopLevelDeclarations = new List<Declaration>(civlTypeChecker.program.TopLevelDeclarations);
       civlTypeChecker.program.AddTopLevelDeclarations(decls);
-      decls.OfType<Implementation>().Iter(impl =>
+      decls.OfType<Implementation>().ForEach(impl =>
       {
         impl.OriginalBlocks = impl.Blocks;
         impl.OriginalLocVars = impl.LocVars;
       });
       Inliner.ProcessImplementation(civlTypeChecker.Options, civlTypeChecker.program, inlinedImpl);
       civlTypeChecker.program.TopLevelDeclarations = oldTopLevelDeclarations;
-      decls.OfType<Implementation>().Iter(impl =>
+      decls.OfType<Implementation>().ForEach(impl =>
       {
         impl.OriginalBlocks = null;
         impl.OriginalLocVars = null;
@@ -283,7 +283,7 @@ namespace Microsoft.Boogie
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
       if (abs.HasPendingAsyncs)
       {
-        abs.PendingAsyncs.Iter(decl =>
+        abs.PendingAsyncs.ForEach(decl =>
         {
           var ie = NewPAs(decl.PendingAsyncType);
           locals.Add(ie.Decl);
