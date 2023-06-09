@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /proverOpt:O:smt.mbqi=true /typeEncoding:p "%s" > "%t"
+// RUN: %parallel-boogie /proverOpt:O:smt.mbqi=true /timeLimit:5 /typeEncoding:p "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // RUN: %parallel-boogie /proverOpt:O:smt.mbqi=true /typeEncoding:a "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
