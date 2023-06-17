@@ -64,8 +64,8 @@ public class LinearRewriter
         return RewriteLheapRead(callCmd);
       case "Lheap_Write":
         return RewriteLheapWrite(callCmd);
-      case "Lheap_Add":
-        return RewriteLheapAdd(callCmd);
+      case "Lheap_Alloc":
+        return RewriteLheapAlloc(callCmd);
       case "Lheap_Remove":
         return RewriteLheapRemove(callCmd);
       case "Lset_Empty":
@@ -290,7 +290,7 @@ public class LinearRewriter
     throw new cce.UnreachableException();
   }
 
-  private List<Cmd> RewriteLheapAdd(CallCmd callCmd)
+  private List<Cmd> RewriteLheapAlloc(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);
@@ -303,13 +303,13 @@ public class LinearRewriter
     var k = callCmd.Outs[0];
 
     cmdSeq.Add(CmdHelper.HavocCmd(k));
-    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Neq(k, ExprHelper.FunctionCall(nilFunc))));
-    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), k))));
-    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Eq(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Val(path), k), v)));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Neq(Val(k), ExprHelper.FunctionCall(nilFunc))));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), Val(k)))));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Eq(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Val(path), Val(k)), v)));
     cmdSeq.Add(CmdHelper.AssignCmd(
       CmdHelper.ExprToAssignLhs(path),
       ExprHelper.FunctionCall(lheapConstructor,
-        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.True),
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), Val(k), Expr.True),
         Val(path))));
     
     ResolveAndTypecheck(options, cmdSeq);
@@ -408,13 +408,13 @@ public class LinearRewriter
     var path = callCmd.Ins[1];
     
     var lsetContainsFunc = LsetContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, ExprHelper.FieldAccess(k, "val")), "Lval_Split failed"));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, Val(k)), "Lval_Split failed"));
 
     var mapOneFunc = MapOne(type);
     var mapDiffFunc = MapDiff(type);
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),
-        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, ExprHelper.FieldAccess(k, "val")))));
+        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, Val(k)))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;

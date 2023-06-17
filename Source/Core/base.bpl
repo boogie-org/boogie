@@ -149,7 +149,7 @@ function {:inline} Lheap_WellFormed<V>(l: Lheap V): bool {
     l->val == MapIte(l->dom, l->val, MapConst(Default()))
 }
 function {:inline} Lheap_Collector<V>(l: Lheap V): [Ref V]bool {
-    l->dom
+    MapConst(false)
 }
 function {:inline} Lheap_Contains<V>(l: Lheap V, k: Ref V): bool {
     l->dom[k]
@@ -162,7 +162,7 @@ procedure Lheap_Split<V>(k: [Ref V]bool, path: Lheap V) returns (l: Lheap V);
 procedure Lheap_Transfer<V>({:linear_in} path1: Lheap V, path2: Lheap V);
 procedure Lheap_Read<V>(path: V) returns (v: V);
 procedure Lheap_Write<V>(path: V, v: V);
-procedure Lheap_Add<V>(path: Lheap V, v: V) returns (k: Ref V);
+procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (k: Lval (Ref V));
 procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
 
 /// linear sets
