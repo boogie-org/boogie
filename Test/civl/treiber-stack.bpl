@@ -100,7 +100,7 @@ modifies ts, unused;
   var {:pool "A"} ref_n: RefNode X;
   var {:pool "A"} new_ref_n: RefNode X;
   assume {:add_to_pool "A", ref_n} ts->dom[ref_t];
-  call new_ref_n := Lheap_Add(ts->val[ref_t]->stack, Node(if success then ts->val[ref_t]->top else ref_n, x));
+  call new_ref_n := Lheap_Alloc(ts->val[ref_t]->stack, Node(if success then ts->val[ref_t]->top else ref_n, x));
   if (success) {
     call Lheap_Write(ts->val[ref_t]->top, new_ref_n);
   } else {
@@ -164,7 +164,7 @@ right action {:layer 1, 2} AtomicAllocInStack(ref_t: RefTreiber X, node: Node X)
 modifies ts;
 {
   assert ts->dom[ref_t];
-  call ref_n := Lheap_Add(ts->val[ref_t]->stack, node);
+  call ref_n := Lheap_Alloc(ts->val[ref_t]->stack, node);
 }
 yield procedure {:layer 0} AllocInStack(ref_t: RefTreiber X, node: Node X) returns (ref_n: RefNode X);
 refines AtomicAllocInStack;
@@ -206,7 +206,7 @@ modifies ts;
   top := Nil();
   call stack := Lheap_Empty();
   treiber := Treiber(top, stack);
-  call ref_t := Lheap_Add(ts, treiber);
+  call ref_t := Lheap_Alloc(ts, treiber);
 }
 yield procedure {:layer 0} AllocTreiber() returns (ref_t: RefTreiber X);
 refines AtomicAllocTreiber;

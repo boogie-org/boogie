@@ -64,6 +64,8 @@ public class LinearRewriter
         return RewriteLheapRead(callCmd);
       case "Lheap_Write":
         return RewriteLheapWrite(callCmd);
+      case "Lheap_Alloc":
+        return RewriteLheapAlloc(callCmd);
       case "Lheap_Add":
         return RewriteLheapAdd(callCmd);
       case "Lheap_Remove":
@@ -290,7 +292,7 @@ public class LinearRewriter
     throw new cce.UnreachableException();
   }
 
-  private List<Cmd> RewriteLheapAdd(CallCmd callCmd)
+  private List<Cmd> RewriteLheapAlloc(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);
@@ -312,6 +314,31 @@ public class LinearRewriter
         ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.True),
         Val(path))));
     
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteLheapAdd(CallCmd callCmd)
+  {
+    GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
+      out Function lsetConstructor, out Function lvalConstructor);
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var nilFunc = monomorphizer.InstantiateFunction("Nil", instantiation);
+
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var v = callCmd.Ins[1];
+    var k = callCmd.Ins[2];
+
+    cmdSeq.Add(CmdHelper.AssertCmd(callCmd.tok, Expr.Neq(k, ExprHelper.FunctionCall(nilFunc)), "Lheap_Add failed"));
+    cmdSeq.Add(CmdHelper.AssertCmd(callCmd.tok,
+      Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), k)), "Lheap_Add failed"));
+    cmdSeq.Add(CmdHelper.AssignCmd(
+      CmdHelper.ExprToAssignLhs(path),
+      ExprHelper.FunctionCall(lheapConstructor,
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.True),
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Val(path), k, v))));
+
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
   }

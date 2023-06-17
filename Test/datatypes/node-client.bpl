@@ -36,6 +36,6 @@ modifies ts;
 {
   var ref_n: RefNode X;
   assert ts->dom[ref_t];
-  call ref_n := Lheap_Add(ts->val[ref_t]->stack, Node(ts->val[ref_t]->top, x));
+  call ref_n := Lheap_Alloc(ts->val[ref_t]->stack, Node(ts->val[ref_t]->top, x));
   call Lheap_Write(ts->val[ref_t]->top, ref_n);
 }

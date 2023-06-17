@@ -423,6 +423,8 @@ namespace Microsoft.Boogie
           return null;
         case "Lheap_Write":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lheap_Alloc":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lheap_Add":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lheap_Remove":
