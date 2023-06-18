@@ -142,6 +142,8 @@ function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int
 
 /// linear maps
 type Ref _;
+procedure Ref_Alloc<V>() returns (k: Lval (Ref V));
+
 datatype Lheap<V> { Lheap(dom: [Ref V]bool, val: [Ref V]V) }
 function Nil<V>(): Ref V;
 

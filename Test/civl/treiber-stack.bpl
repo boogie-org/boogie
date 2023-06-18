@@ -21,6 +21,20 @@ var {:layer 4, 5} Stack: [RefTreiber X]Vec X;
 var {:layer 0, 4} ts: Lheap (Treiber X);
 var {:layer 2, 4} unused: [RefTreiber X][RefNode X]bool;
 
+atomic action {:layer 5} AtomicAlloc() returns (ref_t: Lval (RefTreiber X))
+modifies Stack;
+{
+  call ref_t := Ref_Alloc();
+  Stack[ref_t->val] := Vec_Empty();
+}
+yield procedure {:layer 4} Alloc() returns (ref_t: Lval (RefTreiber X))
+refines AtomicAlloc;
+{
+  call ref_t := Alloc#0();
+  call AddStack(ref_t->val);
+  call {:layer 4} AbsDefinition(ts->val[ref_t->val]->top, ts->val[ref_t->val]->stack->val);
+}
+
 atomic action {:layer 5} AtomicPush(ref_t: RefTreiber X, x: X) returns (success: bool)
 modifies Stack;
 {
@@ -198,7 +212,7 @@ modifies ts;
 yield procedure {:layer 0} WriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool);
 refines AtomicWriteTopOfStack;
 
-atomic action {:layer 1, 4} AtomicAllocTreiber() returns (ref_t: Lval (RefTreiber X))
+atomic action {:layer 1, 4} AtomicAlloc#0() returns (ref_t: Lval (RefTreiber X))
 modifies ts;
 {
   var top: Ref (Node X);
@@ -209,8 +223,14 @@ modifies ts;
   treiber := Treiber(top, stack);
   call ref_t := Lheap_Alloc(ts, treiber);
 }
-yield procedure {:layer 0} AllocTreiber() returns (ref_t: Lval (RefTreiber X));
-refines AtomicAllocTreiber;
+yield procedure {:layer 0} Alloc#0() returns (ref_t: Lval (RefTreiber X));
+refines AtomicAlloc#0;
+
+action {:layer 4} AddStack(ref_t: RefTreiber X)
+modifies Stack;
+{
+  Stack[ref_t] := Vec_Empty();
+}
 
 action {:layer 4} PushStack(ref_t: RefTreiber X, x: X)
 modifies Stack;

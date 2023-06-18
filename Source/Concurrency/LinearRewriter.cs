@@ -54,6 +54,8 @@ public class LinearRewriter
   {
     switch (monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
+      case "Ref_Alloc":
+        return RewriteRefAlloc(callCmd);
       case "Lheap_Empty":
         return RewriteLheapEmpty(callCmd);
       case "Lheap_Split":
@@ -157,6 +159,23 @@ public class LinearRewriter
     return ExprHelper.FunctionCall(defaultFunc);
   }
   
+  private List<Cmd> RewriteRefAlloc(CallCmd callCmd)
+  {
+    GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
+      out Function lsetConstructor, out Function lvalConstructor);
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var nilFunc = monomorphizer.InstantiateFunction("Nil", instantiation);
+
+    var cmdSeq = new List<Cmd>();
+    var k = callCmd.Outs[0];
+
+    cmdSeq.Add(CmdHelper.HavocCmd(k));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Neq(Val(k), ExprHelper.FunctionCall(nilFunc))));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
   private List<Cmd> RewriteLheapEmpty(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
