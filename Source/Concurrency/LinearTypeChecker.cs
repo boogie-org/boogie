@@ -413,6 +413,8 @@ namespace Microsoft.Boogie
     {
       switch (program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
+        case "Ref_Alloc":
+          return null;
         case "Lheap_Empty":
           return null;
         case "Lheap_Split":
@@ -423,7 +425,7 @@ namespace Microsoft.Boogie
           return null;
         case "Lheap_Write":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lheap_Add":
+        case "Lheap_Alloc":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lheap_Remove":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);

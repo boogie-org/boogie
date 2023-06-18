@@ -180,7 +180,8 @@ namespace Microsoft.Boogie
   {
     public static HashSet<string> Linear = new()
     {
-      "Lheap_Empty", "Lheap_Split", "Lheap_Transfer", "Lheap_Read", "Lheap_Write", "Lheap_Add", "Lheap_Remove",
+      "Ref_Alloc",
+      "Lheap_Empty", "Lheap_Split", "Lheap_Transfer", "Lheap_Read", "Lheap_Write", "Lheap_Alloc", "Lheap_Remove",
       "Lset_Empty", "Lset_Split", "Lset_Transfer",
       "Lval_Split", "Lval_Transfer"
     };
