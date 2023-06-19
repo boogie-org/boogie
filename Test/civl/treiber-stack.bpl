@@ -291,14 +291,16 @@ ensures stack ==
         if ref_n == Nil() then
         Vec_Empty() else
         (var n := stackContents[ref_n]; Vec_Append(Abs(n->next, stackContents), n->val));
-free ensures stack == Abs(ref_n, stackContents); // trusted fact justified by induction
+// trusted fact justified by induction and determinism of AbsCompute
+free ensures stack == Abs(ref_n, stackContents);
 {
   var n: Node X;
   if (ref_n == Nil()) {
       stack := Vec_Empty();
   } else {
       n := stackContents[ref_n];
-      assert Between(stackContents, ref_n, n->next, Nil()); // termination argument for induction
+      // termination argument for induction
+      assert Between(stackContents, ref_n, n->next, Nil());
       call stack := AbsCompute(n->next, stackContents);
       stack := Vec_Append(stack, n->val);
   }
