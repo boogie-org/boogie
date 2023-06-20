@@ -3,8 +3,8 @@ name: Boogie CI
 on:
   workflow_dispatch:
   push:
-    branches:
-      - InliningFix
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - master
