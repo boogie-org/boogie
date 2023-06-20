@@ -1,0 +1,65 @@
+
+procedure a(i: int where i > 2) returns (r: int);
+
+
+
+implementation a(i: int) returns (r: int)
+{
+
+  anon0:
+    call r := b(i);
+    return;
+}
+
+
+
+procedure {:inline 1} b(i: int where i > 2) returns (r: int);
+
+
+
+implementation {:inline 1} b(i: int) returns (r: int)
+{
+  var d: int where d > 3;
+
+  anon0:
+    d := i + i;
+    r := d;
+    return;
+}
+
+
+after inlining procedure calls
+procedure a(i: int where i > 2) returns (r: int);
+
+
+implementation a(i: int) returns (r: int)
+{
+  var inline$b$0$d: int where inline$b$0$d > 3;
+  var inline$b$0$i: int;
+  var inline$b$0$r: int;
+
+  anon0:
+    goto inline$b$0$Entry;
+
+  inline$b$0$Entry:
+    inline$b$0$i := i;
+    havoc inline$b$0$d /* where inline$b$0$d > 3 */, inline$b$0$r;
+    assume inline$b$0$d > 3;
+    goto inline$b$0$anon0;
+
+  inline$b$0$anon0:
+    inline$b$0$d := inline$b$0$i + inline$b$0$i;
+    inline$b$0$r := inline$b$0$d;
+    goto inline$b$0$Return;
+
+  inline$b$0$Return:
+    r := inline$b$0$r;
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+
+Boogie program verifier finished with 2 verified, 0 errors
