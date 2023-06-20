@@ -1,59 +1,53 @@
 
-procedure a(i: int where i > 2) returns (r: int);
+procedure a();
 
 
 
-implementation a(i: int) returns (r: int)
+implementation a()
 {
 
   anon0:
-    call r := b(i);
+    call b();
     return;
 }
 
 
 
-procedure {:inline 1} b(i: int where i > 2) returns (r: int);
+procedure {:inline 1} b();
 
 
 
-implementation {:inline 1} b(i: int) returns (r: int)
+implementation {:inline 1} b()
 {
-  var d: int where d > 3;
+  var v: int where v > 3;
 
   anon0:
-    d := i + i;
-    r := d;
+    havoc v;
     return;
 }
 
 
 after inlining procedure calls
-procedure a(i: int where i > 2) returns (r: int);
+procedure a();
 
 
-implementation a(i: int) returns (r: int)
+implementation a()
 {
-  var inline$b$0$d: int where inline$b$0$d > 3;
-  var inline$b$0$i: int;
-  var inline$b$0$r: int;
+  var inline$b$0$v: int where inline$b$0$v > 3;
 
   anon0:
     goto inline$b$0$Entry;
 
   inline$b$0$Entry:
-    inline$b$0$i := i;
-    havoc inline$b$0$d /* where inline$b$0$d > 3 */, inline$b$0$r;
-    assume inline$b$0$d > 3;
+    havoc inline$b$0$v /* where inline$b$0$v > 3 */;
+    assume inline$b$0$v > 3;
     goto inline$b$0$anon0;
 
   inline$b$0$anon0:
-    inline$b$0$d := inline$b$0$i + inline$b$0$i;
-    inline$b$0$r := inline$b$0$d;
+    havoc inline$b$0$v /* where inline$b$0$v > 3 */;
     goto inline$b$0$Return;
 
   inline$b$0$Return:
-    r := inline$b$0$r;
     goto anon0$1;
 
   anon0$1:
