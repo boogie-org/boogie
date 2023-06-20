@@ -3505,12 +3505,12 @@ namespace Microsoft.Boogie
         {
           if (callerActionDecl.Creates.All(x => x.ActionName != datatypeTypeCtorDecl.Name))
           {
-            tc.Error(this, "primitive instantiated on type not in the creates clause of caller");
+            tc.Error(this, "primitive call must be instantiated with a pending async type in the creates clause of caller");
           }
         }
         else
         {
-          tc.Error(this, "type parameter to primitive call must be instantiated with a pending async type");
+          tc.Error(this, "primitive call must be instantiated with a pending async type");
         }
       }
       else if (Proc is ActionDecl calleeActionDecl)
@@ -3534,7 +3534,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        tc.Error(this, "an action may only call actions or pending async primitives");
+        tc.Error(this, "an action may only call actions or primitives");
       }
     }
 
