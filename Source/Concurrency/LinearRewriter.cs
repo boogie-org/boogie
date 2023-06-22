@@ -30,7 +30,7 @@ public class LinearRewriter
   public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)
   {
     var linearRewriter = new LinearRewriter(civlTypeChecker, impl.Proc);
-    impl.Blocks.Iter(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
+    impl.Blocks.ForEach(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
   }
 
   private List<Cmd> RewriteCmdSeq(List<Cmd> cmdSeq)
@@ -54,6 +54,8 @@ public class LinearRewriter
   {
     switch (monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
+      case "Ref_Alloc":
+        return RewriteRefAlloc(callCmd);
       case "Lheap_Empty":
         return RewriteLheapEmpty(callCmd);
       case "Lheap_Split":
@@ -64,8 +66,8 @@ public class LinearRewriter
         return RewriteLheapRead(callCmd);
       case "Lheap_Write":
         return RewriteLheapWrite(callCmd);
-      case "Lheap_Add":
-        return RewriteLheapAdd(callCmd);
+      case "Lheap_Alloc":
+        return RewriteLheapAlloc(callCmd);
       case "Lheap_Remove":
         return RewriteLheapRemove(callCmd);
       case "Lset_Empty":
@@ -157,6 +159,23 @@ public class LinearRewriter
     return ExprHelper.FunctionCall(defaultFunc);
   }
   
+  private List<Cmd> RewriteRefAlloc(CallCmd callCmd)
+  {
+    GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
+      out Function lsetConstructor, out Function lvalConstructor);
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var nilFunc = monomorphizer.InstantiateFunction("Nil", instantiation);
+
+    var cmdSeq = new List<Cmd>();
+    var k = callCmd.Outs[0];
+
+    cmdSeq.Add(CmdHelper.HavocCmd(k));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Neq(Val(k), ExprHelper.FunctionCall(nilFunc))));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
   private List<Cmd> RewriteLheapEmpty(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
@@ -290,23 +309,26 @@ public class LinearRewriter
     throw new cce.UnreachableException();
   }
 
-  private List<Cmd> RewriteLheapAdd(CallCmd callCmd)
+  private List<Cmd> RewriteLheapAlloc(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var nilFunc = monomorphizer.InstantiateFunction("Nil", instantiation);
     
     var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
     var v = callCmd.Ins[1];
     var k = callCmd.Outs[0];
-    
+
     cmdSeq.Add(CmdHelper.HavocCmd(k));
-    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), k))));
-    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Eq(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Val(path), k), v)));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Neq(Val(k), ExprHelper.FunctionCall(nilFunc))));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), Val(k)))));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Eq(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Val(path), Val(k)), v)));
     cmdSeq.Add(CmdHelper.AssignCmd(
       CmdHelper.ExprToAssignLhs(path),
       ExprHelper.FunctionCall(lheapConstructor,
-        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.True),
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), Val(k), Expr.True),
         Val(path))));
     
     ResolveAndTypecheck(options, cmdSeq);
@@ -405,13 +427,13 @@ public class LinearRewriter
     var path = callCmd.Ins[1];
     
     var lsetContainsFunc = LsetContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, ExprHelper.FieldAccess(k, "val")), "Lval_Split failed"));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, Val(k)), "Lval_Split failed"));
 
     var mapOneFunc = MapOne(type);
     var mapDiffFunc = MapDiff(type);
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),
-        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, ExprHelper.FieldAccess(k, "val")))));
+        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, Val(k)))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -456,13 +478,13 @@ public class LinearRewriter
   private void ResolveAndTypecheck(CoreOptions options, IEnumerable<Absy> absys)
   {
     var rc = new ResolutionContext(null, options);
-    absys.Iter(absy => absy.Resolve(rc));
+    absys.ForEach(absy => absy.Resolve(rc));
     if (rc.ErrorCount != 0)
     {
       return;
     }
     var tc = new TypecheckingContext(null, options);
     tc.Proc = proc;
-    absys.Iter(absy => absy.Typecheck(tc));
+    absys.ForEach(absy => absy.Typecheck(tc));
   }
 }

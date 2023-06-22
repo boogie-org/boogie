@@ -60,7 +60,7 @@ class LinearityChecker
       var ctorTypeToSecondPA = new Dictionary<CtorType, IdentifierExpr>();
       if (action is Action x && x.HasPendingAsyncs)
       {
-        x.PendingAsyncs.Iter(y =>
+        x.PendingAsyncs.ForEach(y =>
         {
           var paLocal1 = civlTypeChecker.LocalVariable($"pa1_{y.PendingAsyncType.Decl.Name}", y.PendingAsyncType);
           var paLocal2 = civlTypeChecker.LocalVariable($"pa2_{y.PendingAsyncType.Decl.Name}", y.PendingAsyncType);

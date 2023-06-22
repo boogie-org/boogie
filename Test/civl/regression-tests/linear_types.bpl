@@ -15,10 +15,10 @@ atomic action {:layer 1, 2} A1({:linear_in} path: Lheap int, k: Ref int, v: int)
 }
 
 atomic action {:layer 1, 2} A2(v: int) returns (path': Lheap int, v': int) {
-    var k: Ref int;
+    var k: Lval (Ref int);
     call path' := Lheap_Empty();
-    call k := Lheap_Add(path', v);
-    call v' := Lheap_Remove(path', k);
+    call k := Lheap_Alloc(path', v);
+    call v' := Lheap_Remove(path', k->val);
 }
 
 atomic action {:layer 1, 2} A3({:linear_in} path: Lset int, {:linear_out} l: Lset int) returns (path': Lset int) {

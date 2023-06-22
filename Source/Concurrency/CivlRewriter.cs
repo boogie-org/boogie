@@ -23,7 +23,7 @@ namespace Microsoft.Boogie
 
       // Commutativity checks
       var decls = new List<Declaration>();
-      civlTypeChecker.AtomicActions.Iter(x =>
+      civlTypeChecker.AtomicActions.ForEach(x =>
       {
         decls.AddRange(new Declaration[] { x.Impl, x.Impl.Proc, x.InputOutputRelation });
         if (x.ImplWithChoice != null)

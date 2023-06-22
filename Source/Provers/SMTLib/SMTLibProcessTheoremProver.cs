@@ -332,7 +332,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       FlushAxioms(); // Flush all dependencies before flushing function definitions
-      generatedFuncDefs.Iter(SendCommon); // Flush function definitions
+      generatedFuncDefs.ForEach(SendCommon); // Flush function definitions
     }
 
     protected virtual void PrepareCommon()
@@ -413,7 +413,7 @@ namespace Microsoft.Boogie.SMTLib
 
     protected void FlushAxioms()
     {
-      TypeDecls.Iter(SendCommon);
+      TypeDecls.ForEach(SendCommon);
       TypeDecls.Clear();
       foreach (string s in Axioms)
       {
@@ -1146,7 +1146,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       DeclCollector.AddKnownFunction(f);
       string printedName = Namer.GetQuotedName(f, f.Name);
-      var argTypes = f.InParams.Cast<Variable>().MapConcat(p => DeclCollector.TypeToStringReg(p.TypedIdent.Type), " ");
+      var argTypes = string.Join(" ", f.InParams.Select(p => DeclCollector.TypeToStringReg(p.TypedIdent.Type)));
       string decl = "(define-fun " + printedName + " (" + argTypes + ") " +
                     DeclCollector.TypeToStringReg(f.OutParams[0].TypedIdent.Type) + " " + VCExpr2String(vc, 1) + ")";
       AssertAxioms();

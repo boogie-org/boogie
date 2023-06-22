@@ -3604,7 +3604,7 @@ namespace Microsoft.Boogie
     // be represented using the provided string (and also does not need to be explicitly declared).
     public string GetBuiltin()
     {
-      return this.Decl.FindStringAttribute("builtin");
+      return (this.Decl as ICarriesAttributes).FindStringAttribute("builtin");
     }
 
     //-----------  Cloning  ----------------------------------

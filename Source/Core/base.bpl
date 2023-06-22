@@ -140,15 +140,91 @@ function {:builtin "seq.unit"} Seq_Unit<T>(v: T): Seq T;
 function {:builtin "seq.nth"} Seq_Nth<T>(a: Seq T, i: int): T;
 function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int): Seq T;
 
+/// finite sets
+datatype Set<T> {
+  Set(val: [T]bool)
+}
+
+function Set_Size<T>(a: Set T) : int;
+
+axiom (forall<T> a: Set T :: a == Set_Empty() || 0 < Set_Size(a));
+
+axiom (forall<T> :: Set_Size(Set_Empty(): Set T) == 0);
+
+axiom (forall<T> a: Set T, t: T :: {Set_Add(a, t)} Set_Size(Set_Add(a, t)) == if Set_Contains(a, t) then Set_Size(a) else Set_Size(a) + 1);
+
+axiom (forall<T> a: Set T, t: T :: {Set_Remove(a, t)} Set_Size(Set_Remove(a, t)) == if Set_Contains(a, t) then Set_Size(a) - 1 else Set_Size(a));
+
+axiom (forall<T> a: Set T, b: Set T ::
+        {Set_Difference(a, b)} {Set_Intersection(a, b)}
+        Set_Size(a) == Set_Size(Set_Difference(a, b)) + Set_Size(Set_Intersection(a, b)));
+
+axiom (forall<T> a: Set T, b: Set T ::
+        {Set_Union(a, b)} {Set_Difference(a, b)} {Set_Difference(b, a)} {Set_Intersection(a, b)}
+        Set_Size(Set_Union(a, b)) == Set_Size(Set_Difference(a, b)) + Set_Size(Set_Difference(b, a)) + Set_Size(Set_Intersection(a, b)));
+
+function {:inline} Set_Empty<T>(): Set T
+{
+  Set(MapConst(false))
+}
+
+function {:inline} Set_Contains<T>(a: Set T, t: T): bool
+{
+  a->val[t]
+}
+
+function {:inline} Set_IsSubset<T>(a: Set T, b: Set T): bool
+{
+  Set_Union(a, b) == b
+}
+
+function {:inline} Set_IsDisjoint<T>(a: Set T, b: Set T): bool
+{
+  Set_Intersection(a, b) == Set_Empty()
+}
+
+function Set_Add<T>(a: Set T, t: T): Set T
+{
+  Set(a->val[t := true])
+}
+
+function {:inline} Set_Singleton<T>(t: T): Set T
+{
+  Set_Add(Set_Empty(), t)
+}
+
+function Set_Remove<T>(a: Set T, t: T): Set T
+{
+  Set(a->val[t := false])
+}
+
+function Set_Union<T>(a: Set T, b: Set T): Set T
+{
+  Set(MapOr(a->val, b->val))
+}
+
+function Set_Difference<T>(a: Set T, b: Set T): Set T
+{
+  Set(MapDiff(a->val, b->val))
+}
+
+function Set_Intersection<T>(a: Set T, b: Set T): Set T
+{
+  Set(MapAnd(a->val, b->val))
+}
+
 /// linear maps
 type Ref _;
+procedure Ref_Alloc<V>() returns (k: Lval (Ref V));
+
 datatype Lheap<V> { Lheap(dom: [Ref V]bool, val: [Ref V]V) }
+function Nil<V>(): Ref V;
 
 function {:inline} Lheap_WellFormed<V>(l: Lheap V): bool {
     l->val == MapIte(l->dom, l->val, MapConst(Default()))
 }
 function {:inline} Lheap_Collector<V>(l: Lheap V): [Ref V]bool {
-    l->dom
+    MapConst(false)
 }
 function {:inline} Lheap_Contains<V>(l: Lheap V, k: Ref V): bool {
     l->dom[k]
@@ -161,7 +237,7 @@ procedure Lheap_Split<V>(k: [Ref V]bool, path: Lheap V) returns (l: Lheap V);
 procedure Lheap_Transfer<V>({:linear_in} path1: Lheap V, path2: Lheap V);
 procedure Lheap_Read<V>(path: V) returns (v: V);
 procedure Lheap_Write<V>(path: V, v: V);
-procedure Lheap_Add<V>(path: Lheap V, v: V) returns (k: Ref V);
+procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (k: Lval (Ref V));
 procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
 
 /// linear sets

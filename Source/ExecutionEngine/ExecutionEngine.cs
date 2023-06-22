@@ -673,8 +673,8 @@ namespace Microsoft.Boogie
         CleanupRequest(requestId);
       }
 
-      if (Options.PrintNecessaryAssumes && processedProgram.Program.NecessaryAssumes.Any()) {
-        Options.OutputWriter.WriteLine("Necessary assume command(s): {0}", string.Join(", ", processedProgram.Program.NecessaryAssumes.OrderBy(s => s)));
+      if (Options.TrackVerificationCoverage && processedProgram.Program.AllCoveredElements.Any()) {
+        Options.OutputWriter.WriteLine("Elements covered by verification: {0}", string.Join(", ", processedProgram.Program.AllCoveredElements.OrderBy(s => s)));
       }
 
       cce.NonNull(Options.TheProverFactory).Close();
@@ -764,7 +764,8 @@ namespace Microsoft.Boogie
         foreach (var kv in TimePerRequest.OrderBy(kv => ExecutionEngine.AutoRequestId(kv.Key))) {
           var s = StatisticsPerRequest[kv.Key];
           var cacs = s.CachingActionCounts;
-          var c = cacs != null ? ", " + cacs.Select(ac => $"{ac,3}").Concat(", ") : "";
+          IEnumerable<string> tempQualifier = cacs.Select(ac => $"{ac,3}");
+          var c = cacs != null ? ", " + string.Join(", ", tempQualifier) : "";
           var t = printTimes ? $", {kv.Value.TotalMilliseconds,8:F0}" : "";
           Options.OutputWriter.WriteLine(
             "{0,-19}{1}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}, {7,2}, {8,2}, {9,2}, {10,2}, {11,2}{12}", kv.Key, t,
@@ -1325,7 +1326,7 @@ namespace Microsoft.Boogie
           if (Options.EnhancedErrorMessages == 1 && error.AugmentedTrace != null && error.AugmentedTrace.Count > 0)
           {
             errorInfo.Out.WriteLine("Augmented execution trace:");
-            error.AugmentedTrace.Iter(elem => errorInfo.Out.Write(elem));
+            error.AugmentedTrace.ForEach(elem => errorInfo.Out.Write(elem));
           }
           if (Options.PrintErrorModel >= 1 && error.Model != null)
           {

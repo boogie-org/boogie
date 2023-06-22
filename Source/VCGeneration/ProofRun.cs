@@ -7,4 +7,6 @@ public interface ProofRun {
   string Description { get; }
   
   List<Counterexample> Counterexamples { get; }
+
+  HashSet<string> CoveredElements { get;  }
 }

@@ -395,7 +395,7 @@ public class Program : Absy
     }
   }
 
-  public readonly ISet<string> NecessaryAssumes = new HashSet<string>();
+  public readonly ISet<string> AllCoveredElements = new HashSet<string>();
 
   public IEnumerable<Block> Blocks()
   {

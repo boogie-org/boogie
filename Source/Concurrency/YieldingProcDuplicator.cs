@@ -489,7 +489,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      calleeRefinedAction.PendingAsyncs.Iter(decl =>
+      calleeRefinedAction.PendingAsyncs.ForEach(decl =>
       {
         if (RefinedAction.PendingAsyncs.Contains(decl))
         {

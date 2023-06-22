@@ -29,7 +29,7 @@ namespace Microsoft.Boogie.SMTLib
       this.options = options;
       smtProcessId = smtProcessIdSeq++;
 
-      var psi = new ProcessStartInfo(options.ExecutablePath(), options.SolverArguments.Concat(" "))
+      var psi = new ProcessStartInfo(options.ExecutablePath(), string.Join(" ", options.SolverArguments))
       {
         CreateNoWindow = true,
         UseShellExecute = false,

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -50,7 +51,7 @@ namespace Microsoft.Boogie.VCExprAST
     private string skolemConstantNamePrefix;
     internal VCExpressionGenerator vcExprGen;
     private Boogie2VCExprTranslator exprTranslator;
-    internal static Dictionary<string, Type> labelToType = new();
+    internal static ConcurrentDictionary<string, Type> labelToType = new();
 
     public static VCExpr Instantiate(Implementation impl, VCExpressionGenerator vcExprGen, Boogie2VCExprTranslator exprTranslator, VCExpr vcExpr)
     {
@@ -193,7 +194,7 @@ namespace Microsoft.Boogie.VCExprAST
         if (iter.Key == "pool")
         {
           var tok = iter.tok;
-          iter.Params.Iter(x =>
+          iter.Params.ForEach(x =>
           {
             if (x is string poolName)
             {
@@ -254,7 +255,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     private static void AddDictionary<T, U>(Dictionary<T, HashSet<U>> @from, Dictionary<T, HashSet<U>> to)
     {
-      @from.Iter(kv =>
+      @from.ForEach(kv =>
       {
         if (!to.ContainsKey(kv.Key))
         {
@@ -266,7 +267,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     private static void AddDictionary<T, U>(Dictionary<T, HashSet<List<U>>> @from, Dictionary<T, HashSet<List<U>>> to)
     {
-      @from.Iter(kv =>
+      @from.ForEach(kv =>
       {
         if (!to.ContainsKey(kv.Key))
         {
@@ -278,7 +279,7 @@ namespace Microsoft.Boogie.VCExprAST
     
     private VCExpr Execute(Implementation impl, VCExpr vcExpr)
     {
-      impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().Iter(predicateCmd =>
+      impl.Blocks.ForEach(block => block.Cmds.OfType<PredicateCmd>().ForEach(predicateCmd =>
       {
         AddDictionary(FindInstantiationSources(predicateCmd, exprTranslator), labelToInstances);
       }));
@@ -652,9 +653,9 @@ namespace Microsoft.Boogie.VCExprAST
         bound.Add(x, oldToNew[x]);
       }
       var retExpr = (VCExprQuantifier) base.Visit(node, arg);
-      retExpr.Info.instantiationExprs.Iter(kv =>
+      retExpr.Info.instantiationExprs.ForEach(kv =>
       {
-        kv.Value.Iter(expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
+        CollectionExtensions.ForEach(kv.Value, expr => { qiEngine.AddTerm(kv.Key, expr.Accept(this, arg)); });
       });
       foreach (var x in node.BoundVars)
       {
@@ -838,7 +839,7 @@ namespace Microsoft.Boogie.VCExprAST
           {
             var tok = iter.tok;
             var type = QuantifierInstantiationEngine.labelToType[poolName];
-            iter.Params.Skip(1).Iter(x =>
+            iter.Params.Skip(1).ForEach(x =>
             {
               if (x is Expr e && e.Type.Equals(type))
               {
@@ -875,7 +876,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
-      cmdSeq.OfType<PredicateCmd>().Iter(FindInstantiationSources);
+      cmdSeq.OfType<PredicateCmd>().ForEach(FindInstantiationSources);
       return base.VisitCmdSeq(cmdSeq);
     }
   }

@@ -2441,7 +2441,7 @@ namespace Microsoft.Boogie
       LayerRange expectedLayerRange = null;
       if (tc.Proc is YieldProcedureDecl)
       {
-        UnpackedLhs.Select(ie => ie.Decl).Iter(v =>
+        UnpackedLhs.Select(ie => ie.Decl).ForEach(v =>
         {
           if (v is GlobalVariable)
           {
@@ -2477,7 +2477,7 @@ namespace Microsoft.Boogie
         tc.Error(tok, "left side of unpack command must be a constructor application");
       }
       var assignedVars = new HashSet<Variable>();
-      UnpackedLhs.Iter(ie =>
+      UnpackedLhs.ForEach(ie =>
       {
         if (assignedVars.Contains(ie.Decl))
         {
@@ -2520,7 +2520,7 @@ namespace Microsoft.Boogie
 
     public override void AddAssignedVariables(List<Variable> vars)
     {
-      lhs.Args.Cast<IdentifierExpr>().Iter(arg => vars.Add(arg.Decl));
+      lhs.Args.Cast<IdentifierExpr>().ForEach(arg => vars.Add(arg.Decl));
     }
 
     public override void Emit(TokenTextWriter stream, int level)
@@ -2693,11 +2693,11 @@ namespace Microsoft.Boogie
   }
 
   [ContractClass(typeof(SugaredCmdContracts))]
-  abstract public class SugaredCmd : Cmd
+  public abstract class SugaredCmd : Cmd
   {
     private Cmd desugaring; // null until desugared
 
-    public SugaredCmd(IToken /*!*/ tok)
+    public SugaredCmd(IToken tok)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -2714,6 +2714,11 @@ namespace Microsoft.Boogie
       return desugaring;
     }
 
+    public void ResetDesugaring()
+    {
+      desugaring = null;
+    }
+    
     /// <summary>
     /// This method invokes "visitor.Visit" on the desugaring, and then updates the
     /// desugaring to the result thereof.  The method's intended use is for subclasses
@@ -2965,13 +2970,12 @@ namespace Microsoft.Boogie
           tc.Error(this, "at most one arm of a parallel call may be annotated with :mark");
         }
         var callerDecl = (YieldProcedureDecl)tc.Proc;
-        CallCmds.Iter(callCmd =>
+        CallCmds.ForEach(callCmd =>
         {
           if (!CivlAttributes.IsCallMarked(callCmd) && callCmd.Proc is YieldProcedureDecl calleeDecl &&
               callerDecl.Layer == calleeDecl.Layer)
           {
-            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).Iter(
-              ie =>
+            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).ForEach(ie =>
               {
                 tc.Error(ie, $"unmarked call modifies visible output variable of the caller: {ie.Decl}");
               });
@@ -3300,13 +3304,8 @@ namespace Microsoft.Boogie
       // checking calls from atomic actions need type information, hence postponed to type checking
     }
 
-    private List<LayerRange> TypecheckCallCmdInYieldProcedureDecl(TypecheckingContext tc)
+    private void TypecheckCallCmdInYieldProcedureDecl(YieldProcedureDecl callerDecl, TypecheckingContext tc)
     {
-      if (tc.Proc is not YieldProcedureDecl callerDecl)
-      {
-        return null;
-      }
-
       var callerModifiedVars = new HashSet<Variable>(callerDecl.ModifiedVars);
 
       void CheckModifies(IEnumerable<Variable> modifiedVars)
@@ -3319,34 +3318,6 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, $"modified variable does not appear in modifies clause of mover procedure: {v.Name}");
         }
-      }
-      
-      LayerRange FormalLayerRange(Variable formal)
-      {
-        LayerRange formalLayerRange;
-        switch (Proc)
-        {
-          case YieldInvariantDecl yieldInvariantDecl:
-            formalLayerRange = new LayerRange(yieldInvariantDecl.Layer);
-            break;
-          case ActionDecl actionDecl:
-            formalLayerRange = new LayerRange(actionDecl.LayerRange.LowerLayer);
-            break;
-          case YieldProcedureDecl yieldProcedureDecl:
-          {
-            formalLayerRange = formal.LayerRange;
-            if (!yieldProcedureDecl.HasMoverType && yieldProcedureDecl.VisibleFormals.Contains(formal))
-            {
-              formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
-            }
-            break;
-          }
-          default:
-            Debug.Assert(Proc.IsPure);
-            formalLayerRange = new LayerRange(Layers[0]);
-            break;
-        }
-        return formalLayerRange;
       }
 
       // check layers
@@ -3469,7 +3440,7 @@ namespace Microsoft.Boogie
       {
         // link call
         var calleeLayer = actionDecl.LayerRange.LowerLayer;
-        actionDecl.Modifies.Iter(ie =>
+        actionDecl.Modifies.ForEach(ie =>
         {
           if (ie.Decl.LayerRange.LowerLayer != calleeLayer)
           {
@@ -3482,7 +3453,7 @@ namespace Microsoft.Boogie
         }
         else if (calleeLayer < callerDecl.Layer)
         {
-          actionDecl.Modifies.Iter(ie =>
+          actionDecl.Modifies.ForEach(ie =>
           {
             if (ie.Decl.LayerRange.UpperLayer != calleeLayer)
             {
@@ -3510,25 +3481,6 @@ namespace Microsoft.Boogie
           }
         }
       }
-      
-      for (int i = 0; i < Proc.OutParams.Count; i++)
-      {
-        var formal = Proc.OutParams[i];
-        var actual = Outs[i];
-        if (actual.Decl is GlobalVariable)
-        {
-          tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
-        }
-        else
-        {
-          var formalLayerRange = FormalLayerRange(formal);
-          if (!actual.Decl.LayerRange.Subset(formalLayerRange))
-          {
-            tc.Error(this, $"variable must be available only within layers in {formalLayerRange}: {actual.Decl.Name}");
-          }
-        }
-      }
-      return Proc.InParams.Select(FormalLayerRange).ToList();
     }
 
     private void TypecheckCallCmdInActionDecl(TypecheckingContext tc)
@@ -3553,12 +3505,12 @@ namespace Microsoft.Boogie
         {
           if (callerActionDecl.Creates.All(x => x.ActionName != datatypeTypeCtorDecl.Name))
           {
-            tc.Error(this, "primitive instantiated on type not in the creates clause of caller");
+            tc.Error(this, "primitive call must be instantiated with a pending async type in the creates clause of caller");
           }
         }
         else
         {
-          tc.Error(this, "type parameter to primitive call must be instantiated with a pending async type");
+          tc.Error(this, "primitive call must be instantiated with a pending async type");
         }
       }
       else if (Proc is ActionDecl calleeActionDecl)
@@ -3582,7 +3534,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        tc.Error(this, "an action may only call actions or pending async primitives");
+        tc.Error(this, "an action may only call actions or primitives");
       }
     }
 
@@ -3621,13 +3573,35 @@ namespace Microsoft.Boogie
 
       (this as ICarriesAttributes).TypecheckAttributes(tc);
 
-      var errorCount = tc.ErrorCount;
-      List<LayerRange> expectedLayerRanges = TypecheckCallCmdInYieldProcedureDecl(tc);
-      if (errorCount < tc.ErrorCount)
+      List<LayerRange> expectedLayerRanges = null;
+      if (tc.Proc is YieldProcedureDecl callerDecl)
       {
-        return;
+        var errorCount = tc.ErrorCount;
+        TypecheckCallCmdInYieldProcedureDecl(callerDecl, tc);
+        if (errorCount < tc.ErrorCount)
+        {
+          return;
+        }
+        for (int i = 0; i < Proc.OutParams.Count; i++)
+        {
+          var formal = Proc.OutParams[i];
+          var actual = Outs[i];
+          if (actual.Decl is GlobalVariable)
+          {
+            tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
+          }
+          else
+          {
+            var formalLayerRange = FormalLayerRange(callerDecl, formal);
+            if (!actual.Decl.LayerRange.Subset(formalLayerRange))
+            {
+              tc.Error(this, $"variable must be available only within layers in {formalLayerRange}: {actual.Decl.Name}");
+            }
+          }
+        }
+        expectedLayerRanges = Proc.InParams.Select(formal => FormalLayerRange(callerDecl, formal)).ToList();
       }
-      
+
       // typecheck in-parameters
       for (int i = 0; i < Ins.Count; i++)
       {
@@ -3694,6 +3668,34 @@ namespace Microsoft.Boogie
       TypecheckCallCmdInActionDecl(tc);
     }
 
+    private LayerRange FormalLayerRange(YieldProcedureDecl callerDecl, Variable calleeFormal)
+    {
+      LayerRange formalLayerRange;
+      switch (Proc)
+      {
+        case YieldInvariantDecl yieldInvariantDecl:
+          formalLayerRange = new LayerRange(yieldInvariantDecl.Layer);
+          break;
+        case ActionDecl actionDecl:
+          formalLayerRange = new LayerRange(actionDecl.LayerRange.LowerLayer);
+          break;
+        case YieldProcedureDecl yieldProcedureDecl:
+        {
+          formalLayerRange = calleeFormal.LayerRange;
+          if (!yieldProcedureDecl.HasMoverType && yieldProcedureDecl.VisibleFormals.Contains(calleeFormal))
+          {
+            formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
+          }
+          break;
+        }
+        default:
+          Debug.Assert(Proc.IsPure);
+          formalLayerRange = new LayerRange(Layers[0]);
+          break;
+      }
+      return formalLayerRange;
+    }
+
     private IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ TypeParamSubstitution()
     {
       Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
@@ -3720,6 +3722,7 @@ namespace Microsoft.Boogie
       Dictionary<Variable, Expr> substMapBound = new Dictionary<Variable, Expr>();
       List<Variable> /*!*/
         tempVars = new List<Variable>();
+      string callId = (this as ICarriesAttributes).FindStringAttribute("id");
 
       // proc P(ins) returns (outs)
       //   requires Pre
@@ -3838,12 +3841,18 @@ namespace Microsoft.Boogie
             AssertCmd /*!*/
               a = new AssertRequiresCmd(this, reqCopy);
             Contract.Assert(a != null);
+
             if (Attributes != null)
             {
               // Inherit attributes of call.
               var attrCopy = (QKeyValue) cce.NonNull(Attributes.Clone());
               attrCopy = Substituter.Apply(s, attrCopy);
               a.Attributes = attrCopy;
+            }
+
+            // Do this after copying the attributes so it doesn't get overwritten
+            if (callId is not null) {
+              (a as ICarriesAttributes).CopyIdWithSuffixFrom(tok, req,  $"${callId}$requires");
             }
 
             a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
@@ -3857,6 +3866,11 @@ namespace Microsoft.Boogie
           AssumeCmd /*!*/
             a = new AssumeCmd(req.tok, Substituter.Apply(s, req.Condition));
           Contract.Assert(a != null);
+          // These probably won't have IDs, but copy if they do.
+          if (callId is not null) {
+            (a as ICarriesAttributes).CopyIdWithSuffixFrom(tok, req, $"${callId}$requires_assumed");
+          }
+
           newBlockBody.Add(a);
         }
       }
@@ -4019,6 +4033,10 @@ namespace Microsoft.Boogie
 
         #endregion
 
+        if (callId is not null) {
+          (assume as ICarriesAttributes).CopyIdWithSuffixFrom(tok, e, $"${callId}$ensures");
+        }
+
         newBlockBody.Add(assume);
       }
 
@@ -4036,6 +4054,9 @@ namespace Microsoft.Boogie
             cout_exp = new IdentifierExpr(cce.NonNull(couts[i]).tok, cce.NonNull(couts[i]));
           Contract.Assert(cout_exp != null);
           AssignCmd assign = Cmd.SimpleAssign(param_i.tok, cce.NonNull(this.Outs[i]), cout_exp);
+          if (callId is not null) {
+            Attributes = new QKeyValue(param_i.tok, "id", new List<object>(){ $"{callId}$out{i}" }, Attributes);
+          }
           newBlockBody.Add(assign);
         }
       }

@@ -13,7 +13,7 @@ namespace Microsoft.Boogie
 
     public static bool DoesTypeCtorDeclNeedMonomorphization(TypeCtorDecl typeCtorDecl)
     {
-      return typeCtorDecl.Arity > 0 && typeCtorDecl.FindStringAttribute("builtin") == null;
+      return typeCtorDecl.Arity > 0 && (typeCtorDecl as ICarriesAttributes).FindStringAttribute("builtin") == null;
     }
 
     public static bool IsMonomorphic(Program program)
@@ -184,7 +184,7 @@ namespace Microsoft.Boogie
     {
       if (node.Fun is FunctionCall functionCall)
       {
-        functionCall.Func.TypeParameters.Iter(t =>
+        functionCall.Func.TypeParameters.ForEach(t =>
         {
           var visitor = new TypeDependencyVisitor(typeVariableDependencyGraph, strongDependencyEdges, t);
           visitor.Visit(node.TypeParameters[t]);
@@ -196,7 +196,7 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitCallCmd(CallCmd node)
     {
-      node.Proc.TypeParameters.Iter(t =>
+      node.Proc.TypeParameters.ForEach(t =>
       {
         var visitor = new TypeDependencyVisitor(typeVariableDependencyGraph, strongDependencyEdges, t);
         visitor.Visit(node.TypeParameters[t]);
@@ -209,8 +209,8 @@ namespace Microsoft.Boogie
       if (polymorphicFunctionAxioms.Contains(node.DefinitionAxiom))
       {
         var forallExpr = (ForallExpr) node.DefinitionAxiom.Expr;
-        LinqExtender.Map(node.TypeParameters, forallExpr.TypeParameters)
-          .Iter(x => typeVariableDependencyGraph.AddEdge(x.Key, x.Value));
+        node.TypeParameters.Zip(forallExpr.TypeParameters)
+          .ForEach(x => typeVariableDependencyGraph.AddEdge(x.First, x.Second));
         VisitExpr(forallExpr.Body);
       }
       return base.VisitFunction(node);
@@ -218,8 +218,8 @@ namespace Microsoft.Boogie
 
     public override Implementation VisitImplementation(Implementation node)
     {
-      LinqExtender.Map(node.Proc.TypeParameters, node.TypeParameters)
-        .Iter(x => typeVariableDependencyGraph.AddEdge(x.Key, x.Value));
+      node.Proc.TypeParameters.Zip(node.TypeParameters)
+        .ForEach(x => typeVariableDependencyGraph.AddEdge(x.First, x.Second));
       return base.VisitImplementation(node);
     }
 
@@ -382,7 +382,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      polymorphicMapInfo.Instances.Skip(instanceExprs.Count).Iter(x =>
+      polymorphicMapInfo.Instances.Skip(instanceExprs.Count).ForEach(x =>
         instanceExprs[x] = monomorphizationVisitor.InstantiateBinderExpr(lambdaExpr, x));
       return true;
     }
@@ -583,7 +583,7 @@ namespace Microsoft.Boogie
 
     private MapType Instantiate(List<Type> actualParameters)
     {
-      var subst = LinqExtender.Map(mapType.TypeParameters, actualParameters);
+      var subst = mapType.TypeParameters.MapTo(actualParameters);
       List<Type> newArgs = new List<Type>();
       foreach (Type t in mapType.Arguments)
       {
@@ -1214,9 +1214,9 @@ namespace Microsoft.Boogie
         }
         if (type is MapType mapType)
         {
-          mapType.TypeParameters.Iter(x => boundTypeVariables.Add(x));
+          mapType.TypeParameters.ForEach(x => boundTypeVariables.Add(x));
           var returnVal = mapType.Arguments.Any(IsPolymorphic) || IsPolymorphic(mapType.Result);
-          mapType.TypeParameters.Iter(x => boundTypeVariables.Remove(x));
+          mapType.TypeParameters.ForEach(x => boundTypeVariables.Remove(x));
           return returnVal;
         }
         throw new cce.UnreachableException();
@@ -1300,7 +1300,7 @@ namespace Microsoft.Boogie
       this.program = program;
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
       nameToImplementation = new Dictionary<string, Implementation>();
-      program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).Iter(
+      program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).ForEach(
         impl =>
         {
           nameToImplementation.Add(impl.Name, impl);
@@ -1308,7 +1308,7 @@ namespace Microsoft.Boogie
         });
       procInstantiations = new Dictionary<Procedure, Dictionary<List<Type>, Procedure>>();
       nameToProcedure = new Dictionary<string, Procedure>();
-      program.TopLevelDeclarations.OfType<Procedure>().Where(proc => proc.TypeParameters.Count > 0).Iter(
+      program.TopLevelDeclarations.OfType<Procedure>().Where(proc => proc.TypeParameters.Count > 0).ForEach(
         proc =>
         {
           nameToProcedure.Add(proc.Name, proc);
@@ -1316,7 +1316,7 @@ namespace Microsoft.Boogie
         });
       functionInstantiations = new Dictionary<Function, Dictionary<List<Type>, Function>>();
       nameToFunction = new Dictionary<string, Function>();
-      program.TopLevelDeclarations.OfType<Function>().Where(function => function.TypeParameters.Count > 0).Iter(
+      program.TopLevelDeclarations.OfType<Function>().Where(function => function.TypeParameters.Count > 0).ForEach(
         function =>
         {
           nameToFunction.Add(function.Name, function);
@@ -1330,7 +1330,7 @@ namespace Microsoft.Boogie
       polymorphicMapInfos = new Dictionary<MapType, PolymorphicMapInfo>();
       nameToTypeCtorDecl = new Dictionary<string, TypeCtorDecl>();
       program.TopLevelDeclarations.OfType<TypeCtorDecl>()
-        .Where(typeCtorDecl => MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl)).Iter(
+        .Where(typeCtorDecl => MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(typeCtorDecl)).ForEach(
           typeCtorDecl =>
           {
             nameToTypeCtorDecl.Add(typeCtorDecl.Name, typeCtorDecl);
@@ -1339,7 +1339,7 @@ namespace Microsoft.Boogie
       visitedTypeCtorDecls = new HashSet<TypeCtorDecl>();
       visitedFunctions = new HashSet<Function>();
       procToImpl = new Dictionary<Procedure, Implementation>();
-      program.TopLevelDeclarations.OfType<Implementation>().Iter(impl => procToImpl[impl.Proc] = impl);
+      program.TopLevelDeclarations.OfType<Implementation>().ForEach(impl => procToImpl[impl.Proc] = impl);
       program.RemoveTopLevelDeclarations(decl => 
         decl is Implementation impl && implInstantiations.ContainsKey(impl) ||
         decl is Procedure proc && procInstantiations.ContainsKey(proc) ||
@@ -1356,7 +1356,7 @@ namespace Microsoft.Boogie
       // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
       var typeCtorDecls = new HashSet<TypeCtorDecl>();
-      monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.IsSkipVerification(options)).Iter(impl =>
+      monomorphizationVisitor.implInstantiations.Keys.Where(impl => !impl.IsSkipVerification(options)).ForEach(impl =>
       {
         for (int i = ctorTypes.Count; i < impl.TypeParameters.Count; i++)
         {
@@ -1500,7 +1500,7 @@ namespace Microsoft.Boogie
     {
       var binderExprTypeParameters = binderExpr.TypeParameters;
       binderExpr.TypeParameters = new List<TypeVariable>();
-      var newBinderExpr = (BinderExpr)InstantiateAbsy(binderExpr, LinqExtender.Map(binderExprTypeParameters, actualTypeParams),
+      var newBinderExpr = (BinderExpr)InstantiateAbsy(binderExpr, binderExprTypeParameters.MapTo(actualTypeParams),
         new Dictionary<Variable, Variable>());
       binderExpr.TypeParameters = binderExprTypeParameters;
       if (newBinderExpr is QuantifierExpr quantifierExpr && quantifierExpr.Dummies.Count == 0)
@@ -1519,14 +1519,14 @@ namespace Microsoft.Boogie
     {
       if (!functionInstantiations[func].ContainsKey(actualTypeParams))
       {
-        var funcTypeParamInstantiation = LinqExtender.Map(func.TypeParameters, actualTypeParams);
+        var funcTypeParamInstantiation = func.TypeParameters.MapTo(actualTypeParams);
         var instantiatedFunction =
           InstantiateFunctionSignature(func, actualTypeParams, funcTypeParamInstantiation);
-        var variableMapping = LinqExtender.Map(func.InParams, instantiatedFunction.InParams);
+        var variableMapping = func.InParams.MapTo(instantiatedFunction.InParams);
         newInstantiatedDeclarations.Add(instantiatedFunction);
         functionInstantiations[func][actualTypeParams] = instantiatedFunction;
         declWithFormalsToTypeInstantiation[instantiatedFunction] =
-          LinqExtender.Map(func.TypeParameters.Select(x => x.Name), actualTypeParams);
+          func.TypeParameters.Select(x => x.Name).MapTo(actualTypeParams);
         if (func.Body != null)
         {
           instantiatedFunction.Body = (Expr) InstantiateAbsy(func.Body, funcTypeParamInstantiation, variableMapping);
@@ -1563,11 +1563,10 @@ namespace Microsoft.Boogie
     {
       if (!procInstantiations[proc].ContainsKey(actualTypeParams))
       {
-        var procTypeParamInstantiation = LinqExtender.Map(proc.TypeParameters, actualTypeParams);
+        var procTypeParamInstantiation = proc.TypeParameters.MapTo(actualTypeParams);
         var instantiatedInParams = InstantiateFormals(proc.InParams, procTypeParamInstantiation);
         var instantiatedOutParams = InstantiateFormals(proc.OutParams, procTypeParamInstantiation);
-        var variableMapping = LinqExtender.Map(proc.InParams.Union(proc.OutParams),
-          instantiatedInParams.Union(instantiatedOutParams));
+        var variableMapping = proc.InParams.Union(proc.OutParams).MapTo(instantiatedInParams.Union(instantiatedOutParams));
         var requires = proc.Requires.Select(requires => new Requires(requires.tok, requires.Free,
           (Expr) InstantiateAbsy(requires.Condition, procTypeParamInstantiation, variableMapping), requires.Comment)).ToList();
         var modifies = proc.Modifies.Select(ie =>
@@ -1581,7 +1580,7 @@ namespace Microsoft.Boogie
         newInstantiatedDeclarations.Add(instantiatedProc);
         procInstantiations[proc][actualTypeParams] = instantiatedProc;
         declWithFormalsToTypeInstantiation[instantiatedProc] =
-          LinqExtender.Map(proc.TypeParameters.Select(x => x.Name), actualTypeParams);
+          proc.TypeParameters.Select(x => x.Name).MapTo(actualTypeParams);
       }
       return procInstantiations[proc][actualTypeParams];
     }
@@ -1590,16 +1589,15 @@ namespace Microsoft.Boogie
     {
       if (!implInstantiations[impl].ContainsKey(actualTypeParams))
       {
-        var implTypeParamInstantiation = LinqExtender.Map(impl.TypeParameters, actualTypeParams);
+        var implTypeParamInstantiation = impl.TypeParameters.MapTo(actualTypeParams);
         var instantiatedInParams = InstantiateFormals(impl.InParams, implTypeParamInstantiation);
         var instantiatedOutParams = InstantiateFormals(impl.OutParams, implTypeParamInstantiation);
         var instantiatedLocalVariables = InstantiateLocalVariables(impl.LocVars, implTypeParamInstantiation);
-        var variableMapping = LinqExtender.Map(impl.InParams.Union(impl.OutParams).Union(impl.LocVars),
-          instantiatedInParams.Union(instantiatedOutParams).Union(instantiatedLocalVariables));
+        var variableMapping = impl.InParams.Union(impl.OutParams).Union(impl.LocVars).MapTo(instantiatedInParams.Union(instantiatedOutParams).Union(instantiatedLocalVariables));
         var blocks = impl.Blocks
           .Select(block => (Block)InstantiateAbsy(block, implTypeParamInstantiation, variableMapping)).ToList();
-        var blockMapping = LinqExtender.Map(impl.Blocks, blocks);
-        blocks.Iter(block =>
+        var blockMapping = impl.Blocks.MapTo(blocks);
+        blocks.ForEach(block =>
         {
           if (block.TransferCmd is GotoCmd gotoCmd)
           {
@@ -1615,7 +1613,7 @@ namespace Microsoft.Boogie
         newInstantiatedDeclarations.Add(instantiatedImpl);
         implInstantiations[impl][actualTypeParams] = instantiatedImpl;
         declWithFormalsToTypeInstantiation[instantiatedImpl] =
-          LinqExtender.Map(impl.TypeParameters.Select(x => x.Name), actualTypeParams);
+          impl.TypeParameters.Select(x => x.Name).MapTo(actualTypeParams);
       }
       return implInstantiations[impl][actualTypeParams];
     }
@@ -1679,10 +1677,10 @@ namespace Microsoft.Boogie
           typeInstantiations[datatypeTypeCtorDecl]
             .Add(actualTypeParams, newDatatypeTypeCtorDecl);
           typeCtorDeclToTypeInstantiation[newDatatypeTypeCtorDecl] = actualTypeParams;
-          datatypeTypeCtorDecl.Constructors.Iter(constructor =>
+          datatypeTypeCtorDecl.Constructors.ForEach(constructor =>
           {
             var function = InstantiateFunctionSignature(constructor, actualTypeParams,
-              LinqExtender.Map(constructor.TypeParameters, actualTypeParams));
+              constructor.TypeParameters.MapTo(actualTypeParams));
             newDatatypeTypeCtorDecl.AddConstructor(new DatatypeConstructor(function));
           });
         }
@@ -1703,7 +1701,7 @@ namespace Microsoft.Boogie
 
     public static string MkInstanceName(string name, List<Type> actualTypeParams)
     {
-      actualTypeParams.Iter(x => name = $"{name}_{x.UniqueId}");
+      actualTypeParams.ForEach(x => name = $"{name}_{x.UniqueId}");
       return name;
     }
 
@@ -1851,7 +1849,7 @@ namespace Microsoft.Boogie
       visitedTypeCtorDecls.Add(node);
       if (node is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
       {
-        datatypeTypeCtorDecl.Constructors.Iter(constructor => base.VisitFunction(constructor));
+        datatypeTypeCtorDecl.Constructors.ForEach(constructor => base.VisitFunction(constructor));
       }
       return base.VisitTypeCtorDecl(node);
     }

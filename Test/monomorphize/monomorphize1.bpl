@@ -8,29 +8,29 @@ ensures set' == MapOr(set, MapConst(false)[elem := true]);
 }
 
 datatype Wrapper<E> {
-  Set(set: [E]bool),
-  Multiset(multiset: [E]int)
+  WrapperSet(set: [E]bool),
+  WrapperMultiset(multiset: [E]int)
 }
 
 type X;
 procedure wrapper_add(w: Wrapper X, elem: X) returns (w': Wrapper X)
-requires w is Set;
-ensures w' is Set;
+requires w is WrapperSet;
+ensures w' is WrapperSet;
 ensures w'->set == MapOr(w->set, MapConst(false)[elem := true]);
 {
     var xset: [X]bool;
     xset := w->set;
     xset := xset[elem := true];
-    w' := Set(xset);
+    w' := WrapperSet(xset);
 }
 
 procedure wrapper_incr(w: Wrapper X, elem: X) returns (w': Wrapper X)
-requires w is Multiset && w->multiset == MapConst(42);
-ensures w' is Multiset;
+requires w is WrapperMultiset && w->multiset == MapConst(42);
+ensures w' is WrapperMultiset;
 ensures w'->multiset == MapIte(MapConst(false)[elem := true], MapConst(0), MapConst(42));
 {
     var xmultiset: [X]int;
     xmultiset := w->multiset;
     xmultiset[elem] := 0;
-    w' := Multiset(xmultiset);
+    w' := WrapperMultiset(xmultiset);
 }
