@@ -549,6 +549,12 @@ namespace Microsoft.Boogie
       }
 
       codeCopier.BeginInline(substMap, substMapOld, GetInlinedProcLabel(proc.Name) + "$");
+
+      foreach (var variable in newLocalVars) {
+        if (variable.TypedIdent.WhereExpr != null) {
+          variable.TypedIdent.WhereExpr = codeCopier.CopyExpr(variable.TypedIdent.WhereExpr);
+        }
+      }
     }
 
     protected void EndInline()
