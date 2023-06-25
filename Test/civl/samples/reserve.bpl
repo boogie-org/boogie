@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 /*
@@ -8,7 +8,27 @@ a cell, freeSpace is decremented atomically, blocking to ensure that freeSpace d
 go below zero. If the decrement succeeds, then a scan of isFree is performed to find a
 free cell. The goal of the verification is to prove that this scan will succeed. The
 main challenge in the proof is to reason about cardinality of constructed sets.
+
+The layer transformations are as follows:
+1 -> 2: transform isFree array into the finite set isFreeSet enabling cardinality reasoning
+2 -> 3: use cardinality reasoning to transform freeSpace into the bijection allocMap
+
+The verification goal is discharged at layer 3.
 */
+
+datatype Bijection {
+  Bijection(tidToPtr: Map Tid int, ptrToTid: Map int Tid)
+}
+
+function {:inline} BijectionInvariant(allocMap: Bijection): bool {
+    (forall tid: Tid ::
+        Map_Contains(allocMap->tidToPtr, tid) ==>
+            (var x := Map_At(allocMap->tidToPtr, tid); Map_Contains(allocMap->ptrToTid, x) && Map_At(allocMap->ptrToTid, x) == tid))
+    &&
+    (forall ptr: int ::
+        Map_Contains(allocMap->ptrToTid, ptr) ==>
+            (var x := Map_At(allocMap->ptrToTid, ptr); Map_Contains(allocMap->tidToPtr, x) && Map_At(allocMap->tidToPtr, x) == ptr))
+}
 
 type {:linear "tid"} Tid = int;
 
@@ -17,169 +37,229 @@ const memHi: int;
 axiom 0 < memLo && memLo <= memHi;
 function {:inline} memAddr(i: int) returns (bool) { memLo <= i && i < memHi }
 
-datatype Bijection {
-  Bijection(domain: [Tid]bool, range: [int]bool, tidToPtr: [Tid]int, ptrToTid: [int]Tid)
-}
-
 var {:layer 0,1} isFree: [int]bool;
-var {:layer 0,1} freeSpace: int;
-var {:layer 0,1} allocMap: Bijection;
+var {:layer 1,3} isFreeSet: Set int;
+var {:layer 0,2} freeSpace: int;
+var {:layer 2,3} allocMap: Bijection;
 
-function {:inline} BijectionInvariant(allocMap: Bijection): bool {
-    (forall {:pool "A"} tid: Tid :: {:add_to_pool "A", tid} {:add_to_pool "B", allocMap->tidToPtr[tid]}
-        allocMap->domain[tid] ==>
-            allocMap->range[allocMap->tidToPtr[tid]] &&
-            allocMap->ptrToTid[allocMap->tidToPtr[tid]] == tid)
-    &&
-    (forall {:pool "B"} ptr: int :: {:add_to_pool "B", ptr} {:add_to_pool "A", allocMap->ptrToTid[ptr]}
-        allocMap->range[ptr] ==>
-            allocMap->domain[allocMap->ptrToTid[ptr]] &&
-            allocMap->tidToPtr[allocMap->ptrToTid[ptr]] == ptr)
+yield procedure {:layer 3} Malloc({:linear "tid"} tid: Tid)
+preserves call YieldInvariant#1();
+preserves call YieldInvariant#2(tid, false);
+preserves call YieldInvariant#3(tid, false, memLo);
+{
+    var i: int;
+    var spaceFound: bool;
+
+    call DecrementFreeSpace#2(tid);
+    i := memLo;
+    while (i < memHi)
+    invariant {:yields} true;
+    invariant {:layer 1, 2} memLo <= i && i <= memHi;
+    invariant {:layer 3} memAddr(i);
+    invariant call YieldInvariant#1();
+    invariant call YieldInvariant#2(tid, true);
+    invariant call YieldInvariant#3(tid, true, i);
+    {
+        call spaceFound := AllocIfPtrFree#2(tid, i);
+        if (spaceFound)
+        {
+            return;
+        }
+        i := i + 1;
+    }
+    call Unreachable(); // verification goal
 }
 
-yield invariant {:layer 1} YieldInvariant();
-invariant 0 <= freeSpace;
-invariant BijectionInvariant(allocMap);
-invariant (forall {:pool "B"} y: int :: {:add_to_pool "B", y} isFree[y] ==> memAddr(y));
-invariant MapDiff(allocMap->range, isFree) == MapConst(false);
-invariant freeSpace == Size(MapDiff(isFree, allocMap->range));
-
-yield invariant {:layer 1} YieldAllocMap({:linear "tid"} tid: Tid, status: bool, i: int);
-invariant allocMap->domain[tid] == status;
-invariant allocMap->domain[tid] ==> i <= allocMap->tidToPtr[tid];
-
-function Size<T>([T]bool) returns (int);
-
-pure procedure SizeLemma1<T>(X: [T]bool, x: T);
-ensures Size(X[x := false]) + 1 == Size(X[x := true]);
-
-pure procedure SizeLemma2<T>(X: [T]bool, Y: [T]bool);
-requires MapDiff(X, Y) == MapConst(false);
-ensures Size(Y) == Size(X) + Size(MapDiff(Y, X));
-
-yield procedure {:layer 0} DecrementFreeSpace({:linear "tid"} tid: Tid);
-refines atomic_DecrementFreeSpace;
-
-atomic action {:layer 1} atomic_DecrementFreeSpace({:linear "tid"} tid: Tid)
-modifies freeSpace, allocMap;
+yield procedure {:layer 3} Collect()
+preserves call YieldInvariant#1();
 {
     var ptr: int;
-    assume 0 < freeSpace;
-    assert !allocMap->domain[tid];
-    assert freeSpace == Size(MapDiff(isFree, allocMap->range));
-    assume MapDiff(isFree, allocMap->range)[ptr];
-    freeSpace := freeSpace - 1;
-    call allocMap := Reserve(allocMap, tid, ptr);
+
+    while (*)
+    invariant {:yields} true;
+    invariant call YieldInvariant#1();
+    {
+        call ptr := Reclaim#2();
+    }
 }
 
-atomic action Reserve(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
-    assert !allocMap->domain[tid];
-    assert !allocMap->range[ptr];
-    assert memAddr(ptr);
-    allocMap' := Bijection(
-                    allocMap->domain[tid := true],
-                    allocMap->range[ptr := true],
-                    allocMap->tidToPtr[tid := ptr],
-                    allocMap->ptrToTid[ptr := tid]);
-}
-
-yield procedure {:layer 0} AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool);
-refines atomic_AllocIfPtrFree;
-
-atomic action {:layer 1} atomic_AllocIfPtrFree({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
-modifies isFree, allocMap;
+action {:layer 2,3} Alloc(tid: Tid, ptr: int)
+modifies allocMap;
 {
     var tid': Tid;
     var ptr': int;
+    assert Map_Contains(allocMap->tidToPtr, tid);
+    if (Map_Contains(allocMap->ptrToTid, ptr)) {
+        // swap
+        tid' := Map_At(allocMap->ptrToTid, ptr);
+        ptr' := Map_At(allocMap->tidToPtr, tid);
+        allocMap := Bijection(Map_Swap(allocMap->tidToPtr, tid, tid'), Map_Swap(allocMap->ptrToTid, ptr, ptr'));
+    }
+    // alloc
+    ptr' := Map_At(allocMap->tidToPtr, tid);
+    allocMap := Bijection(Map_Remove(allocMap->tidToPtr, tid), Map_Remove(allocMap->ptrToTid, ptr'));
+}
+
+action {:layer 2,3} PreAlloc({:linear "tid"} tid: Tid, set: Set int)
+modifies allocMap;
+{
+    var ptr: int;
+    assert set != Set_Empty();
+    ptr := Set_Choose(set);
+    allocMap := Bijection(Map_Update(allocMap->tidToPtr, tid, ptr), Map_Update(allocMap->ptrToTid, ptr, tid));
+}
+
+atomic action {:layer 3} AtomicDecrementFreeSpace#2({:linear "tid"} tid: Tid)
+modifies allocMap;
+{
+    var set: Set int;
+    set := Set_Difference(isFreeSet, allocMap->ptrToTid->dom);
+    assume set != Set_Empty();
+    call PreAlloc(tid, set);
+}
+yield procedure {:layer 2} DecrementFreeSpace#2({:linear "tid"} tid: Tid)
+refines AtomicDecrementFreeSpace#2;
+preserves call YieldInvariant#1();
+requires call YieldInvariant#2(tid, false);
+ensures call YieldInvariant#2(tid, true);
+{
+    var set: Set int;
+    call DecrementFreeSpace#0(tid);
+    call PreAlloc(tid, Set_Difference(isFreeSet, allocMap->ptrToTid->dom));
+}
+
+atomic action {:layer 1,2} AtomicDecrementFreeSpace#0({:linear "tid"} tid: Tid)
+modifies freeSpace;
+{
+    assume 0 < freeSpace;
+    freeSpace := freeSpace - 1;
+}
+yield procedure {:layer 0} DecrementFreeSpace#0({:linear "tid"} tid: Tid);
+refines AtomicDecrementFreeSpace#0;
+
+atomic action {:layer 3} AtomicAllocIfPtrFree#2({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
+modifies isFreeSet, allocMap;
+{
     assert memAddr(ptr);
-    assert isFree[ptr] || memAddr(ptr + 1);
-    assert allocMap->domain[tid];
+    spaceFound := Set_Contains(isFreeSet, ptr);
+    if (spaceFound) {
+        isFreeSet := Set_Remove(isFreeSet, ptr);
+        call Alloc(tid, ptr);
+    }
+}
+yield procedure {:layer 2} AllocIfPtrFree#2({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
+refines AtomicAllocIfPtrFree#2;
+preserves call YieldInvariant#1();
+requires call YieldInvariant#2(tid, true);
+ensures call YieldInvariant#2(tid, !spaceFound);
+{
+    call spaceFound := AllocIfPtrFree#1(tid, ptr);
+    if (spaceFound) {
+        call Alloc(tid, ptr);
+    }
+}
+
+atomic action {:layer 2} AtomicAllocIfPtrFree#1({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
+modifies isFreeSet;
+{
+    assert memAddr(ptr);
+    spaceFound := Set_Contains(isFreeSet, ptr);
+    if (spaceFound) {
+        isFreeSet := Set_Remove(isFreeSet, ptr);
+    }
+}
+yield procedure {:layer 1} AllocIfPtrFree#1({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
+refines AtomicAllocIfPtrFree#1;
+preserves call YieldInvariant#1();
+{
+    call spaceFound := AllocIfPtrFree#0(tid, ptr);
+    if (spaceFound) {
+        call IsFreeSetRemove(ptr);
+    }
+}
+
+atomic action {:layer 1} AtomicAllocIfPtrFree#0({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
+modifies isFree;
+{
+    assert memAddr(ptr);
     spaceFound := isFree[ptr];
     if (spaceFound) {
         isFree[ptr] := false;
-        assume {:add_to_pool "A", tid} {:add_to_pool "B", ptr} true;
-        call allocMap := Alloc(allocMap, tid, ptr);
     }
 }
+yield procedure {:layer 0} AllocIfPtrFree#0({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool);
+refines AtomicAllocIfPtrFree#0;
 
-atomic action Alloc(allocMap: Bijection, tid: Tid, ptr: int) returns (allocMap': Bijection) {
-    var tid': Tid;
-    var ptr': int;
-    assert allocMap->domain[tid];
-    allocMap' := allocMap;
-    if (allocMap'->range[ptr]) {
-        // swap
-        tid' := allocMap'->ptrToTid[ptr];
-        ptr' := allocMap'->tidToPtr[tid];
-        assume {:add_to_pool "A", tid'} {:add_to_pool "B", ptr'} true;
-        allocMap' := Bijection(
-                        allocMap'->domain,
-                        allocMap'->range,
-                        allocMap'->tidToPtr[tid := ptr][tid' := ptr'],
-                        allocMap'->ptrToTid[ptr := tid][ptr' := tid']);
-    }
-    // alloc
-    ptr' := allocMap'->tidToPtr[tid];
-    assume {:add_to_pool "B", ptr'} true;
-    allocMap' := Bijection(
-                    allocMap'->domain[tid := false],
-                    allocMap'->range[ptr' := false],
-                    allocMap'->tidToPtr,
-                    allocMap'->ptrToTid);
+atomic action {:layer 3} AtomicReclaim#2() returns (ptr: int)
+modifies isFreeSet;
+{
+    assume memAddr(ptr) && !Set_Contains(isFreeSet, ptr);
+    isFreeSet := Set_Add(isFreeSet, ptr);
+}
+yield procedure {:layer 2} Reclaim#2() returns (ptr: int)
+refines AtomicReclaim#2;
+preserves call YieldInvariant#1();
+{
+    call ptr := Reclaim#1();
 }
 
-yield procedure {:layer 0} Reclaim() returns (ptr: int);
-refines atomic_Reclaim;
+action {:layer 1,2} IsFreeSetAdd(ptr: int)
+modifies isFreeSet;
+{
+    isFreeSet := Set_Add(isFreeSet, ptr);
+}
 
-atomic action {:layer 1} atomic_Reclaim() returns (ptr: int)
+action {:layer 1,2} IsFreeSetRemove(ptr: int)
+modifies isFreeSet;
+{
+    isFreeSet := Set_Remove(isFreeSet, ptr);
+}
+
+atomic action {:layer 2} AtomicReclaim#1() returns (ptr: int)
+modifies freeSpace, isFreeSet;
+{
+    assume memAddr(ptr) && !Set_Contains(isFreeSet, ptr);
+    freeSpace := freeSpace + 1;
+    isFreeSet := Set_Add(isFreeSet, ptr);
+}
+yield procedure {:layer 1} Reclaim#1() returns (ptr: int)
+refines AtomicReclaim#1;
+preserves call YieldInvariant#1();
+{
+    call ptr := Reclaim#0();
+    call IsFreeSetAdd(ptr);
+}
+
+atomic action {:layer 1} AtomicReclaim#0() returns (ptr: int)
 modifies freeSpace, isFree;
 {
     assume memAddr(ptr) && !isFree[ptr];
     freeSpace := freeSpace + 1;
     isFree[ptr] := true;
 }
+yield procedure {:layer 0} Reclaim#0() returns (ptr: int);
+refines AtomicReclaim#0;
 
-yield procedure {:layer 1} Malloc({:linear "tid"} tid: Tid)
-requires call YieldAllocMap(tid, false, memLo);
-preserves call YieldInvariant();
+left action {:layer 1,3} AtomicUnreachable()
 {
-    var i: int;
-    var spaceFound: bool;
-
-    call DecrementFreeSpace(tid);
-    i := memLo;
-    call {:layer 1} SizeLemma1(MapDiff(isFree, allocMap->range), allocMap->tidToPtr[tid]);
-    while (i < memHi)
-    invariant {:layer 1} memAddr(i);
-    invariant {:yields} true;
-    invariant call YieldInvariant();
-    invariant call YieldAllocMap(tid, true, i);
-    {
-        call {:layer 1} SizeLemma1(isFree, i);
-        call {:layer 1} SizeLemma1(allocMap->range, i);
-        call {:layer 1} SizeLemma1(allocMap->range, allocMap->tidToPtr[tid]);
-        call {:layer 1} SizeLemma2(allocMap->range, isFree);
-        call spaceFound := AllocIfPtrFree(tid, i);
-        if (spaceFound)
-        {
-            call {:layer 1} SizeLemma2(allocMap->range, isFree);
-            return;
-        }
-        i := i + 1;
-    }
-    assert {:layer 1} false;
+    assert false;
 }
+yield procedure {:layer 0} Unreachable();
+refines AtomicUnreachable;
 
-yield procedure {:layer 1} Collect()
-preserves call YieldInvariant();
-{
-    var ptr: int;
+yield invariant {:layer 1} YieldInvariant#1();
+invariant (forall y: int :: Set_Contains(isFreeSet, y) <==> memAddr(y) && isFree[y]);
 
-    while (*)
-    invariant {:yields} true;
-    invariant call YieldInvariant();
-    {
-        call ptr := Reclaim();
-        call {:layer 1} SizeLemma1(MapDiff(isFree, allocMap->range), ptr);
-    }
-}
+yield invariant {:layer 2} YieldInvariant#2({:linear "tid"} tid: Tid, status: bool);
+invariant Map_Contains(allocMap->tidToPtr, tid) == status;
+invariant 0 <= freeSpace;
+invariant freeSpace == Set_Size(Set_Difference(isFreeSet, allocMap->ptrToTid->dom));
+invariant Set_IsSubset(allocMap->ptrToTid->dom, isFreeSet);
+invariant BijectionInvariant(allocMap);
+
+yield invariant {:layer 3} YieldInvariant#3({:linear "tid"} tid: Tid, status: bool, i: int);
+invariant Map_Contains(allocMap->tidToPtr, tid) == status;
+invariant Set_IsSubset(allocMap->ptrToTid->dom, isFreeSet);
+invariant BijectionInvariant(allocMap);
+invariant (forall y: int :: Set_Contains(isFreeSet, y) ==> memAddr(y));
+invariant Map_Contains(allocMap->tidToPtr, tid) ==> i <= Map_At(allocMap->tidToPtr, tid);
