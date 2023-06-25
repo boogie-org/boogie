@@ -213,6 +213,39 @@ function Set_Intersection<T>(a: Set T, b: Set T): Set T
   Set(MapAnd(a->val, b->val))
 }
 
+function Set_Choose<T>(a: Set T): T;
+axiom (forall<T> a: Set T :: {Set_Choose(a)} a == Set_Empty() || Set_Contains(a, Set_Choose(a)));
+
+/// finite maps
+datatype Map<T,U> {
+  Map(dom: Set T, val: [T]U)
+}
+
+function {:inline} Map_Contains<T,U>(a: Map T U, t: T): bool
+{
+    Set_Contains(a->dom, t)
+}
+
+function {:inline} Map_At<T,U>(a: Map T U, t: T): U
+{
+    a->val[t]
+}
+
+function {:inline} Map_Remove<T,U>(a: Map T U, t: T): Map T U
+{
+    Map(Set_Remove(a->dom, t), a->val[t := Default()])
+}
+
+function {:inline} Map_Update<T,U>(a: Map T U, t: T, u: U): Map T U
+{
+    Map(Set_Add(a->dom, t), a->val[t := u])
+}
+
+function {:inline} Map_Swap<T,U>(a: Map T U, t1: T, t2: T): Map T U
+{
+    (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
+}
+
 /// linear maps
 type Ref _;
 procedure Ref_Alloc<V>() returns (k: Lval (Ref V));
