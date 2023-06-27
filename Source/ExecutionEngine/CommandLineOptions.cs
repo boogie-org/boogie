@@ -1857,8 +1857,6 @@ namespace Microsoft.Boogie
   /smokeTimeout:<n>
                 Timeout, in seconds, for a single theorem prover
                 invocation during smoke test, defaults to 10.
-  /causalImplies
-                Translate Boogie's A ==> B into prover's A ==> A && B.
   /typeEncoding:<t>
                 Encoding of types when generating VC of a polymorphic program:
                    m = monomorphic (default)
