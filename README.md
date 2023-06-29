@@ -9,7 +9,7 @@ have been built in this way, including the
 [VCC](https://github.com/microsoft/vcc) and
 [HAVOC](https://www.microsoft.com/en-us/research/project/havoc) verifiers for C
 and the verifiers for [Dafny](https://github.com/dafny-lang/dafny),
-[Chalice](https://www.microsoft.com/en-us/research/project/chalice), and
+[Chalice](https://www.microsoft.com/en-us/research/project/chalice),
 [Spec#](https://www.microsoft.com/en-us/research/project/spec), 
 and [Move](https://github.com/Move/move).
 For a sample verifier for a toy language built on top of Boogie, see
