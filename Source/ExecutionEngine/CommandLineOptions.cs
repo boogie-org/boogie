@@ -1716,6 +1716,8 @@ namespace Microsoft.Boogie
                 unroll loops, following up to n back edges (and then some)
   /soundLoopUnrolling
                 sound loop unrolling
+  /doModSetAnalysis
+                automatically infer modifies clauses
   /printModel:<n>
                 0 (default) - do not print Z3's error model
                 1 - print Z3's error model
