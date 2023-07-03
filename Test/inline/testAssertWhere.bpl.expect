@@ -22,7 +22,7 @@ implementation {:inline 1} b()
   var v: int where v > 3;
 
   anon0:
-    havoc v;
+    assert v > 3;
     return;
 }
 
@@ -43,7 +43,7 @@ implementation a()
     goto inline$b$0$anon0;
 
   inline$b$0$anon0:
-    havoc inline$b$0$v /* where inline$b$0$v > 3 */;
+    assert inline$b$0$v > 3;
     goto inline$b$0$Return;
 
   inline$b$0$Return:
