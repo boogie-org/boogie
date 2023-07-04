@@ -677,38 +677,6 @@ namespace Microsoft.Boogie
         inCmds.Add(new HavocCmd(Token.NoToken, havocVars));
       }
 
-      // add where clauses of local vars as assume
-      for (int i = 0; i < locVars.Count; ++i)
-      {
-        Expr whereExpr = (cce.NonNull(locVars[i])).TypedIdent.WhereExpr;
-        if (whereExpr != null)
-        {
-          whereExpr = codeCopier.CopyExpr(whereExpr);
-          // FIXME we cannot overwrite it, can we?!
-          (cce.NonNull(locVars[i])).TypedIdent.WhereExpr = whereExpr;
-          AssumeCmd /*!*/
-            a = new AssumeCmd(Token.NoToken, whereExpr);
-          Contract.Assert(a != null);
-          inCmds.Add(a);
-        }
-      }
-
-      // add where clauses of output params as assume
-      for (int i = 0; i < impl.OutParams.Count; ++i)
-      {
-        Expr whereExpr = (cce.NonNull(impl.OutParams[i])).TypedIdent.WhereExpr;
-        if (whereExpr != null)
-        {
-          whereExpr = codeCopier.CopyExpr(whereExpr);
-          // FIXME likewise
-          (cce.NonNull(impl.OutParams[i])).TypedIdent.WhereExpr = whereExpr;
-          AssumeCmd /*!*/
-            a = new AssumeCmd(Token.NoToken, whereExpr);
-          Contract.Assert(a != null);
-          inCmds.Add(a);
-        }
-      }
-
       // assign modifies old values
       foreach (IdentifierExpr /*!*/ mie in proc.Modifies)
       {
