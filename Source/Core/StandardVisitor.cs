@@ -658,12 +658,28 @@ namespace Microsoft.Boogie
       return VisitProcedure(node);
     }
 
+    public virtual YieldingLoop VisitYieldingLoop(YieldingLoop node)
+    {
+      node.YieldInvariants = VisitCallCmdSeq(node.YieldInvariants);
+      return node;
+    }
+
+    public virtual Dictionary<Block, YieldingLoop> VisitYieldingLoops(Dictionary<Block, YieldingLoop> node)
+    {
+      foreach (var block in node.Keys)
+      {
+        node[block] = VisitYieldingLoop(node[block]);
+      }
+      return node;
+    }
+
     public virtual Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
     {
-      node.YieldEnsures = this.VisitCallCmdSeq(node.YieldEnsures);
-      node.YieldPreserves = this.VisitCallCmdSeq(node.YieldPreserves);
-      node.YieldRequires = this.VisitCallCmdSeq(node.YieldRequires);
+      node.YieldEnsures = VisitCallCmdSeq(node.YieldEnsures);
+      node.YieldPreserves = VisitCallCmdSeq(node.YieldPreserves);
+      node.YieldRequires = VisitCallCmdSeq(node.YieldRequires);
       node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
+      node.YieldingLoops = VisitYieldingLoops(node.YieldingLoops);
       return VisitProcedure(node);
     }
 
