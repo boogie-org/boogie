@@ -488,6 +488,11 @@ namespace Microsoft.Boogie
       return base.VisitActionDeclRef((ActionDeclRef)node.Clone());
     }
 
+    public override List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
+    {
+      return base.VisitElimDeclSeq(new List<ElimDecl>(node));
+    }
+
     public override Procedure VisitActionDecl(ActionDecl node)
     {
       Procedure newProcedure = null;
@@ -504,6 +509,11 @@ namespace Microsoft.Boogie
         }
       }
       return newProcedure;
+    }
+
+    public override HashSet<Variable> VisitVariableSet(HashSet<Variable> node)
+    {
+      return base.VisitVariableSet(new HashSet<Variable>(node));
     }
 
     public override YieldingLoop VisitYieldingLoop(YieldingLoop node)

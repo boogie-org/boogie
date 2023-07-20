@@ -65,13 +65,17 @@ public class Program : Absy
       {
         int e = rc.ErrorCount;
         d.Resolve(rc);
-        if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
+        if (d is Implementation impl)
         {
-          // ignore this implementation
-          rc.Options.OutputWriter.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
-            ((Implementation) d).Name);
-          rc.ErrorCount = e;
-          continue;
+          if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e)
+          {
+            // ignore this implementation
+            rc.Options.OutputWriter.WriteLine(
+              "Warning: Ignoring implementation {0} because of translation resolution errors",
+              impl.Name);
+            rc.ErrorCount = e;
+            continue;
+          }
         }
       }
       prunedTopLevelDeclarations.Add(d);

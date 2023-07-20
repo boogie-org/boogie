@@ -647,6 +647,22 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    public virtual ElimDecl VisitElimDecl(ElimDecl node)
+    {
+      node.Abstraction = VisitActionDeclRef(node.Abstraction);
+      node.Target = VisitActionDeclRef(node.Target);
+      return node;
+    }
+
+    public virtual List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
+    {
+      for (int i = 0; i < node.Count; i++)
+      {
+        node[i] = VisitElimDecl(node[i]);
+      }
+      return node;
+    }
+
     public virtual Procedure VisitActionDecl(ActionDecl node)
     {
       for (int i = 0; i < node.Creates.Count; i++)
@@ -655,6 +671,11 @@ namespace Microsoft.Boogie
       }
       node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
       node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
+      node.Eliminates = VisitElimDeclSeq(node.Eliminates);
+      if (node.PendingAsyncCtorDecl != null)
+      {
+        node.PendingAsyncCtorDecl = (DatatypeTypeCtorDecl)VisitTypeCtorDecl(node.PendingAsyncCtorDecl);
+      }
       return VisitProcedure(node);
     }
 
@@ -673,12 +694,18 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    public virtual HashSet<Variable> VisitVariableSet(HashSet<Variable> node)
+    {
+      return node;
+    }
+
     public virtual Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
     {
+      node.YieldRequires = VisitCallCmdSeq(node.YieldRequires);
       node.YieldEnsures = VisitCallCmdSeq(node.YieldEnsures);
       node.YieldPreserves = VisitCallCmdSeq(node.YieldPreserves);
-      node.YieldRequires = VisitCallCmdSeq(node.YieldRequires);
       node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
+      node.VisibleFormals = VisitVariableSet(node.VisibleFormals);
       node.YieldingLoops = VisitYieldingLoops(node.YieldingLoops);
       return VisitProcedure(node);
     }
