@@ -27,7 +27,11 @@ public class Program : Absy
   {
     Contract.Requires(stream != null);
     stream.SetToken(this);
-    this.topLevelDeclarations.Emit(stream);
+    var functionAxioms = 
+      this.Functions.Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
+    var constantAxioms = 
+      this.Constants.Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
+    this.topLevelDeclarations.Except(functionAxioms.Concat(constantAxioms)).ToList().Emit(stream);
   }
 
   /// <summary>

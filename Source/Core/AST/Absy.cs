@@ -1469,7 +1469,17 @@ namespace Microsoft.Boogie
 
       EmitVitals(stream, level, false);
 
-      stream.WriteLine(";");
+      if (this.DefinitionAxioms.Any())
+      {
+        stream.WriteLine();
+        stream.WriteLine(level,"uses {");
+        this.DefinitionAxioms.ForEach(axiom => axiom.Emit(stream, level));
+        stream.WriteLine("}");
+      }
+      else
+      {
+        stream.WriteLine(";");
+      }
     }
 
     public override void Register(ResolutionContext rc)
@@ -2167,9 +2177,16 @@ namespace Microsoft.Boogie
         stream.WriteLine();
         stream.WriteLine("}");
       }
-      else
+      else if (!this.DefinitionAxioms.Any())
       {
         stream.WriteLine(";");
+      }
+      if (this.DefinitionAxioms.Any())
+      {
+        stream.WriteLine();
+        stream.WriteLine("uses {");
+        this.DefinitionAxioms.ForEach(axiom => axiom.Emit(stream, level));
+        stream.WriteLine("}");
       }
     }
 
