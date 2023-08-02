@@ -343,7 +343,7 @@ namespace Microsoft.Boogie
      */
 
     protected MonomorphizationVisitor monomorphizationVisitor;
-    protected Dictionary<List<Type>, Expr> instanceExprs;
+    public Dictionary<List<Type>, Expr> instanceExprs { get; }
 
     public BinderExprMonomorphizer(MonomorphizationVisitor monomorphizationVisitor)
     {
@@ -615,6 +615,23 @@ namespace Microsoft.Boogie
     // be applied.
     private List<Axiom> splitAxioms;
 
+    private Dictionary<Expr, List<Type>> binderExprToTypes = null;
+    public List<Type> lookupTypeForBinderExpr(Expr binderExpr)
+    {
+      if (binderExprToTypes == null)
+      {
+        binderExprToTypes = new Dictionary<Expr, List<Type>>();
+        foreach (var binderMonomorphizer in binderExprMonomorphizers.Values)
+        {
+          foreach ((var types, var expr) in binderMonomorphizer.instanceExprs)
+          {
+            binderExprToTypes.TryAdd(expr, types);
+          }
+        }
+      }
+      return binderExprToTypes.TryGetValue(binderExpr, out var res) ? res : new List<Type>();
+    }
+
     public PolymorphicMapAndBinderSubstituter(MonomorphizationVisitor monomorphizationVisitor)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
@@ -646,6 +663,10 @@ namespace Microsoft.Boogie
         {
           stack.Push(nAryExpr.Args[0]);
           stack.Push(nAryExpr.Args[1]);
+        }
+        else if (expr == axiom.Expr)
+        {
+          splitAxioms.Add(axiom);
         }
         else
         {
@@ -1379,6 +1400,28 @@ namespace Microsoft.Boogie
           polymorphicMapInfo.CreateDatatypeTypeCtorDecl(polymorphicMapAndBinderSubstituter)).ToList();
       var splitAxioms = polymorphicMapAndBinderSubstituter.Substitute(program);
       program.RemoveTopLevelDeclarations(decl => decl is Axiom);
+      foreach (var axiom in splitAxioms)
+      {
+        if (axiom.FunctionDependencies != null)
+        {
+          var functionDependenciesCopy = new List<Function>(axiom.FunctionDependencies);
+          foreach (var function in functionDependenciesCopy)
+          {
+            if (monomorphizationVisitor.functionInstantiations.TryGetValue(function, out var instFuncsMap))
+            {
+              var types = polymorphicMapAndBinderSubstituter.lookupTypeForBinderExpr(axiom.Expr);
+              if (types.Any() && instFuncsMap.ContainsKey(types))
+              {
+                var newFunction = instFuncsMap[types];
+                if (!newFunction.DefinitionAxioms.Contains(axiom))
+                {
+                  newFunction.AddOtherDefinitionAxiom(axiom);
+                }
+              }
+            }
+          }
+        }
+      }
       program.AddTopLevelDeclarations(splitAxioms);
       program.AddTopLevelDeclarations(polymorphicMapDatatypeCtorDecls);
       Contract.Assert(MonomorphismChecker.IsMonomorphic(program));
