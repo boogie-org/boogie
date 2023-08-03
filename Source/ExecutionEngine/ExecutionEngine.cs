@@ -412,7 +412,6 @@ namespace Microsoft.Boogie
       }
       else if (Options.TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic)
       {
-        DependencyCollector.Collect(Options, program);
         var monomorphizableStatus = Monomorphizer.Monomorphize(Options, program);
         if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
         {

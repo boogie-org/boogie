@@ -7,7 +7,7 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-  public class MonomorphismChecker : ReadOnlyVisitor
+  sealed public class MonomorphismChecker : ReadOnlyVisitor
   {
     // This visitor checks if the program is already monomorphic.
 
@@ -131,11 +131,13 @@ namespace Microsoft.Boogie
      * This visitor checks if the program is monomorphizable. It calculates one status value from
      * the enum MonomorphizableStatus for the program.
      */
-    public static MonomorphizableStatus IsMonomorphizable(Program program, out HashSet<Axiom> polymorphicFunctionAxioms)
+    public static MonomorphizableStatus IsMonomorphizable(Program program, out HashSet<Axiom> polymorphicFunctionAxioms,
+      out Dictionary<Axiom, (HashSet<Function>, HashSet<Constant>)> axiomsThatWillLoseQuantifiers)
     {
       var checker = new MonomorphizableChecker(program);
       checker.VisitProgram(program);
       polymorphicFunctionAxioms = checker.polymorphicFunctionAxioms;
+      axiomsThatWillLoseQuantifiers = checker.axiomsThatWillLoseQuantifiers;
       if (!checker.isMonomorphizable)
       {
         return MonomorphizableStatus.UnhandledPolymorphism;
@@ -148,7 +150,9 @@ namespace Microsoft.Boogie
     }
     
     private bool isMonomorphizable;
+    private Axiom curAxiom;
     private HashSet<Axiom> polymorphicFunctionAxioms;
+    private Dictionary<Axiom, (HashSet<Function>, HashSet<Constant>)> axiomsThatWillLoseQuantifiers;
     private Graph<TypeVariable> typeVariableDependencyGraph; // (T,U) in this graph iff T flows to U
     private HashSet<Tuple<TypeVariable, TypeVariable>> strongDependencyEdges; // (T,U) in this set iff a type constructed from T flows into U
 
@@ -158,6 +162,8 @@ namespace Microsoft.Boogie
       polymorphicFunctionAxioms = program.TopLevelDeclarations.OfType<Function>()
         .Where(f => f.TypeParameters.Count > 0 && f.DefinitionAxiom != null)
         .Select(f => f.DefinitionAxiom).ToHashSet();
+      axiomsThatWillLoseQuantifiers = new Dictionary<Axiom, (HashSet<Function>, HashSet<Constant>)>();
+      curAxiom = null;
       typeVariableDependencyGraph = new Graph<TypeVariable>();
       strongDependencyEdges = new HashSet<Tuple<TypeVariable, TypeVariable>>();
     }
@@ -179,7 +185,51 @@ namespace Microsoft.Boogie
       }
       return true;
     }
-    
+
+    public override Axiom VisitAxiom(Axiom node)
+    {
+      curAxiom = node;
+      var res = base.VisitAxiom(node);
+      curAxiom = null;
+      return res;
+    }
+
+    public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
+    {
+      if (curAxiom != null && node.TypeParameters.Any() && !node.Dummies.Any() &&
+          node.Triggers != null && node.Triggers.Tr.Any())
+      {
+        // This expression will be instantiated into non-quantified expressions.
+        // Since pruning (currently) depends on triggers and `uses` clauses,
+        // if the enclosing axiom is not already inside a uses clause, it can
+        // be incorrectly pruned away.
+        if (!axiomsThatWillLoseQuantifiers.ContainsKey(curAxiom))
+        {
+          axiomsThatWillLoseQuantifiers[curAxiom] = (new HashSet<Function>(), new HashSet<Constant>());
+        }
+
+        var fc = new MonomorphizationVisitor.FunctionAndConstantCollector();
+        node.Triggers.Tr.ForEach(expr => fc.VisitExpr(expr));
+        var triggerConstants = fc.GetConstants();
+        var triggerFunctions = fc.GetFunctions();
+
+        var functionsAndConstants = axiomsThatWillLoseQuantifiers[curAxiom];
+
+        if (triggerConstants.Any())
+        {
+          triggerConstants.ForEach(c => functionsAndConstants.Item2.Add(c));
+        }
+
+        if (triggerFunctions.Any())
+        {
+          triggerFunctions.ForEach(f => functionsAndConstants.Item1.Add(f));
+        }
+
+        axiomsThatWillLoseQuantifiers[curAxiom] = functionsAndConstants;
+      }
+      return base.VisitQuantifierExpr(node);
+    }
+
     public override Expr VisitNAryExpr(NAryExpr node)
     {
       if (node.Fun is FunctionCall functionCall)
@@ -615,23 +665,6 @@ namespace Microsoft.Boogie
     // be applied.
     private List<Axiom> splitAxioms;
 
-    private Dictionary<Expr, List<Type>> binderExprToTypes = null;
-    public List<Type> lookupTypeForBinderExpr(Expr binderExpr)
-    {
-      if (binderExprToTypes == null)
-      {
-        binderExprToTypes = new Dictionary<Expr, List<Type>>();
-        foreach (var binderMonomorphizer in binderExprMonomorphizers.Values)
-        {
-          foreach ((var types, var expr) in binderMonomorphizer.instanceExprs)
-          {
-            binderExprToTypes.TryAdd(expr, types);
-          }
-        }
-      }
-      return binderExprToTypes.TryGetValue(binderExpr, out var res) ? res : new List<Type>();
-    }
-
     public PolymorphicMapAndBinderSubstituter(MonomorphizationVisitor monomorphizationVisitor)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
@@ -664,13 +697,13 @@ namespace Microsoft.Boogie
           stack.Push(nAryExpr.Args[0]);
           stack.Push(nAryExpr.Args[1]);
         }
-        else if (expr == axiom.Expr)
-        {
-          splitAxioms.Add(axiom);
-        }
         else
         {
-          splitAxioms.Add(new Axiom(Token.NoToken, expr));
+          var newAxiom = new Axiom(Token.NoToken, expr);
+          if(monomorphizationVisitor.oldToNewAxioms.ContainsKey(axiom)) {
+            monomorphizationVisitor.oldToNewAxioms[axiom].Add(newAxiom);
+          }
+          splitAxioms.Add(newAxiom);
         }
       }
       return axiom;
@@ -1302,7 +1335,7 @@ namespace Microsoft.Boogie
     private Dictionary<string, Procedure> nameToProcedure;
     private Dictionary<string, Implementation> nameToImplementation;
     private Dictionary<string, TypeCtorDecl> nameToTypeCtorDecl;
-    private Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations;
+    public Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations;
     private Dictionary<Procedure, Dictionary<List<Type>, Procedure>> procInstantiations;
     private Dictionary<Implementation, Dictionary<List<Type>, Implementation>> implInstantiations;
     private Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>> typeInstantiations;
@@ -1314,11 +1347,19 @@ namespace Microsoft.Boogie
     private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
     private HashSet<Function> visitedFunctions;
     private Dictionary<Procedure, Implementation> procToImpl;
+    public readonly HashSet<Function> originalFunctions;
+    public readonly HashSet<Constant> originalConstants;
+    public readonly Dictionary<Axiom, HashSet<Axiom>> oldToNewAxioms; // TODO: optimize using this
+    public readonly Dictionary<Axiom, Axiom> oldAxiomToOriginalAxioms; //
 
     private MonomorphizationVisitor(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
       Options = options;
       this.program = program;
+      originalFunctions = program.Functions.ToHashSet();
+      originalConstants = program.Constants.ToHashSet();
+      oldToNewAxioms = program.Axioms.ToDictionary(ax => ax, _ => new HashSet<Axiom>());
+      oldAxiomToOriginalAxioms = program.Axioms.ToDictionary(ax => ax, ax => (Axiom) ax.Clone() );
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
       nameToImplementation = new Dictionary<string, Implementation>();
       program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).ForEach(
@@ -1370,9 +1411,11 @@ namespace Microsoft.Boogie
         decl is Axiom axiom && polymorphicFunctionAxioms.Contains(axiom));
     }
     
-    public static MonomorphizationVisitor Initialize(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
+    public static MonomorphizationVisitor Initialize(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms,
+      Dictionary<Axiom, (HashSet<Function>, HashSet<Constant>)> axiomsThatWillLoseQuantifiers)
     {
-      var monomorphizationVisitor = new MonomorphizationVisitor(options, program, polymorphicFunctionAxioms);
+      var monomorphizationVisitor =
+        new MonomorphizationVisitor(options, program, polymorphicFunctionAxioms);
       // ctorTypes contains all the uninterpreted types created for monomorphizing top-level polymorphic implementations 
       // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
@@ -1399,33 +1442,137 @@ namespace Microsoft.Boogie
         monomorphizationVisitor.polymorphicMapInfos.Values.Select(polymorphicMapInfo =>
           polymorphicMapInfo.CreateDatatypeTypeCtorDecl(polymorphicMapAndBinderSubstituter)).ToList();
       var splitAxioms = polymorphicMapAndBinderSubstituter.Substitute(program);
+      UpdateDependencies(splitAxioms, monomorphizationVisitor, axiomsThatWillLoseQuantifiers);
       program.RemoveTopLevelDeclarations(decl => decl is Axiom);
-      foreach (var axiom in splitAxioms)
-      {
-        if (axiom.FunctionDependencies != null)
-        {
-          var functionDependenciesCopy = new List<Function>(axiom.FunctionDependencies);
-          foreach (var function in functionDependenciesCopy)
-          {
-            if (monomorphizationVisitor.functionInstantiations.TryGetValue(function, out var instFuncsMap))
-            {
-              var types = polymorphicMapAndBinderSubstituter.lookupTypeForBinderExpr(axiom.Expr);
-              if (types.Any() && instFuncsMap.ContainsKey(types))
-              {
-                var newFunction = instFuncsMap[types];
-                if (!newFunction.DefinitionAxioms.Contains(axiom))
-                {
-                  newFunction.AddOtherDefinitionAxiom(axiom);
-                }
-              }
-            }
-          }
-        }
-      }
       program.AddTopLevelDeclarations(splitAxioms);
       program.AddTopLevelDeclarations(polymorphicMapDatatypeCtorDecls);
       Contract.Assert(MonomorphismChecker.IsMonomorphic(program));
       return monomorphizationVisitor;
+    }
+
+    private static void UpdateDependencies(List<Axiom> splitAxioms, MonomorphizationVisitor monomorphizationVisitor,
+      Dictionary<Axiom, (HashSet<Function>, HashSet<Constant>)> axiomsThatWillLoseQuantifiers)
+    {
+      // Original program axioms were replaced with new splitAxioms. Program constants and functions that had
+      // those original axioms as dependencies need their references updated to the new axioms.
+      // Axioms / functions could both have been instantiated, which adds some complexity.
+      // Furthermore, current pruning depends on symbols in triggers in quantified axioms to compute dependencies,
+      // which might have been lost during instantiation (i.e., axiom [forall | exists] <T> :: ...). These are tracked
+      // separately and added as dependencies to corresponding constants and functions
+
+      foreach (var (oldAxiom, newAxioms) in monomorphizationVisitor.oldToNewAxioms)
+      {
+        var oldAxiomFC = new FunctionAndConstantCollector();
+        var unmodifiedOldAxiom = monomorphizationVisitor.oldAxiomToOriginalAxioms[oldAxiom];
+        oldAxiomFC.Visit(unmodifiedOldAxiom);
+        var oldAxiomFunctions = oldAxiomFC.GetFunctions();
+
+        Dictionary<Axiom, HashSet<Function>> newAxiomFunctions = new Dictionary<Axiom, HashSet<Function>>();
+        Dictionary<Axiom, HashSet<Constant>> newAxiomConstants = new Dictionary<Axiom, HashSet<Constant>>();
+
+        foreach (var newAxiom in newAxioms)
+        {
+          var newAxiomFC = new FunctionAndConstantCollector();
+          newAxiomFC.Visit(newAxiom);
+          newAxiomFunctions.Add(newAxiom, newAxiomFC.GetFunctions());
+          newAxiomConstants.Add(newAxiom, newAxiomFC.GetConstants());
+        }
+
+        void UpdateFunctionDependencies(HashSet<Function> functions, bool forceDependency = false)
+        {
+          foreach (var function in functions)
+          {
+            if (function.DefinitionAxioms.Contains(oldAxiom) || forceDependency)
+            {
+              if (function.DefinitionAxiom == oldAxiom)
+              {
+                function.DefinitionAxiom = null; // is moving DefinitionAxiom to OtherDefinitionAxioms OK?
+              }
+              foreach (var newAxiom in newAxioms)
+              {
+                if (function.TypeParameters.Any()) // Polymorphic function
+                {
+                  var instancesToAddDependency = oldAxiomFunctions.Contains(function)
+                    ? newAxiomFunctions[newAxiom]
+                    : monomorphizationVisitor.functionInstantiations[function].Values.ToHashSet();
+                  foreach (var inst in instancesToAddDependency)
+                  {
+                    inst.AddOtherDefinitionAxiom(newAxiom);
+                  }
+                }
+                else
+                {
+                  // Non-monomorphized function
+                  if (!oldAxiomFunctions.Contains(function) || newAxiomFunctions[newAxiom].Contains(function))
+                  {
+                    function.AddOtherDefinitionAxiom(newAxiom);
+                  }
+                }
+              }
+              function.RemoveOtherDefinitionAxiom(oldAxiom);
+            }
+          }
+        }
+
+        void UpdateConstantDependencies(HashSet<Constant> constants)
+        {
+          foreach (var constant in constants)
+          {
+            if (constant.DefinitionAxioms.Contains(oldAxiom))
+            {
+              foreach (var newAxiom in newAxioms.Where(ax => newAxiomConstants[ax].Contains(constant)))
+              {
+                constant.AddDefinitionAxiom(newAxiom);
+              }
+              constant.RemoveDefinitionAxiom(oldAxiom);
+            }
+          }
+        }
+
+        UpdateConstantDependencies(monomorphizationVisitor.originalConstants);
+        UpdateFunctionDependencies(monomorphizationVisitor.originalFunctions);
+
+        if (axiomsThatWillLoseQuantifiers.TryGetValue(oldAxiom, out var pair))
+        {
+          UpdateFunctionDependencies(pair.Item1, true);
+          UpdateConstantDependencies(pair.Item2);
+        }
+      }
+    }
+
+    public class FunctionAndConstantCollector : ReadOnlyVisitor
+    {
+      private readonly HashSet<Function> functions = new HashSet<Function>();
+      private readonly HashSet<Constant> constants = new HashSet<Constant>();
+      private bool hasTriggers = false;
+
+      public override Expr VisitNAryExpr(NAryExpr node)
+      {
+        if (node.Fun is FunctionCall functionCall)
+        {
+          functions.Add(functionCall.Func);
+        }
+        return base.VisitNAryExpr(node);
+      }
+
+      public override Trigger VisitTrigger(Trigger node)
+      {
+        hasTriggers = true;
+        return base.VisitTrigger(node);
+      }
+
+      public override Expr VisitIdentifierExpr(IdentifierExpr node)
+      {
+        if (node.Decl is Constant c)
+        {
+          constants.Add(c);
+        }
+        return base.VisitIdentifierExpr(node);
+      }
+
+      public HashSet<Function> GetFunctions() => functions;
+      public HashSet<Constant> GetConstants() => constants;
+      public bool HasTriggers() => hasTriggers;
     }
 
     /*
@@ -1535,6 +1682,9 @@ namespace Microsoft.Boogie
     {
       var axiomExpr = InstantiateBinderExpr((BinderExpr)axiom.Expr, actualTypeParams);
       var instantiatedAxiom = new Axiom(axiom.tok, axiomExpr, axiom.Comment, axiom.Attributes);
+      if(oldToNewAxioms.ContainsKey(axiom)) {
+        oldToNewAxioms[axiom].Add(instantiatedAxiom);
+      }
       newInstantiatedDeclarations.Add(instantiatedAxiom);
       return instantiatedAxiom;
     }
@@ -1931,11 +2081,13 @@ namespace Microsoft.Boogie
 
     public static MonomorphizableStatus Monomorphize(CoreOptions options, Program program)
     {
-      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program, out var polymorphicFunctionAxioms);
+      var monomorphizableStatus = MonomorphizableChecker.IsMonomorphizable(program,
+        out var polymorphicFunctionAxioms, out var axiomsThatWillLoseQuantifiers);
       if (monomorphizableStatus == MonomorphizableStatus.Monomorphizable)
       {
-        var monomorphizationVisitor = MonomorphizationVisitor.Initialize(options, program, polymorphicFunctionAxioms);
-        program.monomorphizer = new Monomorphizer(monomorphizationVisitor);
+        var monomorphizationVisitor =
+          MonomorphizationVisitor.Initialize(options, program, polymorphicFunctionAxioms, axiomsThatWillLoseQuantifiers);
+        program.monomorphizer = new Monomorphizer(monomorphizationVisitor, axiomsThatWillLoseQuantifiers);
       }
       return monomorphizableStatus;
     }
@@ -1979,9 +2131,12 @@ namespace Microsoft.Boogie
     }
 
     private MonomorphizationVisitor monomorphizationVisitor;
-    private Monomorphizer(MonomorphizationVisitor monomorphizationVisitor)
+    private Dictionary<Axiom, (HashSet<Function>, HashSet<Constant>)> axiomsThatWillLoseQuantifiers;
+    private Monomorphizer(MonomorphizationVisitor monomorphizationVisitor,
+      Dictionary<Axiom, (HashSet<Function>, HashSet<Constant>)> axiomsThatWillLoseQuantifiers)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
+      this.axiomsThatWillLoseQuantifiers = axiomsThatWillLoseQuantifiers;
     }
   }
 }

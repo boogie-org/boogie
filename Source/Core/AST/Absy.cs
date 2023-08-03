@@ -1429,7 +1429,23 @@ namespace Microsoft.Boogie
     // from all other constants.
     public readonly bool Unique;
 
-    public IList<Axiom> DefinitionAxioms { get; }
+    public IList<Axiom> DefinitionAxioms => definitionAxioms;
+
+    private IList<Axiom> definitionAxioms = new List<Axiom>();
+
+    public bool RemoveDefinitionAxiom(Axiom axiom)
+    {
+      Contract.Requires(axiom != null);
+
+      return definitionAxioms.Remove(axiom);
+    }
+
+    public void AddDefinitionAxiom(Axiom axiom)
+    {
+      Contract.Requires(axiom != null);
+
+      DefinitionAxioms.Add(axiom);
+    }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
       : this(tok, typedIdent, true)
@@ -1452,7 +1468,7 @@ namespace Microsoft.Boogie
       Contract.Requires(typedIdent.Name != null && typedIdent.Name.Length > 0);
       Contract.Requires(typedIdent.WhereExpr == null);
       this.Unique = unique;
-      this.DefinitionAxioms = definitionAxioms ?? new List<Axiom>();
+      this.definitionAxioms = definitionAxioms ?? new List<Axiom>();
     }
 
     public override bool IsMutable => false;
@@ -2056,6 +2072,13 @@ namespace Microsoft.Boogie
       Contract.Requires(axiom != null);
 
       otherDefinitionAxioms.Add(axiom);
+    }
+
+    public bool RemoveOtherDefinitionAxiom(Axiom axiom)
+    {
+      Contract.Requires(axiom != null);
+
+      return otherDefinitionAxioms.Remove(axiom);
     }
 
     private bool neverTrigger;
