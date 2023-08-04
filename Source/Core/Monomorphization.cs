@@ -1522,9 +1522,9 @@ namespace Microsoft.Boogie
             {
               foreach (var newAxiom in newAxioms.Where(ax => newAxiomConstants[ax].Contains(constant)))
               {
-                constant.AddDefinitionAxiom(newAxiom);
+                constant.DefinitionAxioms.Add(newAxiom);
               }
-              constant.RemoveDefinitionAxiom(oldAxiom);
+              constant.DefinitionAxioms.Remove(oldAxiom);
             }
           }
         }
