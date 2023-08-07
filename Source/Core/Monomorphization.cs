@@ -343,12 +343,12 @@ namespace Microsoft.Boogie
      */
 
     protected MonomorphizationVisitor monomorphizationVisitor;
-    public Dictionary<List<Type>, Expr> instanceExprs { get; }
+    public Dictionary<List<Type>, Expr> InstanceExprs { get; }
 
     public BinderExprMonomorphizer(MonomorphizationVisitor monomorphizationVisitor)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
-      instanceExprs = new Dictionary<List<Type>, Expr>(new ListComparer<Type>());
+      InstanceExprs = new Dictionary<List<Type>, Expr>(new ListComparer<Type>());
     }
 
     // Returns the BinderExpr for which this instance of BinderExprMonomorphizer was created.
@@ -377,20 +377,20 @@ namespace Microsoft.Boogie
     public override bool Instantiate()
     {
       var polymorphicMapInfo = monomorphizationVisitor.RegisterPolymorphicMapType(lambdaExpr.Type);
-      Debug.Assert(instanceExprs.Count <= polymorphicMapInfo.Instances.Count);
-      if (instanceExprs.Count == polymorphicMapInfo.Instances.Count)
+      Debug.Assert(InstanceExprs.Count <= polymorphicMapInfo.Instances.Count);
+      if (InstanceExprs.Count == polymorphicMapInfo.Instances.Count)
       {
         return false;
       }
-      polymorphicMapInfo.Instances.Skip(instanceExprs.Count).ForEach(x =>
-        instanceExprs[x] = monomorphizationVisitor.InstantiateBinderExpr(lambdaExpr, x));
+      polymorphicMapInfo.Instances.Skip(InstanceExprs.Count).ForEach(x =>
+        InstanceExprs[x] = monomorphizationVisitor.InstantiateBinderExpr(lambdaExpr, x));
       return true;
     }
 
     public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
     {
       return substituter.VisitExpr(monomorphizationVisitor.RegisterPolymorphicMapType(lambdaExpr.Type)
-        .GetLambdaConstructor(instanceExprs));
+        .GetLambdaConstructor(InstanceExprs));
     }
   }
 
@@ -410,7 +410,7 @@ namespace Microsoft.Boogie
 
     public override bool Instantiate()
     {
-      var instanceExprsCount = instanceExprs.Count;
+      var instanceExprsCount = InstanceExprs.Count;
       var typeParameterIndexToTypeHints = Enumerable.Range(0, quantifierExpr.TypeParameters.Count)
         .Select(_ => new HashSet<Type>()).ToList();
       for (int typeParameterIndex = 0; typeParameterIndex < quantifierExpr.TypeParameters.Count; typeParameterIndex++)
@@ -428,16 +428,16 @@ namespace Microsoft.Boogie
         }
       }
       InstantiateOne(typeParameterIndexToTypeHints, new List<Type>());
-      return instanceExprsCount < instanceExprs.Count;
+      return instanceExprsCount < InstanceExprs.Count;
     }
 
     private void InstantiateOne(List<HashSet<Type>> typeParameterIndexToTypeHints, List<Type> actualTypeParams)
     {
       if (typeParameterIndexToTypeHints.Count == actualTypeParams.Count)
       {
-        if (!instanceExprs.ContainsKey(actualTypeParams))
+        if (!InstanceExprs.ContainsKey(actualTypeParams))
         {
-          instanceExprs[new List<Type>(actualTypeParams)] =
+          InstanceExprs[new List<Type>(actualTypeParams)] =
             monomorphizationVisitor.InstantiateBinderExpr(quantifierExpr, actualTypeParams);
         }
         return;
@@ -462,7 +462,7 @@ namespace Microsoft.Boogie
 
     public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
     {
-      return Expr.And(instanceExprs.Values.Select(x => substituter.VisitExpr(x)));
+      return Expr.And(InstanceExprs.Values.Select(x => substituter.VisitExpr(x)));
     }
   }
 
@@ -475,7 +475,7 @@ namespace Microsoft.Boogie
 
     public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
     {
-      return Expr.Or(instanceExprs.Values.Select(x => substituter.VisitExpr(x)));
+      return Expr.Or(InstanceExprs.Values.Select(x => substituter.VisitExpr(x)));
     }
   }
 
@@ -1443,18 +1443,18 @@ namespace Microsoft.Boogie
                     : monomorphizationVisitor.functionInstantiations[function].Values.ToHashSet();
                   foreach (var inst in instancesToAddDependency)
                   {
-                    inst.AddOtherDefinitionAxiom(newAxiom);
+                    inst.OtherDefinitionAxioms.Add(newAxiom);
                   }
                 }
                 else // Non-monomorphized function
                 {
                   if (!oldAxiomFunctions.Contains(function) || newAxiomFunctions[newAxiom].Contains(function))
                   {
-                    function.AddOtherDefinitionAxiom(newAxiom);
+                    function.OtherDefinitionAxioms.Add(newAxiom);
                   }
                 }
               }
-              function.RemoveOtherDefinitionAxiom(oldAxiom);
+              function.OtherDefinitionAxioms.Remove(oldAxiom);
             }
           }
         }

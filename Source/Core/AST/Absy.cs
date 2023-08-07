@@ -2045,25 +2045,9 @@ namespace Microsoft.Boogie
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
 
-    public IList<Axiom> otherDefinitionAxioms = new List<Axiom>();
+    public IList<Axiom> OtherDefinitionAxioms = new List<Axiom>();
     public IEnumerable<Axiom> DefinitionAxioms => 
-      (DefinitionAxiom == null ? Enumerable.Empty<Axiom>() : new[]{ DefinitionAxiom }).Concat(otherDefinitionAxioms);
-
-    public IEnumerable<Axiom> OtherDefinitionAxioms => otherDefinitionAxioms;
-
-    public void AddOtherDefinitionAxiom(Axiom axiom)
-    {
-      Contract.Requires(axiom != null);
-
-      otherDefinitionAxioms.Add(axiom);
-    }
-
-    public bool RemoveOtherDefinitionAxiom(Axiom axiom)
-    {
-      Contract.Requires(axiom != null);
-
-      return otherDefinitionAxioms.Remove(axiom);
-    }
+      (DefinitionAxiom == null ? Enumerable.Empty<Axiom>() : new[]{ DefinitionAxiom }).Concat(OtherDefinitionAxioms);
 
     private bool neverTrigger;
     private bool neverTriggerComputed;
