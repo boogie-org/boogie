@@ -650,8 +650,8 @@ namespace Microsoft.Boogie
         else
         {
           var newAxiom = new Axiom(Token.NoToken, expr);
-          if(monomorphizationVisitor.oldAxiomsToSplitAxioms.ContainsKey(axiom)) {
-            monomorphizationVisitor.oldAxiomsToSplitAxioms[axiom].Add(newAxiom);
+          if (monomorphizationVisitor.originalAxiomToSplitAxioms.ContainsKey(axiom)) {
+            monomorphizationVisitor.originalAxiomToSplitAxioms[axiom].Add(newAxiom);
           }
           splitAxioms.Add(newAxiom);
         }
@@ -1299,9 +1299,9 @@ namespace Microsoft.Boogie
     private Dictionary<Procedure, Implementation> procToImpl;
     public readonly HashSet<Function> originalFunctions;
     public readonly HashSet<Constant> originalConstants;
-    // Note that old axioms refer to axioms of the original program which might have been updated in-place during monomorphization.
-    public readonly Dictionary<Axiom, HashSet<Axiom>> oldAxiomsToSplitAxioms;
-    public readonly Dictionary<Axiom, Axiom> oldAxiomsToOriginalCopies;
+    // Note that original axioms refer to axioms of the original program which might have been updated in-place during monomorphization.
+    public readonly Dictionary<Axiom, HashSet<Axiom>> originalAxiomToSplitAxioms;
+    public readonly Dictionary<Axiom, Axiom> originalAxiomToUninstantiatedCopies;
 
     private MonomorphizationVisitor(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
@@ -1309,8 +1309,8 @@ namespace Microsoft.Boogie
       this.program = program;
       originalFunctions = program.Functions.ToHashSet();
       originalConstants = program.Constants.ToHashSet();
-      oldAxiomsToSplitAxioms = program.Axioms.ToDictionary(ax => ax, _ => new HashSet<Axiom>());
-      oldAxiomsToOriginalCopies = program.Axioms.ToDictionary(ax => ax, ax => (Axiom) ax.Clone() );
+      originalAxiomToSplitAxioms = program.Axioms.ToDictionary(ax => ax, _ => new HashSet<Axiom>());
+      originalAxiomToUninstantiatedCopies = program.Axioms.ToDictionary(ax => ax, ax => (Axiom) ax.Clone() );
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
       nameToImplementation = new Dictionary<string, Implementation>();
       program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).ForEach(
@@ -1406,10 +1406,10 @@ namespace Microsoft.Boogie
       // those original axioms as dependencies need their references updated to the new axioms.
       // Axioms / functions could both have been instantiated, which adds some complexity.
 
-      foreach (var (oldAxiom, newAxioms) in monomorphizationVisitor.oldAxiomsToSplitAxioms)
+      foreach (var (oldAxiom, newAxioms) in monomorphizationVisitor.originalAxiomToSplitAxioms)
       {
         var oldAxiomFC = new FunctionAndConstantCollector();
-        var unmodifiedOldAxiom = monomorphizationVisitor.oldAxiomsToOriginalCopies[oldAxiom];
+        var unmodifiedOldAxiom = monomorphizationVisitor.originalAxiomToUninstantiatedCopies[oldAxiom];
         oldAxiomFC.Visit(unmodifiedOldAxiom);
         var oldAxiomFunctions = oldAxiomFC.Functions;
 
@@ -1616,8 +1616,8 @@ namespace Microsoft.Boogie
     {
       var axiomExpr = InstantiateBinderExpr((BinderExpr)axiom.Expr, actualTypeParams);
       var instantiatedAxiom = new Axiom(axiom.tok, axiomExpr, axiom.Comment, axiom.Attributes);
-      if(oldAxiomsToSplitAxioms.ContainsKey(axiom)) {
-        oldAxiomsToSplitAxioms[axiom].Add(instantiatedAxiom);
+      if (originalAxiomToSplitAxioms.ContainsKey(axiom)) {
+        originalAxiomToSplitAxioms[axiom].Add(instantiatedAxiom);
       }
       newInstantiatedDeclarations.Add(instantiatedAxiom);
       return instantiatedAxiom;
