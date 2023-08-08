@@ -1301,7 +1301,7 @@ namespace Microsoft.Boogie
     private readonly HashSet<Constant> originalConstants;
     // Note that original axioms refer to axioms of the original program which might have been updated in-place during monomorphization.
     public readonly Dictionary<Axiom, HashSet<Axiom>> originalAxiomToSplitAxioms;
-    private readonly Dictionary<Axiom, Axiom> originalAxiomToUninstantiatedCopies;
+    private readonly Dictionary<Axiom, Axiom> originalAxiomToUninstantiatedCopy;
 
     private MonomorphizationVisitor(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
@@ -1310,7 +1310,7 @@ namespace Microsoft.Boogie
       originalFunctions = program.Functions.ToHashSet();
       originalConstants = program.Constants.ToHashSet();
       originalAxiomToSplitAxioms = program.Axioms.ToDictionary(ax => ax, _ => new HashSet<Axiom>());
-      originalAxiomToUninstantiatedCopies = program.Axioms.ToDictionary(ax => ax, ax => (Axiom) ax.Clone() );
+      originalAxiomToUninstantiatedCopy = program.Axioms.ToDictionary(ax => ax, ax => (Axiom) ax.Clone() );
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
       nameToImplementation = new Dictionary<string, Implementation>();
       program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).ForEach(
@@ -1410,7 +1410,7 @@ namespace Microsoft.Boogie
       foreach (var (originalAxiom, newAxioms) in monomorphizationVisitor.originalAxiomToSplitAxioms)
       {
         var originalAxiomFc = new FunctionAndConstantCollector();
-        var uninstantiatedOriginalAxiom = monomorphizationVisitor.originalAxiomToUninstantiatedCopies[originalAxiom];
+        var uninstantiatedOriginalAxiom = monomorphizationVisitor.originalAxiomToUninstantiatedCopy[originalAxiom];
         originalAxiomFc.Visit(uninstantiatedOriginalAxiom);
         var originalAxiomFunctions = originalAxiomFc.Functions;
 
@@ -1440,9 +1440,11 @@ namespace Microsoft.Boogie
           {
             if (function.TypeParameters.Any()) // Polymorphic function
             {
+              var functionInstantiations =
+                monomorphizationVisitor.functionInstantiations[function].Values.ToHashSet();
               var instancesToAddDependency = originalAxiomFunctions.Contains(function)
-                ? newAxiomFunctions[newAxiom]
-                : monomorphizationVisitor.functionInstantiations[function].Values.ToHashSet();
+                ? newAxiomFunctions[newAxiom].Intersect(functionInstantiations)
+                : functionInstantiations;
               foreach (var inst in instancesToAddDependency)
               {
                 inst.OtherDefinitionAxioms.Add(newAxiom);
