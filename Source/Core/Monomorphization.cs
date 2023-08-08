@@ -343,12 +343,12 @@ namespace Microsoft.Boogie
      */
 
     protected MonomorphizationVisitor monomorphizationVisitor;
-    public Dictionary<List<Type>, Expr> InstanceExprs { get; }
+    protected Dictionary<List<Type>, Expr> instanceExprs { get; }
 
-    public BinderExprMonomorphizer(MonomorphizationVisitor monomorphizationVisitor)
+    protected BinderExprMonomorphizer(MonomorphizationVisitor monomorphizationVisitor)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
-      InstanceExprs = new Dictionary<List<Type>, Expr>(new ListComparer<Type>());
+      instanceExprs = new Dictionary<List<Type>, Expr>(new ListComparer<Type>());
     }
 
     // Returns the BinderExpr for which this instance of BinderExprMonomorphizer was created.
@@ -377,20 +377,20 @@ namespace Microsoft.Boogie
     public override bool Instantiate()
     {
       var polymorphicMapInfo = monomorphizationVisitor.RegisterPolymorphicMapType(lambdaExpr.Type);
-      Debug.Assert(InstanceExprs.Count <= polymorphicMapInfo.Instances.Count);
-      if (InstanceExprs.Count == polymorphicMapInfo.Instances.Count)
+      Debug.Assert(instanceExprs.Count <= polymorphicMapInfo.Instances.Count);
+      if (instanceExprs.Count == polymorphicMapInfo.Instances.Count)
       {
         return false;
       }
-      polymorphicMapInfo.Instances.Skip(InstanceExprs.Count).ForEach(x =>
-        InstanceExprs[x] = monomorphizationVisitor.InstantiateBinderExpr(lambdaExpr, x));
+      polymorphicMapInfo.Instances.Skip(instanceExprs.Count).ForEach(x =>
+        instanceExprs[x] = monomorphizationVisitor.InstantiateBinderExpr(lambdaExpr, x));
       return true;
     }
 
     public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
     {
       return substituter.VisitExpr(monomorphizationVisitor.RegisterPolymorphicMapType(lambdaExpr.Type)
-        .GetLambdaConstructor(InstanceExprs));
+        .GetLambdaConstructor(instanceExprs));
     }
   }
 
@@ -410,7 +410,7 @@ namespace Microsoft.Boogie
 
     public override bool Instantiate()
     {
-      var instanceExprsCount = InstanceExprs.Count;
+      var instanceExprsCount = instanceExprs.Count;
       var typeParameterIndexToTypeHints = Enumerable.Range(0, quantifierExpr.TypeParameters.Count)
         .Select(_ => new HashSet<Type>()).ToList();
       for (int typeParameterIndex = 0; typeParameterIndex < quantifierExpr.TypeParameters.Count; typeParameterIndex++)
@@ -428,16 +428,16 @@ namespace Microsoft.Boogie
         }
       }
       InstantiateOne(typeParameterIndexToTypeHints, new List<Type>());
-      return instanceExprsCount < InstanceExprs.Count;
+      return instanceExprsCount < instanceExprs.Count;
     }
 
     private void InstantiateOne(List<HashSet<Type>> typeParameterIndexToTypeHints, List<Type> actualTypeParams)
     {
       if (typeParameterIndexToTypeHints.Count == actualTypeParams.Count)
       {
-        if (!InstanceExprs.ContainsKey(actualTypeParams))
+        if (!instanceExprs.ContainsKey(actualTypeParams))
         {
-          InstanceExprs[new List<Type>(actualTypeParams)] =
+          instanceExprs[new List<Type>(actualTypeParams)] =
             monomorphizationVisitor.InstantiateBinderExpr(quantifierExpr, actualTypeParams);
         }
         return;
@@ -462,7 +462,7 @@ namespace Microsoft.Boogie
 
     public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
     {
-      return Expr.And(InstanceExprs.Values.Select(x => substituter.VisitExpr(x)));
+      return Expr.And(instanceExprs.Values.Select(x => substituter.VisitExpr(x)));
     }
   }
 
@@ -475,7 +475,7 @@ namespace Microsoft.Boogie
 
     public override Expr MonomorphicExpr(PolymorphicMapAndBinderSubstituter substituter)
     {
-      return Expr.Or(InstanceExprs.Values.Select(x => substituter.VisitExpr(x)));
+      return Expr.Or(instanceExprs.Values.Select(x => substituter.VisitExpr(x)));
     }
   }
 
@@ -1278,14 +1278,14 @@ namespace Microsoft.Boogie
      * children has been finalized.
      */
 
-    public CoreOptions Options { get; }
+    private CoreOptions Options { get; }
     
     private Program program;
     private Dictionary<string, Function> nameToFunction;
     private Dictionary<string, Procedure> nameToProcedure;
     private Dictionary<string, Implementation> nameToImplementation;
     private Dictionary<string, TypeCtorDecl> nameToTypeCtorDecl;
-    public Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations;
+    private Dictionary<Function, Dictionary<List<Type>, Function>> functionInstantiations;
     private Dictionary<Procedure, Dictionary<List<Type>, Procedure>> procInstantiations;
     private Dictionary<Implementation, Dictionary<List<Type>, Implementation>> implInstantiations;
     private Dictionary<TypeCtorDecl, Dictionary<List<Type>, TypeCtorDecl>> typeInstantiations;
@@ -1474,7 +1474,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public class FunctionAndConstantCollector : ReadOnlyVisitor
+    private class FunctionAndConstantCollector : ReadOnlyVisitor
     {
       public HashSet<Function> Functions { get; }
       public HashSet<Constant> Constants { get; }
