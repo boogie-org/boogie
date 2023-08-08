@@ -1297,11 +1297,11 @@ namespace Microsoft.Boogie
     private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
     private HashSet<Function> visitedFunctions;
     private Dictionary<Procedure, Implementation> procToImpl;
-    public readonly HashSet<Function> originalFunctions;
-    public readonly HashSet<Constant> originalConstants;
+    private readonly HashSet<Function> originalFunctions;
+    private readonly HashSet<Constant> originalConstants;
     // Note that original axioms refer to axioms of the original program which might have been updated in-place during monomorphization.
     public readonly Dictionary<Axiom, HashSet<Axiom>> originalAxiomToSplitAxioms;
-    public readonly Dictionary<Axiom, Axiom> originalAxiomToUninstantiatedCopies;
+    private readonly Dictionary<Axiom, Axiom> originalAxiomToUninstantiatedCopies;
 
     private MonomorphizationVisitor(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
@@ -1400,82 +1400,77 @@ namespace Microsoft.Boogie
       return monomorphizationVisitor;
     }
 
+    /// <summary>
+    /// Original program axioms were replaced with new splitAxioms. Program constants and functions that had
+    /// those original axioms as dependencies need their references updated to the new axioms.
+    /// Axioms / functions could both have been instantiated, which adds some complexity.
+    /// </summary>
     private static void UpdateDependencies(MonomorphizationVisitor monomorphizationVisitor)
     {
-      // Original program axioms were replaced with new splitAxioms. Program constants and functions that had
-      // those original axioms as dependencies need their references updated to the new axioms.
-      // Axioms / functions could both have been instantiated, which adds some complexity.
-
-      foreach (var (oldAxiom, newAxioms) in monomorphizationVisitor.originalAxiomToSplitAxioms)
+      foreach (var (originalAxiom, newAxioms) in monomorphizationVisitor.originalAxiomToSplitAxioms)
       {
-        var oldAxiomFC = new FunctionAndConstantCollector();
-        var unmodifiedOldAxiom = monomorphizationVisitor.originalAxiomToUninstantiatedCopies[oldAxiom];
-        oldAxiomFC.Visit(unmodifiedOldAxiom);
-        var oldAxiomFunctions = oldAxiomFC.Functions;
+        var originalAxiomFc = new FunctionAndConstantCollector();
+        var uninstantiatedOriginalAxiom = monomorphizationVisitor.originalAxiomToUninstantiatedCopies[originalAxiom];
+        originalAxiomFc.Visit(uninstantiatedOriginalAxiom);
+        var originalAxiomFunctions = originalAxiomFc.Functions;
 
-        Dictionary<Axiom, HashSet<Function>> newAxiomFunctions = new Dictionary<Axiom, HashSet<Function>>();
-        Dictionary<Axiom, HashSet<Constant>> newAxiomConstants = new Dictionary<Axiom, HashSet<Constant>>();
+        var newAxiomFunctions = new Dictionary<Axiom, HashSet<Function>>();
+        var newAxiomConstants = new Dictionary<Axiom, HashSet<Constant>>();
 
         foreach (var newAxiom in newAxioms)
         {
-          var newAxiomFC = new FunctionAndConstantCollector();
-          newAxiomFC.Visit(newAxiom);
-          newAxiomFunctions.Add(newAxiom, newAxiomFC.Functions);
-          newAxiomConstants.Add(newAxiom, newAxiomFC.Constants);
+          var newAxiomFc = new FunctionAndConstantCollector();
+          newAxiomFc.Visit(newAxiom);
+          newAxiomFunctions.Add(newAxiom, newAxiomFc.Functions);
+          newAxiomConstants.Add(newAxiom, newAxiomFc.Constants);
         }
 
-        void UpdateFunctionDependencies(HashSet<Function> functions)
+        // Update function dependencies.
+        foreach (var function in monomorphizationVisitor.originalFunctions)
         {
-          foreach (var function in functions)
+          if (!function.DefinitionAxioms.Contains(originalAxiom))
           {
-            if (function.DefinitionAxioms.Contains(oldAxiom))
+            continue;
+          }
+          if (function.DefinitionAxiom == originalAxiom)
+          {
+            function.DefinitionAxiom = null;
+          }
+          foreach (var newAxiom in newAxioms)
+          {
+            if (function.TypeParameters.Any()) // Polymorphic function
             {
-              if (function.DefinitionAxiom == oldAxiom)
+              var instancesToAddDependency = originalAxiomFunctions.Contains(function)
+                ? newAxiomFunctions[newAxiom]
+                : monomorphizationVisitor.functionInstantiations[function].Values.ToHashSet();
+              foreach (var inst in instancesToAddDependency)
               {
-                function.DefinitionAxiom = null;
+                inst.OtherDefinitionAxioms.Add(newAxiom);
               }
-              foreach (var newAxiom in newAxioms)
+            }
+            else // Non-monomorphized function
+            {
+              if (!originalAxiomFunctions.Contains(function) || newAxiomFunctions[newAxiom].Contains(function))
               {
-                if (function.TypeParameters.Any()) // Polymorphic function
-                {
-                  var instancesToAddDependency = oldAxiomFunctions.Contains(function)
-                    ? newAxiomFunctions[newAxiom]
-                    : monomorphizationVisitor.functionInstantiations[function].Values.ToHashSet();
-                  foreach (var inst in instancesToAddDependency)
-                  {
-                    inst.OtherDefinitionAxioms.Add(newAxiom);
-                  }
-                }
-                else // Non-monomorphized function
-                {
-                  if (!oldAxiomFunctions.Contains(function) || newAxiomFunctions[newAxiom].Contains(function))
-                  {
-                    function.OtherDefinitionAxioms.Add(newAxiom);
-                  }
-                }
+                function.OtherDefinitionAxioms.Add(newAxiom);
               }
-              function.OtherDefinitionAxioms.Remove(oldAxiom);
             }
           }
+          function.OtherDefinitionAxioms.Remove(originalAxiom);
         }
 
-        void UpdateConstantDependencies(HashSet<Constant> constants)
+        // Update constant dependencies.
+        foreach (var constant in monomorphizationVisitor.originalConstants)
         {
-          foreach (var constant in constants)
+          if (constant.DefinitionAxioms.Contains(originalAxiom))
           {
-            if (constant.DefinitionAxioms.Contains(oldAxiom))
+            foreach (var newAxiom in newAxioms.Where(ax => newAxiomConstants[ax].Contains(constant)))
             {
-              foreach (var newAxiom in newAxioms.Where(ax => newAxiomConstants[ax].Contains(constant)))
-              {
-                constant.DefinitionAxioms.Add(newAxiom);
-              }
-              constant.DefinitionAxioms.Remove(oldAxiom);
+              constant.DefinitionAxioms.Add(newAxiom);
             }
+            constant.DefinitionAxioms.Remove(originalAxiom);
           }
         }
-
-        UpdateConstantDependencies(monomorphizationVisitor.originalConstants);
-        UpdateFunctionDependencies(monomorphizationVisitor.originalFunctions);
       }
     }
 
