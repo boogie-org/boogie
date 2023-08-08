@@ -1301,7 +1301,7 @@ namespace Microsoft.Boogie
     private readonly HashSet<Constant> originalConstants;
     // Note that original axioms refer to axioms of the original program which might have been updated in-place during monomorphization.
     public readonly Dictionary<Axiom, HashSet<Axiom>> originalAxiomToSplitAxioms;
-    private readonly Dictionary<Axiom, Axiom> originalAxiomToUninstantiatedCopy;
+    private readonly Dictionary<Axiom, FunctionAndConstantCollector> originalAxiomToOriginalSymbols;
 
     private MonomorphizationVisitor(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
@@ -1310,7 +1310,7 @@ namespace Microsoft.Boogie
       originalFunctions = program.Functions.ToHashSet();
       originalConstants = program.Constants.ToHashSet();
       originalAxiomToSplitAxioms = program.Axioms.ToDictionary(ax => ax, _ => new HashSet<Axiom>());
-      originalAxiomToUninstantiatedCopy = program.Axioms.ToDictionary(ax => ax, ax => (Axiom) ax.Clone() );
+      originalAxiomToOriginalSymbols = program.Axioms.ToDictionary(ax => ax, ax => new FunctionAndConstantCollector(ax));
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
       nameToImplementation = new Dictionary<string, Implementation>();
       program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).ForEach(
@@ -1409,9 +1409,7 @@ namespace Microsoft.Boogie
     {
       foreach (var (originalAxiom, newAxioms) in monomorphizationVisitor.originalAxiomToSplitAxioms)
       {
-        var originalAxiomFc = new FunctionAndConstantCollector();
-        var uninstantiatedOriginalAxiom = monomorphizationVisitor.originalAxiomToUninstantiatedCopy[originalAxiom];
-        originalAxiomFc.Visit(uninstantiatedOriginalAxiom);
+        var originalAxiomFc = monomorphizationVisitor.originalAxiomToOriginalSymbols[originalAxiom];
         var originalAxiomFunctions = originalAxiomFc.Functions;
 
         var newAxiomFunctions = new Dictionary<Axiom, HashSet<Function>>();
@@ -1419,8 +1417,7 @@ namespace Microsoft.Boogie
 
         foreach (var newAxiom in newAxioms)
         {
-          var newAxiomFc = new FunctionAndConstantCollector();
-          newAxiomFc.Visit(newAxiom);
+          var newAxiomFc = new FunctionAndConstantCollector(newAxiom);
           newAxiomFunctions.Add(newAxiom, newAxiomFc.Functions);
           newAxiomConstants.Add(newAxiom, newAxiomFc.Constants);
         }
@@ -1476,15 +1473,16 @@ namespace Microsoft.Boogie
       }
     }
 
-    private class FunctionAndConstantCollector : ReadOnlyVisitor
+    private sealed class FunctionAndConstantCollector : ReadOnlyVisitor
     {
       public HashSet<Function> Functions { get; }
       public HashSet<Constant> Constants { get; }
       
-      public FunctionAndConstantCollector()
+      public FunctionAndConstantCollector(Axiom axiom)
       {
         Functions = new HashSet<Function>();
         Constants = new HashSet<Constant>();
+        VisitAxiom(axiom);
       }
 
       public override Expr VisitNAryExpr(NAryExpr node)
