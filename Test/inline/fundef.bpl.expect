@@ -4,12 +4,14 @@ function {:inline true} foo(x: int) : bool
   x > 0
 }
 
-function {:inline false} foo2(x: int) : bool;
-
+function {:inline false} foo2(x: int) : bool
+uses {
 axiom (forall x: int :: {:inline false} { foo2(x): bool } foo2(x): bool == (x > 0));
+}
 
-function foo3(x: int) : bool;
-
+function foo3(x: int) : bool
+uses {
 axiom (forall x: int :: { foo3(x): bool } foo3(x): bool == (x > 0));
+}
 
 Boogie program verifier finished with 0 verified, 0 errors
