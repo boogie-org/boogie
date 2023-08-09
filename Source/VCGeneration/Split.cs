@@ -150,9 +150,16 @@ namespace VC
         }
 
         using var writer = new TokenTextWriter(
-          $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
+          $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}.bpl", false,
           options.PrettyPrint, options);
-        foreach (var declaration in TopLevelDeclarations ?? program.TopLevelDeclarations) {
+
+        var functionAxioms = 
+          program.Functions.Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
+        var constantAxioms = 
+          program.Constants.Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
+
+        foreach (var declaration in (TopLevelDeclarations ?? program.TopLevelDeclarations).
+                 Except(functionAxioms.Concat(constantAxioms)).ToList()) {
           declaration.Emit(writer, 0);
         }
 
