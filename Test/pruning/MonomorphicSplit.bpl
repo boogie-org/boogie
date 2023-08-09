@@ -3,9 +3,11 @@
 
 // The following checks are a bit simplistic, but this is
 // on purpose to reduce brittleness. We assume there would now be two uses clauses
-// with one axiom each, and those axioms should not be conjunctions
-// (of monomorphized functions). Last one ensures that we do not have copies
-// of these axioms outside of their uses clauses.
+// with one axiom each, and those axioms should not be a conjunction of
+// the instantiations of the original axiom.
+// 
+// Last CHECK-NOT is for ensuring definition axioms are not printed outside
+// uses clauses when using /printPruned.
 
 // CHECK-L: uses
 // CHECK-NEXT-L: axiom
@@ -32,6 +34,6 @@ function f1 <T> (x: T) : int uses {
 
 procedure monomorphicSplit()
   ensures f1(true) == 42;
-	ensures f1(3) == 42;
+  ensures f1(3) == 42;
 {
 }
