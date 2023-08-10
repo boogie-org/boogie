@@ -483,9 +483,9 @@ namespace Microsoft.Boogie
       return newProcedure;
     }
 
-    public override ActionDeclRef VisitActionDeclRef(ActionDeclRef node)
+    public override ElimDecl VisitElimDecl(ElimDecl node)
     {
-      return base.VisitActionDeclRef((ActionDeclRef)node.Clone());
+      return base.VisitElimDecl((ElimDecl)node.Clone());
     }
 
     public override List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
@@ -493,6 +493,9 @@ namespace Microsoft.Boogie
       return base.VisitElimDeclSeq(new List<ElimDecl>(node));
     }
 
+    // We duplicate ActionDecl's but we are not updating references to ActionDecl
+    // in ActionDeclRef instances. If ActionDeclRef instances need to be updated,
+    // override VisitActionDeclRef appropriately.
     public override Procedure VisitActionDecl(ActionDecl node)
     {
       Procedure newProcedure = null;

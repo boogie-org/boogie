@@ -38,12 +38,11 @@ namespace Microsoft.Boogie
 
     #region Procedure duplication
 
-    public override Procedure VisitProcedure(Procedure node)
+    public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
     {
       if (!procToDuplicate.ContainsKey(node))
       {
-        var yieldProcedureDecl = (YieldProcedureDecl)node;
-        Debug.Assert(layerNum <= yieldProcedureDecl.Layer);
+        Debug.Assert(layerNum <= node.Layer);
         var proc = new Procedure(
           node.tok,
           civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}"),
@@ -52,8 +51,8 @@ namespace Microsoft.Boogie
           VisitVariableSeq(node.OutParams),
           false,
           VisitRequiresSeq(node.Requires),
-          (yieldProcedureDecl.HasMoverType && yieldProcedureDecl.Layer == layerNum
-            ? yieldProcedureDecl.ModifiedVars.Select(g => Expr.Ident(g))
+          (node.HasMoverType && node.Layer == layerNum
+            ? node.ModifiedVars.Select(g => Expr.Ident(g))
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
           VisitEnsuresSeq(node.Ensures));
         procToDuplicate[node] = proc;

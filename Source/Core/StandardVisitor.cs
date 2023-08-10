@@ -537,7 +537,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Implementation>() != null);
       node.LocVars = this.VisitVariableSeq(node.LocVars);
       node.Blocks = this.VisitBlockList(node.Blocks);
-      node.Proc = this.VisitProcedure(cce.NonNull(node.Proc));
+      node.Proc = (Procedure)node.Proc.StdDispatch(this);
       node = (Implementation) this.VisitDeclWithFormals(node); // do this first or last?
       VisitAttributes(node);
       return node;
@@ -669,13 +669,15 @@ namespace Microsoft.Boogie
       {
         node.Creates[i] = VisitActionDeclRef(node.Creates[i]);
       }
-      node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
-      node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
-      node.Eliminates = VisitElimDeclSeq(node.Eliminates);
-      if (node.PendingAsyncCtorDecl != null)
+      if (node.RefinedAction != null)
       {
-        node.PendingAsyncCtorDecl = (DatatypeTypeCtorDecl)VisitTypeCtorDecl(node.PendingAsyncCtorDecl);
+        node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
       }
+      if (node.InvariantAction != null)
+      {
+        node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
+      }
+      node.Eliminates = VisitElimDeclSeq(node.Eliminates);
       return VisitProcedure(node);
     }
 
@@ -1416,7 +1418,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Implementation>() == node);
       this.VisitVariableSeq(node.LocVars);
       this.VisitBlockList(node.Blocks);
-      this.VisitProcedure(cce.NonNull(node.Proc));
+      node.Proc = (Procedure)node.Proc.StdDispatch(this);
       return (Implementation) this.VisitDeclWithFormals(node); // do this first or last?
     }
 

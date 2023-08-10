@@ -84,7 +84,11 @@ namespace Microsoft.Boogie
       })));
 
       var oldErrorCount = checkingContext.ErrorCount;
-      var impl = base.VisitImplementation(node);
+      // Visit relevant fields of node directly rather than calling VisitImplementation to
+      // avoid visiting node.Proc (which would cause Procedure's to be visited more than once)
+      VisitVariableSeq(node.LocVars);
+      VisitBlockList(node.Blocks);
+      var impl = (Implementation) this.VisitDeclWithFormals(node);
       if (oldErrorCount < checkingContext.ErrorCount)
       {
         return impl;

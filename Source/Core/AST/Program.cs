@@ -61,7 +61,7 @@ public class Program : Absy
 
     ResolveTypes(rc);
       
-    var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
+    var prunedTopLevelDeclarations = new List<Declaration>();
     foreach (var d in TopLevelDeclarations.Where(d => !QKeyValue.FindBoolAttribute(d.Attributes, "ignore")))
     {
       // resolve all the declarations that have not been resolved yet 
@@ -69,17 +69,14 @@ public class Program : Absy
       {
         int e = rc.ErrorCount;
         d.Resolve(rc);
-        if (d is Implementation impl)
+        if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation impl)
         {
-          if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e)
-          {
-            // ignore this implementation
-            rc.Options.OutputWriter.WriteLine(
-              "Warning: Ignoring implementation {0} because of translation resolution errors",
-              impl.Name);
-            rc.ErrorCount = e;
-            continue;
-          }
+          // ignore this implementation
+          rc.Options.OutputWriter.WriteLine(
+            "Warning: Ignoring implementation {0} because of translation resolution errors",
+            impl.Name);
+          rc.ErrorCount = e;
+          continue;
         }
       }
       prunedTopLevelDeclarations.Add(d);
