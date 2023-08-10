@@ -537,7 +537,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Implementation>() != null);
       node.LocVars = this.VisitVariableSeq(node.LocVars);
       node.Blocks = this.VisitBlockList(node.Blocks);
-      node.Proc = this.VisitProcedure(cce.NonNull(node.Proc));
+      node.Proc = (Procedure)node.Proc.StdDispatch(this);
       node = (Implementation) this.VisitDeclWithFormals(node); // do this first or last?
       VisitAttributes(node);
       return node;
@@ -647,23 +647,68 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    public virtual ElimDecl VisitElimDecl(ElimDecl node)
+    {
+      node.Abstraction = VisitActionDeclRef(node.Abstraction);
+      node.Target = VisitActionDeclRef(node.Target);
+      return node;
+    }
+
+    public virtual List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
+    {
+      for (int i = 0; i < node.Count; i++)
+      {
+        node[i] = VisitElimDecl(node[i]);
+      }
+      return node;
+    }
+
     public virtual Procedure VisitActionDecl(ActionDecl node)
     {
       for (int i = 0; i < node.Creates.Count; i++)
       {
         node.Creates[i] = VisitActionDeclRef(node.Creates[i]);
       }
-      node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
-      node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
+      if (node.RefinedAction != null)
+      {
+        node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
+      }
+      if (node.InvariantAction != null)
+      {
+        node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
+      }
+      node.Eliminates = VisitElimDeclSeq(node.Eliminates);
       return VisitProcedure(node);
+    }
+
+    public virtual YieldingLoop VisitYieldingLoop(YieldingLoop node)
+    {
+      node.YieldInvariants = VisitCallCmdSeq(node.YieldInvariants);
+      return node;
+    }
+
+    public virtual Dictionary<Block, YieldingLoop> VisitYieldingLoops(Dictionary<Block, YieldingLoop> node)
+    {
+      foreach (var block in node.Keys)
+      {
+        node[block] = VisitYieldingLoop(node[block]);
+      }
+      return node;
+    }
+
+    public virtual HashSet<Variable> VisitVariableSet(HashSet<Variable> node)
+    {
+      return node;
     }
 
     public virtual Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
     {
-      node.YieldEnsures = this.VisitCallCmdSeq(node.YieldEnsures);
-      node.YieldPreserves = this.VisitCallCmdSeq(node.YieldPreserves);
-      node.YieldRequires = this.VisitCallCmdSeq(node.YieldRequires);
+      node.YieldRequires = VisitCallCmdSeq(node.YieldRequires);
+      node.YieldEnsures = VisitCallCmdSeq(node.YieldEnsures);
+      node.YieldPreserves = VisitCallCmdSeq(node.YieldPreserves);
       node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
+      node.VisibleFormals = VisitVariableSet(node.VisibleFormals);
+      node.YieldingLoops = VisitYieldingLoops(node.YieldingLoops);
       return VisitProcedure(node);
     }
 
@@ -1373,7 +1418,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Implementation>() == node);
       this.VisitVariableSeq(node.LocVars);
       this.VisitBlockList(node.Blocks);
-      this.VisitProcedure(cce.NonNull(node.Proc));
+      node.Proc = (Procedure)node.Proc.StdDispatch(this);
       return (Implementation) this.VisitDeclWithFormals(node); // do this first or last?
     }
 
