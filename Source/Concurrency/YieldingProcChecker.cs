@@ -24,7 +24,7 @@ namespace Microsoft.Boogie
         {
           if (yieldProcedureDecl.Layer >= layerNum)
           {
-            duplicator.VisitProcedure(yieldProcedureDecl);
+            duplicator.VisitYieldProcedureDecl(yieldProcedureDecl);
           }
         }
 
