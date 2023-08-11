@@ -179,7 +179,7 @@ namespace Microsoft.Boogie
       }
       return true;
     }
-    
+
     public override Expr VisitNAryExpr(NAryExpr node)
     {
       if (node.Fun is FunctionCall functionCall)
@@ -343,9 +343,9 @@ namespace Microsoft.Boogie
      */
 
     protected MonomorphizationVisitor monomorphizationVisitor;
-    protected Dictionary<List<Type>, Expr> instanceExprs;
+    protected Dictionary<List<Type>, Expr> instanceExprs { get; }
 
-    public BinderExprMonomorphizer(MonomorphizationVisitor monomorphizationVisitor)
+    protected BinderExprMonomorphizer(MonomorphizationVisitor monomorphizationVisitor)
     {
       this.monomorphizationVisitor = monomorphizationVisitor;
       instanceExprs = new Dictionary<List<Type>, Expr>(new ListComparer<Type>());
@@ -649,7 +649,11 @@ namespace Microsoft.Boogie
         }
         else
         {
-          splitAxioms.Add(new Axiom(Token.NoToken, expr));
+          var newAxiom = new Axiom(Token.NoToken, expr);
+          if (monomorphizationVisitor.originalAxiomToSplitAxioms.ContainsKey(axiom)) {
+            monomorphizationVisitor.originalAxiomToSplitAxioms[axiom].Add(newAxiom);
+          }
+          splitAxioms.Add(newAxiom);
         }
       }
       return axiom;
@@ -1274,7 +1278,7 @@ namespace Microsoft.Boogie
      * children has been finalized.
      */
 
-    public CoreOptions Options { get; }
+    private CoreOptions Options { get; }
     
     private Program program;
     private Dictionary<string, Function> nameToFunction;
@@ -1293,11 +1297,20 @@ namespace Microsoft.Boogie
     private HashSet<TypeCtorDecl> visitedTypeCtorDecls;
     private HashSet<Function> visitedFunctions;
     private Dictionary<Procedure, Implementation> procToImpl;
+    private readonly HashSet<Function> originalFunctions;
+    private readonly HashSet<Constant> originalConstants;
+    // Note that original axioms refer to axioms of the original program which might have been updated in-place during monomorphization.
+    public readonly Dictionary<Axiom, HashSet<Axiom>> originalAxiomToSplitAxioms;
+    private readonly Dictionary<Axiom, FunctionAndConstantCollector> originalAxiomToOriginalSymbols;
 
     private MonomorphizationVisitor(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
       Options = options;
       this.program = program;
+      originalFunctions = program.Functions.ToHashSet();
+      originalConstants = program.Constants.ToHashSet();
+      originalAxiomToSplitAxioms = program.Axioms.ToDictionary(ax => ax, _ => new HashSet<Axiom>());
+      originalAxiomToOriginalSymbols = program.Axioms.ToDictionary(ax => ax, ax => new FunctionAndConstantCollector(ax));
       implInstantiations = new Dictionary<Implementation, Dictionary<List<Type>, Implementation>>();
       nameToImplementation = new Dictionary<string, Implementation>();
       program.TopLevelDeclarations.OfType<Implementation>().Where(impl => impl.TypeParameters.Count > 0).ForEach(
@@ -1351,7 +1364,8 @@ namespace Microsoft.Boogie
     
     public static MonomorphizationVisitor Initialize(CoreOptions options, Program program, HashSet<Axiom> polymorphicFunctionAxioms)
     {
-      var monomorphizationVisitor = new MonomorphizationVisitor(options, program, polymorphicFunctionAxioms);
+      var monomorphizationVisitor =
+        new MonomorphizationVisitor(options, program, polymorphicFunctionAxioms);
       // ctorTypes contains all the uninterpreted types created for monomorphizing top-level polymorphic implementations 
       // that must be verified. The types in ctorTypes are reused across different implementations.
       var ctorTypes = new List<Type>();
@@ -1378,11 +1392,116 @@ namespace Microsoft.Boogie
         monomorphizationVisitor.polymorphicMapInfos.Values.Select(polymorphicMapInfo =>
           polymorphicMapInfo.CreateDatatypeTypeCtorDecl(polymorphicMapAndBinderSubstituter)).ToList();
       var splitAxioms = polymorphicMapAndBinderSubstituter.Substitute(program);
+      UpdateDependencies(monomorphizationVisitor);
       program.RemoveTopLevelDeclarations(decl => decl is Axiom);
       program.AddTopLevelDeclarations(splitAxioms);
       program.AddTopLevelDeclarations(polymorphicMapDatatypeCtorDecls);
       Contract.Assert(MonomorphismChecker.IsMonomorphic(program));
       return monomorphizationVisitor;
+    }
+
+    /// <summary>
+    /// Original program axioms were replaced with new splitAxioms. Program constants and functions that had
+    /// those original axioms as dependencies need their references updated to the new axioms.
+    /// Axioms / functions could both have been instantiated, which adds some complexity.
+    /// </summary>
+    private static void UpdateDependencies(MonomorphizationVisitor monomorphizationVisitor)
+    {
+      foreach (var (originalAxiom, newAxioms) in monomorphizationVisitor.originalAxiomToSplitAxioms)
+      {
+        var originalAxiomFc = monomorphizationVisitor.originalAxiomToOriginalSymbols[originalAxiom];
+        var originalAxiomFunctions = originalAxiomFc.Functions;
+
+        var newAxiomFunctions = new Dictionary<Axiom, HashSet<Function>>();
+        var newAxiomConstants = new Dictionary<Axiom, HashSet<Constant>>();
+
+        foreach (var newAxiom in newAxioms)
+        {
+          var newAxiomFc = new FunctionAndConstantCollector(newAxiom);
+          newAxiomFunctions.Add(newAxiom, newAxiomFc.Functions);
+          newAxiomConstants.Add(newAxiom, newAxiomFc.Constants);
+        }
+
+        // Update function dependencies.
+        foreach (var function in monomorphizationVisitor.originalFunctions)
+        {
+          if (!function.DefinitionAxioms.Contains(originalAxiom))
+          {
+            continue;
+          }
+          if (function.DefinitionAxiom == originalAxiom)
+          {
+            function.DefinitionAxiom = null;
+          }
+          foreach (var newAxiom in newAxioms)
+          {
+            if (function.TypeParameters.Any()) // Polymorphic function
+            {
+              var functionInstantiations =
+                monomorphizationVisitor.functionInstantiations[function].Values.ToHashSet();
+              var instancesToAddDependency = originalAxiomFunctions.Contains(function)
+                ? newAxiomFunctions[newAxiom].Intersect(functionInstantiations)
+                : functionInstantiations;
+              foreach (var inst in instancesToAddDependency)
+              {
+                inst.OtherDefinitionAxioms.Add(newAxiom);
+              }
+            }
+            else // Non-monomorphized function
+            {
+              if (!originalAxiomFunctions.Contains(function) || newAxiomFunctions[newAxiom].Contains(function))
+              {
+                function.OtherDefinitionAxioms.Add(newAxiom);
+              }
+            }
+          }
+          function.OtherDefinitionAxioms.Remove(originalAxiom);
+        }
+
+        // Update constant dependencies.
+        foreach (var constant in monomorphizationVisitor.originalConstants)
+        {
+          if (constant.DefinitionAxioms.Contains(originalAxiom))
+          {
+            foreach (var newAxiom in newAxioms.Where(ax => newAxiomConstants[ax].Contains(constant)))
+            {
+              constant.DefinitionAxioms.Add(newAxiom);
+            }
+            constant.DefinitionAxioms.Remove(originalAxiom);
+          }
+        }
+      }
+    }
+
+    private sealed class FunctionAndConstantCollector : ReadOnlyVisitor
+    {
+      public HashSet<Function> Functions { get; }
+      public HashSet<Constant> Constants { get; }
+      
+      public FunctionAndConstantCollector(Axiom axiom)
+      {
+        Functions = new HashSet<Function>();
+        Constants = new HashSet<Constant>();
+        VisitAxiom(axiom);
+      }
+
+      public override Expr VisitNAryExpr(NAryExpr node)
+      {
+        if (node.Fun is FunctionCall functionCall)
+        {
+          Functions.Add(functionCall.Func);
+        }
+        return base.VisitNAryExpr(node);
+      }
+
+      public override Expr VisitIdentifierExpr(IdentifierExpr node)
+      {
+        if (node.Decl is Constant c)
+        {
+          Constants.Add(c);
+        }
+        return base.VisitIdentifierExpr(node);
+      }
     }
 
     /*
@@ -1492,6 +1611,9 @@ namespace Microsoft.Boogie
     {
       var axiomExpr = InstantiateBinderExpr((BinderExpr)axiom.Expr, actualTypeParams);
       var instantiatedAxiom = new Axiom(axiom.tok, axiomExpr, axiom.Comment, axiom.Attributes);
+      if (originalAxiomToSplitAxioms.ContainsKey(axiom)) {
+        originalAxiomToSplitAxioms[axiom].Add(instantiatedAxiom);
+      }
       newInstantiatedDeclarations.Add(instantiatedAxiom);
       return instantiatedAxiom;
     }
