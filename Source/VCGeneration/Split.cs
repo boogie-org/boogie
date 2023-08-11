@@ -8,6 +8,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
+using Microsoft.Boogie.SMTLib;
 
 namespace VC
 {
@@ -1294,7 +1295,8 @@ namespace VC
           counterExamples: Counterexamples,
           asserts: Asserts,
           coveredElements: CoveredElements,
-          resourceCount: resourceCount);
+          resourceCount: resourceCount,
+          solverUsed: (options as SMTLibSolverOptions)?.Solver);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
