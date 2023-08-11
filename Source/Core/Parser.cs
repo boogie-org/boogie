@@ -451,7 +451,7 @@ private class BvBounds : Expr {
 		                                 new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
 		foreach(var axiom in axioms) {
 		   ds.Add(axiom);
-		   func.AddOtherDefinitionAxiom(axiom);
+		   func.OtherDefinitionAxioms.Add(axiom);
 		}
 		
 		Contract.Assert(func != null);
