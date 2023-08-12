@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //
 
-// RUN: %parallel-boogie -vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type {:linear "tid"} X = int;
@@ -293,6 +293,7 @@ requires call Yield_RootScanBarrierInv();
     call UpdateMutatorPhase(tid);
     call Yield_Iso();
     call ptr, absPtr := AllocRaw(tid, y);
+    assert {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
 }
 
 atomic action {:layer 101} AtomicWriteField({:linear "tid"} tid:Tid, x: idx, f: fld, y: idx) // x.f = y
