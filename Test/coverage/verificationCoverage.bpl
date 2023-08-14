@@ -2,6 +2,14 @@
 // RUN: %diff "%s.expect.plain" "%t.plain"
 // RUN: %boogie -trackVerificationCoverage "%s" > "%t.coverage"
 // RUN: %diff "%s.expect.coverage" "%t.coverage"
+// RUN: %boogie -trackVerificationCoverage -typeEncoding:a -prune "%s" > "%t.coverage-a"
+// RUN: %diff "%s.expect.coverage" "%t.coverage-a"
+// RUN: %boogie -trackVerificationCoverage -typeEncoding:p -prune "%s" > "%t.coverage-p"
+// RUN: %diff "%s.expect.coverage" "%t.coverage-p"
+// RUN: %boogie -trackVerificationCoverage -normalizeDeclarationOrder:1 -prune "%s" > "%t.coverage-d"
+// RUN: %diff "%s.expect.coverage" "%t.coverage-d"
+// RUN %boogie -trackVerificationCoverage -normalizeNames:1 -prune "%s" > "%t.coverage-n"
+// RUN %diff "%s.expect.coverage" "%t.coverage-n"
 // UNSUPPORTED: batch_mode
 
 procedure testRequiresAssign(n: int)
