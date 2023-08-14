@@ -15,6 +15,14 @@
 // CHECK: Elements covered by verification: a_gt_10, a0, assert_a0, assert_r0, assumeFalse, call2_tee1, constrained, cont_assume_1, cont_assume_2, cont_ens_abs$call_cont$ensures, cont_req_1, cont_req_2, false_req, r0, sinv_not_1$established, sinv_not_1$maintained, sinv1$assume_in_body, sinv1$established, sinv1$maintained, sinv2$assume_in_body, sinv2$established, sinv2$maintained, spost, spre1, tee_not_1, tee0, tee0$call1$ensures, tee0$call2$ensures, tee1, tee1$call2$ensures, ter0, ter0$call1$requires, ter0$call2$requires, ter1, x_gt_10, xpos_abs$call_cont$requires, xpos_caller, xy_sum
 // RUN: %boogie -trackVerificationCoverage "%s" > "%t.coverage"
 // RUN: %diff "%s.expect" "%t.coverage"
+// RUN: %boogie -trackVerificationCoverage -typeEncoding:a -prune "%s" > "%t.coverage-a"
+// RUN: %diff "%s.expect" "%t.coverage-a"
+// RUN: %boogie -trackVerificationCoverage -typeEncoding:p -prune "%s" > "%t.coverage-p"
+// RUN: %diff "%s.expect" "%t.coverage-p"
+// RUN: %boogie -trackVerificationCoverage -normalizeDeclarationOrder:1 -prune "%s" > "%t.coverage-d"
+// RUN: %diff "%s.expect" "%t.coverage-d"
+// RUN %boogie -trackVerificationCoverage -normalizeNames:1 -prune "%s" > "%t.coverage-n"
+// RUN %diff "%s.expect" "%t.coverage-n"
 // UNSUPPORTED: batch_mode
 
 procedure testRequiresAssign(n: int)

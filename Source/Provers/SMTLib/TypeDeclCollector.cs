@@ -210,17 +210,22 @@ namespace Microsoft.Boogie.SMTLib
       else if (node.Op is VCExprSoftOp)
       {
         var exprVar = node[0] as VCExprVar;
-        AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
-        AddDeclaration(string.Format("(assert-soft {0} :weight {1})", exprVar.Name, ((VCExprSoftOp) node.Op).Weight));
+        string printedName = Namer.GetQuotedName(exprVar, exprVar.Name);
+        AddDeclaration(string.Format("(declare-fun {0} () Bool)", printedName));
+        AddDeclaration(string.Format("(assert-soft {0} :weight {1})", printedName, ((VCExprSoftOp) node.Op).Weight));
+        KnownVariables.Add(exprVar);
       }
       else if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp) || node.Op.Equals(VCExpressionGenerator.NamedAssertOp))
       {
         var exprVar = node[0] as VCExprVar;
-        AddDeclaration(string.Format("(declare-fun {0} () Bool)", exprVar.Name));
+        string printedName = Namer.GetQuotedName(exprVar, exprVar.Name);
+        AddDeclaration(string.Format("(declare-fun {0} () Bool)", printedName));
         if (options.TrackVerificationCoverage)
         {
-          AddDeclaration(string.Format("(assert (! {0} :named {1}))", exprVar.Name, "aux$$" + exprVar.Name));
+          AddDeclaration(string.Format("(assert (! {0} :named {1}))", printedName, "aux$$" + exprVar.Name));
         }
+
+        KnownVariables.Add(exprVar);
       }
       else
       {

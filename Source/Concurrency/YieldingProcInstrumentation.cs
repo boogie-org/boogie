@@ -203,7 +203,7 @@ namespace Microsoft.Boogie
         if (layerNum == yieldInvariant.Layer)
         {
           noninterferenceCheckerDecls.AddRange(
-            NoninterferenceChecker.CreateNoninterferenceCheckers(civlTypeChecker,
+            NoninterferenceChecker.CreateNoninterferenceCheckerDecls(civlTypeChecker,
               layerNum, absyMap, yieldInvariant, new List<Variable>()));
         }
       }
