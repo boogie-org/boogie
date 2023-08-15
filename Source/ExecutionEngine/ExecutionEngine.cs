@@ -673,7 +673,7 @@ namespace Microsoft.Boogie
         CleanupRequest(requestId);
       }
 
-      if (Options.TrackVerificationCoverage && processedProgram.Program.AllCoveredElements.Any()) {
+      if (Options.Trace && Options.TrackVerificationCoverage && processedProgram.Program.AllCoveredElements.Any()) {
         Options.OutputWriter.WriteLine("Elements covered by verification: {0}", string.Join(", ", processedProgram.Program.AllCoveredElements.OrderBy(s => s)));
       }
 
