@@ -134,7 +134,7 @@ namespace Microsoft.Boogie
       return cmds;
     }
     
-    private List<Cmd> CreateCallToYieldProc()
+    private List<Cmd> CreateCallToNoninterferenceChecker()
     {
       var cmds = new List<Cmd>();
       if (!civlTypeChecker.Options.TrustNoninterference)
@@ -608,7 +608,7 @@ namespace Microsoft.Boogie
     private Block CreateNoninterferenceCheckerBlock()
     {
       var newCmds = new List<Cmd>();
-      newCmds.AddRange(CreateCallToYieldProc());
+      newCmds.AddRange(CreateCallToNoninterferenceChecker());
       newCmds.Add(CmdHelper.AssumeCmd(Expr.False));
       return BlockHelper.Block(civlTypeChecker.AddNamePrefix("NoninterferenceChecker"), newCmds);
     }
@@ -756,10 +756,9 @@ namespace Microsoft.Boogie
         yield break;
       }
 
-      var pendingAsyncsToCheck = new HashSet<Action>(
-        civlTypeChecker.MoverActions
-          .Where(a => a.LayerRange.Contains(layerNum) && a.HasPendingAsyncs)
-          .SelectMany(a => a.PendingAsyncs).Select(a => civlTypeChecker.Action(a)));
+      var pendingAsyncsToCheck =
+        new HashSet<Action>(civlTypeChecker.MoverActions.Where(a =>
+          a.LayerRange.Contains(layerNum) && a.ActionDecl.MaybePendingAsync));
 
       foreach (var action in pendingAsyncsToCheck)
       {
@@ -774,7 +773,7 @@ namespace Microsoft.Boogie
         cmds.AddRange(CreateUpdatesToOldGlobalVars());
         cmds.AddRange(CreateUpdatesToPermissionCollector(action.Impl));
         cmds.Add(CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs));
-        cmds.AddRange(CreateCallToYieldProc());
+        cmds.AddRange(CreateCallToNoninterferenceChecker());
         var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
 
         var name = civlTypeChecker.AddNamePrefix($"PendingAsyncNoninterferenceChecker_{action.Name}_{layerNum}");
