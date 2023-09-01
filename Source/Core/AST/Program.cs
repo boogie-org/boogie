@@ -400,7 +400,7 @@ public class Program : Absy
     }
   }
 
-  public readonly ISet<string> AllCoveredElements = new HashSet<string>();
+  public readonly ISet<ProgramElement> AllCoveredElements = new HashSet<ProgramElement>();
 
   public IEnumerable<Block> Blocks()
   {

@@ -8,5 +8,5 @@ public interface ProofRun {
   
   List<Counterexample> Counterexamples { get; }
 
-  HashSet<string> CoveredElements { get;  }
+  HashSet<ProgramElement> CoveredElements { get;  }
 }

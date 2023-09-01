@@ -112,7 +112,7 @@ public abstract class ProverInterface
       this.options = options;
     }
 
-    public virtual void AddCoveredElement(string id)
+    public virtual void AddCoveredElement(ProgramElement elt)
     {
       throw new System.NotImplementedException();
     }
