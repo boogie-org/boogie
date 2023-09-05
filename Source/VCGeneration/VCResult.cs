@@ -25,7 +25,7 @@ namespace VC
     int maxCounterExamples,
     List<Counterexample> counterExamples,
     List<AssertCmd> asserts,
-    IEnumerable<string> coveredElements,
+    IEnumerable<TrackedNodeComponent> coveredElements,
     int resourceCount,
     SolverKind? solverUsed
   ) {

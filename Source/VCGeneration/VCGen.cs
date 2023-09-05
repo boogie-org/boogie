@@ -462,10 +462,10 @@ namespace VC
 
       Program program;
 
-      public override void AddCoveredElement(string id)
+      public override void AddCoveredElement(TrackedNodeComponent elt)
       {
-        program.AllCoveredElements.Add(id);
-        split.CoveredElements.Add(id);
+        program.AllCoveredElements.Add(elt);
+        split.CoveredElements.Add(elt);
       }
 
       public ErrorReporter(VCGenOptions options,
@@ -732,7 +732,8 @@ namespace VC
               initAssertCmd.Attributes = (QKeyValue)assertCmd.Attributes?.Clone();
               // Copy any {:id ...} from the invariant to the assertion that it's established, so
               // we can track it while analyzing verification coverage.
-              (initAssertCmd as ICarriesAttributes).CopyIdWithSuffixFrom(assertCmd.tok, assertCmd, "$established");
+              (initAssertCmd as ICarriesAttributes).CopyIdWithModificationsFrom(assertCmd.tok, assertCmd,
+                id => new TrackedInvariantEstablished(id));
 
               prefixOfPredicateCmdsInit.Add(initAssertCmd);
 
@@ -757,13 +758,15 @@ namespace VC
               maintainedAssertCmd.Attributes = (QKeyValue)assertCmd.Attributes?.Clone();
               // Copy any {:id ...} from the invariant to the assertion that it's maintained, so
               // we can track it while analyzing verification coverage.
-              (maintainedAssertCmd as ICarriesAttributes).CopyIdWithSuffixFrom(assertCmd.tok, assertCmd, "$maintained");
+              (maintainedAssertCmd as ICarriesAttributes).CopyIdWithModificationsFrom(assertCmd.tok, assertCmd,
+                id => new TrackedInvariantMaintained(id));
 
               prefixOfPredicateCmdsMaintained.Add(maintainedAssertCmd);
               AssumeCmd assume = new AssumeCmd(assertCmd.tok, assertCmd.Expr);
               // Copy any {:id ...} from the invariant to the assumption used within the body, so
               // we can track it while analyzing verification coverage.
-              (assume as ICarriesAttributes).CopyIdWithSuffixFrom(assertCmd.tok, assertCmd, "$assume_in_body");
+              (assume as ICarriesAttributes).CopyIdWithModificationsFrom(assertCmd.tok, assertCmd,
+                id => new TrackedInvariantAssumed(id));
 
               header.Cmds[i] = assume;
             }

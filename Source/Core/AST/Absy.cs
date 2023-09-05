@@ -300,13 +300,14 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void CopyIdWithSuffixFrom(IToken tok, ICarriesAttributes src, string suffix)
+    public void CopyIdWithModificationsFrom(IToken tok, ICarriesAttributes src, Func<string,TrackedNodeComponent> modifier)
     {
       var id = src.FindStringAttribute("id");
       if (id is not null) {
-        AddStringAttribute(tok, "id", id + suffix);
+        AddStringAttribute(tok, "id", modifier(id).SolverLabel);
       }
     }
+
   }
 
   [ContractClassFor(typeof(Absy))]

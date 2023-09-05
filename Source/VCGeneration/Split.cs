@@ -1281,7 +1281,7 @@ namespace VC
         }
         if (options.Trace && options.TrackVerificationCoverage) {
           run.OutputWriter.WriteLine("Covered elements: {0}",
-            string.Join(", ", CoveredElements.OrderBy(s => s)));
+            string.Join(", ", CoveredElements.Select(s => s.SolverLabel).OrderBy(s => s)));
         }
 
         var resourceCount = await checker.GetProverResourceCount();
@@ -1309,7 +1309,7 @@ namespace VC
 
       public List<Counterexample> Counterexamples { get; } = new();
 
-      public HashSet<string> CoveredElements { get; } = new();
+      public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
 
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".

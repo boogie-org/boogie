@@ -674,7 +674,13 @@ namespace Microsoft.Boogie
       }
 
       if (Options.Trace && Options.TrackVerificationCoverage && processedProgram.Program.AllCoveredElements.Any()) {
-        Options.OutputWriter.WriteLine("Elements covered by verification: {0}", string.Join(", ", processedProgram.Program.AllCoveredElements.OrderBy(s => s)));
+        Options.OutputWriter.WriteLine("Elements covered by verification: {0}",
+          string.Join(", ",
+            processedProgram
+              .Program
+              .AllCoveredElements
+              .Select(elt => elt.SolverLabel)
+              .OrderBy(s => s)));
       }
 
       cce.NonNull(Options.TheProverFactory).Close();
