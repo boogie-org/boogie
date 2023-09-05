@@ -2,39 +2,64 @@ using System;
 
 namespace Microsoft.Boogie
 {
-  // Represents an AST node, or component of a node, that is being
-  // tracked during the proof process to determine whether it was
-  // used as part of a completed proof.
+  /// <summary>
+  /// Represents an AST node, or component of a node, that is being
+  /// tracked during the proof process to determine whether it was
+  /// used as part of a completed proof.
+  /// </summary>
   public abstract record TrackedNodeComponent()
   {
+    /// <summary>
+    /// The string used to represent this component in the solver.
+    /// </summary>
     public abstract string SolverLabel { get; }
 
+    /// <summary>
+    /// A human-readable description of this component in terms of
+    /// user-provided :id attributes.
+    /// </summary>
     public abstract string Description { get; }
 
-    // This suffix indicates that an ID string represents the assumption of
-    // a specific ensures clause after a specific call.
+    /// <summary>
+    /// This suffix indicates that an ID string represents the assumption of
+    /// a specific ensures clause after a specific call.
+    /// </summary>
     protected const string ensuresSuffix = "ensures";
 
-    // This suffix indicates that an ID string represents the goal of
-    // proving a specific requires clause before a specific call.
+    /// <summary>
+    /// This suffix indicates that an ID string represents the goal of
+    /// proving a specific requires clause before a specific call.
+    /// </summary>
     protected const string requiresSuffix = "requires";
 
-    // This suffix indicates that an ID string represents the assumption
-    // of a specific requires clause after a specific call.
+    /// <summary>
+    /// This suffix indicates that an ID string represents the assumption
+    /// of a specific requires clause after a specific call.
+    /// </summary>
     protected const string requiresAssumedSuffix = "requires_assumed";
 
-    // This suffix indicates that an ID string represents the goal of
-    // proving that a specific loop invariant is established.
+    /// <summary>
+    /// This suffix indicates that an ID string represents the goal of
+    /// proving that a specific loop invariant is established.
+    /// </summary>
     protected const string establishedSuffix = "established";
 
-    // This suffix indicates that an ID string represents the goal of
-    // proving that a specific loop invariant is maintained.
+    /// <summary>
+    /// This suffix indicates that an ID string represents the goal of
+    /// proving that a specific loop invariant is maintained.
+    /// </summary>
     protected const string maintainedSuffix = "maintained";
 
-    // This suffix indicates that an ID string represents the asssumption
-    // of a specific loop invariant in the body of the loop.
+    /// <summary>
+    /// This suffix indicates that an ID string represents the asssumption
+    /// of a specific loop invariant in the body of the loop.
+    /// </summary>
     protected const string assumeInBodySuffix = "assume_in_body";
 
+    /// <summary>
+    /// Reverse the transformation of TrackedNodeComponent to string
+    /// done by the SolverLabel attribute.
+    /// </summary>
     public static TrackedNodeComponent ParseSolverString(string idString)
     {
       var parts = idString.Split('$');
