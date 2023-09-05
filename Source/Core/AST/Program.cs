@@ -400,7 +400,7 @@ public class Program : Absy
     }
   }
 
-  public readonly ISet<ProgramElement> AllCoveredElements = new HashSet<ProgramElement>();
+  public readonly ISet<TrackedNodeComponent> AllCoveredElements = new HashSet<TrackedNodeComponent>();
 
   public IEnumerable<Block> Blocks()
   {

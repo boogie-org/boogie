@@ -224,7 +224,7 @@ namespace Microsoft.Boogie.SMTLib
               {
                 usedNamedAssumes.Add(resp.Name);
                 if (libOptions.TrackVerificationCoverage) {
-                  reporter.AddCoveredElement(new LabeledElement(resp.Name.Substring("aux$$assume$$".Length)));
+                  reporter.AddCoveredElement(new LabeledNodeComponent(resp.Name.Substring("aux$$assume$$".Length)));
                 }
               }
 
@@ -233,7 +233,7 @@ namespace Microsoft.Boogie.SMTLib
                 usedNamedAssumes.Add(arg.Name);
                 if (libOptions.TrackVerificationCoverage)
                 {
-                  reporter.AddCoveredElement(new LabeledElement(arg.Name.Substring("aux$$assume$$".Length)));
+                  reporter.AddCoveredElement(new LabeledNodeComponent(arg.Name.Substring("aux$$assume$$".Length)));
                 }
               }
             }

@@ -300,7 +300,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void CopyIdWithModificationsFrom(IToken tok, ICarriesAttributes src, Func<string,ProgramElement> modifier)
+    public void CopyIdWithModificationsFrom(IToken tok, ICarriesAttributes src, Func<string,TrackedNodeComponent> modifier)
     {
       var id = src.FindStringAttribute("id");
       if (id is not null) {

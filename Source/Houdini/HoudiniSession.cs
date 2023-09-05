@@ -126,7 +126,7 @@ namespace Microsoft.Boogie.Houdini
     private readonly Houdini houdini;
     public HoudiniStatistics stats;
     public List<Counterexample> Counterexamples { get; } = new();
-    public HashSet<ProgramElement> CoveredElements { get; } = new();
+    public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
     ConditionGeneration.VerificationResultCollector collector;

@@ -1309,7 +1309,7 @@ namespace VC
 
       public List<Counterexample> Counterexamples { get; } = new();
 
-      public HashSet<ProgramElement> CoveredElements { get; } = new();
+      public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
 
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".

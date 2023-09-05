@@ -2,7 +2,7 @@ using System;
 
 namespace Microsoft.Boogie
 {
-  public abstract record ProgramElement()
+  public abstract record TrackedNodeComponent()
   {
     public abstract string SolverLabel { get; }
 
@@ -30,73 +30,73 @@ namespace Microsoft.Boogie
     // of a specific loop invariant in the body of the loop.
     protected const string assumeInBodySuffix = "assume_in_body";
 
-    public static ProgramElement ParseSolverString(string idString)
+    public static TrackedNodeComponent ParseSolverString(string idString)
     {
       var parts = idString.Split('$');
       if (parts.Length == 3 && parts[2].Equals(requiresSuffix)) {
         var reqId = parts[0];
         var callId = parts[1];
-        return new CallRequiresGoalElement(callId, reqId);
+        return new TrackedCallRequiresGoal(callId, reqId);
       }
       else if (parts.Length == 3 && parts[2].Equals(requiresAssumedSuffix)) {
         var reqId = parts[0];
         var callId = parts[1];
-        return new CallRequiresAssumedElement(callId, reqId);
+        return new TrackedCallRequiresAssumed(callId, reqId);
       }
       else if (parts.Length == 3 && parts[2].Equals(ensuresSuffix)) {
         var ensId = parts[0];
         var callId = parts[1];
-        return new CallEnsuresElement(callId, ensId);
+        return new TrackedCallEnsures(callId, ensId);
       }
       else if (parts.Length == 2 && parts[1].Equals(establishedSuffix)) {
-        return new InvariantEstablishedElement(parts[0]);
+        return new TrackedInvariantEstablished(parts[0]);
       }
       else if (parts.Length == 2 && parts[1].Equals(maintainedSuffix)) {
-        return new InvariantMaintainedElement(parts[0]);
+        return new TrackedInvariantMaintained(parts[0]);
       }
       else if (parts.Length == 2 && parts[1].Equals(assumeInBodySuffix)) {
-        return new InvariantAssumedElement(parts[0]);
+        return new TrackedInvariantAssumed(parts[0]);
       }
       else if (parts.Length > 1) {
         throw new ArgumentException($"Malformed program element ID string: {idString}");
       }
       else {
-        return new LabeledElement(idString);
+        return new LabeledNodeComponent(idString);
       }
     }
   }
 
-  public record LabeledElement(string id) : ProgramElement()
+  public record LabeledNodeComponent(string id) : TrackedNodeComponent()
   {
     public override string SolverLabel => id;
   }
 
-  public record CallRequiresGoalElement(string callId, string requiresId) : ProgramElement()
+  public record TrackedCallRequiresGoal(string callId, string requiresId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{requiresId}${callId}${requiresSuffix}";
   }
 
-  public record CallRequiresAssumedElement(string callId, string requiresId) : ProgramElement()
+  public record TrackedCallRequiresAssumed(string callId, string requiresId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{requiresId}${callId}${requiresAssumedSuffix}";
   }
 
-  public record CallEnsuresElement(string callId, string ensuresId) : ProgramElement()
+  public record TrackedCallEnsures(string callId, string ensuresId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{ensuresId}${callId}${ensuresSuffix}";
   }
 
-  public record InvariantAssumedElement(string invariantId) : ProgramElement()
+  public record TrackedInvariantAssumed(string invariantId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{invariantId}${assumeInBodySuffix}";
   }
 
-  public record InvariantEstablishedElement(string invariantId) : ProgramElement()
+  public record TrackedInvariantEstablished(string invariantId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{invariantId}${establishedSuffix}";
   }
 
-  public record InvariantMaintainedElement(string invariantId) : ProgramElement()
+  public record TrackedInvariantMaintained(string invariantId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{invariantId}${maintainedSuffix}";
   }
