@@ -2,6 +2,9 @@ using System;
 
 namespace Microsoft.Boogie
 {
+  // Represents an AST node, or component of a node, that is being
+  // tracked during the proof process to determine whether it was
+  // used as part of a completed proof.
   public abstract record TrackedNodeComponent()
   {
     public abstract string SolverLabel { get; }
