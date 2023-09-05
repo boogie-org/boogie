@@ -1280,8 +1280,8 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
         if (options.Trace && options.TrackVerificationCoverage) {
-          run.OutputWriter.WriteLine("Covered elements: {0}",
-            string.Join(", ", CoveredElements.Select(s => s.SolverLabel).OrderBy(s => s)));
+          run.OutputWriter.WriteLine("Proof dependencies:\n  {0}",
+            string.Join("\n  ", CoveredElements.Select(s => s.Description).OrderBy(s => s)));
         }
 
         var resourceCount = await checker.GetProverResourceCount();

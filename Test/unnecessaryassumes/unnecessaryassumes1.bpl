@@ -1,9 +1,15 @@
 // We use boogie instead of parallel-boogie here to fix the order of the output from /trackVerificationCoverage
 // RUN: %boogie -trackVerificationCoverage -trace "%s" > "%t"
 // RUN: %OutputCheck "%s" --file-to-check="%t"
-// CHECK: Covered elements: s0
-// CHECK: Covered elements: s2, s3
-// CHECK: Elements covered by verification: s0, s2, s3
+// CHECK: Proof dependencies:
+// CHECK:   s0
+// CHECK: Proof dependencies:
+// CHECK:   s2
+// CHECK:   s3
+// CHECK: Proof dependencies of whole program:
+// CHECK:   s0
+// CHECK:   s2
+// CHECK:   s3
 // UNSUPPORTED: batch_mode
 
 procedure test0(n: int)
