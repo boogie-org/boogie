@@ -9,6 +9,8 @@ namespace Microsoft.Boogie
   {
     public abstract string SolverLabel { get; }
 
+    public abstract string Description { get; }
+
     // This suffix indicates that an ID string represents the assumption of
     // a specific ensures clause after a specific call.
     protected const string ensuresSuffix = "ensures";
@@ -72,35 +74,42 @@ namespace Microsoft.Boogie
   public record LabeledNodeComponent(string id) : TrackedNodeComponent()
   {
     public override string SolverLabel => id;
+    public override string Description => id;
   }
 
   public record TrackedCallRequiresGoal(string callId, string requiresId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{requiresId}${callId}${requiresSuffix}";
+    public override string Description => $"requires clause {requiresId} proved for call {callId}";
   }
 
   public record TrackedCallRequiresAssumed(string callId, string requiresId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{requiresId}${callId}${requiresAssumedSuffix}";
+    public override string Description => $"requires clause {requiresId} assumed from call {callId}";
   }
 
   public record TrackedCallEnsures(string callId, string ensuresId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{ensuresId}${callId}${ensuresSuffix}";
+    public override string Description => $"ensures clause {ensuresId} from call {callId}";
   }
 
   public record TrackedInvariantAssumed(string invariantId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{invariantId}${assumeInBodySuffix}";
+    public override string Description => $"invariant {invariantId} assumed in body";
   }
 
   public record TrackedInvariantEstablished(string invariantId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{invariantId}${establishedSuffix}";
+    public override string Description => $"invariant {invariantId} established";
   }
 
   public record TrackedInvariantMaintained(string invariantId) : TrackedNodeComponent()
   {
     public override string SolverLabel => $"{invariantId}${maintainedSuffix}";
+    public override string Description => $"invariant {invariantId} maintained";
   }
 }
