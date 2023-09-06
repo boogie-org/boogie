@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -400,7 +401,7 @@ public class Program : Absy
     }
   }
 
-  public readonly ISet<TrackedNodeComponent> AllCoveredElements = new HashSet<TrackedNodeComponent>();
+  public readonly ConcurrentBag<TrackedNodeComponent> AllCoveredElements = new();
 
   public IEnumerable<Block> Blocks()
   {
