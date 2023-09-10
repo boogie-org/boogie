@@ -1343,7 +1343,7 @@ namespace VC
             exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
-          reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
+          reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, Implementation.debugInfos, callback,
             mvInfo, checker.TheoremProver.Context, parent.program, this);
         }
 
