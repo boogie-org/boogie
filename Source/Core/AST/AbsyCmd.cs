@@ -2362,9 +2362,10 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      var errorCount = tc.ErrorCount;
       Datatype.Typecheck(tc);
       TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-      if (Datatype.Type != null)
+      if (tc.ErrorCount == errorCount)
       {
         TypeAttr = FieldAccess.Typecheck(Datatype.Type, tc, out TypeParameters);
       }
