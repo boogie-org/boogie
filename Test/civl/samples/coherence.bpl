@@ -1,3 +1,4 @@
+// RUN: %parallel-boogie "%s" > "%t"
 type MemAddr;
 type Value;
 datatype State {
