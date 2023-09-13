@@ -84,7 +84,7 @@ namespace VC
         this.ctx = ctx;
       }
 
-      public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext)
+      public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext, Dictionary<Cmd, List<object>> debugInfos)
       {
         VCGen vcgen = new VCGen(new Program(), new CheckerPool(options));
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
@@ -94,7 +94,7 @@ namespace VC
         ResetPredecessors(codeExpr.Blocks);
         vcgen.AddBlocksBetween(codeExpr.Blocks);
         Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(traceWriter, codeExpr.Blocks,
-          new List<IdentifierExpr>(), new ModelViewInfo(codeExpr));
+          new List<IdentifierExpr>(), new ModelViewInfo(codeExpr), debugInfos);
         VCExpr startCorrect = vcgen.LetVC(codeExpr.Blocks, null, absyIds, ctx, out var ac, isPositiveContext);
         VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
         if (vcgen.CurrentLocalVariables.Count != 0)

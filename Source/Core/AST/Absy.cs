@@ -3510,6 +3510,9 @@ namespace Microsoft.Boogie
     // Both are used only when /inline is set.
     public List<Block> OriginalBlocks;
     public List<Variable> OriginalLocVars;
+    
+    // Map filled in during passification to allow augmented error trace reporting
+    public Dictionary<Cmd, List<object>> debugInfos = new();
 
     public readonly ISet<byte[]> AssertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
 

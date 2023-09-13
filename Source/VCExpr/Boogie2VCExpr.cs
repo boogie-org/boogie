@@ -41,7 +41,7 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
-  public delegate VCExpr CodeExprConverter(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext);
+  public delegate VCExpr CodeExprConverter(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext, Dictionary<Cmd, List<object>> debugInfos);
 
   public class Boogie2VCExprTranslator : ReadOnlyVisitor, ICloneable
   {
@@ -876,7 +876,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Assume(codeExprConverter != null);
       
       List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-      VCExpr e = codeExprConverter(codeExpr, bindings, isPositiveContext);
+      VCExpr e = codeExprConverter(codeExpr, bindings, isPositiveContext, new());
       Push(e);
       return codeExpr;
     }
