@@ -195,7 +195,7 @@ namespace VC
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
         var (newOutcome, result, newResourceCount) = await split.ReadOutcome(iteration, checker, callback);
-        var cex = split.ToCounterexample(checker.TheoremProver.Context);
+        var cex = IsProverFailed(newOutcome) ? split.ToCounterexample(checker.TheoremProver.Context) : null;
         TotalProverElapsedTime += checker.ProverRunTime;
         await checker.GoBackToIdle();
         await ProcessResult(split, newOutcome, result, newResourceCount, cex, cancellationToken);
