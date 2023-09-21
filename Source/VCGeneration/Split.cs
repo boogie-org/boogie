@@ -1276,8 +1276,9 @@ namespace VC
 
         if (options.Trace && SplitIndex >= 0)
         {
-          run.OutputWriter.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
-            checker.ProverRunTime.TotalSeconds, outcome);
+          var iterationText =  options.RandomizeVcIterations > 1 ? $" (iteration {iteration}) " : " ";
+          run.OutputWriter.WriteLine("      --> split #{0}{3}done,  [{1} s] {2}", SplitIndex + 1,
+            checker.ProverRunTime.TotalSeconds, outcome, iterationText);
         }
         if (options.Trace && options.TrackVerificationCoverage) {
           run.OutputWriter.WriteLine("Proof dependencies:\n  {0}",

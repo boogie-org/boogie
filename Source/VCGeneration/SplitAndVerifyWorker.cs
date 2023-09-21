@@ -118,21 +118,19 @@ namespace VC
       split.SplitIndex = currentSplitNumber;
       if (!options.PortfolioVcIterations)
       {
-        var allOutcomes = await Task.WhenAll(Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
+        await Task.WhenAll(Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
           DoWork(iteration, split, cancellationToken)));
-        foreach (var (proverOutcome, _, _) in allOutcomes)
-        {
-          outcome = MergeOutcomes(outcome, proverOutcome);
-        }
         return;
       }
 
       var cts = new CancellationTokenSource();
       var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, cts.Token);
-      var tasks = Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
-        DoWork(iteration, split, linkedTokenSource.Token)).ToList();
+      var tasks = Enumerable.Range(0, options.RandomizeVcIterations)
+        .Select(iteration => DoWork(iteration, split, linkedTokenSource.Token))
+        .ToList();
+
       var outcomesList = new List<ProverInterface.Outcome>();
-      
+
       while (tasks.Count > 0)
       {
         var completedTask = await Task.WhenAny(tasks);
@@ -141,25 +139,24 @@ namespace VC
         {
           continue;
         }
-        var (proverOutcome, result, completedIteration) = completedTask.Result;
+        var (proverOutcome, result, _) = completedTask.Result;
         outcomesList.Add(proverOutcome);
         if (proverOutcome == ProverInterface.Outcome.Valid)
         {
-          if (options.Trace)
+          if (options.Trace && tasks.Count > 0)
           {
-            var splitText = split.SplitIndex == -1 ? "" : $" for split index {split.SplitIndex}";
-            await run.OutputWriter.WriteLineAsync($"    Valid outcome achieved{splitText} at iteration {completedIteration}. " +
-                                                  $"Cancelling {tasks.Count} remaining task(s).");
+            var splitText = split.SplitIndex == -1 ? "" : $"split #{split.SplitIndex+1}: ";
+            await run.OutputWriter.WriteLineAsync($"      {splitText}canceled {tasks.Count} other iteration(s).");
           }
 
-          // Cancel remaining jobs, note that resource counts for incomplete tasks are not registered.
+          // Cancel remaining iteration tasks, note that resource counts for incomplete tasks are not registered.
           cts.Cancel();
           outcome = MergeOutcomes(outcome, proverOutcome);
           batchCompletions.OnNext((split, result));
           return;
         }
       }
-      
+
       // No tasks ran to completion
       if(outcomesList.Count == 0)
       {
@@ -186,28 +183,28 @@ namespace VC
         finalOutcome = outcomesList.Last();
       }
       outcome = MergeOutcomes(outcome, finalOutcome);
+      // TODO: handle the error case! HandleProverFailure was not executed.
     }
 
     private async Task<(ProverInterface.Outcome outcome, VCResult result, int iteration)>
       DoWork(int iteration, Split split, CancellationToken cancellationToken)
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split, cancellationToken);
-      var proverOutcome = ProverInterface.Outcome.Undetermined;
-      VCResult result = null;
       try {
         cancellationToken.ThrowIfCancellationRequested();
         await StartCheck(iteration, split, checker, cancellationToken);
         await checker.ProverTask;
-        var checkerResult = await ProcessResultAndReleaseChecker(iteration, split, checker, cancellationToken);
-        proverOutcome = checkerResult.outcome;
-        result = checkerResult.result;
+        var (newOutcome, result, newResourceCount) = await split.ReadOutcome(iteration, checker, callback);
+        var cex = split.ToCounterexample(checker.TheoremProver.Context);
         TotalProverElapsedTime += checker.ProverRunTime;
+        await checker.GoBackToIdle();
+        await ProcessResult(split, newOutcome, result, newResourceCount, cex, cancellationToken);
+        return (newOutcome, result, iteration);
       }
       catch {
         await checker.GoBackToIdle();
         throw;
       }
-      return (proverOutcome, result, iteration);
     }
 
     private async Task StartCheck(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
@@ -230,8 +227,8 @@ namespace VC
 
     private Implementation Implementation => run.Implementation;
 
-    private async Task<(ProverInterface.Outcome outcome, VCResult result)>
-      ProcessResultAndReleaseChecker(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task ProcessResult(Split split, ProverInterface.Outcome checkerOutcome, 
+      VCResult result, int checkerResourceCount, Counterexample checkerCex, CancellationToken cancellationToken)
     {
       if (TrackingProgress) {
         lock (this) {
@@ -239,11 +236,13 @@ namespace VC
         }
       }
 
-      var (newOutcome, result, newResourceCount) = await split.ReadOutcome(iteration, checker, callback);
       lock (this) {
-        totalResourceCount += newResourceCount;
+        if (!options.PortfolioVcIterations) {
+          outcome = MergeOutcomes(outcome, checkerOutcome);
+        }
+        totalResourceCount += checkerResourceCount;
       }
-      var proverFailed = IsProverFailed(newOutcome);
+      var proverFailed = IsProverFailed(checkerOutcome);
 
       if (TrackingProgress) {
         lock (this) {
@@ -260,13 +259,10 @@ namespace VC
       callback.OnProgress?.Invoke("VCprove", splitNumber < 0 ? 0 : splitNumber, total, provenCost / (remainingCost + provenCost));
 
       if (proverFailed) {
-        await HandleProverFailure(split, checker, callback, result, cancellationToken);
+        await HandleProverFailure(split, checkerCex, callback, result, cancellationToken);
       } else {
         batchCompletions.OnNext((split, result));
-        await checker.GoBackToIdle();
       }
-
-      return (newOutcome, result);
     }
 
     private static bool IsProverFailed(ProverInterface.Outcome outcome)
@@ -328,15 +324,14 @@ namespace VC
       }
     }
 
-    private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)
+    private async Task HandleProverFailure(Split split, Counterexample cex, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)
     {
-      if (split.LastChance) {
+      if (split.LastChance && !options.PortfolioVcIterations) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
 
-        var cex = split.ToCounterexample(checker.TheoremProver.Context);
         callback.OnCounterexample(cex, msg);
         split.Counterexamples.Add(cex);
         // Update one last time the result with the dummy counter-example to indicate the position of the timeout
@@ -345,11 +340,8 @@ namespace VC
         };
         batchCompletions.OnNext((split, result));
         outcome = Outcome.Errors;
-        await checker.GoBackToIdle();
         return;
       }
-
-      await checker.GoBackToIdle();
 
       if (maxKeepGoingSplits > 1) {
         var newSplits = Split.DoSplit(split, maxVcCost, maxKeepGoingSplits);
@@ -364,6 +356,11 @@ namespace VC
           outcome = Outcome.Correct;
         }
         await Task.WhenAll(newSplits.Select(newSplit => DoWorkForMultipleIterations(newSplit, cancellationToken)));
+        return;
+      }
+
+      if (options.PortfolioVcIterations) {
+        // Errors are handled later when using PortfolioVcIterations.
         return;
       }
 
