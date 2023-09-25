@@ -7,7 +7,7 @@ namespace Microsoft.Boogie;
 
 public class CommandLineOptionEngine
 {
-  public TextWriter OutputWriter { get; }
+  public TextWriter OutputWriter { get; set; }
   public string ToolName { get; set; }
   public string DescriptiveToolName { get; set; }
 
