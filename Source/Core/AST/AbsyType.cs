@@ -3774,16 +3774,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
-      // If this type has a "builtin" attribute, use the corresponding user-provided string to represent the type.
-      string builtin = GetBuiltin();
-      if (builtin != null)
-      {
-        stream.Write(builtin);
-      }
-      else
-      {
-        EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
-      }
+      EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
     }
 
     internal static void EmitCtorType(string name, List<Type> args, TokenTextWriter stream, int contextBindingStrength)
