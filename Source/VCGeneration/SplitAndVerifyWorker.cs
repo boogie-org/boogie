@@ -122,11 +122,9 @@ namespace VC
         return;
       }
 
-      var allOutcomesList = new List<(ProverInterface.Outcome, VCResult)>();
-
-      var totalIterations = options.RandomizeVcIterations; // Corresponding to /randomizeVcIterations:<n>
-      var batchSize = options.PortfolioVcBatchSize; // Corresponding to /portfolioVcBatchSize:<m>
-      var numBatches = totalIterations / batchSize; // Number of batches
+      var totalIterations = options.RandomizeVcIterations;
+      var batchSize = options.PortfolioVcBatchSize;
+      var numBatches = totalIterations / batchSize;
       var remainder = totalIterations % batchSize;
       if (remainder > 0)
       {
@@ -149,24 +147,23 @@ namespace VC
         var taskResults = await Task.WhenAll(Enumerable.Range(0, currentBatchSize).Select(iteration =>
           DoWork(iteration, batchCopy, split, cancellationToken)));
 
-        // Aggregate and report result
         successfulProofFound = taskResults.Any(pair => pair.outcome == ProverInterface.Outcome.Valid);
         if (successfulProofFound)
         {
           if (options.Trace)
           {
-            // Report brittleness if there are differing results or this wasn't the first batch
+            // Report brittleness if any iterations failed (possibly from earlier batches).
             var numVerified = taskResults.Count(pair => pair.outcome == ProverInterface.Outcome.Valid);
             var numFailed = batchSize * batch + (currentBatchSize - numVerified);
             // TODO: analyze taskResults and report brittleness based on other factors, for instance if resource counts / 
-            //   runtimes deviations are above some threshold
+            //   duration deviations are above some threshold
 
             var splitText = split.SplitIndex == -1 ? "" : $"split #{split.SplitIndex+1}: ";
             if (numFailed > 0) {
               var numTotalGoals = numVerified + numFailed;
               var successRatio = (double) numVerified / numTotalGoals;
               await run.OutputWriter.WriteLineAsync(
-                $"{splitText}Brittle goal warning! Ratio of verified / total goals: {numVerified}/{numTotalGoals} (Success Ratio: {successRatio:F2})");
+                $"{splitText}Brittle goal warning! Ratio of verified / total goals: {numVerified}/{numTotalGoals} ({successRatio:F2})");
             }
             var remainingBatchesText =
               batch < numBatches - 1 ? $" Cancelling remaining {numBatches - batch - 1} batches." : "";
