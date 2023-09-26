@@ -166,6 +166,7 @@ namespace Microsoft.Boogie
     public int RandomizeVcIterations { get; set; } = 1;
 
     public bool PortfolioVcIterations { get; set; } = false;
+    public int PortfolioVcBatchSize { get; set; } = 1;
 
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
@@ -1193,6 +1194,10 @@ namespace Microsoft.Boogie
           RandomSeed ??= 0; // Set to 0 if not already set
           return true;
 
+        case "portfolioVcBatchSize":
+          ps.GetIntArgument(x => PortfolioVcBatchSize = x, a => 1 <= a);
+          return true;
+
         case "vcsLoad":
           double load = 0.0;
           if (ps.GetDoubleArgument(x => load = x))
@@ -1911,6 +1916,18 @@ namespace Microsoft.Boogie
   /portfolioVcIterations:<n>
                 Enables /randomizeVcIterations and returns the first successful
                 proof result (if any) out of n randomized VCs.
+  /portfolioVcBatchSize:<m>
+                Splits n in /portfolioVcIterations:<n> into n/m batches (or
+                n/m+1 batches if n is not divisible by m). 
+                Defaults to 1.
+
+                Iterations in a batch can be executed concurrently, but each
+                batch is executed sequentially to completion. A batch execution
+                is considered complete when all iterations in that batch
+                complete execution. If any of the iterations in a batch returns
+                a valid verification outcome, remaining batches are cancelled.
+                Since the iterations and batches are created deterministically,
+                this implies determinism when using /portfolioVcIterations.
   /trackVerificationCoverage
                 Track and report which program elements labeled with an
                 `{:id ...}` attribute were necessary to complete verification.

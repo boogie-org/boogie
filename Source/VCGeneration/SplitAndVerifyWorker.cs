@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -119,87 +118,96 @@ namespace VC
       if (!options.PortfolioVcIterations)
       {
         await Task.WhenAll(Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
-          DoWork(iteration, split, cancellationToken)));
+          DoWork(iteration, -1, split, cancellationToken)));
         return;
       }
 
-      var cts = new CancellationTokenSource();
-      var linkedTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, cts.Token);
-      var tasks = Enumerable.Range(0, options.RandomizeVcIterations)
-        .Select(iteration => DoWork(iteration, split, linkedTokenSource.Token))
-        .ToList();
+      var allOutcomesList = new List<(ProverInterface.Outcome, VCResult)>();
 
-      var outcomesList = new List<ProverInterface.Outcome>();
-
-      while (tasks.Count > 0)
+      var totalIterations = options.RandomizeVcIterations; // Corresponding to /randomizeVcIterations:<n>
+      var batchSize = options.PortfolioVcBatchSize; // Corresponding to /portfolioVcBatchSize:<m>
+      var numBatches = totalIterations / batchSize; // Number of batches
+      var remainder = totalIterations % batchSize;
+      if (remainder > 0)
       {
-        var completedTask = await Task.WhenAny(tasks);
-        tasks.Remove(completedTask);
-        if (completedTask.Status != TaskStatus.RanToCompletion)
+        numBatches++;
+      }
+
+      if (options.Trace)
+      {
+        var splitText = split.SplitIndex == -1 ? "" : $"split #{split.SplitIndex+1}: ";
+        await run.OutputWriter.WriteLineAsync($"      {splitText}Attempting verification in {numBatches} batches of size {batchSize}.");
+      }
+
+      bool successfulProofFound = false;
+
+      for (var batch = 0; batch < numBatches && !successfulProofFound; ++batch)
+      {
+        var currentBatchSize = (batch == numBatches - 1 && remainder > 0) ? remainder : batchSize;
+
+        var batchCopy = batch;
+        var taskResults = await Task.WhenAll(Enumerable.Range(0, currentBatchSize).Select(iteration =>
+          DoWork(iteration, batchCopy, split, cancellationToken)));
+
+        // Aggregate and report result
+        successfulProofFound = taskResults.Any(pair => pair.outcome == ProverInterface.Outcome.Valid);
+        if (successfulProofFound)
         {
-          continue;
-        }
-        var (proverOutcome, result, _) = completedTask.Result;
-        outcomesList.Add(proverOutcome);
-        if (proverOutcome == ProverInterface.Outcome.Valid)
-        {
-          if (options.Trace && tasks.Count > 0)
+          if (options.Trace)
+          {
+            // Report brittleness if there are differing results or this wasn't the first batch
+            var numVerified = taskResults.Count(pair => pair.outcome == ProverInterface.Outcome.Valid);
+            var numFailed = batchSize * batch + (currentBatchSize - numVerified);
+            // TODO: analyze taskResults and report brittleness based on other factors, for instance if resource counts / 
+            //   runtimes deviations are above some threshold
+
+            var splitText = split.SplitIndex == -1 ? "" : $"split #{split.SplitIndex+1}: ";
+            if (numFailed > 0) {
+              var numTotalGoals = numVerified + numFailed;
+              var successRatio = (double) numVerified / numTotalGoals;
+              await run.OutputWriter.WriteLineAsync(
+                $"{splitText}Brittle goal warning! Ratio of verified / total goals: {numVerified}/{numTotalGoals} (Success Ratio: {successRatio:F2})");
+            }
+            var remainingBatchesText =
+              batch < numBatches - 1 ? $" Cancelling remaining {numBatches - batch - 1} batches." : "";
+            await run.OutputWriter.WriteLineAsync($"      {splitText}Batch {batch} verified.{remainingBatchesText}");
+          }
+        } else if (batch == numBatches - 1) {
+          // This is the last batch and it was not successful.
+          outcome = taskResults.Select(pair => pair.Item1).Aggregate(outcome, MergeOutcomes);
+          if (options.Trace)
           {
             var splitText = split.SplitIndex == -1 ? "" : $"split #{split.SplitIndex+1}: ";
-            await run.OutputWriter.WriteLineAsync($"      {splitText}canceled {tasks.Count} other iteration(s).");
+            await run.OutputWriter.WriteLineAsync($"      {splitText}All batches failed to verify.");
           }
-
-          // Cancel remaining iteration tasks, note that resource counts for incomplete tasks are not registered.
-          cts.Cancel();
-          outcome = MergeOutcomes(outcome, proverOutcome);
-          batchCompletions.OnNext((split, result));
-          return;
+        } else {
+          // This is not the last batch and it was not successful.
+          if (options.Trace)
+          {
+            var splitText = split.SplitIndex == -1 ? "" : $"split #{split.SplitIndex+1}: ";
+            await run.OutputWriter.WriteLineAsync($"      {splitText}batch {batch} failed to verify. moving on to batch {batch + 1}....");
+          }
         }
       }
-
-      // No tasks ran to completion
-      if(outcomesList.Count == 0)
-      {
-        MergeOutcomes(outcome, ProverInterface.Outcome.Undetermined);
-        return;
+      if (outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory || outcome == Outcome.OutOfResource) {
+        ReportSplitErrorResult(split);
       }
-
-      ProverInterface.Outcome finalOutcome;
-
-      if (outcomesList.Any(o => o == ProverInterface.Outcome.Invalid))
-      {
-        // No task succeeded, and one of them returned Invalid.
-        finalOutcome = ProverInterface.Outcome.Invalid;
-      }
-      else if (outcomesList.All(o => o == outcomesList.First()))
-      {
-        // No task succeeded, but they all returned the same outcome.
-        finalOutcome = outcomesList.First();
-      }
-      else
-      {
-        // A mixture of TimeOut, OutOfMemory, OutOfResource, Undetermined and
-        // Bounded. Use the last result.
-        finalOutcome = outcomesList.Last();
-      }
-      outcome = MergeOutcomes(outcome, finalOutcome);
-      // TODO: handle the error case! HandleProverFailure was not executed.
     }
 
-    private async Task<(ProverInterface.Outcome outcome, VCResult result, int iteration)>
-      DoWork(int iteration, Split split, CancellationToken cancellationToken)
+    private async Task<(ProverInterface.Outcome outcome, VCResult result)>
+      DoWork(int iteration, int batch, Split split, CancellationToken cancellationToken)
     {
       var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split, cancellationToken);
       try {
         cancellationToken.ThrowIfCancellationRequested();
-        await StartCheck(iteration, split, checker, cancellationToken);
+        await StartCheck(iteration, batch, split, checker, cancellationToken);
         await checker.ProverTask;
-        var (newOutcome, result, newResourceCount) = await split.ReadOutcome(iteration, checker, callback);
+        var (newOutcome, result, newResourceCount) = await split.ReadOutcome(iteration, batch, checker, callback);
         var cex = IsProverFailed(newOutcome) ? split.ToCounterexample(checker.TheoremProver.Context) : null;
         TotalProverElapsedTime += checker.ProverRunTime;
         await checker.GoBackToIdle();
         await ProcessResult(split, newOutcome, result, newResourceCount, cex, cancellationToken);
-        return (newOutcome, result, iteration);
+        return (newOutcome, result);
       }
       catch {
         await checker.GoBackToIdle();
@@ -207,11 +215,12 @@ namespace VC
       }
     }
 
-    private async Task StartCheck(int iteration, Split split, Checker checker, CancellationToken cancellationToken)
+    private async Task StartCheck(int iteration, int batch, Split split, Checker checker, CancellationToken cancellationToken)
     {
       if (options.Trace && DoSplitting) {
         var splitNum = split.SplitIndex + 1;
-        var splitIdxStr = options.RandomizeVcIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
+        var iterationIdxStr = options.RandomizeVcIterations > 1 ? batch >= 0 ? $" (batch {batch} iteration {iteration})" : $" (iteration {iteration})" : "";
+        var splitIdxStr = $"{splitNum}{iterationIdxStr}";
         run.OutputWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
       }
@@ -260,9 +269,8 @@ namespace VC
 
       if (proverFailed) {
         await HandleProverFailure(split, checkerCex, callback, result, cancellationToken);
-      } else {
-        batchCompletions.OnNext((split, result));
       }
+      batchCompletions.OnNext((split, result));
     }
 
     private static bool IsProverFailed(ProverInterface.Outcome outcome)
@@ -363,7 +371,11 @@ namespace VC
         // Errors are handled later when using PortfolioVcIterations.
         return;
       }
+      ReportSplitErrorResult(split);
+    }
 
+    private void ReportSplitErrorResult(Split split)
+    {
       Contract.Assert(outcome != Outcome.Correct);
       if (outcome == Outcome.TimedOut) {
         string msg = "some timeout";
@@ -384,11 +396,8 @@ namespace VC
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
-
         callback.OnOutOfResource(msg);
       }
-
-      batchCompletions.OnNext((split, vcResult));
     }
   }
 }
