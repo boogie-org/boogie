@@ -99,7 +99,6 @@
 // RUN: %diff "%s.expect" "%t.coverage-d"
 // RUN: %boogie -trackVerificationCoverage -normalizeNames:1 -prune "%s" > "%t.coverage-n"
 // RUN: %diff "%s.expect" "%t.coverage-n"
-// UNSUPPORTED: batch_mode
 
 procedure testRequiresAssign(n: int)
   requires {:id "r0"} n > 0; // covered
