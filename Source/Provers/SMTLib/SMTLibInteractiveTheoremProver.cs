@@ -18,7 +18,6 @@ namespace Microsoft.Boogie.SMTLib
     private bool processNeedsRestart;
     private ScopedNamer commonNamer;
     private ScopedNamer finalNamer;
-    private ISet<string> usedNamedAssumes;
 
     [NotDelayed]
     public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
@@ -181,7 +180,6 @@ namespace Microsoft.Boogie.SMTLib
       ctx.parent = this;
       DeclCollector.Reset();
       NamedAssumes.Clear();
-      usedNamedAssumes = null;
       SendThisVC("; did a full reset");
     }
 
@@ -218,28 +216,8 @@ namespace Microsoft.Boogie.SMTLib
           {
             if (usingUnsatCore)
             {
-              usedNamedAssumes = new HashSet<string>();
               var resp = await SendVcRequest("(get-unsat-core)").WaitAsync(cancellationToken);
-              if (resp.Name != "")
-              {
-                usedNamedAssumes.Add(resp.Name);
-                if (libOptions.TrackVerificationCoverage) {
-                  reporter.AddCoveredElement(TrackedNodeComponent.ParseSolverString(resp.Name.Substring("aux$$assume$$".Length)));
-                }
-              }
-
-              foreach (var arg in resp.Arguments)
-              {
-                usedNamedAssumes.Add(arg.Name);
-                if (libOptions.TrackVerificationCoverage)
-                {
-                  reporter.AddCoveredElement(TrackedNodeComponent.ParseSolverString(arg.Name.Substring("aux$$assume$$".Length)));
-                }
-              }
-            }
-            else
-            {
-              usedNamedAssumes = null;
+              ReportCoveredElements(resp);
             }
           }
 

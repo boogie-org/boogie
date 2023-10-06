@@ -1484,6 +1484,18 @@ namespace Microsoft.Boogie.SMTLib
       return dict.Count > 0 ? dict : null;
     }
 
+    protected void ReportCoveredElements(SExpr unsatCoreSExp) {
+      if (libOptions.TrackVerificationCoverage && unsatCoreSExp.Name != "") {
+        currentErrorHandler.AddCoveredElement(TrackedNodeComponent.ParseSolverString(unsatCoreSExp.Name.Substring("aux$$assume$$".Length)));
+      }
+
+      foreach (var arg in unsatCoreSExp.Arguments) {
+        if (libOptions.TrackVerificationCoverage) {
+          currentErrorHandler.AddCoveredElement(TrackedNodeComponent.ParseSolverString(arg.Name.Substring("aux$$assume$$".Length)));
+        }
+      }
+    }
+
     protected List<string> ParseUnsatCore(string resp)
     {
       if (resp == "" || resp == "()")
