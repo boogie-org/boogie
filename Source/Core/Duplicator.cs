@@ -189,6 +189,11 @@ namespace Microsoft.Boogie
       return base.VisitCmdSeq(new List<Cmd>(cmdSeq));
     }
 
+    public override List<CallCmd> VisitCallCmdSeq(List<CallCmd> callCmds)
+    {
+      return base.VisitCallCmdSeq(new List<CallCmd>(callCmds));
+    }
+
     public override Constant VisitConstant(Constant node)
     {
       //Contract.Requires(node != null);
@@ -379,6 +384,16 @@ namespace Microsoft.Boogie
         gotoCmd.labelNames = newLabelNames;
       }
 
+      if (impl.Proc is YieldProcedureDecl yieldProcedureDecl)
+      {
+        var newYieldingLoops = new Dictionary<Block, YieldingLoop>();
+        foreach (var kv in yieldProcedureDecl.YieldingLoops)
+        {
+          newYieldingLoops[blockDuplicationMapping[kv.Key]] = kv.Value;
+        }
+        yieldProcedureDecl.YieldingLoops = newYieldingLoops;
+      }
+
       return impl;
     }
 
@@ -468,11 +483,19 @@ namespace Microsoft.Boogie
       return newProcedure;
     }
 
-    public override ActionDeclRef VisitActionDeclRef(ActionDeclRef node)
+    public override ElimDecl VisitElimDecl(ElimDecl node)
     {
-      return base.VisitActionDeclRef((ActionDeclRef)node.Clone());
+      return base.VisitElimDecl((ElimDecl)node.Clone());
     }
 
+    public override List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
+    {
+      return base.VisitElimDeclSeq(new List<ElimDecl>(node));
+    }
+
+    // We duplicate ActionDecl's but we are not updating references to ActionDecl
+    // in ActionDeclRef instances. If ActionDeclRef instances need to be updated,
+    // override VisitActionDeclRef appropriately.
     public override Procedure VisitActionDecl(ActionDecl node)
     {
       Procedure newProcedure = null;
@@ -489,6 +512,21 @@ namespace Microsoft.Boogie
         }
       }
       return newProcedure;
+    }
+
+    public override HashSet<Variable> VisitVariableSet(HashSet<Variable> node)
+    {
+      return base.VisitVariableSet(new HashSet<Variable>(node));
+    }
+
+    public override YieldingLoop VisitYieldingLoop(YieldingLoop node)
+    {
+      return base.VisitYieldingLoop(new YieldingLoop(node.Layer, node.YieldInvariants));
+    }
+
+    public override Dictionary<Block, YieldingLoop> VisitYieldingLoops(Dictionary<Block, YieldingLoop> node)
+    {
+      return base.VisitYieldingLoops(new Dictionary<Block, YieldingLoop>(node));
     }
 
     public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)

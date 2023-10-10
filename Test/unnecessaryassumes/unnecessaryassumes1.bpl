@@ -1,6 +1,15 @@
 // We use boogie instead of parallel-boogie here to fix the order of the output from /trackVerificationCoverage
-// RUN: %boogie /trackVerificationCoverage "%s" > "%t"
-// RUN: %diff "%s.expect" "%t"
+// RUN: %boogie -trackVerificationCoverage -trace "%s" > "%t"
+// RUN: %OutputCheck "%s" --file-to-check="%t"
+// CHECK: Proof dependencies:
+// CHECK:   s0
+// CHECK: Proof dependencies:
+// CHECK:   s2
+// CHECK:   s3
+// CHECK: Proof dependencies of whole program:
+// CHECK:   s0
+// CHECK:   s2
+// CHECK:   s3
 // UNSUPPORTED: batch_mode
 
 procedure test0(n: int)

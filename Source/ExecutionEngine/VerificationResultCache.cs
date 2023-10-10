@@ -507,7 +507,7 @@ namespace Microsoft.Boogie
         {
           // We found a function call within a trigger of a quantifier expression, or the function does not take any
           // arguments so we don't expect it ever to sit inside a quantifier.
-          funCall.Func.AddOtherDefinitionAxiom(currentAxiom);
+          funCall.Func.OtherDefinitionAxioms.Add(currentAxiom);
         }
       }
 

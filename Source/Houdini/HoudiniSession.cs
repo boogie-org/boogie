@@ -126,7 +126,7 @@ namespace Microsoft.Boogie.Houdini
     private readonly Houdini houdini;
     public HoudiniStatistics stats;
     public List<Counterexample> Counterexamples { get; } = new();
-    public HashSet<string> CoveredElements { get; } = new();
+    public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
     ConditionGeneration.VerificationResultCollector collector;
@@ -195,7 +195,7 @@ namespace Microsoft.Boogie.Houdini
         new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
-      handler = new VCGen.ErrorReporter(this.houdini.Options, gotoCmdOrigins, absyIds, impl.Blocks, vcgen.debugInfos, collector,
+      handler = new VCGen.ErrorReporter(this.houdini.Options, gotoCmdOrigins, absyIds, impl.Blocks, impl.debugInfos, collector,
         mvInfo, proverInterface.Context, program, this);
     }
 

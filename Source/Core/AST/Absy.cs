@@ -300,13 +300,14 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void CopyIdWithSuffixFrom(IToken tok, ICarriesAttributes src, string suffix)
+    public void CopyIdWithModificationsFrom(IToken tok, ICarriesAttributes src, Func<string,TrackedNodeComponent> modifier)
     {
       var id = src.FindStringAttribute("id");
       if (id is not null) {
-        AddStringAttribute(tok, "id", id + suffix);
+        AddStringAttribute(tok, "id", modifier(id).SolverLabel);
       }
     }
+
   }
 
   [ContractClassFor(typeof(Absy))]
@@ -1429,7 +1430,7 @@ namespace Microsoft.Boogie
     // from all other constants.
     public readonly bool Unique;
 
-    public IList<Axiom> DefinitionAxioms { get; }
+    public IList<Axiom> DefinitionAxioms { get; set; }
 
     public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
       : this(tok, typedIdent, true)
@@ -1469,7 +1470,17 @@ namespace Microsoft.Boogie
 
       EmitVitals(stream, level, false);
 
-      stream.WriteLine(";");
+      if (this.DefinitionAxioms.Any())
+      {
+        stream.WriteLine();
+        stream.WriteLine(level,"uses {");
+        this.DefinitionAxioms.ForEach(axiom => axiom.Emit(stream, level));
+        stream.WriteLine("}");
+      }
+      else
+      {
+        stream.WriteLine(";");
+      }
     }
 
     public override void Register(ResolutionContext rc)
@@ -2035,18 +2046,9 @@ namespace Microsoft.Boogie
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
 
-    public IList<Axiom> otherDefinitionAxioms = new List<Axiom>();
+    public IList<Axiom> OtherDefinitionAxioms = new List<Axiom>();
     public IEnumerable<Axiom> DefinitionAxioms => 
-      (DefinitionAxiom == null ? Enumerable.Empty<Axiom>() : new[]{ DefinitionAxiom }).Concat(otherDefinitionAxioms);
-
-    public IEnumerable<Axiom> OtherDefinitionAxioms => otherDefinitionAxioms;
-
-    public void AddOtherDefinitionAxiom(Axiom axiom)
-    {
-      Contract.Requires(axiom != null);
-
-      otherDefinitionAxioms.Add(axiom);
-    }
+      (DefinitionAxiom == null ? Enumerable.Empty<Axiom>() : new[]{ DefinitionAxiom }).Concat(OtherDefinitionAxioms);
 
     private bool neverTrigger;
     private bool neverTriggerComputed;
@@ -2167,9 +2169,16 @@ namespace Microsoft.Boogie
         stream.WriteLine();
         stream.WriteLine("}");
       }
-      else
+      else if (!this.DefinitionAxioms.Any())
       {
         stream.WriteLine(";");
+      }
+      if (this.DefinitionAxioms.Any())
+      {
+        stream.WriteLine();
+        stream.WriteLine("uses {");
+        this.DefinitionAxioms.ForEach(axiom => axiom.Emit(stream, level));
+        stream.WriteLine("}");
       }
     }
 
@@ -3501,6 +3510,9 @@ namespace Microsoft.Boogie
     // Both are used only when /inline is set.
     public List<Block> OriginalBlocks;
     public List<Variable> OriginalLocVars;
+    
+    // Map filled in during passification to allow augmented error trace reporting
+    public Dictionary<Cmd, List<object>> debugInfos = new();
 
     public readonly ISet<byte[]> AssertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
 

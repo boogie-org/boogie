@@ -1,8 +1,104 @@
 // RUN: %boogie "%s" > "%t.plain"
-// RUN: %diff "%s.expect.plain" "%t.plain"
+// RUN: %diff "%s.expect" "%t.plain"
+// RUN: %boogie -trackVerificationCoverage -trace "%s" > "%t.coverage"
+// RUN: %OutputCheck "%s" --file-to-check="%t.coverage"
+// CHECK: Proof dependencies:
+// CHECK:   a0
+// CHECK:   assert_a0
+// CHECK:   assert_r0
+// CHECK:   r0
+// CHECK: Proof dependencies:
+// CHECK:   invariant sinv_not_1 established
+// CHECK:   invariant sinv_not_1 maintained
+// CHECK:   invariant sinv1 assumed in body
+// CHECK:   invariant sinv1 established
+// CHECK:   invariant sinv1 maintained
+// CHECK:   invariant sinv2 assumed in body
+// CHECK:   invariant sinv2 established
+// CHECK:   invariant sinv2 maintained
+// CHECK:   spost
+// CHECK:   spre1
+// CHECK: Proof dependencies:
+// CHECK:   cont_assume_1
+// CHECK:   cont_assume_2
+// CHECK: Proof dependencies:
+// CHECK:   false_req
+// CHECK: Proof dependencies:
+// CHECK:   cont_req_1
+// CHECK:   cont_req_2
+// CHECK: Proof dependencies:
+// CHECK:   assumeFalse
+// CHECK: Proof dependencies:
+// CHECK:   tee0
+// CHECK:   tee1
+// CHECK:   ter0
+// CHECK: Proof dependencies:
+// CHECK:   call2_tee1
+// CHECK:   ensures clause tee0 from call call1
+// CHECK:   ensures clause tee0 from call call2
+// CHECK:   ensures clause tee1 from call call2
+// CHECK:   requires clause ter0 proved for call call1
+// CHECK:   requires clause ter0 proved for call call2
+// CHECK:   tee_not_1
+// CHECK:   ter1
+// CHECK:   xy_sum
+// CHECK: Proof dependencies:
+// CHECK:   a_gt_10
+// CHECK:   constrained
+// CHECK:   x_gt_10
+// CHECK: Proof dependencies:
+// CHECK:   ensures clause cont_ens_abs from call call_cont
+// CHECK:   requires clause xpos_abs proved for call call_cont
+// CHECK:   xpos_caller
+// CHECK: Proof dependencies of whole program:
+// CHECK:   a_gt_10
+// CHECK:   a0
+// CHECK:   assert_a0
+// CHECK:   assert_r0
+// CHECK:   assumeFalse
+// CHECK:   call2_tee1
+// CHECK:   constrained
+// CHECK:   cont_assume_1
+// CHECK:   cont_assume_2
+// CHECK:   cont_req_1
+// CHECK:   cont_req_2
+// CHECK:   ensures clause cont_ens_abs from call call_cont
+// CHECK:   ensures clause tee0 from call call1
+// CHECK:   ensures clause tee0 from call call2
+// CHECK:   ensures clause tee1 from call call2
+// CHECK:   false_req
+// CHECK:   invariant sinv_not_1 established
+// CHECK:   invariant sinv_not_1 maintained
+// CHECK:   invariant sinv1 assumed in body
+// CHECK:   invariant sinv1 established
+// CHECK:   invariant sinv1 maintained
+// CHECK:   invariant sinv2 assumed in body
+// CHECK:   invariant sinv2 established
+// CHECK:   invariant sinv2 maintained
+// CHECK:   r0
+// CHECK:   requires clause ter0 proved for call call1
+// CHECK:   requires clause ter0 proved for call call2
+// CHECK:   requires clause xpos_abs proved for call call_cont
+// CHECK:   spost
+// CHECK:   spre1
+// CHECK:   tee_not_1
+// CHECK:   tee0
+// CHECK:   tee1
+// CHECK:   ter0
+// CHECK:   ter1
+// CHECK:   x_gt_10
+// CHECK:   xpos_caller
+// CHECK:   xy_sum
 // RUN: %boogie -trackVerificationCoverage "%s" > "%t.coverage"
-// RUN: %diff "%s.expect.coverage" "%t.coverage"
-// UNSUPPORTED: batch_mode
+// RUN: %diff "%s.expect" "%t.coverage"
+// RUN: %boogie -trackVerificationCoverage -typeEncoding:a -prune "%s" > "%t.coverage-a"
+// RUN: %diff "%s.expect" "%t.coverage-a"
+// RUN: %boogie -trackVerificationCoverage -typeEncoding:p -prune "%s" > "%t.coverage-p"
+// RUN: %diff "%s.expect" "%t.coverage-p"
+// RUN: %boogie -trackVerificationCoverage -normalizeDeclarationOrder:1 -prune "%s" > "%t.coverage-d"
+// RUN: %diff "%s.expect" "%t.coverage-d"
+// RUN: %boogie -trackVerificationCoverage -normalizeNames:1 -prune "%s" > "%t.coverage-n"
+// RUN: %diff "%s.expect" "%t.coverage-n"
 
 procedure testRequiresAssign(n: int)
   requires {:id "r0"} n > 0; // covered

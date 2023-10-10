@@ -8,6 +8,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
+using Microsoft.Boogie.SMTLib;
 
 namespace VC
 {
@@ -150,9 +151,16 @@ namespace VC
         }
 
         using var writer = new TokenTextWriter(
-          $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}", false,
+          $"{options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}.bpl", false,
           options.PrettyPrint, options);
-        foreach (var declaration in TopLevelDeclarations ?? program.TopLevelDeclarations) {
+
+        var functionAxioms = 
+          program.Functions.Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
+        var constantAxioms = 
+          program.Constants.Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
+
+        foreach (var declaration in (TopLevelDeclarations ?? program.TopLevelDeclarations).
+                 Except(functionAxioms.Concat(constantAxioms)).ToList()) {
           declaration.Emit(writer, 0);
         }
 
@@ -1272,8 +1280,8 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
         if (options.Trace && options.TrackVerificationCoverage) {
-          run.OutputWriter.WriteLine("Covered elements: {0}",
-            string.Join(", ", CoveredElements.OrderBy(s => s)));
+          run.OutputWriter.WriteLine("Proof dependencies:\n  {0}",
+            string.Join("\n  ", CoveredElements.Select(s => s.Description).OrderBy(s => s)));
         }
 
         var resourceCount = await checker.GetProverResourceCount();
@@ -1287,7 +1295,8 @@ namespace VC
           counterExamples: Counterexamples,
           asserts: Asserts,
           coveredElements: CoveredElements,
-          resourceCount: resourceCount);
+          resourceCount: resourceCount,
+          solverUsed: (options as SMTLibSolverOptions)?.Solver);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
@@ -1300,7 +1309,7 @@ namespace VC
 
       public List<Counterexample> Counterexamples { get; } = new();
 
-      public HashSet<string> CoveredElements { get; } = new();
+      public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
 
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
@@ -1334,7 +1343,7 @@ namespace VC
             exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
-          reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
+          reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, Implementation.debugInfos, callback,
             mvInfo, checker.TheoremProver.Context, parent.program, this);
         }
 

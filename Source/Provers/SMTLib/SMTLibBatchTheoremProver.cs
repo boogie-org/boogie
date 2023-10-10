@@ -143,6 +143,9 @@ namespace Microsoft.Boogie.SMTLib
         requests.Add($"(get-info :{Z3.RlimitOption})");
       }
       requests.Add("(get-model)");
+      if (options.LibOptions.ProduceUnsatCores) {
+        requests.Add($"(get-unsat-core)");
+      }
 
       if (Process == null || HadErrors) {
         return Outcome.Undetermined;
@@ -175,6 +178,11 @@ namespace Microsoft.Boogie.SMTLib
 
         var modelSExp = responseStack.Pop();
         errorModel = ParseErrorModel(modelSExp);
+
+        if (options.LibOptions.ProduceUnsatCores) {
+          var unsatCoreSExp = responseStack.Pop();
+          ReportCoveredElements(unsatCoreSExp);
+        }
 
         if (result == Outcome.Invalid) {
           var labels = CalculatePath(currentErrorHandler.StartingProcId(), errorModel);

@@ -1,0 +1,3 @@
+unknown_field_error.bpl(26,11): Error: datatype DirInfo does not have a field with name t
+unknown_field_error.bpl(26,34): Error: datatype DirInfo does not have a field with name t
+2 type checking errors detected in unknown_field_error.bpl

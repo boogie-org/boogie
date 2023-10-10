@@ -320,7 +320,7 @@ The generic options may or may not be used by the prover plugin.
       Contract.Ensures(cce.IsNew(Contract.Result<ProverFactory>()) && cce.Owner.New(Contract.Result<ProverFactory>()));
       string /*!*/
         path;
-      if (proverName.IndexOf("/") > 0 || proverName.IndexOf("\\") > 0)
+      if (proverName.IndexOf("/") >= 0 || proverName.IndexOf("\\") >= 0)
       {
         path = proverName;
       }

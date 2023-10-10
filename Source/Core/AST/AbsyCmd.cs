@@ -2362,9 +2362,10 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      var errorCount = tc.ErrorCount;
       Datatype.Typecheck(tc);
       TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-      if (Datatype.Type != null)
+      if (tc.ErrorCount == errorCount)
       {
         TypeAttr = FieldAccess.Typecheck(Datatype.Type, tc, out TypeParameters);
       }
@@ -3852,7 +3853,8 @@ namespace Microsoft.Boogie
 
             // Do this after copying the attributes so it doesn't get overwritten
             if (callId is not null) {
-              (a as ICarriesAttributes).CopyIdWithSuffixFrom(tok, req,  $"${callId}$requires");
+              (a as ICarriesAttributes).CopyIdWithModificationsFrom(tok, req,
+                id => new TrackedCallRequiresGoal(callId, id));
             }
 
             a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
@@ -3868,7 +3870,8 @@ namespace Microsoft.Boogie
           Contract.Assert(a != null);
           // These probably won't have IDs, but copy if they do.
           if (callId is not null) {
-            (a as ICarriesAttributes).CopyIdWithSuffixFrom(tok, req, $"${callId}$requires_assumed");
+            (a as ICarriesAttributes).CopyIdWithModificationsFrom(tok, req,
+              id => new TrackedCallRequiresAssumed(callId, id));
           }
 
           newBlockBody.Add(a);
@@ -4034,7 +4037,8 @@ namespace Microsoft.Boogie
         #endregion
 
         if (callId is not null) {
-          (assume as ICarriesAttributes).CopyIdWithSuffixFrom(tok, e, $"${callId}$ensures");
+          (assume as ICarriesAttributes).CopyIdWithModificationsFrom(tok, e,
+            id => new TrackedCallEnsures(callId, id));
         }
 
         newBlockBody.Add(assume);

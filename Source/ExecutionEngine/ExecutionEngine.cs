@@ -673,8 +673,14 @@ namespace Microsoft.Boogie
         CleanupRequest(requestId);
       }
 
-      if (Options.TrackVerificationCoverage && processedProgram.Program.AllCoveredElements.Any()) {
-        Options.OutputWriter.WriteLine("Elements covered by verification: {0}", string.Join(", ", processedProgram.Program.AllCoveredElements.OrderBy(s => s)));
+      if (Options.Trace && Options.TrackVerificationCoverage && processedProgram.Program.AllCoveredElements.Any()) {
+        Options.OutputWriter.WriteLine("Proof dependencies of whole program:\n  {0}",
+          string.Join("\n  ",
+            processedProgram
+              .Program
+              .AllCoveredElements
+              .Select(elt => elt.Description)
+              .OrderBy(s => s)));
       }
 
       cce.NonNull(Options.TheProverFactory).Close();

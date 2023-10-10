@@ -8,6 +8,7 @@ using System.Diagnostics.Contracts;
 using System.IO;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
+using Microsoft.Boogie.SMTLib;
 
 namespace VC
 {
@@ -24,8 +25,9 @@ namespace VC
     int maxCounterExamples,
     List<Counterexample> counterExamples,
     List<AssertCmd> asserts,
-    IEnumerable<string> coveredElements,
-    int resourceCount
+    IEnumerable<TrackedNodeComponent> coveredElements,
+    int resourceCount,
+    SolverKind? solverUsed
   ) {
     public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, ProverInterface.Outcome> perAssertOutcome,
       out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
