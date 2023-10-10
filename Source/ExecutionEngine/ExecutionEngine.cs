@@ -56,13 +56,21 @@ namespace Microsoft.Boogie
     static readonly CacheItemPolicy policy = new CacheItemPolicy
       { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
-    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache) {
+    private const int stackSize = 16 * 1024 * 1024;
+
+    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache)
+      : this(options, cache, CustomStackSizePoolTaskScheduler.Create(stackSize, options.VcsCores))
+    {
+      taskSchedulerCreatedLocally = true;
+    }
+
+    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache, CustomStackSizePoolTaskScheduler scheduler) {
       Options = options;
       Cache = cache;
       checkerPool = new CheckerPool(options);
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
-      
-      largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
+
+      largeThreadScheduler = scheduler;
       largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.None, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
@@ -89,6 +97,7 @@ namespace Microsoft.Boogie
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
     private readonly CustomStackSizePoolTaskScheduler largeThreadScheduler;
+    private bool taskSchedulerCreatedLocally = false;
 
     public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null) {
@@ -1385,7 +1394,9 @@ namespace Microsoft.Boogie
     public void Dispose()
     {
       checkerPool.Dispose();
-      largeThreadScheduler.Dispose();
+      if (taskSchedulerCreatedLocally) {
+        largeThreadScheduler.Dispose();
+      }
     }
   }
 }
