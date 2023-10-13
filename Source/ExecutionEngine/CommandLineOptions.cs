@@ -1206,6 +1206,10 @@ namespace Microsoft.Boogie
           return true;
 
         case "rlimit":
+          ps.GetUnsignedNumericArgument(x => ResourceLimit = Util.BoundedMultiply(x, 1000), null);
+          return true;
+
+        case "reproducibleResourceLimit":
           ps.GetUnsignedNumericArgument(x => ResourceLimit = x, null);
           return true;
 
@@ -1978,7 +1982,10 @@ namespace Microsoft.Boogie
                 Limit the number of seconds spent trying to verify
                 each procedure
   /rlimit:<num>
-                Limit the Z3 resource spent trying to verify each procedure
+                Limit the Z3 resource spent trying to verify each procedure,
+                where <num> is multiplied by 1000 before being sent to Z3.
+  /reproducibleResourceLimit:<num>
+                Limit the Z3 resource spent trying to verify each procedure.
   /errorTrace:<n>
                 0 - no Trace labels in the error output,
                 1 (default) - include useful Trace labels in error output,

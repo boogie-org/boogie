@@ -72,7 +72,7 @@ procedure TestTimeouts2(in: [int]int, len: int) returns (out: [int]int);
   requires 0 < len;
   ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
 
-implementation {:rlimit 1000} TestTimeouts2(in: [int]int, len: int) returns (out: [int]int)
+implementation {:reproducible_resource_limit 1000000} TestTimeouts2(in: [int]int, len: int) returns (out: [int]int)
 {
     var i : int;
 
