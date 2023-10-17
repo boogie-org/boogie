@@ -54,7 +54,7 @@ function {:define} $isExternal(p: ref) returns (bool) { $slt.ref.bool(p, $EXTERN
 
 // SMT bit-vector/integer conversion
 function {:builtin "(_ int2bv 64)"} $int2bv.64(i: i64) returns (bv64);
-function {:builtin "bv2nat"} $bv2int.64(i: bv64) returns (i64);
+function {:builtin "bv2nat"} $bv2nat.64(i: bv64) returns (i64);
 
 // Integer arithmetic operations
 function {:define} $add.i1(i1: i1, i2: i1) returns (i1) { (i1 + i2) }
