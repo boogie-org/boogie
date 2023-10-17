@@ -16,7 +16,7 @@ function f(i:int, j:int) returns (int)
 }
 
 // Without the max keep going splits this runs out of resources.
-procedure {:rlimit 150} test1(x:int)
+procedure {:rlimit 150000} test1(x:int)
 {
     assert(f(8,3) == 0);
     assert(f(8,4) == 0);
@@ -25,7 +25,7 @@ procedure {:rlimit 150} test1(x:int)
 }
 
 // Runs out of resources
-procedure {:rlimit 150} test2(x:int)
+procedure {:rlimit 150000} test2(x:int)
 {
     assert(f(8,3) == 0 && f(8,4) == 0 && f(8,5) == 0 && f(9,2) == 0);
 }
