@@ -1,5 +1,5 @@
 // We use boogie here because parallel-boogie doesn't work well with -proverLog
-// RUN: %boogie -rlimit:800 -proverLog:"%t.smt2" "%s"
+// RUN: %boogie -rlimit:800000 -proverLog:"%t.smt2" "%s"
 // RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
 // CHECK-L: (set-option :timeout 0)
 // CHECK-L: (set-option :rlimit 800000)
@@ -43,7 +43,7 @@ procedure TestTimeouts1(in: [int]int, len: int) returns (out: [int]int);
   requires 0 < len;
   ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
 
-implementation {:rlimit 900} TestTimeouts1(in: [int]int, len: int) returns (out: [int]int)
+implementation {:rlimit 900000} TestTimeouts1(in: [int]int, len: int) returns (out: [int]int)
 {
     var i : int;
 
@@ -72,7 +72,7 @@ procedure TestTimeouts2(in: [int]int, len: int) returns (out: [int]int);
   requires 0 < len;
   ensures (forall j: int :: 0 <= j && j < len ==> out[j] == j);
 
-implementation {:reproducible_resource_limit 1000000} TestTimeouts2(in: [int]int, len: int) returns (out: [int]int)
+implementation {:rlimit 1000000} TestTimeouts2(in: [int]int, len: int) returns (out: [int]int)
 {
     var i : int;
 

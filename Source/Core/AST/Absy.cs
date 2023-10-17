@@ -730,11 +730,7 @@ namespace Microsoft.Boogie
     public uint GetResourceLimit(CoreOptions options)
     {
       uint rl = options.ResourceLimit;
-      if(CheckUIntAttribute("rlimit", ref rl)) {
-          rl = Util.BoundedMultiply(rl, 1000);
-      }
-      // If the new option exists, it takes precedence.
-      CheckUIntAttribute("reproducible_resource_limit", ref rl);
+      CheckUIntAttribute("rlimit", ref rl);
       if (rl < 0) {
         rl = options.ResourceLimit;
       }
