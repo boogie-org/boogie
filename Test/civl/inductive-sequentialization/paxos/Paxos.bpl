@@ -106,12 +106,10 @@ var {:layer 1,1} {:linear "perm"} permVoteChannel: VoteResponseChannel;
 ////////////////////////////////////////////////////////////////////////////////
 
 function {:inline} Init (
-  rs: [Round]bool, joinedNodes:[Round]NodeSet, voteInfo: [Round]Option VoteInfo,
+  rs: [Round]bool,
   decision:[Round]Option Value) : bool
 {
   rs == (lambda r: Round :: true) &&
-  (forall r: Round :: joinedNodes[r] == NoNodes()) &&
-  (forall r: Round :: voteInfo[r] is None) &&
   (forall r: Round :: decision[r] is None)
 }
 

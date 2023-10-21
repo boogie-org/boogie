@@ -1,21 +1,24 @@
 atomic action {:layer 2} A_Paxos({:linear_in "perm"} rs: [Round]bool)
+modifies joinedNodes, voteInfo;
 refines A_Paxos' using INV;
 creates A_StartRound;
 {
   var {:pool "NumRounds"} numRounds: int;
   assert
-    Init(rs, joinedNodes, voteInfo, decision);
+    Init(rs, decision);
   assume
     {:add_to_pool "Round", 0, numRounds}
     {:add_to_pool "NumRounds", numRounds}
     0 <= numRounds;
+  joinedNodes := (lambda r: Round:: NoNodes());
+  voteInfo := (lambda r: Round:: None());
   call create_asyncs((lambda pa: A_StartRound :: pa->r == pa->r_lin && Round(pa->r) && pa->r <= numRounds));
 }
 
 atomic action {:layer 3} A_Paxos'({:linear_in "perm"} rs: [Round]bool)
 modifies joinedNodes, voteInfo, decision;
 {
-  assert Init(rs, joinedNodes, voteInfo, decision);
+  assert Init(rs, decision);
   havoc joinedNodes, voteInfo, decision;
   assume (forall r1: Round, r2: Round :: decision[r1] is Some && decision[r2] is Some ==> decision[r1] == decision[r2]);
 }
@@ -29,7 +32,7 @@ modifies joinedNodes, voteInfo, decision;
   var {:pool "Round"} k: int;
   var {:pool "Node"} m: Node;
 
-  assert Init(rs, joinedNodes, voteInfo, decision);
+  assert Init(rs, decision);
 
   havoc joinedNodes, voteInfo, decision;
 

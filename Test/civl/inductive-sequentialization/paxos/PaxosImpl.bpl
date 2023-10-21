@@ -56,7 +56,7 @@ function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: Jo
 }
 
 yield invariant {:layer 1} YieldInit({:linear "perm"} rs: [Round]bool);
-invariant Init(rs, joinedNodes, voteInfo, decision);
+invariant Init(rs, decision);
 invariant InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
 
 yield invariant {:layer 1} YieldInv();
@@ -77,6 +77,8 @@ requires call YieldInit(rs);
   var {:layer 1}{:linear "perm"} rs': [Round]bool;
   var {:layer 1}{:pending_async} PAs:[A_StartRound]int;
 
+  call JoinInit();
+  call VoteInit();
   r := 0;
   rs' := rs;
   while (*)
@@ -270,10 +272,22 @@ requires call YieldInv();
 
 ////////////////////////////////////////////////////////////////////////////////
 
+action {:layer 1} JoinInit()
+modifies joinedNodes;
+{
+  joinedNodes := (lambda r: Round:: NoNodes());
+}
+
 action {:layer 1} JoinIntro(r: Round, n: Node)
 modifies joinedNodes;
 {
   joinedNodes[r][n] := true;
+}
+
+action {:layer 1} VoteInit()
+modifies voteInfo;
+{
+  voteInfo := (lambda r: Round:: None());
 }
 
 action {:layer 1} ProposeIntro(r: Round, v: Value)
