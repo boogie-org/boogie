@@ -56,7 +56,7 @@ function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: Jo
 }
 
 yield invariant {:layer 1} YieldInit({:linear "perm"} rs: [Round]bool);
-invariant Init(rs, joinedNodes, voteInfo, decision);
+invariant Init(rs);
 invariant InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
 
 yield invariant {:layer 1} YieldInv();
@@ -77,6 +77,9 @@ requires call YieldInit(rs);
   var {:layer 1}{:linear "perm"} rs': [Round]bool;
   var {:layer 1}{:pending_async} PAs:[A_StartRound]int;
 
+  call InitJoinedNodes();
+  call InitVoteInfo();
+  call InitDecision();
   r := 0;
   rs' := rs;
   while (*)
@@ -193,7 +196,7 @@ requires call YieldInvChannels();
     n := n + 1;
   }
   async call Conclude(r, maxValue, cp);
-  call ProposeIntro(r, maxValue);
+  call SetVoteInfoInPropose(r, maxValue);
 }
 
 yield procedure {:layer 1}
@@ -247,7 +250,7 @@ requires call YieldInv();
   if (doJoin) {
     call SendJoinResponse(r, n, lastVoteRound, lastVoteValue);
     call SendJoinResponseIntro(r, n, lastVoteRound, lastVoteValue, p);
-    call JoinIntro(r, n);
+    call SetJoinedNodes(r, n);
   }
 }
 
@@ -263,29 +266,53 @@ requires call YieldInv();
   if (doVote) {
     call SendVoteResponse(r, n);
     call SendVoteResponseIntro(r, n, p);
-    call JoinIntro(r, n);
-    call VoteIntro(r, n);
+    call SetJoinedNodes(r, n);
+    call SetVoteInfoInVote(r, n);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 1} JoinIntro(r: Round, n: Node)
+action {:layer 1} InitJoinedNodes()
+modifies joinedNodes;
+{
+  joinedNodes := (lambda r: Round:: NoNodes());
+}
+
+action {:layer 1} SetJoinedNodes(r: Round, n: Node)
 modifies joinedNodes;
 {
   joinedNodes[r][n] := true;
 }
 
-action {:layer 1} ProposeIntro(r: Round, v: Value)
+action {:layer 1} InitVoteInfo()
+modifies voteInfo;
+{
+  voteInfo := (lambda r: Round:: None());
+}
+
+action {:layer 1} SetVoteInfoInPropose(r: Round, v: Value)
 modifies voteInfo;
 {
   voteInfo[r] := Some(VoteInfo(v, NoNodes()));
 }
 
-action {:layer 1} VoteIntro(r: Round, n: Node)
+action {:layer 1} SetVoteInfoInVote(r: Round, n: Node)
 modifies voteInfo;
 {
   voteInfo[r] := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]));
+}
+
+action {:layer 1} InitDecision()
+modifies decision;
+{
+  decision := (lambda r: Round :: None());
+}
+
+action {:layer 1} SetDecision(round: Round, value: Value)
+modifies decision;
+{
+  decision[round] := Some(value);
 }
 
 // Trusted lemmas for the proof of Propose and Conclude
@@ -302,12 +329,6 @@ ensures MaxRound(r, MapOr(ns1, ns2), voteInfo) ==
          else MaxRound(r, ns1, voteInfo);
 
 ////////////////////////////////////////////////////////////////////////////////
-
-atomic action {:layer 1} A_SetDecision(round: Round, value: Value)
-modifies decision;
-{
-  decision[round] := Some(value);
-}
 
 atomic action {:layer 1} A_JoinUpdate(r: Round, n: Node)
 returns (join:bool, lastVoteRound: Round, lastVoteValue: Value)
@@ -338,9 +359,6 @@ modifies acceptorState;
     vote := false;
   }
 }
-
-yield procedure {:layer 0} SetDecision(round: Round, value: Value);
-refines A_SetDecision;
 
 yield procedure {:layer 0} JoinUpdate(r: Round, n: Node) returns (join:bool, lastVoteRound: Round, lastVoteValue: Value);
 refines A_JoinUpdate;
