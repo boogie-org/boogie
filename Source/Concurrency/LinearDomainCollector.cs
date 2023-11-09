@@ -158,6 +158,15 @@ namespace Microsoft.Boogie
             }));
           }
         }
+        if (type is MapType mapType)
+        {
+          mapType.Arguments.ForEach(argType => ContainsPermissionType(argType));
+          ContainsPermissionType(mapType.Result);
+          if (ContainsPermissionType(mapType.Result))
+          {
+            linearTypes.Add(type);
+          }
+        }
       }
       return linearTypes.Contains(type);
     }

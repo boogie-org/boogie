@@ -385,7 +385,7 @@ namespace Microsoft.Boogie
         var procInParams = proc.InParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
         var procOutParams = proc.OutParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
         var actionInParams = refinedActionDecl.InParams;
-        var actionOutParams = refinedActionDecl.OutParams.SkipLast(refinedActionDecl.Creates.Count).ToList();
+        var actionOutParams = refinedActionDecl.OutParams;
         signatureMatcher.MatchFormals(procInParams, actionInParams, SignatureMatcher.IN);
         signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
       }

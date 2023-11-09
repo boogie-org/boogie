@@ -408,6 +408,7 @@ namespace Microsoft.Boogie
           {
             return ExtractRootFromAccessPathExpr(lheapValExpr.Args[0]);
           }
+          return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
         }
       }
       return null;
