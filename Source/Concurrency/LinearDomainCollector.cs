@@ -87,12 +87,12 @@ namespace Microsoft.Boogie
       this.visitedTypes = new HashSet<Type>();
     }
 
-    public static (Dictionary<string, LinearDomain>, Dictionary<Type, LinearDomain>) Collect(Program program, CheckingContext checkingContext)
+    public static (Dictionary<string, LinearDomain>, Dictionary<Type, LinearDomain>, HashSet<Type>) Collect(Program program, CheckingContext checkingContext)
     {
       var collector = new LinearDomainCollector(program, checkingContext);
       collector.PopulateLinearDomains();
       collector.VisitProgram(program);
-      return (collector.linearDomains, collector.MakeLinearDomains());
+      return (collector.linearDomains, collector.MakeLinearDomains(), collector.linearTypes);
     }
 
     public static LinearKind FindLinearKind(Variable v)
