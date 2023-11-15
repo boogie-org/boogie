@@ -13,4 +13,5 @@ linear_types_error.bpl(59,4): Error: Primitive assigns to input variable: l'
 linear_types_error.bpl(66,0): Error: Output variable b must be available at a return
 linear_types_error.bpl(72,14): Error: unavailable source for a linear read
 linear_types_error.bpl(78,9): Error: unavailable source for a linear read
-15 type checking errors detected in linear_types_error.bpl
+linear_types_error.bpl(85,6): Error: A source of pack of linear type must be a variable
+16 type checking errors detected in linear_types_error.bpl
