@@ -1353,8 +1353,12 @@ namespace VC
           Print();
         }
 
-        var extraSMTOpts = Implementation.GetExtraSMTOptions();
-        await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, extraSMTOpts, cancellationToken);
+        checker.TheoremProver.SetTimeout(Util.BoundedMultiply(timeout, 1000));
+        checker.TheoremProver.SetRlimit(rlimit);
+        foreach (var entry in Implementation.GetExtraSMTOptions()) {
+          checker.TheoremProver.SetOtherSMTOption(entry.Key, entry.Value);
+        }
+        await checker.BeginCheck(Description, vc, reporter, cancellationToken);
       }
 
       public string Description

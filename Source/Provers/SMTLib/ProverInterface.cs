@@ -274,7 +274,7 @@ public abstract class ProverInterface
   {
   }
 
-  public virtual void ClearOtherSMTOptions()
+  public virtual void ClearLocalSMTOptions()
   {
   }
 

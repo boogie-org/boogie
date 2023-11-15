@@ -194,7 +194,7 @@ namespace VC
         await checker.GoBackToIdle();
       }
 
-      checker.TheoremProver.ClearOtherSMTOptions();
+      checker.TheoremProver.ClearLocalSMTOptions();
     }
 
     private static bool IsProverFailed(ProverInterface.Outcome outcome)

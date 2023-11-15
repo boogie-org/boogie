@@ -22,7 +22,6 @@ namespace Microsoft.Boogie
     public uint ResourceLimit = 0;
     // Other options suitable for (set-option :key value)
     // TODO: put ResourceLimit in here?
-    public Dictionary<string, string> OtherOptions = new();
     public int? RandomSeed = null;
     public int MemoryLimit = 0;
     public int Verbosity = 0;

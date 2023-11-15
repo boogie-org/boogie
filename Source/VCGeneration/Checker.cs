@@ -306,7 +306,7 @@ namespace Microsoft.Boogie
       proverRunTime = ProverStopwatch.Elapsed;
     }
 
-    public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, Dictionary<string, string> otherSMTOptions, CancellationToken cancellationToken)
+    public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, CancellationToken cancellationToken)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -319,16 +319,6 @@ namespace Microsoft.Boogie
       this.handler = handler;
 
       await thmProver.Reset(gen);
-      if (0 < rlimit)
-      {
-        timeout = 0;
-      }
-
-      thmProver.SetTimeout(timeout);
-      thmProver.SetRlimit(rlimit);
-      foreach (var entry in otherSMTOptions) {
-        thmProver.SetOtherSMTOption(entry.Key, entry.Value);
-      }
 
       ProverStart = DateTime.UtcNow;
       ProverStopwatch.Restart();

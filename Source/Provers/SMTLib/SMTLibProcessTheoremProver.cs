@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.IO;
 using System.Linq;
 using System.Diagnostics;
@@ -433,15 +434,14 @@ namespace Microsoft.Boogie.SMTLib
       if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
-        SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
         if (options.RandomSeed != null) {
           SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed.Value + ")");
           SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
         }
       }
 
-      foreach (var entry in options.OtherOptions) {
-        SendThisVC("(set-option :" + entry.Key + " " + entry.Value + ")");
+      foreach (var entry in options.SmtOptions) {
+        SendThisVC("(set-option :" + entry.Option + " " + entry.Value + ")");
       }
     }
 
@@ -1162,26 +1162,36 @@ namespace Microsoft.Boogie.SMTLib
       FlushAxioms();
     }
 
+    // This doesn't use SetOtherSMTOption because it may be set using
+    // different mechanisms than set-option in some cases.
     public override void SetTimeout(uint ms)
     {
       options.TimeLimit = ms;
     }
 
-    // TODO: make this use SetOtherSMTOption?
+    // Don't use SetOtherSMTOption directly, because we want a
+    // connection to TimeLimit.
     public override void SetRlimit(uint limit)
     {
-      options.ResourceLimit = limit;
+      if (options.Solver == SolverKind.Z3) {
+        SetOtherSMTOption(Z3.RlimitOption, limit.ToString());
+        if (limit > 0) {
+          SetTimeout(0);
+        }
+      }
     }
 
     // Note: must be re-set for every query
     public override void SetOtherSMTOption(string name, string value)
     {
-      options.OtherOptions[name] = value;
+      options.SmtOptions.Add(new OptionValue(name, value));
     }
 
-    public override void ClearOtherSMTOptions()
+    public override void ClearLocalSMTOptions()
     {
-      options.OtherOptions.Clear();
+      // Go back to global options
+      options.SmtOptions.Clear();
+      options.Parse(libOptions.ProverOptions);
     }
 
     protected Outcome ParseOutcome(SExpr resp, out bool wasUnknown)
