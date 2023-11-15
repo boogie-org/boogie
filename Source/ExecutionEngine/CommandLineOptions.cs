@@ -1523,6 +1523,11 @@ namespace Microsoft.Boogie
        Set the random seed for verifying a given implementation.
        Has the same effect as setting /randomSeed but only for a single implementation.
 
+     {:smt_option name, value}
+       Set the SMT option 'name' to 'value', using the SMT-Lib command
+       '(set-option :name value)', just for the verification of this
+       procedure.
+
      {:verboseName <string>}
        Set the name to use when printing messages about verification
        status in `/trace` and selecting procedures to verify with
