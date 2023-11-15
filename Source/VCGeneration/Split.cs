@@ -1353,7 +1353,8 @@ namespace VC
           Print();
         }
 
-        await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
+        var extraSMTOpts = Implementation.GetExtraSMTOptions();
+        await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, extraSMTOpts, cancellationToken);
       }
 
       public string Description

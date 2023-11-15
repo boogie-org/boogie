@@ -306,7 +306,7 @@ class SmokeTester
         }
       }
       await checker.BeginCheck(cce.NonNull(Implementation.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback),
-        Options.SmokeTimeout, Options.ResourceLimit, CancellationToken.None);
+        Options.SmokeTimeout, Options.ResourceLimit, new(), CancellationToken.None);
 
       await checker.ProverTask;
 

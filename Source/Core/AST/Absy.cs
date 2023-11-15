@@ -3673,6 +3673,22 @@ namespace Microsoft.Boogie
       }
     }
 
+    public Dictionary<string, string> GetExtraSMTOptions()
+    {
+      Dictionary<string, string> extraSMTOpts = new();
+      for (var a = Attributes; a != null; a = a.Next) {
+        var n = a.Params.Count;
+        var k = a.Key;
+        if (k.Equals("smt_option")) {
+          if (n == 2 && a.Params[0] is string s) {
+            extraSMTOpts.Add(s, a.Params[1].ToString());
+          }
+        }
+      }
+
+      return extraSMTOpts;
+    }
+
     public IDictionary<byte[], object> ErrorChecksumToCachedError { get; private set; }
 
     public bool IsErrorChecksumInCachedSnapshot(byte[] checksum)

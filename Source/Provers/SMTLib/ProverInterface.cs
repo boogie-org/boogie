@@ -270,6 +270,14 @@ public abstract class ProverInterface
   {
   }
 
+  public virtual void SetOtherSMTOption(string name, string value)
+  {
+  }
+
+  public virtual void ClearOtherSMTOptions()
+  {
+  }
+
   public virtual Task<int> GetRCount()
   {
     throw new NotImplementedException();

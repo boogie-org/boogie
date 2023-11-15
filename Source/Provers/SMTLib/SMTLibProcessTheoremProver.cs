@@ -439,6 +439,10 @@ namespace Microsoft.Boogie.SMTLib
           SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
         }
       }
+
+      foreach (var entry in options.OtherOptions) {
+        SendThisVC("(set-option :" + entry.Key + " " + entry.Value + ")");
+      }
     }
 
     protected void SendVCId(string descriptiveName)
@@ -1163,9 +1167,21 @@ namespace Microsoft.Boogie.SMTLib
       options.TimeLimit = ms;
     }
 
+    // TODO: make this use SetOtherSMTOption?
     public override void SetRlimit(uint limit)
     {
       options.ResourceLimit = limit;
+    }
+
+    // Note: must be re-set for every query
+    public override void SetOtherSMTOption(string name, string value)
+    {
+      options.OtherOptions[name] = value;
+    }
+
+    public override void ClearOtherSMTOptions()
+    {
+      options.OtherOptions.Clear();
     }
 
     protected Outcome ParseOutcome(SExpr resp, out bool wasUnknown)

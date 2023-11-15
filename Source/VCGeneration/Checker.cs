@@ -143,16 +143,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    private void SetTimeout(uint timeout)
-    {
-      TheoremProver.SetTimeout(Util.BoundedMultiply(timeout, 1000));
-    }
-
-    private void SetRlimit(uint rlimit)
-    {
-      TheoremProver.SetRlimit(rlimit);
-    }
-    
     /// <summary>
     /// Set up the context.
     /// </summary>
@@ -316,7 +306,7 @@ namespace Microsoft.Boogie
       proverRunTime = ProverStopwatch.Elapsed;
     }
 
-    public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
+    public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, Dictionary<string, string> otherSMTOptions, CancellationToken cancellationToken)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -333,8 +323,12 @@ namespace Microsoft.Boogie
       {
         timeout = 0;
       }
-      SetTimeout(timeout);
-      SetRlimit(rlimit);
+
+      thmProver.SetTimeout(timeout);
+      thmProver.SetRlimit(rlimit);
+      foreach (var entry in otherSMTOptions) {
+        thmProver.SetOtherSMTOption(entry.Key, entry.Value);
+      }
 
       ProverStart = DateTime.UtcNow;
       ProverStopwatch.Restart();
