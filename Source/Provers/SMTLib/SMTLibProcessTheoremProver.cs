@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
 using System.IO;
 using System.Linq;
 using System.Diagnostics;
@@ -434,6 +433,7 @@ namespace Microsoft.Boogie.SMTLib
       if (options.Solver == SolverKind.Z3 || options.Solver == SolverKind.NoOpWithZ3Options)
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
+        SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
         if (options.RandomSeed != null) {
           SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed.Value + ")");
           SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
@@ -1162,27 +1162,17 @@ namespace Microsoft.Boogie.SMTLib
       FlushAxioms();
     }
 
-    // This doesn't use SetOtherSMTOption because it may be set using
-    // different mechanisms than set-option in some cases.
     public override void SetTimeout(uint ms)
     {
       options.TimeLimit = ms;
     }
 
-    // Don't use SetOtherSMTOption directly, because we want a
-    // connection to TimeLimit.
     public override void SetRlimit(uint limit)
     {
-      if (options.Solver == SolverKind.Z3) {
-        SetOtherSMTOption(Z3.RlimitOption, limit.ToString());
-        if (limit > 0) {
-          SetTimeout(0);
-        }
-      }
+      options.ResourceLimit = limit;
     }
 
-    // Note: must be re-set for every query
-    public override void SetOtherSMTOption(string name, string value)
+    public override void SetLocalSMTOption(string name, string value)
     {
       options.SmtOptions.Add(new OptionValue(name, value));
     }

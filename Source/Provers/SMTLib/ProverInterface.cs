@@ -270,10 +270,12 @@ public abstract class ProverInterface
   {
   }
 
-  public virtual void SetOtherSMTOption(string name, string value)
+  // Sets a local SMT option (cleared with ClearLocalSMTOptions)
+  public virtual void SetLocalSMTOption(string name, string value)
   {
   }
 
+  // Clear options set with SetLocalSMTOption
   public virtual void ClearLocalSMTOptions()
   {
   }

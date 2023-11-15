@@ -1353,12 +1353,10 @@ namespace VC
           Print();
         }
 
-        checker.TheoremProver.SetTimeout(Util.BoundedMultiply(timeout, 1000));
-        checker.TheoremProver.SetRlimit(rlimit);
         foreach (var entry in Implementation.GetExtraSMTOptions()) {
-          checker.TheoremProver.SetOtherSMTOption(entry.Key, entry.Value);
+          checker.TheoremProver.SetLocalSMTOption(entry.Key, entry.Value);
         }
-        await checker.BeginCheck(Description, vc, reporter, cancellationToken);
+        await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
       }
 
       public string Description

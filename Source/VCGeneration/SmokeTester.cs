@@ -305,10 +305,8 @@ class SmokeTester
           Emit();
         }
       }
-
-      checker.TheoremProver.SetTimeout(Options.SmokeTimeout);
-      checker.TheoremProver.SetRlimit(Options.ResourceLimit);
-      await checker.BeginCheck(cce.NonNull(Implementation.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback), CancellationToken.None);
+      await checker.BeginCheck(cce.NonNull(Implementation.Name + "_smoke" + id++), vc, new ErrorHandler(Options, absyIds, callback),
+        Options.SmokeTimeout, Options.ResourceLimit, CancellationToken.None);
 
       await checker.ProverTask;
 
