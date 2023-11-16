@@ -735,7 +735,10 @@ namespace Microsoft.Boogie
         var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
         impls.ForEach(impl =>
         {
-          LinearRewriter.Rewrite(civlTypeChecker, impl);
+          if (impl.Proc is not YieldProcedureDecl)
+          {
+            LinearRewriter.Rewrite(civlTypeChecker, impl);
+          }
         }); 
       }
     }

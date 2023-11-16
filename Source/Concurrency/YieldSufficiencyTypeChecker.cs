@@ -318,7 +318,9 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabel(CallCmd callCmd)
       {
-        if (callCmd.Proc is ActionDecl || callCmd.Proc.IsPure)
+        if (callCmd.Proc is ActionDecl ||
+            LinearRewriter.IsPrimitive(civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc)) ||
+            callCmd.Proc.IsPure)
         {
           return P;
         }
@@ -387,7 +389,9 @@ namespace Microsoft.Boogie
 
       private string CallCmdLabelAsync(CallCmd callCmd)
       {
-        if (callCmd.Proc is ActionDecl || callCmd.Proc.IsPure)
+        if (callCmd.Proc is ActionDecl ||
+            LinearRewriter.IsPrimitive(civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc)) ||
+            callCmd.Proc.IsPure)
         {
           return P;
         }
