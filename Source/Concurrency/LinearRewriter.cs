@@ -7,29 +7,23 @@ public class LinearRewriter
 {
   private CivlTypeChecker civlTypeChecker;
 
-  private Procedure proc;
-  
   private Monomorphizer monomorphizer => civlTypeChecker.program.monomorphizer;
   
   private ConcurrencyOptions options => civlTypeChecker.Options;
 
-  private int? layerNum;
-
-  private LinearRewriter(CivlTypeChecker civlTypeChecker, Procedure proc)
+  public LinearRewriter(CivlTypeChecker civlTypeChecker)
   {
     this.civlTypeChecker = civlTypeChecker;
-    this.proc = proc;
-    this.layerNum = proc is YieldProcedureDecl decl ? decl.Layer : null;
   }
   
   public static bool IsPrimitive(DeclWithFormals decl)
   {
-    return CivlPrimitives.Linear.Contains(decl.Name);
+    return CivlPrimitives.Linear.Contains(Monomorphizer.GetOriginalDecl(decl).Name);
   }
 
   public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)
   {
-    var linearRewriter = new LinearRewriter(civlTypeChecker, impl.Proc);
+    var linearRewriter = new LinearRewriter(civlTypeChecker);
     impl.Blocks.ForEach(block => block.Cmds = linearRewriter.RewriteCmdSeq(block.Cmds));
   }
 
@@ -38,7 +32,7 @@ public class LinearRewriter
     var newCmdSeq = new List<Cmd>();
     foreach (var cmd in cmdSeq)
     {
-      if (cmd is CallCmd callCmd && IsPrimitive(monomorphizer.GetOriginalDecl(callCmd.Proc)))
+      if (cmd is CallCmd callCmd && IsPrimitive(callCmd.Proc))
       {
         newCmdSeq.AddRange(RewriteCallCmd(callCmd));
       }
@@ -50,9 +44,9 @@ public class LinearRewriter
     return newCmdSeq;
   }
 
-  private List<Cmd> RewriteCallCmd(CallCmd callCmd)
+  public List<Cmd> RewriteCallCmd(CallCmd callCmd)
   {
-    switch (monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+    switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "Ref_Alloc":
         return RewriteRefAlloc(callCmd);
@@ -89,11 +83,6 @@ public class LinearRewriter
   private AssertCmd AssertCmd(IToken tok, Expr expr, string msg)
   {
     var assertCmd = CmdHelper.AssertCmd(tok, expr, msg);
-    if (layerNum.HasValue)
-    {
-      assertCmd.Attributes =
-        new QKeyValue(Token.NoToken, "layer", new List<object> { layerNum.Value }, assertCmd.Attributes);
-    }
     return assertCmd;
   }
   
@@ -484,7 +473,9 @@ public class LinearRewriter
       return;
     }
     var tc = new TypecheckingContext(null, options);
-    tc.Proc = proc;
+    var oldCheckModifies = tc.CheckModifies;
+    tc.CheckModifies = false;
     absys.ForEach(absy => absy.Typecheck(tc));
+    tc.CheckModifies = oldCheckModifies;
   }
 }
