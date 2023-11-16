@@ -198,6 +198,7 @@ namespace Microsoft.Boogie
       {
         if (cmd is AssignCmd assignCmd)
         {
+          var lhsVarsToAdd = new HashSet<Variable>();
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
             var lhsVar = assignCmd.Lhss[i].DeepAssignedVariable;
@@ -205,38 +206,43 @@ namespace Microsoft.Boogie
             {
               continue;
             }
-            var rhsExpr = assignCmd.Rhss[i];
             var lhsDomainName = LinearDomainCollector.FindDomainName(lhsVar);
+            var rhsExpr = assignCmd.Rhss[i];
             if (rhsExpr is IdentifierExpr ie)
             {
-              if (!start.Contains(ie.Decl))
-              {
-                Error(ie, "unavailable source for a linear read");
-              }
-              else
+              if (start.Contains(ie.Decl))
               {
                 start.Remove(ie.Decl);
               }
+              else
+              {
+                Error(ie, "unavailable source for a linear read");
+              }
+              lhsVarsToAdd.Add(lhsVar); // add always to prevent cascading error messages
             }
-            else
+            else if (lhsDomainName == null && rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor } } nAryExpr)
             {
               // pack
-              var args = ((NAryExpr)rhsExpr).Args.Where(arg => linearTypes.Contains(arg.Type)).Cast<IdentifierExpr>()
+              var args = nAryExpr.Args.Where(arg => linearTypes.Contains(arg.Type)).Cast<IdentifierExpr>()
                 .Select(arg => arg.Decl);
-              if (args.Any(v => !start.Contains(v)))
-              {
-                Error(rhsExpr, "unavailable source for a linear read");
-              }
-              else
+              if (args.All(v => start.Contains(v)))
               {
                 start.ExceptWith(args);
               }
+              else
+              {
+                Error(rhsExpr, "unavailable source for a linear read");
+              }
+              lhsVarsToAdd.Add(lhsVar); // add always to prevent cascading error messages
+            }
+            else
+            {
+              // assignment may violate the disjointness invariant
+              // therefore, drop lhsVar from the set of available variables
+              start.Remove(lhsVar);
             }
           }
-          assignCmd.Lhss
-            .Where(assignLhs =>
-              LinearDomainCollector.FindLinearKind(assignLhs.DeepAssignedVariable) != LinearKind.ORDINARY)
-            .ForEach(assignLhs => start.Add(assignLhs.DeepAssignedVariable));
+          start.UnionWith(lhsVarsToAdd);
         }
         else if (cmd is UnpackCmd unpackCmd)
         {
@@ -502,10 +508,6 @@ namespace Microsoft.Boogie
               Error(node, $"A source of pack of linear type must be a variable");
             }
           });
-        }
-        else
-        {
-          Error(node, $"Only variable can be assigned to linear variable {lhsVar.Name}");
         }
       }
       return base.VisitAssignCmd(node);
