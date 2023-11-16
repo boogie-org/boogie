@@ -491,22 +491,15 @@ namespace Microsoft.Boogie
         else if (lhsDomainName == null && rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor } } nAryExpr)
         {
           // pack
-          nAryExpr.Args.ForEach(arg =>
+          nAryExpr.Args.Where(arg => linearTypes.Contains(arg.Type)).ForEach(arg =>
           {
-            if (linearTypes.Contains(arg.Type))
+            if (arg is IdentifierExpr ie)
             {
-              if (arg is IdentifierExpr ie)
-              {
-                rhsVars.Add(ie.Decl);
-              }
-              else
-              {
-                Error(node, $"A source of pack of linear type must be a variable");
-              }
+              rhsVars.Add(ie.Decl);
             }
-            else if (arg is IdentifierExpr ie && LinearDomainCollector.FindDomainName(ie.Decl) != null)
+            else
             {
-              Error(node, $"A source of pack must not be a linear variable of name domain");
+              Error(node, $"A source of pack of linear type must be a variable");
             }
           });
         }
