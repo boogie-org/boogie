@@ -88,6 +88,11 @@ namespace Microsoft.Boogie
       set => printDesugarings = value;
     }
 
+    public bool PrintPassive {
+      get => printPassive;
+      set => printPassive = value;
+    }
+
     public bool PrintLambdaLifting { get; set; }
     public bool FreeVarLambdaLifting { get; set; }
     public string ProverLogFilePath { get; set; }
@@ -559,6 +564,7 @@ namespace Microsoft.Boogie
     private bool printWithUniqueAstIds = false;
     private int printUnstructured = 0;
     private bool printDesugarings = false;
+    private bool printPassive = false;
     private bool emitDebugInformation = true;
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
@@ -1262,6 +1268,7 @@ namespace Microsoft.Boogie
           if (ps.CheckBooleanFlag("printDesugared", x => printDesugarings = x) ||
               ps.CheckBooleanFlag("printLambdaLifting", x => PrintLambdaLifting = x) ||
               ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
+              ps.CheckBooleanFlag("printPassive", x => printPassive = x) ||
               ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
               ps.CheckBooleanFlag("wait", x => Wait = x) ||
               ps.CheckBooleanFlag("trace", x => Verbosity = CoreOptions.VerbosityLevel.Trace) ||
@@ -1705,6 +1712,7 @@ namespace Microsoft.Boogie
   /printWithUniqueIds : print augmented information that uniquely
                    identifies variables
   /printUnstructured : with /print option, desugars all structured statements
+  /printPassive :  with /print option, prints passive version of program
   /printDesugared : with /print option, desugars calls
   /printLambdaLifting : with /print option, desugars lambda lifting
 
