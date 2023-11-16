@@ -24,6 +24,8 @@ namespace Microsoft.Boogie
     private Dictionary<CallCmd, CallCmd> refinementCallCmds; // rewritten -> original
     private Dictionary<CallCmd, Block> refinementBlocks; // rewritten -> block
 
+    private LinearRewriter linearRewriter;
+
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
     public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum)
@@ -34,6 +36,7 @@ namespace Microsoft.Boogie
       this.absyMap = new AbsyMap();
       this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
       this.refinementBlocks = new Dictionary<CallCmd, Block>();
+      this.linearRewriter = new LinearRewriter(civlTypeChecker);
     }
 
     #region Procedure duplication
@@ -253,6 +256,17 @@ namespace Microsoft.Boogie
           newCall.Proc = linkAction.Impl.Proc;
           InjectGate(linkAction, newCall);
           newCmdSeq.Add(newCall);
+        }
+        return;
+      }
+
+      if (LinearRewriter.IsPrimitive(newCall.Proc))
+      {
+        var callLayerRange = new LayerRange(newCall.Layers[0],
+          newCall.Layers.Count == 1 ? newCall.Layers[0] : newCall.Layers[1]);
+        if (callLayerRange.Contains(layerNum))
+        {
+          newCmdSeq.AddRange(linearRewriter.RewriteCallCmd(newCall));
         }
         return;
       }

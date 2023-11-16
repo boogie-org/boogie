@@ -354,7 +354,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      return LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(decl));
+      return LinearRewriter.IsPrimitive(decl);
     }
     
     private LinearDomain FindDomain(Variable v)
@@ -417,7 +417,7 @@ namespace Microsoft.Boogie
     
     private IdentifierExpr ModifiedArgument(CallCmd callCmd)
     {
-      switch (program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+      switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
         case "Ref_Alloc":
           return null;
@@ -491,22 +491,15 @@ namespace Microsoft.Boogie
         else if (lhsDomainName == null && rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor } } nAryExpr)
         {
           // pack
-          nAryExpr.Args.ForEach(arg =>
+          nAryExpr.Args.Where(arg => linearTypes.Contains(arg.Type)).ForEach(arg =>
           {
-            if (linearTypes.Contains(arg.Type))
+            if (arg is IdentifierExpr ie)
             {
-              if (arg is IdentifierExpr ie)
-              {
-                rhsVars.Add(ie.Decl);
-              }
-              else
-              {
-                Error(node, $"A source of pack of linear type must be a variable");
-              }
+              rhsVars.Add(ie.Decl);
             }
-            else if (arg is IdentifierExpr ie && LinearDomainCollector.FindDomainName(ie.Decl) != null)
+            else
             {
-              Error(node, $"A source of pack must not be a linear variable of name domain");
+              Error(node, $"A source of pack of linear type must be a variable");
             }
           });
         }
@@ -735,7 +728,10 @@ namespace Microsoft.Boogie
         var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
         impls.ForEach(impl =>
         {
-          LinearRewriter.Rewrite(civlTypeChecker, impl);
+          if (impl.Proc is not YieldProcedureDecl)
+          {
+            LinearRewriter.Rewrite(civlTypeChecker, impl);
+          }
         }); 
       }
     }

@@ -84,3 +84,6 @@ atomic action {:layer 1, 2} A14({:linear_in} a: Lval int) returns (b: Bar)
 {
     b := Bar(Lval(3), 3+4);
 }
+
+type {:linear "X"} X = int;
+yield procedure {:layer 1} A15({:linear_in "X"} a: Lval int);
