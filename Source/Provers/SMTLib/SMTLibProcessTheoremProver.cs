@@ -439,6 +439,10 @@ namespace Microsoft.Boogie.SMTLib
           SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
         }
       }
+
+      foreach (var entry in options.SmtOptions) {
+        SendThisVC("(set-option :" + entry.Option + " " + entry.Value + ")");
+      }
     }
 
     protected void SendVCId(string descriptiveName)
@@ -1166,6 +1170,18 @@ namespace Microsoft.Boogie.SMTLib
     public override void SetRlimit(uint limit)
     {
       options.ResourceLimit = limit;
+    }
+
+    public override void SetLocalSMTOption(string name, string value)
+    {
+      options.SmtOptions.Add(new OptionValue(name, value));
+    }
+
+    public override void ClearLocalSMTOptions()
+    {
+      // Go back to global options
+      options.SmtOptions.Clear();
+      options.Parse(libOptions.ProverOptions);
     }
 
     protected Outcome ParseOutcome(SExpr resp, out bool wasUnknown)
