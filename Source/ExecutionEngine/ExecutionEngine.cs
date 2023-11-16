@@ -145,7 +145,8 @@ namespace Microsoft.Boogie
         programId = "main_program_id";
       }
       
-      if (Options.PrintFile != null) {
+      if (Options.PrintFile != null && !Options.PrintPassive) {
+        // Printing passive programs happens later
         PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
       }
 
@@ -571,6 +572,10 @@ namespace Microsoft.Boogie
       }
 
       var outcome = await VerifyEachImplementation(output, processedProgram, stats, programId, er, requestId, stablePrioritizedImpls);
+      if (Options.PrintPassive) {
+        Options.PrintUnstructured = 1;
+        PrintBplFile(Options.PrintFile, processedProgram.Program, true, true, Options.PrettyPrint);
+      }
 
       if (1 < Options.VerifySnapshots && programId != null)
       {

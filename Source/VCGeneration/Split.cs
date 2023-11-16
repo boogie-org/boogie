@@ -1353,6 +1353,9 @@ namespace VC
           Print();
         }
 
+        foreach (var entry in Implementation.GetExtraSMTOptions()) {
+          checker.TheoremProver.SetLocalSMTOption(entry.Key, entry.Value);
+        }
         await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
       }
 
