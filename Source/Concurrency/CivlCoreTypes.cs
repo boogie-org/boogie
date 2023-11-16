@@ -218,7 +218,7 @@ namespace Microsoft.Boogie
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProc = (Procedure)civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc);
+            var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(callCmd.Proc);
             if (originalProc.Name == "create_async" || originalProc.Name == "create_asyncs" || originalProc.Name == "create_multi_asyncs")
             {
               var pendingAsyncType =
@@ -257,7 +257,7 @@ namespace Microsoft.Boogie
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            var originalProcName = Monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
             if (originalProcName == "set_choice")
             {
               continue;
@@ -281,7 +281,7 @@ namespace Microsoft.Boogie
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            var originalProcName = Monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
             if (originalProcName == "set_choice")
             {
               var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];

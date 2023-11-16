@@ -2029,7 +2029,7 @@ namespace Microsoft.Boogie
       return monomorphizationVisitor.InstantiateTypeCtorDecl(typeCtorDeclName, actualTypeParams);
     }
 
-    public DeclWithFormals GetOriginalDecl(DeclWithFormals decl)
+    public static DeclWithFormals GetOriginalDecl(DeclWithFormals decl)
     {
       return decl.OriginalDeclWithFormals ?? decl;
     }

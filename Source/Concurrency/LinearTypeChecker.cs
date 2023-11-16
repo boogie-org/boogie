@@ -354,7 +354,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      return LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(decl));
+      return LinearRewriter.IsPrimitive(decl);
     }
     
     private LinearDomain FindDomain(Variable v)
@@ -417,7 +417,7 @@ namespace Microsoft.Boogie
     
     private IdentifierExpr ModifiedArgument(CallCmd callCmd)
     {
-      switch (program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+      switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
         case "Ref_Alloc":
           return null;

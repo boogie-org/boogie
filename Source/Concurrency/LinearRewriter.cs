@@ -18,7 +18,7 @@ public class LinearRewriter
   
   public static bool IsPrimitive(DeclWithFormals decl)
   {
-    return CivlPrimitives.Linear.Contains(decl.Name);
+    return CivlPrimitives.Linear.Contains(Monomorphizer.GetOriginalDecl(decl).Name);
   }
 
   public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)
@@ -32,7 +32,7 @@ public class LinearRewriter
     var newCmdSeq = new List<Cmd>();
     foreach (var cmd in cmdSeq)
     {
-      if (cmd is CallCmd callCmd && IsPrimitive(monomorphizer.GetOriginalDecl(callCmd.Proc)))
+      if (cmd is CallCmd callCmd && IsPrimitive(callCmd.Proc))
       {
         newCmdSeq.AddRange(RewriteCallCmd(callCmd));
       }
@@ -46,7 +46,7 @@ public class LinearRewriter
 
   public List<Cmd> RewriteCallCmd(CallCmd callCmd)
   {
-    switch (monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+    switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "Ref_Alloc":
         return RewriteRefAlloc(callCmd);

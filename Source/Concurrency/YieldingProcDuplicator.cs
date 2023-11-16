@@ -260,7 +260,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (LinearRewriter.IsPrimitive(civlTypeChecker.program.monomorphizer.GetOriginalDecl(newCall.Proc)))
+      if (LinearRewriter.IsPrimitive(newCall.Proc))
       {
         var callLayerRange = new LayerRange(newCall.Layers[0],
           newCall.Layers.Count == 1 ? newCall.Layers[0] : newCall.Layers[1]);
