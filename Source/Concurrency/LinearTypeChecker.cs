@@ -11,6 +11,7 @@ namespace Microsoft.Boogie
     private CivlTypeChecker civlTypeChecker;
     private Dictionary<string, LinearDomain> domainNameToLinearDomain;
     private Dictionary<Type, LinearDomain> linearTypeToLinearDomain;
+    private HashSet<Type> linearTypes;
     private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
 
     public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
@@ -220,8 +221,8 @@ namespace Microsoft.Boogie
             else
             {
               // pack
-              var args = ((NAryExpr)rhsExpr).Args.Cast<IdentifierExpr>().Select(arg => arg.Decl)
-                .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY);
+              var args = ((NAryExpr)rhsExpr).Args.Where(arg => linearTypes.Contains(arg.Type)).Cast<IdentifierExpr>()
+                .Select(arg => arg.Decl);
               if (args.Any(v => !start.Contains(v)))
               {
                 Error(rhsExpr, "unavailable source for a linear read");
@@ -353,7 +354,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      return LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(decl));
+      return LinearRewriter.IsPrimitive(decl);
     }
     
     private LinearDomain FindDomain(Variable v)
@@ -416,7 +417,7 @@ namespace Microsoft.Boogie
     
     private IdentifierExpr ModifiedArgument(CallCmd callCmd)
     {
-      switch (program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+      switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
         case "Ref_Alloc":
           return null;
@@ -487,23 +488,20 @@ namespace Microsoft.Boogie
           }
           rhsVars.Add(rhs.Decl);
         }
-        else if (lhsDomainName == null && rhsExpr is NAryExpr nAryExpr && nAryExpr.Fun is FunctionCall functionCall && functionCall.Func is DatatypeConstructor)
+        else if (lhsDomainName == null && rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor } } nAryExpr)
         {
           // pack
-          var args = nAryExpr.Args.OfType<IdentifierExpr>();
-          if (args.Count() < nAryExpr.Args.Count)
+          nAryExpr.Args.Where(arg => linearTypes.Contains(arg.Type)).ForEach(arg =>
           {
-            Error(node, $"A source of pack must be a variable");
-          }
-          else if (args.Any(arg => LinearDomainCollector.FindDomainName(arg.Decl) != null))
-          {
-            Error(node, $"A target of pack must not be a linear variable of name domain");
-          }
-          else
-          {
-            rhsVars.UnionWith(args.Select(arg => arg.Decl)
-              .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY));
-          }
+            if (arg is IdentifierExpr ie)
+            {
+              rhsVars.Add(ie.Decl);
+            }
+            else
+            {
+              Error(node, $"A source of pack of linear type must be a variable");
+            }
+          });
         }
         else
         {
@@ -718,7 +716,7 @@ namespace Microsoft.Boogie
 
     public void TypeCheck()
     {
-      (this.domainNameToLinearDomain, this.linearTypeToLinearDomain) = LinearDomainCollector.Collect(program, checkingContext);
+      (this.domainNameToLinearDomain, this.linearTypeToLinearDomain, this.linearTypes) = LinearDomainCollector.Collect(program, checkingContext);
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
       this.VisitProgram(program);
       foreach (var absy in this.availableLinearVars.Keys)
@@ -730,7 +728,10 @@ namespace Microsoft.Boogie
         var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
         impls.ForEach(impl =>
         {
-          LinearRewriter.Rewrite(civlTypeChecker, impl);
+          if (impl.Proc is not YieldProcedureDecl)
+          {
+            LinearRewriter.Rewrite(civlTypeChecker, impl);
+          }
         }); 
       }
     }

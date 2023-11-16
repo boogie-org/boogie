@@ -28,7 +28,9 @@ namespace Microsoft.Boogie
           }
         }
 
-        foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl))
+        // duplicator.VisitImplementation may invoke the monomorphizer which may cause more instantiations to be generated
+        // and added to program.TopLevelDeclarations; hence converting the enumeration to a new list.
+        foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl).ToList())
         {
           var yieldProcedureDecl = (YieldProcedureDecl)impl.Proc;
           if (yieldProcedureDecl.Layer >= layerNum)

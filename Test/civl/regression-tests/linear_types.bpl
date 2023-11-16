@@ -75,3 +75,10 @@ atomic action {:layer 1, 2} A10({:linear_in} a: Foo) returns (b: Foo)
     Foo(x) := a;
     b := Foo(x);
 }
+
+datatype Bar { Bar(x: Lval int, y: int) }
+
+atomic action {:layer 1, 2} A11({:linear_in} a: Lval int) returns (b: Bar)
+{
+    b := Bar(a, 3+4);
+}

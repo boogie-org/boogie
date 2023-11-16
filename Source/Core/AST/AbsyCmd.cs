@@ -1579,7 +1579,7 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, "command assigns to an immutable variable: {0}", v.Name);
         }
-        else if (!tc.Options.DoModSetAnalysis && v is GlobalVariable)
+        else if (tc.CheckModifies && v is GlobalVariable)
         {
           if (!tc.Yields && !tc.InFrame(v))
           {
@@ -2942,7 +2942,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
-      if (!tc.Options.DoModSetAnalysis)
+      if (tc.CheckModifies)
       {
         if (!tc.Yields)
         {
@@ -3281,14 +3281,14 @@ namespace Microsoft.Boogie
       }
       if (rc.Proc is YieldProcedureDecl)
       {
-        if (Proc.IsPure || Proc is YieldProcedureDecl || Proc is YieldInvariantDecl || Proc is ActionDecl)
+        if (CivlPrimitives.Linear.Contains(Proc.Name) || Proc.IsPure || Proc is YieldProcedureDecl or YieldInvariantDecl or ActionDecl)
         {
           // call ok
         }
         else
         {
           rc.Error(this,
-            "a yielding procedure may only call pure procedures, yield procedures, yield invariants, or link actions");
+            "a yielding procedure may only call primitive procedures, pure procedures, yield procedures, yield invariants, or link actions");
         }
       }
       if (IsAsync)
@@ -3441,11 +3441,12 @@ namespace Microsoft.Boogie
       {
         // link call
         var calleeLayer = actionDecl.LayerRange.LowerLayer;
+        // allowed to execute only on calleeLayer
         actionDecl.Modifies.ForEach(ie =>
         {
           if (ie.Decl.LayerRange.LowerLayer != calleeLayer)
           {
-            tc.Error(this, $"modified variable of callee introduced below the lower layer of callee: {ie.Decl}");
+            tc.Error(this, $"modified variable of callee must be introduced at layer {calleeLayer}: {ie.Decl.Name}");
           }
         });
         if (calleeLayer > callerDecl.Layer)
@@ -3465,6 +3466,50 @@ namespace Microsoft.Boogie
         else
         {
           CheckModifies(actionDecl.ModifiedVars);
+        }
+      }
+      else if (CivlPrimitives.Linear.Contains(Proc.Name))
+      {
+        if (Layers.Count == 0 || Layers.Count > 2)
+        {
+          tc.Error(this, "expected layer range");
+        }
+        else if (Layers[^1] > callerDecl.Layer)
+        {
+          tc.Error(this, $"each layer must not be more than {callerDecl.Layer}");
+        }
+        else
+        {
+          var usedVars = VariableCollector.Collect(Ins.Union(Outs));
+          var globalUsedVars = usedVars.OfType<GlobalVariable>();
+          if (globalUsedVars.Any())
+          {
+            if (Layers.Count == 2)
+            {
+              tc.Error(this, "expected a singleton layer range");
+            }
+            else
+            {
+              var calleeLayer = Layers[0];
+              globalUsedVars.ForEach(v =>
+              {
+                if (v.LayerRange.LowerLayer != calleeLayer)
+                {
+                  tc.Error(this, $"accessed variable must be introduced at layer {calleeLayer}: {v.Name}");
+                }
+              });
+              if (calleeLayer < callerDecl.Layer)
+              {
+                globalUsedVars.ForEach(v =>
+                {
+                  if (v.LayerRange.UpperLayer != calleeLayer)
+                  {
+                    tc.Error(this, $"accessed variable must be hidden at layer {calleeLayer}: {v.Name}");
+                  }
+                });
+              }
+            }
+          }
         }
       }
       else
@@ -3690,9 +3735,18 @@ namespace Microsoft.Boogie
           break;
         }
         default:
-          Debug.Assert(Proc.IsPure);
-          formalLayerRange = new LayerRange(Layers[0]);
+        {
+          if (CivlPrimitives.Linear.Contains(Proc.Name))
+          {
+            formalLayerRange = new LayerRange(Layers[0], Layers.Count > 1 ? Layers[1] : Layers[0]);
+          }
+          else
+          {
+            Debug.Assert(Proc.IsPure);
+            formalLayerRange = new LayerRange(Layers[0]);
+          }
           break;
+        }
       }
       return formalLayerRange;
     }
@@ -4213,8 +4267,7 @@ namespace Microsoft.Boogie
 
   public abstract class MiningStrategy
   {
-    // abstract class to bind all MiningStrategys, i.e., all types of enhanced error data
-    // types together
+    // abstract class to bind all types of enhanced error data types together
   }
 
   public class ListOfMiningStrategies : MiningStrategy

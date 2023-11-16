@@ -77,3 +77,13 @@ atomic action {:layer 1, 2} A13({:linear_in} a: Foo) returns (b: Foo)
     var x: Lheap int;
     b := Foo(x);
 }
+
+datatype Bar { Bar(x: Lval int, y: int) }
+
+atomic action {:layer 1, 2} A14({:linear_in} a: Lval int) returns (b: Bar)
+{
+    b := Bar(Lval(3), 3+4);
+}
+
+type {:linear "X"} X = int;
+yield procedure {:layer 1} A15({:linear_in "X"} a: Lval int);
