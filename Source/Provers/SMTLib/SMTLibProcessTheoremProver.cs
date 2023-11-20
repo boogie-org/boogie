@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,7 +7,6 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
-using System.Runtime.CompilerServices;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -47,7 +45,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NotDelayed]
-    protected SMTLibProcessTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
+    public SMTLibProcessTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
       SMTLibProverContext ctx)
     {
       Contract.Requires(options != null);
@@ -347,7 +345,10 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(set-option :produce-models true)");
         }
 
-        SendSmtOptions();
+        foreach (var opt in SmtOptions())
+        {
+          SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
+        }
 
         if (!string.IsNullOrEmpty(options.Logic))
         {
@@ -391,12 +392,9 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private void SendSmtOptions()
+    private IEnumerable<OptionValue> SmtOptions()
     {
-      foreach (var opt in options.SmtOptions.Concat(additionalSmtOptions))
-      {
-        SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
-      }
+      return options.SmtOptions.Concat(additionalSmtOptions);
     }
 
     private void SetupAxioms()
@@ -446,8 +444,10 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
-
-      SendSmtOptions();
+      foreach (var opt in SmtOptions())
+      {
+        SendThisVC("(set-option :" + opt.Option + " " + opt.Value + ")");
+      }
     }
 
     protected void SendVCId(string descriptiveName)
