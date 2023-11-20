@@ -166,7 +166,7 @@ namespace VC
         }
       }
 
-      var (newOutcome, result, newResourceCount) = await split.ReadOutcome(iteration, checker, callback);
+      var (newOutcome, result, newResourceCount) = split.ReadOutcome(iteration, checker, callback);
       lock (this) {
         outcome = MergeOutcomes(outcome, newOutcome);
         totalResourceCount += newResourceCount;

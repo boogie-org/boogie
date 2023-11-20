@@ -261,7 +261,7 @@ namespace Microsoft.Boogie
       get { return proverRunTime; }
     }
 
-    public Task<int> GetProverResourceCount()
+    public int GetProverResourceCount()
     {
       return thmProver.GetRCount();
     }

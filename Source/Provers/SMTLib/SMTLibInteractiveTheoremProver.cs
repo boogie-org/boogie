@@ -18,6 +18,7 @@ namespace Microsoft.Boogie.SMTLib
     private bool processNeedsRestart;
     private ScopedNamer commonNamer;
     private ScopedNamer finalNamer;
+    private int resourceCount;
 
     [NotDelayed]
     public SMTLibInteractiveTheoremProver(SMTLibOptions libOptions, SMTLibSolverOptions options, VCExpressionGenerator gen,
@@ -519,6 +520,12 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
+      resourceCount = ParseRCount(await SendVcRequest($"(get-info :{Z3.RlimitOption})"));
+      // Sometimes Z3 doesn't tell us that it ran out of resources
+      if (result != Outcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
+        result = Outcome.OutOfResource;
+      }
+
       return result;
     }
 
@@ -655,7 +662,7 @@ namespace Microsoft.Boogie.SMTLib
       finalNamer = currentNamer;
     }
 
-    public override async Task<int> GetRCount()
+    public override int GetRCount()
     {
       if (options.Solver != SolverKind.Z3) {
         // Only Z3 currently supports retrieving this value. CVC5
@@ -664,7 +671,7 @@ namespace Microsoft.Boogie.SMTLib
         return 0;
       }
 
-      return ParseRCount(await SendVcRequest($"(get-info :{Z3.RlimitOption})"));
+      return resourceCount;
     }
 
     /// <summary>

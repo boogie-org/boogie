@@ -1269,7 +1269,7 @@ namespace VC
         }
       }
 
-      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
+      public (ProverInterface.Outcome outcome, VCResult result, int resourceCount) ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
@@ -1284,7 +1284,7 @@ namespace VC
             string.Join("\n  ", CoveredElements.Select(s => s.Description).OrderBy(s => s)));
         }
 
-        var resourceCount = await checker.GetProverResourceCount();
+        var resourceCount = checker.GetProverResourceCount();
         var result = new VCResult(
           vcNum: SplitIndex + 1,
           iteration: iteration,

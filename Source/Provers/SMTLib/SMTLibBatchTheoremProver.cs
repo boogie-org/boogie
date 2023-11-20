@@ -176,6 +176,11 @@ namespace Microsoft.Boogie.SMTLib
           resourceCount = ParseRCount(rlimitSExp);
         }
 
+        // Sometimes Z3 doesn't tell us that it ran out of resources
+        if (result != Outcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
+          result = Outcome.OutOfResource;
+        }
+
         var modelSExp = responseStack.Pop();
         errorModel = ParseErrorModel(modelSExp);
 
@@ -277,9 +282,9 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override Task<int> GetRCount()
+    public override int GetRCount()
     {
-      return Task.FromResult(resourceCount);
+      return resourceCount;
     }
 
     public override Task<List<string>> UnsatCore()
