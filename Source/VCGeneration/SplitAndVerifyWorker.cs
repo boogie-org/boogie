@@ -193,8 +193,6 @@ namespace VC
         batchCompletions.OnNext((split, result));
         await checker.GoBackToIdle();
       }
-
-      checker.TheoremProver.ClearLocalSMTOptions();
     }
 
     private static bool IsProverFailed(ProverInterface.Outcome outcome)
