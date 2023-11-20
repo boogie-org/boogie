@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,7 +7,6 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
-using System.Runtime.CompilerServices;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -19,6 +17,7 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibProverContext ctx;
     protected VCExpressionGenerator gen;
     protected SMTLibSolverOptions options;
+    protected IEnumerable<OptionValue> additionalSmtOptions = Array.Empty<OptionValue>();
     protected bool usingUnsatCore;
     private string backgroundPredicates;
 
@@ -346,7 +345,7 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(set-option :produce-models true)");
         }
 
-        foreach (var opt in options.SmtOptions)
+        foreach (var opt in SmtOptions())
         {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
         }
@@ -391,6 +390,11 @@ namespace Microsoft.Boogie.SMTLib
       if (!AxiomsAreSetup) {
         SetupAxioms();
       }
+    }
+
+    private IEnumerable<OptionValue> SmtOptions()
+    {
+      return options.SmtOptions.Concat(additionalSmtOptions);
     }
 
     private void SetupAxioms()
@@ -440,8 +444,9 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
-      foreach (var entry in options.SmtOptions) {
-        SendThisVC("(set-option :" + entry.Option + " " + entry.Value + ")");
+      foreach (var opt in SmtOptions())
+      {
+        SendThisVC("(set-option :" + opt.Option + " " + opt.Value + ")");
       }
     }
 
@@ -1172,18 +1177,10 @@ namespace Microsoft.Boogie.SMTLib
       options.ResourceLimit = limit;
     }
 
-    public override void SetLocalSMTOption(string name, string value)
+    public override void SetAdditionalSmtOptions(IEnumerable<OptionValue> entries)
     {
-      options.SmtOptions.Add(new OptionValue(name, value));
+      additionalSmtOptions = entries;
     }
-
-    public override void ClearLocalSMTOptions()
-    {
-      // Go back to global options
-      options.SmtOptions.Clear();
-      options.Parse(libOptions.ProverOptions);
-    }
-
     protected Outcome ParseOutcome(SExpr resp, out bool wasUnknown)
     {
       var result = Outcome.Undetermined;

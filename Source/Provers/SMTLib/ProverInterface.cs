@@ -270,16 +270,10 @@ public abstract class ProverInterface
   {
   }
 
-  // Sets a local SMT option (cleared with ClearLocalSMTOptions)
-  public virtual void SetLocalSMTOption(string name, string value)
+  public virtual void SetAdditionalSmtOptions(IEnumerable<OptionValue> entries)
   {
   }
-
-  // Clear options set with SetLocalSMTOption
-  public virtual void ClearLocalSMTOptions()
-  {
-  }
-
+  
   public virtual Task<int> GetRCount()
   {
     throw new NotImplementedException();
