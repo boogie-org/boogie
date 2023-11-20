@@ -347,7 +347,7 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(set-option :produce-models true)");
         }
 
-        SendSolverOptions();
+        SendSmtOptions();
 
         if (!string.IsNullOrEmpty(options.Logic))
         {
@@ -391,7 +391,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    private void SendSolverOptions()
+    private void SendSmtOptions()
     {
       foreach (var opt in options.SmtOptions.Concat(additionalSmtOptions))
       {
@@ -447,7 +447,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
 
-      SendSolverOptions();
+      SendSmtOptions();
     }
 
     protected void SendVCId(string descriptiveName)
