@@ -174,11 +174,11 @@ namespace Microsoft.Boogie.SMTLib
         if (options.Solver == SolverKind.Z3) {
           var rlimitSExp = responseStack.Pop();
           resourceCount = ParseRCount(rlimitSExp);
-        }
 
-        // Sometimes Z3 doesn't tell us that it ran out of resources
-        if (result != Outcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
-          result = Outcome.OutOfResource;
+          // Sometimes Z3 doesn't tell us that it ran out of resources
+          if (result != Outcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
+            result = Outcome.OutOfResource;
+          }
         }
 
         var modelSExp = responseStack.Pop();

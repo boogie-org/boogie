@@ -520,10 +520,12 @@ namespace Microsoft.Boogie.SMTLib
         }
       }
 
-      resourceCount = ParseRCount(await SendVcRequest($"(get-info :{Z3.RlimitOption})"));
-      // Sometimes Z3 doesn't tell us that it ran out of resources
-      if (result != Outcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
-        result = Outcome.OutOfResource;
+      if (options.Solver == SolverKind.Z3) {
+        resourceCount = ParseRCount(await SendVcRequest($"(get-info :{Z3.RlimitOption})"));
+        // Sometimes Z3 doesn't tell us that it ran out of resources
+        if (result != Outcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
+          result = Outcome.OutOfResource;
+        }
       }
 
       return result;
