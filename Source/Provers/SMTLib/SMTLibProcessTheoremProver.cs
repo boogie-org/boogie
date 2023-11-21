@@ -1275,6 +1275,9 @@ namespace Microsoft.Boogie.SMTLib
             currentErrorHandler.OnResourceExceeded("max resource limit");
             result = Outcome.OutOfResource;
             break;
+          case "unknown":
+            result = Outcome.Undetermined;
+            break;
           default:
             result = Outcome.Undetermined;
             HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp);

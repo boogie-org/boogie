@@ -274,7 +274,7 @@ public abstract class ProverInterface
   {
   }
   
-  public virtual Task<int> GetRCount()
+  public virtual int GetRCount()
   {
     throw new NotImplementedException();
   }
