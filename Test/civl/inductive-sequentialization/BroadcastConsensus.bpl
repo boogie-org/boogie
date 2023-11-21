@@ -201,11 +201,6 @@ modifies CH;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 1} Snapshot() returns (snapshot:[pid][val]int)
-{
-  snapshot := CH_low;
-}
-
 yield invariant {:layer 1}
 YieldInit({:linear "broadcast"} pidsBroadcast:[pid]bool, {:linear "collect"} pidsCollect:[pid]bool);
 invariant pidsBroadcast == (lambda ii:pid :: pid(ii)) && pidsCollect == pidsBroadcast;
@@ -251,7 +246,7 @@ requires {:layer 1} pid(i);
   var v: val;
   var {:layer 1} old_CH_low: [pid][val]int;
 
-  call old_CH_low := Snapshot();
+  call {:layer 1} old_CH_low := Copy(CH_low);
   call v := get_value(i);
   j := 1;
   while (j <= n)
@@ -276,7 +271,7 @@ requires {:layer 1} pid(i);
   var {:layer 1} received_values: [val]int;
   var {:layer 1} old_CH_low: [pid][val]int;
 
-  call old_CH_low := Snapshot();
+  call {:layer 1} old_CH_low := Copy(CH_low);
   call d := receive(i);
   received_values := MultisetSingleton(d);
   j := 2;
