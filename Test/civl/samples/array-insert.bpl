@@ -45,7 +45,7 @@ requires {:layer 1} tid != nil;
   var c:int;   // value read from count
   var {:layer 1} _A:[int]int;
 
-  call _A := snapshot();
+  call {:layer 1} _A := Copy(A);
   call acquire(tid);
 
   idx := 0;
@@ -77,11 +77,6 @@ requires {:layer 1} tid != nil;
   assert {:layer 1} sorted(A, count);
 
   call release(tid);
-}
-
-action {:layer 1} snapshot () returns (snapshot: [int]int)
-{
-   snapshot := A;
 }
 
 // =============================================================================

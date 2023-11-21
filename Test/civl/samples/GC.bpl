@@ -467,7 +467,7 @@ ensures call YieldSweepEnd(tid);
     call ClearToAbsWhite(tid);
     par YieldSweepBegin(tid, true, Color) | Yield_MsWellFormed(tid, 0) | Yield_RootScanBarrierInv() | Yield_Iso();
 
-    call snapColor := GhostReadColor100();
+    call {:layer 100} snapColor := Copy(Color);
     while (localSweepPtr < memHi)
     invariant {:yields} {:layer 96} true;
     invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
@@ -573,7 +573,7 @@ preserves call Yield_RootScanBarrierInv();
 
     par Yield_MsWellFormed(tid, 0) | Yield_CollectorPhase_98(tid, old(collectorPhase)) | Yield_RootScanBarrierInv() | Yield_RootScanOn(tid, true) | Yield_97();
 
-    call snapColor := GhostReadColor99();
+    call {:layer 99} snapColor := Copy(Color);
     call CollectorRootScanBarrierWait(tid);
 
     i := 0;
@@ -1371,7 +1371,7 @@ refines AtomicAllocIfPtrFree;
                 color := WHITE();
             }
 
-            call snapMem := GhostReadMem();
+            call {:layer 96} snapMem := Copy(mem);
             fldIter := 0;
             while (fldIter < numFields)
             invariant {:yields} {:layer 95} true;
@@ -1897,21 +1897,6 @@ yield procedure {:layer 95} LockRelease({:linear "tid"} tid:Tid)
 refines AtomicLockRelease;
 {
     call PrimitiveLockZero();
-}
-
-action {:layer 96} GhostReadMem() returns (snapMem: [int][fld]int)
-{
-    snapMem := mem;
-}
-
-action {:layer 99} GhostReadColor99() returns (snapColor: [int]int)
-{
-    snapColor := Color;
-}
-
-action {:layer 100} GhostReadColor100() returns (snapColor: [int]int)
-{
-    snapColor := Color;
 }
 
 //////////////////////////////////////////////////////////////////////////////

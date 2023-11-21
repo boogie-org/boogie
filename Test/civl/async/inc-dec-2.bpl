@@ -16,18 +16,13 @@ refines skip;
 {
   var {:layer 1} old_x: int;
 
-  call old_x := snapshot_x();
+  call {:layer 1} old_x := Copy(x);
   while (*)
   invariant {:layer 1} x == old_x;
   {
     async call {:sync} inc();
     async call {:sync} dec();
   }
-}
-
-action {:layer 1} snapshot_x() returns (snapshot: int)
-{
-   snapshot := x;
 }
 
 // ###########################################################################

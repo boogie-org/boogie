@@ -299,3 +299,8 @@ procedure create_async<T>(PA: T);
 procedure create_asyncs<T>(PAs: [T]bool);
 procedure create_multi_asyncs<T>(PAs: [T]int);
 procedure set_choice<T>(choice: T);
+
+pure procedure {:inline 1} Copy<T>(v: T) returns (copy_v: T)
+{
+  copy_v := v;
+}
