@@ -3468,62 +3468,43 @@ namespace Microsoft.Boogie
           CheckModifies(actionDecl.ModifiedVars);
         }
       }
-      else if (CivlPrimitives.Linear.Contains(Proc.Name))
+      else
       {
+        Debug.Assert(Proc.IsPure);
         if (Layers.Count == 0 || Layers.Count > 2)
         {
           tc.Error(this, "expected layer range");
         }
         else if (Layers[^1] > callerDecl.Layer)
         {
-          tc.Error(this, $"each layer must not be more than {callerDecl.Layer}");
+          tc.Error(this, $"layer must be no more than layer {callerDecl.Layer}");
         }
         else
         {
           var usedVars = VariableCollector.Collect(Ins.Union(Outs));
-          var globalUsedVars = usedVars.OfType<GlobalVariable>();
-          if (globalUsedVars.Any())
+          if (usedVars.OfType<GlobalVariable>().Any())
           {
             if (Layers.Count == 2)
             {
-              tc.Error(this, "expected a singleton layer range");
+              tc.Error(this, "expected singleton layer range");
             }
             else
             {
+              // Check global outputs only; the checking of local outputs is done later
               var calleeLayer = Layers[0];
-              globalUsedVars.ForEach(v =>
+              var globalOutputs = Outs.Select(ie => ie.Decl).OfType<GlobalVariable>();
+              globalOutputs.Where(v => v.LayerRange.LowerLayer != calleeLayer).ForEach(v =>
               {
-                if (v.LayerRange.LowerLayer != calleeLayer)
-                {
-                  tc.Error(this, $"accessed variable must be introduced at layer {calleeLayer}: {v.Name}");
-                }
+                tc.Error(this, $"variable must be introduced at layer {calleeLayer}: {v.Name}");
               });
               if (calleeLayer < callerDecl.Layer)
               {
-                globalUsedVars.ForEach(v =>
+                globalOutputs.Where(v => v.LayerRange.UpperLayer != calleeLayer).ForEach(v =>
                 {
-                  if (v.LayerRange.UpperLayer != calleeLayer)
-                  {
-                    tc.Error(this, $"accessed variable must be hidden at layer {calleeLayer}: {v.Name}");
-                  }
+                  tc.Error(this, $"variable must be hidden at layer {calleeLayer}: {v.Name}");
                 });
               }
             }
-          }
-        }
-      }
-      else
-      {
-        Debug.Assert(Proc.IsPure);
-        if (Layers.Count != 1)
-        {
-          tc.Error(this, "call to pure procedure must be annotated with a layer");
-        }
-        else
-        {
-          if (Layers[0] > callerDecl.Layer)
-          {
-            tc.Error(this, "layer of callee must not be more than layer of caller");
           }
         }
       }
@@ -3628,13 +3609,17 @@ namespace Microsoft.Boogie
         {
           return;
         }
+        // FIXME: primitive calls have inout parameters that must be checked here
         for (int i = 0; i < Proc.OutParams.Count; i++)
         {
           var formal = Proc.OutParams[i];
           var actual = Outs[i];
           if (actual.Decl is GlobalVariable)
           {
-            tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
+            if (!Proc.IsPure) // global outputs of pure calls already checked
+            {
+              tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
+            }
           }
           else
           {
@@ -3736,15 +3721,8 @@ namespace Microsoft.Boogie
         }
         default:
         {
-          if (CivlPrimitives.Linear.Contains(Proc.Name))
-          {
-            formalLayerRange = new LayerRange(Layers[0], Layers.Count > 1 ? Layers[1] : Layers[0]);
-          }
-          else
-          {
-            Debug.Assert(Proc.IsPure);
-            formalLayerRange = new LayerRange(Layers[0]);
-          }
+          Debug.Assert(Proc.IsPure);
+          formalLayerRange = new LayerRange(Layers[0], Layers.Count > 1 ? Layers[1] : Layers[0]);
           break;
         }
       }

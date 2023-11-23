@@ -27,7 +27,7 @@ preserves call YieldWait(tid);
   var oldValue, temp: int;
   call oldValue := CmpXchg(0, 1);
   if (oldValue != 0) {
-    call EnterSlowPath(tid);
+    call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := true]);
     while (true)
     invariant {:yields} true;
     invariant call YieldInv();
@@ -46,12 +46,12 @@ preserves call YieldWait(tid);
       par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
       call oldValue := CmpXchg(0, 2);
       if (oldValue == 0) {
-        call ExitSlowPath(tid);
+        call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := false]);
         break;
       }
     }
   }
-  call SetMutex(Some(tid->val));
+  call {:layer 1} mutex := Copy(Some(tid->val));
 }
 
 atomic action {:layer 2} AtomicUnlock(tid: Lval Tid)
@@ -68,15 +68,15 @@ preserves call YieldWait(tid);
   var oldValue: int;
   call oldValue := FetchSub(1);
   if (oldValue == 1) {
-    call SetMutex(None());
+    call {:layer 1} mutex := Copy(None());
   } else {
-    call EnterSlowPath(tid);
+    call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := true]);
     par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
     call Store(0);
-    call SetMutex(None());
+    call {:layer 1} mutex := Copy(None());
     par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
     call Wake();
-    call ExitSlowPath(tid);
+    call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := false]);
   }
 }
 
@@ -97,28 +97,6 @@ invariant !futex->waiters[tid->val];
 
 yield invariant {:layer 1} YieldSlowPath(tid: Lval Tid);
 invariant inSlowPath[tid->val];
-
-/// Linking action for mutex
-
-action {:layer 1, 1} SetMutex(x: Mutex)
-modifies mutex;
-{
-  mutex := x;
-}
-
-/// Linking actions for inSlowPath
-
-action {:layer 1, 1} EnterSlowPath(tid: Lval Tid)
-modifies inSlowPath;
-{
-  inSlowPath[tid->val] := true;
-}
-
-action {:layer 1, 1} ExitSlowPath(tid: Lval Tid)
-modifies inSlowPath;
-{
-  inSlowPath[tid->val] := false;
-}
 
 /// Primitive atomic actions
 

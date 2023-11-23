@@ -46,14 +46,7 @@ preserves call yield_ind_inv();
   call update_x(i);
   call Yield(i);
   call update_y(i);
-  call mark_done(i);
-}
-
-// Introduction action that gives meaning to the introduced variable done
-action {:layer 1} mark_done(i: int)
-modifies done;
-{
-  done := done[i:=true];
+  call {:layer 1} done := Copy(done[i:=true]);
 }
 
 // #############################################################################

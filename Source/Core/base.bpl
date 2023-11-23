@@ -246,7 +246,7 @@ function {:inline} Map_Swap<T,U>(a: Map T U, t1: T, t2: T): Map T U
     (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
 }
 
-/// linear maps
+/// linear heaps
 type Ref _;
 procedure Ref_Alloc<V>() returns (k: Lval (Ref V));
 
@@ -265,13 +265,13 @@ function {:inline} Lheap_Contains<V>(l: Lheap V, k: Ref V): bool {
 function {:inline} Lheap_Deref<V>(l: Lheap V, k: Ref V): V {
     l->val[k]
 }
-procedure Lheap_Empty<V>() returns (l: Lheap V);
-procedure Lheap_Split<V>(k: [Ref V]bool, path: Lheap V) returns (l: Lheap V);
-procedure Lheap_Transfer<V>({:linear_in} path1: Lheap V, path2: Lheap V);
-procedure Lheap_Read<V>(path: V) returns (v: V);
-procedure Lheap_Write<V>(path: V, v: V);
-procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (k: Lval (Ref V));
-procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
+pure procedure Lheap_Empty<V>() returns (l: Lheap V);
+pure procedure Lheap_Split<V>(k: [Ref V]bool, path: Lheap V) returns (l: Lheap V);
+pure procedure Lheap_Transfer<V>({:linear_in} path1: Lheap V, path2: Lheap V);
+pure procedure Lheap_Read<V>(path: V) returns (v: V);
+pure procedure Lheap_Write<V>(path: V, v: V);
+pure procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (k: Lval (Ref V));
+pure procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
 
 /// linear sets
 datatype Lset<V> { Lset(dom: [V]bool) }
@@ -282,9 +282,9 @@ function {:inline} Lset_Collector<V>(l: Lset V): [V]bool {
 function {:inline} Lset_Contains<V>(l: Lset V, k: V): bool {
     l->dom[k]
 }
-procedure Lset_Empty<V>() returns (l: Lset V);
-procedure Lset_Split<V>({:linear_out} k: Lset V, path: Lset V);
-procedure Lset_Transfer<V>({:linear_in} path1: Lset V, path2: Lset V);
+pure procedure Lset_Empty<V>() returns (l: Lset V);
+pure procedure Lset_Split<V>({:linear_out} k: Lset V, path: Lset V);
+pure procedure Lset_Transfer<V>({:linear_in} path1: Lset V, path2: Lset V);
 
 /// linear vals
 datatype Lval<V> { Lval(val: V) }
@@ -292,8 +292,8 @@ datatype Lval<V> { Lval(val: V) }
 function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
     MapConst(false)[l->val := true]
 }
-procedure Lval_Split<V>({:linear_out} k: Lval V, path: Lset V);
-procedure Lval_Transfer<V>({:linear_in} l: Lval V, path: Lset V);
+pure procedure Lval_Split<V>({:linear_out} k: Lval V, path: Lset V);
+pure procedure Lval_Transfer<V>({:linear_in} l: Lval V, path: Lset V);
 
 procedure create_async<T>(PA: T);
 procedure create_asyncs<T>(PAs: [T]bool);

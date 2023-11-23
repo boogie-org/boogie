@@ -193,10 +193,9 @@ function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
   (forall i:pid :: MultisetSubsetEq(MultisetEmpty, CH_low[i]) && MultisetSubsetEq(CH_low[i], CH))
 }
 
-action {:layer 1} intro (i:pid)
-modifies CH;
+pure procedure {:inline 1} add_to_multiset (CH:[val]int, x: val) returns (CH':[val]int)
 {
-  CH := CH[value[i] := CH[value[i]] + 1];
+  CH' := CH[x := CH[x] + 1];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,7 +255,7 @@ requires {:layer 1} pid(i);
     call send(v, j);
     j := j + 1;
   }
-  call intro(i);
+  call {:layer 1} CH := add_to_multiset(CH, value[i]);
 }
 
 yield procedure {:layer 1}

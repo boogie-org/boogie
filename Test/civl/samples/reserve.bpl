@@ -146,7 +146,7 @@ preserves call YieldInvariant#1();
 {
     call spaceFound := AllocIfPtrFree#0(tid, ptr);
     if (spaceFound) {
-        call IsFreeSetRemove(ptr);
+        call {:layer 1} isFreeSet := Copy(Set_Remove(isFreeSet, ptr));
         call Alloc(tid, ptr);
     }
 }
@@ -163,18 +163,6 @@ modifies isFree;
 yield procedure {:layer 0} AllocIfPtrFree#0({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool);
 refines AtomicAllocIfPtrFree#0;
 
-action {:layer 1,2} IsFreeSetAdd(ptr: int)
-modifies isFreeSet;
-{
-    isFreeSet := Set_Add(isFreeSet, ptr);
-}
-
-action {:layer 1,2} IsFreeSetRemove(ptr: int)
-modifies isFreeSet;
-{
-    isFreeSet := Set_Remove(isFreeSet, ptr);
-}
-
 atomic action {:layer 2} AtomicReclaim#1() returns (ptr: int)
 modifies freeSpace, isFreeSet;
 {
@@ -187,7 +175,7 @@ refines AtomicReclaim#1;
 preserves call YieldInvariant#1();
 {
     call ptr := Reclaim#0();
-    call IsFreeSetAdd(ptr);
+    call {:layer 1} isFreeSet := Copy(Set_Add(isFreeSet, ptr));
 }
 
 atomic action {:layer 1} AtomicReclaim#0() returns (ptr: int)

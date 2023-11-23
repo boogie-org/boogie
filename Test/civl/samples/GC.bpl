@@ -614,7 +614,7 @@ requires {:layer 98} mutatorTidWhole(tid);
     call valx := ReadRoot(tid, x);
     call valy := ReadRoot(tid, y);
     call WriteFieldGeneral(tid, valx, f, valy);
-    call SetMemAbs1(x, f, y);
+    call {:layer 99} memAbs := Copy((var a, b := rootAbs[x], rootAbs[y]; memAbs[a := memAbs[a][f := b]]));
 }
 
 atomic action {:layer 100} AtomicReadFieldRaw({:linear "tid"} tid:Tid, x: idx, f: fld, y: idx)
@@ -634,7 +634,7 @@ refines AtomicReadFieldRaw;
     call valx := ReadRoot(tid, x);
     call valy := ReadFieldGeneral(tid, valx, f);
     call WriteRoot(tid, y, valy);
-    call SetRootAbs1(x, f, y);
+    call {:layer 99} rootAbs := Copy((var a := rootAbs[x]; rootAbs[y := memAbs[a][f]]));
 }
 
 atomic action {:layer 100} AtomicEqRaw({:linear "tid"} tid:Tid, x: idx, y:idx) returns (isEqual:bool)
@@ -673,8 +673,8 @@ refines AtomicAllocRaw;
     call absPtr := PrimitiveFindFreePtrAbs();
     call ptr := FindFreePtr(tid, absPtr);
     call WriteRoot(tid, y, ptr);
-    call SetMemAbs2(absPtr);
-    call SetRootAbs2(y, absPtr);
+    call {:layer 99} memAbs := Copy(memAbs[absPtr := (lambda z: int :: if (fieldAddr(z)) then absPtr else memAbs[absPtr][z])]);
+    call {:layer 99} rootAbs := Copy(rootAbs[y := absPtr]);
 }
 
 atomic action {:layer 100} AtomicWriteBarrier({:linear "tid"} tid:Tid, y:idx)
@@ -1430,7 +1430,7 @@ modifies toAbs;
 yield procedure {:layer 95} LockedClearToAbsWhite({:linear "tid"} tid:Tid)
 refines AtomicLockedClearToAbsWhite;
 {
-    call SetToAbs1();
+    call {:layer 95} toAbs := Copy((lambda x: int :: if memAddr(x) && White(Color[x]) then nil else toAbs[x]));
 }
 
 both action {:layer 96,99} AtomicInitField({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool, x: int, f: int)
@@ -1854,7 +1854,7 @@ yield procedure {:layer 95} SetColor3({:linear "tid"} tid:Tid, i: int, val: int,
 refines AtomicSetColor3;
 {
     call PrimitiveSetColor(i, val);
-    call SetToAbs2(i, o);
+    call {:layer 95} toAbs := Copy(toAbs[i := o]);
 }
 
 both action {:layer 96,99} AtomicInitToAbs({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
@@ -1867,7 +1867,7 @@ modifies toAbs;
 yield procedure {:layer 95} InitToAbs({:linear "tid"} tid:Tid, {:linear "tid"} mutatorTids:[int]bool)
 refines AtomicInitToAbs;
 {
-    call SetToAbs3();
+    call {:layer 95} toAbs := Copy((lambda i:int :: if memAddr(i) then nil else Int(i)));
 }
 
 right action {:layer 96} AtomicLockAcquire({:linear "tid"} tid: Tid)
@@ -2072,45 +2072,3 @@ modifies lock;
 { lock := 0; }
 yield procedure {:layer 0} PrimitiveLockZero();
 refines AtomicPrimitiveLockZero;
-
-action {:layer 99} SetMemAbs1(x: idx, f: fld, y: idx)
-modifies memAbs;
-{
-    memAbs[rootAbs[x]][f] := rootAbs[y];
-}
-
-action {:layer 99} SetRootAbs1(x: idx, f: fld, y: idx)
-modifies rootAbs;
-{
-    rootAbs[y] := memAbs[rootAbs[x]][f];
-}
-
-action {:layer 99} SetMemAbs2(absPtr: obj)
-modifies memAbs;
-{
-    memAbs[absPtr] := (lambda z: int :: if (fieldAddr(z)) then absPtr else memAbs[absPtr][z]);
-}
-
-action {:layer 99} SetRootAbs2(y: idx, absPtr: obj)
-modifies rootAbs;
-{
-    rootAbs[y] := absPtr;
-}
-
-action {:layer 95} SetToAbs1()
-modifies toAbs;
-{
-    toAbs := (lambda x: int :: if memAddr(x) && White(Color[x]) then nil else toAbs[x]);
-}
-
-action {:layer 95} SetToAbs2(i: int, o: obj)
-modifies toAbs;
-{
-    toAbs[i] := o;
-}
-
-action {:layer 95} SetToAbs3()
-modifies toAbs;
-{
-    toAbs := (lambda i:int :: if memAddr(i) then nil else Int(i));
-}
