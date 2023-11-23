@@ -1830,6 +1830,13 @@ namespace Microsoft.Boogie
     public Type LookupType(Type type)
     {
       type = TypeProxy.FollowProxy(type.Expanded);
+      if (type is MapType mapType && mapType.FreeVariables.Count == 0)
+      {
+        var instantiatedTypeArguments = mapType.Arguments.Select(x => LookupType(x)).ToList();
+        var instantiatedTypeResult = LookupType(mapType.Result);
+        return new MapType(Token.NoToken, new List<TypeVariable>(mapType.TypeParameters), instantiatedTypeArguments,
+          instantiatedTypeResult);
+      }
       if (type is CtorType ctorType && ctorType.FreeVariables.Count == 0 &&
           MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(ctorType.Decl))
       {
