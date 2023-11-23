@@ -138,7 +138,7 @@ namespace Microsoft.Boogie
         visitedTypes.Add(type);
         if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
         {
-          var originalDecl = program.monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
+          var originalDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
           var originalDeclName = originalDecl.Name;
           if (originalDeclName == "Lheap" || originalDeclName == "Lset" || originalDeclName == "Lval")
           {
@@ -174,7 +174,7 @@ namespace Microsoft.Boogie
     private Type GetPermissionType(Type type)
     {
       var typeCtorDecl = type.AsCtor.Decl;
-      var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(typeCtorDecl);
+      var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(typeCtorDecl);
       var actualTypeParams = program.monomorphizer.GetTypeInstantiation(typeCtorDecl);
       return 
         originalTypeCtorDecl.Name == "Lheap"
@@ -189,7 +189,7 @@ namespace Microsoft.Boogie
       foreach (var type in permissionTypes)
       {
         var typeCtorDecl = type.AsCtor.Decl;
-        var originalTypeCtorDecl = program.monomorphizer.GetOriginalDecl(typeCtorDecl);
+        var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(typeCtorDecl);
         var actualTypeParams = program.monomorphizer.GetTypeInstantiation(typeCtorDecl);
         var permissionType = GetPermissionType(type); 
         if (!permissionTypeToCollectors.ContainsKey(permissionType))

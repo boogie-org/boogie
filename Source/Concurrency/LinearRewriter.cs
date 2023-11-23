@@ -286,7 +286,7 @@ public class LinearRewriter
         if (mapExpr is NAryExpr lheapValExpr &&
             lheapValExpr.Fun is FieldAccess &&
             lheapValExpr.Args[0].Type is CtorType ctorType &&
-            monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
+            Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
         {
           var cmdSeq = CreateAccessAsserts(lheapValExpr.Args[0], tok, msg);
           var lheapContainsFunc = LheapContains(nAryExpr.Type);

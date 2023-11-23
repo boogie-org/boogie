@@ -3492,7 +3492,15 @@ namespace Microsoft.Boogie
             {
               // Check global outputs only; the checking of local outputs is done later
               var calleeLayer = Layers[0];
-              var globalOutputs = Outs.Select(ie => ie.Decl).OfType<GlobalVariable>();
+              var globalOutputs = Outs.Select(ie => ie.Decl).OfType<GlobalVariable>().Cast<Variable>();
+              if (CivlPrimitives.Linear.Contains(Proc.Name))
+              {
+                var modifiedArgument = CivlPrimitives.ModifiedArgument(this);
+                if (modifiedArgument is { Decl: GlobalVariable })
+                {
+                  globalOutputs = globalOutputs.Append(modifiedArgument.Decl);
+                }
+              }
               globalOutputs.Where(v => v.LayerRange.LowerLayer != calleeLayer).ForEach(v =>
               {
                 tc.Error(this, $"variable must be introduced at layer {calleeLayer}: {v.Name}");
@@ -3609,7 +3617,6 @@ namespace Microsoft.Boogie
         {
           return;
         }
-        // FIXME: primitive calls have inout parameters that must be checked here
         for (int i = 0; i < Proc.OutParams.Count; i++)
         {
           var formal = Proc.OutParams[i];
@@ -3627,6 +3634,28 @@ namespace Microsoft.Boogie
             if (!actual.Decl.LayerRange.Subset(formalLayerRange))
             {
               tc.Error(this, $"variable must be available only within layers in {formalLayerRange}: {actual.Decl.Name}");
+            }
+          }
+        }
+        // primitive calls have inout parameters that must be checked here
+        if (CivlPrimitives.Linear.Contains(Proc.Name))
+        {
+          var modifiedArgument = CivlPrimitives.ModifiedArgument(this);
+          if (modifiedArgument == null)
+          {
+            // nothing to do
+          }
+          else if (modifiedArgument is { Decl: GlobalVariable })
+          {
+            // already done in TypecheckCallCmdInYieldProcedureDecl
+          }
+          else
+          {
+            var modifiedDecl = modifiedArgument.Decl;
+            var callLayerRange = new LayerRange(Layers[0], Layers.Count > 1 ? Layers[1] : Layers[0]);
+            if (!modifiedDecl.LayerRange.Subset(callLayerRange))
+            {
+              tc.Error(this, $"variable must be available only within layers in {callLayerRange}: {modifiedDecl.Name}");
             }
           }
         }
