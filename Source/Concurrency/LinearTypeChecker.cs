@@ -430,9 +430,9 @@ namespace Microsoft.Boogie
         case "Lheap_Empty":
           return null;
         case "Lheap_Split":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lheap_Transfer":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lheap_Read":
           return null;
         case "Lheap_Write":
@@ -444,13 +444,13 @@ namespace Microsoft.Boogie
         case "Lset_Empty":
           return null;
         case "Lset_Split":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lset_Transfer":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lval_Split":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lval_Transfer":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         default:
           throw new cce.UnreachableException();
       }

@@ -266,8 +266,8 @@ function {:inline} Lheap_Deref<V>(l: Lheap V, k: Ref V): V {
     l->val[k]
 }
 pure procedure Lheap_Empty<V>() returns (l: Lheap V);
-pure procedure Lheap_Split<V>(k: [Ref V]bool, path: Lheap V) returns (l: Lheap V);
-pure procedure Lheap_Transfer<V>({:linear_in} path1: Lheap V, path2: Lheap V);
+pure procedure Lheap_Split<V>(path: Lheap V, k: [Ref V]bool) returns (l: Lheap V);
+pure procedure Lheap_Transfer<V>(path: Lheap V, {:linear_in} path1: Lheap V);
 pure procedure Lheap_Read<V>(path: V) returns (v: V);
 pure procedure Lheap_Write<V>(path: V, v: V);
 pure procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (k: Lval (Ref V));
@@ -283,8 +283,8 @@ function {:inline} Lset_Contains<V>(l: Lset V, k: V): bool {
     l->dom[k]
 }
 pure procedure Lset_Empty<V>() returns (l: Lset V);
-pure procedure Lset_Split<V>({:linear_out} k: Lset V, path: Lset V);
-pure procedure Lset_Transfer<V>({:linear_in} path1: Lset V, path2: Lset V);
+pure procedure Lset_Split<V>(path: Lset V, {:linear_out} k: Lset V);
+pure procedure Lset_Transfer<V>(path: Lset V, {:linear_in} path1: Lset V);
 
 /// linear vals
 datatype Lval<V> { Lval(val: V) }
@@ -292,8 +292,8 @@ datatype Lval<V> { Lval(val: V) }
 function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
     MapConst(false)[l->val := true]
 }
-pure procedure Lval_Split<V>({:linear_out} k: Lval V, path: Lset V);
-pure procedure Lval_Transfer<V>({:linear_in} l: Lval V, path: Lset V);
+pure procedure Lval_Split<V>(path: Lset V, {:linear_out} k: Lval V);
+pure procedure Lval_Transfer<V>(path: Lset V, {:linear_in} k: Lval V);
 
 procedure create_async<T>(PA: T);
 procedure create_asyncs<T>(PAs: [T]bool);
