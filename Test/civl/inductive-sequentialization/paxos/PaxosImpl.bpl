@@ -77,9 +77,9 @@ requires call YieldInit(rs);
   var {:layer 1}{:linear "perm"} rs': [Round]bool;
   var {:layer 1}{:pending_async} PAs:[A_StartRound]int;
 
-  call InitJoinedNodes();
-  call InitVoteInfo();
-  call InitDecision();
+  call {:layer 1} joinedNodes := Copy((lambda r: Round:: NoNodes()));
+  call {:layer 1} voteInfo := Copy((lambda r: Round:: None()));
+  call {:layer 1} decision := Copy((lambda r: Round :: None()));
   r := 0;
   rs' := rs;
   while (*)
@@ -136,7 +136,7 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   var {:layer 1}{:linear "perm"} receivedPermissions: [Permission]bool;
   var {:layer 1}{:linear "perm"} receivedPermission: Permission;
 
-  call {:layer 1} ns := InitializeQuorum();
+  call {:layer 1} ns := Copy(NoNodes());
   call receivedPermissions := InitializePermissions();
   count := 0;
   maxRound := 0;
@@ -196,7 +196,7 @@ requires call YieldInvChannels();
     n := n + 1;
   }
   async call Conclude(r, maxValue, cp);
-  call SetVoteInfoInPropose(r, maxValue);
+  call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(maxValue, NoNodes()))]);
 }
 
 yield procedure {:layer 1}
@@ -212,7 +212,7 @@ requires call YieldInvChannels();
   var {:linear "perm"} {:layer 1} receivedPermissions: [Permission]bool;
   var {:linear "perm"} {:layer 1} receivedPermission: Permission;
 
-  call {:layer 1} q := InitializeQuorum();
+  call {:layer 1} q := Copy(NoNodes());
   call receivedPermissions := InitializePermissions();
   count := 0;
   while (true)
@@ -229,7 +229,7 @@ requires call YieldInvChannels();
     call receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
     count := count + 1;
     if (2 * count > numNodes) {
-      call SetDecision(r, v);
+      call {:layer 1} decision := Copy(decision[r := Some(v)]);
       assume {:add_to_pool "NodeSet", q} true;
       break;
     }
@@ -250,7 +250,7 @@ requires call YieldInv();
   if (doJoin) {
     call SendJoinResponse(r, n, lastVoteRound, lastVoteValue);
     call SendJoinResponseIntro(r, n, lastVoteRound, lastVoteValue, p);
-    call SetJoinedNodes(r, n);
+    call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
   }
 }
 
@@ -266,54 +266,12 @@ requires call YieldInv();
   if (doVote) {
     call SendVoteResponse(r, n);
     call SendVoteResponseIntro(r, n, p);
-    call SetJoinedNodes(r, n);
-    call SetVoteInfoInVote(r, n);
+    call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
+    call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]))]);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-action {:layer 1} InitJoinedNodes()
-modifies joinedNodes;
-{
-  joinedNodes := (lambda r: Round:: NoNodes());
-}
-
-action {:layer 1} SetJoinedNodes(r: Round, n: Node)
-modifies joinedNodes;
-{
-  joinedNodes[r][n] := true;
-}
-
-action {:layer 1} InitVoteInfo()
-modifies voteInfo;
-{
-  voteInfo := (lambda r: Round:: None());
-}
-
-action {:layer 1} SetVoteInfoInPropose(r: Round, v: Value)
-modifies voteInfo;
-{
-  voteInfo[r] := Some(VoteInfo(v, NoNodes()));
-}
-
-action {:layer 1} SetVoteInfoInVote(r: Round, n: Node)
-modifies voteInfo;
-{
-  voteInfo[r] := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]));
-}
-
-action {:layer 1} InitDecision()
-modifies decision;
-{
-  decision := (lambda r: Round :: None());
-}
-
-action {:layer 1} SetDecision(round: Round, value: Value)
-modifies decision;
-{
-  decision[round] := Some(value);
-}
 
 // Trusted lemmas for the proof of Propose and Conclude
 pure procedure AddToQuorum(q: NodeSet, n: Node) returns (q': NodeSet);
@@ -411,11 +369,6 @@ refines A_SendVoteResponse;
 yield procedure {:layer 0}
 ReceiveVoteResponse(round: Round) returns (voteResponse: VoteResponse);
 refines A_ReceiveVoteResponse;
-
-//// Introduction procedure for quorum
-action {:layer 1} InitializeQuorum() returns (q: NodeSet) {
-  q := NoNodes();
-}
 
 //// Introduction procedures to make send/receive more abstract
 
