@@ -1584,8 +1584,8 @@ namespace Microsoft.Boogie
           if (!tc.Yields && !tc.InFrame(v))
           {
             tc.Error(this,
-              "command assigns to a global variable that is not in the enclosing procedure's modifies clause: {0}",
-              v.Name);
+              "command assigns to a global variable that is not in the enclosing {0} modifies clause: {1}",
+              tc.Proc is ActionDecl ? "action's" : "procedure's", v.Name);
           }
         }
       }
@@ -3281,14 +3281,14 @@ namespace Microsoft.Boogie
       }
       if (rc.Proc is YieldProcedureDecl)
       {
-        if (CivlPrimitives.Linear.Contains(Proc.Name) || Proc.IsPure || Proc is YieldProcedureDecl or YieldInvariantDecl or ActionDecl)
+        if (Proc.IsPure || Proc is YieldProcedureDecl or YieldInvariantDecl)
         {
           // call ok
         }
         else
         {
           rc.Error(this,
-            "a yielding procedure may only call primitive procedures, pure procedures, yield procedures, yield invariants, or link actions");
+            "a yielding procedure may only call pure actions, pure procedures, yield procedures, and yield invariants");
         }
       }
       if (IsAsync)
@@ -3437,37 +3437,6 @@ namespace Microsoft.Boogie
           tc.Error(this, "layer of callee must not be more than layer of caller");
         }
       }
-      else if (Proc is ActionDecl actionDecl)
-      {
-        // link call
-        var calleeLayer = actionDecl.LayerRange.LowerLayer;
-        // allowed to execute only on calleeLayer
-        actionDecl.Modifies.ForEach(ie =>
-        {
-          if (ie.Decl.LayerRange.LowerLayer != calleeLayer)
-          {
-            tc.Error(this, $"modified variable of callee must be introduced at layer {calleeLayer}: {ie.Decl.Name}");
-          }
-        });
-        if (calleeLayer > callerDecl.Layer)
-        {
-          tc.Error(this, "layer of callee must not be more than layer of caller");
-        }
-        else if (calleeLayer < callerDecl.Layer)
-        {
-          actionDecl.Modifies.ForEach(ie =>
-          {
-            if (ie.Decl.LayerRange.UpperLayer != calleeLayer)
-            {
-              tc.Error(this, $"modified variable of callee must be hidden at layer {calleeLayer}: {ie.Decl.Name}");
-            }
-          });
-        }
-        else
-        {
-          CheckModifies(actionDecl.ModifiedVars);
-        }
-      }
       else
       {
         Debug.Assert(Proc.IsPure);
@@ -3559,12 +3528,8 @@ namespace Microsoft.Boogie
         }
         if (!callerActionDecl.LayerRange.Subset(calleeActionDecl.LayerRange))
         {
-          tc.Error(this, "caller layer range must be subset of callee layer range");
-        }
-        else if (callerActionDecl.LayerRange.LowerLayer == calleeActionDecl.LayerRange.LowerLayer &&
-                 callerActionDecl.HasMoverType && !calleeActionDecl.HasMoverType)
-        {
-          tc.Error(this, "lower layer of caller must be greater than lower layer of callee");
+          tc.Error(this,
+            $"caller layer range ({callerActionDecl.LayerRange}) must be subset of callee layer range ({calleeActionDecl.LayerRange})");
         }
       }
       else
@@ -3728,6 +3693,9 @@ namespace Microsoft.Boogie
       TypecheckCallCmdInActionDecl(tc);
     }
 
+    public LayerRange LayerRange => Layers.Count == 0 ? LayerRange.MinMax :
+      Layers.Count == 1 ? new LayerRange(Layers[0]) : new LayerRange(Layers[0], Layers[1]);
+
     private LayerRange FormalLayerRange(YieldProcedureDecl callerDecl, Variable calleeFormal)
     {
       LayerRange formalLayerRange;
@@ -3735,9 +3703,6 @@ namespace Microsoft.Boogie
       {
         case YieldInvariantDecl yieldInvariantDecl:
           formalLayerRange = new LayerRange(yieldInvariantDecl.Layer);
-          break;
-        case ActionDecl actionDecl:
-          formalLayerRange = new LayerRange(actionDecl.LayerRange.LowerLayer);
           break;
         case YieldProcedureDecl yieldProcedureDecl:
         {
@@ -3751,7 +3716,7 @@ namespace Microsoft.Boogie
         default:
         {
           Debug.Assert(Proc.IsPure);
-          formalLayerRange = new LayerRange(Layers[0], Layers.Count > 1 ? Layers[1] : Layers[0]);
+          formalLayerRange = LayerRange;
           break;
         }
       }

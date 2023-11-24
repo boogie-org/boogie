@@ -543,7 +543,8 @@ namespace Microsoft.Boogie
     public override Cmd VisitCallCmd(CallCmd node)
     {
       var isPrimitive = IsPrimitive(node.Proc);
-      HashSet<Variable> inVars = new HashSet<Variable>();
+      var inVars = new HashSet<Variable>();
+      var globalInVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
       {
         var formal = node.Proc.InParams[i];
@@ -577,7 +578,7 @@ namespace Microsoft.Boogie
           Error(node, $"The domains of parameter {formal} and argument {actual} must be the same");
           continue;
         }
-        if (actual.Decl is GlobalVariable && !IsPrimitive(node.Proc))
+        if (actual.Decl is GlobalVariable && !node.Proc.IsPure)
         {
           Error(node, $"Only local linear variable can be an argument to a procedure call: {actual}");
           continue;
@@ -588,6 +589,10 @@ namespace Microsoft.Boogie
           continue;
         }
         inVars.Add(actual.Decl);
+        if (actual.Decl is GlobalVariable && actualKind == LinearKind.LINEAR_IN)
+        {
+          globalInVars.Add(actual.Decl);
+        }
       }
 
       for (int i = 0; i < node.Proc.OutParams.Count; i++)
@@ -611,6 +616,12 @@ namespace Microsoft.Boogie
         }
       }
 
+      var globalOutVars = node.Outs.Select(ie => ie.Decl).ToHashSet();
+      globalInVars.Where(v => !globalOutVars.Contains(v)).ForEach(v =>
+      {
+        Error(node, $"Global variable passed as input to pure call but not received as output: {v}");
+      });
+
       if (isPrimitive)
       {
         var modifiedArgument = CivlPrimitives.ModifiedArgument(node)?.Decl;
@@ -624,8 +635,9 @@ namespace Microsoft.Boogie
                    enclosingProc is not YieldProcedureDecl &&
                    enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
           {
+            var str = enclosingProc is ActionDecl ? "action's" : "procedure's";
             Error(node,
-              $"Primitive assigns to a global variable that is not in the enclosing procedure's modifies clause: {modifiedArgument}");
+              $"Primitive assigns to a global variable that is not in the enclosing {str} modifies clause: {modifiedArgument}");
           }
         }
       }
