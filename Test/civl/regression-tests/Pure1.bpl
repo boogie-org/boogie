@@ -9,3 +9,12 @@ modifies x;
     var c: int;
     c := x;
 }
+
+async atomic action A()
+{
+}
+
+pure action F()
+creates A;
+{
+}

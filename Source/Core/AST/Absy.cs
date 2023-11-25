@@ -2956,7 +2956,11 @@ namespace Microsoft.Boogie
       rc.Proc = null;
       if (Creates.Any())
       {
-        if (MoverType == MoverType.Right || MoverType == MoverType.Both)
+        if (IsPure)
+        {
+          rc.Error(this, "unnecessary creates clause for pure action");
+        }
+        else if (MoverType == MoverType.Right || MoverType == MoverType.Both)
         {
           rc.Error(this, "right mover may not create pending asyncs");
         }

@@ -417,7 +417,14 @@ namespace Microsoft.Boogie
             }
           }
 
-          return A;
+          var calleeYieldRequires = callee.YieldRequires.Select(x => ((YieldInvariantDecl)x.Proc).Layer == currLayerNum);
+          var calleeYieldPreserves = callee.YieldPreserves.Select(x => ((YieldInvariantDecl)x.Proc).Layer == currLayerNum);
+          if (calleeYieldRequires.Any() || calleeYieldPreserves.Any())
+          {
+            return A;
+          }
+
+          return P;
         }
         else
         {
