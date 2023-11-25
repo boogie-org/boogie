@@ -61,11 +61,6 @@ refines atomic_main;
     call master3(id);
 }
 
-action {:layer 3} StatusSnapshot() returns (snapshot: [int]int)
-{
-  snapshot := status;
-}
-
 yield procedure {:layer 2} Alloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool);
 refines AtomicAlloc;
 both action {:layer 3} AtomicAlloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool)
@@ -80,7 +75,7 @@ refines atomic_server;
     var {:linear "tid"} tid: int;
 
     i := 0;
-    call snapshot := StatusSnapshot();
+    call {:layer 3} snapshot := Copy(status);
     tids' := tids;
     while (i < n)
     invariant {:layer 3} 0 <= i && i <= n;

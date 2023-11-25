@@ -20,21 +20,15 @@ type Key;
 
 // ---------- Primitives for manipulating logical/abstract state
 
-action {:layer 1} intro_readLin() returns (s: SetInvoc)
+pure procedure {:inline 1} intro_write_vis(vis: [Invoc]SetInvoc, n: Invoc, s: SetInvoc)
+  returns (vis': [Invoc]SetInvoc)
 {
-  s := Set_ofSeq(lin);
+  vis' := vis[n := s];
 }
 
-action {:layer 1} intro_write_vis(n: Invoc, s: SetInvoc)
-  modifies vis;
+pure procedure {:inline 1} intro_writeLin(lin: SeqInvoc, n: Invoc) returns (lin': SeqInvoc)
 {
-  vis[n] := s;
-}
-
-action {:layer 1} intro_writeLin(n: Invoc)
-  modifies lin;
-{
-  lin := Seq_append(lin, n);
+  lin' := Seq_append(lin, n);
 }
 
 // ---------- Specification program:
@@ -57,8 +51,8 @@ refines pop_atomic;
 {
   var {:layer 1} my_vis: SetInvoc;
 
-  call intro_writeLin(this);
-  call my_vis := intro_readLin();
-  call intro_write_vis(this, my_vis);
+  call {:layer 1} lin := intro_writeLin(lin, this);
+  call {:layer 1} my_vis := Copy(Set_ofSeq(lin));
+  call {:layer 1} vis := intro_write_vis(vis, this, my_vis);
   assert {:layer 1} my_vis == Set_ofSeq(lin);  // Despite this assertion passing
 }

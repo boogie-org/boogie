@@ -41,7 +41,7 @@ preserves call LockInv();
 
     call t := CAS(false, true);
     if (t) {
-        call set_l(Some(tid));
+        call {:layer 1} l := Copy(Some(tid));
     } else {
         call {:mark} Acquire(tid);
     }
@@ -60,7 +60,7 @@ preserves call LockInv();
     var t: bool;
 
     call t := CAS(true, false);
-    call set_l(None());
+    call {:layer 1} l := Copy(None());
 }
 
 both action {:layer 2,2} ReadSpec({:linear "tid"} tid: Tid) returns (v: int)
@@ -111,9 +111,3 @@ modifies count;
 }
 yield procedure {:layer 0} WRITE(v: int);
 refines atomic_WRITE;
-
-action {:layer 1} set_l(v: Option Tid)
-modifies l;
-{
-    l := v;
-}

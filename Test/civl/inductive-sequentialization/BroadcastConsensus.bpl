@@ -193,18 +193,12 @@ function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
   (forall i:pid :: MultisetSubsetEq(MultisetEmpty, CH_low[i]) && MultisetSubsetEq(CH_low[i], CH))
 }
 
-action {:layer 1} intro (i:pid)
-modifies CH;
+pure procedure {:inline 1} add_to_multiset (CH:[val]int, x: val) returns (CH':[val]int)
 {
-  CH := CH[value[i] := CH[value[i]] + 1];
+  CH' := CH[x := CH[x] + 1];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-action {:layer 1} Snapshot() returns (snapshot:[pid][val]int)
-{
-  snapshot := CH_low;
-}
 
 yield invariant {:layer 1}
 YieldInit({:linear "broadcast"} pidsBroadcast:[pid]bool, {:linear "collect"} pidsCollect:[pid]bool);
@@ -251,7 +245,7 @@ requires {:layer 1} pid(i);
   var v: val;
   var {:layer 1} old_CH_low: [pid][val]int;
 
-  call old_CH_low := Snapshot();
+  call {:layer 1} old_CH_low := Copy(CH_low);
   call v := get_value(i);
   j := 1;
   while (j <= n)
@@ -261,7 +255,7 @@ requires {:layer 1} pid(i);
     call send(v, j);
     j := j + 1;
   }
-  call intro(i);
+  call {:layer 1} CH := add_to_multiset(CH, value[i]);
 }
 
 yield procedure {:layer 1}
@@ -276,7 +270,7 @@ requires {:layer 1} pid(i);
   var {:layer 1} received_values: [val]int;
   var {:layer 1} old_CH_low: [pid][val]int;
 
-  call old_CH_low := Snapshot();
+  call {:layer 1} old_CH_low := Copy(CH_low);
   call d := receive(i);
   received_values := MultisetSingleton(d);
   j := 2;

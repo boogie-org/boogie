@@ -186,8 +186,8 @@ namespace Microsoft.Boogie
       var existsVars = foroldMap.Values
         .Concat(alwaysMap.Keys.Where(key => key is GlobalVariable).Select(key => alwaysMap[key]))
         .OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
-      inputOutputRelation.Body =
-        ExprHelper.ExistsExpr(existsVars, Expr.And(gateExprs.Append(transitionRelationExpr)));
+      var expr = Expr.And(gateExprs.Append(transitionRelationExpr));
+      inputOutputRelation.Body = existsVars.Any() ? ExprHelper.ExistsExpr(existsVars, expr) : expr;
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputOutputRelation.Body);
       return inputOutputRelation;
     }

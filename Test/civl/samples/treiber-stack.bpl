@@ -31,7 +31,7 @@ yield procedure {:layer 4} Alloc() returns (ref_t: Lval (RefTreiber X))
 refines AtomicAlloc;
 {
   call ref_t := Alloc#0();
-  call AddStack(ref_t->val);
+  call {:layer 4} Stack := Copy(Stack[ref_t->val := Vec_Empty()]);
   call {:layer 4} AbsDefinition(ts->val[ref_t->val]->top, ts->val[ref_t->val]->stack->val);
 }
 
@@ -49,7 +49,7 @@ preserves call YieldInv#4(ref_t);
 {
   call success := PushIntermediate(ref_t, x);
   if (success) {
-    call PushStack(ref_t, x);
+    call {:layer 4} Stack := Copy(Stack[ref_t := Vec_Append(Stack[ref_t], x)]);
   }
   call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack->val);
 }
@@ -74,7 +74,8 @@ preserves call YieldInv#4(ref_t);
   call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack->val);
   call success, x := PopIntermediate(ref_t);
   if (success) {
-    call PopStack(ref_t);
+    assert {:layer 4} Vec_Len(Stack[ref_t]) > 0;
+    call {:layer 4} Stack := Copy(Stack[ref_t := Vec_Remove(Stack[ref_t])]);
   }
 }
 
@@ -133,7 +134,9 @@ preserves call YieldInv#2(ref_t);
   call new_ref_n := AllocInStack(ref_t, Node(ref_n, x));
   call success := WriteTopOfStack(ref_t, ref_n, new_ref_n->val);
   assume {:add_to_pool "A", Lval(ref_n), new_ref_n} true;
-  call AddToUnusedNodes(success, ref_t, new_ref_n->val);
+  if (!success) {
+    call {:layer 2} unused := Copy((var a := unused[ref_t]; unused[ref_t := a[new_ref_n->val := true]]));
+  }
 }
 
 right action {:layer 3} AtomicReadTopOfStack#Pop(ref_t: RefTreiber X) returns (ref_n: RefNode X)
@@ -225,33 +228,6 @@ modifies ts;
 }
 yield procedure {:layer 0} Alloc#0() returns (ref_t: Lval (RefTreiber X));
 refines AtomicAlloc#0;
-
-action {:layer 4} AddStack(ref_t: RefTreiber X)
-modifies Stack;
-{
-  Stack[ref_t] := Vec_Empty();
-}
-
-action {:layer 4} PushStack(ref_t: RefTreiber X, x: X)
-modifies Stack;
-{
-  Stack[ref_t] := Vec_Append(Stack[ref_t], x);
-}
-
-action {:layer 4} PopStack(ref_t: RefTreiber X)
-modifies Stack;
-{
-  assert Vec_Len(Stack[ref_t]) > 0;
-  Stack[ref_t] := Vec_Remove(Stack[ref_t]);
-}
-
-action {:layer 2} AddToUnusedNodes(success: bool, ref_t: RefTreiber X, ref_n: RefNode X)
-modifies unused;
-{
-  if (!success) {
-    unused[ref_t][ref_n] := true;
-  }
-}
 
 function {:inline} Domain(ts: Lheap (Treiber X), ref_t: RefTreiber X, unused: [RefTreiber X][RefNode X]bool): [RefNode X]bool {
   Difference(ts->val[ref_t]->stack->dom, unused[ref_t])

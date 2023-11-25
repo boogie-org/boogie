@@ -79,30 +79,29 @@ preserves call YieldInvariant#1();
     }
 }
 
-action {:layer 1,2} Alloc(tid: Tid, ptr: int)
-modifies allocMap;
+pure action Alloc(tid: Tid, ptr: int, allocMap: Bijection) returns (allocMap': Bijection)
 {
     var tid': Tid;
     var ptr': int;
     assert Map_Contains(allocMap->tidToPtr, tid);
-    if (Map_Contains(allocMap->ptrToTid, ptr)) {
+    allocMap' := allocMap;
+    if (Map_Contains(allocMap'->ptrToTid, ptr)) {
         // swap
-        tid' := Map_At(allocMap->ptrToTid, ptr);
-        ptr' := Map_At(allocMap->tidToPtr, tid);
-        allocMap := Bijection(Map_Swap(allocMap->tidToPtr, tid, tid'), Map_Swap(allocMap->ptrToTid, ptr, ptr'));
+        tid' := Map_At(allocMap'->ptrToTid, ptr);
+        ptr' := Map_At(allocMap'->tidToPtr, tid);
+        allocMap' := Bijection(Map_Swap(allocMap'->tidToPtr, tid, tid'), Map_Swap(allocMap'->ptrToTid, ptr, ptr'));
     }
     // alloc
-    ptr' := Map_At(allocMap->tidToPtr, tid);
-    allocMap := Bijection(Map_Remove(allocMap->tidToPtr, tid), Map_Remove(allocMap->ptrToTid, ptr'));
+    ptr' := Map_At(allocMap'->tidToPtr, tid);
+    allocMap' := Bijection(Map_Remove(allocMap'->tidToPtr, tid), Map_Remove(allocMap'->ptrToTid, ptr'));
 }
 
-action {:layer 1,2} PreAlloc({:linear "tid"} tid: Tid, set: Set int)
-modifies allocMap;
+pure action PreAlloc({:linear "tid"} tid: Tid, set: Set int, allocMap: Bijection) returns (allocMap': Bijection)
 {
     var ptr: int;
     assert set != Set_Empty();
     ptr := Set_Choose(set);
-    allocMap := Bijection(Map_Update(allocMap->tidToPtr, tid, ptr), Map_Update(allocMap->ptrToTid, ptr, tid));
+    allocMap' := Bijection(Map_Update(allocMap->tidToPtr, tid, ptr), Map_Update(allocMap->ptrToTid, ptr, tid));
 }
 
 atomic action {:layer 2} AtomicDecrementFreeSpace#1({:linear "tid"} tid: Tid)
@@ -110,14 +109,14 @@ modifies freeSpace, allocMap;
 {
     assert !Map_Contains(allocMap->tidToPtr, tid);
     call AtomicDecrementFreeSpace#0(tid);
-    call PreAlloc(tid, Set_Difference(isFreeSet, allocMap->ptrToTid->dom));
+    call allocMap := PreAlloc(tid, Set_Difference(isFreeSet, allocMap->ptrToTid->dom), allocMap);
 }
 yield procedure {:layer 1} DecrementFreeSpace#1({:linear "tid"} tid: Tid)
 refines AtomicDecrementFreeSpace#1;
 preserves call YieldInvariant#1();
 {
     call DecrementFreeSpace#0(tid);
-    call PreAlloc(tid, Set_Difference(isFreeSet, allocMap->ptrToTid->dom));
+    call {:layer 1} allocMap := PreAlloc(tid, Set_Difference(isFreeSet, allocMap->ptrToTid->dom), allocMap);
 }
 
 atomic action {:layer 1,2} AtomicDecrementFreeSpace#0({:linear "tid"} tid: Tid)
@@ -137,7 +136,7 @@ modifies isFreeSet, allocMap;
     spaceFound := Set_Contains(isFreeSet, ptr);
     if (spaceFound) {
         isFreeSet := Set_Remove(isFreeSet, ptr);
-        call Alloc(tid, ptr);
+        call allocMap := Alloc(tid, ptr, allocMap);
     }
 }
 yield procedure {:layer 1} AllocIfPtrFree#1({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool)
@@ -146,8 +145,8 @@ preserves call YieldInvariant#1();
 {
     call spaceFound := AllocIfPtrFree#0(tid, ptr);
     if (spaceFound) {
-        call IsFreeSetRemove(ptr);
-        call Alloc(tid, ptr);
+        call {:layer 1} isFreeSet := Copy(Set_Remove(isFreeSet, ptr));
+        call {:layer 1} allocMap := Alloc(tid, ptr, allocMap);
     }
 }
 
@@ -163,18 +162,6 @@ modifies isFree;
 yield procedure {:layer 0} AllocIfPtrFree#0({:linear "tid"} tid: Tid, ptr: int) returns (spaceFound:bool);
 refines AtomicAllocIfPtrFree#0;
 
-action {:layer 1,2} IsFreeSetAdd(ptr: int)
-modifies isFreeSet;
-{
-    isFreeSet := Set_Add(isFreeSet, ptr);
-}
-
-action {:layer 1,2} IsFreeSetRemove(ptr: int)
-modifies isFreeSet;
-{
-    isFreeSet := Set_Remove(isFreeSet, ptr);
-}
-
 atomic action {:layer 2} AtomicReclaim#1() returns (ptr: int)
 modifies freeSpace, isFreeSet;
 {
@@ -187,7 +174,7 @@ refines AtomicReclaim#1;
 preserves call YieldInvariant#1();
 {
     call ptr := Reclaim#0();
-    call IsFreeSetAdd(ptr);
+    call {:layer 1} isFreeSet := Copy(Set_Add(isFreeSet, ptr));
 }
 
 atomic action {:layer 1} AtomicReclaim#0() returns (ptr: int)

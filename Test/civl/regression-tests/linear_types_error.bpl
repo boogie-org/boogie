@@ -9,7 +9,7 @@ atomic action {:layer 1, 2} A1(path: Lheap int) returns (path': Lheap int) {
 
 atomic action {:layer 1, 2} A2(path: Lheap int) returns (path': Lheap int) {
     call path' := Lheap_Empty();
-    call Lheap_Transfer(path, path');
+    call Lheap_Transfer(path', path);
 }
 
 var {:layer 0, 2} g: Lheap int;
@@ -17,7 +17,7 @@ var {:layer 0, 2} g: Lheap int;
 atomic action {:layer 1, 2} A3({:linear_in} path: Lheap int) returns (path': Lheap int)
 {
     path' := path;
-    call Lheap_Transfer(g, path');
+    call Lheap_Transfer(path', g);
 }
 
 datatype Foo { Foo(f: Lheap int) }
@@ -27,7 +27,7 @@ atomic action {:layer 1, 2} A4({:linear_in} path: Lheap Foo, x: Ref Foo, {:linea
 {
     path' := path;
     l' := l;
-    call Lheap_Transfer(path'->val[x]->f, l');
+    call Lheap_Transfer(l', path'->val[x]->f);
 }
 
 atomic action {:layer 1, 2} A5({:linear_out} path: Lheap int) { }
@@ -41,22 +41,22 @@ atomic action {:layer 1, 2} A6({:linear_in} path: Lheap int) returns (path': Lhe
 atomic action {:layer 1, 2} A7(path1: Lheap int, {:linear_in} path2: Lheap int) returns (path': Lheap int)
 {
     path' := path2;
-    call Lheap_Transfer(path1, path');
+    call Lheap_Transfer(path', path1);
 }
 
 atomic action {:layer 1, 2} A8({:linear_in} path1: Lheap int, x: Ref Foo) returns (path2: Lheap Foo)
 {
-    call Lheap_Transfer(path1, path2->val[x]->f);
+    call Lheap_Transfer(path2->val[x]->f, path1);
 }
 
 atomic action {:layer 1, 2} A9({:linear_in} l: Lheap int)
 {
-    call Lheap_Transfer(l, g);
+    call Lheap_Transfer(g, l);
 }
 
 atomic action {:layer 1, 2} A10({:linear_in} l: Lheap int, l': Lheap int)
 {
-    call Lheap_Transfer(l, l');
+    call Lheap_Transfer(l', l);
 }
 
 atomic action {:layer 1, 2} A11({:linear_in} a: Foo) returns (b: Foo)

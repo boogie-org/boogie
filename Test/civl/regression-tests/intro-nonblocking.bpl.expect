@@ -1,5 +1,5 @@
-intro-nonblocking.bpl(4,19): Error: Cooperation check for intro failed
+intro-nonblocking.bpl(4,13): Error: Cooperation check for intro failed
 Execution trace:
     (0,0): init
 
-Boogie program verifier finished with 1 verified, 1 error
+Boogie program verifier finished with 0 verified, 1 error

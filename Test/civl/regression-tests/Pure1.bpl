@@ -1,7 +1,11 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-pure action intro (x:int)
+var x: int;
+
+pure action E()
+modifies x;
 {
-  assume x == 0;
+    var c: int;
+    c := x;
 }

@@ -250,7 +250,7 @@ requires {:layer 1} Pid(pid);
   if (m == i)
   {
     call set_leader(pid);
-    call set_terminated(pid);
+    call {:layer 1} terminated := set_terminated(terminated, pid);
   }
   else
   {
@@ -262,10 +262,9 @@ requires {:layer 1} Pid(pid);
   }
 }
 
-action {:layer 1} set_terminated(pid:int)
-modifies terminated;
+pure procedure {:inline 1} set_terminated(terminated:[int]bool, pid:int) returns (terminated':[int]bool)
 {
-  terminated[pid] := true;
+  terminated' := terminated[pid := true];
 }
 
 ////////////////////////////////////////////////////////////////////////////////

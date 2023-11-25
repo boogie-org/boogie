@@ -2050,7 +2050,7 @@ namespace Microsoft.Boogie
       return value;
     }
     
-    public TypeCtorDecl GetOriginalDecl(TypeCtorDecl decl)
+    public static TypeCtorDecl GetOriginalDecl(TypeCtorDecl decl)
     {
       return decl.OriginalTypeCtorDecl ?? decl;
     }

@@ -299,7 +299,7 @@ requires call YieldCoordinator();
   var i:int;
   var {:layer 1} old_RequestChannel:[int]int;
 
-  call old_RequestChannel := Snapshot_RequestChannel();
+  call {:layer 1} old_RequestChannel := Copy(RequestChannel);
   i := 1;
   while (i <= n)
   invariant {:layer 1} 1 <= i && i <= n+1;
@@ -322,8 +322,8 @@ requires call YieldCoordinator();
   var {:layer 1} old_VoteChannel:[vote]int;
   var {:layer 1} old_DecisionChannel:[int][decision]int;
 
-  call old_VoteChannel := Snapshot_VoteChannel();
-  call old_DecisionChannel := Snapshot_DecisionChannel();
+  call {:layer 1} old_VoteChannel := Copy(VoteChannel);
+  call {:layer 1} old_DecisionChannel := Copy(DecisionChannel);
   i := 0;
   d := COMMIT();
   while (i < n)
@@ -349,21 +349,6 @@ requires call YieldCoordinator();
     call send_decision(i, d);
     i := i + 1;
   }
-}
-
-action {:layer 1} Snapshot_RequestChannel() returns (snapshot:[int]int)
-{
-  snapshot := RequestChannel;
-}
-
-action {:layer 1} Snapshot_VoteChannel() returns (snapshot:[vote]int)
-{
-  snapshot := VoteChannel;
-}
-
-action {:layer 1} Snapshot_DecisionChannel() returns (snapshot:[int][decision]int)
-{
-  snapshot := DecisionChannel;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

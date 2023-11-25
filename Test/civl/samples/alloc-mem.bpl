@@ -78,7 +78,7 @@ requires call Yield();
 ensures call YieldMem(l, i);
 {
   call i := PickAddr();
-  call l := AllocLinear(i);
+  call {:layer 1} l, pool := AllocLinear(i, Add(Empty(mem), i), pool);
 }
 
 left action {:layer 2} atomic_Free({:linear_in "mem"} l:lmap, i:int)
@@ -93,7 +93,7 @@ refines atomic_Free;
 requires {:layer 1} dom(l)[i];
 preserves call Yield();
 {
-  call FreeLinear(l, i);
+  call {:layer 1} pool := FreeLinear(l, i, pool);
   call ReturnAddr(i);
 }
 
@@ -125,25 +125,23 @@ requires call YieldMem(l, i);
 ensures call YieldMem(l', i);
 {
   call WriteLow(i, o);
-  call l' := WriteLinear(l, i, o);
+  call {:layer 1} l' := WriteLinear(l, i, o);
 }
 
-action {:layer 1} AllocLinear (i:int) returns ({:linear "mem"} l:lmap)
-modifies pool;
+pure action AllocLinear (i:int, _l:lmap, {:linear_in "mem"} pool:lmap) returns ({:linear "mem"} l:lmap, {:linear "mem"} pool':lmap)
 {
-  assert dom(pool)[i];
-  pool := Remove(pool, i);
-  l := Add(Empty(mem), i);
+  assert dom(pool)[i] && dom(_l) == MapConst(false)[i := true];
+  pool' := Remove(pool, i);
+  l := _l;
 }
 
-action {:layer 1} FreeLinear ({:linear_in "mem"} l:lmap, i:int)
-modifies pool;
+pure action FreeLinear ({:linear_in "mem"} l:lmap, i:int, {:linear_in "mem"} pool:lmap) returns ({:linear "mem"} pool':lmap)
 {
   assert dom(l)[i];
-  pool := Add(pool, i);
+  pool' := Add(pool, i);
 }
 
-action {:layer 1} WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
+pure action WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
 {
   assert dom(l)[i];
   l' := cons(dom(l), map(l)[i := o]);

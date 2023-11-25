@@ -180,16 +180,6 @@ requires call YieldConsistent_10();
 // ###########################################################################
 // Event Handlers
 
-action {:layer 8} GhostRead_8() returns (snapshot: GState)
-{
-   snapshot := state;
-}
-
-action {:layer 10} GhostRead_10() returns (snapshot: GState)
-{
-   snapshot := state;
-}
-
 atomic action {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
 modifies state;
 {
@@ -211,7 +201,7 @@ preserves call YieldConsistent_10();
   var i : Mid;
 
   call xid, pairs := AllocateXid();
-  call snapshot := GhostRead_10();
+  call {:layer 10} snapshot := Copy(state);
   i := 1;
   while (i <= numParticipants)
   invariant {:layer 8} Inv_8(state, B, votes);
@@ -287,7 +277,7 @@ requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
   var i : Mid;
   var {:layer 8} snapshot: GState;
 
-  call snapshot := GhostRead_8();
+  call {:layer 8} snapshot := Copy(state);
   call {:layer 8} Lemma_add_to_set(B, pair);
   call {:layer 8} Lemma_all_in_set(B, xid);
   call commit := StateUpdateOnVoteYes(xid, mid, pair);
@@ -332,7 +322,7 @@ requires call YieldAborted_8(xid, mid, pair);
   var i : int;
   var {:layer 8} snapshot: GState;
 
-  call snapshot := GhostRead_8();
+  call {:layer 8} snapshot := Copy(state);
   call abort := StateUpdateOnVoteNo(xid, mid);
 
   if (abort)

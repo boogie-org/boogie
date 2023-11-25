@@ -248,34 +248,26 @@ namespace Microsoft.Boogie
 
     private void ProcessCallCmd(CallCmd newCall)
     {
-      if (newCall.Proc is ActionDecl actionDecl)
-      {
-        var linkAction = civlTypeChecker.Action(actionDecl);
-        if (linkAction.LowerLayer == layerNum)
-        {
-          newCall.Proc = linkAction.Impl.Proc;
-          InjectGate(linkAction, newCall);
-          newCmdSeq.Add(newCall);
-        }
-        return;
-      }
-
-      if (LinearRewriter.IsPrimitive(newCall.Proc))
-      {
-        var callLayerRange = new LayerRange(newCall.Layers[0],
-          newCall.Layers.Count == 1 ? newCall.Layers[0] : newCall.Layers[1]);
-        if (callLayerRange.Contains(layerNum))
-        {
-          newCmdSeq.AddRange(linearRewriter.RewriteCallCmd(newCall));
-        }
-        return;
-      }
-
       if (newCall.Proc.IsPure)
       {
-        if (newCall.Layers[0] == layerNum)
+        var callLayerRange = newCall.LayerRange;
+        if (callLayerRange.Contains(layerNum))
         {
-          newCmdSeq.Add(newCall);
+          if (newCall.Proc is ActionDecl actionDecl)
+          {
+            var pureAction = civlTypeChecker.Action(actionDecl);
+            newCall.Proc = pureAction.Impl.Proc;
+            InjectGate(pureAction, newCall);
+            newCmdSeq.Add(newCall);
+          }
+          else if (LinearRewriter.IsPrimitive(newCall.Proc))
+          {
+            newCmdSeq.AddRange(linearRewriter.RewriteCallCmd(newCall));
+          }
+          else
+          {
+            newCmdSeq.Add(newCall);
+          }
         }
         return;
       }
