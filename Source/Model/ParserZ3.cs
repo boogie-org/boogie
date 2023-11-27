@@ -281,6 +281,9 @@ namespace Microsoft.Boogie
           }
           else
           {
+            if (funName.StartsWith("aux$$")) {
+              continue;
+            }
             var fn = currModel.MkFunc(funName, 0);
             fn.SetConstant(GetElt(lastWord));
           }

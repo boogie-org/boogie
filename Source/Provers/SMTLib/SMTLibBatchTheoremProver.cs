@@ -186,7 +186,9 @@ namespace Microsoft.Boogie.SMTLib
 
         if (options.LibOptions.ProduceUnsatCores) {
           var unsatCoreSExp = responseStack.Pop();
-          ReportCoveredElements(unsatCoreSExp);
+          if (result == Outcome.Valid) {
+            ReportCoveredElements(unsatCoreSExp);
+          }
         }
 
         if (result == Outcome.Invalid) {
