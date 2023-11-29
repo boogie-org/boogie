@@ -60,7 +60,7 @@ atomic action {:layer 2} AtomicEnter#1(i: int, {:linear_in} l: Lval Perm, r: Lva
 modifies usersInDriver;
 {
     assume !stoppingFlag;
-    call AddToBarrier(i, l);
+    call Lval_Transfer(usersInDriver, l);
 }
 yield procedure {:layer 1}
 Enter#1(i: int, {:layer 1} {:linear_in} l: Lval Perm, {:layer 1} r: Lval Perm)
@@ -70,7 +70,7 @@ requires {:layer 1} l->val == Left(i) && r->val == Right(i);
 {
     call Enter();
     call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
-    call AddToBarrier(i, l);
+    call {:layer 1} Lval_Transfer(usersInDriver, l);
 }
 
 left action {:layer 2} AtomicCheckAssert#1(i: int, r: Lval Perm)
@@ -90,7 +90,7 @@ left action {:layer 2} AtomicExit(i: int, {:linear_out} l: Lval Perm, r: Lval Pe
 modifies usersInDriver;
 {
     assert l->val == Left(i) && r->val == Right(i);
-    call RemoveFromBarrier(i, l);
+    call Lval_Split(usersInDriver, l);
 }
 yield procedure {:layer 1}
 Exit(i: int, {:layer 1} {:linear_out} l: Lval Perm, {:layer 1} r: Lval Perm)
@@ -99,7 +99,7 @@ preserves call Inv1();
 {
     call DeleteReference();
     call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
-    call RemoveFromBarrier(i, l);
+    call {:layer 1} Lval_Split(usersInDriver, l);
     call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->dom);
 }
 
@@ -135,20 +135,6 @@ preserves call Inv1();
 {
     call WaitOnStoppingEvent();
     call SetStopped();
-}
-
-/// introduction actions
-
-action {:layer 1, 2} AddToBarrier(i: int, {:linear_in} l: Lval Perm)
-modifies usersInDriver;
-{
-    call Lval_Transfer(l, usersInDriver);
-}
-
-action {:layer 1, 2} RemoveFromBarrier(i: int, {:linear_out} l: Lval Perm)
-modifies usersInDriver;
-{
-    call Lval_Split(l, usersInDriver);
 }
 
 /// primitive actions

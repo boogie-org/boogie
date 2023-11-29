@@ -23,13 +23,7 @@ refines atomic_write_y;
 requires call Yield_xy();
 {
   call write_x(y');
-  call set_y_to_x();
-}
-
-action {:layer 1} set_y_to_x ()
-modifies y;
-{
-  y := x;
+  call {:layer 1} y := Copy(x);
 }
 
 atomic action {:layer 1,1} atomic_read_x () returns (v:int)
@@ -42,21 +36,14 @@ modifies x;
 yield procedure {:layer 0} read_x () returns ({:layer 0} v:int)
 refines atomic_read_x;
 {
-  call v := intro_read_x();
+  call {:layer 0} v := Copy(x);
 }
 
 yield procedure {:layer 0} write_x (x':int)
 refines atomic_write_x;
 {
-  call intro_write_x(x');
+  call {:layer 0} x := Copy(x');
 }
-
-action {:layer 0} intro_read_x () returns (v:int)
-{ v := x; }
-
-action {:layer 0} intro_write_x (x':int)
-modifies x;
-{ x := x'; }
 
 yield invariant {:layer 1} Yield_xy();
 invariant x == y;

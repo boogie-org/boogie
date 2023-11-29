@@ -9,7 +9,7 @@ modifies x;
 yield procedure {:layer 0} Incr();
 refines AtomicIncr;
 
-action {:layer 1} ghost(y: int) returns (z: int)
+pure procedure {:inline 1} ghost(y: int) returns (z: int)
 {
   z := y + 1;
 }
@@ -23,14 +23,9 @@ refines AtomicIncr2;
 {
   var {:layer 1} a: int;
 
-  call a := ghost(1);
+  call {:layer 1} a := ghost(1);
   assert {:layer 1} a == 2;
   par Incr() | Incr();
-}
-
-action {:layer 1} ghost'() returns (z: int)
-{
-  z := x;
 }
 
 yield procedure {:layer 1} Incr2'()
@@ -39,8 +34,8 @@ refines AtomicIncr2;
   var {:layer 1} a: int;
   var {:layer 1} b: int;
 
-  call a := ghost'();
+  call {:layer 1} a := Copy(x);
   par Incr() | Incr();
-  call b := ghost'();
+  call {:layer 1} b := Copy(x);
   assert {:layer 1} b == a + 2;
 }

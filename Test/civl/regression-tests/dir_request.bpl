@@ -9,7 +9,7 @@ modifies X, B;
 {
     assume !B[i];
     li := Lval(i);
-    call Lval_Split(li, X);
+    call Lval_Split(X, li);
     B[i] := true;
 }
 
@@ -19,6 +19,6 @@ modifies X, B;
     var i: int;
     i := li->val;
     assert B[i];
-    call Lval_Transfer(li, X);
+    call Lval_Transfer(X, li);
     B[i] := false;
 }

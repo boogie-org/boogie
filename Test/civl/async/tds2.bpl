@@ -40,11 +40,6 @@ modifies status;
 yield procedure {:layer 0} FinishTask({:linear "tid"} tid: int);
 refines AtomicFinishTask;
 
-action {:layer 1} StatusSnapshot() returns (snapshot: [int]int)
-{
-  snapshot := status;
-}
-
 yield procedure {:layer 0} Alloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool);
 refines AtomicAlloc;
 both action {:layer 1} AtomicAlloc(i: int, {:linear_in "tid"} tidq: [int]bool) returns ({:linear "tid"} id: int, {:linear "tid"} tidq':[int]bool)
@@ -68,7 +63,7 @@ refines AtomicMain;
 
     i := 0;
     tids' := tids;
-    call snapshot := StatusSnapshot();
+    call {:layer 1} snapshot := Copy(status);
     while (i < n)
     invariant {:layer 1} 0 <= i && i <= n;
     invariant {:layer 1} (forall j: int :: i <= j && j < n <==> tids'[j]);

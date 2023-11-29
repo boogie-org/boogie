@@ -189,6 +189,7 @@ BoogiePL
      Procedure/*!*/ pr;
      Implementation im;
      Implementation/*!*/ nnim;
+     bool isPure = false;
   .)
   { Consts<out ds>             (. foreach(Bpl.Declaration/*!*/ v in ds){
                                     Contract.Assert(v != null);
@@ -212,14 +213,6 @@ BoogiePL
                                     Pgm.AddTopLevelDeclaration(v);
                                   }
                                .)
-  | ActionDecl<out ac, out im, out dt> (. Pgm.AddTopLevelDeclaration(ac);
-                                          if (im != null) {
-                                            Pgm.AddTopLevelDeclaration(im);
-                                          }
-                                          if (dt != null) {
-                                            Pgm.AddTopLevelDeclaration(dt);
-                                          }
-                                       .)
   | "yield" 
     (
       YieldInvariantDecl<out yi> (. Pgm.AddTopLevelDeclaration(yi); .)
@@ -230,11 +223,26 @@ BoogiePL
                                   }
                                .)
     )
-  | Procedure<out pr, out im>  (. Pgm.AddTopLevelDeclaration(pr);
+  | Pure<ref isPure>
+    (
+      Procedure<isPure, out pr, out im>
+                                (. Pgm.AddTopLevelDeclaration(pr);
                                    if (im != null) {
                                      Pgm.AddTopLevelDeclaration(im);
                                    }
-                               .)
+                                   isPure = false;
+                                .)
+    | ActionDecl<isPure, out ac, out im, out dt>
+                                       (. Pgm.AddTopLevelDeclaration(ac);
+                                          if (im != null) {
+                                            Pgm.AddTopLevelDeclaration(im);
+                                          }
+                                          if (dt != null) {
+                                            Pgm.AddTopLevelDeclaration(dt);
+                                          }
+                                          isPure = false;
+                                       .)
+    )
   | Implementation<out nnim>   (. Pgm.AddTopLevelDeclaration(nnim); .)
   }
   EOF
@@ -649,7 +657,11 @@ Invariant<.List<Requires> invariants.>
   )
   .
 
-ActionDecl<out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeCtorDecl datatypeTypeCtorDecl>
+Pure<ref bool isPure>
+= ["pure" (. isPure = true; .)]
+  .
+
+ActionDecl<bool isPure, out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeCtorDecl datatypeTypeCtorDecl>
 = (. IToken name = null;
      bool isAsync = false;
      MoverType moverType = MoverType.None;
@@ -666,7 +678,7 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeC
      impl = null;
    .)
   [ "async" (. isAsync = true; .) ]
-  [ MoverQualifier <ref moverType> ]
+  [ MoverQualifier<ref moverType> ]
   "action"
   { Attribute<ref kv> }
   Ident<out name>
@@ -682,6 +694,16 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeC
     .)
   )
   (.
+     if (isPure) {
+       if (moverType == MoverType.None)
+       {
+         moverType = MoverType.Both;
+       }
+       else
+       {
+         this.SemErr("mover type unnecessary for pure action since it is a both mover");
+       }
+     }
      if (isAsync) {
        if (moverType == MoverType.None)
        {
@@ -697,7 +719,7 @@ ActionDecl<out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeC
          datatypeTypeCtorDecl.AddConstructor(name, name.val, ins.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList());
        }
      }
-     actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, creates, refinedAction, invariantAction, elims, mods, datatypeTypeCtorDecl, kv);
+     actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, isPure, creates, refinedAction, invariantAction, elims, mods, datatypeTypeCtorDecl, kv);
   .)
   .
 
@@ -820,21 +842,19 @@ SpecYieldPrePost<. ref ActionDeclRef refinedAction, List<Requires> pre, List<Ens
   ";"
   .
 
-Procedure<out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
+Procedure<bool isPure, out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>
 = (. Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
      List<TypeVariable>/*!*/ typeParams;
      List<Variable>/*!*/ ins, outs;
      List<Requires>/*!*/ pre = new List<Requires>();
      List<IdentifierExpr>/*!*/ mods = new List<IdentifierExpr>();
      List<Ensures>/*!*/ post = new List<Ensures>();
-     bool isPure = false;
      List<Variable>/*!*/ locals = new List<Variable>();
      StmtList/*!*/ stmtList;
      QKeyValue kv = null;
      impl = null;
   .)
 
-  ["pure" (. isPure = true; .)]
   "procedure"
   ProcSignature<true, out x, out typeParams, out ins, out outs, out kv>
   ( ";"

@@ -61,7 +61,7 @@ refines AtomicLowerEnter;
   {
     call status := CAS(false, true);
     if (status) {
-      call SetLock(tid);
+      call {:layer 1} lock := Copy(tid);
       return;
     }
   }
@@ -75,12 +75,8 @@ yield procedure {:layer 1} LowerLeave()
 refines AtomicLowerLeave;
 {
   call SET(false);
-  call SetLock(nil);
+  call {:layer 1} lock := Copy(nil);
 }
-
-action {:layer 1} SetLock(v: X)
-modifies lock;
-{ lock := v; }
 
 atomic action {:layer 1} AtomicCAS(prev: bool, next: bool) returns (status: bool)
 modifies b;

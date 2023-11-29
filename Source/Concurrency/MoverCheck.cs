@@ -82,11 +82,6 @@ namespace Microsoft.Boogie
       {
         moverChecking.CreateCooperationChecker(action);
       }
-
-      foreach (var action in civlTypeChecker.LinkActions)
-      {
-        moverChecking.CreateCooperationChecker(action);
-      }
     }
 
     private IEnumerable<Requires> DisjointnessAndWellFormedRequires(IEnumerable<Variable> paramVars, HashSet<Variable> frame)

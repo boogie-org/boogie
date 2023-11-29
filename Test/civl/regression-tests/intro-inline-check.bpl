@@ -2,8 +2,8 @@
 // RUN: %diff "%s.expect" "%t"
 
 var {:layer 1} g: int;
-
-atomic action {:layer 1} A()
+var {:layer 0} h: int;
+action {:layer 1} A()
 modifies g;
 {
     call I();
@@ -12,5 +12,13 @@ modifies g;
 action {:layer 1} I()
 modifies g;
 {
-    g := g  + 1;
+    var x: int;
+    g := 1;
+    x := h;
+}
+
+action {:layer 1,2} B()
+modifies g;
+{
+    call I();
 }
