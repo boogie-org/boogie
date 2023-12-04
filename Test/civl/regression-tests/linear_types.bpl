@@ -23,14 +23,14 @@ atomic action {:layer 1, 2} A2(v: int) returns (path': Lheap int, v': int) {
 
 atomic action {:layer 1, 2} A3({:linear_in} path: Lset int, {:linear_out} l: Lset int) returns (path': Lset int) {
     call path' := Lset_Empty();
-    call Lset_Transfer(path', path);
+    call Lset_Put(path', path);
     call Lset_Split(path', l);
 }
 
 atomic action {:layer 1, 2} A4({:linear_in} path: Lset int, l: Lval int) returns (path': Lset int) {
     call path' := Lset_Empty();
-    call Lset_Transfer(path', path);
-    call Lval_Transfer(path', l);
+    call Lset_Put(path', path);
+    call Lval_Put(path', l);
     call Lval_Split(path', l);
 }
 

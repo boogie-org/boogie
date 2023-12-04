@@ -287,7 +287,8 @@ function {:inline} Lset_IsSubset<V>(k: Lset V, l: Lset V): bool {
 }
 pure procedure Lset_Empty<V>() returns (l: Lset V);
 pure procedure Lset_Split<V>(path: Lset V, {:linear_out} k: Lset V);
-pure procedure Lset_Transfer<V>(path: Lset V, {:linear_in} path1: Lset V);
+pure procedure Lset_Get<V>(path: Lset V, v: [V]bool) returns (k: Lset V);
+pure procedure Lset_Put<V>(path: Lset V, {:linear_in} k: Lset V);
 
 /// linear vals
 datatype Lval<V> { Lval(val: V) }
@@ -296,7 +297,8 @@ function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
     MapConst(false)[l->val := true]
 }
 pure procedure Lval_Split<V>(path: Lset V, {:linear_out} k: Lval V);
-pure procedure Lval_Transfer<V>(path: Lset V, {:linear_in} k: Lval V);
+pure procedure Lval_Get<V>(path: Lset V, v: V) returns (k: Lval V);
+pure procedure Lval_Put<V>(path: Lset V, {:linear_in} k: Lval V);
 
 procedure create_async<T>(PA: T);
 procedure create_asyncs<T>(PAs: [T]bool);

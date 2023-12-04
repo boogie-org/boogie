@@ -182,8 +182,8 @@ namespace Microsoft.Boogie
     {
       "Ref_Alloc",
       "Lheap_Empty", "Lheap_Split", "Lheap_Transfer", "Lheap_Read", "Lheap_Write", "Lheap_Alloc", "Lheap_Remove",
-      "Lset_Empty", "Lset_Split", "Lset_Transfer",
-      "Lval_Split", "Lval_Transfer"
+      "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
+      "Lval_Split", "Lval_Get", "Lval_Put"
     };
 
     public static IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
@@ -237,12 +237,12 @@ namespace Microsoft.Boogie
         case "Lset_Empty":
           return null;
         case "Lset_Split":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lset_Transfer":
+        case "Lset_Get":
+        case "Lset_Put":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         case "Lval_Split":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lval_Transfer":
+        case "Lval_Get":
+        case "Lval_Put":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         default:
           throw new cce.UnreachableException();
