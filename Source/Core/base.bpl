@@ -282,6 +282,9 @@ function {:inline} Lset_Collector<V>(l: Lset V): [V]bool {
 function {:inline} Lset_Contains<V>(l: Lset V, k: V): bool {
     l->dom[k]
 }
+function {:inline} Lset_IsSubset<V>(k: Lset V, l: Lset V): bool {
+    IsSubset(k->dom, l->dom)
+}
 pure procedure Lset_Empty<V>() returns (l: Lset V);
 pure procedure Lset_Split<V>(path: Lset V, {:linear_out} k: Lset V);
 pure procedure Lset_Transfer<V>(path: Lset V, {:linear_in} path1: Lset V);
