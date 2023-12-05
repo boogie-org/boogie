@@ -1,0 +1,6 @@
+Prover error: Solver exited with code 1
+
+Advisory: P SKIPPED due to I/O exception: Broken pipe
+exitcode.bpl(4,11): Verification encountered solver exception (P)
+
+Boogie program verifier finished with 0 verified, 0 errors, 1 solver exceptions
