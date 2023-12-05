@@ -465,7 +465,7 @@ namespace Microsoft.Boogie
           Contract.Assert(opName != null); // follows from precondition
           tc.Error(cce.NonNull(actualArgs[i]),
             "invalid type for argument {0} in {1}: {2} (expected: {3})",
-            i, opName, actual, formal);
+            i, opName, actual, formalArgs[i]);
         }
       }
 
