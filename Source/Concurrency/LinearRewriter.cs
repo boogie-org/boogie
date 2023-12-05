@@ -52,10 +52,10 @@ public class LinearRewriter
         return RewriteRefAlloc(callCmd);
       case "Lheap_Empty":
         return RewriteLheapEmpty(callCmd);
-      case "Lheap_Split":
-        return RewriteLheapSplit(callCmd);
-      case "Lheap_Transfer":
-        return RewriteLheapTransfer(callCmd);
+      case "Lheap_Get":
+        return RewriteLheapGet(callCmd);
+      case "Lheap_Put":
+        return RewriteLheapPut(callCmd);
       case "Lheap_Read":
         return RewriteLheapRead(callCmd);
       case "Lheap_Write":
@@ -188,7 +188,7 @@ public class LinearRewriter
     return cmdSeq;
   }
   
-  private List<Cmd> RewriteLheapSplit(CallCmd callCmd)
+  private List<Cmd> RewriteLheapGet(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);
@@ -206,7 +206,7 @@ public class LinearRewriter
     
     cmdSeq.Add(AssertCmd(callCmd.tok,
       Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc1, Expr.True)),
-      "Lheap_Split failed"));
+      "Lheap_Get failed"));
     
     cmdSeq.Add(CmdHelper.AssignCmd(l,
       ExprHelper.FunctionCall(lheapConstructor, k,
@@ -221,7 +221,7 @@ public class LinearRewriter
     return cmdSeq;
   }
 
-  private List<Cmd> RewriteLheapTransfer(CallCmd callCmd)
+  private List<Cmd> RewriteLheapPut(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
       out Function lsetConstructor, out Function lvalConstructor);

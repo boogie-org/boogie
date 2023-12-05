@@ -7,7 +7,7 @@ linear_types_error.bpl(30,4): Error: Only variable can be passed to linear param
 linear_types_error.bpl(33,64): Error: Input variable path must be available at a return
 linear_types_error.bpl(38,4): Error: Linear variable path' can occur only once as an input parameter
 linear_types_error.bpl(45,0): Error: Input variable path1 must be available at a return
-linear_types_error.bpl(49,24): Error: unavailable source path2 for linear parameter at position 0
+linear_types_error.bpl(49,19): Error: unavailable source path2 for linear parameter at position 0
 linear_types_error.bpl(50,0): Error: Output variable path2 must be available at a return
 linear_types_error.bpl(54,4): Error: Primitive assigns to a global variable that is not in the enclosing action's modifies clause: g
 linear_types_error.bpl(59,4): Error: Primitive assigns to input variable: l'
