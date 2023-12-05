@@ -18,7 +18,7 @@ public class LinearRewriter
   
   public static bool IsPrimitive(DeclWithFormals decl)
   {
-    return CivlPrimitives.Linear.Contains(Monomorphizer.GetOriginalDecl(decl).Name);
+    return CivlPrimitives.LinearPrimitives.Contains(Monomorphizer.GetOriginalDecl(decl).Name);
   }
 
   public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)

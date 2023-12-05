@@ -178,7 +178,9 @@ namespace Microsoft.Boogie
 
   public static class CivlPrimitives
   {
-    public static HashSet<string> Linear = new()
+    public static HashSet<string> LinearTypes = new() { "Lheap", "Lset", "Lval" };
+
+    public static HashSet<string> LinearPrimitives = new()
     {
       "Ref_Alloc",
       "Lheap_Empty", "Lheap_Get", "Lheap_Put", "Lheap_Read", "Lheap_Write", "Lheap_Alloc", "Lheap_Remove",
