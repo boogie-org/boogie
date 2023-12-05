@@ -92,12 +92,12 @@ function {:inline} VotePAs(r: Round, v: Value) : [A_Vote]bool
 // Abstract
 var {:layer 1,3} joinedNodes: [Round]NodeSet;
 var {:layer 1,3} voteInfo: [Round]Option VoteInfo;
+var {:layer 1,3} decision: [Round]Option Value; // spec
 
 // Concrete
 var {:layer 0,1} acceptorState: [Node]AcceptorState;
 var {:layer 0,1} joinChannel: [Round][JoinResponse]int;
 var {:layer 0,1} voteChannel: [Round][VoteResponse]int;
-var {:layer 0,3} decision: [Round]Option Value; // spec
 
 // Intermediate channel representation
 var {:layer 1,1} {:linear "perm"} permJoinChannel: JoinResponseChannel;
@@ -106,13 +106,9 @@ var {:layer 1,1} {:linear "perm"} permVoteChannel: VoteResponseChannel;
 ////////////////////////////////////////////////////////////////////////////////
 
 function {:inline} Init (
-  rs: [Round]bool, joinedNodes:[Round]NodeSet, voteInfo: [Round]Option VoteInfo,
-  decision:[Round]Option Value) : bool
+  rs: [Round]bool) : bool
 {
-  rs == (lambda r: Round :: true) &&
-  (forall r: Round :: joinedNodes[r] == NoNodes()) &&
-  (forall r: Round :: voteInfo[r] is None) &&
-  (forall r: Round :: decision[r] is None)
+  rs == (lambda r: Round :: true)
 }
 
 function {:inline} InitLow (

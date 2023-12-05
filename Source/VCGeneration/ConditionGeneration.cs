@@ -100,8 +100,6 @@ namespace VC
 
     public Dictionary<Incarnation, Absy> incarnationOriginMap = new Dictionary<Incarnation, Absy>();
 
-    public Dictionary<Cmd, List<object>> debugInfos = new Dictionary<Cmd, List<object>>();
-
     public Program program;
     public CheckerPool CheckerPool { get; }
 
@@ -827,7 +825,7 @@ namespace VC
         null; // null = the previous command was not an HashCmd. Otherwise, a *copy* of the map before the havoc statement
 
     protected void TurnIntoPassiveBlock(TextWriter traceWriter, Block b, Dictionary<Variable, Expr> incarnationMap, ModelViewInfo mvInfo,
-      Substitution oldFrameSubst, MutableVariableCollector variableCollector, byte[] currentChecksum = null)
+      Substitution oldFrameSubst, MutableVariableCollector variableCollector, Dictionary<Cmd, List<object>> debugInfos, byte[] currentChecksum = null)
     {
       Contract.Requires(b != null);
       Contract.Requires(incarnationMap != null);
@@ -844,7 +842,7 @@ namespace VC
         ChecksumHelper.ComputeChecksums(Options, c, currentImplementation, variableCollector.UsedVariables, currentChecksum);
         variableCollector.Visit(c);
         currentChecksum = c.Checksum;
-        TurnIntoPassiveCmd(traceWriter, c, b, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+        TurnIntoPassiveCmd(traceWriter, c, b, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, debugInfos);
       }
 
       b.Checksum = currentChecksum;
@@ -871,7 +869,7 @@ namespace VC
 
       var start = DateTime.UtcNow;
 
-      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(run.OutputWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo);
+      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(run.OutputWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo, implementation.debugInfos);
 
       var end = DateTime.UtcNow;
 
@@ -908,7 +906,7 @@ namespace VC
     }
 
     protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(TextWriter traceWriter, List<Block> blocks, List<IdentifierExpr> modifies,
-      ModelViewInfo mvInfo)
+      ModelViewInfo mvInfo, Dictionary<Cmd, List<object>> debugInfos)
     {
       Contract.Requires(blocks != null);
       Contract.Requires(modifies != null);
@@ -988,7 +986,7 @@ namespace VC
 
         #endregion Each block's map needs to be available to successor blocks
 
-        TurnIntoPassiveBlock(traceWriter, b, incarnationMap, mvInfo, oldFrameSubst, mvc, currentChecksum);
+        TurnIntoPassiveBlock(traceWriter, b, incarnationMap, mvInfo, oldFrameSubst, mvc, debugInfos, currentChecksum);
         exitBlock = b;
         exitIncarnationMap = incarnationMap;
       }
@@ -1052,7 +1050,7 @@ namespace VC
       }
     }
 
-    private void AddDebugInfo(Cmd c, Dictionary<Variable, Expr> incarnationMap, List<Cmd> passiveCmds)
+    private void AddDebugInfo(Cmd c, Dictionary<Variable, Expr> incarnationMap, List<Cmd> passiveCmds, Dictionary<Cmd, List<object>> debugInfos)
     {
       if (c is ICarriesAttributes cmd)
       {
@@ -1100,7 +1098,7 @@ namespace VC
     /// Meanwhile, record any information needed to later reconstruct a model view.
     /// </summary>
     protected void TurnIntoPassiveCmd(TextWriter traceWriter, Cmd c, Block enclosingBlock, Dictionary<Variable, Expr> incarnationMap, Substitution oldFrameSubst,
-      List<Cmd> passiveCmds, ModelViewInfo mvInfo)
+      List<Cmd> passiveCmds, ModelViewInfo mvInfo, Dictionary<Cmd, List<object>> debugInfos)
     {
       Contract.Requires(c != null);
       Contract.Requires(enclosingBlock != null);
@@ -1109,7 +1107,7 @@ namespace VC
       Contract.Requires(passiveCmds != null);
       Contract.Requires(mvInfo != null);
 
-      AddDebugInfo(c, incarnationMap, passiveCmds);
+      AddDebugInfo(c, incarnationMap, passiveCmds, debugInfos);
       Substitution incarnationSubst = Substituter.SubstitutionFromDictionary(incarnationMap);
 
       Microsoft.Boogie.VCExprAST.QuantifierInstantiationEngine.SubstituteIncarnationInInstantiationSources(c, incarnationSubst);
@@ -1485,7 +1483,7 @@ namespace VC
       {
         Cmd cmd = sug.GetDesugaring(Options);
         Contract.Assert(cmd != null);
-        TurnIntoPassiveCmd(traceWriter, cmd, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+        TurnIntoPassiveCmd(traceWriter, cmd, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, debugInfos);
       }
       else if (c is StateCmd st)
       {
@@ -1506,7 +1504,7 @@ namespace VC
         foreach (Cmd s in st.Cmds)
         {
           Contract.Assert(s != null);
-          TurnIntoPassiveCmd(traceWriter, s, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo);
+          TurnIntoPassiveCmd(traceWriter, s, enclosingBlock, incarnationMap, oldFrameSubst, passiveCmds, mvInfo, debugInfos);
         }
 
         // remove the local variables from the incarnation map

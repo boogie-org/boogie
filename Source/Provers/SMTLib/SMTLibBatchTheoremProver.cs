@@ -143,6 +143,9 @@ namespace Microsoft.Boogie.SMTLib
         requests.Add($"(get-info :{Z3.RlimitOption})");
       }
       requests.Add("(get-model)");
+      if (options.LibOptions.ProduceUnsatCores) {
+        requests.Add($"(get-unsat-core)");
+      }
 
       if (Process == null || HadErrors) {
         return Outcome.Undetermined;
@@ -171,10 +174,22 @@ namespace Microsoft.Boogie.SMTLib
         if (options.Solver == SolverKind.Z3) {
           var rlimitSExp = responseStack.Pop();
           resourceCount = ParseRCount(rlimitSExp);
+
+          // Sometimes Z3 doesn't tell us that it ran out of resources
+          if (result != Outcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
+            result = Outcome.OutOfResource;
+          }
         }
 
         var modelSExp = responseStack.Pop();
         errorModel = ParseErrorModel(modelSExp);
+
+        if (options.LibOptions.ProduceUnsatCores) {
+          var unsatCoreSExp = responseStack.Pop();
+          if (result == Outcome.Valid) {
+            ReportCoveredElements(unsatCoreSExp);
+          }
+        }
 
         if (result == Outcome.Invalid) {
           var labels = CalculatePath(currentErrorHandler.StartingProcId(), errorModel);
@@ -269,9 +284,9 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override Task<int> GetRCount()
+    public override int GetRCount()
     {
-      return Task.FromResult(resourceCount);
+      return resourceCount;
     }
 
     public override Task<List<string>> UnsatCore()

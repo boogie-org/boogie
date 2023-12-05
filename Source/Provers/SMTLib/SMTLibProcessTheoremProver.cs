@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,7 +7,6 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
-using System.Runtime.CompilerServices;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -19,6 +17,7 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibProverContext ctx;
     protected VCExpressionGenerator gen;
     protected SMTLibSolverOptions options;
+    protected IEnumerable<OptionValue> additionalSmtOptions = Array.Empty<OptionValue>();
     protected bool usingUnsatCore;
     private string backgroundPredicates;
 
@@ -346,7 +345,7 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(set-option :produce-models true)");
         }
 
-        foreach (var opt in options.SmtOptions)
+        foreach (var opt in SmtOptions())
         {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
         }
@@ -391,6 +390,11 @@ namespace Microsoft.Boogie.SMTLib
       if (!AxiomsAreSetup) {
         SetupAxioms();
       }
+    }
+
+    private IEnumerable<OptionValue> SmtOptions()
+    {
+      return options.SmtOptions.Concat(additionalSmtOptions);
     }
 
     private void SetupAxioms()
@@ -438,6 +442,11 @@ namespace Microsoft.Boogie.SMTLib
           SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed.Value + ")");
           SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
         }
+      }
+
+      foreach (var opt in SmtOptions())
+      {
+        SendThisVC("(set-option :" + opt.Option + " " + opt.Value + ")");
       }
     }
 
@@ -1168,6 +1177,10 @@ namespace Microsoft.Boogie.SMTLib
       options.ResourceLimit = limit;
     }
 
+    public override void SetAdditionalSmtOptions(IEnumerable<OptionValue> entries)
+    {
+      additionalSmtOptions = entries;
+    }
     protected Outcome ParseOutcome(SExpr resp, out bool wasUnknown)
     {
       var result = Outcome.Undetermined;
@@ -1261,6 +1274,9 @@ namespace Microsoft.Boogie.SMTLib
           case "(resource limits reached)":
             currentErrorHandler.OnResourceExceeded("max resource limit");
             result = Outcome.OutOfResource;
+            break;
+          case "unknown":
+            result = Outcome.Undetermined;
             break;
           default:
             result = Outcome.Undetermined;
@@ -1482,6 +1498,18 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       return dict.Count > 0 ? dict : null;
+    }
+
+    protected void ReportCoveredElements(SExpr unsatCoreSExp) {
+      if (libOptions.TrackVerificationCoverage && unsatCoreSExp.Name != "") {
+        currentErrorHandler.AddCoveredElement(TrackedNodeComponent.ParseSolverString(unsatCoreSExp.Name.Substring("aux$$assume$$".Length)));
+      }
+
+      foreach (var arg in unsatCoreSExp.Arguments) {
+        if (libOptions.TrackVerificationCoverage) {
+          currentErrorHandler.AddCoveredElement(TrackedNodeComponent.ParseSolverString(arg.Name.Substring("aux$$assume$$".Length)));
+        }
+      }
     }
 
     protected List<string> ParseUnsatCore(string resp)

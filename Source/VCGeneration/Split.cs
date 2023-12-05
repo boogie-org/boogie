@@ -1269,7 +1269,7 @@ namespace VC
         }
       }
 
-      public async Task<(ProverInterface.Outcome outcome, VCResult result, int resourceCount)> ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
+      public (ProverInterface.Outcome outcome, VCResult result, int resourceCount) ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
@@ -1280,11 +1280,11 @@ namespace VC
             checker.ProverRunTime.TotalSeconds, outcome);
         }
         if (options.Trace && options.TrackVerificationCoverage) {
-          run.OutputWriter.WriteLine("Covered elements: {0}",
-            string.Join(", ", CoveredElements.OrderBy(s => s)));
+          run.OutputWriter.WriteLine("Proof dependencies:\n  {0}",
+            string.Join("\n  ", CoveredElements.Select(s => s.Description).OrderBy(s => s)));
         }
 
-        var resourceCount = await checker.GetProverResourceCount();
+        var resourceCount = checker.GetProverResourceCount();
         var result = new VCResult(
           vcNum: SplitIndex + 1,
           iteration: iteration,
@@ -1309,7 +1309,7 @@ namespace VC
 
       public List<Counterexample> Counterexamples { get; } = new();
 
-      public HashSet<string> CoveredElements { get; } = new();
+      public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
 
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
@@ -1343,7 +1343,7 @@ namespace VC
             exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
-          reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, parent.debugInfos, callback,
+          reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, Implementation.debugInfos, callback,
             mvInfo, checker.TheoremProver.Context, parent.program, this);
         }
 
@@ -1353,6 +1353,7 @@ namespace VC
           Print();
         }
 
+        checker.TheoremProver.SetAdditionalSmtOptions(Implementation.GetExtraSMTOptions().Select(kv => new OptionValue(kv.Key, kv.Value)));
         await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
       }
 

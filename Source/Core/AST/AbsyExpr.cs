@@ -1357,14 +1357,16 @@ namespace Microsoft.Boogie
           if (Decl is GlobalVariable)
           {
             var globalVarLayerRange = Decl.LayerRange;
-            if (actionDecl.HasMoverType)
+            if (actionDecl.LayerRange.LowerLayer <= globalVarLayerRange.LowerLayer)
             {
-              // a global variable introduced at layer n is visible to a mover action only at layer n+1 or higher
-              globalVarLayerRange = new LayerRange(globalVarLayerRange.LowerLayer + 1, globalVarLayerRange.UpperLayer);
+              // a global variable introduced at layer n is visible to an action only at layers greater than n
+              tc.Error(this,
+                $"global variable must be introduced below the lower layer {actionDecl.LayerRange.LowerLayer} of action {actionDecl.Name}: {Decl.Name}");
             }
-            if (!actionDecl.LayerRange.Subset(globalVarLayerRange))
+            else if (!actionDecl.LayerRange.Subset(globalVarLayerRange))
             {
-              tc.Error(this, $"variable not available across layers in {actionDecl.LayerRange}: {Decl.Name}");
+              tc.Error(this,
+                $"global variable must be available across all layers ({actionDecl.LayerRange}) of action {actionDecl.Name}: {Decl.Name}");
             }
           }
         }

@@ -11,6 +11,7 @@ namespace Microsoft.Boogie
     private CivlTypeChecker civlTypeChecker;
     private Dictionary<string, LinearDomain> domainNameToLinearDomain;
     private Dictionary<Type, LinearDomain> linearTypeToLinearDomain;
+    private HashSet<Type> linearTypes;
     private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
 
     public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
@@ -197,6 +198,7 @@ namespace Microsoft.Boogie
       {
         if (cmd is AssignCmd assignCmd)
         {
+          var lhsVarsToAdd = new HashSet<Variable>();
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
             var lhsVar = assignCmd.Lhss[i].DeepAssignedVariable;
@@ -204,38 +206,43 @@ namespace Microsoft.Boogie
             {
               continue;
             }
-            var rhsExpr = assignCmd.Rhss[i];
             var lhsDomainName = LinearDomainCollector.FindDomainName(lhsVar);
+            var rhsExpr = assignCmd.Rhss[i];
             if (rhsExpr is IdentifierExpr ie)
             {
-              if (!start.Contains(ie.Decl))
-              {
-                Error(ie, "unavailable source for a linear read");
-              }
-              else
+              if (start.Contains(ie.Decl))
               {
                 start.Remove(ie.Decl);
               }
+              else
+              {
+                Error(ie, "unavailable source for a linear read");
+              }
+              lhsVarsToAdd.Add(lhsVar); // add always to prevent cascading error messages
             }
-            else
+            else if (lhsDomainName == null && rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor } } nAryExpr)
             {
               // pack
-              var args = ((NAryExpr)rhsExpr).Args.Cast<IdentifierExpr>().Select(arg => arg.Decl)
-                .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY);
-              if (args.Any(v => !start.Contains(v)))
-              {
-                Error(rhsExpr, "unavailable source for a linear read");
-              }
-              else
+              var args = nAryExpr.Args.Where(arg => linearTypes.Contains(arg.Type)).Cast<IdentifierExpr>()
+                .Select(arg => arg.Decl);
+              if (args.All(v => start.Contains(v)))
               {
                 start.ExceptWith(args);
               }
+              else
+              {
+                Error(rhsExpr, "unavailable source for a linear read");
+              }
+              lhsVarsToAdd.Add(lhsVar); // add always to prevent cascading error messages
+            }
+            else
+            {
+              // assignment may violate the disjointness invariant
+              // therefore, drop lhsVar from the set of available variables
+              start.Remove(lhsVar);
             }
           }
-          assignCmd.Lhss
-            .Where(assignLhs =>
-              LinearDomainCollector.FindLinearKind(assignLhs.DeepAssignedVariable) != LinearKind.ORDINARY)
-            .ForEach(assignLhs => start.Add(assignLhs.DeepAssignedVariable));
+          start.UnionWith(lhsVarsToAdd);
         }
         else if (cmd is UnpackCmd unpackCmd)
         {
@@ -273,7 +280,7 @@ namespace Microsoft.Boogie
               continue;
             }
             var ie = IsPrimitive(callCmd.Proc) && paramKind == LinearKind.LINEAR
-              ? ExtractRootFromAccessPathExpr(callCmd.Ins[i])
+              ? CivlPrimitives.ExtractRootFromAccessPathExpr(callCmd.Ins[i])
               : callCmd.Ins[i] as IdentifierExpr;
             if (start.Contains(ie.Decl))
             {
@@ -353,7 +360,7 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      return LinearRewriter.IsPrimitive(program.monomorphizer.GetOriginalDecl(decl));
+      return LinearRewriter.IsPrimitive(decl);
     }
     
     private LinearDomain FindDomain(Variable v)
@@ -384,68 +391,6 @@ namespace Microsoft.Boogie
         return false;
       }
       return enclosingProc is ActionDecl || enclosingProc.IsPure;
-    }
-
-    private IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
-    {
-      if (expr is IdentifierExpr identifierExpr)
-      {
-        return identifierExpr;
-      }
-      if (expr is NAryExpr nAryExpr)
-      {
-        if (nAryExpr.Fun is FieldAccess)
-        {
-          return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
-        }
-        if (nAryExpr.Fun is MapSelect)
-        {
-          var mapExpr = nAryExpr.Args[0];
-          if (mapExpr is NAryExpr lheapValExpr &&
-              lheapValExpr.Fun is FieldAccess &&
-              lheapValExpr.Args[0].Type is CtorType ctorType &&
-              program.monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
-          {
-            return ExtractRootFromAccessPathExpr(lheapValExpr.Args[0]);
-          }
-        }
-      }
-      return null;
-    }
-    
-    private IdentifierExpr ModifiedArgument(CallCmd callCmd)
-    {
-      switch (program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
-      {
-        case "Ref_Alloc":
-          return null;
-        case "Lheap_Empty":
-          return null;
-        case "Lheap_Split":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
-        case "Lheap_Transfer":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
-        case "Lheap_Read":
-          return null;
-        case "Lheap_Write":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lheap_Alloc":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lheap_Remove":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lset_Empty":
-          return null;
-        case "Lset_Split":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
-        case "Lset_Transfer":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
-        case "Lval_Split":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
-        case "Lval_Transfer":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[1]);
-        default:
-          throw new cce.UnreachableException();
-      }
     }
 
     public override Cmd VisitAssignCmd(AssignCmd node)
@@ -486,27 +431,20 @@ namespace Microsoft.Boogie
           }
           rhsVars.Add(rhs.Decl);
         }
-        else if (lhsDomainName == null && rhsExpr is NAryExpr nAryExpr && nAryExpr.Fun is FunctionCall functionCall && functionCall.Func is DatatypeConstructor)
+        else if (lhsDomainName == null && rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor } } nAryExpr)
         {
           // pack
-          var args = nAryExpr.Args.OfType<IdentifierExpr>();
-          if (args.Count() < nAryExpr.Args.Count)
+          nAryExpr.Args.Where(arg => linearTypes.Contains(arg.Type)).ForEach(arg =>
           {
-            Error(node, $"A source of pack must be a variable");
-          }
-          else if (args.Any(arg => LinearDomainCollector.FindDomainName(arg.Decl) != null))
-          {
-            Error(node, $"A target of pack must not be a linear variable of name domain");
-          }
-          else
-          {
-            rhsVars.UnionWith(args.Select(arg => arg.Decl)
-              .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.ORDINARY));
-          }
-        }
-        else
-        {
-          Error(node, $"Only variable can be assigned to linear variable {lhsVar.Name}");
+            if (arg is IdentifierExpr ie)
+            {
+              rhsVars.Add(ie.Decl);
+            }
+            else
+            {
+              Error(node, $"A source of pack of linear type must be a variable");
+            }
+          });
         }
       }
       return base.VisitAssignCmd(node);
@@ -605,7 +543,8 @@ namespace Microsoft.Boogie
     public override Cmd VisitCallCmd(CallCmd node)
     {
       var isPrimitive = IsPrimitive(node.Proc);
-      HashSet<Variable> inVars = new HashSet<Variable>();
+      var inVars = new HashSet<Variable>();
+      var globalInVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
       {
         var formal = node.Proc.InParams[i];
@@ -615,7 +554,7 @@ namespace Microsoft.Boogie
           continue;
         }
         var isLinearParamInPrimitiveCall = isPrimitive && formalKind == LinearKind.LINEAR;
-        var actual = isLinearParamInPrimitiveCall ? ExtractRootFromAccessPathExpr(node.Ins[i]) : node.Ins[i] as IdentifierExpr;
+        var actual = isLinearParamInPrimitiveCall ? CivlPrimitives.ExtractRootFromAccessPathExpr(node.Ins[i]) : node.Ins[i] as IdentifierExpr;
         if (actual == null)
         {
           if (isLinearParamInPrimitiveCall)
@@ -639,7 +578,7 @@ namespace Microsoft.Boogie
           Error(node, $"The domains of parameter {formal} and argument {actual} must be the same");
           continue;
         }
-        if (actual.Decl is GlobalVariable && !IsPrimitive(node.Proc))
+        if (actual.Decl is GlobalVariable && !node.Proc.IsPure)
         {
           Error(node, $"Only local linear variable can be an argument to a procedure call: {actual}");
           continue;
@@ -650,6 +589,10 @@ namespace Microsoft.Boogie
           continue;
         }
         inVars.Add(actual.Decl);
+        if (actual.Decl is GlobalVariable && actualKind == LinearKind.LINEAR_IN)
+        {
+          globalInVars.Add(actual.Decl);
+        }
       }
 
       for (int i = 0; i < node.Proc.OutParams.Count; i++)
@@ -673,9 +616,15 @@ namespace Microsoft.Boogie
         }
       }
 
+      var globalOutVars = node.Outs.Select(ie => ie.Decl).ToHashSet();
+      globalInVars.Where(v => !globalOutVars.Contains(v)).ForEach(v =>
+      {
+        Error(node, $"Global variable passed as input to pure call but not received as output: {v}");
+      });
+
       if (isPrimitive)
       {
-        var modifiedArgument = ModifiedArgument(node)?.Decl;
+        var modifiedArgument = CivlPrimitives.ModifiedArgument(node)?.Decl;
         if (modifiedArgument != null)
         {
           if (modifiedArgument is Formal formal && formal.InComing)
@@ -686,8 +635,9 @@ namespace Microsoft.Boogie
                    enclosingProc is not YieldProcedureDecl &&
                    enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
           {
+            var str = enclosingProc is ActionDecl ? "action's" : "procedure's";
             Error(node,
-              $"Primitive assigns to a global variable that is not in the enclosing procedure's modifies clause: {modifiedArgument}");
+              $"Primitive assigns to a global variable that is not in the enclosing {str} modifies clause: {modifiedArgument}");
           }
         }
       }
@@ -717,7 +667,7 @@ namespace Microsoft.Boogie
 
     public void TypeCheck()
     {
-      (this.domainNameToLinearDomain, this.linearTypeToLinearDomain) = LinearDomainCollector.Collect(program, checkingContext);
+      (this.domainNameToLinearDomain, this.linearTypeToLinearDomain, this.linearTypes) = LinearDomainCollector.Collect(program, checkingContext);
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
       this.VisitProgram(program);
       foreach (var absy in this.availableLinearVars.Keys)
@@ -729,7 +679,10 @@ namespace Microsoft.Boogie
         var impls = program.TopLevelDeclarations.OfType<Implementation>().ToList();
         impls.ForEach(impl =>
         {
-          LinearRewriter.Rewrite(civlTypeChecker, impl);
+          if (impl.Proc is not YieldProcedureDecl)
+          {
+            LinearRewriter.Rewrite(civlTypeChecker, impl);
+          }
         }); 
       }
     }
@@ -789,7 +742,7 @@ namespace Microsoft.Boogie
         return Enumerable.Empty<Expr>();
       }
       return availableVars.Where(v =>
-        v.TypedIdent.Type is CtorType ctorType && monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap").Select(
+        v.TypedIdent.Type is CtorType ctorType && Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap").Select(
         v =>
         {
           var ctorType = (CtorType)v.TypedIdent.Type;

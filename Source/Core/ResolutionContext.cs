@@ -750,11 +750,13 @@ namespace Microsoft.Boogie
     public LayerRange ExpectedLayerRange;
     public bool GlobalAccessOnlyInOld;
     public int InsideOld;
+    public bool CheckModifies;
 
     public TypecheckingContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)
     {
       this.Options = options;
+      this.CheckModifies = !options?.DoModSetAnalysis ?? true;
     }
 
     public bool InFrame(Variable v)

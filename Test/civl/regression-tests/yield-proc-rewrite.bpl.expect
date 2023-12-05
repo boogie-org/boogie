@@ -1,0 +1,5 @@
+yield-proc-rewrite.bpl(8,5): Error: Lval_Split failed
+Execution trace:
+    yield-proc-rewrite.bpl(7,7): anon0
+
+Boogie program verifier finished with 1 verified, 1 error

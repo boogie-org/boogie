@@ -56,13 +56,21 @@ namespace Microsoft.Boogie
     static readonly CacheItemPolicy policy = new CacheItemPolicy
       { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
-    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache) {
+    private const int stackSize = 16 * 1024 * 1024;
+
+    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache)
+      : this(options, cache, CustomStackSizePoolTaskScheduler.Create(stackSize, options.VcsCores))
+    {
+      taskSchedulerCreatedLocally = true;
+    }
+
+    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache, CustomStackSizePoolTaskScheduler scheduler) {
       Options = options;
       Cache = cache;
       checkerPool = new CheckerPool(options);
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
-      
-      largeThreadScheduler = CustomStackSizePoolTaskScheduler.Create(16 * 1024 * 1024, Options.VcsCores);
+
+      largeThreadScheduler = scheduler;
       largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.None, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
@@ -89,6 +97,7 @@ namespace Microsoft.Boogie
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
     private readonly CustomStackSizePoolTaskScheduler largeThreadScheduler;
+    private bool taskSchedulerCreatedLocally = false;
 
     public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null) {
@@ -136,7 +145,8 @@ namespace Microsoft.Boogie
         programId = "main_program_id";
       }
       
-      if (Options.PrintFile != null) {
+      if (Options.PrintFile != null && !Options.PrintPassive) {
+        // Printing passive programs happens later
         PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
       }
 
@@ -562,6 +572,10 @@ namespace Microsoft.Boogie
       }
 
       var outcome = await VerifyEachImplementation(output, processedProgram, stats, programId, er, requestId, stablePrioritizedImpls);
+      if (Options.PrintPassive) {
+        Options.PrintUnstructured = 1;
+        PrintBplFile(Options.PrintFile, processedProgram.Program, true, true, Options.PrettyPrint);
+      }
 
       if (1 < Options.VerifySnapshots && programId != null)
       {
@@ -674,7 +688,13 @@ namespace Microsoft.Boogie
       }
 
       if (Options.Trace && Options.TrackVerificationCoverage && processedProgram.Program.AllCoveredElements.Any()) {
-        Options.OutputWriter.WriteLine("Elements covered by verification: {0}", string.Join(", ", processedProgram.Program.AllCoveredElements.OrderBy(s => s)));
+        Options.OutputWriter.WriteLine("Proof dependencies of whole program:\n  {0}",
+          string.Join("\n  ",
+            processedProgram
+              .Program
+              .AllCoveredElements
+              .Select(elt => elt.Description)
+              .OrderBy(s => s)));
       }
 
       cce.NonNull(Options.TheProverFactory).Close();
@@ -1379,7 +1399,9 @@ namespace Microsoft.Boogie
     public void Dispose()
     {
       checkerPool.Dispose();
-      largeThreadScheduler.Dispose();
+      if (taskSchedulerCreatedLocally) {
+        largeThreadScheduler.Dispose();
+      }
     }
   }
 }

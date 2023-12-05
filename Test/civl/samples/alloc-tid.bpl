@@ -55,7 +55,7 @@ ensures {:layer 1} tid == i;
 preserves call Yield1();
 {
   call i := AllocateLow();
-  call tid := MakeLinear(i);
+  call {:layer 1} tid, unallocated := MakeLinear(i, unallocated);
 }
 
 atomic action {:layer 2,2} AtomicRead({:linear "tid"} tid: int, i: int) returns (val: int)
@@ -121,10 +121,10 @@ refines AtomicAllocateLow;
 
 // We can prove that this primitive procedure preserves the permission invariant locally.
 // We only need to use its specification and the definitions of TidCollector and TidSetCollector.
-action {:layer 1} MakeLinear(i: int) returns ({:linear "tid"} tid: int)
-modifies unallocated;
+pure action MakeLinear(i: int, {:linear_in "tid"} unallocated: [int]bool)
+returns ({:linear "tid"} tid: int, {:linear "tid"} unallocated': [int]bool)
 {
   assert unallocated[i];
   tid := i;
-  unallocated := unallocated[i := false];
+  unallocated' := unallocated[i := false];
 }

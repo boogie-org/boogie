@@ -1,0 +1,2 @@
+async-check.bpl(15,27): Error: Implementation C fails async check at layer 1.
+1 type checking errors detected in async-check.bpl

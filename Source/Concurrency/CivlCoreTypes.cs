@@ -186,8 +186,8 @@ namespace Microsoft.Boogie
       var existsVars = foroldMap.Values
         .Concat(alwaysMap.Keys.Where(key => key is GlobalVariable).Select(key => alwaysMap[key]))
         .OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
-      inputOutputRelation.Body =
-        ExprHelper.ExistsExpr(existsVars, Expr.And(gateExprs.Append(transitionRelationExpr)));
+      var expr = Expr.And(gateExprs.Append(transitionRelationExpr));
+      inputOutputRelation.Body = existsVars.Any() ? ExprHelper.ExistsExpr(existsVars, expr) : expr;
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputOutputRelation.Body);
       return inputOutputRelation;
     }
@@ -218,7 +218,7 @@ namespace Microsoft.Boogie
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProc = (Procedure)civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc);
+            var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(callCmd.Proc);
             if (originalProc.Name == "create_async" || originalProc.Name == "create_asyncs" || originalProc.Name == "create_multi_asyncs")
             {
               var pendingAsyncType =
@@ -257,7 +257,7 @@ namespace Microsoft.Boogie
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            var originalProcName = Monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
             if (originalProcName == "set_choice")
             {
               continue;
@@ -281,7 +281,7 @@ namespace Microsoft.Boogie
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            var originalProcName = Monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
             if (originalProcName == "set_choice")
             {
               var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];

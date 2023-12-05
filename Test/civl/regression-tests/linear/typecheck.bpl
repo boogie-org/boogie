@@ -34,8 +34,6 @@ yield procedure {:layer 1} D()
 
     b[a] := true;
 
-    a := f(a);
-
     a := c;
 
     c := a;

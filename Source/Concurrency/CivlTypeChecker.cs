@@ -16,7 +16,6 @@ namespace Microsoft.Boogie
     private Dictionary<ActionDecl, Action> actionDeclToAction;
     private List<Sequentialization> sequentializations;
     private Dictionary<Implementation, Dictionary<CtorType, Variable>> implToPendingAsyncCollectors;
-    private HashSet<ActionDecl> linkActionDecls;
     private string namePrefix;
 
     public CivlTypeChecker(ConcurrencyOptions options, Program program)
@@ -33,7 +32,6 @@ namespace Microsoft.Boogie
       this.actionDeclToAction = new Dictionary<ActionDecl, Action>();
       this.sequentializations = new List<Sequentialization>();
       this.implToPendingAsyncCollectors = new Dictionary<Implementation, Dictionary<CtorType, Variable>>();
-      this.linkActionDecls = new HashSet<ActionDecl>();
 
       IEnumerable<string> declNames = program.TopLevelDeclarations.OfType<NamedDeclaration>().Select(x => x.Name);
       IEnumerable<string> localVarNames = VariableNameCollector.Collect(program);
@@ -49,8 +47,8 @@ namespace Microsoft.Boogie
         }
       }
 
-      SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both,
-        new List<Variable>(), new List<Variable>(), new List<ActionDeclRef>(), null, null, new List<ElimDecl>(),
+      SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, new List<Variable>(),
+        new List<Variable>(), true, new List<ActionDeclRef>(), null, null, new List<ElimDecl>(),
         new List<IdentifierExpr>(), null, null);
       var skipImplementation = DeclHelper.Implementation(
         SkipActionDecl,
@@ -294,10 +292,6 @@ namespace Microsoft.Boogie
             }
           }
         }
-        impl.Blocks.ForEach(block =>
-        {
-          block.Cmds.OfType<CallCmd>().Select(callCmd => callCmd.Proc).OfType<ActionDecl>().ForEach(actionDecl => linkActionDecls.Add(actionDecl));
-        });
       }
     }
     
@@ -385,7 +379,7 @@ namespace Microsoft.Boogie
         var procInParams = proc.InParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
         var procOutParams = proc.OutParams.Where(x => proc.VisibleFormals.Contains(x)).ToList();
         var actionInParams = refinedActionDecl.InParams;
-        var actionOutParams = refinedActionDecl.OutParams.SkipLast(refinedActionDecl.Creates.Count).ToList();
+        var actionOutParams = refinedActionDecl.OutParams;
         signatureMatcher.MatchFormals(procInParams, actionInParams, SignatureMatcher.IN);
         signatureMatcher.MatchFormals(procOutParams, actionOutParams, SignatureMatcher.OUT);
       }
@@ -454,9 +448,6 @@ namespace Microsoft.Boogie
     #region Public access methods
 
     public IEnumerable<Variable> GlobalVariables => program.GlobalVariables;
-    
-    public IEnumerable<Action> LinkActions =>
-      actionDeclToAction.Values.Where(action => linkActionDecls.Contains(action.ActionDecl));
 
     public IEnumerable<Action> MoverActions => actionDeclToAction.Keys
       .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => actionDeclToAction[actionDecl]);

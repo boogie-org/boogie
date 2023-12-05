@@ -112,7 +112,7 @@ public abstract class ProverInterface
       this.options = options;
     }
 
-    public virtual void AddCoveredElement(string id)
+    public virtual void AddCoveredElement(TrackedNodeComponent elt)
     {
       throw new System.NotImplementedException();
     }
@@ -270,7 +270,11 @@ public abstract class ProverInterface
   {
   }
 
-  public virtual Task<int> GetRCount()
+  public virtual void SetAdditionalSmtOptions(IEnumerable<OptionValue> entries)
+  {
+  }
+  
+  public virtual int GetRCount()
   {
     throw new NotImplementedException();
   }

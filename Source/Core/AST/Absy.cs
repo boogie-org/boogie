@@ -300,13 +300,14 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void CopyIdWithSuffixFrom(IToken tok, ICarriesAttributes src, string suffix)
+    public void CopyIdWithModificationsFrom(IToken tok, ICarriesAttributes src, Func<string,TrackedNodeComponent> modifier)
     {
       var id = src.FindStringAttribute("id");
       if (id is not null) {
-        AddStringAttribute(tok, "id", id + suffix);
+        AddStringAttribute(tok, "id", modifier(id).SolverLabel);
       }
     }
+
   }
 
   [ContractClassFor(typeof(Absy))]
@@ -2704,7 +2705,7 @@ namespace Microsoft.Boogie
       {
         if (IsPure)
         {
-          rc.Error(this, "unnecessary modifies clause for pure procedure");
+          rc.Error(this, "unnecessary modifies clause for pure {0}", this is ActionDecl ? "action" : "procedure");
         }
         else
         {
@@ -2927,12 +2928,12 @@ namespace Microsoft.Boogie
     public LayerRange LayerRange; // set during registration
 
     public ActionDecl(IToken tok, string name, MoverType moverType,
-      List<Variable> inParams, List<Variable> outParams,
+      List<Variable> inParams, List<Variable> outParams, bool isPure,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
       List<ElimDecl> eliminates,
       List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
-      false, new List<Requires>(), modifies, new List<Ensures>(), kv)
+      isPure, new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
       this.MoverType = moverType;
       this.Creates = creates;
@@ -2955,7 +2956,11 @@ namespace Microsoft.Boogie
       rc.Proc = null;
       if (Creates.Any())
       {
-        if (MoverType == MoverType.Right || MoverType == MoverType.Both)
+        if (IsPure)
+        {
+          rc.Error(this, "unnecessary creates clause for pure action");
+        }
+        else if (MoverType == MoverType.Right || MoverType == MoverType.Both)
         {
           rc.Error(this, "right mover may not create pending asyncs");
         }
@@ -3090,24 +3095,31 @@ namespace Microsoft.Boogie
 
     protected override void EmitBegin(TokenTextWriter stream, int level)
     {
+      if (IsPure)
+      {
+        stream.Write(this, level, "pure ");
+      }
       if (MaybePendingAsync)
       {
         stream.Write(level, "async ");
       }
-      switch (MoverType)
+      if (!IsPure)
       {
-        case MoverType.Atomic:
-          stream.Write(level, ">-<");
-          break;
-        case MoverType.Both:
-          stream.Write(level, "<->");
-          break;
-        case MoverType.Left:
-          stream.Write(level, "<-");
-          break;
-        case MoverType.Right:
-          stream.Write(level, "->");
-          break;
+        switch (MoverType)
+        {
+          case MoverType.Atomic:
+            stream.Write(level, "atomic");
+            break;
+          case MoverType.Both:
+            stream.Write(level, "both");
+            break;
+          case MoverType.Left:
+            stream.Write(level, "left");
+            break;
+          case MoverType.Right:
+            stream.Write(level, "right");
+            break;
+        }
       }
       stream.Write(level, " action ");
     }
@@ -3509,6 +3521,9 @@ namespace Microsoft.Boogie
     // Both are used only when /inline is set.
     public List<Block> OriginalBlocks;
     public List<Variable> OriginalLocVars;
+    
+    // Map filled in during passification to allow augmented error trace reporting
+    public Dictionary<Cmd, List<object>> debugInfos = new();
 
     public readonly ISet<byte[]> AssertionChecksums = new HashSet<byte[]>(ChecksumComparer.Default);
 
@@ -3667,6 +3682,22 @@ namespace Microsoft.Boogie
 
         return priority;
       }
+    }
+
+    public Dictionary<string, string> GetExtraSMTOptions()
+    {
+      Dictionary<string, string> extraSMTOpts = new();
+      for (var a = Attributes; a != null; a = a.Next) {
+        var n = a.Params.Count;
+        var k = a.Key;
+        if (k.Equals("smt_option")) {
+          if (n == 2 && a.Params[0] is string s) {
+            extraSMTOpts.Add(s, a.Params[1].ToString());
+          }
+        }
+      }
+
+      return extraSMTOpts;
     }
 
     public IDictionary<byte[], object> ErrorChecksumToCachedError { get; private set; }

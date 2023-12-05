@@ -380,6 +380,33 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.Outcome == ConditionGeneration.Outcome.Correct);
   }
 
+  [Test]
+  public async Task ConsistentErrorTraceAfterMultipleVerificationAttempts() {
+    const string augmentedTraceNonce = "12345"; // will appear in execution trace
+    const string programString = @"
+procedure Test() {
+  assume {:print " + augmentedTraceNonce + @"} true;
+  assert false;
+}";
+    Parser.Parse(programString, "fakeFilename", out var program);
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    options.EnhancedErrorMessages = 1;
+    var output = await ProcessProgramAndGetOutput(program, options);
+    Assert.True(output.Contains(augmentedTraceNonce));
+    // Now repeat verification again and make sure the augmented trace still shows up
+    output = await ProcessProgramAndGetOutput(program, options);
+    Assert.True(output.Contains(augmentedTraceNonce));
+  }
+
+  private static async Task<string> ProcessProgramAndGetOutput(Program program, CommandLineOptions options) {
+    var writer = new StringWriter();
+    using (var engine = ExecutionEngine.CreateWithoutSharedCache(options)) {
+      await engine.ProcessProgram(writer, program, "fakeFilename");
+    }
+    await writer.DisposeAsync();
+    return writer.ToString();
+  }
+
   private readonly string fast = @"
 procedure easy() ensures 1 + 1 == 0; {
 }

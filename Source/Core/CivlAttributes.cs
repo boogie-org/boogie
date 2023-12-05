@@ -186,6 +186,69 @@ namespace Microsoft.Boogie
       "Lval_Split", "Lval_Transfer"
     };
 
+    public static IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
+    {
+      if (expr is IdentifierExpr identifierExpr)
+      {
+        return identifierExpr;
+      }
+      if (expr is NAryExpr nAryExpr)
+      {
+        if (nAryExpr.Fun is FieldAccess)
+        {
+          return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
+        }
+        if (nAryExpr.Fun is MapSelect)
+        {
+          var mapExpr = nAryExpr.Args[0];
+          if (mapExpr is NAryExpr lheapValExpr &&
+              lheapValExpr.Fun is FieldAccess &&
+              lheapValExpr.Args[0].Type is CtorType ctorType &&
+              Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
+          {
+            return ExtractRootFromAccessPathExpr(lheapValExpr.Args[0]);
+          }
+          return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
+        }
+      }
+      return null;
+    }
+    
+    public static IdentifierExpr ModifiedArgument(CallCmd callCmd)
+    {
+      switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+      {
+        case "Ref_Alloc":
+          return null;
+        case "Lheap_Empty":
+          return null;
+        case "Lheap_Split":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lheap_Transfer":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lheap_Read":
+          return null;
+        case "Lheap_Write":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lheap_Alloc":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lheap_Remove":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lset_Empty":
+          return null;
+        case "Lset_Split":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lset_Transfer":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lval_Split":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lval_Transfer":
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        default:
+          throw new cce.UnreachableException();
+      }
+    }
+    
     public static HashSet<string> Async = new()
     {
       "create_async", "create_asyncs", "create_multi_asyncs", "set_choice"

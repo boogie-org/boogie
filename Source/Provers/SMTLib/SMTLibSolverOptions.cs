@@ -38,13 +38,13 @@ namespace Microsoft.Boogie.SMTLib
     public bool UseWeights = true;
     public bool UseTickleBool => Solver == SolverKind.Z3;
     public SolverKind Solver = SolverKind.Z3;
-    public List<OptionValue> SmtOptions = new List<OptionValue>();
-    public List<string> SolverArguments = new List<string>();
+    public List<OptionValue> SmtOptions = new();
+    public List<string> SolverArguments = new();
     public string Logic = null;
 
     // Z3 specific (at the moment; some of them make sense also for other provers)
     public string Inspector = null;
-
+    
     public SMTLibSolverOptions(SMTLibOptions libOptions) : base(libOptions)
     {
     }

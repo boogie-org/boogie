@@ -150,7 +150,7 @@ namespace Microsoft.Boogie
 
     private void SetRlimit(uint rlimit)
     {
-      TheoremProver.SetRlimit(Util.BoundedMultiply(rlimit, 1000));
+      TheoremProver.SetRlimit(rlimit);
     }
     
     /// <summary>
@@ -261,7 +261,7 @@ namespace Microsoft.Boogie
       get { return proverRunTime; }
     }
 
-    public Task<int> GetProverResourceCount()
+    public int GetProverResourceCount()
     {
       return thmProver.GetRCount();
     }

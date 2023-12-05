@@ -414,7 +414,8 @@ ensures call Yield_VCPreserved_10(tid, v1, v1, old(shadow.Lock), old(shadow.VC))
   var {:layer 10} oldVC : [Shadowable] [Tid]Epoch;
   var {:layer 10} oldLock : [Shadowable] Tid;
 
-  call oldLock, oldVC := GhostRead();
+  call {:layer 10} oldLock := Copy(shadow.Lock);
+  call {:layer 10} oldVC := Copy(shadow.VC);
 
   call len1 := VCGetSize(tid, v1);
   call len2 := VCGetSize(tid, v2);
@@ -470,7 +471,8 @@ ensures call Yield_VCPreserved_10(tid, v1, v1, old(shadow.Lock), old(shadow.VC))
   var {:layer 10} oldVC : [Shadowable] [Tid]Epoch;
   var {:layer 10} oldLock : [Shadowable] Tid;
 
-  call oldLock, oldVC := GhostRead();
+  call {:layer 10} oldLock := Copy(shadow.Lock);
+  call {:layer 10} oldVC := Copy(shadow.VC);
 
   call len1 := VCGetSize(tid, v1);
   call len2 := VCGetSize(tid, v2);
@@ -492,13 +494,6 @@ ensures call Yield_VCPreserved_10(tid, v1, v1, old(shadow.Lock), old(shadow.VC))
     i := i + 1;
   }
   assume {:add_to_pool "A", shadow.VC[v1]} true;
-}
-
-
-action {:layer 10} GhostRead() returns (lock : [Shadowable]Tid, data : [Shadowable] [Tid]Epoch)
-{
-  lock := shadow.Lock;
-  data := shadow.VC;
 }
 
 both action {:layer 11,20} AtomicVC.Inc({:linear "tid" } tid: Tid, v: Shadowable, i: int)
