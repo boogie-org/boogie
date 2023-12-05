@@ -19,6 +19,6 @@ modifies X, B;
     var i: int;
     i := li->val;
     assert B[i];
-    call Lval_Transfer(X, li);
+    call Lval_Put(X, li);
     B[i] := false;
 }

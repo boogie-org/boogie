@@ -60,7 +60,7 @@ atomic action {:layer 2} AtomicEnter#1(i: int, {:linear_in} l: Lval Perm, r: Lva
 modifies usersInDriver;
 {
     assume !stoppingFlag;
-    call Lval_Transfer(usersInDriver, l);
+    call Lval_Put(usersInDriver, l);
 }
 yield procedure {:layer 1}
 Enter#1(i: int, {:layer 1} {:linear_in} l: Lval Perm, {:layer 1} r: Lval Perm)
@@ -70,7 +70,7 @@ requires {:layer 1} l->val == Left(i) && r->val == Right(i);
 {
     call Enter();
     call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
-    call {:layer 1} Lval_Transfer(usersInDriver, l);
+    call {:layer 1} Lval_Put(usersInDriver, l);
 }
 
 left action {:layer 2} AtomicCheckAssert#1(i: int, r: Lval Perm)

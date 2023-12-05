@@ -3462,7 +3462,7 @@ namespace Microsoft.Boogie
               // Check global outputs only; the checking of local outputs is done later
               var calleeLayer = Layers[0];
               var globalOutputs = Outs.Select(ie => ie.Decl).OfType<GlobalVariable>().Cast<Variable>();
-              if (CivlPrimitives.Linear.Contains(Proc.Name))
+              if (CivlPrimitives.LinearPrimitives.Contains(Proc.Name))
               {
                 var modifiedArgument = CivlPrimitives.ModifiedArgument(this);
                 if (modifiedArgument is { Decl: GlobalVariable })
@@ -3494,7 +3494,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (CivlPrimitives.Linear.Contains(Proc.Name))
+      if (CivlPrimitives.LinearPrimitives.Contains(Proc.Name))
       {
         // ok
       }
@@ -3603,7 +3603,7 @@ namespace Microsoft.Boogie
           }
         }
         // primitive calls have inout parameters that must be checked here
-        if (CivlPrimitives.Linear.Contains(Proc.Name))
+        if (CivlPrimitives.LinearPrimitives.Contains(Proc.Name))
         {
           var modifiedArgument = CivlPrimitives.ModifiedArgument(this);
           if (modifiedArgument == null)

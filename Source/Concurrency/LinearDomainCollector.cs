@@ -140,7 +140,7 @@ namespace Microsoft.Boogie
         {
           var originalDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
           var originalDeclName = originalDecl.Name;
-          if (originalDeclName == "Lheap" || originalDeclName == "Lset" || originalDeclName == "Lval")
+          if (CivlPrimitives.LinearTypes.Contains(originalDeclName))
           {
             permissionTypes.Add(type);
             linearTypes.Add(type);
@@ -198,15 +198,13 @@ namespace Microsoft.Boogie
         }
         if (!permissionTypeToCollectors[permissionType].ContainsKey(type))
         {
-          var collector = 
-            originalTypeCtorDecl.Name == "Lheap"
-              ? program.monomorphizer.InstantiateFunction("Lheap_Collector",
-                new Dictionary<string, Type> { { "V", actualTypeParams[0] } }) :
-              originalTypeCtorDecl.Name == "Lset" 
-                ? program.monomorphizer.InstantiateFunction("Lset_Collector",
-                  new Dictionary<string, Type> { { "V", actualTypeParams[0] } }) :
-                program.monomorphizer.InstantiateFunction("Lval_Collector",
-                  new Dictionary<string, Type> { { "V", actualTypeParams[0] } });
+          var typeParamInstantiationMap = new Dictionary<string, Type> { { "V", actualTypeParams[0] } };
+          var collector =
+              originalTypeCtorDecl.Name == "Lheap"
+                ? program.monomorphizer.InstantiateFunction("Lheap_Collector", typeParamInstantiationMap) :
+              originalTypeCtorDecl.Name == "Lset"
+                ? program.monomorphizer.InstantiateFunction("Lset_Collector", typeParamInstantiationMap) :
+                program.monomorphizer.InstantiateFunction("Lval_Collector", typeParamInstantiationMap);
           permissionTypeToCollectors[permissionType].Add(type, collector);
         }
       }

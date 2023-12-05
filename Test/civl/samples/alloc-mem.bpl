@@ -10,9 +10,6 @@ function cons([int]bool, [int]int) : lmap;
 axiom (forall x:[int]bool, y:[int]int :: {cons(x,y)} dom(cons(x, y)) == x && map(cons(x,y)) == y);
 axiom (forall x: lmap :: {dom(x)} {map(x)} cons(dom(x), map(x)) == x);
 
-function Empty(m:[int]int) : lmap;
-axiom (forall m: [int]int :: Empty(m) == cons(MapConst(false), m));
-
 function Add(x:lmap, i:int): lmap;
 axiom (forall x:lmap, i:int :: dom(Add(x, i)) == dom(x)[i:=true] && map(Add(x, i)) == map(x));
 
@@ -39,9 +36,8 @@ preserves call Yield();
 }
 
 yield procedure {:layer 2} Thread ({:layer 1,2} {:linear_in "mem"} local_in:lmap, i:int)
-requires call YieldMem(local_in, i);
-ensures call Yield();
-requires {:layer 2} dom(local_in)[i];
+preserves call Yield();
+requires {:layer 1,2} dom(local_in)[i];
 {
   var y, o:int;
   var {:layer 1,2} {:linear "mem"} local:lmap;
@@ -65,20 +61,18 @@ requires {:layer 2} dom(local_in)[i];
 right action {:layer 2} atomic_Alloc() returns ({:linear "mem"} l:lmap, i:int)
 modifies pool;
 {
-  var m:[int]int;
   assume dom(pool)[i];
-  pool := Remove(pool, i);
-  l := Add(Empty(m), i);
+  call l, pool := AllocLinear(i, pool);
 }
 
 yield procedure {:layer 1}
 Alloc() returns ({:layer 1} {:linear "mem"} l:lmap, i:int)
 refines atomic_Alloc;
-requires call Yield();
-ensures call YieldMem(l, i);
+preserves call Yield();
+ensures {:layer 1} dom(l)[i];
 {
   call i := PickAddr();
-  call {:layer 1} l, pool := AllocLinear(i, Add(Empty(mem), i), pool);
+  call {:layer 1} l, pool := AllocLinear(i, pool);
 }
 
 left action {:layer 2} atomic_Free({:linear_in "mem"} l:lmap, i:int)
@@ -121,18 +115,20 @@ ensures call Yield();
 yield procedure {:layer 1}
 Write ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
 refines atomic_Write;
-requires call YieldMem(l, i);
+requires call Yield();
+requires {:layer 1} dom(l)[i];
 ensures call YieldMem(l', i);
 {
   call WriteLow(i, o);
   call {:layer 1} l' := WriteLinear(l, i, o);
 }
 
-pure action AllocLinear (i:int, _l:lmap, {:linear_in "mem"} pool:lmap) returns ({:linear "mem"} l:lmap, {:linear "mem"} pool':lmap)
+pure action AllocLinear (i:int, {:linear_in "mem"} pool:lmap) returns ({:linear "mem"} l:lmap, {:linear "mem"} pool':lmap)
 {
-  assert dom(pool)[i] && dom(_l) == MapConst(false)[i := true];
+  var m:[int]int;
+  assert dom(pool)[i];
   pool' := Remove(pool, i);
-  l := _l;
+  l := cons(MapConst(false)[i := true], m);
 }
 
 pure action FreeLinear ({:linear_in "mem"} l:lmap, i:int, {:linear_in "mem"} pool:lmap) returns ({:linear "mem"} pool':lmap)
