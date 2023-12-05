@@ -3273,10 +3273,9 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      base.Resolve(rc);
-
-      var oldStateMode = rc.StateMode;
       rc.Proc = this;
+      base.Resolve(rc);
+      var oldStateMode = rc.StateMode;
       rc.StateMode = ResolutionContext.State.Two;
       rc.PushVarContext();
       RegisterFormals(InParams, rc);
