@@ -79,10 +79,6 @@ namespace Microsoft.Boogie.SMTLib
         Console.WriteLine($"[SMT-ERR-{{0}}] Solver exited with code {solver.ExitCode}.");
       }
 
-      if (solver.ExitCode != 0) {
-        HandleError($"Solver exited with code {solver.ExitCode}");
-      }
-
       lock (this) {
         while (outputReceivers.TryDequeue(out var source)) {
           source.SetResult(null);
