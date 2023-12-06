@@ -58,6 +58,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         solver = new Process();
         solver.StartInfo = psi;
+        solver.EnableRaisingEvents = true;
         solver.ErrorDataReceived += SolverErrorDataReceived;
         solver.OutputDataReceived += SolverOutputDataReceived;
         solver.Exited += SolverExited;
@@ -74,6 +75,10 @@ namespace Microsoft.Boogie.SMTLib
 
     private void SolverExited(object sender, EventArgs e)
     {
+      if (options.Verbosity >= 2) {
+        Console.WriteLine($"[SMT-ERR-{{0}}] Solver exited with code {solver.ExitCode}.");
+      }
+
       lock (this) {
         while (outputReceivers.TryDequeue(out var source)) {
           source.SetResult(null);
