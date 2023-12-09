@@ -183,7 +183,7 @@ namespace Microsoft.Boogie
     public static HashSet<string> LinearPrimitives = new()
     {
       "Ref_Alloc",
-      "Lheap_Empty", "Lheap_Get", "Lheap_Put", "Lheap_Read", "Lheap_Write", "Lheap_Alloc", "Lheap_Remove",
+      "Lheap_Empty", "Lheap_Get", "Lheap_Put", "Lheap_Alloc", "Lheap_Remove",
       "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
       "Lval_Split", "Lval_Get", "Lval_Put"
     };
@@ -226,10 +226,6 @@ namespace Microsoft.Boogie
           return null;
         case "Lheap_Get":
         case "Lheap_Put":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lheap_Read":
-          return null;
-        case "Lheap_Write":
         case "Lheap_Alloc":
         case "Lheap_Remove":
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);

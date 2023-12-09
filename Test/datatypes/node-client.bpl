@@ -28,14 +28,16 @@ modifies ts;
   assert ts->dom[ref_t];
   assume ts->val[ref_t]->top != Nil() && ts->val[ref_t]->stack->dom[ts->val[ref_t]->top];
   Node(ref_n, x) := ts->val[ref_t]->stack->val[ts->val[ref_t]->top];
-  call Lheap_Write(ts->val[ref_t]->top, ref_n);
+  ts->val[ref_t]->top := ref_n;
 }
 
 procedure {:inline 1} AtomicPushIntermediate(ref_t: RefTreiber X, x: X)
 modifies ts;
 {
+  var t: RefNode X;
   var ref_n: Lval (RefNode X);
   assert ts->dom[ref_t];
-  call ref_n := Lheap_Alloc(ts->val[ref_t]->stack, Node(ts->val[ref_t]->top, x));
-  call Lheap_Write(ts->val[ref_t]->top, ref_n->val);
+  t := ts->val[ref_t]->top;
+  call ref_n := Lheap_Alloc(ts->val[ref_t]->stack, Node(t, x));
+  ts->val[ref_t]->top := ref_n->val;
 }

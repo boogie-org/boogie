@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 
 namespace Microsoft.Boogie;
 
@@ -32,9 +33,29 @@ public class LinearRewriter
     var newCmdSeq = new List<Cmd>();
     foreach (var cmd in cmdSeq)
     {
-      if (cmd is CallCmd callCmd && IsPrimitive(callCmd.Proc))
+      if (cmd is AssignCmd assignCmd)
       {
-        newCmdSeq.AddRange(RewriteCallCmd(callCmd));
+        assignCmd.Rhss.Where(LinearStoreVisitor.HasLinearStoreAccess).ForEach(expr => {
+          CreateAccessAsserts(expr, expr.tok, "Illegal access");
+        });
+        assignCmd.Lhss.Where(LinearStoreVisitor.HasLinearStoreAccess).ForEach(assignLhs => {
+          CreateAccessAsserts(assignLhs, assignLhs.tok, "Illegal access");
+        });
+        newCmdSeq.Add(cmd);
+      }
+      else if (cmd is CallCmd callCmd)
+      {
+        callCmd.Ins.Where(LinearStoreVisitor.HasLinearStoreAccess).ForEach(expr => {
+          CreateAccessAsserts(expr, expr.tok, "Illegal access");
+        });
+        if (IsPrimitive(callCmd.Proc))
+        {
+          newCmdSeq.AddRange(RewriteCallCmd(callCmd));
+        }
+        else
+        {
+          newCmdSeq.Add(cmd);
+        }
       }
       else
       {
@@ -56,10 +77,6 @@ public class LinearRewriter
         return RewriteLheapGet(callCmd);
       case "Lheap_Put":
         return RewriteLheapPut(callCmd);
-      case "Lheap_Read":
-        return RewriteLheapRead(callCmd);
-      case "Lheap_Write":
-        return RewriteLheapWrite(callCmd);
       case "Lheap_Alloc":
         return RewriteLheapAlloc(callCmd);
       case "Lheap_Remove":
@@ -242,42 +259,8 @@ public class LinearRewriter
     return cmdSeq;
   }
 
-  private List<Cmd> RewriteLheapRead(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
-      out Function lsetConstructor, out Function lvalConstructor);
-    
-    var path = callCmd.Ins[0];
-    var v = callCmd.Outs[0];
-
-    var cmdSeq = CreateAccessAsserts(path, callCmd.tok, "Lheap_Read failed");
-    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, path));
-    
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-  
-  private List<Cmd> RewriteLheapWrite(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
-      out Function lsetConstructor, out Function lvalConstructor);
-    
-    var path = callCmd.Ins[0];
-    var v = callCmd.Ins[1];
-    
-    var cmdSeq = CreateAccessAsserts(path, callCmd.tok, "Lheap_Write failed");
-    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), v));
-    
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
   private List<Cmd> CreateAccessAsserts(Expr expr, IToken tok, string msg)
   {
-    if (expr is IdentifierExpr identifierExpr)
-    {
-      return new List<Cmd>();
-    }
     if (expr is NAryExpr nAryExpr)
     {
       if (nAryExpr.Fun is FieldAccess)
@@ -294,12 +277,31 @@ public class LinearRewriter
         {
           var cmdSeq = CreateAccessAsserts(lheapValExpr.Args[0], tok, msg);
           var lheapContainsFunc = LheapContains(nAryExpr.Type);
-          cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lheapContainsFunc, lheapValExpr.Args[0], nAryExpr.Args[1]), "Lheap_Write failed"));
+          cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lheapContainsFunc, lheapValExpr.Args[0], nAryExpr.Args[1]), msg));
           return cmdSeq;
         }
       }
     }
-    throw new cce.UnreachableException();
+    return new List<Cmd>();
+  }
+
+  private List<Cmd> CreateAccessAsserts(AssignLhs assignLhs, IToken tok, string msg)
+  {
+    if (assignLhs is FieldAssignLhs fieldAssignLhs)
+    {
+      return CreateAccessAsserts(fieldAssignLhs.Datatype, tok, msg);
+    }
+    if (assignLhs is MapAssignLhs mapAssignLhs &&
+        mapAssignLhs.Map is FieldAssignLhs fieldAssignLhs1 &&
+        fieldAssignLhs1.Datatype.Type is CtorType ctorType &&
+        Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
+    {
+      var cmdSeq = CreateAccessAsserts(mapAssignLhs.Map, tok, msg);
+      var lheapContainsFunc = LheapContains(mapAssignLhs.Map.Type);
+      cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lheapContainsFunc, fieldAssignLhs1.Datatype.AsExpr, mapAssignLhs.Indexes[0]), msg));
+      return cmdSeq;
+    }
+    return new List<Cmd>();
   }
 
   private List<Cmd> RewriteLheapAlloc(CallCmd callCmd)

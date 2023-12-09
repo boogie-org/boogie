@@ -272,8 +272,6 @@ function {:inline} Lheap_Deref<V>(l: Lheap V, k: Ref V): V {
 pure procedure Lheap_Empty<V>() returns (l: Lheap V);
 pure procedure Lheap_Get<V>(path: Lheap V, k: [Ref V]bool) returns (l: Lheap V);
 pure procedure Lheap_Put<V>(path: Lheap V, {:linear_in} l: Lheap V);
-pure procedure Lheap_Read<V>(path: V) returns (v: V);
-pure procedure Lheap_Write<V>(path: V, v: V);
 pure procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (l: Lval (Ref V));
 pure procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
 
