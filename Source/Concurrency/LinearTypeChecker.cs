@@ -811,8 +811,57 @@ namespace Microsoft.Boogie
 
     public IEnumerable<LinearDomain> LinearDomains => domainNameToLinearDomain.Values.Union(linearTypeToLinearDomain.Values);
 
+    private void CheckLinearStoreAccessInGuards()
+    {
+      program.Implementations.ForEach(impl => {
+        Stack<StmtList> stmtLists = new Stack<StmtList>();
+        if (impl.StructuredStmts != null)
+        {
+          stmtLists.Push(impl.StructuredStmts);
+        }
+        while (stmtLists.Count > 0)
+        {
+          var stmtList = stmtLists.Pop();
+          stmtList.BigBlocks.Where(bigBlock => bigBlock.ec != null).ForEach(bigBlock => {
+            switch (bigBlock.ec) {
+              case IfCmd ifCmd:
+                void ProcessIfCmd(IfCmd ifCmd)
+                {
+                  if (ifCmd.Guard != null && LinearStoreVisitor.HasLinearStoreAccess(ifCmd.Guard))
+                  {
+                    checkingContext.Error(ifCmd.tok, "Access to linear store not allowed");
+                  }
+                  stmtLists.Push(ifCmd.thn);
+                  if (ifCmd.elseIf != null)
+                  {
+                    ProcessIfCmd(ifCmd.elseIf);
+                  }
+                  else if (ifCmd.elseBlock != null)
+                  {
+                    stmtLists.Push(ifCmd.elseBlock);
+                  }
+                }
+                ProcessIfCmd(ifCmd);
+                break;
+              case WhileCmd whileCmd:
+                if (whileCmd.Guard != null && LinearStoreVisitor.HasLinearStoreAccess(whileCmd.Guard))
+                {
+                  checkingContext.Error(whileCmd.tok, "Access to linear store not allowed");
+                }
+                stmtLists.Push(whileCmd.Body);
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      });
+    }
+
     public void TypeCheck()
     {
+      CheckLinearStoreAccessInGuards();
+
       (this.domainNameToLinearDomain, this.linearTypeToLinearDomain, this.linearTypes) = LinearDomainCollector.Collect(program, checkingContext);
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
       this.VisitProgram(program);

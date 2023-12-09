@@ -205,8 +205,10 @@ preserves call YieldInv#2(ref_t);
 atomic action {:layer 1, 3} AtomicWriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
 modifies ts;
 {
+  var top: RefNode X;
   assert ts->dom[ref_t];
-  if (old_ref_n == ts->val[ref_t]->top) {
+  top := ts->val[ref_t]->top;
+  if (old_ref_n == top) {
     ts->val[ref_t]->top := new_ref_n;
     r := true;
   }
