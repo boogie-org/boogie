@@ -184,7 +184,7 @@ namespace Microsoft.Boogie
     {
       "Ref_Alloc",
       "Lheap_Empty", "Lheap_Get", "Lheap_Put", "Lheap_Alloc", "Lheap_Remove",
-      "Lmap_Create", "Lmap_Get", "Lmap_Put",
+      "Lmap_Alloc", "Lmap_Free", "Lmap_Get", "Lmap_Put",
       "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
       "Lval_Split", "Lval_Get", "Lval_Put"
     };
@@ -211,7 +211,8 @@ namespace Microsoft.Boogie
       {
         case "Ref_Alloc":
         case "Lheap_Empty":
-        case "Lmap_Create":
+        case "Lmap_Alloc":
+        case "Lmap_Free":
         case "Lset_Empty":
           return null;
         default:

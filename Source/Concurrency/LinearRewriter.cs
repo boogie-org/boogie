@@ -81,8 +81,10 @@ public class LinearRewriter
         return RewriteLheapAlloc(callCmd);
       case "Lheap_Remove":
         return RewriteLheapRemove(callCmd);
-      case "Lmap_Create":
-        return RewriteLmapCreate(callCmd);
+      case "Lmap_Alloc":
+        return RewriteLmapAlloc(callCmd);
+      case "Lmap_Free":
+        return RewriteLmapFree(callCmd);
       case "Lmap_Get":
         return RewriteLmapGet(callCmd);
       case "Lmap_Put":
@@ -317,7 +319,7 @@ public class LinearRewriter
     return cmdSeq;
   }
 
-  private List<Cmd> RewriteLmapCreate(CallCmd callCmd)
+  private List<Cmd> RewriteLmapAlloc(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type keyType, out Type valType, out Function lmapConstructor);
 
@@ -326,7 +328,23 @@ public class LinearRewriter
     var val = callCmd.Ins[1];
     var l = callCmd.Outs[0].Decl;
 
-    cmdSeq.Add(CmdHelper.AssignCmd(l, ExprHelper.FunctionCall(lmapConstructor, k, val)));
+    cmdSeq.Add(CmdHelper.AssignCmd(l, ExprHelper.FunctionCall(lmapConstructor, Dom(k), val)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteLmapFree(CallCmd callCmd)
+  {
+    GetRelevantInfo(callCmd, out Type keyType, out Type valType, out Function lmapConstructor);
+    var lsetTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Lset", new List<Type>() { keyType });
+    var lsetConstructor = lsetTypeCtorDecl.Constructors[0];
+
+    var cmdSeq = new List<Cmd>();
+    var l = callCmd.Ins[0];
+    var k = callCmd.Outs[0].Decl;
+
+    cmdSeq.Add(CmdHelper.AssignCmd(k, ExprHelper.FunctionCall(lsetConstructor, Dom(l))));
 
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
