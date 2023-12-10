@@ -4,6 +4,50 @@ using System.Linq;
 
 namespace Microsoft.Boogie
 {
+  public class LinearStoreVisitor : ReadOnlyVisitor
+  {
+    private bool hasLinearStoreAccess = false;
+
+    public static bool HasLinearStoreAccess(Expr expr)
+    {
+      var heapLookupVisitor = new LinearStoreVisitor();
+      heapLookupVisitor.Visit(expr);
+      return heapLookupVisitor.hasLinearStoreAccess;
+    }
+
+    public static bool HasLinearStoreAccess(AssignLhs assignLhs)
+    {
+      var heapLookupVisitor = new LinearStoreVisitor();
+      heapLookupVisitor.Visit(assignLhs);
+      return heapLookupVisitor.hasLinearStoreAccess;
+    }
+
+    public override Expr VisitIdentifierExpr(IdentifierExpr node)
+    {
+      CheckType(node.Type);
+      return base.VisitIdentifierExpr(node);
+    }
+
+    public override Expr VisitNAryExpr(NAryExpr node)
+    {
+      CheckType(node.Type);
+      return base.VisitNAryExpr(node);
+    }
+
+    private void CheckType(Type type)
+    {
+      if (type is not CtorType ctorType)
+      {
+        return;
+      }
+      var typeCtorDeclName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
+      if (typeCtorDeclName == "Lheap" || typeCtorDeclName == "Lmap")
+      {
+        hasLinearStoreAccess = true;
+      }
+    }
+  }
+
   public class LinearTypeChecker : ReadOnlyVisitor
   {
     public Program program;
@@ -22,6 +66,66 @@ namespace Microsoft.Boogie
       // other fields are initialized in the TypeCheck method
     }
     
+    private static bool IsLegalAssignmentTarget(AssignLhs assignLhs)
+    {
+      if (LinearStoreVisitor.HasLinearStoreAccess(assignLhs))
+      {
+        return IsAccessPathAssignLhs(assignLhs);
+      }
+      return true;
+    }
+
+    private static bool IsAccessPathAssignLhs(AssignLhs assignLhs)
+    {
+      if (assignLhs is SimpleAssignLhs)
+      {
+        return true;
+      }
+      if (assignLhs is FieldAssignLhs fieldAssignLhs)
+      {
+        return IsAccessPathAssignLhs(fieldAssignLhs.Datatype);
+      }
+      if (assignLhs is MapAssignLhs mapAssignLhs)
+      {
+        return IsAccessPathAssignLhs(mapAssignLhs.Map) &&
+        mapAssignLhs.Indexes.All(expr => !LinearStoreVisitor.HasLinearStoreAccess(expr));
+      }
+      throw new cce.UnreachableException();
+    }
+
+    private static bool IsLegalAssignmentSource(Expr expr)
+    {
+      if (LinearStoreVisitor.HasLinearStoreAccess(expr))
+      {
+        if (expr is NAryExpr nAryExpr && nAryExpr.Fun is FunctionCall functionCall && functionCall.Func is DatatypeConstructor)
+        {
+          return nAryExpr.Args.All(x => x is IdentifierExpr);
+        }
+        return IsAccessPathExpr(expr);
+      }
+      return true;
+    }
+
+    private static bool IsAccessPathExpr(Expr expr)
+    {
+      if (expr is IdentifierExpr identifierExpr)
+      {
+        return true;
+      }
+      if (expr is NAryExpr nAryExpr)
+      {
+        if (nAryExpr.Fun is FieldAccess)
+        {
+          return IsAccessPathExpr(nAryExpr.Args[0]);
+        }
+        if (nAryExpr.Fun is MapSelect)
+        {
+          return IsAccessPathExpr(nAryExpr.Args[0]) && nAryExpr.Args.Skip(1).All(expr => !LinearStoreVisitor.HasLinearStoreAccess(expr));
+        }
+      }
+      return false;
+    }
+
     #region Visitor Implementation
 
     private IEnumerable<Variable> LinearGlobalVariables =>
@@ -201,12 +305,18 @@ namespace Microsoft.Boogie
           var lhsVarsToAdd = new HashSet<Variable>();
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
-            var lhsVar = assignCmd.Lhss[i].DeepAssignedVariable;
+            var lhs = assignCmd.Lhss[i];
+            var lhsVar = lhs.DeepAssignedVariable;
             if (SkipCheck(lhsVar))
             {
               continue;
             }
             var lhsDomainName = LinearDomainCollector.FindDomainName(lhsVar);
+            if (lhsDomainName == null && !linearTypes.Contains(lhs.Type))
+            {
+              // ordinary assignment
+              continue;
+            }
             var rhsExpr = assignCmd.Rhss[i];
             if (rhsExpr is IdentifierExpr ie)
             {
@@ -395,6 +505,15 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
+      node.Lhss.Where(lhs => !IsLegalAssignmentTarget(lhs)).ForEach(lhs =>
+      {
+        Error(lhs, "Illegal access to linear store");
+      });
+      node.Rhss.Where(rhs => !IsLegalAssignmentSource(rhs)).ForEach(rhs =>
+      {
+        Error(rhs, "Illegal access to linear store");
+      });
+
       HashSet<Variable> rhsVars = new HashSet<Variable>();
       for (int i = 0; i < node.Lhss.Count; i++)
       {
@@ -404,14 +523,50 @@ namespace Microsoft.Boogie
         {
           continue;
         }
-        if (!(lhs is SimpleAssignLhs))
+        var lhsDomainName = LinearDomainCollector.FindDomainName(lhsVar);
+        var rhsExpr = node.Rhss[i];
+        if (lhsDomainName == null)
+        {
+          if (!linearTypes.Contains(lhs.Type))
+          {
+            // ordinary assignment
+            continue;
+          }
+          if (rhsExpr is IdentifierExpr)
+          {
+            // complete permission transfer
+            continue;
+          }
+          if (rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor } } nAryExpr)
+          {
+            // pack
+            nAryExpr.Args.Where(arg => linearTypes.Contains(arg.Type)).ForEach(arg =>
+            {
+              if (arg is not IdentifierExpr ie)
+              {
+                Error(node, $"A source of pack of linear type must be a variable");
+              }
+              else if (rhsVars.Contains(ie.Decl))
+              {
+                Error(node, $"Linear variable {ie.Decl.Name} can occur only once in the right-hand-side of an assignment");
+              }
+              else
+              {
+                rhsVars.Add(ie.Decl);
+              }
+            });
+          }
+          else
+          {
+            Error(node, "illegal linear assignment");
+          }
+        }
+        else if (lhs is not SimpleAssignLhs)
         {
           Error(node, $"Only simple assignment allowed on linear variable {lhsVar.Name}");
           continue;
         }
-        var rhsExpr = node.Rhss[i];
-        var lhsDomainName = LinearDomainCollector.FindDomainName(lhsVar);
-        if (rhsExpr is IdentifierExpr rhs)
+        else if (rhsExpr is IdentifierExpr rhs)
         {
           var rhsKind = LinearDomainCollector.FindLinearKind(rhs.Decl);
           if (rhsKind == LinearKind.ORDINARY)
@@ -427,24 +582,11 @@ namespace Microsoft.Boogie
           if (rhsVars.Contains(rhs.Decl))
           {
             Error(node, $"Linear variable {rhs.Decl.Name} can occur only once in the right-hand-side of an assignment");
-            continue;
           }
-          rhsVars.Add(rhs.Decl);
-        }
-        else if (lhsDomainName == null && rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor } } nAryExpr)
-        {
-          // pack
-          nAryExpr.Args.Where(arg => linearTypes.Contains(arg.Type)).ForEach(arg =>
+          else
           {
-            if (arg is IdentifierExpr ie)
-            {
-              rhsVars.Add(ie.Decl);
-            }
-            else
-            {
-              Error(node, $"A source of pack of linear type must be a variable");
-            }
-          });
+            rhsVars.Add(rhs.Decl);
+          }
         }
       }
       return base.VisitAssignCmd(node);
@@ -542,6 +684,11 @@ namespace Microsoft.Boogie
     
     public override Cmd VisitCallCmd(CallCmd node)
     {
+      node.Ins.Where(expr => !IsLegalAssignmentSource(expr)).ForEach(rhs =>
+      {
+        Error(rhs, "Illegal access to linear store");
+      });
+
       var isPrimitive = IsPrimitive(node.Proc);
       var inVars = new HashSet<Variable>();
       var globalInVars = new HashSet<Variable>();
@@ -665,8 +812,57 @@ namespace Microsoft.Boogie
 
     public IEnumerable<LinearDomain> LinearDomains => domainNameToLinearDomain.Values.Union(linearTypeToLinearDomain.Values);
 
+    private void CheckLinearStoreAccessInGuards()
+    {
+      program.Implementations.ForEach(impl => {
+        Stack<StmtList> stmtLists = new Stack<StmtList>();
+        if (impl.StructuredStmts != null)
+        {
+          stmtLists.Push(impl.StructuredStmts);
+        }
+        while (stmtLists.Count > 0)
+        {
+          var stmtList = stmtLists.Pop();
+          stmtList.BigBlocks.Where(bigBlock => bigBlock.ec != null).ForEach(bigBlock => {
+            switch (bigBlock.ec) {
+              case IfCmd ifCmd:
+                void ProcessIfCmd(IfCmd ifCmd)
+                {
+                  if (ifCmd.Guard != null && LinearStoreVisitor.HasLinearStoreAccess(ifCmd.Guard))
+                  {
+                    checkingContext.Error(ifCmd.tok, "Access to linear store not allowed");
+                  }
+                  stmtLists.Push(ifCmd.thn);
+                  if (ifCmd.elseIf != null)
+                  {
+                    ProcessIfCmd(ifCmd.elseIf);
+                  }
+                  else if (ifCmd.elseBlock != null)
+                  {
+                    stmtLists.Push(ifCmd.elseBlock);
+                  }
+                }
+                ProcessIfCmd(ifCmd);
+                break;
+              case WhileCmd whileCmd:
+                if (whileCmd.Guard != null && LinearStoreVisitor.HasLinearStoreAccess(whileCmd.Guard))
+                {
+                  checkingContext.Error(whileCmd.tok, "Access to linear store not allowed");
+                }
+                stmtLists.Push(whileCmd.Body);
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      });
+    }
+
     public void TypeCheck()
     {
+      CheckLinearStoreAccessInGuards();
+
       (this.domainNameToLinearDomain, this.linearTypeToLinearDomain, this.linearTypes) = LinearDomainCollector.Collect(program, checkingContext);
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
       this.VisitProgram(program);
@@ -734,7 +930,21 @@ namespace Microsoft.Boogie
       return expr;
     }
 
-    public IEnumerable<Expr> LheapWellFormedExpressions(IEnumerable<Variable> availableVars)
+    private Function LheapWellFormedFunction(Monomorphizer monomorphizer, TypeCtorDecl typeCtorDecl)
+    {
+      var typeInstantiation = monomorphizer.GetTypeInstantiation(typeCtorDecl);
+      var typeParamInstantiationMap = new Dictionary<string, Type>() { { "V", typeInstantiation[0] } };
+      return monomorphizer.InstantiateFunction("Lheap_WellFormed", typeParamInstantiationMap);
+    }
+
+    private Function LmapWellFormedFunction(Monomorphizer monomorphizer, TypeCtorDecl typeCtorDecl)
+    {
+      var typeInstantiation = monomorphizer.GetTypeInstantiation(typeCtorDecl);
+      var typeParamInstantiationMap = new Dictionary<string, Type>() { { "K", typeInstantiation[0] }, { "V", typeInstantiation[1] } };
+      return monomorphizer.InstantiateFunction("Lmap_WellFormed", typeParamInstantiationMap);
+    }
+
+    public IEnumerable<Expr> LstoreWellFormedExpressions(IEnumerable<Variable> availableVars)
     {
       var monomorphizer = civlTypeChecker.program.monomorphizer;
       if (monomorphizer == null)
@@ -742,12 +952,24 @@ namespace Microsoft.Boogie
         return Enumerable.Empty<Expr>();
       }
       return availableVars.Where(v =>
-        v.TypedIdent.Type is CtorType ctorType && Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap").Select(
-        v =>
+        {
+          if (v.TypedIdent.Type is not CtorType ctorType)
+          {
+            return false;
+          }
+          var declName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
+          if (declName is "Lheap" or "Lmap")
+          {
+            return true;
+          }
+          return false;
+        }).Select(v =>
         {
           var ctorType = (CtorType)v.TypedIdent.Type;
-          var func = monomorphizer.InstantiateFunction("Lheap_WellFormed",
-            new Dictionary<string, Type>() { { "V", monomorphizer.GetTypeInstantiation(ctorType.Decl)[0] } });
+          var declName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
+          var func = declName == "Lheap"
+            ? LheapWellFormedFunction(monomorphizer, ctorType.Decl)
+            : LmapWellFormedFunction(monomorphizer, ctorType.Decl);
           return ExprHelper.FunctionCall(func, Expr.Ident(v));
         });
     }

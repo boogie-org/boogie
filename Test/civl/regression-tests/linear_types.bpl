@@ -1,24 +1,17 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-atomic action {:layer 1, 2} A0({:linear_in} path: Lheap int, k: [Ref int]bool) returns (path': Lheap int, l: Lheap int) {
+atomic action {:layer 1, 2} A1({:linear_in} path: Lheap int, k: [Ref int]bool) returns (path': Lheap int, l: Lheap int) {
     call path' := Lheap_Empty();
     call Lheap_Put(path', path);
     call l := Lheap_Get(path', k);
 }
 
-atomic action {:layer 1, 2} A1({:linear_in} path: Lheap int, k: Ref int, v: int) returns (path': Lheap int, v': int) {
-    call path' := Lheap_Empty();
-    call Lheap_Put(path', path);
-    call Lheap_Write(path'->val[k], v);
-    call v' := Lheap_Read(path'->val[k]);
-}
-
-atomic action {:layer 1, 2} A2(v: int) returns (path': Lheap int, v': int) {
+atomic action {:layer 1, 2} A2(v: int) returns (path': Lheap int) {
     var k: Lval (Ref int);
     call path' := Lheap_Empty();
     call k := Lheap_Alloc(path', v);
-    call v' := Lheap_Remove(path', k->val);
+    call Lheap_Free(path', k->val);
 }
 
 atomic action {:layer 1, 2} A3({:linear_in} path: Lset int, {:linear_out} l: Lset int) returns (path': Lset int) {

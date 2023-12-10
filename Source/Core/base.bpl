@@ -270,12 +270,30 @@ function {:inline} Lheap_Deref<V>(l: Lheap V, k: Ref V): V {
     l->val[k]
 }
 pure procedure Lheap_Empty<V>() returns (l: Lheap V);
+pure procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (l: Lval (Ref V));
+pure procedure Lheap_Free<V>(path: Lheap V, k: Ref V);
 pure procedure Lheap_Get<V>(path: Lheap V, k: [Ref V]bool) returns (l: Lheap V);
 pure procedure Lheap_Put<V>(path: Lheap V, {:linear_in} l: Lheap V);
-pure procedure Lheap_Read<V>(path: V) returns (v: V);
-pure procedure Lheap_Write<V>(path: V, v: V);
-pure procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (l: Lval (Ref V));
-pure procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
+
+/// linear maps
+datatype Lmap<K,V> { Lmap(dom: [K]bool, val: [K]V) }
+
+function {:inline} Lmap_WellFormed<K,V>(l: Lmap K V): bool {
+    l->val == MapIte(l->dom, l->val, MapConst(Default()))
+}
+function {:inline} Lmap_Collector<K,V>(l: Lmap K V): [K]bool {
+    l->dom
+}
+function {:inline} Lmap_Contains<K,V>(l: Lmap K V, k: K): bool {
+    l->dom[k]
+}
+function {:inline} Lmap_Deref<K,V>(l: Lmap K V, k: K): V {
+    l->val[k]
+}
+pure procedure Lmap_Alloc<K,V>({:linear_in} k: Lset K, val: [K]V) returns (l: Lmap K V);
+pure procedure Lmap_Free<K,V>({:linear_in} l: Lmap K V) returns (k: Lset K);
+pure procedure Lmap_Get<K,V>(path: Lmap K V, k: [K]bool) returns (l: Lmap K V);
+pure procedure Lmap_Put<K,V>(path: Lmap K V, {:linear_in} l: Lmap K V);
 
 /// linear sets
 datatype Lset<V> { Lset(dom: [V]bool) }

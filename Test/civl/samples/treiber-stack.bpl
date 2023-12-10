@@ -88,7 +88,7 @@ modifies ts;
     assume ts->val[ref_t]->top != Nil();
     assume ts->val[ref_t]->stack->dom[ts->val[ref_t]->top];
     Node(new_ref_n, x) := ts->val[ref_t]->stack->val[ts->val[ref_t]->top];
-    call Lheap_Write(ts->val[ref_t]->top, new_ref_n);
+    ts->val[ref_t]->top := new_ref_n;
   }
 }
 yield procedure {:layer 3} PopIntermediate(ref_t: RefTreiber X) returns (success: bool, x: X)
@@ -114,10 +114,12 @@ modifies ts, unused;
 {
   var {:pool "A"} ref_n: Lval (RefNode X);
   var {:pool "A"} new_ref_n: Lval (RefNode X);
+  var t: RefNode X;
   assume {:add_to_pool "A", ref_n} ts->dom[ref_t];
-  call new_ref_n := Lheap_Alloc(ts->val[ref_t]->stack, Node(if success then ts->val[ref_t]->top else ref_n->val, x));
+  t := ts->val[ref_t]->top;
+  call new_ref_n := Lheap_Alloc(ts->val[ref_t]->stack, Node(if success then t else ref_n->val, x));
   if (success) {
-    call Lheap_Write(ts->val[ref_t]->top, new_ref_n->val);
+    ts->val[ref_t]->top := new_ref_n->val;
   } else {
     unused[ref_t][new_ref_n->val] := true;
   }
@@ -203,9 +205,11 @@ preserves call YieldInv#2(ref_t);
 atomic action {:layer 1, 3} AtomicWriteTopOfStack(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
 modifies ts;
 {
+  var top: RefNode X;
   assert ts->dom[ref_t];
-  if (old_ref_n == ts->val[ref_t]->top) {
-    call Lheap_Write(ts->val[ref_t]->top, new_ref_n);
+  top := ts->val[ref_t]->top;
+  if (old_ref_n == top) {
+    ts->val[ref_t]->top := new_ref_n;
     r := true;
   }
   else {
