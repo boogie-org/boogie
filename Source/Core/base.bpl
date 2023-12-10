@@ -290,6 +290,7 @@ function {:inline} Lmap_Contains<K,V>(l: Lmap K V, k: K): bool {
 function {:inline} Lmap_Deref<K,V>(l: Lmap K V, k: K): V {
     l->val[k]
 }
+pure procedure Lmap_Empty<K,V>() returns (l: Lmap K V);
 pure procedure Lmap_Alloc<K,V>({:linear_in} k: Lset K, val: [K]V) returns (l: Lmap K V);
 pure procedure Lmap_Free<K,V>({:linear_in} l: Lmap K V) returns (k: Lset K);
 pure procedure Lmap_Get<K,V>(path: Lmap K V, k: [K]bool) returns (l: Lmap K V);

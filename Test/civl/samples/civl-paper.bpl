@@ -48,7 +48,7 @@ preserves call InvLock();
 
 both action {:layer 3} AtomicTransferFromGlobalProtected(tid: Lval X) returns (l: Lmap int int)
 modifies g;
-{ var t: Lset int; assert tid->val != nil && lock == tid->val; l := g; call t := Lset_Empty(); call g := Lmap_Alloc(t, g->val); }
+{ assert tid->val != nil && lock == tid->val; l := g; call g := Lmap_Empty(); }
 
 yield procedure {:layer 2}
 TransferFromGlobalProtected(tid: Lval X) returns (l: Lmap int int)
@@ -124,7 +124,7 @@ refines AtomicTransferToGlobal;
 
 atomic action {:layer 1,2} AtomicTransferFromGlobal(tid: Lval X) returns (l: Lmap int int)
 modifies g;
-{ var t: Lset int; l := g; call t := Lset_Empty(); call g := Lmap_Alloc(t, g->val); }
+{ l := g; call g := Lmap_Empty(); }
 
 yield procedure {:layer 0} TransferFromGlobal(tid: Lval X) returns (l: Lmap int int);
 refines AtomicTransferFromGlobal;
