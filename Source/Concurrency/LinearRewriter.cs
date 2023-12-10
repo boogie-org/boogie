@@ -81,6 +81,12 @@ public class LinearRewriter
         return RewriteLheapAlloc(callCmd);
       case "Lheap_Remove":
         return RewriteLheapRemove(callCmd);
+      case "Lmap_Create":
+        return RewriteLmapCreate(callCmd);
+      case "Lmap_Get":
+        return RewriteLmapGet(callCmd);
+      case "Lmap_Put":
+        return RewriteLmapPut(callCmd);
       case "Lset_Empty":
         return RewriteLsetEmpty(callCmd);
       case "Lset_Split":
@@ -259,51 +265,6 @@ public class LinearRewriter
     return cmdSeq;
   }
 
-  private List<Cmd> CreateAccessAsserts(Expr expr, IToken tok, string msg)
-  {
-    if (expr is NAryExpr nAryExpr)
-    {
-      if (nAryExpr.Fun is FieldAccess)
-      {
-        return CreateAccessAsserts(nAryExpr.Args[0], tok, msg);
-      }
-      if (nAryExpr.Fun is MapSelect)
-      {
-        var mapExpr = nAryExpr.Args[0];
-        if (mapExpr is NAryExpr lheapValExpr &&
-            lheapValExpr.Fun is FieldAccess &&
-            lheapValExpr.Args[0].Type is CtorType ctorType &&
-            Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
-        {
-          var cmdSeq = CreateAccessAsserts(lheapValExpr.Args[0], tok, msg);
-          var lheapContainsFunc = LheapContains(nAryExpr.Type);
-          cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lheapContainsFunc, lheapValExpr.Args[0], nAryExpr.Args[1]), msg));
-          return cmdSeq;
-        }
-      }
-    }
-    return new List<Cmd>();
-  }
-
-  private List<Cmd> CreateAccessAsserts(AssignLhs assignLhs, IToken tok, string msg)
-  {
-    if (assignLhs is FieldAssignLhs fieldAssignLhs)
-    {
-      return CreateAccessAsserts(fieldAssignLhs.Datatype, tok, msg);
-    }
-    if (assignLhs is MapAssignLhs mapAssignLhs &&
-        mapAssignLhs.Map is FieldAssignLhs fieldAssignLhs1 &&
-        fieldAssignLhs1.Datatype.Type is CtorType ctorType &&
-        Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
-    {
-      var cmdSeq = CreateAccessAsserts(mapAssignLhs.Map, tok, msg);
-      var lheapContainsFunc = LheapContains(mapAssignLhs.Map.Type);
-      cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lheapContainsFunc, fieldAssignLhs1.Datatype.AsExpr, mapAssignLhs.Indexes[0]), msg));
-      return cmdSeq;
-    }
-    return new List<Cmd>();
-  }
-
   private List<Cmd> RewriteLheapAlloc(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
@@ -352,6 +313,73 @@ public class LinearRewriter
         ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.False),
         ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Val(path), k, Default(type)))));
     
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteLmapCreate(CallCmd callCmd)
+  {
+    GetRelevantInfo(callCmd, out Type keyType, out Type valType, out Function lmapConstructor);
+
+    var cmdSeq = new List<Cmd>();
+    var k = callCmd.Ins[0];
+    var val = callCmd.Ins[1];
+    var l = callCmd.Outs[0].Decl;
+
+    cmdSeq.Add(CmdHelper.AssignCmd(l, ExprHelper.FunctionCall(lmapConstructor, k, val)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteLmapGet(CallCmd callCmd)
+  {
+    GetRelevantInfo(callCmd, out Type keyType, out Type valType, out Function lmapConstructor);
+
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var k = callCmd.Ins[1];
+    var l = callCmd.Outs[0].Decl;
+
+    var mapImpFunc = MapImp(keyType);
+    var mapIteFunc = MapIte(keyType, valType);
+    var mapConstFunc1 = MapConst(keyType, Type.Bool);
+    var mapConstFunc2 = MapConst(keyType, valType);
+    var mapDiffFunc = MapDiff(keyType);
+
+    cmdSeq.Add(AssertCmd(callCmd.tok,
+      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc1, Expr.True)),
+      "Lmap_Get failed"));
+
+    cmdSeq.Add(CmdHelper.AssignCmd(l,
+      ExprHelper.FunctionCall(lmapConstructor, k,
+        ExprHelper.FunctionCall(mapIteFunc, k, Val(path), ExprHelper.FunctionCall(mapConstFunc2, Default(valType))))));
+
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path),
+      ExprHelper.FunctionCall(lmapConstructor, ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k),
+        ExprHelper.FunctionCall(mapIteFunc, ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k), Val(path),
+          ExprHelper.FunctionCall(mapConstFunc2, Default(valType))))));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteLmapPut(CallCmd callCmd)
+  {
+    GetRelevantInfo(callCmd, out Type keyType, out Type valType, out Function lmapConstructor);
+
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var l = callCmd.Ins[1];
+
+    var mapOrFunc = MapOr(keyType);
+    var mapIteFunc = MapIte(keyType, valType);
+    cmdSeq.Add(CmdHelper.AssignCmd(
+      CmdHelper.ExprToAssignLhs(path),
+      ExprHelper.FunctionCall(lmapConstructor,
+        ExprHelper.FunctionCall(mapOrFunc, Dom(path), Dom(l)),
+        ExprHelper.FunctionCall(mapIteFunc, Dom(path), Val(path), Val(l)))));
+
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
   }
@@ -510,7 +538,7 @@ public class LinearRewriter
   {
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     type = instantiation["V"];
-    var actualTypeParams = new List<Type>() { instantiation["V"] };
+    var actualTypeParams = new List<Type>() { type };
     var refTypeCtorDecl = monomorphizer.InstantiateTypeCtorDecl("Ref", actualTypeParams);
     refType = new CtorType(Token.NoToken, refTypeCtorDecl, new List<Type>());
     var lheapTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Lheap", actualTypeParams);
@@ -521,6 +549,16 @@ public class LinearRewriter
     lvalConstructor = lvalTypeCtorDecl.Constructors[0];
   }
   
+  private void GetRelevantInfo(CallCmd callCmd, out Type keyType, out Type valType, out Function lmapConstructor)
+  {
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    keyType = instantiation["K"];
+    valType = instantiation["V"];
+    var actualTypeParams = new List<Type>() { keyType, valType };
+    var lmapTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Lmap", actualTypeParams);
+    lmapConstructor = lmapTypeCtorDecl.Constructors[0];
+  }
+
   private void ResolveAndTypecheck(CoreOptions options, IEnumerable<Absy> absys)
   {
     var rc = new ResolutionContext(null, options);
@@ -534,5 +572,50 @@ public class LinearRewriter
     tc.CheckModifies = false;
     absys.ForEach(absy => absy.Typecheck(tc));
     tc.CheckModifies = oldCheckModifies;
+  }
+
+  private List<Cmd> CreateAccessAsserts(Expr expr, IToken tok, string msg)
+  {
+    if (expr is NAryExpr nAryExpr)
+    {
+      if (nAryExpr.Fun is FieldAccess)
+      {
+        return CreateAccessAsserts(nAryExpr.Args[0], tok, msg);
+      }
+      if (nAryExpr.Fun is MapSelect)
+      {
+        var mapExpr = nAryExpr.Args[0];
+        if (mapExpr is NAryExpr lheapValExpr &&
+            lheapValExpr.Fun is FieldAccess &&
+            lheapValExpr.Args[0].Type is CtorType ctorType &&
+            Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
+        {
+          var cmdSeq = CreateAccessAsserts(lheapValExpr.Args[0], tok, msg);
+          var lheapContainsFunc = LheapContains(nAryExpr.Type);
+          cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lheapContainsFunc, lheapValExpr.Args[0], nAryExpr.Args[1]), msg));
+          return cmdSeq;
+        }
+      }
+    }
+    return new List<Cmd>();
+  }
+
+  private List<Cmd> CreateAccessAsserts(AssignLhs assignLhs, IToken tok, string msg)
+  {
+    if (assignLhs is FieldAssignLhs fieldAssignLhs)
+    {
+      return CreateAccessAsserts(fieldAssignLhs.Datatype, tok, msg);
+    }
+    if (assignLhs is MapAssignLhs mapAssignLhs &&
+        mapAssignLhs.Map is FieldAssignLhs fieldAssignLhs1 &&
+        fieldAssignLhs1.Datatype.Type is CtorType ctorType &&
+        Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
+    {
+      var cmdSeq = CreateAccessAsserts(mapAssignLhs.Map, tok, msg);
+      var lheapContainsFunc = LheapContains(mapAssignLhs.Map.Type);
+      cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lheapContainsFunc, fieldAssignLhs1.Datatype.AsExpr, mapAssignLhs.Indexes[0]), msg));
+      return cmdSeq;
+    }
+    return new List<Cmd>();
   }
 }

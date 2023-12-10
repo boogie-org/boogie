@@ -178,12 +178,13 @@ namespace Microsoft.Boogie
 
   public static class CivlPrimitives
   {
-    public static HashSet<string> LinearTypes = new() { "Lheap", "Lset", "Lval" };
+    public static HashSet<string> LinearTypes = new() { "Lheap", "Lmap", "Lset", "Lval" };
 
     public static HashSet<string> LinearPrimitives = new()
     {
       "Ref_Alloc",
       "Lheap_Empty", "Lheap_Get", "Lheap_Put", "Lheap_Alloc", "Lheap_Remove",
+      "Lmap_Create", "Lmap_Get", "Lmap_Put",
       "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
       "Lval_Split", "Lval_Get", "Lval_Put"
     };
@@ -196,20 +197,8 @@ namespace Microsoft.Boogie
       }
       if (expr is NAryExpr nAryExpr)
       {
-        if (nAryExpr.Fun is FieldAccess)
+        if (nAryExpr.Fun is FieldAccess or MapSelect)
         {
-          return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
-        }
-        if (nAryExpr.Fun is MapSelect)
-        {
-          var mapExpr = nAryExpr.Args[0];
-          if (mapExpr is NAryExpr lheapValExpr &&
-              lheapValExpr.Fun is FieldAccess &&
-              lheapValExpr.Args[0].Type is CtorType ctorType &&
-              Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
-          {
-            return ExtractRootFromAccessPathExpr(lheapValExpr.Args[0]);
-          }
           return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
         }
       }
@@ -221,26 +210,12 @@ namespace Microsoft.Boogie
       switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
         case "Ref_Alloc":
-          return null;
         case "Lheap_Empty":
-          return null;
-        case "Lheap_Get":
-        case "Lheap_Put":
-        case "Lheap_Alloc":
-        case "Lheap_Remove":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Lmap_Create":
         case "Lset_Empty":
           return null;
-        case "Lset_Split":
-        case "Lset_Get":
-        case "Lset_Put":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lval_Split":
-        case "Lval_Get":
-        case "Lval_Put":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         default:
-          throw new cce.UnreachableException();
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
       }
     }
     

@@ -198,14 +198,23 @@ namespace Microsoft.Boogie
         }
         if (!permissionTypeToCollectors[permissionType].ContainsKey(type))
         {
-          var typeParamInstantiationMap = new Dictionary<string, Type> { { "V", actualTypeParams[0] } };
-          var collector =
-              originalTypeCtorDecl.Name == "Lheap"
-                ? program.monomorphizer.InstantiateFunction("Lheap_Collector", typeParamInstantiationMap) :
-              originalTypeCtorDecl.Name == "Lset"
-                ? program.monomorphizer.InstantiateFunction("Lset_Collector", typeParamInstantiationMap) :
-                program.monomorphizer.InstantiateFunction("Lval_Collector", typeParamInstantiationMap);
-          permissionTypeToCollectors[permissionType].Add(type, collector);
+          if (originalTypeCtorDecl.Name == "Lmap")
+          {
+            var typeParamInstantiationMap = new Dictionary<string, Type> { { "K", actualTypeParams[0] }, { "V", actualTypeParams[1] } };
+            var collector = program.monomorphizer.InstantiateFunction("Lmap_Collector", typeParamInstantiationMap);
+            permissionTypeToCollectors[permissionType].Add(type, collector);
+          }
+          else
+          {
+            var typeParamInstantiationMap = new Dictionary<string, Type> { { "V", actualTypeParams[0] } };
+            var collector =
+                originalTypeCtorDecl.Name == "Lheap"
+                  ? program.monomorphizer.InstantiateFunction("Lheap_Collector", typeParamInstantiationMap) :
+                originalTypeCtorDecl.Name == "Lset"
+                  ? program.monomorphizer.InstantiateFunction("Lset_Collector", typeParamInstantiationMap) :
+                  program.monomorphizer.InstantiateFunction("Lval_Collector", typeParamInstantiationMap);
+            permissionTypeToCollectors[permissionType].Add(type, collector);
+          }
         }
       }
       var permissionTypeToLinearDomain =

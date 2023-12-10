@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -929,7 +930,21 @@ namespace Microsoft.Boogie
       return expr;
     }
 
-    public IEnumerable<Expr> LheapWellFormedExpressions(IEnumerable<Variable> availableVars)
+    private Function LheapWellFormedFunction(Monomorphizer monomorphizer, TypeCtorDecl typeCtorDecl)
+    {
+      var typeInstantiation = monomorphizer.GetTypeInstantiation(typeCtorDecl);
+      var typeParamInstantiationMap = new Dictionary<string, Type>() { { "V", typeInstantiation[0] } };
+      return monomorphizer.InstantiateFunction("Lheap_WellFormed", typeParamInstantiationMap);
+    }
+
+    private Function LmapWellFormedFunction(Monomorphizer monomorphizer, TypeCtorDecl typeCtorDecl)
+    {
+      var typeInstantiation = monomorphizer.GetTypeInstantiation(typeCtorDecl);
+      var typeParamInstantiationMap = new Dictionary<string, Type>() { { "K", typeInstantiation[0] }, { "V", typeInstantiation[1] } };
+      return monomorphizer.InstantiateFunction("Lmap_WellFormed", typeParamInstantiationMap);
+    }
+
+    public IEnumerable<Expr> LstoreWellFormedExpressions(IEnumerable<Variable> availableVars)
     {
       var monomorphizer = civlTypeChecker.program.monomorphizer;
       if (monomorphizer == null)
@@ -937,12 +952,24 @@ namespace Microsoft.Boogie
         return Enumerable.Empty<Expr>();
       }
       return availableVars.Where(v =>
-        v.TypedIdent.Type is CtorType ctorType && Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap").Select(
-        v =>
+        {
+          if (v.TypedIdent.Type is not CtorType ctorType)
+          {
+            return false;
+          }
+          var declName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
+          if (declName is "Lheap" or "Lmap")
+          {
+            return true;
+          }
+          return false;
+        }).Select(v =>
         {
           var ctorType = (CtorType)v.TypedIdent.Type;
-          var func = monomorphizer.InstantiateFunction("Lheap_WellFormed",
-            new Dictionary<string, Type>() { { "V", monomorphizer.GetTypeInstantiation(ctorType.Decl)[0] } });
+          var declName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
+          var func = declName == "Lheap"
+            ? LheapWellFormedFunction(monomorphizer, ctorType.Decl)
+            : LmapWellFormedFunction(monomorphizer, ctorType.Decl);
           return ExprHelper.FunctionCall(func, Expr.Ident(v));
         });
     }
