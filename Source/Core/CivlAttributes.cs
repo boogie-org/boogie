@@ -44,7 +44,7 @@ namespace Microsoft.Boogie
     {
       return new LayerRange(Math.Min(first.LowerLayer, second.LowerLayer), Math.Max(first.UpperLayer, second.UpperLayer));
     }
-    
+
     public static LayerRange Union(List<LayerRange> layerRanges)
     {
       Debug.Assert(layerRanges.Any());
@@ -55,7 +55,7 @@ namespace Microsoft.Boogie
       }
       return unionLayerRange;
     }
-    
+
     public override string ToString()
     {
       return $"[{LowerLayer}, {UpperLayer}]";
@@ -169,7 +169,7 @@ namespace Microsoft.Boogie
     {
       RemoveAttributes(obj, LINEAR_ATTRIBUTES);
     }
-    
+
     public static bool IsCallMarked(CallCmd callCmd)
     {
       return callCmd.HasAttribute(MARK);
@@ -184,7 +184,7 @@ namespace Microsoft.Boogie
     {
       "Ref_Alloc",
       "Lheap_Empty", "Lheap_Alloc", "Lheap_Free", "Lheap_Get", "Lheap_Put",
-      "Lmap_Alloc", "Lmap_Free", "Lmap_Get", "Lmap_Put",
+      "Lmap_Empty", "Lmap_Alloc", "Lmap_Free", "Lmap_Get", "Lmap_Put",
       "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
       "Lval_Split", "Lval_Get", "Lval_Put"
     };
@@ -204,13 +204,14 @@ namespace Microsoft.Boogie
       }
       return null;
     }
-    
+
     public static IdentifierExpr ModifiedArgument(CallCmd callCmd)
     {
       switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
         case "Ref_Alloc":
         case "Lheap_Empty":
+        case "Lmap_Empty":
         case "Lmap_Alloc":
         case "Lmap_Free":
         case "Lset_Empty":
@@ -219,7 +220,7 @@ namespace Microsoft.Boogie
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
       }
     }
-    
+
     public static HashSet<string> Async = new()
     {
       "create_async", "create_asyncs", "create_multi_asyncs", "set_choice"
