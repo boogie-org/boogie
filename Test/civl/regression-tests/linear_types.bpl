@@ -7,11 +7,11 @@ atomic action {:layer 1, 2} A1({:linear_in} path: Lheap int, k: [Ref int]bool) r
     call l := Lheap_Get(path', k);
 }
 
-atomic action {:layer 1, 2} A2(v: int) returns (path': Lheap int, v': int) {
+atomic action {:layer 1, 2} A2(v: int) returns (path': Lheap int) {
     var k: Lval (Ref int);
     call path' := Lheap_Empty();
     call k := Lheap_Alloc(path', v);
-    call v' := Lheap_Remove(path', k->val);
+    call Lheap_Free(path', k->val);
 }
 
 atomic action {:layer 1, 2} A3({:linear_in} path: Lset int, {:linear_out} l: Lset int) returns (path': Lset int) {

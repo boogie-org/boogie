@@ -270,10 +270,10 @@ function {:inline} Lheap_Deref<V>(l: Lheap V, k: Ref V): V {
     l->val[k]
 }
 pure procedure Lheap_Empty<V>() returns (l: Lheap V);
+pure procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (l: Lval (Ref V));
+pure procedure Lheap_Free<V>(path: Lheap V, k: Ref V);
 pure procedure Lheap_Get<V>(path: Lheap V, k: [Ref V]bool) returns (l: Lheap V);
 pure procedure Lheap_Put<V>(path: Lheap V, {:linear_in} l: Lheap V);
-pure procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (l: Lval (Ref V));
-pure procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
 
 /// linear maps
 datatype Lmap<K,V> { Lmap(dom: [K]bool, val: [K]V) }

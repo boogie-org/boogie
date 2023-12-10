@@ -183,7 +183,7 @@ namespace Microsoft.Boogie
     public static HashSet<string> LinearPrimitives = new()
     {
       "Ref_Alloc",
-      "Lheap_Empty", "Lheap_Get", "Lheap_Put", "Lheap_Alloc", "Lheap_Remove",
+      "Lheap_Empty", "Lheap_Alloc", "Lheap_Free", "Lheap_Get", "Lheap_Put",
       "Lmap_Alloc", "Lmap_Free", "Lmap_Get", "Lmap_Put",
       "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
       "Lval_Split", "Lval_Get", "Lval_Put"

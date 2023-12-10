@@ -73,14 +73,14 @@ public class LinearRewriter
         return RewriteRefAlloc(callCmd);
       case "Lheap_Empty":
         return RewriteLheapEmpty(callCmd);
+      case "Lheap_Alloc":
+        return RewriteLheapAlloc(callCmd);
+      case "Lheap_Free":
+        return RewriteLheapFree(callCmd);
       case "Lheap_Get":
         return RewriteLheapGet(callCmd);
       case "Lheap_Put":
         return RewriteLheapPut(callCmd);
-      case "Lheap_Alloc":
-        return RewriteLheapAlloc(callCmd);
-      case "Lheap_Remove":
-        return RewriteLheapRemove(callCmd);
       case "Lmap_Alloc":
         return RewriteLmapAlloc(callCmd);
       case "Lmap_Free":
@@ -213,6 +213,54 @@ public class LinearRewriter
     return cmdSeq;
   }
   
+  private List<Cmd> RewriteLheapAlloc(CallCmd callCmd)
+  {
+    GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
+      out Function lsetConstructor, out Function lvalConstructor);
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var nilFunc = monomorphizer.InstantiateFunction("Nil", instantiation);
+    
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var v = callCmd.Ins[1];
+    var l = callCmd.Outs[0];
+
+    cmdSeq.Add(CmdHelper.HavocCmd(l));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Neq(Val(l), ExprHelper.FunctionCall(nilFunc))));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), Val(l)))));
+    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Eq(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Val(path), Val(l)), v)));
+    cmdSeq.Add(CmdHelper.AssignCmd(
+      CmdHelper.ExprToAssignLhs(path),
+      ExprHelper.FunctionCall(lheapConstructor,
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), Val(l), Expr.True),
+        Val(path))));
+    
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteLheapFree(CallCmd callCmd)
+  {
+    GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
+      out Function lsetConstructor, out Function lvalConstructor);
+    
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var k = callCmd.Ins[1];
+    
+    var lheapContainsFunc = LheapContains(type);
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lheapContainsFunc, path, k), "Lheap_Free failed"));
+
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path),
+      ExprHelper.FunctionCall(lheapConstructor,
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.False),
+        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Val(path), k, Default(type)))));
+    
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+  
   private List<Cmd> RewriteLheapGet(CallCmd callCmd)
   {
     GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
@@ -262,58 +310,6 @@ public class LinearRewriter
       ExprHelper.FunctionCall(lheapConstructor,
         ExprHelper.FunctionCall(mapOrFunc, Dom(path), Dom(l)),
         ExprHelper.FunctionCall(mapIteFunc, Dom(path), Val(path), Val(l)))));
-    
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteLheapAlloc(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
-      out Function lsetConstructor, out Function lvalConstructor);
-    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    var nilFunc = monomorphizer.InstantiateFunction("Nil", instantiation);
-    
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var v = callCmd.Ins[1];
-    var l = callCmd.Outs[0];
-
-    cmdSeq.Add(CmdHelper.HavocCmd(l));
-    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Neq(Val(l), ExprHelper.FunctionCall(nilFunc))));
-    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Not(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Dom(path), Val(l)))));
-    cmdSeq.Add(CmdHelper.AssumeCmd(Expr.Eq(ExprHelper.FunctionCall(new MapSelect(callCmd.tok, 1), Val(path), Val(l)), v)));
-    cmdSeq.Add(CmdHelper.AssignCmd(
-      CmdHelper.ExprToAssignLhs(path),
-      ExprHelper.FunctionCall(lheapConstructor,
-        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), Val(l), Expr.True),
-        Val(path))));
-    
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteLheapRemove(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType, out Function lheapConstructor,
-      out Function lsetConstructor, out Function lvalConstructor);
-    
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
-    var v = callCmd.Outs[0];
-    
-    var lheapContainsFunc = LheapContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lheapContainsFunc, path, k), "Lheap_Remove failed"));
-
-    var lheapDerefFunc = LheapDeref(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(lheapDerefFunc, path, k)));
-
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path),
-      ExprHelper.FunctionCall(lheapConstructor,
-        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Dom(path), k, Expr.False),
-        ExprHelper.FunctionCall(new MapStore(callCmd.tok, 1), Val(path), k, Default(type)))));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
