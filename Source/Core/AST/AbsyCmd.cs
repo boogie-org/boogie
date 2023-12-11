@@ -4389,7 +4389,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
-      tc.ExpectedLayerRange = Layers == null || Layers.Count == 0 ? null : new LayerRange(Layers[0], Layers[^1]);
+      tc.ExpectedLayerRange = Layers?.Count > 0 ? new LayerRange(Layers[0], Layers[^1]) : null;
       Expr.Typecheck(tc);
       tc.ExpectedLayerRange = null;
       Contract.Assert(Expr.Type != null); // follows from Expr.Typecheck postcondition
