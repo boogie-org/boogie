@@ -217,8 +217,8 @@ function Set_Intersection<T>(a: Set T, b: Set T): Set T
   Set(MapAnd(a->val, b->val))
 }
 
-function Set_Choose<T>(a: Set T): T;
-axiom (forall<T> a: Set T :: {Set_Choose(a)} a == Set_Empty() || Set_Contains(a, Set_Choose(a)));
+function Choice<T>(a: [T]bool): T;
+axiom (forall<T> a: [T]bool :: {Choice(a)} a == MapConst(false) || a[Choice(a)]);
 
 /// finite maps
 datatype Map<T,U> {

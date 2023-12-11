@@ -188,32 +188,31 @@ namespace Microsoft.Boogie
 
     public override Block VisitBlock(Block node)
     {
-      Block block = base.VisitBlock(node);
+      var block = base.VisitBlock(node);
       absyMap[block] = node;
       return block;
     }
 
     public override Cmd VisitAssertCmd(AssertCmd node)
     {
-      AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
+      var assertCmd = (AssertCmd) base.VisitAssertCmd(node);
       if (!node.Layers.Contains(layerNum))
       {
         assertCmd.Expr = Expr.True;
       }
-
       return assertCmd;
     }
 
     public override Cmd VisitCallCmd(CallCmd call)
     {
-      CallCmd newCall = (CallCmd) base.VisitCallCmd(call);
+      var newCall = (CallCmd) base.VisitCallCmd(call);
       absyMap[newCall] = call;
       return newCall;
     }
 
     public override Cmd VisitParCallCmd(ParCallCmd parCall)
     {
-      ParCallCmd newParCall = (ParCallCmd) base.VisitParCallCmd(parCall);
+      var newParCall = (ParCallCmd) base.VisitParCallCmd(parCall);
       absyMap[newParCall] = parCall;
       foreach (var newCall in newParCall.CallCmds)
       {

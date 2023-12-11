@@ -100,7 +100,7 @@ pure action PreAlloc({:linear "tid"} tid: Tid, set: Set int, allocMap: Bijection
 {
     var ptr: int;
     assert set != Set_Empty();
-    ptr := Set_Choose(set);
+    ptr := Choice(set->val);
     allocMap' := Bijection(Map_Update(allocMap->tidToPtr, tid, ptr), Map_Update(allocMap->ptrToTid, ptr, tid));
 }
 
