@@ -2,19 +2,30 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Xml.Linq;
 
 namespace Microsoft.Boogie.LeanAuto;
 
 public class LeanGenerator : ReadOnlyVisitor
 {
   private TextWriter writer;
+  private List<Variable> globalVars = new();
+  private List<string> axiomNames =
+    new(new[]
+    {
+      "SelectStoreSame", "SelectStoreDistinct"
+    });
+  private List<string> defNames =
+    new(new[]
+    {
+      "assert", "assume", "goto", "ret", "skip"
+    });
 
   private readonly string header = @"
 import Auto
 import Auto.Tactic
 open Lean Std
 
+set_option linter.unusedVariables false
 set_option auto.smt true
 set_option trace.auto.smt.printCommands false
 set_option auto.smt.trust true
@@ -35,6 +46,12 @@ def store [BEq s1] (m: SMTArray s1 s2) (i: s1) (v: s2): SMTArray s1 s2 :=
   fun i' => if i' == i then v else m i'
 
 def select (m: SMTArray s1 s2) (i: s1): s2 := m i
+
+axiom SelectStoreSame (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (e: s2):
+  select (store a i e) i = e
+
+axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j: s1) (e: s2):
+  i ≠ j → select (store a i e) j = select a j
 ";
 
   public LeanGenerator(TextWriter writer)
@@ -58,9 +75,34 @@ def select (m: SMTArray s1 s2) (i: s1): s2 := m i
     writer.WriteLine(header);
   }
 
+  private void Indent(int n = 1, string str = null)
+  {
+    for (var i = 0; i < n; i++) {
+      writer.Write("  ");
+    }
+
+    if (str is not null) {
+      writer.Write(str);
+    }
+  }
+
+  private void NL()
+  {
+    writer.WriteLine();
+  }
+
+  private void List(IEnumerable<string> strings)
+  {
+    writer.Write("[");
+    writer.Write(String.Join(", ", strings));
+    writer.Write("]");
+  }
+
   public override Block VisitBlock(Block node)
   {
-    writer.WriteLine($"  {node.Label} :=");
+    var label = SanitizeNameForLean(node.Label);
+    Indent(1, $"{label} :=");
+    NL();
     node.Cmds.ForEach(c => Visit(c));
     if (node.TransferCmd is ReturnCmd r) {
       VisitReturnCmd(r);
@@ -68,13 +110,13 @@ def select (m: SMTArray s1 s2) (i: s1): s2 := m i
     if (node.TransferCmd is GotoCmd g) {
       VisitGotoCmd(g);
     }
-    writer.WriteLine();
+    NL();
     return node;
   }
 
   public override Cmd VisitAssertCmd(AssertCmd node)
   {
-    writer.Write($"    assert ");
+    Indent(2, "assert ");
     VisitExpr(node.Expr);
     writer.WriteLine(" $");
     return node;
@@ -82,7 +124,7 @@ def select (m: SMTArray s1 s2) (i: s1): s2 := m i
 
   public override Cmd VisitAssumeCmd(AssumeCmd node)
   {
-    writer.Write($"    assume ");
+    Indent(2, "assume ");
     VisitExpr(node.Expr);
     writer.WriteLine(" $");
     return node;
@@ -92,13 +134,13 @@ def select (m: SMTArray s1 s2) (i: s1): s2 := m i
   {
     var gotoText = node.labelTargets.Select(l =>
       $"goto {l.Label}").Aggregate((a, b) => $"{a} \u2227 {b}");
-    writer.WriteLine("    " + gotoText);
+    Indent(2, gotoText);
     return node;
   }
 
   public override ReturnCmd VisitReturnCmd(ReturnCmd node)
   {
-    writer.WriteLine("    ret");
+    Indent(2, "ret");
     return node;
   }
 
@@ -148,7 +190,8 @@ def select (m: SMTArray s1 s2) (i: s1): s2 := m i
   {
     writer.Write("variable ");
     Visit(node.TypedIdent);
-    writer.WriteLine();
+    NL();
+    globalVars.Add(node);
     return node;
   }
 
@@ -211,7 +254,8 @@ def select (m: SMTArray s1 s2) (i: s1): s2 := m i
   {
     writer.Write("variable ");
     Visit(node.TypedIdent);
-    writer.WriteLine();
+    NL();
+    globalVars.Add(node);
     return node;
   }
 
@@ -441,7 +485,7 @@ def select (m: SMTArray s1 s2) (i: s1): s2 := m i
 
   public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
   {
-    writer.Write($"    assert ");
+    Indent(2, "assert ");
     VisitExpr(node.Expr);
     writer.WriteLine(" $");
     return node;
@@ -510,13 +554,14 @@ def select (m: SMTArray s1 s2) (i: s1): s2 := m i
     var name = $"ax_l{node.tok.line}c{node.tok.col}";
     writer.Write($"axiom {name}: ");
     VisitExpr(node.Expr);
-    writer.WriteLine();
+    NL();
+    axiomNames.Add(name);
     return node;
   }
 
   public override Function VisitFunction(Function node)
   {
-    writer.WriteLine($"-- function {node.Name}");
+    writer.WriteLine($"-- function {Name(node)}");
     return node;
   }
 
@@ -561,33 +606,67 @@ def select (m: SMTArray s1 s2) (i: s1): s2 := m i
     return name.Replace('@', '_');
   }
 
+  private string Name(NamedDeclaration d)
+  {
+    return SanitizeNameForLean(d.Name);
+  }
+
   public override Procedure VisitProcedure(Procedure node)
   {
     return node;
+  }
+
+  private void WriteParams(Implementation node)
+  {
+    node.InParams.ForEach(x =>
+    {
+      Indent();
+      VisitTypedIdent(x.TypedIdent);
+      NL();
+    });
+    node.OutParams.ForEach(x =>
+    {
+      Indent();
+      VisitTypedIdent(x.TypedIdent);
+      NL();
+    });
+    node.LocVars.ForEach(x =>
+    {
+      Indent();
+      VisitTypedIdent(x.TypedIdent);
+      NL();
+    });
   }
   
   public override Implementation VisitImplementation(Implementation node)
   {
     
-    writer.WriteLine();
-    writer.WriteLine($"namespace impl_{node.Name}");
-    writer.WriteLine();
+    NL();
+    writer.WriteLine($"namespace impl_{Name(node)}");
+    NL();
 
-    foreach (var x in node.LocVars) {
-      writer.Write("variable ");
-      VisitTypedIdent(x.TypedIdent);
-      writer.WriteLine();
-    }
-
-    writer.WriteLine();
-    writer.Write($"def {node.Name}_correct ");
-    node.InParams.ForEach(x => VisitTypedIdent(x.TypedIdent));
-    node.OutParams.ForEach(x => VisitTypedIdent(x.TypedIdent));
-    writer.WriteLine($" : Prop := {node.Blocks[0].Label}");
-    writer.WriteLine("  where");
+    writer.WriteLine($"def {Name(node)}");
+    WriteParams(node);
+    Indent(1, $": Prop := {node.Blocks[0].Label}");
+    NL();
+    Indent(1, "where");
+    NL();
     node.Blocks.ForEach(b => VisitBlock(b));
-    writer.WriteLine($"end impl_{node.Name}");
-    writer.WriteLine();
+    NL();
+    writer.WriteLine($"theorem {Name(node)}_correct");
+    WriteParams(node);
+    var paramNames =
+      globalVars.Select(Name)
+        .Concat(node.InParams.Select(Name))
+        .Concat(node.OutParams.Select(Name))
+        .Concat(node.LocVars.Select(Name));
+    var paramString = String.Join(' ', paramNames);
+    Indent(1, $": {Name(node)} {paramString} := by"); NL();
+    Indent(2, "auto"); NL();
+    Indent(3); List(axiomNames); NL();
+    Indent(3); writer.Write("u"); List(defNames); NL();
+    NL();
+    writer.WriteLine($"end impl_{Name(node)}"); NL();
     return node;
   }
 }
