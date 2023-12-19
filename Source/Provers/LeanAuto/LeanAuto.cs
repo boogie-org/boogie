@@ -7,14 +7,14 @@ namespace Microsoft.Boogie.LeanAuto;
 
 public class LeanGenerator : ReadOnlyVisitor
 {
-  private TextWriter writer;
-  private List<Variable> globalVars = new();
-  private List<string> axiomNames =
+  private readonly TextWriter writer;
+  private readonly List<NamedDeclaration> globalVars = new();
+  private readonly List<string> axiomNames =
     new(new[]
     {
       "SelectStoreSame", "SelectStoreDistinct"
     });
-  private List<string> defNames =
+  private readonly List<string> defNames =
     new(new[]
     {
       "assert", "assume", "goto", "ret", "skip"
@@ -28,16 +28,17 @@ open Lean Std
 set_option linter.unusedVariables false
 set_option auto.smt true
 set_option trace.auto.smt.printCommands false
+--set_option auto.smt.proof false
 set_option auto.smt.trust true
-set_option auto.duper false
+--set_option auto.duper false
 set_option auto.smt.solver.name ""z3""
 set_option trace.auto.buildChecker false
 
-def assert (ψ β: Prop): Prop := ψ ∧ β
-def assume (ψ β: Prop): Prop := ψ → β
-def skip (β: Prop): Prop := β
-def ret: Prop := true
-def goto: Prop -> Prop := id
+@[simp] def assert (ψ β: Prop): Prop := ψ ∧ β
+@[simp] def assume (ψ β: Prop): Prop := ψ → β
+@[simp] def skip (β: Prop): Prop := β
+@[simp] def ret: Prop := true
+@[simp] def goto: Prop -> Prop := id
 
 -- SMT Array definition
 def SMTArray (s1 s2: Type) := s1 -> s2
@@ -54,7 +55,7 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
   i ≠ j → select (store a i e) j = select a j
 ";
 
-  public LeanGenerator(TextWriter writer)
+  private LeanGenerator(TextWriter writer)
   {
     this.writer = writer;
   }
@@ -64,7 +65,11 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     var generator = new LeanGenerator(writer);
     generator.EmitHeader();
     try {
-      generator.Visit(p);
+      p.Constants.ForEach(c => generator.Visit(c));
+      p.GlobalVariables.ForEach(gv => generator.Visit(gv));
+      p.Functions.ForEach(f => generator.Visit(f));
+      p.Axioms.ForEach(a => generator.Visit(a));
+      p.Implementations.ForEach(i => generator.Visit(i));
     } catch (LeanConversionException e) {
       writer.WriteLine($"-- failed translation: {e.Msg}");
     }
@@ -86,6 +91,12 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     }
   }
 
+  private void IndentL(int n = 1, string str = null)
+  {
+    Indent(n, str);
+    NL();
+  }
+
   private void NL()
   {
     writer.WriteLine();
@@ -100,9 +111,10 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Block VisitBlock(Block node)
   {
+    // TODO: names less likely to clash
     var label = SanitizeNameForLean(node.Label);
-    Indent(1, $"{label} :=");
-    NL();
+    IndentL(1, "@[simp]");
+    IndentL(1, $"{label} :=");
     node.Cmds.ForEach(c => Visit(c));
     if (node.TransferCmd is ReturnCmd r) {
       VisitReturnCmd(r);
@@ -156,16 +168,21 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       writer.Write("Bool");
     } else if (node.IsInt) {
       writer.Write("Int");
+    } else if (node.IsReal) {
+      writer.Write("Real");
+    } else if (node.IsRMode) {
+      throw new LeanConversionException("Unsupported: RMode type");
+    } else if (node.IsRegEx) {
+      throw new LeanConversionException("Unsupported: RegEx type");
     } else if (node.IsMap) {
       var mapType = node.AsMap;
-      var domain = mapType.Arguments[0];
-      var range = mapType.Result;
-      writer.Write("SMTArray ");
+      writer.Write("(SMTArray ");
       Visit(mapType.Arguments[0]);
       writer.Write(" ");
       Visit(mapType.Result);
+      writer.Write(")");
     } else {
-      writer.Write("(TODO: BasicType)");
+      throw new LeanConversionException($"Unsupported BasicType: {node}");
     }
 
     return node;
@@ -206,7 +223,7 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     {
       ForallExpr => "forall",
       ExistsExpr => "exists",
-      _ => "<other quantifier>"
+      _ => throw new LeanConversionException($"Unsupported quantifier type: {node.Kind}")
     };
     writer.Write($"({kind}");
     foreach (var x in node.Dummies) {
@@ -261,13 +278,24 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Expr VisitLiteralExpr(LiteralExpr node)
   {
-    writer.Write(node.ToString()); // TODO: make sure this is right
+    if(node.IsTrue) {
+      // Use lowercase version to ensure Bool, which can be coerced to Prop
+      writer.Write("true");
+    } else if (node.IsFalse) {
+      // Use lowercase version to ensure Bool, which can be coerced to Prop
+      writer.Write("false");
+    } else if (node.isBvConst) {
+      // Use lowercase version to ensure Bool, which can be coerced to Prop
+      writer.Write(node + "/- TODO: bit vector constants -/");
+    } else {
+      writer.Write(node); // TODO: make sure this is right
+    }
     return node;
   }
 
   public override LocalVariable VisitLocalVariable(LocalVariable node)
   {
-    throw new LeanConversionException("Unsupported: LocalVariable");
+    throw new LeanConversionException("Internal error: LocalVariable should never be visited implicitly");
   }
 
   public override Type VisitMapType(MapType node)
@@ -288,6 +316,18 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       Visit(args[0]);
       writer.Write($" {BinaryOpToLean(op.Op)} ");
       Visit(args[1]);
+    } else if (fun is IfThenElse && args.Count == 3) {
+      writer.Write("if ");
+      Visit(args[0]);
+      writer.Write(" then ");
+      Visit(args[1]);
+      writer.Write(" else ");
+      Visit(args[2]);
+    } else if (fun is TypeCoercion typeCoercion && args.Count == 1) {
+      // TODO: actually coerce to target type
+      Visit(args[0]);
+      writer.Write(" : ");
+      Visit(typeCoercion.Type);
     } else {
       VisitIAppliable(fun);
       foreach (var arg in args) {
@@ -350,47 +390,48 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Cmd VisitAssignCmd(AssignCmd node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: assign: {node}");
   }
 
   public override Cmd VisitUnpackCmd(UnpackCmd node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: unpack: {node}");
   }
 
   public override AtomicRE VisitAtomicRE(AtomicRE node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: atomicre: {node}");
   }
 
   public override Type VisitBvTypeProxy(BvTypeProxy node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: bvtypeproxy: {node}");
   }
 
   public override Expr VisitCodeExpr(CodeExpr node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: codexpr: {node}");
   }
 
   public override Cmd VisitCallCmd(CallCmd node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: callcmd: {node}");
   }
 
   public override Cmd VisitParCallCmd(ParCallCmd node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: parcallcmd: {node}");
   }
 
   public override Choice VisitChoice(Choice node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: choice: {node}");
   }
 
   public override Cmd VisitCommentCmd(CommentCmd node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    // Comments are safe to ignore
+    return node;
   }
 
   public override List<Requires> VisitRequiresSeq(List<Requires> requiresSeq)
@@ -405,82 +446,82 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Cmd VisitHavocCmd(HavocCmd node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: havoc: {node}");
   }
 
   public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: mapassignlhs: {node}");
   }
 
   public override Type VisitMapTypeProxy(MapTypeProxy node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: maptypeproxy: {node}");
   }
 
   public override QKeyValue VisitQKeyValue(QKeyValue node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: qkeyvalue: {node}");
   }
 
   public override Cmd VisitRE(RE node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: re: {node}");
   }
 
   public override List<RE> VisitRESeq(List<RE> reSeq)
   {
-    throw new LeanConversionException($"Unsupported: {reSeq}");
+    throw new LeanConversionException($"Unsupported: reseq: {reSeq}");
   }
 
   public override ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: returnexprcmd: {node}");
   }
 
   public override Sequential VisitSequential(Sequential node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: sequential: {node}");
   }
 
   public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: simpleassignlhs: {node}");
   }
 
   public override Cmd VisitStateCmd(StateCmd node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: statecmd: {node}");
   }
 
   public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: typectordecl: {node}");
   }
 
   public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: typesynonymannotation: {node}");
   }
 
   public override Declaration VisitTypeSynonymDecl(TypeSynonymDecl node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: typesynonymdecl: {node}");
   }
 
   public override Type VisitTypeVariable(TypeVariable node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: typevariable: {node}");
   }
 
   public override Type VisitTypeProxy(TypeProxy node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: typeproxy: {node}");
   }
 
   public override Type VisitUnresolvedTypeIdentifier(UnresolvedTypeIdentifier node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: UnresolvedTypeIdentifier: {node}");
   }
 
   public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
@@ -493,7 +534,10 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Cmd VisitAssertRequiresCmd(AssertRequiresCmd node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
+    Indent(2, "assert ");
+    VisitExpr(node.Expr);
+    writer.WriteLine(" $");
+    return node;
   }
 
   public override List<CallCmd> VisitCallCmdSeq(List<CallCmd> callCmds)
@@ -561,7 +605,26 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Function VisitFunction(Function node)
   {
-    writer.WriteLine($"-- function {Name(node)}");
+    // In the long run, this should define functions when possible.
+    writer.Write($"def {Name(node)} : ");
+    node.InParams.ForEach(x =>
+    {
+      Visit(x.TypedIdent.Type); writer.Write(" -> ");
+    });
+    if (node.OutParams.Count == 1) {
+      Visit(node.OutParams[0].TypedIdent.Type);
+    } else {
+      writer.Write("(");
+      node.OutParams.ForEach(x =>
+      {
+        Visit(x.TypedIdent.Type); writer.Write(", ");
+      });
+      writer.Write(")");
+    }
+    writer.WriteLine(" := by sorry");
+    NL();
+    // Note: definition axioms will be emitted later
+    // node.DefinitionAxioms.ForEach(ax => VisitAxiom(ax));
     return node;
   }
 
@@ -640,20 +703,20 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
   
   public override Implementation VisitImplementation(Implementation node)
   {
+    var name = Name(node);
     
     NL();
-    writer.WriteLine($"namespace impl_{Name(node)}");
+    writer.WriteLine($"namespace impl_{name}");
     NL();
 
-    writer.WriteLine($"def {Name(node)}");
+    writer.WriteLine("@[simp]");
+    writer.WriteLine($"def {name}");
     WriteParams(node);
-    Indent(1, $": Prop := {node.Blocks[0].Label}");
-    NL();
-    Indent(1, "where");
-    NL();
+    IndentL(1, $": Prop := {node.Blocks[0].Label}");
+    IndentL(1, "where");
     node.Blocks.ForEach(b => VisitBlock(b));
     NL();
-    writer.WriteLine($"theorem {Name(node)}_correct");
+    writer.WriteLine($"theorem {name}_correct");
     WriteParams(node);
     var paramNames =
       globalVars.Select(Name)
@@ -661,12 +724,13 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
         .Concat(node.OutParams.Select(Name))
         .Concat(node.LocVars.Select(Name));
     var paramString = String.Join(' ', paramNames);
-    Indent(1, $": {Name(node)} {paramString} := by"); NL();
-    Indent(2, "auto"); NL();
+    Indent(1, $": {name} {paramString} := by"); NL();
+    IndentL(2, "simp");
+    IndentL(2, "auto");
     Indent(3); List(axiomNames); NL();
-    Indent(3); writer.Write("u"); List(defNames); NL();
+    IndentL(3, "u[]");
     NL();
-    writer.WriteLine($"end impl_{Name(node)}"); NL();
+    writer.WriteLine($"end impl_{name}"); NL();
     return node;
   }
 }
