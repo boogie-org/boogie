@@ -14,6 +14,7 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
   string DescriptiveToolName { get; }
   bool TraceProofObligations { get; }
   string PrintFile { get; }
+  string LeanFile { get; }
   string PrintCFGPrefix { get; }
   string CivlDesugaredFile { get; }
   bool CoalesceBlocks { get; }

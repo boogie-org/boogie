@@ -575,7 +575,11 @@ namespace Microsoft.Boogie
         PrintBplFile(Options.PrintFile, processedProgram.Program, true, true, Options.PrettyPrint);
       }
 
-      LeanGenerator.EmitPassiveProgramAsLean(processedProgram.Program, Console.Out);
+      if (Options.LeanFile is not null) {
+        var writer = new StreamWriter(Options.LeanFile);
+        LeanGenerator.EmitPassiveProgramAsLean(processedProgram.Program, writer);
+        writer.Close();
+      }
 
       if (1 < Options.VerifySnapshots && programId != null)
       {

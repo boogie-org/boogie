@@ -66,6 +66,7 @@ namespace Microsoft.Boogie
     public bool VerifySeparately { get; set; }
     public string PrintFile { get; set; }
     public string PrintPrunedFile { get; set; }
+    public string LeanFile { get; set; }
 
     /**
      * Whether to emit {:qid}, {:skolemid} and set-info :boogie-vc-id
@@ -672,6 +673,14 @@ namespace Microsoft.Boogie
           if (ps.ConfirmArgumentCount(1))
           {
             PrintFile = args[ps.i];
+          }
+
+          return true;
+
+        case "printLean":
+          if (ps.ConfirmArgumentCount(1))
+          {
+            LeanFile = args[ps.i];
           }
 
           return true;
