@@ -190,17 +190,14 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Expr VisitBvConcatExpr(BvConcatExpr node)
   {
+    // TODO: implement
     throw new LeanConversionException("Unsupported: BvConcatExpr");
   }
 
   public override Type VisitBvType(BvType node)
   {
+    // TODO: implement
     throw new LeanConversionException("Unsupported: BvType");
-  }
-
-  public override BoundVariable VisitBoundVariable(BoundVariable node)
-  {
-    throw new LeanConversionException("Unsupported: BoundVariable");
   }
 
   public override Constant VisitConstant(Constant node)
@@ -214,6 +211,7 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override CtorType VisitCtorType(CtorType node)
   {
+    // TODO: implement (next)
     throw new LeanConversionException("Unsupported: CtorType");
   }
 
@@ -249,22 +247,20 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Expr VisitBvExtractExpr(BvExtractExpr node)
   {
+    // TODO: implement
     throw new LeanConversionException("Unsupported: BvExtractExpr");
   }
 
   public override Expr VisitLambdaExpr(LambdaExpr node)
   {
+    // TODO: implement
     throw new LeanConversionException("Unsupported: LambdaExpr");
   }
 
   public override Expr VisitLetExpr(LetExpr node)
   {
+    // TODO: implement
     throw new LeanConversionException("Unsupported: LetExpr");
-  }
-
-  public override Formal VisitFormal(Formal node)
-  {
-    throw new LeanConversionException("Unsupported: Formal");
   }
 
   public override GlobalVariable VisitGlobalVariable(GlobalVariable node)
@@ -291,11 +287,6 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       writer.Write(node); // TODO: make sure this is right
     }
     return node;
-  }
-
-  public override LocalVariable VisitLocalVariable(LocalVariable node)
-  {
-    throw new LeanConversionException("Internal error: LocalVariable should never be visited implicitly");
   }
 
   public override Type VisitMapType(MapType node)
@@ -365,11 +356,13 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Expr VisitOldExpr(OldExpr node)
   {
+    // TODO: implement
     throw new LeanConversionException("Unsupported: OldExpr");
   }
 
   public override Type VisitFloatType(FloatType node)
   {
+    // TODO: implement (but low priority)
     throw new LeanConversionException("Unsupported: FloatType");
   }
 
@@ -388,44 +381,16 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     return node; // TODO: do something
   }
 
-  public override Cmd VisitAssignCmd(AssignCmd node)
-  {
-    throw new LeanConversionException($"Unsupported: assign: {node}");
-  }
-
-  public override Cmd VisitUnpackCmd(UnpackCmd node)
-  {
-    throw new LeanConversionException($"Unsupported: unpack: {node}");
-  }
-
-  public override AtomicRE VisitAtomicRE(AtomicRE node)
-  {
-    throw new LeanConversionException($"Unsupported: atomicre: {node}");
-  }
-
   public override Type VisitBvTypeProxy(BvTypeProxy node)
   {
+    // TODO: implement
     throw new LeanConversionException($"Unsupported: bvtypeproxy: {node}");
   }
 
   public override Expr VisitCodeExpr(CodeExpr node)
   {
+    // TODO: what is this?
     throw new LeanConversionException($"Unsupported: codexpr: {node}");
-  }
-
-  public override Cmd VisitCallCmd(CallCmd node)
-  {
-    throw new LeanConversionException($"Unsupported: callcmd: {node}");
-  }
-
-  public override Cmd VisitParCallCmd(ParCallCmd node)
-  {
-    throw new LeanConversionException($"Unsupported: parcallcmd: {node}");
-  }
-
-  public override Choice VisitChoice(Choice node)
-  {
-    throw new LeanConversionException($"Unsupported: choice: {node}");
   }
 
   public override Cmd VisitCommentCmd(CommentCmd node)
@@ -444,84 +409,40 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     return ensuresSeq; // TODO: do something
   }
 
-  public override Cmd VisitHavocCmd(HavocCmd node)
-  {
-    throw new LeanConversionException($"Unsupported: havoc: {node}");
-  }
-
-  public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
-  {
-    throw new LeanConversionException($"Unsupported: mapassignlhs: {node}");
-  }
-
   public override Type VisitMapTypeProxy(MapTypeProxy node)
   {
+    // TODO: implement
     throw new LeanConversionException($"Unsupported: maptypeproxy: {node}");
   }
 
   public override QKeyValue VisitQKeyValue(QKeyValue node)
   {
-    throw new LeanConversionException($"Unsupported: qkeyvalue: {node}");
-  }
-
-  public override Cmd VisitRE(RE node)
-  {
-    throw new LeanConversionException($"Unsupported: re: {node}");
-  }
-
-  public override List<RE> VisitRESeq(List<RE> reSeq)
-  {
-    throw new LeanConversionException($"Unsupported: reseq: {reSeq}");
-  }
-
-  public override ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node)
-  {
-    throw new LeanConversionException($"Unsupported: returnexprcmd: {node}");
-  }
-
-  public override Sequential VisitSequential(Sequential node)
-  {
-    throw new LeanConversionException($"Unsupported: sequential: {node}");
-  }
-
-  public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
-  {
-    throw new LeanConversionException($"Unsupported: simpleassignlhs: {node}");
-  }
-
-  public override Cmd VisitStateCmd(StateCmd node)
-  {
-    throw new LeanConversionException($"Unsupported: statecmd: {node}");
+    // Implement this if we want to visit attributes? Or maybe extract them more directly.
+    return node;
   }
 
   public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
   {
+    // TODO: implement
     throw new LeanConversionException($"Unsupported: typectordecl: {node}");
   }
 
   public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
   {
+    // TODO: implement
     throw new LeanConversionException($"Unsupported: typesynonymannotation: {node}");
   }
 
   public override Declaration VisitTypeSynonymDecl(TypeSynonymDecl node)
   {
+    // TODO: implement
     throw new LeanConversionException($"Unsupported: typesynonymdecl: {node}");
-  }
-
-  public override Type VisitTypeVariable(TypeVariable node)
-  {
-    throw new LeanConversionException($"Unsupported: typevariable: {node}");
   }
 
   public override Type VisitTypeProxy(TypeProxy node)
   {
+    // TODO: implement
     throw new LeanConversionException($"Unsupported: typeproxy: {node}");
-  }
-
-  public override Type VisitUnresolvedTypeIdentifier(UnresolvedTypeIdentifier node)
-  {
-    throw new LeanConversionException($"Unsupported: UnresolvedTypeIdentifier: {node}");
   }
 
   public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
@@ -540,53 +461,21 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     return node;
   }
 
-  public override List<CallCmd> VisitCallCmdSeq(List<CallCmd> callCmds)
-  {
-    throw new LeanConversionException($"Unsupported: CallCmds");
-  }
-
-  public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
-  {
-    throw new LeanConversionException($"Unsupported: {node}");
-  }
-
   public override ActionDeclRef VisitActionDeclRef(ActionDeclRef node)
   {
+    // TODO: what is this?
     throw new LeanConversionException($"Unsupported: {node}");
   }
 
   public override ElimDecl VisitElimDecl(ElimDecl node)
   {
+    // TODO: support this?
     throw new LeanConversionException($"Unsupported: {node}");
   }
 
   public override List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
   {
-    throw new LeanConversionException($"Unsupported: {node}");
-  }
-
-  public override Procedure VisitActionDecl(ActionDecl node)
-  {
-    throw new LeanConversionException($"Unsupported: {node}");
-  }
-
-  public override YieldingLoop VisitYieldingLoop(YieldingLoop node)
-  {
-    throw new LeanConversionException($"Unsupported: {node}");
-  }
-
-  public override Dictionary<Block, YieldingLoop> VisitYieldingLoops(Dictionary<Block, YieldingLoop> node)
-  {
-    throw new LeanConversionException($"Unsupported: {node}");
-  }
-
-  public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
-  {
-    throw new LeanConversionException($"Unsupported: {node}");
-  }
-
-  public override Procedure VisitYieldInvariantDecl(YieldInvariantDecl node)
-  {
+    // TODO: support this?
     throw new LeanConversionException($"Unsupported: {node}");
   }
 
@@ -700,11 +589,11 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       NL();
     });
   }
-  
+
   public override Implementation VisitImplementation(Implementation node)
   {
     var name = Name(node);
-    
+
     NL();
     writer.WriteLine($"namespace impl_{name}");
     NL();
@@ -732,6 +621,188 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     NL();
     writer.WriteLine($"end impl_{name}"); NL();
     return node;
+  }
+
+  /* ==== Nodes that should never be visited ==== */
+
+  public override Program VisitProgram(Program node)
+  {
+    throw new LeanConversionException($"Internal: Program should never be directly visited {node.tok}");
+  }
+
+  public override Declaration VisitDeclaration(Declaration node)
+  {
+    throw new LeanConversionException($"Internal: Declaration should never be directly visited {node.tok}");
+  }
+
+  public override List<Declaration> VisitDeclarationList(List<Declaration> declarationList)
+  {
+    throw new LeanConversionException($"Internal: List<Declaration> should never be directly visited {declarationList}");
+  }
+
+  public override List<Block> VisitBlockSeq(List<Block> blockSeq)
+  {
+    throw new LeanConversionException($"Internal: List<Block> should never be directly visited {blockSeq}");
+  }
+
+  public override List<Block> VisitBlockList(List<Block> blocks)
+  {
+    throw new LeanConversionException($"Internal: List<Block> should never be directly visited {blocks}");
+  }
+
+  public override Trigger VisitTrigger(Trigger node)
+  {
+    throw new LeanConversionException($"Internal: Trigger should never be directly visited {node.tok}");
+  }
+
+  public override IList<Expr> VisitExprSeq(IList<Expr> exprSeq)
+  {
+    throw new LeanConversionException($"Internal: List<Expr> should never be directly visited {exprSeq}");
+  }
+
+  public override BoundVariable VisitBoundVariable(BoundVariable node)
+  {
+    throw new LeanConversionException($"Internal: BoundVariable should never be directly visited {node.tok}");
+  }
+
+  public override Formal VisitFormal(Formal node)
+  {
+    throw new LeanConversionException($"Internal: Formal should never be directly visited {node.tok}");
+  }
+
+  public override LocalVariable VisitLocalVariable(LocalVariable node)
+  {
+    throw new LeanConversionException($"Internal error: LocalVariable should never be directly visited {node.tok}");
+  }
+
+  public override Type VisitTypeVariable(TypeVariable node)
+  {
+    throw new LeanConversionException($"Internal: TypeVariable should never be directly visited {node.tok}");
+  }
+
+  public override Type VisitUnresolvedTypeIdentifier(UnresolvedTypeIdentifier node)
+  {
+    throw new LeanConversionException($"Internal: UnresolvedTypeIdentifier should never appear ({node.tok})");
+  }
+
+  public override Variable VisitVariable(Variable node)
+  {
+    throw new LeanConversionException($"Internal: Variable should never be directly visited {node.tok}");
+  }
+
+  public override List<Variable> VisitVariableSeq(List<Variable> variableSeq)
+  {
+    throw new LeanConversionException($"Internal: List<Variable> should never be directly visited {variableSeq}");
+  }
+
+  public override HashSet<Variable> VisitVariableSet(HashSet<Variable> node)
+  {
+    throw new LeanConversionException($"Internal: HashSet<Variable> should never be directly visited {node}");
+  }
+
+  public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
+  {
+    throw new LeanConversionException($"Internal: MapAssignLhs should never appear in passive program ({node.tok}).");
+  }
+
+  public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
+  {
+    throw new LeanConversionException($"Internal: SimpleAssignLhs should never appear in passive program ({node.tok}).");
+  }
+
+  public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
+  {
+    throw new LeanConversionException($"Internal: FieldAssignLhs should never appear in passive program ({node.tok}).");
+  }
+
+  public override Cmd VisitAssignCmd(AssignCmd node)
+  {
+    throw new LeanConversionException($"Internal: AssignCmd should never appear in passive program ({node.tok}).");
+  }
+
+  public override Cmd VisitUnpackCmd(UnpackCmd node)
+  {
+    throw new LeanConversionException($"Internal: UnpackCmd should never appear in passive program ({node.tok}).");
+  }
+
+  public override Cmd VisitCallCmd(CallCmd node)
+  {
+    throw new LeanConversionException($"Internal: CallCmd should never appear in passive program ({node.tok}).");
+  }
+
+  public override Cmd VisitParCallCmd(ParCallCmd node)
+  {
+    throw new LeanConversionException($"Internal: ParCallCmd should never appear in passive program ({node.tok}).");
+  }
+
+  public override Cmd VisitHavocCmd(HavocCmd node)
+  {
+    throw new LeanConversionException($"Internal: HavocCmd should never appear in passive program ({node.tok}).");
+  }
+
+  public override ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node)
+  {
+    throw new LeanConversionException($"Internal: ReturnExprCmd should never appear in passive program ({node.tok})");
+  }
+
+  public override Cmd VisitStateCmd(StateCmd node)
+  {
+    throw new LeanConversionException($"Internal: StateCmd should never appear in passive program ({node.tok})");
+  }
+
+  public override List<CallCmd> VisitCallCmdSeq(List<CallCmd> callCmds)
+  {
+    throw new LeanConversionException($"Internal: List<CallCmd> should never appear in passive program ({callCmds}).");
+  }
+
+  public override Procedure VisitActionDecl(ActionDecl node)
+  {
+    throw new LeanConversionException($"Internal: ActionDecl should never appear in passive program ({node.tok}).");
+  }
+
+  public override YieldingLoop VisitYieldingLoop(YieldingLoop node)
+  {
+    throw new LeanConversionException($"Internal: YieldingLoop should never appear in passive program ({node}).");
+  }
+
+  public override Dictionary<Block, YieldingLoop> VisitYieldingLoops(Dictionary<Block, YieldingLoop> node)
+  {
+    throw new LeanConversionException($"Internal: YieldingLoops should never appear in passive program.");
+  }
+
+  public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
+  {
+    throw new LeanConversionException($"Internal: YieldProcedureDecl should never appear in passive program ({node.tok}).");
+  }
+
+  public override Procedure VisitYieldInvariantDecl(YieldInvariantDecl node)
+  {
+    throw new LeanConversionException($"Internal: YieldInvariantDecl should never appear in passive program ({node.tok}).");
+  }
+
+  public override Cmd VisitRE(RE node)
+  {
+    throw new LeanConversionException($"Internal: RE should never appear in passive program ({node.tok})");
+  }
+
+  public override List<RE> VisitRESeq(List<RE> reSeq)
+  {
+    throw new LeanConversionException($"Internal: List<RE> should never appear in passive program ({reSeq})");
+  }
+
+  public override AtomicRE VisitAtomicRE(AtomicRE node)
+  {
+    throw new LeanConversionException($"Internal: AtomicRE should never appear in passive program ({node.tok})");
+  }
+
+  public override Choice VisitChoice(Choice node)
+  {
+    throw new LeanConversionException($"Internal: Choice should never appear in passive program ({node.tok}).");
+  }
+
+  public override Sequential VisitSequential(Sequential node)
+  {
+    throw new LeanConversionException($"Internal: Sequential should never appear in passive program ({node.tok})");
   }
 }
 
