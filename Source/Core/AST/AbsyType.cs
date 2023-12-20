@@ -2011,7 +2011,7 @@ namespace Microsoft.Boogie
   {
     static int proxies = 0;
 
-    protected readonly string /*!*/
+    public readonly string /*!*/
       Name;
 
     [ContractInvariantMethod]

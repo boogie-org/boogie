@@ -9,19 +9,18 @@ public class LeanGenerator : ReadOnlyVisitor
 {
   private readonly TextWriter writer;
   private readonly List<NamedDeclaration> globalVars = new();
-  private readonly List<string> axiomNames =
+  private readonly HashSet<string> usedNames = new();
+  private bool usesMaps;
+  private readonly List<string> mapAxiomNames =
     new(new[]
     {
-      "SelectStoreSame", "SelectStoreDistinct"
+      "SelectStoreSame", "SelectStoreDistinct",
+      "SelectStoreSame2", "SelectStoreDistinct2"
     });
-  private readonly List<string> defNames =
-    new(new[]
-    {
-      "assert", "assume", "goto", "ret", "skip"
-    });
+  private readonly List<string> userAxiomNames = new();
+  private Dictionary<Type, HashSet<string>> uniqueConsts = new();
 
-  private readonly string header = @"
-import Auto
+  private readonly string header = @"import Auto
 import Auto.Tactic
 open Lean Std
 
@@ -38,21 +37,37 @@ set_option trace.auto.buildChecker false
 @[simp] def assume (ψ β: Prop): Prop := ψ → β
 @[simp] def skip (β: Prop): Prop := β
 @[simp] def ret: Prop := true
-@[simp] def goto: Prop -> Prop := id
+@[simp] def goto: Prop → Prop := id
 
 -- SMT Array definition
-def SMTArray (s1 s2: Type) := s1 -> s2
+def SMTArray1 (s1 s2: Type) := s1 → s2
 
-def store [BEq s1] (m: SMTArray s1 s2) (i: s1) (v: s2): SMTArray s1 s2 :=
+def SMTArray2 (s1 s2 s3 : Type) := s1 → s2 → s3
+
+def store1 [BEq s1] (m: SMTArray1 s1 s2) (i: s1) (v: s2): SMTArray1 s1 s2 :=
   fun i' => if i' == i then v else m i'
 
-def select (m: SMTArray s1 s2) (i: s1): s2 := m i
+def select1 (m: SMTArray1 s1 s2) (i: s1): s2 := m i
 
-axiom SelectStoreSame (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (e: s2):
-  select (store a i e) i = e
+def store2 [BEq s1] [BEq s2] (m: SMTArray2 s1 s2 s3) (i: s1) (j: s2) (v: s3): SMTArray2 s1 s2 s3 :=
+  fun i' j' => if i' == i && j' == j then v else m i' j'
 
-axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j: s1) (e: s2):
-  i ≠ j → select (store a i e) j = select a j
+def select2 (m: SMTArray2 s1 s2 s3) (i: s1) (j: s2): s3 := m i j
+
+axiom SelectStoreSame (s1 s2: Type) [BEq s1] (a: SMTArray1 s1 s2) (i: s1) (e: s2):
+  select1 (store1 a i e) i = e
+
+axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray1 s1 s2) (i: s1) (j: s1) (e: s2):
+  i ≠ j → select1 (store1 a i e) j = select1 a j
+
+axiom SelectStoreSame2 (s1 s2 s3: Type) [BEq s1] [BEq s2] (a: SMTArray2 s1 s2 s3) (i: s1) (j: s2) (e: s3):
+  select2 (store2 a i j e) i j = e
+
+axiom SelectStoreDistinct2 (s1 s2 s3: Type) [BEq s1] [BEq s2] (a: SMTArray2 s1 s2 s3) (i: s1) (i': s1) (j: s2) (j' : s2) (e: s3):
+  i ≠ i' \/ j ≠ j' → select2 (store2 a i j e) i' j' = select2 a i' j'
+
+-- TODO: provide either a definition or some functional axioms (or a definition plus some lemmas)
+axiom distinct : {a : Type} → List a → Prop
 ";
 
   private LeanGenerator(TextWriter writer)
@@ -65,19 +80,67 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     var generator = new LeanGenerator(writer);
     generator.EmitHeader();
     try {
+      generator.writer.WriteLine("-- Type constructors");
+      p.TopLevelDeclarations.OfType<TypeCtorDecl>().ForEach(tcd => generator.Visit(tcd));
+      generator.NL();
+
+      generator.writer.WriteLine("-- Type synonyms");
+      p.TopLevelDeclarations.OfType<TypeSynonymDecl>().ForEach(tcd => generator.Visit(tcd));
+      generator.NL();
+
+      generator.writer.WriteLine("-- Constants");
       p.Constants.ForEach(c => generator.Visit(c));
+      generator.NL();
+
+      generator.writer.WriteLine("-- Unique const axioms");
+      generator.EmitUniqueConstAxioms();
+      generator.NL();
+
+      generator.writer.WriteLine("-- Variables");
       p.GlobalVariables.ForEach(gv => generator.Visit(gv));
+      generator.NL();
+
+      generator.writer.WriteLine("-- Functions");
       p.Functions.ForEach(f => generator.Visit(f));
+      generator.NL();
+
+      generator.writer.WriteLine("-- Axioms");
       p.Axioms.ForEach(a => generator.Visit(a));
+      generator.NL();
+
+      generator.writer.WriteLine("-- Implementations");
       p.Implementations.ForEach(i => generator.Visit(i));
     } catch (LeanConversionException e) {
-      writer.WriteLine($"-- failed translation: {e.Msg}");
+      Console.WriteLine($"Failed translation: {e.Msg}");
+    }
+  }
+
+  private void AddUniqueConst(Type t, string name)
+  {
+    if (!uniqueConsts.ContainsKey(t)) {
+      uniqueConsts[t] = new();
+    }
+    if (!uniqueConsts[t].Contains(name)) {
+      uniqueConsts[t].Add(name);
+    }
+  }
+
+  private void EmitUniqueConstAxioms()
+  {
+    int i = 0;
+    foreach (var kv in uniqueConsts) {
+      var axiomName = $"unique{i}";
+      userAxiomNames.Add(axiomName);
+      writer.Write($"axiom {axiomName}: distinct ");
+      List(kv.Value);
+      NL();
+      i++;
     }
   }
 
   private void EmitHeader()
   {
-    writer.WriteLine(header);
+    writer.WriteLine(header.ReplaceLineEndings());
   }
 
   private void Indent(int n = 1, string str = null)
@@ -111,8 +174,7 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Block VisitBlock(Block node)
   {
-    // TODO: names less likely to clash
-    var label = SanitizeNameForLean(node.Label);
+    var label = BlockName(node);
     IndentL(1, "@[simp]");
     IndentL(1, $"{label} :=");
     node.Cmds.ForEach(c => Visit(c));
@@ -145,7 +207,7 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
   public override GotoCmd VisitGotoCmd(GotoCmd node)
   {
     var gotoText = node.labelTargets.Select(l =>
-      $"goto {l.Label}").Aggregate((a, b) => $"{a} \u2227 {b}");
+      $"goto {BlockName(l)}").Aggregate((a, b) => $"{a} \u2227 {b}");
     Indent(2, gotoText);
     return node;
   }
@@ -158,8 +220,35 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Expr VisitIdentifierExpr(IdentifierExpr node)
   {
-    writer.Write(SanitizeNameForLean(node.Name));
+    var name = SanitizeNameForLean(node.Name);
+    usedNames.Add(name);
+    writer.Write(name);
     return node;
+  }
+
+  public override Type VisitType(Type node)
+  {
+    if (node is BasicType basicType) {
+      return VisitBasicType(basicType);
+    } else if (node is BvType bvType) {
+      return VisitBvType(bvType);
+    } else if (node is CtorType ctorType) {
+      return VisitCtorType(ctorType);
+    } else if (node is FloatType floatType) {
+      return VisitFloatType(floatType);
+    } else if (node is MapType mapType) {
+      return VisitMapType(mapType);
+    } else if (node is TypeProxy typeProxy) {
+      return VisitTypeProxy(typeProxy);
+    } else if (node is TypeSynonymAnnotation typeSynonymAnnotation) {
+      return VisitTypeSynonymAnnotation(typeSynonymAnnotation);
+    } else if (node is TypeVariable typeVariable) {
+      return VisitTypeVariable(typeVariable);
+    } else if (node is UnresolvedTypeIdentifier uti) {
+      return VisitUnresolvedTypeIdentifier(uti);
+    } else {
+      throw new LeanConversionException("Unreachable type case.");
+    }
   }
 
   public override Type VisitBasicType(BasicType node)
@@ -176,11 +265,7 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       throw new LeanConversionException("Unsupported: RegEx type");
     } else if (node.IsMap) {
       var mapType = node.AsMap;
-      writer.Write("(SMTArray ");
-      Visit(mapType.Arguments[0]);
-      writer.Write(" ");
-      Visit(mapType.Result);
-      writer.Write(")");
+      VisitMapType(mapType);
     } else {
       throw new LeanConversionException($"Unsupported BasicType: {node}");
     }
@@ -190,20 +275,26 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Expr VisitBvConcatExpr(BvConcatExpr node)
   {
-    // TODO: implement
-    throw new LeanConversionException("Unsupported: BvConcatExpr");
+    Visit(node.E0);
+    writer.Write(" ++ ");
+    Visit(node.E1);
+    return node;
   }
 
   public override Type VisitBvType(BvType node)
   {
-    // TODO: implement
-    throw new LeanConversionException("Unsupported: BvType");
+    writer.Write($"(BitVec {node.Bits})");
+    return node;
   }
 
   public override Constant VisitConstant(Constant node)
   {
+    var ti = node.TypedIdent;
     writer.Write("variable ");
-    Visit(node.TypedIdent);
+    Visit(ti);
+    if (node.Unique) {
+      AddUniqueConst(ti.Type, SanitizeNameForLean(ti.Name));
+    }
     NL();
     globalVars.Add(node);
     return node;
@@ -211,8 +302,20 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override CtorType VisitCtorType(CtorType node)
   {
-    // TODO: implement (next)
-    throw new LeanConversionException("Unsupported: CtorType");
+    if (node.Arguments.Any()) {
+      writer.Write("(");
+    }
+
+    writer.Write(Name(node.Decl));
+    node.Arguments.ForEach(a =>
+    {
+      writer.Write(" ");
+      Visit(a);
+    });
+    if (node.Arguments.Any()) {
+      writer.Write(")");
+    }
+    return node;
   }
 
   public override QuantifierExpr VisitQuantifierExpr(QuantifierExpr node)
@@ -224,6 +327,9 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       _ => throw new LeanConversionException($"Unsupported quantifier type: {node.Kind}")
     };
     writer.Write($"({kind}");
+    foreach (var tv in node.TypeParameters) {
+      writer.Write($" ({SanitizeNameForLean(tv.Name)} : Type)");
+    }
     foreach (var x in node.Dummies) {
       writer.Write(" ");
       VisitTypedIdent(x.TypedIdent);
@@ -238,7 +344,8 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
   public override TypedIdent VisitTypedIdent(TypedIdent node)
   {
     writer.Write("(");
-    writer.Write(SanitizeNameForLean(node.Name));
+    var name = SanitizeNameForLean(node.Name);
+    writer.Write(name);
     writer.Write(" : ");
     Visit(node.Type);
     writer.Write(")");
@@ -247,20 +354,36 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Expr VisitBvExtractExpr(BvExtractExpr node)
   {
-    // TODO: implement
-    throw new LeanConversionException("Unsupported: BvExtractExpr");
+    // TODO: double-check range values
+    writer.Write($"(BitVec.extractLsb {node.End - 1} {node.Start} ");
+    Visit(node.Bitvector);
+    writer.Write(")");
+    return node;
   }
 
   public override Expr VisitLambdaExpr(LambdaExpr node)
   {
-    // TODO: implement
-    throw new LeanConversionException("Unsupported: LambdaExpr");
+    writer.Write("(λ");
+    node.Dummies.ForEach(x => Visit(x.TypedIdent));
+    writer.Write("=>");
+    Visit(node.Body);
+    writer.Write(")");
+    return node;
   }
 
   public override Expr VisitLetExpr(LetExpr node)
   {
-    // TODO: implement
-    throw new LeanConversionException("Unsupported: LetExpr");
+    if (node.Dummies.Count > 1) {
+      throw new LeanConversionException("Unsupported: LetExpr with more than one binder");
+    }
+    writer.Write("(let");
+    node.Dummies.ForEach(x => Visit(x.TypedIdent));
+    writer.Write(" := ");
+    node.Rhss.ForEach(e => Visit(e));
+    writer.Write("; ");
+    Visit(node.Body);
+    writer.Write(")");
+    return node;
   }
 
   public override GlobalVariable VisitGlobalVariable(GlobalVariable node)
@@ -281,20 +404,34 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       // Use lowercase version to ensure Bool, which can be coerced to Prop
       writer.Write("false");
     } else if (node.isBvConst) {
-      // Use lowercase version to ensure Bool, which can be coerced to Prop
-      writer.Write(node + "/- TODO: bit vector constants -/");
+      var bvConst = node.asBvConst;
+      writer.Write("(");
+      writer.Write(bvConst.Value);
+      writer.Write($" : BitVec {bvConst.Bits}");
+      writer.Write(")");
     } else {
-      writer.Write(node); // TODO: make sure this is right
+      writer.Write(node); // TODO: make sure this is right for all other literal types
     }
     return node;
   }
 
   public override Type VisitMapType(MapType node)
   {
-    writer.Write("SMTArray ");
-    Visit(node.Arguments[0]);
-    writer.Write(" ");
+    if (node.Arguments.Count > 2) {
+      throw new LeanConversionException($"Unsupported: MapType with too many index types ({node})");
+    }
+    if (node.TypeParameters.Any()) {
+      var args = node.TypeParameters.Select(a => SanitizeNameForLean(a.Name));
+      writer.Write($"forall ({String.Join(" ", args)} : Type), ");
+    }
+    writer.Write($"(SMTArray{node.Arguments.Count} ");
+    node.Arguments.ForEach(a =>
+    {
+      Visit(a);
+      writer.Write(" ");
+    });
     Visit(node.Result);
+    writer.Write(")");
     return node;
   }
 
@@ -315,10 +452,20 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       writer.Write(" else ");
       Visit(args[2]);
     } else if (fun is TypeCoercion typeCoercion && args.Count == 1) {
-      // TODO: actually coerce to target type
+      // TODO: might need to actually call a coercion function
+      Console.WriteLine($"Coerce: {args[0].Type} -> {typeCoercion.Type}");
+      writer.Write("(");
       Visit(args[0]);
       writer.Write(" : ");
       Visit(typeCoercion.Type);
+      writer.Write(")");
+    } else if (fun is FieldAccess fieldAccess) {
+      throw new LeanConversionException("Unsupported: field access (since the semantics are complex)");
+      // TODO: implement
+      /*
+      Visit(args[0]);
+      writer.Write($".{SanitizeNameForLean(fieldAccess.FieldName)}");
+      */
     } else {
       VisitIAppliable(fun);
       foreach (var arg in args) {
@@ -335,10 +482,12 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
   {
     switch (fun) {
       case MapSelect:
-        writer.Write("select");
+        usesMaps = true;
+        writer.Write($"select{fun.ArgumentCount - 1}");
         break;
       case MapStore:
-        writer.Write("store");
+        usesMaps = true;
+        writer.Write($"store{fun.ArgumentCount - 2}");
         break;
       case BinaryOperator op:
         writer.Write(BinaryOpToLean(op.Op));
@@ -349,6 +498,10 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       case FunctionCall fc:
         writer.Write(SanitizeNameForLean(fc.Func.Name));
         break;
+      case IsConstructor isConstructor:
+        // TODO: declare these discriminator functions
+        writer.Write($"is_{SanitizeNameForLean(isConstructor.ConstructorName)}");
+        break;
       default:
         throw new LeanConversionException($"Unsupported: IAppliable: {fun}");
     }
@@ -356,34 +509,33 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Expr VisitOldExpr(OldExpr node)
   {
-    // TODO: implement
     throw new LeanConversionException("Unsupported: OldExpr");
   }
 
   public override Type VisitFloatType(FloatType node)
   {
-    // TODO: implement (but low priority)
     throw new LeanConversionException("Unsupported: FloatType");
   }
 
   public override Requires VisitRequires(Requires requires)
   {
-    return requires; // TODO: do something with it
+    return requires; // Already inlined
   }
 
   public override Ensures VisitEnsures(Ensures ensures)
   {
-    return ensures; // TODO: do something with it
+    return ensures; // Already inlined
   }
 
   public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node)
   {
-    return node; // TODO: do something
+    Console.WriteLine($"DeclWithFormals: {node}");
+    return node; // TODO: do something?
   }
 
   public override Type VisitBvTypeProxy(BvTypeProxy node)
   {
-    // TODO: implement
+    // TODO: confirm that this is unreachable
     throw new LeanConversionException($"Unsupported: bvtypeproxy: {node}");
   }
 
@@ -401,17 +553,17 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override List<Requires> VisitRequiresSeq(List<Requires> requiresSeq)
   {
-    return requiresSeq; // TODO: do something
+    return requiresSeq; // Already inlined
   }
 
   public override List<Ensures> VisitEnsuresSeq(List<Ensures> ensuresSeq)
   {
-    return ensuresSeq; // TODO: do something
+    return ensuresSeq; // Already inlined
   }
 
   public override Type VisitMapTypeProxy(MapTypeProxy node)
   {
-    // TODO: implement
+    // TODO: confirm that this is unreachable
     throw new LeanConversionException($"Unsupported: maptypeproxy: {node}");
   }
 
@@ -423,26 +575,61 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
   {
-    // TODO: implement
-    throw new LeanConversionException($"Unsupported: typectordecl: {node}");
+    // TODO: wrap in `mutual ... end` when necessary
+    if (node is DatatypeTypeCtorDecl dt) {
+      writer.WriteLine($"inductive {SanitizeNameForLean(dt.Name)} where");
+      foreach (var ctor in dt.Constructors) {
+        Indent(1, $"| {SanitizeNameForLean(ctor.Name)} : ");
+        ctor.InParams.ForEach(p =>
+        {
+          Visit(p.TypedIdent.Type);
+          writer.Write(" → ");
+        });
+        writer.WriteLine($" {SanitizeNameForLean(dt.Name)}");
+      }
+    } else {
+      var name = Name(node);
+      var tyStr = String.Join(" → ", Enumerable.Repeat("Type", node.Arity + 1).ToList());
+      writer.WriteLine($"axiom {name} : {tyStr}");
+
+      if(node.Arity == 0) {
+        writer.WriteLine($"instance {name}BEq : BEq {name} := by sorry");
+      }
+    }
+    return node;
   }
 
   public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
   {
-    // TODO: implement
-    throw new LeanConversionException($"Unsupported: typesynonymannotation: {node}");
+    return VisitType(node.ExpandedType);
   }
 
   public override Declaration VisitTypeSynonymDecl(TypeSynonymDecl node)
   {
-    // TODO: implement
-    throw new LeanConversionException($"Unsupported: typesynonymdecl: {node}");
+    var name = Name(node);
+    writer.Write($"def {name}");
+    node.TypeParameters.ForEach(tp => writer.Write($" ({SanitizeNameForLean(tp.Name)} : Type)"));
+    writer.Write(" := ");
+    Visit(node.Body);
+    NL();
+    return node;
   }
 
   public override Type VisitTypeProxy(TypeProxy node)
   {
-    // TODO: implement
-    throw new LeanConversionException($"Unsupported: typeproxy: {node}");
+    var p = node.ProxyFor;
+    if (p is null) {
+      writer.Write(SanitizeNameForLean(node.Name));
+    } else {
+      VisitType(p);
+    }
+    return node;
+  }
+
+  public override Type VisitTypeVariable(TypeVariable node)
+  {
+    writer.Write(SanitizeNameForLean(node.Name));
+    return node;
   }
 
   public override Cmd VisitAssertEnsuresCmd(AssertEnsuresCmd node)
@@ -484,21 +671,26 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     // This will take two more steps:
     // * A named lemma with a definition of `by sorry` (using a `name` attribute?) (or `id`, so it's also useful for proof dependencies?)
     // * A named lemma that's defined by a call to a previously-defined proof of the same thing
-    var name = $"ax_l{node.tok.line}c{node.tok.col}";
+    int n = 0;
+    var name = $"ax_l{node.tok.line}c{node.tok.col}_{n}";
+    while (userAxiomNames.Contains(name)) {
+      n += 1;
+      name = $"ax_l{node.tok.line}c{node.tok.col}_{n}";
+    }
     writer.Write($"axiom {name}: ");
     VisitExpr(node.Expr);
     NL();
-    axiomNames.Add(name);
+    userAxiomNames.Add(name);
     return node;
   }
 
   public override Function VisitFunction(Function node)
   {
     // In the long run, this should define functions when possible.
-    writer.Write($"def {Name(node)} : ");
+    writer.Write($"axiom {Name(node)} : ");
     node.InParams.ForEach(x =>
     {
-      Visit(x.TypedIdent.Type); writer.Write(" -> ");
+      Visit(x.TypedIdent.Type); writer.Write(" \u2192 ");
     });
     if (node.OutParams.Count == 1) {
       Visit(node.OutParams[0].TypedIdent.Type);
@@ -510,7 +702,7 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       });
       writer.Write(")");
     }
-    writer.WriteLine(" := by sorry");
+
     NL();
     // Note: definition axioms will be emitted later
     // node.DefinitionAxioms.ForEach(ax => VisitAxiom(ax));
@@ -530,15 +722,15 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
       BinaryOperator.Opcode.Gt => ">",
       BinaryOperator.Opcode.Le => "<=",
       BinaryOperator.Opcode.Ge => ">=",
-      BinaryOperator.Opcode.Eq => "=",
+      BinaryOperator.Opcode.Eq => "==",
       BinaryOperator.Opcode.Neq => "!=",
-      BinaryOperator.Opcode.And => "\u2227",
-      BinaryOperator.Opcode.Or => "||",
+      BinaryOperator.Opcode.And => "\u2227", /* ∧ */
+      BinaryOperator.Opcode.Or => "\u2228", /* ∨ */
       BinaryOperator.Opcode.Iff => "=",
-      BinaryOperator.Opcode.Imp => "->",
-      BinaryOperator.Opcode.Pow => "TODO",
-      BinaryOperator.Opcode.FloatDiv => "TODO",
-      BinaryOperator.Opcode.RealDiv => "TODO",
+      BinaryOperator.Opcode.Imp => "\u2192", /* → */
+      BinaryOperator.Opcode.Pow => "^",
+      BinaryOperator.Opcode.RealDiv => "/",
+      BinaryOperator.Opcode.FloatDiv => "/",
       _ => throw new LeanConversionException($"unsupported binary operator: {op.ToString()}")
     };
   }
@@ -555,12 +747,20 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
 
   private string SanitizeNameForLean(string name)
   {
-    return name.Replace('@', '_');
+    return name
+      .Replace('@', '_')
+      .Replace('#', '_')
+      .Replace("$", "_dollar_");
   }
 
   private string Name(NamedDeclaration d)
   {
     return SanitizeNameForLean(d.Name);
+  }
+
+  private string BlockName(Block b)
+  {
+    return "β_" + SanitizeNameForLean(b.Label);
   }
 
   public override Procedure VisitProcedure(Procedure node)
@@ -593,6 +793,7 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
   public override Implementation VisitImplementation(Implementation node)
   {
     var name = Name(node);
+    var entryLabel = BlockName(node.Blocks[0]);
 
     NL();
     writer.WriteLine($"namespace impl_{name}");
@@ -601,25 +802,30 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
     writer.WriteLine("@[simp]");
     writer.WriteLine($"def {name}");
     WriteParams(node);
-    IndentL(1, $": Prop := {node.Blocks[0].Label}");
+    IndentL(1, $": Prop := {entryLabel}");
     IndentL(1, "where");
     node.Blocks.ForEach(b => VisitBlock(b));
     NL();
     writer.WriteLine($"theorem {name}_correct");
     WriteParams(node);
     var paramNames =
-      globalVars.Select(Name)
+      globalVars.Select(Name).Where(x => usedNames.Contains(x))
         .Concat(node.InParams.Select(Name))
         .Concat(node.OutParams.Select(Name))
         .Concat(node.LocVars.Select(Name));
     var paramString = String.Join(' ', paramNames);
     Indent(1, $": {name} {paramString} := by"); NL();
-    IndentL(2, "simp");
-    IndentL(2, "auto");
+    IndentL(2, "try simp"); // Uses `try` because it may make no progress
+    IndentL(2, "try auto"); // Uses `try` because there may be no goals remaining
+    var axiomNames = usesMaps ? mapAxiomNames.Concat(userAxiomNames) : userAxiomNames;
     Indent(3); List(axiomNames); NL();
     IndentL(3, "u[]");
     NL();
-    writer.WriteLine($"end impl_{name}"); NL();
+    writer.WriteLine($"end impl_{name}");
+
+    usesMaps = false; // Skip map axioms in the next implementation if it doesn't need them
+    usedNames.Clear(); // Skip any globals not used by the next implementation
+
     return node;
   }
 
@@ -673,11 +879,6 @@ axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray s1 s2) (i: s1) (j:
   public override LocalVariable VisitLocalVariable(LocalVariable node)
   {
     throw new LeanConversionException($"Internal error: LocalVariable should never be directly visited {node.tok}");
-  }
-
-  public override Type VisitTypeVariable(TypeVariable node)
-  {
-    throw new LeanConversionException($"Internal: TypeVariable should never be directly visited {node.tok}");
   }
 
   public override Type VisitUnresolvedTypeIdentifier(UnresolvedTypeIdentifier node)
