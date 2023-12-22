@@ -14,7 +14,7 @@ public class LeanGenerator : ReadOnlyVisitor
   private readonly List<string> mapAxiomNames =
     new(new[]
     {
-      "SelectStoreSame", "SelectStoreDistinct",
+      "SelectStoreSame1", "SelectStoreDistinct1",
       "SelectStoreSame2", "SelectStoreDistinct2"
     });
   private readonly List<string> userAxiomNames = new();
@@ -22,7 +22,8 @@ public class LeanGenerator : ReadOnlyVisitor
 
   private readonly string header = @"import Auto
 import Auto.Tactic
-open Lean Std
+import Auto.MathlibEmulator.Basic -- For `Real`
+open Lean Std Auto
 
 set_option linter.unusedVariables false
 set_option auto.smt true
@@ -54,10 +55,10 @@ def store2 [BEq s1] [BEq s2] (m: SMTArray2 s1 s2 s3) (i: s1) (j: s2) (v: s3): SM
 
 def select2 (m: SMTArray2 s1 s2 s3) (i: s1) (j: s2): s3 := m i j
 
-axiom SelectStoreSame (s1 s2: Type) [BEq s1] (a: SMTArray1 s1 s2) (i: s1) (e: s2):
+axiom SelectStoreSame1 (s1 s2: Type) [BEq s1] (a: SMTArray1 s1 s2) (i: s1) (e: s2):
   select1 (store1 a i e) i = e
 
-axiom SelectStoreDistinct (s1 s2: Type) [BEq s1] (a: SMTArray1 s1 s2) (i: s1) (j: s1) (e: s2):
+axiom SelectStoreDistinct1 (s1 s2: Type) [BEq s1] (a: SMTArray1 s1 s2) (i: s1) (j: s1) (e: s2):
   i ≠ j → select1 (store1 a i e) j = select1 a j
 
 axiom SelectStoreSame2 (s1 s2 s3: Type) [BEq s1] [BEq s2] (a: SMTArray2 s1 s2 s3) (i: s1) (j: s2) (e: s3):
@@ -68,6 +69,10 @@ axiom SelectStoreDistinct2 (s1 s2 s3: Type) [BEq s1] [BEq s2] (a: SMTArray2 s1 s
 
 -- TODO: provide either a definition or some functional axioms (or a definition plus some lemmas)
 axiom distinct : {a : Type} → List a → Prop
+
+axiom realToInt : Real → Int
+axiom intToReal : Int → Real
+instance BEqReal: BEq Real := by sorry
 ";
 
   private LeanGenerator(TextWriter writer)
@@ -75,21 +80,25 @@ axiom distinct : {a : Type} → List a → Prop
     this.writer = writer;
   }
 
-  public static void EmitPassiveProgramAsLean(Program p, TextWriter writer)
+  public static void EmitPassiveProgramAsLean(VCGenOptions options, Program p, TextWriter writer)
   {
     var generator = new LeanGenerator(writer);
     generator.EmitHeader();
     try {
+      var allBlocks = p.Implementations.SelectMany(i => i.Blocks);
+      var liveDeclarations = Prune.GetLiveDeclarations(options, p, allBlocks.ToList());
+      
       generator.writer.WriteLine("-- Type constructors");
+      // Include all type constructors
       p.TopLevelDeclarations.OfType<TypeCtorDecl>().ForEach(tcd => generator.Visit(tcd));
       generator.NL();
 
       generator.writer.WriteLine("-- Type synonyms");
-      p.TopLevelDeclarations.OfType<TypeSynonymDecl>().ForEach(tcd => generator.Visit(tcd));
+      liveDeclarations.OfType<TypeSynonymDecl>().ForEach(tcd => generator.Visit(tcd));
       generator.NL();
 
       generator.writer.WriteLine("-- Constants");
-      p.Constants.ForEach(c => generator.Visit(c));
+      liveDeclarations.OfType<Constant>().ForEach(c => generator.Visit(c));
       generator.NL();
 
       generator.writer.WriteLine("-- Unique const axioms");
@@ -97,15 +106,15 @@ axiom distinct : {a : Type} → List a → Prop
       generator.NL();
 
       generator.writer.WriteLine("-- Variables");
-      p.GlobalVariables.ForEach(gv => generator.Visit(gv));
+      liveDeclarations.OfType<GlobalVariable>().ForEach(gv => generator.Visit(gv));
       generator.NL();
 
       generator.writer.WriteLine("-- Functions");
-      p.Functions.ForEach(f => generator.Visit(f));
+      liveDeclarations.OfType<Function>().ForEach(f => generator.Visit(f));
       generator.NL();
 
       generator.writer.WriteLine("-- Axioms");
-      p.Axioms.ForEach(a => generator.Visit(a));
+      liveDeclarations.OfType<Axiom>().ForEach(a => generator.Visit(a));
       generator.NL();
 
       generator.writer.WriteLine("-- Implementations");
@@ -254,7 +263,7 @@ axiom distinct : {a : Type} → List a → Prop
   public override Type VisitBasicType(BasicType node)
   {
     if (node.IsBool) {
-      writer.Write("Bool");
+      writer.Write("Prop");
     } else if (node.IsInt) {
       writer.Write("Int");
     } else if (node.IsReal) {
@@ -452,8 +461,10 @@ axiom distinct : {a : Type} → List a → Prop
       writer.Write(" else ");
       Visit(args[2]);
     } else if (fun is TypeCoercion typeCoercion && args.Count == 1) {
-      // TODO: might need to actually call a coercion function
-      Console.WriteLine($"Coerce: {args[0].Type} -> {typeCoercion.Type}");
+      if (!args[0].Type.Equals(typeCoercion.Type)) {
+        // TODO: might need to actually call a coercion function
+        Console.WriteLine($"Coerce: {args[0].Type} -> {typeCoercion.Type}");
+      }
       writer.Write("(");
       Visit(args[0]);
       writer.Write(" : ");
@@ -501,6 +512,15 @@ axiom distinct : {a : Type} → List a → Prop
       case IsConstructor isConstructor:
         // TODO: declare these discriminator functions
         writer.Write($"is_{SanitizeNameForLean(isConstructor.ConstructorName)}");
+        break;
+      case ArithmeticCoercion arithmeticCoercion:
+        var func = arithmeticCoercion.Coercion switch
+        {
+          ArithmeticCoercion.CoercionType.ToInt => "realToInt",
+          ArithmeticCoercion.CoercionType.ToReal => "intToReal",
+          _ => throw new LeanConversionException($"Internal: unknown arithmetic coercion: {arithmeticCoercion.Coercion}")
+        };
+        writer.Write(func);
         break;
       default:
         throw new LeanConversionException($"Unsupported: IAppliable: {fun}");
@@ -688,9 +708,18 @@ axiom distinct : {a : Type} → List a → Prop
   {
     // In the long run, this should define functions when possible.
     writer.Write($"axiom {Name(node)} : ");
+    node.TypeParameters.ForEach(x =>
+    {
+      var name = SanitizeNameForLean(x.Name);
+      writer.Write($"{{{name} : Type}}");
+      writer.Write(" \u2192 ");
+      //writer.Write($"[BEq {name}]");
+      //writer.Write(" \u2192 ");
+    });
     node.InParams.ForEach(x =>
     {
-      Visit(x.TypedIdent.Type); writer.Write(" \u2192 ");
+      Visit(x.TypedIdent.Type);
+      writer.Write(" \u2192 ");
     });
     if (node.OutParams.Count == 1) {
       Visit(node.OutParams[0].TypedIdent.Type);
@@ -722,8 +751,8 @@ axiom distinct : {a : Type} → List a → Prop
       BinaryOperator.Opcode.Gt => ">",
       BinaryOperator.Opcode.Le => "<=",
       BinaryOperator.Opcode.Ge => ">=",
-      BinaryOperator.Opcode.Eq => "==",
-      BinaryOperator.Opcode.Neq => "!=",
+      BinaryOperator.Opcode.Eq => "=",
+      BinaryOperator.Opcode.Neq => "\u2260", /* ≠ */
       BinaryOperator.Opcode.And => "\u2227", /* ∧ */
       BinaryOperator.Opcode.Or => "\u2228", /* ∨ */
       BinaryOperator.Opcode.Iff => "=",
@@ -739,7 +768,7 @@ axiom distinct : {a : Type} → List a → Prop
   {
     return op switch
     {
-      UnaryOperator.Opcode.Not => "!",
+      UnaryOperator.Opcode.Not => "Not",
       UnaryOperator.Opcode.Neg => "-",
       _ => throw new LeanConversionException($"unsupported unary operator: {op.ToString()}")
     };
@@ -747,8 +776,9 @@ axiom distinct : {a : Type} → List a → Prop
 
   private string SanitizeNameForLean(string name)
   {
-    return name
+    return "_boogie_" + name
       .Replace('@', '_')
+      .Replace('.', '_')
       .Replace('#', '_')
       .Replace("$", "_dollar_");
   }
@@ -795,6 +825,7 @@ axiom distinct : {a : Type} → List a → Prop
     var name = Name(node);
     var entryLabel = BlockName(node.Blocks[0]);
 
+    usedNames.Clear(); // Skip any globals used only by axioms, etc.
     NL();
     writer.WriteLine($"namespace impl_{name}");
     NL();

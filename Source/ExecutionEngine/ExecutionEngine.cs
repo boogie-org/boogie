@@ -13,6 +13,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
 using Microsoft.Boogie.LeanAuto;
+using Microsoft.Boogie.VCExprAST;
 using VCGeneration;
 
 namespace Microsoft.Boogie
@@ -577,7 +578,7 @@ namespace Microsoft.Boogie
 
       if (Options.LeanFile is not null) {
         var writer = new StreamWriter(Options.LeanFile);
-        LeanGenerator.EmitPassiveProgramAsLean(processedProgram.Program, writer);
+        LeanGenerator.EmitPassiveProgramAsLean(Options, processedProgram.Program, writer);
         writer.Close();
       }
 

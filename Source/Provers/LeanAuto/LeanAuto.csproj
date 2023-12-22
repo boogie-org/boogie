@@ -9,6 +9,7 @@
     <ProjectReference Include="..\..\BaseTypes\BaseTypes.csproj" />
     <ProjectReference Include="..\..\CodeContractsExtender\CodeContractsExtender.csproj" />
     <ProjectReference Include="..\..\Core\Core.csproj" />
+    <ProjectReference Include="..\..\VCGeneration\VCGeneration.csproj" />
   </ItemGroup>
 
   <ItemGroup>
