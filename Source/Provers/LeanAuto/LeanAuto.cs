@@ -8,6 +8,7 @@ namespace Microsoft.Boogie.LeanAuto;
 public class LeanGenerator : ReadOnlyVisitor
 {
   private readonly TextWriter writer;
+  private readonly VCGenOptions options;
   private readonly List<NamedDeclaration> globalVars = new();
   private readonly HashSet<string> usedNames = new();
   private bool usesMaps;
@@ -18,7 +19,7 @@ public class LeanGenerator : ReadOnlyVisitor
       "SelectStoreSame2", "SelectStoreDistinct2"
     });
   private readonly List<string> userAxiomNames = new();
-  private Dictionary<Type, HashSet<string>> uniqueConsts = new();
+  private readonly Dictionary<Type, HashSet<string>> uniqueConsts = new();
 
   private readonly string header = @"import Auto
 import Auto.Tactic
@@ -28,9 +29,8 @@ open Lean Std Auto
 set_option linter.unusedVariables false
 set_option auto.smt true
 set_option trace.auto.smt.printCommands false
---set_option auto.smt.proof false
+set_option trace.auto.smt.result true
 set_option auto.smt.trust true
---set_option auto.duper false
 set_option auto.smt.solver.name ""z3""
 set_option trace.auto.buildChecker false
 
@@ -75,49 +75,53 @@ axiom intToReal : Int → Real
 instance BEqReal: BEq Real := by sorry
 ";
 
-  private LeanGenerator(TextWriter writer)
+  private LeanGenerator(VCGenOptions options, TextWriter writer)
   {
+    this.options = options;
     this.writer = writer;
   }
 
   public static void EmitPassiveProgramAsLean(VCGenOptions options, Program p, TextWriter writer)
   {
-    var generator = new LeanGenerator(writer);
+    var generator = new LeanGenerator(options, writer);
     generator.EmitHeader();
     try {
       var allBlocks = p.Implementations.SelectMany(i => i.Blocks);
-      var liveDeclarations = Prune.GetLiveDeclarations(options, p, allBlocks.ToList());
-      
-      generator.writer.WriteLine("-- Type constructors");
-      // Include all type constructors
+      var liveDeclarations =
+        options.Prune
+          ? Prune.GetLiveDeclarations(options, p, allBlocks.ToList()).ToList()
+          : p.TopLevelDeclarations;
+
+      generator.Line("-- Type constructors");
+      // Always include all type constructors
       p.TopLevelDeclarations.OfType<TypeCtorDecl>().ForEach(tcd => generator.Visit(tcd));
       generator.NL();
 
-      generator.writer.WriteLine("-- Type synonyms");
+      generator.Line("-- Type synonyms");
       liveDeclarations.OfType<TypeSynonymDecl>().ForEach(tcd => generator.Visit(tcd));
       generator.NL();
 
-      generator.writer.WriteLine("-- Constants");
+      generator.Line("-- Constants");
       liveDeclarations.OfType<Constant>().ForEach(c => generator.Visit(c));
       generator.NL();
 
-      generator.writer.WriteLine("-- Unique const axioms");
+      generator.Line("-- Unique const axioms");
       generator.EmitUniqueConstAxioms();
       generator.NL();
 
-      generator.writer.WriteLine("-- Variables");
+      generator.Line("-- Variables");
       liveDeclarations.OfType<GlobalVariable>().ForEach(gv => generator.Visit(gv));
       generator.NL();
 
-      generator.writer.WriteLine("-- Functions");
+      generator.Line("-- Functions");
       liveDeclarations.OfType<Function>().ForEach(f => generator.Visit(f));
       generator.NL();
 
-      generator.writer.WriteLine("-- Axioms");
+      generator.Line("-- Axioms");
       liveDeclarations.OfType<Axiom>().ForEach(a => generator.Visit(a));
       generator.NL();
 
-      generator.writer.WriteLine("-- Implementations");
+      generator.Line("-- Implementations");
       p.Implementations.ForEach(i => generator.Visit(i));
     } catch (LeanConversionException e) {
       Console.WriteLine($"Failed translation: {e.Msg}");
@@ -140,7 +144,7 @@ instance BEqReal: BEq Real := by sorry
     foreach (var kv in uniqueConsts) {
       var axiomName = $"unique{i}";
       userAxiomNames.Add(axiomName);
-      writer.Write($"axiom {axiomName}: distinct ");
+      Text($"axiom {axiomName}: distinct ");
       List(kv.Value);
       NL();
       i++;
@@ -155,11 +159,11 @@ instance BEqReal: BEq Real := by sorry
   private void Indent(int n = 1, string str = null)
   {
     for (var i = 0; i < n; i++) {
-      writer.Write("  ");
+      Text("  ");
     }
 
     if (str is not null) {
-      writer.Write(str);
+      Text(str);
     }
   }
 
@@ -174,11 +178,21 @@ instance BEqReal: BEq Real := by sorry
     writer.WriteLine();
   }
 
+  private void Text(string text)
+  {
+    writer.Write(text);
+  }
+
+  private void Line(string text)
+  {
+    writer.WriteLine(text);
+  }
+
   private void List(IEnumerable<string> strings)
   {
-    writer.Write("[");
-    writer.Write(String.Join(", ", strings));
-    writer.Write("]");
+    Text("[");
+    Text(String.Join(", ", strings));
+    Text("]");
   }
 
   public override Block VisitBlock(Block node)
@@ -201,7 +215,7 @@ instance BEqReal: BEq Real := by sorry
   {
     Indent(2, "assert ");
     VisitExpr(node.Expr);
-    writer.WriteLine(" $");
+    Line(" $");
     return node;
   }
 
@@ -209,7 +223,7 @@ instance BEqReal: BEq Real := by sorry
   {
     Indent(2, "assume ");
     VisitExpr(node.Expr);
-    writer.WriteLine(" $");
+    Line(" $");
     return node;
   }
 
@@ -231,43 +245,35 @@ instance BEqReal: BEq Real := by sorry
   {
     var name = SanitizeNameForLean(node.Name);
     usedNames.Add(name);
-    writer.Write(name);
+    Text(name);
     return node;
   }
 
   public override Type VisitType(Type node)
   {
-    if (node is BasicType basicType) {
-      return VisitBasicType(basicType);
-    } else if (node is BvType bvType) {
-      return VisitBvType(bvType);
-    } else if (node is CtorType ctorType) {
-      return VisitCtorType(ctorType);
-    } else if (node is FloatType floatType) {
-      return VisitFloatType(floatType);
-    } else if (node is MapType mapType) {
-      return VisitMapType(mapType);
-    } else if (node is TypeProxy typeProxy) {
-      return VisitTypeProxy(typeProxy);
-    } else if (node is TypeSynonymAnnotation typeSynonymAnnotation) {
-      return VisitTypeSynonymAnnotation(typeSynonymAnnotation);
-    } else if (node is TypeVariable typeVariable) {
-      return VisitTypeVariable(typeVariable);
-    } else if (node is UnresolvedTypeIdentifier uti) {
-      return VisitUnresolvedTypeIdentifier(uti);
-    } else {
-      throw new LeanConversionException("Unreachable type case.");
-    }
+    return node switch
+    {
+      BasicType basicType => VisitBasicType(basicType),
+      BvType bvType => VisitBvType(bvType),
+      CtorType ctorType => VisitCtorType(ctorType),
+      FloatType floatType => VisitFloatType(floatType),
+      MapType mapType => VisitMapType(mapType),
+      TypeProxy typeProxy => VisitTypeProxy(typeProxy),
+      TypeSynonymAnnotation typeSynonymAnnotation => VisitTypeSynonymAnnotation(typeSynonymAnnotation),
+      TypeVariable typeVariable => VisitTypeVariable(typeVariable),
+      UnresolvedTypeIdentifier uti => VisitUnresolvedTypeIdentifier(uti),
+      _ => throw new LeanConversionException("Unreachable type case.")
+    };
   }
 
   public override Type VisitBasicType(BasicType node)
   {
     if (node.IsBool) {
-      writer.Write("Prop");
+      Text("Prop");
     } else if (node.IsInt) {
-      writer.Write("Int");
+      Text("Int");
     } else if (node.IsReal) {
-      writer.Write("Real");
+      Text("Real");
     } else if (node.IsRMode) {
       throw new LeanConversionException("Unsupported: RMode type");
     } else if (node.IsRegEx) {
@@ -285,24 +291,24 @@ instance BEqReal: BEq Real := by sorry
   public override Expr VisitBvConcatExpr(BvConcatExpr node)
   {
     Visit(node.E0);
-    writer.Write(" ++ ");
+    Text(" ++ ");
     Visit(node.E1);
     return node;
   }
 
   public override Type VisitBvType(BvType node)
   {
-    writer.Write($"(BitVec {node.Bits})");
+    Text($"(BitVec {node.Bits})");
     return node;
   }
 
   public override Constant VisitConstant(Constant node)
   {
     var ti = node.TypedIdent;
-    writer.Write("variable ");
+    Text("variable ");
     Visit(ti);
     if (node.Unique) {
-      AddUniqueConst(ti.Type, SanitizeNameForLean(ti.Name));
+      AddUniqueConst(ti.Type, Name(node));
     }
     NL();
     globalVars.Add(node);
@@ -312,17 +318,17 @@ instance BEqReal: BEq Real := by sorry
   public override CtorType VisitCtorType(CtorType node)
   {
     if (node.Arguments.Any()) {
-      writer.Write("(");
+      Text("(");
     }
 
-    writer.Write(Name(node.Decl));
+    Text(Name(node.Decl));
     node.Arguments.ForEach(a =>
     {
-      writer.Write(" ");
+      Text(" ");
       Visit(a);
     });
     if (node.Arguments.Any()) {
-      writer.Write(")");
+      Text(")");
     }
     return node;
   }
@@ -335,48 +341,48 @@ instance BEqReal: BEq Real := by sorry
       ExistsExpr => "exists",
       _ => throw new LeanConversionException($"Unsupported quantifier type: {node.Kind}")
     };
-    writer.Write($"({kind}");
+    Text($"({kind}");
     foreach (var tv in node.TypeParameters) {
-      writer.Write($" ({SanitizeNameForLean(tv.Name)} : Type)");
+      Text($" ({Name(tv)} : Type)");
     }
     foreach (var x in node.Dummies) {
-      writer.Write(" ");
+      Text(" ");
       VisitTypedIdent(x.TypedIdent);
     }
-    writer.Write(", ");
+    Text(", ");
     Visit(node.Body);
-    writer.Write(")");
+    Text(")");
 
     return node;
   }
 
   public override TypedIdent VisitTypedIdent(TypedIdent node)
   {
-    writer.Write("(");
+    Text("(");
     var name = SanitizeNameForLean(node.Name);
-    writer.Write(name);
-    writer.Write(" : ");
+    Text(name);
+    Text(" : ");
     Visit(node.Type);
-    writer.Write(")");
+    Text(")");
     return node;
   }
 
   public override Expr VisitBvExtractExpr(BvExtractExpr node)
   {
     // TODO: double-check range values
-    writer.Write($"(BitVec.extractLsb {node.End - 1} {node.Start} ");
+    Text($"(BitVec.extractLsb {node.End - 1} {node.Start} ");
     Visit(node.Bitvector);
-    writer.Write(")");
+    Text(")");
     return node;
   }
 
   public override Expr VisitLambdaExpr(LambdaExpr node)
   {
-    writer.Write("(λ");
+    Text("(λ");
     node.Dummies.ForEach(x => Visit(x.TypedIdent));
-    writer.Write("=>");
+    Text("=>");
     Visit(node.Body);
-    writer.Write(")");
+    Text(")");
     return node;
   }
 
@@ -385,19 +391,19 @@ instance BEqReal: BEq Real := by sorry
     if (node.Dummies.Count > 1) {
       throw new LeanConversionException("Unsupported: LetExpr with more than one binder");
     }
-    writer.Write("(let");
+    Text("(let");
     node.Dummies.ForEach(x => Visit(x.TypedIdent));
-    writer.Write(" := ");
+    Text(" := ");
     node.Rhss.ForEach(e => Visit(e));
-    writer.Write("; ");
+    Text("; ");
     Visit(node.Body);
-    writer.Write(")");
+    Text(")");
     return node;
   }
 
   public override GlobalVariable VisitGlobalVariable(GlobalVariable node)
   {
-    writer.Write("variable ");
+    Text("variable ");
     Visit(node.TypedIdent);
     NL();
     globalVars.Add(node);
@@ -408,18 +414,18 @@ instance BEqReal: BEq Real := by sorry
   {
     if(node.IsTrue) {
       // Use lowercase version to ensure Bool, which can be coerced to Prop
-      writer.Write("true");
+      Text("true");
     } else if (node.IsFalse) {
       // Use lowercase version to ensure Bool, which can be coerced to Prop
-      writer.Write("false");
+      Text("false");
     } else if (node.isBvConst) {
       var bvConst = node.asBvConst;
-      writer.Write("(");
-      writer.Write(bvConst.Value);
-      writer.Write($" : BitVec {bvConst.Bits}");
-      writer.Write(")");
+      Text("(");
+      Text(bvConst.Value.ToString());
+      Text($" : BitVec {bvConst.Bits}");
+      Text(")");
     } else {
-      writer.Write(node); // TODO: make sure this is right for all other literal types
+      Text(node.ToString()); // TODO: make sure this is right for all other literal types
     }
     return node;
   }
@@ -430,17 +436,17 @@ instance BEqReal: BEq Real := by sorry
       throw new LeanConversionException($"Unsupported: MapType with too many index types ({node})");
     }
     if (node.TypeParameters.Any()) {
-      var args = node.TypeParameters.Select(a => SanitizeNameForLean(a.Name));
-      writer.Write($"forall ({String.Join(" ", args)} : Type), ");
+      var args = node.TypeParameters.Select(Name);
+      Text($"forall ({String.Join(" ", args)} : Type), ");
     }
-    writer.Write($"(SMTArray{node.Arguments.Count} ");
+    Text($"(SMTArray{node.Arguments.Count} ");
     node.Arguments.ForEach(a =>
     {
       Visit(a);
-      writer.Write(" ");
+      Text(" ");
     });
     Visit(node.Result);
-    writer.Write(")");
+    Text(")");
     return node;
   }
 
@@ -448,43 +454,43 @@ instance BEqReal: BEq Real := by sorry
   {
     var fun = node.Fun;
     var args = node.Args;
-    writer.Write("(");
+    Text("(");
     if (fun is BinaryOperator op && args.Count == 2) {
       Visit(args[0]);
-      writer.Write($" {BinaryOpToLean(op.Op)} ");
+      Text($" {BinaryOpToLean(op.Op)} ");
       Visit(args[1]);
     } else if (fun is IfThenElse && args.Count == 3) {
-      writer.Write("if ");
+      Text("if ");
       Visit(args[0]);
-      writer.Write(" then ");
+      Text(" then ");
       Visit(args[1]);
-      writer.Write(" else ");
+      Text(" else ");
       Visit(args[2]);
     } else if (fun is TypeCoercion typeCoercion && args.Count == 1) {
       if (!args[0].Type.Equals(typeCoercion.Type)) {
         // TODO: might need to actually call a coercion function
         Console.WriteLine($"Coerce: {args[0].Type} -> {typeCoercion.Type}");
       }
-      writer.Write("(");
+      Text("(");
       Visit(args[0]);
-      writer.Write(" : ");
+      Text(" : ");
       Visit(typeCoercion.Type);
-      writer.Write(")");
+      Text(")");
     } else if (fun is FieldAccess fieldAccess) {
       throw new LeanConversionException("Unsupported: field access (since the semantics are complex)");
       // TODO: implement
       /*
       Visit(args[0]);
-      writer.Write($".{SanitizeNameForLean(fieldAccess.FieldName)}");
+      Text($".{SanitizeNameForLean(fieldAccess.FieldName)}");
       */
     } else {
       VisitIAppliable(fun);
       foreach (var arg in args) {
-        writer.Write(" ");
+        Text(" ");
         Visit(arg);
       }
     }
-    writer.Write(")");
+    Text(")");
 
     return node;
   }
@@ -494,24 +500,24 @@ instance BEqReal: BEq Real := by sorry
     switch (fun) {
       case MapSelect:
         usesMaps = true;
-        writer.Write($"select{fun.ArgumentCount - 1}");
+        Text($"select{fun.ArgumentCount - 1}");
         break;
       case MapStore:
         usesMaps = true;
-        writer.Write($"store{fun.ArgumentCount - 2}");
+        Text($"store{fun.ArgumentCount - 2}");
         break;
       case BinaryOperator op:
-        writer.Write(BinaryOpToLean(op.Op));
+        Text(BinaryOpToLean(op.Op));
         break;
       case UnaryOperator op:
-        writer.Write(UnaryOpToLean(op.Op));
+        Text(UnaryOpToLean(op.Op));
         break;
       case FunctionCall fc:
-        writer.Write(SanitizeNameForLean(fc.Func.Name));
+        Text(Name(fc.Func));
         break;
       case IsConstructor isConstructor:
         // TODO: declare these discriminator functions
-        writer.Write($"is_{SanitizeNameForLean(isConstructor.ConstructorName)}");
+        Text($"is_{SanitizeNameForLean(isConstructor.ConstructorName)}");
         break;
       case ArithmeticCoercion arithmeticCoercion:
         var func = arithmeticCoercion.Coercion switch
@@ -520,7 +526,7 @@ instance BEqReal: BEq Real := by sorry
           ArithmeticCoercion.CoercionType.ToReal => "intToReal",
           _ => throw new LeanConversionException($"Internal: unknown arithmetic coercion: {arithmeticCoercion.Coercion}")
         };
-        writer.Write(func);
+        Text(func);
         break;
       default:
         throw new LeanConversionException($"Unsupported: IAppliable: {fun}");
@@ -596,24 +602,24 @@ instance BEqReal: BEq Real := by sorry
   public override Declaration VisitTypeCtorDecl(TypeCtorDecl node)
   {
     // TODO: wrap in `mutual ... end` when necessary
+    var name = Name(node);
     if (node is DatatypeTypeCtorDecl dt) {
-      writer.WriteLine($"inductive {SanitizeNameForLean(dt.Name)} where");
+      Line($"inductive {name} where");
       foreach (var ctor in dt.Constructors) {
-        Indent(1, $"| {SanitizeNameForLean(ctor.Name)} : ");
+        Indent(1, $"| {Name(ctor)} : ");
         ctor.InParams.ForEach(p =>
         {
           Visit(p.TypedIdent.Type);
-          writer.Write(" → ");
+          Text(" → ");
         });
-        writer.WriteLine($" {SanitizeNameForLean(dt.Name)}");
+        Line($" {name}");
       }
     } else {
-      var name = Name(node);
       var tyStr = String.Join(" → ", Enumerable.Repeat("Type", node.Arity + 1).ToList());
-      writer.WriteLine($"axiom {name} : {tyStr}");
+      Line($"axiom {name} : {tyStr}");
 
       if(node.Arity == 0) {
-        writer.WriteLine($"instance {name}BEq : BEq {name} := by sorry");
+        Line($"instance {name}BEq : BEq {name} := by sorry");
       }
     }
     return node;
@@ -627,9 +633,9 @@ instance BEqReal: BEq Real := by sorry
   public override Declaration VisitTypeSynonymDecl(TypeSynonymDecl node)
   {
     var name = Name(node);
-    writer.Write($"def {name}");
-    node.TypeParameters.ForEach(tp => writer.Write($" ({SanitizeNameForLean(tp.Name)} : Type)"));
-    writer.Write(" := ");
+    Text($"def {name}");
+    node.TypeParameters.ForEach(tp => Text($" ({Name(tp)} : Type)"));
+    Text(" := ");
     Visit(node.Body);
     NL();
     return node;
@@ -639,7 +645,7 @@ instance BEqReal: BEq Real := by sorry
   {
     var p = node.ProxyFor;
     if (p is null) {
-      writer.Write(SanitizeNameForLean(node.Name));
+      Text(Name(node));
     } else {
       VisitType(p);
     }
@@ -648,7 +654,7 @@ instance BEqReal: BEq Real := by sorry
 
   public override Type VisitTypeVariable(TypeVariable node)
   {
-    writer.Write(SanitizeNameForLean(node.Name));
+    Text(Name(node));
     return node;
   }
 
@@ -656,7 +662,7 @@ instance BEqReal: BEq Real := by sorry
   {
     Indent(2, "assert ");
     VisitExpr(node.Expr);
-    writer.WriteLine(" $");
+    Line(" $");
     return node;
   }
 
@@ -664,7 +670,7 @@ instance BEqReal: BEq Real := by sorry
   {
     Indent(2, "assert ");
     VisitExpr(node.Expr);
-    writer.WriteLine(" $");
+    Line(" $");
     return node;
   }
 
@@ -697,7 +703,7 @@ instance BEqReal: BEq Real := by sorry
       n += 1;
       name = $"ax_l{node.tok.line}c{node.tok.col}_{n}";
     }
-    writer.Write($"axiom {name}: ");
+    Text($"axiom {name}: ");
     VisitExpr(node.Expr);
     NL();
     userAxiomNames.Add(name);
@@ -707,29 +713,26 @@ instance BEqReal: BEq Real := by sorry
   public override Function VisitFunction(Function node)
   {
     // In the long run, this should define functions when possible.
-    writer.Write($"axiom {Name(node)} : ");
+    Text($"axiom {Name(node)} : ");
     node.TypeParameters.ForEach(x =>
     {
-      var name = SanitizeNameForLean(x.Name);
-      writer.Write($"{{{name} : Type}}");
-      writer.Write(" \u2192 ");
-      //writer.Write($"[BEq {name}]");
-      //writer.Write(" \u2192 ");
+      Text($"{{{Name(x)} : Type}}");
+      Text(" \u2192 ");
     });
     node.InParams.ForEach(x =>
     {
       Visit(x.TypedIdent.Type);
-      writer.Write(" \u2192 ");
+      Text(" \u2192 ");
     });
     if (node.OutParams.Count == 1) {
       Visit(node.OutParams[0].TypedIdent.Type);
     } else {
-      writer.Write("(");
+      Text("(");
       node.OutParams.ForEach(x =>
       {
-        Visit(x.TypedIdent.Type); writer.Write(", ");
+        Visit(x.TypedIdent.Type); Text(", ");
       });
-      writer.Write(")");
+      Text(")");
     }
 
     NL();
@@ -788,6 +791,16 @@ instance BEqReal: BEq Real := by sorry
     return SanitizeNameForLean(d.Name);
   }
 
+  private string Name(TypeVariable tv)
+  {
+    return SanitizeNameForLean(tv.Name);
+  }
+
+  private string Name(TypeProxy tp)
+  {
+    return SanitizeNameForLean(tp.Name);
+  }
+
   private string BlockName(Block b)
   {
     return "β_" + SanitizeNameForLean(b.Label);
@@ -827,17 +840,17 @@ instance BEqReal: BEq Real := by sorry
 
     usedNames.Clear(); // Skip any globals used only by axioms, etc.
     NL();
-    writer.WriteLine($"namespace impl_{name}");
+    Line($"namespace impl_{name}");
     NL();
 
-    writer.WriteLine("@[simp]");
-    writer.WriteLine($"def {name}");
+    Line("@[simp]");
+    Line($"def {name}");
     WriteParams(node);
     IndentL(1, $": Prop := {entryLabel}");
     IndentL(1, "where");
     node.Blocks.ForEach(b => VisitBlock(b));
     NL();
-    writer.WriteLine($"theorem {name}_correct");
+    Line($"theorem {name}_correct");
     WriteParams(node);
     var paramNames =
       globalVars.Select(Name).Where(x => usedNames.Contains(x))
@@ -852,7 +865,7 @@ instance BEqReal: BEq Real := by sorry
     Indent(3); List(axiomNames); NL();
     IndentL(3, "u[]");
     NL();
-    writer.WriteLine($"end impl_{name}");
+    Line($"end impl_{name}");
 
     usesMaps = false; // Skip map axioms in the next implementation if it doesn't need them
     usedNames.Clear(); // Skip any globals not used by the next implementation
