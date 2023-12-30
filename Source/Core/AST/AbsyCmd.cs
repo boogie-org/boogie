@@ -3440,7 +3440,11 @@ namespace Microsoft.Boogie
       else
       {
         Debug.Assert(Proc.IsPure);
-        if (Layers.Count == 0 || Layers.Count > 2)
+        if (Layers.Count == 0)
+        {
+          Layers = new List<int>{LayerRange.Min, callerDecl.Layer};
+        }
+        if (Layers.Count > 2)
         {
           tc.Error(this, "expected layer range");
         }

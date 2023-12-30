@@ -250,33 +250,18 @@ function {:inline} Map_Swap<T,U>(a: Map T U, t1: T, t2: T): Map T U
     (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
 }
 
-/// linear heaps
-type Ref _;
-procedure Ref_Alloc<V>() returns (k: Lval (Ref V));
-
-datatype Lheap<V> { Lheap(dom: [Ref V]bool, val: [Ref V]V) }
-function Nil<V>(): Ref V;
-
-function {:inline} Lheap_WellFormed<V>(l: Lheap V): bool {
-    l->val == MapIte(l->dom, l->val, MapConst(Default()))
-}
-function {:inline} Lheap_Collector<V>(l: Lheap V): [Ref V]bool {
-    MapConst(false)
-}
-function {:inline} Lheap_Contains<V>(l: Lheap V, k: Ref V): bool {
-    l->dom[k]
-}
-function {:inline} Lheap_Deref<V>(l: Lheap V, k: Ref V): V {
-    l->val[k]
-}
-pure procedure Lheap_Empty<V>() returns (l: Lheap V);
-pure procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (l: Lval (Ref V));
-pure procedure Lheap_Free<V>(path: Lheap V, k: Ref V);
-pure procedure Lheap_Get<V>(path: Lheap V, k: [Ref V]bool) returns (l: Lheap V);
-pure procedure Lheap_Put<V>(path: Lheap V, {:linear_in} l: Lheap V);
-
 /// linear maps
+type Loc _;
+pure procedure {:inline 1} Loc_New<V>() returns (k: Lval (Loc V)) {
+
+}
+datatype Ref<V> {
+  Ref(loc: Loc V),
+  Nil()
+}
+
 datatype Lmap<K,V> { Lmap(dom: [K]bool, val: [K]V) }
+type Lheap V = Lmap (Ref V) V;
 
 function {:inline} Lmap_WellFormed<K,V>(l: Lmap K V): bool {
     l->val == MapIte(l->dom, l->val, MapConst(Default()))
@@ -290,11 +275,26 @@ function {:inline} Lmap_Contains<K,V>(l: Lmap K V, k: K): bool {
 function {:inline} Lmap_Deref<K,V>(l: Lmap K V, k: K): V {
     l->val[k]
 }
-pure procedure Lmap_Empty<K,V>() returns (l: Lmap K V);
-pure procedure Lmap_Alloc<K,V>({:linear_in} k: Lset K, val: [K]V) returns (l: Lmap K V);
-pure procedure Lmap_Free<K,V>({:linear_in} l: Lmap K V) returns (k: Lset K);
-pure procedure Lmap_Get<K,V>(path: Lmap K V, k: [K]bool) returns (l: Lmap K V);
-pure procedure Lmap_Put<K,V>(path: Lmap K V, {:linear_in} l: Lmap K V);
+pure procedure {:inline 1} Lmap_Empty<K,V>() returns (l: Lmap K V) {
+  l := Lmap(MapConst(false), MapConst(Default()));
+}
+pure procedure {:inline 1} Lmap_Alloc<V>(v: V) returns (k: Lval (Loc V), l: Lmap (Ref V) V) {
+  var r: Ref V;
+  r := Ref(k->val);
+  l := Lmap(MapOne(r), MapConst(Default())[r := v]);
+}
+pure procedure {:inline 1} Lmap_Create<K,V>({:linear_in} k: Lset K, val: [K]V) returns (l: Lmap K V) {
+  l := Lmap(k->dom, val);
+}
+pure procedure {:inline 1} Lmap_Free<K,V>({:linear_in} l: Lmap K V) returns (k: Lset K) {
+  k := Lset(l->dom);
+}
+pure procedure {:inline 1} Lmap_Move<K,V>({:linear_in} src: Lmap K V, dst: Lmap K V, k: K) returns (src': Lmap K V, dst': Lmap K V) {
+  assert src->dom[k];
+  assume IsDisjoint(src->dom, dst->dom);
+  dst' := Lmap(dst->dom[k := true], dst->val[k := src->val[k]]);
+  src' := Lmap(src->dom[k := false], src->val[k := Default()]);
+}
 
 /// linear sets
 datatype Lset<V> { Lset(dom: [V]bool) }

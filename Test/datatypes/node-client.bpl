@@ -1,11 +1,11 @@
 // RUN: %parallel-boogie /lib:base /lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype Treiber<T> { Treiber(top: RefNode T, stack: Lheap (Node T)) }
+datatype Treiber<T> { Treiber(top: RefNode T, stack: Lmap (RefNode T) (Node T)) }
 type RefTreiber T = Ref (Treiber T);
 
 type X;
-var ts: Lheap (Treiber X);
+var ts: Lmap (RefTreiber X) (Treiber X);
 
 procedure YieldInv(ref_t: RefTreiber X)
 requires ts->dom[ref_t];
@@ -35,9 +35,15 @@ procedure {:inline 1} AtomicPushIntermediate(ref_t: RefTreiber X, x: X)
 modifies ts;
 {
   var t: RefNode X;
-  var ref_n: Lval (RefNode X);
+  var ref_n: RefNode X;
+  var loc_n: Lval (Loc (Node X));
+  var lmap_n: Lmap (RefNode X) (Node X);
+  var lmap_n': Lmap (RefNode X) (Node X);
   assert ts->dom[ref_t];
   t := ts->val[ref_t]->top;
-  call ref_n := Lheap_Alloc(ts->val[ref_t]->stack, Node(t, x));
-  ts->val[ref_t]->top := ref_n->val;
+  call loc_n, lmap_n := Lmap_Alloc(Node(t, x));
+  ref_n := Ref(loc_n->val);
+  call lmap_n, lmap_n' := Lmap_Move(lmap_n, ts->val[ref_t]->stack, ref_n);
+  ts->val[ref_t]->stack := lmap_n';
+  ts->val[ref_t]->top := ref_n;
 }

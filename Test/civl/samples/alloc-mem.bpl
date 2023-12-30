@@ -118,7 +118,7 @@ pure action AllocLinear (i:int, {:linear_in} pool:Lset int) returns (l:Lmap int 
   assert Lset_Contains(pool, i);
   pool' := pool;
   call t := Lset_Get(pool', MapOne(i));
-  call l := Lmap_Alloc(t, m);
+  call l := Lmap_Create(t, m);
 }
 
 pure action FreeLinear ({:linear_in} l:Lmap int int, i:int, {:linear_in} pool:Lset int) returns (pool':Lset int)
