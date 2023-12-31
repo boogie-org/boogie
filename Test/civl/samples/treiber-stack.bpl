@@ -1,13 +1,13 @@
 // RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype Treiber<T> { Treiber(top: RefNode T, stack: Lmap (RefNode T) (Node T)) }
+datatype Treiber<T> { Treiber(top: RefNode T, stack: Lheap (Node T)) }
 type RefTreiber T = Ref (Treiber T);
 
 type X; // module type parameter
 
 var {:layer 4, 5} Stack: [RefTreiber X]Vec X;
-var {:layer 0, 4} ts: Lmap (RefTreiber X) (Treiber X);
+var {:layer 0, 4} ts: Lheap (Treiber X);
 
 atomic action {:layer 5} AtomicTreiberAlloc() returns (loc_t: Lval (Loc (Treiber X)))
 modifies Stack;
@@ -24,7 +24,7 @@ refines AtomicTreiberAlloc;
   call loc_t := Alloc#0();
   ref_t := Ref(loc_t->val);
   call {:layer 4} Stack := Copy(Stack[ref_t := Vec_Empty()]);
-  call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack->val);
+  call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack);
 }
 
 atomic action {:layer 5} AtomicPush(ref_t: RefTreiber X, x: X) returns (success: bool)
@@ -43,7 +43,7 @@ preserves call YieldInv#4(ref_t);
   if (success) {
     call {:layer 4} Stack := Copy(Stack[ref_t := Vec_Append(Stack[ref_t], x)]);
     assert {:layer 4} ts->val[ref_t]->top != Nil();
-    call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack->val);
+    call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack);
   }
   
 }
@@ -65,7 +65,7 @@ preserves call YieldInv#2(ref_t);
 preserves call YieldInv#3(ref_t);
 preserves call YieldInv#4(ref_t);
 {
-  call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack->val);
+  call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack);
   call success, x := PopIntermediate(ref_t);
   if (success) {
     assert {:layer 4} Vec_Len(Stack[ref_t]) > 0;
@@ -107,7 +107,7 @@ atomic action {:layer 3, 4} AtomicPushIntermediate(ref_t: RefTreiber X, x: X) re
 modifies ts;
 {
   var new_loc_n: Lval (Loc (Node X));
-  var lmap_n, lmap_n': Lmap (RefNode X) (Node X);
+  var lmap_n, lmap_n': Lheap (Node X);
   var t: RefNode X;
 
   if (success) {
@@ -124,7 +124,7 @@ preserves call YieldInv#2(ref_t);
 {
   var ref_n: RefNode X;
   var new_loc_n: Lval (Loc (Node X));
-  var lmap_n: Lmap (RefNode X) (Node X);
+  var lmap_n: Lheap (Node X);
   var new_ref_n: RefNode X;
 
   call ref_n := ReadTopOfStack#Push(ref_t);
@@ -190,15 +190,15 @@ right action {:layer 1,3} AtomicLoadNode#0(ref_t: RefTreiber X, ref_n: RefNode X
 yield procedure {:layer 0} LoadNode(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X);
 refines AtomicLoadNode#0;
 
-left action {:layer 1, 2} AtomicAllocInStack(ref_t: RefTreiber X, ref_n: RefNode X, {:linear_in} lmap_n: Lmap (RefNode X) (Node X))
+left action {:layer 1, 2} AtomicAllocInStack(ref_t: RefTreiber X, ref_n: RefNode X, {:linear_in} lmap_n: Lheap (Node X))
 modifies ts;
 {
-  var lmap_n', lmap_n'': Lmap (RefNode X) (Node X);
+  var lmap_n', lmap_n'': Lheap (Node X);
   assert ts->dom[ref_t];
   call lmap_n'', lmap_n' := Lmap_Move(lmap_n, ts->val[ref_t]->stack, ref_n);
   ts->val[ref_t]->stack := lmap_n';
 }
-yield procedure {:layer 0} AllocInStack(ref_t: RefTreiber X, ref_n: RefNode X, {:linear_in} lmap_n: Lmap (RefNode X) (Node X));
+yield procedure {:layer 0} AllocInStack(ref_t: RefTreiber X, ref_n: RefNode X, {:linear_in} lmap_n: Lheap (Node X));
 refines AtomicAllocInStack;
 
 atomic action {:layer 3} AtomicWriteTopOfStack#Pop(ref_t: RefTreiber X, old_ref_n: RefNode X, new_ref_n: RefNode X) returns (r: bool)
@@ -235,9 +235,9 @@ atomic action {:layer 1, 4} AtomicAlloc#0() returns (loc_t: Lval (Loc (Treiber X
 modifies ts;
 {
   var top: Ref (Node X);
-  var stack: Lmap (RefNode X) (Node X);
+  var stack: Lheap (Node X);
   var treiber: Treiber X;
-  var lmap_t: Lmap (RefTreiber X) (Treiber X);
+  var lmap_t: Lheap (Treiber X);
   top := Nil();
   call stack := Lmap_Empty();
   treiber := Treiber(top, stack);
@@ -247,7 +247,7 @@ modifies ts;
 yield procedure {:layer 0} Alloc#0() returns (loc_t: Lval (Loc (Treiber X)));
 refines AtomicAlloc#0;
 
-function {:inline} NilDomain(ts: Lmap (RefTreiber X) (Treiber X), ref_t: RefTreiber X): [RefNode X]bool {
+function {:inline} NilDomain(ts: Lheap (Treiber X), ref_t: RefTreiber X): [RefNode X]bool {
   Union(Singleton(Nil()), ts->val[ref_t]->stack->dom)
 }
 
@@ -266,39 +266,38 @@ invariant (forall ref_n: RefNode X :: ts->val[ref_t]->stack->dom[ref_n] ==> NilD
 
 // Boogie currently does not support termination proofs for functions or procedures.
 // The following is a manual encoding of the termination proof for the abstraction.
-function Abs(ref_n: RefNode X, stackContents: [RefNode X]Node X): Vec X;
-pure procedure AbsDefinition(ref_n: RefNode X, stackContents: [RefNode X]Node X)
-requires Between(stackContents, ref_n, ref_n, Nil());
-ensures Abs(ref_n, stackContents) ==
+function Abs(ref_n: RefNode X, stack: Lheap (Node X)): Vec X;
+pure procedure AbsDefinition(ref_n: RefNode X, stack: Lheap (Node X))
+requires Between(stack->val, ref_n, ref_n, Nil());
+ensures Abs(ref_n, stack) ==
         if ref_n == Nil() then
         Vec_Empty() else
-        (var n := stackContents[ref_n]; Vec_Append(Abs(n->next, stackContents), n->val));
+        (var n := stack->val[ref_n]; Vec_Append(Abs(n->next, stack), n->val));
 {
-  var stack: Vec X;
-  call stack := AbsCompute(ref_n, stackContents);
+  var absStack: Vec X;
+  call absStack := AbsCompute(ref_n, stack);
 }
-pure procedure AbsCompute(ref_n: RefNode X, stackContents: [RefNode X]Node X) returns (stack: Vec X)
-requires Between(stackContents, ref_n, ref_n, Nil());
-ensures stack ==
+pure procedure AbsCompute(ref_n: RefNode X, stack: Lheap (Node X)) returns (absStack: Vec X)
+requires Between(stack->val, ref_n, ref_n, Nil());
+ensures absStack ==
         if ref_n == Nil() then
         Vec_Empty() else
-        (var n := stackContents[ref_n]; Vec_Append(Abs(n->next, stackContents), n->val));
-// trusted fact justified by induction and determinism of AbsCompute
-free ensures stack == Abs(ref_n, stackContents);
+        (var n := stack->val[ref_n]; Vec_Append(Abs(n->next, stack), n->val));
+free ensures absStack == Abs(ref_n, stack);
 {
   var n: Node X;
   if (ref_n == Nil()) {
-      stack := Vec_Empty();
+      absStack := Vec_Empty();
   } else {
-      n := stackContents[ref_n];
+      n := stack->val[ref_n];
       // termination argument for induction
-      assert Between(stackContents, ref_n, n->next, Nil());
-      call stack := AbsCompute(n->next, stackContents);
-      stack := Vec_Append(stack, n->val);
+      assert Between(stack->val, ref_n, n->next, Nil());
+      call absStack := AbsCompute(n->next, stack);
+      absStack := Vec_Append(absStack, n->val);
   }
 }
 
 yield invariant {:layer 4} YieldInv#4(ref_t: RefTreiber X);
-invariant Stack[ref_t] == (var t := ts->val[ref_t]; Abs(t->top, t->stack->val));
+invariant Stack[ref_t] == (var t := ts->val[ref_t]; Abs(t->top, t->stack));
 invariant (var t := ts->val[ref_t]; Between(t->stack->val, t->top, t->top, Nil()));
 invariant (var t := ts->val[ref_t]; Subset(BetweenSet(t->stack->val, t->top, Nil()), NilDomain(ts, ref_t)));

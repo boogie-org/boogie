@@ -383,8 +383,8 @@ public class LinearRewriter
         Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lmap")
     {
       var cmdSeq = CreateAccessAsserts(mapAssignLhs.Map, tok, msg);
-      var lheapContainsFunc = LmapContains(mapAssignLhs.Indexes[0].Type, mapAssignLhs.Map.Type);
-      cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lheapContainsFunc, fieldAssignLhs1.Datatype.AsExpr, mapAssignLhs.Indexes[0]), msg));
+      var lmapContainsFunc = LmapContains(mapAssignLhs.Indexes[0].Type, mapAssignLhs.Map.Type);
+      cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lmapContainsFunc, fieldAssignLhs1.Datatype.AsExpr, mapAssignLhs.Indexes[0]), msg));
       return cmdSeq;
     }
     return new List<Cmd>();
