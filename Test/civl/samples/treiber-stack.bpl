@@ -6,7 +6,7 @@ type RefTreiber T = Ref (Treiber T);
 
 type X; // module type parameter
 
-var {:layer 4, 5} Stack: [RefTreiber X]Vec X;
+var {:layer 4, 5} Stack: Map (RefTreiber X) (Vec X);
 var {:layer 0, 4} ts: Lheap (Treiber X);
 
 atomic action {:layer 5} AtomicTreiberAlloc() returns (loc_t: Lval (Loc (Treiber X)))
@@ -15,15 +15,17 @@ modifies Stack;
   var ref_t: RefTreiber X;
   call loc_t := Loc_New();
   ref_t := Ref(loc_t->val);
-  Stack[ref_t] := Vec_Empty();
+  assume !Map_Contains(Stack, ref_t);
+  Stack := Map_Update(Stack, ref_t, Vec_Empty());
 }
 yield procedure {:layer 4} TreiberAlloc() returns (loc_t: Lval (Loc (Treiber X)))
 refines AtomicTreiberAlloc;
+preserves call DomYieldInv#4();
 {
   var ref_t: RefTreiber X;
   call loc_t := Alloc#0();
   ref_t := Ref(loc_t->val);
-  call {:layer 4} Stack := Copy(Stack[ref_t := Vec_Empty()]);
+  call {:layer 4} Stack := Copy(Map_Update(Stack, ref_t, Vec_Empty()));
   call {:layer 4} AbsLemma(ts->val[ref_t]->top, ts->val[ref_t]->stack->dom, ts->val[ref_t]->stack->val);
 }
 
@@ -31,13 +33,14 @@ atomic action {:layer 5} AtomicPush(ref_t: RefTreiber X, x: X) returns (success:
 modifies Stack;
 {
   if (success) {
-    Stack[ref_t] := Vec_Append(Stack[ref_t], x);
+    Stack := Map_Update(Stack, ref_t, Vec_Append(Map_At(Stack, ref_t), x));
   }
 }
 yield procedure {:layer 4} Push(ref_t: RefTreiber X, x: X) returns (success: bool)
 refines AtomicPush;
 preserves call YieldInv#2(ref_t);
 preserves call YieldInv#4(ref_t);
+preserves call DomYieldInv#4();
 {
   var {:layer 4} old_top: RefNode X;
   var {:layer 4} old_dom: [RefNode X]bool;
@@ -48,7 +51,7 @@ preserves call YieldInv#4(ref_t);
   call success := PushIntermediate(ref_t, x);
   if (success) {
     call {:layer 4} FrameLemma(old_top, old_dom, old_val, ts->val[ref_t]->stack->dom, ts->val[ref_t]->stack->val);
-    call {:layer 4} Stack := Copy(Stack[ref_t := Vec_Append(Stack[ref_t], x)]);
+    call {:layer 4} Stack := Copy(Map_Update(Stack, ref_t, Vec_Append(Map_At(Stack, ref_t), x)));
     assert {:layer 4} ts->val[ref_t]->top != Nil();
     call {:layer 4} AbsLemma(ts->val[ref_t]->top, ts->val[ref_t]->stack->dom, ts->val[ref_t]->stack->val);
   }
@@ -58,11 +61,11 @@ atomic action {:layer 5} AtomicPop(ref_t: RefTreiber X) returns (success: bool, 
 modifies Stack;
 {
   var stack: Vec X;
-  stack := Stack[ref_t];
+  stack := Map_At(Stack, ref_t);
   if (success) {
     assume Vec_Len(stack) > 0;
     x := Vec_Nth(stack, Vec_Len(stack) - 1);
-    Stack[ref_t] := Vec_Remove(stack);
+    Stack := Map_Update(Stack, ref_t, Vec_Remove(stack));
   }
 }
 yield procedure {:layer 4} Pop(ref_t: RefTreiber X) returns (success: bool, x: X)
@@ -70,12 +73,13 @@ refines AtomicPop;
 preserves call YieldInv#2(ref_t);
 preserves call YieldInv#3(ref_t);
 preserves call YieldInv#4(ref_t);
+preserves call DomYieldInv#4();
 {
   call {:layer 4} AbsLemma(ts->val[ref_t]->top, ts->val[ref_t]->stack->dom, ts->val[ref_t]->stack->val);
   call success, x := PopIntermediate(ref_t);
   if (success) {
-    assert {:layer 4} Vec_Len(Stack[ref_t]) > 0;
-    call {:layer 4} Stack := Copy(Stack[ref_t := Vec_Remove(Stack[ref_t])]);
+    assert {:layer 4} Vec_Len(Map_At(Stack, ref_t)) > 0;
+    call {:layer 4} Stack := Copy(Map_Update(Stack, ref_t, Vec_Remove(Map_At(Stack, ref_t))));
   }
 }
 
@@ -315,6 +319,10 @@ requires MapIte(dom, val, MapConst(Default())) == MapIte(dom, val', MapConst(Def
 ensures Abs(ref_n, dom, val) == Abs(ref_n, dom', val');
 
 yield invariant {:layer 4} YieldInv#4(ref_t: RefTreiber X);
-invariant Stack[ref_t] == (var t := ts->val[ref_t]; Abs(t->top, t->stack->dom, t->stack->val));
+invariant ts->dom[ref_t];
+invariant Map_At(Stack, ref_t) == (var t := ts->val[ref_t]; Abs(t->top, t->stack->dom, t->stack->val));
 invariant (var t := ts->val[ref_t]; Between(t->stack->val, t->top, t->top, Nil()));
 invariant (var t := ts->val[ref_t]; Subset(BetweenSet(t->stack->val, t->top, Nil()), NilDomain(ts, ref_t)));
+
+yield invariant {:layer 4} DomYieldInv#4();
+invariant Stack->dom->val == ts->dom;
