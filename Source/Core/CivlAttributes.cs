@@ -183,7 +183,7 @@ namespace Microsoft.Boogie
     public static HashSet<string> LinearPrimitives = new()
     {
       "Loc_New",
-      "Lmap_Empty", "Lmap_Alloc", "Lmap_Create", "Lmap_Free", "Lmap_Move",
+      "Lmap_Empty", "Lmap_Alloc", "Lmap_Create", "Lmap_Free", "Lmap_Move", "Lmap_Assume",
       "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
       "Lval_Split", "Lval_Get", "Lval_Put"
     };
@@ -214,6 +214,7 @@ namespace Microsoft.Boogie
         case "Lmap_Create":
         case "Lmap_Free":
         case "Lmap_Move":
+        case "Lmap_Assume":
         case "Lset_Empty":
           return null;
         default:

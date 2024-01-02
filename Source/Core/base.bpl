@@ -291,9 +291,12 @@ pure procedure {:inline 1} Lmap_Free<K,V>({:linear_in} l: Lmap K V) returns (k: 
 }
 pure procedure {:inline 1} Lmap_Move<K,V>({:linear_in} src: Lmap K V, dst: Lmap K V, k: K) returns (src': Lmap K V, dst': Lmap K V) {
   assert src->dom[k];
-  assume IsDisjoint(src->dom, dst->dom);
+  assert IsDisjoint(src->dom, dst->dom);
   dst' := Lmap(dst->dom[k := true], dst->val[k := src->val[k]]);
   src' := Lmap(src->dom[k := false], src->val[k := Default()]);
+}
+pure procedure {:inline 1} Lmap_Assume<K,V>(src: Lmap K V, dst: Lmap K V) {
+  assume IsDisjoint(src->dom, dst->dom);
 }
 
 /// linear sets

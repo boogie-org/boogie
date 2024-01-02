@@ -24,7 +24,7 @@ refines AtomicTreiberAlloc;
   call loc_t := Alloc#0();
   ref_t := Ref(loc_t->val);
   call {:layer 4} Stack := Copy(Stack[ref_t := Vec_Empty()]);
-  call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack);
+  call {:layer 4} AbsLemma(ts->val[ref_t]->top, ts->val[ref_t]->stack->dom, ts->val[ref_t]->stack->val);
 }
 
 atomic action {:layer 5} AtomicPush(ref_t: RefTreiber X, x: X) returns (success: bool)
@@ -39,13 +39,19 @@ refines AtomicPush;
 preserves call YieldInv#2(ref_t);
 preserves call YieldInv#4(ref_t);
 {
+  var {:layer 4} old_top: RefNode X;
+  var {:layer 4} old_dom: [RefNode X]bool;
+  var {:layer 4} old_val: [RefNode X](Node X);
+  call {:layer 4} old_top := Copy(ts->val[ref_t]->top);
+  call {:layer 4} old_dom := Copy(ts->val[ref_t]->stack->dom);
+  call {:layer 4} old_val := Copy(ts->val[ref_t]->stack->val);
   call success := PushIntermediate(ref_t, x);
   if (success) {
+    call {:layer 4} FrameLemma(old_top, old_dom, old_val, ts->val[ref_t]->stack->dom, ts->val[ref_t]->stack->val);
     call {:layer 4} Stack := Copy(Stack[ref_t := Vec_Append(Stack[ref_t], x)]);
     assert {:layer 4} ts->val[ref_t]->top != Nil();
-    call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack);
+    call {:layer 4} AbsLemma(ts->val[ref_t]->top, ts->val[ref_t]->stack->dom, ts->val[ref_t]->stack->val);
   }
-  
 }
 
 atomic action {:layer 5} AtomicPop(ref_t: RefTreiber X) returns (success: bool, x: X)
@@ -65,7 +71,7 @@ preserves call YieldInv#2(ref_t);
 preserves call YieldInv#3(ref_t);
 preserves call YieldInv#4(ref_t);
 {
-  call {:layer 4} AbsDefinition(ts->val[ref_t]->top, ts->val[ref_t]->stack);
+  call {:layer 4} AbsLemma(ts->val[ref_t]->top, ts->val[ref_t]->stack->dom, ts->val[ref_t]->stack->val);
   call success, x := PopIntermediate(ref_t);
   if (success) {
     assert {:layer 4} Vec_Len(Stack[ref_t]) > 0;
@@ -113,6 +119,7 @@ modifies ts;
   if (success) {
     t := ts->val[ref_t]->top;
     call new_loc_n, lmap_n := Lmap_Alloc(Node(t, x));
+    call Lmap_Assume(lmap_n, ts->val[ref_t]->stack);
     ts->val[ref_t]->top := Ref(new_loc_n->val);
     call lmap_n, lmap_n' := Lmap_Move(lmap_n, ts->val[ref_t]->stack, ts->val[ref_t]->top);
     ts->val[ref_t]->stack := lmap_n';
@@ -129,6 +136,7 @@ preserves call YieldInv#2(ref_t);
 
   call ref_n := ReadTopOfStack#Push(ref_t);
   call new_loc_n, lmap_n := Lmap_Alloc(Node(ref_n, x));
+  call {:layer 2} Lmap_Assume(lmap_n, ts->val[ref_t]->stack);
   new_ref_n := Ref(new_loc_n->val);
   call success := WriteTopOfStack(ref_t, ref_n, new_ref_n);
   if (success) {
@@ -166,7 +174,6 @@ atomic action {:layer 1, 2} AtomicReadTopOfStack(ref_t: RefTreiber X) returns (r
 yield procedure {:layer 0} ReadTopOfStack(ref_t: RefTreiber X) returns (ref_n: RefNode X);
 refines AtomicReadTopOfStack;
 
-/*
 right action {:layer 3} AtomicLoadNode(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X)
 {
   assert ts->dom[ref_t];
@@ -179,15 +186,14 @@ preserves call YieldInv#2(ref_t);
 {
   call node := LoadNode#0(ref_t, ref_n);
 }
-*/
 
-right action {:layer 1,3} AtomicLoadNode#0(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X)
+atomic action {:layer 1,2} AtomicLoadNode#0(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X)
 {
-  assert ts->dom[ref_t];
-  assert ts->val[ref_t]->stack->dom[ref_n];
+  assume ts->dom[ref_t];
+  assume ts->val[ref_t]->stack->dom[ref_n];
   node := ts->val[ref_t]->stack->val[ref_n];
 }
-yield procedure {:layer 0} LoadNode(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X);
+yield procedure {:layer 0} LoadNode#0(ref_t: RefTreiber X, ref_n: RefNode X) returns (node: Node X);
 refines AtomicLoadNode#0;
 
 left action {:layer 1, 2} AtomicAllocInStack(ref_t: RefTreiber X, ref_n: RefNode X, {:linear_in} lmap_n: Lheap (Node X))
@@ -242,13 +248,14 @@ modifies ts;
   call stack := Lmap_Empty();
   treiber := Treiber(top, stack);
   call loc_t, lmap_t := Lmap_Alloc(treiber);
+  call Lmap_Assume(lmap_t, ts);
   call lmap_t, ts := Lmap_Move(lmap_t, ts, Ref(loc_t->val));
 }
 yield procedure {:layer 0} Alloc#0() returns (loc_t: Lval (Loc (Treiber X)));
 refines AtomicAlloc#0;
 
 function {:inline} NilDomain(ts: Lheap (Treiber X), ref_t: RefTreiber X): [RefNode X]bool {
-  Union(Singleton(Nil()), ts->val[ref_t]->stack->dom)
+  ts->val[ref_t]->stack->dom[Nil() := true]
 }
 
 yield invariant {:layer 1} YieldInv#1(ref_t: RefTreiber X, ref_n: RefNode X);
@@ -264,40 +271,50 @@ invariant ts->dom[ref_t];
 invariant NilDomain(ts, ref_t)[ts->val[ref_t]->top];
 invariant (forall ref_n: RefNode X :: ts->val[ref_t]->stack->dom[ref_n] ==> NilDomain(ts, ref_t)[ts->val[ref_t]->stack->val[ref_n]->next]);
 
-// Boogie currently does not support termination proofs for functions or procedures.
 // The following is a manual encoding of the termination proof for the abstraction.
-function Abs(ref_n: RefNode X, stack: Lheap (Node X)): Vec X;
-pure procedure AbsDefinition(ref_n: RefNode X, stack: Lheap (Node X))
-requires Between(stack->val, ref_n, ref_n, Nil());
-ensures Abs(ref_n, stack) ==
-        if ref_n == Nil() then
-        Vec_Empty() else
-        (var n := stack->val[ref_n]; Vec_Append(Abs(n->next, stack), n->val));
-{
-  var absStack: Vec X;
-  call absStack := AbsCompute(ref_n, stack);
-}
-pure procedure AbsCompute(ref_n: RefNode X, stack: Lheap (Node X)) returns (absStack: Vec X)
-requires Between(stack->val, ref_n, ref_n, Nil());
+function Abs(ref_n: RefNode X, dom: [RefNode X]bool, val:[RefNode X](Node X)): Vec X;
+
+pure procedure AbsCompute(ref_n: RefNode X, dom: [RefNode X]bool, val:[RefNode X](Node X)) returns (absStack: Vec X)
+requires Between(val, ref_n, ref_n, Nil());
+requires Subset(BetweenSet(val, ref_n, Nil()), dom[Nil() := true]);
 ensures absStack ==
         if ref_n == Nil() then
         Vec_Empty() else
-        (var n := stack->val[ref_n]; Vec_Append(Abs(n->next, stack), n->val));
-free ensures absStack == Abs(ref_n, stack);
+        (var n := val[ref_n]; Vec_Append(Abs(n->next, dom, val), n->val));
+free ensures absStack == Abs(ref_n, dom, val);
 {
   var n: Node X;
   if (ref_n == Nil()) {
       absStack := Vec_Empty();
   } else {
-      n := stack->val[ref_n];
-      // termination argument for induction
-      assert Between(stack->val, ref_n, n->next, Nil());
-      call absStack := AbsCompute(n->next, stack);
+      assert dom[ref_n]; // soundness of framing
+      n := val[ref_n];
+      assert Between(val, ref_n, n->next, Nil()); // soundness of termination (for induction)
+      call absStack := AbsCompute(n->next, dom, val);
       absStack := Vec_Append(absStack, n->val);
   }
 }
 
+pure procedure AbsLemma(ref_n: RefNode X, dom: [RefNode X]bool, val:[RefNode X](Node X))
+requires Between(val, ref_n, ref_n, Nil());
+requires Subset(BetweenSet(val, ref_n, Nil()), dom[Nil() := true]);
+ensures Abs(ref_n, dom, val) ==
+        if ref_n == Nil() then
+        Vec_Empty() else
+        (var n := val[ref_n]; Vec_Append(Abs(n->next, dom, val), n->val));
+{
+  var absStack: Vec X;
+  call absStack := AbsCompute(ref_n, dom, val);
+}
+
+pure procedure FrameLemma(ref_n: RefNode X, dom: [RefNode X]bool, val: [RefNode X](Node X), dom': [RefNode X]bool, val': [RefNode X](Node X));
+requires Between(val, ref_n, ref_n, Nil());
+requires Subset(BetweenSet(val, ref_n, Nil()), dom[Nil() := true]);
+requires Subset(dom, dom');
+requires MapIte(dom, val, MapConst(Default())) == MapIte(dom, val', MapConst(Default()));
+ensures Abs(ref_n, dom, val) == Abs(ref_n, dom', val');
+
 yield invariant {:layer 4} YieldInv#4(ref_t: RefTreiber X);
-invariant Stack[ref_t] == (var t := ts->val[ref_t]; Abs(t->top, t->stack));
+invariant Stack[ref_t] == (var t := ts->val[ref_t]; Abs(t->top, t->stack->dom, t->stack->val));
 invariant (var t := ts->val[ref_t]; Between(t->stack->val, t->top, t->top, Nil()));
 invariant (var t := ts->val[ref_t]; Subset(BetweenSet(t->stack->val, t->top, Nil()), NilDomain(ts, ref_t)));

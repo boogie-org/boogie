@@ -73,16 +73,12 @@ public class LinearRewriter
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "Loc_New":
-        return new List<Cmd>{callCmd};
       case "Lmap_Empty":
-        return new List<Cmd>{callCmd};
       case "Lmap_Alloc":
-        return new List<Cmd>{callCmd};
       case "Lmap_Create":
-        return new List<Cmd>{callCmd};
       case "Lmap_Free":
-        return new List<Cmd>{callCmd};
       case "Lmap_Move":
+      case "Lmap_Assume":
         return new List<Cmd>{callCmd};
       case "Lset_Empty":
         return RewriteLsetEmpty(callCmd);
