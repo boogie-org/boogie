@@ -42,6 +42,7 @@ modifies ts;
   assert ts->dom[ref_t];
   t := ts->val[ref_t]->top;
   call loc_n, lmap_n := Lmap_Alloc(Node(t, x));
+  call Lmap_Assume(lmap_n, ts->val[ref_t]->stack);
   ref_n := Ref(loc_n->val);
   call lmap_n, lmap_n' := Lmap_Move(lmap_n, ts->val[ref_t]->stack, ref_n);
   ts->val[ref_t]->stack := lmap_n';
