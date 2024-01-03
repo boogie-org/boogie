@@ -3319,8 +3319,13 @@ namespace Microsoft.Boogie
       // checking calls from atomic actions need type information, hence postponed to type checking
     }
 
-    private void TypecheckCallCmdInYieldProcedureDecl(YieldProcedureDecl callerDecl, TypecheckingContext tc)
+    private void TypecheckCallCmdInYieldProcedureDecl(TypecheckingContext tc)
     {
+      if (tc.Proc is not YieldProcedureDecl callerDecl)
+      {
+        return;
+      }
+
       var callerModifiedVars = new HashSet<Variable>(callerDecl.ModifiedVars);
 
       void CheckModifies(IEnumerable<Variable> modifiedVars)
@@ -3574,6 +3579,8 @@ namespace Microsoft.Boogie
       Contract.Assume(this.Proc !=
                       null); // we assume the CallCmd has been successfully resolved before calling this Typecheck method
 
+      var errorCount = tc.ErrorCount;
+
       (this as ICarriesAttributes).TypecheckAttributes(tc);
 
       List<LayerRange> expectedLayerRanges = null;
@@ -3647,12 +3654,6 @@ namespace Microsoft.Boogie
         }
       }
 
-      // Type checking of layers requires call inputs to be resolved
-      if (tc.Proc is YieldProcedureDecl callerDecl1)
-      {
-        TypecheckCallCmdInYieldProcedureDecl(callerDecl1, tc);
-      }
-
       this.CheckAssignments(tc);
 
       List<Type> /*!*/
@@ -3693,6 +3694,11 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
         actualTypeParams);
 
+      if (tc.ErrorCount > errorCount)
+      {
+        return;
+      }
+      TypecheckCallCmdInYieldProcedureDecl(tc);
       TypecheckCallCmdInActionDecl(tc);
     }
 
