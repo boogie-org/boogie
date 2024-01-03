@@ -137,9 +137,9 @@ public class LinearRewriter
     return monomorphizer.InstantiateFunction("MapIte",new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
   }
 
-  private Function LmapContains(Type keyType, Type valueType)
+  private Function MapContains(Type keyType, Type valueType)
   {
-    return monomorphizer.InstantiateFunction("Lmap_Contains",new Dictionary<string, Type>() { {"K", keyType}, { "V", valueType } });
+    return monomorphizer.InstantiateFunction("Map_Contains",new Dictionary<string, Type>() { {"T", keyType}, { "U", valueType } });
   }
 
   private Function LsetContains(Type type)
@@ -352,14 +352,15 @@ public class LinearRewriter
       if (nAryExpr.Fun is MapSelect)
       {
         var mapExpr = nAryExpr.Args[0];
-        if (mapExpr is NAryExpr lmapValExpr &&
-            lmapValExpr.Fun is FieldAccess &&
-            lmapValExpr.Args[0].Type is CtorType ctorType &&
-            Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lmap")
+        if (mapExpr is NAryExpr mapValExpr &&
+            mapValExpr.Fun is FieldAccess fa &&
+            fa.FieldName == "val" &&
+            mapValExpr.Args[0].Type is CtorType ctorType &&
+            Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Map")
         {
-          var cmdSeq = CreateAccessAsserts(lmapValExpr.Args[0], tok, msg);
-          var lmapContainsFunc = LmapContains(nAryExpr.Args[1].Type, nAryExpr.Type);
-          cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lmapContainsFunc, lmapValExpr.Args[0], nAryExpr.Args[1]), msg));
+          var cmdSeq = CreateAccessAsserts(mapValExpr.Args[0], tok, msg);
+          var mapContainsFunc = MapContains(nAryExpr.Args[1].Type, nAryExpr.Type);
+          cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(mapContainsFunc, mapValExpr.Args[0], nAryExpr.Args[1]), msg));
           return cmdSeq;
         }
       }
@@ -375,12 +376,13 @@ public class LinearRewriter
     }
     if (assignLhs is MapAssignLhs mapAssignLhs &&
         mapAssignLhs.Map is FieldAssignLhs fieldAssignLhs1 &&
+        fieldAssignLhs1.FieldAccess.FieldName == "val" &&
         fieldAssignLhs1.Datatype.Type is CtorType ctorType &&
-        Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lmap")
+        Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Map")
     {
       var cmdSeq = CreateAccessAsserts(mapAssignLhs.Map, tok, msg);
-      var lmapContainsFunc = LmapContains(mapAssignLhs.Indexes[0].Type, mapAssignLhs.Map.Type);
-      cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(lmapContainsFunc, fieldAssignLhs1.Datatype.AsExpr, mapAssignLhs.Indexes[0]), msg));
+      var mapContainsFunc = MapContains(mapAssignLhs.Indexes[0].Type, mapAssignLhs.Map.Type);
+      cmdSeq.Add(AssertCmd(tok, ExprHelper.FunctionCall(mapContainsFunc, fieldAssignLhs1.Datatype.AsExpr, mapAssignLhs.Indexes[0]), msg));
       return cmdSeq;
     }
     return new List<Cmd>();
