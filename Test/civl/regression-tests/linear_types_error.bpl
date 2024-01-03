@@ -46,3 +46,14 @@ atomic action {:layer 1, 2} A14({:linear_in} a: Lval int) returns (b: Bar)
 
 type {:linear "X"} X = int;
 yield procedure {:layer 1} A15({:linear_in "X"} a: Lval int);
+
+yield procedure {:layer 1} Foo1(x: Lheap int)
+{
+  call Lmap_Assume(x, x);
+}
+
+yield procedure {:layer 1} Foo2(x: Foo)
+{
+  call Lmap_Assume(x->f, x->f);
+}
+

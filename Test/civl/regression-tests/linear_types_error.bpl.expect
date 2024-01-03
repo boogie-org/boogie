@@ -7,4 +7,6 @@ linear_types_error.bpl(25,0): Error: Output variable b must be available at a re
 linear_types_error.bpl(31,14): Error: unavailable source for a linear read
 linear_types_error.bpl(37,9): Error: unavailable source for a linear read
 linear_types_error.bpl(44,6): Error: A source of pack of linear type must be a variable
-9 type checking errors detected in linear_types_error.bpl
+linear_types_error.bpl(52,2): Error: Linear variable x can occur only once as an input parameter
+linear_types_error.bpl(57,2): Error: Linear variable x can occur only once as an input parameter
+11 type checking errors detected in linear_types_error.bpl
