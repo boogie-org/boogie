@@ -278,7 +278,7 @@ function Abs(ref_n: RefNode X, map: Map (RefNode X) (Node X)): Vec X;
 
 pure procedure AbsCompute(ref_n: RefNode X, map: Map (RefNode X) (Node X)) returns (absStack: Vec X)
 requires Between(map->val, ref_n, ref_n, Nil());
-requires Subset(BetweenSet(map->val, ref_n, Nil()), map->dom->val[Nil() := true]);
+requires IsSubset(BetweenSet(map->val, ref_n, Nil()), map->dom->val[Nil() := true]);
 ensures absStack ==
         if ref_n == Nil() then
         Vec_Empty() else
@@ -299,7 +299,7 @@ free ensures absStack == Abs(ref_n, map);
 
 pure procedure AbsLemma(ref_n: RefNode X, map: Map (RefNode X) (Node X))
 requires Between(map->val, ref_n, ref_n, Nil());
-requires Subset(BetweenSet(map->val, ref_n, Nil()), map->dom->val[Nil() := true]);
+requires IsSubset(BetweenSet(map->val, ref_n, Nil()), map->dom->val[Nil() := true]);
 ensures Abs(ref_n, map) ==
         if ref_n == Nil() then
         Vec_Empty() else
@@ -311,8 +311,8 @@ ensures Abs(ref_n, map) ==
 
 pure procedure FrameLemma(ref_n: RefNode X, map: Map (RefNode X) (Node X), map': Map (RefNode X) (Node X));
 requires Between(map->val, ref_n, ref_n, Nil());
-requires Subset(BetweenSet(map->val, ref_n, Nil()), map->dom->val[Nil() := true]);
-requires Subset(map->dom->val, map'->dom->val);
+requires IsSubset(BetweenSet(map->val, ref_n, Nil()), map->dom->val[Nil() := true]);
+requires IsSubset(map->dom->val, map'->dom->val);
 requires MapIte(map->dom->val, map->val, MapConst(Default())) == MapIte(map->dom->val, map'->val, MapConst(Default()));
 ensures Abs(ref_n, map) == Abs(ref_n, map');
 
@@ -320,7 +320,7 @@ yield invariant {:layer 4} YieldInv#4(ref_t: RefTreiber X);
 invariant Map_Contains(ts->val, ref_t);
 invariant Map_At(Stack, ref_t) == (var t := ts->val->val[ref_t]; Abs(t->top, t->stack->val));
 invariant (var t := ts->val->val[ref_t]; Between(t->stack->val->val, t->top, t->top, Nil()));
-invariant (var t := ts->val->val[ref_t]; Subset(BetweenSet(t->stack->val->val, t->top, Nil()), NilDomain(ts, ref_t)));
+invariant (var t := ts->val->val[ref_t]; IsSubset(BetweenSet(t->stack->val->val, t->top, Nil()), NilDomain(ts, ref_t)));
 
 yield invariant {:layer 4} DomYieldInv#4();
 invariant Stack->dom == ts->val->dom;

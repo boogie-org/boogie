@@ -10,10 +10,10 @@ var ts: Lmap (RefTreiber X) (Treiber X);
 procedure YieldInv(ref_t: RefTreiber X)
 requires Map_Contains(ts->val, ref_t);
 requires (var t := Map_At(ts->val, ref_t); BetweenSet(t->stack->val->val, t->top, Nil())[t->top]);
-requires (var t := Map_At(ts->val, ref_t); (var m := t->stack->val; Subset(BetweenSet(m->val, t->top, Nil()), m->dom->val[Nil() := true])));
+requires (var t := Map_At(ts->val, ref_t); (var m := t->stack->val; IsSubset(BetweenSet(m->val, t->top, Nil()), m->dom->val[Nil() := true])));
 ensures Map_Contains(ts->val, ref_t);
 ensures (var t := Map_At(ts->val, ref_t); BetweenSet(t->stack->val->val, t->top, Nil())[t->top]);
-ensures (var t := Map_At(ts->val, ref_t); (var m := t->stack->val; Subset(BetweenSet(m->val, t->top, Nil()), m->dom->val[Nil() := true])));
+ensures (var t := Map_At(ts->val, ref_t); (var m := t->stack->val; IsSubset(BetweenSet(m->val, t->top, Nil()), m->dom->val[Nil() := true])));
 modifies ts;
 {
   var x: X;
