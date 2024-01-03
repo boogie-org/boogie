@@ -8,12 +8,12 @@ type X;
 var ts: Lmap (RefTreiber X) (Treiber X);
 
 procedure YieldInv(ref_t: RefTreiber X)
-requires ts->dom[ref_t];
-requires BetweenSet(ts->val[ref_t]->stack->val, ts->val[ref_t]->top, Nil())[ts->val[ref_t]->top];
-requires Subset(BetweenSet(ts->val[ref_t]->stack->val, ts->val[ref_t]->top, Nil()), Union(Singleton(Nil()), ts->val[ref_t]->stack->dom));
-ensures ts->dom[ref_t];
-ensures BetweenSet(ts->val[ref_t]->stack->val, ts->val[ref_t]->top, Nil())[ts->val[ref_t]->top];
-ensures Subset(BetweenSet(ts->val[ref_t]->stack->val, ts->val[ref_t]->top, Nil()), Union(Singleton(Nil()), ts->val[ref_t]->stack->dom));
+requires Map_Contains(ts->val, ref_t);
+requires (var t := Map_At(ts->val, ref_t); BetweenSet(t->stack->val->val, t->top, Nil())[t->top]);
+requires (var t := Map_At(ts->val, ref_t); (var m := t->stack->val; Subset(BetweenSet(m->val, t->top, Nil()), m->dom->val[Nil() := true])));
+ensures Map_Contains(ts->val, ref_t);
+ensures (var t := Map_At(ts->val, ref_t); BetweenSet(t->stack->val->val, t->top, Nil())[t->top]);
+ensures (var t := Map_At(ts->val, ref_t); (var m := t->stack->val; Subset(BetweenSet(m->val, t->top, Nil()), m->dom->val[Nil() := true])));
 modifies ts;
 {
   var x: X;
@@ -25,10 +25,10 @@ procedure {:inline 1} AtomicPopIntermediate(ref_t: RefTreiber X) returns (x: X)
 modifies ts;
 {
   var ref_n: RefNode X;
-  assert ts->dom[ref_t];
-  assume ts->val[ref_t]->top != Nil() && ts->val[ref_t]->stack->dom[ts->val[ref_t]->top];
-  Node(ref_n, x) := ts->val[ref_t]->stack->val[ts->val[ref_t]->top];
-  ts->val[ref_t]->top := ref_n;
+  assert Map_Contains(ts->val, ref_t);
+  assume ts->val->val[ref_t]->top != Nil() && Map_Contains(ts->val->val[ref_t]->stack->val, ts->val->val[ref_t]->top);
+  Node(ref_n, x) := Map_At(ts->val->val[ref_t]->stack->val, ts->val->val[ref_t]->top);
+  ts->val->val[ref_t]->top := ref_n;
 }
 
 procedure {:inline 1} AtomicPushIntermediate(ref_t: RefTreiber X, x: X)
@@ -39,12 +39,12 @@ modifies ts;
   var loc_n: Lval (Loc (Node X));
   var lmap_n: Lmap (RefNode X) (Node X);
   var lmap_n': Lmap (RefNode X) (Node X);
-  assert ts->dom[ref_t];
-  t := ts->val[ref_t]->top;
+  assert Map_Contains(ts->val, ref_t);
+  t := ts->val->val[ref_t]->top;
   call loc_n, lmap_n := Lmap_Alloc(Node(t, x));
-  call Lmap_Assume(lmap_n, ts->val[ref_t]->stack);
+  call Lmap_Assume(lmap_n, ts->val->val[ref_t]->stack);
   ref_n := Ref(loc_n->val);
-  call lmap_n, lmap_n' := Lmap_Move(lmap_n, ts->val[ref_t]->stack, ref_n);
-  ts->val[ref_t]->stack := lmap_n';
-  ts->val[ref_t]->top := ref_n;
+  call lmap_n, lmap_n' := Lmap_Move(lmap_n, ts->val->val[ref_t]->stack, ref_n);
+  ts->val->val[ref_t]->stack := lmap_n';
+  ts->val->val[ref_t]->top := ref_n;
 }

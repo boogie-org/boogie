@@ -225,29 +225,48 @@ datatype Map<T,U> {
   Map(dom: Set T, val: [T]U)
 }
 
+function {:inline} Map_Empty<T,U>(): Map T U
+{
+  Map(Set(MapConst(false)), MapConst(Default()))
+}
+
+function {:inline} Map_Singleton<T,U>(t: T, u: U): Map T U
+{
+  Map_Update(Map_Empty(), t, u)
+}
+
 function {:inline} Map_Contains<T,U>(a: Map T U, t: T): bool
 {
-    Set_Contains(a->dom, t)
+  Set_Contains(a->dom, t)
+}
+
+function {:inline} Map_IsDisjoint<T,U>(a: Map T U, b: Map T U): bool
+{
+  Set_IsDisjoint(a->dom, b->dom)
 }
 
 function {:inline} Map_At<T,U>(a: Map T U, t: T): U
 {
-    a->val[t]
+  a->val[t]
 }
 
 function {:inline} Map_Remove<T,U>(a: Map T U, t: T): Map T U
 {
-    Map(Set_Remove(a->dom, t), a->val[t := Default()])
+  Map(Set_Remove(a->dom, t), a->val[t := Default()])
 }
 
 function {:inline} Map_Update<T,U>(a: Map T U, t: T, u: U): Map T U
 {
-    Map(Set_Add(a->dom, t), a->val[t := u])
+  Map(Set_Add(a->dom, t), a->val[t := u])
 }
 
 function {:inline} Map_Swap<T,U>(a: Map T U, t1: T, t2: T): Map T U
 {
-    (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
+  (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
+}
+
+function {:inline} Map_WellFormed<K,V>(a: Map K V): bool {
+  a->val == MapIte(a->dom->val, a->val, MapConst(Default()))
 }
 
 /// linear maps
@@ -260,43 +279,37 @@ datatype Ref<V> {
   Nil()
 }
 
-datatype Lmap<K,V> { Lmap(dom: [K]bool, val: [K]V) }
+datatype Lmap<K,V> { Lmap(val: Map K V) }
 type Lheap V = Lmap (Ref V) V;
 
 function {:inline} Lmap_WellFormed<K,V>(l: Lmap K V): bool {
-    l->val == MapIte(l->dom, l->val, MapConst(Default()))
+    Map_WellFormed(l->val)
 }
 function {:inline} Lmap_Collector<K,V>(l: Lmap K V): [K]bool {
-    l->dom
-}
-function {:inline} Lmap_Contains<K,V>(l: Lmap K V, k: K): bool {
-    l->dom[k]
-}
-function {:inline} Lmap_Deref<K,V>(l: Lmap K V, k: K): V {
-    l->val[k]
+    l->val->dom->val
 }
 pure procedure {:inline 1} Lmap_Empty<K,V>() returns (l: Lmap K V) {
-  l := Lmap(MapConst(false), MapConst(Default()));
+  l := Lmap(Map_Empty());
 }
 pure procedure {:inline 1} Lmap_Alloc<V>(v: V) returns (k: Lval (Loc V), l: Lmap (Ref V) V) {
   var r: Ref V;
   r := Ref(k->val);
-  l := Lmap(MapOne(r), MapConst(Default())[r := v]);
+  l := Lmap(Map_Singleton(r, v));
 }
 pure procedure {:inline 1} Lmap_Create<K,V>({:linear_in} k: Lset K, val: [K]V) returns (l: Lmap K V) {
-  l := Lmap(k->dom, val);
+  l := Lmap(Map(Set(k->dom), val));
 }
 pure procedure {:inline 1} Lmap_Free<K,V>({:linear_in} l: Lmap K V) returns (k: Lset K) {
-  k := Lset(l->dom);
+  k := Lset(l->val->dom->val);
 }
 pure procedure {:inline 1} Lmap_Move<K,V>({:linear_in} src: Lmap K V, dst: Lmap K V, k: K) returns (src': Lmap K V, dst': Lmap K V) {
-  assert src->dom[k];
-  assert IsDisjoint(src->dom, dst->dom);
-  dst' := Lmap(dst->dom[k := true], dst->val[k := src->val[k]]);
-  src' := Lmap(src->dom[k := false], src->val[k := Default()]);
+  assert Map_Contains(src->val, k);
+  assert Map_IsDisjoint(src->val, dst->val);
+  dst' := Lmap(Map_Update(dst->val, k, Map_At(src->val, k)));
+  src' := Lmap(Map_Remove(src->val, k));
 }
 pure procedure {:inline 1} Lmap_Assume<K,V>(src: Lmap K V, dst: Lmap K V) {
-  assume IsDisjoint(src->dom, dst->dom);
+  assume Map_IsDisjoint(src->val, dst->val);
 }
 
 /// linear sets
