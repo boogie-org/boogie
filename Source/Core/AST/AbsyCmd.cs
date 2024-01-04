@@ -3261,6 +3261,20 @@ namespace Microsoft.Boogie
 
       (this as ICarriesAttributes).ResolveAttributes(rc);
       Layers = (this as ICarriesAttributes).FindLayers();
+      if (rc.Proc is YieldProcedureDecl callerDecl) {
+        if (Layers.Count > 2)
+        {
+          rc.Error(this, "expected layer range");
+        }
+        else if (Layers.Count == 0)
+        {
+          Layers = new List<int>{ LayerRange.Min, callerDecl.Layer };
+        }
+        else if (Layers[^1] > callerDecl.Layer)
+        {
+          rc.Error(this, $"layer must be no more than layer {callerDecl.Layer}");
+        }
+      }
 
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
@@ -3305,8 +3319,13 @@ namespace Microsoft.Boogie
       // checking calls from atomic actions need type information, hence postponed to type checking
     }
 
-    private void TypecheckCallCmdInYieldProcedureDecl(YieldProcedureDecl callerDecl, TypecheckingContext tc)
+    private void TypecheckCallCmdInYieldProcedureDecl(TypecheckingContext tc)
     {
+      if (tc.Proc is not YieldProcedureDecl callerDecl)
+      {
+        return;
+      }
+
       var callerModifiedVars = new HashSet<Variable>(callerDecl.ModifiedVars);
 
       void CheckModifies(IEnumerable<Variable> modifiedVars)
@@ -3440,47 +3459,36 @@ namespace Microsoft.Boogie
       else
       {
         Debug.Assert(Proc.IsPure);
-        if (Layers.Count == 0 || Layers.Count > 2)
+        var usedVars = VariableCollector.Collect(Ins.Union(Outs));
+        if (usedVars.OfType<GlobalVariable>().Any())
         {
-          tc.Error(this, "expected layer range");
-        }
-        else if (Layers[^1] > callerDecl.Layer)
-        {
-          tc.Error(this, $"layer must be no more than layer {callerDecl.Layer}");
-        }
-        else
-        {
-          var usedVars = VariableCollector.Collect(Ins.Union(Outs));
-          if (usedVars.OfType<GlobalVariable>().Any())
+          if (Layers.Count == 2)
           {
-            if (Layers.Count == 2)
+            tc.Error(this, "expected singleton layer range");
+          }
+          else
+          {
+            // Check global outputs only; the checking of local outputs is done later
+            var calleeLayer = Layers[0];
+            var globalOutputs = Outs.Select(ie => ie.Decl).OfType<GlobalVariable>().Cast<Variable>();
+            if (CivlPrimitives.LinearPrimitives.Contains(Proc.Name))
             {
-              tc.Error(this, "expected singleton layer range");
+              var modifiedArgument = CivlPrimitives.ModifiedArgument(this);
+              if (modifiedArgument is { Decl: GlobalVariable })
+              {
+                globalOutputs = globalOutputs.Append(modifiedArgument.Decl);
+              }
             }
-            else
+            globalOutputs.Where(v => v.LayerRange.LowerLayer != calleeLayer).ForEach(v =>
             {
-              // Check global outputs only; the checking of local outputs is done later
-              var calleeLayer = Layers[0];
-              var globalOutputs = Outs.Select(ie => ie.Decl).OfType<GlobalVariable>().Cast<Variable>();
-              if (CivlPrimitives.LinearPrimitives.Contains(Proc.Name))
+              tc.Error(this, $"variable must be introduced at layer {calleeLayer}: {v.Name}");
+            });
+            if (calleeLayer < callerDecl.Layer)
+            {
+              globalOutputs.Where(v => v.LayerRange.UpperLayer != calleeLayer).ForEach(v =>
               {
-                var modifiedArgument = CivlPrimitives.ModifiedArgument(this);
-                if (modifiedArgument is { Decl: GlobalVariable })
-                {
-                  globalOutputs = globalOutputs.Append(modifiedArgument.Decl);
-                }
-              }
-              globalOutputs.Where(v => v.LayerRange.LowerLayer != calleeLayer).ForEach(v =>
-              {
-                tc.Error(this, $"variable must be introduced at layer {calleeLayer}: {v.Name}");
+                tc.Error(this, $"variable must be hidden at layer {calleeLayer}: {v.Name}");
               });
-              if (calleeLayer < callerDecl.Layer)
-              {
-                globalOutputs.Where(v => v.LayerRange.UpperLayer != calleeLayer).ForEach(v =>
-                {
-                  tc.Error(this, $"variable must be hidden at layer {calleeLayer}: {v.Name}");
-                });
-              }
             }
           }
         }
@@ -3571,17 +3579,13 @@ namespace Microsoft.Boogie
       Contract.Assume(this.Proc !=
                       null); // we assume the CallCmd has been successfully resolved before calling this Typecheck method
 
+      var errorCount = tc.ErrorCount;
+
       (this as ICarriesAttributes).TypecheckAttributes(tc);
 
       List<LayerRange> expectedLayerRanges = null;
       if (tc.Proc is YieldProcedureDecl callerDecl)
       {
-        var errorCount = tc.ErrorCount;
-        TypecheckCallCmdInYieldProcedureDecl(callerDecl, tc);
-        if (errorCount < tc.ErrorCount)
-        {
-          return;
-        }
         for (int i = 0; i < Proc.OutParams.Count; i++)
         {
           var formal = Proc.OutParams[i];
@@ -3690,6 +3694,11 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
         actualTypeParams);
 
+      if (tc.ErrorCount > errorCount)
+      {
+        return;
+      }
+      TypecheckCallCmdInYieldProcedureDecl(tc);
       TypecheckCallCmdInActionDecl(tc);
     }
 

@@ -178,13 +178,12 @@ namespace Microsoft.Boogie
 
   public static class CivlPrimitives
   {
-    public static HashSet<string> LinearTypes = new() { "Lheap", "Lmap", "Lset", "Lval" };
+    public static HashSet<string> LinearTypes = new() { "Lmap", "Lset", "Lval" };
 
     public static HashSet<string> LinearPrimitives = new()
     {
-      "Ref_Alloc",
-      "Lheap_Empty", "Lheap_Alloc", "Lheap_Free", "Lheap_Get", "Lheap_Put",
-      "Lmap_Empty", "Lmap_Alloc", "Lmap_Free", "Lmap_Get", "Lmap_Put",
+      "Loc_New",
+      "Lmap_Empty", "Lmap_Alloc", "Lmap_Create", "Lmap_Free", "Lmap_Move", "Lmap_Assume",
       "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
       "Lval_Split", "Lval_Get", "Lval_Put"
     };
@@ -209,11 +208,13 @@ namespace Microsoft.Boogie
     {
       switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
-        case "Ref_Alloc":
-        case "Lheap_Empty":
+        case "Loc_New":
         case "Lmap_Empty":
         case "Lmap_Alloc":
+        case "Lmap_Create":
         case "Lmap_Free":
+        case "Lmap_Move":
+        case "Lmap_Assume":
         case "Lset_Empty":
           return null;
         default:

@@ -176,11 +176,7 @@ namespace Microsoft.Boogie
       var typeCtorDecl = type.AsCtor.Decl;
       var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(typeCtorDecl);
       var actualTypeParams = program.monomorphizer.GetTypeInstantiation(typeCtorDecl);
-      return 
-        originalTypeCtorDecl.Name == "Lheap"
-          ? new CtorType(Token.NoToken, program.monomorphizer.InstantiateTypeCtorDecl("Ref", actualTypeParams),
-            new List<Type>())
-          : actualTypeParams[0];
+      return actualTypeParams[0];
     }
     
     private Dictionary<Type, LinearDomain> MakeLinearDomains()
@@ -208,8 +204,6 @@ namespace Microsoft.Boogie
           {
             var typeParamInstantiationMap = new Dictionary<string, Type> { { "V", actualTypeParams[0] } };
             var collector =
-                originalTypeCtorDecl.Name == "Lheap"
-                  ? program.monomorphizer.InstantiateFunction("Lheap_Collector", typeParamInstantiationMap) :
                 originalTypeCtorDecl.Name == "Lset"
                   ? program.monomorphizer.InstantiateFunction("Lset_Collector", typeParamInstantiationMap) :
                   program.monomorphizer.InstantiateFunction("Lval_Collector", typeParamInstantiationMap);

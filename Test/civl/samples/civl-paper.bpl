@@ -14,7 +14,7 @@ yield invariant {:layer 1} InvLock();
 invariant lock != nil <==> b;
 
 yield invariant {:layer 3} InvMem();
-invariant g->dom[p] && g->dom[p+4] && g->val[p] == g->val[p+4];
+invariant Map_Contains(g->val, p) && Map_Contains(g->val, p+4) && Map_At(g->val, p) == Map_At(g->val, p+4);
 
 yield procedure {:layer 3} P(tid: Lval X)
 requires {:layer 1,3} tid->val != nil;
@@ -130,13 +130,13 @@ yield procedure {:layer 0} TransferFromGlobal(tid: Lval X) returns (l: Lmap int 
 refines AtomicTransferFromGlobal;
 
 both action {:layer 1,3} AtomicLoad(l: Lmap int int, a: int) returns (v: int)
-{ v := l->val[a]; }
+{ v := l->val->val[a]; }
 
 yield procedure {:layer 0} Load(l: Lmap int int, a: int) returns (v: int);
 refines AtomicLoad;
 
 both action {:layer 1,3} AtomicStore({:linear_in} l_in: Lmap int int, a: int, v: int) returns (l_out: Lmap int int)
-{ l_out := l_in; l_out->val[a] := v; }
+{ l_out := l_in; l_out->val->val[a] := v; }
 
 yield procedure {:layer 0} Store({:linear_in} l_in: Lmap int int, a: int, v: int) returns (l_out: Lmap int int);
 refines AtomicStore;

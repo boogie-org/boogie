@@ -40,7 +40,7 @@ namespace Microsoft.Boogie
         return;
       }
       var typeCtorDeclName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
-      if (typeCtorDeclName == "Lheap" || typeCtorDeclName == "Lmap")
+      if (typeCtorDeclName == "Lmap")
       {
         hasLinearStoreAccess = true;
       }
@@ -173,6 +173,11 @@ namespace Microsoft.Boogie
 
     public override Implementation VisitImplementation(Implementation node)
     {
+      if (IsPrimitive(node))
+      {
+        return node;
+      }
+
       enclosingProc = node.Proc;
       
       node.PruneUnreachableBlocks(civlTypeChecker.Options);
@@ -814,6 +819,10 @@ namespace Microsoft.Boogie
     private void CheckLinearStoreAccessInGuards()
     {
       program.Implementations.ForEach(impl => {
+        if (IsPrimitive(impl))
+        {
+          return;
+        }
         Stack<StmtList> stmtLists = new Stack<StmtList>();
         if (impl.StructuredStmts != null)
         {
@@ -929,13 +938,6 @@ namespace Microsoft.Boogie
       return expr;
     }
 
-    private Function LheapWellFormedFunction(Monomorphizer monomorphizer, TypeCtorDecl typeCtorDecl)
-    {
-      var typeInstantiation = monomorphizer.GetTypeInstantiation(typeCtorDecl);
-      var typeParamInstantiationMap = new Dictionary<string, Type>() { { "V", typeInstantiation[0] } };
-      return monomorphizer.InstantiateFunction("Lheap_WellFormed", typeParamInstantiationMap);
-    }
-
     private Function LmapWellFormedFunction(Monomorphizer monomorphizer, TypeCtorDecl typeCtorDecl)
     {
       var typeInstantiation = monomorphizer.GetTypeInstantiation(typeCtorDecl);
@@ -957,7 +959,7 @@ namespace Microsoft.Boogie
             return false;
           }
           var declName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
-          if (declName is "Lheap" or "Lmap")
+          if (declName is "Lmap")
           {
             return true;
           }
@@ -966,9 +968,7 @@ namespace Microsoft.Boogie
         {
           var ctorType = (CtorType)v.TypedIdent.Type;
           var declName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
-          var func = declName == "Lheap"
-            ? LheapWellFormedFunction(monomorphizer, ctorType.Decl)
-            : LmapWellFormedFunction(monomorphizer, ctorType.Decl);
+          var func = LmapWellFormedFunction(monomorphizer, ctorType.Decl);
           return ExprHelper.FunctionCall(func, Expr.Ident(v));
         });
     }
