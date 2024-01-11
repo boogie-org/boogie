@@ -90,8 +90,8 @@ function {:inline} VotePAs(r: Round, v: Value) : [A_Vote]bool
 ////////////////////////////////////////////////////////////////////////////////
 //// Global variables
 // Abstract
-var {:layer 1,3} joinedNodes: [Round]NodeSet;
-var {:layer 1,3} voteInfo: [Round]Option VoteInfo;
+var {:layer 1,2} joinedNodes: [Round]NodeSet;
+var {:layer 1,2} voteInfo: [Round]Option VoteInfo;
 var {:layer 1,3} decision: [Round]Option Value; // spec
 
 // Concrete
@@ -106,9 +106,10 @@ var {:layer 1,1} {:linear "perm"} permVoteChannel: VoteResponseChannel;
 ////////////////////////////////////////////////////////////////////////////////
 
 function {:inline} Init (
-  rs: [Round]bool) : bool
+  rs: [Round]bool, decision: [Round]Option Value) : bool
 {
-  rs == (lambda r: Round :: true)
+  rs == (lambda r: Round :: true) &&
+  decision == (lambda r: Round :: None())
 }
 
 function {:inline} InitLow (

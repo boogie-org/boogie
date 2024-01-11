@@ -56,7 +56,7 @@ function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: Jo
 }
 
 yield invariant {:layer 1} YieldInit({:linear "perm"} rs: [Round]bool);
-invariant Init(rs);
+invariant Init(rs, decision);
 invariant InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
 
 yield invariant {:layer 1} YieldInv();
