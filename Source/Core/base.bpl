@@ -348,3 +348,6 @@ pure procedure {:inline 1} Copy<T>(v: T) returns (copy_v: T)
 {
   copy_v := v;
 }
+
+pure procedure Assume(b: bool);
+ensures b;

@@ -72,28 +72,28 @@ function {:inline} Gray(i:int) returns(bool) { i == 2 }
 function {:inline} Black(i:int) returns(bool) { i >= 3 }
 
 // Top layer
-var {:layer 99,101} rootAbs:[idx]obj;
-var {:layer 0,101} allocSet:[obj]bool;
-var {:layer 99,101} memAbs:[obj][fld]obj;
+var {:layer 99,101} rootAbs: [idx]obj;
+var {:layer 99,101} allocSet: [obj]bool;
+var {:layer 99,101} memAbs: [obj][fld]obj;
 
 // Next layer
-var {:layer 0,100} root:[idx]int;
-var {:layer 0,100} mem:[int][fld]int;
-var {:layer 95,100} toAbs:[int]obj; // ghost variable
-var {:layer 0,100} Color:[int]int;
+var {:layer 0,100} root: [idx]int;
+var {:layer 0,100} mem: [int][fld]int;
+var {:layer 95,100} toAbs: [int]obj; // ghost variable
+var {:layer 0,100} Color: [int]int;
 var {:layer 0,100} collectorPhase: int;
-var {:layer 0,100} mutatorPhase:[X]int;
+var {:layer 0,100} mutatorPhase: [X]int;
 var {:layer 0,100} sweepPtr: int;
 
 // Next layer
 var {:layer 0,99} rootScanOn: bool;
 var {:layer 0,99} rootScanBarrier: int;
-var {:linear "tid"} {:layer 0,99} mutatorsInRootScanBarrier:[int]bool; // ghost variable
-var {:layer 0,98} MarkStack:[int]int;
-var {:layer 0,98} MarkStackPtr:int;
+var {:linear "tid"} {:layer 0,99} mutatorsInRootScanBarrier: [int]bool; // ghost variable
+var {:layer 0,98} MarkStack: [int]int;
+var {:layer 0,98} MarkStackPtr: int;
 
 // Next layer
-// Lock is used during allocation, GC.  To ensure good performance, it is not used for mutator reads and writes.
+// Lock is used during allocation and GC.  To ensure good performance, it is not used for mutator reads and writes.
 var {:layer 0,96} lock:int; // 0 if unheld; thread number of holder if held
 
 function tidHasLock(tid:Tid, lock:int):bool { (tid == GcTid || mutatorTid(tid)) && lock == tid->i && tid->left }
@@ -347,13 +347,13 @@ requires call Yield_SweepPtr_100(tid, memHi);
     var nextPhase: int;
 
     while (*)
-    invariant {:yields} true;
-    invariant call Yield_Iso();
-    invariant call Yield_MsWellFormed(tid, 0);
-    invariant call Yield_RootScanBarrierInv();
-    invariant call Yield_GarbageCollect_100(tid);
-    invariant call Yield_CollectorPhase_100(tid, IDLE());
-    invariant call Yield_SweepPtr_100(tid, memHi);
+        invariant {:yields} true;
+        invariant call Yield_Iso();
+        invariant call Yield_MsWellFormed(tid, 0);
+        invariant call Yield_RootScanBarrierInv();
+        invariant call Yield_GarbageCollect_100(tid);
+        invariant call Yield_CollectorPhase_100(tid, IDLE());
+        invariant call Yield_SweepPtr_100(tid, memHi);
     {
         call nextPhase := HandshakeCollector(tid); // IDLE --> MARK
         par YieldWaitForMutators(tid, collectorPhase, false, 0) |
@@ -392,11 +392,11 @@ preserves call Yield_RootScanBarrierInv();
 
     call ResetSweepPtr(tid);
     while (true)
-    invariant {:yields} true;
-    invariant call YieldMark(tid, old(Color));
-    invariant call Yield_MsWellFormed(tid, 0);
-    invariant call Yield_CollectorPhase_98(tid, old(collectorPhase));
-    invariant call Yield_RootScanBarrierInv();
+        invariant {:yields} true;
+        invariant call YieldMark(tid, old(Color));
+        invariant call Yield_MsWellFormed(tid, 0);
+        invariant call Yield_CollectorPhase_98(tid, old(collectorPhase));
+        invariant call Yield_RootScanBarrierInv();
     {
         call canStop := CanMarkStop(tid);
         if (canStop)
@@ -421,33 +421,33 @@ preserves call Yield_RootScanBarrierInv();
     var child: int;
 
     while (true)
-    invariant {:yields} true;
-    invariant call YieldMark(tid, old(Color));
-    invariant call Yield_MsWellFormed(tid, 0);
-    invariant call Yield_CollectorPhase_98(tid, old(collectorPhase));
-    invariant call Yield_RootScanBarrierInv();
+        invariant {:yields} true;
+        invariant call YieldMark(tid, old(Color));
+        invariant call Yield_MsWellFormed(tid, 0);
+        invariant call Yield_CollectorPhase_98(tid, old(collectorPhase));
+        invariant call Yield_RootScanBarrierInv();
     {
-        call isEmpty, nodeProcessed := SET_Peek(tid);
+        call isEmpty, nodeProcessed := RemoveFromStack(tid);
         if (isEmpty) {
             break;
         }
         fldIter := 0;
         while (fldIter < numFields)
-        invariant {:yields} true;
-        invariant call YieldMark(tid, old(Color));
-        invariant call Yield_MsWellFormed(tid, nodeProcessed);
-        invariant call Yield_CollectorPhase_98(tid, old(collectorPhase));
-        invariant call Yield_RootScanBarrierInv();
-        invariant call Yield_MarkInnerLoopFieldIter(tid, fldIter, nodeProcessed);
+            invariant {:yields} true;
+            invariant call YieldMark(tid, old(Color));
+            invariant call Yield_MsWellFormed(tid, nodeProcessed);
+            invariant call Yield_CollectorPhase_98(tid, old(collectorPhase));
+            invariant call Yield_RootScanBarrierInv();
+            invariant call Yield_MarkInnerLoopFieldIter(tid, fldIter, nodeProcessed);
         {
-            call child := ReadFieldCollector(tid, nodeProcessed, fldIter);
+            call child := ReadFieldByCollector(tid, nodeProcessed, fldIter);
             if (memAddr(child))
             {
-                call SET_InsertIntoSetIfWhite(tid, nodeProcessed, child);
+                call InsertIntoSetIfWhiteByCollector(tid, nodeProcessed, child);
             }
             fldIter := fldIter + 1;
         }
-        call SET_RemoveFromSet(tid, nodeProcessed);
+        call SetColorToBlack(tid, nodeProcessed);
     }
 }
 
@@ -469,14 +469,14 @@ ensures call YieldSweepEnd(tid);
 
     call {:layer 100} snapColor := Copy(Color);
     while (localSweepPtr < memHi)
-    invariant {:yields} {:layer 96} true;
-    invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
-    invariant {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-    invariant {:layer 100} SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
-    invariant {:layer 100} localSweepPtr == sweepPtr && memLo <= sweepPtr && sweepPtr <= memHi;
-    invariant {:layer 100} (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(snapColor[root[i]]));
-    invariant {:layer 100} SweepInvInit(root, rootAbs, mem, memAbs, snapColor, toAbs, allocSet);
-    invariant {:layer 100} (forall i:int:: memAddr(i) ==> if sweepPtr <= i then Color[i] == snapColor[i] else if Black(snapColor[i]) then White(Color[i]) else Unalloc(Color[i]));
+        invariant {:yields} {:layer 96} true;
+        invariant {:layer 98} MsWellFormed(MarkStack, MarkStackPtr, Color, 0);
+        invariant {:layer 100} Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+        invariant {:layer 100} SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
+        invariant {:layer 100} localSweepPtr == sweepPtr && memLo <= sweepPtr && sweepPtr <= memHi;
+        invariant {:layer 100} (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(snapColor[root[i]]));
+        invariant {:layer 100} SweepInvInit(root, rootAbs, mem, memAbs, snapColor, toAbs, allocSet);
+        invariant {:layer 100} (forall i:int:: memAddr(i) ==> if sweepPtr <= i then Color[i] == snapColor[i] else if Black(snapColor[i]) then White(Color[i]) else Unalloc(Color[i]));
     {
         call SweepNext(tid);
         localSweepPtr := localSweepPtr + 1;
@@ -578,12 +578,12 @@ preserves call Yield_RootScanBarrierInv();
 
     i := 0;
     while (i < numRoots)
-    invariant {:yields} {:layer 98} true;
-    invariant call Yield_MsWellFormed(tid, 0);
-    invariant call Yield_CollectorPhase_98(tid, old(collectorPhase));
-    invariant {:layer 99} Mutators == mutatorsInRootScanBarrier && rootScanOn;
-    invariant {:layer 99} 0 <= i && i <= numRoots;
-    invariant {:layer 99} Color == (lambda u: int :: if memAddr(u) && White(snapColor[u]) && (exists k: int :: 0 <= k && k < i && root[k] == u) then GRAY() else snapColor[u]);
+        invariant {:yields} {:layer 98} true;
+        invariant call Yield_MsWellFormed(tid, 0);
+        invariant call Yield_CollectorPhase_98(tid, old(collectorPhase));
+        invariant {:layer 99} Mutators == mutatorsInRootScanBarrier && rootScanOn;
+        invariant {:layer 99} 0 <= i && i <= numRoots;
+        invariant {:layer 99} Color == (lambda u: int :: if memAddr(u) && White(snapColor[u]) && (exists k: int :: 0 <= k && k < i && root[k] == u) then GRAY() else snapColor[u]);
     {
         call o := ReadRootInRootScanBarrier(tid, i);
         if (memAddr(o))
@@ -613,7 +613,7 @@ requires {:layer 98} mutatorTidWhole(tid);
 
     call valx := ReadRoot(tid, x);
     call valy := ReadRoot(tid, y);
-    call WriteFieldGeneral(tid, valx, f, valy);
+    call WriteFieldByMutator(tid, valx, f, valy);
     call {:layer 99} memAbs := Copy((var a, b := rootAbs[x], rootAbs[y]; memAbs[a := memAbs[a][f := b]]));
 }
 
@@ -632,7 +632,7 @@ refines AtomicReadFieldRaw;
     var valy: int;
 
     call valx := ReadRoot(tid, x);
-    call valy := ReadFieldGeneral(tid, valx, f);
+    call valy := ReadFieldByMutator(tid, valx, f);
     call WriteRoot(tid, y, valy);
     call {:layer 99} rootAbs := Copy((var a := rootAbs[x]; rootAbs[y := memAbs[a][f]]));
 }
@@ -656,8 +656,8 @@ modifies allocSet, rootAbs, root, toAbs, memAbs, Color, mem;
 {
     assert mutatorTidWhole(tid) && rootAddr(y) && tidOwns(tid, y);
     assert (forall x: int, f: fld :: memAddr(x) && Unalloc(Color[x]) ==> toAbs[x] == nil);
-    assume(memAddr(ptr) && Unalloc(Color[ptr]));
-    assume(memAddrAbs(absPtr) && !allocSet[absPtr] && absPtr != nil);
+    assume memAddr(ptr) && Unalloc(Color[ptr]);
+    assume memAddrAbs(absPtr) && !allocSet[absPtr] && absPtr != nil;
     allocSet[absPtr] := true;
     rootAbs[y] := absPtr;
     root[y] := ptr;
@@ -670,7 +670,8 @@ modifies allocSet, rootAbs, root, toAbs, memAbs, Color, mem;
 yield procedure {:layer 99} AllocRaw({:linear "tid"} tid:Tid, y:idx) returns (ptr: int, absPtr: obj)
 refines AtomicAllocRaw;
 {
-    call absPtr := PrimitiveFindFreePtrAbs();
+    call {:layer 99} Assume(memAddrAbs(absPtr) && !allocSet[absPtr] && absPtr != nil);
+    call {:layer 99} allocSet := Copy(allocSet[absPtr := true]);
     call ptr := FindFreePtr(tid, absPtr);
     call WriteRoot(tid, y, ptr);
     call {:layer 99} memAbs := Copy(memAbs[absPtr := (lambda z: int :: if (fieldAddr(z)) then absPtr else memAbs[absPtr][z])]);
@@ -698,10 +699,10 @@ requires {:layer 98} mutatorTidWhole(tid);
     call rootVal := ReadRoot(tid, y);
     if (memAddr(rootVal))
     {
-        call phase := ReadMutatorPhase(tid);
-      if (MarkPhase(phase))
+        call phase := ReadMutatorPhaseByMutator(tid);
+        if (MarkPhase(phase))
         {
-            call SET_InsertIntoSetIfWhiteByMutator(tid, rootVal);
+            call InsertIntoSetIfWhiteByMutator(tid, rootVal);
         }
     }
 }
@@ -759,14 +760,14 @@ refines AtomicFindFreePtr;
 
     spaceFound := false;
     while (true)
-    invariant {:yields} true;
-    invariant {:layer 98} !spaceFound;
+        invariant {:yields} true;
+        invariant {:layer 98} !spaceFound;
     {
         iter := memLo;
         while (iter < memHi)
-        invariant {:yields} true;
-        invariant {:layer 98} !spaceFound;
-        invariant {:layer 98} memLo <= iter && iter <= memHi;
+            invariant {:yields} true;
+            invariant {:layer 98} !spaceFound;
+            invariant {:layer 98} memLo <= iter && iter <= memHi;
         {
             call spaceFound := AllocIfPtrFree(tid, iter, absPtr);
             if (spaceFound)
@@ -782,7 +783,7 @@ refines AtomicFindFreePtr;
     }
 }
 
-atomic action {:layer 99} AtomicSET_InsertIntoSetIfWhiteByMutator({:linear "tid"} tid:Tid, memLocal:int)
+atomic action {:layer 99} AtomicInsertIntoSetIfWhiteByMutator({:linear "tid"} tid:Tid, memLocal:int)
 modifies Color;
 {
     assert mutatorTidWhole(tid) && memAddr(memLocal) && MarkPhase(mutatorPhase[tid->i]);
@@ -792,8 +793,8 @@ modifies Color;
 }
 
 yield procedure {:layer 98}
-SET_InsertIntoSetIfWhiteByMutator({:linear "tid"} tid:Tid, memLocal:int)
-refines AtomicSET_InsertIntoSetIfWhiteByMutator;
+InsertIntoSetIfWhiteByMutator({:linear "tid"} tid:Tid, memLocal:int)
+refines AtomicInsertIntoSetIfWhiteByMutator;
 preserves call Yield_MarkPhase(tid, memLocal);
 {
     var color:int;
@@ -845,7 +846,7 @@ preserves call Yield_CollectorPhase_98(tid, old(collectorPhase));
     assert {:layer 98} MST(MarkStackPtr-1);
 }
 
-left action {:layer 99,100} AtomicSET_InsertIntoSetIfWhite({:linear "tid"} tid:Tid, parent: int, child:int)
+left action {:layer 99,100} AtomicInsertIntoSetIfWhiteByCollector({:linear "tid"} tid:Tid, parent: int, child:int)
 modifies Color;
 {
     assert tid == GcTid;
@@ -856,8 +857,8 @@ modifies Color;
 }
 
 yield procedure {:layer 98}
-SET_InsertIntoSetIfWhite({:linear "tid"} tid:Tid, parent: int, child:int)
-refines AtomicSET_InsertIntoSetIfWhite;
+InsertIntoSetIfWhiteByCollector({:linear "tid"} tid:Tid, parent: int, child:int)
+refines AtomicInsertIntoSetIfWhiteByCollector;
 requires {:layer 98} memAddr(parent) && memAddr(child);
 preserves call Yield_MsWellFormed(tid, parent);
 preserves call Yield_CollectorPhase_98(tid, old(collectorPhase));
@@ -866,7 +867,7 @@ preserves call Yield_CollectorPhase_98(tid, old(collectorPhase));
     assert {:layer 98} MST(MarkStackPtr-1);
 }
 
-right action {:layer 99,100} AtomicSET_Peek({:linear "tid"} tid:Tid) returns (isEmpty: bool, val:int)
+right action {:layer 99,100} AtomicRemoveFromStack({:linear "tid"} tid:Tid) returns (isEmpty: bool, val:int)
 {
     assert tid == GcTid;
     assert MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
@@ -879,8 +880,8 @@ right action {:layer 99,100} AtomicSET_Peek({:linear "tid"} tid:Tid) returns (is
 }
 
 yield procedure {:layer 98}
-SET_Peek({:linear "tid"} tid:Tid) returns (isEmpty: bool, val:int)
-refines AtomicSET_Peek;
+RemoveFromStack({:linear "tid"} tid:Tid) returns (isEmpty: bool, val:int)
+refines AtomicRemoveFromStack;
 requires call Yield_MsWellFormed(tid, 0);
 ensures call Yield_MsWellFormed(tid, if isEmpty then 0 else val);
 preserves call Yield_CollectorPhase_98(tid, old(collectorPhase));
@@ -918,15 +919,15 @@ requires call YieldWaitForMutators(tid, nextPhase, false, 0);
     done := false;
     call YieldWaitForMutators(tid, nextPhase, done, 1);
     while (!done)
-    invariant {:yields} true;
-    invariant call YieldWaitForMutators(tid, nextPhase, done, numMutators+1);
+        invariant {:yields} true;
+        invariant call YieldWaitForMutators(tid, nextPhase, done, numMutators+1);
     {
         done := true;
         i := 1;
         call YieldWaitForMutators(tid, nextPhase, done, i);
         while (i <= numMutators)
-          invariant {:yields} true;
-          invariant call YieldWaitForMutators(tid, nextPhase, done, i);
+            invariant {:yields} true;
+            invariant call YieldWaitForMutators(tid, nextPhase, done, i);
         {
             call mutatorPhaseLocal := ReadMutatorPhaseByCollector(tid, i);
             if (nextPhase != mutatorPhaseLocal)
@@ -1019,7 +1020,7 @@ refines AtomicInitVars100;
     call InitSweepPtr(tid, mutatorTids);
 }
 
-atomic action {:layer 97,100} AtomicSET_RemoveFromSet({:linear "tid"} tid:Tid, scannedLocal:int)
+atomic action {:layer 97,100} AtomicSetColorToBlack({:linear "tid"} tid:Tid, scannedLocal:int)
 modifies Color;
 {
     assert MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
@@ -1028,11 +1029,11 @@ modifies Color;
     Color[scannedLocal] := BLACK();
 }
 
-yield procedure {:layer 96} SET_RemoveFromSet({:linear "tid"} tid:Tid, scannedLocal:int)
-refines AtomicSET_RemoveFromSet;
+yield procedure {:layer 96} SetColorToBlack({:linear "tid"} tid:Tid, scannedLocal:int)
+refines AtomicSetColorToBlack;
 {
     call LockAcquire(tid);
-    call SetColor2(tid, scannedLocal, BLACK());
+    call SetColorInMarkPhase(tid, scannedLocal, BLACK());
     call LockRelease(tid);
 }
 
@@ -1057,7 +1058,7 @@ refines AtomicMsPushByCollector;
     call color := ReadColorByCollector(tid, val);
     if (White(color))
     {
-        call SetColor2(tid, val, GRAY());
+        call SetColorInMarkPhase(tid, val, GRAY());
         call stack := ReadMarkStackPtr(tid);
         call WriteMarkStack(tid, stack, val);
         stack := stack + 1;
@@ -1087,7 +1088,7 @@ refines AtomicMsPushByMutator;
     call color := ReadColorByMutator2(tid, val);
     if (White(color))
     {
-        call SetColor2(tid, val, GRAY());
+        call SetColorInMarkPhase(tid, val, GRAY());
         call stack := ReadMarkStackPtr(tid);
         call WriteMarkStack(tid, stack, val);
         stack := stack + 1;
@@ -1262,7 +1263,7 @@ refines AtomicCollectorRootScanBarrierWait;
     var v:int;
 
     while (true)
-    invariant {:yields} true;
+        invariant {:yields} true;
     {
         call v := CollectorRootScanBarrierRead(tid);
         if (v == 0)
@@ -1374,15 +1375,15 @@ refines AtomicAllocIfPtrFree;
             call {:layer 96} snapMem := Copy(mem);
             fldIter := 0;
             while (fldIter < numFields)
-            invariant {:yields} {:layer 95} true;
-            invariant {:layer 96} 0 <= fldIter && fldIter <= numFields;
-            invariant {:layer 96} mem == snapMem[ptr := (lambda z: int :: if (0 <= z && z < fldIter) then ptr else snapMem[ptr][z])];
+                invariant {:yields} {:layer 95} true;
+                invariant {:layer 96} 0 <= fldIter && fldIter <= numFields;
+                invariant {:layer 96} mem == snapMem[ptr := (lambda z: int :: if (0 <= z && z < fldIter) then ptr else snapMem[ptr][z])];
             {
                 call InitializeFieldInAlloc(tid, ptr, fldIter);
                 fldIter := fldIter + 1;
             }
 
-            call SetColor3(tid, ptr, color, absPtr);
+            call SetColorInAlloc(tid, ptr, color, absPtr);
             call LockRelease(tid);
             return;
         }
@@ -1443,30 +1444,30 @@ refines AtomicInitField;
     call PrimitiveWriteField(x, f, x);
 }
 
-atomic action {:layer 96,100} AtomicReadFieldCollector({:linear "tid"} tid:Tid, x:int, f: fld) returns (y: int)
+atomic action {:layer 96,100} AtomicReadFieldByCollector({:linear "tid"} tid:Tid, x:int, f: fld) returns (y: int)
 { assert tid == GcTid && memAddr(x) && fieldAddr(f) && toAbs[x] != nil; y := mem[x][f]; }
 
-yield procedure {:layer 95} ReadFieldCollector({:linear "tid"} tid:Tid, x:int, f: fld) returns (y: int)
-refines AtomicReadFieldCollector;
+yield procedure {:layer 95} ReadFieldByCollector({:linear "tid"} tid:Tid, x:int, f: fld) returns (y: int)
+refines AtomicReadFieldByCollector;
 {
     call y := PrimitiveReadField(x, f);
 }
 
-atomic action {:layer 96,99} AtomicReadFieldGeneral({:linear "tid"} tid:Tid, x: int, f: fld) returns (y: int)
+atomic action {:layer 96,99} AtomicReadFieldByMutator({:linear "tid"} tid:Tid, x: int, f: fld) returns (y: int)
 { assert mutatorTidWhole(tid) && memAddr(x) && fieldAddr(f) && toAbs[x] != nil; y := mem[x][f]; }
 
-yield procedure {:layer 95} ReadFieldGeneral({:linear "tid"} tid:Tid, x: int, f: fld) returns (y: int)
-refines AtomicReadFieldGeneral;
+yield procedure {:layer 95} ReadFieldByMutator({:linear "tid"} tid:Tid, x: int, f: fld) returns (y: int)
+refines AtomicReadFieldByMutator;
 {
     call y := PrimitiveReadField(x, f);
 }
 
-atomic action {:layer 96,99} AtomicWriteFieldGeneral({:linear "tid"} tid:Tid, x: int, f: fld, y: int)
+atomic action {:layer 96,99} AtomicWriteFieldByMutator({:linear "tid"} tid:Tid, x: int, f: fld, y: int)
 modifies mem;
 { assert mutatorTidWhole(tid) && memAddr(x) && fieldAddr(f) && toAbs[x] != nil; mem[x][f] := y; }
 
-yield procedure {:layer 95} WriteFieldGeneral({:linear "tid"} tid:Tid, x: int, f: fld, y: int)
-refines AtomicWriteFieldGeneral;
+yield procedure {:layer 95} WriteFieldByMutator({:linear "tid"} tid:Tid, x: int, f: fld, y: int)
+refines AtomicWriteFieldByMutator;
 {
     call PrimitiveWriteField(x, f, y);
 }
@@ -1586,11 +1587,11 @@ refines AtomicReadMutatorPhaseByCollector;
     call phase := PrimitiveReadMutatorPhase(i);
 }
 
-both action {:layer 96,99} AtomicReadMutatorPhase({:linear "tid"} tid: Tid) returns (phase:int)
+both action {:layer 96,99} AtomicReadMutatorPhaseByMutator({:linear "tid"} tid: Tid) returns (phase:int)
 { assert mutatorTidWhole(tid); phase := mutatorPhase[tid->i]; }
 
-yield procedure {:layer 95} ReadMutatorPhase({:linear "tid"} tid: Tid) returns (phase:int)
-refines AtomicReadMutatorPhase;
+yield procedure {:layer 95} ReadMutatorPhaseByMutator({:linear "tid"} tid: Tid) returns (phase:int)
+refines AtomicReadMutatorPhaseByMutator;
 {
     call phase := PrimitiveReadMutatorPhase(tid->i);
 }
@@ -1827,7 +1828,7 @@ refines AtomicSetColor;
     call PrimitiveSetColor(i, val);
 }
 
-left action {:layer 96} AtomicSetColor2({:linear "tid"} tid:Tid, i: int, val: int)
+left action {:layer 96} AtomicSetColorInMarkPhase({:linear "tid"} tid:Tid, i: int, val: int)
 modifies Color;
 {
     assert tidHasLock(tid, lock) && memAddr(i);
@@ -1835,13 +1836,13 @@ modifies Color;
     Color[i] := val;
 }
 
-yield procedure {:layer 95} SetColor2({:linear "tid"} tid:Tid, i: int, val: int)
-refines AtomicSetColor2;
+yield procedure {:layer 95} SetColorInMarkPhase({:linear "tid"} tid:Tid, i: int, val: int)
+refines AtomicSetColorInMarkPhase;
 {
     call PrimitiveSetColor(i, val);
 }
 
-atomic action {:layer 96} AtomicSetColor3({:linear "tid"} tid:Tid, i: int, val: int, o: obj)
+atomic action {:layer 96} AtomicSetColorInAlloc({:linear "tid"} tid:Tid, i: int, val: int, o: obj)
 modifies Color, toAbs;
 {
     assert tidHasLock(tid, lock) && memAddr(i);
@@ -1850,8 +1851,8 @@ modifies Color, toAbs;
     toAbs[i] := o;
 }
 
-yield procedure {:layer 95} SetColor3({:linear "tid"} tid:Tid, i: int, val: int, o: obj)
-refines AtomicSetColor3;
+yield procedure {:layer 95} SetColorInAlloc({:linear "tid"} tid:Tid, i: int, val: int, o: obj)
+refines AtomicSetColorInAlloc;
 {
     call PrimitiveSetColor(i, val);
     call {:layer 95} toAbs := Copy(toAbs[i := o]);
@@ -1879,7 +1880,7 @@ refines AtomicLockAcquire;
 {
     var status:bool;
     while (true)
-    invariant {:yields} true;
+        invariant {:yields} true;
     {
         call status := PrimitiveLockCAS(tid->i);
         if (status)
@@ -1930,12 +1931,6 @@ modifies mem;
 { assert memAddr(x) && fieldAddr(f); mem[x][f] := y; }
 yield procedure {:layer 0} PrimitiveWriteField(x: int, f: fld, y: int);
 refines AtomicPrimitiveWriteField;
-
-right action {:layer 1,99} AtomicPrimitiveFindFreePtrAbs() returns (o: obj)
-modifies allocSet;
-{ assume (memAddrAbs(o) && !allocSet[o] && o != nil); allocSet[o] := true; }
-yield procedure {:layer 0} PrimitiveFindFreePtrAbs() returns (o: obj);
-refines AtomicPrimitiveFindFreePtrAbs;
 
 atomic action {:layer 1,95} AtomicPrimitiveReadMarkStackPtr() returns (val: int)
 { val := MarkStackPtr; }
