@@ -1,11 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-function RightOpen (n: int) : [int]bool;
-function RightClosed (n: int) : [int]bool;
-axiom (forall x: int, y: int :: RightOpen(x)[y] <==> y < x);
-axiom (forall x: int, y: int :: RightClosed(x)[y] <==> y <= x);
-
 type Tid;
 
 var {:layer 0,1} t: int;           // next ticket to issue
@@ -18,13 +13,12 @@ var {:layer 1,2} T: [int]bool;     // set of issued tickets
 
 function {:inline} Inv1 (tickets: [int]bool, ticket: int): (bool)
 {
-  tickets == RightOpen(ticket)
+  (forall i: int :: tickets[i] <==> i < ticket)
 }
 
 function {:inline} Inv2 (tickets: [int]bool, ticket: int, lock: Option Tid): (bool)
 {
-  if (lock is None) then tickets == RightOpen(ticket)
-                    else tickets == RightClosed(ticket)
+  lock is None || tickets[ticket]
 }
 
 // ###########################################################################
