@@ -278,7 +278,7 @@ ProcFormals<.bool incoming, bool allowWhereClauses, out List<Variable>/*!*/ ds.>
      var context = allowWhereClauses ? "procedure formals" : "the 'implementation' copies of formals";
   .)
   "("
-  [ AttrsIdsTypeWheres<allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); }>
+  [ AttributesIdsTypeWheres<allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); }>
   ]
   ")"
   .
@@ -290,7 +290,7 @@ BoundVars<.out List<Variable>/*!*/ ds.>
     ds = new List<Variable>();
     var dsx = ds;
   .)
-  AttrsIdsTypeWheres<false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } >
+  AttributesIdsTypeWheres<false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } >
   .
 
 /*------------------------------------------------------------------------*/
@@ -306,8 +306,8 @@ IdsType<.out List<TypedIdent>/*!*/ tyds.>
   .)
   .
 
-/* AttrsIdsTypeWheres is used with the declarations of formals and bound variables */
-AttrsIdsTypeWheres<. bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action .>
+/* AttributesIdsTypeWheres is used with the declarations of formals and bound variables */
+AttributesIdsTypeWheres<. bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action .>
 =
   AttributesIdsTypeWhere<allowWhereClauses, context, action>
   { "," AttributesIdsTypeWhere<allowWhereClauses, context, action> }
@@ -626,10 +626,10 @@ Constructors<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
   .
 
 Constructor<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
-= (. IToken name; List<TypedIdent> fields = new List<TypedIdent>(); .)
+= (. IToken name; List<Variable> fields = new List<Variable>(); .)
   Ident<out name>
   "("
-  [ IdsTypeWheres<false, "datatype constructor", delegate(TypedIdent ti) { fields.Add(ti); }> ]
+  [ AttributesIdsTypeWheres<false, "datatype constructor", delegate(TypedIdent ti, QKeyValue kv) { fields.Add(new Formal(ti.tok, ti, true, kv)); }> ]
   ")"
   (.
     if (!datatypeTypeCtorDecl.AddConstructor(name, name.val, fields)) {
@@ -716,7 +716,8 @@ ActionDecl<bool isPure, out ActionDecl actionDecl, out Implementation impl, out 
        else
        {
          datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, new List<TypeVariable>(), null);
-         datatypeTypeCtorDecl.AddConstructor(name, name.val, ins.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList());
+         var fields = ins.Select(v => new Formal(v.tok, new TypedIdent(v.TypedIdent.tok, v.Name, v.TypedIdent.Type), true, v.Attributes)).ToList<Variable>();
+         datatypeTypeCtorDecl.AddConstructor(name, name.val, fields);
        }
      }
      actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, isPure, creates, refinedAction, invariantAction, elims, mods, datatypeTypeCtorDecl, kv);
