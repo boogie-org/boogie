@@ -736,7 +736,8 @@ private class BvBounds : Expr {
 		 else
 		 {
 		   datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, new List<TypeVariable>(), null);
-		   datatypeTypeCtorDecl.AddConstructor(name, name.val, ins.Select(v => new TypedIdent(Token.NoToken, v.Name, v.TypedIdent.Type)).ToList());
+		   var fields = ins.Select(v => new Formal(v.tok, new TypedIdent(v.TypedIdent.tok, v.Name, v.TypedIdent.Type), true, v.Attributes)).ToList<Variable>();
+		   datatypeTypeCtorDecl.AddConstructor(name, name.val, fields);
 		 }
 		}
 		actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, isPure, creates, refinedAction, invariantAction, elims, mods, datatypeTypeCtorDecl, kv);
@@ -791,12 +792,12 @@ private class BvBounds : Expr {
 		
 		Expect(11);
 		if (StartOf(12)) {
-			AttrsIdsTypeWheres(allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); });
+			AttributesIdsTypeWheres(allowWhereClauses, context, delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new Formal(tyd.tok, tyd, incoming, kv)); });
 		}
 		Expect(12);
 	}
 
-	void AttrsIdsTypeWheres(bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
+	void AttributesIdsTypeWheres(bool allowWhereClauses, string context, System.Action<TypedIdent, QKeyValue> action ) {
 		AttributesIdsTypeWhere(allowWhereClauses, context, action);
 		while (la.kind == 14) {
 			Get();
@@ -810,7 +811,7 @@ private class BvBounds : Expr {
 		ds = new List<Variable>();
 		var dsx = ds;
 		
-		AttrsIdsTypeWheres(false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } );
+		AttributesIdsTypeWheres(false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } );
 	}
 
 	void IdsType(out List<TypedIdent>/*!*/ tyds) {
@@ -1076,11 +1077,11 @@ private class BvBounds : Expr {
 	}
 
 	void Constructor(DatatypeTypeCtorDecl datatypeTypeCtorDecl) {
-		IToken name; List<TypedIdent> fields = new List<TypedIdent>(); 
+		IToken name; List<Variable> fields = new List<Variable>(); 
 		Ident(out name);
 		Expect(11);
-		if (StartOf(14)) {
-			IdsTypeWheres(false, "datatype constructor", delegate(TypedIdent ti) { fields.Add(ti); });
+		if (StartOf(12)) {
+			AttributesIdsTypeWheres(false, "datatype constructor", delegate(TypedIdent ti, QKeyValue kv) { fields.Add(new Formal(ti.tok, ti, true, kv)); });
 		}
 		Expect(12);
 		if (!datatypeTypeCtorDecl.AddConstructor(name, name.val, fields)) {

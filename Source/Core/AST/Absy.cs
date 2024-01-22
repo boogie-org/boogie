@@ -891,11 +891,10 @@ namespace Microsoft.Boogie
       return true;
     }
 
-    public bool AddConstructor(IToken tok, string name, List<TypedIdent> fields)
+    public bool AddConstructor(IToken tok, string name, List<Variable> fields)
     {
       var returnType = new CtorType(this.tok, this, new List<Type>(this.typeParameters));
-      var function = new Function(tok, name, new List<TypeVariable>(this.typeParameters),
-        fields.Select(field => new Formal(field.tok, field, true)).ToList<Variable>(),
+      var function = new Function(tok, name, new List<TypeVariable>(this.typeParameters), fields,
         new Formal(Token.NoToken, new TypedIdent(Token.NoToken, TypedIdent.NoName, returnType), false));
       var constructor = new DatatypeConstructor(function);
       return AddConstructor(constructor);

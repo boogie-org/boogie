@@ -42,9 +42,9 @@ namespace Microsoft.Boogie
             new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
           PendingAsyncs.ForEach(elim =>
           {
-            var field = new TypedIdent(Token.NoToken, elim.Name, elim.PendingAsyncType);
+            var field = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, elim.Name, elim.PendingAsyncType), true);
             ChoiceDatatypeTypeCtorDecl.AddConstructor(Token.NoToken, $"{choiceDatatypeName}_{elim.Name}",
-              new List<TypedIdent>() { field });
+              new List<Variable>() { field });
           });
           civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
           DesugarSetChoice(civlTypeChecker, ImplWithChoice);
