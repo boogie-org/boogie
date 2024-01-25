@@ -16,7 +16,7 @@ namespace VCGeneration;
 public static class FocusAttribute
 {
   
-  public static List<Split> FocusImpl(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par)
+  public static List<Split> FocusImpl(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
   {
     bool IsFocusCmd(Cmd c) {
       return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "focus");

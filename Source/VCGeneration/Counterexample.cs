@@ -196,7 +196,7 @@ namespace Microsoft.Boogie
               {
                 var cmd = GetTraceCmd(loc);
                 var calleeName = GetCalledProcName(cmd);
-                if (calleeName.StartsWith(VC.StratifiedVCGenBase.recordProcName) &&
+                if (calleeName.StartsWith(VC.StratifiedVerificationConditionGeneratorBase.recordProcName) &&
                     options.StratifiedInlining > 0)
                 {
                   Contract.Assert(calleeCounterexamples[loc].args.Count == 1);
@@ -392,10 +392,10 @@ namespace Microsoft.Boogie
     {
       ErrorInformation errorInfo;
       var cause = outcome switch {
-        VCGen.Outcome.TimedOut => "Timed out on",
-        VCGen.Outcome.OutOfMemory => "Out of memory on",
-        VCGen.Outcome.SolverException => "Solver exception on",
-        VCGen.Outcome.OutOfResource => "Out of resource on",
+        VerificationConditionGenerator.Outcome.TimedOut => "Timed out on",
+        VerificationConditionGenerator.Outcome.OutOfMemory => "Out of memory on",
+        VerificationConditionGenerator.Outcome.SolverException => "Solver exception on",
+        VerificationConditionGenerator.Outcome.OutOfResource => "Out of resource on",
         _ => "Error"
       };
 

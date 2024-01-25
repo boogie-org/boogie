@@ -24,7 +24,7 @@ public class SmokeTester
     Contract.Invariant(callback != null);
   }
 
-  VCGen parent;
+  VerificationConditionGenerator parent;
   ImplementationRun run;
   Block initial;
   int id;
@@ -32,7 +32,7 @@ public class SmokeTester
   HashSet<Block> visited = new HashSet<Block>();
   VerifierCallback callback;
 
-  internal SmokeTester(VCGen par, ImplementationRun run, VerifierCallback callback)
+  internal SmokeTester(VerificationConditionGenerator par, ImplementationRun run, VerifierCallback callback)
   {
     Contract.Requires(par != null);
     Contract.Requires(run != null);
@@ -130,7 +130,7 @@ public class SmokeTester
       }
       else
       {
-        seq.Add(VCGen.AssertTurnedIntoAssume(Options, turn));
+        seq.Add(VerificationConditionGenerator.AssertTurnedIntoAssume(Options, turn));
       }
     }
 

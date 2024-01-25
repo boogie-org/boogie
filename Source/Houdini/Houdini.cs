@@ -393,7 +393,7 @@ namespace Microsoft.Boogie.Houdini
   {
     protected Program program;
     protected HashSet<Variable> houdiniConstants;
-    protected VCGen vcgen;
+    protected VerificationConditionGenerator vcgen;
     protected ProverInterface proverInterface;
     protected Graph<Implementation> callGraph;
     protected HashSet<Implementation> vcgenFailures;
@@ -470,7 +470,7 @@ namespace Microsoft.Boogie.Houdini
       */
 
       var checkerPool = new CheckerPool(Options);
-      this.vcgen = new VCGen(program, checkerPool);
+      this.vcgen = new VerificationConditionGenerator(program, checkerPool);
       this.proverInterface = ProverInterface.CreateProver(Options, program, Options.ProverLogFilePath,
         Options.ProverLogFileAppend, Options.TimeLimit, taskID: GetTaskID());
 
@@ -1704,7 +1704,7 @@ namespace Microsoft.Boogie.Houdini
 
   public class VCGenOutcome
   {
-    public VCGen.Outcome outcome;
+    public VerificationConditionGenerator.Outcome outcome;
     public List<Counterexample> errors;
 
     public VCGenOutcome(ProverInterface.Outcome outcome, List<Counterexample> errors)
@@ -1724,7 +1724,7 @@ namespace Microsoft.Boogie.Houdini
 
     // statistics 
 
-    private int CountResults(VCGen.Outcome outcome)
+    private int CountResults(VerificationConditionGenerator.Outcome outcome)
     {
       int outcomeCount = 0;
       foreach (VCGenOutcome verifyOutcome in implementationOutcomes.Values)
@@ -1738,7 +1738,7 @@ namespace Microsoft.Boogie.Houdini
       return outcomeCount;
     }
 
-    private List<string> ListOutcomeMatches(VCGen.Outcome outcome)
+    private List<string> ListOutcomeMatches(VerificationConditionGenerator.Outcome outcome)
     {
       List<string> result = new List<string>();
       foreach (KeyValuePair<string, VCGenOutcome> kvpair in implementationOutcomes)
@@ -1754,37 +1754,37 @@ namespace Microsoft.Boogie.Houdini
 
     public int ErrorCount
     {
-      get { return CountResults(VCGen.Outcome.Errors); }
+      get { return CountResults(VerificationConditionGenerator.Outcome.Errors); }
     }
 
     public int Verified
     {
-      get { return CountResults(VCGen.Outcome.Correct); }
+      get { return CountResults(VerificationConditionGenerator.Outcome.Correct); }
     }
 
     public int Inconclusives
     {
-      get { return CountResults(VCGen.Outcome.Inconclusive); }
+      get { return CountResults(VerificationConditionGenerator.Outcome.Inconclusive); }
     }
 
     public int TimeOuts
     {
-      get { return CountResults(VCGen.Outcome.TimedOut); }
+      get { return CountResults(VerificationConditionGenerator.Outcome.TimedOut); }
     }
 
     public List<string> ListOfTimeouts
     {
-      get { return ListOutcomeMatches(VCGen.Outcome.TimedOut); }
+      get { return ListOutcomeMatches(VerificationConditionGenerator.Outcome.TimedOut); }
     }
 
     public List<string> ListOfInconclusives
     {
-      get { return ListOutcomeMatches(VCGen.Outcome.Inconclusive); }
+      get { return ListOutcomeMatches(VerificationConditionGenerator.Outcome.Inconclusive); }
     }
 
     public List<string> ListOfErrors
     {
-      get { return ListOutcomeMatches(VCGen.Outcome.Errors); }
+      get { return ListOutcomeMatches(VerificationConditionGenerator.Outcome.Errors); }
     }
   }
 }

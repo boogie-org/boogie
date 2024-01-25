@@ -9,7 +9,7 @@ public static class CommandTransformations
   {
     if (c is AssertCmd assertCmd)
     {
-      return VCGen.AssertTurnedIntoAssume(options, assertCmd);
+      return VerificationConditionGenerator.AssertTurnedIntoAssume(options, assertCmd);
     }
 
     return c;

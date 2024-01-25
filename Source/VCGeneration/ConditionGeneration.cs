@@ -28,7 +28,7 @@ namespace VC
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
     public override Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver)
+      CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
       Contract.Requires(callback != null);
@@ -120,9 +120,8 @@ namespace VC
     /// <param name="batchCompletedObserver"></param>
     /// <param name="cancellationToken"></param>
     /// <param name="impl"></param>
-    public async Task<(Outcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation(
-      ImplementationRun run, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver,
-      CancellationToken cancellationToken)
+    public async Task<(Outcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation2(
+      ImplementationRun run, CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
 
@@ -130,10 +129,9 @@ namespace VC
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
       var collector = new VerificationResultCollector(Options);
-      Outcome outcome = await VerifyImplementation(run, collector, cancellationToken, batchCompletedObserver);
+      Outcome outcome = await VerifyImplementation(run, collector, cancellationToken);
       var /*?*/ errors = new List<Counterexample>();
-      if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
-          outcome == Outcome.OutOfResource) {
+      if (outcome is Outcome.Errors or Outcome.TimedOut or Outcome.OutOfMemory or Outcome.OutOfResource) {
         errors = collector.examples.ToList();
       }
 
@@ -144,7 +142,7 @@ namespace VC
     private VCGenOptions Options => CheckerPool.Options;
 
     public abstract Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver);
+      CancellationToken cancellationToken);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 

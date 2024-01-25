@@ -47,7 +47,7 @@ public class Split : ProofRun
   Dictionary<TransferCmd, ReturnCmd> /*!*/
     gotoCmdOrigins;
 
-  readonly public VCGen /*!*/
+  readonly public VerificationConditionGenerator /*!*/
     parent;
 
   public Implementation /*!*/ Implementation => run.Implementation;
@@ -68,11 +68,11 @@ public class Split : ProofRun
 
   // async interface
   public int SplitIndex { get; set; }
-  internal VCGen.ErrorReporter reporter;
+  internal VerificationConditionGenerator.ErrorReporter reporter;
 
   public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
     Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
-    VCGen /*!*/ par, ImplementationRun run)
+    VerificationConditionGenerator /*!*/ par, ImplementationRun run)
   {
     Contract.Requires(cce.NonNullElements(blocks));
     Contract.Requires(gotoCmdOrigins != null);
@@ -600,7 +600,7 @@ public class Split : ProofRun
 
         if (swap)
         {
-          theNewCmd = VCGen.AssertTurnedIntoAssume(options, a);
+          theNewCmd = VerificationConditionGenerator.AssertTurnedIntoAssume(options, a);
         }
       }
 
@@ -740,7 +740,7 @@ public class Split : ProofRun
         Contract.Assert(c != null);
         if (c is AssertCmd)
         {
-          var counterexample = VCGen.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
+          var counterexample = VerificationConditionGenerator.AssertCmdToCounterexample(options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
           Counterexamples.Add(counterexample);
           return counterexample;
         }
@@ -899,7 +899,7 @@ public class Split : ProofRun
   }
 
 
-  public static List<Split> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par, bool splitOnEveryAssert)
+  public static List<Split> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par, bool splitOnEveryAssert)
   {
     List<Split> focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
     return focussedImpl.Select(s => FindManualSplits(s, splitOnEveryAssert)).SelectMany(x => x).ToList();
@@ -1081,7 +1081,7 @@ public class Split : ProofRun
 
       ProverContext ctx = checker.TheoremProver.Context;
       Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-      var cc = new VCGen.CodeExprConversionClosure(traceWriter, checker.Pool.Options, absyIds, ctx);
+      var cc = new VerificationConditionGenerator.CodeExprConversionClosure(traceWriter, checker.Pool.Options, absyIds, ctx);
       bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
       var exprGen = ctx.ExprGen;
@@ -1095,7 +1095,7 @@ public class Split : ProofRun
         exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
       VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
       vc = exprGen.Implies(eqExpr, vc);
-      reporter = new VCGen.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, Implementation.debugInfos, callback,
+      reporter = new VerificationConditionGenerator.ErrorReporter(options, gotoCmdOrigins, absyIds, Implementation.Blocks, Implementation.debugInfos, callback,
         mvInfo, checker.TheoremProver.Context, parent.program, this);
     }
 
