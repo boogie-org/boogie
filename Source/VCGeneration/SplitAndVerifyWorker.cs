@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
+using VCGeneration;
 using static VC.ConditionGeneration;
 
 namespace VC;
@@ -26,7 +27,6 @@ public class SplitAndVerifyWorker
   private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
   private bool KeepGoing => maxKeepGoingSplits > 1;
 
-  private VerificationConditionGenerator verificationConditionGenerator;
   private VcOutcome vcOutcome;
   private double remainingCost;
   private double provenCost;
@@ -44,7 +44,6 @@ public class SplitAndVerifyWorker
     this.mvInfo = mvInfo;
     this.run = run;
     this.vcOutcome = vcOutcome;
-    this.verificationConditionGenerator = verificationConditionGenerator;
     var maxSplits = options.VcsMaxSplits;
     VerificationConditionGenerator.CheckIntAttributeOnImpl(run, "vcs_max_splits", ref maxSplits);
       
@@ -63,7 +62,7 @@ public class SplitAndVerifyWorker
     Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
     ResetPredecessors(Implementation.Blocks);
-    ManualSplits = Split.FocusAndSplit(options, run, gotoCmdOrigins, verificationConditionGenerator, splitOnEveryAssert);
+    ManualSplits = ManualSplitFinder.FocusAndSplit(options, run, gotoCmdOrigins, verificationConditionGenerator, splitOnEveryAssert);
       
     if (ManualSplits.Count == 1 && maxSplits > 1) {
       ManualSplits = Split.DoSplit(ManualSplits[0], maxVcCost, maxSplits);
@@ -76,19 +75,13 @@ public class SplitAndVerifyWorker
   public async Task<VcOutcome> WorkUntilDone(CancellationToken cancellationToken)
   {
     TrackSplitsCost(ManualSplits);
-    try
-    {
-      await Task.WhenAll(ManualSplits.Select(split => DoWorkForMultipleIterations(split, cancellationToken)));
-    }
-    finally
-    {
-      batchCompletions.OnCompleted();
-    }
+    await Task.WhenAll(ManualSplits.Select(split => DoWorkForMultipleIterations(split, cancellationToken)));
 
     return vcOutcome;
   }
 
   public int ResourceCount => totalResourceCount;
+  
   /// <summary>
   /// The cumulative time spent processing SMT queries.  When running with
   /// `vcsCores > 1`, this may also include time spent restarting the prover.
@@ -186,12 +179,11 @@ public class SplitAndVerifyWorker
     if (proverFailed) {
       await HandleProverFailure(split, checker, callback, result, cancellationToken);
     } else {
-      batchCompletions.OnNext((split, result));
       await checker.GoBackToIdle();
     }
   }
 
-  private static bool IsProverFailed(ProverInterface.Outcome outcome)
+  public static bool IsProverFailed(ProverInterface.Outcome outcome)
   {
     switch (outcome)
     {
@@ -265,7 +257,6 @@ public class SplitAndVerifyWorker
       var result = verificationRunResult with {
         CounterExamples = split.Counterexamples
       };
-      batchCompletions.OnNext((split, result));
       vcOutcome = VcOutcome.Errors;
       await checker.GoBackToIdle();
       return;
@@ -312,7 +303,5 @@ public class SplitAndVerifyWorker
 
       callback.OnOutOfResource(msg);
     }
-
-    batchCompletions.OnNext((split, verificationRunResult));
   }
 }

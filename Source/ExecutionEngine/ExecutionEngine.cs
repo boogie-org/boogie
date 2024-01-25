@@ -67,7 +67,7 @@ namespace Microsoft.Boogie
     public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache, CustomStackSizePoolTaskScheduler scheduler) {
       Options = options;
       Cache = cache;
-      checkerPool = new CheckerPool(options);
+      CheckerPool = new CheckerPool(options);
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
 
       largeThreadScheduler = scheduler;
@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
     }
 
     public ExecutionEngineOptions Options { get; }
-    private readonly CheckerPool checkerPool;
+    public CheckerPool CheckerPool { get; }
     private readonly SemaphoreSlim verifyImplementationSemaphore;
 
     static DateTime FirstRequestStart;
@@ -716,7 +716,7 @@ namespace Microsoft.Boogie
       return GetPrioritizedImplementations(program).SelectMany(implementation =>
       {
         var writer = new StringWriter();
-        var vcGenerator = new VerificationConditionGenerator(processedProgram.Program, checkerPool);
+        var vcGenerator = new VerificationConditionGenerator(processedProgram.Program, CheckerPool);
 
         var run = new ImplementationRun(implementation, writer);
         var verifierCallback = new VerifierCallback(CoreOptions.ProverWarnings.None);
@@ -724,9 +724,10 @@ namespace Microsoft.Boogie
           out var gotoCmdOrigins,
           out var modelViewInfo);
 
-        var worker = new SplitAndVerifyWorker(Options, vcGenerator, run, gotoCmdOrigins, verifierCallback, modelViewInfo,
-          VcOutcome.Correct);
-        return worker.ManualSplits.Select(split => new VerificationTask(this, processedProgram, split));
+        var splitOnEveryAssert = Options.VcsSplitOnEveryAssert;
+        run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
+        var splits = ManualSplitFinder.FocusAndSplit(Options, run, gotoCmdOrigins, vcGenerator, splitOnEveryAssert);
+        return splits.Select(split => new VerificationTask(this, processedProgram, split, modelViewInfo));
       }).ToList();
     }
 
@@ -895,7 +896,7 @@ namespace Microsoft.Boogie
       var resultTask = largeThreadTaskFactory.StartNew(async () =>
       {
         var verificationResult = new ImplementationRunResult(impl, programId);
-        var vcGen = new VerificationConditionGenerator(processedProgram.Program, checkerPool);
+        var vcGen = new VerificationConditionGenerator(processedProgram.Program, CheckerPool);
         vcGen.CachingActionCounts = stats.CachingActionCounts;
         verificationResult.ProofObligationCountBefore = vcGen.CumulativeAssertionCount;
         verificationResult.Start = DateTime.UtcNow;
@@ -1411,7 +1412,7 @@ namespace Microsoft.Boogie
 
     public void Dispose()
     {
-      checkerPool.Dispose();
+      CheckerPool.Dispose();
       if (taskSchedulerCreatedLocally) {
         largeThreadScheduler.Dispose();
       }

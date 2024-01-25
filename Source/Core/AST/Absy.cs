@@ -376,8 +376,7 @@ namespace Microsoft.Boogie
         }
         else if (kv.Params.Count == 1)
         {
-          var lit = kv.Params[0] as LiteralExpr;
-          if (lit != null && lit.isBool)
+          if (kv.Params[0] is LiteralExpr { isBool: true } lit)
           {
             result = lit.asBool;
             return true;
@@ -395,7 +394,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(name != null);
       QKeyValue res = null;
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
+      for (QKeyValue kv = Attributes; kv != null; kv = kv.Next)
       {
         if (kv.Key == name)
         {

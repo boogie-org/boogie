@@ -431,7 +431,7 @@ public class VerificationConditionGenerator : ConditionGeneration
     protected VerifierCallback callback;
 
     protected ModelViewInfo MvInfo;
-    internal string resourceExceededMessage;
+    public string resourceExceededMessage;
 
     [ContractInvariantMethod]
     void ObjectInvariant()

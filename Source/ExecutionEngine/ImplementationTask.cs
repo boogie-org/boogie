@@ -51,6 +51,7 @@ public interface IVerificationTask {
 
 public class VerificationTask : IVerificationTask {
   private readonly ExecutionEngine engine;
+  private readonly ModelViewInfo modelViewInfo;
   private readonly object mayAccessCancellationSource = new();
 
   public IVerificationStatus CacheStatus { get; private set; }
@@ -59,8 +60,11 @@ public class VerificationTask : IVerificationTask {
 
   public Split Split { get; }
   
-  public VerificationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Split split) {
+  public VerificationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Split split,
+    ModelViewInfo modelViewInfo) 
+  {
     this.engine = engine;
+    this.modelViewInfo = modelViewInfo;
     ProcessedProgram = processedProgram;
     Split = split;
     
@@ -111,7 +115,37 @@ public class VerificationTask : IVerificationTask {
 
     var cancellationToken = cancellationSource.Token;
     status = new ReplaySubject<IVerificationStatus>();
+
+    var timeout = Split.Run.Implementation.GetTimeLimit(Split.Options);
+
+    var iteration = 0; // Wrap with DoWorkForMultipleIterations code
     
+    var checker = await engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, CancellationToken.None);
+    var verifierCallback = new VerifierCallback(CoreOptions.ProverWarnings.None);
+    await Split.BeginCheck(Split.Run.OutputWriter, checker, verifierCallback, 
+      modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken);
+    
+    var (newOutcome, result, newResourceCount) = Split.ReadOutcome(iteration, checker, verifierCallback);
+    var proverFailed = SplitAndVerifyWorker.IsProverFailed(newOutcome);
+
+    if (proverFailed) {
+      string msg = "some timeout";
+      if (Split.reporter is { resourceExceededMessage: { } }) {
+        msg = Split.reporter.resourceExceededMessage;
+      }
+
+      var cex = Split.ToCounterexample(checker.TheoremProver.Context);
+      // callback.OnCounterexample(cex, msg);
+      Split.Counterexamples.Add(cex);
+      // Update one last time the result with the dummy counter-example to indicate the position of the timeout
+      result = result with {
+        CounterExamples = Split.Counterexamples
+      };
+    }
+    CacheStatus = new Completed(result);
+    await checker.GoBackToIdle();
+    // Publish Completed to observable
+
     engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(),
       null, null, Implementation, cancellationToken, TextWriter.Null).
       Catch<IVerificationStatus, OperationCanceledException>((e) => Observable.Return(new Stale())).
