@@ -1704,12 +1704,12 @@ namespace Microsoft.Boogie.Houdini
 
   public class VCGenOutcome
   {
-    public VerificationConditionGenerator.Outcome outcome;
+    public VcOutcome VcOutcome;
     public List<Counterexample> errors;
 
     public VCGenOutcome(ProverInterface.Outcome outcome, List<Counterexample> errors)
     {
-      this.outcome = ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(outcome);
+      this.VcOutcome = ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(outcome);
       this.errors = errors;
     }
   }
@@ -1724,12 +1724,12 @@ namespace Microsoft.Boogie.Houdini
 
     // statistics 
 
-    private int CountResults(VerificationConditionGenerator.Outcome outcome)
+    private int CountResults(VcOutcome vcOutcome)
     {
       int outcomeCount = 0;
       foreach (VCGenOutcome verifyOutcome in implementationOutcomes.Values)
       {
-        if (verifyOutcome.outcome == outcome)
+        if (verifyOutcome.VcOutcome == vcOutcome)
         {
           outcomeCount++;
         }
@@ -1738,12 +1738,12 @@ namespace Microsoft.Boogie.Houdini
       return outcomeCount;
     }
 
-    private List<string> ListOutcomeMatches(VerificationConditionGenerator.Outcome outcome)
+    private List<string> ListOutcomeMatches(VcOutcome vcOutcome)
     {
       List<string> result = new List<string>();
       foreach (KeyValuePair<string, VCGenOutcome> kvpair in implementationOutcomes)
       {
-        if (kvpair.Value.outcome == outcome)
+        if (kvpair.Value.VcOutcome == vcOutcome)
         {
           result.Add(kvpair.Key);
         }
@@ -1754,37 +1754,37 @@ namespace Microsoft.Boogie.Houdini
 
     public int ErrorCount
     {
-      get { return CountResults(VerificationConditionGenerator.Outcome.Errors); }
+      get { return CountResults(VcOutcome.Errors); }
     }
 
     public int Verified
     {
-      get { return CountResults(VerificationConditionGenerator.Outcome.Correct); }
+      get { return CountResults(VcOutcome.Correct); }
     }
 
     public int Inconclusives
     {
-      get { return CountResults(VerificationConditionGenerator.Outcome.Inconclusive); }
+      get { return CountResults(VcOutcome.Inconclusive); }
     }
 
     public int TimeOuts
     {
-      get { return CountResults(VerificationConditionGenerator.Outcome.TimedOut); }
+      get { return CountResults(VcOutcome.TimedOut); }
     }
 
     public List<string> ListOfTimeouts
     {
-      get { return ListOutcomeMatches(VerificationConditionGenerator.Outcome.TimedOut); }
+      get { return ListOutcomeMatches(VcOutcome.TimedOut); }
     }
 
     public List<string> ListOfInconclusives
     {
-      get { return ListOutcomeMatches(VerificationConditionGenerator.Outcome.Inconclusive); }
+      get { return ListOutcomeMatches(VcOutcome.Inconclusive); }
     }
 
     public List<string> ListOfErrors
     {
-      get { return ListOutcomeMatches(VerificationConditionGenerator.Outcome.Errors); }
+      get { return ListOutcomeMatches(VcOutcome.Errors); }
     }
   }
 }

@@ -27,7 +27,7 @@ namespace VC
   [ContractClassFor(typeof(ConditionGeneration))]
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
-    public override Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+    public override Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
@@ -45,37 +45,25 @@ namespace VC
   [ContractClass(typeof(ConditionGenerationContracts))]
   public abstract class ConditionGeneration : IDisposable
   {
-    public enum Outcome
-    {
-      Correct,
-      Errors,
-      TimedOut,
-      OutOfResource,
-      OutOfMemory,
-      Inconclusive,
-      ReachedBound,
-      SolverException
-    }
-
-    public static Outcome ProverInterfaceOutcomeToConditionGenerationOutcome(ProverInterface.Outcome outcome)
+    public static VcOutcome ProverInterfaceOutcomeToConditionGenerationOutcome(ProverInterface.Outcome outcome)
     {
       switch (outcome)
       {
         case ProverInterface.Outcome.Invalid:
-          return Outcome.Errors;
+          return VcOutcome.Errors;
         case ProverInterface.Outcome.OutOfMemory:
-          return Outcome.OutOfMemory;
+          return VcOutcome.OutOfMemory;
         case ProverInterface.Outcome.TimeOut:
-          return Outcome.TimedOut;
+          return VcOutcome.TimedOut;
         case ProverInterface.Outcome.OutOfResource:
-          return Outcome.OutOfResource;
+          return VcOutcome.OutOfResource;
         case ProverInterface.Outcome.Undetermined:
-          return Outcome.Inconclusive;
+          return VcOutcome.Inconclusive;
         case ProverInterface.Outcome.Valid:
-          return Outcome.Correct;
+          return VcOutcome.Correct;
       }
 
-      return Outcome.Inconclusive; // unreachable but the stupid compiler does not understand
+      return VcOutcome.Inconclusive; // unreachable but the stupid compiler does not understand
     }
 
     [ContractInvariantMethod]
@@ -120,7 +108,7 @@ namespace VC
     /// <param name="batchCompletedObserver"></param>
     /// <param name="cancellationToken"></param>
     /// <param name="impl"></param>
-    public async Task<(Outcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation2(
+    public async Task<(VcOutcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation2(
       ImplementationRun run, CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
@@ -129,19 +117,19 @@ namespace VC
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
       var collector = new VerificationResultCollector(Options);
-      Outcome outcome = await VerifyImplementation(run, collector, cancellationToken);
+      VcOutcome vcOutcome = await VerifyImplementation(run, collector, cancellationToken);
       var /*?*/ errors = new List<Counterexample>();
-      if (outcome is Outcome.Errors or Outcome.TimedOut or Outcome.OutOfMemory or Outcome.OutOfResource) {
+      if (vcOutcome is VcOutcome.Errors or VcOutcome.TimedOut or VcOutcome.OutOfMemory or VcOutcome.OutOfResource) {
         errors = collector.examples.ToList();
       }
 
       Helpers.ExtraTraceInformation(Options, "Finished implementation verification");
-      return (outcome, errors, collector.vcResults.ToList());
+      return (vcOutcome, errors, collector.vcResults.ToList());
     }
 
     private VCGenOptions Options => CheckerPool.Options;
 
-    public abstract Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+    public abstract Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
@@ -1658,6 +1646,18 @@ namespace VC
         _disposed = true;
       }
     }
+  }
+
+  public enum VcOutcome
+  {
+    Correct,
+    Errors,
+    TimedOut,
+    OutOfResource,
+    OutOfMemory,
+    Inconclusive,
+    ReachedBound,
+    SolverException
   }
 
   public record ImplementationRun(Implementation Implementation, TextWriter OutputWriter) {

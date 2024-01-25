@@ -340,7 +340,7 @@ public class VerificationConditionGenerator : ConditionGeneration
 
   public VCGenOptions Options => CheckerPool.Options;
 
-  public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+  public override async Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
     CancellationToken cancellationToken)
   {
     Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -349,7 +349,7 @@ public class VerificationConditionGenerator : ConditionGeneration
 
     if (run.Implementation.IsSkipVerification(Options))
     {
-      return Outcome.Inconclusive; // not sure about this one
+      return VcOutcome.Inconclusive; // not sure about this one
     }
 
     callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
@@ -357,12 +357,12 @@ public class VerificationConditionGenerator : ConditionGeneration
 
     PrepareImplementation(run, callback, out var smokeTester, out var dataGotoCmdOrigins, out var dataModelViewInfo);
 
-    Outcome outcome = Outcome.Correct;
+    VcOutcome vcOutcome = VcOutcome.Correct;
 
     // Report all recycled failing assertions for this implementation.
     if (impl.RecycledFailingAssertions != null && impl.RecycledFailingAssertions.Any())
     {
-      outcome = Outcome.Errors;
+      vcOutcome = VcOutcome.Errors;
       foreach (var a in impl.RecycledFailingAssertions)
       {
         var checksum = a.Checksum;
@@ -383,22 +383,22 @@ public class VerificationConditionGenerator : ConditionGeneration
     }
 
     var worker = new SplitAndVerifyWorker(Options, this, run, dataGotoCmdOrigins, callback,
-      dataModelViewInfo, outcome);
+      dataModelViewInfo, vcOutcome);
       
     worker.BatchCompletions.Subscribe(batchCompletedObserver);
             
-    outcome = await worker.WorkUntilDone(cancellationToken);
+    vcOutcome = await worker.WorkUntilDone(cancellationToken);
     ResourceCount = worker.ResourceCount;
 
     TotalProverElapsedTime = worker.TotalProverElapsedTime;
-    if (outcome == Outcome.Correct && smokeTester != null)
+    if (vcOutcome == VcOutcome.Correct && smokeTester != null)
     {
       await smokeTester.Test(run.OutputWriter);
     }
 
     callback.OnProgress?.Invoke("done", 0, 0, 1.0);
 
-    return outcome;
+    return vcOutcome;
   }
 
   public void PrepareImplementation(ImplementationRun run, VerifierCallback callback,
