@@ -342,16 +342,6 @@ namespace VC
 
     public VCGenOptions Options => CheckerPool.Options;
 
-    record ImplementationTransformationData {
-
-      public bool Passified { get; set; } = false;
-      public bool ConvertedToDAG { get; set; } = false;
-      public Dictionary<TransferCmd, ReturnCmd> GotoCmdOrigins { get; set; }
-      public ModelViewInfo ModelViewInfo { get; set; }
-    }
-
-    private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
-
     public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver)
     {
@@ -367,7 +357,7 @@ namespace VC
       callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
 
 
-      PrepareImplementation(run, callback, impl, out var smokeTester, out var dataGotoCmdOrigins, out var dataModelViewInfo);
+      PrepareImplementation(run, callback, out var smokeTester, out var dataGotoCmdOrigins, out var dataModelViewInfo);
 
       Outcome outcome = Outcome.Correct;
 
@@ -418,11 +408,7 @@ namespace VC
       out Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
       out ModelViewInfo modelViewInfo)
     {
-      var data = implementationData.GetOrCreateValue(run.Implementation)!;
-      if (!data.ConvertedToDAG) {
-        data.ConvertedToDAG = true;
-        ConvertCFG2DAG(run);
-      }
+      ConvertCFG2DAG(run);
 
       smokeTester = null;
       if (Options.SoundnessSmokeTest)
@@ -431,16 +417,8 @@ namespace VC
         smokeTester.Copy();
       }
 
-      if (!data.Passified) {
-        data.Passified = true;
-        data.GotoCmdOrigins = PassifyImpl(run, out var mvInfo);
-        data.ModelViewInfo = mvInfo;
-
-        ExpandAsserts(run.Implementation);
-      }
-
-      gotoCmdOrigins = data.GotoCmdOrigins;
-      modelViewInfo = data.ModelViewInfo;
+      gotoCmdOrigins = PassifyImpl(run, out modelViewInfo);
+      ExpandAsserts(run.Implementation);
     }
 
     public class ErrorReporter : ProverInterface.ErrorHandler {
@@ -1257,7 +1235,7 @@ namespace VC
       }
     }
 
-    public Dictionary<TransferCmd, ReturnCmd> PassifyImpl(ImplementationRun run, out ModelViewInfo mvInfo)
+    public Dictionary<TransferCmd, ReturnCmd> PassifyImpl(ImplementationRun run, out ModelViewInfo modelViewInfo)
     {
       Contract.Requires(run != null);
       Contract.Requires(program != null);
@@ -1358,8 +1336,8 @@ namespace VC
         new LiveVariableAnalysis(Options).ComputeLiveVariables(impl);
       }
 
-      mvInfo = new ModelViewInfo(program, impl);
-      Convert2PassiveCmd(run, mvInfo);
+      modelViewInfo = new ModelViewInfo(program, impl);
+      Convert2PassiveCmd(run, modelViewInfo);
 
       if (QKeyValue.FindBoolAttribute(impl.Attributes, "may_unverified_instrumentation"))
       {
