@@ -19,7 +19,7 @@ using VCGeneration;
 
 namespace Microsoft.Boogie
 {
-  public record ProcessedProgram(Program Program, Action<VCGen, Implementation, VerificationResult> PostProcessResult) {
+  public record ProcessedProgram(Program Program, Action<VCGen, Implementation, ImplementationRunResult> PostProcessResult) {
     public ProcessedProgram(Program program) : this(program, (_, _, _) => { }) {
     }
   }
@@ -842,10 +842,10 @@ namespace Microsoft.Boogie
       string programId,
       TextWriter traceWriter)
     {
-      VerificationResult verificationResult = GetCachedVerificationResult(implementation, traceWriter);
-      if (verificationResult != null) {
-        UpdateCachedStatistics(stats, verificationResult.Outcome, verificationResult.Errors);
-        return Observable.Return(new Completed(verificationResult));
+      ImplementationRunResult implementationRunResult = GetCachedVerificationResult(implementation, traceWriter);
+      if (implementationRunResult != null) {
+        UpdateCachedStatistics(stats, implementationRunResult.Outcome, implementationRunResult.Errors);
+        return Observable.Return(new Completed(implementationRunResult));
       }
       Options.Printer.Inform("", traceWriter); // newline
       Options.Printer.Inform($"Verifying {implementation.VerboseName} ...", traceWriter);
@@ -863,7 +863,7 @@ namespace Microsoft.Boogie
       return Observable.Return(new Running()).Concat(afterRunningStates);
     }
 
-    public VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
+    public ImplementationRunResult GetCachedVerificationResult(Implementation impl, TextWriter output)
     {
       if (0 >= Options.VerifySnapshots)
       {
@@ -889,9 +889,9 @@ namespace Microsoft.Boogie
       PipelineStatistics stats, ErrorReporterDelegate er, CancellationToken cancellationToken,
       string programId, Implementation impl, TextWriter traceWriter)
     {
-      var verificationResult = new VerificationResult(impl, programId);
+      var verificationResult = new ImplementationRunResult(impl, programId);
 
-      var batchCompleted = new Subject<(Split split, VCResult vcResult)>();
+      var batchCompleted = new Subject<(Split split, VerificationRunResult vcResult)>();
       var completeVerification = largeThreadTaskFactory.StartNew(async () =>
       {
         var vcgen = new VCGen(processedProgram.Program, checkerPool);
@@ -901,7 +901,7 @@ namespace Microsoft.Boogie
 
         try
         {
-          (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
+          (verificationResult.Outcome, verificationResult.Errors, verificationResult.RunResults) =
             await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), batchCompleted, cancellationToken);
           processedProgram.PostProcessResult(vcgen, impl, verificationResult);
         }

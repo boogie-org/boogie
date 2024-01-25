@@ -3,9 +3,7 @@ using System;
 using System.IO;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Reactive.Threading.Tasks;
 using System.Threading;
-using System.Threading.Tasks;
 using VC;
 
 namespace Microsoft.Boogie;
@@ -15,7 +13,7 @@ public interface IVerificationStatus {}
 /// <summary>
 /// Results are available
 /// </summary>
-public record Completed(VerificationResult Result) : IVerificationStatus;
+public record Completed(VerificationRunResult Result) : IVerificationStatus;
 
 /// <summary>
 /// Scheduled to be run but waiting for resources
@@ -32,13 +30,13 @@ public record Stale : IVerificationStatus;
 /// </summary>
 public record Running : IVerificationStatus;
 
-public record BatchCompleted(Split Split, VCResult VcResult) : IVerificationStatus;
+public record BatchCompleted(Split Split, VerificationRunResult VerificationRunResult) : IVerificationStatus;
 
 public interface IVerificationTask {
   IVerificationStatus CacheStatus { get; }
 
   ProcessedProgram ProcessedProgram { get; }
-  Implementation Implementation { get; }
+  Split Split { get; }
 
   /// <summary>
   /// If not running, start running.
@@ -59,16 +57,16 @@ public class VerificationTask : IVerificationTask {
 
   public ProcessedProgram ProcessedProgram { get; }
 
-  public Implementation Implementation { get; }
+  public Split Split { get; }
   
-  public VerificationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Split implementation) {
+  public VerificationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Split split) {
     this.engine = engine;
     ProcessedProgram = processedProgram;
-    Implementation = implementation;
+    Split = split;
     
-    var cachedVerificationResult = engine.GetCachedVerificationResult(Implementation, TextWriter.Null);
+    var cachedVerificationResult = engine.GetCachedVerificationResult(split.Implementation, TextWriter.Null);
     if (cachedVerificationResult != null) {
-      CacheStatus = new Completed(cachedVerificationResult);
+      CacheStatus = new Completed(cachedVerificationResult.RunResults[Split.SplitIndex]);
     } else {
       CacheStatus = new Stale();
     }

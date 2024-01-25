@@ -13,8 +13,8 @@ namespace VC
 {
   public class SplitAndVerifyWorker
   {
-    public IObservable<(Split split, VCResult vcResult)> BatchCompletions => batchCompletions;
-    private readonly Subject<(Split split, VCResult vcResult)> batchCompletions = new();
+    public IObservable<(Split split, VerificationRunResult vcResult)> BatchCompletions => batchCompletions;
+    private readonly Subject<(Split split, VerificationRunResult vcResult)> batchCompletions = new();
 
     private readonly VCGenOptions options;
     private readonly VerifierCallback callback;
@@ -254,7 +254,7 @@ namespace VC
       }
     }
 
-    private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)
+    private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback, VerificationRunResult verificationRunResult, CancellationToken cancellationToken)
     {
       if (split.LastChance) {
         string msg = "some timeout";
@@ -266,8 +266,8 @@ namespace VC
         callback.OnCounterexample(cex, msg);
         split.Counterexamples.Add(cex);
         // Update one last time the result with the dummy counter-example to indicate the position of the timeout
-        var result = vcResult with {
-          counterExamples = split.Counterexamples
+        var result = verificationRunResult with {
+          CounterExamples = split.Counterexamples
         };
         batchCompletions.OnNext((split, result));
         outcome = Outcome.Errors;
@@ -317,7 +317,7 @@ namespace VC
         callback.OnOutOfResource(msg);
       }
 
-      batchCompletions.OnNext((split, vcResult));
+      batchCompletions.OnNext((split, verificationRunResult));
     }
   }
 }

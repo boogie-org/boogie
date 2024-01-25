@@ -1269,7 +1269,7 @@ namespace VC
         }
       }
 
-      public (ProverInterface.Outcome outcome, VCResult result, int resourceCount) ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
+      public (ProverInterface.Outcome outcome, VerificationRunResult result, int resourceCount) ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
         ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
@@ -1285,18 +1285,18 @@ namespace VC
         }
 
         var resourceCount = checker.GetProverResourceCount();
-        var result = new VCResult(
+        var result = new VerificationRunResult(
           vcNum: SplitIndex + 1,
-          iteration: iteration,
-          startTime: checker.ProverStart,
-          outcome: outcome,
-          runTime: checker.ProverRunTime,
-          maxCounterExamples: checker.Options.ErrorLimit,
-          counterExamples: Counterexamples,
-          asserts: Asserts,
-          coveredElements: CoveredElements,
-          resourceCount: resourceCount,
-          solverUsed: (options as SMTLibSolverOptions)?.Solver);
+          Iteration: iteration,
+          StartTime: checker.ProverStart,
+          Outcome: outcome,
+          RunTime: checker.ProverRunTime,
+          MaxCounterExamples: checker.Options.ErrorLimit,
+          CounterExamples: Counterexamples,
+          Asserts: Asserts,
+          CoveredElements: CoveredElements,
+          ResourceCount: resourceCount,
+          SolverUsed: (options as SMTLibSolverOptions)?.Solver);
         callback.OnVCResult(result);
 
         if (options.VcsDumpSplits)
