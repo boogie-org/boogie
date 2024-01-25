@@ -384,8 +384,6 @@ public class VerificationConditionGenerator : ConditionGeneration
 
     var worker = new SplitAndVerifyWorker(Options, this, run, dataGotoCmdOrigins, callback,
       dataModelViewInfo, vcOutcome);
-      
-    worker.BatchCompletions.Subscribe(batchCompletedObserver);
             
     vcOutcome = await worker.WorkUntilDone(cancellationToken);
     ResourceCount = worker.ResourceCount;
