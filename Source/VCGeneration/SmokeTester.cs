@@ -11,7 +11,7 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace VC;
 
-class SmokeTester
+public class SmokeTester
 {
   [ContractInvariantMethod]
   void ObjectInvariant()

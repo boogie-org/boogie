@@ -34,7 +34,7 @@ public record Running : IVerificationStatus;
 
 public record BatchCompleted(Split Split, VCResult VcResult) : IVerificationStatus;
 
-public interface IImplementationTask {
+public interface IVerificationTask {
   IVerificationStatus CacheStatus { get; }
 
   ProcessedProgram ProcessedProgram { get; }
@@ -51,7 +51,7 @@ public interface IImplementationTask {
   void Cancel();
 }
 
-public class ImplementationTask : IImplementationTask {
+public class VerificationTask : IVerificationTask {
   private readonly ExecutionEngine engine;
   private readonly object mayAccessCancellationSource = new();
 
@@ -61,7 +61,7 @@ public class ImplementationTask : IImplementationTask {
 
   public Implementation Implementation { get; }
   
-  public ImplementationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Implementation implementation) {
+  public VerificationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Split implementation) {
     this.engine = engine;
     ProcessedProgram = processedProgram;
     Implementation = implementation;

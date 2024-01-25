@@ -66,7 +66,7 @@ procedure Second(y: int)
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.PrintErrorModel = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
-    var tasks = engine.GetImplementationTasks(program);
+    var tasks = engine.GetVerificationTasks(program);
     Assert.AreEqual(2, tasks.Count);
     Assert.NotNull(tasks[0].Implementation);
     var result1 = await tasks[0].TryRun()!.ToTask();
@@ -225,7 +225,7 @@ procedure Foo(x: int) {
 }".TrimStart();
     var result = Parser.Parse(source, "fakeFilename1", out var program);
     Assert.AreEqual(0, result);
-    var tasks = engine.GetImplementationTasks(program)[0];
+    var tasks = engine.GetVerificationTasks(program)[0];
     var statusList1 = new List<IVerificationStatus>();
     var firstStatuses = tasks.TryRun()!;
     await firstStatuses.Where(s => s is Running).FirstAsync().ToTask();
@@ -261,7 +261,7 @@ procedure Foo(x: int) {
 }".TrimStart();
     var result = Parser.Parse(source, "fakeFilename1", out var program);
     Assert.AreEqual(0, result);
-    var task = engine.GetImplementationTasks(program)[0];
+    var task = engine.GetVerificationTasks(program)[0];
     var statusList1 = new List<IVerificationStatus>();
     var firstStatuses = task.TryRun()!;
     var runDuringRun1 = task.TryRun();
@@ -307,7 +307,7 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
 ";
     Parser.Parse(programString, "fakeFilename1", out var program);
     Assert.AreEqual("Bad", program.Implementations.ElementAt(0).Name);
-    var tasks = engine.GetImplementationTasks(program);
+    var tasks = engine.GetVerificationTasks(program);
     var statusList = new List<(string, IVerificationStatus)>();
 
     var first = tasks[0];
@@ -338,7 +338,7 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     Assert.AreEqual(secondName, statusList[6].Item1);
     Assert.IsTrue(statusList[6].Item2 is Completed);
     
-    var tasks2 = engine.GetImplementationTasks(program);
+    var tasks2 = engine.GetVerificationTasks(program);
     Assert.True(tasks2[0].CacheStatus is Completed);
     Assert.AreEqual(ConditionGeneration.Outcome.Errors, ((Completed)tasks2[0].CacheStatus).Result.Outcome);
 
@@ -373,10 +373,10 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     // We limit the number of checkers to 1.
     options.VcsCores = 1;
 
-    var outcome1 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+    var outcome1 = await executionEngine.GetVerificationTasks(terminatingProgram)[0].TryRun()!.ToTask();
     Assert.IsTrue(outcome1 is Completed completed && completed.Result.Outcome == ConditionGeneration.Outcome.Inconclusive);
     options.CreateSolver = (_ ,_ ) => new UnsatSolver();
-    var outcome2 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+    var outcome2 = await executionEngine.GetVerificationTasks(terminatingProgram)[0].TryRun()!.ToTask();
     Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.Outcome == ConditionGeneration.Outcome.Correct);
   }
 

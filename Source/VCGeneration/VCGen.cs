@@ -367,26 +367,7 @@ namespace VC
       callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
 
 
-      var data = implementationData.GetOrCreateValue(run.Implementation)!;
-      if (!data.ConvertedToDAG) {
-        data.ConvertedToDAG = true;
-        ConvertCFG2DAG(run);
-      }
-
-      SmokeTester smokeTester = null;
-      if (Options.SoundnessSmokeTest)
-      {
-        smokeTester = new SmokeTester(this, run, callback);
-        smokeTester.Copy();
-      }
-
-      if (!data.Passified) {
-        data.Passified = true;
-        data.GotoCmdOrigins = PassifyImpl(run, out var mvInfo);
-        data.ModelViewInfo = mvInfo;
-
-        ExpandAsserts(impl);
-      }
+      PrepareImplementation(run, callback, impl, out var smokeTester, out var dataGotoCmdOrigins, out var dataModelViewInfo);
 
       Outcome outcome = Outcome.Correct;
 
@@ -406,15 +387,16 @@ namespace VC
             else
             {
               // If possible, we use the old counterexample, but with the location information of "a"
-              var cex = AssertCmdToCloneCounterexample(CheckerPool.Options, a, oldCex, impl.Blocks[0], data.GotoCmdOrigins);
+              var cex = AssertCmdToCloneCounterexample(CheckerPool.Options, a, oldCex, impl.Blocks[0], dataGotoCmdOrigins);
               callback.OnCounterexample(cex, null);
             }
           }
         }
       }
 
-      var worker = new SplitAndVerifyWorker(Options, this, run, data.GotoCmdOrigins, callback,
-        data.ModelViewInfo, outcome);
+      var worker = new SplitAndVerifyWorker(Options, this, run, dataGotoCmdOrigins, callback,
+        dataModelViewInfo, outcome);
+      
       worker.BatchCompletions.Subscribe(batchCompletedObserver);
             
       outcome = await worker.WorkUntilDone(cancellationToken);
@@ -429,6 +411,36 @@ namespace VC
       callback.OnProgress?.Invoke("done", 0, 0, 1.0);
 
       return outcome;
+    }
+
+    public void PrepareImplementation(ImplementationRun run, VerifierCallback callback,
+      out SmokeTester smokeTester, 
+      out Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
+      out ModelViewInfo modelViewInfo)
+    {
+      var data = implementationData.GetOrCreateValue(run.Implementation)!;
+      if (!data.ConvertedToDAG) {
+        data.ConvertedToDAG = true;
+        ConvertCFG2DAG(run);
+      }
+
+      smokeTester = null;
+      if (Options.SoundnessSmokeTest)
+      {
+        smokeTester = new SmokeTester(this, run, callback);
+        smokeTester.Copy();
+      }
+
+      if (!data.Passified) {
+        data.Passified = true;
+        data.GotoCmdOrigins = PassifyImpl(run, out var mvInfo);
+        data.ModelViewInfo = mvInfo;
+
+        ExpandAsserts(run.Implementation);
+      }
+
+      gotoCmdOrigins = data.GotoCmdOrigins;
+      modelViewInfo = data.ModelViewInfo;
     }
 
     public class ErrorReporter : ProverInterface.ErrorHandler {

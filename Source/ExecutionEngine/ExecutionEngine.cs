@@ -703,7 +703,7 @@ namespace Microsoft.Boogie
 
     }
 
-    public IReadOnlyList<IImplementationTask> GetImplementationTasks(Program program) {
+    public IReadOnlyList<IVerificationTask> GetVerificationTasks(Program program) {
       program.Resolve(Options);
       program.Typecheck(Options);
 
@@ -713,7 +713,21 @@ namespace Microsoft.Boogie
       Inline(program);
 
       var processedProgram = PreProcessProgramVerification(program);
-      return GetPrioritizedImplementations(program).Select(implementation => new ImplementationTask(this, processedProgram, implementation)).ToList();
+      return GetPrioritizedImplementations(program).SelectMany(implementation =>
+      {
+        var writer = new StringWriter();
+        var vcGenerator = new VCGen(processedProgram.Program, checkerPool);
+
+        var run = new ImplementationRun(implementation, writer);
+        var verifierCallback = new VerifierCallback(CoreOptions.ProverWarnings.None);
+        vcGenerator.PrepareImplementation(run, verifierCallback, out _,
+          out var gotoCmdOrigins,
+          out var modelViewInfo);
+
+        var worker = new SplitAndVerifyWorker(Options, vcGenerator, run, gotoCmdOrigins, verifierCallback, modelViewInfo,
+          ConditionGeneration.Outcome.Correct);
+        return worker.ManualSplits.Select(split => new VerificationTask(this, processedProgram, split));
+      }).ToList();
     }
 
     /// <returns>

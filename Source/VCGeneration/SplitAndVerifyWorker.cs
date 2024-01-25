@@ -11,7 +11,7 @@ using static VC.ConditionGeneration;
 
 namespace VC
 {
-  class SplitAndVerifyWorker
+  public class SplitAndVerifyWorker
   {
     public IObservable<(Split split, VCResult vcResult)> BatchCompletions => batchCompletions;
     private readonly Subject<(Split split, VCResult vcResult)> batchCompletions = new();
@@ -22,11 +22,11 @@ namespace VC
     private readonly ImplementationRun run;
       
     private readonly int maxKeepGoingSplits;
-    private readonly List<Split> manualSplits;
+    public List<Split> ManualSplits { get; }
     private double maxVcCost;
     private readonly bool splitOnEveryAssert;
       
-    private bool DoSplitting => manualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
+    private bool DoSplitting => ManualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
 
@@ -67,10 +67,10 @@ namespace VC
       Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(Implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(options, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      ManualSplits = Split.FocusAndSplit(options, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
-      if (manualSplits.Count == 1 && maxSplits > 1) {
-        manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
+      if (ManualSplits.Count == 1 && maxSplits > 1) {
+        ManualSplits = Split.DoSplit(ManualSplits[0], maxVcCost, maxSplits);
         maxVcCost = 1.0;
       }
       
@@ -79,10 +79,10 @@ namespace VC
 
     public async Task<Outcome> WorkUntilDone(CancellationToken cancellationToken)
     {
-      TrackSplitsCost(manualSplits);
+      TrackSplitsCost(ManualSplits);
       try
       {
-        await Task.WhenAll(manualSplits.Select(split => DoWorkForMultipleIterations(split, cancellationToken)));
+        await Task.WhenAll(ManualSplits.Select(split => DoWorkForMultipleIterations(split, cancellationToken)));
       }
       finally
       {
