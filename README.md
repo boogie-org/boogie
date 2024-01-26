@@ -88,7 +88,7 @@ Call Boogie with `/proverOpt:SOLVER=CVC5`.
 
 ### Yices2 (experimental)
 
-Call Boogie with `/proverOpt:SOLVER=Yices2 /useArrayTheory`.
+Call Boogie with `/proverOpt:SOLVER=Yices2`.
 
 Works for unquantified fragments, e.g. arrays + arithmetic + bitvectors. Does
 not work for quantifiers, generalized arrays, datatypes.
