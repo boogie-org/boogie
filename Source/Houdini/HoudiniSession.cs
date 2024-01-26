@@ -156,7 +156,7 @@ namespace Microsoft.Boogie.Houdini
       return false;
     }
 
-    public HoudiniSession(Houdini houdini, VCGen vcgen, ProverInterface proverInterface, Program program,
+    public HoudiniSession(Houdini houdini, VerificationConditionGenerator vcgen, ProverInterface proverInterface, Program program,
       ImplementationRun run, HoudiniStatistics stats, int taskID = -1)
     {
       var impl = run.Implementation;
@@ -195,7 +195,7 @@ namespace Microsoft.Boogie.Houdini
         new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
-      handler = new VCGen.ErrorReporter(this.houdini.Options, gotoCmdOrigins, absyIds, impl.Blocks, impl.debugInfos, collector,
+      handler = new VerificationConditionGenerator.ErrorReporter(this.houdini.Options, gotoCmdOrigins, absyIds, impl.Blocks, impl.debugInfos, collector,
         mvInfo, proverInterface.Context, program, this);
     }
 

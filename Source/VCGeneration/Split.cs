@@ -64,7 +64,7 @@ namespace VC
 
       public Dictionary<TransferCmd, ReturnCmd> GotoCmdOrigins { get; }
 
-      public readonly VCGen /*!*/ parent;
+      public readonly VerificationConditionGenerator /*!*/ parent;
 
       public Implementation /*!*/ Implementation => Run.Implementation;
 
@@ -84,11 +84,11 @@ namespace VC
 
       // async interface
       public int SplitIndex { get; set; }
-      internal VCGen.ErrorReporter reporter;
+      internal VerificationConditionGenerator.ErrorReporter reporter;
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
-        VCGen /*!*/ par, ImplementationRun run)
+        VerificationConditionGenerator /*!*/ par, ImplementationRun run)
       {
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
@@ -616,7 +616,7 @@ namespace VC
 
             if (swap)
             {
-              theNewCmd = VCGen.AssertTurnedIntoAssume(Options, a);
+              theNewCmd = VerificationConditionGenerator.AssertTurnedIntoAssume(Options, a);
             }
           }
 
@@ -756,7 +756,7 @@ namespace VC
             Contract.Assert(c != null);
             if (c is AssertCmd)
             {
-              var counterexample = VCGen.AssertCmdToCounterexample(Options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
+              var counterexample = VerificationConditionGenerator.AssertCmdToCounterexample(Options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
               Counterexamples.Add(counterexample);
               return counterexample;
             }
@@ -943,7 +943,7 @@ namespace VC
 
           ProverContext ctx = checker.TheoremProver.Context;
           Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-          var cc = new VCGen.CodeExprConversionClosure(traceWriter, checker.Pool.Options, absyIds, ctx);
+          var cc = new VerificationConditionGenerator.CodeExprConversionClosure(traceWriter, checker.Pool.Options, absyIds, ctx);
           bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
           var exprGen = ctx.ExprGen;
@@ -957,7 +957,7 @@ namespace VC
             exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
-          reporter = new VCGen.ErrorReporter(Options, GotoCmdOrigins, absyIds, Implementation.Blocks, Implementation.debugInfos, callback,
+          reporter = new VerificationConditionGenerator.ErrorReporter(Options, GotoCmdOrigins, absyIds, Implementation.Blocks, Implementation.debugInfos, callback,
             mvInfo, checker.TheoremProver.Context, parent.program, this);
         }
 

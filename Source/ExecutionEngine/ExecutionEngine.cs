@@ -19,7 +19,7 @@ using VCGeneration;
 
 namespace Microsoft.Boogie
 {
-  public record ProcessedProgram(Program Program, Action<VCGen, Implementation, ImplementationRunResult> PostProcessResult) {
+  public record ProcessedProgram(Program Program, Action<VerificationConditionGenerator, Implementation, ImplementationRunResult> PostProcessResult) {
     public ProcessedProgram(Program program) : this(program, (_, _, _) => { }) {
     }
   }
@@ -880,7 +880,7 @@ namespace Microsoft.Boogie
       var batchCompleted = new Subject<(Split split, VerificationRunResult vcResult)>();
       var completeVerification = largeThreadTaskFactory.StartNew(async () =>
       {
-        var vcgen = new VCGen(processedProgram.Program, checkerPool);
+        var vcgen = new VerificationConditionGenerator(processedProgram.Program, checkerPool);
         vcgen.CachingActionCounts = stats.CachingActionCounts;
         verificationResult.ProofObligationCountBefore = vcgen.CumulativeAssertionCount;
         verificationResult.Start = DateTime.UtcNow;

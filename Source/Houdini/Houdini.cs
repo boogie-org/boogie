@@ -393,7 +393,7 @@ namespace Microsoft.Boogie.Houdini
   {
     protected Program program;
     protected HashSet<Variable> houdiniConstants;
-    protected VCGen vcgen;
+    protected VerificationConditionGenerator vcgen;
     protected ProverInterface proverInterface;
     protected Graph<Implementation> callGraph;
     protected HashSet<Implementation> vcgenFailures;
@@ -470,7 +470,7 @@ namespace Microsoft.Boogie.Houdini
       */
 
       var checkerPool = new CheckerPool(Options);
-      this.vcgen = new VCGen(program, checkerPool);
+      this.vcgen = new VerificationConditionGenerator(program, checkerPool);
       this.proverInterface = ProverInterface.CreateProver(Options, program, Options.ProverLogFilePath,
         Options.ProverLogFileAppend, Options.TimeLimit, taskID: GetTaskID());
 

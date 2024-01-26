@@ -18,14 +18,14 @@ namespace VC
   using Bpl = Microsoft.Boogie;
   using System.Threading.Tasks;
 
-  public class VCGen : ConditionGeneration
+  public class VerificationConditionGenerator : ConditionGeneration
   {
     
     /// <summary>
     /// Constructor.  Initializes the theorem prover.
     /// </summary>
     [NotDelayed]
-    public VCGen(Program program, CheckerPool checkerPool)
+    public VerificationConditionGenerator(Program program, CheckerPool checkerPool)
       : base(program, checkerPool)
     {
       Contract.Requires(program != null);
@@ -89,7 +89,7 @@ namespace VC
 
       public VCExpr CodeExprToVerificationCondition(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext, Dictionary<Cmd, List<object>> debugInfos)
       {
-        VCGen vcgen = new VCGen(new Program(), new CheckerPool(options));
+        VerificationConditionGenerator vcgen = new VerificationConditionGenerator(new Program(), new CheckerPool(options));
         vcgen.variable2SequenceNumber = new Dictionary<Variable, int>();
         vcgen.incarnationOriginMap = new Dictionary<Incarnation, Absy>();
         vcgen.CurrentLocalVariables = codeExpr.LocVars;

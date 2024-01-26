@@ -196,7 +196,7 @@ namespace Microsoft.Boogie
               {
                 var cmd = GetTraceCmd(loc);
                 var calleeName = GetCalledProcName(cmd);
-                if (calleeName.StartsWith(VC.StratifiedVCGenBase.recordProcName) &&
+                if (calleeName.StartsWith(VC.StratifiedVerificationConditionGeneratorBase.recordProcName) &&
                     options.StratifiedInlining > 0)
                 {
                   Contract.Assert(calleeCounterexamples[loc].args.Count == 1);

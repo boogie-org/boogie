@@ -31,7 +31,7 @@ namespace VC
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
 
-    private VCGen vcGen;
+    private VerificationConditionGenerator verificationConditionGenerator;
     private VcOutcome vcOutcome;
     private double remainingCost;
     private double provenCost;
@@ -40,7 +40,7 @@ namespace VC
 
     private int totalResourceCount;
 
-    public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
+    public SplitAndVerifyWorker(VCGenOptions options, VerificationConditionGenerator verificationConditionGenerator, ImplementationRun run,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
       VcOutcome vcOutcome)
     {
@@ -49,16 +49,16 @@ namespace VC
       this.mvInfo = mvInfo;
       this.run = run;
       this.vcOutcome = vcOutcome;
-      this.vcGen = vcGen;
+      this.verificationConditionGenerator = verificationConditionGenerator;
       var maxSplits = options.VcsMaxSplits;
-      VCGen.CheckIntAttributeOnImpl(run, "vcs_max_splits", ref maxSplits);
+      VerificationConditionGenerator.CheckIntAttributeOnImpl(run, "vcs_max_splits", ref maxSplits);
       
       maxKeepGoingSplits = options.VcsMaxKeepGoingSplits;
-      VCGen.CheckIntAttributeOnImpl(run, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
+      VerificationConditionGenerator.CheckIntAttributeOnImpl(run, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
       
       maxVcCost = options.VcsMaxCost;
       var tmpMaxVcCost = -1;
-      VCGen.CheckIntAttributeOnImpl(run, "vcs_max_cost", ref tmpMaxVcCost);
+      VerificationConditionGenerator.CheckIntAttributeOnImpl(run, "vcs_max_cost", ref tmpMaxVcCost);
       if (tmpMaxVcCost >= 0)
       {
         maxVcCost = tmpMaxVcCost;
@@ -68,7 +68,7 @@ namespace VC
       Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(Implementation.Blocks);
-      manualSplits = ManualSplitFinder.FocusAndSplit(options, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = ManualSplitFinder.FocusAndSplit(options, run, gotoCmdOrigins, verificationConditionGenerator, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
