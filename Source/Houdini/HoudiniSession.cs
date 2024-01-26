@@ -252,7 +252,7 @@ namespace Microsoft.Boogie.Houdini
 
     public HoudiniOptions Options => houdini.Options;
 
-    public async Task<(Outcome, List<Counterexample> errors)> Verify(
+    public async Task<(SolverOutcome, List<Counterexample> errors)> Verify(
       ProverInterface proverInterface,
       Dictionary<Variable, bool> assignment,
       int errorLimit)
@@ -393,7 +393,7 @@ namespace Microsoft.Boogie.Houdini
       var el = Options.ErrorLimit;
       Options.ErrorLimit = 1;
 
-      var outcome = Outcome.Undetermined;
+      var outcome = SolverOutcome.Undetermined;
 
       do
       {
@@ -402,8 +402,8 @@ namespace Microsoft.Boogie.Houdini
           handler, CancellationToken.None);
         hardAssumptions.RemoveAt(hardAssumptions.Count - 1);
 
-        if (outcome == Outcome.TimeOut || outcome == Outcome.OutOfMemory ||
-            outcome == Outcome.OutOfResource || outcome == Outcome.Undetermined)
+        if (outcome == SolverOutcome.TimeOut || outcome == SolverOutcome.OutOfMemory ||
+            outcome == SolverOutcome.OutOfResource || outcome == SolverOutcome.Undetermined)
         {
           break;
         }
@@ -436,8 +436,8 @@ namespace Microsoft.Boogie.Houdini
         (outcome, var unsatisfiedSoftAssumptions2) = await proverInterface.CheckAssumptions(hardAssumptions, softAssumptions2,
           handler, CancellationToken.None);
 
-        if (outcome == Outcome.TimeOut || outcome == Outcome.OutOfMemory ||
-            outcome == Outcome.OutOfResource || outcome == Outcome.Undetermined)
+        if (outcome == SolverOutcome.TimeOut || outcome == SolverOutcome.OutOfMemory ||
+            outcome == SolverOutcome.OutOfResource || outcome == SolverOutcome.Undetermined)
         {
           break;
         }
@@ -467,8 +467,8 @@ namespace Microsoft.Boogie.Houdini
         }
       } while (false);
 
-      if (outcome == Outcome.TimeOut || outcome == Outcome.OutOfMemory ||
-          outcome == Outcome.OutOfResource || outcome == Outcome.Undetermined)
+      if (outcome == SolverOutcome.TimeOut || outcome == SolverOutcome.OutOfMemory ||
+          outcome == SolverOutcome.OutOfResource || outcome == SolverOutcome.Undetermined)
       {
         Houdini.explainHoudiniDottyFile.WriteLine("{0} -> {1} [ label = \"{2}\" color=red ];", refutedConstant.Name,
           "TimeOut", Description);
@@ -515,8 +515,8 @@ namespace Microsoft.Boogie.Houdini
         assumptionExprs.Add(exprTranslator.LookupVariable(v));
       }
 
-      (Outcome tmp, var unsatCore) = await proverInterface.CheckAssumptions(assumptionExprs, handler, CancellationToken.None);
-      System.Diagnostics.Debug.Assert(tmp == Outcome.Valid);
+      (SolverOutcome tmp, var unsatCore) = await proverInterface.CheckAssumptions(assumptionExprs, handler, CancellationToken.None);
+      System.Diagnostics.Debug.Assert(tmp == SolverOutcome.Valid);
       unsatCoreSet = new HashSet<Variable>();
       foreach (int i in unsatCore)
       {

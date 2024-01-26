@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Microsoft.Boogie;
 using VCGeneration;
 using static VC.ConditionGeneration;
-using Outcome = Microsoft.Boogie.Outcome;
 
 namespace VC
 {
@@ -197,17 +196,17 @@ namespace VC
       }
     }
 
-    private static bool IsProverFailed(Outcome outcome)
+    private static bool IsProverFailed(SolverOutcome outcome)
     {
       switch (outcome)
       {
-        case Outcome.Valid:
-        case Outcome.Invalid:
-        case Outcome.Undetermined:
+        case SolverOutcome.Valid:
+        case SolverOutcome.Invalid:
+        case SolverOutcome.Undetermined:
           return false;
-        case Outcome.OutOfMemory:
-        case Outcome.TimeOut:
-        case Outcome.OutOfResource:
+        case SolverOutcome.OutOfMemory:
+        case SolverOutcome.TimeOut:
+        case SolverOutcome.OutOfResource:
           return true;
         default:
           Contract.Assert(false);
@@ -215,36 +214,36 @@ namespace VC
       }
     }
 
-    private static VcOutcome MergeOutcomes(VcOutcome currentVcOutcome, Outcome newOutcome)
+    private static VcOutcome MergeOutcomes(VcOutcome currentVcOutcome, SolverOutcome newOutcome)
     {
       switch (newOutcome)
       {
-        case Outcome.Valid:
+        case SolverOutcome.Valid:
           return currentVcOutcome;
-        case Outcome.Invalid:
+        case SolverOutcome.Invalid:
           return VcOutcome.Errors;
-        case Outcome.OutOfMemory:
+        case SolverOutcome.OutOfMemory:
           if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
           {
             return VcOutcome.OutOfMemory;
           }
 
           return currentVcOutcome;
-        case Outcome.TimeOut:
+        case SolverOutcome.TimeOut:
           if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
           {
             return VcOutcome.TimedOut;
           }
 
           return currentVcOutcome;
-        case Outcome.OutOfResource:
+        case SolverOutcome.OutOfResource:
           if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
           {
             return VcOutcome.OutOfResource;
           }
 
           return currentVcOutcome;
-        case Outcome.Undetermined:
+        case SolverOutcome.Undetermined:
           if (currentVcOutcome != VcOutcome.Errors)
           {
             return VcOutcome.Inconclusive;

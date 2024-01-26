@@ -353,7 +353,7 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     Assert.Contains(assertion, perAssertCounterExamples.Keys);
     var outcomeAssertion = perAssertOutcome[assertion];
     var counterExampleAssertion = perAssertCounterExamples[assertion];
-    Assert.AreEqual(Outcome.Invalid, outcomeAssertion);
+    Assert.AreEqual(SolverOutcome.Invalid, outcomeAssertion);
     Assert.AreEqual(true, counterExampleAssertion is AssertCounterexample);
     var assertCounterexample = (AssertCounterexample)counterExampleAssertion;
     Assert.AreEqual(assertCounterexample.FailingAssert, assertion);

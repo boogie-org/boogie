@@ -501,7 +501,7 @@ namespace VC
       }
 
       public override void OnModel(IList<string> labels /*!*/ /*!*/, Model model,
-        Bpl.Outcome proverOutcome)
+        Bpl.SolverOutcome proverOutcome)
       {
         // no counter examples reported.
         if (labels.Count == 0)

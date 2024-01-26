@@ -63,7 +63,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     private bool hasReset = true;
-    public override async Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
+    public override async Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
     {
       currentErrorHandler = handler;
       try
@@ -185,12 +185,12 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     [NoDefaultContract]
-    public async Task<Outcome> CheckSat(CancellationToken cancellationToken,
+    public async Task<SolverOutcome> CheckSat(CancellationToken cancellationToken,
       int errorLimit)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 
-      var result = Outcome.Undetermined;
+      var result = SolverOutcome.Undetermined;
 
       if (Process == null || HadErrors)
       {
@@ -198,7 +198,7 @@ namespace Microsoft.Boogie.SMTLib
       }
       var errorsDiscovered = 0;
 
-      var globalResult = Outcome.Undetermined;
+      var globalResult = SolverOutcome.Undetermined;
 
       while (true)
       {
@@ -213,7 +213,7 @@ namespace Microsoft.Boogie.SMTLib
 
           var reporter = currentErrorHandler;
           // TODO(wuestholz): Is the reporter ever null?
-          if (usingUnsatCore && result == Outcome.Valid && reporter != null && 0 < NamedAssumes.Count)
+          if (usingUnsatCore && result == SolverOutcome.Valid && reporter != null && 0 < NamedAssumes.Count)
           {
             if (usingUnsatCore)
             {
@@ -222,16 +222,16 @@ namespace Microsoft.Boogie.SMTLib
             }
           }
 
-          if (libOptions.RunDiagnosticsOnTimeout && result == Outcome.TimeOut) {
+          if (libOptions.RunDiagnosticsOnTimeout && result == SolverOutcome.TimeOut) {
             (result, popLater) = await RunTimeoutDiagnostics(currentErrorHandler, result, cancellationToken);
           }
 
-          if (globalResult == Outcome.Undetermined)
+          if (globalResult == SolverOutcome.Undetermined)
           {
             globalResult = result;
           }
 
-          if (result == Outcome.Invalid)
+          if (result == SolverOutcome.Invalid)
           {
             Model model = await GetErrorModel(cancellationToken);
             if (libOptions.SIBoolControlVC)
@@ -244,7 +244,7 @@ namespace Microsoft.Boogie.SMTLib
               if (labels.Length == 0)
               {
                 // Without a path to an error, we don't know what to report
-                globalResult = Outcome.Undetermined;
+                globalResult = SolverOutcome.Undetermined;
                 break;
               }
             }
@@ -309,7 +309,7 @@ namespace Microsoft.Boogie.SMTLib
       return result;
     }
 
-    private async Task<(Outcome, bool)> RunTimeoutDiagnostics(ErrorHandler handler, Outcome result, CancellationToken cancellationToken)
+    private async Task<(SolverOutcome, bool)> RunTimeoutDiagnostics(ErrorHandler handler, SolverOutcome result, CancellationToken cancellationToken)
     {
       var popLater = false;
       if (libOptions.TraceDiagnosticsOnTimeout) {
@@ -332,9 +332,9 @@ namespace Microsoft.Boogie.SMTLib
           if (0 < timedOut.Count) {
             
             result = await WrapInPushPop(ref popLater, () => CheckSplit(timedOut, options.TimeLimit, timeLimitPerAssertion, ref queries, cancellationToken));
-            if (result == Outcome.Valid) {
+            if (result == SolverOutcome.Valid) {
               timedOut.Clear();
-            } else if (result == Outcome.TimeOut) {
+            } else if (result == SolverOutcome.TimeOut) {
               // Give up and report which assertions were not verified.
               var cmds = timedOut.Select(id => ctx.TimeoutDiagnosticIDToAssertion[id]);
 
@@ -343,7 +343,7 @@ namespace Microsoft.Boogie.SMTLib
               }
             }
           } else {
-            result = Outcome.Valid;
+            result = SolverOutcome.Valid;
           }
 
           break;
@@ -357,13 +357,13 @@ namespace Microsoft.Boogie.SMTLib
         
         var splitRes = await WrapInPushPop(ref popLater, () => CheckSplit(split, timeLimitPerAssertion, timeLimitPerAssertion,
           ref queries, cancellationToken));
-        if (splitRes == Outcome.Valid) {
+        if (splitRes == SolverOutcome.Valid) {
           unverified.ExceptWith(split);
           frac = 1;
-        } else if (splitRes == Outcome.Invalid) {
+        } else if (splitRes == SolverOutcome.Invalid) {
           result = splitRes;
           break;
-        } else if (splitRes == Outcome.TimeOut) {
+        } else if (splitRes == SolverOutcome.TimeOut) {
           if (2 <= frac && (4 <= (rem / frac))) {
             frac *= 4;
           } else if (2 <= (rem / frac)) {
@@ -407,7 +407,7 @@ namespace Microsoft.Boogie.SMTLib
       return (result, popLater);
     }
 
-    private Task<Outcome> CheckSplit(SortedSet<int> split, uint timeLimit, uint timeLimitPerAssertion,
+    private Task<SolverOutcome> CheckSplit(SortedSet<int> split, uint timeLimit, uint timeLimitPerAssertion,
       ref int queries, CancellationToken cancellationToken)
     {
       var tla = (uint)(timeLimitPerAssertion * split.Count);
@@ -497,9 +497,9 @@ namespace Microsoft.Boogie.SMTLib
       return resp != null ? ParseErrorModel(resp) : null;
     }
 
-    private async Task<Outcome> CheckSatAndGetResponse(CancellationToken cancellationToken)
+    private async Task<SolverOutcome> CheckSatAndGetResponse(CancellationToken cancellationToken)
     {
-      var result = Outcome.Undetermined;
+      var result = SolverOutcome.Undetermined;
       var wasUnknown = false;
 
       var checkSatResponse = await SendVcRequest("(check-sat)").WaitAsync(cancellationToken);
@@ -514,7 +514,7 @@ namespace Microsoft.Boogie.SMTLib
         if (getInfoResponse != null)
         {
           result = ParseReasonUnknown(getInfoResponse, result);
-          if (result == Outcome.OutOfMemory) {
+          if (result == SolverOutcome.OutOfMemory) {
             processNeedsRestart = true;
           }
         }
@@ -523,8 +523,8 @@ namespace Microsoft.Boogie.SMTLib
       if (options.Solver == SolverKind.Z3) {
         resourceCount = ParseRCount(await SendVcRequest($"(get-info :{Z3.RlimitOption})"));
         // Sometimes Z3 doesn't tell us that it ran out of resources
-        if (result != Outcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
-          result = Outcome.OutOfResource;
+        if (result != SolverOutcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
+          result = SolverOutcome.OutOfResource;
         }
       }
 
@@ -681,7 +681,7 @@ namespace Microsoft.Boogie.SMTLib
     /// </summary>
     static int nameCounter;
 
-    public override async Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions,
+    public override async Task<(SolverOutcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions,
       ErrorHandler handler, CancellationToken cancellationToken)
     {
       currentErrorHandler = handler;
@@ -706,7 +706,7 @@ namespace Microsoft.Boogie.SMTLib
         PrepareCommon();
         var outcome = await CheckSat(cancellationToken, libOptions.ErrorLimit);
 
-        if (outcome != Outcome.Valid)
+        if (outcome != SolverOutcome.Valid)
         {
           Pop();
           return (outcome, new List<int>());
@@ -738,7 +738,7 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override async Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
+    public override async Task<(SolverOutcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
       ErrorHandler handler, CancellationToken cancellationToken)
     {
       currentErrorHandler = handler;
@@ -766,7 +766,7 @@ namespace Microsoft.Boogie.SMTLib
 
         PrepareCommon();
         var outcome = await CheckSatAndGetResponse(cancellationToken);
-        if (outcome != Outcome.Invalid)
+        if (outcome != SolverOutcome.Invalid)
         {
           Pop();
           return (outcome, new List<int>());
@@ -785,7 +785,7 @@ namespace Microsoft.Boogie.SMTLib
 
           PrepareCommon();
           outcome = await CheckSat(cancellationToken, libOptions.ErrorLimit);
-          if (outcome != Outcome.Valid)
+          if (outcome != SolverOutcome.Valid)
           {
             break;
           }
@@ -805,7 +805,7 @@ namespace Microsoft.Boogie.SMTLib
           k++;
         }
 
-        if (outcome == Outcome.Invalid)
+        if (outcome == SolverOutcome.Invalid)
         {
           foreach (var relaxVar in relaxVars)
           {

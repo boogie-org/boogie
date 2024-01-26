@@ -112,7 +112,7 @@ public abstract class ProverInterface
       return 0;
     }
 
-    public virtual void OnModel(IList<string> labels, Model model, Outcome proverOutcome)
+    public virtual void OnModel(IList<string> labels, Model model, SolverOutcome proverOutcome)
     {
       Contract.Requires(cce.NonNullElements(labels));
     }
@@ -157,7 +157,7 @@ public abstract class ProverInterface
     }
   }
 
-  public abstract Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken);
+  public abstract Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken);
 
   public virtual void LogComment(string comment)
   {
@@ -232,13 +232,13 @@ public abstract class ProverInterface
   }
 
   // (check-sat + get-unsat-core + checkOutcome)
-  public virtual Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions, ErrorHandler handler,
+  public virtual Task<(SolverOutcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions, ErrorHandler handler,
     CancellationToken cancellationToken)
   {
     throw new NotImplementedException();
   }
 
-  public virtual Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
+  public virtual Task<(SolverOutcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
     ErrorHandler handler, CancellationToken cancellationToken)
   {
     throw new NotImplementedException();
@@ -295,7 +295,7 @@ public abstract class ProverInterface
   public abstract Task GoBackToIdle();
 }
 
-public enum Outcome
+public enum SolverOutcome
 {
   Valid,
   Invalid,

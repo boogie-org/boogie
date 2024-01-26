@@ -278,7 +278,7 @@ class SmokeTester
     Checker checker = await parent.CheckerPool.FindCheckerFor(parent, null, CancellationToken.None);
     Contract.Assert(checker != null);
 
-    Outcome outcome = Outcome.Undetermined;
+    SolverOutcome outcome = SolverOutcome.Undetermined;
     try
     {
       VCExpr vc;
@@ -327,12 +327,12 @@ class SmokeTester
     if (Options.Trace)
     {
       traceWriter.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,
-        outcome == Outcome.Valid
+        outcome == SolverOutcome.Valid
           ? "OOPS"
-          : "OK" + (outcome == Outcome.Invalid ? "" : " (" + outcome + ")"));
+          : "OK" + (outcome == SolverOutcome.Invalid ? "" : " (" + outcome + ")"));
     }
 
-    if (outcome == Outcome.Valid)
+    if (outcome == SolverOutcome.Valid)
     {
       // copy it again, so we get the version with calls, assignments and such
       copy = CopyBlock(cur);

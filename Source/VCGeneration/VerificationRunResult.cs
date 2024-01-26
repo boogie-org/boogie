@@ -20,7 +20,7 @@ namespace VC
     int VcNum,
     int Iteration,
     DateTime StartTime,
-    Bpl.Outcome Outcome,
+    Bpl.SolverOutcome Outcome,
     TimeSpan RunTime,
     int MaxCounterExamples,
     List<Counterexample> CounterExamples,
@@ -29,12 +29,12 @@ namespace VC
     int ResourceCount,
     SolverKind? SolverUsed
   ) {
-    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, Bpl.Outcome> perAssertOutcome,
+    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, Bpl.SolverOutcome> perAssertOutcome,
       out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
       perAssertOutcome = new();
       perAssertCounterExamples = new();
-      if (Outcome == Bpl.Outcome.Valid) {
-        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, assertCmd => Bpl.Outcome.Valid);
+      if (Outcome == Bpl.SolverOutcome.Valid) {
+        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, assertCmd => Bpl.SolverOutcome.Valid);
       } else {
         foreach (var counterExample in CounterExamples) {
           AssertCmd underlyingAssert;
@@ -53,17 +53,17 @@ namespace VC
             continue;
           }
 
-          perAssertOutcome.TryAdd(underlyingAssert, Bpl.Outcome.Invalid);
+          perAssertOutcome.TryAdd(underlyingAssert, Bpl.SolverOutcome.Invalid);
           perAssertCounterExamples.TryAdd(underlyingAssert, counterExample);
         }
 
         var remainingOutcome =
-          Outcome == Bpl.Outcome.Invalid && CounterExamples.Count < MaxCounterExamples
+          Outcome == Bpl.SolverOutcome.Invalid && CounterExamples.Count < MaxCounterExamples
             // We could not extract more counterexamples, remaining assertions are thus valid 
-            ? Bpl.Outcome.Valid
-            : Outcome == Bpl.Outcome.Invalid
+            ? Bpl.SolverOutcome.Valid
+            : Outcome == Bpl.SolverOutcome.Invalid
               // We reached the maximum number of counterexamples, we can't infer anything for the remaining assertions
-              ? Bpl.Outcome.Undetermined
+              ? Bpl.SolverOutcome.Undetermined
               // TimeOut, OutOfMemory, OutOfResource, Undetermined for a single split also applies to assertions
               : Outcome;
 

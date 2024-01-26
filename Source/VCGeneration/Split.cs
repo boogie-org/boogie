@@ -883,10 +883,10 @@ namespace VC
         return result;
       }
 
-      public (Bpl.Outcome outcome, VerificationRunResult result, int resourceCount) ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
+      public (Bpl.SolverOutcome outcome, VerificationRunResult result, int resourceCount) ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-        Bpl.Outcome outcome = cce.NonNull(checker).ReadOutcome();
+        Bpl.SolverOutcome outcome = cce.NonNull(checker).ReadOutcome();
 
         if (Options.Trace && SplitIndex >= 0)
         {
