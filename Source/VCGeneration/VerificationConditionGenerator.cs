@@ -69,9 +69,12 @@ public class VerificationConditionGenerator : ConditionGeneration
     }
 
     var assume = new AssumeCmd(assrt.tok, expr);
-    // Copy any {:id ...} from the assertion to the assumption, so
-    // we can track it while analyzing verification coverage.
-    (assume as ICarriesAttributes).CopyIdFrom(assrt.tok, assrt);
+    if (expr != Expr.True) {
+      // Copy any {:id ...} from the assertion to the assumption, so
+      // we can track it while analyzing verification coverage. But
+      // skip it if it's `true` because that's never useful to track.
+      (assume as ICarriesAttributes).CopyIdFrom(assrt.tok, assrt);
+    }
     return assume;
   }
 

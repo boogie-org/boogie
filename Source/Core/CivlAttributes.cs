@@ -44,7 +44,7 @@ namespace Microsoft.Boogie
     {
       return new LayerRange(Math.Min(first.LowerLayer, second.LowerLayer), Math.Max(first.UpperLayer, second.UpperLayer));
     }
-    
+
     public static LayerRange Union(List<LayerRange> layerRanges)
     {
       Debug.Assert(layerRanges.Any());
@@ -55,7 +55,7 @@ namespace Microsoft.Boogie
       }
       return unionLayerRange;
     }
-    
+
     public override string ToString()
     {
       return $"[{LowerLayer}, {UpperLayer}]";
@@ -169,7 +169,7 @@ namespace Microsoft.Boogie
     {
       RemoveAttributes(obj, LINEAR_ATTRIBUTES);
     }
-    
+
     public static bool IsCallMarked(CallCmd callCmd)
     {
       return callCmd.HasAttribute(MARK);
@@ -178,12 +178,12 @@ namespace Microsoft.Boogie
 
   public static class CivlPrimitives
   {
-    public static HashSet<string> LinearTypes = new() { "Lheap", "Lset", "Lval" };
+    public static HashSet<string> LinearTypes = new() { "Lmap", "Lset", "Lval" };
 
     public static HashSet<string> LinearPrimitives = new()
     {
-      "Ref_Alloc",
-      "Lheap_Empty", "Lheap_Get", "Lheap_Put", "Lheap_Read", "Lheap_Write", "Lheap_Alloc", "Lheap_Remove",
+      "Loc_New",
+      "Lmap_Empty", "Lmap_Alloc", "Lmap_Create", "Lmap_Free", "Lmap_Move", "Lmap_Assume",
       "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
       "Lval_Split", "Lval_Get", "Lval_Put"
     };
@@ -196,58 +196,32 @@ namespace Microsoft.Boogie
       }
       if (expr is NAryExpr nAryExpr)
       {
-        if (nAryExpr.Fun is FieldAccess)
+        if (nAryExpr.Fun is FieldAccess or MapSelect)
         {
-          return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
-        }
-        if (nAryExpr.Fun is MapSelect)
-        {
-          var mapExpr = nAryExpr.Args[0];
-          if (mapExpr is NAryExpr lheapValExpr &&
-              lheapValExpr.Fun is FieldAccess &&
-              lheapValExpr.Args[0].Type is CtorType ctorType &&
-              Monomorphizer.GetOriginalDecl(ctorType.Decl).Name == "Lheap")
-          {
-            return ExtractRootFromAccessPathExpr(lheapValExpr.Args[0]);
-          }
           return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
         }
       }
       return null;
     }
-    
+
     public static IdentifierExpr ModifiedArgument(CallCmd callCmd)
     {
       switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
-        case "Ref_Alloc":
-          return null;
-        case "Lheap_Empty":
-          return null;
-        case "Lheap_Get":
-        case "Lheap_Put":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lheap_Read":
-          return null;
-        case "Lheap_Write":
-        case "Lheap_Alloc":
-        case "Lheap_Remove":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+        case "Loc_New":
+        case "Lmap_Empty":
+        case "Lmap_Alloc":
+        case "Lmap_Create":
+        case "Lmap_Free":
+        case "Lmap_Move":
+        case "Lmap_Assume":
         case "Lset_Empty":
           return null;
-        case "Lset_Split":
-        case "Lset_Get":
-        case "Lset_Put":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
-        case "Lval_Split":
-        case "Lval_Get":
-        case "Lval_Put":
-          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
         default:
-          throw new cce.UnreachableException();
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
       }
     }
-    
+
     public static HashSet<string> Async = new()
     {
       "create_async", "create_asyncs", "create_multi_asyncs", "set_choice"

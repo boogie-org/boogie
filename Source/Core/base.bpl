@@ -217,65 +217,100 @@ function Set_Intersection<T>(a: Set T, b: Set T): Set T
   Set(MapAnd(a->val, b->val))
 }
 
-function Set_Choose<T>(a: Set T): T;
-axiom (forall<T> a: Set T :: {Set_Choose(a)} a == Set_Empty() || Set_Contains(a, Set_Choose(a)));
+function Choice<T>(a: [T]bool): T;
+axiom (forall<T> a: [T]bool :: {Choice(a)} a == MapConst(false) || a[Choice(a)]);
 
 /// finite maps
 datatype Map<T,U> {
   Map(dom: Set T, val: [T]U)
 }
 
+function {:inline} Map_Empty<T,U>(): Map T U
+{
+  Map(Set(MapConst(false)), MapConst(Default()))
+}
+
+function {:inline} Map_Singleton<T,U>(t: T, u: U): Map T U
+{
+  Map_Update(Map_Empty(), t, u)
+}
+
 function {:inline} Map_Contains<T,U>(a: Map T U, t: T): bool
 {
-    Set_Contains(a->dom, t)
+  Set_Contains(a->dom, t)
+}
+
+function {:inline} Map_IsDisjoint<T,U>(a: Map T U, b: Map T U): bool
+{
+  Set_IsDisjoint(a->dom, b->dom)
 }
 
 function {:inline} Map_At<T,U>(a: Map T U, t: T): U
 {
-    a->val[t]
+  a->val[t]
 }
 
 function {:inline} Map_Remove<T,U>(a: Map T U, t: T): Map T U
 {
-    Map(Set_Remove(a->dom, t), a->val[t := Default()])
+  Map(Set_Remove(a->dom, t), a->val[t := Default()])
 }
 
 function {:inline} Map_Update<T,U>(a: Map T U, t: T, u: U): Map T U
 {
-    Map(Set_Add(a->dom, t), a->val[t := u])
+  Map(Set_Add(a->dom, t), a->val[t := u])
 }
 
 function {:inline} Map_Swap<T,U>(a: Map T U, t1: T, t2: T): Map T U
 {
-    (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
+  (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
 }
 
-/// linear heaps
-type Ref _;
-procedure Ref_Alloc<V>() returns (k: Lval (Ref V));
+function {:inline} Map_WellFormed<K,V>(a: Map K V): bool {
+  a->val == MapIte(a->dom->val, a->val, MapConst(Default()))
+}
 
-datatype Lheap<V> { Lheap(dom: [Ref V]bool, val: [Ref V]V) }
-function Nil<V>(): Ref V;
+/// linear maps
+type Loc _;
+pure procedure {:inline 1} Loc_New<V>() returns (k: Lval (Loc V)) {
 
-function {:inline} Lheap_WellFormed<V>(l: Lheap V): bool {
-    l->val == MapIte(l->dom, l->val, MapConst(Default()))
 }
-function {:inline} Lheap_Collector<V>(l: Lheap V): [Ref V]bool {
-    MapConst(false)
+datatype Ref<V> {
+  Ref(loc: Loc V),
+  Nil()
 }
-function {:inline} Lheap_Contains<V>(l: Lheap V, k: Ref V): bool {
-    l->dom[k]
+
+datatype Lmap<K,V> { Lmap(val: Map K V) }
+type Lheap V = Lmap (Ref V) V;
+
+function {:inline} Lmap_WellFormed<K,V>(l: Lmap K V): bool {
+    Map_WellFormed(l->val)
 }
-function {:inline} Lheap_Deref<V>(l: Lheap V, k: Ref V): V {
-    l->val[k]
+function {:inline} Lmap_Collector<K,V>(l: Lmap K V): [K]bool {
+    l->val->dom->val
 }
-pure procedure Lheap_Empty<V>() returns (l: Lheap V);
-pure procedure Lheap_Get<V>(path: Lheap V, k: [Ref V]bool) returns (l: Lheap V);
-pure procedure Lheap_Put<V>(path: Lheap V, {:linear_in} l: Lheap V);
-pure procedure Lheap_Read<V>(path: V) returns (v: V);
-pure procedure Lheap_Write<V>(path: V, v: V);
-pure procedure Lheap_Alloc<V>(path: Lheap V, v: V) returns (l: Lval (Ref V));
-pure procedure Lheap_Remove<V>(path: Lheap V, k: Ref V) returns (v: V);
+pure procedure {:inline 1} Lmap_Empty<K,V>() returns (l: Lmap K V) {
+  l := Lmap(Map_Empty());
+}
+pure procedure {:inline 1} Lmap_Alloc<V>(v: V) returns (k: Lval (Loc V), l: Lmap (Ref V) V) {
+  var r: Ref V;
+  r := Ref(k->val);
+  l := Lmap(Map_Singleton(r, v));
+}
+pure procedure {:inline 1} Lmap_Create<K,V>({:linear_in} k: Lset K, val: [K]V) returns (l: Lmap K V) {
+  l := Lmap(Map(Set(k->dom), val));
+}
+pure procedure {:inline 1} Lmap_Free<K,V>({:linear_in} l: Lmap K V) returns (k: Lset K) {
+  k := Lset(l->val->dom->val);
+}
+pure procedure {:inline 1} Lmap_Move<K,V>({:linear_in} src: Lmap K V, dst: Lmap K V, k: K) returns (src': Lmap K V, dst': Lmap K V) {
+  assert Map_Contains(src->val, k);
+  assert Map_IsDisjoint(src->val, dst->val);
+  dst' := Lmap(Map_Update(dst->val, k, Map_At(src->val, k)));
+  src' := Lmap(Map_Remove(src->val, k));
+}
+pure procedure {:inline 1} Lmap_Assume<K,V>(src: Lmap K V, dst: Lmap K V) {
+  assume Map_IsDisjoint(src->val, dst->val);
+}
 
 /// linear sets
 datatype Lset<V> { Lset(dom: [V]bool) }
@@ -313,3 +348,6 @@ pure procedure {:inline 1} Copy<T>(v: T) returns (copy_v: T)
 {
   copy_v := v;
 }
+
+pure procedure Assume(b: bool);
+ensures b;

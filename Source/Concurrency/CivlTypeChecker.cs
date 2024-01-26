@@ -297,6 +297,15 @@ namespace Microsoft.Boogie
     
     private void InlineAtomicActions(HashSet<ActionDecl> actionDecls)
     {
+      var primitiveImpls = program.TopLevelDeclarations.OfType<Implementation>().Where(impl =>
+      {
+        var originalDecl = impl.Proc.OriginalDeclWithFormals;
+        return originalDecl != null && CivlPrimitives.LinearPrimitives.Contains(originalDecl.Name);
+      });
+      primitiveImpls.ForEach(impl => {
+        impl.OriginalBlocks = impl.Blocks;
+        impl.OriginalLocVars = impl.LocVars;
+      });
       CivlUtil.AddInlineAttribute(SkipActionDecl);
       actionDecls.ForEach(proc =>
       {
@@ -316,6 +325,10 @@ namespace Microsoft.Boogie
       actionDecls.ForEach(proc =>
       {
         var impl = proc.Impl;
+        impl.OriginalBlocks = null;
+        impl.OriginalLocVars = null;
+      });
+      primitiveImpls.ForEach(impl => {
         impl.OriginalBlocks = null;
         impl.OriginalLocVars = null;
       });

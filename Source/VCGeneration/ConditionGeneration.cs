@@ -1091,7 +1091,7 @@ namespace VC
         }
 
         Expr copy = Substituter.ApplyReplacingOldExprs(incarnationSubst, oldFrameSubst, pc.Expr);
-        if (Options.ModelViewFile != null && pc is AssumeCmd captureStateAssumeCmd)
+        if (Options.ExpectingModel && pc is AssumeCmd captureStateAssumeCmd)
         {
           string description = QKeyValue.FindStringAttribute(pc.Attributes, "captureState");
           if (description != null)

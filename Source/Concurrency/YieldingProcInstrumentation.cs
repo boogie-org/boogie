@@ -198,7 +198,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      foreach (var yieldInvariant in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>())
+      foreach (var yieldInvariant in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>().ToList())
       {
         if (layerNum == yieldInvariant.Layer)
         {

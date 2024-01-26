@@ -1,30 +1,15 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "mem"} ref = int;
-
-type lmap;
-function {:linear "mem"} dom(lmap) : [int]bool;
-function map(lmap) : [int]int;
-function cons([int]bool, [int]int) : lmap;
-axiom (forall x:[int]bool, y:[int]int :: {cons(x,y)} dom(cons(x, y)) == x && map(cons(x,y)) == y);
-axiom (forall x: lmap :: {dom(x)} {map(x)} cons(dom(x), map(x)) == x);
-
-function Add(x:lmap, i:int): lmap;
-axiom (forall x:lmap, i:int :: dom(Add(x, i)) == dom(x)[i:=true] && map(Add(x, i)) == map(x));
-
-function Remove(x:lmap, i:int): lmap;
-axiom (forall x:lmap, i:int :: dom(Remove(x, i)) == dom(x)[i:=false] && map(Remove(x, i)) == map(x));
-
-function {:inline} PoolInv(unallocated:[int]bool, pool:lmap) : (bool)
+function {:inline} PoolInv(unallocated:[int]bool, pool:Lset int) : (bool)
 {
-  (forall x:int :: unallocated[x] ==> dom(pool)[x])
+  (forall x:int :: unallocated[x] ==> Lset_Contains(pool, x))
 }
 
 yield procedure {:layer 2} Main ()
 preserves call Yield();
 {
-  var {:layer 1,2} {:linear "mem"} l:lmap;
+  var {:layer 1,2} l:Lmap int int;
   var i:int;
   while (*)
     invariant {:yields} true;
@@ -35,13 +20,13 @@ preserves call Yield();
   }
 }
 
-yield procedure {:layer 2} Thread ({:layer 1,2} {:linear_in "mem"} local_in:lmap, i:int)
+yield procedure {:layer 2} Thread ({:layer 1,2} {:linear_in} local_in:Lmap int int, i:int)
 preserves call Yield();
-requires {:layer 1,2} dom(local_in)[i];
+requires {:layer 1,2} Map_Contains(local_in->val, i);
 {
   var y, o:int;
-  var {:layer 1,2} {:linear "mem"} local:lmap;
-  var {:layer 1,2} {:linear "mem"} l:lmap;
+  var {:layer 1,2} local:Lmap int int;
+  var {:layer 1,2} l:Lmap int int;
 
   call local := Write(local_in, i, 42);
   call o := Read(local, i);
@@ -58,53 +43,56 @@ requires {:layer 1,2} dom(local_in)[i];
   }
 }
 
-right action {:layer 2} atomic_Alloc() returns ({:linear "mem"} l:lmap, i:int)
+right action {:layer 2} atomic_Alloc() returns (l:Lmap int int, i:int)
 modifies pool;
 {
-  assume dom(pool)[i];
+  assume Lset_Contains(pool, i);
   call l, pool := AllocLinear(i, pool);
 }
 
 yield procedure {:layer 1}
-Alloc() returns ({:layer 1} {:linear "mem"} l:lmap, i:int)
+Alloc() returns ({:layer 1} l:Lmap int int, i:int)
 refines atomic_Alloc;
 preserves call Yield();
-ensures {:layer 1} dom(l)[i];
+ensures {:layer 1} Map_Contains(l->val, i);
 {
   call i := PickAddr();
   call {:layer 1} l, pool := AllocLinear(i, pool);
 }
 
-left action {:layer 2} atomic_Free({:linear_in "mem"} l:lmap, i:int)
+left action {:layer 2} atomic_Free({:linear_in} l:Lmap int int, i:int)
 modifies pool;
 {
-  assert dom(l)[i];
-  pool := Add(pool, i);
+  var t:Lset int;
+  assert Map_Contains(l->val, i);
+  call t := Lmap_Free(l);
+  call Lset_Put(pool, t);
 }
 
-yield procedure {:layer 1} Free({:layer 1} {:linear_in "mem"} l:lmap, i:int)
+yield procedure {:layer 1} Free({:layer 1} {:linear_in} l:Lmap int int, i:int)
 refines atomic_Free;
-requires {:layer 1} dom(l)[i];
+requires {:layer 1} Map_Contains(l->val, i);
 preserves call Yield();
 {
   call {:layer 1} pool := FreeLinear(l, i, pool);
   call ReturnAddr(i);
 }
 
-both action {:layer 2} atomic_Read ({:linear "mem"} l:lmap, i:int) returns (o:int)
+both action {:layer 2} atomic_Read (l:Lmap int int, i:int) returns (o:int)
 {
-  assert dom(l)[i];
-  o := map(l)[i];
+  assert Map_Contains(l->val, i);
+  o := l->val->val[i];
 }
 
-both action {:layer 2} atomic_Write ({:linear_in "mem"} l:lmap, i:int, o:int) returns ({:linear "mem"} l':lmap)
+both action {:layer 2} atomic_Write ({:linear_in} l:Lmap int int, i:int, o:int) returns (l':Lmap int int)
 {
-  assert dom(l)[i];
-  l' := cons(dom(l), map(l)[i := o]);
+  assert Map_Contains(l->val, i);
+  l' := l;
+  l'->val->val[i] := o;
 }
 
 yield procedure {:layer 1}
-Read ({:layer 1} {:linear "mem"} l:lmap, i:int) returns (o:int)
+Read ({:layer 1} l:Lmap int int, i:int) returns (o:int)
 refines atomic_Read;
 requires call YieldMem(l, i);
 ensures call Yield();
@@ -113,44 +101,50 @@ ensures call Yield();
 }
 
 yield procedure {:layer 1}
-Write ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
+Write ({:layer 1} {:linear_in} l:Lmap int int, i:int, o:int) returns ({:layer 1} l':Lmap int int)
 refines atomic_Write;
 requires call Yield();
-requires {:layer 1} dom(l)[i];
+requires {:layer 1} Map_Contains(l->val, i);
 ensures call YieldMem(l', i);
 {
   call WriteLow(i, o);
   call {:layer 1} l' := WriteLinear(l, i, o);
 }
 
-pure action AllocLinear (i:int, {:linear_in "mem"} pool:lmap) returns ({:linear "mem"} l:lmap, {:linear "mem"} pool':lmap)
+pure action AllocLinear (i:int, {:linear_in} pool:Lset int) returns (l:Lmap int int, pool':Lset int)
 {
   var m:[int]int;
-  assert dom(pool)[i];
-  pool' := Remove(pool, i);
-  l := cons(MapConst(false)[i := true], m);
+  var t:Lset int;
+  assert Lset_Contains(pool, i);
+  pool' := pool;
+  call t := Lset_Get(pool', MapOne(i));
+  call l := Lmap_Create(t, m);
 }
 
-pure action FreeLinear ({:linear_in "mem"} l:lmap, i:int, {:linear_in "mem"} pool:lmap) returns ({:linear "mem"} pool':lmap)
+pure action FreeLinear ({:linear_in} l:Lmap int int, i:int, {:linear_in} pool:Lset int) returns (pool':Lset int)
 {
-  assert dom(l)[i];
-  pool' := Add(pool, i);
+  var t: Lset int;
+  assert Map_Contains(l->val, i);
+  call t := Lmap_Free(l);
+  pool' := pool;
+  call Lset_Put(pool', t);
 }
 
-pure action WriteLinear ({:layer 1} {:linear_in "mem"} l:lmap, i:int, o:int) returns ({:layer 1} {:linear "mem"} l':lmap)
+pure action WriteLinear ({:layer 1} {:linear_in} l:Lmap int int, i:int, o:int) returns ({:layer 1} l':Lmap int int)
 {
-  assert dom(l)[i];
-  l' := cons(dom(l), map(l)[i := o]);
+  assert Map_Contains(l->val, i);
+  l' := l;
+  l'->val->val[i] := o;
 }
 
 yield invariant {:layer 1} Yield ();
 invariant PoolInv(unallocated, pool);
 
-yield invariant {:layer 1} YieldMem ({:layer 1} {:linear "mem"} l:lmap, i:int);
+yield invariant {:layer 1} YieldMem ({:layer 1} l:Lmap int int, i:int);
 invariant PoolInv(unallocated, pool);
-invariant dom(l)[i] && map(l)[i] == mem[i];
+invariant Map_Contains(l->val, i) && Map_At(l->val, i) == mem[i];
 
-var {:layer 1, 2} {:linear "mem"} pool:lmap;
+var {:layer 1, 2} pool:Lset int;
 var {:layer 0, 1} mem:[int]int;
 var {:layer 0, 1} unallocated:[int]bool;
 

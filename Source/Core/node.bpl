@@ -5,31 +5,6 @@
 datatype Node<T> { Node(next: RefNode T, val: T) }
 type RefNode T = Ref (Node T);
 
-function {:inline} Empty<T>(): [RefNode T]bool
-{
-  MapConst(false)
-}
-
-function {:inline} Singleton<T>(a: RefNode T): [RefNode T]bool
-{
-  MapOne(a)
-}
-
-function {:inline} Union<T>(x: [RefNode T]bool, y: [RefNode T]bool): [RefNode T]bool
-{
-  MapOr(x, y)
-}
-
-function {:inline} Difference<T>(x: [RefNode T]bool, y: [RefNode T]bool): [RefNode T]bool
-{
-  MapDiff(x, y)
-}
-
-function {:inline} Subset<T>(x: [RefNode T]bool, y: [RefNode T]bool): bool
-{
-  MapDiff(x, y) == MapConst(false)
-}
-
 function Between<T>(f: [RefNode T]Node T, x: RefNode T, y: RefNode T, z: RefNode T): bool;
 function Avoiding<T>(f: [RefNode T]Node T, x: RefNode T, y: RefNode T, z: RefNode T): bool;
 function {:inline} BetweenSet<T>(f:[RefNode T]Node T, x: RefNode T, z: RefNode T): [RefNode T]bool

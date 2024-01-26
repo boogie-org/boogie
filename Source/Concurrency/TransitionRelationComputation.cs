@@ -374,6 +374,11 @@ namespace Microsoft.Boogie
               varToExpr[assignment.Var] = SubstitutionHelper.Apply(varToExpr, assignment.Expr);
               changed = true;
             }
+            else if (Defined(assignment.Var) && assignment.Expr is IdentifierExpr ie && !Defined(ie.Decl))
+            {
+              varToExpr[ie.Decl] = SubstitutionHelper.Apply(varToExpr, Expr.Ident(assignment.Var));
+              changed = true;
+            }
             else
             {
               remainingAssignments.Add(assignment);
