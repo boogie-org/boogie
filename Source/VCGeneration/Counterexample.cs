@@ -766,7 +766,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public virtual void OnVCResult(VCResult result)
+    public virtual void OnVCResult(VerificationRunResult result)
     {
       Contract.Requires(result != null);
     }

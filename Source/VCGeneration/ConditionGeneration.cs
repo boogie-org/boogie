@@ -28,7 +28,7 @@ namespace VC
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
     public override Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver)
+      CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver)
     {
       Contract.Requires(run != null);
       Contract.Requires(callback != null);
@@ -120,8 +120,8 @@ namespace VC
     /// <param name="batchCompletedObserver"></param>
     /// <param name="cancellationToken"></param>
     /// <param name="impl"></param>
-    public async Task<(Outcome, List<Counterexample> errors, List<VCResult> vcResults)> VerifyImplementation(
-      ImplementationRun run, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver,
+    public async Task<(Outcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation(
+      ImplementationRun run, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver,
       CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
@@ -144,7 +144,7 @@ namespace VC
     private VCGenOptions Options => CheckerPool.Options;
 
     public abstract Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver);
+      CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 
@@ -540,7 +540,7 @@ namespace VC
       }
 
       public readonly ConcurrentQueue<Counterexample> examples = new();
-      public readonly ConcurrentQueue<VCResult> vcResults = new();
+      public readonly ConcurrentQueue<VerificationRunResult> vcResults = new();
 
       public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
       {
@@ -557,7 +557,7 @@ namespace VC
         // TODO report error about next to last in seq
       }
 
-      public override void OnVCResult(VCResult result)
+      public override void OnVCResult(VerificationRunResult result)
       {
         vcResults.Enqueue(result);
       }

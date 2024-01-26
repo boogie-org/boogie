@@ -356,7 +356,7 @@ namespace VC
     private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
 
     public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver)
+      CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
 

@@ -347,8 +347,8 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     
     var batchResult = (BatchCompleted) statusList[2].Item2;
     
-    var assertion = batchResult.VcResult.asserts[0];
-    batchResult.VcResult.ComputePerAssertOutcomes(out var perAssertOutcome, out var perAssertCounterExamples);
+    var assertion = batchResult.VerificationRunResult.Asserts[0];
+    batchResult.VerificationRunResult.ComputePerAssertOutcomes(out var perAssertOutcome, out var perAssertCounterExamples);
     Assert.Contains(assertion, perAssertOutcome.Keys);
     Assert.Contains(assertion, perAssertCounterExamples.Keys);
     var outcomeAssertion = perAssertOutcome[assertion];

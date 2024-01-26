@@ -229,7 +229,7 @@ namespace Microsoft.Boogie
     }
 
     private void SetErrorAndAssertionChecksumsInCachedSnapshot(Implementation implementation,
-      VerificationResult result)
+      ImplementationRunResult result)
     {
       if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null &&
           result.Errors.Count < options.ErrorLimit)
@@ -690,7 +690,7 @@ namespace Microsoft.Boogie
     private readonly CacheItemPolicy Policy = new CacheItemPolicy
       {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
 
-    public void Insert(Implementation impl, VerificationResult result)
+    public void Insert(Implementation impl, ImplementationRunResult result)
     {
       Contract.Requires(impl != null);
       Contract.Requires(result != null);
@@ -699,11 +699,11 @@ namespace Microsoft.Boogie
     }
 
 
-    public VerificationResult Lookup(Implementation impl, bool runDiagnosticsOnTimeout, out int priority)
+    public ImplementationRunResult Lookup(Implementation impl, bool runDiagnosticsOnTimeout, out int priority)
     {
       Contract.Requires(impl != null);
 
-      var result = Cache.Get(impl.Id) as VerificationResult;
+      var result = Cache.Get(impl.Id) as ImplementationRunResult;
       if (result == null)
       {
         priority = Priority.HIGH;

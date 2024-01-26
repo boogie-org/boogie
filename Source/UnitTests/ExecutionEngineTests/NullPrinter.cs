@@ -30,7 +30,7 @@ public class NullPrinter : OutputPrinter {
   public void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null) {
   }
 
-  public void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result)
+  public void ReportEndVerifyImplementation(Implementation implementation, ImplementationRunResult result)
   {
   }
 }

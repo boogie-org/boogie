@@ -7,7 +7,7 @@ using VCGeneration;
 
 namespace Microsoft.Boogie;
 
-public sealed class VerificationResult
+public sealed class ImplementationRunResult
 {
   private readonly Implementation implementation;
   public readonly string ProgramId;
@@ -39,11 +39,11 @@ public sealed class VerificationResult
 
   public ConditionGeneration.Outcome Outcome { get; set; }
   public List<Counterexample> Errors = new();
-  public List<VCResult> VCResults;
+  public List<VerificationRunResult> VCResults;
 
   public ErrorInformation ErrorBeforeVerification { get; set; }
 
-  public VerificationResult(Implementation implementation, string programId = null)
+  public ImplementationRunResult(Implementation implementation, string programId = null)
   {
     this.implementation = implementation;
     ProgramId = programId;
@@ -79,9 +79,9 @@ public sealed class VerificationResult
     lock (engine.Options.XmlSink) {
       engine.Options.XmlSink.WriteStartMethod(implementation.VerboseName, Start);
 
-      foreach (var vcResult in VCResults.OrderBy(s => (s.vcNum, s.iteration))) {
-        engine.Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.iteration, vcResult.asserts, vcResult.startTime,
-          vcResult.outcome.ToString().ToLowerInvariant(), vcResult.runTime, vcResult.resourceCount);
+      foreach (var vcResult in VCResults.OrderBy(s => (vcNum: s.VcNum, iteration: s.Iteration))) {
+        engine.Options.XmlSink.WriteSplit(vcResult.VcNum, vcResult.Iteration, vcResult.Asserts, vcResult.StartTime,
+          vcResult.Outcome.ToString().ToLowerInvariant(), vcResult.RunTime, vcResult.ResourceCount);
       }
 
       engine.Options.XmlSink.WriteEndMethod(Outcome.ToString().ToLowerInvariant(),
