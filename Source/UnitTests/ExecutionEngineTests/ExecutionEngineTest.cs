@@ -80,7 +80,7 @@ procedure Second(y: int)
     var result2 = await runningStates.ToTask();
     Assert.IsTrue(tasks[1].IsIdle);
     var verificationResult2 = ((Completed)result2).Result;
-    Assert.AreEqual(VcOutcome.Correct, verificationResult2.Outcome);
+    Assert.AreEqual(Outcome.Valid, verificationResult2.Outcome);
   }
 
   [Test]

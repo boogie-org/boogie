@@ -163,12 +163,12 @@ public class VerificationTask : IVerificationTask {
     {
       yield return new Running();
 
-      var verifierCallback = new VerifierCallback(CoreOptions.ProverWarnings.None);
-      await Split.BeginCheck(Split.Run.OutputWriter, checker, verifierCallback,
+      var collector = new VerificationResultCollector(Split.Options);
+      await Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
         modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken);
 
       await checker.ProverTask;
-      var result = Split.ReadOutcome(0, checker, verifierCallback);
+      var result = Split.ReadOutcome(0, checker, collector);
 
       if (SplitAndVerifyWorker.IsProverFailed(result.Outcome))
       {

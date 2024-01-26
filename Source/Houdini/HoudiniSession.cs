@@ -129,7 +129,7 @@ namespace Microsoft.Boogie.Houdini
     public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
-    ConditionGeneration.VerificationResultCollector collector;
+    VerificationResultCollector collector;
     HashSet<Variable> unsatCoreSet;
     HashSet<Variable> houdiniConstants;
     public HashSet<Variable> houdiniAssertConstants;
@@ -163,7 +163,7 @@ namespace Microsoft.Boogie.Houdini
       this.Description = impl.Name;
       this.houdini = houdini;
       this.stats = stats;
-      collector = new ConditionGeneration.VerificationResultCollector(houdini.Options);
+      collector = new VerificationResultCollector(houdini.Options);
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
       vcgen.ConvertCFG2DAG(run, taskID: taskID);
