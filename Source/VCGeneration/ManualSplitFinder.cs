@@ -9,7 +9,7 @@ namespace VCGeneration;
 public static class ManualSplitFinder
 {
   
-  public static List<Split> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VCGen par, bool splitOnEveryAssert)
+  public static List<Split> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par, bool splitOnEveryAssert)
   {
     List<Split> focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
     var splits = focussedImpl.Select(s => FindManualSplits(s, splitOnEveryAssert)).SelectMany(x => x).ToList();

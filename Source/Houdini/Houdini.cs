@@ -52,7 +52,7 @@ namespace Microsoft.Boogie.Houdini
     {
     }
 
-    public virtual void UpdateOutcome(Outcome outcome)
+    public virtual void UpdateOutcome(SolverOutcome outcome)
     {
     }
 
@@ -158,7 +158,7 @@ namespace Microsoft.Boogie.Houdini
       curImp = implementation;
     }
 
-    public override void UpdateOutcome(Outcome o)
+    public override void UpdateOutcome(SolverOutcome o)
     {
       Contract.Assert(curImp != null);
       DateTime endT = DateTime.UtcNow;
@@ -237,7 +237,7 @@ namespace Microsoft.Boogie.Houdini
       wr.Flush();
     }
 
-    public override void UpdateOutcome(Outcome outcome)
+    public override void UpdateOutcome(SolverOutcome outcome)
     {
       wr.WriteLine("analysis outcome :" + outcome);
       wr.Flush();
@@ -335,7 +335,7 @@ namespace Microsoft.Boogie.Houdini
       Notify((NotifyDelegate) delegate(HoudiniObserver r) { r.UpdateAssignment(assignment); });
     }
 
-    protected void NotifyOutcome(Outcome outcome)
+    protected void NotifyOutcome(SolverOutcome outcome)
     {
       Notify((NotifyDelegate) delegate(HoudiniObserver r) { r.UpdateOutcome(outcome); });
     }
@@ -393,7 +393,7 @@ namespace Microsoft.Boogie.Houdini
   {
     protected Program program;
     protected HashSet<Variable> houdiniConstants;
-    protected VCGen vcgen;
+    protected VerificationConditionGenerator vcgen;
     protected ProverInterface proverInterface;
     protected Graph<Implementation> callGraph;
     protected HashSet<Implementation> vcgenFailures;
@@ -470,7 +470,7 @@ namespace Microsoft.Boogie.Houdini
       */
 
       var checkerPool = new CheckerPool(Options);
-      this.vcgen = new VCGen(program, checkerPool);
+      this.vcgen = new VerificationConditionGenerator(program, checkerPool);
       this.proverInterface = ProverInterface.CreateProver(Options, program, Options.ProverLogFilePath,
         Options.ProverLogFileAppend, Options.TimeLimit, taskID: GetTaskID());
 
@@ -837,13 +837,13 @@ namespace Microsoft.Boogie.Houdini
       return initial;
     }
 
-    private bool IsOutcomeNotHoudini(Outcome outcome, List<Counterexample> errors)
+    private bool IsOutcomeNotHoudini(SolverOutcome outcome, List<Counterexample> errors)
     {
       switch (outcome)
       {
-        case Outcome.Valid:
+        case SolverOutcome.Valid:
           return false;
-        case Outcome.Invalid:
+        case SolverOutcome.Invalid:
           Contract.Assume(errors != null);
           foreach (Counterexample error in errors)
           {
@@ -863,14 +863,14 @@ namespace Microsoft.Boogie.Houdini
     // Return true if there was at least one non-candidate error
     protected bool UpdateHoudiniOutcome(HoudiniOutcome houdiniOutcome,
       Implementation implementation,
-      Outcome outcome,
+      SolverOutcome outcome,
       List<Counterexample> errors)
     {
       string implName = implementation.Name;
       houdiniOutcome.implementationOutcomes.Remove(implName);
       List<Counterexample> nonCandidateErrors = new List<Counterexample>();
 
-      if (outcome == Outcome.Invalid)
+      if (outcome == SolverOutcome.Invalid)
       {
         foreach (Counterexample error in errors)
         {
@@ -937,7 +937,7 @@ namespace Microsoft.Boogie.Houdini
 
     // Updates the worklist and current assignment
     // @return true if the current function is dequeued
-    protected bool UpdateAssignmentWorkList(Outcome outcome,
+    protected bool UpdateAssignmentWorkList(SolverOutcome outcome,
       List<Counterexample> errors)
     {
       Contract.Assume(currentHoudiniState.Implementation != null);
@@ -945,11 +945,11 @@ namespace Microsoft.Boogie.Houdini
 
       switch (outcome)
       {
-        case Outcome.Valid:
+        case SolverOutcome.Valid:
           //yeah, dequeue
           break;
 
-        case Outcome.Invalid:
+        case SolverOutcome.Invalid:
           Contract.Assume(errors != null);
 
           foreach (Counterexample error in errors)
@@ -1489,7 +1489,7 @@ namespace Microsoft.Boogie.Houdini
       return null;
     }
 
-    private async Task<(Outcome, List<Counterexample> errors)> TryCatchVerify(HoudiniSession session, int stage, IReadOnlyList<int> completedStages)
+    private async Task<(SolverOutcome, List<Counterexample> errors)> TryCatchVerify(HoudiniSession session, int stage, IReadOnlyList<int> completedStages)
     {
       try {
         return await session.Verify(proverInterface, GetAssignmentWithStages(stage, completedStages), GetErrorLimit());
@@ -1497,7 +1497,7 @@ namespace Microsoft.Boogie.Houdini
       catch (UnexpectedProverOutputException upo)
       {
         Contract.Assume(upo != null);
-        return (Outcome.Undetermined, null);
+        return (SolverOutcome.Undetermined, null);
       }
 
     }
@@ -1551,7 +1551,7 @@ namespace Microsoft.Boogie.Houdini
 
         #region Explain Houdini
 
-        if (Options.ExplainHoudini && outcome == Outcome.Invalid)
+        if (Options.ExplainHoudini && outcome == SolverOutcome.Invalid)
         {
           Contract.Assume(errors != null);
           // make a copy of this variable
@@ -1587,7 +1587,7 @@ namespace Microsoft.Boogie.Houdini
 
         if (UpdateAssignmentWorkList(outcome, errors))
         {
-          if (Options.UseUnsatCoreForContractInfer && outcome == Outcome.Valid)
+          if (Options.UseUnsatCoreForContractInfer && outcome == SolverOutcome.Valid)
           {
             await session.UpdateUnsatCore(proverInterface, currentHoudiniState.Assignment);
           }
@@ -1707,7 +1707,7 @@ namespace Microsoft.Boogie.Houdini
     public VcOutcome VcOutcome;
     public List<Counterexample> errors;
 
-    public VCGenOutcome(Outcome outcome, List<Counterexample> errors)
+    public VCGenOutcome(SolverOutcome outcome, List<Counterexample> errors)
     {
       this.VcOutcome = ConditionGeneration.ProverInterfaceOutcomeToConditionGenerationOutcome(outcome);
       this.errors = errors;

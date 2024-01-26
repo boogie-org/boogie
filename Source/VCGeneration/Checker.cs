@@ -40,7 +40,7 @@ namespace Microsoft.Boogie
     private ProverInterface thmProver;
 
     // state for the async interface
-    private volatile Outcome outcome;
+    private volatile SolverOutcome outcome;
     private volatile bool hasOutput;
     private volatile UnexpectedProverOutputException outputExn;
     public DateTime ProverStart { get; private set; }
@@ -292,22 +292,22 @@ namespace Microsoft.Boogie
 
       switch (outcome)
       {
-        case Outcome.Valid:
+        case SolverOutcome.Valid:
           thmProver.LogComment("Valid");
           break;
-        case Outcome.Invalid:
+        case SolverOutcome.Invalid:
           thmProver.LogComment("Invalid");
           break;
-        case Outcome.TimeOut:
+        case SolverOutcome.TimeOut:
           thmProver.LogComment("Timed out");
           break;
-        case Outcome.OutOfResource:
+        case SolverOutcome.OutOfResource:
           thmProver.LogComment("Out of resource");
           break;
-        case Outcome.OutOfMemory:
+        case SolverOutcome.OutOfMemory:
           thmProver.LogComment("Out of memory");
           break;
-        case Outcome.Undetermined:
+        case SolverOutcome.Undetermined:
           thmProver.LogComment("Undetermined");
           break;
       }
@@ -341,7 +341,7 @@ namespace Microsoft.Boogie
       ProverTask = Check(descriptiveName, vc, cancellationToken);
     }
 
-    public Outcome ReadOutcome()
+    public SolverOutcome ReadOutcome()
     {
       Contract.Requires(IsBusy);
       Contract.Requires(HasOutput);
@@ -389,7 +389,7 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
-    public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+    public override Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken) {
       throw new NotImplementedException();
     }
