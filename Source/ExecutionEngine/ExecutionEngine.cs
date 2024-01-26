@@ -715,12 +715,12 @@ namespace Microsoft.Boogie
       var processedProgram = PreProcessProgramVerification(program);
       return GetPrioritizedImplementations(program).SelectMany(implementation =>
       {
-        var writer = new StringWriter();
+        var writer = TextWriter.Null;
         var vcGenerator = new VerificationConditionGenerator(processedProgram.Program, CheckerPool);
 
         var run = new ImplementationRun(implementation, writer);
-        var verifierCallback = new VerifierCallback(CoreOptions.ProverWarnings.None);
-        vcGenerator.PrepareImplementation(run, verifierCallback, out _,
+        var collector = new VerificationResultCollector(Options);
+        vcGenerator.PrepareImplementation(run, collector, out _,
           out var gotoCmdOrigins,
           out var modelViewInfo);
 
