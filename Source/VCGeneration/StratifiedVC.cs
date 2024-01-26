@@ -348,7 +348,7 @@ namespace VC
   public class StratifiedInliningInfo
   {
     private VCGenOptions options;
-    public StratifiedVCGenBase vcgen;
+    public StratifiedVerificationConditionGeneratorBase vcgen;
     public ImplementationRun run;
     public Function function;
     public Variable controlFlowVariable;
@@ -370,10 +370,10 @@ namespace VC
 
     public Implementation Implementation => run.Implementation;
 
-    public StratifiedInliningInfo(VCGenOptions options, ImplementationRun run, StratifiedVCGenBase stratifiedVcGen,
+    public StratifiedInliningInfo(VCGenOptions options, ImplementationRun run, StratifiedVerificationConditionGeneratorBase stratifiedVerificationConditionGenerator,
       Action<Implementation> PassiveImplInstrumentation)
     {
-      vcgen = stratifiedVcGen;
+      vcgen = stratifiedVerificationConditionGenerator;
       this.PassiveImplInstrumentation = PassiveImplInstrumentation;
       this.run = run;
       this.options = options;
@@ -655,7 +655,7 @@ namespace VC
 
       var absyIds = new ControlFlowIdMap<Absy>();
       
-      VCGen.CodeExprConversionClosure cc = new VCGen.CodeExprConversionClosure(run.OutputWriter, options, absyIds, proverInterface.Context);
+      VerificationConditionGenerator.CodeExprConversionClosure cc = new VerificationConditionGenerator.CodeExprConversionClosure(run.OutputWriter, options, absyIds, proverInterface.Context);
       translator.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
       vcexpr = gen.Not(vcgen.GenerateVCAux(Implementation, controlFlowVariableExpr, absyIds, proverInterface.Context));
 
@@ -702,14 +702,14 @@ namespace VC
   }
 
   // This class is derived and used by Corral to create VCs for Stratified Inlining.
-  public abstract class StratifiedVCGenBase : VCGen
+  public abstract class StratifiedVerificationConditionGeneratorBase : VerificationConditionGenerator
   {
     public readonly static string recordProcName = "boogie_si_record";
     public readonly static string callSiteVarAttr = "callSiteVar";
     public Dictionary<string, StratifiedInliningInfo> implName2StratifiedInliningInfo;
     public ProverInterface prover;
 
-    public StratifiedVCGenBase(TextWriter traceWriter, VCGenOptions options, Program program, string logFilePath /*?*/, bool appendLogFile, CheckerPool checkerPool,
+    public StratifiedVerificationConditionGeneratorBase(TextWriter traceWriter, VCGenOptions options, Program program, string logFilePath /*?*/, bool appendLogFile, CheckerPool checkerPool,
       Action<Implementation> PassiveImplInstrumentation)
       : base(program, checkerPool)
     {
@@ -990,7 +990,7 @@ namespace VC
       return true;
     }
 
-    public abstract Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars);
+    public abstract VcOutcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars);
   }
 
 } // namespace VC

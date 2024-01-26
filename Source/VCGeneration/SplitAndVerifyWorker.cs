@@ -7,14 +7,15 @@ using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
+using VCGeneration;
 using static VC.ConditionGeneration;
 
 namespace VC
 {
   class SplitAndVerifyWorker
   {
-    public IObservable<(Split split, VCResult vcResult)> BatchCompletions => batchCompletions;
-    private readonly Subject<(Split split, VCResult vcResult)> batchCompletions = new();
+    public IObservable<(Split split, VerificationRunResult vcResult)> BatchCompletions => batchCompletions;
+    private readonly Subject<(Split split, VerificationRunResult vcResult)> batchCompletions = new();
 
     private readonly VCGenOptions options;
     private readonly VerifierCallback callback;
@@ -30,8 +31,8 @@ namespace VC
     private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
     private bool KeepGoing => maxKeepGoingSplits > 1;
 
-    private VCGen vcGen;
-    private Outcome outcome;
+    private VerificationConditionGenerator verificationConditionGenerator;
+    private VcOutcome vcOutcome;
     private double remainingCost;
     private double provenCost;
     private int total;
@@ -39,25 +40,25 @@ namespace VC
 
     private int totalResourceCount;
 
-    public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
+    public SplitAndVerifyWorker(VCGenOptions options, VerificationConditionGenerator verificationConditionGenerator, ImplementationRun run,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
-      Outcome outcome)
+      VcOutcome vcOutcome)
     {
       this.options = options;
       this.callback = callback;
       this.mvInfo = mvInfo;
       this.run = run;
-      this.outcome = outcome;
-      this.vcGen = vcGen;
+      this.vcOutcome = vcOutcome;
+      this.verificationConditionGenerator = verificationConditionGenerator;
       var maxSplits = options.VcsMaxSplits;
-      VCGen.CheckIntAttributeOnImpl(run, "vcs_max_splits", ref maxSplits);
+      VerificationConditionGenerator.CheckIntAttributeOnImpl(run, "vcs_max_splits", ref maxSplits);
       
       maxKeepGoingSplits = options.VcsMaxKeepGoingSplits;
-      VCGen.CheckIntAttributeOnImpl(run, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
+      VerificationConditionGenerator.CheckIntAttributeOnImpl(run, "vcs_max_keep_going_splits", ref maxKeepGoingSplits);
       
       maxVcCost = options.VcsMaxCost;
       var tmpMaxVcCost = -1;
-      VCGen.CheckIntAttributeOnImpl(run, "vcs_max_cost", ref tmpMaxVcCost);
+      VerificationConditionGenerator.CheckIntAttributeOnImpl(run, "vcs_max_cost", ref tmpMaxVcCost);
       if (tmpMaxVcCost >= 0)
       {
         maxVcCost = tmpMaxVcCost;
@@ -67,7 +68,7 @@ namespace VC
       Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(Implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(options, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = ManualSplitFinder.FocusAndSplit(options, run, gotoCmdOrigins, verificationConditionGenerator, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
@@ -77,7 +78,7 @@ namespace VC
       splitNumber = DoSplitting ? 0 : -1;
     }
 
-    public async Task<Outcome> WorkUntilDone(CancellationToken cancellationToken)
+    public async Task<VcOutcome> WorkUntilDone(CancellationToken cancellationToken)
     {
       TrackSplitsCost(manualSplits);
       try
@@ -89,7 +90,7 @@ namespace VC
         batchCompletions.OnCompleted();
       }
 
-      return outcome;
+      return vcOutcome;
     }
 
     public int ResourceCount => totalResourceCount;
@@ -168,7 +169,7 @@ namespace VC
 
       var (newOutcome, result, newResourceCount) = split.ReadOutcome(iteration, checker, callback);
       lock (this) {
-        outcome = MergeOutcomes(outcome, newOutcome);
+        vcOutcome = MergeOutcomes(vcOutcome, newOutcome);
         totalResourceCount += newResourceCount;
       }
       var proverFailed = IsProverFailed(newOutcome);
@@ -195,17 +196,17 @@ namespace VC
       }
     }
 
-    private static bool IsProverFailed(ProverInterface.Outcome outcome)
+    private static bool IsProverFailed(SolverOutcome outcome)
     {
       switch (outcome)
       {
-        case ProverInterface.Outcome.Valid:
-        case ProverInterface.Outcome.Invalid:
-        case ProverInterface.Outcome.Undetermined:
+        case SolverOutcome.Valid:
+        case SolverOutcome.Invalid:
+        case SolverOutcome.Undetermined:
           return false;
-        case ProverInterface.Outcome.OutOfMemory:
-        case ProverInterface.Outcome.TimeOut:
-        case ProverInterface.Outcome.OutOfResource:
+        case SolverOutcome.OutOfMemory:
+        case SolverOutcome.TimeOut:
+        case SolverOutcome.OutOfResource:
           return true;
         default:
           Contract.Assert(false);
@@ -213,48 +214,48 @@ namespace VC
       }
     }
 
-    private static Outcome MergeOutcomes(Outcome currentOutcome, ProverInterface.Outcome newOutcome)
+    private static VcOutcome MergeOutcomes(VcOutcome currentVcOutcome, SolverOutcome newOutcome)
     {
       switch (newOutcome)
       {
-        case ProverInterface.Outcome.Valid:
-          return currentOutcome;
-        case ProverInterface.Outcome.Invalid:
-          return Outcome.Errors;
-        case ProverInterface.Outcome.OutOfMemory:
-          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+        case SolverOutcome.Valid:
+          return currentVcOutcome;
+        case SolverOutcome.Invalid:
+          return VcOutcome.Errors;
+        case SolverOutcome.OutOfMemory:
+          if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
           {
-            return Outcome.OutOfMemory;
+            return VcOutcome.OutOfMemory;
           }
 
-          return currentOutcome;
-        case ProverInterface.Outcome.TimeOut:
-          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          return currentVcOutcome;
+        case SolverOutcome.TimeOut:
+          if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
           {
-            return Outcome.TimedOut;
+            return VcOutcome.TimedOut;
           }
 
-          return currentOutcome;
-        case ProverInterface.Outcome.OutOfResource:
-          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          return currentVcOutcome;
+        case SolverOutcome.OutOfResource:
+          if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
           {
-            return Outcome.OutOfResource;
+            return VcOutcome.OutOfResource;
           }
 
-          return currentOutcome;
-        case ProverInterface.Outcome.Undetermined:
-          if (currentOutcome != Outcome.Errors)
+          return currentVcOutcome;
+        case SolverOutcome.Undetermined:
+          if (currentVcOutcome != VcOutcome.Errors)
           {
-            return Outcome.Inconclusive;
+            return VcOutcome.Inconclusive;
           }
-          return currentOutcome;
+          return currentVcOutcome;
         default:
           Contract.Assert(false);
           throw new cce.UnreachableException();
       }
     }
 
-    private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback, VCResult vcResult, CancellationToken cancellationToken)
+    private async Task HandleProverFailure(Split split, Checker checker, VerifierCallback callback, VerificationRunResult verificationRunResult, CancellationToken cancellationToken)
     {
       if (split.LastChance) {
         string msg = "some timeout";
@@ -266,11 +267,11 @@ namespace VC
         callback.OnCounterexample(cex, msg);
         split.Counterexamples.Add(cex);
         // Update one last time the result with the dummy counter-example to indicate the position of the timeout
-        var result = vcResult with {
-          counterExamples = split.Counterexamples
+        var result = verificationRunResult with {
+          CounterExamples = split.Counterexamples
         };
         batchCompletions.OnNext((split, result));
-        outcome = Outcome.Errors;
+        vcOutcome = VcOutcome.Errors;
         await checker.GoBackToIdle();
         return;
       }
@@ -286,29 +287,29 @@ namespace VC
         maxVcCost = 1.0; // for future
         TrackSplitsCost(newSplits);
         
-        if (outcome != Outcome.Errors) {
-          outcome = Outcome.Correct;
+        if (vcOutcome != VcOutcome.Errors) {
+          vcOutcome = VcOutcome.Correct;
         }
         await Task.WhenAll(newSplits.Select(newSplit => DoWorkForMultipleIterations(newSplit, cancellationToken)));
         return;
       }
 
-      Contract.Assert(outcome != Outcome.Correct);
-      if (outcome == Outcome.TimedOut) {
+      Contract.Assert(vcOutcome != VcOutcome.Correct);
+      if (vcOutcome == VcOutcome.TimedOut) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
 
         callback.OnTimeout(msg);
-      } else if (outcome == Outcome.OutOfMemory) {
+      } else if (vcOutcome == VcOutcome.OutOfMemory) {
         string msg = "out of memory";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
 
         callback.OnOutOfMemory(msg);
-      } else if (outcome == Outcome.OutOfResource) {
+      } else if (vcOutcome == VcOutcome.OutOfResource) {
         string msg = "out of resource";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
@@ -317,7 +318,7 @@ namespace VC
         callback.OnOutOfResource(msg);
       }
 
-      batchCompletions.OnNext((split, vcResult));
+      batchCompletions.OnNext((split, verificationRunResult));
     }
   }
 }

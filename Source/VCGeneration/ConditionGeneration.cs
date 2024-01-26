@@ -1,7 +1,6 @@
 using System;
 using System.Linq;
 using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -27,8 +26,8 @@ namespace VC
   [ContractClassFor(typeof(ConditionGeneration))]
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
-    public override Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver)
+    public override Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+      CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver)
     {
       Contract.Requires(run != null);
       Contract.Requires(callback != null);
@@ -45,37 +44,25 @@ namespace VC
   [ContractClass(typeof(ConditionGenerationContracts))]
   public abstract class ConditionGeneration : IDisposable
   {
-    public enum Outcome
-    {
-      Correct,
-      Errors,
-      TimedOut,
-      OutOfResource,
-      OutOfMemory,
-      Inconclusive,
-      ReachedBound,
-      SolverException
-    }
-
-    public static Outcome ProverInterfaceOutcomeToConditionGenerationOutcome(ProverInterface.Outcome outcome)
+    public static VcOutcome ProverInterfaceOutcomeToConditionGenerationOutcome(Microsoft.Boogie.SolverOutcome outcome)
     {
       switch (outcome)
       {
-        case ProverInterface.Outcome.Invalid:
-          return Outcome.Errors;
-        case ProverInterface.Outcome.OutOfMemory:
-          return Outcome.OutOfMemory;
-        case ProverInterface.Outcome.TimeOut:
-          return Outcome.TimedOut;
-        case ProverInterface.Outcome.OutOfResource:
-          return Outcome.OutOfResource;
-        case ProverInterface.Outcome.Undetermined:
-          return Outcome.Inconclusive;
-        case ProverInterface.Outcome.Valid:
-          return Outcome.Correct;
+        case Microsoft.Boogie.SolverOutcome.Invalid:
+          return VcOutcome.Errors;
+        case Microsoft.Boogie.SolverOutcome.OutOfMemory:
+          return VcOutcome.OutOfMemory;
+        case Microsoft.Boogie.SolverOutcome.TimeOut:
+          return VcOutcome.TimedOut;
+        case Microsoft.Boogie.SolverOutcome.OutOfResource:
+          return VcOutcome.OutOfResource;
+        case Microsoft.Boogie.SolverOutcome.Undetermined:
+          return VcOutcome.Inconclusive;
+        case Microsoft.Boogie.SolverOutcome.Valid:
+          return VcOutcome.Correct;
       }
 
-      return Outcome.Inconclusive; // unreachable but the stupid compiler does not understand
+      return VcOutcome.Inconclusive; // unreachable but the stupid compiler does not understand
     }
 
     [ContractInvariantMethod]
@@ -120,8 +107,8 @@ namespace VC
     /// <param name="batchCompletedObserver"></param>
     /// <param name="cancellationToken"></param>
     /// <param name="impl"></param>
-    public async Task<(Outcome, List<Counterexample> errors, List<VCResult> vcResults)> VerifyImplementation(
-      ImplementationRun run, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver,
+    public async Task<(VcOutcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation(
+      ImplementationRun run, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver,
       CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
@@ -130,21 +117,21 @@ namespace VC
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
       var collector = new VerificationResultCollector(Options);
-      Outcome outcome = await VerifyImplementation(run, collector, cancellationToken, batchCompletedObserver);
+      VcOutcome vcOutcome = await VerifyImplementation(run, collector, cancellationToken, batchCompletedObserver);
       var /*?*/ errors = new List<Counterexample>();
-      if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
-          outcome == Outcome.OutOfResource) {
+      if (vcOutcome == VcOutcome.Errors || vcOutcome == VcOutcome.TimedOut || vcOutcome == VcOutcome.OutOfMemory ||
+          vcOutcome == VcOutcome.OutOfResource) {
         errors = collector.examples.ToList();
       }
 
       Helpers.ExtraTraceInformation(Options, "Finished implementation verification");
-      return (outcome, errors, collector.vcResults.ToList());
+      return (vcOutcome, errors, collector.vcResults.ToList());
     }
 
     private VCGenOptions Options => CheckerPool.Options;
 
-    public abstract Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken, IObserver<(Split split, VCResult vcResult)> batchCompletedObserver);
+    public abstract Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+      CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 
@@ -522,46 +509,6 @@ namespace VC
     {
     }
 
-
-    public class VerificationResultCollector : VerifierCallback
-    {
-      private readonly VCGenOptions options;
-
-      public VerificationResultCollector(VCGenOptions options) : base(options.PrintProverWarnings)
-      {
-        this.options = options;
-      }
-
-      [ContractInvariantMethod]
-      void ObjectInvariant()
-      {
-        Contract.Invariant(cce.NonNullElements(examples));
-        Contract.Invariant(cce.NonNullElements(vcResults));
-      }
-
-      public readonly ConcurrentQueue<Counterexample> examples = new();
-      public readonly ConcurrentQueue<VCResult> vcResults = new();
-
-      public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
-      {
-        //Contract.Requires(ce != null);
-        ce.InitializeModelStates();
-        examples.Enqueue(ce);
-      }
-
-      public override void OnUnreachableCode(ImplementationRun run)
-      {
-        //Contract.Requires(impl != null);
-        run.OutputWriter.WriteLine("found unreachable code:");
-        EmitImpl(options, run, false);
-        // TODO report error about next to last in seq
-      }
-
-      public override void OnVCResult(VCResult result)
-      {
-        vcResults.Enqueue(result);
-      }
-    }
 
     public static void EmitImpl(VCGenOptions options, ImplementationRun run, bool printDesugarings)
     {
@@ -1660,6 +1607,18 @@ namespace VC
         _disposed = true;
       }
     }
+  }
+
+  public enum VcOutcome
+  {
+    Correct,
+    Errors,
+    TimedOut,
+    OutOfResource,
+    OutOfMemory,
+    Inconclusive,
+    ReachedBound,
+    SolverException
   }
 
   public record ImplementationRun(Implementation Implementation, TextWriter OutputWriter) {

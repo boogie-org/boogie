@@ -62,7 +62,7 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    public override async Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+    public override async Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken)
     {
       currentErrorHandler = handler;
@@ -134,7 +134,7 @@ namespace Microsoft.Boogie.SMTLib
       return Process.SendRequestsAndCloseInput(sanitizedRequests, cancellationToken);
     }
 
-    private async Task<Outcome> CheckSat(CancellationToken cancellationToken)
+    private async Task<SolverOutcome> CheckSat(CancellationToken cancellationToken)
     {
       var requests = new List<string>();
       requests.Add("(check-sat)");
@@ -148,7 +148,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       if (Process == null || HadErrors) {
-        return Outcome.Undetermined;
+        return SolverOutcome.Undetermined;
       }
 
       try {
@@ -159,7 +159,7 @@ namespace Microsoft.Boogie.SMTLib
         catch (TimeoutException) {
           currentErrorHandler.OnResourceExceeded("hard solver timeout");
           resourceCount = -1;
-          return Outcome.TimeOut;
+          return SolverOutcome.TimeOut;
         }
         var responseStack = new Stack<SExpr>(responses.Reverse());
 
@@ -176,8 +176,8 @@ namespace Microsoft.Boogie.SMTLib
           resourceCount = ParseRCount(rlimitSExp);
 
           // Sometimes Z3 doesn't tell us that it ran out of resources
-          if (result != Outcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
-            result = Outcome.OutOfResource;
+          if (result != SolverOutcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
+            result = SolverOutcome.OutOfResource;
           }
         }
 
@@ -186,16 +186,16 @@ namespace Microsoft.Boogie.SMTLib
 
         if (options.LibOptions.ProduceUnsatCores) {
           var unsatCoreSExp = responseStack.Pop();
-          if (result == Outcome.Valid) {
+          if (result == SolverOutcome.Valid) {
             ReportCoveredElements(unsatCoreSExp);
           }
         }
 
-        if (result == Outcome.Invalid) {
+        if (result == SolverOutcome.Invalid) {
           var labels = CalculatePath(currentErrorHandler.StartingProcId(), errorModel);
           if (labels.Length == 0) {
             // Without a path to an error, we don't know what to report
-            result = Outcome.Undetermined;
+            result = SolverOutcome.Undetermined;
           } else {
             currentErrorHandler.OnModel(labels, errorModel, result);
           }
@@ -294,13 +294,13 @@ namespace Microsoft.Boogie.SMTLib
       throw new NotSupportedException("Batch mode solver interface does not support unsat cores.");
     }
 
-    public override Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions,
+    public override Task<(SolverOutcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions,
       ErrorHandler handler, CancellationToken cancellationToken)
     {
       throw new NotSupportedException("Batch mode solver interface does not support checking assumptions.");
     }
 
-    public override Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
+    public override Task<(SolverOutcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
       ErrorHandler handler, CancellationToken cancellationToken)
     {
       throw new NotSupportedException("Batch mode solver interface does not support checking assumptions.");

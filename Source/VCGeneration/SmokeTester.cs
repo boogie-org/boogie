@@ -24,7 +24,7 @@ class SmokeTester
     Contract.Invariant(callback != null);
   }
 
-  VCGen parent;
+  VerificationConditionGenerator parent;
   ImplementationRun run;
   Block initial;
   int id;
@@ -32,7 +32,7 @@ class SmokeTester
   HashSet<Block> visited = new HashSet<Block>();
   VerifierCallback callback;
 
-  internal SmokeTester(VCGen par, ImplementationRun run, VerifierCallback callback)
+  internal SmokeTester(VerificationConditionGenerator par, ImplementationRun run, VerifierCallback callback)
   {
     Contract.Requires(par != null);
     Contract.Requires(run != null);
@@ -130,7 +130,7 @@ class SmokeTester
       }
       else
       {
-        seq.Add(VCGen.AssertTurnedIntoAssume(Options, turn));
+        seq.Add(VerificationConditionGenerator.AssertTurnedIntoAssume(Options, turn));
       }
     }
 
@@ -278,7 +278,7 @@ class SmokeTester
     Checker checker = await parent.CheckerPool.FindCheckerFor(parent, null, CancellationToken.None);
     Contract.Assert(checker != null);
 
-    ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
+    SolverOutcome outcome = SolverOutcome.Undetermined;
     try
     {
       VCExpr vc;
@@ -327,12 +327,12 @@ class SmokeTester
     if (Options.Trace)
     {
       traceWriter.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,
-        outcome == ProverInterface.Outcome.Valid
+        outcome == SolverOutcome.Valid
           ? "OOPS"
-          : "OK" + (outcome == ProverInterface.Outcome.Invalid ? "" : " (" + outcome + ")"));
+          : "OK" + (outcome == SolverOutcome.Invalid ? "" : " (" + outcome + ")"));
     }
 
-    if (outcome == ProverInterface.Outcome.Valid)
+    if (outcome == SolverOutcome.Valid)
     {
       // copy it again, so we get the version with calls, assignments and such
       copy = CopyBlock(cur);
