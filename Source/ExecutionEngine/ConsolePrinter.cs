@@ -206,11 +206,11 @@ public class ConsolePrinter : OutputPrinter
     // Do not print anything to console
   }
 
-  public virtual void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result) {
+  public virtual void ReportEndVerifyImplementation(Implementation implementation, ImplementationRunResult result) {
     // Do not print anything to console
   }
 
-  public virtual void ReportSplitResult(Split split, VCResult splitResult) {
+  public virtual void ReportSplitResult(Split split, VerificationRunResult splitResult) {
     // Do not print anything to console
   }
 }

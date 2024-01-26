@@ -19,7 +19,7 @@ using VCGeneration;
 
 namespace Microsoft.Boogie
 {
-  public record ProcessedProgram(Program Program, Action<VCGen, Implementation, VerificationResult> PostProcessResult) {
+  public record ProcessedProgram(Program Program, Action<VCGen, Implementation, ImplementationRunResult> PostProcessResult) {
     public ProcessedProgram(Program program) : this(program, (_, _, _) => { }) {
     }
   }
@@ -828,10 +828,10 @@ namespace Microsoft.Boogie
       string programId,
       TextWriter traceWriter)
     {
-      VerificationResult verificationResult = GetCachedVerificationResult(implementation, traceWriter);
-      if (verificationResult != null) {
-        UpdateCachedStatistics(stats, verificationResult.Outcome, verificationResult.Errors);
-        return Observable.Return(new Completed(verificationResult));
+      ImplementationRunResult implementationRunResult = GetCachedVerificationResult(implementation, traceWriter);
+      if (implementationRunResult != null) {
+        UpdateCachedStatistics(stats, implementationRunResult.VcOutcome, implementationRunResult.Errors);
+        return Observable.Return(new Completed(implementationRunResult));
       }
       Options.Printer.Inform("", traceWriter); // newline
       Options.Printer.Inform($"Verifying {implementation.VerboseName} ...", traceWriter);
@@ -849,7 +849,7 @@ namespace Microsoft.Boogie
       return Observable.Return(new Running()).Concat(afterRunningStates);
     }
 
-    public VerificationResult GetCachedVerificationResult(Implementation impl, TextWriter output)
+    public ImplementationRunResult GetCachedVerificationResult(Implementation impl, TextWriter output)
     {
       if (0 >= Options.VerifySnapshots)
       {
@@ -863,7 +863,7 @@ namespace Microsoft.Boogie
       }
 
       if (Options.VerifySnapshots < 3 ||
-          cachedResults.Outcome == ConditionGeneration.Outcome.Correct) {
+          cachedResults.VcOutcome == VcOutcome.Correct) {
         Options.Printer.Inform($"Retrieving cached verification result for implementation {impl.VerboseName}...", output);
         return cachedResults;
       }
@@ -875,9 +875,9 @@ namespace Microsoft.Boogie
       PipelineStatistics stats, ErrorReporterDelegate er, CancellationToken cancellationToken,
       string programId, Implementation impl, TextWriter traceWriter)
     {
-      var verificationResult = new VerificationResult(impl, programId);
+      var verificationResult = new ImplementationRunResult(impl, programId);
 
-      var batchCompleted = new Subject<(Split split, VCResult vcResult)>();
+      var batchCompleted = new Subject<(Split split, VerificationRunResult vcResult)>();
       var completeVerification = largeThreadTaskFactory.StartNew(async () =>
       {
         var vcgen = new VCGen(processedProgram.Program, checkerPool);
@@ -887,7 +887,7 @@ namespace Microsoft.Boogie
 
         try
         {
-          (verificationResult.Outcome, verificationResult.Errors, verificationResult.VCResults) =
+          (verificationResult.VcOutcome, verificationResult.Errors, verificationResult.VCResults) =
             await vcgen.VerifyImplementation(new ImplementationRun(impl, traceWriter), batchCompleted, cancellationToken);
           processedProgram.PostProcessResult(vcgen, impl, verificationResult);
         }
@@ -906,7 +906,7 @@ namespace Microsoft.Boogie
           }
 
           verificationResult.Errors = null;
-          verificationResult.Outcome = ConditionGeneration.Outcome.Inconclusive;
+          verificationResult.VcOutcome = VcOutcome.Inconclusive;
         }
         catch (ProverDiedException)
         {
@@ -918,14 +918,14 @@ namespace Microsoft.Boogie
             "Advisory: {0} SKIPPED because of internal error: unexpected prover output: {1}",
             impl.VerboseName, upo.Message);
           verificationResult.Errors = null;
-          verificationResult.Outcome = ConditionGeneration.Outcome.Inconclusive;
+          verificationResult.VcOutcome = VcOutcome.Inconclusive;
         }
         catch (IOException e)
         {
           Options.Printer.AdvisoryWriteLine(traceWriter, "Advisory: {0} SKIPPED due to I/O exception: {1}",
             impl.VerboseName, e.Message);
           verificationResult.Errors = null;
-          verificationResult.Outcome = ConditionGeneration.Outcome.SolverException;
+          verificationResult.VcOutcome = VcOutcome.SolverException;
         }
 
         verificationResult.ProofObligationCountAfter = vcgen.CumulativeAssertionCount;
@@ -993,8 +993,8 @@ namespace Microsoft.Boogie
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, outputWriter, Options.TimeLimit, er);
-        ProcessErrors(Options.Printer, x.errors, x.outcome, outputWriter, er);
+        ProcessOutcome(Options.Printer, x.VcOutcome, x.errors, "", stats, outputWriter, Options.TimeLimit, er);
+        ProcessErrors(Options.Printer, x.errors, x.VcOutcome, outputWriter, er);
       }
 
       return PipelineOutcome.Done;
@@ -1046,8 +1046,8 @@ namespace Microsoft.Boogie
 
       foreach (Houdini.VCGenOutcome x in outcome.implementationOutcomes.Values)
       {
-        ProcessOutcome(Options.Printer, x.outcome, x.errors, "", stats, Options.OutputWriter, Options.TimeLimit, er);
-        ProcessErrors(Options.Printer, x.errors, x.outcome, Options.OutputWriter, er);
+        ProcessOutcome(Options.Printer, x.VcOutcome, x.errors, "", stats, Options.OutputWriter, Options.TimeLimit, er);
+        ProcessErrors(Options.Printer, x.errors, x.VcOutcome, Options.OutputWriter, er);
       }
 
       return PipelineOutcome.Done;
@@ -1055,24 +1055,24 @@ namespace Microsoft.Boogie
 
     #endregion
 
-    public void ProcessOutcome(OutputPrinter printer, ConditionGeneration.Outcome outcome, List<Counterexample> errors, string timeIndication,
+    public void ProcessOutcome(OutputPrinter printer, VcOutcome vcOutcome, List<Counterexample> errors, string timeIndication,
       PipelineStatistics stats, TextWriter tw, uint timeLimit, ErrorReporterDelegate er = null, string implName = null,
       IToken implTok = null, string msgIfVerifies = null)
     {
       Contract.Requires(stats != null);
 
-      UpdateStatistics(stats, outcome, errors);
+      UpdateStatistics(stats, vcOutcome, errors);
 
-      printer.Inform(timeIndication + OutcomeIndication(outcome, errors), tw);
+      printer.Inform(timeIndication + OutcomeIndication(vcOutcome, errors), tw);
 
-      ReportOutcome(printer, outcome, er, implName, implTok, msgIfVerifies, tw, timeLimit, errors);
+      ReportOutcome(printer, vcOutcome, er, implName, implTok, msgIfVerifies, tw, timeLimit, errors);
     }
 
     public void ReportOutcome(OutputPrinter printer,
-      ConditionGeneration.Outcome outcome, ErrorReporterDelegate er, string implName,
+      VcOutcome vcOutcome, ErrorReporterDelegate er, string implName,
       IToken implTok, string msgIfVerifies, TextWriter tw, uint timeLimit, List<Counterexample> errors) {
 
-      var errorInfo = GetOutcomeError(Options, outcome, implName, implTok, msgIfVerifies, tw, timeLimit, errors);
+      var errorInfo = GetOutcomeError(Options, vcOutcome, implName, implTok, msgIfVerifies, tw, timeLimit, errors);
       if (errorInfo != null)
       {
         errorInfo.ImplementationName = implName;
@@ -1088,25 +1088,25 @@ namespace Microsoft.Boogie
       }
     }
 
-    internal static ErrorInformation GetOutcomeError(ExecutionEngineOptions options, ConditionGeneration.Outcome outcome, string implName, IToken implTok, string msgIfVerifies,
+    internal static ErrorInformation GetOutcomeError(ExecutionEngineOptions options, VcOutcome vcOutcome, string implName, IToken implTok, string msgIfVerifies,
       TextWriter tw, uint timeLimit, List<Counterexample> errors)
     {
       ErrorInformation errorInfo = null;
 
-      switch (outcome) {
-        case VCGen.Outcome.Correct:
+      switch (vcOutcome) {
+        case VcOutcome.Correct:
           if (msgIfVerifies != null) {
             tw.WriteLine(msgIfVerifies);
           }
 
           break;
-        case VCGen.Outcome.ReachedBound:
+        case VcOutcome.ReachedBound:
           tw.WriteLine($"Stratified Inlining: Reached recursion bound of {options.RecursionBound}");
           break;
-        case VCGen.Outcome.Errors:
-        case VCGen.Outcome.TimedOut:
+        case VcOutcome.Errors:
+        case VcOutcome.TimedOut:
           if (implName != null && implTok != null) {
-            if (outcome == ConditionGeneration.Outcome.TimedOut ||
+            if (vcOutcome == VcOutcome.TimedOut ||
                 (errors != null && errors.Any(e => e.IsAuxiliaryCexForDiagnosingTimeouts))) {
               string msg = string.Format("Verification of '{1}' timed out after {0} seconds", timeLimit, implName);
               errorInfo = ErrorInformation.Create(implTok, msg);
@@ -1148,21 +1148,21 @@ namespace Microsoft.Boogie
           }
 
           break;
-        case VCGen.Outcome.OutOfResource:
+        case VcOutcome.OutOfResource:
           if (implName != null && implTok != null) {
             string msg = "Verification out of resource (" + implName + ")";
             errorInfo = ErrorInformation.Create(implTok, msg);
           }
 
           break;
-        case VCGen.Outcome.OutOfMemory:
+        case VcOutcome.OutOfMemory:
           if (implName != null && implTok != null) {
             string msg = "Verification out of memory (" + implName + ")";
             errorInfo = ErrorInformation.Create(implTok, msg);
           }
 
           break;
-        case VCGen.Outcome.SolverException:
+        case VcOutcome.SolverException:
           if (implName != null && implTok != null) {
             string msg = "Verification encountered solver exception (" + implName + ")";
             errorInfo = ErrorInformation.Create(implTok, msg);
@@ -1170,7 +1170,7 @@ namespace Microsoft.Boogie
 
           break;
 
-        case VCGen.Outcome.Inconclusive:
+        case VcOutcome.Inconclusive:
           if (implName != null && implTok != null) {
             string msg = "Verification inconclusive (" + implName + ")";
             errorInfo = ErrorInformation.Create(implTok, msg);
@@ -1183,36 +1183,36 @@ namespace Microsoft.Boogie
     }
 
 
-    private static string OutcomeIndication(VC.VCGen.Outcome outcome, List<Counterexample> errors)
+    private static string OutcomeIndication(VcOutcome vcOutcome, List<Counterexample> errors)
     {
       string traceOutput = "";
-      switch (outcome)
+      switch (vcOutcome)
       {
         default:
           Contract.Assert(false); // unexpected outcome
           throw new cce.UnreachableException();
-        case VCGen.Outcome.ReachedBound:
+        case VcOutcome.ReachedBound:
           traceOutput = "verified";
           break;
-        case VCGen.Outcome.Correct:
+        case VcOutcome.Correct:
           traceOutput = "verified";
           break;
-        case VCGen.Outcome.TimedOut:
+        case VcOutcome.TimedOut:
           traceOutput = "timed out";
           break;
-        case VCGen.Outcome.OutOfResource:
+        case VcOutcome.OutOfResource:
           traceOutput = "out of resource";
           break;
-        case VCGen.Outcome.OutOfMemory:
+        case VcOutcome.OutOfMemory:
           traceOutput = "out of memory";
           break;
-        case VCGen.Outcome.SolverException:
+        case VcOutcome.SolverException:
           traceOutput = "solver exception";
           break;
-        case VCGen.Outcome.Inconclusive:
+        case VcOutcome.Inconclusive:
           traceOutput = "inconclusive";
           break;
-        case VCGen.Outcome.Errors:
+        case VcOutcome.Errors:
           Contract.Assert(errors != null);
           traceOutput = string.Format("error{0}", errors.Count == 1 ? "" : "s");
           break;
@@ -1222,44 +1222,44 @@ namespace Microsoft.Boogie
     }
 
 
-    private static void UpdateStatistics(PipelineStatistics stats, VC.VCGen.Outcome outcome, List<Counterexample> errors)
+    private static void UpdateStatistics(PipelineStatistics stats, VcOutcome vcOutcome, List<Counterexample> errors)
     {
       Contract.Requires(stats != null);
 
-      switch (outcome)
+      switch (vcOutcome)
       {
         default:
           Contract.Assert(false); // unexpected outcome
           throw new cce.UnreachableException();
-        case VCGen.Outcome.ReachedBound:
+        case VcOutcome.ReachedBound:
           Interlocked.Increment(ref stats.VerifiedCount);
 
           break;
-        case VCGen.Outcome.Correct:
+        case VcOutcome.Correct:
           Interlocked.Increment(ref stats.VerifiedCount);
 
           break;
-        case VCGen.Outcome.TimedOut:
+        case VcOutcome.TimedOut:
           Interlocked.Increment(ref stats.TimeoutCount);
 
           break;
-        case VCGen.Outcome.OutOfResource:
+        case VcOutcome.OutOfResource:
           Interlocked.Increment(ref stats.OutOfResourceCount);
 
           break;
-        case VCGen.Outcome.OutOfMemory:
+        case VcOutcome.OutOfMemory:
           Interlocked.Increment(ref stats.OutOfMemoryCount);
 
           break;
-        case VCGen.Outcome.SolverException:
+        case VcOutcome.SolverException:
           Interlocked.Increment(ref stats.SolverExceptionCount);
 
           break;
-        case VCGen.Outcome.Inconclusive:
+        case VcOutcome.Inconclusive:
           Interlocked.Increment(ref stats.InconclusiveCount);
 
           break;
-        case VCGen.Outcome.Errors:
+        case VcOutcome.Errors:
           int cnt = errors.Count(e => !e.IsAuxiliaryCexForDiagnosingTimeouts);
           Interlocked.Add(ref stats.ErrorCount, cnt);
 
@@ -1267,43 +1267,43 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static void UpdateCachedStatistics(PipelineStatistics stats, VC.VCGen.Outcome outcome, List<Counterexample> errors) {
+    private static void UpdateCachedStatistics(PipelineStatistics stats, VcOutcome vcOutcome, List<Counterexample> errors) {
       Contract.Requires(stats != null);
 
-      switch (outcome)
+      switch (vcOutcome)
       {
         default:
           Contract.Assert(false); // unexpected outcome
           throw new cce.UnreachableException();
-        case VCGen.Outcome.ReachedBound:
+        case VcOutcome.ReachedBound:
           Interlocked.Increment(ref stats.CachedVerifiedCount);
 
           break;
-        case VCGen.Outcome.Correct:
+        case VcOutcome.Correct:
           Interlocked.Increment(ref stats.CachedVerifiedCount);
 
           break;
-        case VCGen.Outcome.TimedOut:
+        case VcOutcome.TimedOut:
           Interlocked.Increment(ref stats.CachedTimeoutCount);
 
           break;
-        case VCGen.Outcome.OutOfResource:
+        case VcOutcome.OutOfResource:
           Interlocked.Increment(ref stats.CachedOutOfResourceCount);
 
           break;
-        case VCGen.Outcome.OutOfMemory:
+        case VcOutcome.OutOfMemory:
           Interlocked.Increment(ref stats.CachedOutOfMemoryCount);
 
           break;
-        case VCGen.Outcome.SolverException:
+        case VcOutcome.SolverException:
           Interlocked.Increment(ref stats.CachedSolverExceptionCount);
 
           break;
-        case VCGen.Outcome.Inconclusive:
+        case VcOutcome.Inconclusive:
           Interlocked.Increment(ref stats.CachedInconclusiveCount);
 
           break;
-        case VCGen.Outcome.Errors:
+        case VcOutcome.Errors:
           int cnt = errors.Count(e => !e.IsAuxiliaryCexForDiagnosingTimeouts);
           Interlocked.Add(ref stats.CachedErrorCount, cnt);
 
@@ -1313,7 +1313,7 @@ namespace Microsoft.Boogie
 
     public void ProcessErrors(OutputPrinter printer,
       List<Counterexample> errors,
-      ConditionGeneration.Outcome outcome, TextWriter tw,
+      VcOutcome vcOutcome, TextWriter tw,
       ErrorReporterDelegate er, Implementation impl = null)
     {
       var implName = impl?.VerboseName;
@@ -1331,7 +1331,7 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        var errorInfo = error.CreateErrorInformation(outcome, Options.ForceBplErrors);
+        var errorInfo = error.CreateErrorInformation(vcOutcome, Options.ForceBplErrors);
         errorInfo.ImplementationName = implName;
 
         if (Options.XmlSink != null)

@@ -14,5 +14,5 @@ public interface OutputPrinter
   void WriteTrailer(TextWriter textWriter, PipelineStatistics stats);
   void WriteErrorInformation(ErrorInformation errorInfo, TextWriter tw, bool skipExecutionTrace = true);
   void ReportBplError(IToken tok, string message, bool error, TextWriter tw, string category = null);
-  void ReportEndVerifyImplementation(Implementation implementation, VerificationResult result);
+  void ReportEndVerifyImplementation(Implementation implementation, ImplementationRunResult result);
 }

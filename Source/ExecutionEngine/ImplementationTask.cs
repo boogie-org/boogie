@@ -15,7 +15,7 @@ public interface IVerificationStatus {}
 /// <summary>
 /// Results are available
 /// </summary>
-public record Completed(VerificationResult Result) : IVerificationStatus;
+public record Completed(ImplementationRunResult Result) : IVerificationStatus;
 
 /// <summary>
 /// Scheduled to be run but waiting for resources
@@ -32,7 +32,7 @@ public record Stale : IVerificationStatus;
 /// </summary>
 public record Running : IVerificationStatus;
 
-public record BatchCompleted(Split Split, VCResult VcResult) : IVerificationStatus;
+public record BatchCompleted(Split Split, VerificationRunResult VerificationRunResult) : IVerificationStatus;
 
 public interface IImplementationTask {
   IVerificationStatus CacheStatus { get; }

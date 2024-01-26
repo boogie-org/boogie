@@ -15,28 +15,28 @@ namespace VC
   using Bpl = Microsoft.Boogie;
   using System.Threading.Tasks;
 
-  public record VCResult
+  public record VerificationRunResult
   (
-    int vcNum,
-    int iteration,
-    DateTime startTime,
-    ProverInterface.Outcome outcome,
-    TimeSpan runTime,
-    int maxCounterExamples,
-    List<Counterexample> counterExamples,
-    List<AssertCmd> asserts,
-    IEnumerable<TrackedNodeComponent> coveredElements,
-    int resourceCount,
-    SolverKind? solverUsed
+    int VcNum,
+    int Iteration,
+    DateTime StartTime,
+    Bpl.Outcome Outcome,
+    TimeSpan RunTime,
+    int MaxCounterExamples,
+    List<Counterexample> CounterExamples,
+    List<AssertCmd> Asserts,
+    IEnumerable<TrackedNodeComponent> CoveredElements,
+    int ResourceCount,
+    SolverKind? SolverUsed
   ) {
-    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, ProverInterface.Outcome> perAssertOutcome,
+    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, Bpl.Outcome> perAssertOutcome,
       out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
       perAssertOutcome = new();
       perAssertCounterExamples = new();
-      if (outcome == ProverInterface.Outcome.Valid) {
-        perAssertOutcome = asserts.ToDictionary(cmd => cmd, assertCmd => ProverInterface.Outcome.Valid);
+      if (Outcome == Bpl.Outcome.Valid) {
+        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, assertCmd => Bpl.Outcome.Valid);
       } else {
-        foreach (var counterExample in counterExamples) {
+        foreach (var counterExample in CounterExamples) {
           AssertCmd underlyingAssert;
           if (counterExample is AssertCounterexample assertCounterexample) {
             underlyingAssert = assertCounterexample.FailingAssert;
@@ -49,25 +49,25 @@ namespace VC
           }
 
           // We ensure that the underlyingAssert is among the original asserts
-          if (!asserts.Contains(underlyingAssert)) {
+          if (!Asserts.Contains(underlyingAssert)) {
             continue;
           }
 
-          perAssertOutcome.TryAdd(underlyingAssert, ProverInterface.Outcome.Invalid);
+          perAssertOutcome.TryAdd(underlyingAssert, Bpl.Outcome.Invalid);
           perAssertCounterExamples.TryAdd(underlyingAssert, counterExample);
         }
 
         var remainingOutcome =
-          outcome == ProverInterface.Outcome.Invalid && counterExamples.Count < maxCounterExamples
+          Outcome == Bpl.Outcome.Invalid && CounterExamples.Count < MaxCounterExamples
             // We could not extract more counterexamples, remaining assertions are thus valid 
-            ? ProverInterface.Outcome.Valid
-            : outcome == ProverInterface.Outcome.Invalid
+            ? Bpl.Outcome.Valid
+            : Outcome == Bpl.Outcome.Invalid
               // We reached the maximum number of counterexamples, we can't infer anything for the remaining assertions
-              ? ProverInterface.Outcome.Undetermined
+              ? Bpl.Outcome.Undetermined
               // TimeOut, OutOfMemory, OutOfResource, Undetermined for a single split also applies to assertions
-              : outcome;
+              : Outcome;
 
-        foreach (var assert in asserts) {
+        foreach (var assert in Asserts) {
           perAssertOutcome.TryAdd(assert, remainingOutcome);
         }
       }

@@ -6,6 +6,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Threading;
 using Microsoft.Boogie.GraphUtil;
+using VC;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -308,8 +309,8 @@ namespace Microsoft.Boogie.Houdini
 
     private static VCGenOutcome ChooseOutcome(VCGenOutcome o1, VCGenOutcome o2)
     {
-      var vcOutcome1 = o1.outcome;
-      var vcOutcome2 = o2.outcome;
+      var vcOutcome1 = o1.VcOutcome;
+      var vcOutcome2 = o2.VcOutcome;
 
       if (vcOutcome1 == vcOutcome2)
       {
@@ -317,34 +318,34 @@ namespace Microsoft.Boogie.Houdini
       }
 
       // Errors trump everything else
-      if (vcOutcome1 == VC.ConditionGeneration.Outcome.Errors)
+      if (vcOutcome1 == VcOutcome.Errors)
       {
         return o1;
       }
 
-      if (vcOutcome2 == VC.ConditionGeneration.Outcome.Errors)
+      if (vcOutcome2 == VcOutcome.Errors)
       {
         return o2;
       }
 
       // If one outcome is Correct, return the other in case it is "worse"
-      if (vcOutcome1 == VC.ConditionGeneration.Outcome.Correct)
+      if (vcOutcome1 == VcOutcome.Correct)
       {
         return o2;
       }
 
-      if (vcOutcome2 == VC.ConditionGeneration.Outcome.Correct)
+      if (vcOutcome2 == VcOutcome.Correct)
       {
         return o1;
       }
 
       // Neither outcome is correct, so if one outcome is ReachedBound, return the other in case it is "worse"
-      if (vcOutcome1 == VC.ConditionGeneration.Outcome.ReachedBound)
+      if (vcOutcome1 == VcOutcome.ReachedBound)
       {
         return o2;
       }
 
-      if (vcOutcome2 == VC.ConditionGeneration.Outcome.ReachedBound)
+      if (vcOutcome2 == VcOutcome.ReachedBound)
       {
         return o1;
       }
