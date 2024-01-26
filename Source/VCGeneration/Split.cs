@@ -724,21 +724,21 @@ public class Split : ProofRun
     Contract.Ensures(Contract.Result<Counterexample>() != null);
 
     List<Block> trace = new List<Block>();
-    foreach (Block b in Blocks)
+    foreach (Block block in Blocks)
     {
-      Contract.Assert(b != null);
-      trace.Add(b);
+      Contract.Assert(block != null);
+      trace.Add(block);
     }
 
-    foreach (Block b in Blocks)
+    foreach (Block block in Blocks)
     {
-      Contract.Assert(b != null);
-      foreach (Cmd c in b.Cmds)
+      Contract.Assert(block != null);
+      foreach (Cmd command in block.Cmds)
       {
-        Contract.Assert(c != null);
-        if (c is AssertCmd)
+        if (command is AssertCmd assertCmd)
         {
-          var counterexample = VerificationConditionGenerator.AssertCmdToCounterexample(Options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
+          var counterexample = VerificationConditionGenerator.AssertCmdToCounterexample(Options, assertCmd, 
+            cce.NonNull(block.TransferCmd), trace, null, null, null, context, this);
           Counterexamples.Add(counterexample);
           return counterexample;
         }
@@ -865,11 +865,10 @@ public class Split : ProofRun
     return result;
   }
 
-  public (ProverInterface.Outcome outcome, VerificationRunResult result, int resourceCount) 
-    ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
+  public VerificationRunResult ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
   {
     Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-    ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
+    Outcome outcome = cce.NonNull(checker).ReadOutcome();
 
     if (Options.Trace && SplitIndex >= 0)
     {
@@ -901,7 +900,7 @@ public class Split : ProofRun
       DumpDot(SplitIndex);
     }
 
-    return (outcome, result, resourceCount);
+    return result;
   }
 
   public List<Counterexample> Counterexamples { get; } = new();

@@ -1,8 +1,11 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using VC;
 
@@ -113,48 +116,12 @@ public class VerificationTask : IVerificationTask {
     // We claim the right to run.
     cancellationSource = new();
 
-    var cancellationToken = cancellationSource.Token;
     status = new ReplaySubject<IVerificationStatus>();
 
-    var timeout = Split.Run.Implementation.GetTimeLimit(Split.Options);
-
-    var iteration = 0; // Wrap with DoWorkForMultipleIterations code
-    
-    var checker = await engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, CancellationToken.None);
-    var verifierCallback = new VerifierCallback(CoreOptions.ProverWarnings.None);
-    await Split.BeginCheck(Split.Run.OutputWriter, checker, verifierCallback, 
-      modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken);
-    
-    var (newOutcome, result, newResourceCount) = Split.ReadOutcome(iteration, checker, verifierCallback);
-    var proverFailed = SplitAndVerifyWorker.IsProverFailed(newOutcome);
-
-    if (proverFailed) {
-      string msg = "some timeout";
-      if (Split.reporter is { resourceExceededMessage: { } }) {
-        msg = Split.reporter.resourceExceededMessage;
-      }
-
-      var cex = Split.ToCounterexample(checker.TheoremProver.Context);
-      // callback.OnCounterexample(cex, msg);
-      Split.Counterexamples.Add(cex);
-      // Update one last time the result with the dummy counter-example to indicate the position of the timeout
-      result = result with {
-        CounterExamples = Split.Counterexamples
-      };
-    }
-    CacheStatus = new Completed(result);
-    await checker.GoBackToIdle();
-    // Publish Completed to observable
-
-    engine.EnqueueVerifyImplementation(ProcessedProgram, new PipelineStatistics(),
-      null, null, Implementation, cancellationToken, TextWriter.Null).
-      Catch<IVerificationStatus, OperationCanceledException>((e) => Observable.Return(new Stale())).
+    StartRun(cancellationSource.Token).ToObservable().
+      Catch<IVerificationStatus, OperationCanceledException>(_ => Observable.Return(new Stale())).
       Subscribe(next =>
     {
-      if (next is Completed)
-      {
-        CacheStatus = next;
-      }
       status.OnNext(next);
     }, e =>
     {
@@ -178,11 +145,51 @@ public class VerificationTask : IVerificationTask {
         status.OnCompleted();
       }
     });
-    
+
     return status;
   }
 
-  private IObservable<IVerificationStatus>? QueueRun()
+  private async IAsyncEnumerable<IVerificationStatus> StartRun([EnumeratorCancellation] CancellationToken cancellationToken)
+  {
+    var timeout = Split.Run.Implementation.GetTimeLimit(Split.Options);
+    
+    var checkerTask = engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, CancellationToken.None);
+    if (!checkerTask.IsCompleted)
+    {
+      yield return new Queued();
+    }
+    var checker = await checkerTask;
+    try
+    {
+      yield return new Running();
+
+      var verifierCallback = new VerifierCallback(CoreOptions.ProverWarnings.None);
+      await Split.BeginCheck(Split.Run.OutputWriter, checker, verifierCallback,
+        modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken);
+
+      await checker.ProverTask;
+      var result = Split.ReadOutcome(0, checker, verifierCallback);
+
+      if (SplitAndVerifyWorker.IsProverFailed(result.Outcome))
+      {
+        // Update one last time the result with the dummy counter-example to indicate the position of the failure
+        var cex = Split.ToCounterexample(checker.TheoremProver.Context);
+        Split.Counterexamples.Add(cex);
+        result = result with
+        {
+          CounterExamples = Split.Counterexamples
+        };
+      }
+      CacheStatus = new Completed(result);
+      yield return CacheStatus;
+    }
+    finally
+    {
+      await checker.GoBackToIdle();
+    }
+  }
+
+  private IObservable<IVerificationStatus> QueueRun()
   {
     // We claim the right to run.
     cancellationSource = new();

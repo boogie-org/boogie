@@ -112,7 +112,7 @@ public class SplitAndVerifyWorker
 
   async Task DoWork(int iteration, Split split, CancellationToken cancellationToken)
   {
-    var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent, split, cancellationToken);
+    var checker = await split.parent.CheckerPool.FindCheckerFor(split.parent.program, split, cancellationToken);
 
     try {
       cancellationToken.ThrowIfCancellationRequested();
@@ -155,12 +155,12 @@ public class SplitAndVerifyWorker
       }
     }
 
-    var (newOutcome, result, newResourceCount) = split.ReadOutcome(iteration, checker, callback);
+    var result = split.ReadOutcome(iteration, checker, callback);
     lock (this) {
-      vcOutcome = MergeOutcomes(vcOutcome, newOutcome);
-      totalResourceCount += newResourceCount;
+      vcOutcome = MergeOutcomes(vcOutcome, result.Outcome);
+      totalResourceCount += result.ResourceCount;
     }
-    var proverFailed = IsProverFailed(newOutcome);
+    var proverFailed = IsProverFailed(result.Outcome);
 
     if (TrackingProgress) {
       lock (this) {
@@ -183,17 +183,17 @@ public class SplitAndVerifyWorker
     }
   }
 
-  public static bool IsProverFailed(ProverInterface.Outcome outcome)
+  public static bool IsProverFailed(Outcome outcome)
   {
     switch (outcome)
     {
-      case ProverInterface.Outcome.Valid:
-      case ProverInterface.Outcome.Invalid:
-      case ProverInterface.Outcome.Undetermined:
+      case Outcome.Valid:
+      case Outcome.Invalid:
+      case Outcome.Undetermined:
         return false;
-      case ProverInterface.Outcome.OutOfMemory:
-      case ProverInterface.Outcome.TimeOut:
-      case ProverInterface.Outcome.OutOfResource:
+      case Outcome.OutOfMemory:
+      case Outcome.TimeOut:
+      case Outcome.OutOfResource:
         return true;
       default:
         Contract.Assert(false);
@@ -201,36 +201,36 @@ public class SplitAndVerifyWorker
     }
   }
 
-  private static VcOutcome MergeOutcomes(VcOutcome currentVcOutcome, ProverInterface.Outcome newOutcome)
+  private static VcOutcome MergeOutcomes(VcOutcome currentVcOutcome, Outcome newOutcome)
   {
     switch (newOutcome)
     {
-      case ProverInterface.Outcome.Valid:
+      case Outcome.Valid:
         return currentVcOutcome;
-      case ProverInterface.Outcome.Invalid:
+      case Outcome.Invalid:
         return VcOutcome.Errors;
-      case ProverInterface.Outcome.OutOfMemory:
+      case Outcome.OutOfMemory:
         if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
         {
           return VcOutcome.OutOfMemory;
         }
 
         return currentVcOutcome;
-      case ProverInterface.Outcome.TimeOut:
+      case Outcome.TimeOut:
         if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
         {
           return VcOutcome.TimedOut;
         }
 
         return currentVcOutcome;
-      case ProverInterface.Outcome.OutOfResource:
+      case Outcome.OutOfResource:
         if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
         {
           return VcOutcome.OutOfResource;
         }
 
         return currentVcOutcome;
-      case ProverInterface.Outcome.Undetermined:
+      case Outcome.Undetermined:
         if (currentVcOutcome != VcOutcome.Errors)
         {
           return VcOutcome.Inconclusive;

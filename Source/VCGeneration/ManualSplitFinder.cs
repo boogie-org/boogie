@@ -44,14 +44,14 @@ public static class ManualSplitFinder
       var baseSplitBlocks = BlockTransformations.PostProcess(
         DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, 
           -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
-      splits.Add(new Split(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.run));
+      splits.Add(new Split(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run));
       foreach (KeyValuePair<Block, int> pair in splitPoints)
       {
         for (int i = 0; i < pair.Value; i++)
         {
           bool lastSplitInBlock = i == pair.Value - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, pair.Key, lastSplitInBlock, splitOnEveryAssert);
-          splits.Add(new Split(initialSplit.Options, BlockTransformations.PostProcess(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.run)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
+          splits.Add(new Split(initialSplit.Options, BlockTransformations.PostProcess(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
         }
       }
     }

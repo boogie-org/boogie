@@ -8,6 +8,17 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie;
 
+public enum Outcome
+{
+  Valid,
+  Invalid,
+  TimeOut,
+  OutOfMemory,
+  OutOfResource,
+  Undetermined,
+  Bounded
+}
+
 public abstract class ProverInterface
 {
   public static ProverInterface CreateProver(SMTLibOptions libOptions, Program prog,
@@ -88,17 +99,6 @@ public abstract class ProverInterface
     }
 
     return libOptions.TheProverFactory.SpawnProver(libOptions, options, ctx);
-  }
-
-  public enum Outcome
-  {
-    Valid,
-    Invalid,
-    TimeOut,
-    OutOfMemory,
-    OutOfResource,
-    Undetermined,
-    Bounded
   }
 
   public readonly ISet<VCExprVar> NamedAssumes = new HashSet<VCExprVar>();

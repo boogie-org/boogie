@@ -353,8 +353,7 @@ public class VerificationConditionGenerator : ConditionGeneration
     }
 
     callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
-
-
+    
     PrepareImplementation(run, callback, out var smokeTester, out var dataGotoCmdOrigins, out var dataModelViewInfo);
 
     VcOutcome vcOutcome = VcOutcome.Correct;
@@ -484,7 +483,7 @@ public class VerificationConditionGenerator : ConditionGeneration
     }
 
     public override void OnModel(IList<string> labels /*!*/ /*!*/, Model model,
-      ProverInterface.Outcome proverOutcome)
+      Outcome proverOutcome)
     {
       // no counter examples reported.
       if (labels.Count == 0)

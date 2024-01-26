@@ -40,7 +40,7 @@ namespace Microsoft.Boogie
     private ProverInterface thmProver;
 
     // state for the async interface
-    private volatile ProverInterface.Outcome outcome;
+    private volatile Outcome outcome;
     private volatile bool hasOutput;
     private volatile UnexpectedProverOutputException outputExn;
     public DateTime ProverStart { get; private set; }
@@ -292,22 +292,22 @@ namespace Microsoft.Boogie
 
       switch (outcome)
       {
-        case ProverInterface.Outcome.Valid:
+        case Outcome.Valid:
           thmProver.LogComment("Valid");
           break;
-        case ProverInterface.Outcome.Invalid:
+        case Outcome.Invalid:
           thmProver.LogComment("Invalid");
           break;
-        case ProverInterface.Outcome.TimeOut:
+        case Outcome.TimeOut:
           thmProver.LogComment("Timed out");
           break;
-        case ProverInterface.Outcome.OutOfResource:
+        case Outcome.OutOfResource:
           thmProver.LogComment("Out of resource");
           break;
-        case ProverInterface.Outcome.OutOfMemory:
+        case Outcome.OutOfMemory:
           thmProver.LogComment("Out of memory");
           break;
-        case ProverInterface.Outcome.Undetermined:
+        case Outcome.Undetermined:
           thmProver.LogComment("Undetermined");
           break;
       }
@@ -341,7 +341,7 @@ namespace Microsoft.Boogie
       ProverTask = Check(descriptiveName, vc, cancellationToken);
     }
 
-    public ProverInterface.Outcome ReadOutcome()
+    public Outcome ReadOutcome()
     {
       Contract.Requires(IsBusy);
       Contract.Requires(HasOutput);

@@ -11,7 +11,7 @@ namespace VC
     int vcNum,
     int Iteration,
     DateTime StartTime,
-    ProverInterface.Outcome Outcome,
+    Outcome Outcome,
     TimeSpan RunTime,
     int MaxCounterExamples,
     List<Counterexample> CounterExamples,
@@ -20,12 +20,12 @@ namespace VC
     int ResourceCount,
     SolverKind? SolverUsed
   ) {
-    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, ProverInterface.Outcome> perAssertOutcome,
+    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, Outcome> perAssertOutcome,
       out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
       perAssertOutcome = new();
       perAssertCounterExamples = new();
-      if (Outcome == ProverInterface.Outcome.Valid) {
-        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, _ => ProverInterface.Outcome.Valid);
+      if (Outcome == Outcome.Valid) {
+        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, _ => Outcome.Valid);
       } else {
         foreach (var counterExample in CounterExamples) {
           AssertCmd underlyingAssert;
@@ -44,17 +44,17 @@ namespace VC
             continue;
           }
 
-          perAssertOutcome.TryAdd(underlyingAssert, ProverInterface.Outcome.Invalid);
+          perAssertOutcome.TryAdd(underlyingAssert, Outcome.Invalid);
           perAssertCounterExamples.TryAdd(underlyingAssert, counterExample);
         }
 
         var remainingOutcome =
-          Outcome == ProverInterface.Outcome.Invalid && CounterExamples.Count < MaxCounterExamples
+          Outcome == Outcome.Invalid && CounterExamples.Count < MaxCounterExamples
             // We could not extract more counterexamples, remaining assertions are thus valid 
-            ? ProverInterface.Outcome.Valid
-            : Outcome == ProverInterface.Outcome.Invalid
+            ? Outcome.Valid
+            : Outcome == Outcome.Invalid
               // We reached the maximum number of counterexamples, we can't infer anything for the remaining assertions
-              ? ProverInterface.Outcome.Undetermined
+              ? Outcome.Undetermined
               // TimeOut, OutOfMemory, OutOfResource, Undetermined for a single split also applies to assertions
               : Outcome;
 

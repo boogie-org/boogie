@@ -275,10 +275,10 @@ public class SmokeTester
 
     parent.CurrentLocalVariables = run.Implementation.LocVars;
     parent.PassifyImpl(run, out var mvInfo);
-    Checker checker = await parent.CheckerPool.FindCheckerFor(parent, null, CancellationToken.None);
+    Checker checker = await parent.CheckerPool.FindCheckerFor(parent.program, null, CancellationToken.None);
     Contract.Assert(checker != null);
 
-    ProverInterface.Outcome outcome = ProverInterface.Outcome.Undetermined;
+    Outcome outcome = Outcome.Undetermined;
     try
     {
       VCExpr vc;
@@ -327,12 +327,12 @@ public class SmokeTester
     if (Options.Trace)
     {
       traceWriter.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,
-        outcome == ProverInterface.Outcome.Valid
+        outcome == Outcome.Valid
           ? "OOPS"
-          : "OK" + (outcome == ProverInterface.Outcome.Invalid ? "" : " (" + outcome + ")"));
+          : "OK" + (outcome == Outcome.Invalid ? "" : " (" + outcome + ")"));
     }
 
-    if (outcome == ProverInterface.Outcome.Valid)
+    if (outcome == Outcome.Valid)
     {
       // copy it again, so we get the version with calls, assignments and such
       copy = CopyBlock(cur);
