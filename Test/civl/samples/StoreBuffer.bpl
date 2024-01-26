@@ -1,6 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear "tid", "addr"} X = int;
+type {:linear "tid"} X = int;
 
 const numMutators: int;
 axiom 0 < numMutators;
