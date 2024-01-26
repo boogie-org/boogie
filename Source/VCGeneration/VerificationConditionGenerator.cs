@@ -7,6 +7,7 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
@@ -16,8 +17,20 @@ namespace VC;
 using Bpl = Microsoft.Boogie;
 using System.Threading.Tasks;
 
+
+record ImplementationTransformationData {
+
+  public bool Passified { get; set; } = false;
+  public bool ConvertedToDAG { get; set; } = false;
+  public Dictionary<TransferCmd, ReturnCmd> GotoCmdOrigins { get; set; }
+  public ModelViewInfo ModelViewInfo { get; set; }
+}
+
+
 public class VerificationConditionGenerator : ConditionGeneration
 {
+  private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
+
     
   /// <summary>
   /// Constructor.  Initializes the theorem prover.
@@ -403,7 +416,11 @@ public class VerificationConditionGenerator : ConditionGeneration
     out Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
     out ModelViewInfo modelViewInfo)
   {
-    ConvertCFG2DAG(run);
+    var data = implementationData.GetOrCreateValue(run.Implementation)!;
+    if (!data.ConvertedToDAG) {
+      data.ConvertedToDAG = true;
+      ConvertCFG2DAG(run);
+    }
 
     smokeTester = null;
     if (Options.SoundnessSmokeTest)
@@ -411,9 +428,19 @@ public class VerificationConditionGenerator : ConditionGeneration
       smokeTester = new SmokeTester(this, run, callback);
       smokeTester.Copy();
     }
+    if (!data.Passified) {
+      data.Passified = true;
+      data.GotoCmdOrigins = gotoCmdOrigins =PassifyImpl(run, out modelViewInfo);
+      data.ModelViewInfo = modelViewInfo;
 
-    gotoCmdOrigins = PassifyImpl(run, out modelViewInfo);
-    ExpandAsserts(run.Implementation);
+      ExpandAsserts(run.Implementation);
+    }
+    else
+    {
+      modelViewInfo = data.ModelViewInfo;
+      gotoCmdOrigins = data.GotoCmdOrigins;
+    }
+
   }
 
   public class ErrorReporter : ProverInterface.ErrorHandler {
