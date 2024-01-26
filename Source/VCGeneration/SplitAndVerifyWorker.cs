@@ -21,9 +21,8 @@ public class SplitAndVerifyWorker
   private readonly int maxKeepGoingSplits;
   public List<Split> ManualSplits { get; }
   private double maxVcCost;
-  private readonly bool splitOnEveryAssert;
       
-  private bool DoSplitting => ManualSplits.Count > 1 || KeepGoing || splitOnEveryAssert;
+  private bool DoSplitting => ManualSplits.Count > 1 || KeepGoing;
   private bool TrackingProgress => DoSplitting && (callback.OnProgress != null || options.Trace); 
   private bool KeepGoing => maxKeepGoingSplits > 1;
 
@@ -58,11 +57,9 @@ public class SplitAndVerifyWorker
       maxVcCost = tmpMaxVcCost;
     }
       
-    splitOnEveryAssert = options.VcsSplitOnEveryAssert;
-    Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
     ResetPredecessors(Implementation.Blocks);
-    ManualSplits = ManualSplitFinder.FocusAndSplit(options, run, gotoCmdOrigins, verificationConditionGenerator, splitOnEveryAssert);
+    ManualSplits = ManualSplitFinder.FocusAndSplit(options, run, gotoCmdOrigins, verificationConditionGenerator);
       
     if (ManualSplits.Count == 1 && maxSplits > 1) {
       ManualSplits = Split.DoSplit(ManualSplits[0], maxVcCost, maxSplits);

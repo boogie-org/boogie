@@ -724,9 +724,7 @@ namespace Microsoft.Boogie
           out var gotoCmdOrigins,
           out var modelViewInfo);
 
-        var splitOnEveryAssert = Options.VcsSplitOnEveryAssert;
-        run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
-        var splits = ManualSplitFinder.FocusAndSplit(Options, run, gotoCmdOrigins, vcGenerator, splitOnEveryAssert);
+        var splits = ManualSplitFinder.FocusAndSplit(Options, run, gotoCmdOrigins, vcGenerator);
         return splits.Select(split => new VerificationTask(this, processedProgram, split, modelViewInfo));
       }).ToList();
     }

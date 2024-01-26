@@ -8,17 +8,20 @@ namespace VCGeneration;
 
 public static class ManualSplitFinder
 {
-  public static List<Split> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par, bool splitOnEveryAssert)
+  public static List<Split> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
   {
     List<Split> focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
-    return focussedImpl.Select(s => FindManualSplits(s, splitOnEveryAssert)).SelectMany(x => x).ToList();
+    return focussedImpl.Select(FindManualSplits).SelectMany(x => x).ToList();
   }
     
-  public static List<Split /*!*/> FindManualSplits(Split initialSplit, bool splitOnEveryAssert)
+  public static List<Split /*!*/> FindManualSplits(Split initialSplit)
   {
     Contract.Requires(initialSplit.Implementation != null);
     Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
 
+    var splitOnEveryAssert = initialSplit.Options.VcsSplitOnEveryAssert;
+    initialSplit.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
+    
     var splitPoints = new Dictionary<Block, int>();
     foreach (var block in initialSplit.Blocks)
     {
