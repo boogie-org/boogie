@@ -990,7 +990,7 @@ namespace VC
       return true;
     }
 
-    public abstract Outcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars);
+    public abstract VcOutcome FindLeastToVerify(Implementation impl, ref HashSet<string> allBoolVars);
   }
 
 } // namespace VC

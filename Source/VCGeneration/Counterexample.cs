@@ -388,14 +388,14 @@ namespace Microsoft.Boogie
 
     public abstract int GetLocation();
 
-    public ErrorInformation CreateErrorInformation(ConditionGeneration.Outcome outcome, bool forceBplErrors)
+    public ErrorInformation CreateErrorInformation(VcOutcome vcOutcome, bool forceBplErrors)
     {
       ErrorInformation errorInfo;
-      var cause = outcome switch {
-        VCGen.Outcome.TimedOut => "Timed out on",
-        VCGen.Outcome.OutOfMemory => "Out of memory on",
-        VCGen.Outcome.SolverException => "Solver exception on",
-        VCGen.Outcome.OutOfResource => "Out of resource on",
+      var cause = vcOutcome switch {
+        VcOutcome.TimedOut => "Timed out on",
+        VcOutcome.OutOfMemory => "Out of memory on",
+        VcOutcome.SolverException => "Solver exception on",
+        VcOutcome.OutOfResource => "Out of resource on",
         _ => "Error"
       };
 

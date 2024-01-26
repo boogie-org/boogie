@@ -90,17 +90,6 @@ public abstract class ProverInterface
     return libOptions.TheProverFactory.SpawnProver(libOptions, options, ctx);
   }
 
-  public enum Outcome
-  {
-    Valid,
-    Invalid,
-    TimeOut,
-    OutOfMemory,
-    OutOfResource,
-    Undetermined,
-    Bounded
-  }
-
   public readonly ISet<VCExprVar> NamedAssumes = new HashSet<VCExprVar>();
 
   public class ErrorHandler
@@ -305,6 +294,18 @@ public abstract class ProverInterface
 
   public abstract Task GoBackToIdle();
 }
+
+public enum Outcome
+{
+  Valid,
+  Invalid,
+  TimeOut,
+  OutOfMemory,
+  OutOfResource,
+  Undetermined,
+  Bounded
+}
+
 public class UnexpectedProverOutputException : ProverException
 {
   public UnexpectedProverOutputException(string s)

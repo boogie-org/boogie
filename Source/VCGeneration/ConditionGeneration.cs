@@ -27,7 +27,7 @@ namespace VC
   [ContractClassFor(typeof(ConditionGeneration))]
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
-    public override Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+    public override Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver)
     {
       Contract.Requires(run != null);
@@ -45,37 +45,25 @@ namespace VC
   [ContractClass(typeof(ConditionGenerationContracts))]
   public abstract class ConditionGeneration : IDisposable
   {
-    public enum Outcome
-    {
-      Correct,
-      Errors,
-      TimedOut,
-      OutOfResource,
-      OutOfMemory,
-      Inconclusive,
-      ReachedBound,
-      SolverException
-    }
-
-    public static Outcome ProverInterfaceOutcomeToConditionGenerationOutcome(ProverInterface.Outcome outcome)
+    public static VcOutcome ProverInterfaceOutcomeToConditionGenerationOutcome(Microsoft.Boogie.Outcome outcome)
     {
       switch (outcome)
       {
-        case ProverInterface.Outcome.Invalid:
-          return Outcome.Errors;
-        case ProverInterface.Outcome.OutOfMemory:
-          return Outcome.OutOfMemory;
-        case ProverInterface.Outcome.TimeOut:
-          return Outcome.TimedOut;
-        case ProverInterface.Outcome.OutOfResource:
-          return Outcome.OutOfResource;
-        case ProverInterface.Outcome.Undetermined:
-          return Outcome.Inconclusive;
-        case ProverInterface.Outcome.Valid:
-          return Outcome.Correct;
+        case Microsoft.Boogie.Outcome.Invalid:
+          return VcOutcome.Errors;
+        case Microsoft.Boogie.Outcome.OutOfMemory:
+          return VcOutcome.OutOfMemory;
+        case Microsoft.Boogie.Outcome.TimeOut:
+          return VcOutcome.TimedOut;
+        case Microsoft.Boogie.Outcome.OutOfResource:
+          return VcOutcome.OutOfResource;
+        case Microsoft.Boogie.Outcome.Undetermined:
+          return VcOutcome.Inconclusive;
+        case Microsoft.Boogie.Outcome.Valid:
+          return VcOutcome.Correct;
       }
 
-      return Outcome.Inconclusive; // unreachable but the stupid compiler does not understand
+      return VcOutcome.Inconclusive; // unreachable but the stupid compiler does not understand
     }
 
     [ContractInvariantMethod]
@@ -120,7 +108,7 @@ namespace VC
     /// <param name="batchCompletedObserver"></param>
     /// <param name="cancellationToken"></param>
     /// <param name="impl"></param>
-    public async Task<(Outcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation(
+    public async Task<(VcOutcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation(
       ImplementationRun run, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver,
       CancellationToken cancellationToken)
     {
@@ -130,20 +118,20 @@ namespace VC
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
       var collector = new VerificationResultCollector(Options);
-      Outcome outcome = await VerifyImplementation(run, collector, cancellationToken, batchCompletedObserver);
+      VcOutcome vcOutcome = await VerifyImplementation(run, collector, cancellationToken, batchCompletedObserver);
       var /*?*/ errors = new List<Counterexample>();
-      if (outcome == Outcome.Errors || outcome == Outcome.TimedOut || outcome == Outcome.OutOfMemory ||
-          outcome == Outcome.OutOfResource) {
+      if (vcOutcome == VcOutcome.Errors || vcOutcome == VcOutcome.TimedOut || vcOutcome == VcOutcome.OutOfMemory ||
+          vcOutcome == VcOutcome.OutOfResource) {
         errors = collector.examples.ToList();
       }
 
       Helpers.ExtraTraceInformation(Options, "Finished implementation verification");
-      return (outcome, errors, collector.vcResults.ToList());
+      return (vcOutcome, errors, collector.vcResults.ToList());
     }
 
     private VCGenOptions Options => CheckerPool.Options;
 
-    public abstract Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+    public abstract Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
@@ -1660,6 +1648,18 @@ namespace VC
         _disposed = true;
       }
     }
+  }
+
+  public enum VcOutcome
+  {
+    Correct,
+    Errors,
+    TimedOut,
+    OutOfResource,
+    OutOfMemory,
+    Inconclusive,
+    ReachedBound,
+    SolverException
   }
 
   public record ImplementationRun(Implementation Implementation, TextWriter OutputWriter) {

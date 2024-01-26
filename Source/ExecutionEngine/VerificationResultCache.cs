@@ -231,14 +231,14 @@ namespace Microsoft.Boogie
     private void SetErrorAndAssertionChecksumsInCachedSnapshot(Implementation implementation,
       ImplementationRunResult result)
     {
-      if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null &&
+      if (result.VcOutcome == VcOutcome.Errors && result.Errors != null &&
           result.Errors.Count < options.ErrorLimit)
       {
         implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex =>
           new Tuple<byte[], byte[], object>(cex.Checksum, cex.SugaredCmdChecksum, cex)));
         implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
       }
-      else if (result.Outcome == ConditionGeneration.Outcome.Correct)
+      else if (result.VcOutcome == VcOutcome.Correct)
       {
         implementation.SetErrorChecksumToCachedError(new List<Tuple<byte[], byte[], object>>());
         implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
@@ -716,7 +716,7 @@ namespace Microsoft.Boogie
       {
         priority = Priority.LOW;
       }
-      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && runDiagnosticsOnTimeout)
+      else if (result.VcOutcome == VcOutcome.TimedOut && runDiagnosticsOnTimeout)
       {
         priority = Priority.MEDIUM;
       }

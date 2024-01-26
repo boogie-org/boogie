@@ -71,7 +71,7 @@ procedure Second(y: int)
     Assert.NotNull(tasks[0].Implementation);
     var result1 = await tasks[0].TryRun()!.ToTask();
     var verificationResult1 = ((Completed)result1).Result;
-    Assert.AreEqual(ConditionGeneration.Outcome.Errors, verificationResult1.Outcome);
+    Assert.AreEqual(VcOutcome.Errors, verificationResult1.VcOutcome);
     Assert.AreEqual(true, verificationResult1.Errors[0].Model.ModelHasStatesAlready);
 
     Assert.IsTrue(tasks[1].IsIdle);
@@ -80,7 +80,7 @@ procedure Second(y: int)
     var result2 = await runningStates.ToTask();
     Assert.IsTrue(tasks[1].IsIdle);
     var verificationResult2 = ((Completed)result2).Result;
-    Assert.AreEqual(ConditionGeneration.Outcome.Correct, verificationResult2.Outcome);
+    Assert.AreEqual(VcOutcome.Correct, verificationResult2.VcOutcome);
   }
 
   [Test]
@@ -340,10 +340,10 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     
     var tasks2 = engine.GetImplementationTasks(program);
     Assert.True(tasks2[0].CacheStatus is Completed);
-    Assert.AreEqual(ConditionGeneration.Outcome.Errors, ((Completed)tasks2[0].CacheStatus).Result.Outcome);
+    Assert.AreEqual(VcOutcome.Errors, ((Completed)tasks2[0].CacheStatus).Result.VcOutcome);
 
     Assert.True(tasks2[1].CacheStatus is Completed);
-    Assert.AreEqual(ConditionGeneration.Outcome.Correct, ((Completed)tasks2[1].CacheStatus).Result.Outcome);
+    Assert.AreEqual(VcOutcome.Correct, ((Completed)tasks2[1].CacheStatus).Result.VcOutcome);
     
     var batchResult = (BatchCompleted) statusList[2].Item2;
     
@@ -353,7 +353,7 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     Assert.Contains(assertion, perAssertCounterExamples.Keys);
     var outcomeAssertion = perAssertOutcome[assertion];
     var counterExampleAssertion = perAssertCounterExamples[assertion];
-    Assert.AreEqual(ProverInterface.Outcome.Invalid, outcomeAssertion);
+    Assert.AreEqual(Outcome.Invalid, outcomeAssertion);
     Assert.AreEqual(true, counterExampleAssertion is AssertCounterexample);
     var assertCounterexample = (AssertCounterexample)counterExampleAssertion;
     Assert.AreEqual(assertCounterexample.FailingAssert, assertion);
@@ -374,10 +374,10 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     options.VcsCores = 1;
 
     var outcome1 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
-    Assert.IsTrue(outcome1 is Completed completed && completed.Result.Outcome == ConditionGeneration.Outcome.Inconclusive);
+    Assert.IsTrue(outcome1 is Completed completed && completed.Result.VcOutcome == VcOutcome.Inconclusive);
     options.CreateSolver = (_ ,_ ) => new UnsatSolver();
     var outcome2 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
-    Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.Outcome == ConditionGeneration.Outcome.Correct);
+    Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.VcOutcome == VcOutcome.Correct);
   }
 
   [Test]

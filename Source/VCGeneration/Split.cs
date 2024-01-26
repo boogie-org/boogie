@@ -1269,10 +1269,10 @@ namespace VC
         }
       }
 
-      public (ProverInterface.Outcome outcome, VerificationRunResult result, int resourceCount) ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
+      public (Bpl.Outcome outcome, VerificationRunResult result, int resourceCount) ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-        ProverInterface.Outcome outcome = cce.NonNull(checker).ReadOutcome();
+        Bpl.Outcome outcome = cce.NonNull(checker).ReadOutcome();
 
         if (options.Trace && SplitIndex >= 0)
         {

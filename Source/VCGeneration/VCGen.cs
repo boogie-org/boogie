@@ -355,7 +355,7 @@ namespace VC
 
     private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
 
-    public override async Task<Outcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
+    public override async Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
       CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver)
     {
       Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
@@ -364,7 +364,7 @@ namespace VC
 
       if (run.Implementation.IsSkipVerification(Options))
       {
-        return Outcome.Inconclusive; // not sure about this one
+        return VcOutcome.Inconclusive; // not sure about this one
       }
 
       callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
@@ -391,12 +391,12 @@ namespace VC
         ExpandAsserts(impl);
       }
 
-      Outcome outcome = Outcome.Correct;
+      VcOutcome vcOutcome = VcOutcome.Correct;
 
       // Report all recycled failing assertions for this implementation.
       if (impl.RecycledFailingAssertions != null && impl.RecycledFailingAssertions.Any())
       {
-        outcome = Outcome.Errors;
+        vcOutcome = VcOutcome.Errors;
         foreach (var a in impl.RecycledFailingAssertions)
         {
           var checksum = a.Checksum;
@@ -417,21 +417,21 @@ namespace VC
       }
 
       var worker = new SplitAndVerifyWorker(Options, this, run, data.GotoCmdOrigins, callback,
-        data.ModelViewInfo, outcome);
+        data.ModelViewInfo, vcOutcome);
       worker.BatchCompletions.Subscribe(batchCompletedObserver);
             
-      outcome = await worker.WorkUntilDone(cancellationToken);
+      vcOutcome = await worker.WorkUntilDone(cancellationToken);
       ResourceCount = worker.ResourceCount;
 
       TotalProverElapsedTime = worker.TotalProverElapsedTime;
-      if (outcome == Outcome.Correct && smokeTester != null)
+      if (vcOutcome == VcOutcome.Correct && smokeTester != null)
       {
         await smokeTester.Test(run.OutputWriter);
       }
 
       callback.OnProgress?.Invoke("done", 0, 0, 1.0);
 
-      return outcome;
+      return vcOutcome;
     }
 
     public class ErrorReporter : ProverInterface.ErrorHandler {
@@ -501,7 +501,7 @@ namespace VC
       }
 
       public override void OnModel(IList<string> labels /*!*/ /*!*/, Model model,
-        ProverInterface.Outcome proverOutcome)
+        Bpl.Outcome proverOutcome)
       {
         // no counter examples reported.
         if (labels.Count == 0)

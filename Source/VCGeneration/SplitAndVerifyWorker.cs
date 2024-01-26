@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
 using static VC.ConditionGeneration;
+using Outcome = Microsoft.Boogie.Outcome;
 
 namespace VC
 {
@@ -31,7 +32,7 @@ namespace VC
     private bool KeepGoing => maxKeepGoingSplits > 1;
 
     private VCGen vcGen;
-    private Outcome outcome;
+    private VcOutcome vcOutcome;
     private double remainingCost;
     private double provenCost;
     private int total;
@@ -41,13 +42,13 @@ namespace VC
 
     public SplitAndVerifyWorker(VCGenOptions options, VCGen vcGen, ImplementationRun run,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
-      Outcome outcome)
+      VcOutcome vcOutcome)
     {
       this.options = options;
       this.callback = callback;
       this.mvInfo = mvInfo;
       this.run = run;
-      this.outcome = outcome;
+      this.vcOutcome = vcOutcome;
       this.vcGen = vcGen;
       var maxSplits = options.VcsMaxSplits;
       VCGen.CheckIntAttributeOnImpl(run, "vcs_max_splits", ref maxSplits);
@@ -77,7 +78,7 @@ namespace VC
       splitNumber = DoSplitting ? 0 : -1;
     }
 
-    public async Task<Outcome> WorkUntilDone(CancellationToken cancellationToken)
+    public async Task<VcOutcome> WorkUntilDone(CancellationToken cancellationToken)
     {
       TrackSplitsCost(manualSplits);
       try
@@ -89,7 +90,7 @@ namespace VC
         batchCompletions.OnCompleted();
       }
 
-      return outcome;
+      return vcOutcome;
     }
 
     public int ResourceCount => totalResourceCount;
@@ -168,7 +169,7 @@ namespace VC
 
       var (newOutcome, result, newResourceCount) = split.ReadOutcome(iteration, checker, callback);
       lock (this) {
-        outcome = MergeOutcomes(outcome, newOutcome);
+        vcOutcome = MergeOutcomes(vcOutcome, newOutcome);
         totalResourceCount += newResourceCount;
       }
       var proverFailed = IsProverFailed(newOutcome);
@@ -195,17 +196,17 @@ namespace VC
       }
     }
 
-    private static bool IsProverFailed(ProverInterface.Outcome outcome)
+    private static bool IsProverFailed(Outcome outcome)
     {
       switch (outcome)
       {
-        case ProverInterface.Outcome.Valid:
-        case ProverInterface.Outcome.Invalid:
-        case ProverInterface.Outcome.Undetermined:
+        case Outcome.Valid:
+        case Outcome.Invalid:
+        case Outcome.Undetermined:
           return false;
-        case ProverInterface.Outcome.OutOfMemory:
-        case ProverInterface.Outcome.TimeOut:
-        case ProverInterface.Outcome.OutOfResource:
+        case Outcome.OutOfMemory:
+        case Outcome.TimeOut:
+        case Outcome.OutOfResource:
           return true;
         default:
           Contract.Assert(false);
@@ -213,41 +214,41 @@ namespace VC
       }
     }
 
-    private static Outcome MergeOutcomes(Outcome currentOutcome, ProverInterface.Outcome newOutcome)
+    private static VcOutcome MergeOutcomes(VcOutcome currentVcOutcome, Outcome newOutcome)
     {
       switch (newOutcome)
       {
-        case ProverInterface.Outcome.Valid:
-          return currentOutcome;
-        case ProverInterface.Outcome.Invalid:
-          return Outcome.Errors;
-        case ProverInterface.Outcome.OutOfMemory:
-          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+        case Outcome.Valid:
+          return currentVcOutcome;
+        case Outcome.Invalid:
+          return VcOutcome.Errors;
+        case Outcome.OutOfMemory:
+          if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
           {
-            return Outcome.OutOfMemory;
+            return VcOutcome.OutOfMemory;
           }
 
-          return currentOutcome;
-        case ProverInterface.Outcome.TimeOut:
-          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          return currentVcOutcome;
+        case Outcome.TimeOut:
+          if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
           {
-            return Outcome.TimedOut;
+            return VcOutcome.TimedOut;
           }
 
-          return currentOutcome;
-        case ProverInterface.Outcome.OutOfResource:
-          if (currentOutcome != Outcome.Errors && currentOutcome != Outcome.Inconclusive)
+          return currentVcOutcome;
+        case Outcome.OutOfResource:
+          if (currentVcOutcome != VcOutcome.Errors && currentVcOutcome != VcOutcome.Inconclusive)
           {
-            return Outcome.OutOfResource;
+            return VcOutcome.OutOfResource;
           }
 
-          return currentOutcome;
-        case ProverInterface.Outcome.Undetermined:
-          if (currentOutcome != Outcome.Errors)
+          return currentVcOutcome;
+        case Outcome.Undetermined:
+          if (currentVcOutcome != VcOutcome.Errors)
           {
-            return Outcome.Inconclusive;
+            return VcOutcome.Inconclusive;
           }
-          return currentOutcome;
+          return currentVcOutcome;
         default:
           Contract.Assert(false);
           throw new cce.UnreachableException();
@@ -270,7 +271,7 @@ namespace VC
           CounterExamples = split.Counterexamples
         };
         batchCompletions.OnNext((split, result));
-        outcome = Outcome.Errors;
+        vcOutcome = VcOutcome.Errors;
         await checker.GoBackToIdle();
         return;
       }
@@ -286,29 +287,29 @@ namespace VC
         maxVcCost = 1.0; // for future
         TrackSplitsCost(newSplits);
         
-        if (outcome != Outcome.Errors) {
-          outcome = Outcome.Correct;
+        if (vcOutcome != VcOutcome.Errors) {
+          vcOutcome = VcOutcome.Correct;
         }
         await Task.WhenAll(newSplits.Select(newSplit => DoWorkForMultipleIterations(newSplit, cancellationToken)));
         return;
       }
 
-      Contract.Assert(outcome != Outcome.Correct);
-      if (outcome == Outcome.TimedOut) {
+      Contract.Assert(vcOutcome != VcOutcome.Correct);
+      if (vcOutcome == VcOutcome.TimedOut) {
         string msg = "some timeout";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
 
         callback.OnTimeout(msg);
-      } else if (outcome == Outcome.OutOfMemory) {
+      } else if (vcOutcome == VcOutcome.OutOfMemory) {
         string msg = "out of memory";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;
         }
 
         callback.OnOutOfMemory(msg);
-      } else if (outcome == Outcome.OutOfResource) {
+      } else if (vcOutcome == VcOutcome.OutOfResource) {
         string msg = "out of resource";
         if (split.reporter is { resourceExceededMessage: { } }) {
           msg = split.reporter.resourceExceededMessage;

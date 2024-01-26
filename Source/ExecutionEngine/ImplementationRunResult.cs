@@ -37,7 +37,7 @@ public sealed class ImplementationRunResult
   public int ProofObligationCountBefore { get; set; }
   public int ProofObligationCountAfter { get; set; }
 
-  public ConditionGeneration.Outcome Outcome { get; set; }
+  public VcOutcome VcOutcome { get; set; }
   public List<Counterexample> Errors = new();
   public List<VerificationRunResult> VCResults;
 
@@ -50,7 +50,7 @@ public sealed class ImplementationRunResult
   }
 
   public ErrorInformation GetOutcomeError(ExecutionEngineOptions options) {
-    return ExecutionEngine.GetOutcomeError(options, Outcome, implementation.VerboseName, implementation.tok, MessageIfVerifies,
+    return ExecutionEngine.GetOutcomeError(options, VcOutcome, implementation.VerboseName, implementation.tok, MessageIfVerifies,
       TextWriter.Null, implementation.GetTimeLimit(options), Errors);
   }
 
@@ -62,11 +62,11 @@ public sealed class ImplementationRunResult
       printer.WriteErrorInformation(ErrorBeforeVerification, result);
     }
 
-    engine.ProcessOutcome(printer, Outcome, Errors, TimeIndication(engine.Options), stats,
+    engine.ProcessOutcome(printer, VcOutcome, Errors, TimeIndication(engine.Options), stats,
       result, implementation.GetTimeLimit(engine.Options), er, implementation.VerboseName, implementation.tok,
       MessageIfVerifies);
 
-    engine.ProcessErrors(printer, Errors, Outcome, result, er, implementation);
+    engine.ProcessErrors(printer, Errors, VcOutcome, result, er, implementation);
 
     return result.ToString();
   }
@@ -84,7 +84,7 @@ public sealed class ImplementationRunResult
           vcResult.Outcome.ToString().ToLowerInvariant(), vcResult.RunTime, vcResult.ResourceCount);
       }
 
-      engine.Options.XmlSink.WriteEndMethod(Outcome.ToString().ToLowerInvariant(),
+      engine.Options.XmlSink.WriteEndMethod(VcOutcome.ToString().ToLowerInvariant(),
         End, Elapsed,
         ResourceCount);
     }

@@ -20,7 +20,7 @@ namespace VC
     int VcNum,
     int Iteration,
     DateTime StartTime,
-    ProverInterface.Outcome Outcome,
+    Bpl.Outcome Outcome,
     TimeSpan RunTime,
     int MaxCounterExamples,
     List<Counterexample> CounterExamples,
@@ -29,12 +29,12 @@ namespace VC
     int ResourceCount,
     SolverKind? SolverUsed
   ) {
-    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, ProverInterface.Outcome> perAssertOutcome,
+    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, Bpl.Outcome> perAssertOutcome,
       out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
       perAssertOutcome = new();
       perAssertCounterExamples = new();
-      if (Outcome == ProverInterface.Outcome.Valid) {
-        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, assertCmd => ProverInterface.Outcome.Valid);
+      if (Outcome == Bpl.Outcome.Valid) {
+        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, assertCmd => Bpl.Outcome.Valid);
       } else {
         foreach (var counterExample in CounterExamples) {
           AssertCmd underlyingAssert;
@@ -53,17 +53,17 @@ namespace VC
             continue;
           }
 
-          perAssertOutcome.TryAdd(underlyingAssert, ProverInterface.Outcome.Invalid);
+          perAssertOutcome.TryAdd(underlyingAssert, Bpl.Outcome.Invalid);
           perAssertCounterExamples.TryAdd(underlyingAssert, counterExample);
         }
 
         var remainingOutcome =
-          Outcome == ProverInterface.Outcome.Invalid && CounterExamples.Count < MaxCounterExamples
+          Outcome == Bpl.Outcome.Invalid && CounterExamples.Count < MaxCounterExamples
             // We could not extract more counterexamples, remaining assertions are thus valid 
-            ? ProverInterface.Outcome.Valid
-            : Outcome == ProverInterface.Outcome.Invalid
+            ? Bpl.Outcome.Valid
+            : Outcome == Bpl.Outcome.Invalid
               // We reached the maximum number of counterexamples, we can't infer anything for the remaining assertions
-              ? ProverInterface.Outcome.Undetermined
+              ? Bpl.Outcome.Undetermined
               // TimeOut, OutOfMemory, OutOfResource, Undetermined for a single split also applies to assertions
               : Outcome;
 
