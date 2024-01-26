@@ -868,7 +868,7 @@ public class Split : ProofRun
   public VerificationRunResult ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
   {
     Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-    Outcome outcome = cce.NonNull(checker).ReadOutcome();
+    SolverOutcome outcome = cce.NonNull(checker).ReadOutcome();
 
     if (Options.Trace && SplitIndex >= 0)
     {

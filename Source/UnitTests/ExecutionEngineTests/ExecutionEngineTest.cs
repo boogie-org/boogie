@@ -70,7 +70,7 @@ procedure Procedure(y: int)
     // The first split is empty. Maybe it can be optimized away
     Assert.AreEqual(5, tasks.Count);
 
-    var outcomes = new List<Outcome> { Outcome.Valid, Outcome.Invalid, Outcome.Valid, Outcome.Invalid, Outcome.Valid };
+    var outcomes = new List<SolverOutcome> { SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid };
     for (var index = 0; index < outcomes.Count; index++)
     {
       var result0 = await tasks[index].TryRun()!.ToTask();
@@ -101,7 +101,7 @@ procedure Second(y: int)
     Assert.NotNull(tasks[0].Split.Implementation);
     var result1 = await tasks[0].TryRun()!.ToTask();
     var verificationResult1 = ((Completed)result1).Result;
-    Assert.AreEqual(Outcome.Invalid, verificationResult1.Outcome);
+    Assert.AreEqual(SolverOutcome.Invalid, verificationResult1.Outcome);
     Assert.AreEqual(true, verificationResult1.CounterExamples[0].Model.ModelHasStatesAlready);
 
     Assert.IsTrue(tasks[1].IsIdle);
@@ -110,7 +110,7 @@ procedure Second(y: int)
     var result2 = await runningStates.ToTask();
     Assert.IsTrue(tasks[1].IsIdle);
     var verificationResult2 = ((Completed)result2).Result;
-    Assert.AreEqual(Outcome.Valid, verificationResult2.Outcome);
+    Assert.AreEqual(SolverOutcome.Valid, verificationResult2.Outcome);
   }
 
   [Test]
@@ -381,7 +381,7 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     Assert.Contains(assertion, perAssertCounterExamples.Keys);
     var outcomeAssertion = perAssertOutcome[assertion];
     var counterExampleAssertion = perAssertCounterExamples[assertion];
-    Assert.AreEqual(Outcome.Invalid, outcomeAssertion);
+    Assert.AreEqual(SolverOutcome.Invalid, outcomeAssertion);
     Assert.AreEqual(true, counterExampleAssertion is AssertCounterexample);
     var assertCounterexample = (AssertCounterexample)counterExampleAssertion;
     Assert.AreEqual(assertCounterexample.FailingAssert, assertion);
@@ -402,10 +402,10 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     options.VcsCores = 1;
 
     var outcome1 = await executionEngine.GetVerificationTasks(terminatingProgram)[0].TryRun()!.ToTask();
-    Assert.IsTrue(outcome1 is Completed completed && completed.Result.Outcome == Outcome.Undetermined);
+    Assert.IsTrue(outcome1 is Completed completed && completed.Result.Outcome == SolverOutcome.Undetermined);
     options.CreateSolver = (_ ,_ ) => new UnsatSolver();
     var outcome2 = await executionEngine.GetVerificationTasks(terminatingProgram)[0].TryRun()!.ToTask();
-    Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.Outcome == Outcome.Valid);
+    Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.Outcome == SolverOutcome.Valid);
   }
 
   [Test]

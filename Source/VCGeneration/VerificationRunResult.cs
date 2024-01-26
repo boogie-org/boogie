@@ -11,7 +11,7 @@ namespace VC
     int vcNum,
     int Iteration,
     DateTime StartTime,
-    Outcome Outcome,
+    SolverOutcome Outcome,
     TimeSpan RunTime,
     int MaxCounterExamples,
     List<Counterexample> CounterExamples,
@@ -20,12 +20,12 @@ namespace VC
     int ResourceCount,
     SolverKind? SolverUsed
   ) {
-    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, Outcome> perAssertOutcome,
+    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, SolverOutcome> perAssertOutcome,
       out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
       perAssertOutcome = new();
       perAssertCounterExamples = new();
-      if (Outcome == Outcome.Valid) {
-        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, _ => Outcome.Valid);
+      if (Outcome == SolverOutcome.Valid) {
+        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, _ => SolverOutcome.Valid);
       } else {
         foreach (var counterExample in CounterExamples) {
           AssertCmd underlyingAssert;
@@ -44,17 +44,17 @@ namespace VC
             continue;
           }
 
-          perAssertOutcome.TryAdd(underlyingAssert, Outcome.Invalid);
+          perAssertOutcome.TryAdd(underlyingAssert, SolverOutcome.Invalid);
           perAssertCounterExamples.TryAdd(underlyingAssert, counterExample);
         }
 
         var remainingOutcome =
-          Outcome == Outcome.Invalid && CounterExamples.Count < MaxCounterExamples
+          Outcome == SolverOutcome.Invalid && CounterExamples.Count < MaxCounterExamples
             // We could not extract more counterexamples, remaining assertions are thus valid 
-            ? Outcome.Valid
-            : Outcome == Outcome.Invalid
+            ? SolverOutcome.Valid
+            : Outcome == SolverOutcome.Invalid
               // We reached the maximum number of counterexamples, we can't infer anything for the remaining assertions
-              ? Outcome.Undetermined
+              ? SolverOutcome.Undetermined
               // TimeOut, OutOfMemory, OutOfResource, Undetermined for a single split also applies to assertions
               : Outcome;
 

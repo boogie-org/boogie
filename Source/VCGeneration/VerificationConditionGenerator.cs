@@ -513,7 +513,7 @@ public class VerificationConditionGenerator : ConditionGeneration
     }
 
     public override void OnModel(IList<string> labels /*!*/ /*!*/, Model model,
-      Outcome proverOutcome)
+      SolverOutcome proverOutcome)
     {
       // no counter examples reported.
       if (labels.Count == 0)

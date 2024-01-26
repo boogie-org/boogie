@@ -44,21 +44,21 @@ namespace VC
   [ContractClass(typeof(ConditionGenerationContracts))]
   public abstract class ConditionGeneration : IDisposable
   {
-    public static VcOutcome ProverInterfaceOutcomeToConditionGenerationOutcome(Outcome outcome)
+    public static VcOutcome ProverInterfaceOutcomeToConditionGenerationOutcome(SolverOutcome outcome)
     {
       switch (outcome)
       {
-        case Outcome.Invalid:
+        case SolverOutcome.Invalid:
           return VcOutcome.Errors;
-        case Outcome.OutOfMemory:
+        case SolverOutcome.OutOfMemory:
           return VcOutcome.OutOfMemory;
-        case Outcome.TimeOut:
+        case SolverOutcome.TimeOut:
           return VcOutcome.TimedOut;
-        case Outcome.OutOfResource:
+        case SolverOutcome.OutOfResource:
           return VcOutcome.OutOfResource;
-        case Outcome.Undetermined:
+        case SolverOutcome.Undetermined:
           return VcOutcome.Inconclusive;
-        case Outcome.Valid:
+        case SolverOutcome.Valid:
           return VcOutcome.Correct;
       }
 
