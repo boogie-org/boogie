@@ -11,10 +11,10 @@ public static class ManualSplitFinder
   public static List<Split> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
   {
     List<Split> focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
-    return focussedImpl.Select(FindManualSplits).SelectMany(x => x).ToList();
+    return focussedImpl.SelectMany(FindManualSplits).ToList();
   }
-    
-  public static List<Split /*!*/> FindManualSplits(Split initialSplit)
+
+  private static List<Split /*!*/> FindManualSplits(Split initialSplit)
   {
     Contract.Requires(initialSplit.Implementation != null);
     Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
@@ -67,11 +67,11 @@ public static class ManualSplitFinder
   }
   
   // Verify b with the last split in blockAssignments[b]
-  private static Dictionary<Block, Block> PickBlocksToVerify (List<Block> blocks, Dictionary<Block, int> splitPoints)
+  private static Dictionary<Block, Block> PickBlocksToVerify(List<Block> blocks, Dictionary<Block, int> splitPoints)
   {
     var todo = new Stack<Block>();
     var blockAssignments = new Dictionary<Block, Block>();
-    var immediateDominator = (Program.GraphFromBlocks(blocks)).ImmediateDominator();
+    var immediateDominator = Program.GraphFromBlocks(blocks).ImmediateDominator();
     todo.Push(blocks[0]);
     while(todo.Count > 0)
     {
@@ -104,12 +104,12 @@ public static class ManualSplitFinder
   private static List<Block> DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
     Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert)
   {
-    var newBlocks = new List<Block>(blocks.Count()); // Copies of the original blocks
+    var newBlocks = new List<Block>(blocks.Count); // Copies of the original blocks
     var duplicator = new Duplicator();
-    var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count()); // Maps original blocks to their new copies in newBlocks
+    var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count); // Maps original blocks to their new copies in newBlocks
     foreach (var currentBlock in blocks)
     {
-      var newBlock = (Block)duplicator.VisitBlock(currentBlock);
+      var newBlock = duplicator.VisitBlock(currentBlock);
       oldToNewBlockMap[currentBlock] = newBlock;
       newBlocks.Add(newBlock);
       if (currentBlock == containingBlock)
@@ -117,14 +117,14 @@ public static class ManualSplitFinder
         var newCmds = new List<Cmd>();
         var splitCount = -1;
         var verify = splitCount == splitNumberWithinBlock;
-        foreach (Cmd c in currentBlock.Cmds)
+        foreach (Cmd command in currentBlock.Cmds)
         {
-          if (ShouldSplitHere(c, splitOnEveryAssert))
+          if (ShouldSplitHere(command, splitOnEveryAssert))
           {
             splitCount++;
             verify = splitCount == splitNumberWithinBlock;
           }
-          newCmds.Add(verify ? c : CommandTransformations.AssertIntoAssume(options, c));
+          newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
         }
         newBlock.Cmds = newCmds;
       }
@@ -132,15 +132,15 @@ public static class ManualSplitFinder
       {
         var verify = true;
         var newCmds = new List<Cmd>();
-        foreach(Cmd c in currentBlock.Cmds) {
-          verify = !ShouldSplitHere(c, splitOnEveryAssert) && verify;
-          newCmds.Add(verify ? c : CommandTransformations.AssertIntoAssume(options, c));
+        foreach(Cmd command in currentBlock.Cmds) {
+          verify = !ShouldSplitHere(command, splitOnEveryAssert) && verify;
+          newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
         }
         newBlock.Cmds = newCmds;
       }
       else
       {
-        newBlock.Cmds = currentBlock.Cmds.Select<Cmd, Cmd>(x => CommandTransformations.AssertIntoAssume(options, x)).ToList();
+        newBlock.Cmds = currentBlock.Cmds.Select(x => CommandTransformations.AssertIntoAssume(options, x)).ToList();
       }
     }
     // Patch the edges between the new blocks

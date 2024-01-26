@@ -50,6 +50,36 @@ public class ExecutionEngineTest {
   }
   
   [Test]
+  public async Task SplitOnEveryAssertion() {
+    var programString = @"
+procedure Procedure(y: int)
+  ensures y == 3;
+{
+  assert y > 2;
+  assert y > 1;
+  assert y < 4;
+}
+".Trim();
+    Parser.Parse(programString, "fakeFilename10", out var program);
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    options.VcsSplitOnEveryAssert = true;
+    options.PrintErrorModel = 1;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    var tasks = engine.GetVerificationTasks(program);
+    
+    // The first split is empty. Maybe it can be optimized away
+    Assert.AreEqual(5, tasks.Count);
+
+    var outcomes = new List<Outcome> { Outcome.Valid, Outcome.Invalid, Outcome.Valid, Outcome.Invalid, Outcome.Valid };
+    for (var index = 0; index < outcomes.Count; index++)
+    {
+      var result0 = await tasks[index].TryRun()!.ToTask();
+      var verificationResult0 = ((Completed)result0).Result;
+      Assert.AreEqual(outcomes[index], verificationResult0.Outcome);
+    }
+  }
+  
+  [Test]
   public async Task GetImplementationTasksTest() {
     var programString = @"
 procedure First(y: int)
