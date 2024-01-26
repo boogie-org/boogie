@@ -7,6 +7,7 @@ using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie;
+using VCGeneration;
 using static VC.ConditionGeneration;
 using Outcome = Microsoft.Boogie.Outcome;
 
@@ -68,7 +69,7 @@ namespace VC
       Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
 
       ResetPredecessors(Implementation.Blocks);
-      manualSplits = Split.FocusAndSplit(options, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
+      manualSplits = ManualSplitFinder.FocusAndSplit(options, run, gotoCmdOrigins, vcGen, splitOnEveryAssert);
       
       if (manualSplits.Count == 1 && maxSplits > 1) {
         manualSplits = Split.DoSplit(manualSplits[0], maxVcCost, maxSplits);
