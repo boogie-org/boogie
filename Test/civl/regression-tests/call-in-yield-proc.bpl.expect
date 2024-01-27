@@ -1,4 +1,0 @@
-call-in-yield-proc.bpl(8,4): Error: variable must be available only within layers in [1, 1]: z
-call-in-yield-proc.bpl(16,4): Error: variable must be introduced at layer 1: w
-call-in-yield-proc.bpl(23,4): Error: variable must be hidden at layer 1: a
-3 type checking errors detected in call-in-yield-proc.bpl

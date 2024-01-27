@@ -40,10 +40,10 @@ invariant pendingIo == Size(usersInDriver->dom) + (if stoppingFlag then 0 else 1
 // user code
 
 yield procedure {:layer 2}
-User(i: int, {:layer 1,2} l: Lval Perm, {:layer 1,2} r: Lval Perm)
+User(i: int, {:layer 1,2} l: Lset Perm, {:layer 1,2} r: Lset Perm)
 preserves call Inv2();
 preserves call Inv1();
-requires {:layer 1, 2} l->val == Left(i) && r->val == Right(i);
+requires {:layer 1, 2} l->dom == MapOne(Left(i)) && r->dom == MapOne(Right(i));
 {
     while (*)
     invariant {:yields} true;
@@ -56,56 +56,57 @@ requires {:layer 1, 2} l->val == Left(i) && r->val == Right(i);
     }
 }
 
-atomic action {:layer 2} AtomicEnter#1(i: int, {:linear_in} l: Lval Perm, r: Lval Perm)
+atomic action {:layer 2} AtomicEnter#1(i: int, {:linear_in} l: Lset Perm, r: Lset Perm)
 modifies usersInDriver;
 {
     assume !stoppingFlag;
-    call Lval_Put(usersInDriver, l);
+    call Lset_Put(usersInDriver, l);
 }
 yield procedure {:layer 1}
-Enter#1(i: int, {:layer 1} {:linear_in} l: Lval Perm, {:layer 1} r: Lval Perm)
+Enter#1(i: int, {:layer 1} {:linear_in} l: Lset Perm, {:layer 1} r: Lset Perm)
 refines AtomicEnter#1;
 preserves call Inv1();
-requires {:layer 1} l->val == Left(i) && r->val == Right(i);
+requires {:layer 1} l->dom == MapOne(Left(i)) && r->dom == MapOne(Right(i));
 {
     call Enter();
     call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
-    call {:layer 1} Lval_Put(usersInDriver, l);
+    call {:layer 1} Lset_Put(usersInDriver, l);
 }
 
-left action {:layer 2} AtomicCheckAssert#1(i: int, r: Lval Perm)
+left action {:layer 2} AtomicCheckAssert#1(i: int, r: Lset Perm)
 {
-    assert r->val == Right(i) && usersInDriver->dom[Left(i)];
+    assert r->dom == MapOne(Right(i)) && usersInDriver->dom[Left(i)];
     assert !stopped;
 }
 yield procedure {:layer 1}
-CheckAssert#1(i: int, {:layer 1} r: Lval Perm)
+CheckAssert#1(i: int, {:layer 1} r: Lset Perm)
 refines AtomicCheckAssert#1;
 preserves call Inv1();
 {
     call CheckAssert();
 }
 
-left action {:layer 2} AtomicExit(i: int, {:linear_out} l: Lval Perm, r: Lval Perm)
+left action {:layer 2} AtomicExit(i: int, {:linear_out} l: Lset Perm, r: Lset Perm)
 modifies usersInDriver;
 {
-    assert l->val == Left(i) && r->val == Right(i);
-    call Lval_Split(usersInDriver, l);
+    assert l->dom == MapOne(Left(i)) && r->dom == MapOne(Right(i));
+    call Lset_Split(usersInDriver, l);
 }
 yield procedure {:layer 1}
-Exit(i: int, {:layer 1} {:linear_out} l: Lval Perm, {:layer 1} r: Lval Perm)
+Exit(i: int, {:layer 1} {:linear_out} l: Lset Perm, {:layer 1} r: Lset Perm)
 refines AtomicExit;
 preserves call Inv1();
 {
     call DeleteReference();
     call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
-    call {:layer 1} Lval_Split(usersInDriver, l);
+    call {:layer 1} Lset_Split(usersInDriver, l);
     call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->dom);
 }
 
 // stopper code
+type {:linear "stopper"} X = int;
 
-yield procedure {:layer 2} Stopper(i: Lval int)
+yield procedure {:layer 2} Stopper({:linear "stopper"} i: int)
 refines AtomicSetStoppingFlag;
 preserves call Inv2();
 preserves call Inv1();
@@ -114,7 +115,7 @@ preserves call Inv1();
     call WaitAndStop();
 }
 
-yield procedure {:layer 1} Close(i: Lval int)
+yield procedure {:layer 1} Close({:linear "stopper"} i: int)
 refines AtomicSetStoppingFlag;
 preserves call Inv1();
 {
@@ -155,16 +156,16 @@ atomic action {:layer 1} AtomicCheckAssert()
 yield procedure {:layer 0} CheckAssert();
 refines AtomicCheckAssert;
 
-right action {:layer 1,3} AtomicSetStoppingFlag(i: Lval int)
+right action {:layer 1,3} AtomicSetStoppingFlag({:linear "stopper"} i: int)
 modifies stoppingFlag;
 {
     // The first assertion ensures that there is at most one stopper.
     // Otherwise AtomicSetStoppingFlag does not commute with itself.
-    assert i->val == 0;
+    assert i == 0;
     assert !stoppingFlag;
     stoppingFlag := true;
 }
-yield procedure {:layer 0} SetStoppingFlag(i: Lval int);
+yield procedure {:layer 0} SetStoppingFlag({:linear "stopper"} i: int);
 refines AtomicSetStoppingFlag;
 
 atomic action {:layer 1} AtomicDeleteReference()
