@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type Tid;
+type {:linear "tid"} Tid;
 const nil: Tid;
 
 var {:layer 0,1} lock_x: Tid;
@@ -9,30 +9,30 @@ var {:layer 0,1} lock_y: Tid;
 var {:layer 0,2} x: int;
 var {:layer 0,2} y: int;
 
-atomic action {:layer 2} GET_X (tid: Lval Tid) returns (v: int)
+atomic action {:layer 2} GET_X ({:linear "tid"} {:linear "tid"} tid: Tid) returns (v: int)
 {
   v := x;
 }
 
-atomic action {:layer 2} SET_BOTH (tid: Lval Tid, v: int, w: int)
+atomic action {:layer 2} SET_BOTH ({:linear "tid"} tid: Tid, v: int, w: int)
 modifies x, y;
 {
   x := v;
   y := w;
 }
 
-yield procedure {:layer 1} get_x (tid: Lval Tid) returns (v: int)
+yield procedure {:layer 1} get_x ({:linear "tid"} tid: Tid) returns (v: int)
 refines GET_X;
-requires {:layer 1} tid->val != nil;
+requires {:layer 1} tid != nil;
 {
   call acquire_x(tid);
   call v := read_x(tid);
   call release_x(tid);
 }
 
-yield procedure {:layer 1} set_both (tid: Lval Tid, v: int, w: int)
+yield procedure {:layer 1} set_both ({:linear "tid"} tid: Tid, v: int, w: int)
 refines SET_BOTH;
-requires {:layer 1} tid->val != nil;
+requires {:layer 1} tid != nil;
 {
   call acquire_x(tid);
   call acquire_y(tid);
@@ -42,73 +42,73 @@ requires {:layer 1} tid->val != nil;
   call release_y(tid);
 }
 
-right action {:layer 1} ACQUIRE_X (tid: Lval Tid)
+right action {:layer 1} ACQUIRE_X ({:linear "tid"} tid: Tid)
 modifies lock_x;
 {
-  assert tid->val != nil;
+  assert tid != nil;
   assume lock_x == nil;
-  lock_x := tid->val;
+  lock_x := tid;
 }
 
-left action {:layer 1} RELEASE_X (tid: Lval Tid)
+left action {:layer 1} RELEASE_X ({:linear "tid"} tid: Tid)
 modifies lock_x;
 {
-  assert tid->val != nil && lock_x == tid->val;
+  assert tid != nil && lock_x == tid;
   lock_x := nil;
 }
 
-right action {:layer 1} ACQUIRE_Y (tid: Lval Tid)
+right action {:layer 1} ACQUIRE_Y ({:linear "tid"} tid: Tid)
 modifies lock_y;
 {
-  assert tid->val != nil;
+  assert tid != nil;
   assume lock_y == nil;
-  lock_y := tid->val;
+  lock_y := tid;
 }
 
-left action {:layer 1} RELEASE_Y (tid: Lval Tid)
+left action {:layer 1} RELEASE_Y ({:linear "tid"} tid: Tid)
 modifies lock_y;
 {
-  assert tid->val != nil && lock_y == tid->val;
+  assert tid != nil && lock_y == tid;
   lock_y := nil;
 }
 
-both action {:layer 1} WRITE_X (tid: Lval Tid, v: int)
+both action {:layer 1} WRITE_X ({:linear "tid"} tid: Tid, v: int)
 modifies x;
 {
-  assert tid->val != nil && lock_x == tid->val;
+  assert tid != nil && lock_x == tid;
   x := v;
 }
 
-both action {:layer 1} WRITE_Y (tid: Lval Tid, v: int)
+both action {:layer 1} WRITE_Y ({:linear "tid"} tid: Tid, v: int)
 modifies y;
 {
-  assert tid->val != nil && lock_y == tid->val;
+  assert tid != nil && lock_y == tid;
   y := v;
 }
 
-both action {:layer 1} READ_X (tid: Lval Tid) returns (r: int)
+both action {:layer 1} READ_X ({:linear "tid"} tid: Tid) returns (r: int)
 {
-  assert tid->val != nil && lock_x == tid->val;
+  assert tid != nil && lock_x == tid;
   r := x;
 }
 
-yield procedure {:layer 0} acquire_x (tid: Lval Tid);
+yield procedure {:layer 0} acquire_x ({:linear "tid"} tid: Tid);
 refines ACQUIRE_X;
 
-yield procedure {:layer 0} acquire_y (tid: Lval Tid);
+yield procedure {:layer 0} acquire_y ({:linear "tid"} tid: Tid);
 refines ACQUIRE_Y;
 
-yield procedure {:layer 0} release_x (tid: Lval Tid);
+yield procedure {:layer 0} release_x ({:linear "tid"} tid: Tid);
 refines RELEASE_X;
 
-yield procedure {:layer 0} release_y (tid: Lval Tid);
+yield procedure {:layer 0} release_y ({:linear "tid"} tid: Tid);
 refines RELEASE_Y;
 
-yield procedure {:layer 0} write_x (tid: Lval Tid, v: int);
+yield procedure {:layer 0} write_x ({:linear "tid"} tid: Tid, v: int);
 refines WRITE_X;
 
-yield procedure {:layer 0} write_y (tid: Lval Tid, v: int);
+yield procedure {:layer 0} write_y ({:linear "tid"} tid: Tid, v: int);
 refines WRITE_Y;
 
-yield procedure {:layer 0} read_x (tid: Lval Tid) returns (r: int);
+yield procedure {:layer 0} read_x ({:linear "tid"} tid: Tid) returns (r: int);
 refines READ_X;

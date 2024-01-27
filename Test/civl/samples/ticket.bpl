@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type Tid;
+type {:linear "tid"} Tid;
 
 var {:layer 0,1} t: int;           // next ticket to issue
 var {:layer 0,2} s: int;           // current ticket permitted to critical section
@@ -24,8 +24,8 @@ function {:inline} Inv2 (tickets: [int]bool, ticket: int, lock: Option Tid): (bo
 // ###########################################################################
 // Yield invariants
 
-yield invariant {:layer 2} YieldSpec (tid: Lval Tid);
-invariant cs is Some && cs->t == tid->val;
+yield invariant {:layer 2} YieldSpec ({:linear "tid"} tid: Tid);
+invariant cs is Some && cs->t == tid;
 
 yield invariant {:layer 1} Yield1 ();
 invariant Inv1(T, t);
@@ -34,37 +34,9 @@ yield invariant {:layer 2} Yield2 ();
 invariant Inv2(T, s, cs);
 
 // ###########################################################################
-// Test driver
-
-yield procedure {:layer 2} main ({:layer 1,2} {:linear_in} _tids: Lset Tid)
-requires call Yield1();
-requires call Yield2();
-{
-  var {:layer 1,2} tid: Lval Tid;
-  var {:layer 1,2} tids: Lset Tid;
-
-  tids := _tids;
-  while (*)
-  invariant {:yields} true;
-  invariant call Yield1();
-  invariant call Yield2();
-  {
-    call {:layer 1,2} tid, tids := Allocate(tids);
-    async call Customer(tid);
-  }
-}
-
-pure procedure {:inline 1} Allocate({:linear_in} _tids: Lset Tid) returns (tid: Lval Tid, tids: Lset Tid)
-{
-  tids := _tids;
-  assume {:layer 1,2} tids->dom != MapConst(false);
-  call {:layer 1,2} tid := Lval_Get(tids, Choice(tids->dom));
-}
-
-// ###########################################################################
 // Procedures and actions
 
-yield procedure {:layer 2} Customer ({:layer 1,2} tid: Lval Tid)
+yield procedure {:layer 2} Customer ({:layer 1,2} {:linear "tid"} tid: Tid)
 requires call Yield1();
 requires call Yield2();
 {
@@ -79,7 +51,7 @@ requires call Yield2();
   }
 }
 
-yield procedure {:layer 2} Enter ({:layer 1,2} tid: Lval Tid)
+yield procedure {:layer 2} Enter ({:layer 1,2} {:linear "tid"} tid: Tid)
 preserves call Yield1();
 preserves call Yield2();
 ensures   call YieldSpec(tid);
@@ -90,10 +62,10 @@ ensures   call YieldSpec(tid);
   call WaitAndEnter(tid, m);
 }
 
-right action {:layer 2} AtomicGetTicket (tid: Lval Tid) returns (m: int)
+right action {:layer 2} AtomicGetTicket ({:linear "tid"} tid: Tid) returns (m: int)
 modifies T;
 { assume !T[m]; T[m] := true; }
-yield procedure {:layer 1} GetTicket ({:layer 1} tid: Lval Tid) returns (m: int)
+yield procedure {:layer 1} GetTicket ({:layer 1} {:linear "tid"} tid: Tid) returns (m: int)
 refines AtomicGetTicket;
 preserves call Yield1();
 {
@@ -107,15 +79,15 @@ modifies t;
 yield procedure {:layer 0} GetTicket#0 () returns (m: int);
 refines AtomicGetTicket#0;
 
-atomic action {:layer 2} AtomicWaitAndEnter (tid: Lval Tid, m:int)
+atomic action {:layer 2} AtomicWaitAndEnter ({:linear "tid"} tid: Tid, m:int)
 modifies cs;
-{ assume m == s; cs := Some(tid->val); }
-yield procedure {:layer 1} WaitAndEnter ({:layer 1} tid: Lval Tid, m:int)
+{ assume m == s; cs := Some(tid); }
+yield procedure {:layer 1} WaitAndEnter ({:layer 1} {:linear "tid"} tid: Tid, m:int)
 refines AtomicWaitAndEnter;
 preserves call Yield1();
 {
   call WaitAndEnter#0(m);
-  call {:layer 1} cs := Copy(Some(tid->val));
+  call {:layer 1} cs := Copy(Some(tid));
 }
 
 atomic action {:layer 1} AtomicWaitAndEnter#0 (m:int)
@@ -123,10 +95,10 @@ atomic action {:layer 1} AtomicWaitAndEnter#0 (m:int)
 yield procedure {:layer 0} WaitAndEnter#0 (m:int);
 refines AtomicWaitAndEnter#0;
 
-atomic action {:layer 2} AtomicLeave (tid: Lval Tid)
+atomic action {:layer 2} AtomicLeave ({:linear "tid"} tid: Tid)
 modifies cs, s;
-{ assert cs == Some(tid->val); s := s + 1; cs := None(); }
-yield procedure {:layer 1} Leave ({:layer 1} tid: Lval Tid)
+{ assert cs == Some(tid); s := s + 1; cs := None(); }
+yield procedure {:layer 1} Leave ({:layer 1} {:linear "tid"} tid: Tid)
 refines AtomicLeave;
 preserves call Yield1();
 {
