@@ -12,10 +12,12 @@ see cav2020-3.bpl for another example inspired by a concurrent
 garbage collector.
 */
 
-datatype Perm { Left(i: int), Right(i: int) }
+datatype {:linear "perm"} Perm { Left(i: int), Right(i: int) }
+
+function {:inline}{:linear "perm"} PermCollector(x: Set Perm): [Perm]bool { x->val }
 
 function Size<T>(set: [T]bool): int;
-axiom {:ctor "Lset"} (forall<T> set: [T]bool :: Size(set) >= 0);
+axiom (forall<T> set: [T]bool :: Size(set) >= 0);
 
 pure procedure SizeLemma<T>(X: [T]bool, x: T);
 ensures Size(X[x := false]) + 1 == Size(X[x := true]);
@@ -26,7 +28,7 @@ ensures X == Y || Size(X) < Size(Y);
 
 var {:layer 0,3} stoppingFlag: bool;
 var {:layer 0,2} stopped: bool;
-var {:layer 1,2} usersInDriver: Lset Perm;
+var {:layer 1,2} {:linear "perm"} usersInDriver: Set Perm;
 var {:layer 0,1} pendingIo: int;
 var {:layer 0,1} stoppingEvent: bool;
 
@@ -34,16 +36,16 @@ yield invariant {:layer 2} Inv2();
 invariant stopped ==> stoppingFlag;
 
 yield invariant {:layer 1} Inv1();
-invariant stoppingEvent ==> stoppingFlag && usersInDriver->dom == MapConst(false);
-invariant pendingIo == Size(usersInDriver->dom) + (if stoppingFlag then 0 else 1);
+invariant stoppingEvent ==> stoppingFlag && usersInDriver->val == MapConst(false);
+invariant pendingIo == Size(usersInDriver->val) + (if stoppingFlag then 0 else 1);
 
 // user code
 
 yield procedure {:layer 2}
-User(i: int, {:layer 1,2} l: Lset Perm, {:layer 1,2} r: Lset Perm)
+User(i: int, {:layer 1,2} {:linear "perm"} l: Set Perm, {:linear "perm"} {:layer 1,2} r: Set Perm)
 preserves call Inv2();
 preserves call Inv1();
-requires {:layer 1, 2} l->dom == MapOne(Left(i)) && r->dom == MapOne(Right(i));
+requires {:layer 1, 2} l->val == MapOne(Left(i)) && r->val == MapOne(Right(i));
 {
     while (*)
     invariant {:yields} true;
@@ -56,51 +58,64 @@ requires {:layer 1, 2} l->dom == MapOne(Left(i)) && r->dom == MapOne(Right(i));
     }
 }
 
-atomic action {:layer 2} AtomicEnter#1(i: int, {:linear_in} l: Lset Perm, r: Lset Perm)
+atomic action {:layer 2} AtomicEnter#1(i: int, {:linear_in "perm"} l: Set Perm, {:linear "perm"} r: Set Perm)
 modifies usersInDriver;
 {
     assume !stoppingFlag;
-    call Lset_Put(usersInDriver, l);
+    usersInDriver := Set_Union(usersInDriver, l);
 }
 yield procedure {:layer 1}
-Enter#1(i: int, {:layer 1} {:linear_in} l: Lset Perm, {:layer 1} r: Lset Perm)
+Enter#1(i: int, {:layer 1} {:linear_in "perm"} l: Set Perm, {:layer 1} {:linear "perm"} r: Set Perm)
 refines AtomicEnter#1;
 preserves call Inv1();
-requires {:layer 1} l->dom == MapOne(Left(i)) && r->dom == MapOne(Right(i));
+requires {:layer 1} l->val == MapOne(Left(i)) && r->val == MapOne(Right(i));
 {
     call Enter();
-    call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
-    call {:layer 1} Lset_Put(usersInDriver, l);
+    call {:layer 1} SizeLemma(usersInDriver->val, Left(i));
+    call {:layer 1} usersInDriver := A(usersInDriver, l);
 }
 
-left action {:layer 2} AtomicCheckAssert#1(i: int, r: Lset Perm)
+pure action A({:linear_in "perm"} usersInDriver: Set Perm, {:linear_in "perm"} l: Set Perm)
+  returns ({:linear "perm"} usersInDriver': Set Perm)
 {
-    assert r->dom == MapOne(Right(i)) && usersInDriver->dom[Left(i)];
+    usersInDriver' := Set_Union(usersInDriver, l);
+}
+
+left action {:layer 2} AtomicCheckAssert#1(i: int, {:linear "perm"} r: Set Perm)
+{
+    assert r->val == MapOne(Right(i)) && usersInDriver->val[Left(i)];
     assert !stopped;
 }
 yield procedure {:layer 1}
-CheckAssert#1(i: int, {:layer 1} r: Lset Perm)
+CheckAssert#1(i: int, {:layer 1} {:linear "perm"} r: Set Perm)
 refines AtomicCheckAssert#1;
 preserves call Inv1();
 {
     call CheckAssert();
 }
 
-left action {:layer 2} AtomicExit(i: int, {:linear_out} l: Lset Perm, r: Lset Perm)
+left action {:layer 2} AtomicExit(i: int, {:linear_out "perm"} l: Set Perm, {:linear "perm"} r: Set Perm)
 modifies usersInDriver;
 {
-    assert l->dom == MapOne(Left(i)) && r->dom == MapOne(Right(i));
-    call Lset_Split(usersInDriver, l);
+    assert l->val == MapOne(Left(i)) && r->val == MapOne(Right(i));
+    call usersInDriver := B(usersInDriver, l);
 }
 yield procedure {:layer 1}
-Exit(i: int, {:layer 1} {:linear_out} l: Lset Perm, {:layer 1} r: Lset Perm)
+Exit(i: int, {:layer 1} {:linear_out "perm"} l: Set Perm, {:layer 1} {:linear "perm"} r: Set Perm)
 refines AtomicExit;
 preserves call Inv1();
 {
     call DeleteReference();
-    call {:layer 1} SizeLemma(usersInDriver->dom, Left(i));
-    call {:layer 1} Lset_Split(usersInDriver, l);
-    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->dom);
+    call {:layer 1} SizeLemma(usersInDriver->val, Left(i));
+    call {:layer 1} usersInDriver := B(usersInDriver, l);
+    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->val);
+}
+
+pure action B({:linear_in "perm"} usersInDriver: Set Perm, {:linear_out "perm"} l: Set Perm)
+  returns ({:linear "perm"} usersInDriver': Set Perm)
+{
+    assert Set_IsSubset(l, usersInDriver);
+    usersInDriver' := Set_Difference(usersInDriver, l);
 }
 
 // stopper code
@@ -121,13 +136,13 @@ preserves call Inv1();
 {
     call SetStoppingFlag(i);
     call DeleteReference();
-    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->dom);
+    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->val);
 }
 
 atomic action {:layer 2} AtomicWaitAndStop()
 modifies stopped;
 {
-    assume usersInDriver->dom == MapConst(false);
+    assume usersInDriver->val == MapConst(false);
     stopped := true;
 }
 yield procedure {:layer 1} WaitAndStop()
