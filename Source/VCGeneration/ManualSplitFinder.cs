@@ -8,13 +8,13 @@ namespace VCGeneration;
 
 public static class ManualSplitFinder
 {
-  public static List<Split> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
+  public static IEnumerable<ManualSplit> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
   {
     List<ManualSplit> focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
-    return focussedImpl.SelectMany(FindManualSplits).ToList();
+    return focussedImpl.SelectMany(FindManualSplits);
   }
 
-  private static List<Split /*!*/> FindManualSplits(ManualSplit initialSplit)
+  private static List<ManualSplit /*!*/> FindManualSplits(ManualSplit initialSplit)
   {
     Contract.Requires(initialSplit.Implementation != null);
     Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
@@ -34,7 +34,7 @@ public static class ManualSplitFinder
         }
       }
     }
-    var splits = new List<Split>();
+    var splits = new List<ManualSplit>();
     if (!splitPoints.Any())
     {
       splits.Add(initialSplit);

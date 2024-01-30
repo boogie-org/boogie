@@ -314,7 +314,7 @@ procedure Foo(x: int) {
     var expected2 = new List<IVerificationStatus>() {
       new Running(), finalResult
     };
-    Assert.AreEqual(expected2, statusList2.Where(s => s is not Queued && s is not BatchCompleted));
+    Assert.AreEqual(expected2, statusList2.Where(s => s is not Queued && s is not Completed));
   }
 
   [Test]

@@ -11,47 +11,6 @@ using VC;
 
 namespace Microsoft.Boogie;
 
-public interface IVerificationStatus {}
-
-/// <summary>
-/// Results are available
-/// </summary>
-public record Completed(VerificationRunResult Result) : IVerificationStatus;
-
-/// <summary>
-/// Scheduled to be run but waiting for resources
-/// </summary>
-public record Queued : IVerificationStatus;
-
-/// <summary>
-/// Not scheduled to be run
-/// </summary>
-public record Stale : IVerificationStatus;
-
-/// <summary>
-/// Currently being run
-/// </summary>
-public record Running : IVerificationStatus;
-
-public record BatchCompleted(Split Split, VerificationRunResult VerificationRunResult) : IVerificationStatus;
-
-public interface IVerificationTask {
-  IVerificationStatus CacheStatus { get; }
-
-  ProcessedProgram ProcessedProgram { get; }
-  Split Split { get; }
-
-  /// <summary>
-  /// If not running, start running.
-  /// If already running and not cancelled, return null.
-  /// If already running but being cancelled, queue a new run and return its observable.
-  /// If already running but being cancelled, and a new run is queued, return null.
-  /// </summary>
-  IObservable<IVerificationStatus>? TryRun();
-  bool IsIdle { get; }
-  void Cancel();
-}
-
 public class VerificationTask : IVerificationTask {
   private readonly ExecutionEngine engine;
   private readonly ModelViewInfo modelViewInfo;
@@ -61,9 +20,9 @@ public class VerificationTask : IVerificationTask {
 
   public ProcessedProgram ProcessedProgram { get; }
 
-  public Split Split { get; }
+  public ManualSplit Split { get; }
   
-  public VerificationTask(ExecutionEngine engine, ProcessedProgram processedProgram, Split split,
+  public VerificationTask(ExecutionEngine engine, ProcessedProgram processedProgram, ManualSplit split,
     ModelViewInfo modelViewInfo) 
   {
     this.engine = engine;
@@ -121,30 +80,30 @@ public class VerificationTask : IVerificationTask {
     StartRun(cancellationSource.Token).ToObservable().
       Catch<IVerificationStatus, OperationCanceledException>(_ => Observable.Return(new Stale())).
       Subscribe(next =>
-    {
-      status.OnNext(next);
-    }, e =>
-    {
-      // Lock so we may do operations after clearing cancellationSource,
-      // which releases our control over the field status.
-      lock (mayAccessCancellationSource)
       {
-        // Clear cancellationSource before calling status.OnError, so ImplementationTask.IsIdle returns true
-        cancellationSource = null;
-        status.OnError(e);
-      }
-    }, () =>
-    {
-      // Lock so we may do operations after clearing cancellationSource,
-      // which releases our control over the field status.
-      lock (mayAccessCancellationSource)
+        status.OnNext(next);
+      }, e =>
       {
-        // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns true
-        cancellationSource = null;
+        // Lock so we may do operations after clearing cancellationSource,
+        // which releases our control over the field status.
+        lock (mayAccessCancellationSource)
+        {
+          // Clear cancellationSource before calling status.OnError, so ImplementationTask.IsIdle returns true
+          cancellationSource = null;
+          status.OnError(e);
+        }
+      }, () =>
+      {
+        // Lock so we may do operations after clearing cancellationSource,
+        // which releases our control over the field status.
+        lock (mayAccessCancellationSource)
+        {
+          // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns true
+          cancellationSource = null;
 
-        status.OnCompleted();
-      }
-    });
+          status.OnCompleted();
+        }
+      });
 
     return status;
   }
