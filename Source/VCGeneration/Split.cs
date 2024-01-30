@@ -10,12 +10,10 @@ using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.SMTLib;
 using VCGeneration;
+using System.Threading.Tasks;
 
 namespace VC
 {
-
-  using System.Threading.Tasks;
-
   public class Split : ProofRun
   {
       public VCGenOptions Options { get; }
@@ -51,8 +49,6 @@ namespace VC
       public readonly VerificationConditionGenerator /*!*/
         parent;
 
-      public IToken Token { get; }
-
       public Implementation /*!*/ Implementation => Run.Implementation;
 
       Dictionary<Block /*!*/, Block /*!*/> /*!*/
@@ -73,7 +69,7 @@ namespace VC
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
-        VerificationConditionGenerator /*!*/ par, ImplementationRun run, IToken token)
+        VerificationConditionGenerator /*!*/ par, ImplementationRun run)
       {
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
@@ -81,7 +77,6 @@ namespace VC
         this.Blocks = blocks;
         this.GotoCmdOrigins = gotoCmdOrigins;
         parent = par;
-        this.Token = token;
         this.Run = run;
         this.Options = options;
         Interlocked.Increment(ref currentId);

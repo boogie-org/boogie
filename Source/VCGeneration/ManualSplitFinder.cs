@@ -10,11 +10,11 @@ public static class ManualSplitFinder
 {
   public static List<Split> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
   {
-    List<Split> focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
+    List<ManualSplit> focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
     return focussedImpl.SelectMany(FindManualSplits).ToList();
   }
 
-  private static List<Split /*!*/> FindManualSplits(Split initialSplit)
+  private static List<Split /*!*/> FindManualSplits(ManualSplit initialSplit)
   {
     Contract.Requires(initialSplit.Implementation != null);
     Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
@@ -47,7 +47,7 @@ public static class ManualSplitFinder
       var baseSplitBlocks = BlockTransformations.PostProcess(
         DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, 
           -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
-      splits.Add(new Split(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
+      splits.Add(new ManualSplit(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
       foreach (var pair in splitPoints)
       {
         for (int i = 0; i < pair.Value.Count; i++)
@@ -55,7 +55,7 @@ public static class ManualSplitFinder
           var token = pair.Value[i];
           bool lastSplitInBlock = i == pair.Value.Count - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, pair.Key, lastSplitInBlock, splitOnEveryAssert);
-          splits.Add(new Split(initialSplit.Options, BlockTransformations.PostProcess(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
+          splits.Add(new ManualSplit(initialSplit.Options, BlockTransformations.PostProcess(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
         }
       }
     }

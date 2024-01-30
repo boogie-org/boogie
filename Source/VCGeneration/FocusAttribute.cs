@@ -16,7 +16,7 @@ namespace VCGeneration;
 public static class FocusAttribute
 {
   
-  public static List<Split> FocusImpl(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
+  public static List<ManualSplit> FocusImpl(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
   {
     var impl = run.Implementation;
     var dag = Program.GraphFromImpl(impl);
@@ -28,14 +28,14 @@ public static class FocusAttribute
       focusBlocks.Reverse();
     }
     if (!focusBlocks.Any()) {
-      return new List<Split> { new(options, impl.Blocks, gotoCmdOrigins, par, run, run.Implementation.tok) };
+      return new List<ManualSplit> { new(options, impl.Blocks, gotoCmdOrigins, par, run, run.Implementation.tok) };
     }
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
     var descendantsPerBlock = new Dictionary<Block, HashSet<Block>>();
     focusBlocks.ForEach(fb => ancestorsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block, false).ToHashSet());
     focusBlocks.ForEach(fb => descendantsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block, true).ToHashSet());
-    var result = new List<Split>();
+    var result = new List<ManualSplit>();
     var duplicator = new Duplicator();
 
     FocusRec(run.Implementation.tok, 0, impl.Blocks, new List<Block>());
@@ -71,7 +71,7 @@ public static class FocusAttribute
         }
         newBlocks.Reverse();
         Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
-        result.Add(new Split(options, BlockTransformations.PostProcess(newBlocks), gotoCmdOrigins, par, run, focusToken));
+        result.Add(new ManualSplit(options, BlockTransformations.PostProcess(newBlocks), gotoCmdOrigins, par, run, focusToken));
       }
       else if (!blocksToInclude.Contains(focusBlocks[focusIndex].Block) || freeAssumeBlocks.Contains(focusBlocks[focusIndex].Block))
       {
