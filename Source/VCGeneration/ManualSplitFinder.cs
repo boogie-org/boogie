@@ -22,7 +22,7 @@ public static class ManualSplitFinder
     var splitOnEveryAssert = initialSplit.Options.VcsSplitOnEveryAssert;
     initialSplit.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
     
-    var splitPoints = new Dictionary<Block, int>();
+    var splitPoints = new Dictionary<Block, List<IToken>>();
     foreach (var block in initialSplit.Blocks)
     {
       foreach (Cmd command in block.Cmds)
@@ -30,7 +30,7 @@ public static class ManualSplitFinder
         if (ShouldSplitHere(command, splitOnEveryAssert))
         {
           splitPoints.TryGetValue(block, out var count);
-          splitPoints[block] = count + 1;
+          splitPoints[block].Add(command.tok);
         }
       }
     }
@@ -47,14 +47,15 @@ public static class ManualSplitFinder
       var baseSplitBlocks = BlockTransformations.PostProcess(
         DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, 
           -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
-      splits.Add(new Split(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run));
-      foreach (KeyValuePair<Block, int> pair in splitPoints)
+      splits.Add(new Split(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
+      foreach (var pair in splitPoints)
       {
-        for (int i = 0; i < pair.Value; i++)
+        for (int i = 0; i < pair.Value.Count; i++)
         {
-          bool lastSplitInBlock = i == pair.Value - 1;
+          var token = pair.Value[i];
+          bool lastSplitInBlock = i == pair.Value.Count - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, pair.Key, lastSplitInBlock, splitOnEveryAssert);
-          splits.Add(new Split(initialSplit.Options, BlockTransformations.PostProcess(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
+          splits.Add(new Split(initialSplit.Options, BlockTransformations.PostProcess(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
         }
       }
     }
@@ -67,7 +68,7 @@ public static class ManualSplitFinder
   }
   
   // Verify b with the last split in blockAssignments[b]
-  private static Dictionary<Block, Block> PickBlocksToVerify(List<Block> blocks, Dictionary<Block, int> splitPoints)
+  private static Dictionary<Block, Block> PickBlocksToVerify(List<Block> blocks, Dictionary<Block, List<IToken>> splitPoints)
   {
     var todo = new Stack<Block>();
     var blockAssignments = new Dictionary<Block, Block>();

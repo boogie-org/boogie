@@ -51,6 +51,8 @@ namespace VC
       public readonly VerificationConditionGenerator /*!*/
         parent;
 
+      public IToken Token { get; }
+
       public Implementation /*!*/ Implementation => Run.Implementation;
 
       Dictionary<Block /*!*/, Block /*!*/> /*!*/
@@ -61,11 +63,9 @@ namespace VC
       double sliceLimit;
       bool slicePos;
 
-      HashSet<Block /*!*/> /*!*/
-        protectedFromAssertToAssume = new HashSet<Block /*!*/>();
+      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new HashSet<Block /*!*/>();
 
-      HashSet<Block /*!*/> /*!*/
-        keepAtAll = new HashSet<Block /*!*/>();
+      HashSet<Block /*!*/> /*!*/ keepAtAll = new HashSet<Block /*!*/>();
 
       // async interface
       public int SplitIndex { get; set; }
@@ -73,7 +73,7 @@ namespace VC
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
-        VerificationConditionGenerator /*!*/ par, ImplementationRun run)
+        VerificationConditionGenerator /*!*/ par, ImplementationRun run, IToken token)
       {
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
@@ -81,6 +81,7 @@ namespace VC
         this.Blocks = blocks;
         this.GotoCmdOrigins = gotoCmdOrigins;
         parent = par;
+        this.Token = token;
         this.Run = run;
         this.Options = options;
         Interlocked.Increment(ref currentId);
@@ -408,7 +409,7 @@ namespace VC
         }
       }
 
-      void UpdateIncommingPaths(BlockStats s)
+      void UpdateIncomingPaths(BlockStats s)
       {
         Contract.Requires(s != null);
         if (s.incomingPaths < 0.0)
@@ -425,7 +426,7 @@ namespace VC
             Contract.Assert(b != null);
             BlockStats ch = GetBlockStats(b);
             Contract.Assert(ch != null);
-            UpdateIncommingPaths(ch);
+            UpdateIncomingPaths(ch);
             if (ch.incomingPaths > 0.0)
             {
               s.incomingPaths += ch.incomingPaths;
@@ -543,7 +544,7 @@ namespace VC
           if (keepAtAll.Contains(b))
           {
             BlockStats s = GetBlockStats(b);
-            UpdateIncommingPaths(s);
+            UpdateIncomingPaths(s);
             double local = s.assertionCost;
             if (ShouldAssumize(b))
             {
@@ -649,32 +650,34 @@ namespace VC
         return res;
       }
 
-      Split DoSplit()
+      private Split DoSplit()
       {
         Contract.Ensures(Contract.Result<Split>() != null);
 
         copies.Clear();
         CloneBlock(Blocks[0]);
-        List<Block> newBlocks = new List<Block>();
-        Dictionary<TransferCmd, ReturnCmd> newGotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
-        foreach (Block b in Blocks)
+        var newBlocks = new List<Block>();
+        var newGotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
+        foreach (var block in Blocks)
         {
-          Contract.Assert(b != null);
-          if (copies.TryGetValue(b, out var tmp))
+          Contract.Assert(block != null);
+          if (!copies.TryGetValue(block, out var tmp))
           {
-            newBlocks.Add(cce.NonNull(tmp));
-            if (GotoCmdOrigins.ContainsKey(b.TransferCmd))
-            {
-              newGotoCmdOrigins[tmp.TransferCmd] = GotoCmdOrigins[b.TransferCmd];
-            }
+            continue;
+          }
 
-            foreach (Block p in b.Predecessors)
+          newBlocks.Add(cce.NonNull(tmp));
+          if (GotoCmdOrigins.TryGetValue(block.TransferCmd, out var origin))
+          {
+            newGotoCmdOrigins[tmp.TransferCmd] = origin;
+          }
+
+          foreach (var predecessor in block.Predecessors)
+          {
+            Contract.Assert(predecessor != null);
+            if (copies.TryGetValue(predecessor, out var tmp2))
             {
-              Contract.Assert(p != null);
-              if (copies.TryGetValue(p, out var tmp2))
-              {
-                tmp.Predecessors.Add(tmp2);
-              }
+              tmp.Predecessors.Add(tmp2);
             }
           }
         }
@@ -682,7 +685,7 @@ namespace VC
         return new Split(Options, newBlocks, newGotoCmdOrigins, parent, Run);
       }
 
-      Split SplitAt(int idx)
+      private Split SplitAt(int idx)
       {
         Contract.Ensures(Contract.Result<Split>() != null);
 
@@ -693,7 +696,7 @@ namespace VC
         return DoSplit();
       }
 
-      Split SliceAsserts(double limit, bool pos)
+      private Split SliceAsserts(double limit, bool pos)
       {
         Contract.Ensures(Contract.Result<Split>() != null);
 

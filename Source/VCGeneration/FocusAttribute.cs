@@ -18,100 +18,52 @@ public static class FocusAttribute
   
   public static List<Split> FocusImpl(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
   {
-    bool IsFocusCmd(Cmd c) {
-      return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "focus");
-    }
-
-    List<Block> GetFocusBlocks(List<Block> blocks) {
-      return blocks.Where(blk => blk.Cmds.Any(IsFocusCmd)).ToList();
-    }
-
     var impl = run.Implementation;
     var dag = Program.GraphFromImpl(impl);
-    var topoSorted = dag.TopologicalSort().ToList();
+    var topologicallySortedBlocks = dag.TopologicalSort().ToList();
     // By default, we process the foci in a top-down fashion, i.e., in the topological order.
     // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
-    var focusBlocks = GetFocusBlocks(topoSorted);
+    var focusBlocks = GetFocusBlocks(topologicallySortedBlocks);
     if (par.CheckerPool.Options.RelaxFocus) {
       focusBlocks.Reverse();
     }
     if (!focusBlocks.Any()) {
-      var f = new List<Split>();
-      f.Add(new Split(options, impl.Blocks, gotoCmdOrigins, par, run));
-      return f;
-    }
-    // finds all the blocks dominated by focusBlock in the subgraph
-    // which only contains vertices of subgraph.
-    HashSet<Block> DominatedBlocks(Block focusBlock, IEnumerable<Block> subgraph)
-    {
-      var dominators = new Dictionary<Block, HashSet<Block>>();
-      var todo = new Queue<Block>();
-      foreach (var b in topoSorted.Where(blk => subgraph.Contains(blk)))
-      {
-        var s = new HashSet<Block>();
-        var pred = b.Predecessors.Where(blk => subgraph.Contains(blk)).ToList();
-        if (pred.Count != 0)
-        {
-          s.UnionWith(dominators[pred[0]]);
-          pred.ForEach(blk => s.IntersectWith(dominators[blk]));
-        }
-        s.Add(b);
-        dominators[b] = s;
-      }
-      return subgraph.Where(blk => dominators[blk].Contains(focusBlock)).ToHashSet();
+      return new List<Split> { new(options, impl.Blocks, gotoCmdOrigins, par, run, run.Implementation.tok) };
     }
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
     var descendantsPerBlock = new Dictionary<Block, HashSet<Block>>();
-    focusBlocks.ForEach(fb => ancestorsPerBlock[fb] = dag.ComputeReachability(fb, false).ToHashSet());
-    focusBlocks.ForEach(fb => descendantsPerBlock[fb] = dag.ComputeReachability(fb, true).ToHashSet());
+    focusBlocks.ForEach(fb => ancestorsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block, false).ToHashSet());
+    focusBlocks.ForEach(fb => descendantsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block, true).ToHashSet());
     var result = new List<Split>();
     var duplicator = new Duplicator();
 
-    FocusRec(0, impl.Blocks, new List<Block>());
+    FocusRec(run.Implementation.tok, 0, impl.Blocks, new List<Block>());
     return result;
 
-    Cmd DisableSplits(Cmd c)
+    void FocusRec(IToken focusToken, int focusIndex, IReadOnlyList<Block> blocksToInclude, IReadOnlyList<Block> freeAssumeBlocks)
     {
-      if (c is not PredicateCmd pc)
-      {
-        return c;
-      }
-
-      for (var kv = pc.Attributes; kv != null; kv = kv.Next)
-      {
-        if (kv.Key == "split")
-        {
-          kv.AddParam(new LiteralExpr(Token.NoToken, false));
-        }
-      }
-      return c;
-    }
-
-    void FocusRec(int focusIdx, IReadOnlyList<Block> blocks, IReadOnlyList<Block> freeBlocks)
-    {
-      if (focusIdx == focusBlocks.Count)
+      if (focusIndex == focusBlocks.Count)
       {
         // it is important for l to be consistent with reverse topological order.
-        var l = dag.TopologicalSort().Where(blocks.Contains).Reverse();
+        var sortedBlocks = dag.TopologicalSort().Where(blocksToInclude.Contains).Reverse();
         // assert that the root block, impl.Blocks[0], is in l
-        Contract.Assert(l.ElementAt(l.Count() - 1) == impl.Blocks[0]);
         var newBlocks = new List<Block>();
-        var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count());
-        foreach (Block b in l)
+        var oldToNewBlockMap = new Dictionary<Block, Block>(blocksToInclude.Count());
+        foreach (var block in sortedBlocks)
         {
-          var newBlock = (Block)duplicator.Visit(b);
+          var newBlock = (Block)duplicator.Visit(block);
           newBlocks.Add(newBlock);
-          oldToNewBlockMap[b] = newBlock;
+          oldToNewBlockMap[block] = newBlock;
           // freeBlocks consist of the predecessors of the relevant foci.
           // Their assertions turn into assumes and any splits inside them are disabled.
-          if(freeBlocks.Contains(b))
+          if(freeAssumeBlocks.Contains(block))
           {
-            newBlock.Cmds = b.Cmds.Select(c => CommandTransformations.AssertIntoAssume(options, c)).Select(c => DisableSplits(c)).ToList();
+            newBlock.Cmds = block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(options, c)).Select(DisableSplits).ToList();
           }
-          if (b.TransferCmd is GotoCmd gtc)
+          if (block.TransferCmd is GotoCmd gtc)
           {
-            var targets = gtc.labelTargets.Where(blk => blocks.Contains(blk));
+            var targets = gtc.labelTargets.Where(blocksToInclude.Contains).ToList();
             newBlock.TransferCmd = new GotoCmd(gtc.tok,
               targets.Select(blk => oldToNewBlockMap[blk].Label).ToList(),
               targets.Select(blk => oldToNewBlockMap[blk]).ToList());
@@ -119,26 +71,73 @@ public static class FocusAttribute
         }
         newBlocks.Reverse();
         Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
-        result.Add(new Split(options, BlockTransformations.PostProcess(newBlocks), gotoCmdOrigins, par, run));
+        result.Add(new Split(options, BlockTransformations.PostProcess(newBlocks), gotoCmdOrigins, par, run, focusToken));
       }
-      else if (!blocks.Contains(focusBlocks[focusIdx]) || freeBlocks.Contains(focusBlocks[focusIdx]))
+      else if (!blocksToInclude.Contains(focusBlocks[focusIndex].Block) || freeAssumeBlocks.Contains(focusBlocks[focusIndex].Block))
       {
-        FocusRec(focusIdx + 1, blocks, freeBlocks);
+        FocusRec(focusBlocks[focusIndex].Token, focusIndex + 1, blocksToInclude, freeAssumeBlocks);
       }
       else
       {
-        var b = focusBlocks[focusIdx]; // assert b in blocks
-        var dominatedBlocks = DominatedBlocks(b, blocks);
+        var (block, nextToken) = focusBlocks[focusIndex]; // assert b in blocks
+        var dominatedBlocks = DominatedBlocks(topologicallySortedBlocks, block, blocksToInclude);
         // the first part takes all blocks except the ones dominated by the focus block
-        FocusRec(focusIdx + 1, blocks.Where(blk => !dominatedBlocks.Contains(blk)).ToList(), freeBlocks);
-        var ancestors = ancestorsPerBlock[b];
-        ancestors.Remove(b);
-        var descendants = descendantsPerBlock[b];
+        FocusRec(nextToken, focusIndex + 1, blocksToInclude.Where(blk => !dominatedBlocks.Contains(blk)).ToList(), freeAssumeBlocks);
+        var ancestors = ancestorsPerBlock[block];
+        ancestors.Remove(block);
+        var descendants = descendantsPerBlock[block];
         // the other part takes all the ancestors, the focus block, and the descendants.
-        FocusRec(focusIdx + 1, 
-          ancestors.Union(descendants).Intersect(blocks).ToList(), 
-          ancestors.Union(freeBlocks).ToList());
+        FocusRec(nextToken, focusIndex + 1, 
+          ancestors.Union(descendants).Intersect(blocksToInclude).ToList(), 
+          ancestors.Union(freeAssumeBlocks).ToList());
       }
     }
+  }
+    
+  // finds all the blocks dominated by focusBlock in the subgraph
+  // which only contains vertices of subgraph.
+  private static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, IEnumerable<Block> subgraph)
+  {
+    var dominators = new Dictionary<Block, HashSet<Block>>();
+    foreach (var b in topologicallySortedBlocks.Where(subgraph.Contains))
+    {
+      var s = new HashSet<Block>();
+      var pred = b.Predecessors.Where(subgraph.Contains).ToList();
+      if (pred.Count != 0)
+      {
+        s.UnionWith(dominators[pred[0]]);
+        pred.ForEach(blk => s.IntersectWith(dominators[blk]));
+      }
+      s.Add(b);
+      dominators[b] = s;
+    }
+    return subgraph.Where(blk => dominators[blk].Contains(focusBlock)).ToHashSet();
+  }
+
+  private static Cmd DisableSplits(Cmd command)
+  {
+    if (command is not PredicateCmd pc)
+    {
+      return command;
+    }
+
+    for (var kv = pc.Attributes; kv != null; kv = kv.Next)
+    {
+      if (kv.Key == "split")
+      {
+        kv.AddParam(new LiteralExpr(Token.NoToken, false));
+      }
+    }
+    return command;
+  }
+  
+  private static List<(Block Block, IToken Token)> GetFocusBlocks(List<Block> blocks) {
+    return blocks.
+      Select(block => (Block: block, FocusCommand: block.Cmds.FirstOrDefault(IsFocusCmd)?.tok)).
+      Where(t => t.FocusCommand != null).ToList();
+  }
+
+  private static bool IsFocusCmd(Cmd c) {
+    return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "focus");
   }
 }
