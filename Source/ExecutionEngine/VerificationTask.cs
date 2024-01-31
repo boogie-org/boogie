@@ -20,16 +20,18 @@ public class VerificationTask : IVerificationTask {
 
   public ProcessedProgram ProcessedProgram { get; }
 
+  public IToken ScopeToken => Split.Implementation.tok;
+
+  public IToken Token => Split.Token;
   public ManualSplit Split { get; }
-  
+
   public VerificationTask(ExecutionEngine engine, ProcessedProgram processedProgram, ManualSplit split,
-    ModelViewInfo modelViewInfo) 
-  {
+    ModelViewInfo modelViewInfo) {
     this.engine = engine;
     this.modelViewInfo = modelViewInfo;
     ProcessedProgram = processedProgram;
     Split = split;
-    
+
     var cachedVerificationResult = engine.GetCachedVerificationResult(split.Implementation, TextWriter.Null);
     if (cachedVerificationResult != null) {
       CacheStatus = new Completed(cachedVerificationResult.RunResults[Split.SplitIndex]);
@@ -47,8 +49,7 @@ public class VerificationTask : IVerificationTask {
 
   public bool IsIdle => cancellationSource == null;
 
-  public IObservable<IVerificationStatus>? TryRun()
-  {
+  public IObservable<IVerificationStatus>? TryRun() {
     lock (mayAccessCancellationSource) {
       if (cancellationSource == null) {
         return StartRunIfNeeded();
@@ -65,8 +66,7 @@ public class VerificationTask : IVerificationTask {
     }
   }
 
-  private IObservable<IVerificationStatus>? StartRunIfNeeded()
-  {
+  private IObservable<IVerificationStatus>? StartRunIfNeeded() {
     // No other thread is running or can start, so we can safely access CacheStatus
     if (CacheStatus is Completed) {
       return null;
@@ -79,25 +79,20 @@ public class VerificationTask : IVerificationTask {
 
     StartRun(cancellationSource.Token).ToObservable().
       Catch<IVerificationStatus, OperationCanceledException>(_ => Observable.Return(new Stale())).
-      Subscribe(next =>
-      {
+      Subscribe(next => {
         status.OnNext(next);
-      }, e =>
-      {
+      }, e => {
         // Lock so we may do operations after clearing cancellationSource,
         // which releases our control over the field status.
-        lock (mayAccessCancellationSource)
-        {
+        lock (mayAccessCancellationSource) {
           // Clear cancellationSource before calling status.OnError, so ImplementationTask.IsIdle returns true
           cancellationSource = null;
           status.OnError(e);
         }
-      }, () =>
-      {
+      }, () => {
         // Lock so we may do operations after clearing cancellationSource,
         // which releases our control over the field status.
-        lock (mayAccessCancellationSource)
-        {
+        lock (mayAccessCancellationSource) {
           // Clear cancellationSource before calling status.OnCompleted, so ImplementationTask.IsIdle returns true
           cancellationSource = null;
 
@@ -108,18 +103,15 @@ public class VerificationTask : IVerificationTask {
     return status;
   }
 
-  private async IAsyncEnumerable<IVerificationStatus> StartRun([EnumeratorCancellation] CancellationToken cancellationToken)
-  {
+  private async IAsyncEnumerable<IVerificationStatus> StartRun([EnumeratorCancellation] CancellationToken cancellationToken) {
     var timeout = Split.Run.Implementation.GetTimeLimit(Split.Options);
-    
+
     var checkerTask = engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, CancellationToken.None);
-    if (!checkerTask.IsCompleted)
-    {
+    if (!checkerTask.IsCompleted) {
       yield return new Queued();
     }
     var checker = await checkerTask;
-    try
-    {
+    try {
       yield return new Running();
 
       var collector = new VerificationResultCollector(Split.Options);
@@ -129,27 +121,23 @@ public class VerificationTask : IVerificationTask {
       await checker.ProverTask;
       var result = Split.ReadOutcome(0, checker, collector);
 
-      if (SplitAndVerifyWorker.IsProverFailed(result.Outcome))
-      {
-        // Update one last time the result with the dummy counter-example to indicate the position of the failure
-        var cex = Split.ToCounterexample(checker.TheoremProver.Context);
-        Split.Counterexamples.Add(cex);
-        result = result with
-        {
-          CounterExamples = Split.Counterexamples
-        };
-      }
+      // if (SplitAndVerifyWorker.IsProverFailed(result.Outcome)) {
+      //   // Update one last time the result with the dummy counter-example to indicate the position of the failure
+      //   var cex = Split.ToCounterexample(checker.TheoremProver.Context);
+      //   Split.Counterexamples.Add(cex);
+      //   result = result with {
+      //     CounterExamples = Split.Counterexamples
+      //   };
+      // }
       CacheStatus = new Completed(result);
       yield return CacheStatus;
     }
-    finally
-    {
+    finally {
       await checker.GoBackToIdle();
     }
   }
 
-  private IObservable<IVerificationStatus> QueueRun()
-  {
+  private IObservable<IVerificationStatus> QueueRun() {
     // We claim the right to run.
     cancellationSource = new();
     var myCancellationSource = cancellationSource;
@@ -157,8 +145,7 @@ public class VerificationTask : IVerificationTask {
     // After the current run cancellation completes, call TryRun, assume it succeeds,
     // and forward the observations to result.
     var result = new ReplaySubject<IVerificationStatus>();
-    status!.Subscribe(next => { }, () =>
-    {
+    status!.Subscribe(next => { }, () => {
       if (myCancellationSource.IsCancellationRequested) {
         // Queued run was cancelled before it started.
         result.OnNext(CacheStatus);
