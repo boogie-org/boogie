@@ -21,6 +21,7 @@ public class VerificationTask : IVerificationTask {
   public ProcessedProgram ProcessedProgram { get; }
 
   public IToken ScopeToken => Split.Implementation.tok;
+  public string ScopeId => Split.Implementation.VerboseName; // TODO this verbose name threw me off. Why do we need it besides the regular name?
 
   public IToken Token => Split.Token;
   public ManualSplit Split { get; }

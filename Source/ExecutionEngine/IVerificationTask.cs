@@ -16,6 +16,8 @@ public interface IVerificationTask {
   /// Boogie's terms for a verification scope is an Implementation
   /// </summary>
   IToken ScopeToken { get; }
+  
+  string ScopeId { get; }
 
   /// <summary>
   /// Token that identifies where this task originates from
