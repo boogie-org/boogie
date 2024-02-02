@@ -724,7 +724,12 @@ namespace Microsoft.Boogie
           out var gotoCmdOrigins,
           out var modelViewInfo);
 
-        var splits = ManualSplitFinder.FocusAndSplit(Options, run, gotoCmdOrigins, vcGenerator);
+        var splits = ManualSplitFinder.FocusAndSplit(Options, run, gotoCmdOrigins, vcGenerator).ToList();
+        for (var index = 0; index < splits.Count; index++) {
+          var split = splits[index];
+          split.SplitIndex = index;
+        }
+
         return splits.Select(split => new VerificationTask(this, processedProgram, split, modelViewInfo));
       }).ToList();
     }
