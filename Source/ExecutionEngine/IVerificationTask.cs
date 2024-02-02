@@ -13,10 +13,14 @@ public interface IVerificationTask {
 
   /// <summary>
   /// Associated with the verification scope this task occurs in. Multiple tasks can occur in the same scope
-  /// Boogie's terms for a verification scope is an Implementation
+  /// Boogie's term for a verification scope is an Implementation
   /// </summary>
   IToken ScopeToken { get; }
   
+  /// <summary>
+  /// Uniquely identifies the verification scope this task occurs in.
+  /// Boogie's term for a verification scope is an Implementation
+  /// </summary>
   string ScopeId { get; }
 
   /// <summary>
