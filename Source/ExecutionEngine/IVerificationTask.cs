@@ -7,8 +7,6 @@ namespace Microsoft.Boogie;
 
 public interface IVerificationTask {
   IVerificationStatus CacheStatus { get; }
-
-  ProcessedProgram ProcessedProgram { get; }
   ManualSplit Split { get; }
 
   /// <summary>
