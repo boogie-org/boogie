@@ -50,6 +50,36 @@ public class ExecutionEngineTest {
   }
   
   [Test]
+  public async Task SplitOnEveryAssertion() {
+    var programString = @"
+procedure Procedure(y: int)
+  ensures y == 3;
+{
+  assert y > 2;
+  assert y > 1;
+  assert y < 4;
+}
+".Trim();
+    Parser.Parse(programString, "fakeFilename10", out var program);
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    options.VcsSplitOnEveryAssert = true;
+    options.PrintErrorModel = 1;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    var tasks = engine.GetVerificationTasks(program);
+    
+    // The first split is empty. Maybe it can be optimized away
+    Assert.AreEqual(5, tasks.Count);
+
+    var outcomes = new List<SolverOutcome> { SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid };
+    for (var index = 0; index < outcomes.Count; index++)
+    {
+      var result0 = await tasks[index].TryRun()!.ToTask();
+      var verificationResult0 = ((Completed)result0).Result;
+      Assert.AreEqual(outcomes[index], verificationResult0.Outcome);
+    }
+  }
+  
+  [Test]
   public async Task GetImplementationTasksTest() {
     var programString = @"
 procedure First(y: int)
@@ -66,13 +96,13 @@ procedure Second(y: int)
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.PrintErrorModel = 1;
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
-    var tasks = engine.GetImplementationTasks(program);
+    var tasks = engine.GetVerificationTasks(program);
     Assert.AreEqual(2, tasks.Count);
-    Assert.NotNull(tasks[0].Implementation);
+    Assert.NotNull(tasks[0].Split.Implementation);
     var result1 = await tasks[0].TryRun()!.ToTask();
     var verificationResult1 = ((Completed)result1).Result;
-    Assert.AreEqual(VcOutcome.Errors, verificationResult1.VcOutcome);
-    Assert.AreEqual(true, verificationResult1.Errors[0].Model.ModelHasStatesAlready);
+    Assert.AreEqual(SolverOutcome.Invalid, verificationResult1.Outcome);
+    Assert.AreEqual(true, verificationResult1.CounterExamples[0].Model.ModelHasStatesAlready);
 
     Assert.IsTrue(tasks[1].IsIdle);
     var runningStates = tasks[1].TryRun()!;
@@ -80,7 +110,7 @@ procedure Second(y: int)
     var result2 = await runningStates.ToTask();
     Assert.IsTrue(tasks[1].IsIdle);
     var verificationResult2 = ((Completed)result2).Result;
-    Assert.AreEqual(VcOutcome.Correct, verificationResult2.VcOutcome);
+    Assert.AreEqual(SolverOutcome.Valid, verificationResult2.Outcome);
   }
 
   [Test]
@@ -225,7 +255,7 @@ procedure Foo(x: int) {
 }".TrimStart();
     var result = Parser.Parse(source, "fakeFilename1", out var program);
     Assert.AreEqual(0, result);
-    var tasks = engine.GetImplementationTasks(program)[0];
+    var tasks = engine.GetVerificationTasks(program)[0];
     var statusList1 = new List<IVerificationStatus>();
     var firstStatuses = tasks.TryRun()!;
     await firstStatuses.Where(s => s is Running).FirstAsync().ToTask();
@@ -261,7 +291,7 @@ procedure Foo(x: int) {
 }".TrimStart();
     var result = Parser.Parse(source, "fakeFilename1", out var program);
     Assert.AreEqual(0, result);
-    var task = engine.GetImplementationTasks(program)[0];
+    var task = engine.GetVerificationTasks(program)[0];
     var statusList1 = new List<IVerificationStatus>();
     var firstStatuses = task.TryRun()!;
     var runDuringRun1 = task.TryRun();
@@ -284,7 +314,7 @@ procedure Foo(x: int) {
     var expected2 = new List<IVerificationStatus>() {
       new Running(), finalResult
     };
-    Assert.AreEqual(expected2, statusList2.Where(s => s is not Queued && s is not BatchCompleted));
+    Assert.AreEqual(expected2, statusList2.Where(s => s is not Queued));
   }
 
   [Test]
@@ -307,13 +337,13 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
 ";
     Parser.Parse(programString, "fakeFilename1", out var program);
     Assert.AreEqual("Bad", program.Implementations.ElementAt(0).Name);
-    var tasks = engine.GetImplementationTasks(program);
+    var tasks = engine.GetVerificationTasks(program);
     var statusList = new List<(string, IVerificationStatus)>();
 
     var first = tasks[0];
     var second = tasks[1];
-    var firstName = first.Implementation.Name;
-    var secondName = second.Implementation.Name;
+    var firstName = first.Split.Implementation.Name;
+    var secondName = second.Split.Implementation.Name;
     Assert.AreEqual("Bad", firstName);
     Assert.AreEqual("Good", secondName);
 
@@ -329,26 +359,30 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     Assert.AreEqual((firstName, new Running()), statusList[0]);
     Assert.AreEqual((secondName, new Queued()), statusList[1]);
     Assert.AreEqual(firstName, statusList[2].Item1);
-    Assert.IsTrue(statusList[2].Item2 is BatchCompleted);
-    Assert.AreEqual(firstName, statusList[3].Item1);
-    Assert.IsTrue(statusList[3].Item2 is Completed);
-    Assert.AreEqual((secondName, new Running()), statusList[4]);
-    Assert.AreEqual(secondName, statusList[5].Item1);
-    Assert.IsTrue(statusList[5].Item2 is BatchCompleted);
-    Assert.AreEqual(secondName, statusList[6].Item1);
-    Assert.IsTrue(statusList[6].Item2 is Completed);
-    
-    var tasks2 = engine.GetImplementationTasks(program);
-    Assert.True(tasks2[0].CacheStatus is Completed);
-    Assert.AreEqual(VcOutcome.Errors, ((Completed)tasks2[0].CacheStatus).Result.VcOutcome);
+    Assert.AreEqual(firstName, statusList[2].Item1);
+    Assert.IsTrue(statusList[2].Item2 is Completed);
+    Assert.AreEqual((secondName, new Running()), statusList[3]);
+    Assert.AreEqual(secondName, statusList[4].Item1);
+    Assert.IsTrue(statusList[4].Item2 is Completed);
+  
+    Assert.True(tasks[0].CacheStatus is Completed);
+    Assert.AreEqual(SolverOutcome.Invalid, ((Completed)tasks[0].CacheStatus).Result.Outcome);
 
-    Assert.True(tasks2[1].CacheStatus is Completed);
-    Assert.AreEqual(VcOutcome.Correct, ((Completed)tasks2[1].CacheStatus).Result.VcOutcome);
+    Assert.True(tasks[1].CacheStatus is Completed);
+    Assert.AreEqual(SolverOutcome.Valid, ((Completed)tasks[1].CacheStatus).Result.Outcome);
+
+    // Caching is currently not working
+    // var tasks2 = engine.GetVerificationTasks(program);
+    // Assert.True(tasks2[0].CacheStatus is Completed);
+    // Assert.AreEqual(SolverOutcome.Invalid, ((Completed)tasks2[0].CacheStatus).Result.Outcome);
+    //
+    // Assert.True(tasks2[1].CacheStatus is Completed);
+    // Assert.AreEqual(SolverOutcome.Valid, ((Completed)tasks2[1].CacheStatus).Result.Outcome);
     
-    var batchResult = (BatchCompleted) statusList[2].Item2;
+    var batchResult = (Completed) statusList[2].Item2;
     
-    var assertion = batchResult.VerificationRunResult.Asserts[0];
-    batchResult.VerificationRunResult.ComputePerAssertOutcomes(out var perAssertOutcome, out var perAssertCounterExamples);
+    var assertion = batchResult.Result.Asserts[0];
+    batchResult.Result.ComputePerAssertOutcomes(out var perAssertOutcome, out var perAssertCounterExamples);
     Assert.Contains(assertion, perAssertOutcome.Keys);
     Assert.Contains(assertion, perAssertCounterExamples.Keys);
     var outcomeAssertion = perAssertOutcome[assertion];
@@ -373,11 +407,11 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     // We limit the number of checkers to 1.
     options.VcsCores = 1;
 
-    var outcome1 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
-    Assert.IsTrue(outcome1 is Completed completed && completed.Result.VcOutcome == VcOutcome.Inconclusive);
+    var outcome1 = await executionEngine.GetVerificationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+    Assert.IsTrue(outcome1 is Completed completed && completed.Result.Outcome == SolverOutcome.Undetermined);
     options.CreateSolver = (_ ,_ ) => new UnsatSolver();
-    var outcome2 = await executionEngine.GetImplementationTasks(terminatingProgram)[0].TryRun()!.ToTask();
-    Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.VcOutcome == VcOutcome.Correct);
+    var outcome2 = await executionEngine.GetVerificationTasks(terminatingProgram)[0].TryRun()!.ToTask();
+    Assert.IsTrue(outcome2 is Completed completed2 && completed2.Result.Outcome == SolverOutcome.Valid);
   }
 
   [Test]

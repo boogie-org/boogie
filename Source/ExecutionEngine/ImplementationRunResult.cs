@@ -29,17 +29,14 @@ public sealed class ImplementationRunResult
 
   public int ResourceCount { get; set; }
 
-  public int ProofObligationCount
-  {
-    get { return ProofObligationCountAfter - ProofObligationCountBefore; }
-  }
+  public int ProofObligationCount => ProofObligationCountAfter - ProofObligationCountBefore;
 
   public int ProofObligationCountBefore { get; set; }
   public int ProofObligationCountAfter { get; set; }
 
   public VcOutcome VcOutcome { get; set; }
   public List<Counterexample> Errors = new();
-  public List<VerificationRunResult> VCResults;
+  public List<VerificationRunResult> RunResults;
 
   public ErrorInformation ErrorBeforeVerification { get; set; }
 
@@ -79,7 +76,7 @@ public sealed class ImplementationRunResult
     lock (engine.Options.XmlSink) {
       engine.Options.XmlSink.WriteStartMethod(implementation.VerboseName, Start);
 
-      foreach (var vcResult in VCResults.OrderBy(s => (vcNum: s.VcNum, iteration: s.Iteration))) {
+      foreach (var vcResult in RunResults.OrderBy(s => (vcNum: s.VcNum, iteration: s.Iteration))) {
         engine.Options.XmlSink.WriteSplit(vcResult.VcNum, vcResult.Iteration, vcResult.Asserts, vcResult.StartTime,
           vcResult.Outcome.ToString().ToLowerInvariant(), vcResult.RunTime, vcResult.ResourceCount);
       }

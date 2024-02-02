@@ -8,6 +8,17 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie;
 
+public enum SolverOutcome
+{
+  Valid,
+  Invalid,
+  TimeOut,
+  OutOfMemory,
+  OutOfResource,
+  Undetermined,
+  Bounded
+}
+
 public abstract class ProverInterface
 {
   public static ProverInterface CreateProver(SMTLibOptions libOptions, Program prog,
@@ -294,18 +305,6 @@ public abstract class ProverInterface
 
   public abstract Task GoBackToIdle();
 }
-
-public enum SolverOutcome
-{
-  Valid,
-  Invalid,
-  TimeOut,
-  OutOfMemory,
-  OutOfResource,
-  Undetermined,
-  Bounded
-}
-
 public class UnexpectedProverOutputException : ProverException
 {
   public UnexpectedProverOutputException(string s)

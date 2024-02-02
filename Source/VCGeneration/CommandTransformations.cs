@@ -3,13 +3,13 @@ using VC;
 
 namespace VCGeneration;
 
-public class CommandTransformations
+public static class CommandTransformations
 {
   public static Cmd AssertIntoAssume(VCGenOptions options, Cmd c)
   {
-    if (c is AssertCmd assrt)
+    if (c is AssertCmd assertCmd)
     {
-      return VerificationConditionGenerator.AssertTurnedIntoAssume(options, assrt);
+      return VerificationConditionGenerator.AssertTurnedIntoAssume(options, assertCmd);
     }
 
     return c;

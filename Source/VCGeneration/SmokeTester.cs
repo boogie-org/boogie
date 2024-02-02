@@ -11,7 +11,7 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace VC;
 
-class SmokeTester
+public class SmokeTester
 {
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -275,7 +275,7 @@ class SmokeTester
 
     parent.CurrentLocalVariables = run.Implementation.LocVars;
     parent.PassifyImpl(run, out var mvInfo);
-    Checker checker = await parent.CheckerPool.FindCheckerFor(parent, null, CancellationToken.None);
+    Checker checker = await parent.CheckerPool.FindCheckerFor(parent.program, null, CancellationToken.None);
     Contract.Assert(checker != null);
 
     SolverOutcome outcome = SolverOutcome.Undetermined;

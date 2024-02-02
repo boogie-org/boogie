@@ -1,26 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using Microsoft.Boogie;
-using System.Diagnostics.Contracts;
-using System.IO;
-using Microsoft.BaseTypes;
-using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.SMTLib;
 
 namespace VC
 {
-  using Bpl = Microsoft.Boogie;
-  using System.Threading.Tasks;
-
   public record VerificationRunResult
   (
     int VcNum,
     int Iteration,
     DateTime StartTime,
-    Bpl.SolverOutcome Outcome,
+    SolverOutcome Outcome,
     TimeSpan RunTime,
     int MaxCounterExamples,
     List<Counterexample> CounterExamples,
@@ -29,12 +20,12 @@ namespace VC
     int ResourceCount,
     SolverKind? SolverUsed
   ) {
-    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, Bpl.SolverOutcome> perAssertOutcome,
+    public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, SolverOutcome> perAssertOutcome,
       out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
       perAssertOutcome = new();
       perAssertCounterExamples = new();
-      if (Outcome == Bpl.SolverOutcome.Valid) {
-        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, assertCmd => Bpl.SolverOutcome.Valid);
+      if (Outcome == SolverOutcome.Valid) {
+        perAssertOutcome = Asserts.ToDictionary(cmd => cmd, _ => SolverOutcome.Valid);
       } else {
         foreach (var counterExample in CounterExamples) {
           AssertCmd underlyingAssert;
@@ -53,17 +44,17 @@ namespace VC
             continue;
           }
 
-          perAssertOutcome.TryAdd(underlyingAssert, Bpl.SolverOutcome.Invalid);
+          perAssertOutcome.TryAdd(underlyingAssert, SolverOutcome.Invalid);
           perAssertCounterExamples.TryAdd(underlyingAssert, counterExample);
         }
 
         var remainingOutcome =
-          Outcome == Bpl.SolverOutcome.Invalid && CounterExamples.Count < MaxCounterExamples
+          Outcome == SolverOutcome.Invalid && CounterExamples.Count < MaxCounterExamples
             // We could not extract more counterexamples, remaining assertions are thus valid 
-            ? Bpl.SolverOutcome.Valid
-            : Outcome == Bpl.SolverOutcome.Invalid
+            ? SolverOutcome.Valid
+            : Outcome == SolverOutcome.Invalid
               // We reached the maximum number of counterexamples, we can't infer anything for the remaining assertions
-              ? Bpl.SolverOutcome.Undetermined
+              ? SolverOutcome.Undetermined
               // TimeOut, OutOfMemory, OutOfResource, Undetermined for a single split also applies to assertions
               : Outcome;
 

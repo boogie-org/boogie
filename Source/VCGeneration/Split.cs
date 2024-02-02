@@ -10,44 +10,26 @@ using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.SMTLib;
 using VCGeneration;
+using System.Threading.Tasks;
 
 namespace VC
 {
-  using Bpl = Microsoft.Boogie;
-  using System.Threading.Tasks;
-
   public class Split : ProofRun
   {
       public VCGenOptions Options { get; }
-
-      public int? RandomSeed => Implementation.RandomSeed ?? Options.RandomSeed;
       private readonly Random randomGen;
-
       public ImplementationRun Run { get; }
 
-      [ContractInvariantMethod]
-      void ObjectInvariant()
-      {
-        Contract.Invariant(cce.NonNullElements(Blocks));
-        Contract.Invariant(cce.NonNullElements(bigBlocks));
-        Contract.Invariant(cce.NonNullDictionaryAndValues(stats));
-        Contract.Invariant(cce.NonNullElements(assumizedBranches));
-        Contract.Invariant(GotoCmdOrigins != null);
-        Contract.Invariant(parent != null);
-        Contract.Invariant(Implementation != null);
-        Contract.Invariant(copies != null);
-        Contract.Invariant(cce.NonNull(protectedFromAssertToAssume));
-        Contract.Invariant(cce.NonNull(keepAtAll));
-      }
-
+      public int? RandomSeed => Implementation.RandomSeed ?? Options.RandomSeed;
 
       public List<Block> Blocks { get; }
+      readonly List<Block> bigBlocks = new();
       public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
-      readonly List<Block> bigBlocks = new();
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
+
       static int currentId = -1;
 
       Block splitBlock;
@@ -64,7 +46,8 @@ namespace VC
 
       public Dictionary<TransferCmd, ReturnCmd> GotoCmdOrigins { get; }
 
-      public readonly VerificationConditionGenerator /*!*/ parent;
+      public readonly VerificationConditionGenerator /*!*/
+        parent;
 
       public Implementation /*!*/ Implementation => Run.Implementation;
 
@@ -76,15 +59,13 @@ namespace VC
       double sliceLimit;
       bool slicePos;
 
-      HashSet<Block /*!*/> /*!*/
-        protectedFromAssertToAssume = new HashSet<Block /*!*/>();
+      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new HashSet<Block /*!*/>();
 
-      HashSet<Block /*!*/> /*!*/
-        keepAtAll = new HashSet<Block /*!*/>();
+      HashSet<Block /*!*/> /*!*/ keepAtAll = new HashSet<Block /*!*/>();
 
       // async interface
       public int SplitIndex { get; set; }
-      internal VerificationConditionGenerator.ErrorReporter reporter;
+      public VerificationConditionGenerator.ErrorReporter reporter;
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
@@ -95,7 +76,7 @@ namespace VC
         Contract.Requires(par != null);
         this.Blocks = blocks;
         this.GotoCmdOrigins = gotoCmdOrigins;
-        this.parent = par;
+        parent = par;
         this.Run = run;
         this.Options = options;
         Interlocked.Increment(ref currentId);
@@ -118,13 +99,14 @@ namespace VC
           $"{Options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}.bpl", false,
           Options.PrettyPrint, Options);
 
-        var functionAxioms = 
+        var functionAxioms =
           program.Functions.Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
-        var constantAxioms = 
+        var constantAxioms =
           program.Constants.Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
 
-        foreach (var declaration in (TopLevelDeclarations ?? program.TopLevelDeclarations).
-                 Except(functionAxioms.Concat(constantAxioms)).ToList()) {
+        foreach (var declaration in (TopLevelDeclarations ?? program.TopLevelDeclarations)
+                 .Except(functionAxioms.Concat(constantAxioms)).ToList())
+        {
           declaration.Emit(writer, 0);
         }
 
@@ -160,7 +142,7 @@ namespace VC
 
       public void DumpDot(int splitNum)
       {
-        using (System.IO.StreamWriter sw = System.IO.File.CreateText($"{Implementation.Name}.split.{splitNum}.dot"))
+        using (StreamWriter sw = File.CreateText($"{Implementation.Name}.split.{splitNum}.dot"))
         {
           sw.WriteLine("digraph G {");
 
@@ -192,7 +174,7 @@ namespace VC
         }
 
         string filename = string.Format("{0}.split.{1}.bpl", Implementation.Name, splitNum);
-        using (System.IO.StreamWriter sw = System.IO.File.CreateText(filename))
+        using (StreamWriter sw = File.CreateText(filename))
         {
           int oldPrintUnstructured = Options.PrintUnstructured;
           Options.PrintUnstructured = 2; // print only the unstructured program
@@ -245,14 +227,14 @@ namespace VC
         {
           if (c is AssertCmd)
           {
-            double cost = AssertionCost((AssertCmd) c);
+            double cost = AssertionCost((AssertCmd)c);
             s.assertionCost += cost;
             assertionCount++;
             assertionCost += cost;
           }
           else if (c is AssumeCmd)
           {
-            s.assumptionCost += AssertionCost((AssumeCmd) c);
+            s.assumptionCost += AssertionCost((AssumeCmd)c);
           }
         }
 
@@ -422,7 +404,7 @@ namespace VC
         }
       }
 
-      void UpdateIncommingPaths(BlockStats s)
+      void UpdateIncomingPaths(BlockStats s)
       {
         Contract.Requires(s != null);
         if (s.incomingPaths < 0.0)
@@ -439,7 +421,7 @@ namespace VC
             Contract.Assert(b != null);
             BlockStats ch = GetBlockStats(b);
             Contract.Assert(ch != null);
-            UpdateIncommingPaths(ch);
+            UpdateIncomingPaths(ch);
             if (ch.incomingPaths > 0.0)
             {
               s.incomingPaths += ch.incomingPaths;
@@ -557,7 +539,7 @@ namespace VC
           if (keepAtAll.Contains(b))
           {
             BlockStats s = GetBlockStats(b);
-            UpdateIncommingPaths(s);
+            UpdateIncomingPaths(s);
             double local = s.assertionCost;
             if (ShouldAssumize(b))
             {
@@ -663,32 +645,34 @@ namespace VC
         return res;
       }
 
-      Split DoSplit()
+      private Split DoSplit()
       {
         Contract.Ensures(Contract.Result<Split>() != null);
 
         copies.Clear();
         CloneBlock(Blocks[0]);
-        List<Block> newBlocks = new List<Block>();
-        Dictionary<TransferCmd, ReturnCmd> newGotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
-        foreach (Block b in Blocks)
+        var newBlocks = new List<Block>();
+        var newGotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
+        foreach (var block in Blocks)
         {
-          Contract.Assert(b != null);
-          if (copies.TryGetValue(b, out var tmp))
+          Contract.Assert(block != null);
+          if (!copies.TryGetValue(block, out var tmp))
           {
-            newBlocks.Add(cce.NonNull(tmp));
-            if (GotoCmdOrigins.ContainsKey(b.TransferCmd))
-            {
-              newGotoCmdOrigins[tmp.TransferCmd] = GotoCmdOrigins[b.TransferCmd];
-            }
+            continue;
+          }
 
-            foreach (Block p in b.Predecessors)
+          newBlocks.Add(cce.NonNull(tmp));
+          if (GotoCmdOrigins.TryGetValue(block.TransferCmd, out var origin))
+          {
+            newGotoCmdOrigins[tmp.TransferCmd] = origin;
+          }
+
+          foreach (var predecessor in block.Predecessors)
+          {
+            Contract.Assert(predecessor != null);
+            if (copies.TryGetValue(predecessor, out var tmp2))
             {
-              Contract.Assert(p != null);
-              if (copies.TryGetValue(p, out var tmp2))
-              {
-                tmp.Predecessors.Add(tmp2);
-              }
+              tmp.Predecessors.Add(tmp2);
             }
           }
         }
@@ -696,7 +680,7 @@ namespace VC
         return new Split(Options, newBlocks, newGotoCmdOrigins, parent, Run);
       }
 
-      Split SplitAt(int idx)
+      private Split SplitAt(int idx)
       {
         Contract.Ensures(Contract.Result<Split>() != null);
 
@@ -707,7 +691,7 @@ namespace VC
         return DoSplit();
       }
 
-      Split SliceAsserts(double limit, bool pos)
+      private Split SliceAsserts(double limit, bool pos)
       {
         Contract.Ensures(Contract.Result<Split>() != null);
 
@@ -742,21 +726,21 @@ namespace VC
         Contract.Ensures(Contract.Result<Counterexample>() != null);
 
         List<Block> trace = new List<Block>();
-        foreach (Block b in Blocks)
+        foreach (Block block in Blocks)
         {
-          Contract.Assert(b != null);
-          trace.Add(b);
+          Contract.Assert(block != null);
+          trace.Add(block);
         }
 
-        foreach (Block b in Blocks)
+        foreach (Block block in Blocks)
         {
-          Contract.Assert(b != null);
-          foreach (Cmd c in b.Cmds)
+          Contract.Assert(block != null);
+          foreach (Cmd command in block.Cmds)
           {
-            Contract.Assert(c != null);
-            if (c is AssertCmd)
+            if (command is AssertCmd assertCmd)
             {
-              var counterexample = VerificationConditionGenerator.AssertCmdToCounterexample(Options, (AssertCmd) c, cce.NonNull(b.TransferCmd), trace, null, null, null, context, this);
+              var counterexample = VerificationConditionGenerator.AssertCmdToCounterexample(Options, assertCmd,
+                cce.NonNull(block.TransferCmd), trace, null, null, null, context, this);
               Counterexamples.Add(counterexample);
               return counterexample;
             }
@@ -779,13 +763,15 @@ namespace VC
         {
           Split best = null;
           int bestIndex = 0;
-          for (var index = 0; index < result.Count; index++) {
+          for (var index = 0; index < result.Count; index++)
+          {
             var split = result[index];
             Contract.Assert(split != null);
             split.ComputeBestSplit(); // TODO check totalCost first
             if (split.totalCost > splitThreshold &&
                 (best == null || best.totalCost < split.totalCost) &&
-                (split.assertionCount > 1 || split.splitBlock != null)) {
+                (split.assertionCount > 1 || split.splitBlock != null))
+            {
               best = split;
               bestIndex = index;
             }
@@ -802,7 +788,8 @@ namespace VC
 
           if (splitStats)
           {
-            run.OutputWriter.WriteLine("{0} {1} -->", best.splitBlock == null ? "SLICE" : ("SPLIT@" + best.splitBlock.Label),
+            run.OutputWriter.WriteLine("{0} {1} -->",
+              best.splitBlock == null ? "SLICE" : ("SPLIT@" + best.splitBlock.Label),
               best.Stats);
             if (best.splitBlock != null)
             {
@@ -852,7 +839,7 @@ namespace VC
             {
               best.SoundnessCheck(new HashSet<List<Block>>(new BlockListComparer()), best.Blocks[0], ss);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
               run.OutputWriter.WriteLine(e);
               best.DumpDot(-1);
@@ -883,17 +870,19 @@ namespace VC
         return result;
       }
 
-      public (Bpl.SolverOutcome outcome, VerificationRunResult result, int resourceCount) ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
+      public VerificationRunResult ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-        Bpl.SolverOutcome outcome = cce.NonNull(checker).ReadOutcome();
+        SolverOutcome outcome = cce.NonNull(checker).ReadOutcome();
 
         if (Options.Trace && SplitIndex >= 0)
         {
           Run.OutputWriter.WriteLine("      --> split #{0} done,  [{1} s] {2}", SplitIndex + 1,
             checker.ProverRunTime.TotalSeconds, outcome);
         }
-        if (Options.Trace && Options.TrackVerificationCoverage) {
+
+        if (Options.Trace && Options.TrackVerificationCoverage)
+        {
           Run.OutputWriter.WriteLine("Proof dependencies:\n  {0}",
             string.Join("\n  ", CoveredElements.Select(s => s.Description).OrderBy(s => s)));
         }
@@ -918,7 +907,7 @@ namespace VC
           DumpDot(SplitIndex);
         }
 
-        return (outcome, result, resourceCount);
+        return result;
       }
 
       public List<Counterexample> Counterexamples { get; } = new();
@@ -928,7 +917,8 @@ namespace VC
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
       /// </summary>
-      public async Task BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback, ModelViewInfo mvInfo, uint timeout,
+      public async Task BeginCheck(TextWriter traceWriter, Checker checker, VerifierCallback callback,
+        ModelViewInfo mvInfo, uint timeout,
         uint rlimit, CancellationToken cancellationToken)
       {
         Contract.Requires(checker != null);
@@ -936,14 +926,16 @@ namespace VC
 
         VCExpr vc;
         // Lock impl since we're setting impl.Blocks that is used to generate the VC.
-        lock (Implementation) {
+        lock (Implementation)
+        {
           Implementation.Blocks = Blocks;
 
           var absyIds = new ControlFlowIdMap<Absy>();
 
           ProverContext ctx = checker.TheoremProver.Context;
           Boogie2VCExprTranslator bet = ctx.BoogieExprTranslator;
-          var cc = new VerificationConditionGenerator.CodeExprConversionClosure(traceWriter, checker.Pool.Options, absyIds, ctx);
+          var cc = new VerificationConditionGenerator.CodeExprConversionClosure(traceWriter, checker.Pool.Options,
+            absyIds, ctx);
           bet.SetCodeExprConverter(cc.CodeExprToVerificationCondition);
 
           var exprGen = ctx.ExprGen;
@@ -955,9 +947,11 @@ namespace VC
 
           VCExpr controlFlowFunctionAppl =
             exprGen.ControlFlowFunctionApplication(exprGen.Integer(BigNum.ZERO), exprGen.Integer(BigNum.ZERO));
-          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl, exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
+          VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl,
+            exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
-          reporter = new VerificationConditionGenerator.ErrorReporter(Options, GotoCmdOrigins, absyIds, Implementation.Blocks, Implementation.debugInfos, callback,
+          reporter = new VerificationConditionGenerator.ErrorReporter(Options, GotoCmdOrigins, absyIds,
+            Implementation.Blocks, Implementation.debugInfos, callback,
             mvInfo, checker.TheoremProver.Context, parent.program, this);
         }
 
@@ -967,7 +961,8 @@ namespace VC
           Print();
         }
 
-        checker.TheoremProver.SetAdditionalSmtOptions(Implementation.GetExtraSMTOptions().Select(kv => new OptionValue(kv.Key, kv.Value)));
+        checker.TheoremProver.SetAdditionalSmtOptions(Implementation.GetExtraSMTOptions()
+          .Select(kv => new OptionValue(kv.Key, kv.Value)));
         await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
       }
 
@@ -976,7 +971,8 @@ namespace VC
         get
         {
           string description = cce.NonNull(Implementation.Name);
-          if (SplitIndex >= 0) {
+          if (SplitIndex >= 0)
+          {
             description += "_split" + SplitIndex;
           }
 
@@ -991,7 +987,7 @@ namespace VC
         Contract.Requires(orig != null);
         Contract.Requires(copies != null);
         {
-          var t = new List<Block> {orig};
+          var t = new List<Block> { orig };
           foreach (Block b in copies)
           {
             Contract.Assert(b != null);
@@ -1023,7 +1019,7 @@ namespace VC
 
             if (found == 0)
             {
-              throw new System.Exception(string.Format("missing assertion: {0}({1})", cmd.tok.filename, cmd.tok.line));
+              throw new Exception(string.Format("missing assertion: {0}({1})", cmd.tok.filename, cmd.tok.line));
             }
           }
         }
@@ -1046,15 +1042,16 @@ namespace VC
 
           if (newcopies.Count == 0)
           {
-            throw new System.Exception("missing exit " + exit.Label);
+            throw new Exception("missing exit " + exit.Label);
           }
 
           SoundnessCheck(cache, exit, newcopies);
         }
       }
 
-      public int NextRandom() {
+      public int NextRandom()
+      {
         return randomGen.Next();
       }
-  }
+    }
 }

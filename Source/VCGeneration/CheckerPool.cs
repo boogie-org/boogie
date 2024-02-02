@@ -21,7 +21,7 @@ namespace VC
       checkersSemaphore = new(options.VcsCores);
     }
 
-    public async Task<Checker> FindCheckerFor(ConditionGeneration vcgen, Split? split, CancellationToken cancellationToken)
+    public async Task<Checker> FindCheckerFor(Program program, Split? split, CancellationToken cancellationToken)
     {
       if (disposed) {
         throw new Exception("CheckerPool was already disposed");
@@ -32,7 +32,7 @@ namespace VC
         if (!availableCheckers.TryTake(out var checker)) {
           checker ??= CreateNewChecker();
         }
-        PrepareChecker(vcgen.program, split, checker);
+        PrepareChecker(program, split, checker);
         return checker;
       } catch (Exception) {
         checkersSemaphore.Release();

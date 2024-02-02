@@ -27,7 +27,7 @@ namespace VC
   public abstract class ConditionGenerationContracts : ConditionGeneration
   {
     public override Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver)
+      CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
       Contract.Requires(callback != null);
@@ -44,21 +44,21 @@ namespace VC
   [ContractClass(typeof(ConditionGenerationContracts))]
   public abstract class ConditionGeneration : IDisposable
   {
-    public static VcOutcome ProverInterfaceOutcomeToConditionGenerationOutcome(Microsoft.Boogie.SolverOutcome outcome)
+    public static VcOutcome ProverInterfaceOutcomeToConditionGenerationOutcome(SolverOutcome outcome)
     {
       switch (outcome)
       {
-        case Microsoft.Boogie.SolverOutcome.Invalid:
+        case SolverOutcome.Invalid:
           return VcOutcome.Errors;
-        case Microsoft.Boogie.SolverOutcome.OutOfMemory:
+        case SolverOutcome.OutOfMemory:
           return VcOutcome.OutOfMemory;
-        case Microsoft.Boogie.SolverOutcome.TimeOut:
+        case SolverOutcome.TimeOut:
           return VcOutcome.TimedOut;
-        case Microsoft.Boogie.SolverOutcome.OutOfResource:
+        case SolverOutcome.OutOfResource:
           return VcOutcome.OutOfResource;
-        case Microsoft.Boogie.SolverOutcome.Undetermined:
+        case SolverOutcome.Undetermined:
           return VcOutcome.Inconclusive;
-        case Microsoft.Boogie.SolverOutcome.Valid:
+        case SolverOutcome.Valid:
           return VcOutcome.Correct;
       }
 
@@ -107,9 +107,8 @@ namespace VC
     /// <param name="batchCompletedObserver"></param>
     /// <param name="cancellationToken"></param>
     /// <param name="impl"></param>
-    public async Task<(VcOutcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation(
-      ImplementationRun run, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver,
-      CancellationToken cancellationToken)
+    public async Task<(VcOutcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation2(
+      ImplementationRun run, CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
 
@@ -117,10 +116,9 @@ namespace VC
       Helpers.ExtraTraceInformation(Options, "Starting implementation verification");
 
       var collector = new VerificationResultCollector(Options);
-      VcOutcome vcOutcome = await VerifyImplementation(run, collector, cancellationToken, batchCompletedObserver);
+      VcOutcome vcOutcome = await VerifyImplementation(run, collector, cancellationToken);
       var /*?*/ errors = new List<Counterexample>();
-      if (vcOutcome == VcOutcome.Errors || vcOutcome == VcOutcome.TimedOut || vcOutcome == VcOutcome.OutOfMemory ||
-          vcOutcome == VcOutcome.OutOfResource) {
+      if (vcOutcome is VcOutcome.Errors or VcOutcome.TimedOut or VcOutcome.OutOfMemory or VcOutcome.OutOfResource) {
         errors = collector.examples.ToList();
       }
 
@@ -131,7 +129,7 @@ namespace VC
     private VCGenOptions Options => CheckerPool.Options;
 
     public abstract Task<VcOutcome> VerifyImplementation(ImplementationRun run, VerifierCallback callback,
-      CancellationToken cancellationToken, IObserver<(Split split, VerificationRunResult vcResult)> batchCompletedObserver);
+      CancellationToken cancellationToken);
 
     /////////////////////////////////// Common Methods and Classes //////////////////////////////////////////
 
