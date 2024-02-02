@@ -365,13 +365,19 @@ procedure {:priority 2} {:checksum ""stable""} Good(y: int)
     Assert.AreEqual(secondName, statusList[4].Item1);
     Assert.IsTrue(statusList[4].Item2 is Completed);
   
+    Assert.True(tasks[0].CacheStatus is Completed);
+    Assert.AreEqual(SolverOutcome.Invalid, ((Completed)tasks[0].CacheStatus).Result.Outcome);
+
+    Assert.True(tasks[1].CacheStatus is Completed);
+    Assert.AreEqual(SolverOutcome.Valid, ((Completed)tasks[1].CacheStatus).Result.Outcome);
+
     // Caching is currently not working
-    // var tasks2 = engine.GetVerificationTasks(program);
-    // Assert.True(tasks2[0].CacheStatus is Completed);
-    // Assert.AreEqual(VcOutcome.Errors, ((Completed)tasks2[0].CacheStatus).Result.Outcome);
-    //
-    // Assert.True(tasks2[1].CacheStatus is Completed);
-    // Assert.AreEqual(VcOutcome.Correct, ((Completed)tasks2[1].CacheStatus).Result.Outcome);
+    var tasks2 = engine.GetVerificationTasks(program);
+    Assert.True(tasks2[0].CacheStatus is Completed);
+    Assert.AreEqual(SolverOutcome.Invalid, ((Completed)tasks2[0].CacheStatus).Result.Outcome);
+    
+    Assert.True(tasks2[1].CacheStatus is Completed);
+    Assert.AreEqual(SolverOutcome.Valid, ((Completed)tasks2[1].CacheStatus).Result.Outcome);
     
     var batchResult = (Completed) statusList[2].Item2;
     

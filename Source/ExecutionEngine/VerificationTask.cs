@@ -21,7 +21,7 @@ public class VerificationTask : IVerificationTask {
   public ProcessedProgram ProcessedProgram { get; }
 
   public IToken ScopeToken => Split.Implementation.tok;
-  public string ScopeId => Split.Implementation.VerboseName; // TODO this verbose name threw me off. Why do we need it besides the regular name?
+  public string ScopeId => Split.Implementation.VerboseName;
 
   public IToken Token => Split.Token;
   public ManualSplit Split { get; }
@@ -122,14 +122,6 @@ public class VerificationTask : IVerificationTask {
       await checker.ProverTask;
       var result = Split.ReadOutcome(0, checker, collector);
 
-      // if (SplitAndVerifyWorker.IsProverFailed(result.Outcome)) {
-      //   // Update one last time the result with the dummy counter-example to indicate the position of the failure
-      //   var cex = Split.ToCounterexample(checker.TheoremProver.Context);
-      //   Split.Counterexamples.Add(cex);
-      //   result = result with {
-      //     CounterExamples = Split.Counterexamples
-      //   };
-      // }
       CacheStatus = new Completed(result);
       yield return CacheStatus;
     }

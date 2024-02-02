@@ -34,9 +34,13 @@ namespace VC
 
     private int totalResourceCount;
 
-    public SplitAndVerifyWorker(VCGenOptions options, VerificationConditionGenerator verificationConditionGenerator,
+    public SplitAndVerifyWorker(
+      VCGenOptions options, 
+      VerificationConditionGenerator verificationConditionGenerator,
       ImplementationRun run,
-      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerifierCallback callback, ModelViewInfo mvInfo,
+      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
+      VerifierCallback callback, 
+      ModelViewInfo mvInfo,
       VcOutcome vcOutcome)
     {
       this.options = options;

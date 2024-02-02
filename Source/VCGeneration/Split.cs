@@ -889,7 +889,7 @@ namespace VC
 
         var resourceCount = checker.GetProverResourceCount();
         var result = new VerificationRunResult(
-          vcNum: SplitIndex + 1,
+          VcNum: SplitIndex + 1,
           Iteration: iteration,
           StartTime: checker.ProverStart,
           Outcome: outcome,

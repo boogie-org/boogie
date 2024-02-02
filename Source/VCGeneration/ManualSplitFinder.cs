@@ -43,7 +43,8 @@ public static class ManualSplitFinder {
           var token = pair.Value[i];
           bool lastSplitInBlock = i == pair.Value.Count - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, pair.Key, lastSplitInBlock, splitOnEveryAssert);
-          splits.Add(new ManualSplit(initialSplit.Options, BlockTransformations.PostProcess(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token)); // REVIEW: Does gotoCmdOrigins need to be changed at all?
+          splits.Add(new ManualSplit(initialSplit.Options, 
+            BlockTransformations.PostProcess(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
         }
       }
     }

@@ -8,7 +8,7 @@ namespace VC
 {
   public record VerificationRunResult
   (
-    int vcNum,
+    int VcNum,
     int Iteration,
     DateTime StartTime,
     SolverOutcome Outcome,

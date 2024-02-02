@@ -76,8 +76,8 @@ public sealed class ImplementationRunResult
     lock (engine.Options.XmlSink) {
       engine.Options.XmlSink.WriteStartMethod(implementation.VerboseName, Start);
 
-      foreach (var vcResult in RunResults.OrderBy(s => (s.vcNum, iteration: s.Iteration))) {
-        engine.Options.XmlSink.WriteSplit(vcResult.vcNum, vcResult.Iteration, vcResult.Asserts, vcResult.StartTime,
+      foreach (var vcResult in RunResults.OrderBy(s => (vcNum: s.VcNum, iteration: s.Iteration))) {
+        engine.Options.XmlSink.WriteSplit(vcResult.VcNum, vcResult.Iteration, vcResult.Asserts, vcResult.StartTime,
           vcResult.Outcome.ToString().ToLowerInvariant(), vcResult.RunTime, vcResult.ResourceCount);
       }
 
