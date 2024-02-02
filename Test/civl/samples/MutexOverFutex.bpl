@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type Tid; // thread identifiers
+type {:linear "tid"} Tid; // thread identifiers
 
 type Mutex = Option Tid;
 
@@ -13,13 +13,13 @@ var {:layer 0, 1} futex: Futex;           // implementation
 
 /// Implementation of Mutex
 
-atomic action {:layer 2} AtomicLock(tid: Lval Tid)
+atomic action {:layer 2} AtomicLock({:linear "tid"} tid: Tid)
 modifies mutex;
 {
   assume mutex == None();
-  mutex := Some(tid->val);
+  mutex := Some(tid);
 }
-yield procedure {:layer 1} Lock(tid: Lval Tid)
+yield procedure {:layer 1} Lock({:linear "tid"} tid: Tid)
 refines AtomicLock;
 preserves call YieldInv();
 preserves call YieldWait(tid);
@@ -27,7 +27,7 @@ preserves call YieldWait(tid);
   var oldValue, temp: int;
   call oldValue := CmpXchg(0, 1);
   if (oldValue != 0) {
-    call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := true]);
+    call {:layer 1} inSlowPath := Copy(inSlowPath[tid := true]);
     while (true)
     invariant {:yields} true;
     invariant call YieldInv();
@@ -39,28 +39,28 @@ preserves call YieldWait(tid);
       }
       par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
       if (oldValue == 2 || temp != 0) {
-        call WaitEnter(tid->val, 2);
+        call WaitEnter(tid, 2);
         par YieldInv() | YieldSlowPath(tid);
-        call WaitExit(tid->val);
+        call WaitExit(tid);
       }
       par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
       call oldValue := CmpXchg(0, 2);
       if (oldValue == 0) {
-        call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := false]);
+        call {:layer 1} inSlowPath := Copy(inSlowPath[tid := false]);
         break;
       }
     }
   }
-  call {:layer 1} mutex := Copy(Some(tid->val));
+  call {:layer 1} mutex := Copy(Some(tid));
 }
 
-atomic action {:layer 2} AtomicUnlock(tid: Lval Tid)
+atomic action {:layer 2} AtomicUnlock({:linear "tid"} tid: Tid)
 modifies mutex;
 {
-  assert mutex == Some(tid->val);
+  assert mutex == Some(tid);
   mutex := None();
 }
-yield procedure {:layer 1} Unlock(tid: Lval Tid)
+yield procedure {:layer 1} Unlock({:linear "tid"} tid: Tid)
 refines AtomicUnlock;
 preserves call YieldInv();
 preserves call YieldWait(tid);
@@ -70,13 +70,13 @@ preserves call YieldWait(tid);
   if (oldValue == 1) {
     call {:layer 1} mutex := Copy(None());
   } else {
-    call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := true]);
+    call {:layer 1} inSlowPath := Copy(inSlowPath[tid := true]);
     par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
     call Store(0);
     call {:layer 1} mutex := Copy(None());
     par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
     call Wake();
-    call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := false]);
+    call {:layer 1} inSlowPath := Copy(inSlowPath[tid := false]);
   }
 }
 
@@ -92,11 +92,11 @@ invariant (forall i: Tid :: futex->waiters[i] ==> inSlowPath[i]);
 invariant futex->word == 2 || futex->waiters == MapConst(false) || (exists i: Tid :: !futex->waiters[i] && inSlowPath[i]);
 invariant mutex == None() <==> futex->word == 0;
 
-yield invariant {:layer 1} YieldWait(tid: Lval Tid);
-invariant !futex->waiters[tid->val];
+yield invariant {:layer 1} YieldWait({:linear "tid"} tid: Tid);
+invariant !futex->waiters[tid];
 
-yield invariant {:layer 1} YieldSlowPath(tid: Lval Tid);
-invariant inSlowPath[tid->val];
+yield invariant {:layer 1} YieldSlowPath({:linear "tid"} tid: Tid);
+invariant inSlowPath[tid];
 
 /// Primitive atomic actions
 
