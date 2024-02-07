@@ -90,40 +90,41 @@ function {:inline} Vec_Len<T>(v: Vec T): int
   v->len
 }
 
-function {:inline} Vec_Concat<T>(v1: Vec T, v2: Vec T): Vec T {
+function {:inline} Vec_Concat<T>(v1: Vec T, v2: Vec T): Vec T
+{
+  Vec(
+    (lambda {:pool "Concat"} i: int ::
+      if (i < 0) then Default()
+      else if (0 <= i && i < Vec_Len(v1)) then Vec_Nth(v1, i)
+      else if (Vec_Len(v1) <= i && i < Vec_Len(v1) + Vec_Len(v2)) then Vec_Nth(v2, i - Vec_Len(v1))
+      else Default()),
+    Vec_Len(v1) + Vec_Len(v2)
+  )
+}
+
+function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T
+{
+  (
+    var cond := 0 <= i && i < j && j <= v->len;
     Vec(
-        (lambda {:pool "Concat"} i: int ::
-            if (i < 0) then Default()
-            else if (0 <= i && i < Vec_Len(v1)) then Vec_Nth(v1, i)
-            else if (Vec_Len(v1) <= i && i < Vec_Len(v1) + Vec_Len(v2)) then Vec_Nth(v2, i - Vec_Len(v1))
-            else Default()),
-        Vec_Len(v1) + Vec_Len(v2)
-       )
+      (lambda {:pool "Slice"} k: int :: if (cond && 0 <= k && k < j - i) then Vec_Nth(v, k + i) else Default()),
+      if (cond) then j - i else 0
+    )
+  )
 }
 
-function {:inline} Vec_Slice<T>(v: Vec T, i: int, j: int): Vec T {
-    (
-        var cond := 0 <= i && i < j && j <= v->len;
-        Vec(
-            (lambda {:pool "Slice"} k: int ::
-                if (cond && 0 <= k && k < j - i) then Vec_Nth(v, k + i)
-                else Default()),
-            if (cond) then j - i else 0
-           )
-    )
-}
-
-function {:inline} Vec_Swap<T>(v: Vec T, i: int, j: int): Vec T {
-    (
-        var cond := 0 <= i && i < v->len && 0 <= j && j < v->len;
-        Vec(v->contents[i := v->contents[if (cond) then j else i]][j := v->contents[if (cond) then i else j]], v->len)
-    )
+function {:inline} Vec_Swap<T>(v: Vec T, i: int, j: int): Vec T
+{
+  (
+    var cond := 0 <= i && i < v->len && 0 <= j && j < v->len;
+    Vec(v->contents[i := v->contents[if (cond) then j else i]][j := v->contents[if (cond) then i else j]], v->len)
+  )
 }
 
 function {:inline} Vec_Remove<T>(v: Vec T): Vec T {
     (
-        var cond, new_len := 0 < v->len, v->len - 1;
-        Vec(v->contents[new_len := if (cond) then Default() else v->contents[new_len]], if (cond) then new_len else v->len)
+      var cond, new_len := 0 < v->len, v->len - 1;
+      Vec(v->contents[new_len := if (cond) then Default() else v->contents[new_len]], if (cond) then new_len else v->len)
     )
 }
 
@@ -141,9 +142,7 @@ function {:builtin "seq.nth"} Seq_Nth<T>(a: Seq T, i: int): T;
 function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int): Seq T;
 
 /// finite sets
-datatype Set<T> {
-  Set(val: [T]bool)
-}
+datatype Set<T> { Set(val: [T]bool) }
 
 function Set_Size<T>(a: Set T) : int;
 
@@ -217,13 +216,16 @@ function Set_Intersection<T>(a: Set T, b: Set T): Set T
   Set(MapAnd(a->val, b->val))
 }
 
+function {:inline} Set_Collector<T>(a: Set T): [T]bool
+{
+  a->val
+}
+
 function Choice<T>(a: [T]bool): T;
 axiom (forall<T> a: [T]bool :: {Choice(a)} a == MapConst(false) || a[Choice(a)]);
 
 /// finite maps
-datatype Map<T,U> {
-  Map(dom: Set T, val: [T]U)
-}
+datatype Map<T,U> { Map(dom: Set T, val: [T]U) }
 
 function {:inline} Map_Empty<T,U>(): Map T U
 {
@@ -265,79 +267,61 @@ function {:inline} Map_Swap<T,U>(a: Map T U, t1: T, t2: T): Map T U
   (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
 }
 
-function {:inline} Map_WellFormed<K,V>(a: Map K V): bool {
+function {:inline} Map_WellFormed<T,U>(a: Map T U): bool {
   a->val == MapIte(a->dom->val, a->val, MapConst(Default()))
 }
 
-/// linear maps
+function {:inline} Map_Collector<T,U>(a: Map T U): [T]bool
+{
+  Set_Collector(a->dom)
+}
+
+/// singleton
+datatype One<T> { One(val: T) }
+
+function {:inline} One_Collector<T>(a: One T): [T]bool
+{
+  MapOne(a->val)
+}
+
+/// linear primitives
+pure procedure {:inline 1} Set_MakeEmpty<K>() returns ({:linear} l: Set K)
+{
+  l := Set_Empty();
+}
+pure procedure Set_Split<K>({:linear} path: Set K, {:linear_out} l: Set K);
+pure procedure Set_Put<K>({:linear} path: Set K, {:linear_in} l: Set K);
+pure procedure One_Split<K>({:linear} path: Set K, {:linear_out} l: One K);
+pure procedure One_Get<K>({:linear} path: Set K, k: K) returns ({:linear} l: One K);
+pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: One K);
+
+pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
+{
+  m := Map_Empty();
+}
+pure procedure {:inline 1} Map_Pack<K,V>({:linear_in} l: One K, {:linear_in} v: V) returns ({:linear} m: Map K V)
+{
+  m := Map_Singleton(l->val, v);
+}
+pure procedure {:inline 1} Map_Unpack<K,V>(k: K, {:linear_in} m: Map K V) returns ({:linear} l: One K, {:linear} v: V)
+{
+  assert Map_Contains(m, k);
+  l := One(k);
+  v := Map_At(m, k);
+}
+pure procedure Map_Split<K,V>({:linear} path: Map K V, {:linear_out} l: One K) returns ({:linear} v: V);
+pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} l: One K, {:linear} v: V);
+pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} l: One K, {:linear_in} v: V);
+pure procedure {:inline 1} Map_Assume<K,V>({:linear} src: Map K V, {:linear} dst: Map K V)
+{
+  assume Set_IsDisjoint(src->dom, dst->dom);
+}
+
 type Loc _;
-pure procedure {:inline 1} Loc_New<V>() returns (k: Lval (Loc V)) {
 
+pure procedure {:inline 1} One_New<V>() returns ({:linear} l: One (Loc V))
+{
 }
-datatype Ref<V> {
-  Ref(loc: Loc V),
-  Nil()
-}
-
-datatype Lmap<K,V> { Lmap(val: Map K V) }
-type Lheap V = Lmap (Ref V) V;
-
-function {:inline} Lmap_WellFormed<K,V>(l: Lmap K V): bool {
-    Map_WellFormed(l->val)
-}
-function {:inline} Lmap_Collector<K,V>(l: Lmap K V): [K]bool {
-    l->val->dom->val
-}
-pure procedure {:inline 1} Lmap_Empty<K,V>() returns (l: Lmap K V) {
-  l := Lmap(Map_Empty());
-}
-pure procedure {:inline 1} Lmap_Alloc<V>(v: V) returns (k: Lval (Loc V), l: Lmap (Ref V) V) {
-  var r: Ref V;
-  r := Ref(k->val);
-  l := Lmap(Map_Singleton(r, v));
-}
-pure procedure {:inline 1} Lmap_Create<K,V>({:linear_in} k: Lset K, val: [K]V) returns (l: Lmap K V) {
-  l := Lmap(Map(Set(k->dom), val));
-}
-pure procedure {:inline 1} Lmap_Free<K,V>({:linear_in} l: Lmap K V) returns (k: Lset K) {
-  k := Lset(l->val->dom->val);
-}
-pure procedure {:inline 1} Lmap_Move<K,V>({:linear_in} src: Lmap K V, dst: Lmap K V, k: K) returns (src': Lmap K V, dst': Lmap K V) {
-  assert Map_Contains(src->val, k);
-  assert Map_IsDisjoint(src->val, dst->val);
-  dst' := Lmap(Map_Update(dst->val, k, Map_At(src->val, k)));
-  src' := Lmap(Map_Remove(src->val, k));
-}
-pure procedure {:inline 1} Lmap_Assume<K,V>(src: Lmap K V, dst: Lmap K V) {
-  assume Map_IsDisjoint(src->val, dst->val);
-}
-
-/// linear sets
-datatype Lset<V> { Lset(dom: [V]bool) }
-
-function {:inline} Lset_Collector<V>(l: Lset V): [V]bool {
-    l->dom
-}
-function {:inline} Lset_Contains<V>(l: Lset V, k: V): bool {
-    l->dom[k]
-}
-function {:inline} Lset_IsSubset<V>(k: Lset V, l: Lset V): bool {
-    IsSubset(k->dom, l->dom)
-}
-pure procedure Lset_Empty<V>() returns (l: Lset V);
-pure procedure Lset_Split<V>(path: Lset V, {:linear_out} l: Lset V);
-pure procedure Lset_Get<V>(path: Lset V, k: [V]bool) returns (l: Lset V);
-pure procedure Lset_Put<V>(path: Lset V, {:linear_in} l: Lset V);
-
-/// linear vals
-datatype Lval<V> { Lval(val: V) }
-
-function {:inline} Lval_Collector<V>(l: Lval V): [V]bool {
-    MapConst(false)[l->val := true]
-}
-pure procedure Lval_Split<V>(path: Lset V, {:linear_out} l: Lval V);
-pure procedure Lval_Get<V>(path: Lset V, k: V) returns (l: Lval V);
-pure procedure Lval_Put<V>(path: Lset V, {:linear_in} l: Lval V);
 
 procedure create_async<T>(PA: T);
 procedure create_asyncs<T>(PAs: [T]bool);

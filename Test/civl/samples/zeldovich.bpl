@@ -9,7 +9,7 @@ var {:layer 0,1} lock_y: Tid;
 var {:layer 0,2} x: int;
 var {:layer 0,2} y: int;
 
-atomic action {:layer 2} GET_X ({:linear "tid"} {:linear "tid"} tid: Tid) returns (v: int)
+atomic action {:layer 2} GET_X ({:linear "tid"} tid: Tid) returns (v: int)
 {
   v := x;
 }

@@ -46,7 +46,7 @@ namespace Microsoft.Boogie
         ? FilterInParams(proc.InParams)
         : FilterInOutParams(proc.InParams.Union(proc.OutParams));
       return DisjointnessExprs(availableVars)
-        .Union(civlTypeChecker.linearTypeChecker.LstoreWellFormedExpressions(availableVars))
+        .Union(civlTypeChecker.linearTypeChecker.MapWellFormedExpressions(availableVars))
         .Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
 
@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
     {
       var availableVars = AvailableLinearLocalVars(absy).Union(addGlobals ? LinearGlobalVars() : new List<Variable>());
       return DisjointnessExprs(availableVars)
-        .Union(civlTypeChecker.linearTypeChecker.LstoreWellFormedExpressions(availableVars))
+        .Union(civlTypeChecker.linearTypeChecker.MapWellFormedExpressions(availableVars))
         .Select(expr => CmdHelper.AssumeCmd(expr)).ToList<Cmd>();
     }
     
@@ -143,14 +143,14 @@ namespace Microsoft.Boogie
     private IEnumerable<Variable> Filter(IEnumerable<Variable> locals, Predicate<LinearKind> pred)
     {
       return locals.Where(v =>
-        pred(LinearDomainCollector.FindLinearKind(v)) && v.LayerRange.Contains(layerNum));
+        pred(LinearTypeChecker.FindLinearKind(v)) && v.LayerRange.Contains(layerNum));
     }
 
     private IEnumerable<Variable> LinearGlobalVars()
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       return linearTypeChecker.program.GlobalVariables.Where(v =>
-        LinearDomainCollector.FindLinearKind(v) == LinearKind.LINEAR && v.LayerRange.Contains(layerNum));
+        LinearTypeChecker.FindLinearKind(v) == LinearKind.LINEAR && v.LayerRange.Contains(layerNum));
     }
 
     private Variable MapVariable(Variable v)

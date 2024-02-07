@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Linq;
 
 namespace Microsoft.Boogie;
 
@@ -36,21 +35,8 @@ public class LinearRewriter
     var newCmdSeq = new List<Cmd>();
     foreach (var cmd in cmdSeq)
     {
-      if (cmd is AssignCmd assignCmd)
+      if (cmd is CallCmd callCmd)
       {
-        assignCmd.Rhss.Where(LinearStoreVisitor.HasLinearStoreAccess).ForEach(expr => {
-          CreateAccessAsserts(expr, expr.tok, "Illegal access");
-        });
-        assignCmd.Lhss.Where(LinearStoreVisitor.HasLinearStoreAccess).ForEach(assignLhs => {
-          CreateAccessAsserts(assignLhs, assignLhs.tok, "Illegal access");
-        });
-        newCmdSeq.Add(cmd);
-      }
-      else if (cmd is CallCmd callCmd)
-      {
-        callCmd.Ins.Where(LinearStoreVisitor.HasLinearStoreAccess).ForEach(expr => {
-          CreateAccessAsserts(expr, expr.tok, "Illegal access");
-        });
         if (IsPrimitive(callCmd.Proc))
         {
           newCmdSeq.AddRange(RewriteCallCmd(callCmd));
@@ -72,28 +58,29 @@ public class LinearRewriter
   {
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
-      case "Loc_New":
-      case "Lmap_Empty":
-      case "Lmap_Alloc":
-      case "Lmap_Create":
-      case "Lmap_Free":
-      case "Lmap_Move":
-      case "Lmap_Assume":
+      case "One_New":
+      case "Set_MakeEmpty":
+      case "Map_MakeEmpty":
+      case "Map_Pack":
+      case "Map_Unpack":
+      case "Map_Assume":
         return new List<Cmd>{callCmd};
-      case "Lset_Empty":
-        return RewriteLsetEmpty(callCmd);
-      case "Lset_Split":
-        return RewriteLsetSplit(callCmd);
-      case "Lset_Get":
-        return RewriteLsetGet(callCmd);
-      case "Lset_Put":
-        return RewriteLsetPut(callCmd);
-      case "Lval_Split":
-        return RewriteLvalSplit(callCmd);
-      case "Lval_Get":
-        return RewriteLvalGet(callCmd);
-      case "Lval_Put":
-        return RewriteLvalPut(callCmd);
+      case "Set_Split":
+        return RewriteSetSplit(callCmd);
+      case "Set_Put":
+        return RewriteSetPut(callCmd);
+      case "One_Split":
+        return RewriteOneSplit(callCmd);
+      case "One_Get":
+        return RewriteOneGet(callCmd);
+      case "One_Put":
+        return RewriteOnePut(callCmd);
+      case "Map_Split":
+        return RewriteMapSplit(callCmd);
+      case "Map_Get":
+        return RewriteMapGet(callCmd);
+      case "Map_Put":
+        return RewriteMapPut(callCmd);
       default:
         Contract.Assume(false);
         return null;
@@ -106,50 +93,62 @@ public class LinearRewriter
     return assertCmd;
   }
 
-  private Function MapConst(Type domain, Type range)
+  private Function MapRemove(Type domain, Type range)
   {
-    return monomorphizer.InstantiateFunction("MapConst",
-      new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
+    return monomorphizer.InstantiateFunction("Map_Remove",new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
   }
 
-  private Function MapImp(Type domain)
+  private Function MapUpdate(Type domain, Type range)
   {
-    return monomorphizer.InstantiateFunction("MapImp", new Dictionary<string, Type>() { { "T", domain } });
+    return monomorphizer.InstantiateFunction("Map_Update",new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
   }
 
-  private Function MapDiff(Type domain)
+  private Function MapAt(Type domain, Type range)
   {
-    return monomorphizer.InstantiateFunction("MapDiff", new Dictionary<string, Type>() { { "T", domain } });
+    return monomorphizer.InstantiateFunction("Map_At",new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
   }
 
-  private Function MapOne(Type domain)
+  private Function MapContains(Type domain, Type range)
   {
-    return monomorphizer.InstantiateFunction("MapOne", new Dictionary<string, Type>() { { "T", domain } });
+    return monomorphizer.InstantiateFunction("Map_Contains",new Dictionary<string, Type>() { {"T", domain}, { "U", range } });
   }
 
-  private Function MapOr(Type domain)
+  private Function SetIsSubset(Type type)
   {
-    return monomorphizer.InstantiateFunction("MapOr", new Dictionary<string, Type>() { { "T", domain } });
+    return monomorphizer.InstantiateFunction("Set_IsSubset", new Dictionary<string, Type>() { { "T", type } });
   }
 
-  private Function MapIte(Type domain, Type range)
+  private Function SetAdd(Type type)
   {
-    return monomorphizer.InstantiateFunction("MapIte",new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
+    return monomorphizer.InstantiateFunction("Set_Add",new Dictionary<string, Type>() { { "T", type } });
   }
 
-  private Function MapContains(Type keyType, Type valueType)
+  private Function SetRemove(Type type)
   {
-    return monomorphizer.InstantiateFunction("Map_Contains",new Dictionary<string, Type>() { {"T", keyType}, { "U", valueType } });
+    return monomorphizer.InstantiateFunction("Set_Remove",new Dictionary<string, Type>() { { "T", type } });
   }
 
-  private Function LsetContains(Type type)
+  private Function SetUnion(Type type)
   {
-    return monomorphizer.InstantiateFunction("Lset_Contains",new Dictionary<string, Type>() { { "V", type } });
+    return monomorphizer.InstantiateFunction("Set_Union",new Dictionary<string, Type>() { { "T", type } });
   }
 
-  private static Expr Dom(Expr path)
+  private Function SetDifference(Type type)
   {
-    return ExprHelper.FieldAccess(path, "dom");
+    return monomorphizer.InstantiateFunction("Set_Difference",new Dictionary<string, Type>() { { "T", type } });
+  }
+
+  private Function SetContains(Type type)
+  {
+    return monomorphizer.InstantiateFunction("Set_Contains",new Dictionary<string, Type>() { { "T", type } });
+  }
+
+  private Function OneConstructor(Type type)
+  {
+    var actualTypeParams = new List<Type>() { type };
+    var oneTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("One", actualTypeParams);
+    var oneConstructor = oneTypeCtorDecl.Constructors[0];
+    return oneConstructor;
   }
 
   private static Expr Val(Expr path)
@@ -157,173 +156,155 @@ public class LinearRewriter
     return ExprHelper.FieldAccess(path, "val");
   }
 
-  private Expr Default(Type type)
+  private List<Cmd> RewriteSetSplit(CallCmd callCmd)
   {
-    var defaultFunc = monomorphizer.InstantiateFunction("Default", new Dictionary<string, Type>() { { "T", type } });
-    return ExprHelper.FunctionCall(defaultFunc);
-  }
-
-  private List<Cmd> RewriteLsetEmpty(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType,
-      out Function lsetConstructor, out Function lvalConstructor);
-
-    var cmdSeq = new List<Cmd>();
-    var l = callCmd.Outs[0].Decl;
-
-    var mapConstFunc = MapConst(type, Type.Bool);
-    cmdSeq.Add(CmdHelper.AssignCmd(l, ExprHelper.FunctionCall(lsetConstructor,ExprHelper.FunctionCall(mapConstFunc, Expr.False))));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteLsetSplit(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType,
-      out Function lsetConstructor, out Function lvalConstructor);
-
     var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
     var l = callCmd.Ins[1];
 
-    var mapConstFunc = MapConst(type, Type.Bool);
-    var mapImpFunc = MapImp(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok,
-      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, Dom(l), Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
-      "Lset_Split failed"));
-
-    var mapDiffFunc = MapDiff(type);
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),ExprHelper.FunctionCall(mapDiffFunc, Dom(path), Dom(l))));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteLsetGet(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType,
-      out Function lsetConstructor, out Function lvalConstructor);
-
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
-    var l = callCmd.Outs[0];
-
-    var mapConstFunc = MapConst(type, Type.Bool);
-    var mapImpFunc = MapImp(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok,
-      Expr.Eq(ExprHelper.FunctionCall(mapImpFunc, k, Dom(path)), ExprHelper.FunctionCall(mapConstFunc, Expr.True)),
-      "Lset_Get failed"));
-
-    var mapDiffFunc = MapDiff(type);
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),ExprHelper.FunctionCall(mapDiffFunc, Dom(path), k)));
-
-    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(lsetConstructor, k)));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteLsetPut(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType,
-      out Function lsetConstructor, out Function lvalConstructor);
-
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var l = callCmd.Ins[1];
-
-    var mapOrFunc = MapOr(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(
-      CmdHelper.ExprToAssignLhs(path),
-      ExprHelper.FunctionCall(lsetConstructor, ExprHelper.FunctionCall(mapOrFunc, Dom(path), Dom(l)))));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteLvalSplit(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType,
-      out Function lsetConstructor, out Function lvalConstructor);
-
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var l = callCmd.Ins[1];
-
-    var lsetContainsFunc = LsetContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, Val(l)), "Lval_Split failed"));
-
-    var mapOneFunc = MapOne(type);
-    var mapDiffFunc = MapDiff(type);
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),
-        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, Val(l)))));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteLvalGet(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType,
-      out Function lsetConstructor, out Function lvalConstructor);
-
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var k = callCmd.Ins[1];
-    var l = callCmd.Outs[0];
-
-    var lsetContainsFunc = LsetContains(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(lsetContainsFunc, path, k), "Lval_Get failed"));
-
-    var mapOneFunc = MapOne(type);
-    var mapDiffFunc = MapDiff(type);
-    cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.FieldAssignLhs(path, "dom"),
-        ExprHelper.FunctionCall(mapDiffFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, k))));
-
-    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(lvalConstructor, k)));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private List<Cmd> RewriteLvalPut(CallCmd callCmd)
-  {
-    GetRelevantInfo(callCmd, out Type type, out Type refType,
-      out Function lsetConstructor, out Function lvalConstructor);
-
-    var cmdSeq = new List<Cmd>();
-    var path = callCmd.Ins[0];
-    var l = callCmd.Ins[1];
-
-    var mapOneFunc = MapOne(type);
-    var mapOrFunc = MapOr(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(
-      CmdHelper.ExprToAssignLhs(path),
-      ExprHelper.FunctionCall(lsetConstructor,
-        ExprHelper.FunctionCall(mapOrFunc, Dom(path), ExprHelper.FunctionCall(mapOneFunc, Val(l))))));
-
-    ResolveAndTypecheck(options, cmdSeq);
-    return cmdSeq;
-  }
-
-  private void GetRelevantInfo(CallCmd callCmd, out Type type, out Type refType,
-    out Function lsetConstructor, out Function lvalConstructor)
-  {
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
-    type = instantiation["V"];
-    var actualTypeParams = new List<Type>() { type };
-    var refTypeCtorDecl = monomorphizer.InstantiateTypeCtorDecl("Ref", actualTypeParams);
-    refType = new CtorType(Token.NoToken, refTypeCtorDecl, new List<Type>());
-    var lsetTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Lset", actualTypeParams);
-    lsetConstructor = lsetTypeCtorDecl.Constructors[0];
-    var lvalTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Lval", actualTypeParams);
-    lvalConstructor = lvalTypeCtorDecl.Constructors[0];
+    var type = instantiation["K"];
+    var isSubsetFunc = SetIsSubset(type);
+    var setDifferenceFunc = SetDifference(type);
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(isSubsetFunc, l, path), "Set_Split failed"));
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setDifferenceFunc, path, l)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteSetPut(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var l = callCmd.Ins[1];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var type = instantiation["K"];
+    var setUnionFunc = SetUnion(type);
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setUnionFunc, path, l)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteOneSplit(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var l = callCmd.Ins[1];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var type = instantiation["K"];
+    var setContainsFunc = SetContains(type);
+    var setRemoveFunc = SetRemove(type);
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(setContainsFunc, path, Val(l)), "One_Split failed"));
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setRemoveFunc, path, Val(l))));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteOneGet(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var k = callCmd.Ins[1];
+    var l = callCmd.Outs[0];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var type = instantiation["K"];
+    var setContainsFunc = SetContains(type);
+    var setRemoveFunc = SetRemove(type);
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(setContainsFunc, path, k), "One_Get failed"));
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setRemoveFunc, path, k)));
+    var oneConstructor = OneConstructor(type);
+    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(oneConstructor, k)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteOnePut(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var l = callCmd.Ins[1];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var type = instantiation["K"];
+    var setAddFunc = SetAdd(type);
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setAddFunc, path, Val(l))));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteMapSplit(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var l = callCmd.Ins[1];
+    var v = callCmd.Outs[0];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var domain = instantiation["K"];
+    var range = instantiation["V"];
+    var mapContainsFunc = MapContains(domain, range);
+    var mapRemoveFunc = MapRemove(domain, range);
+    var mapAtFunc = MapAt(domain, range);
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(mapContainsFunc, path, Val(l)), "Map_Split failed"));
+    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(mapAtFunc, path, Val(l))));
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapRemoveFunc, path, Val(l))));
+    
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteMapGet(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var k = callCmd.Ins[1];
+    var l = callCmd.Outs[0];
+    var v = callCmd.Outs[1];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var domain = instantiation["K"];
+    var range = instantiation["V"];
+    var mapContainsFunc = MapContains(domain, range);
+    var mapRemoveFunc = MapRemove(domain, range);
+    var mapAtFunc = MapAt(domain, range);
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(mapContainsFunc, path, k), "Map_Get failed"));
+    var oneConstructor = OneConstructor(domain);
+    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(oneConstructor, k)));
+    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(mapAtFunc, path, k)));
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapRemoveFunc, path, k)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteMapPut(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var l = callCmd.Ins[1];
+    var v = callCmd.Ins[2];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var domain = instantiation["K"];
+    var range = instantiation["V"];
+    var mapUpdateFunc = MapUpdate(domain, range);
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, Val(l), v)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
   }
 
   private void ResolveAndTypecheck(CoreOptions options, IEnumerable<Absy> absys)

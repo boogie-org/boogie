@@ -1,19 +1,18 @@
 // RUN: %parallel-boogie /lib:base /lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype Treiber<T> { Treiber(top: RefNode T, stack: Lmap (RefNode T) (Node T)) }
-type RefTreiber T = Ref (Treiber T);
+datatype Treiber<T> { Treiber(top: Option (Loc (Node T)), stack: Map (Loc (Node T)) (Node T)) }
 
 type X;
-var ts: Lmap (RefTreiber X) (Treiber X);
+var ts: Map (Loc (Treiber X)) (Treiber X);
 
-procedure YieldInv(ref_t: RefTreiber X)
-requires Map_Contains(ts->val, ref_t);
-requires (var t := Map_At(ts->val, ref_t); BetweenSet(t->stack->val->val, t->top, Nil())[t->top]);
-requires (var t := Map_At(ts->val, ref_t); (var m := t->stack->val; IsSubset(BetweenSet(m->val, t->top, Nil()), m->dom->val[Nil() := true])));
-ensures Map_Contains(ts->val, ref_t);
-ensures (var t := Map_At(ts->val, ref_t); BetweenSet(t->stack->val->val, t->top, Nil())[t->top]);
-ensures (var t := Map_At(ts->val, ref_t); (var m := t->stack->val; IsSubset(BetweenSet(m->val, t->top, Nil()), m->dom->val[Nil() := true])));
+procedure YieldInv(ref_t: Loc (Treiber X))
+requires Map_Contains(ts, ref_t);
+requires (var t := Map_At(ts, ref_t); Between(t->stack->val, t->top, None(), None()));
+requires (var t := Map_At(ts, ref_t); (var m := t->stack; IsSubset(BetweenSet(m->val, t->top, None()), m->dom->val)));
+ensures Map_Contains(ts, ref_t);
+ensures (var t := Map_At(ts, ref_t); Between(t->stack->val, t->top, None(), None()));
+ensures (var t := Map_At(ts, ref_t); (var m := t->stack; IsSubset(BetweenSet(m->val, t->top, None()), m->dom->val)));
 modifies ts;
 {
   var x: X;
@@ -21,30 +20,28 @@ modifies ts;
   call AtomicPushIntermediate(ref_t, x);
 }
 
-procedure {:inline 1} AtomicPopIntermediate(ref_t: RefTreiber X) returns (x: X)
+procedure {:inline 1} AtomicPopIntermediate(loc_t: Loc (Treiber X)) returns (x: X)
 modifies ts;
 {
-  var ref_n: RefNode X;
-  assert Map_Contains(ts->val, ref_t);
-  assume ts->val->val[ref_t]->top != Nil() && Map_Contains(ts->val->val[ref_t]->stack->val, ts->val->val[ref_t]->top);
-  Node(ref_n, x) := Map_At(ts->val->val[ref_t]->stack->val, ts->val->val[ref_t]->top);
-  ts->val->val[ref_t]->top := ref_n;
+  var treiber: Treiber X;
+  var loc_n_opt: Option (Loc (Node X));
+  assert Map_Contains(ts, loc_t);
+  treiber := Map_At(ts, loc_t);
+  assume treiber->top is Some && Map_Contains(treiber->stack, treiber->top->t);
+  Node(loc_n_opt, x) := Map_At(treiber->stack, treiber->top->t);
+  treiber->top := loc_n_opt;
+  ts := Map_Update(ts, loc_t, treiber);
 }
 
-procedure {:inline 1} AtomicPushIntermediate(ref_t: RefTreiber X, x: X)
+procedure {:inline 1} AtomicPushIntermediate(loc_t: Loc (Treiber X), x: X)
 modifies ts;
 {
-  var t: RefNode X;
-  var ref_n: RefNode X;
-  var loc_n: Lval (Loc (Node X));
-  var lmap_n: Lmap (RefNode X) (Node X);
-  var lmap_n': Lmap (RefNode X) (Node X);
-  assert Map_Contains(ts->val, ref_t);
-  t := ts->val->val[ref_t]->top;
-  call loc_n, lmap_n := Lmap_Alloc(Node(t, x));
-  call Lmap_Assume(lmap_n, ts->val->val[ref_t]->stack);
-  ref_n := Ref(loc_n->val);
-  call lmap_n, lmap_n' := Lmap_Move(lmap_n, ts->val->val[ref_t]->stack, ref_n);
-  ts->val->val[ref_t]->stack := lmap_n';
-  ts->val->val[ref_t]->top := ref_n;
+  var treiber: Treiber X;
+  var loc_n: Loc (Node X);
+  assert Map_Contains(ts, loc_t);
+  treiber := Map_At(ts, loc_t);
+  assume !Map_Contains(treiber->stack, loc_n);
+  treiber->stack := Map_Update(treiber->stack, loc_n, Node(treiber->top, x));
+  treiber->top := Some(loc_n);
+  ts := Map_Update(ts, loc_t, treiber);
 }
