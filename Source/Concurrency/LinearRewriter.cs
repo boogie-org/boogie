@@ -299,7 +299,10 @@ public class LinearRewriter
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     var domain = instantiation["K"];
     var range = instantiation["V"];
+    var mapContainsFunc = MapContains(domain, range);
     var mapUpdateFunc = MapUpdate(domain, range);
+    var attribute = new QKeyValue(Token.NoToken, "free", new List<object>(), null);
+    cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, Val(l))), attribute));
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, Val(l), v)));
 

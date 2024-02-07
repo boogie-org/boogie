@@ -295,8 +295,15 @@ namespace Microsoft.Boogie
           }
           else if (cmd is PredicateCmd predCmd)
           {
-            var sub = SubstitutionHelper.FromVariableMap(LatestCopies());
-            assumes.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, predCmd.Expr));
+            if (predCmd.HasAttribute("free"))
+            {
+              // skip for transition relation computation
+            }
+            else
+            {
+              var sub = SubstitutionHelper.FromVariableMap(LatestCopies());
+              assumes.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, predCmd.Expr));
+            }
           }
           else if (cmd is HavocCmd havocCmd)
           {
