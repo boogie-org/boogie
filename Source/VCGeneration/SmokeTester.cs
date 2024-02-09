@@ -279,6 +279,7 @@ public class SmokeTester
     Contract.Assert(checker != null);
 
     SolverOutcome outcome = SolverOutcome.Undetermined;
+    var resourceCount = 0;
     try
     {
       VCExpr vc;
@@ -309,6 +310,7 @@ public class SmokeTester
         Options.SmokeTimeout, Options.ResourceLimit, CancellationToken.None);
 
       await checker.ProverTask;
+      resourceCount = checker.GetProverResourceCount();
 
       lock (checker)
       {
@@ -326,7 +328,9 @@ public class SmokeTester
     TimeSpan elapsed = end - start;
     if (Options.Trace)
     {
-      traceWriter.WriteLine("  [{0} s] {1}", elapsed.TotalSeconds,
+      traceWriter.WriteLine("  [{0} s, resource count: {1}] {2}",
+        elapsed.TotalSeconds,
+        resourceCount,
         outcome == SolverOutcome.Valid
           ? "OOPS"
           : "OK" + (outcome == SolverOutcome.Invalid ? "" : " (" + outcome + ")"));
