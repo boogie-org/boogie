@@ -13,7 +13,6 @@ namespace Microsoft.Boogie
 
   public class LinearDomain
   {
-    public string DomainName => permissionType.ToString();
     public Type permissionType;
     public Dictionary<Type, Function> collectors;
     public MapType mapTypeBool;

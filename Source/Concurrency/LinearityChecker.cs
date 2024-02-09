@@ -26,15 +26,15 @@ class LinearityChecker
 
     private class LinearityCheck
     {
-      public string domainName;
+      public LinearDomain domain;
       public Expr assume;
       public Expr assert;
       public string message;
       public string checkName;
 
-      public LinearityCheck(string domainName, Expr assume, Expr assert, string message, string checkName)
+      public LinearityCheck(LinearDomain domain, Expr assume, Expr assert, string message, string checkName)
       {
-        this.domainName = domainName;
+        this.domain = domain;
         this.assume = assume;
         this.assert = assert;
         this.message = message;
@@ -105,10 +105,10 @@ class LinearityChecker
             Expr.Eq(Expr.Select(PAs(atomicAction, i), pa1), Expr.Literal(1)));
           var outSubsetInExpr = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams.Union(outVars));
           linearityChecks.Add(new LinearityCheck(
-            domain.DomainName,
+            domain,
             exactlyOnePA,
             outSubsetInExpr,
-            $"Potential linearity violation in outputs and pending async of {pendingAsync.Name} for domain {domain.DomainName}.",
+            $"Potential linearity violation in outputs and pending async of {pendingAsync.Name} for permission type {domain.permissionType}.",
             $"single_{pendingAsync.Name}"));
 
           // Third kind
@@ -118,10 +118,10 @@ class LinearityChecker
             Expr.Ge(Expr.Select(PAs(atomicAction, i), pa1), Expr.Literal(2)));
           var emptyPerms = OutPermsSubsetInPerms(domain, Enumerable.Empty<Expr>(), pendingAsyncLinearParams);
           linearityChecks.Add(new LinearityCheck(
-            domain.DomainName,
+            domain,
             twoIdenticalPAs,
             emptyPerms,
-            $"Potential linearity violation in identical pending asyncs of {pendingAsync.Name} for domain {domain.DomainName}.",
+            $"Potential linearity violation in identical pending asyncs of {pendingAsync.Name} for permission type {domain.permissionType}.",
             $"identical_{pendingAsync.Name}"));
         }
         
@@ -157,10 +157,10 @@ class LinearityChecker
             var noDuplication = OutPermsSubsetInPerms(domain, inVars, pendingAsyncLinearParams1.Union(pendingAsyncLinearParams2));
 
             linearityChecks.Add(new LinearityCheck(
-              domain.DomainName,
+              domain,
               Expr.And(membership, existing),
               noDuplication,
-              $"Potential lnearity violation in pending asyncs of {pendingAsync1.Name} and {pendingAsync2.Name} for domain {domain.DomainName}.",
+              $"Potential lnearity violation in pending asyncs of {pendingAsync1.Name} and {pendingAsync2.Name} for permission type {domain.permissionType}.",
               $"distinct_{pendingAsync1.Name}_{pendingAsync2.Name}"));
           }
         }
@@ -181,7 +181,7 @@ class LinearityChecker
           cmds.Add(CmdHelper.AssumeCmd(lc.assume));
         }
         cmds.Add(CmdHelper.AssertCmd(action.tok, lc.assert, lc.message));
-        var block = BlockHelper.Block($"{lc.domainName}_{lc.checkName}", cmds);
+        var block = BlockHelper.Block($"{lc.domain.permissionType}_{lc.checkName}", cmds);
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
       }

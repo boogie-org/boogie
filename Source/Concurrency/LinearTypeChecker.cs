@@ -867,7 +867,7 @@ namespace Microsoft.Boogie
       {
         int count = 0;
         List<Expr> subsetExprs = new List<Expr>();
-        BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domain.DomainName}", domain.mapTypeInt);
+        BoundVariable partition = civlTypeChecker.BoundVariable($"partition_{domain.permissionType}", domain.mapTypeInt);
         foreach (Expr e in permissionsExprs)
         {
           subsetExprs.Add(SubsetExpr(domain, e, partition, count));
