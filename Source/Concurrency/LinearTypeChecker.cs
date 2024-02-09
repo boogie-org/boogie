@@ -23,7 +23,7 @@ namespace Microsoft.Boogie
 
     #region Visitor Implementation
 
-    private static bool IsLegalAssignmentTarget(AssignLhs assignLhs)
+    private bool IsLegalAssignmentTarget(AssignLhs assignLhs)
     {
       if (assignLhs is SimpleAssignLhs)
       {
@@ -34,10 +34,7 @@ namespace Microsoft.Boogie
         return IsLegalAssignmentTarget(mapAssignLhs.Map);
       }
       var fieldAssignLhs = (FieldAssignLhs)assignLhs;
-      var ctorType = (CtorType)fieldAssignLhs.Datatype.Type;
-      var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl)ctorType.Decl;
-      var typeName = datatypeTypeCtorDecl.Name;
-      if (typeName == "Map" || typeName == "Set" || typeName == "One")
+      if (GetPermissionType(fieldAssignLhs.Datatype.Type) != null)
       {
         return false;
       }
@@ -114,7 +111,7 @@ namespace Microsoft.Boogie
       // visit each constructor
       foreach (var constructor in datatypeTypeCtorDecl.Constructors)
       {
-        if (constructor.InParams.Any(formal => FindLinearKind(formal) != LinearKind.ORDINARY))
+        if (constructor.InParams.Any(formal => !SkipCheck(formal)))
         {
           mayContainPermissions.Add(type);
           return true;
@@ -423,7 +420,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          linearGlobalVariables.Except(end).ForEach(g =>
+          linearGlobalVariables.Except(end).Where(v => !SkipCheck(v)).ForEach(g =>
           {
             Error(b.TransferCmd, $"global variable {g.Name} must be available at a return");
           });
@@ -431,11 +428,11 @@ namespace Microsoft.Boogie
           {
             var kind = FindLinearKind(v);
             return kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_OUT;
-          }).ForEach(v => 
+          }).Where(v => !SkipCheck(v)).ForEach(v => 
           { 
             Error(b.TransferCmd, $"input variable {v.Name} must be available at a return");
           });
-          node.OutParams.Except(end).Where(v => FindLinearKind(v) != LinearKind.ORDINARY).ForEach(v =>
+          node.OutParams.Except(end).Where(v => !SkipCheck(v)).ForEach(v =>
           {
             Error(b.TransferCmd, $"output variable {v.Name} must be available at a return");
           });
