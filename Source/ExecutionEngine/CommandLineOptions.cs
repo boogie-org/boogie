@@ -1288,7 +1288,11 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("checkInfer", x => InstrumentWithAsserts = x) ||
               ps.CheckBooleanFlag("restartProver", x => restartProverPerVc = x) ||
               ps.CheckBooleanFlag("printInlined", x => printInlined = x) ||
-              ps.CheckBooleanFlag("smoke", x => SoundnessSmokeTest = x) ||
+              ps.CheckBooleanFlag("smoke", x =>
+              {
+                SoundnessSmokeTest = x;
+                Prune = false;
+              }) ||
               ps.CheckBooleanFlag("vcsDumpSplits", x => VcsDumpSplits = x) ||
               ps.CheckBooleanFlag("dbgRefuted", x => DebugRefuted = x) ||
               ps.CheckBooleanFlag("reflectAdd", x => ReflectAdd = x) ||
