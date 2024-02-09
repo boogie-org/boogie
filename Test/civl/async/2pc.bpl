@@ -16,10 +16,13 @@ const numParticipants : int;
 axiom 0 < numParticipants;
 function participantMid (mid : Mid) : bool { 1 <= mid && mid <= numParticipants }
 
-datatype {:linear "pair"} Pair { Pair(xid: Xid, mid: Mid) }
+datatype Pair { Pair(xid: Xid, mid: Mid) }
 
 function {:inline} pair (xid: Xid, mid: Mid, p: Pair) : bool
 { p == Pair(xid, mid) && participantMid(p->mid) }
+
+function {:inline} perm (xid: Xid) : Set Pair
+{ Set((lambda p: Pair :: pair(xid, p->mid, p))) }
 
 // Transaction State
 type MState = int;
@@ -41,8 +44,8 @@ type GState = [Xid]XState;
 var {:layer 0,11} state : GState;
 var {:layer 7,8} votes : [Xid]int;
 
-var {:linear "pair"} {:layer 7,9} B : [Pair]bool;
-var {:layer 7,10}{:linear "pair"} UnallocatedXids: [Xid]bool;
+var {:linear} {:layer 7,9} B: Set Pair;
+var {:linear} {:layer 7,10} UnallocatedXids: Set Pair;
 
 // ###########################################################################
 // Consistency Predicates
@@ -84,9 +87,9 @@ function {:inline} xConsistentExtension (oldState: XState, newState: XState) : b
   xNoUndoneDecision(oldState, newState)
 }
 
-function {:inline} xAllParticipantsInB (xid: Xid, B: [Pair]bool) : bool
+function {:inline} xAllParticipantsInB (xid: Xid, B: Set Pair) : bool
 {
-  (forall mid: Mid :: participantMid(mid) ==> B[Pair(xid, mid)])
+  (forall mid: Mid :: participantMid(mid) ==> Set_Contains(B, Pair(xid, mid)))
 }
 
 // Globally across transactions (indicated by prefix g)
@@ -124,16 +127,16 @@ function {:inline} SetInv (B: [Pair]bool) : bool
   (forall xid: Xid, mid: Mid :: B[Pair(xid,mid)] ==> participantMid(mid))
 }
 
-function {:inline} Inv_8 (state: GState, B: [Pair]bool, votes: [Xid]int) : bool
+function {:inline} Inv_8 (state: GState, B: Set Pair, votes: [Xid]int) : bool
 {
      gConsistent(state)
-  && SetInv(B)
+  && SetInv(B->val)
   && (forall xid: Xid :: VotesEqCoordinatorState(votes, state, xid))
-  && (forall xid: Xid :: votes[xid] == -1 || votes[xid] == card(B, xid))
-  && (forall p: Pair :: B[p] && votes[p->xid] != -1 ==> UndecidedOrCommitted(state[p->xid][p->mid]))
+  && (forall xid: Xid :: votes[xid] == -1 || votes[xid] == card(B->val, xid))
+  && (forall p: Pair :: Set_Contains(B, p) && votes[p->xid] != -1 ==> UndecidedOrCommitted(state[p->xid][p->mid]))
 }
 
-function {:inline} Inv_9 (state: GState, B: [Pair]bool, xid: Xid) : bool
+function {:inline} Inv_9 (state: GState, B: Set Pair, xid: Xid) : bool
 {
      gConsistent(state)
   && (xAllParticipantsInB(xid, B) || xUndecidedOrAborted(state[xid]))
@@ -142,11 +145,11 @@ function {:inline} Inv_9 (state: GState, B: [Pair]bool, xid: Xid) : bool
 yield invariant {:layer 8} YieldInv_8 ();
 invariant Inv_8(state, B, votes);
 
-yield invariant {:layer 8} YieldUndecidedOrCommitted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
-invariant pair(xid, mid, pair) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
+yield invariant {:layer 8} YieldUndecidedOrCommitted_8 (xid: Xid, mid: Mid, {:linear} pair: One Pair);
+invariant pair(xid, mid, pair->val) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
 
-yield invariant {:layer 8} YieldAborted_8 (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
-invariant pair(xid, mid, pair) && Aborted(state[xid][mid]);
+yield invariant {:layer 8} YieldAborted_8 (xid: Xid, mid: Mid, {:linear} pair: One Pair);
+invariant pair(xid, mid, pair->val) && Aborted(state[xid][mid]);
 
 yield invariant {:layer 9} YieldInv_9 (xid: Xid);
 invariant Inv_9(state, B, xid);
@@ -195,8 +198,8 @@ preserves call YieldInv_8();
 preserves call YieldConsistent_9();
 preserves call YieldConsistent_10();
 {
-  var {:linear "pair"} pair: Pair;
-  var {:linear "pair"} pairs: [Pair]bool;
+  var {:linear} pair: One Pair;
+  var {:linear} pairs: Set Pair;
   var {:layer 10} snapshot: GState;
   var i : Mid;
 
@@ -205,14 +208,14 @@ preserves call YieldConsistent_10();
   i := 1;
   while (i <= numParticipants)
   invariant {:layer 8} Inv_8(state, B, votes);
-  invariant {:layer 8,10} pairs == (lambda p: Pair :: pair(xid, p->mid, p) && i <= p->mid);
-  invariant {:layer 8} votes[xid] == -1 || (forall p: Pair :: pairs[p] ==> UndecidedOrCommitted(state[xid][p->mid]));
+  invariant {:layer 8,9,10} pairs == Set((lambda p: Pair :: pair(xid, p->mid, p) && i <= p->mid));
+  invariant {:layer 8} votes[xid] == -1 || (forall p: Pair :: Set_Contains(pairs, p) ==> UndecidedOrCommitted(state[xid][p->mid]));
   invariant {:layer 9} Inv_9(state, B, xid);
   invariant {:layer 10} gConsistent(state);
   invariant {:layer 10} ExistsMonotoneExtension(snapshot, state, xid);
-  invariant {:layer 10} 1 <= i && i <= numParticipants + 1;
+  invariant {:layer 8,9,10} 1 <= i && i <= numParticipants + 1;
   {
-    call pairs, pair := TransferPair(xid, i, pairs);
+    call pair := One_Get(pairs, Pair(xid, i));
     async call {:sync} Participant_VoteReq(xid, i, pair);
     i := i + 1;
   }
@@ -222,19 +225,19 @@ preserves call YieldConsistent_10();
 
 // ---------------------------------------------------------------------------
 
-left action {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+left action {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
 modifies state;
 {
   var {:pool "A"} x: XState;
-  assert !UnallocatedXids[xid];
-  assert pair(xid, mid, pair);
+  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
+  assert pair(xid, mid, pair->val);
   assert xConsistent(state[xid]);
   state[xid] := x;
   assume xConsistentExtension(old(state)[xid], state[xid]);
 }
 
 yield procedure {:layer 9}
-Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
 refines atomic_Participant_VoteReq;
 requires call YieldInv_8();
 requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
@@ -252,14 +255,14 @@ requires call YieldInv_9(xid);
 
 // ---------------------------------------------------------------------------
 
-left action {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+left action {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
 modifies state, B;
 {
   var {:pool "A"} x: XState;
-  assert !UnallocatedXids[xid];
-  assert pair(xid, mid, pair);
+  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
+  assert pair(xid, mid, pair->val);
   assert xConsistent(state[xid]);
-  B[pair] := true;
+  call One_Put(B, pair);
   if (*) {
     state[xid] := x;
     assume xAllParticipantsInB(xid, B);
@@ -268,7 +271,7 @@ modifies state, B;
 }
 
 yield procedure {:layer 8}
-Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
 refines atomic_Coordinator_VoteYes;
 requires call YieldInv_8();
 requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
@@ -278,10 +281,10 @@ requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
   var {:layer 8} snapshot: GState;
 
   call {:layer 8} snapshot := Copy(state);
-  call {:layer 8} Lemma_add_to_set(B, pair);
-  call {:layer 8} Lemma_all_in_set(B, xid);
+  call {:layer 8} Lemma_add_to_set(B->val, pair->val);
+  call {:layer 8} Lemma_all_in_set(B->val, xid);
   call commit := StateUpdateOnVoteYes(xid, mid, pair);
-  call {:layer 8} Lemma_all_in_set(B, xid);
+  call {:layer 8} Lemma_all_in_set(B->val, xid);
 
   if (commit)
   {
@@ -301,12 +304,12 @@ requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
   assert {:layer 8} {:add_to_pool "A", state[xid]} true;
 }
 
-left action {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+left action {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
 modifies state;
 {
   var {:pool "A"} x: XState;
-  assert !UnallocatedXids[xid];
-  assert pair(xid, mid, pair);
+  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
+  assert pair(xid, mid, pair->val);
   assert xUndecidedOrAborted(state[xid]);
   state[xid] := x;
   assume xUndecidedOrAborted(state[xid]);
@@ -314,7 +317,7 @@ modifies state;
 }
 
 yield procedure {:layer 8}
-Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair)
+Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
 refines atomic_Coordinator_VoteNo;
 requires call YieldAborted_8(xid, mid, pair);
 {
@@ -344,10 +347,10 @@ requires call YieldAborted_8(xid, mid, pair);
 
 // ---------------------------------------------------------------------------
 
-yield procedure {:layer 7} SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair);
+yield procedure {:layer 7} SetParticipantAborted (xid: Xid, mid: Mid, {:linear} pair: One Pair);
 refines atomic_SetParticipantAborted;
 
-yield procedure {:layer 7} StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool);
+yield procedure {:layer 7} StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in} pair: One Pair) returns (commit : bool);
 refines atomic_StateUpdateOnVoteYes;
 
 yield procedure {:layer 7} StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool);
@@ -359,20 +362,20 @@ refines atomic_Participant_Commit;
 yield procedure {:layer 7} Participant_Abort (xid : Xid, mid : Mid);
 refines atomic_Participant_Abort;
 
-atomic action {:layer 8,9} atomic_SetParticipantAborted (xid: Xid, mid: Mid, {:linear "pair"} pair: Pair)
+atomic action {:layer 8,9} atomic_SetParticipantAborted (xid: Xid, mid: Mid, {:linear} pair: One Pair)
 modifies state;
 {
-  assert pair(xid, mid, pair);
+  assert pair(xid, mid, pair->val);
   assert xUndecidedOrAborted(state[xid]);
   state[xid][mid] := ABORTED();
 }
 
-atomic action {:layer 8} atomic_StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in "pair"} pair: Pair) returns (commit : bool)
+atomic action {:layer 8} atomic_StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in} pair: One Pair) returns (commit : bool)
 modifies votes, state, B;
 {
-  assert !UnallocatedXids[xid];
+  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
   assert VotesEqCoordinatorState(votes, state, xid);
-  B[pair] := true;
+  call One_Put(B, pair);
   if (votes[xid] == -1) {
     commit := false;
   } else {
@@ -385,7 +388,7 @@ modifies votes, state, B;
 atomic action {:layer 8} atomic_StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool)
 modifies votes, state;
 {
-  assert !UnallocatedXids[xid];
+  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
   assert !Committed(state[xid][CoordinatorMid]);
   abort := (votes[xid] != -1);
   votes[xid] := -1;
@@ -415,36 +418,16 @@ modifies state;
 // ###########################################################################
 // Linear variable allocation
 
-yield procedure {:layer 7} AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool);
-refines atomic_AllocateXid;
-
-yield procedure {:layer 7} TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"} inPairs: [Pair]bool)
-returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair);
-refines atomic_TransferPair;
-
-atomic action {:layer 8,10} atomic_AllocateXid () returns (xid: Xid, {:linear "pair"} pairs: [Pair]bool)
+atomic action {:layer 8,10} atomic_AllocateXid () returns (xid: Xid, {:linear} pairs: Set Pair)
 modifies UnallocatedXids;
 {
-  assume UnallocatedXids[xid];
   assume state[xid] == (lambda j: Mid :: UNDECIDED());
-  pairs := (lambda p: Pair :: pair(xid, p->mid, p));
-  UnallocatedXids[xid] := false;
+  pairs := perm(xid);
+  assume Set_IsSubset(pairs, UnallocatedXids);
+  call Set_Split(UnallocatedXids, pairs);
 }
-
-both action {:layer 8,10} atomic_TransferPair (xid: Xid, mid: Mid, {:linear_in "pair"} inPairs: [Pair]bool) returns ({:linear "pair"} pairs: [Pair]bool, {:linear "pair"} pair: Pair)
-{
-  assert inPairs[Pair(xid, mid)];
-  pair := Pair(xid, mid);
-  pairs := inPairs[pair := false];
-}
-
-// ###########################################################################
-// Collectors for linear domains
-
-function {:inline} {:linear "pair"} XidSetCollector(xids: [Xid]bool) : [Pair]bool
-{
-  (lambda p: Pair :: xids[p->xid])
-}
+yield procedure {:layer 7} AllocateXid () returns (xid: Xid, {:linear} pairs: Set Pair);
+refines atomic_AllocateXid;
 
 // ############################################################################
 // Lemmas about cardinality

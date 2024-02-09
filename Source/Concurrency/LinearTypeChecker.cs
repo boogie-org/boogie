@@ -509,10 +509,6 @@ namespace Microsoft.Boogie
             }
           }
         }
-        else
-        {
-          Error(node, "illegal assignment to linear target");
-        }
       }
       return base.VisitAssignCmd(node);
     }
