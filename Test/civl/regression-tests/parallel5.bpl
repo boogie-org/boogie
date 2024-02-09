@@ -1,39 +1,37 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "tid"} X = int;
-
 var {:layer 0,1} a:[int]int;
 
-yield procedure {:layer 1} Allocate() returns ({:linear "tid"} tid: int);
+yield procedure {:layer 1} Allocate() returns ({:linear} tid: One int);
 
-atomic action {:layer 1} AtomicWrite(idx: int, val: int)
+atomic action {:layer 1} AtomicWrite(idx: One int, val: int)
 modifies a;
-{ a[idx] := val; }
+{ a[idx->val] := val; }
 
-yield procedure {:layer 0} Write(idx: int, val: int);
+yield procedure {:layer 0} Write(idx: One int, val: int);
 refines AtomicWrite;
 
 yield procedure {:layer 1} main()
 {
-    var {:linear "tid"} i: int;
-    var {:linear "tid"} j: int;
+    var {:linear} i: One int;
+    var {:linear} j: One int;
     call i := Allocate();
     call j := Allocate();
     par i := t(i) | Yield(j, a);
     par i := u(i) | j := u(j);
 }
 
-yield procedure {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
+yield procedure {:layer 1} t({:linear_in} i': One int) returns ({:linear} i: One int)
 {
     i := i';
 
     call Write(i, 42);
     call Yield(i, a);
-    assert {:layer 1} a[i] == 42;
+    assert {:layer 1} a[i->val] == 42;
 }
 
-yield procedure {:layer 1} u({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)
+yield procedure {:layer 1} u({:linear_in} i': One int) returns ({:linear} i: One int)
 ensures call Yield_42(i, 42);
 {
     i := i';
@@ -41,8 +39,8 @@ ensures call Yield_42(i, 42);
     call Write(i, 42);
 }
 
-yield invariant {:layer 1} Yield({:linear "tid"} i: int, old_a: [int]int);
-invariant old_a[i] == a[i];
+yield invariant {:layer 1} Yield({:linear} i: One int, old_a: [int]int);
+invariant old_a[i->val] == a[i->val];
 
-yield invariant {:layer 1} Yield_42({:linear "tid"} i: int, v: int);
-invariant v == a[i];
+yield invariant {:layer 1} Yield_42({:linear} i: One int, v: int);
+invariant v == a[i->val];

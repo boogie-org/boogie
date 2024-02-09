@@ -1,13 +1,13 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear "Perm"} X = int;
+
 var {:layer 0,1} x: int;
 
 yield procedure {:layer 1}
-mainE({:linear_in "Perm"} permVar_in: [int]bool)
+mainE({:linear_in} permVar_in: Set int)
 requires call Yield(permVar_in, 0);
 {
-    var {:linear "Perm"} permVar_out: [int]bool;
+    var {:linear} permVar_out: Set int;
 
     permVar_out := permVar_in;
 
@@ -15,10 +15,10 @@ requires call Yield(permVar_in, 0);
 }
 
 yield procedure {:layer 1}
-foo({:linear_in "Perm"} permVar_in: [int]bool)
+foo({:linear_in} permVar_in: Set int)
 requires call Yield(permVar_in, 0);
 {
-  var {:linear "Perm"} permVar_out: [int]bool;
+  var {:linear} permVar_out: Set int;
   permVar_out := permVar_in;
   call Incr();
   call Yield(permVar_out, 1);
@@ -31,6 +31,6 @@ modifies x;
 yield procedure {:layer 0} Incr();
 refines AtomicIncr;
 
-yield invariant {:layer 1} Yield({:linear "Perm"} p: [int]bool, v: int);
-invariant p[1];
+yield invariant {:layer 1} Yield({:linear} p: Set int, v: int);
+invariant Set_Contains(p, 1);
 invariant x == v;

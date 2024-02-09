@@ -4,7 +4,7 @@
 // Write (although lock-protected) is a non-mover, becaues of the unprotected
 // read action ReadNoLock.
 
-type {:linear "tid"} Tid;
+type Tid;
 const nil:Tid;
 
 var {:layer 0,1} lock:Tid;
@@ -12,20 +12,20 @@ var {:layer 0,1} x:int;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-right action {:layer 1} Acquire({:linear "tid"} tid:Tid)
+right action {:layer 1} Acquire({:linear} tid: One Tid)
 modifies lock;
-{ assert tid != nil; assume lock == nil; lock := tid; }
+{ assert tid->val != nil; assume lock == nil; lock := tid->val; }
 
-left action {:layer 1} Release({:linear "tid"} tid:Tid)
+left action {:layer 1} Release({:linear} tid: One Tid)
 modifies lock;
-{ assert tid != nil && lock == tid; lock := nil; }
+{ assert tid->val != nil && lock == tid->val; lock := nil; }
 
-atomic action {:layer 1} Write({:linear "tid"} tid:Tid, val:int)
+atomic action {:layer 1} Write({:linear} tid: One Tid, val:int)
 modifies x;
-{ assert tid != nil && lock == tid; x := val; }
+{ assert tid->val != nil && lock == tid->val; x := val; }
 
-both action {:layer 1} ReadLock({:linear "tid"} tid:Tid) returns (val:int)
-{ assert tid != nil && lock == tid; val := x; }
+both action {:layer 1} ReadLock({:linear} tid: One Tid) returns (val:int)
+{ assert tid->val != nil && lock == tid->val; val := x; }
 
 atomic action {:layer 1} ReadNoLock() returns (val:int)
 { val := x; }
