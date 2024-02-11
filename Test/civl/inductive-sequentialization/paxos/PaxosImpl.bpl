@@ -416,8 +416,8 @@ pure action SplitPermissions(r: Round, {:linear_in} r_lin: Set Permission)
 returns ({:linear} ps: Set Permission, {:linear} ps': Set Permission)
 {
   ps' := r_lin;
-  call ps := Set_Get(ps', JoinPermissions(r));
-  assert ps' == ProposePermissions(r);
+  ps := JoinPermissions(r);
+  call Set_Split(ps', ps);
 }
 
 pure action ExtractJoinPermission({:linear_in} ps: Set Permission, r: Round, n: Node)

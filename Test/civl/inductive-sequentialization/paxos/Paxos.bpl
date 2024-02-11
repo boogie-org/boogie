@@ -64,17 +64,17 @@ axiom (forall r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo ::
 
 function {:inline} AllPermissions(r: Round) : Set Permission
 {
-  Set((lambda p:Permission :: {:add_to_pool "Permission", p} p->r == r))
+  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p->r == r))
 }
 
-function {:inline} JoinPermissions(r: Round) : [Permission]bool
+function {:inline} JoinPermissions(r: Round) : Set Permission
 {
-  (lambda p:Permission :: p is JoinPerm && p->r == r)
+  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is JoinPerm && p->r == r))
 }
 
 function {:inline} ProposePermissions(r: Round) : Set Permission
 {
-  Set((lambda {:pool "Permission"} p:Permission :: (p is VotePerm && p->r == r) || (p is ConcludePerm && p->r == r)))
+  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} !(p is JoinPerm) && p->r == r))
 }
 
 function {:inline} JoinPAs(r: Round) : [A_Join]bool
