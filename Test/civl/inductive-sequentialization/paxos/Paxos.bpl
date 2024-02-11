@@ -20,10 +20,10 @@ datatype AcceptorState { AcceptorState(lastJoinRound: Round, lastVoteRound: int,
 
 /* 0 <= lastVoteRound <= numRounds */
 datatype JoinResponse { JoinResponse(from: Node, lastVoteRound: int, lastVoteValue: Value) }
-datatype JoinResponseChannel { JoinResponseChannel(domain: [Permission]bool, contents: [Permission]JoinResponse) }
+type JoinResponseChannel = Map Permission JoinResponse;
 
 datatype VoteResponse { VoteResponse(from: Node) }
-datatype VoteResponseChannel { VoteResponseChannel(domain: [Permission]bool, contents: [Permission]VoteResponse) }
+type VoteResponseChannel = Map Permission VoteResponse;
 
 datatype {:linear "perm"} Permission {
   JoinPerm(r:Round, n: Node),
@@ -122,8 +122,8 @@ function {:inline} InitLow (
   (forall n: Node :: acceptorState[n]->lastJoinRound == 0 && acceptorState[n]->lastVoteRound == 0) &&
   (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] == 0) &&
   (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] == 0) &&
-  permJoinChannel->domain == MapConst(false) &&
-  permVoteChannel->domain == MapConst(false)
+  permJoinChannel == Map_Empty() &&
+  permVoteChannel == Map_Empty()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,10 +141,10 @@ function {:inline}{:linear "perm"} RoundSetCollector (rounds: [Round]bool) : [Pe
 
 function {:inline}{:linear "perm"} JoinResponseChannelCollector (permJoinChannel: JoinResponseChannel) : [Permission]bool
 {
-  permJoinChannel->domain
+  permJoinChannel->dom->val
 }
 
 function {:inline}{:linear "perm"} VoteResponseChannelCollector (permVoteChannel: VoteResponseChannel) : [Permission]bool
 {
-  permVoteChannel->domain
+  permVoteChannel->dom->val
 }
