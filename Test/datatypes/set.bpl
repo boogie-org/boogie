@@ -10,6 +10,7 @@ procedure Test1() {
   b := Set_Add(a, 5);
   assert Set_Size(b) == 2;
   c := Set_Union(b, Set_Singleton(6));
+  assert Set_Size(Set_Singleton(6)) == 1;
   assert Set_Size(c) == 3;
   d := Set_Add(c, 3);
   assert Set_Size(d) == 3;
@@ -22,6 +23,7 @@ procedure Test2() {
   a := Set_Singleton(3);
   b := Set_Add(a, 5);
   c := Set_Union(b, Set_Singleton(6));
+  assert Set_Size(Set_Singleton(6)) == 1;
   assert Set_Size(c) == 3;
 }
 
@@ -29,7 +31,9 @@ procedure Test3() {
   var a, b, c: Set int;
   a := Set_Singleton(3);
   b := Set_Union(a, Set_Singleton(5));
+  assert Set_Size(Set_Singleton(5)) == 1;
   c := Set_Union(b, Set_Singleton(6));
+  assert Set_Size(Set_Singleton(6)) == 1;
   assert Set_Size(c) == 3;
 }
 
