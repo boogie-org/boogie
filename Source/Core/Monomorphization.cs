@@ -305,7 +305,7 @@ namespace Microsoft.Boogie
         var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
         PopulateInstantiationHints(actualTypeParams, node.Args[0].Type);
       }
-      else if (node.Fun is FunctionCall functionCall)
+      else if (node.Fun is FunctionCall functionCall && functionCall.Func is not DatatypeConstructor)
       {
         var actualTypeParams = node.TypeParameters.FormalTypeParams.Select(x => node.TypeParameters[x]).ToList();
         PopulateInstantiationHints(actualTypeParams, functionCall.Func);
