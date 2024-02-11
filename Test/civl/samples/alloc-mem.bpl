@@ -87,9 +87,11 @@ both action {:layer 2} atomic_Read ({:linear} l: Map int int, i: int) returns (o
 both action {:layer 2} atomic_Write ({:linear_in} l: Map int int, i: int, o: int)
   returns ({:linear} l': Map int int)
 {
-  assert Map_Contains(l, i);
+  var {:linear} one_i: One int;
+  var v: int;
   l' := l;
-  l'->val[i] := o;
+  call one_i, v := Map_Get(l', i);
+  call Map_Put(l', one_i, o);
 }
 
 yield procedure {:layer 1}
@@ -136,9 +138,11 @@ pure action FreeLinear ({:linear_in} l: Map int int, i: int, {:linear_in} pool: 
 pure action WriteLinear ({:layer 1} {:linear_in} l: Map int int, i: int, o: int)
   returns ({:layer 1} {:linear} l': Map int int)
 {
-  assert Map_Contains(l, i);
+  var {:linear} one_i: One int;
+  var v: int;
   l' := l;
-  l'->val[i] := o;
+  call one_i, v := Map_Get(l', i);
+  call Map_Put(l', one_i, o);
 }
 
 yield invariant {:layer 1} Yield ();
