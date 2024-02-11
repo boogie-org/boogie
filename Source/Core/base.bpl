@@ -162,10 +162,6 @@ axiom (forall<T> a: Set T, b: Set T ::
         {Set_Union(a, b)} {Set_Intersection(a, b)}
         Set_Size(Set_Union(a, b)) + Set_Size(Set_Intersection(a, b)) == Set_Size(a) + Set_Size(b));
 
-axiom (forall<T> a: Set T, b: Set T :: Set_Union(a, b) == Set_Union(b, a));
-
-axiom (forall<T> a: Set T, b: Set T :: Set_Intersection(a, b) == Set_Intersection(b, a));
-
 function {:inline} Set_Empty<T>(): Set T
 {
   Set(MapConst(false))
