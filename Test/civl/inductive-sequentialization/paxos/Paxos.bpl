@@ -25,7 +25,7 @@ type JoinResponseChannel = Map Permission JoinResponse;
 datatype VoteResponse { VoteResponse(from: Node) }
 type VoteResponseChannel = Map Permission VoteResponse;
 
-datatype {:linear "perm"} Permission {
+datatype Permission {
   JoinPerm(r:Round, n: Node),
   VotePerm(r:Round, n: Node),
   ConcludePerm(r: Round)
@@ -62,29 +62,29 @@ axiom (forall r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo ::
   )
 );
 
+function {:inline} AllPermissions(r: Round) : Set Permission
+{
+  Set((lambda p:Permission :: {:add_to_pool "Permission", p} p->r == r))
+}
+
 function {:inline} JoinPermissions(r: Round) : [Permission]bool
 {
-  (lambda p:Permission :: if (p is JoinPerm && p->r == r) then true else false)
+  (lambda p:Permission :: p is JoinPerm && p->r == r)
 }
 
-function {:inline} ProposePermissions(r: Round) : [Permission]bool
+function {:inline} ProposePermissions(r: Round) : Set Permission
 {
-  (lambda {:pool "Permission"} p:Permission :: if (p is VotePerm && p->r == r) || (p is ConcludePerm && p->r == r) then true else false)
-}
-
-function {:inline} VotePermissions(r: Round) : [Permission]bool
-{
-  (lambda p:Permission :: if (p is VotePerm && p->r == r) then true else false)
+  Set((lambda {:pool "Permission"} p:Permission :: (p is VotePerm && p->r == r) || (p is ConcludePerm && p->r == r)))
 }
 
 function {:inline} JoinPAs(r: Round) : [A_Join]bool
 {
-  (lambda pa: A_Join :: pa->r == r && Node(pa->n) && pa->p == JoinPerm(r, pa->n))
+  (lambda pa: A_Join :: pa->r == r && Node(pa->n) && pa->p->val == JoinPerm(r, pa->n))
 }
 
 function {:inline} VotePAs(r: Round, v: Value) : [A_Vote]bool
 {
-  (lambda pa: A_Vote :: pa->r == r && Node(pa->n) && pa->v == v && pa->p == VotePerm(r, pa->n))
+  (lambda pa: A_Vote :: pa->r == r && Node(pa->n) && pa->v == v && pa->p->val == VotePerm(r, pa->n))
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,15 +100,15 @@ var {:layer 0,1} joinChannel: [Round][JoinResponse]int;
 var {:layer 0,1} voteChannel: [Round][VoteResponse]int;
 
 // Intermediate channel representation
-var {:layer 1,1} {:linear "perm"} permJoinChannel: JoinResponseChannel;
-var {:layer 1,1} {:linear "perm"} permVoteChannel: VoteResponseChannel;
+var {:layer 1,1} {:linear} permJoinChannel: JoinResponseChannel;
+var {:layer 1,1} {:linear} permVoteChannel: VoteResponseChannel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 function {:inline} Init (
-  rs: [Round]bool, decision: [Round]Option Value) : bool
+  ps: Set Permission, decision: [Round]Option Value) : bool
 {
-  rs == (lambda r: Round :: true) &&
+  ps->val == (lambda p: Permission :: true) &&
   decision == (lambda r: Round :: None())
 }
 
@@ -124,27 +124,4 @@ function {:inline} InitLow (
   (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] == 0) &&
   permJoinChannel == Map_Empty() &&
   permVoteChannel == Map_Empty()
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//// Linear collectors
-
-function {:inline}{:linear "perm"} RoundCollector (round: Round) : [Permission]bool
-{
-  (lambda {:pool "Permission"} p: Permission :: round == p->r)
-}
-
-function {:inline}{:linear "perm"} RoundSetCollector (rounds: [Round]bool) : [Permission]bool
-{
-  (lambda {:pool "Permission"} p: Permission :: rounds[p->r])
-}
-
-function {:inline}{:linear "perm"} JoinResponseChannelCollector (permJoinChannel: JoinResponseChannel) : [Permission]bool
-{
-  permJoinChannel->dom->val
-}
-
-function {:inline}{:linear "perm"} VoteResponseChannelCollector (permVoteChannel: VoteResponseChannel) : [Permission]bool
-{
-  permVoteChannel->dom->val
 }

@@ -55,8 +55,8 @@ function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: Jo
       permVoteChannel->val[VotePerm(r, vr->from)] == vr)
 }
 
-yield invariant {:layer 1} YieldInit({:linear "perm"} rs: [Round]bool);
-invariant Init(rs, decision);
+yield invariant {:layer 1} YieldInit({:linear} ps: Set Permission);
+invariant Init(ps, decision);
 invariant InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
 
 yield invariant {:layer 1} YieldInv();
@@ -68,50 +68,50 @@ invariant InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-Paxos({:layer 1}{:linear_in "perm"} rs: [Round]bool)
+Paxos({:layer 1}{:linear_in} ps: Set Permission)
 refines A_Paxos;
-requires call YieldInit(rs);
+requires call YieldInit(ps);
 {
   var r: int;
-  var {:layer 1}{:linear "perm"} r_lin: int;
-  var {:layer 1}{:linear "perm"} rs': [Round]bool;
+  var {:layer 1}{:linear} r_lin: Set Permission;
+  var {:layer 1}{:linear} ps': Set Permission;
   var {:layer 1}{:pending_async} PAs:[A_StartRound]int;
 
   call {:layer 1} joinedNodes := Copy((lambda r: Round:: NoNodes()));
   call {:layer 1} voteInfo := Copy((lambda r: Round:: None()));
   call {:layer 1} decision := Copy((lambda r: Round :: None()));
   r := 0;
-  rs' := rs;
+  ps' := ps;
   while (*)
   invariant {:layer 1} 0 <= r;
-  invariant {:layer 1} (forall r': Round :: r < r' ==> rs'[r']);
-  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_StartRound :: pa->r == pa->r_lin && Round(pa->r) && pa->r <= r));
+  invariant {:layer 1} (forall r': Round :: r < r' ==> Set_IsSubset(AllPermissions(r'), ps'));
+  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_StartRound :: AllPermissions(pa->r) == pa->r_lin && Round(pa->r) && pa->r <= r));
   {
     r := r + 1;
-    call {:layer 1} rs', r_lin := ExtractRoundPermission(rs', r);
+    call {:layer 1} ps', r_lin := ExtractRoundPermission(ps', r);
     async call StartRound(r, r_lin);
   }
 }
 
 yield procedure {:layer 1}
-StartRound(r: Round, {:layer 1}{:linear_in "perm"} r_lin: Round)
+StartRound(r: Round, {:layer 1}{:linear_in} r_lin: Set Permission)
 refines A_StartRound;
-requires {:layer 1} Round(r) && r_lin == r;
+requires {:layer 1} Round(r) && r_lin == AllPermissions(r);
 requires call YieldInv();
 requires call YieldInvChannels();
 {
   var n: int;
-  var {:layer 1}{:linear "perm"} p: Permission;
-  var {:layer 1}{:linear "perm"} ps: [Permission]bool;
-  var {:layer 1}{:linear "perm"} ps': [Permission]bool;
+  var {:layer 1}{:linear} p: One Permission;
+  var {:layer 1}{:linear} ps: Set Permission;
+  var {:layer 1}{:linear} ps': Set Permission;
   var {:layer 1}{:pending_async} PAs:[A_Join]int;
 
-  call {:layer 1} ps, ps' := SplitPermissions(r_lin);
+  call {:layer 1} ps, ps' := SplitPermissions(r, r_lin);
   n := 1;
   while (n <= numNodes)
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
-  invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps[JoinPerm(r, n')]);
-  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Join :: pa->r == r && 1 <= pa->n && pa->n < n && pa->p == JoinPerm(pa->r, pa->n)));
+  invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps->val[JoinPerm(r, n')]);
+  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Join :: pa->r == r && 1 <= pa->n && pa->n < n && pa->p == One(JoinPerm(pa->r, pa->n))));
   {
     call {:layer 1} ps, p := ExtractJoinPermission(ps, r, n);
     async call Join(r, n, p);
@@ -133,8 +133,8 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
 {
   var count: int;
   var joinResponse: JoinResponse;
-  var {:layer 1}{:linear "perm"} receivedPermissions: [Permission]bool;
-  var {:layer 1}{:linear "perm"} receivedPermission: Permission;
+  var {:layer 1}{:linear} receivedPermissions: Set Permission;
+  var {:layer 1}{:linear} receivedPermission: One Permission;
 
   call {:layer 1} ns := Copy(NoNodes());
   call {:layer 1} receivedPermissions := InitializePermissions();
@@ -144,7 +144,7 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   invariant {:layer 1} count == Cardinality(ns);
   invariant {:layer 1} (forall x: Node :: ns[x] ==> Node(x));
   invariant {:layer 1} IsSubset(ns, joinedNodes[r]);
-  invariant {:layer 1} receivedPermissions == (lambda x: Permission :: x is JoinPerm && x->r == r && ns[x->n]);
+  invariant {:layer 1} receivedPermissions->val == (lambda x: Permission :: x is JoinPerm && x->r == r && ns[x->n]);
   invariant {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
   invariant {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
@@ -152,8 +152,8 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   {
     call joinResponse := ReceiveJoinResponse(r);
     call {:layer 1} receivedPermission, permJoinChannel := ReceiveJoinResponseIntro(r, joinResponse, permJoinChannel);
-    call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(receivedPermission->n));
-    call {:layer 1} ns := AddToQuorum(ns, receivedPermission->n);
+    call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(receivedPermission->val->n));
+    call {:layer 1} ns := AddToQuorum(ns, receivedPermission->val->n);
     call {:layer 1} receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
     count := count + 1;
     if (joinResponse->lastVoteRound > maxRound) {
@@ -167,7 +167,7 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
 }
 
 yield procedure {:layer 1}
-Propose(r: Round, {:layer 1}{:linear_in "perm"} ps: [Permission]bool)
+Propose(r: Round, {:layer 1}{:linear_in} ps: Set Permission)
 refines A_Propose;
 requires {:layer 1} Round(r) && ps == ProposePermissions(r);
 requires call YieldInv();
@@ -177,9 +177,9 @@ requires call YieldInvChannels();
   var maxValue: Value;
   var {:layer 1} ns: NodeSet;
   var n: int;
-  var {:layer 1}{:linear "perm"} ps': [Permission]bool;
-  var {:layer 1}{:linear "perm"} p: Permission;
-  var {:layer 1}{:linear "perm"} cp: Permission;
+  var {:layer 1}{:linear} ps': Set Permission;
+  var {:layer 1}{:linear} p: One Permission;
+  var {:layer 1}{:linear} cp: One Permission;
   var {:layer 1}{:pending_async} PAs:[A_Vote]int;
 
   call maxRound, maxValue, ns := ProposeHelper(r);
@@ -188,8 +188,8 @@ requires call YieldInvChannels();
   n := 1;
   while (n <= numNodes)
   invariant {:layer 1} 1 <= n && n <= numNodes+1;
-  invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps'[VotePerm(r, n')]);
-  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Vote :: pa->r == r && 1 <= pa->n && pa->n < n && pa->v == maxValue && pa->p == VotePerm(pa->r, pa->n)));
+  invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps'->val[VotePerm(r, n')]);
+  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Vote :: pa->r == r && 1 <= pa->n && pa->n < n && pa->v == maxValue && pa->p->val == VotePerm(pa->r, pa->n)));
   {
     call {:layer 1} ps', p := ExtractVotePermission(ps', r, n);
     async call Vote(r, n, maxValue, p);
@@ -200,17 +200,17 @@ requires call YieldInvChannels();
 }
 
 yield procedure {:layer 1}
-Conclude(r: Round, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
+Conclude(r: Round, v: Value, {:layer 1}{:linear_in} p: One Permission)
 refines A_Conclude;
-requires {:layer 1} Round(r) && p == ConcludePerm(r);
+requires {:layer 1} Round(r) && p->val == ConcludePerm(r);
 requires call YieldInv();
 requires call YieldInvChannels();
 {
   var count: int;
   var voteResponse: VoteResponse;
   var {:layer 1} q: NodeSet;
-  var {:linear "perm"} {:layer 1} receivedPermissions: [Permission]bool;
-  var {:linear "perm"} {:layer 1} receivedPermission: Permission;
+  var {:linear} {:layer 1} receivedPermissions: Set Permission;
+  var {:linear} {:layer 1} receivedPermission: One Permission;
 
   call {:layer 1} q := Copy(NoNodes());
   call {:layer 1} receivedPermissions := InitializePermissions();
@@ -219,13 +219,13 @@ requires call YieldInvChannels();
   invariant {:layer 1} count == Cardinality(q);
   invariant {:layer 1} (forall x: Node :: q[x] ==> Node(x));
   invariant {:layer 1} IsSubset(q, voteInfo[r]->t->ns);
-  invariant {:layer 1} receivedPermissions == (lambda x: Permission :: x is VotePerm && x->r == r && q[x->n]);
+  invariant {:layer 1} receivedPermissions->val == (lambda x: Permission :: x is VotePerm && x->r == r && q[x->n]);
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
   invariant {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
   {
     call voteResponse := ReceiveVoteResponse(r);
     call {:layer 1} receivedPermission, permVoteChannel := ReceiveVoteResponseIntro(r, voteResponse, permVoteChannel);
-    call {:layer 1} q := AddToQuorum(q, receivedPermission->n);
+    call {:layer 1} q := AddToQuorum(q, receivedPermission->val->n);
     call {:layer 1} receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
     count := count + 1;
     if (2 * count > numNodes) {
@@ -237,9 +237,9 @@ requires call YieldInvChannels();
 }
 
 yield procedure {:layer 1}
-Join(r: Round, n: Node, {:layer 1}{:linear_in "perm"} p: Permission)
+Join(r: Round, n: Node, {:layer 1}{:linear_in} p: One Permission)
 refines A_Join;
-requires {:layer 1} Round(r) && Node(n) && p == JoinPerm(r, n);
+requires {:layer 1} Round(r) && Node(n) && p->val == JoinPerm(r, n);
 requires call YieldInv();
 {
   var doJoin: bool;
@@ -255,9 +255,9 @@ requires call YieldInv();
 }
 
 yield procedure {:layer 1}
-Vote(r: Round, n: Node, v: Value, {:layer 1}{:linear_in "perm"} p: Permission)
+Vote(r: Round, n: Node, v: Value, {:layer 1}{:linear_in} p: One Permission)
 refines A_Vote;
-requires {:layer 1} Round(r) && Node(n) && p == VotePerm(r, n);
+requires {:layer 1} Round(r) && Node(n) && p->val == VotePerm(r, n);
 requires call YieldInv();
 {
   var doVote:bool;
@@ -372,82 +372,86 @@ refines A_ReceiveVoteResponse;
 
 //// Introduction procedures to make send/receive more abstract
 
-pure action SendJoinResponseIntro(joinResponse: JoinResponse, {:linear_in "perm"} p: Permission, {:linear_in "perm"} permJoinChannel: JoinResponseChannel)
-returns ({:linear "perm"} permJoinChannel': JoinResponseChannel)
+pure action SendJoinResponseIntro(joinResponse: JoinResponse, {:linear_in} p: One Permission, {:linear_in} permJoinChannel: JoinResponseChannel)
+returns ({:linear} permJoinChannel': JoinResponseChannel)
 {
-  permJoinChannel' := Map_Update(permJoinChannel, p, joinResponse);
+  permJoinChannel' := permJoinChannel;
+  call Map_Put(permJoinChannel', p, joinResponse);
 }
 
-pure action ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse, {:linear_in "perm"} permJoinChannel: JoinResponseChannel)
-returns ({:linear "perm"} receivedPermission: Permission, {:linear "perm"} permJoinChannel': JoinResponseChannel)
+pure action ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse, {:linear_in} permJoinChannel: JoinResponseChannel)
+returns ({:linear} receivedPermission: One Permission, {:linear} permJoinChannel': JoinResponseChannel)
 {
-  assert permJoinChannel->dom->val[JoinPerm(round, joinResponse->from)];
-  receivedPermission := JoinPerm(round, joinResponse->from);
-  permJoinChannel' := Map_Remove(permJoinChannel, receivedPermission);
+  var x: JoinResponse;
+  permJoinChannel' := permJoinChannel;
+  call receivedPermission, x := Map_Get(permJoinChannel', JoinPerm(round, joinResponse->from));
 }
 
-pure action SendVoteResponseIntro(voteResponse: VoteResponse, {:linear_in "perm"} p: Permission, {:linear_in "perm"} permVoteChannel: VoteResponseChannel)
-returns ({:linear "perm"} permVoteChannel': VoteResponseChannel)
+pure action SendVoteResponseIntro(voteResponse: VoteResponse, {:linear_in} p: One Permission, {:linear_in} permVoteChannel: VoteResponseChannel)
+returns ({:linear} permVoteChannel': VoteResponseChannel)
 {
-  permVoteChannel' := Map_Update(permVoteChannel, p, voteResponse);
+  permVoteChannel' := permVoteChannel;
+  call Map_Put(permVoteChannel', p, voteResponse);
 }
 
-pure action ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse, {:linear_in "perm"} permVoteChannel: VoteResponseChannel)
-returns ({:linear "perm"} receivedPermission: Permission, {:linear "perm"} permVoteChannel': VoteResponseChannel)
+pure action ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse, {:linear_in} permVoteChannel: VoteResponseChannel)
+returns ({:linear} receivedPermission: One Permission, {:linear} permVoteChannel': VoteResponseChannel)
 {
-  assert permVoteChannel->dom->val[VotePerm(round, voteResponse->from)];
-  receivedPermission := VotePerm(round, voteResponse->from);
-  permVoteChannel' := Map_Remove(permVoteChannel, receivedPermission);
+  var x: VoteResponse;
+  permVoteChannel' := permVoteChannel;
+  call receivedPermission, x := Map_Get(permVoteChannel', VotePerm(round, voteResponse->from));
 }
 
 //// Permission accounting
 
-pure action ExtractRoundPermission({:linear_in "perm"} rs: [Round]bool, r: Round)
-returns ({:linear "perm"} rs': [Round]bool, {:linear "perm"} r_lin: Round)
+pure action ExtractRoundPermission({:linear_in} ps: Set Permission, r: Round)
+returns ({:linear} ps': Set Permission, {:linear} r_lin: Set Permission)
 {
-  assert rs[r];
-  rs', r_lin := rs[r := false], r;
+  ps' := ps;
+  r_lin := AllPermissions(r);
+  call Set_Split(ps', r_lin);
 }
 
-pure action SplitPermissions({:linear_in "perm"} r_lin: Round)
-returns ({:linear "perm"} ps: [Permission]bool, {:linear "perm"} ps': [Permission]bool)
+pure action SplitPermissions(r: Round, {:linear_in} r_lin: Set Permission)
+returns ({:linear} ps: Set Permission, {:linear} ps': Set Permission)
 {
-  ps, ps' := JoinPermissions(r_lin), ProposePermissions(r_lin);
+  ps' := r_lin;
+  call ps := Set_Get(ps', JoinPermissions(r));
+  assert ps' == ProposePermissions(r);
 }
 
-pure action ExtractJoinPermission({:linear_in "perm"} ps: [Permission]bool, r: Round, n: Node)
-returns ({:linear "perm"} ps': [Permission]bool, {:linear "perm"} p: Permission)
+pure action ExtractJoinPermission({:linear_in} ps: Set Permission, r: Round, n: Node)
+returns ({:linear} ps': Set Permission, {:linear} p: One Permission)
 {
-  assert ps[JoinPerm(r, n)];
-  p := JoinPerm(r, n);
-  ps' := ps[p := false];
+  ps' := ps;
+  call p := One_Get(ps', JoinPerm(r, n));
 }
 
-pure action SplitConcludePermission(r: Round, {:linear_in "perm"} ps: [Permission]bool)
-returns ({:linear "perm"} ps': [Permission]bool, {:linear "perm"} cp: Permission)
+pure action SplitConcludePermission(r: Round, {:linear_in} ps: Set Permission)
+returns ({:linear} ps': Set Permission, {:linear} cp: One Permission)
 {
-  assert ps == ProposePermissions(r);
-  ps', cp := VotePermissions(r), ConcludePerm(r);
+  ps' := ps;
+  call cp := One_Get(ps', ConcludePerm(r));
 }
 
-pure action ExtractVotePermission({:linear_in "perm"} ps: [Permission]bool, r: Round, n: Node)
-returns ({:linear "perm"} ps': [Permission]bool, {:linear "perm"} p: Permission)
+pure action ExtractVotePermission({:linear_in} ps: Set Permission, r: Round, n: Node)
+returns ({:linear} ps': Set Permission, {:linear} p: One Permission)
 {
-  assert ps[VotePerm(r, n)];
-  p := VotePerm(r, n);
-  ps' := ps[p := false];
+  ps' := ps;
+  call p := One_Get(ps', VotePerm(r, n));
 }
 
 pure action InitializePermissions()
-returns ({:linear "perm"} receivedPermissions: [Permission]bool)
+returns ({:linear} receivedPermissions: Set Permission)
 {
-  receivedPermissions := MapConst(false);
+  call receivedPermissions := Set_MakeEmpty();
 }
 
-pure action AddPermission({:linear_in "perm"} receivedPermissions: [Permission]bool, {:linear_in "perm"} p: Permission)
-returns ({:linear "perm"}receivedPermissions': [Permission]bool)
+pure action AddPermission({:linear_in} receivedPermissions: Set Permission, {:linear_in} p: One Permission)
+returns ({:linear}receivedPermissions': Set Permission)
 {
-  receivedPermissions' := receivedPermissions[p := true];
+  receivedPermissions' := receivedPermissions;
+  call One_Put(receivedPermissions', p);
 }
 
 // Local Variables:

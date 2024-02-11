@@ -295,7 +295,7 @@ namespace Microsoft.Boogie
           }
           else if (cmd is PredicateCmd predCmd)
           {
-            if (predCmd.HasAttribute("free"))
+            if (predCmd.HasAttribute("linear"))
             {
               // skip for transition relation computation
             }

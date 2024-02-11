@@ -178,7 +178,7 @@ function {:inline} Set_Contains<T>(a: Set T, t: T): bool
 
 function {:inline} Set_IsSubset<T>(a: Set T, b: Set T): bool
 {
-  Set_Union(a, b) == b
+  IsSubset(a->val, b->val)
 }
 
 function {:inline} Set_IsDisjoint<T>(a: Set T, b: Set T): bool
@@ -186,7 +186,7 @@ function {:inline} Set_IsDisjoint<T>(a: Set T, b: Set T): bool
   Set_Intersection(a, b) == Set_Empty()
 }
 
-function Set_Add<T>(a: Set T, t: T): Set T
+function {:inline} Set_Add<T>(a: Set T, t: T): Set T
 {
   Set(a->val[t := true])
 }
@@ -196,22 +196,22 @@ function {:inline} Set_Singleton<T>(t: T): Set T
   Set_Add(Set_Empty(), t)
 }
 
-function Set_Remove<T>(a: Set T, t: T): Set T
+function {:inline} Set_Remove<T>(a: Set T, t: T): Set T
 {
   Set(a->val[t := false])
 }
 
-function Set_Union<T>(a: Set T, b: Set T): Set T
+function {:inline} Set_Union<T>(a: Set T, b: Set T): Set T
 {
   Set(MapOr(a->val, b->val))
 }
 
-function Set_Difference<T>(a: Set T, b: Set T): Set T
+function {:inline} Set_Difference<T>(a: Set T, b: Set T): Set T
 {
   Set(MapDiff(a->val, b->val))
 }
 
-function Set_Intersection<T>(a: Set T, b: Set T): Set T
+function {:inline} Set_Intersection<T>(a: Set T, b: Set T): Set T
 {
   Set(MapAnd(a->val, b->val))
 }
@@ -290,6 +290,7 @@ pure procedure {:inline 1} Set_MakeEmpty<K>() returns ({:linear} l: Set K)
   l := Set_Empty();
 }
 pure procedure Set_Split<K>({:linear} path: Set K, {:linear_out} l: Set K);
+pure procedure Set_Get<K>({:linear} path: Set K, k: [K]bool) returns ({:linear} l: Set K);
 pure procedure Set_Put<K>({:linear} path: Set K, {:linear_in} l: Set K);
 pure procedure One_Split<K>({:linear} path: Set K, {:linear_out} l: One K);
 pure procedure One_Get<K>({:linear} path: Set K, k: K) returns ({:linear} l: One K);

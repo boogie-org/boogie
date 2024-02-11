@@ -182,7 +182,7 @@ namespace Microsoft.Boogie
     {
       "One_New",
       "Map_MakeEmpty", "Map_Pack", "Map_Unpack", "Map_Split", "Map_Get", "Map_Put", "Map_Assume",
-      "Set_MakeEmpty", "Set_Split", "Set_Put", "One_Split", "One_Get", "One_Put"
+      "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
     };
 
     public static IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)

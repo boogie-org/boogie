@@ -67,6 +67,8 @@ public class LinearRewriter
         return new List<Cmd>{callCmd};
       case "Set_Split":
         return RewriteSetSplit(callCmd);
+      case "Set_Get":
+        return RewriteSetGet(callCmd);
       case "Set_Put":
         return RewriteSetPut(callCmd);
       case "One_Split":
@@ -151,6 +153,14 @@ public class LinearRewriter
     return oneConstructor;
   }
 
+  private Function SetConstructor(Type type)
+  {
+    var actualTypeParams = new List<Type>() { type };
+    var setTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Set", actualTypeParams);
+    var setConstructor = setTypeCtorDecl.Constructors[0];
+    return setConstructor;
+  }
+
   private static Expr Val(Expr path)
   {
     return ExprHelper.FieldAccess(path, "val");
@@ -167,6 +177,26 @@ public class LinearRewriter
     var isSubsetFunc = SetIsSubset(type);
     var setDifferenceFunc = SetDifference(type);
     cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(isSubsetFunc, l, path), "Set_Split failed"));
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setDifferenceFunc, path, l)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteSetGet(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var k = callCmd.Ins[1];
+    var l = callCmd.Outs[0];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var type = instantiation["K"];
+    var setConstructor = SetConstructor(type);
+    var isSubsetFunc = SetIsSubset(type);
+    var setDifferenceFunc = SetDifference(type);
+    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(setConstructor, k)));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(isSubsetFunc, l, path), "Set_Get failed"));
     cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setDifferenceFunc, path, l)));
 
     ResolveAndTypecheck(options, cmdSeq);
@@ -301,7 +331,7 @@ public class LinearRewriter
     var range = instantiation["V"];
     var mapContainsFunc = MapContains(domain, range);
     var mapUpdateFunc = MapUpdate(domain, range);
-    var attribute = new QKeyValue(Token.NoToken, "free", new List<object>(), null);
+    var attribute = new QKeyValue(Token.NoToken, "linear", new List<object>(), null);
     cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, Val(l))), attribute));
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, Val(l), v)));
