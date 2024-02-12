@@ -1,20 +1,20 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear "tid"} X;
+type X;
 const nil: X;
 var {:layer 0,1} l: X;
 var {:layer 0,1} x: int;
-var {:layer 0,1}{:linear "tid"} unallocated:[X]bool;
+var {:layer 0,1}{:linear} unallocated: Set X;
 
-yield procedure {:layer 1} Allocate() returns ({:linear "tid"} xl: X)
-ensures {:layer 1} xl != nil;
+yield procedure {:layer 1} Allocate() returns ({:linear} xl: One X)
+ensures {:layer 1} xl->val != nil;
 {
     call xl := AllocateLow();
 }
 
 yield procedure {:layer 1} main()
 {
-    var {:linear "tid"} tid: X;
+    var {:linear} tid: One X;
     var val: int;
 
     while (*)
@@ -47,17 +47,17 @@ modifies x;
 yield procedure {:layer 0} Set(val: int);
 refines AtomicSet;
 
-atomic action {:layer 1} AtomicAllocateLow() returns ({:linear "tid"} xl: X)
+atomic action {:layer 1} AtomicAllocateLow() returns ({:linear} xl: One X)
 modifies unallocated;
-{ assume xl != nil; assume unallocated[xl]; unallocated[xl] := false; }
+{ assume xl->val != nil; assume Set_Contains(unallocated, xl->val); call One_Split(unallocated, xl); }
 
-yield procedure {:layer 0} AllocateLow() returns ({:linear "tid"} xl: X);
+yield procedure {:layer 0} AllocateLow() returns ({:linear} xl: One X);
 refines AtomicAllocateLow;
 
-yield procedure {:layer 1} foo({:linear_in "tid"} tid: X, val: int)
-requires {:layer 1} tid != nil;
+yield procedure {:layer 1} foo({:linear_in} tid: One X, val: int)
+requires {:layer 1} tid->val != nil;
 {
-    call Lock(tid);
+    call Lock(tid->val);
     call Yield(tid, l, x);
     call Set(val);
     call Yield(tid, l, x);
@@ -66,6 +66,6 @@ requires {:layer 1} tid != nil;
     call Unlock();
 }
 
-yield invariant {:layer 1} Yield({:linear "tid"} tid: X, old_l: X, old_x: int);
-invariant tid != nil;
-invariant old_l == tid ==> old_l == l && old_x == x;
+yield invariant {:layer 1} Yield({:linear} tid: One X, old_l: X, old_x: int);
+invariant tid->val != nil;
+invariant old_l == tid->val ==> old_l == l && old_x == x;

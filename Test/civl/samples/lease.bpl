@@ -1,8 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "me"} X = int;
-
 datatype lockMsg {
   transfer(epoch:int),
   locked(epoch:int)
@@ -35,48 +33,48 @@ function nextNode(me:int):int;
 
 ////// primitive actions //////
 
-both action {:layer 2} AtomicGetNode({:linear "me"} me:int) returns(n:node)
+both action {:layer 2} AtomicGetNode({:linear} me: One int) returns(n:node)
 {
-        n := nodes[me];
+        n := nodes[me->val];
 }
 
-yield procedure {:layer 1} GetNode({:linear "me"} me:int) returns(n:node);
+yield procedure {:layer 1} GetNode({:linear} me: One int) returns(n:node);
 refines AtomicGetNode;
 
-both action {:layer 2} AtomicSetNode({:linear "me"} me:int, n:node)
+both action {:layer 2} AtomicSetNode({:linear} me: One int, n:node)
 modifies nodes;
 {
-        nodes := nodes[me := n];
+        nodes := nodes[me->val := n];
 }
 
-yield procedure {:layer 1} SetNode({:linear "me"} me:int, n:node);
+yield procedure {:layer 1} SetNode({:linear} me: One int, n:node);
 refines AtomicSetNode;
 
-right action {:layer 2} AtomicRecv({:linear "me"} me:int) returns(m:msg)
+right action {:layer 2} AtomicRecv({:linear} me: One int) returns(m:msg)
 {
-        assume network[m] && m->dst == me;
+        assume network[m] && m->dst == me->val;
 }
 
-yield procedure {:layer 1} Recv({:linear "me"} me:int) returns(m:msg);
+yield procedure {:layer 1} Recv({:linear} me: One int) returns(m:msg);
 refines AtomicRecv;
 
-left action {:layer 2} AtomicSendInternal({:linear "me"} me:int, dst:int, payload:lockMsg)
+left action {:layer 2} AtomicSendInternal({:linear} me: One int, dst:int, payload:lockMsg)
 modifies network;
 {
-        network := network[msg(me, dst, payload) := true];
+        network := network[msg(me->val, dst, payload) := true];
 }
 
-yield procedure {:layer 1} SendInternal({:linear "me"} me:int, dst:int, payload:lockMsg);
+yield procedure {:layer 1} SendInternal({:linear} me: One int, dst:int, payload:lockMsg);
 refines AtomicSendInternal;
 
-left action {:layer 2} AtomicSendExternal({:linear "me"} me:int, dst:int, payload:lockMsg)
+left action {:layer 2} AtomicSendExternal({:linear} me: One int, dst:int, payload:lockMsg)
 modifies network, external;
 {
-        network  := network [msg(me, dst, payload) := true];
-        external := external[msg(me, dst, payload) := true];
+        network  := network [msg(me->val, dst, payload) := true];
+        external := external[msg(me->val, dst, payload) := true];
 }
 
-yield procedure {:layer 1} SendExternal({:linear "me"} me:int, dst:int, payload:lockMsg);
+yield procedure {:layer 1} SendExternal({:linear} me: One int, dst:int, payload:lockMsg);
 refines AtomicSendExternal;
 
 atomic action {:layer 2} AtomicAddHistory(l:int)
@@ -122,14 +120,14 @@ function Inv(network:[msg]bool, nodes:[int]node, history:history):bool
 && (forall m:msg :: network[m] ==> InvMsg(network, nodes, history, m))
 }
 
-atomic action {:layer 3} AtomicGrant({:linear "me"} me:int) returns(dst:int, epoch:int)
+atomic action {:layer 3} AtomicGrant({:linear} me: One int) returns(dst:int, epoch:int)
 modifies history;
 {
         history := addHistory(history, dst);
 }
 
 yield procedure {:layer 2}
-Grant({:linear "me"} me:int) returns(dst:int, epoch:int)
+Grant({:linear} me: One int) returns(dst:int, epoch:int)
 refines AtomicGrant;
 requires call YieldHeld(me);
 preserves call YieldInv();
@@ -137,25 +135,25 @@ preserves call YieldInv();
   var node:node;
 
   call node := GetNode(me);
-  dst := nextNode(me);
+  dst := nextNode(me->val);
   epoch := node->epoch;
   call AddHistory(dst);
   call SetNode(me, node(false, epoch));
   call SendInternal(me, dst, transfer(epoch + 1));
 }
 
-atomic action {:layer 3} AtomicAccept({:linear "me"} me:int, dst:int) returns(epoch:int)
+atomic action {:layer 3} AtomicAccept({:linear} me: One int, dst:int) returns(epoch:int)
 modifies external;
 {
         // specify that the message source (me) must appear at right epoch in history:
         assume EpochInHistory(epoch - 1, history);
-        assume me == history->locks[epoch - 1];
+        assume me->val == history->locks[epoch - 1];
 
-        external := external[msg(me, dst, locked(epoch)) := true];
+        external := external[msg(me->val, dst, locked(epoch)) := true];
 }
 
 yield procedure {:layer 2}
-Accept({:linear "me"} me:int, dst:int) returns(epoch:int)
+Accept({:linear} me: One int, dst:int) returns(epoch:int)
 refines AtomicAccept;
 preserves call YieldInv();
 {
@@ -190,5 +188,5 @@ procedure CheckInitInv(network:[msg]bool, nodes:[int]node, history:history)
 yield invariant {:layer 2} YieldInv();
 invariant Inv(network, nodes, history);
 
-yield invariant {:layer 2} YieldHeld({:linear "me"} me:int);
-invariant nodes[me]->held;
+yield invariant {:layer 2} YieldHeld({:linear} me: One int);
+invariant nodes[me->val]->held;

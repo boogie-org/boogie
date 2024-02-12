@@ -1,13 +1,13 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "tid"} X;
+type X;
 const nil: X;
 
 var {:layer 0,2} b: bool;
 var {:layer 1,3} lock: X;
 
-yield procedure {:layer 3} Customer({:linear "tid"} tid: X)
+yield procedure {:layer 3} Customer({:linear} tid: One X)
 preserves call Yield(tid);
 {
   while (*)
@@ -22,36 +22,36 @@ preserves call Yield(tid);
 function {:inline} InvLock(lock: X, b: bool) : bool
 { lock != nil <==> b }
 
-yield invariant {:layer 2} Yield({:linear "tid"} tid: X);
-invariant tid != nil && InvLock(lock, b);
+yield invariant {:layer 2} Yield({:linear} tid: One X);
+invariant tid->val != nil && InvLock(lock, b);
 
-right action {:layer 3} AtomicEnter({:linear "tid"} tid: X)
+right action {:layer 3} AtomicEnter({:linear} tid: One X)
 modifies lock;
-{ assume lock == nil && tid != nil; lock := tid; }
+{ assume lock == nil && tid->val != nil; lock := tid->val; }
 
-yield procedure {:layer 2} Enter({:linear "tid"} tid: X)
+yield procedure {:layer 2} Enter({:linear} tid: One X)
 refines AtomicEnter;
 preserves call Yield(tid);
 {
   call LowerEnter(tid);
 }
 
-left action {:layer 3} AtomicLeave({:linear "tid"} tid:X)
+left action {:layer 3} AtomicLeave({:linear} tid: One X)
 modifies lock;
-{ assert lock == tid && tid != nil; lock := nil; }
+{ assert lock == tid->val && tid->val != nil; lock := nil; }
 
-yield procedure {:layer 2} Leave({:linear "tid"} tid:X)
+yield procedure {:layer 2} Leave({:linear} tid: One X)
 refines AtomicLeave;
 preserves call Yield(tid);
 {
   call LowerLeave();
 }
 
-atomic action {:layer 2} AtomicLowerEnter({:linear "tid"} tid: X)
+atomic action {:layer 2} AtomicLowerEnter({:linear} tid: One X)
 modifies b, lock;
-{ assume !b; b := true; lock := tid; }
+{ assume !b; b := true; lock := tid->val; }
 
-yield procedure {:layer 1} LowerEnter({:linear "tid"} tid: X)
+yield procedure {:layer 1} LowerEnter({:linear} tid: One X)
 refines AtomicLowerEnter;
 {
   var status: bool;
@@ -61,7 +61,7 @@ refines AtomicLowerEnter;
   {
     call status := CAS(false, true);
     if (status) {
-      call {:layer 1} lock := Copy(tid);
+      call {:layer 1} lock := Copy(tid->val);
       return;
     }
   }
