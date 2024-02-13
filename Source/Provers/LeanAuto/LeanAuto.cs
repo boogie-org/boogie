@@ -21,6 +21,11 @@ public class LeanGenerator : ReadOnlyVisitor
   private readonly List<string> userAxiomNames = new();
   private readonly Dictionary<Type, HashSet<string>> uniqueConsts = new();
 
+  private const string AndString = "\u2227"; /* ∧ */
+  private const string OrString = "\u2228"; /* ∨ */
+  private const string NeqString = "\u2260"; /* ≠ */
+  private const string ArrowString = "\u2192"; /* → */
+
   private LeanGenerator(VCGenOptions options, TextWriter writer)
   {
     this.options = options;
@@ -105,7 +110,6 @@ public class LeanGenerator : ReadOnlyVisitor
       throw new LeanConversionException("Internal: failed to find Lean prelude in assembly.");
     }
     var header = new StreamReader(preludeStream).ReadToEnd();
-    Console.WriteLine(header.Length);
     writer.WriteLine(header.ReplaceLineEndings());
   }
 
@@ -183,7 +187,7 @@ public class LeanGenerator : ReadOnlyVisitor
   public override GotoCmd VisitGotoCmd(GotoCmd node)
   {
     var gotoText = node.labelTargets.Select(l =>
-      $"goto {BlockName(l)}").Aggregate((a, b) => $"{a} \u2227 {b}");
+      $"goto {BlockName(l)}").Aggregate((a, b) => $"{a} {AndString} {b}");
     Indent(2, gotoText);
     return node;
   }
@@ -322,7 +326,6 @@ public class LeanGenerator : ReadOnlyVisitor
 
   public override Expr VisitBvExtractExpr(BvExtractExpr node)
   {
-    // TODO: double-check range values
     Text($"(BitVec.extractLsb {node.End - 1} {node.Start} ");
     Visit(node.Bitvector);
     Text(")");
@@ -431,11 +434,6 @@ public class LeanGenerator : ReadOnlyVisitor
       Text(")");
     } else if (fun is FieldAccess fieldAccess) {
       throw new LeanConversionException("Unsupported: field access (since the semantics are complex)");
-      // TODO: implement
-      /*
-      Visit(args[0]);
-      Text($".{SanitizeNameForLean(fieldAccess.FieldName)}");
-      */
     } else {
       VisitIAppliable(fun);
       foreach (var arg in args) {
@@ -469,9 +467,10 @@ public class LeanGenerator : ReadOnlyVisitor
         Text(Name(fc.Func));
         break;
       case IsConstructor isConstructor:
-        // TODO: declare these discriminator functions
-        Text($"is_{SanitizeNameForLean(isConstructor.ConstructorName)}");
-        break;
+        throw new LeanConversionException($"Unsupported: Constructor: {isConstructor.ConstructorName}");
+        // Discriminator functions not declared yet
+        //Text($"is_{SanitizeNameForLean(isConstructor.ConstructorName)}");
+        //break;
       case ArithmeticCoercion arithmeticCoercion:
         var func = arithmeticCoercion.Coercion switch
         {
@@ -508,20 +507,17 @@ public class LeanGenerator : ReadOnlyVisitor
 
   public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node)
   {
-    Console.WriteLine($"DeclWithFormals: {node}");
-    return node; // TODO: do something?
+    throw new LeanConversionException($"Unsupported: DeclWithFormals ({node}).");
   }
 
   public override Type VisitBvTypeProxy(BvTypeProxy node)
   {
-    // TODO: confirm that this is unreachable
-    throw new LeanConversionException($"Unsupported: bvtypeproxy: {node}");
+    throw new LeanConversionException($"Unsupported: BvTypeProxy ({node}).");
   }
 
   public override Expr VisitCodeExpr(CodeExpr node)
   {
-    // TODO: what is this?
-    throw new LeanConversionException($"Unsupported: codexpr: {node}");
+    throw new LeanConversionException($"Unsupported: CodeExpr ({node}).");
   }
 
   public override Cmd VisitCommentCmd(CommentCmd node)
@@ -542,7 +538,6 @@ public class LeanGenerator : ReadOnlyVisitor
 
   public override Type VisitMapTypeProxy(MapTypeProxy node)
   {
-    // TODO: confirm that this is unreachable
     throw new LeanConversionException($"Unsupported: maptypeproxy: {node}");
   }
 
@@ -629,32 +624,29 @@ public class LeanGenerator : ReadOnlyVisitor
 
   public override ActionDeclRef VisitActionDeclRef(ActionDeclRef node)
   {
-    // TODO: what is this?
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: ActionDeclRef ({node}).");
   }
 
   public override ElimDecl VisitElimDecl(ElimDecl node)
   {
-    // TODO: support this?
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: ElimDecl ({node}).");
   }
 
   public override List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
   {
-    // TODO: support this?
-    throw new LeanConversionException($"Unsupported: {node}");
+    throw new LeanConversionException($"Unsupported: List<ElimDecl> ({node}).");
   }
 
   public override Axiom VisitAxiom(Axiom node)
   {
     // This will take two more steps:
-    // * A named lemma with a definition of `by sorry` (using a `name` attribute?) (or `id`, so it's also useful for proof dependencies?)
+    // * A named lemma with a definition of `by sorry` (using a `name` attribute?) (or `id`, so it's also useful for coverage?)
     // * A named lemma that's defined by a call to a previously-defined proof of the same thing
     int n = 0;
-    var name = $"ax_l{node.tok.line}c{node.tok.col}_{n}";
+    var name = $"ax_l{node.tok.line}c{node.tok.col}";
     while (userAxiomNames.Contains(name)) {
-      n += 1;
       name = $"ax_l{node.tok.line}c{node.tok.col}_{n}";
+      n += 1;
     }
     Text($"axiom {name}: ");
     VisitExpr(node.Expr);
@@ -670,12 +662,12 @@ public class LeanGenerator : ReadOnlyVisitor
     node.TypeParameters.ForEach(x =>
     {
       Text($"{{{Name(x)} : Type}}");
-      Text(" \u2192 ");
+      Text($" {ArrowString} ");
     });
     node.InParams.ForEach(x =>
     {
       Visit(x.TypedIdent.Type);
-      Text(" \u2192 ");
+      Text($" {ArrowString} ");
     });
     if (node.OutParams.Count == 1) {
       Visit(node.OutParams[0].TypedIdent.Type);
@@ -708,11 +700,11 @@ public class LeanGenerator : ReadOnlyVisitor
       BinaryOperator.Opcode.Le => "<=",
       BinaryOperator.Opcode.Ge => ">=",
       BinaryOperator.Opcode.Eq => "=",
-      BinaryOperator.Opcode.Neq => "\u2260", /* ≠ */
-      BinaryOperator.Opcode.And => "\u2227", /* ∧ */
-      BinaryOperator.Opcode.Or => "\u2228", /* ∨ */
+      BinaryOperator.Opcode.Neq => NeqString,
+      BinaryOperator.Opcode.And => AndString,
+      BinaryOperator.Opcode.Or => OrString,
       BinaryOperator.Opcode.Iff => "=",
-      BinaryOperator.Opcode.Imp => "\u2192", /* → */
+      BinaryOperator.Opcode.Imp => ArrowString,
       BinaryOperator.Opcode.Pow => "^",
       BinaryOperator.Opcode.RealDiv => "/",
       BinaryOperator.Opcode.FloatDiv => "/",
