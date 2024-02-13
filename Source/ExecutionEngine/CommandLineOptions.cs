@@ -1257,6 +1257,10 @@ namespace Microsoft.Boogie
           ps.GetIntArgument(x => normalizeDeclarationOrder = x);
           return true;
 
+        case "prune":
+          ps.GetIntArgument(x => Prune = x);
+          return true;
+
         default:
           bool optionValue = false;
           if (ps.CheckBooleanFlag("printUnstructured", x => optionValue = x))
@@ -1318,8 +1322,6 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustSequentialization", x => trustSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
-              ps.CheckBooleanFlag("prune", x => Prune = x) ||
-              ps.CheckBooleanFlag("noprune", x => Prune = !x) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x)
           )
           {
@@ -1890,12 +1892,14 @@ namespace Microsoft.Boogie
                 the SMT theory of arrays. This option allows the use of axioms instead.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
-  /prune
-                Turn on pruning. Pruning will remove any top-level Boogie declarations 
-                that are not accessible by the implementation that is about to be verified.
-                Without pruning, due to the unstable nature of SMT solvers,
-                a change to any part of a Boogie program has the potential 
-                to affect the verification of any other part of the program.
+  /prune:<n>
+                0 - Turn off pruning.
+                1 - Turn on pruning (default). Pruning will remove any top-level
+                Boogie declarations that are not accessible by the implementation
+                that is about to be verified. Without pruning, due to the unstable
+                nature of SMT solvers, a change to any part of a Boogie program
+                has the potential to affect the verification of any other part of
+                the program.
 
                 Only use this if your program contains uses clauses
                 where required, otherwise pruning will break your program.
