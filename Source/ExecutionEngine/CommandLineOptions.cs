@@ -1319,6 +1319,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
               ps.CheckBooleanFlag("prune", x => Prune = x) ||
+              ps.CheckBooleanFlag("noprune", x => Prune = !x) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x)
           )
           {
