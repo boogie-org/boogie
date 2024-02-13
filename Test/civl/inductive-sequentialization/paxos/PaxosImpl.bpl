@@ -1,8 +1,8 @@
 function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acceptorState: [Node]AcceptorState,
               permJoinChannel: JoinResponseChannel, permVoteChannel: VoteResponseChannel) : bool
 {
-  (forall p: Permission :: permJoinChannel->domain[p] ==> p is JoinPerm &&
-    (var r, n, joinResponse := p->r, p->n, permJoinChannel->contents[p];
+  (forall p: Permission :: permJoinChannel->dom->val[p] ==> p is JoinPerm &&
+    (var r, n, joinResponse := p->r, p->n, permJoinChannel->val[p];
       Round(r) && Node(n) &&
       (
         var from, maxRound, maxValue := joinResponse->from, joinResponse->lastVoteRound, joinResponse->lastVoteValue;
@@ -16,8 +16,8 @@ function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acc
     )
   )
   &&
-  (forall p: Permission :: permVoteChannel->domain[p] ==> p is VotePerm &&
-    (var r, n, voteResponse := p->r, p->n, permVoteChannel->contents[p];
+  (forall p: Permission :: permVoteChannel->dom->val[p] ==> p is VotePerm &&
+    (var r, n, voteResponse := p->r, p->n, permVoteChannel->val[p];
       Round(r) && Node(n) &&
       (
         var from := voteResponse->from;
@@ -47,12 +47,12 @@ function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: Jo
   (forall r: Round, vr: VoteResponse :: 0 <= voteChannel[r][vr] && voteChannel[r][vr] <= 1) &&
   (forall r: Round, jr: JoinResponse ::
     joinChannel[r][jr] > 0 ==>
-      permJoinChannel->domain[JoinPerm(r, jr->from)] &&
-      permJoinChannel->contents[JoinPerm(r, jr->from)] == jr) &&
+      permJoinChannel->dom->val[JoinPerm(r, jr->from)] &&
+      permJoinChannel->val[JoinPerm(r, jr->from)] == jr) &&
   (forall r: Round, vr: VoteResponse ::
     voteChannel[r][vr] > 0 ==>
-      permVoteChannel->domain[VotePerm(r, vr->from)] &&
-      permVoteChannel->contents[VotePerm(r, vr->from)] == vr)
+      permVoteChannel->dom->val[VotePerm(r, vr->from)] &&
+      permVoteChannel->val[VotePerm(r, vr->from)] == vr)
 }
 
 yield invariant {:layer 1} YieldInit({:linear "perm"} rs: [Round]bool);
@@ -375,33 +375,29 @@ refines A_ReceiveVoteResponse;
 pure action SendJoinResponseIntro(joinResponse: JoinResponse, {:linear_in "perm"} p: Permission, {:linear_in "perm"} permJoinChannel: JoinResponseChannel)
 returns ({:linear "perm"} permJoinChannel': JoinResponseChannel)
 {
-  permJoinChannel' := JoinResponseChannel(
-    permJoinChannel->domain[p := true],
-    permJoinChannel->contents[p := joinResponse]);
+  permJoinChannel' := Map_Update(permJoinChannel, p, joinResponse);
 }
 
 pure action ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse, {:linear_in "perm"} permJoinChannel: JoinResponseChannel)
 returns ({:linear "perm"} receivedPermission: Permission, {:linear "perm"} permJoinChannel': JoinResponseChannel)
 {
-  assert permJoinChannel->domain[JoinPerm(round, joinResponse->from)];
+  assert permJoinChannel->dom->val[JoinPerm(round, joinResponse->from)];
   receivedPermission := JoinPerm(round, joinResponse->from);
-  permJoinChannel' := JoinResponseChannel(permJoinChannel->domain[receivedPermission := false], permJoinChannel->contents);
+  permJoinChannel' := Map_Remove(permJoinChannel, receivedPermission);
 }
 
 pure action SendVoteResponseIntro(voteResponse: VoteResponse, {:linear_in "perm"} p: Permission, {:linear_in "perm"} permVoteChannel: VoteResponseChannel)
 returns ({:linear "perm"} permVoteChannel': VoteResponseChannel)
 {
-  permVoteChannel' := VoteResponseChannel(
-    permVoteChannel->domain[p := true],
-    permVoteChannel->contents[p := voteResponse]);
+  permVoteChannel' := Map_Update(permVoteChannel, p, voteResponse);
 }
 
 pure action ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse, {:linear_in "perm"} permVoteChannel: VoteResponseChannel)
 returns ({:linear "perm"} receivedPermission: Permission, {:linear "perm"} permVoteChannel': VoteResponseChannel)
 {
-  assert permVoteChannel->domain[VotePerm(round, voteResponse->from)];
+  assert permVoteChannel->dom->val[VotePerm(round, voteResponse->from)];
   receivedPermission := VotePerm(round, voteResponse->from);
-  permVoteChannel' := VoteResponseChannel(permVoteChannel->domain[receivedPermission := false], permVoteChannel->contents);
+  permVoteChannel' := Map_Remove(permVoteChannel, receivedPermission);
 }
 
 //// Permission accounting
