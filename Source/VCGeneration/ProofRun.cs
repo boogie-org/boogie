@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Microsoft.Boogie;
 
@@ -8,5 +9,5 @@ public interface ProofRun {
   
   List<Counterexample> Counterexamples { get; }
 
-  HashSet<TrackedNodeComponent> CoveredElements { get;  }
+  ConcurrentBag<TrackedNodeComponent> CoveredElements { get;  }
 }

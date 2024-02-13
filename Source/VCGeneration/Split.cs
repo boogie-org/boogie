@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -912,7 +913,7 @@ namespace VC
 
       public List<Counterexample> Counterexamples { get; } = new();
 
-      public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
+      public ConcurrentBag<TrackedNodeComponent> CoveredElements { get; } = new();
 
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".

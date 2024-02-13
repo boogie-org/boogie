@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics.Contracts;
 using System.Collections.Generic;
 using System.IO;
@@ -126,7 +127,7 @@ namespace Microsoft.Boogie.Houdini
     private readonly Houdini houdini;
     public HoudiniStatistics stats;
     public List<Counterexample> Counterexamples { get; } = new();
-    public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
+    public ConcurrentBag<TrackedNodeComponent> CoveredElements { get; } = new();
     private VCExpr conjecture;
     private ProverInterface.ErrorHandler handler;
     VerificationResultCollector collector;
