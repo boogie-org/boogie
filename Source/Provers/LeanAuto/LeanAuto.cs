@@ -877,72 +877,72 @@ instance BEqReal: BEq Real := by sorry
 
   public override Program VisitProgram(Program node)
   {
-    throw new LeanConversionException($"Internal: Program should never be directly visited {node.tok}");
+    throw new LeanConversionException($"Internal: Program should never be directly visited ({node.tok}).");
   }
 
   public override Declaration VisitDeclaration(Declaration node)
   {
-    throw new LeanConversionException($"Internal: Declaration should never be directly visited {node.tok}");
+    throw new LeanConversionException($"Internal: Declaration should never be directly visited ({node.tok}).");
   }
 
   public override List<Declaration> VisitDeclarationList(List<Declaration> declarationList)
   {
-    throw new LeanConversionException($"Internal: List<Declaration> should never be directly visited {declarationList}");
+    throw new LeanConversionException($"Internal: List<Declaration> should never be directly visited ({declarationList}).");
   }
 
   public override List<Block> VisitBlockSeq(List<Block> blockSeq)
   {
-    throw new LeanConversionException($"Internal: List<Block> should never be directly visited {blockSeq}");
+    throw new LeanConversionException($"Internal: List<Block> should never be directly visited ({blockSeq}).");
   }
 
   public override List<Block> VisitBlockList(List<Block> blocks)
   {
-    throw new LeanConversionException($"Internal: List<Block> should never be directly visited {blocks}");
+    throw new LeanConversionException($"Internal: List<Block> should never be directly visited ({blocks}).");
   }
 
   public override Trigger VisitTrigger(Trigger node)
   {
-    throw new LeanConversionException($"Internal: Trigger should never be directly visited {node.tok}");
+    throw new LeanConversionException($"Internal: Trigger should never be directly visited ({node.tok}).");
   }
 
   public override IList<Expr> VisitExprSeq(IList<Expr> exprSeq)
   {
-    throw new LeanConversionException($"Internal: List<Expr> should never be directly visited {exprSeq}");
+    throw new LeanConversionException($"Internal: List<Expr> should never be directly visited ({exprSeq}).");
   }
 
   public override BoundVariable VisitBoundVariable(BoundVariable node)
   {
-    throw new LeanConversionException($"Internal: BoundVariable should never be directly visited {node.tok}");
+    throw new LeanConversionException($"Internal: BoundVariable should never be directly visited ({node.tok}).");
   }
 
   public override Formal VisitFormal(Formal node)
   {
-    throw new LeanConversionException($"Internal: Formal should never be directly visited {node.tok}");
+    throw new LeanConversionException($"Internal: Formal should never be directly visited ({node.tok}).");
   }
 
   public override LocalVariable VisitLocalVariable(LocalVariable node)
   {
-    throw new LeanConversionException($"Internal error: LocalVariable should never be directly visited {node.tok}");
+    throw new LeanConversionException($"Internal error: LocalVariable should never be directly visited ({node.tok}).");
   }
 
   public override Type VisitUnresolvedTypeIdentifier(UnresolvedTypeIdentifier node)
   {
-    throw new LeanConversionException($"Internal: UnresolvedTypeIdentifier should never appear ({node.tok})");
+    throw new LeanConversionException($"Internal: UnresolvedTypeIdentifier should never appear ({node.tok}).");
   }
 
   public override Variable VisitVariable(Variable node)
   {
-    throw new LeanConversionException($"Internal: Variable should never be directly visited {node.tok}");
+    throw new LeanConversionException($"Internal: Variable should never be directly visited ({node.tok}).");
   }
 
   public override List<Variable> VisitVariableSeq(List<Variable> variableSeq)
   {
-    throw new LeanConversionException($"Internal: List<Variable> should never be directly visited {variableSeq}");
+    throw new LeanConversionException($"Internal: List<Variable> should never be directly visited ({variableSeq}).");
   }
 
   public override HashSet<Variable> VisitVariableSet(HashSet<Variable> node)
   {
-    throw new LeanConversionException($"Internal: HashSet<Variable> should never be directly visited {node}");
+    throw new LeanConversionException($"Internal: HashSet<Variable> should never be directly visited ({node}).");
   }
 
   public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
