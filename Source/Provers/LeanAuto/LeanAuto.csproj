@@ -16,4 +16,10 @@
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Prelude.lean">
+      <LogicalName>Prelude.lean</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>
