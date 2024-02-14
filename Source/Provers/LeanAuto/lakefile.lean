@@ -6,7 +6,7 @@ package «prelude» {
 }
 
 require auto from git
-  "https://github.com/leanprover-community/lean-auto"@"main"
+  "https://github.com/leanprover-community/lean-auto"@"v0.0.6"
 
 @[default_target]
 lean_lib «Prelude» {
