@@ -22,30 +22,65 @@ def SMTArray1 (s1 s2: Type) := s1 → s2
 
 def SMTArray2 (s1 s2 s3 : Type) := s1 → s2 → s3
 
-def store1 [BEq s1] (m: SMTArray1 s1 s2) (i: s1) (v: s2): SMTArray1 s1 s2 :=
-  fun i' => if i' == i then v else m i'
+def store1
+  [BEq s1]
+  (m: SMTArray1 s1 s2) (i: s1) (v: s2): SMTArray1 s1 s2 :=
+    fun i' => if i' == i then v else m i'
 
 def select1 (m: SMTArray1 s1 s2) (i: s1): s2 := m i
 
-def store2 [BEq s1] [BEq s2] (m: SMTArray2 s1 s2 s3) (i: s1) (j: s2) (v: s3): SMTArray2 s1 s2 s3 :=
-  fun i' j' => if i' == i && j' == j then v else m i' j'
+def store2
+  [BEq s1] [BEq s2]
+  (m: SMTArray2 s1 s2 s3) (i: s1) (j: s2) (v: s3): SMTArray2 s1 s2 s3 :=
+    fun i' j' => if i' == i && j' == j then v else m i' j'
 
 def select2 (m: SMTArray2 s1 s2 s3) (i: s1) (j: s2): s3 := m i j
 
-axiom SelectStoreSame1 (s1 s2: Type) [BEq s1] (a: SMTArray1 s1 s2) (i: s1) (e: s2):
-  select1 (store1 a i e) i = e
+theorem SelectStoreSame1
+  (s1 s2: Type)
+  [BEq s1] [LawfulBEq s1]
+  (a: SMTArray1 s1 s2) (i: s1) (e: s2):
+  select1 (store1 a i e) i = e :=
+    by simp [select1, store1]
 
-axiom SelectStoreDistinct1 (s1 s2: Type) [BEq s1] (a: SMTArray1 s1 s2) (i: s1) (j: s1) (e: s2):
-  i ≠ j → select1 (store1 a i e) j = select1 a j
+theorem SelectStoreDistinct1
+  (s1 s2: Type)
+  [BEq s1] [LawfulBEq s1]
+  (a: SMTArray1 s1 s2) (i: s1) (j: s1) (e: s2):
+  i ≠ j → select1 (store1 a i e) j = select1 a j :=
+    by simp [select1, store1]
+       intro neq eq1
+       have eq2: i = j := Eq.symm eq1
+       contradiction
 
-axiom SelectStoreSame2 (s1 s2 s3: Type) [BEq s1] [BEq s2] (a: SMTArray2 s1 s2 s3) (i: s1) (j: s2) (e: s3):
-  select2 (store2 a i j e) i j = e
+theorem SelectStoreSame2
+  (s1 s2 s3: Type)
+  [BEq s1] [BEq s2]
+  [LawfulBEq s1] [LawfulBEq s2]
+  (a: SMTArray2 s1 s2 s3) (i: s1) (j: s2) (e: s3):
+  select2 (store2 a i j e) i j = e :=
+    by simp [select2, store2]
 
-axiom SelectStoreDistinct2 (s1 s2 s3: Type) [BEq s1] [BEq s2] (a: SMTArray2 s1 s2 s3) (i: s1) (i': s1) (j: s2) (j' : s2) (e: s3):
-  i ≠ i' \/ j ≠ j' → select2 (store2 a i j e) i' j' = select2 a i' j'
+theorem SelectStoreDistinct2
+  (s1 s2 s3: Type)
+  [BEq s1] [BEq s2]
+  [LawfulBEq s1] [LawfulBEq s2]
+  (a: SMTArray2 s1 s2 s3) (i: s1) (i': s1) (j: s2) (j' : s2) (e: s3):
+  i ≠ i' \/ j ≠ j' → select2 (store2 a i j e) i' j' = select2 a i' j' :=
+    by simp [select2, store2]
+       intro either eq1 eq2
+       cases either
+       have eq3: i = i' := Eq.symm eq1
+       contradiction
+       have eq4: j = j' := Eq.symm eq2
+       contradiction
 
--- TODO: provide either a definition or some functional axioms (or a definition plus some lemmas)
-axiom distinct : {a : Type} → List a → Prop
+-- TODO: make this translate to the appropriate thing in SMT or prove some
+-- theorems and include them as SMT axioms.
+def distinct {a : Type} [BEq a] (xs: List a) : Prop :=
+  match xs with
+  | [] => true
+  | x :: rest => x ∉ rest ∧ distinct rest
 
 axiom realToInt : Real → Int
 axiom intToReal : Int → Real
