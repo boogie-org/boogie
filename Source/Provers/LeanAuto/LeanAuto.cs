@@ -5,6 +5,15 @@ using System.Linq;
 
 namespace Microsoft.Boogie.LeanAuto;
 
+internal class LeanConversionException : Exception
+{
+  public string Msg { get; }
+  public LeanConversionException(IToken tok, string s)
+  {
+    Msg = tok + ": " + s;
+  }
+}
+
 public class LeanGenerator : ReadOnlyVisitor
 {
   private readonly TextWriter writer;
@@ -108,7 +117,8 @@ public class LeanGenerator : ReadOnlyVisitor
     var assembly = System.Reflection.Assembly.GetExecutingAssembly();
     var preludeStream = assembly.GetManifestResourceStream("Prelude.lean");
     if (preludeStream is null) {
-      throw new LeanConversionException(Token.NoToken, "Internal: failed to find Lean prelude in assembly.");
+      throw new LeanConversionException(Token.NoToken,
+        "Internal: failed to find Lean prelude in assembly.");
     }
     var header = new StreamReader(preludeStream).ReadToEnd();
     writer.WriteLine(header.ReplaceLineEndings());
@@ -116,9 +126,7 @@ public class LeanGenerator : ReadOnlyVisitor
 
   private void Indent(int n = 1, string str = null)
   {
-    for (var i = 0; i < n; i++) {
-      Text("  ");
-    }
+    Text(String.Concat(Enumerable.Repeat("  ", n)));
 
     if (str is not null) {
       Text(str);
@@ -161,9 +169,11 @@ public class LeanGenerator : ReadOnlyVisitor
     node.Cmds.ForEach(c => Visit(c));
     if (node.TransferCmd is ReturnCmd r) {
       VisitReturnCmd(r);
-    }
-    if (node.TransferCmd is GotoCmd g) {
+    } else if (node.TransferCmd is GotoCmd g) {
       VisitGotoCmd(g);
+    } else {
+      throw new LeanConversionException(node.TransferCmd.tok,
+        $"Unsupported transfer command: {node.TransferCmd}");
     }
     NL();
     return node;
@@ -217,10 +227,12 @@ public class LeanGenerator : ReadOnlyVisitor
       FloatType floatType => VisitFloatType(floatType),
       MapType mapType => VisitMapType(mapType),
       TypeProxy typeProxy => VisitTypeProxy(typeProxy),
-      TypeSynonymAnnotation typeSynonymAnnotation => VisitTypeSynonymAnnotation(typeSynonymAnnotation),
+      TypeSynonymAnnotation typeSynonymAnnotation =>
+        VisitTypeSynonymAnnotation(typeSynonymAnnotation),
       TypeVariable typeVariable => VisitTypeVariable(typeVariable),
       UnresolvedTypeIdentifier uti => VisitUnresolvedTypeIdentifier(uti),
-      _ => throw new LeanConversionException(node.tok, $"Unsupported type: {node}.")
+      _ => throw new LeanConversionException(node.tok,
+        $"Internal: Branch should be unreachable for Type: {node}.")
     };
   }
 
@@ -236,11 +248,11 @@ public class LeanGenerator : ReadOnlyVisitor
       throw new LeanConversionException(node.tok, "Unsupported type: RMode.");
     } else if (node.IsRegEx) {
       throw new LeanConversionException(node.tok, "Unsupported type: RegEx.");
-    } else if (node.IsMap) {
-      var mapType = node.AsMap;
-      VisitMapType(mapType);
+    } else if (node.IsString) {
+      throw new LeanConversionException(node.tok, "Unsupported type: String.");
     } else {
-      throw new LeanConversionException(node.tok, $"Unsupported type: {node}.");
+      throw new LeanConversionException(node.tok,
+        $"Internal: Branch should be unreachable for BasicType: {node}.");
     }
 
     return node;
@@ -297,7 +309,8 @@ public class LeanGenerator : ReadOnlyVisitor
     {
       ForallExpr => "forall",
       ExistsExpr => "exists",
-      _ => throw new LeanConversionException(node.tok, $"Unsupported quantifier type: {node.Kind}")
+      _ => throw new LeanConversionException(node.tok,
+        $"Unsupported quantifier type: {node.Kind}")
     };
     Text($"({kind}");
     foreach (var tv in node.TypeParameters) {
@@ -346,7 +359,8 @@ public class LeanGenerator : ReadOnlyVisitor
   public override Expr VisitLetExpr(LetExpr node)
   {
     if (node.Dummies.Count > 1) {
-      throw new LeanConversionException(node.tok, "Unsupported: LetExpr with more than one binder");
+      throw new LeanConversionException(node.tok,
+        "Unsupported: LetExpr with more than one binder");
     }
     Text("(let");
     node.Dummies.ForEach(x => Visit(x.TypedIdent));
@@ -381,8 +395,21 @@ public class LeanGenerator : ReadOnlyVisitor
       Text(bvConst.Value.ToString());
       Text($" : BitVec {bvConst.Bits}");
       Text(")");
+    } else if (node.isBigDec) {
+      throw new LeanConversionException(node.tok,
+        "Unsupported literal: BigDec");
+    } else if (node.isBigNum) {
+      var bigNumConst = node.asBigNum;
+      Text(bigNumConst.ToString());
+    } else if (node.isBigFloat) {
+      throw new LeanConversionException(node.tok,
+        "Unsupported literal: BigFloat");
+    } else if (node.isRoundingMode) {
+      throw new LeanConversionException(node.tok,
+        "Unsupported literal: RoundingMode");
     } else {
-      Text(node.ToString()); // TODO: make sure this is right for all other literal types
+      throw new LeanConversionException(node.tok,
+        "Internal: Branch should be unreachable for literal: {node}");
     }
     return node;
   }
@@ -390,7 +417,8 @@ public class LeanGenerator : ReadOnlyVisitor
   public override Type VisitMapType(MapType node)
   {
     if (node.Arguments.Count > 2) {
-      throw new LeanConversionException(node.tok, $"Unsupported: MapType with too many index types ({node})");
+      throw new LeanConversionException(node.tok,
+        $"Unsupported: MapType with more than 2 index types ({node})");
     }
     if (node.TypeParameters.Any()) {
       var args = node.TypeParameters.Select(Name);
@@ -416,6 +444,12 @@ public class LeanGenerator : ReadOnlyVisitor
       Visit(args[0]);
       Text($" {BinaryOpToLean(op.Op)} ");
       Visit(args[1]);
+    } else if (fun is FieldAccess fieldAccess) {
+      throw new LeanConversionException(node.tok,
+        "Unsupported: field access (since the semantics are complex)");
+    } else if (fun is FieldUpdate fieldUpdate) {
+      throw new LeanConversionException(node.tok,
+        "Unsupported: field update (since the semantics are complex)");
     } else if (fun is IfThenElse && args.Count == 3) {
       Text("if ");
       Visit(args[0]);
@@ -433,8 +467,6 @@ public class LeanGenerator : ReadOnlyVisitor
       Text(" : ");
       Visit(typeCoercion.Type);
       Text(")");
-    } else if (fun is FieldAccess fieldAccess) {
-      throw new LeanConversionException(node.tok, "Unsupported: field access (since the semantics are complex)");
     } else {
       VisitIAppliable(fun);
       foreach (var arg in args) {
@@ -450,6 +482,28 @@ public class LeanGenerator : ReadOnlyVisitor
   private void VisitIAppliable(IAppliable fun)
   {
     switch (fun) {
+      case ArithmeticCoercion arithmeticCoercion:
+        var func = arithmeticCoercion.Coercion switch
+        {
+          ArithmeticCoercion.CoercionType.ToInt => "realToInt",
+          ArithmeticCoercion.CoercionType.ToReal => "intToReal",
+          _ => throw new LeanConversionException(Token.NoToken,
+            $"Internal: unknown arithmetic coercion: {arithmeticCoercion.Coercion}")
+        };
+        Text(func);
+        break;
+      case BinaryOperator op:
+        Text(BinaryOpToLean(op.Op));
+        break;
+      case FunctionCall fc:
+        Text(Name(fc.Func));
+        break;
+      case IsConstructor isConstructor:
+        throw new LeanConversionException(isConstructor.tok,
+          $"Unsupported: Constructor: {isConstructor.ConstructorName}");
+        // Discriminator functions not declared yet
+        //Text($"is_{SanitizeNameForLean(isConstructor.ConstructorName)}");
+        //break;
       case MapSelect:
         usesMaps = true;
         Text($"select{fun.ArgumentCount - 1}");
@@ -458,31 +512,12 @@ public class LeanGenerator : ReadOnlyVisitor
         usesMaps = true;
         Text($"store{fun.ArgumentCount - 2}");
         break;
-      case BinaryOperator op:
-        Text(BinaryOpToLean(op.Op));
-        break;
       case UnaryOperator op:
         Text(UnaryOpToLean(op.Op));
         break;
-      case FunctionCall fc:
-        Text(Name(fc.Func));
-        break;
-      case IsConstructor isConstructor:
-        throw new LeanConversionException(isConstructor.tok, $"Unsupported: Constructor: {isConstructor.ConstructorName}");
-        // Discriminator functions not declared yet
-        //Text($"is_{SanitizeNameForLean(isConstructor.ConstructorName)}");
-        //break;
-      case ArithmeticCoercion arithmeticCoercion:
-        var func = arithmeticCoercion.Coercion switch
-        {
-          ArithmeticCoercion.CoercionType.ToInt => "realToInt",
-          ArithmeticCoercion.CoercionType.ToReal => "intToReal",
-          _ => throw new LeanConversionException(Token.NoToken, $"Internal: unknown arithmetic coercion: {arithmeticCoercion.Coercion}")
-        };
-        Text(func);
-        break;
       default:
-        throw new LeanConversionException(Token.NoToken, $"Unsupported: IAppliable: {fun}");
+        throw new LeanConversionException(Token.NoToken,
+          $"Unsupported: IAppliable: {fun}");
     }
   }
 
@@ -709,7 +744,8 @@ public class LeanGenerator : ReadOnlyVisitor
       BinaryOperator.Opcode.Pow => "^",
       BinaryOperator.Opcode.RealDiv => "/",
       BinaryOperator.Opcode.FloatDiv => "/",
-      _ => throw new LeanConversionException(Token.NoToken, $"Unsupported binary operator: {op.ToString()}")
+      _ => throw new LeanConversionException(Token.NoToken,
+        $"Unsupported binary operator: {op.ToString()}")
     };
   }
 
@@ -719,7 +755,8 @@ public class LeanGenerator : ReadOnlyVisitor
     {
       UnaryOperator.Opcode.Not => "Not",
       UnaryOperator.Opcode.Neg => "-",
-      _ => throw new LeanConversionException(Token.NoToken, $"Unsupported unary operator: {op.ToString()}")
+      _ => throw new LeanConversionException(Token.NoToken,
+        $"Unsupported unary operator: {op.ToString()}")
     };
   }
 
@@ -994,14 +1031,5 @@ public class LeanGenerator : ReadOnlyVisitor
   public override Sequential VisitSequential(Sequential node)
   {
     throw new LeanConversionException(node.tok, $"Internal: Sequential should never appear in passive program.");
-  }
-}
-
-internal class LeanConversionException : Exception
-{
-  public string Msg { get; }
-  public LeanConversionException(IToken tok, string s)
-  {
-    Msg = tok + ": " + s;
   }
 }
