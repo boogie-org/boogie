@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /prune /errorTrace:0 /printPruned:"%t" "%s" > "%t"
+// RUN: %parallel-boogie /prune:1 /errorTrace:0 /printPruned:"%t" "%s" > "%t"
 // RUN: %OutputCheck "%s" --file-to-check="%t-after-monomorphicSplit.bpl"
 
 // The following checks are a bit simplistic, but this is

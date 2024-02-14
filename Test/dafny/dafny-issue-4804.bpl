@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /proverOpt:O:auto_config=false /proverOpt:O:type_check=true /proverOpt:O:smt.qi.eager_threshold=100 /proverOpt:O:smt.delay_units=true /rlimit:10000 /prune "%s" > "%t"
+// RUN: %parallel-boogie /proverOpt:O:auto_config=false /proverOpt:O:type_check=true /proverOpt:O:smt.qi.eager_threshold=100 /proverOpt:O:smt.delay_units=true /rlimit:10000 /prune:1 "%s" > "%t"
 // RUN: %OutputCheck "%s" --file-to-check="%t"
 // CHECK: Boogie program verifier finished with 3 verified, 0 errors, 1 out of resource
 // dafny 4.3.0.0

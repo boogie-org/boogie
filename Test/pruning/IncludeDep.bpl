@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /prune /errorTrace:0 "%s" > "%t"
+// RUN: %parallel-boogie /prune:1 /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function f1 (x: int) : int;

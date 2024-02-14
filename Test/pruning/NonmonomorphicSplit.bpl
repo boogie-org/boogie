@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /prune /trace /errorTrace:0 "%s" > "%t"
+// RUN: %parallel-boogie /prune:1 /trace /errorTrace:0 "%s" > "%t"
 // RUN: %OutputCheck "%s" --file-to-check="%t"
 
 // Related PR #767.

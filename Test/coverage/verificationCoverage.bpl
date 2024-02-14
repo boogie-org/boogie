@@ -91,13 +91,13 @@
 // CHECK:   xy_sum
 // RUN: %boogie -trackVerificationCoverage "%s" > "%t.coverage"
 // RUN: %diff "%s.expect" "%t.coverage"
-// RUN: %boogie -trackVerificationCoverage -typeEncoding:a -prune "%s" > "%t.coverage-a"
+// RUN: %boogie -trackVerificationCoverage -typeEncoding:a -prune:1 "%s" > "%t.coverage-a"
 // RUN: %diff "%s.expect" "%t.coverage-a"
-// RUN: %boogie -trackVerificationCoverage -typeEncoding:p -prune "%s" > "%t.coverage-p"
+// RUN: %boogie -trackVerificationCoverage -typeEncoding:p -prune:1 "%s" > "%t.coverage-p"
 // RUN: %diff "%s.expect" "%t.coverage-p"
-// RUN: %boogie -trackVerificationCoverage -normalizeDeclarationOrder:1 -prune "%s" > "%t.coverage-d"
+// RUN: %boogie -trackVerificationCoverage -normalizeDeclarationOrder:1 -prune:1 "%s" > "%t.coverage-d"
 // RUN: %diff "%s.expect" "%t.coverage-d"
-// RUN: %boogie -trackVerificationCoverage -normalizeNames:1 -prune "%s" > "%t.coverage-n"
+// RUN: %boogie -trackVerificationCoverage -normalizeNames:1 -prune:1 "%s" > "%t.coverage-n"
 // RUN: %diff "%s.expect" "%t.coverage-n"
 
 procedure testRequiresAssign(n: int)
