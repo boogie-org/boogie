@@ -76,6 +76,7 @@ public class LeanGenerator : ReadOnlyVisitor
       p.Implementations.ForEach(i => generator.Visit(i));
     } catch (LeanConversionException e) {
       Console.WriteLine($"Failed translation: {e.Msg}");
+      Environment.Exit(1);
     }
   }
 
@@ -107,7 +108,7 @@ public class LeanGenerator : ReadOnlyVisitor
     var assembly = System.Reflection.Assembly.GetExecutingAssembly();
     var preludeStream = assembly.GetManifestResourceStream("Prelude.lean");
     if (preludeStream is null) {
-      throw new LeanConversionException("Internal: failed to find Lean prelude in assembly.");
+      throw new LeanConversionException(Token.NoToken, "Internal: failed to find Lean prelude in assembly.");
     }
     var header = new StreamReader(preludeStream).ReadToEnd();
     writer.WriteLine(header.ReplaceLineEndings());
@@ -219,7 +220,7 @@ public class LeanGenerator : ReadOnlyVisitor
       TypeSynonymAnnotation typeSynonymAnnotation => VisitTypeSynonymAnnotation(typeSynonymAnnotation),
       TypeVariable typeVariable => VisitTypeVariable(typeVariable),
       UnresolvedTypeIdentifier uti => VisitUnresolvedTypeIdentifier(uti),
-      _ => throw new LeanConversionException("Unreachable type case.")
+      _ => throw new LeanConversionException(node.tok, $"Unsupported type: {node}.")
     };
   }
 
@@ -232,14 +233,14 @@ public class LeanGenerator : ReadOnlyVisitor
     } else if (node.IsReal) {
       Text("Real");
     } else if (node.IsRMode) {
-      throw new LeanConversionException("Unsupported: RMode type");
+      throw new LeanConversionException(node.tok, "Unsupported type: RMode.");
     } else if (node.IsRegEx) {
-      throw new LeanConversionException("Unsupported: RegEx type");
+      throw new LeanConversionException(node.tok, "Unsupported type: RegEx.");
     } else if (node.IsMap) {
       var mapType = node.AsMap;
       VisitMapType(mapType);
     } else {
-      throw new LeanConversionException($"Unsupported BasicType: {node}");
+      throw new LeanConversionException(node.tok, $"Unsupported type: {node}.");
     }
 
     return node;
@@ -296,7 +297,7 @@ public class LeanGenerator : ReadOnlyVisitor
     {
       ForallExpr => "forall",
       ExistsExpr => "exists",
-      _ => throw new LeanConversionException($"Unsupported quantifier type: {node.Kind}")
+      _ => throw new LeanConversionException(node.tok, $"Unsupported quantifier type: {node.Kind}")
     };
     Text($"({kind}");
     foreach (var tv in node.TypeParameters) {
@@ -345,7 +346,7 @@ public class LeanGenerator : ReadOnlyVisitor
   public override Expr VisitLetExpr(LetExpr node)
   {
     if (node.Dummies.Count > 1) {
-      throw new LeanConversionException("Unsupported: LetExpr with more than one binder");
+      throw new LeanConversionException(node.tok, "Unsupported: LetExpr with more than one binder");
     }
     Text("(let");
     node.Dummies.ForEach(x => Visit(x.TypedIdent));
@@ -389,7 +390,7 @@ public class LeanGenerator : ReadOnlyVisitor
   public override Type VisitMapType(MapType node)
   {
     if (node.Arguments.Count > 2) {
-      throw new LeanConversionException($"Unsupported: MapType with too many index types ({node})");
+      throw new LeanConversionException(node.tok, $"Unsupported: MapType with too many index types ({node})");
     }
     if (node.TypeParameters.Any()) {
       var args = node.TypeParameters.Select(Name);
@@ -433,7 +434,7 @@ public class LeanGenerator : ReadOnlyVisitor
       Visit(typeCoercion.Type);
       Text(")");
     } else if (fun is FieldAccess fieldAccess) {
-      throw new LeanConversionException("Unsupported: field access (since the semantics are complex)");
+      throw new LeanConversionException(node.tok, "Unsupported: field access (since the semantics are complex)");
     } else {
       VisitIAppliable(fun);
       foreach (var arg in args) {
@@ -467,7 +468,7 @@ public class LeanGenerator : ReadOnlyVisitor
         Text(Name(fc.Func));
         break;
       case IsConstructor isConstructor:
-        throw new LeanConversionException($"Unsupported: Constructor: {isConstructor.ConstructorName}");
+        throw new LeanConversionException(isConstructor.tok, $"Unsupported: Constructor: {isConstructor.ConstructorName}");
         // Discriminator functions not declared yet
         //Text($"is_{SanitizeNameForLean(isConstructor.ConstructorName)}");
         //break;
@@ -476,23 +477,23 @@ public class LeanGenerator : ReadOnlyVisitor
         {
           ArithmeticCoercion.CoercionType.ToInt => "realToInt",
           ArithmeticCoercion.CoercionType.ToReal => "intToReal",
-          _ => throw new LeanConversionException($"Internal: unknown arithmetic coercion: {arithmeticCoercion.Coercion}")
+          _ => throw new LeanConversionException(Token.NoToken, $"Internal: unknown arithmetic coercion: {arithmeticCoercion.Coercion}")
         };
         Text(func);
         break;
       default:
-        throw new LeanConversionException($"Unsupported: IAppliable: {fun}");
+        throw new LeanConversionException(Token.NoToken, $"Unsupported: IAppliable: {fun}");
     }
   }
 
   public override Expr VisitOldExpr(OldExpr node)
   {
-    throw new LeanConversionException("Unsupported: OldExpr");
+    throw new LeanConversionException(node.tok, "Unsupported: OldExpr");
   }
 
   public override Type VisitFloatType(FloatType node)
   {
-    throw new LeanConversionException("Unsupported: FloatType");
+    throw new LeanConversionException(node.tok, "Unsupported: FloatType");
   }
 
   public override Requires VisitRequires(Requires requires)
@@ -507,17 +508,17 @@ public class LeanGenerator : ReadOnlyVisitor
 
   public override DeclWithFormals VisitDeclWithFormals(DeclWithFormals node)
   {
-    throw new LeanConversionException($"Unsupported: DeclWithFormals ({node}).");
+    throw new LeanConversionException(node.tok, $"Unsupported: DeclWithFormals ({node}).");
   }
 
   public override Type VisitBvTypeProxy(BvTypeProxy node)
   {
-    throw new LeanConversionException($"Unsupported: BvTypeProxy ({node}).");
+    throw new LeanConversionException(node.tok, $"Unsupported: BvTypeProxy ({node}).");
   }
 
   public override Expr VisitCodeExpr(CodeExpr node)
   {
-    throw new LeanConversionException($"Unsupported: CodeExpr ({node}).");
+    throw new LeanConversionException(node.tok, $"Unsupported: CodeExpr ({node}).");
   }
 
   public override Cmd VisitCommentCmd(CommentCmd node)
@@ -538,7 +539,7 @@ public class LeanGenerator : ReadOnlyVisitor
 
   public override Type VisitMapTypeProxy(MapTypeProxy node)
   {
-    throw new LeanConversionException($"Unsupported: maptypeproxy: {node}");
+    throw new LeanConversionException(node.tok, $"Unsupported: MapTypeProxy: {node}");
   }
 
   public override QKeyValue VisitQKeyValue(QKeyValue node)
@@ -624,17 +625,17 @@ public class LeanGenerator : ReadOnlyVisitor
 
   public override ActionDeclRef VisitActionDeclRef(ActionDeclRef node)
   {
-    throw new LeanConversionException($"Unsupported: ActionDeclRef ({node}).");
+    throw new LeanConversionException(node.tok, $"Unsupported: ActionDeclRef ({node}).");
   }
 
   public override ElimDecl VisitElimDecl(ElimDecl node)
   {
-    throw new LeanConversionException($"Unsupported: ElimDecl ({node}).");
+    throw new LeanConversionException(node.tok, $"Unsupported: ElimDecl ({node}).");
   }
 
   public override List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
   {
-    throw new LeanConversionException($"Unsupported: List<ElimDecl> ({node}).");
+    throw new LeanConversionException(Token.NoToken, $"Unsupported: List<ElimDecl> ({node}).");
   }
 
   public override Axiom VisitAxiom(Axiom node)
@@ -708,7 +709,7 @@ public class LeanGenerator : ReadOnlyVisitor
       BinaryOperator.Opcode.Pow => "^",
       BinaryOperator.Opcode.RealDiv => "/",
       BinaryOperator.Opcode.FloatDiv => "/",
-      _ => throw new LeanConversionException($"unsupported binary operator: {op.ToString()}")
+      _ => throw new LeanConversionException(Token.NoToken, $"Unsupported binary operator: {op.ToString()}")
     };
   }
 
@@ -718,7 +719,7 @@ public class LeanGenerator : ReadOnlyVisitor
     {
       UnaryOperator.Opcode.Not => "Not",
       UnaryOperator.Opcode.Neg => "-",
-      _ => throw new LeanConversionException($"unsupported unary operator: {op.ToString()}")
+      _ => throw new LeanConversionException(Token.NoToken, $"Unsupported unary operator: {op.ToString()}")
     };
   }
 
@@ -822,185 +823,185 @@ public class LeanGenerator : ReadOnlyVisitor
 
   public override Program VisitProgram(Program node)
   {
-    throw new LeanConversionException($"Internal: Program should never be directly visited ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: Program should never be directly visited.");
   }
 
   public override Declaration VisitDeclaration(Declaration node)
   {
-    throw new LeanConversionException($"Internal: Declaration should never be directly visited ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: Declaration should never be directly visited.");
   }
 
   public override List<Declaration> VisitDeclarationList(List<Declaration> declarationList)
   {
-    throw new LeanConversionException($"Internal: List<Declaration> should never be directly visited ({declarationList}).");
+    throw new LeanConversionException(Token.NoToken, $"Internal: List<Declaration> should never be directly visited ({declarationList}).");
   }
 
   public override List<Block> VisitBlockSeq(List<Block> blockSeq)
   {
-    throw new LeanConversionException($"Internal: List<Block> should never be directly visited ({blockSeq}).");
+    throw new LeanConversionException(Token.NoToken, $"Internal: List<Block> should never be directly visited ({blockSeq}).");
   }
 
   public override List<Block> VisitBlockList(List<Block> blocks)
   {
-    throw new LeanConversionException($"Internal: List<Block> should never be directly visited ({blocks}).");
+    throw new LeanConversionException(Token.NoToken, $"Internal: List<Block> should never be directly visited ({blocks}).");
   }
 
   public override Trigger VisitTrigger(Trigger node)
   {
-    throw new LeanConversionException($"Internal: Trigger should never be directly visited ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: Trigger should never be directly visited.");
   }
 
   public override IList<Expr> VisitExprSeq(IList<Expr> exprSeq)
   {
-    throw new LeanConversionException($"Internal: List<Expr> should never be directly visited ({exprSeq}).");
+    throw new LeanConversionException(Token.NoToken, $"Internal: List<Expr> should never be directly visited ({exprSeq}).");
   }
 
   public override BoundVariable VisitBoundVariable(BoundVariable node)
   {
-    throw new LeanConversionException($"Internal: BoundVariable should never be directly visited ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: BoundVariable should never be directly visited.");
   }
 
   public override Formal VisitFormal(Formal node)
   {
-    throw new LeanConversionException($"Internal: Formal should never be directly visited ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: Formal should never be directly visited.");
   }
 
   public override LocalVariable VisitLocalVariable(LocalVariable node)
   {
-    throw new LeanConversionException($"Internal error: LocalVariable should never be directly visited ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal error: LocalVariable should never be directly visited.");
   }
 
   public override Type VisitUnresolvedTypeIdentifier(UnresolvedTypeIdentifier node)
   {
-    throw new LeanConversionException($"Internal: UnresolvedTypeIdentifier should never appear ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: UnresolvedTypeIdentifier should never appear.");
   }
 
   public override Variable VisitVariable(Variable node)
   {
-    throw new LeanConversionException($"Internal: Variable should never be directly visited ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: Variable should never be directly visited.");
   }
 
   public override List<Variable> VisitVariableSeq(List<Variable> variableSeq)
   {
-    throw new LeanConversionException($"Internal: List<Variable> should never be directly visited ({variableSeq}).");
+    throw new LeanConversionException(Token.NoToken, $"Internal: List<Variable> should never be directly visited ({variableSeq}).");
   }
 
   public override HashSet<Variable> VisitVariableSet(HashSet<Variable> node)
   {
-    throw new LeanConversionException($"Internal: HashSet<Variable> should never be directly visited ({node}).");
+    throw new LeanConversionException(Token.NoToken, $"Internal: HashSet<Variable> should never be directly visited ({node}).");
   }
 
   public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
   {
-    throw new LeanConversionException($"Internal: MapAssignLhs should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: MapAssignLhs should never appear in passive program.");
   }
 
   public override AssignLhs VisitSimpleAssignLhs(SimpleAssignLhs node)
   {
-    throw new LeanConversionException($"Internal: SimpleAssignLhs should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: SimpleAssignLhs should never appear in passive program.");
   }
 
   public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
   {
-    throw new LeanConversionException($"Internal: FieldAssignLhs should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: FieldAssignLhs should never appear in passive program.");
   }
 
   public override Cmd VisitAssignCmd(AssignCmd node)
   {
-    throw new LeanConversionException($"Internal: AssignCmd should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: AssignCmd should never appear in passive program.");
   }
 
   public override Cmd VisitUnpackCmd(UnpackCmd node)
   {
-    throw new LeanConversionException($"Internal: UnpackCmd should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: UnpackCmd should never appear in passive program.");
   }
 
   public override Cmd VisitCallCmd(CallCmd node)
   {
-    throw new LeanConversionException($"Internal: CallCmd should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: CallCmd should never appear in passive program.");
   }
 
   public override Cmd VisitParCallCmd(ParCallCmd node)
   {
-    throw new LeanConversionException($"Internal: ParCallCmd should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: ParCallCmd should never appear in passive program.");
   }
 
   public override Cmd VisitHavocCmd(HavocCmd node)
   {
-    throw new LeanConversionException($"Internal: HavocCmd should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: HavocCmd should never appear in passive program.");
   }
 
   public override ReturnExprCmd VisitReturnExprCmd(ReturnExprCmd node)
   {
-    throw new LeanConversionException($"Internal: ReturnExprCmd should never appear in passive program ({node.tok})");
+    throw new LeanConversionException(node.tok, $"Internal: ReturnExprCmd should never appear in passive program.");
   }
 
   public override Cmd VisitStateCmd(StateCmd node)
   {
-    throw new LeanConversionException($"Internal: StateCmd should never appear in passive program ({node.tok})");
+    throw new LeanConversionException(node.tok, $"Internal: StateCmd should never appear in passive program.");
   }
 
   public override List<CallCmd> VisitCallCmdSeq(List<CallCmd> callCmds)
   {
-    throw new LeanConversionException($"Internal: List<CallCmd> should never appear in passive program ({callCmds}).");
+    throw new LeanConversionException(Token.NoToken, $"Internal: List<CallCmd> should never appear in passive program ({callCmds}).");
   }
 
   public override Procedure VisitActionDecl(ActionDecl node)
   {
-    throw new LeanConversionException($"Internal: ActionDecl should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: ActionDecl should never appear in passive program.");
   }
 
   public override YieldingLoop VisitYieldingLoop(YieldingLoop node)
   {
-    throw new LeanConversionException($"Internal: YieldingLoop should never appear in passive program ({node}).");
+    throw new LeanConversionException(Token.NoToken,$"Internal: YieldingLoop should never appear in passive program ({node}).");
   }
 
   public override Dictionary<Block, YieldingLoop> VisitYieldingLoops(Dictionary<Block, YieldingLoop> node)
   {
-    throw new LeanConversionException($"Internal: YieldingLoops should never appear in passive program.");
+    throw new LeanConversionException(Token.NoToken, $"Internal: YieldingLoops should never appear in passive program.");
   }
 
   public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
   {
-    throw new LeanConversionException($"Internal: YieldProcedureDecl should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: YieldProcedureDecl should never appear in passive program.");
   }
 
   public override Procedure VisitYieldInvariantDecl(YieldInvariantDecl node)
   {
-    throw new LeanConversionException($"Internal: YieldInvariantDecl should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: YieldInvariantDecl should never appear in passive program.");
   }
 
   public override Cmd VisitRE(RE node)
   {
-    throw new LeanConversionException($"Internal: RE should never appear in passive program ({node.tok})");
+    throw new LeanConversionException(node.tok, $"Internal: RE should never appear in passive program.");
   }
 
   public override List<RE> VisitRESeq(List<RE> reSeq)
   {
-    throw new LeanConversionException($"Internal: List<RE> should never appear in passive program ({reSeq})");
+    throw new LeanConversionException(Token.NoToken, $"Internal: List<RE> should never appear in passive program ({reSeq})");
   }
 
   public override AtomicRE VisitAtomicRE(AtomicRE node)
   {
-    throw new LeanConversionException($"Internal: AtomicRE should never appear in passive program ({node.tok})");
+    throw new LeanConversionException(node.tok, $"Internal: AtomicRE should never appear in passive program.");
   }
 
   public override Choice VisitChoice(Choice node)
   {
-    throw new LeanConversionException($"Internal: Choice should never appear in passive program ({node.tok}).");
+    throw new LeanConversionException(node.tok, $"Internal: Choice should never appear in passive program.");
   }
 
   public override Sequential VisitSequential(Sequential node)
   {
-    throw new LeanConversionException($"Internal: Sequential should never appear in passive program ({node.tok})");
+    throw new LeanConversionException(node.tok, $"Internal: Sequential should never appear in passive program.");
   }
 }
 
 internal class LeanConversionException : Exception
 {
   public string Msg { get; }
-  public LeanConversionException(string s)
+  public LeanConversionException(IToken tok, string s)
   {
-    Msg = s;
+    Msg = tok + ": " + s;
   }
 }
