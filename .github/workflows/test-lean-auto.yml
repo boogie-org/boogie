@@ -33,7 +33,7 @@ jobs:
           dotnet tool restore
           dotnet build -warnaserror Source/Boogie.sln
       - name: Setup Lean
-        uses: actions/setup-lean@v1
+        uses: Julian/setup-lean@v1
         with:
           # Lean version will be chosen based on Test/lean-auto/lean-toolchain
           default-toolchain-file: Test/lean-auto/lean-toolchain
