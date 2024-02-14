@@ -7,8 +7,3 @@ package «test» {
 
 require auto from git
   "https://github.com/leanprover-community/lean-auto"@"main"
-
---@[default_target]
---lean_lib «Find» {
---  -- add any library configuration options here
---}
