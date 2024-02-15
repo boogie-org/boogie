@@ -9,5 +9,5 @@ public interface ProofRun {
   
   List<Counterexample> Counterexamples { get; }
 
-  ConcurrentBag<TrackedNodeComponent> CoveredElements { get;  }
+  HashSet<TrackedNodeComponent> CoveredElements { get;  }
 }

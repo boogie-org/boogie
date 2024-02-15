@@ -110,7 +110,8 @@ namespace VC
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       split.SplitIndex = currentSplitNumber;
       var tasks = Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
-        DoWork(iteration, split, cancellationToken));
+        // Clone the split so it can be safely updated in each parallel task.
+        DoWork(iteration, new Split(split), cancellationToken));
       await Task.WhenAll(tasks);
     }
 
