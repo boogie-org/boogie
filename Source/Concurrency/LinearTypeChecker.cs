@@ -51,9 +51,9 @@ namespace Microsoft.Boogie
       checkingContext.Error(node, message);
     }
     
-    private LinearDomain FindDomain(Variable v)
+    private LinearDomain FindDomain(Type type)
     {
-      var permissionType = GetPermissionType(v.TypedIdent.Type);
+      var permissionType = GetPermissionType(type);
       if (permissionType == null || !linearTypeToLinearDomain.ContainsKey(permissionType))
       {
         return null;
@@ -839,21 +839,22 @@ namespace Microsoft.Boogie
       }
     }
 
-    public IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> scope)
+    public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      return scope.Where(v => FindLinearKind(v) != LinearKind.ORDINARY && FindDomain(v) == domain);
+      return FilterVariables(domain, scope)
+        .Select(v => ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v)));
     }
-    
+
+    public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Expr> availableExprs)
+    {
+      return availableExprs.Where(expr =>
+        FindDomain(expr.Type) == domain).Select(expr => ExprHelper.FunctionCall(domain.collectors[expr.Type], expr));
+    }
+
     public IEnumerable<Expr> DisjointnessExprForEachDomain(IEnumerable<Variable> scope)
     {
       return LinearDomains.Select(domain =>
-        DisjointnessExprForPermissions(domain, PermissionExprForEachVariable(domain, FilterVariables(domain, scope))));
-    }
-
-    public Dictionary<LinearDomain, IEnumerable<Expr>> PermissionExprs(IEnumerable<Variable> availableVars)
-    {
-      return LinearDomains.ToDictionary<LinearDomain, LinearDomain, IEnumerable<Expr>>(domain => domain,
-        domain => PermissionExprForEachVariable(domain, availableVars));
+        DisjointnessExprForPermissions(domain, PermissionExprs(domain, FilterVariables(domain, scope))));
     }
 
     public Expr DisjointnessExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionsExprs)
@@ -917,10 +918,9 @@ namespace Microsoft.Boogie
       return Expr.Eq(ExprHelper.FunctionCall(domain.mapImp, lhs, rhs), ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
     }
 
-    private IEnumerable<Expr> PermissionExprForEachVariable(LinearDomain domain, IEnumerable<Variable> scope)
+    private IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      return FilterVariables(domain, scope)
-        .Select(v => ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v)));
+      return scope.Where(v => FindLinearKind(v) != LinearKind.ORDINARY && FindDomain(v.TypedIdent.Type) == domain);
     }
     
     private Expr SubsetExpr(LinearDomain domain, Expr ie, Variable partition, int partitionCount)

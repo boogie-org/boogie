@@ -94,22 +94,20 @@ namespace Microsoft.Boogie
       var availableVars = AvailableLinearLocalVars(absy).Union(LinearGlobalVars());
       var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
-      return permissionExprs.Keys.ToDictionary(domain => domain,
-        domain => linearTypeChecker.UnionExprForPermissions(domain, permissionExprs[domain]));
+      return linearTypeChecker.LinearDomains.ToDictionary(domain => domain,
+        domain => linearTypeChecker.UnionExprForPermissions(domain, linearTypeChecker.PermissionExprs(domain, mappedAvailableVars)));
     }
 
     private List<Expr> DisjointnessExprs(IEnumerable<Variable> availableVars)
     {
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       var mappedAvailableVars = availableVars.Select(v => MapVariable(v));
-      var permissionExprs = linearTypeChecker.PermissionExprs(mappedAvailableVars);
-      return permissionExprs.Keys.Select(domain =>
+      return linearTypeChecker.LinearDomains.Select(domain =>
       {
         var extraExpr = domainToHoleVar.ContainsKey(domain)
           ? new List<Expr> { Expr.Ident(domainToHoleVar[domain]) }
           : new List<Expr>();
-        return linearTypeChecker.DisjointnessExprForPermissions(domain, permissionExprs[domain].Union(extraExpr));
+        return linearTypeChecker.DisjointnessExprForPermissions(domain, linearTypeChecker.PermissionExprs(domain, mappedAvailableVars).Union(extraExpr));
       }).Where(expr => !expr.Equals(Expr.True)).ToList();
     }
 

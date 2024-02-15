@@ -19,6 +19,7 @@ namespace Microsoft.Boogie
     public MapType mapTypeInt;
     public Function mapConstBool;
     public Function mapConstInt;
+    public Function mapAnd;
     public Function mapOr;
     public Function mapImp;
     public Function mapEqInt;
@@ -40,6 +41,8 @@ namespace Microsoft.Boogie
         new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Bool } });
       this.mapConstInt = program.monomorphizer.InstantiateFunction("MapConst",
         new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
+      this.mapAnd = program.monomorphizer.InstantiateFunction("MapAnd",
+        new Dictionary<string, Type>() { { "T", permissionType } });
       this.mapOr = program.monomorphizer.InstantiateFunction("MapOr",
         new Dictionary<string, Type>() { { "T", permissionType } });
       this.mapImp = program.monomorphizer.InstantiateFunction("MapImp",
@@ -52,16 +55,6 @@ namespace Microsoft.Boogie
         new Dictionary<string, Type>() { { "T", permissionType }, { "U", Type.Int } });
       this.mapLe = program.monomorphizer.InstantiateFunction("MapLe",
         new Dictionary<string, Type>() { { "T", permissionType } });
-    }
-
-    public Expr MapConstInt(int value)
-    {
-      return ExprHelper.FunctionCall(mapConstInt, Expr.Literal(value));
-    }
-
-    public Expr MapEqTrue(Expr expr)
-    {
-      return Expr.Eq(expr, ExprHelper.FunctionCall(mapConstBool, Expr.True));
     }
 
     public void RegisterCollector(Function function)
