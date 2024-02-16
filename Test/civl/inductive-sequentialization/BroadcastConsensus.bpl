@@ -226,7 +226,8 @@ requires call YieldInit(ps);
   invariant {:layer 1} Broadcast_PAs == ToMultiset(InitialBroadcastPAs(i));
   invariant {:layer 1} Collect_PAs == ToMultiset(InitialCollectPAs(i));
   {
-    call s, r, ps' := linear_transfer(i, ps');
+    call s := One_Get(ps', Broadcast(i));
+    call r := One_Get(ps', Collect(i));
     async call Broadcast(s, i);
     async call Collect(r, i);
     i := i + 1;
@@ -315,15 +316,6 @@ modifies CH_low;
   CH_low[i][v] := CH_low[i][v] - 1;
 }
 
-both action {:layer 1}
-LINEAR_TRANSFER(i:pid, {:linear_in} ps: Set perm)
-returns ({:linear} s: One perm, {:linear} r: One perm, {:linear} ps': Set perm)
-{
-  ps' := ps;
-  call s := One_Get(ps', Broadcast(i));
-  call r := One_Get(ps', Collect(i));
-}
-
 yield procedure {:layer 0} get_value(i:pid) returns (v:val);
 refines GET_VALUE;
 
@@ -335,10 +327,6 @@ refines SEND;
 
 yield procedure {:layer 0} receive(i:pid) returns (v:val);
 refines RECEIVE;
-
-yield procedure {:layer 0} linear_transfer(i:pid, {:linear_in} ps: Set perm)
-returns ({:linear} s: One perm, {:linear} r: One perm, {:linear} ps': Set perm);
-refines LINEAR_TRANSFER;
 
 ////////////////////////////////////////////////////////////////////////////////
 

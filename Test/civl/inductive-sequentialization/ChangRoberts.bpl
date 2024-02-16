@@ -221,7 +221,7 @@ requires call YieldInit(pids);
   invariant {:layer 1} (forall ii:int :: Pid(ii) && ii >= i ==> Set_Contains(pids', ii));
   invariant {:layer 1} PAs == (lambda pa:PInit :: if Pid(pa->pid->val) && pa->pid->val < i then 1 else 0);
   {
-    call pid, pids' := linear_transfer(i, pids');
+    call pid := One_Get(pids', i);
     async call pinit(pid);
     i := i + 1;
   }
@@ -304,15 +304,3 @@ refines SEND;
 
 yield procedure {:layer 0} receive(pid:int) returns (m:int);
 refines RECEIVE;
-
-both action {:layer 1}
-LINEAR_TRANSFER(i:int, {:linear_in} pids: Set int)
-returns ({:linear} p: One int, {:linear} pids': Set int)
-{
-  pids' := pids;
-  call p := One_Get(pids', i);
-}
-
-yield procedure {:layer 0} linear_transfer(i:int, {:linear_in} pids: Set int)
-returns ({:linear} p: One int, {:linear} pids': Set int);
-refines LINEAR_TRANSFER;

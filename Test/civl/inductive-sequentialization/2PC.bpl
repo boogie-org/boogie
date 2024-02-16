@@ -247,7 +247,7 @@ requires call YieldInit(pids);
   var {:linear} pids': Set int;
 
   pids' := pids;
-  call pid, pids' := linear_transfer(0, pids');
+  call pid := One_Get(pids', 0);
   async call coordinator1(pid);
   i := 1;
   while (i <= n)
@@ -256,7 +256,7 @@ requires call YieldInit(pids);
   invariant {:layer 1} Coordinator1_PAs == MapConst(0)[COORDINATOR1(One(0)) := 1];
   invariant {:layer 1} Participant1_PAs == (lambda pa:PARTICIPANT1 :: if pid(pa->pid->val) && pa->pid->val < i then 1 else 0);
   {
-    call pid, pids' := linear_transfer(i, pids');
+    call pid := One_Get(pids', i);
     async call participant1(pid);
     i := i + 1;
   }
@@ -427,15 +427,3 @@ refines SEND_DECISION;
 
 yield procedure {:layer 0} receive_decision(pid:int) returns (d:decision);
 refines RECEIVE_DECISION;
-
-both action {:layer 1}
-LINEAR_TRANSFER(i:int, {:linear_in} pids: Set int)
-returns ({:linear} p: One int, {:linear} pids': Set int)
-{
-  pids' := pids;
-  call p := One_Get(pids', i);
-}
-
-yield procedure {:layer 0} linear_transfer(i:int, {:linear_in} pids: Set int)
-returns ({:linear} p: One int, {:linear} pids': Set int);
-refines LINEAR_TRANSFER;
