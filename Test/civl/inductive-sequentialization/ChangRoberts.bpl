@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "pid"} Pid = int;
+type Pid = int;
 const n:int;
 axiom n >= 1;
 
@@ -60,21 +60,21 @@ function {:inline} Init(pids:[int]bool, channel:[int][int]int,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 4} MAIN3 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 4} MAIN3 ({:linear_in} pids: Set int)
 modifies channel, terminated, leader;
 {
-  assert Init(pids, channel, terminated, id, leader);
+  assert Init(pids->val, channel, terminated, id, leader);
   havoc channel, terminated, leader;
   assume (forall i:int :: Pid(i) && i != Max(id) ==> !leader[i]);
 }
 
 action {:layer 3}
-INV2 ({:linear_in "pid"} pids:[int]bool)
+INV2 ({:linear_in} pids: Set int)
 creates P;
 modifies channel, terminated, leader;
 {
   var {:pool "INV2"} k: int;
-  assert Init(pids, channel, terminated, id, leader);
+  assert Init(pids->val, channel, terminated, id, leader);
 
   havoc channel, terminated, leader;
   assume {:add_to_pool "INV2", k, Next(k), n+1} true;
@@ -83,8 +83,8 @@ modifies channel, terminated, leader;
       Pid(k) &&
       (forall i:int :: Pid(i) && Between(Max(id),i,k) ==> terminated[i]) &&
       (forall i:int :: Pid(i) && !Between(Max(id),i,k) ==> !terminated[i]);
-    call create_asyncs((lambda pa:P :: Pid(pa->pid) && !Between(Max(id), pa->pid, k)));
-    call set_choice(P(k));
+    call create_asyncs((lambda pa:P :: Pid(pa->pid->val) && !Between(Max(id), pa->pid->val, k)));
+    call set_choice(P(One(k)));
   } else {
     assume
       k == n + 1 &&
@@ -95,104 +95,104 @@ modifies channel, terminated, leader;
   assume (forall i:int :: Pid(i) && i != Max(id) ==> !leader[i]);
 }
 
-action {:layer 3} P' ({:linear_in "pid"} pid:int)
+action {:layer 3} P' ({:linear_in} pid: One int)
 creates P;
 modifies channel, terminated, leader;
 {
-  assert (forall j:int :: Pid(j) && Between(Max(id), j, pid) ==> terminated[j]);
+  assert (forall j:int :: Pid(j) && Between(Max(id), j, pid->val) ==> terminated[j]);
   call P(pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 3} MAIN2 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 3} MAIN2 ({:linear_in} pids: Set int)
 refines MAIN3 using INV2;
 creates P;
 eliminates P using P';
 modifies channel;
 {
-  assert Init(pids, channel, terminated, id, leader);
+  assert Init(pids->val, channel, terminated, id, leader);
 
   assume {:add_to_pool "INV2", Next(Max(id))} true;
   havoc channel;
   assume (forall i:int :: 1 <= i && i <= n ==> channel[Next(i)] == EmptyChannel()[id[i] := 1 ]);
   assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
-  call create_asyncs((lambda pa:P :: Pid(pa->pid)));
+  call create_asyncs((lambda pa:P :: Pid(pa->pid->val)));
   assume (forall i:int, msg:int :: Pid(i) && channel[i][msg] > 0 ==> msg == id[Prev(i)]);
 }
 
 action {:layer 2}
-INV1 ({:linear_in "pid"} pids:[int]bool)
+INV1 ({:linear_in} pids: Set int)
 creates PInit, P;
 modifies channel;
 {
   var {:pool "INV1"} k: int;
-  assert Init(pids, channel, terminated, id, leader);
+  assert Init(pids->val, channel, terminated, id, leader);
 
   havoc channel;
   assume
-    {:add_to_pool "INV1", k, k+1}
-    {:add_to_pool "PInit", PInit(n)}
+    {:add_to_pool "INV1", k+1}
+    {:add_to_pool "PInit", PInit(One(n))}
+    {:add_to_pool "CHANNEL_INV", k+1}
     Pid(k) || k == 0;
-  assume
-    (forall i:int :: 1 <= i && i <= k ==> channel[Next(i)] == EmptyChannel()[id[i] := 1 ]) &&
-    (forall i:int :: k < i && i <= n ==> channel[Next(i)] == EmptyChannel()) &&
-    (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
-  call create_asyncs((lambda {:pool "PInit"} pa:PInit :: k < pa->pid && pa->pid <= n));
-  call create_asyncs((lambda pa:P :: 1 <= pa->pid && pa->pid <= k));
-  call set_choice(PInit(k+1));
+  assume (forall {:pool "CHANNEL_INV"} i:int :: {:add_to_pool "CHANNEL_INV", i} 1 <= i && i <= k ==> channel[Next(i)] == EmptyChannel()[id[i] := 1]);
+  assume (forall {:pool "CHANNEL_INV"} i:int :: {:add_to_pool "CHANNEL_INV", i} k < i && i <= n ==> channel[Next(i)] == EmptyChannel());
+  assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
+  call create_asyncs((lambda {:pool "PInit"} pa:PInit :: k < pa->pid->val && pa->pid->val <= n));
+  call create_asyncs((lambda pa:P :: 1 <= pa->pid->val && pa->pid->val <= k));
+  call set_choice(PInit(One(k+1)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 2} MAIN1 ({:linear_in "pid"} pids:[int]bool)
+atomic action {:layer 2} MAIN1 ({:linear_in} pids: Set int)
 refines MAIN2 using INV1;
 creates PInit;
 {
-  assert Init(pids, channel, terminated, id, leader);
+  assert Init(pids->val, channel, terminated, id, leader);
 
   assume {:add_to_pool "INV1", 0} true;
-  call create_asyncs((lambda pa:PInit :: Pid(pa->pid)));
+  call create_asyncs((lambda pa:PInit :: Pid(pa->pid->val)));
 }
 
-async left action {:layer 2} PInit ({:linear_in "pid"} pid:int)
+async left action {:layer 2} PInit ({:linear_in} pid: One int)
 creates P;
 modifies channel;
 {
-  assert Pid(pid);
-  channel[Next(pid)][id[pid]] := channel[Next(pid)][id[pid]] + 1;
+  assert Pid(pid->val);
+  channel[Next(pid->val)][id[pid->val]] := channel[Next(pid->val)][id[pid->val]] + 1;
   call create_async(P(pid));
 }
 
-async atomic action {:layer 2, 3} P ({:linear_in "pid"} pid:int)
+async atomic action {:layer 2, 3} P ({:linear_in} pid: One int)
 creates P;
 modifies channel, terminated, leader;
 {
   var msg:int;
 
-  assert Pid(pid);
-  assert !terminated[pid];
-  assert (forall m:int :: channel[pid][m] > 0 ==> m <= id[Max(id)]);
+  assert Pid(pid->val);
+  assert !terminated[pid->val];
+  assert (forall m:int :: channel[pid->val][m] > 0 ==> m <= id[Max(id)]);
 
   if (*)
   {
-    terminated[pid] := true;
+    terminated[pid->val] := true;
   }
   else
   {
-    assume channel[pid][msg] > 0;
-    channel[pid][msg] := channel[pid][msg] - 1;
+    assume channel[pid->val][msg] > 0;
+    channel[pid->val][msg] := channel[pid->val][msg] - 1;
 
-    if (msg == id[pid])
+    if (msg == id[pid->val])
     {
-      leader[pid] := true;
-      terminated[pid] := true;
+      leader[pid->val] := true;
+      terminated[pid->val] := true;
     }
     else
     {
-      if (msg > id[pid])
+      if (msg > id[pid->val])
       {
-        channel[Next(pid)][msg] := channel[Next(pid)][msg] + 1;
+        channel[Next(pid->val)][msg] := channel[Next(pid->val)][msg] + 1;
       }
       call create_async(P(pid));
     }
@@ -201,25 +201,25 @@ modifies channel, terminated, leader;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield invariant {:layer 1} YieldInit({:linear "pid"} pids:[int]bool);
-invariant Init(pids, channel, terminated, id, leader);
+yield invariant {:layer 1} YieldInit({:linear} pids: Set int);
+invariant Init(pids->val, channel, terminated, id, leader);
 
 yield procedure {:layer 1}
-main ({:linear_in "pid"} pids:[int]bool)
+main ({:linear_in} pids: Set int)
 refines MAIN1;
 requires call YieldInit(pids);
 {
   var {:pending_async}{:layer 1} PAs:[PInit]int;
-  var {:linear "pid"} pid:int;
-  var {:linear "pid"} pids':[int]bool;
+  var {:linear} pid: One int;
+  var {:linear} pids': Set int;
   var i:int;
 
   pids' := pids;
   i := 1;
   while (i <= n)
   invariant {:layer 1} 1 <= i && i <= n+1;
-  invariant {:layer 1} (forall ii:int :: Pid(ii) && ii >= i ==> pids'[ii]);
-  invariant {:layer 1} PAs == (lambda pa:PInit :: if Pid(pa->pid) && pa->pid < i then 1 else 0);
+  invariant {:layer 1} (forall ii:int :: Pid(ii) && ii >= i ==> Set_Contains(pids', ii));
+  invariant {:layer 1} PAs == (lambda pa:PInit :: if Pid(pa->pid->val) && pa->pid->val < i then 1 else 0);
   {
     call pid, pids' := linear_transfer(i, pids');
     async call pinit(pid);
@@ -227,36 +227,36 @@ requires call YieldInit(pids);
   }
 }
 
-yield procedure {:layer 1} pinit ({:linear_in "pid"} pid:int)
+yield procedure {:layer 1} pinit ({:linear_in} pid: One int)
 refines PInit;
-requires {:layer 1} Pid(pid);
+requires {:layer 1} Pid(pid->val);
 {
   var m:int;
 
   call m := get_id(pid);
-  call send(Next(pid), m);
+  call send(Next(pid->val), m);
   async call p(pid);
 }
 
-yield procedure {:layer 1} p ({:linear_in "pid"} pid:int)
+yield procedure {:layer 1} p ({:linear_in} pid: One int)
 refines P;
-requires {:layer 1} Pid(pid);
+requires {:layer 1} Pid(pid->val);
 {
   var m:int;
   var i:int;
 
   call i := get_id(pid);
-  call m := receive(pid);
+  call m := receive(pid->val);
   if (m == i)
   {
     call set_leader(pid);
-    call {:layer 1} terminated := set_terminated(terminated, pid);
+    call {:layer 1} terminated := set_terminated(terminated, pid->val);
   }
   else
   {
     if (m > i)
     {
-      call send(Next(pid), m);
+      call send(Next(pid->val), m);
     }
     async call p(pid);
   }
@@ -269,15 +269,15 @@ pure procedure {:inline 1} set_terminated(terminated:[int]bool, pid:int) returns
 
 ////////////////////////////////////////////////////////////////////////////////
 
-both action {:layer 1} GET_ID({:linear "pid"} pid:int) returns (i:int)
+both action {:layer 1} GET_ID({:linear} pid: One int) returns (i:int)
 {
-  i := id[pid];
+  i := id[pid->val];
 }
 
-both action {:layer 1} SET_LEADER({:linear "pid"} pid:int)
+both action {:layer 1} SET_LEADER({:linear} pid: One int)
 modifies leader;
 {
-  leader[pid] := true;
+  leader[pid->val] := true;
 }
 
 left action {:layer 1} SEND(pid:int, m:int)
@@ -293,10 +293,10 @@ modifies channel;
   channel[pid][m] := channel[pid][m] - 1;
 }
 
-yield procedure {:layer 0} get_id({:linear "pid"} pid:int) returns (i:int);
+yield procedure {:layer 0} get_id({:linear} pid: One int) returns (i:int);
 refines GET_ID;
 
-yield procedure {:layer 0} set_leader({:linear "pid"} pid:int);
+yield procedure {:layer 0} set_leader({:linear} pid: One int);
 refines SET_LEADER;
 
 yield procedure {:layer 0} send(pid:int, m:int);
@@ -306,14 +306,13 @@ yield procedure {:layer 0} receive(pid:int) returns (m:int);
 refines RECEIVE;
 
 both action {:layer 1}
-LINEAR_TRANSFER(i:int, {:linear_in "pid"} pids:[int]bool)
-returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool)
+LINEAR_TRANSFER(i:int, {:linear_in} pids: Set int)
+returns ({:linear} p: One int, {:linear} pids': Set int)
 {
-  assert pids[i];
-  p := i;
-  pids' := pids[i := false];
+  pids' := pids;
+  call p := One_Get(pids', i);
 }
 
-yield procedure {:layer 0} linear_transfer(i:int, {:linear_in "pid"} pids:[int]bool)
-returns ({:linear "pid"} p:int, {:linear "pid"} pids':[int]bool);
+yield procedure {:layer 0} linear_transfer(i:int, {:linear_in} pids: Set int)
+returns ({:linear} p: One int, {:linear} pids': Set int);
 refines LINEAR_TRANSFER;
