@@ -14,16 +14,6 @@ garbage collector.
 
 datatype Perm { Left(i: int), Right(i: int) }
 
-function Size<T>(set: [T]bool): int;
-axiom (forall<T> set: [T]bool :: Size(set) >= 0);
-
-pure procedure SizeLemma<T>(X: [T]bool, x: T);
-ensures Size(X[x := false]) + 1 == Size(X[x := true]);
-
-pure procedure SubsetSizeRelationLemma<T>(X: [T]bool, Y: [T]bool);
-requires MapImp(X, Y) == MapConst(true);
-ensures X == Y || Size(X) < Size(Y);
-
 var {:layer 0,3} stoppingFlag: bool;
 var {:layer 0,2} stopped: bool;
 var {:layer 1,2} {:linear} usersInDriver: Set Perm;
@@ -35,7 +25,7 @@ invariant stopped ==> stoppingFlag;
 
 yield invariant {:layer 1} Inv1();
 invariant stoppingEvent ==> stoppingFlag && usersInDriver->val == MapConst(false);
-invariant pendingIo == Size(usersInDriver->val) + (if stoppingFlag then 0 else 1);
+invariant pendingIo == Set_Size(usersInDriver) + (if stoppingFlag then 0 else 1);
 
 // user code
 
@@ -69,7 +59,6 @@ preserves call Inv1();
 requires {:layer 1} l->val == MapOne(Left(i)) && r->val == MapOne(Right(i));
 {
     call Enter();
-    call {:layer 1} SizeLemma(usersInDriver->val, Left(i));
     call {:layer 1} usersInDriver := A(usersInDriver, l);
 }
 
@@ -105,9 +94,8 @@ refines AtomicExit;
 preserves call Inv1();
 {
     call DeleteReference();
-    call {:layer 1} SizeLemma(usersInDriver->val, Left(i));
     call {:layer 1} usersInDriver := B(usersInDriver, l);
-    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->val);
+    call {:layer 1} Lemma_SubsetSize(Set_Empty(), usersInDriver);
 }
 
 pure action B({:linear_in} usersInDriver: Set Perm, {:linear_out} l: Set Perm)
@@ -136,7 +124,7 @@ preserves call Inv1();
 {
     call SetStoppingFlag(i);
     call DeleteReference();
-    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->val);
+    call {:layer 1} Lemma_SubsetSize(Set_Empty(), usersInDriver);
 }
 
 atomic action {:layer 2} AtomicWaitAndStop()

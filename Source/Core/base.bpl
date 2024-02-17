@@ -162,6 +162,10 @@ axiom (forall<T> a: Set T, b: Set T ::
         {Set_Union(a, b)} {Set_Intersection(a, b)}
         Set_Size(Set_Union(a, b)) + Set_Size(Set_Intersection(a, b)) == Set_Size(a) + Set_Size(b));
 
+pure procedure Lemma_SubsetSize<T>(a: Set T, b: Set T);
+requires Set_IsSubset(a, b);
+ensures a == b || Set_Size(a) < Set_Size(b);
+
 function {:inline} Set_Empty<T>(): Set T
 {
   Set(MapConst(false))
@@ -332,3 +336,6 @@ pure procedure {:inline 1} Copy<T>(v: T) returns (copy_v: T)
 
 pure procedure Assume(b: bool);
 ensures b;
+
+pure procedure Move<T>({:linear_in} v: T, {:linear_out} v': T);
+requires v == v';
