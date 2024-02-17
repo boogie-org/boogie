@@ -115,22 +115,22 @@ namespace Microsoft.Boogie
 
     public override Variable VisitVariable(Variable node)
     {
-      if (LinearTypeChecker.FindLinearKind(node) != LinearKind.ORDINARY)
-      {
-        RegisterLinearVariable(node);
-      }
+      RegisterType(node.TypedIdent.Type);
       return node;
     }
 
-    private void RegisterLinearVariable(Variable v)
+    private void RegisterType(Type type)
     {
-      var type = v.TypedIdent.Type;
       var permissionType = linearTypeChecker.GetPermissionType(type);
       if (permissionType == null)
       {
         return;
       }
-      var linearDomain = RegisterPermissionType(permissionType);
+      if (!permissionTypeToLinearDomain.ContainsKey(permissionType))
+      {
+        permissionTypeToLinearDomain[permissionType] = new LinearDomain(program, permissionType);
+      }
+      var linearDomain = permissionTypeToLinearDomain[permissionType];
       if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
       {
         var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
@@ -153,15 +153,6 @@ namespace Microsoft.Boogie
           linearDomain.RegisterCollector(program.monomorphizer.InstantiateFunction("One_Collector", typeParamInstantiationMap));
         }
       }
-    }
-
-    private LinearDomain RegisterPermissionType(Type permissionType)
-    {
-      if (!permissionTypeToLinearDomain.ContainsKey(permissionType))
-      {
-        permissionTypeToLinearDomain[permissionType] = new LinearDomain(program, permissionType);
-      }
-      return permissionTypeToLinearDomain[permissionType];
     }
   }
 }

@@ -8,10 +8,11 @@ namespace Microsoft.Boogie
     public Program program;
     private CheckingContext checkingContext;
     private CivlTypeChecker civlTypeChecker;
-    private Dictionary<Type, LinearDomain> linearTypeToLinearDomain;
+    private Dictionary<Type, LinearDomain> permissionTypeToLinearDomain;
     private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
     private HashSet<Type> visitedTypes;
     private HashSet<Type> mayContainPermissions;
+    private Dictionary<Type, Dictionary<Type, Function>> collectors;
 
     public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
     {
@@ -54,23 +55,23 @@ namespace Microsoft.Boogie
     private LinearDomain FindDomain(Type type)
     {
       var permissionType = GetPermissionType(type);
-      if (permissionType == null || !linearTypeToLinearDomain.ContainsKey(permissionType))
+      if (permissionType == null)
       {
         return null;
       }
-      return linearTypeToLinearDomain[permissionType];
+      return permissionTypeToLinearDomain[permissionType];
     }
     
-    private bool SkipCheck(Variable target)
+    private bool IsOrdinary(Variable target)
     {
-      if (!MayContainPermissions(target.TypedIdent.Type))
+      if (FindLinearKind(target) == LinearKind.ORDINARY)
       {
         return true;
       }
-      return FindLinearKind(target) == LinearKind.ORDINARY;
+      return !MayContainPermissions(target.TypedIdent.Type);
     }
 
-    private bool SkipCheck(AssignLhs assignLhs)
+    private bool IsOrdinary(AssignLhs assignLhs)
     {
       if (!MayContainPermissions(assignLhs.Type))
       {
@@ -83,7 +84,7 @@ namespace Microsoft.Boogie
       if (assignLhs is FieldAssignLhs fieldAssignLhs &&
           fieldAssignLhs.FieldAccess.Fields.Any(f => FindLinearKind(f) != LinearKind.ORDINARY))
       {
-        return SkipCheck(fieldAssignLhs.Datatype);  
+        return IsOrdinary(fieldAssignLhs.Datatype);
       }
       return true;
     }
@@ -103,19 +104,63 @@ namespace Microsoft.Boogie
       {
         return false;
       }
-      if (GetPermissionType(ctorType) != null)
+      var permissionType = GetPermissionType(type);
+      if (permissionType != null)
       {
+        collectors.Add(type, new Dictionary<Type, Function>());
+        collectors[type][permissionType] = permissionTypeToLinearDomain[permissionType].collectors[type];
         mayContainPermissions.Add(type);
         return true;
       }
       // visit each constructor
+      var collectionTarget = VarHelper.Formal("target", type, true);
+      var constructorsWithPermissions = new Dictionary<Type, Dictionary<DatatypeConstructor, List<Expr>>>();
       foreach (var constructor in datatypeTypeCtorDecl.Constructors)
       {
-        if (constructor.InParams.Any(formal => !SkipCheck(formal)))
+        foreach (var formal in constructor.InParams)
         {
-          mayContainPermissions.Add(type);
-          return true;
+          if (IsOrdinary(formal))
+          {
+            continue;
+          }
+          var permissionTypeToCollector = collectors[formal.TypedIdent.Type];
+          permissionTypeToCollector.Keys.ForEach(permissionType => {
+            var permissionExpr = ExprHelper.FunctionCall(permissionTypeToCollector[permissionType], ExprHelper.FieldAccess(Expr.Ident(collectionTarget), formal.Name));
+            if (!constructorsWithPermissions.ContainsKey(permissionType))
+            {
+              constructorsWithPermissions.Add(permissionType, new Dictionary<DatatypeConstructor, List<Expr>>());
+              constructorsWithPermissions[permissionType][constructor] = new List<Expr>();
+            }
+            constructorsWithPermissions[permissionType][constructor].Add(permissionExpr);
+          });
         }
+      }
+      if (constructorsWithPermissions.Count > 0)
+      {
+        collectors.Add(type, new Dictionary<Type, Function>());
+        constructorsWithPermissions.Keys.ForEach(permissionType => {
+          var collectorFunction = new Function(
+            Token.NoToken,
+            $"Collector_{type}_{permissionType}",
+            new List<TypeVariable>(),
+            new List<Variable>(){collectionTarget},
+            VarHelper.Formal("perm", TypeHelper.MapType(permissionType, Type.Bool), false),
+            null,
+            new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
+          var domain = permissionTypeToLinearDomain[permissionType];
+          var body = ExprHelper.FunctionCall(domain.mapConstBool, Expr.False);
+          foreach (var constructor in constructorsWithPermissions[permissionType].Keys)
+          {
+            var permissionExpr = UnionExprForPermissions(domain, constructorsWithPermissions[permissionType][constructor]);
+            body = ExprHelper.IfThenElse(ExprHelper.IsConstructor(Expr.Ident(collectionTarget), constructor.Name), permissionExpr, body);
+          }
+          CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, body);
+          collectorFunction.Body = body;
+          collectors[type].Add(permissionType, collectorFunction);
+          program.AddTopLevelDeclaration(collectorFunction);
+        });
+        mayContainPermissions.Add(type);
+        return true;
       }
       return false;
     }
@@ -156,7 +201,7 @@ namespace Microsoft.Boogie
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
             var lhs = assignCmd.Lhss[i];
-            if (SkipCheck(lhs))
+            if (IsOrdinary(lhs))
             {
               continue;
             }
@@ -238,7 +283,7 @@ namespace Microsoft.Boogie
           for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
           {
             Variable param = callCmd.Proc.InParams[i];
-            if (SkipCheck(param))
+            if (IsOrdinary(param))
             {
               continue;
             }
@@ -420,7 +465,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          linearGlobalVariables.Except(end).Where(v => !SkipCheck(v)).ForEach(g =>
+          linearGlobalVariables.Except(end).Where(v => !IsOrdinary(v)).ForEach(g =>
           {
             Error(b.TransferCmd, $"global variable {g.Name} must be available at a return");
           });
@@ -428,11 +473,11 @@ namespace Microsoft.Boogie
           {
             var kind = FindLinearKind(v);
             return kind == LinearKind.LINEAR || kind == LinearKind.LINEAR_OUT;
-          }).Where(v => !SkipCheck(v)).ForEach(v => 
+          }).Where(v => !IsOrdinary(v)).ForEach(v => 
           { 
             Error(b.TransferCmd, $"input variable {v.Name} must be available at a return");
           });
-          node.OutParams.Except(end).Where(v => !SkipCheck(v)).ForEach(v =>
+          node.OutParams.Except(end).Where(v => !IsOrdinary(v)).ForEach(v =>
           {
             Error(b.TransferCmd, $"output variable {v.Name} must be available at a return");
           });
@@ -464,7 +509,7 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Lhss.Count; i++)
       {
         var lhs = node.Lhss[i];
-        if (SkipCheck(lhs))
+        if (IsOrdinary(lhs))
         {
           continue;
         }
@@ -549,7 +594,7 @@ namespace Microsoft.Boogie
       {
         var formal = node.Proc.InParams[i];
         var formalKind = FindLinearKind(formal);
-        if (SkipCheck(formal))
+        if (IsOrdinary(formal))
         {
           continue;
         }
@@ -786,14 +831,15 @@ namespace Microsoft.Boogie
       return errorCount;
     }
     
-    public IEnumerable<LinearDomain> LinearDomains => linearTypeToLinearDomain.Values;
+    public IEnumerable<LinearDomain> LinearDomains => permissionTypeToLinearDomain.Values;
 
     public void TypeCheck()
     {
-      this.linearTypeToLinearDomain = LinearDomainCollector.Collect(this);
+      this.permissionTypeToLinearDomain = LinearDomainCollector.Collect(this);
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
       this.visitedTypes = new HashSet<Type>();
       this.mayContainPermissions = new HashSet<Type>();
+      this.collectors = new Dictionary<Type, Dictionary<Type, Function>>();
       this.VisitProgram(program);
       foreach (var absy in this.availableLinearVars.Keys)
       {
