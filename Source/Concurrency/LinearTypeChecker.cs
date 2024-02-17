@@ -9,10 +9,8 @@ namespace Microsoft.Boogie
     private CheckingContext checkingContext;
     private CivlTypeChecker civlTypeChecker;
     private Dictionary<Type, LinearDomain> permissionTypeToLinearDomain;
-    private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
-    private HashSet<Type> visitedTypes;
-    private HashSet<Type> mayContainPermissions;
     private Dictionary<Type, Dictionary<Type, Function>> collectors;
+    private Dictionary<Absy, HashSet<Variable>> availableLinearVars;
 
     public LinearTypeChecker(CivlTypeChecker civlTypeChecker)
     {
@@ -52,28 +50,18 @@ namespace Microsoft.Boogie
       checkingContext.Error(node, message);
     }
     
-    private LinearDomain FindDomain(Type type)
-    {
-      var permissionType = GetPermissionType(type);
-      if (permissionType == null)
-      {
-        return null;
-      }
-      return permissionTypeToLinearDomain[permissionType];
-    }
-    
     private bool IsOrdinary(Variable target)
     {
-      if (FindLinearKind(target) == LinearKind.ORDINARY)
+      if (!collectors.ContainsKey(target.TypedIdent.Type))
       {
         return true;
       }
-      return !MayContainPermissions(target.TypedIdent.Type);
+      return FindLinearKind(target) == LinearKind.ORDINARY;
     }
 
     private bool IsOrdinary(AssignLhs assignLhs)
     {
-      if (!MayContainPermissions(assignLhs.Type))
+      if (!collectors.ContainsKey(assignLhs.Type))
       {
         return true;
       }
@@ -87,82 +75,6 @@ namespace Microsoft.Boogie
         return IsOrdinary(fieldAssignLhs.Datatype);
       }
       return true;
-    }
-
-    private bool MayContainPermissions(Type type)
-    {
-      if (visitedTypes.Contains(type))
-      {
-        return mayContainPermissions.Contains(type);
-      }
-      visitedTypes.Add(type);
-      if (type is not CtorType ctorType)
-      {
-        return false;
-      }
-      if (ctorType.Decl is not DatatypeTypeCtorDecl datatypeTypeCtorDecl)
-      {
-        return false;
-      }
-      var permissionType = GetPermissionType(type);
-      if (permissionType != null)
-      {
-        collectors.Add(type, new Dictionary<Type, Function>());
-        collectors[type][permissionType] = permissionTypeToLinearDomain[permissionType].collectors[type];
-        mayContainPermissions.Add(type);
-        return true;
-      }
-      // visit each constructor
-      var collectionTarget = VarHelper.Formal("target", type, true);
-      var constructorsWithPermissions = new Dictionary<Type, Dictionary<DatatypeConstructor, List<Expr>>>();
-      foreach (var constructor in datatypeTypeCtorDecl.Constructors)
-      {
-        foreach (var formal in constructor.InParams)
-        {
-          if (IsOrdinary(formal))
-          {
-            continue;
-          }
-          var permissionTypeToCollector = collectors[formal.TypedIdent.Type];
-          permissionTypeToCollector.Keys.ForEach(permissionType => {
-            var permissionExpr = ExprHelper.FunctionCall(permissionTypeToCollector[permissionType], ExprHelper.FieldAccess(Expr.Ident(collectionTarget), formal.Name));
-            if (!constructorsWithPermissions.ContainsKey(permissionType))
-            {
-              constructorsWithPermissions.Add(permissionType, new Dictionary<DatatypeConstructor, List<Expr>>());
-              constructorsWithPermissions[permissionType][constructor] = new List<Expr>();
-            }
-            constructorsWithPermissions[permissionType][constructor].Add(permissionExpr);
-          });
-        }
-      }
-      if (constructorsWithPermissions.Count > 0)
-      {
-        collectors.Add(type, new Dictionary<Type, Function>());
-        constructorsWithPermissions.Keys.ForEach(permissionType => {
-          var collectorFunction = new Function(
-            Token.NoToken,
-            $"Collector_{type}_{permissionType}",
-            new List<TypeVariable>(),
-            new List<Variable>(){collectionTarget},
-            VarHelper.Formal("perm", TypeHelper.MapType(permissionType, Type.Bool), false),
-            null,
-            new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
-          var domain = permissionTypeToLinearDomain[permissionType];
-          var body = ExprHelper.FunctionCall(domain.mapConstBool, Expr.False);
-          foreach (var constructor in constructorsWithPermissions[permissionType].Keys)
-          {
-            var permissionExpr = UnionExprForPermissions(domain, constructorsWithPermissions[permissionType][constructor]);
-            body = ExprHelper.IfThenElse(ExprHelper.IsConstructor(Expr.Ident(collectionTarget), constructor.Name), permissionExpr, body);
-          }
-          CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, body);
-          collectorFunction.Body = body;
-          collectors[type].Add(permissionType, collectorFunction);
-          program.AddTopLevelDeclaration(collectorFunction);
-        });
-        mayContainPermissions.Add(type);
-        return true;
-      }
-      return false;
     }
 
     private void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
@@ -796,6 +708,8 @@ namespace Microsoft.Boogie
 
     #region Useful public methods
 
+    public ConcurrencyOptions Options => civlTypeChecker.Options;
+    
     public static LinearKind FindLinearKind(Variable v)
     {
       if (QKeyValue.FindAttribute(v.Attributes, x => x.Key == CivlAttributes.LINEAR) != null)
@@ -835,11 +749,8 @@ namespace Microsoft.Boogie
 
     public void TypeCheck()
     {
-      this.permissionTypeToLinearDomain = LinearDomainCollector.Collect(this);
+      (this.permissionTypeToLinearDomain, this.collectors) = LinearDomainCollector.Collect(this);
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
-      this.visitedTypes = new HashSet<Type>();
-      this.mayContainPermissions = new HashSet<Type>();
-      this.collectors = new Dictionary<Type, Dictionary<Type, Function>>();
       this.VisitProgram(program);
       foreach (var absy in this.availableLinearVars.Keys)
       {
@@ -887,20 +798,20 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      return FilterVariables(domain, scope)
-        .Select(v => ExprHelper.FunctionCall(domain.collectors[v.TypedIdent.Type], Expr.Ident(v)));
+      var foo = FilterVariables(domain, scope);
+      return foo.Select(v => ExprHelper.FunctionCall(collectors[v.TypedIdent.Type][domain.permissionType], Expr.Ident(v)));
     }
 
     public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Expr> availableExprs)
     {
-      return availableExprs.Where(expr =>
-        FindDomain(expr.Type) == domain).Select(expr => ExprHelper.FunctionCall(domain.collectors[expr.Type], expr));
+      return availableExprs
+        .Where(expr => collectors.ContainsKey(expr.Type) && collectors[expr.Type].ContainsKey(domain.permissionType))
+        .Select(expr => ExprHelper.FunctionCall(collectors[expr.Type][domain.permissionType], expr));
     }
 
     public IEnumerable<Expr> DisjointnessExprForEachDomain(IEnumerable<Variable> scope)
     {
-      return LinearDomains.Select(domain =>
-        DisjointnessExprForPermissions(domain, PermissionExprs(domain, FilterVariables(domain, scope))));
+      return LinearDomains.Select(domain => DisjointnessExprForPermissions(domain, PermissionExprs(domain, scope)));
     }
 
     public Expr DisjointnessExprForPermissions(LinearDomain domain, IEnumerable<Expr> permissionsExprs)
@@ -966,7 +877,10 @@ namespace Microsoft.Boogie
 
     private IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      return scope.Where(v => FindLinearKind(v) != LinearKind.ORDINARY && FindDomain(v.TypedIdent.Type) == domain);
+      return scope.Where(v => 
+        FindLinearKind(v) != LinearKind.ORDINARY &&
+        collectors.ContainsKey(v.TypedIdent.Type) &&
+        collectors[v.TypedIdent.Type].ContainsKey(domain.permissionType));
     }
     
     private Expr SubsetExpr(LinearDomain domain, Expr ie, Variable partition, int partitionCount)
