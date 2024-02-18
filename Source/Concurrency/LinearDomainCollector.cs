@@ -182,7 +182,10 @@ namespace Microsoft.Boogie
             if (!constructorsWithPermissions.ContainsKey(permissionType))
             {
               constructorsWithPermissions.Add(permissionType, new Dictionary<DatatypeConstructor, List<Expr>>());
-              constructorsWithPermissions[permissionType][constructor] = new List<Expr>();
+            }
+            if (!constructorsWithPermissions[permissionType].ContainsKey(constructor))
+            {
+              constructorsWithPermissions[permissionType].Add(constructor, new List<Expr>());
             }
             constructorsWithPermissions[permissionType][constructor].Add(permissionExpr);
           });
