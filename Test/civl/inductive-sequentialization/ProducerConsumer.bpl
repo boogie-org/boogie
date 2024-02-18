@@ -8,10 +8,10 @@ datatype Channel { Channel(C: [int]int, head: int, tail: int) }
 type ChannelId;
 
 // permission for sending to or receiving from a channel
-datatype {:linear "cid"} ChannelHandle { Send(cid: ChannelId), Receive(cid: ChannelId) }
+datatype ChannelHandle { Send(cid: ChannelId), Receive(cid: ChannelId) }
 
-function {:inline} {:linear "cid"} ChannelIdCollector(cid: ChannelId) : [ChannelHandle]bool {
-  MapConst(false)[Send(cid) := true][Receive(cid) := true]
+function {:inline} BothHandles(cid: ChannelId): Set ChannelHandle {
+  Set_Add(Set_Singleton(Send(cid)), Receive(cid))
 }
 
 // pool of FIFO channels
@@ -19,28 +19,30 @@ var {:layer 0,3} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 2} MAIN ({:linear_in "cid"} cid: ChannelId)
+atomic action {:layer 2} MAIN (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
 refines MAIN' using INV;
 creates PRODUCER, CONSUMER;
 eliminates CONSUMER using CONSUMER';
 {
+  assert handles == BothHandles(cid);
   assert channels[cid]->head == channels[cid]->tail;
-  call create_async(PRODUCER(1, Send(cid)));
-  call create_async(CONSUMER(1, Receive(cid)));
+  call create_async(PRODUCER(1, One(Send(cid))));
+  call create_async(CONSUMER(1, One(Receive(cid))));
 }
 
-atomic action {:layer 3} MAIN' ({:linear_in "cid"} cid: ChannelId)
+atomic action {:layer 3} MAIN' (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
 modifies channels;
 {
   var channel: Channel;
 
+  assert handles == BothHandles(cid);
   assert channels[cid]->head == channels[cid]->tail;
   assume channel->head == channel->tail;
   channels[cid] := channel;
 }
 
 action {:layer 2}
-INV ({:linear_in "cid"} cid: ChannelId)
+INV (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
 creates PRODUCER, CONSUMER;
 modifies channels;
 {
@@ -49,6 +51,7 @@ modifies channels;
   var C: [int]int;
   var head, tail: int;
 
+  assert handles == BothHandles(cid);
   assert channels[cid]->head == channels[cid]->tail;
 
   C := channel->C;
@@ -57,18 +60,18 @@ modifies channels;
   assume {:add_to_pool "INV1", c} 0 < c;
   if (*) {
     assume head == tail;
-    call create_async(PRODUCER(c, Send(cid)));
-    call create_async(CONSUMER(c, Receive(cid)));
-    call set_choice(PRODUCER(c, Send(cid)));
+    call create_async(PRODUCER(c, One(Send(cid))));
+    call create_async(CONSUMER(c, One(Receive(cid))));
+    call set_choice(PRODUCER(c, One(Send(cid))));
   } else if (*) {
     assume tail == head + 1 && C[head] == 0;
-    call create_async(CONSUMER(c, Receive(cid)));
-    call set_choice(CONSUMER(c, Receive(cid)));
+    call create_async(CONSUMER(c, One(Receive(cid))));
+    call set_choice(CONSUMER(c, One(Receive(cid))));
   } else if (*) {
     assume tail == head + 1 && C[head] == c;
-    call create_async(PRODUCER(c+1, Send(cid)));
-    call create_async(CONSUMER(c, Receive(cid)));
-    call set_choice(CONSUMER(c, Receive(cid)));
+    call create_async(PRODUCER(c+1, One(Send(cid))));
+    call create_async(CONSUMER(c, One(Receive(cid))));
+    call set_choice(CONSUMER(c, One(Receive(cid))));
   } else {
     assume head == tail;
   }
@@ -77,7 +80,7 @@ modifies channels;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-async left action {:layer 2} PRODUCER (x: int, {:linear_in "cid"} send_handle: ChannelHandle)
+async left action {:layer 2} PRODUCER (x: int, {:linear_in} send_handle: One ChannelHandle)
 creates PRODUCER;
 modifies channels;
 {
@@ -85,8 +88,8 @@ modifies channels;
   var C: [int]int;
   var head, tail: int;
 
-  assert send_handle is Send;
-  channel := channels[send_handle->cid];
+  assert send_handle->val is Send;
+  channel := channels[send_handle->val->cid];
   C := channel->C;
   head := channel->head;
   tail := channel->tail;
@@ -101,11 +104,11 @@ modifies channels;
     C[tail] := 0;
     tail := tail + 1;
   }
-  channels[send_handle->cid] := Channel(C, head, tail);
-  assume {:add_to_pool "INV2", channels[send_handle->cid]} true;
+  channels[send_handle->val->cid] := Channel(C, head, tail);
+  assume {:add_to_pool "INV2", channels[send_handle->val->cid]} true;
 }
 
-async atomic action {:layer 2} CONSUMER (x: int, {:linear_in "cid"} receive_handle: ChannelHandle)
+async atomic action {:layer 2} CONSUMER (x: int, {:linear_in} receive_handle: One ChannelHandle)
 creates CONSUMER;
 modifies channels;
 {
@@ -114,8 +117,8 @@ modifies channels;
   var head, tail: int;
   var x': int;
 
-  assert receive_handle is Receive;
-  channel := channels[receive_handle->cid];
+  assert receive_handle->val is Receive;
+  channel := channels[receive_handle->val->cid];
   C := channel->C;
   head := channel->head;
   tail := channel->tail;
@@ -128,20 +131,20 @@ modifies channels;
   {
     call create_async(CONSUMER(x'+1, receive_handle));
   }
-  channels[receive_handle->cid] := Channel(C, head, tail);
-  assume {:add_to_pool "INV2", channels[receive_handle->cid]} true;
+  channels[receive_handle->val->cid] := Channel(C, head, tail);
+  assume {:add_to_pool "INV2", channels[receive_handle->val->cid]} true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} CONSUMER' (x:int, {:linear_in "cid"} receive_handle: ChannelHandle)
+action {:layer 2} CONSUMER' (x:int, {:linear_in} receive_handle: One ChannelHandle)
 creates CONSUMER;
 modifies channels;
 {
   var channel: Channel;
   var head, tail: int;
 
-  channel := channels[receive_handle->cid];
+  channel := channels[receive_handle->val->cid];
   head := channel->head;
   tail := channel->tail;
   assert head < tail;
@@ -151,18 +154,21 @@ modifies channels;
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-main ({:linear_in "cid"} cid: ChannelId)
+main (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
 refines MAIN;
 {
-  var {:linear "cid"} send_handle, receive_handle: ChannelHandle;
+  var {:linear} handles': Set ChannelHandle;
+  var {:linear} send_handle, receive_handle: One ChannelHandle;
 
-  call send_handle, receive_handle := split(cid);
+  handles' := handles;
+  call send_handle := One_Get(handles', Send(cid));
+  call receive_handle := One_Get(handles', Receive(cid));
   async call producer(1, send_handle);
   async call consumer(1, receive_handle);
 }
 
 yield procedure {:layer 1}
-producer (x:int, {:linear_in "cid"} send_handle: ChannelHandle)
+producer (x:int, {:linear_in} send_handle: One ChannelHandle)
 refines PRODUCER;
 {
   if (*)
@@ -177,7 +183,7 @@ refines PRODUCER;
 }
 
 yield procedure {:layer 1}
-consumer (x:int, {:linear_in "cid"} receive_handle: ChannelHandle)
+consumer (x:int, {:linear_in} receive_handle: One ChannelHandle)
 refines CONSUMER;
 {
   var x': int;
@@ -192,53 +198,44 @@ refines CONSUMER;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 1} SEND (m: int, {:linear "cid"} send_handle: ChannelHandle)
+atomic action {:layer 1} SEND (m: int, {:linear} send_handle: One ChannelHandle)
 modifies channels;
 {
   var channel: Channel;
   var C: [int]int;
   var head, tail: int;
 
-  assert send_handle is Send;
-  channel := channels[send_handle->cid];
+  assert send_handle->val is Send;
+  channel := channels[send_handle->val->cid];
   C := channel->C;
   head := channel->head;
   tail := channel->tail;
   C[tail] := m;
   tail := tail + 1;
-  channels[send_handle->cid] := Channel(C, head, tail);
+  channels[send_handle->val->cid] := Channel(C, head, tail);
 }
 
-atomic action {:layer 1} RECEIVE ({:linear "cid"} receive_handle: ChannelHandle) returns (m:int)
+atomic action {:layer 1} RECEIVE ({:linear} receive_handle: One ChannelHandle) returns (m:int)
 modifies channels;
 {
   var channel: Channel;
   var C: [int]int;
   var head, tail: int;
 
-  assert receive_handle is Receive;
-  channel := channels[receive_handle->cid];
+  assert receive_handle->val is Receive;
+  channel := channels[receive_handle->val->cid];
   C := channel->C;
   head := channel->head;
   tail := channel->tail;
   assume head < tail;
   m := C[head];
   head := head + 1;
-  channels[receive_handle->cid] := Channel(C, head, tail);
+  channels[receive_handle->val->cid] := Channel(C, head, tail);
 }
 
-both action {:layer 1} SPLIT({:linear_in "cid"} cid: ChannelId)
-  returns ({:linear "cid"} send_handle: ChannelHandle, {:linear "cid"} receive_handle: ChannelHandle)
-{
-  send_handle := Send(cid);
-  receive_handle := Receive(cid);
-}
-
-yield procedure {:layer 0} send (m: int, {:linear "cid"} send_handle: ChannelHandle);
+yield procedure {:layer 0} send (m: int, {:linear} send_handle: One ChannelHandle);
 refines SEND;
 
-yield procedure {:layer 0} receive ({:linear "cid"} receive_handle: ChannelHandle) returns (m: int);
+yield procedure {:layer 0} receive ({:linear} receive_handle: One ChannelHandle) returns (m: int);
 refines RECEIVE;
 
-yield procedure {:layer 0} split({:linear_in "cid"} cid: ChannelId) returns ({:linear "cid"} send_handle: ChannelHandle, {:linear "cid"} receive_handle: ChannelHandle);
-refines SPLIT;
