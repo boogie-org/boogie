@@ -88,39 +88,6 @@ namespace VC
         randomGen = new Random(RandomSeed ?? 0);
       }
 
-      public Split(Split oldSplit)
-      {
-        Options = oldSplit.Options;
-        randomGen = oldSplit.randomGen;
-        Run = oldSplit.Run;
-        Blocks = oldSplit.Blocks; // Could be deep, but doesn't need to be here.
-        bigBlocks = oldSplit.bigBlocks; // Could be deep, but doesn't need to be here.
-        TopLevelDeclarations = oldSplit.TopLevelDeclarations; // Could be deep, but doesn't need to be here.
-        stats = oldSplit.stats; // Could be deep, but doesn't need to be here.
-        splitBlock = oldSplit.splitBlock;
-        assertToAssume = oldSplit.assertToAssume;
-        assumizedBranches = oldSplit.assumizedBranches; // Could be deep, but doesn't need to be here.
-        score = oldSplit.score;
-        scoreComputed = oldSplit.scoreComputed;
-        totalCost = oldSplit.totalCost;
-        assertionCount = oldSplit.assertionCount;
-        assertionCost = oldSplit.assertionCost;
-        GotoCmdOrigins = oldSplit.GotoCmdOrigins; // Could be deep, but doesn't need to be here.
-        parent = oldSplit.parent; // Could be deep, but doesn't need to be here.
-        copies = oldSplit.copies; // Could be deep, but doesn't need to be here.
-        doingSlice = oldSplit.doingSlice;
-        sliceInitialLimit = oldSplit.sliceInitialLimit;
-        sliceLimit = oldSplit.sliceLimit;
-        slicePos = oldSplit.slicePos;
-        protectedFromAssertToAssume = oldSplit.protectedFromAssertToAssume; // Could be deep, but doesn't need to be here.
-        keepAtAll = oldSplit.keepAtAll; // Could be deep, but doesn't need to be here.
-        SplitIndex = oldSplit.SplitIndex;
-        reporter = oldSplit.reporter;
-        bsid = oldSplit.bsid;
-        Counterexamples = new(); // Create fresh, so it can be updated.
-        CoveredElements = new(); // Create fresh, so it can be updated.
-      }
-
       private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
       {
         if (!Options.Prune || Options.PrintPrunedFile == null)
@@ -945,7 +912,7 @@ namespace VC
 
       public List<Counterexample> Counterexamples { get; } = new();
 
-      public HashSet<TrackedNodeComponent> CoveredElements { get; } = new();
+      public ConcurrentBag<TrackedNodeComponent> CoveredElements { get; } = new();
 
       /// <summary>
       /// As a side effect, updates "this.parent.CumulativeAssertionCount".
