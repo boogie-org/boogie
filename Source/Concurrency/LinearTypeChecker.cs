@@ -118,6 +118,10 @@ namespace Microsoft.Boogie
               continue;
             }
             var lhsVar = lhs.DeepAssignedVariable;
+            // assignment may violate the disjointness invariant
+            // therefore, drop lhsVar from the set of available variables
+            // but possibly add it in lhsVarsToAdd later
+            start.Remove(lhsVar);
             var rhsExpr = assignCmd.Rhss[i];
             if (rhsExpr is IdentifierExpr ie)
             {
@@ -154,12 +158,6 @@ namespace Microsoft.Boogie
               {
                 lhsVarsToAdd.Add(lhsVar); // add always to prevent cascading error messages
               }
-            }
-            else
-            {
-              // assignment may violate the disjointness invariant
-              // therefore, drop lhsVar from the set of available variables
-              start.Remove(lhsVar);
             }
           }
           start.UnionWith(lhsVarsToAdd);

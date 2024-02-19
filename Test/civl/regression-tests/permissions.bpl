@@ -1,6 +1,11 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+yield procedure {:layer 1} Proc0 ({:linear} x: One int, {:linear} y: One int)
+{
+  assert {:layer 1} x != y;
+}
+
 var {:linear} {:layer 0,1} A : Set int;
 
 yield procedure {:layer 1} Proc1 ({:linear} i: One int)
