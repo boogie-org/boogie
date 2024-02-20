@@ -106,6 +106,7 @@ requires call YieldInvChannels();
   var {:layer 1}{:linear} ps': Set Permission;
   var {:layer 1}{:pending_async} PAs:[A_Join]int;
 
+  assert {:layer 1} Set_Difference(AllPermissions(r), JoinPermissions(r)) == ProposePermissions(r);
   call {:layer 1} ps, ps' := SplitPermissions(r, r_lin);
   n := 1;
   while (n <= numNodes)
