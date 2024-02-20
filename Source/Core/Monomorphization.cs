@@ -649,7 +649,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          var newAxiom = new Axiom(Token.NoToken, expr);
+          var newAxiom = new Axiom(axiom.tok, expr);
           if (monomorphizationVisitor.originalAxiomToSplitAxioms.ContainsKey(axiom)) {
             monomorphizationVisitor.originalAxiomToSplitAxioms[axiom].Add(newAxiom);
           }
@@ -705,14 +705,14 @@ namespace Microsoft.Boogie
         {
           TypeParameters = SimpleTypeParamInstantiation.EMPTY
         };
-        mapAssignLhs = new MapAssignLhs(Token.NoToken, fieldAssignLhs, mapAssignLhs.Indexes)
+        mapAssignLhs = new MapAssignLhs(mapAssignLhs.tok, fieldAssignLhs, mapAssignLhs.Indexes)
         {
           TypeParameters = SimpleTypeParamInstantiation.EMPTY
         };
       }
       else
       {
-        mapAssignLhs = new MapAssignLhs(Token.NoToken, mapAssignLhs.Map, mapAssignLhs.Indexes)
+        mapAssignLhs = new MapAssignLhs(mapAssignLhs.tok, mapAssignLhs.Map, mapAssignLhs.Indexes)
         {
           TypeParameters = SimpleTypeParamInstantiation.EMPTY
         };
@@ -723,7 +723,7 @@ namespace Microsoft.Boogie
     public override AssignLhs VisitFieldAssignLhs(FieldAssignLhs node)
     {
       var fieldAssignLhs = (FieldAssignLhs)base.VisitFieldAssignLhs(node);
-      fieldAssignLhs = new FieldAssignLhs(Token.NoToken, fieldAssignLhs.Datatype, fieldAssignLhs.FieldAccess)
+      fieldAssignLhs = new FieldAssignLhs(node.tok, fieldAssignLhs.Datatype, fieldAssignLhs.FieldAccess)
         {
           TypeParameters = SimpleTypeParamInstantiation.EMPTY
         };
@@ -1834,14 +1834,14 @@ namespace Microsoft.Boogie
       {
         var instantiatedTypeArguments = mapType.Arguments.Select(x => LookupType(x)).ToList();
         var instantiatedTypeResult = LookupType(mapType.Result);
-        return new MapType(Token.NoToken, new List<TypeVariable>(mapType.TypeParameters), instantiatedTypeArguments,
+        return new MapType(mapType.tok, new List<TypeVariable>(mapType.TypeParameters), instantiatedTypeArguments,
           instantiatedTypeResult);
       }
       if (type is CtorType ctorType && ctorType.FreeVariables.Count == 0 &&
           MonomorphismChecker.DoesTypeCtorDeclNeedMonomorphization(ctorType.Decl))
       {
         var instantiatedTypeArguments = ctorType.Arguments.Select(x => LookupType(x)).ToList();
-        return new CtorType(Token.NoToken, typeInstantiations[ctorType.Decl][instantiatedTypeArguments],
+        return new CtorType(ctorType.tok, typeInstantiations[ctorType.Decl][instantiatedTypeArguments],
           new List<Type>());
       }
       return type;

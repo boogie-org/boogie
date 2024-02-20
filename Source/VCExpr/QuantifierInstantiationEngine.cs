@@ -330,10 +330,10 @@ namespace Microsoft.Boogie.VCExprAST
         while (visitedLambdaFunctions.Count < lambdaDefinition.Count)
         {
           /*
-           * lambdaFunction may be modified in each iteration of the following loop.
-           * Therefore, take a snapshot of lambdaFunction.Keys to start the loop.
+           * lambdaDefinition may be modified in each iteration of the following loop.
+           * Therefore, take a snapshot of lambdaDefinition.Keys to start the loop.
            */
-          foreach (var lambdaFunction in lambdaDefinition.Keys)
+          foreach (var lambdaFunction in lambdaDefinition.Keys.ToList())
           {
             if (visitedLambdaFunctions.Contains(lambdaFunction))
             {
@@ -343,7 +343,7 @@ namespace Microsoft.Boogie.VCExprAST
             var quantifierExpr = lambdaDefinition[lambdaFunction];
             var quantifierInfo = quantifierInstantiationInfo[quantifierExpr];
             if (quantifierInfo.relevantLabels.Overlaps(accLabelToInstances.Keys) ||
-                accLambdaToInstances[lambdaFunction].Count > 0)
+                (accLambdaToInstances.ContainsKey(lambdaFunction) && accLambdaToInstances[lambdaFunction].Count > 0))
             {
               InstantiateLambdaDefinition(lambdaFunction);
             }

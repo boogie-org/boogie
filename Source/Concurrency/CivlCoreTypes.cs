@@ -584,5 +584,12 @@ namespace Microsoft.Boogie
       // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
       return (QuantifierExpr) this.VisitBinderExpr(node);
     }
+
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      var retNode = (UnpackCmd)base.VisitUnpackCmd(node);
+      retNode.ResetDesugaring();
+      return retNode;
+    }
   }
 }

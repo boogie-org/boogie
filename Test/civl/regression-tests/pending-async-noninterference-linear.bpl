@@ -1,18 +1,18 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear "tid"} X = int;
+
 var {:layer 0,1} x:[int]int;
 
-yield invariant {:layer 1} yield_x({:linear "tid"} tid:int);
-invariant x[tid] == 0;
+yield invariant {:layer 1} yield_x({:linear} tid: One int);
+invariant x[tid->val] == 0;
 
-async atomic action {:layer 1} A ({:linear "tid"} tid:int)
+async atomic action {:layer 1} A ({:linear} tid: One int)
 modifies x;
 {
-  x[tid] := 1;
+  x[tid->val] := 1;
 }
 
-left action {:layer 1} ASYNC_A ({:linear_in "tid"} tid:int)
+left action {:layer 1} ASYNC_A ({:linear_in} tid: One int)
  creates A;
 {
   call create_async(A(tid));

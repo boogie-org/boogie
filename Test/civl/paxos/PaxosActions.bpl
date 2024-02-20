@@ -1,7 +1,7 @@
-async atomic action {:layer 2} A_StartRound(r: Round, {:linear_in "perm"} r_lin: Round)
+async atomic action {:layer 2} A_StartRound(r: Round, {:linear_in} r_lin: Set Permission)
 creates A_Join, A_Propose;
 {
-  assert r == r_lin;
+  assert AllPermissions(r) == r_lin;
   assert Round(r);
 
   assume
@@ -14,7 +14,7 @@ creates A_Join, A_Propose;
   call create_async(A_Propose(r, ProposePermissions(r)));
 }
 
-async atomic action {:layer 2} A_Propose(r: Round, {:linear_in "perm"} ps: [Permission]bool)
+async atomic action {:layer 2} A_Propose(r: Round, {:linear_in} ps: Set Permission)
 creates A_Vote, A_Conclude;
 modifies voteInfo;
 {
@@ -42,17 +42,17 @@ modifies voteInfo;
     }
     voteInfo[r] := Some(VoteInfo(maxValue, NoNodes()));
     call create_asyncs(VotePAs(r, maxValue));
-    call create_async(A_Conclude(r, maxValue, ConcludePerm(r)));
+    call create_async(A_Conclude(r, maxValue, One(ConcludePerm(r))));
   }
 }
 
-async atomic action {:layer 2} A_Conclude(r: Round, v: Value, {:linear_in "perm"} p: Permission)
+async atomic action {:layer 2} A_Conclude(r: Round, v: Value, {:linear_in} p: One Permission)
 modifies decision;
 {
   var {:pool "NodeSet"} q: NodeSet;
 
   assert Round(r);
-  assert p == ConcludePerm(r);
+  assert p->val == ConcludePerm(r);
   assert voteInfo[r] is Some;
   assert voteInfo[r]->t->value == v;
 
@@ -64,11 +64,11 @@ modifies decision;
   }
 }
 
-async atomic action {:layer 2} A_Join(r: Round, n: Node, {:linear_in "perm"} p: Permission)
+async atomic action {:layer 2} A_Join(r: Round, n: Node, {:linear_in} p: One Permission)
 modifies joinedNodes;
 {
   assert Round(r);
-  assert p == JoinPerm(r, n);
+  assert p->val == JoinPerm(r, n);
 
   assume
     {:add_to_pool "Round", r, r-1}
@@ -81,11 +81,11 @@ modifies joinedNodes;
   }
 }
 
-async atomic action {:layer 2} A_Vote(r: Round, n: Node, v: Value, {:linear_in "perm"} p: Permission)
+async atomic action {:layer 2} A_Vote(r: Round, n: Node, v: Value, {:linear_in} p: One Permission)
 modifies joinedNodes, voteInfo;
 {
   assert Round(r);
-  assert p == VotePerm(r, n);
+  assert p->val == VotePerm(r, n);
   assert voteInfo[r] is Some;
   assert voteInfo[r]->t->value == v;
   assert !voteInfo[r]->t->ns[n];

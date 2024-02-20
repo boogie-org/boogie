@@ -3885,6 +3885,8 @@ namespace Microsoft.Boogie
     // and a selector index within the constructor corresponding to it
     public List<DatatypeAccessor> Accessors { get; private set; }
 
+    public IEnumerable<Variable> Fields => Enumerable.Range(0, Accessors.Count).Select(i => Field(i));
+
     private DatatypeConstructor Constructor(int index)
     {
       var accessor = Accessors[index];

@@ -1,22 +1,20 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "tid"} Tid = int;
-
-var {:layer 0,2} a:[int]int;
+var {:layer 0,2} a: [int]int;
 var {:layer 0,1} count: int;
-var {:layer 1,2} {:linear "tid"} unallocated:[int]bool;
+var {:layer 1,2} {:linear} unallocated: Set int;
 
 yield invariant {:layer 1} Yield1();
 invariant AllocInv(count, unallocated);
 
-yield invariant {:layer 2} Yield2({:linear "tid"} tid: int, v: int);
-invariant a[tid] == v;
+yield invariant {:layer 2} Yield2({:linear} tid: One int, v: int);
+invariant a[tid->val] == v;
 
 yield procedure {:layer 2} main()
 requires call Yield1();
 {
-  var {:layer 1,2} {:linear "tid"} tid:int;
+  var {:layer 1,2} {:linear} tid: One int;
   var i: int;
 
   while (true)
@@ -28,11 +26,11 @@ requires call Yield1();
   }
 }
 
-yield procedure {:layer 2} P({:layer 1,2} {:linear "tid"} tid: int, i: int)
-requires {:layer 1} tid == i;
+yield procedure {:layer 2} P({:layer 1,2} {:linear} tid: One int, i: int)
+requires {:layer 1} tid->val == i;
 preserves call Yield1();
-requires call Yield2(tid, old(a)[tid]);
-ensures call Yield2(tid, old(a)[tid] + 1);
+requires call Yield2(tid, old(a)[tid->val]);
+ensures call Yield2(tid, old(a)[tid->val] + 1);
 {
   var t:int;
 
@@ -41,55 +39,55 @@ ensures call Yield2(tid, old(a)[tid] + 1);
   call Write(tid, i, t + 1);
 }
 
-atomic action {:layer 2,2} AtomicAllocate() returns ({:linear "tid"} tid: int, i: int)
+atomic action {:layer 2,2} AtomicAllocate() returns ({:linear} tid: One int, i: int)
 modifies unallocated;
 {
-  assume unallocated[tid];
-  unallocated[tid] := false;
+  assume Set_Contains(unallocated, i);
+  call tid := One_Get(unallocated, i);
 }
 
 yield procedure {:layer 1}
-Allocate() returns ({:layer 1} {:linear "tid"} tid: int, i: int)
+Allocate() returns ({:layer 1} {:linear} tid: One int, i: int)
 refines AtomicAllocate;
-ensures {:layer 1} tid == i;
+ensures {:layer 1} tid->val == i;
 preserves call Yield1();
 {
   call i := AllocateLow();
   call {:layer 1} tid, unallocated := MakeLinear(i, unallocated);
 }
 
-atomic action {:layer 2,2} AtomicRead({:linear "tid"} tid: int, i: int) returns (val: int)
+atomic action {:layer 2,2} AtomicRead({:linear} tid: One int, i: int) returns (val: int)
 {
-  val := a[tid];
+  val := a[tid->val];
 }
 
 yield procedure {:layer 1}
-Read({:layer 1} {:linear "tid"} tid: int, i: int) returns (val: int)
+Read({:layer 1} {:linear} tid: One int, i: int) returns (val: int)
 refines AtomicRead;
-requires {:layer 1} tid == i;
+requires {:layer 1} tid->val == i;
 preserves call Yield1();
 {
   call val := ReadLow(i);
 }
 
-atomic action {:layer 2,2} AtomicWrite({:linear "tid"} tid: int, i: int, val: int)
+atomic action {:layer 2,2} AtomicWrite({:linear} tid: One int, i: int, val: int)
 modifies a;
 {
-  a[tid] := val;
+  a[tid->val] := val;
 }
 
 yield procedure {:layer 1}
-Write({:layer 1} {:linear "tid"} tid: int, i: int, val: int)
+Write({:layer 1} {:linear} tid: One int, i: int, val: int)
 refines AtomicWrite;
-requires {:layer 1} tid == i;
+requires {:layer 1} tid->val == i;
 preserves call Yield1();
 {
   call WriteLow(i, val);
 }
 
-function {:inline} AllocInv(count: int, unallocated:[int]bool): (bool)
+function {:inline} AllocInv(count: int, unallocated: Set int): bool
 {
-  (forall x: int :: unallocated[x] || x < count)
+  (forall x: int :: Set_Contains(unallocated, x) || x < count)
 }
 
 atomic action {:layer 1,1} AtomicReadLow(i: int) returns (val: int)
@@ -119,12 +117,9 @@ refines AtomicWriteLow;
 yield procedure {:layer 0} AllocateLow() returns (i: int);
 refines AtomicAllocateLow;
 
-// We can prove that this primitive procedure preserves the permission invariant locally.
-// We only need to use its specification and the definitions of TidCollector and TidSetCollector.
-pure action MakeLinear(i: int, {:linear_in "tid"} unallocated: [int]bool)
-returns ({:linear "tid"} tid: int, {:linear "tid"} unallocated': [int]bool)
+pure action MakeLinear(i: int, {:linear_in} unallocated: Set int)
+returns ({:linear} tid: One int, {:linear} unallocated': Set int)
 {
-  assert unallocated[i];
-  tid := i;
-  unallocated' := unallocated[i := false];
+  unallocated' := unallocated;
+  call tid := One_Get(unallocated', i);
 }

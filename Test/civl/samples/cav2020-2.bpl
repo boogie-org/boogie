@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie /lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "tid"} Tid;
+type Tid;
 
 var {:layer 0, 1} b: bool;
 var {:layer 0, 3} count: int;
@@ -15,7 +15,7 @@ modifies count;
 {
     count := count + 1;
 }
-yield procedure {:layer 2} Incr({:layer 1,2} {:hide} {:linear "tid"} tid: Tid)
+yield procedure {:layer 2} Incr({:layer 1,2} {:hide} {:linear} tid: One Tid)
 refines IncrSpec;
 preserves call LockInv();
 {
@@ -27,13 +27,13 @@ preserves call LockInv();
     call Release(tid);
 }
 
-right action {:layer 2,2} AcquireSpec({:linear "tid"} tid: Tid)
+right action {:layer 2,2} AcquireSpec({:linear} tid: One Tid)
 modifies l;
 {
     assume l == None();
-    l := Some(tid);
+    l := Some(tid->val);
 }
-yield procedure {:layer 1} Acquire({:layer 1} {:linear "tid"} tid: Tid)
+yield procedure {:layer 1} Acquire({:layer 1} {:linear} tid: One Tid)
 refines AcquireSpec;
 preserves call LockInv();
 {
@@ -41,19 +41,19 @@ preserves call LockInv();
 
     call t := CAS(false, true);
     if (t) {
-        call {:layer 1} l := Copy(Some(tid));
+        call {:layer 1} l := Copy(Some(tid->val));
     } else {
         call {:mark} Acquire(tid);
     }
 }
 
-left action {:layer 2,2} ReleaseSpec({:linear "tid"} tid: Tid)
+left action {:layer 2,2} ReleaseSpec({:linear} tid: One Tid)
 modifies l;
 {
-    assert l == Some(tid);
+    assert l == Some(tid->val);
     l := None();
 }
-yield procedure {:layer 1} Release({:layer 1} {:linear "tid"} tid: Tid)
+yield procedure {:layer 1} Release({:layer 1} {:linear} tid: One Tid)
 refines ReleaseSpec;
 preserves call LockInv();
 {
@@ -63,24 +63,24 @@ preserves call LockInv();
     call {:layer 1} l := Copy(None());
 }
 
-both action {:layer 2,2} ReadSpec({:linear "tid"} tid: Tid) returns (v: int)
+both action {:layer 2,2} ReadSpec({:linear} tid: One Tid) returns (v: int)
 {
-    assert l == Some(tid);
+    assert l == Some(tid->val);
     v := count;
 }
-yield procedure {:layer 1} Read({:layer 1} {:linear "tid"} tid: Tid) returns (v: int)
+yield procedure {:layer 1} Read({:layer 1} {:linear} tid: One Tid) returns (v: int)
 refines ReadSpec;
 {
     call v := READ();
 }
 
-both action {:layer 2,2} WriteSpec({:linear "tid"} tid: Tid, v: int)
+both action {:layer 2,2} WriteSpec({:linear} tid: One Tid, v: int)
 modifies count;
 {
-    assert l == Some(tid);
+    assert l == Some(tid->val);
     count := v;
 }
-yield procedure {:layer 1} Write({:layer 1} {:linear "tid"} tid: Tid, v: int)
+yield procedure {:layer 1} Write({:layer 1} {:linear} tid: One Tid, v: int)
 refines WriteSpec;
 {
     call WRITE(v);
