@@ -23,3 +23,13 @@ procedure P3({:linear} a: int) returns ({:linear} a': int) {
 procedure P4(a: int) returns ({:linear} a': int) {
     a' := a;
 }
+
+procedure P5({:linear} a: Set int, {:linear_in} b: One int) {
+    call One_Put(a, b);
+}
+
+procedure P6({:linear_in} a: Set int, {:linear} b: One int) {
+    var {:linear} a': Set int;
+    a' := a;
+    call One_Put(a', b);
+}

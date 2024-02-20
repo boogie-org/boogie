@@ -151,7 +151,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                  Error(rhsExpr, "unavailable source for a linear read");
+                  Error(arg, "unavailable source for a linear read");
                 }
               }
               if (GetPermissionType(rhsExpr.Type) == null)
@@ -445,14 +445,15 @@ namespace Microsoft.Boogie
           // pack
           for (int j = 0; j < constructor.InParams.Count; j++)
           {
-            if (FindLinearKind(constructor.InParams[j]) == LinearKind.ORDINARY)
+            var field = constructor.InParams[j];
+            if (FindLinearKind(field) == LinearKind.ORDINARY)
             {
               continue;
             }
             var arg = nAryExpr.Args[j];
             if (arg is not IdentifierExpr ie)
             {
-              Error(arg, $"source of pack to linear field must be a variable");
+              Error(arg, $"pack argument for linear field {field} must be a variable");
             }
             else if (rhsVars.Contains(ie.Decl))
             {
