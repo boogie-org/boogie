@@ -55,10 +55,10 @@ public class RandomSeedTest
     var noRandomLogs = await GetProverLogs.GetProverLogForProgram(options, program);
     options.RandomSeed = 10000;
     var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);
-    var assertN3 = "(assert (<= random";
+    var assertN3 = "(assert (<= N 3)";
     var randomN3Index = randomOptionsLogs.IndexOf(assertN3, StringComparison.Ordinal)!;
     var noRandomN3Index = noRandomLogs.IndexOf(assertN3, StringComparison.Ordinal)!;
-    var assert3N = "(assert (<= 3 random";
+    var assert3N = "(assert (<= 3 N)";
     var random3NIndex = randomOptionsLogs.IndexOf(assert3N, StringComparison.Ordinal)!;
     var noRandom3NIndex = noRandomLogs.IndexOf(assert3N, StringComparison.Ordinal)!;
     
