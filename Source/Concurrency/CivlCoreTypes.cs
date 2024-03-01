@@ -74,8 +74,6 @@ namespace Microsoft.Boogie
 
     public LayerRange LayerRange => ActionDecl.LayerRange;
 
-    public int LowerLayer => LayerRange.LowerLayer;
-
     public IEnumerable<ActionDecl> PendingAsyncs => ActionDecl.CreateActionDecls;
     
     public bool HasPendingAsyncs => PendingAsyncs.Any();

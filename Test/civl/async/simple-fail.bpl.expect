@@ -1,0 +1,6 @@
+simple-fail.bpl(13,1): Error: a postcondition could not be proved on this return path
+(0,0): Related location: Refinement check of A failed
+Execution trace:
+    simple-fail.bpl(11,7): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
