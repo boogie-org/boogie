@@ -165,7 +165,7 @@ namespace Microsoft.Boogie
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
-        var declarations = split == null ? program.TopLevelDeclarations : split.TopLevelDeclarations;
+        var declarations = split.TopLevelDeclarations;
         var reorderedDeclarations = GetReorderedDeclarations(declarations, random);
         foreach (var declaration in reorderedDeclarations) {
           Contract.Assert(declaration != null);
