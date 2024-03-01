@@ -318,6 +318,30 @@ procedure Foo(x: int) {
   }
 
   [Test]
+  public async Task FromSeedResetsState() {
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    options.VcsCores = 1;
+    options.VerifySnapshots = 1;
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+
+    var source = @"
+procedure {:priority 3} {:checksum ""stable""} Bad(y: int)
+{
+  assert 2 == 1;
+}".TrimStart();
+    Parser.Parse(source, "fakeFilename1", out var program);
+    Assert.AreEqual("Bad", program.Implementations.ElementAt(0).Name);
+    var tasks = engine.GetVerificationTasks(program);
+    var task = tasks[0];
+    await task.TryRun()!.ToTask();
+    var secondResult = task.FromSeed(100).TryRun()!;
+    var statusList = new List<IVerificationStatus>();
+    secondResult.Subscribe(t => statusList.Add(t));
+    await secondResult.ToTask();
+    Assert.True(statusList.OfType<Running>().Any());
+  }
+  
+  [Test]
   public async Task StatusTest() {
     
     var options = CommandLineOptions.FromArguments(TextWriter.Null);

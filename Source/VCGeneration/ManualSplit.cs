@@ -14,7 +14,8 @@ public class ManualSplit : Split
     Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
     VerificationConditionGenerator par, 
     ImplementationRun run, 
-    IToken token) : base(options, blocks, gotoCmdOrigins, par, run)
+    IToken token, int? randomSeed = null) 
+    : base(options, blocks, gotoCmdOrigins, par, run, randomSeed)
   {
     Token = token;
   }
