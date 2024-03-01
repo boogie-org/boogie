@@ -90,10 +90,11 @@ namespace Microsoft.Boogie
       }
       var subst = Substituter.SubstitutionFromDictionary(map);
       inlinedImpl.Proc.Requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
+      var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
       inlinedImpl.Proc.Ensures = new List<Ensures>(new[]
       {
-        new Ensures(false, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, inlinedImpl.Proc.ModifiedVars.ToHashSet())),
-          $"Refinement check of {targetAction.Name} failed")
+        new Ensures(false, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)))
+          { Description = new FailureOnlyDescription($"Refinement check of {targetAction.Name} failed") }
       });
     }
 
@@ -245,7 +246,7 @@ namespace Microsoft.Boogie
       cmds.Add(CmdHelper.CallCmd(invariantAction.Impl.Proc, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams));
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
-      var frame = new HashSet<Variable>(refinedAction.ModifiedGlobalVars);
+      var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
       cmds.Add(GetCheck(targetAction.tok, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)),
         $"IS conclusion of {targetAction.Name} failed"));
 

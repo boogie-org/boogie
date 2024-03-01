@@ -74,15 +74,10 @@ namespace Microsoft.Boogie
       this.tok = impl.tok;
       this.oldGlobalMap = new Dictionary<Variable, Variable>();
       var yieldProcedureDecl = (YieldProcedureDecl)originalImpl.Proc;
-      //ActionProc actionProc = civlTypeChecker.procToYieldingProc[originalImpl.Proc] as ActionProc;
       this.layerNum = yieldProcedureDecl.Layer;
-      foreach (Variable v in civlTypeChecker.GlobalVariables)
+      foreach (Variable v in civlTypeChecker.GlobalVariablesAtLayer(layerNum))
       {
-        var layerRange = v.LayerRange;
-        if (layerRange.LowerLayer <= layerNum && layerNum < layerRange.UpperLayer)
-        {
-          this.oldGlobalMap[v] = oldGlobalMap[v];
-        }
+        this.oldGlobalMap[v] = oldGlobalMap[v];
       }
 
       this.newLocalVars = new List<Variable>();
