@@ -156,16 +156,16 @@ namespace Microsoft.Boogie
     /// <summary>
     /// Set up the context.
     /// </summary>
-    private void Setup(Program prog, ProverContext ctx, Split split)
+    private void Setup(Program program, ProverContext ctx, Split split)
     {
       SolverOptions.RandomSeed = 1 < Options.RandomizeVcIterations ? split.NextRandom() : split.RandomSeed;
       var random = SolverOptions.RandomSeed == null ? null : new Random(SolverOptions.RandomSeed.Value);
 
-      Program = prog;
+      Program = program;
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
-        var declarations = split == null ? prog.TopLevelDeclarations : split.TopLevelDeclarations;
+        var declarations = split == null ? program.TopLevelDeclarations : split.TopLevelDeclarations;
         var reorderedDeclarations = GetReorderedDeclarations(declarations, random);
         foreach (var declaration in reorderedDeclarations) {
           Contract.Assert(declaration != null);

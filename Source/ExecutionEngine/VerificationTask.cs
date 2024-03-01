@@ -41,6 +41,13 @@ public class VerificationTask : IVerificationTask {
     }
   }
 
+  public IVerificationTask FromSeed(int newSeed)
+  {
+    var split = new ManualSplit(Split.Options, Split.Blocks, Split.GotoCmdOrigins, 
+      Split.parent, Split.Run, Split.Token, newSeed);
+    return new VerificationTask(engine, ProcessedProgram, split, modelViewInfo);
+  }
+
   private CancellationTokenSource? cancellationSource;
   private ReplaySubject<IVerificationStatus>? status;
 

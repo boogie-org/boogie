@@ -5,7 +5,13 @@ using VC;
 
 namespace Microsoft.Boogie;
 
-public interface IVerificationTask {
+public interface IVerificationTask
+{
+  /// <summary>
+  /// Creates a copy of the current task that uses a different seed to randomize the SMT solving. 
+  /// </summary>
+  IVerificationTask FromSeed(int newSeed);
+
   IVerificationStatus CacheStatus { get; }
   ManualSplit Split { get; }
 

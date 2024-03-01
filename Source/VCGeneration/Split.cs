@@ -20,7 +20,7 @@ namespace VC
       private readonly Random randomGen;
       public ImplementationRun Run { get; }
 
-      public int? RandomSeed => Implementation.RandomSeed ?? Options.RandomSeed;
+      public int RandomSeed { get; private set; }
 
       public List<Block> Blocks { get; }
       readonly List<Block> bigBlocks = new();
@@ -69,7 +69,7 @@ namespace VC
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
-        VerificationConditionGenerator /*!*/ par, ImplementationRun run)
+        VerificationConditionGenerator /*!*/ par, ImplementationRun run, int? randomSeed = null)
       {
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
@@ -85,7 +85,8 @@ namespace VC
         PrintTopLevelDeclarationsForPruning(par.program, Implementation, "before");
         TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
         PrintTopLevelDeclarationsForPruning(par.program, Implementation, "after");
-        randomGen = new Random(RandomSeed ?? 0);
+        RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
+        randomGen = new Random(RandomSeed);
       }
 
       private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
