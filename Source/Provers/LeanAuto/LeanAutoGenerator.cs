@@ -52,36 +52,36 @@ public class LeanAutoGenerator : ReadOnlyVisitor
           ? Prune.GetLiveDeclarations(options, p, allBlocks.ToList()).ToList()
           : p.TopLevelDeclarations;
 
-      generator.Line("-- Type constructors");
+      generator.WriteLine("-- Type constructors");
       // Always include all type constructors
       p.TopLevelDeclarations.OfType<TypeCtorDecl>().ForEach(tcd => generator.Visit(tcd));
-      generator.NL();
+      generator.WriteLine();
 
-      generator.Line("-- Type synonyms");
+      generator.WriteLine("-- Type synonyms");
       liveDeclarations.OfType<TypeSynonymDecl>().ForEach(tcd => generator.Visit(tcd));
-      generator.NL();
+      generator.WriteLine();
 
-      generator.Line("-- Constants");
+      generator.WriteLine("-- Constants");
       liveDeclarations.OfType<Constant>().ForEach(c => generator.Visit(c));
-      generator.NL();
+      generator.WriteLine();
 
-      generator.Line("-- Unique const axioms");
+      generator.WriteLine("-- Unique const axioms");
       generator.EmitUniqueConstAxioms();
-      generator.NL();
+      generator.WriteLine();
 
-      generator.Line("-- Variables");
+      generator.WriteLine("-- Variables");
       liveDeclarations.OfType<GlobalVariable>().ForEach(gv => generator.Visit(gv));
-      generator.NL();
+      generator.WriteLine();
 
-      generator.Line("-- Functions");
+      generator.WriteLine("-- Functions");
       liveDeclarations.OfType<Function>().ForEach(f => generator.Visit(f));
-      generator.NL();
+      generator.WriteLine();
 
-      generator.Line("-- Axioms");
+      generator.WriteLine("-- Axioms");
       liveDeclarations.OfType<Axiom>().ForEach(a => generator.Visit(a));
-      generator.NL();
+      generator.WriteLine();
 
-      generator.Line("-- Implementations");
+      generator.WriteLine("-- Implementations");
       p.Implementations.ForEach(i => generator.Visit(i));
     } catch (LeanConversionException e) {
       Console.WriteLine($"Failed translation: {e.Msg}");
@@ -105,9 +105,9 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     foreach (var kv in uniqueConsts) {
       var axiomName = $"unique{i}";
       userAxiomNames.Add(axiomName);
-      Text($"axiom {axiomName}: distinct ");
-      List(kv.Value);
-      NL();
+      WriteText($"axiom {axiomName}: distinct ");
+      WriteList(kv.Value);
+      WriteLine();
       i++;
     }
   }
@@ -126,46 +126,46 @@ public class LeanAutoGenerator : ReadOnlyVisitor
 
   private void Indent(int n = 1, string str = null)
   {
-    Text(String.Concat(Enumerable.Repeat("  ", n)));
+    WriteText(String.Concat(Enumerable.Repeat("  ", n)));
 
     if (str is not null) {
-      Text(str);
+      WriteText(str);
     }
   }
 
-  private void IndentL(int n = 1, string str = null)
+  private void IndentLine(int n = 1, string str = null)
   {
     Indent(n, str);
-    NL();
+    WriteLine();
   }
 
-  private void NL()
+  private void WriteLine()
   {
     writer.WriteLine();
   }
 
-  private void Text(string text)
+  private void WriteText(string text)
   {
     writer.Write(text);
   }
 
-  private void Line(string text)
+  private void WriteLine(string text)
   {
     writer.WriteLine(text);
   }
 
-  private void List(IEnumerable<string> strings)
+  private void WriteList(IEnumerable<string> strings)
   {
-    Text("[");
-    Text(String.Join(", ", strings));
-    Text("]");
+    WriteText("[");
+    WriteText(String.Join(", ", strings));
+    WriteText("]");
   }
 
   public override Block VisitBlock(Block node)
   {
     var label = BlockName(node);
-    IndentL(1, "@[simp]");
-    IndentL(1, $"{label} :=");
+    IndentLine(1, "@[simp]");
+    IndentLine(1, $"{label} :=");
     node.Cmds.ForEach(c => Visit(c));
     if (node.TransferCmd is ReturnCmd r) {
       VisitReturnCmd(r);
@@ -175,7 +175,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
       throw new LeanConversionException(node.TransferCmd.tok,
         $"Unsupported transfer command: {node.TransferCmd}");
     }
-    NL();
+    WriteLine();
     return node;
   }
 
@@ -183,7 +183,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   {
     Indent(2, "assert ");
     VisitExpr(node.Expr);
-    Line(" $");
+    WriteLine(" $");
     return node;
   }
 
@@ -191,7 +191,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   {
     Indent(2, "assume ");
     VisitExpr(node.Expr);
-    Line(" $");
+    WriteLine(" $");
     return node;
   }
 
@@ -213,7 +213,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   {
     var name = SanitizeNameForLean(node.Name);
     usedNames.Add(name);
-    Text(name);
+    WriteText(name);
     return node;
   }
 
@@ -239,11 +239,11 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   public override Type VisitBasicType(BasicType node)
   {
     if (node.IsBool) {
-      Text("Prop");
+      WriteText("Prop");
     } else if (node.IsInt) {
-      Text("Int");
+      WriteText("Int");
     } else if (node.IsReal) {
-      Text("Real");
+      WriteText("Real");
     } else if (node.IsRMode) {
       throw new LeanConversionException(node.tok, "Unsupported type: RMode.");
     } else if (node.IsRegEx) {
@@ -261,26 +261,26 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   public override Expr VisitBvConcatExpr(BvConcatExpr node)
   {
     Visit(node.E0);
-    Text(" ++ ");
+    WriteText(" ++ ");
     Visit(node.E1);
     return node;
   }
 
   public override Type VisitBvType(BvType node)
   {
-    Text($"(BitVec {node.Bits})");
+    WriteText($"(BitVec {node.Bits})");
     return node;
   }
 
   public override Constant VisitConstant(Constant node)
   {
     var ti = node.TypedIdent;
-    Text("variable ");
+    WriteText("variable ");
     Visit(ti);
     if (node.Unique) {
       AddUniqueConst(ti.Type, Name(node));
     }
-    NL();
+    WriteLine();
     globalVars.Add(node);
     return node;
   }
@@ -288,17 +288,17 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   public override CtorType VisitCtorType(CtorType node)
   {
     if (node.Arguments.Any()) {
-      Text("(");
+      WriteText("(");
     }
 
-    Text(Name(node.Decl));
+    WriteText(Name(node.Decl));
     node.Arguments.ForEach(a =>
     {
-      Text(" ");
+      WriteText(" ");
       Visit(a);
     });
     if (node.Arguments.Any()) {
-      Text(")");
+      WriteText(")");
     }
     return node;
   }
@@ -312,47 +312,47 @@ public class LeanAutoGenerator : ReadOnlyVisitor
       _ => throw new LeanConversionException(node.tok,
         $"Unsupported quantifier type: {node.Kind}")
     };
-    Text($"({kind}");
+    WriteText($"({kind}");
     foreach (var tv in node.TypeParameters) {
-      Text($" ({Name(tv)} : Type)");
+      WriteText($" ({Name(tv)} : Type)");
     }
     foreach (var x in node.Dummies) {
-      Text(" ");
+      WriteText(" ");
       VisitTypedIdent(x.TypedIdent);
     }
-    Text(", ");
+    WriteText(", ");
     Visit(node.Body);
-    Text(")");
+    WriteText(")");
 
     return node;
   }
 
   public override TypedIdent VisitTypedIdent(TypedIdent node)
   {
-    Text("(");
+    WriteText("(");
     var name = SanitizeNameForLean(node.Name);
-    Text(name);
-    Text(" : ");
+    WriteText(name);
+    WriteText(" : ");
     Visit(node.Type);
-    Text(")");
+    WriteText(")");
     return node;
   }
 
   public override Expr VisitBvExtractExpr(BvExtractExpr node)
   {
-    Text($"(BitVec.extractLsb {node.End - 1} {node.Start} ");
+    WriteText($"(BitVec.extractLsb {node.End - 1} {node.Start} ");
     Visit(node.Bitvector);
-    Text(")");
+    WriteText(")");
     return node;
   }
 
   public override Expr VisitLambdaExpr(LambdaExpr node)
   {
-    Text("(λ");
+    WriteText("(λ");
     node.Dummies.ForEach(x => Visit(x.TypedIdent));
-    Text("=>");
+    WriteText("=>");
     Visit(node.Body);
-    Text(")");
+    WriteText(")");
     return node;
   }
 
@@ -362,21 +362,21 @@ public class LeanAutoGenerator : ReadOnlyVisitor
       throw new LeanConversionException(node.tok,
         "Unsupported: LetExpr with more than one binder");
     }
-    Text("(let");
+    WriteText("(let");
     node.Dummies.ForEach(x => Visit(x.TypedIdent));
-    Text(" := ");
+    WriteText(" := ");
     node.Rhss.ForEach(e => Visit(e));
-    Text("; ");
+    WriteText("; ");
     Visit(node.Body);
-    Text(")");
+    WriteText(")");
     return node;
   }
 
   public override GlobalVariable VisitGlobalVariable(GlobalVariable node)
   {
-    Text("variable ");
+    WriteText("variable ");
     Visit(node.TypedIdent);
-    NL();
+    WriteLine();
     globalVars.Add(node);
     return node;
   }
@@ -385,22 +385,22 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   {
     if(node.IsTrue) {
       // Use lowercase version to ensure Bool, which can be coerced to Prop
-      Text("true");
+      WriteText("true");
     } else if (node.IsFalse) {
       // Use lowercase version to ensure Bool, which can be coerced to Prop
-      Text("false");
+      WriteText("false");
     } else if (node.isBvConst) {
       var bvConst = node.asBvConst;
-      Text("(");
-      Text(bvConst.Value.ToString());
-      Text($" : BitVec {bvConst.Bits}");
-      Text(")");
+      WriteText("(");
+      WriteText(bvConst.Value.ToString());
+      WriteText($" : BitVec {bvConst.Bits}");
+      WriteText(")");
     } else if (node.isBigDec) {
       throw new LeanConversionException(node.tok,
         "Unsupported literal: BigDec");
     } else if (node.isBigNum) {
       var bigNumConst = node.asBigNum;
-      Text(bigNumConst.ToString());
+      WriteText(bigNumConst.ToString());
     } else if (node.isBigFloat) {
       throw new LeanConversionException(node.tok,
         "Unsupported literal: BigFloat");
@@ -422,16 +422,16 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     }
     if (node.TypeParameters.Any()) {
       var args = node.TypeParameters.Select(Name);
-      Text($"forall ({String.Join(" ", args)} : Type), ");
+      WriteText($"forall ({String.Join(" ", args)} : Type), ");
     }
-    Text($"(SMTArray{node.Arguments.Count} ");
+    WriteText($"(SMTArray{node.Arguments.Count} ");
     node.Arguments.ForEach(a =>
     {
       Visit(a);
-      Text(" ");
+      WriteText(" ");
     });
     Visit(node.Result);
-    Text(")");
+    WriteText(")");
     return node;
   }
 
@@ -439,10 +439,10 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   {
     var fun = node.Fun;
     var args = node.Args;
-    Text("(");
+    WriteText("(");
     if (fun is BinaryOperator op && args.Count == 2) {
       Visit(args[0]);
-      Text($" {BinaryOpToLean(op.Op)} ");
+      WriteText($" {BinaryOpToLean(op.Op)} ");
       Visit(args[1]);
     } else if (fun is FieldAccess fieldAccess) {
       throw new LeanConversionException(node.tok,
@@ -451,30 +451,30 @@ public class LeanAutoGenerator : ReadOnlyVisitor
       throw new LeanConversionException(node.tok,
         "Unsupported: field update (since the semantics are complex)");
     } else if (fun is IfThenElse && args.Count == 3) {
-      Text("if ");
+      WriteText("if ");
       Visit(args[0]);
-      Text(" then ");
+      WriteText(" then ");
       Visit(args[1]);
-      Text(" else ");
+      WriteText(" else ");
       Visit(args[2]);
     } else if (fun is TypeCoercion typeCoercion && args.Count == 1) {
       if (!args[0].Type.Equals(typeCoercion.Type)) {
         // TODO: might need to actually call a coercion function
         Console.WriteLine($"Coerce: {args[0].Type} -> {typeCoercion.Type}");
       }
-      Text("(");
+      WriteText("(");
       Visit(args[0]);
-      Text(" : ");
+      WriteText(" : ");
       Visit(typeCoercion.Type);
-      Text(")");
+      WriteText(")");
     } else {
       VisitIAppliable(fun);
       foreach (var arg in args) {
-        Text(" ");
+        WriteText(" ");
         Visit(arg);
       }
     }
-    Text(")");
+    WriteText(")");
 
     return node;
   }
@@ -490,13 +490,13 @@ public class LeanAutoGenerator : ReadOnlyVisitor
           _ => throw new LeanConversionException(Token.NoToken,
             $"Internal: unknown arithmetic coercion: {arithmeticCoercion.Coercion}")
         };
-        Text(func);
+        WriteText(func);
         break;
       case BinaryOperator op:
-        Text(BinaryOpToLean(op.Op));
+        WriteText(BinaryOpToLean(op.Op));
         break;
       case FunctionCall fc:
-        Text(Name(fc.Func));
+        WriteText(Name(fc.Func));
         break;
       case IsConstructor isConstructor:
         throw new LeanConversionException(isConstructor.tok,
@@ -506,14 +506,14 @@ public class LeanAutoGenerator : ReadOnlyVisitor
         //break;
       case MapSelect:
         usesMaps = true;
-        Text($"select{fun.ArgumentCount - 1}");
+        WriteText($"select{fun.ArgumentCount - 1}");
         break;
       case MapStore:
         usesMaps = true;
-        Text($"store{fun.ArgumentCount - 2}");
+        WriteText($"store{fun.ArgumentCount - 2}");
         break;
       case UnaryOperator op:
-        Text(UnaryOpToLean(op.Op));
+        WriteText(UnaryOpToLean(op.Op));
         break;
       default:
         throw new LeanConversionException(Token.NoToken,
@@ -588,22 +588,22 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     // TODO: wrap in `mutual ... end` when necessary
     var name = Name(node);
     if (node is DatatypeTypeCtorDecl dt) {
-      Line($"inductive {name} where");
+      WriteLine($"inductive {name} where");
       foreach (var ctor in dt.Constructors) {
         Indent(1, $"| {Name(ctor)} : ");
         ctor.InParams.ForEach(p =>
         {
           Visit(p.TypedIdent.Type);
-          Text(" → ");
+          WriteText(" → ");
         });
-        Line($" {name}");
+        WriteLine($" {name}");
       }
     } else {
       var tyStr = String.Join(" → ", Enumerable.Repeat("Type", node.Arity + 1).ToList());
-      Line($"axiom {name} : {tyStr}");
+      WriteLine($"axiom {name} : {tyStr}");
 
       if(node.Arity == 0) {
-        Line($"instance {name}BEq : BEq {name} := by sorry");
+        WriteLine($"instance {name}BEq : BEq {name} := by sorry");
       }
     }
     return node;
@@ -617,11 +617,11 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   public override Declaration VisitTypeSynonymDecl(TypeSynonymDecl node)
   {
     var name = Name(node);
-    Text($"def {name}");
-    node.TypeParameters.ForEach(tp => Text($" ({Name(tp)} : Type)"));
-    Text(" := ");
+    WriteText($"def {name}");
+    node.TypeParameters.ForEach(tp => WriteText($" ({Name(tp)} : Type)"));
+    WriteText(" := ");
     Visit(node.Body);
-    NL();
+    WriteLine();
     return node;
   }
 
@@ -629,7 +629,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   {
     var p = node.ProxyFor;
     if (p is null) {
-      Text(Name(node));
+      WriteText(Name(node));
     } else {
       VisitType(p);
     }
@@ -638,7 +638,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
 
   public override Type VisitTypeVariable(TypeVariable node)
   {
-    Text(Name(node));
+    WriteText(Name(node));
     return node;
   }
 
@@ -646,7 +646,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   {
     Indent(2, "assert ");
     VisitExpr(node.Expr);
-    Line(" $");
+    WriteLine(" $");
     return node;
   }
 
@@ -654,7 +654,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   {
     Indent(2, "assert ");
     VisitExpr(node.Expr);
-    Line(" $");
+    WriteLine(" $");
     return node;
   }
 
@@ -684,9 +684,9 @@ public class LeanAutoGenerator : ReadOnlyVisitor
       name = $"ax_l{node.tok.line}c{node.tok.col}_{n}";
       n += 1;
     }
-    Text($"axiom {name}: ");
+    WriteText($"axiom {name}: ");
     VisitExpr(node.Expr);
-    NL();
+    WriteLine();
     userAxiomNames.Add(name);
     return node;
   }
@@ -694,29 +694,29 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   public override Function VisitFunction(Function node)
   {
     // In the long run, this should define functions when possible.
-    Text($"axiom {Name(node)} : ");
+    WriteText($"axiom {Name(node)} : ");
     node.TypeParameters.ForEach(x =>
     {
-      Text($"{{{Name(x)} : Type}}");
-      Text($" {ArrowString} ");
+      WriteText($"{{{Name(x)} : Type}}");
+      WriteText($" {ArrowString} ");
     });
     node.InParams.ForEach(x =>
     {
       Visit(x.TypedIdent.Type);
-      Text($" {ArrowString} ");
+      WriteText($" {ArrowString} ");
     });
     if (node.OutParams.Count == 1) {
       Visit(node.OutParams[0].TypedIdent.Type);
     } else {
-      Text("(");
+      WriteText("(");
       node.OutParams.ForEach(x =>
       {
-        Visit(x.TypedIdent.Type); Text(", ");
+        Visit(x.TypedIdent.Type); WriteText(", ");
       });
-      Text(")");
+      WriteText(")");
     }
 
-    NL();
+    WriteLine();
     // Note: definition axioms will be emitted later
     // node.DefinitionAxioms.ForEach(ax => VisitAxiom(ax));
     return node;
@@ -800,19 +800,19 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     {
       Indent();
       VisitTypedIdent(x.TypedIdent);
-      NL();
+      WriteLine();
     });
     node.OutParams.ForEach(x =>
     {
       Indent();
       VisitTypedIdent(x.TypedIdent);
-      NL();
+      WriteLine();
     });
     node.LocVars.ForEach(x =>
     {
       Indent();
       VisitTypedIdent(x.TypedIdent);
-      NL();
+      WriteLine();
     });
   }
 
@@ -822,18 +822,18 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     var entryLabel = BlockName(node.Blocks[0]);
 
     usedNames.Clear(); // Skip any globals used only by axioms, etc.
-    NL();
-    Line($"namespace impl_{name}");
-    NL();
+    WriteLine();
+    WriteLine($"namespace impl_{name}");
+    WriteLine();
 
-    Line("@[simp]");
-    Line($"def {name}");
+    WriteLine("@[simp]");
+    WriteLine($"def {name}");
     WriteParams(node);
-    IndentL(1, $": Prop := {entryLabel}");
-    IndentL(1, "where");
+    IndentLine(1, $": Prop := {entryLabel}");
+    IndentLine(1, "where");
     node.Blocks.ForEach(b => VisitBlock(b));
-    NL();
-    Line($"theorem {name}_correct");
+    WriteLine();
+    WriteLine($"theorem {name}_correct");
     WriteParams(node);
     var paramNames =
       globalVars.Select(Name).Where(x => usedNames.Contains(x))
@@ -841,14 +841,14 @@ public class LeanAutoGenerator : ReadOnlyVisitor
         .Concat(node.OutParams.Select(Name))
         .Concat(node.LocVars.Select(Name));
     var paramString = String.Join(' ', paramNames);
-    Indent(1, $": {name} {paramString} := by"); NL();
-    IndentL(2, "try simp"); // Uses `try` because it may make no progress
-    IndentL(2, "try auto"); // Uses `try` because there may be no goals remaining
+    Indent(1, $": {name} {paramString} := by"); WriteLine();
+    IndentLine(2, "try simp"); // Uses `try` because it may make no progress
+    IndentLine(2, "try auto"); // Uses `try` because there may be no goals remaining
     var axiomNames = usesMaps ? mapAxiomNames.Concat(userAxiomNames) : userAxiomNames;
-    Indent(3); List(axiomNames); NL();
-    IndentL(3, "u[]");
-    NL();
-    Line($"end impl_{name}");
+    Indent(3); WriteList(axiomNames); WriteLine();
+    IndentLine(3, "u[]");
+    WriteLine();
+    WriteLine($"end impl_{name}");
 
     usesMaps = false; // Skip map axioms in the next implementation if it doesn't need them
     usedNames.Clear(); // Skip any globals not used by the next implementation
