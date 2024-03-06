@@ -1,56 +1,56 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "tid"} X;
+type X;
 const unique MainTid: X;
 const unique Nil: X;
 
 var {:layer 2,5} x: int;
 var {:layer 2,3} lock: X;
 
-var {:layer 1,4}{:linear "tid"} unallocated:[X]bool;
+var {:layer 1,4}{:linear} unallocated: Set X;
 
-right action {:layer 2,4} AtomicAllocTid() returns ({:linear "tid"} tid: X)
+right action {:layer 2,4} AtomicAllocTid() returns ({:linear} tid: One X)
 modifies unallocated;
-{ assume tid != Nil && unallocated[tid]; unallocated[tid] := false; }
+{ assume tid->val != Nil && Set_Contains(unallocated, tid->val); call One_Split(unallocated, tid); }
 
-yield procedure {:layer 1} AllocTid() returns ({:linear "tid"} tid: X);
+yield procedure {:layer 1} AllocTid() returns ({:linear} tid: One X);
 refines AtomicAllocTid;
 
-right action {:layer 3} atomic_acq({:linear "tid"} tid: X)
+right action {:layer 3} atomic_acq({:linear} tid: One X)
 modifies lock;
-{ assert tid != Nil; assume lock == Nil; lock := tid; }
+{ assert tid->val != Nil; assume lock == Nil; lock := tid->val; }
 
-yield procedure {:layer 2} acq({:linear "tid"} tid: X);
+yield procedure {:layer 2} acq({:linear} tid: One X);
 refines atomic_acq;
 
-left action {:layer 3} atomic_rel({:linear "tid"} tid: X)
+left action {:layer 3} atomic_rel({:linear} tid: One X)
 modifies lock;
-{ assert tid != Nil && lock == tid; lock := Nil; }
+{ assert tid->val != Nil && lock == tid->val; lock := Nil; }
 
-yield procedure {:layer 2} rel({:linear "tid"} tid: X);
+yield procedure {:layer 2} rel({:linear} tid: One X);
 refines atomic_rel;
 
-both action {:layer 3} atomic_read({:linear "tid"} tid: X) returns (v: int)
-{ assert tid != Nil && lock == tid; v := x; }
+both action {:layer 3} atomic_read({:linear} tid: One X) returns (v: int)
+{ assert tid->val != Nil && lock == tid->val; v := x; }
 
-yield procedure {:layer 2} read({:linear "tid"} tid: X) returns (v: int);
+yield procedure {:layer 2} read({:linear} tid: One X) returns (v: int);
 refines atomic_read;
 
-both action {:layer 3} atomic_write({:linear "tid"} tid: X, v: int)
+both action {:layer 3} atomic_write({:linear} tid: One X, v: int)
 modifies x;
-{ assert tid != Nil && lock == tid; x := v; }
+{ assert tid->val != Nil && lock == tid->val; x := v; }
 
-yield procedure {:layer 2} write({:linear "tid"} tid: X, v: int);
+yield procedure {:layer 2} write({:linear} tid: One X, v: int);
 refines atomic_write;
 
-left action {:layer 4} AtomicIncr({:linear "tid"} tid: X)
+left action {:layer 4} AtomicIncr({:linear} tid: One X)
 modifies x;
 { x := x + 1; }
 
-yield procedure {:layer 3} Incr({:linear "tid"} tid: X)
+yield procedure {:layer 3} Incr({:linear} tid: One X)
 refines AtomicIncr;
-requires {:layer 3} tid != Nil;
+requires {:layer 3} tid->val != Nil;
 {
   var t: int;
 
@@ -67,23 +67,23 @@ modifies x;
 yield procedure {:layer 4} IncrBy2()
 refines AtomicIncrBy2;
 {
-  var {:linear "tid"} tid1: X;
-  var {:linear "tid"} tid2: X;
+  var {:linear} tid1: One X;
+  var {:linear} tid2: One X;
 
   call tid1 := AllocTid();
   call tid2 := AllocTid();
   par Incr(tid1) | Incr(tid2);
 }
 
-yield procedure {:layer 5} EqualTo2({:linear "tid"} tid: X)
+yield procedure {:layer 5} EqualTo2({:linear} tid: One X)
 requires call YieldPre(tid);
 ensures call YieldPost();
 {
   call IncrBy2();
 }
 
-yield invariant {:layer 5} YieldPre({:linear "tid"} tid: X);
-invariant tid == MainTid && x == 0;
+yield invariant {:layer 5} YieldPre({:linear} tid: One X);
+invariant tid->val == MainTid && x == 0;
 
 yield invariant {:layer 5} YieldPost();
 invariant x == 2;

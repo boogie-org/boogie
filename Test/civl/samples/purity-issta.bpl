@@ -1,6 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear "tid"} X;
+type {:linear} X;
 const nil: X;
 
 const max: int;
@@ -9,10 +9,10 @@ axiom 0 <= max;
 var {:layer 0,1} l: [int]X;
 var {:layer 0,2} status: [int]bool;
 
-atomic action {:layer 2} atomic_Alloc({:linear "tid"} tid: X) returns (r: int)
+atomic action {:layer 2} atomic_Alloc({:linear} tid: One X) returns (r: int)
 modifies status;
 {
-  assert tid != nil;
+  assert tid->val != nil;
   if (*) {
     assume r == -1;
   } else {
@@ -21,11 +21,11 @@ modifies status;
   }
 }
 
-atomic action {:layer 2} atomic_Free({:linear "tid"} tid: X, i: int)
+atomic action {:layer 2} atomic_Free({:linear} tid: One X, i: int)
 modifies status;
-{ assert tid != nil; status[i] := true; }
+{ assert tid->val != nil; status[i] := true; }
 
-yield procedure {:layer 1} Alloc({:linear "tid"} tid: X) returns (r: int)
+yield procedure {:layer 1} Alloc({:linear} tid: One X) returns (r: int)
 refines atomic_Alloc;
 {
   var i: int;
@@ -50,7 +50,7 @@ refines atomic_Alloc;
   }
 }
 
-yield procedure {:layer 1} Free({:linear "tid"} tid: X, i: int)
+yield procedure {:layer 1} Free({:linear} tid: One X, i: int)
 refines atomic_Free;
 {
   call acquire(tid, i);
@@ -58,29 +58,29 @@ refines atomic_Free;
   call release(tid, i);
 }
 
-right action {:layer 1} atomic_acquire({:linear "tid"} tid: X, i: int)
+right action {:layer 1} atomic_acquire({:linear} tid: One X, i: int)
 modifies l;
-{ assert tid != nil; assume l[i] == nil; l[i] := tid; }
+{ assert tid->val != nil; assume l[i] == nil; l[i] := tid->val; }
 
-left action {:layer 1} atomic_release({:linear "tid"} tid: X, i: int)
+left action {:layer 1} atomic_release({:linear} tid: One X, i: int)
 modifies l;
-{ assert tid != nil; assert l[i] == tid; l[i] := nil; }
+{ assert tid->val != nil; assert l[i] == tid->val; l[i] := nil; }
 
-both action {:layer 1} atomic_Read({:linear "tid"} tid: X, i: int) returns (val: bool)
-{ assert tid != nil; assert l[i] == tid; val := status[i]; }
+both action {:layer 1} atomic_Read({:linear} tid: One X, i: int) returns (val: bool)
+{ assert tid->val != nil; assert l[i] == tid->val; val := status[i]; }
 
-both action {:layer 1} atomic_Write({:linear "tid"} tid: X, i: int, val: bool)
+both action {:layer 1} atomic_Write({:linear} tid: One X, i: int, val: bool)
 modifies status;
-{ assert tid != nil; assert l[i] == tid; status[i] := val; }
+{ assert tid->val != nil; assert l[i] == tid->val; status[i] := val; }
 
-yield procedure {:layer 0} acquire({:linear "tid"} tid: X, i: int);
+yield procedure {:layer 0} acquire({:linear} tid: One X, i: int);
 refines atomic_acquire;
 
-yield procedure {:layer 0} release({:linear "tid"} tid: X, i: int);
+yield procedure {:layer 0} release({:linear} tid: One X, i: int);
 refines atomic_release;
 
-yield procedure {:layer 0} Read({:linear "tid"} tid: X, i: int) returns (val: bool);
+yield procedure {:layer 0} Read({:linear} tid: One X, i: int) returns (val: bool);
 refines atomic_Read;
 
-yield procedure {:layer 0} Write({:linear "tid"} tid: X, i: int, val: bool);
+yield procedure {:layer 0} Write({:linear} tid: One X, i: int, val: bool);
 refines atomic_Write;

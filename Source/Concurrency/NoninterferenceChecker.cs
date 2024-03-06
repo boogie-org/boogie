@@ -7,12 +7,12 @@ namespace Microsoft.Boogie
   {
     public static string PermissionCollectorFormalName(LinearDomain domain)
     {
-      return "linear_" + domain.DomainName + "_in";
+      return $"linear_{domain.permissionType}_in";
     }
     
     public static string PermissionCollectorLocalName(LinearDomain domain)
     {
-      return "linear_" + domain.DomainName + "_available";
+      return $"linear_{domain.permissionType}_available";
     }
 
     public static List<Declaration> CreateNoninterferenceCheckerDecls(

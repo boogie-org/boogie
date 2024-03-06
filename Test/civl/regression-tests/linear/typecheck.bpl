@@ -2,37 +2,18 @@
 // RUN: %diff "%s.expect" "%t"
 
 type X;
-type {:linear "D"} Lin = int;
 
-procedure A()
-{
-    var {:linear "D"} a: X;
-    var {:linear "D"} b: int;
-}
-
-procedure B()
-{
-    var {:linear "D"} a: X;
-    var {:linear "D"} b: [X]bool;
-}
-
-procedure C()
-{
-    var {:linear "D"} a: X;
-    var {:linear "D"} c: [X]int;
-}
-
-function f(X): X;
+function f(One X): One X;
 
 yield procedure {:layer 1} D()
 {
-    var {:linear "D"} a: X;
-    var {:linear "D"} x: X;
-    var {:linear "D"} b: [X]bool;
-    var c: X;
-    var {:linear "D"} d: X;
+    var {:linear} a: One X;
+    var {:linear} x: One X;
+    var {:linear} b: Set X;
+    var c: One X;
+    var {:linear} d: One X;
 
-    b[a] := true;
+    b->val[a->val] := true;
 
     a := c;
 
@@ -61,27 +42,25 @@ yield procedure {:layer 1} D()
     call c, x := E(a, x);
 }
 
-yield procedure {:layer 1} E({:linear_in "D"} a: X, {:linear_in "D"} b: X) returns ({:linear "D"} c: X, {:linear "D"} d: X)
+yield procedure {:layer 1} E({:linear_in} a: One X, {:linear_in} b: One X) returns ({:linear} c: One X, {:linear} d: One X)
 {
     c := a;
 }
 
-yield procedure {:layer 1} F({:linear_in "D"} a: X) returns ({:linear "D"} c: X);
+var {:linear} g: One int;
 
-var {:linear "D"} g:int;
-
-procedure G(i:int) returns({:linear "D"} r:int)
+procedure G(i:int) returns({:linear} r: One int)
 {
   r := g;
 }
 
-procedure H(i:int) returns({:linear "D"} r:int)
+procedure H(i:int) returns({:linear} r: One int)
 modifies g;
 {
   g := r;
 }
 
-yield procedure {:layer 1} I({:linear_in "D"} x:int) returns({:linear "D"} x':int)
+yield procedure {:layer 1} I({:linear_in} x: One int) returns({:linear} x': One int)
 {
   x' := x;
 }
@@ -90,13 +69,13 @@ yield procedure {:layer 1} J()
 {
 }
 
-yield procedure {:layer 1} P1({:linear_in "D"} x:int) returns({:linear "D"} x':int)
+yield procedure {:layer 1} P1({:linear_in} x: One int) returns({:linear} x': One int)
 {
   par x' := I(x) | J();
   call x' := I(x');
 }
 
-yield procedure {:layer 1} P2({:linear_in "D"} x:int) returns({:linear "D"} x':int)
+yield procedure {:layer 1} P2({:linear_in} x: One int) returns({:linear} x': One int)
 {
   call x' := I(x);
   par x' := I(x') | J();

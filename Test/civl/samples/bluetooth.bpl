@@ -12,23 +12,11 @@ see cav2020-3.bpl for another example inspired by a concurrent
 garbage collector.
 */
 
-datatype {:linear "perm"} Perm { Left(i: int), Right(i: int) }
-
-function {:inline}{:linear "perm"} PermCollector(x: Set Perm): [Perm]bool { x->val }
-
-function Size<T>(set: [T]bool): int;
-axiom (forall<T> set: [T]bool :: Size(set) >= 0);
-
-pure procedure SizeLemma<T>(X: [T]bool, x: T);
-ensures Size(X[x := false]) + 1 == Size(X[x := true]);
-
-pure procedure SubsetSizeRelationLemma<T>(X: [T]bool, Y: [T]bool);
-requires MapImp(X, Y) == MapConst(true);
-ensures X == Y || Size(X) < Size(Y);
+datatype Perm { Left(i: int), Right(i: int) }
 
 var {:layer 0,3} stoppingFlag: bool;
 var {:layer 0,2} stopped: bool;
-var {:layer 1,2} {:linear "perm"} usersInDriver: Set Perm;
+var {:layer 1,2} {:linear} usersInDriver: Set Perm;
 var {:layer 0,1} pendingIo: int;
 var {:layer 0,1} stoppingEvent: bool;
 
@@ -37,12 +25,12 @@ invariant stopped ==> stoppingFlag;
 
 yield invariant {:layer 1} Inv1();
 invariant stoppingEvent ==> stoppingFlag && usersInDriver->val == MapConst(false);
-invariant pendingIo == Size(usersInDriver->val) + (if stoppingFlag then 0 else 1);
+invariant pendingIo == Set_Size(usersInDriver) + (if stoppingFlag then 0 else 1);
 
 // user code
 
 yield procedure {:layer 2}
-User(i: int, {:layer 1,2} {:linear "perm"} l: Set Perm, {:linear "perm"} {:layer 1,2} r: Set Perm)
+User(i: int, {:layer 1,2} {:linear} l: Set Perm, {:linear} {:layer 1,2} r: Set Perm)
 preserves call Inv2();
 preserves call Inv1();
 requires {:layer 1, 2} l->val == MapOne(Left(i)) && r->val == MapOne(Right(i));
@@ -58,70 +46,70 @@ requires {:layer 1, 2} l->val == MapOne(Left(i)) && r->val == MapOne(Right(i));
     }
 }
 
-atomic action {:layer 2} AtomicEnter#1(i: int, {:linear_in "perm"} l: Set Perm, {:linear "perm"} r: Set Perm)
+atomic action {:layer 2} AtomicEnter#1(i: int, {:linear_in} l: Set Perm, {:linear} r: Set Perm)
 modifies usersInDriver;
 {
     assume !stoppingFlag;
-    usersInDriver := Set_Union(usersInDriver, l);
+    call Set_Put(usersInDriver, l);
 }
 yield procedure {:layer 1}
-Enter#1(i: int, {:layer 1} {:linear_in "perm"} l: Set Perm, {:layer 1} {:linear "perm"} r: Set Perm)
+Enter#1(i: int, {:layer 1} {:linear_in} l: Set Perm, {:layer 1} {:linear} r: Set Perm)
 refines AtomicEnter#1;
 preserves call Inv1();
 requires {:layer 1} l->val == MapOne(Left(i)) && r->val == MapOne(Right(i));
 {
     call Enter();
-    call {:layer 1} SizeLemma(usersInDriver->val, Left(i));
     call {:layer 1} usersInDriver := A(usersInDriver, l);
 }
 
-pure action A({:linear_in "perm"} usersInDriver: Set Perm, {:linear_in "perm"} l: Set Perm)
-  returns ({:linear "perm"} usersInDriver': Set Perm)
+pure action A({:linear_in} usersInDriver: Set Perm, {:linear_in} l: Set Perm)
+  returns ({:linear} usersInDriver': Set Perm)
 {
-    usersInDriver' := Set_Union(usersInDriver, l);
+    usersInDriver' := usersInDriver;
+    call Set_Put(usersInDriver', l);
 }
 
-left action {:layer 2} AtomicCheckAssert#1(i: int, {:linear "perm"} r: Set Perm)
+left action {:layer 2} AtomicCheckAssert#1(i: int, {:linear} r: Set Perm)
 {
     assert r->val == MapOne(Right(i)) && usersInDriver->val[Left(i)];
     assert !stopped;
 }
 yield procedure {:layer 1}
-CheckAssert#1(i: int, {:layer 1} {:linear "perm"} r: Set Perm)
+CheckAssert#1(i: int, {:layer 1} {:linear} r: Set Perm)
 refines AtomicCheckAssert#1;
 preserves call Inv1();
 {
     call CheckAssert();
 }
 
-left action {:layer 2} AtomicExit(i: int, {:linear_out "perm"} l: Set Perm, {:linear "perm"} r: Set Perm)
+left action {:layer 2} AtomicExit(i: int, {:linear_out} l: Set Perm, {:linear} r: Set Perm)
 modifies usersInDriver;
 {
     assert l->val == MapOne(Left(i)) && r->val == MapOne(Right(i));
     call usersInDriver := B(usersInDriver, l);
 }
 yield procedure {:layer 1}
-Exit(i: int, {:layer 1} {:linear_out "perm"} l: Set Perm, {:layer 1} {:linear "perm"} r: Set Perm)
+Exit(i: int, {:layer 1} {:linear_out} l: Set Perm, {:layer 1} {:linear} r: Set Perm)
 refines AtomicExit;
 preserves call Inv1();
 {
     call DeleteReference();
-    call {:layer 1} SizeLemma(usersInDriver->val, Left(i));
     call {:layer 1} usersInDriver := B(usersInDriver, l);
-    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->val);
+    call {:layer 1} Lemma_SubsetSize(Set_Empty(), usersInDriver);
 }
 
-pure action B({:linear_in "perm"} usersInDriver: Set Perm, {:linear_out "perm"} l: Set Perm)
-  returns ({:linear "perm"} usersInDriver': Set Perm)
+pure action B({:linear_in} usersInDriver: Set Perm, {:linear_out} l: Set Perm)
+  returns ({:linear} usersInDriver': Set Perm)
 {
     assert Set_IsSubset(l, usersInDriver);
-    usersInDriver' := Set_Difference(usersInDriver, l);
+    usersInDriver' := usersInDriver;
+    call Set_Split(usersInDriver', l);
 }
 
 // stopper code
 type {:linear "stopper"} X = int;
 
-yield procedure {:layer 2} Stopper({:linear "stopper"} i: int)
+yield procedure {:layer 2} Stopper({:linear "stopper"} i: One int)
 refines AtomicSetStoppingFlag;
 preserves call Inv2();
 preserves call Inv1();
@@ -130,13 +118,13 @@ preserves call Inv1();
     call WaitAndStop();
 }
 
-yield procedure {:layer 1} Close({:linear "stopper"} i: int)
+yield procedure {:layer 1} Close({:linear "stopper"} i: One int)
 refines AtomicSetStoppingFlag;
 preserves call Inv1();
 {
     call SetStoppingFlag(i);
     call DeleteReference();
-    call {:layer 1} SubsetSizeRelationLemma(MapConst(false), usersInDriver->val);
+    call {:layer 1} Lemma_SubsetSize(Set_Empty(), usersInDriver);
 }
 
 atomic action {:layer 2} AtomicWaitAndStop()
@@ -171,16 +159,16 @@ atomic action {:layer 1} AtomicCheckAssert()
 yield procedure {:layer 0} CheckAssert();
 refines AtomicCheckAssert;
 
-right action {:layer 1,3} AtomicSetStoppingFlag({:linear "stopper"} i: int)
+right action {:layer 1,3} AtomicSetStoppingFlag({:linear "stopper"} i: One int)
 modifies stoppingFlag;
 {
     // The first assertion ensures that there is at most one stopper.
     // Otherwise AtomicSetStoppingFlag does not commute with itself.
-    assert i == 0;
+    assert i->val == 0;
     assert !stoppingFlag;
     stoppingFlag := true;
 }
-yield procedure {:layer 0} SetStoppingFlag({:linear "stopper"} i: int);
+yield procedure {:layer 0} SetStoppingFlag({:linear "stopper"} i: One int);
 refines AtomicSetStoppingFlag;
 
 atomic action {:layer 1} AtomicDeleteReference()

@@ -74,8 +74,6 @@ namespace Microsoft.Boogie
 
     public LayerRange LayerRange => ActionDecl.LayerRange;
 
-    public int LowerLayer => LayerRange.LowerLayer;
-
     public IEnumerable<ActionDecl> PendingAsyncs => ActionDecl.CreateActionDecls;
     
     public bool HasPendingAsyncs => PendingAsyncs.Any();
@@ -271,7 +269,7 @@ namespace Microsoft.Boogie
 
     private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
-      var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
+      var choice = civlTypeChecker.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
       impl.Proc.OutParams.Add(choice);
       impl.OutParams.Add(choice);
       impl.Blocks.ForEach(block =>
@@ -583,6 +581,13 @@ namespace Microsoft.Boogie
     {
       // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
       return (QuantifierExpr) this.VisitBinderExpr(node);
+    }
+
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      var retNode = (UnpackCmd)base.VisitUnpackCmd(node);
+      retNode.ResetDesugaring();
+      return retNode;
     }
   }
 }

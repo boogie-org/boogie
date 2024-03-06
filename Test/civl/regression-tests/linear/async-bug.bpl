@@ -1,14 +1,12 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-yield invariant {:layer 100} Yield({:linear "tid"} tid:int);
-invariant tid == GcTid;
+yield invariant {:layer 100} Yield({:linear} tid: One int);
+invariant tid->val == GcTid;
 
 const GcTid:int;
 
-type {:linear "tid"} X = int;
-
-yield procedure {:layer 100} Initialize({:linear "tid"} tid:int)
+yield procedure {:layer 100} Initialize({:linear} tid: One int)
 requires call Yield(tid);
 {
     call GarbageCollect(tid);
@@ -20,8 +18,8 @@ requires call Yield(tid);
     call Yield(tid);
 }
 
-yield procedure {:layer 100} GarbageCollect({:linear "tid"} tid:int)
-requires{:layer 100} tid == GcTid;
+yield procedure {:layer 100} GarbageCollect({:linear} tid: One int)
+requires{:layer 100} tid->val == GcTid;
 {
     call Yield(tid);
 }

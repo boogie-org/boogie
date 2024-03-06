@@ -46,6 +46,7 @@ procedure M(p: Person)
       var options = CommandLineOptions.FromArguments(TextWriter.Null);
       options.NormalizeNames = true;
       options.EmitDebugInformation = false;
+      options.NormalizeDeclarationOrder = true;
       
       var proverLog1 = await GetProverLogs.GetProverLogForProgram(options, procedure1);
       var proverLog2 = await GetProverLogs.GetProverLogForProgram(options, procedure2);

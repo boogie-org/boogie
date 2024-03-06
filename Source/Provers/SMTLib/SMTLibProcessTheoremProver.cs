@@ -76,9 +76,9 @@ namespace Microsoft.Boogie.SMTLib
     {
       return (options.RandomSeed, libOptions.NormalizeNames) switch
       {
-        (null, true) => NormalizeNamer.Create(namer),
-        (null, false) => KeepOriginalNamer.Create(namer),
-        _ => RandomiseNamer.Create(new Random(options.RandomSeed.Value), namer)
+        (0, true) => NormalizeNamer.Create(namer),
+        (0, false) => KeepOriginalNamer.Create(namer),
+        _ => RandomiseNamer.Create(new Random(options.RandomSeed), namer)
       };
     }
 
@@ -438,9 +438,9 @@ namespace Microsoft.Boogie.SMTLib
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
         SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
-        if (options.RandomSeed != null) {
-          SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed.Value + ")");
-          SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
+        if (options.RandomSeed != 0) {
+          SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed + ")");
+          SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed + ")");
         }
       }
 

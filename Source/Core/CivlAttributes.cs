@@ -178,14 +178,11 @@ namespace Microsoft.Boogie
 
   public static class CivlPrimitives
   {
-    public static HashSet<string> LinearTypes = new() { "Lmap", "Lset", "Lval" };
-
     public static HashSet<string> LinearPrimitives = new()
     {
-      "Loc_New",
-      "Lmap_Empty", "Lmap_Alloc", "Lmap_Create", "Lmap_Free", "Lmap_Move", "Lmap_Assume",
-      "Lset_Empty", "Lset_Split", "Lset_Get", "Lset_Put",
-      "Lval_Split", "Lval_Get", "Lval_Put"
+      "One_New",
+      "Map_MakeEmpty", "Map_Pack", "Map_Unpack", "Map_Split", "Map_Get", "Map_Put", "Map_Assume",
+      "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
     };
 
     public static IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
@@ -208,14 +205,12 @@ namespace Microsoft.Boogie
     {
       switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
-        case "Loc_New":
-        case "Lmap_Empty":
-        case "Lmap_Alloc":
-        case "Lmap_Create":
-        case "Lmap_Free":
-        case "Lmap_Move":
-        case "Lmap_Assume":
-        case "Lset_Empty":
+        case "One_New":
+        case "Set_MakeEmpty":
+        case "Map_MakeEmpty":
+        case "Map_Pack":
+        case "Map_Unpack":
+        case "Map_Assume":
           return null;
         default:
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);

@@ -119,7 +119,7 @@ namespace Microsoft.Boogie
 
       var ctx = Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
 
-      SolverOptions.RandomSeed = Options.RandomSeed;
+      SolverOptions.RandomSeed = Options.RandomSeed ?? 0;
       var prover = Pool.Options.TheProverFactory.SpawnProver(Pool.Options, SolverOptions, ctx);
       
       thmProver = prover;
@@ -155,17 +155,16 @@ namespace Microsoft.Boogie
     /// <summary>
     /// Set up the context.
     /// </summary>
-    private void Setup(Program prog, ProverContext ctx, Split split)
+    private void Setup(Program program, ProverContext ctx, Split split)
     {
       SolverOptions.RandomSeed = 1 < Options.RandomizeVcIterations ? split.NextRandom() : split.RandomSeed;
-      var random = SolverOptions.RandomSeed == null ? null : new Random(SolverOptions.RandomSeed.Value);
 
-      Program = prog;
+      Program = program;
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
-        var declarations = split == null ? prog.TopLevelDeclarations : split.TopLevelDeclarations;
-        var reorderedDeclarations = GetReorderedDeclarations(declarations, random);
+        var declarations = split.TopLevelDeclarations;
+        var reorderedDeclarations = GetReorderedDeclarations(declarations, SolverOptions.RandomSeed);
         foreach (var declaration in reorderedDeclarations) {
           Contract.Assert(declaration != null);
           if (declaration is TypeCtorDecl typeDecl)
@@ -192,9 +191,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    private IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random random)
+    private IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, int randomSeed)
     {
-      if (random == null) {
+      if (randomSeed == 0) {
         // By ordering the declarations based on their content and naming them based on order, the solver input stays constant under reordering and renaming.
         return Options.NormalizeDeclarationOrder
           ? declarations.OrderBy(d => d.ContentHash)
@@ -202,7 +201,7 @@ namespace Microsoft.Boogie
       }
 
       var copy = declarations.ToList();
-      Util.Shuffle(random, copy);
+      Util.Shuffle(new Random(randomSeed), copy);
       return copy;
     }
 

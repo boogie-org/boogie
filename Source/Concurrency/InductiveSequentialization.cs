@@ -90,10 +90,11 @@ namespace Microsoft.Boogie
       }
       var subst = Substituter.SubstitutionFromDictionary(map);
       inlinedImpl.Proc.Requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
+      var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
       inlinedImpl.Proc.Ensures = new List<Ensures>(new[]
       {
-        new Ensures(false, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, inlinedImpl.Proc.ModifiedVars.ToHashSet())),
-          $"Refinement check of {targetAction.Name} failed")
+        new Ensures(false, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)))
+          { Description = new FailureOnlyDescription($"Refinement check of {targetAction.Name} failed") }
       });
     }
 
@@ -245,7 +246,7 @@ namespace Microsoft.Boogie
       cmds.Add(CmdHelper.CallCmd(invariantAction.Impl.Proc, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams));
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
-      var frame = new HashSet<Variable>(refinedAction.ModifiedGlobalVars);
+      var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
       cmds.Add(GetCheck(targetAction.tok, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)),
         $"IS conclusion of {targetAction.Name} failed"));
 
@@ -351,13 +352,11 @@ namespace Microsoft.Boogie
         return Expr.True;
       }
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var domainToPermissionExprsForInvariant = linearTypeChecker.PermissionExprs(invariantAction.Impl.InParams);
-      var domainToPermissionExprsForAction = linearTypeChecker.PermissionExprs(actionArgs);
       var disjointnessExpr =
-        Expr.And(domainToPermissionExprsForInvariant.Keys.Intersect(domainToPermissionExprsForAction.Keys).Select(
+        Expr.And(linearTypeChecker.LinearDomains.Select(
           domain =>
             linearTypeChecker.DisjointnessExprForPermissions(domain,
-              domainToPermissionExprsForInvariant[domain].Concat(domainToPermissionExprsForAction[domain]))
+              linearTypeChecker.PermissionExprs(domain, invariantAction.Impl.InParams).Concat(linearTypeChecker.PermissionExprs(domain, actionArgs)))
         ).ToList());
       var pendingAsyncExprs = invariantAction.PendingAsyncs.Select(pendingAsync =>
       {
@@ -367,17 +366,11 @@ namespace Microsoft.Boogie
         var pendingAsyncFormalMap = pendingAsyncActionParams.ToDictionary(v => v,
           v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{pendingAsync.Name}_{v.Name}", v.TypedIdent.Type)));
         var subst = Substituter.SubstitutionFromDictionary(pendingAsyncFormalMap);
-        var domainToPermissionExprsForPendingAsyncAction =
-          linearTypeChecker.PermissionExprs(pendingAsync.InParams).ToDictionary(
-            kv => kv.Key,
-            kv => kv.Value.Select(expr => Substituter.Apply(subst, expr)));
-        var conjuncts = domainToPermissionExprsForAction.Keys.Select(domain =>
+        var conjuncts = linearTypeChecker.LinearDomains.Select(domain =>
         {
-          var lhs = linearTypeChecker.UnionExprForPermissions(domain, domainToPermissionExprsForAction[domain]);
+          var lhs = linearTypeChecker.UnionExprForPermissions(domain, linearTypeChecker.PermissionExprs(domain, actionArgs));
           var rhs = linearTypeChecker.UnionExprForPermissions(domain,
-            domainToPermissionExprsForPendingAsyncAction.ContainsKey(domain)
-              ? domainToPermissionExprsForPendingAsyncAction[domain]
-              : new List<Expr>());
+            linearTypeChecker.PermissionExprs(domain, pendingAsync.InParams).Select(expr => Substituter.Apply(subst, expr)));
           return linearTypeChecker.SubsetExprForPermissions(domain, lhs, rhs);
         });
         var pendingAsyncTransitionRelationExpr = ExprHelper.FunctionCall(pendingAsyncAction.InputOutputRelation,

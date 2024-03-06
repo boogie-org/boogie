@@ -1,39 +1,13 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype {:linear "perm"} Perm { Left(i: int), Right(i: int) }
+datatype Perm { Left(i: int), Right(i: int) }
 
-function {:inline} {:linear "perm"} IntCollector(i: int) : [Perm]bool
-{
-  MapConst(false)[Left(i) := true][Right(i) := true]
+datatype Tid { Tid(i: int, {:linear} ps: Set Perm) }
+
+function {:inline} All(i: int): Tid {
+    Tid(i, Set_Add(Set_Singleton(Left(i)), Right(i)))
 }
-function {:inline} {:linear "perm"} IntSetCollector(iset: [int]bool) : [Perm]bool
-{
-  (lambda p: Perm :: p is Left && iset[p->i])
-}
-
-function {:inline} IntSetSubset(X: [int]bool, Y: [int]bool): bool
-{
-    MapImp(X, Y) == MapConst(true)
-}
-function {:inline} IntSetEq(X: [int]bool, Y: [int]bool): bool
-{
-    MapIff(X, Y) == MapConst(true)
-}
-
-function size(set: [int]bool): int;
-
-pure procedure LemmaAddToSet(set: [int]bool, i: int);
-requires !set[i];
-ensures size(set[i := true]) ==  size(set) + 1;
-
-pure procedure LemmaRemoveFromSet(set: [int]bool, i: int);
-requires set[i];
-ensures size(set[i := false]) ==  size(set) - 1;
-
-pure procedure LemmaSubsetSizeRelation(a: [int]bool, b: [int]bool);
-requires IntSetSubset(a, b);
-ensures a == b || size(a) < size(b);
 
 const N: int;
 axiom 0 < N;
@@ -41,13 +15,13 @@ function {:inline} IsMutator(i: int) : bool
 {
     1 <= i && i <= N
 }
-const Mutators: [int]bool;
-axiom Mutators == (lambda x: int:: IsMutator(x));
-axiom size(Mutators) == N;
+const Mutators: Set Perm;
+axiom Mutators->val == (lambda p: Perm:: p is Left && IsMutator(p->i));
+axiom Set_Size(Mutators) == N;
 
 var {:layer 0,1} barrierOn: bool;
 var {:layer 0,1} barrierCounter: int;
-var {:layer 0,1} {:linear "perm"} mutatorsInBarrier: [int]bool;
+var {:layer 0,1} {:linear} mutatorsInBarrier: Set Perm;
 
 atomic action {:layer 1} AtomicIsBarrierOn() returns (b: bool)
 {
@@ -56,26 +30,38 @@ atomic action {:layer 1} AtomicIsBarrierOn() returns (b: bool)
 yield procedure {:layer 0} IsBarrierOn() returns (b: bool);
 refines AtomicIsBarrierOn;
 
-atomic action {:layer 1} AtomicEnterBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm)
+atomic action {:layer 1} AtomicEnterBarrier({:linear_in} tid: Tid) returns ({:linear} tid': Tid)
 modifies barrierCounter, mutatorsInBarrier;
 {
+    var {:linear} p: One Perm;
+    var i: int;
+
+    i := tid->i;
     assert IsMutator(i);
-    mutatorsInBarrier[i] := true;
+    tid' := tid;
+    call p := One_Get(tid'->ps, Left(i));
+    call One_Put(mutatorsInBarrier, p);
     barrierCounter := barrierCounter - 1;
-    p := Right(i);
 }
-yield procedure {:layer 0} EnterBarrier({:linear_in "perm"} i: int) returns ({:linear "perm"} p: Perm);
+yield procedure {:layer 0} EnterBarrier({:linear_in} tid: Tid) returns ({:linear} tid': Tid);
 refines AtomicEnterBarrier;
 
-atomic action {:layer 1} AtomicWaitForBarrierRelease({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int)
+atomic action {:layer 1} AtomicWaitForBarrierRelease({:linear_in} tid: Tid) returns ({:linear} tid': Tid)
 modifies barrierCounter, mutatorsInBarrier;
 {
-    assert p == Right(i) && mutatorsInBarrier[i];
+    var {:linear} p: One Perm;
+    var i: int;
+
+    i := tid->i;
+    assert Set_Contains(tid->ps, Right(i));
+    assert Set_Contains(mutatorsInBarrier, Left(i));
     assume !barrierOn;
-    mutatorsInBarrier[i] := false;
+    call p := One_Get(mutatorsInBarrier, Left(i));
+    tid' := tid;
+    call One_Put(tid'->ps, p);
     barrierCounter := barrierCounter + 1;
 }
-yield procedure {:layer 0} WaitForBarrierRelease({:linear_in "perm"} p: Perm, {:linear_out "perm"} i: int);
+yield procedure {:layer 0} WaitForBarrierRelease({:linear_in} tid: Tid) returns ({:linear} tid': Tid);
 refines AtomicWaitForBarrierRelease;
 
 atomic action {:layer 1} AtomicSetBarrier(b: bool)
@@ -93,46 +79,48 @@ atomic action {:layer 1} AtomicWaitBarrier()
 yield procedure {:layer 0} WaitBarrier();
 refines AtomicWaitBarrier;
 
-yield procedure {:layer 1} Mutator({:linear "perm"} i: int)
-requires {:layer 1} IsMutator(i);
+yield procedure {:layer 1} Mutator({:linear} tid: Tid)
+requires {:layer 1} IsMutator(tid->i) && tid == All(tid->i);
 preserves call BarrierInv();
 {
     var b: bool;
-    var {:linear "perm"} p: Perm;
+    var i: int;
+    var {:linear} tid': Tid;
 
     call b := IsBarrierOn();
     if (b) {
+        i := tid->i;
         call BarrierInv();
-        call {:layer 1} LemmaAddToSet(mutatorsInBarrier, i);
-        call p := EnterBarrier(i);
-        par BarrierInv() | MutatorInv(p, i);
-        call {:layer 1} LemmaRemoveFromSet(mutatorsInBarrier, i);
-        call WaitForBarrierRelease(p, i);
+        call tid' := EnterBarrier(tid);
+        par BarrierInv() | MutatorInv(tid');
+        call tid' := WaitForBarrierRelease(tid');
+        call Move(tid', tid);
     }
     // access memory here
 }
 
-yield procedure {:layer 1} Collector({:linear "perm"} i: int)
-requires {:layer 1} i == 0;
+yield procedure {:layer 1} Collector({:linear} tid: Tid)
+requires {:layer 1} tid == All(0);
 preserves call BarrierInv();
 {
     call SetBarrier(true);
-    par BarrierInv() | CollectorInv(i, false);
+    par BarrierInv() | CollectorInv(tid, false);
     call WaitBarrier();
-    call {:layer 1} LemmaSubsetSizeRelation(mutatorsInBarrier, Mutators);
-    par BarrierInv() | CollectorInv(i, true);
+    call {:layer 1} Lemma_SubsetSize(mutatorsInBarrier, Mutators);
+    par BarrierInv() | CollectorInv(tid, true);
     // do root scan here
     assert {:layer 1} mutatorsInBarrier == Mutators;
     call SetBarrier(false);
 }
 
 yield invariant {:layer 1} BarrierInv();
-invariant IntSetSubset(mutatorsInBarrier, Mutators);
-invariant size(mutatorsInBarrier) + barrierCounter == N;
+invariant Set_IsSubset(mutatorsInBarrier, Mutators);
+invariant Set_Size(mutatorsInBarrier) + barrierCounter == N;
 
-yield invariant {:layer 1} MutatorInv({:linear "perm"} p: Perm, i: int);
-invariant p == Right(i) && mutatorsInBarrier[i];
+yield invariant {:layer 1} MutatorInv({:linear} tid: Tid);
+invariant Set_Contains(tid->ps, Right(tid->i));
+invariant Set_Contains(mutatorsInBarrier, Left(tid->i));
 
-yield invariant {:layer 1} CollectorInv({:linear "perm"} i: int, done: bool);
-invariant i == 0 && barrierOn;
+yield invariant {:layer 1} CollectorInv({:linear} tid: Tid, done: bool);
+invariant tid == All(0) && barrierOn;
 invariant done ==> mutatorsInBarrier == Mutators;

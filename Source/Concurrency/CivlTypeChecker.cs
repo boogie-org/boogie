@@ -462,6 +462,11 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Variable> GlobalVariables => program.GlobalVariables;
 
+    public IEnumerable<Variable> GlobalVariablesAtLayer(int layerNum)
+    {
+      return GlobalVariables.Where(v => v.LayerRange.LowerLayer <= layerNum && layerNum < v.LayerRange.UpperLayer);
+    }
+
     public IEnumerable<Action> MoverActions => actionDeclToAction.Keys
       .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => actionDeclToAction[actionDecl]);
 
