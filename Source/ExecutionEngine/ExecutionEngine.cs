@@ -571,16 +571,11 @@ namespace Microsoft.Boogie
       }
 
       var outcome = await VerifyEachImplementation(output, processedProgram, stats, programId, er, requestId, stablePrioritizedImpls);
-      if (Options.PrintPassive) {
-        Options.PrintUnstructured = 1;
-        PrintBplFile(Options.PrintFile, processedProgram.Program, true, true, Options.PrettyPrint);
-      }
 
-      if (Options.LeanFile is not null) {
-        var writer = new StreamWriter(Options.LeanFile);
-        LeanAutoGenerator.EmitPassiveProgramAsLean(Options, processedProgram.Program, writer);
-        writer.Close();
-      }
+      // We unfortunately have to do any processing of the passive program after verification,
+      // because passification happens during verification. Refactoring the code to passify
+      // the program as an independent step would be a valuable thing to do eventually.
+      UsePassiveProgram(processedProgram.Program);
 
       if (1 < Options.VerifySnapshots && programId != null)
       {
@@ -591,6 +586,20 @@ namespace Microsoft.Boogie
       TraceCachingForBenchmarking(stats, requestId, start);
 
       return outcome;
+    }
+
+    private void UsePassiveProgram(Program passiveProgram)
+    {
+      if (Options.PrintPassive) {
+        Options.PrintUnstructured = 1;
+        PrintBplFile(Options.PrintFile, passiveProgram, true, true, Options.PrettyPrint);
+      }
+
+      if (Options.LeanFile is not null) {
+        var writer = new StreamWriter(Options.LeanFile);
+        LeanAutoGenerator.EmitPassiveProgramAsLean(Options, passiveProgram, writer);
+        writer.Close();
+      }
     }
 
     private ProcessedProgram PreProcessProgramVerification(Program program)
