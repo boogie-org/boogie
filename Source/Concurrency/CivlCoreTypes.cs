@@ -269,7 +269,7 @@ namespace Microsoft.Boogie
 
     private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
-      var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
+      var choice = civlTypeChecker.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
       impl.Proc.OutParams.Add(choice);
       impl.OutParams.Add(choice);
       impl.Blocks.ForEach(block =>
