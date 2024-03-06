@@ -578,7 +578,7 @@ namespace Microsoft.Boogie
 
       if (Options.LeanFile is not null) {
         var writer = new StreamWriter(Options.LeanFile);
-        LeanGenerator.EmitPassiveProgramAsLean(Options, processedProgram.Program, writer);
+        LeanAutoGenerator.EmitPassiveProgramAsLean(Options, processedProgram.Program, writer);
         writer.Close();
       }
 

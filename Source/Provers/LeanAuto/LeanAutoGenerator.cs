@@ -14,7 +14,7 @@ internal class LeanConversionException : Exception
   }
 }
 
-public class LeanGenerator : ReadOnlyVisitor
+public class LeanAutoGenerator : ReadOnlyVisitor
 {
   private readonly TextWriter writer;
   private readonly VCGenOptions options;
@@ -35,7 +35,7 @@ public class LeanGenerator : ReadOnlyVisitor
   private const string NeqString = "\u2260"; /* ≠ */
   private const string ArrowString = "\u2192"; /* → */
 
-  private LeanGenerator(VCGenOptions options, TextWriter writer)
+  private LeanAutoGenerator(VCGenOptions options, TextWriter writer)
   {
     this.options = options;
     this.writer = writer;
@@ -43,7 +43,7 @@ public class LeanGenerator : ReadOnlyVisitor
 
   public static void EmitPassiveProgramAsLean(VCGenOptions options, Program p, TextWriter writer)
   {
-    var generator = new LeanGenerator(options, writer);
+    var generator = new LeanAutoGenerator(options, writer);
     generator.EmitHeader();
     try {
       var allBlocks = p.Implementations.SelectMany(i => i.Blocks);
