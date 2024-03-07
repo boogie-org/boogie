@@ -572,9 +572,10 @@ namespace Microsoft.Boogie
 
       var outcome = await VerifyEachImplementation(output, processedProgram, stats, programId, er, requestId, stablePrioritizedImpls);
 
-      // We unfortunately have to do any processing of the passive program after verification,
-      // because passification happens during verification. Refactoring the code to passify
-      // the program as an independent step would be a valuable thing to do eventually.
+      // We unfortunately have to do any processing of the passive program
+      // after running VerifyEachImplementation, because it passifies the
+      // program in place. We should eventually refactor the code to
+      // passify the program as an independent step.
       UsePassiveProgram(processedProgram.Program);
 
       if (1 < Options.VerifySnapshots && programId != null)
