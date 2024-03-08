@@ -9,7 +9,6 @@ using System.IO;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.SMTLib;
-using VCGeneration;
 using System.Threading.Tasks;
 
 namespace VC

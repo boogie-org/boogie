@@ -115,10 +115,10 @@ modifies channel;
 
   assume {:add_to_pool "INV2", Next(Max(id))} true;
   havoc channel;
-  assume (forall i:int :: 1 <= i && i <= n ==> channel[Next(i)] == EmptyChannel()[id[i] := 1 ]);
+  assume (forall i:int :: {:add_to_pool "CHANNEL_INV", i} 1 <= i && i <= n ==> channel[Next(i)] == EmptyChannel()[id[i] := 1 ]);
   assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
   call create_asyncs((lambda pa:P :: Pid(pa->pid->val)));
-  assume (forall i:int, msg:int :: Pid(i) && channel[i][msg] > 0 ==> msg == id[Prev(i)]);
+  assume (forall i:int, msg:int :: {:add_to_pool "CHANNEL_INV", Prev(i)} Pid(i) && channel[i][msg] > 0 ==> msg == id[Prev(i)]);
 }
 
 action {:layer 2}

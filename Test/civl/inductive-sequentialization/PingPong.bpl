@@ -49,7 +49,7 @@ modifies channel;
   assert handles == BothHandles(cid);
   assert channel[cid] == ChannelPair(EmptyChannel(), EmptyChannel());
 
-  assume {:add_to_pool "INV", c, c+1} 0 < c;
+  assume {:add_to_pool "INV", 0, c, c+1} 0 < c;
   if (*) {
     channel[cid] := ChannelPair(EmptyChannel(), EmptyChannel()[c := 1]);
     call create_async(PONG(c, One(Right(cid))));
@@ -75,7 +75,7 @@ action {:layer 2} PING' (x: int, {:linear_in} p: One ChannelHandle)
 creates PING;
 modifies channel;
 {
-  assert (exists {:pool "INV"} m:int :: channel[p->val->cid]->left[m] > 0);
+  assert (exists {:pool "INV"} m:int :: {:add_to_pool "INV", m} channel[p->val->cid]->left[m] > 0);
   assert (forall m:int :: channel[p->val->cid]->right[m] == 0);
   call PING(x, p);
 }
@@ -84,7 +84,7 @@ action {:layer 2} PONG' (y: int, {:linear_in} p: One ChannelHandle)
 creates PONG;
 modifies channel;
 {
-  assert (exists {:pool "INV"} m:int :: channel[p->val->cid]->right[m] > 0);
+  assert (exists {:pool "INV"} m:int :: {:add_to_pool "INV", m} channel[p->val->cid]->right[m] > 0);
   assert (forall m:int :: channel[p->val->cid]->left[m] == 0);
   call PONG(y, p);
 }

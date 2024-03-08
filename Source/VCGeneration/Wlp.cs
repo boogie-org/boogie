@@ -2,8 +2,6 @@ using System;
 using Microsoft.Boogie;
 using Microsoft.Boogie.VCExprAST;
 using System.Diagnostics.Contracts;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using Microsoft.BaseTypes;
 
 namespace VC

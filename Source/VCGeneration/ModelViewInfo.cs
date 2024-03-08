@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using Microsoft.Boogie;
-using Bpl = Microsoft.Boogie;
 using System.Diagnostics.Contracts;
-using Set = Microsoft.Boogie.GSet<object>;
 
 namespace VC
 {

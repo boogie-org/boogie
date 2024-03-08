@@ -8,9 +8,7 @@ using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using System.Diagnostics.Contracts;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using VC;
 using Set = Microsoft.Boogie.GSet<object>;
 
 namespace VC

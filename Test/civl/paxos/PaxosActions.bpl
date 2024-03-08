@@ -56,7 +56,7 @@ modifies decision;
   assert voteInfo[r] is Some;
   assert voteInfo[r]->t->value == v;
 
-  assume {:add_to_pool "Round", r} true;
+  assume {:add_to_pool "Round", r} {:add_to_pool "NodeSet", q} true;
 
   if (*) {
     assume IsSubset(q, voteInfo[r]->t->ns) && IsQuorum(q);
