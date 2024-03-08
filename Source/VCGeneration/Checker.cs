@@ -6,7 +6,6 @@ using System.Threading;
 using Microsoft.Boogie.VCExprAST;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Microsoft.Boogie.SMTLib;
 using VC;
 
 namespace Microsoft.Boogie

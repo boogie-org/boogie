@@ -374,17 +374,34 @@ namespace Microsoft.Boogie.VCExprAST
 
     private VCExpr AugmentWithInstances(VCExprQuantifier quantifierExpr)
     {
+      var instances = quantifierInstantiationInfo[quantifierExpr].instances;
+      if (instances.Count == 0)
+      {
+        return quantifierExpr;
+      }
       if (quantifierExpr.Quan == Quantifier.ALL)
       {
-        return vcExprGen.And(quantifierExpr,
-          vcExprGen.NAry(VCExpressionGenerator.AndOp,
-            quantifierInstantiationInfo[quantifierExpr].instances.Values.ToList()));
+        var instantiatedConjuncts = vcExprGen.NAry(VCExpressionGenerator.AndOp, instances.Values.ToList());
+        if (exprTranslator.GenerationOptions.Options.KeepQuantifier)
+        {
+          return vcExprGen.And(quantifierExpr, instantiatedConjuncts);
+        }
+        else
+        {
+          return instantiatedConjuncts;
+        }
       }
       else
       {
-        return vcExprGen.Or(quantifierExpr,
-          vcExprGen.NAry(VCExpressionGenerator.OrOp,
-            quantifierInstantiationInfo[quantifierExpr].instances.Values.ToList()));
+        var instantiatedDisjuncts = vcExprGen.NAry(VCExpressionGenerator.OrOp, instances.Values.ToList());
+        if (exprTranslator.GenerationOptions.Options.KeepQuantifier)
+        {
+          return vcExprGen.Or(quantifierExpr, instantiatedDisjuncts);
+        }
+        else
+        {
+          return instantiatedDisjuncts;
+        }
       }
     }
 

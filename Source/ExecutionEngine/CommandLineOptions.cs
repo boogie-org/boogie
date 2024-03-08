@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
 using Microsoft.Boogie.SMTLib;
-using VC;
 
 namespace Microsoft.Boogie
 {
@@ -519,6 +517,11 @@ namespace Microsoft.Boogie
 
     public int LiveVariableAnalysis { get; set; } = 1;
 
+    public bool KeepQuantifier {
+      get => keepQuantifier;
+      set => keepQuantifier = value;
+    }
+
     public HashSet<string> Libraries { get; set; } = new HashSet<string>();
 
     // Note that procsToCheck stores all patterns <p> supplied with /proc:<p>
@@ -568,6 +571,7 @@ namespace Microsoft.Boogie
     private bool emitDebugInformation = true;
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
+    private bool keepQuantifier = false;
 
     public List<CoreOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
@@ -1322,7 +1326,8 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustSequentialization", x => trustSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
-              ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x)
+              ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x) ||
+              ps.CheckBooleanFlag("keepQuantifier", x => keepQuantifier = x)
           )
           {
             // one of the boolean flags matched
@@ -1932,6 +1937,11 @@ namespace Microsoft.Boogie
                 assignments, and calls can be labeled for inclusion in this
                 report. This generalizes and replaces the previous
                 (undocumented) `/printNecessaryAssertions` option.
+
+  /keepQuantifier
+                If pool-based quantifier instantiation creates instances of a quantifier
+                then keep the quantifier along with the instances. By default, the quantifier
+                is dropped if any instances are created.
 
   ---- Verification-condition splitting --------------------------------------
 
