@@ -3,33 +3,31 @@
 
 const N: int; // size of the ring
 axiom N > 0;
+function {:inline} Next(i: int) : int { (i + 1) mod N }
+function {:inline} Prev(i: int) : int { (i - 1) mod N }
+
+function {:inline} ValidPid(pid: int) : bool { 0 <= pid && pid < N }
 
 var {:layer 0,4} leader: [int]bool;       // leader[pid] iff pid is a leader
 
-function {:inline} Pid(pid: int) : bool { 0 <= pid && pid < N }
-function {:inline} Next(pid: int, i: int) : int { (pid + i) mod N }
-function {:inline} Next_P(pa: P, i: int) : P
-{
-  P(Next(pa->self, i), Next(pa->pid, i))
-}
-function {:inline} Prev(pid: int, i: int) : int { (pid - i) mod N }
-function {:inline} Prev_P(pa: P, i: int) : P
-{
-  P(Prev(pa->self, i), Prev(pa->pid, i))
-}
-
-// priority for becoming leader where ties are broken by pid
+// priority for becoming leader (ties are broken by pid)
 function Priority(int): int;      // pid -> priority
-const ExpectedLeader: int;        // pid
-axiom Pid(ExpectedLeader);
-axiom (forall i: int:: Pid(i) ==> Priority(i) <= Priority(ExpectedLeader));
-axiom (forall i: int:: Pid(i) && Priority(i) == Priority(ExpectedLeader) ==> i <= ExpectedLeader);
-
 function {:inline} Below(self: int, pid: int): bool
 {
   Priority(self) < Priority(pid) || 
   (Priority(self) == Priority(pid) && self < pid)
 }
+
+const ExpectedLeader: int;
+axiom ValidPid(ExpectedLeader);
+axiom (forall i: int:: ValidPid(i) ==> Priority(i) <= Priority(ExpectedLeader));
+axiom (forall i: int:: ValidPid(i) && Priority(i) == Priority(ExpectedLeader) ==> i <= ExpectedLeader);
+
+// alternative coordinates for identifying processes where ExpectedLeader is at position 0
+// Pos converts from process id to its position
+// Pid converts from position to process id
+function {:inline} Pos(pid: int) : int { (pid - ExpectedLeader) mod N }
+function {:inline} Pid(pos: int) : int { (ExpectedLeader + pos) mod N }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -52,43 +50,53 @@ action {:layer 3} INV2 (pids: Set int)
 creates P;
 modifies leader;
 {
-  var {:pool "K"} k: int;
-  var {:pool "U"} u: int;
-  var c: P;
+  /*
+  Invariant description:
+  
+  A (possibly empty) prefix of pending asyncs starting at position 0 is created.
+  The i-th pending async is created by process at position i and is targeted at 
+  the process at position Next(i).
+
+  A singleton pending async P(self, pid) is also created such that the position of
+  process pid is the length of the aforementioned prefix and self is a target whose
+  position is ahead of pid. This is the pending async chosen to be scheduled.
+  */
+  var {:pool "INV2"} choice: P; // nondeterministically chosen leading pending async
+  var self, pid: int;
 
   assert Init(pids->val, leader);
-  assume {:add_to_pool "K", k, k-1} {:add_to_pool "U", u+1, k} true;
+  assume {:add_to_pool "INV2", P(Next(choice->self), choice->pid), P(choice->pid, Prev(choice->pid))} true;
   if (*) {
-    assume 0 <= k && k < u && u <= N;
+    P(self, pid) := choice;
+    assume ValidPid(self) && ValidPid(pid);
+    // self is ahead of pid and may have wrapped around to position 0
+    assume Pos(self) == 0 || Pos(pid) < Pos(self);
+    // summarize the result of all priority comparisons by the leading pending async
+    // wraparound to position 0 is handled carefully
+    assume (forall {:pool "ORDER"} x: int :: {:add_to_pool "ORDER", x} Pos(pid) < x && x <= Prev(Pos(self)) ==> Below(Pid(x), pid));
+    // create prefix
     call create_asyncs(
-      (lambda {:pool "P_INV2"} pa: P :: 
-        {:add_to_pool "P_MAIN2", Prev_P(pa, ExpectedLeader)}
-        {:add_to_pool "P_INV2", pa} 
-        Pid(pa->pid) && pa->self == Next(pa->pid, 1) && Prev(pa->pid, ExpectedLeader) < k));
-    c := Next_P(P(u, k), ExpectedLeader);
-    call create_async(c);
-    assume {:add_to_pool "P_INV2", c} true;
-    assume (forall {:pool "ORDER"} x: int :: {:add_to_pool "ORDER", x} k < x && x < u ==> Below(Next(ExpectedLeader, x), Next(ExpectedLeader, k)));
-    call set_choice(c);
+      (lambda {:pool "P_INV2"} pa: P :: {:add_to_pool "P_MAIN2", pa} {:add_to_pool "P_INV2", pa}
+        ValidPid(pa->pid) && Pos(pa->pid) < Pos(pid) && pa->self == Next(pa->pid)));
+    // create singleton and set the choice
+    call create_async(choice);
+    call set_choice(choice);
   } else {
     leader[ExpectedLeader] := true;
   }
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 
 atomic action {:layer 3} MAIN2(pids: Set int)
 refines MAIN3 using INV2;
 creates P;
 {
-  assert Init(pids->val, channel, terminated, id, leader);
-
-  assume {:add_to_pool "INV2", Next(Max(id))} true;
-  havoc channel;
-  assume (forall i:int :: {:add_to_pool "CHANNEL_INV", i} 1 <= i && i <= n ==> channel[Next(i)] == EmptyChannel()[id[i] := 1 ]);
-  assume (forall i:int :: i < 1  || i > n ==> channel[i] == EmptyChannel());
-  call create_asyncs((lambda pa:P :: Pid(pa->pid->val)));
-  assume (forall i:int, msg:int :: {:add_to_pool "CHANNEL_INV", Prev(i)} Pid(i) && channel[i][msg] > 0 ==> msg == id[Prev(i)]);
+  assert Init(pids->val, leader);
+  assume {:add_to_pool "INV2", P(ExpectedLeader, Prev(ExpectedLeader))} true;
+  call create_asyncs(
+    (lambda {:pool "P_MAIN2"} pa: P :: 
+      {:add_to_pool "P_INV2", pa} 
+      ValidPid(pa->pid) && pa->self == Next(pa->pid)));
 }
 
 action {:layer 2} INV1({:linear_in} pids: Set int)
@@ -99,10 +107,10 @@ creates PInit, P;
 
   assume
     {:add_to_pool "INV1", k+1}
-    {:add_to_pool "PInit", PInit(k), PInit(N)}
+    {:add_to_pool "PInit", PInit(k)}
     0 <= k && k <= N;
   call create_asyncs((lambda {:pool "PInit"} pa: PInit :: k <= pa->self && pa->self < N));
-  call create_asyncs((lambda pa: P :: 0 <= pa->pid && pa->pid < k && pa->self == Next(pa->pid, 1)));
+  call create_asyncs((lambda pa: P :: 0 <= pa->pid && pa->pid < k && pa->self == Next(pa->pid)));
   call set_choice(PInit(k));
 }
 
@@ -114,29 +122,28 @@ creates PInit;
 {
   assert Init(pids->val, leader);
   assume {:add_to_pool "INV1", 0} true;
-  call create_asyncs((lambda pa: PInit :: Pid(pa->self)));
+  call create_asyncs((lambda pa: PInit :: ValidPid(pa->self)));
 }
 
 async left action {:layer 2} PInit(self: int)
 creates P;
 {
-  assert Pid(self);
-  call create_async(P(Next(self, 1), self));
+  assert ValidPid(self);
+  call create_async(P(Next(self), self));
 }
 
 async atomic action {:layer 2, 3} P(self: int, pid: int)
 creates P;
 modifies leader;
 {
-  assert Pid(self) && Pid(pid);
+  assert ValidPid(self) && ValidPid(pid);
   if (self == pid)
   {
     leader[pid] := true;
   }
   else if (Below(self, pid))
   {
-    call create_async(P(Next(self, 1), pid));
-    assume {:add_to_pool "P_INV2", P(Next(self, 1), pid)} true;
+    call create_async(P(Next(self), pid));
   }
 }
 
@@ -153,8 +160,8 @@ refines MAIN1;
   i := 0;
   while (i < N)
   invariant {:layer 1} 0 <= i && i <= N;
-  invariant {:layer 1} (forall ii:int :: Pid(ii) && ii >= i ==> Set_Contains(pids', ii));
-  invariant {:layer 1} PAs == (lambda pa: PInit :: if Pid(pa->self) && pa->self < i then 1 else 0);
+  invariant {:layer 1} (forall ii:int :: ValidPid(ii) && ii >= i ==> Set_Contains(pids', ii));
+  invariant {:layer 1} PAs == (lambda pa: PInit :: if ValidPid(pa->self) && pa->self < i then 1 else 0);
   {
     pids' := Set_Remove(pids', i);
     async call pinit(i);
@@ -164,14 +171,14 @@ refines MAIN1;
 
 yield procedure {:layer 1} pinit(self: int)
 refines PInit;
-requires {:layer 1} Pid(self);
+requires {:layer 1} ValidPid(self);
 {
-  async call p(Next(self, 1), self);
+  async call p(Next(self), self);
 }
 
 yield procedure {:layer 1} p(self: int, pid: int)
 refines P;
-requires {:layer 1} Pid(self) && Pid(pid);
+requires {:layer 1} ValidPid(self) && ValidPid(pid);
 {
   if (self == pid)
   {
@@ -179,7 +186,7 @@ requires {:layer 1} Pid(self) && Pid(pid);
   }
   else if (Below(self, pid))
   {
-    async call p(Next(self, 1), pid);
+    async call p(Next(self), pid);
   }
 }
 
