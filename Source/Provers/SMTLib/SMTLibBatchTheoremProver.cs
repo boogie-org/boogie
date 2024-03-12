@@ -190,10 +190,14 @@ namespace Microsoft.Boogie.SMTLib
           errorModel = ParseErrorModel(modelSExp);
         }
 
-        if (options.LibOptions.ProduceUnsatCores && responseStack.Count > 0) {
-          var unsatCoreSExp = responseStack.Pop();
-          if (result == SolverOutcome.Valid) {
-            ReportCoveredElements(unsatCoreSExp);
+        if (options.LibOptions.ProduceUnsatCores) {
+          if (responseStack.Count > 0) {
+            var unsatCoreSExp = responseStack.Pop();
+            if (result == SolverOutcome.Valid) {
+              ReportCoveredElements(unsatCoreSExp);
+            }
+          } else {
+            currentErrorHandler.OnProverError("Solver did not return an unsat core.");
           }
         }
 
