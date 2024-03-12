@@ -165,6 +165,10 @@ namespace Microsoft.Boogie.SMTLib
 
         var outcomeSExp = responseStack.Pop();
         var result = ParseOutcome(outcomeSExp, out var wasUnknown);
+        // Sometimes Z3 responds with "(error ...)" followed by "unknown"
+        if (outcomeSExp.Name is "error" && responseStack.TryPeek(out var sExpr) && sExpr.Name is "unknown") {
+          responseStack.Pop();
+        }
 
         var unknownSExp = responseStack.Pop();
         if (wasUnknown) {
@@ -181,10 +185,12 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
-        var modelSExp = responseStack.Pop();
-        errorModel = ParseErrorModel(modelSExp);
+        if (responseStack.Count > 0) {
+          var modelSExp = responseStack.Pop();
+          errorModel = ParseErrorModel(modelSExp);
+        }
 
-        if (options.LibOptions.ProduceUnsatCores) {
+        if (options.LibOptions.ProduceUnsatCores && responseStack.Count > 0) {
           var unsatCoreSExp = responseStack.Pop();
           if (result == SolverOutcome.Valid) {
             ReportCoveredElements(unsatCoreSExp);
