@@ -1209,6 +1209,7 @@ namespace Microsoft.Boogie.SMTLib
         case "error":
           if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId &&
               (resp.Arguments[0].Name.Contains("max. resource limit exceeded")
+               || resp.Arguments[0].Name.Contains("push canceled")
                || resp.Arguments[0].Name.Contains("resource limits reached")))
           {
             currentErrorHandler.OnResourceExceeded("max resource limit");

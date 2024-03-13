@@ -57,7 +57,7 @@ modifies channels;
   C := channel->C;
   head := channel->head;
   tail := channel->tail;
-  assume {:add_to_pool "INV1", c} 0 < c;
+  assume {:add_to_pool "INV1", c, c+1} 0 < c;
   if (*) {
     assume head == tail;
     call create_async(PRODUCER(c, One(Send(cid))));

@@ -229,6 +229,8 @@ namespace Microsoft.Boogie.SMTLib
           if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId) {
             if (resp.Arguments[0].Name.Contains("max. resource limit exceeded")) {
               return resp;
+            } else if (resp.Arguments[0].Name.Contains("push canceled")) {
+              return resp;
             } else if (resp.Arguments[0].Name.Contains("model is not available")) {
               return null;
             } else if (resp.Arguments[0].Name.Contains("unsat core is not available")) {

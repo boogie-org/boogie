@@ -107,6 +107,7 @@ namespace Microsoft.Boogie
     bool ConcurrentHoudini { get; }
     double VcsPathJoinMult { get; }
     bool VerifySeparately { get; }
+    bool KeepQuantifier { get; }
 
     public enum ProverWarnings
     {

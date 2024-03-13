@@ -7,7 +7,6 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using VC;
 using VCGeneration;
-using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
 {
