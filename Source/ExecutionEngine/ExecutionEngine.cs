@@ -7,14 +7,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using VC;
-using BoogiePL = Microsoft.Boogie;
 using System.Runtime.Caching;
 using System.Diagnostics;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices.ComTypes;
+using Microsoft.Boogie.LeanAuto;
+using Microsoft.Boogie.VCExprAST;
 using VCGeneration;
 
 namespace Microsoft.Boogie
@@ -554,6 +553,10 @@ namespace Microsoft.Boogie
 
       var processedProgram = PreProcessProgramVerification(program);
 
+      foreach (var action in Options.UseResolvedProgram) {
+        action(Options, processedProgram);
+      }
+
       if (!Options.Verify)
       {
         return PipelineOutcome.Done;
@@ -572,10 +575,6 @@ namespace Microsoft.Boogie
       }
 
       var outcome = await VerifyEachImplementation(output, processedProgram, stats, programId, er, requestId, stablePrioritizedImpls);
-      if (Options.PrintPassive) {
-        Options.PrintUnstructured = 1;
-        PrintBplFile(Options.PrintFile, processedProgram.Program, true, true, Options.PrettyPrint);
-      }
 
       if (1 < Options.VerifySnapshots && programId != null)
       {
