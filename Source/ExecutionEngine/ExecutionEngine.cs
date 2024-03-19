@@ -553,8 +553,8 @@ namespace Microsoft.Boogie
 
       var processedProgram = PreProcessProgramVerification(program);
 
-      if (Options.UseResolvedProgram.Any()) {
-        Options.UseResolvedProgram.ForEach(action => action(Options, processedProgram));
+      foreach (var action in Options.UseResolvedProgram) {
+        action(Options, processedProgram);
       }
 
       if (!Options.Verify)
