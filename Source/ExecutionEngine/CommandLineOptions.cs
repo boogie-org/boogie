@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics.Contracts;
 using System.IO;
+using Microsoft.Boogie.LeanAuto;
 using Microsoft.Boogie.SMTLib;
+using VC;
 
 namespace Microsoft.Boogie
 {
@@ -64,7 +66,6 @@ namespace Microsoft.Boogie
     public bool VerifySeparately { get; set; }
     public string PrintFile { get; set; }
     public string PrintPrunedFile { get; set; }
-    public string LeanFile { get; set; }
 
     /**
      * Whether to emit {:qid}, {:skolemid} and set-info :boogie-vc-id
@@ -90,6 +91,37 @@ namespace Microsoft.Boogie
     public bool PrintPassive {
       get => printPassive;
       set => printPassive = value;
+    }
+
+    public List<Action<ExecutionEngineOptions, ProcessedProgram>> UseResolvedProgram { get; } = new();
+
+    static void PassifyAllImplementations(ExecutionEngineOptions options, ProcessedProgram processedProgram)
+    {
+      // All three of these objects can be new instances because they're essentially not used by PrepareImplementation.
+      var callback = new VerifierCallback(options.PrintProverWarnings);
+      var checkerPool = new CheckerPool(options);
+      var vcGenerator = new VerificationConditionGenerator(processedProgram.Program, checkerPool);
+
+      foreach(var implementation in processedProgram.Program.Implementations) {
+        vcGenerator.PrepareImplementation(new ImplementationRun(implementation, options.OutputWriter),
+          callback, out _, out _, out _);
+      }
+    }
+
+    public static void PrintPassiveProgram(ExecutionEngineOptions options, ProcessedProgram processedProgram)
+    {
+      options.PrintUnstructured = 1;
+      PassifyAllImplementations(options, processedProgram);
+      ExecutionEngine.PrintBplFile(options, options.PrintFile, processedProgram.Program, true, true, options.PrettyPrint);
+    }
+
+    public static void PrintPassiveProgramAsLean(string fileName, ExecutionEngineOptions options, ProcessedProgram processedProgram)
+    {
+        var writer = new StreamWriter(fileName);
+        PassifyAllImplementations(options, processedProgram);
+        LeanAutoGenerator.EmitPassiveProgramAsLean(options, processedProgram.Program, writer);
+        writer.Close();
+
     }
 
     public bool PrintLambdaLifting { get; set; }
@@ -406,7 +438,7 @@ namespace Microsoft.Boogie
       get => trustRefinement;
       set => trustRefinement = value;
     }
-    
+
     public int TrustLayersUpto { get; set; } = -1;
     
     public int TrustLayersDownto { get; set; } = int.MaxValue;
@@ -682,9 +714,10 @@ namespace Microsoft.Boogie
           return true;
 
         case "printLean":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            LeanFile = args[ps.i];
+          if (ps.ConfirmArgumentCount(1)) {
+            var fileName = args[ps.i];
+            UseResolvedProgram.Add((o, p) =>
+              PrintPassiveProgramAsLean(fileName, o, p));
           }
 
           return true;
@@ -1285,7 +1318,7 @@ namespace Microsoft.Boogie
           if (ps.CheckBooleanFlag("printDesugared", x => printDesugarings = x) ||
               ps.CheckBooleanFlag("printLambdaLifting", x => PrintLambdaLifting = x) ||
               ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
-              ps.CheckBooleanFlag("printPassive", x => printPassive = x) ||
+              ps.CheckBooleanFlag("printPassive", x => UseResolvedProgram.Add(PrintPassiveProgram)) ||
               ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
               ps.CheckBooleanFlag("wait", x => Wait = x) ||
               ps.CheckBooleanFlag("trace", x => Verbosity = CoreOptions.VerbosityLevel.Trace) ||

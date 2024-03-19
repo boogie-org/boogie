@@ -553,6 +553,10 @@ namespace Microsoft.Boogie
 
       var processedProgram = PreProcessProgramVerification(program);
 
+      if (Options.UseResolvedProgram.Any()) {
+        Options.UseResolvedProgram.ForEach(action => action(Options, processedProgram));
+      }
+
       if (!Options.Verify)
       {
         return PipelineOutcome.Done;
@@ -572,12 +576,6 @@ namespace Microsoft.Boogie
 
       var outcome = await VerifyEachImplementation(output, processedProgram, stats, programId, er, requestId, stablePrioritizedImpls);
 
-      // We unfortunately have to do any processing of the passive program
-      // after running VerifyEachImplementation, because it passifies the
-      // program in place. We should eventually refactor the code to
-      // passify the program as an independent step.
-      UsePassiveProgram(processedProgram.Program);
-
       if (1 < Options.VerifySnapshots && programId != null)
       {
         program.FreezeTopLevelDeclarations();
@@ -587,20 +585,6 @@ namespace Microsoft.Boogie
       TraceCachingForBenchmarking(stats, requestId, start);
 
       return outcome;
-    }
-
-    private void UsePassiveProgram(Program passiveProgram)
-    {
-      if (Options.PrintPassive) {
-        Options.PrintUnstructured = 1;
-        PrintBplFile(Options.PrintFile, passiveProgram, true, true, Options.PrettyPrint);
-      }
-
-      if (Options.LeanFile is not null) {
-        var writer = new StreamWriter(Options.LeanFile);
-        LeanAutoGenerator.EmitPassiveProgramAsLean(Options, passiveProgram, writer);
-        writer.Close();
-      }
     }
 
     private ProcessedProgram PreProcessProgramVerification(Program program)
