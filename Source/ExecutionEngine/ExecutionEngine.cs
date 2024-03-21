@@ -702,9 +702,30 @@ namespace Microsoft.Boogie
 
     }
 
-    public IReadOnlyList<IVerificationTask> GetVerificationTasks(Program program) {
-      program.Resolve(Options);
-      program.Typecheck(Options);
+    class CollectingErrorSink : IErrorSink
+    {
+      public readonly List<(IToken Token, string Message)> Errors = new();
+      
+      public void Error(IToken tok, string msg)
+      {
+        Errors.Add((tok, msg));
+      }
+    }
+    
+    public IReadOnlyList<IVerificationTask> GetVerificationTasks(Program program)
+    {
+      var sink = new CollectingErrorSink();
+      var resolutionErrors = program.Resolve(Options, sink);
+      var errors = string.Join("\n", sink.Errors.Select(t => $"{t.Token}: {t.Message}"));
+      if (resolutionErrors > 0)
+      {
+        throw new Exception($"Boogie program had {resolutionErrors} resolution errors:\n{errors}");
+      }
+      var typeErrors = program.Typecheck(Options, sink);
+      if (typeErrors > 0)
+      {
+        throw new Exception($"Boogie program had {typeErrors} type errors:\n{errors}");
+      }
 
       EliminateDeadVariables(program);
       CollectModSets(program);
