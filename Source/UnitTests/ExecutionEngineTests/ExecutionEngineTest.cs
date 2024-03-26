@@ -48,7 +48,43 @@ public class ExecutionEngineTest {
     }
     Assert.Fail("Thread count didn't drop back down after waiting 500ms.");
   }
+
+  [Test]
+  public void ResolutionErrorOnGetVerificationTasks()
+  {
+    var programString = @"
+procedure Procedure(y: int)
+  ensures x == true;
+{
+}
+".Trim();
+    Parser.Parse(programString, "fakeFilename10", out var program);
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    Assert.Throws<ArgumentException>(() =>
+    {
+      var tasks = engine.GetVerificationTasks(program);
+    });
+  }
   
+  [Test]
+  public void TypeErrorOnGetVerificationTasks()
+  {
+    var programString = @"
+procedure Procedure(y: int)
+  ensures y == true;
+{
+}
+".Trim();
+    Parser.Parse(programString, "fakeFilename10", out var program);
+    var options = CommandLineOptions.FromArguments(TextWriter.Null);
+    var engine = ExecutionEngine.CreateWithoutSharedCache(options);
+    Assert.Throws<ArgumentException>(() =>
+    {
+      var tasks = engine.GetVerificationTasks(program);
+    });
+  }
+
   [Test]
   public async Task SplitOnEveryAssertion() {
     var programString = @"

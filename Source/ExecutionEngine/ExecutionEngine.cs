@@ -716,15 +716,15 @@ namespace Microsoft.Boogie
     {
       var sink = new CollectingErrorSink();
       var resolutionErrors = program.Resolve(Options, sink);
-      var errors = string.Join("\n", sink.Errors.Select(t => $"{t.Token}: {t.Message}"));
+      string GetErrorsString() => string.Join("\n", sink.Errors.Select(t => $"{t.Token}: {t.Message}"));
       if (resolutionErrors > 0)
       {
-        throw new Exception($"Boogie program had {resolutionErrors} resolution errors:\n{errors}");
+        throw new ArgumentException($"Boogie program had {resolutionErrors} resolution errors:\n{GetErrorsString()}");
       }
       var typeErrors = program.Typecheck(Options, sink);
       if (typeErrors > 0)
       {
-        throw new Exception($"Boogie program had {typeErrors} type errors:\n{errors}");
+        throw new ArgumentException($"Boogie program had {typeErrors} type errors:\n{GetErrorsString()}");
       }
 
       EliminateDeadVariables(program);
