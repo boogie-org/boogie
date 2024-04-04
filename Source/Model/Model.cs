@@ -699,7 +699,7 @@ namespace Microsoft.Boogie
         }
 
         var allDigits = new Regex(@"^-?[0-9]*$");
-        var real = new Regex(@"^-?[0-9]+\.[0-9]+$");
+        var real = new Regex(@"^-?[0-9]+((\.[0-9]+)|((\.[0-9]+)?(e[0-9]+)))$");
         if (allDigits.IsMatch(name))
         {
           if (szi > 0)
