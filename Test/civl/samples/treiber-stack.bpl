@@ -12,6 +12,7 @@ atomic action {:layer 5} AtomicAlloc() returns (loc_t: Loc (Treiber X))
 modifies Stack;
 {
   var {:linear} one_loc_t: One (Loc (Treiber X));
+  
   call one_loc_t := One_New();
   loc_t := one_loc_t->val;
   assume !Map_Contains(Stack, loc_t);
