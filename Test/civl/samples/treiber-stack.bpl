@@ -8,31 +8,33 @@ type X; // module type parameter
 var {:layer 4, 5} Stack: Map (Loc (Treiber X)) (Vec X);
 var {:layer 0, 4} {:linear} ts: Map (Loc (Treiber X)) (Treiber X);
 
-atomic action {:layer 5} AtomicAlloc() returns ({:linear} one_loc_t: One (Loc (Treiber X)))
+atomic action {:layer 5} AtomicAlloc() returns (loc_t: Loc (Treiber X))
 modifies Stack;
 {
+  var {:linear} one_loc_t: One (Loc (Treiber X));
   call one_loc_t := One_New();
-  assume !Map_Contains(Stack, one_loc_t->val);
-  Stack := Map_Update(Stack, one_loc_t->val, Vec_Empty());
+  loc_t := one_loc_t->val;
+  assume !Map_Contains(Stack, loc_t);
+  Stack := Map_Update(Stack, loc_t, Vec_Empty());
 }
-yield procedure {:layer 4} Alloc() returns (one_loc_t: One (Loc (Treiber X)))
+yield procedure {:layer 4} Alloc() returns (loc_t: Loc (Treiber X))
 refines AtomicAlloc;
 preserves call YieldInvDom#4();
 {
   var top: Option (Loc (Node X));
   var {:linear} stack: Map (Loc (Node X)) (Node X);
   var {:linear} treiber: Treiber X;
-  var {:linear} local_one_loc_t: One (Loc (Treiber X));
+  var {:linear} one_loc_t: One (Loc (Treiber X));
   var {:linear} map_t: Map (Loc (Treiber X)) (Treiber X);
 
   top := None();
   call stack := Map_MakeEmpty();
   treiber := Treiber(top, stack);
-  call local_one_loc_t := One_New();
-  call map_t := Map_Pack(local_one_loc_t, treiber);
-  one_loc_t := local_one_loc_t;
-  call AllocTreiber(one_loc_t->val, map_t);
-  call {:layer 4} Stack := Copy(Map_Update(Stack, one_loc_t->val, Vec_Empty()));
+  call one_loc_t := One_New();
+  call map_t := Map_Pack(one_loc_t, treiber);
+  loc_t := one_loc_t->val;
+  call AllocTreiber(loc_t, map_t);
+  call {:layer 4} Stack := Copy(Map_Update(Stack, loc_t, Vec_Empty()));
   call {:layer 4} AbsLemma(treiber);
 }
 
@@ -135,7 +137,9 @@ modifies ts;
   var {:linear} stack: Map (Loc (Node X)) (Node X);
   var {:linear} one_loc_n: One (Loc (Node X));
 
-  if (success) {
+  success := false;
+  if (*) {
+    success := true;
     call one_loc_t, treiber := Map_Get(ts, loc_t);
     Treiber(top, stack) := treiber;
     call one_loc_n := One_New();
