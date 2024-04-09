@@ -138,7 +138,9 @@ modifies ts;
   var {:linear} stack: Map (Loc (Node X)) (Node X);
   var {:linear} one_loc_n: One (Loc (Node X));
 
-  if (success) {
+  success := false;
+  if (*) {
+    success := true;
     call one_loc_t, treiber := Map_Get(ts, loc_t);
     Treiber(top, stack) := treiber;
     call one_loc_n := One_New();

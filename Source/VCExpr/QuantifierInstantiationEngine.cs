@@ -51,7 +51,7 @@ namespace Microsoft.Boogie.VCExprAST
     private string skolemConstantNamePrefix;
     internal VCExpressionGenerator vcExprGen;
     private Boogie2VCExprTranslator exprTranslator;
-    internal static ConcurrentDictionary<string, Type> labelToType = new();
+    internal static ConcurrentDictionary<string, HashSet<Type>> labelToTypes = new(); // pool name may map to multiple types
 
     public static VCExpr Instantiate(Implementation impl, VCExpressionGenerator vcExprGen, Boogie2VCExprTranslator exprTranslator, VCExpr vcExpr)
     {
@@ -199,18 +199,11 @@ namespace Microsoft.Boogie.VCExprAST
             if (x is string poolName)
             {
               labels.Add(poolName);
-              if (labelToType.ContainsKey(poolName))
+              if (!labelToTypes.ContainsKey(poolName))
               {
-                if (!v.TypedIdent.Type.Equals(labelToType[poolName]))
-                {
-                  Console.WriteLine(
-                    $"{tok.filename}({tok.line},{tok.col}): conflicting type for pool {poolName} used earlier with type {labelToType[poolName]}");
-                }
+                labelToTypes[poolName] = new();
               }
-              else
-              {
-                labelToType[poolName] = v.TypedIdent.Type;
-              }
+              labelToTypes[poolName].Add(v.TypedIdent.Type);
             }
             else
             {
@@ -457,6 +450,16 @@ namespace Microsoft.Boogie.VCExprAST
       {
         return;
       }
+
+      // Since a pool name may be used with multiple types, we have to prune invalid instances
+      for (int i = 0; i < quantifierExpr.BoundVars.Count; i++)
+      {
+        if (!quantifierExpr.BoundVars[i].Type.Equals(instance[i].Type))
+        {
+          return;
+        }
+      }
+
       var subst = new VCExprSubstitution(
         Enumerable.Range(0, quantifierExpr.BoundVars.Count).ToDictionary(
           x => quantifierExpr.BoundVars[x],
@@ -852,19 +855,15 @@ namespace Microsoft.Boogie.VCExprAST
       {
         if (iter.Key == "add_to_pool")
         {
-          if (iter.Params[0] is string poolName && QuantifierInstantiationEngine.labelToType.ContainsKey(poolName))
+          if (iter.Params[0] is string poolName && QuantifierInstantiationEngine.labelToTypes.ContainsKey(poolName))
           {
             var tok = iter.tok;
-            var type = QuantifierInstantiationEngine.labelToType[poolName];
+            var poolTypes = QuantifierInstantiationEngine.labelToTypes[poolName];
             iter.Params.Skip(1).ForEach(x =>
             {
-              if (x is Expr e && e.Type.Equals(type))
+              if (x is Expr e && poolTypes.Contains(e.Type))
               {
                 hasInstances = true;
-              }
-              else
-              {
-                Console.WriteLine($"{tok.filename}({tok.line},{tok.col}): expected expression of type {type}");
               }
             });
           }
