@@ -327,10 +327,6 @@ namespace Microsoft.Boogie
       this.handler = handler;
 
       await thmProver.Reset(gen);
-      if (0 < rlimit)
-      {
-        timeout = 0;
-      }
       SetTimeout(timeout);
       SetRlimit(rlimit);
 
