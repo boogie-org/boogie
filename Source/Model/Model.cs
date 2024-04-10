@@ -647,7 +647,7 @@ namespace Microsoft.Boogie
 
     #region factory methods
 
-    Element ConstructElement(string name)
+    public Element ConstructElement(string name)
     {
       if (name.ToLower() == "true")
       {
