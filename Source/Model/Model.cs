@@ -647,7 +647,7 @@ namespace Microsoft.Boogie
 
     #region factory methods
 
-    Element ConstructElement(string name)
+    public Element ConstructElement(string name)
     {
       if (name.ToLower() == "true")
       {
@@ -699,7 +699,6 @@ namespace Microsoft.Boogie
         }
 
         var allDigits = new Regex(@"^-?[0-9]*$");
-        var real = new Regex(@"^-?[0-9]+\.[0-9]+$");
         if (allDigits.IsMatch(name))
         {
           if (szi > 0)
@@ -711,7 +710,7 @@ namespace Microsoft.Boogie
             return new Integer(this, name);
           }
         }
-        else if (real.IsMatch(name))
+        else if (double.TryParse(name, out var _))
         {
           return new Real(this, name);
         }
