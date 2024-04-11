@@ -809,7 +809,7 @@ namespace Microsoft.Boogie.SMTLib
         {
           foreach (var relaxVar in relaxVars)
           {
-            var resp = await SendVcRequest("(get-value ({relaxVar}))").WaitAsync(cancellationToken);
+            var resp = await SendVcRequest($"(get-value ({relaxVar}))").WaitAsync(cancellationToken);
             if (resp == null)
             {
               break;
