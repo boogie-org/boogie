@@ -725,16 +725,16 @@ private class BvBounds : Expr {
 		 }
 		}
 		if (isAsync) {
-		 if (moverType == MoverType.None)
-		 {
-		   this.SemErr("async action must have a mover type");
-		 }
-		 else if (outs.Count > 0)
+		 if (outs.Count > 0)
 		 {
 		   this.SemErr("async action must not have output parameters");
 		 }
 		 else
 		 {
+		   if (moverType == MoverType.None)
+		   {
+		     moverType = MoverType.Atomic;
+		   }
 		   datatypeTypeCtorDecl = new DatatypeTypeCtorDecl(name, name.val, new List<TypeVariable>(), null);
 		   var fields = ins.Select(v => new Formal(v.tok, new TypedIdent(v.TypedIdent.tok, v.Name, v.TypedIdent.Type), true, v.Attributes)).ToList<Variable>();
 		   datatypeTypeCtorDecl.AddConstructor(name, name.val, fields);
