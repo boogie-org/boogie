@@ -2974,9 +2974,13 @@ namespace Microsoft.Boogie
       if (RefinedAction != null)
       {
         RefinedAction.Resolve(rc);
+        if (!HasMoverType)
+        {
+          MoverType = MoverType.Atomic;
+        }
         if (RefinedAction.ActionDecl is { HasMoverType: false })
         {
-          rc.Error(this, $"refined action {RefinedAction.ActionDecl.Name} must have a mover type");
+          RefinedAction.ActionDecl.MoverType = MoverType.Atomic;
         }
       }
       if (InvariantAction != null)
@@ -3298,7 +3302,7 @@ namespace Microsoft.Boogie
         RefinedAction.Resolve(rc);
         if (RefinedAction.ActionDecl is { HasMoverType: false })
         {
-          rc.Error(this, $"refined action {RefinedAction.ActionDecl.Name} must have a mover type");
+          RefinedAction.ActionDecl.MoverType = MoverType.Atomic;
         }
       }
 
