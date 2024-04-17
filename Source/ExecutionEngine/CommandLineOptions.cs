@@ -197,9 +197,9 @@ namespace Microsoft.Boogie
 
     public CoreOptions.InstrumentationPlaces InstrumentInfer { get; set; } = CoreOptions.InstrumentationPlaces.LoopHeaders;
 
-    public int? RandomSeed { get; set; }
+    public int RandomSeed { get; set; } = 0;
 
-    public int RandomizeVcIterations { get; set; } = 1;
+    public int RandomizeVcIterations { get; set; } = 0;
 
     public bool PrintWithUniqueASTIds {
       get => printWithUniqueAstIds;
@@ -1234,7 +1234,6 @@ namespace Microsoft.Boogie
         case "randomSeedIterations": // old name of the option that should be removed soon
         case "randomizeVcIterations":
           ps.GetIntArgument(x => RandomizeVcIterations = x, a => 1 <= a);
-          RandomSeed ??= 0; // Set to 0 if not already set
           return true;
 
         case "vcsLoad":

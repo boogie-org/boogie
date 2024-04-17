@@ -37,6 +37,6 @@ public class RandomiseNamer : ScopedNamer
 
   protected override string GetModifiedName(string uniqueInherentName)
   {
-    return $"random{random.Next()}";
+    return random is null ? "generated" : $"random{random.Next()}";
   }
 }

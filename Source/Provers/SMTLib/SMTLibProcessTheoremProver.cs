@@ -74,12 +74,9 @@ namespace Microsoft.Boogie.SMTLib
     }
     protected static ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options, ScopedNamer namer = null)
     {
-      return (options.RandomSeed, libOptions.NormalizeNames) switch
-      {
-        (0, true) => NormalizeNamer.Create(namer),
-        (0, false) => KeepOriginalNamer.Create(namer),
-        _ => RandomiseNamer.Create(new Random(options.RandomSeed), namer)
-      };
+      return libOptions.NormalizeNames
+        ? RandomiseNamer.Create(new Random(options.RandomSeed), namer)
+        : KeepOriginalNamer.Create(namer);
     }
 
     protected ScopedNamer ResetNamer(ScopedNamer namer) {
@@ -438,10 +435,8 @@ namespace Microsoft.Boogie.SMTLib
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
         SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
-        if (options.RandomSeed != 0) {
-          SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed + ")");
-          SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed + ")");
-        }
+        SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed + ")");
+        SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed + ")");
       }
 
       foreach (var opt in SmtOptions())

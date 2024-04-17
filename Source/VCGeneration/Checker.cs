@@ -119,7 +119,7 @@ namespace Microsoft.Boogie
 
       var ctx = Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
 
-      SolverOptions.RandomSeed = Options.RandomSeed ?? 0;
+      SolverOptions.RandomSeed = Options.RandomSeed;
       var prover = Pool.Options.TheProverFactory.SpawnProver(Pool.Options, SolverOptions, ctx);
       
       thmProver = prover;
@@ -157,7 +157,7 @@ namespace Microsoft.Boogie
     /// </summary>
     private void Setup(Program program, ProverContext ctx, Split split)
     {
-      SolverOptions.RandomSeed = 1 < Options.RandomizeVcIterations ? split.NextRandom() : split.RandomSeed;
+      SolverOptions.RandomSeed = split.NextRandom();
 
       Program = program;
       // TODO(wuestholz): Is this lock necessary?

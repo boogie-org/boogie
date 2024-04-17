@@ -109,7 +109,7 @@ namespace VC
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       split.SplitIndex = currentSplitNumber;
-      var tasks = Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
+      var tasks = Enumerable.Range(0, Math.Max(options.RandomizeVcIterations, 1)).Select(iteration =>
         DoWork(iteration, split, cancellationToken));
       await Task.WhenAll(tasks);
     }
@@ -138,7 +138,7 @@ namespace VC
       if (options.Trace && DoSplitting)
       {
         var splitNum = split.SplitIndex + 1;
-        var splitIdxStr = options.RandomizeVcIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
+        var splitIdxStr = options.RandomizeVcIterations > 0 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
         run.OutputWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
           split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
       }

@@ -84,7 +84,7 @@ namespace VC
         PrintTopLevelDeclarationsForPruning(par.program, Implementation, "before");
         TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
         PrintTopLevelDeclarationsForPruning(par.program, Implementation, "after");
-        RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
+        RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed;
         randomGen = new Random(RandomSeed);
       }
 
@@ -1051,7 +1051,11 @@ namespace VC
 
       public int NextRandom()
       {
-        return randomGen.Next();
+        var r = RandomSeed;
+        if (Options.RandomizeVcIterations > 0) {
+          RandomSeed = randomGen.Next();
+        }
+        return r;
       }
     }
 }

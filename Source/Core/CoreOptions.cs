@@ -78,7 +78,7 @@ namespace Microsoft.Boogie
     bool RunDiagnosticsOnTimeout { get; }
     string ProverLogFilePath { get; set; }
     bool ProverLogFileAppend { get; }
-    int? RandomSeed { get; }
+    int RandomSeed { get; set; }
     int VcsMaxSplits { get; }
     int VcsMaxKeepGoingSplits { get; }
     double VcsMaxCost { get; }
