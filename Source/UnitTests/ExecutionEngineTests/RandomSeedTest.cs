@@ -72,8 +72,8 @@ public class RandomSeedTest
   {
     var options = CommandLineOptions.FromArguments(TextWriter.Null);
     options.RandomSeed = randomSeed;
-    options.NormalizeNames = false;
+    options.NormalizeNames = true;
     var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);
-    Assert.IsTrue(randomOptionsLogs.Contains("random2084218992"));
+    Assert.IsTrue(randomOptionsLogs.Contains("random506996257"));
   }
 }

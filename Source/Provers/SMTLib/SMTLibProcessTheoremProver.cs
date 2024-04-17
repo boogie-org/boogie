@@ -74,7 +74,7 @@ namespace Microsoft.Boogie.SMTLib
     }
     protected static ScopedNamer GetNamer(SMTLibOptions libOptions, ProverOptions options, ScopedNamer namer = null)
     {
-      return libOptions.NormalizeNames
+      return libOptions.NormalizeNames || libOptions.RandomizeVcIterations > 0
         ? RandomiseNamer.Create(new Random(options.RandomSeed), namer)
         : KeepOriginalNamer.Create(namer);
     }
