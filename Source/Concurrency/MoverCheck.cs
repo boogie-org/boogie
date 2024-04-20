@@ -324,8 +324,9 @@ namespace Microsoft.Boogie
         TransitionRelationComputation.Cooperation(civlTypeChecker, action, frame),
         $"Cooperation check for {action.Name} failed");
 
+      // call action after the cooperation check to exploit quantifier instantiation hints in the body
       AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(),
-        new List<Variable>(), requires, new List<Cmd> { cooperationCheck });
+        new List<Variable>(), requires, new List<Cmd> { cooperationCheck, ActionCallCmd(action, impl) });
     }
   }
 }
