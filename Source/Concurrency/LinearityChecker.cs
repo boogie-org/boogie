@@ -122,7 +122,7 @@ class LinearityChecker
             domain,
             existingExpr,
             noDuplicationExpr,
-            $"Duplication of permissions of type {domain.permissionType} in outputs and pending async of {pendingAsync.Name}",
+            $"Duplication of permissions of type {domain.permissionType} in calling context (globals, linear outputs, or linear/linear_out inputs) and pending async of {pendingAsync.Name}",
             $"duplication_{pendingAsync.Name}"));
         }
         
