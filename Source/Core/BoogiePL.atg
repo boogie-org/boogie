@@ -744,7 +744,7 @@ SpecEliminates<.List<ElimDecl> elims.>
   "eliminates" SpecUsing<elims> { "," SpecUsing<elims> } ";"
   .
 
-SpecRefinedAction<ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAction>
+SpecRefinedAction<ref ActionDeclRef refinedAction>
 =
   "refines" (. IToken m; .) Ident<out m>
   (.
@@ -754,14 +754,15 @@ SpecRefinedAction<ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAc
        this.SemErr("a refines specification already exists");
      }
   .)
-  ["using" Ident<out m> (. invariantAction = new ActionDeclRef(m, m.val); .)]
-  ";"
   .
 
 SpecAction<.ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAction, List<IdentifierExpr> mods, List<ActionDeclRef> creates, List<ElimDecl> elims.>
 =
   (
-    SpecRefinedAction<ref refinedAction, ref invariantAction>
+    SpecRefinedAction<ref refinedAction>
+    (. IToken m; .)
+    ["using" Ident<out m> (. invariantAction = new ActionDeclRef(m, m.val); .)]
+    ";"
   | SpecModifies<mods>
   | SpecCreates<creates>
   | SpecEliminates<elims>
@@ -811,36 +812,47 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
     (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, mods, post, yieldRequires, yieldEnsures, yieldPreserves, refinedAction, kv); .)
   .
 
-SpecYieldPrePost<. ref ActionDeclRef refinedAction, List<Requires> pre, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves, List<IdentifierExpr> mods.>
-= (. Expr e; Cmd cmd; Token tok = null; QKeyValue kv = null; .)
-  (  "refines" (. IToken m; .) Ident<out m>
-      (.
-         if (refinedAction == null) {
-           refinedAction = new ActionDeclRef(m, m.val);
-         } else {
-           this.SemErr("a refines specification already exists");
-         }
-      .)
-  | "requires"              (. tok = t; .)
-    ( 
-      { Attribute<ref kv> }
-      Proposition<out e>  (. pre.Add(new Requires(tok, false, e, null, kv)); .)
-      |
-      CallCmd<out cmd>        (. yieldRequires.Add((CallCmd)cmd); .)
-    )
-  | "ensures"               (. tok = t; .)
-    (
-      { Attribute<ref kv> }
-      Proposition<out e>  (. post.Add(new Ensures(tok, false, e, null, kv)); .)
-      |
-      CallCmd<out cmd>        (. yieldEnsures.Add((CallCmd)cmd); .)
-    )
-  | "preserves"             (. tok = t; .)
-    CallCmd<out cmd>        (. yieldPreserves.Add((CallCmd)cmd); .)
-  | "modifies" (. List<IToken> ms; .)
-    [ Idents<out ms> (. foreach(IToken m in ms) { mods.Add(new IdentifierExpr(m, m.val)); } .) ]
+SpecYieldRequires<. List<Requires> pre, List<CallCmd> yieldRequires .>
+= (. Expr e; Cmd cmd; Token tok; QKeyValue kv = null; .)
+  "requires"              (. tok = t; .)
+  ( 
+    { Attribute<ref kv> }
+    Proposition<out e>  (. pre.Add(new Requires(tok, false, e, null, kv)); .)
+    |
+    CallCmd<out cmd>        (. yieldRequires.Add((CallCmd)cmd); .)
   )
   ";"
+  .
+
+SpecYieldEnsures<. List<Ensures> post, List<CallCmd> yieldEnsures .>
+= (. Expr e; Cmd cmd; Token tok; QKeyValue kv = null; .)
+  "ensures"               (. tok = t; .)
+  (
+    { Attribute<ref kv> }
+    Proposition<out e>  (. post.Add(new Ensures(tok, false, e, null, kv)); .)
+    |
+    CallCmd<out cmd>        (. yieldEnsures.Add((CallCmd)cmd); .)
+  )
+  ";"
+  .
+
+SpecYieldPreserves<. List<CallCmd> yieldPreserves .>
+= (. Cmd cmd; Token tok; .)
+  "preserves"             (. tok = t; .)
+  CallCmd<out cmd>        (. yieldPreserves.Add((CallCmd)cmd); .)
+  ";"
+  .
+
+SpecYieldPrePost<. ref ActionDeclRef refinedAction, List<Requires> pre, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves, List<IdentifierExpr> mods.>
+=
+  (  
+    SpecRefinedAction<ref refinedAction>
+    ";"
+  | SpecYieldRequires<pre, yieldRequires>
+  | SpecYieldEnsures<post, yieldEnsures>
+  | SpecYieldPreserves<yieldPreserves>
+  | SpecModifies<mods>
+  )
   .
 
 Procedure<bool isPure, out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl>

@@ -28,7 +28,7 @@ function {:inline} BothHandles(cid: ChannelId): Set ChannelHandle {
 }
 
 function {:inline} EmptyChannel () : [int]int
-{ (lambda m:int :: 0) }
+{ MapConst(0) }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -75,8 +75,8 @@ action {:layer 2} PING' (x: int, {:linear_in} p: One ChannelHandle)
 creates PING;
 modifies channel;
 {
-  assert (exists {:pool "INV"} m:int :: {:add_to_pool "INV", m} channel[p->val->cid]->left[m] > 0);
-  assert (forall m:int :: channel[p->val->cid]->right[m] == 0);
+  assert channel[p->val->cid]->left[x] == 1;
+  assert channel[p->val->cid]->right == MapConst(0);
   call PING(x, p);
 }
 
@@ -84,8 +84,8 @@ action {:layer 2} PONG' (y: int, {:linear_in} p: One ChannelHandle)
 creates PONG;
 modifies channel;
 {
-  assert (exists {:pool "INV"} m:int :: {:add_to_pool "INV", m} channel[p->val->cid]->right[m] > 0);
-  assert (forall m:int :: channel[p->val->cid]->left[m] == 0);
+  assert channel[p->val->cid]->right[0] == 1 || channel[p->val->cid]->right[y] == 1;
+  assert channel[p->val->cid]->left == MapConst(0);
   call PONG(y, p);
 }
 
@@ -117,7 +117,8 @@ modifies channel;
 
   assert x > 0;
   assert p->val is Left;
-  assert (forall {:pool "INV"} m:int :: {:add_to_pool "INV", m} left_channel[m] > 0 ==> m == x); // assertion to discharge
+  assert IsSet(left_channel);
+  assert left_channel[x := 0] == MapConst(0);
 
   assume left_channel[x] > 0;
   left_channel[x] := left_channel[x] - 1;
@@ -146,7 +147,8 @@ modifies channel;
 
   assert y > 0;
   assert p->val is Right;
-  assert (forall {:pool "INV"} m:int :: {:add_to_pool "INV", m} right_channel[m] > 0 ==> m == y || m == 0); // assertion to discharge
+  assert IsSet(right_channel);
+  assert right_channel[0 := 0] == MapConst(0) || right_channel[y := 0] == MapConst(0);
 
   if (*)
   {
