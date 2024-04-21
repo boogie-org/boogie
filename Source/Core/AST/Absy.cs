@@ -2474,6 +2474,21 @@ namespace Microsoft.Boogie
           rc.Error(this, $"each layer must not be more than {yieldProcedureDecl.Layer}");
         }
       }
+      if (rc.Proc is ActionDecl actionDecl)
+      {
+        if (Layers.Count == 0)
+        {
+          rc.Error(this, "expected layers");
+        }
+        else
+        {
+          var assertLayerRange = new LayerRange(Layers[0], Layers[^1]);
+          if (!assertLayerRange.Subset(actionDecl.LayerRange))
+          {
+            rc.Error(this, $"each layer must be in the range {actionDecl.LayerRange}");
+          }
+        }
+      }
     }
 
     public override void Typecheck(TypecheckingContext tc)

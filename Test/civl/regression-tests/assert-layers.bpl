@@ -7,3 +7,7 @@ ensures false;
 {
   assert false;
 }
+
+action {:layer 1} bar()
+requires false;
+{ }
