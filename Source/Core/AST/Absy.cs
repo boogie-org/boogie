@@ -2959,7 +2959,13 @@ namespace Microsoft.Boogie
       base.Resolve(rc);
       rc.PushVarContext();
       RegisterFormals(InParams, rc);
-      YieldRequires.ForEach(callCmd => callCmd.Resolve(rc));
+      YieldRequires.ForEach(callCmd => {
+        callCmd.Resolve(rc);
+        if (callCmd.Proc is not YieldInvariantDecl)
+        {
+          rc.Error(callCmd, "expected call to yield invariant");
+        }
+      });
       rc.PopVarContext();
       rc.Proc = null;
       if (Creates.Any())
@@ -3298,10 +3304,28 @@ namespace Microsoft.Boogie
       rc.StateMode = ResolutionContext.State.Two;
       rc.PushVarContext();
       RegisterFormals(InParams, rc);
-      YieldRequires.ForEach(callCmd => callCmd.Resolve(rc));
-      YieldPreserves.ForEach(callCmd => callCmd.Resolve(rc));
+      YieldRequires.ForEach(callCmd => {
+        callCmd.Resolve(rc);
+        if (callCmd.Proc is not YieldInvariantDecl)
+        {
+          rc.Error(callCmd, "expected call to yield invariant");
+        }
+      });
+      YieldPreserves.ForEach(callCmd => {
+        callCmd.Resolve(rc);
+        if (callCmd.Proc is not YieldInvariantDecl)
+        {
+          rc.Error(callCmd, "expected call to yield invariant");
+        }
+      });
       RegisterFormals(OutParams, rc);
-      YieldEnsures.ForEach(callCmd => callCmd.Resolve(rc));
+      YieldEnsures.ForEach(callCmd => {
+        callCmd.Resolve(rc);
+        if (callCmd.Proc is not YieldInvariantDecl)
+        {
+          rc.Error(callCmd, "expected call to yield invariant");
+        }
+      });
       rc.PopVarContext();
       rc.StateMode = oldStateMode;
       rc.Proc = null;
