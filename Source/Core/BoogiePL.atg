@@ -671,6 +671,8 @@ ActionDecl<bool isPure, out ActionDecl actionDecl, out Implementation impl, out 
      ActionDeclRef refinedAction = null;
      ActionDeclRef invariantAction = null;
      List<ElimDecl> elims = new List<ElimDecl>();
+     List<Requires> requires = new List<Requires>();
+     List<CallCmd> yieldRequires = new List<CallCmd>();
      List<Variable> locals;
      StmtList stmtList;
      QKeyValue kv = null;
@@ -685,8 +687,8 @@ ActionDecl<bool isPure, out ActionDecl actionDecl, out Implementation impl, out 
   ProcFormals<true, true, out ins>
     [ "returns" ProcFormals<false, true, out outs> ]
   ( ";"
-    { SpecAction<ref refinedAction, ref invariantAction, mods, creates, elims> }
-  | { SpecAction<ref refinedAction, ref invariantAction, mods, creates, elims> }
+    { SpecAction<ref refinedAction, ref invariantAction, mods, creates, elims, requires, yieldRequires> }
+  | { SpecAction<ref refinedAction, ref invariantAction, mods, creates, elims, requires, yieldRequires> }
     ImplBody<out locals, out stmtList>
     (.
        impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
@@ -720,7 +722,7 @@ ActionDecl<bool isPure, out ActionDecl actionDecl, out Implementation impl, out 
          datatypeTypeCtorDecl.AddConstructor(name, name.val, fields);
        }
      }
-     actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, isPure, creates, refinedAction, invariantAction, elims, mods, datatypeTypeCtorDecl, kv);
+     actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, isPure, creates, refinedAction, invariantAction, elims, requires, yieldRequires, mods, datatypeTypeCtorDecl, kv);
   .)
   .
 
@@ -756,7 +758,7 @@ SpecRefinedAction<ref ActionDeclRef refinedAction>
   .)
   .
 
-SpecAction<.ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAction, List<IdentifierExpr> mods, List<ActionDeclRef> creates, List<ElimDecl> elims.>
+SpecAction<.ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAction, List<IdentifierExpr> mods, List<ActionDeclRef> creates, List<ElimDecl> elims, List<Requires> requires, List<CallCmd> yieldRequires.>
 =
   (
     SpecRefinedAction<ref refinedAction>
@@ -766,6 +768,7 @@ SpecAction<.ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAction, 
   | SpecModifies<mods>
   | SpecCreates<creates>
   | SpecEliminates<elims>
+  | SpecYieldRequires<requires, yieldRequires>
   )
   .
   

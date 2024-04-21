@@ -2920,6 +2920,7 @@ namespace Microsoft.Boogie
     public ActionDeclRef RefinedAction;
     public ActionDeclRef InvariantAction;
     public List<ElimDecl> Eliminates;
+    public List<CallCmd> YieldRequires;
     public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
 
     public Implementation Impl; // set when the implementation of this action is resolved
@@ -2928,16 +2929,17 @@ namespace Microsoft.Boogie
     public ActionDecl(IToken tok, string name, MoverType moverType,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
-      List<ElimDecl> eliminates,
+      List<ElimDecl> eliminates, List<Requires> requires, List<CallCmd> yieldRequires,
       List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
-      isPure, new List<Requires>(), modifies, new List<Ensures>(), kv)
+      isPure, requires, modifies, new List<Ensures>(), kv)
     {
       this.MoverType = moverType;
       this.Creates = creates;
       this.RefinedAction = refinedAction;
       this.InvariantAction = invariantAction;
       this.Eliminates = eliminates;
+      this.YieldRequires = yieldRequires;
       this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
     }
 
@@ -2951,6 +2953,10 @@ namespace Microsoft.Boogie
     {
       rc.Proc = this;
       base.Resolve(rc);
+      rc.PushVarContext();
+      RegisterFormals(InParams, rc);
+      YieldRequires.ForEach(callCmd => callCmd.Resolve(rc));
+      rc.PopVarContext();
       rc.Proc = null;
       if (Creates.Any())
       {
@@ -3008,6 +3014,8 @@ namespace Microsoft.Boogie
     {
       base.Typecheck(tc);
       
+      YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
+
       Creates.ForEach(actionDeclRef =>
       {
         var pendingAsync = actionDeclRef.ActionDecl;
