@@ -7,3 +7,7 @@ yield procedure {:layer 1} foo()
 requires {:layer 1} g > 0;
 ensures {:layer 1} g > 0;
 { }
+
+atomic action {:layer 1} A()
+requires g > 0;
+{}

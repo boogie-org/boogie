@@ -1963,7 +1963,7 @@ namespace Microsoft.Boogie
       {
         var e = Rhss[i];
         Contract.Assert(e != null);
-        tc.GlobalAccessOnlyInOld = true;
+        tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl;
         tc.ExpectedLayerRange = tc.Proc is YieldProcedureDecl ? expectedLayerRanges[i] : null;
         e.Typecheck(tc);
         tc.GlobalAccessOnlyInOld = false;
@@ -2454,7 +2454,7 @@ namespace Microsoft.Boogie
 
       lhs.Typecheck(tc);
       
-      tc.GlobalAccessOnlyInOld = true;
+      tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl;
       tc.ExpectedLayerRange = expectedLayerRange;
       rhs.Typecheck(tc);
       tc.GlobalAccessOnlyInOld = false;
@@ -4605,7 +4605,7 @@ namespace Microsoft.Boogie
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
       tc.ExpectedLayerRange = tc.Proc is YieldProcedureDecl decl ? new LayerRange(0, decl.Layer) : null;
-      tc.GlobalAccessOnlyInOld = true;
+      tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl;
       Expr.Typecheck(tc);
       tc.ExpectedLayerRange = null;
       tc.GlobalAccessOnlyInOld = false;

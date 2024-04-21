@@ -2769,6 +2769,9 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       base.Typecheck(tc);
+
+      var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
+      tc.GlobalAccessOnlyInOld = false;
       foreach (IdentifierExpr ide in Modifies)
       {
         Contract.Assert(ide != null);
@@ -2779,6 +2782,7 @@ namespace Microsoft.Boogie
         }
         ide.Typecheck(tc);
       }
+      tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
 
       foreach (Requires e in Requires)
       {
@@ -3012,9 +3016,14 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      var oldProc = tc.Proc;
+      tc.Proc = this;
+      tc.GlobalAccessOnlyInOld = true;
       base.Typecheck(tc);
-      
+      tc.GlobalAccessOnlyInOld = false;
       YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
+      Contract.Assert(tc.Proc == this);
+      tc.Proc = oldProc;
 
       Creates.ForEach(actionDeclRef =>
       {
