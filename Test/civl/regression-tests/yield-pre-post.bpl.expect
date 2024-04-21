@@ -1,0 +1,3 @@
+yield-pre-post.bpl(7,20): Error: global variable must be accessed inside old expression: g
+yield-pre-post.bpl(8,19): Error: global variable must be accessed inside old expression: g
+2 type checking errors detected in yield-pre-post.bpl

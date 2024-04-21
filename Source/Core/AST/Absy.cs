@@ -3342,7 +3342,9 @@ namespace Microsoft.Boogie
 
       var oldProc = tc.Proc;
       tc.Proc = this;
+      tc.GlobalAccessOnlyInOld = !HasMoverType;
       base.Typecheck(tc);
+      tc.GlobalAccessOnlyInOld = false;
       YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
       YieldEnsures.ForEach(callCmd => callCmd.Typecheck(tc));
       YieldPreserves.ForEach(callCmd => callCmd.Typecheck(tc));
