@@ -83,7 +83,7 @@ namespace Microsoft.Boogie
 
       foreach (var sequentialization in civlTypeChecker.Sequentializations)
       {
-        foreach (var leftMover in sequentialization.Abstractions)
+        foreach (var leftMover in sequentialization.EliminatedActions)
         {
           foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
           {

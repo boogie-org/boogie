@@ -9,20 +9,16 @@ namespace Microsoft.Boogie
   {
     protected CivlTypeChecker civlTypeChecker;
     protected Action targetAction;
-    protected Dictionary<Action, Action> elim;
+    protected HashSet<Action> eliminatedActions;
 
     protected Sequentialization(CivlTypeChecker civlTypeChecker, Action targetAction)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.targetAction = targetAction;
-      this.elim = new Dictionary<Action, Action>(targetAction.ActionDecl.EliminationMap().Select(x =>
-        KeyValuePair.Create(civlTypeChecker.Action(x.Key), civlTypeChecker.Action(x.Value))));
+      this.eliminatedActions = new HashSet<Action>(targetAction.ActionDecl.EliminatedActionDecls().Select(x => civlTypeChecker.Action(x)));
     }
 
-    public IEnumerable<Action> Abstractions => elim.Values;
-
-    private IEnumerable<Tuple<Action, Action>> AbstractionChecks =>
-      elim.Where(kv => kv.Key != kv.Value).Select(kv => Tuple.Create(kv.Key, kv.Value));
+    public IEnumerable<Action> EliminatedActions => eliminatedActions;
 
     public int Layer => targetAction.LayerRange.UpperLayer;
 
@@ -63,29 +59,6 @@ namespace Microsoft.Boogie
       {
         decls.AddRange(x.GenerateCheckers());
       }
-      foreach (var tuple in civlTypeChecker.Sequentializations.SelectMany(x => x.AbstractionChecks).Distinct())
-      {
-        decls.AddRange(GenerateAbstractionChecker(civlTypeChecker, tuple.Item1, tuple.Item2));
-      }
-    }
-
-    private static List<Declaration> GenerateAbstractionChecker(CivlTypeChecker civlTypeChecker, Action action, Action abs)
-    {
-      var requires = abs.Gate.Select(g => new Requires(false, g.Expr)).ToList();
-      // The type checker ensures that the modified set of abs is a subset of the modified set of action.
-      var frame = new HashSet<Variable>(action.ModifiedGlobalVars);
-
-      var subst = action.GetSubstitution(abs);
-      var cmds = action.GetGateAsserts(subst, $"Abstraction {abs.Name} fails gate of {action.Name}").ToList<Cmd>();
-      cmds.Add(CmdHelper.CallCmd(action.Impl.Proc, abs.Impl.InParams, abs.Impl.OutParams));
-      cmds.Add(CmdHelper.AssertCmd(abs.tok, abs.GetTransitionRelation(civlTypeChecker, frame),
-        $"Abstraction {abs.Name} does not summarize {action.Name}"));
-
-      var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
-      var proc = DeclHelper.Procedure(civlTypeChecker.AddNamePrefix($"AbstractionCheck_{action.Name}_{abs.Name}"),
-        abs.Impl.InParams, abs.Impl.OutParams, requires, action.Impl.Proc.Modifies, new List<Ensures>());
-      var impl = DeclHelper.Implementation(proc, proc.InParams, proc.OutParams, new List<Variable>(), blocks);
-      return new List<Declaration>(new Declaration[] { proc, impl });
     }
   }
 
@@ -128,19 +101,18 @@ namespace Microsoft.Boogie
 
     private Implementation CreateInlinedImplementation()
     {
-      var eliminatedActionDecls = targetAction.ActionDecl.EliminationMap();
-      var eliminatedActions = eliminatedActionDecls.Keys.ToHashSet();
+      var eliminatedActionDecls = targetAction.ActionDecl.EliminatedActionDecls();
       var graph = new Graph<ActionDecl>();
-      eliminatedActions.ForEach(actionDecl =>
+      eliminatedActionDecls.ForEach(actionDecl =>
       {
         graph.AddSource(actionDecl);
-        CollectionExtensions.ForEach(actionDecl.CreateActionDecls.Intersect(eliminatedActions), x => graph.AddEdge(x, actionDecl));
+        CollectionExtensions.ForEach(actionDecl.CreateActionDecls.Intersect(eliminatedActionDecls), x => graph.AddEdge(x, actionDecl));
       });
       var eliminatedPendingAsyncs = new Dictionary<CtorType, Implementation>();
       var decls = new List<Declaration>();
       graph.TopologicalSort().ForEach(actionDecl =>
       {
-        var impl = Action.CreateDuplicateImplementation(eliminatedActionDecls[actionDecl].Impl,
+        var impl = Action.CreateDuplicateImplementation(actionDecl.Impl,
           $"{actionDecl.Name}_RefinementCheck");
         eliminatedPendingAsyncs[actionDecl.PendingAsyncType] = impl;
         decls.Add(impl);
@@ -291,41 +263,40 @@ namespace Microsoft.Boogie
         Expr.Literal(0))));
       cmds.Add(RemoveChoice(pendingAsyncType));
 
-      Action abs = elim[pendingAsync];
       List<Expr> inputExprs = new List<Expr>();
-      for (int i = 0; i < abs.Impl.InParams.Count; i++)
+      for (int i = 0; i < pendingAsync.Impl.InParams.Count; i++)
       {
         inputExprs.Add(ExprHelper.FieldAccess(Choice(pendingAsyncType), pendingAsyncCtor.InParams[i].Name));
       }
-      cmds.AddRange(abs.GetGateAsserts(Substituter.SubstitutionFromDictionary(abs.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
-        $"Gate of {abs.Name} fails in IS induction step for invariant {invariantAction.Name}"));
-      cmds.AddRange(Preconditions(abs, Substituter.SubstitutionFromDictionary(abs.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
+      cmds.AddRange(pendingAsync.GetGateAsserts(Substituter.SubstitutionFromDictionary(pendingAsync.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
+        $"Gate of {pendingAsync.Name} fails in IS induction step for invariant {invariantAction.Name}"));
+      cmds.AddRange(Preconditions(pendingAsync, Substituter.SubstitutionFromDictionary(pendingAsync.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
 
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
-      if (abs.HasPendingAsyncs)
+      if (pendingAsync.HasPendingAsyncs)
       {
-        abs.PendingAsyncs.ForEach(decl =>
+        pendingAsync.PendingAsyncs.ForEach(decl =>
         {
           var ie = NewPAs(decl.PendingAsyncType);
           locals.Add(ie.Decl);
           outputExprs.Add(ie);
         });
       }
-      cmds.Add(CmdHelper.CallCmd(abs.Impl.Proc, inputExprs, outputExprs));
-      if (abs.HasPendingAsyncs)
+      cmds.Add(CmdHelper.CallCmd(pendingAsync.Impl.Proc, inputExprs, outputExprs));
+      if (pendingAsync.HasPendingAsyncs)
       {
-        var lhss = abs.PendingAsyncs.Select(decl => new SimpleAssignLhs(Token.NoToken, PAs(decl.PendingAsyncType)))
+        var lhss = pendingAsync.PendingAsyncs.Select(decl => new SimpleAssignLhs(Token.NoToken, PAs(decl.PendingAsyncType)))
           .ToList<AssignLhs>();
-        var rhss = abs.PendingAsyncs.Select(decl => ExprHelper.FunctionCall(decl.PendingAsyncAdd,
+        var rhss = pendingAsync.PendingAsyncs.Select(decl => ExprHelper.FunctionCall(decl.PendingAsyncAdd,
           PAs(decl.PendingAsyncType), NewPAs(decl.PendingAsyncType))).ToList<Expr>();
         cmds.Add(new AssignCmd(Token.NoToken, lhss, rhss));
       }
 
       var frame = new HashSet<Variable>(invariantAction.ModifiedGlobalVars);
       cmds.Add(GetCheck(invariantAction.tok, invariantAction.GetTransitionRelation(civlTypeChecker, frame),
-        $"IS step of {invariantAction.Name} with {abs.Name} failed"));
+        $"IS step of {invariantAction.Name} with {pendingAsync.Name} failed"));
 
-      return GetCheckerTuple($"IS_step_{invariantAction.Name}_{abs.Name}", requires,
+      return GetCheckerTuple($"IS_step_{invariantAction.Name}_{pendingAsync.Name}", requires,
         invariantAction.ImplWithChoice.InParams, invariantAction.ImplWithChoice.OutParams, locals, cmds);
     }
 
@@ -374,7 +345,7 @@ namespace Microsoft.Boogie
 
     private Expr ActionExpr(Action action, List<Variable> actionArgs, Substitution invariantFormalSubst)
     {
-      if (!elim.ContainsKey(action))
+      if (!eliminatedActions.Contains(action))
       {
         return Expr.True;
       }
@@ -418,17 +389,16 @@ namespace Microsoft.Boogie
 
     private Expr LeftMoverExpr(Action leftMover, List<Variable> leftMoverArgs, Substitution invariantFormalSubst)
     {
-      var asyncLeftMover = elim.First(x => x.Value == leftMover).Key;
-      var leftMoverPendingAsyncCtor = asyncLeftMover.ActionDecl.PendingAsyncCtor;
+      var leftMoverPendingAsyncCtor = leftMover.ActionDecl.PendingAsyncCtor;
       var leftMoverPA =
         ExprHelper.FunctionCall(leftMoverPendingAsyncCtor, leftMoverArgs.Select(v => Expr.Ident(v)).ToArray());
       var leftMoverExpr = Expr.And(new[]
       {
-        ChoiceTest(asyncLeftMover.ActionDecl.PendingAsyncType),
+        ChoiceTest(leftMover.ActionDecl.PendingAsyncType),
         Expr.Gt(
-          Expr.Select(PAs(asyncLeftMover.ActionDecl.PendingAsyncType),
-            Choice(asyncLeftMover.ActionDecl.PendingAsyncType)), Expr.Literal(0)),
-        Expr.Eq(Choice(asyncLeftMover.ActionDecl.PendingAsyncType), leftMoverPA)
+          Expr.Select(PAs(leftMover.ActionDecl.PendingAsyncType),
+            Choice(leftMover.ActionDecl.PendingAsyncType)), Expr.Literal(0)),
+        Expr.Eq(Choice(leftMover.ActionDecl.PendingAsyncType), leftMoverPA)
       });
       leftMoverExpr = Substituter.Apply(invariantFormalSubst, leftMoverExpr);
       return leftMoverExpr;
@@ -483,7 +453,7 @@ namespace Microsoft.Boogie
     {
       get
       {
-        var expr = Expr.And(elim.Keys.Select(action => Expr.Eq(PAs(action.ActionDecl.PendingAsyncType),
+        var expr = Expr.And(eliminatedActions.Select(action => Expr.Eq(PAs(action.ActionDecl.PendingAsyncType),
           ExprHelper.FunctionCall(action.ActionDecl.PendingAsyncConst, Expr.Literal(0)))));
         expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
         return expr;
@@ -501,7 +471,7 @@ namespace Microsoft.Boogie
       var decls = new List<Declaration>();
       decls.AddRange(GenerateBaseCaseChecker());
       decls.AddRange(GenerateConclusionChecker());
-      foreach (var elim in elim.Keys)
+      foreach (var elim in eliminatedActions)
       {
         decls.AddRange(GenerateStepChecker(elim));
       }

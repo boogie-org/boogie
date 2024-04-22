@@ -667,16 +667,6 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     throw new LeanConversionException(node.tok, $"Unsupported: ActionDeclRef ({node}).");
   }
 
-  public override ElimDecl VisitElimDecl(ElimDecl node)
-  {
-    throw new LeanConversionException(node.tok, $"Unsupported: ElimDecl ({node}).");
-  }
-
-  public override List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
-  {
-    throw new LeanConversionException(Token.NoToken, $"Unsupported: List<ElimDecl> ({node}).");
-  }
-
   public override Axiom VisitAxiom(Axiom node)
   {
     // This will take two more steps:

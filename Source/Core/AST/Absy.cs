@@ -2909,36 +2909,12 @@ namespace Microsoft.Boogie
     None
   }
 
-  public class ElimDecl : Absy
-  {
-    public ActionDeclRef Target;
-    public ActionDeclRef Abstraction;
-
-    public ElimDecl(IToken tok, ActionDeclRef target, ActionDeclRef abstraction) : base(tok)
-    {
-      this.Target = target;
-      this.Abstraction = abstraction;
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      Target.Resolve(rc);
-      Abstraction.Resolve(rc);
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      throw new NotImplementedException();
-    }
-  }
-
   public class ActionDecl : Procedure
   {
     public MoverType MoverType;
     public List<ActionDeclRef> Creates;
     public ActionDeclRef RefinedAction;
     public ActionDeclRef InvariantAction;
-    public List<ElimDecl> Eliminates;
     public List<CallCmd> YieldRequires;
     public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
 
@@ -2948,7 +2924,7 @@ namespace Microsoft.Boogie
     public ActionDecl(IToken tok, string name, MoverType moverType,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
-      List<ElimDecl> eliminates, List<Requires> requires, List<CallCmd> yieldRequires,
+      List<Requires> requires, List<CallCmd> yieldRequires,
       List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
       isPure, requires, modifies, new List<Ensures>(), kv)
@@ -2957,7 +2933,6 @@ namespace Microsoft.Boogie
       this.Creates = creates;
       this.RefinedAction = refinedAction;
       this.InvariantAction = invariantAction;
-      this.Eliminates = eliminates;
       this.YieldRequires = yieldRequires;
       this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
     }
@@ -3017,21 +2992,6 @@ namespace Microsoft.Boogie
       if (InvariantAction != null)
       {
         InvariantAction.Resolve(rc);
-      }
-      Eliminates.ForEach(elim =>
-      {
-        elim.Resolve(rc);
-      });
-      if (Eliminates.Any())
-      {
-        if (RefinedAction == null)
-        {
-          rc.Error(this, "eliminates clause must be accompanied by refinement specification");
-        }
-        if (Eliminates.Select(elim => elim.Target.ActionDecl).Distinct().Count() != Eliminates.Count)
-        {
-          rc.Error(this, "each eliminates pair must be distinct in the first action");
-        }
       }
     }
 
@@ -3109,26 +3069,6 @@ namespace Microsoft.Boogie
               tc.Error(this, $"modifies of {elimProc.Name} must be subset of modifies of {invariantActionDecl.Name}");
             }
           }
-          foreach (var elimDecl in Eliminates)
-          {
-            var targetActionDecl = elimDecl.Target.ActionDecl;
-            var abstractionActionDecl = elimDecl.Abstraction.ActionDecl;
-            var targetModifies = new HashSet<Variable>(targetActionDecl.Modifies.Select(ie => ie.Decl));
-            var absModifies = new HashSet<Variable>(abstractionActionDecl.Modifies.Select(ie => ie.Decl));
-            if (!invariantCreates.Contains(targetActionDecl))
-            {
-              tc.Error(this, $"eliminated action must be created by invariant {InvariantAction.ActionName}");
-            }
-            if (!abstractionActionDecl.LayerRange.Contains(layer))
-            {
-              tc.Error(elimDecl, $"action {abstractionActionDecl.Name} does not exist at layer {layer}");
-            }
-            if (!absModifies.IsSubsetOf(targetModifies))
-            {
-              tc.Error(elimDecl,
-                $"modifies of {abstractionActionDecl.Name} must be subset of modifies of {targetActionDecl.Name}");
-            }
-          }
         }
       }
     }
@@ -3185,7 +3125,7 @@ namespace Microsoft.Boogie
       base.EmitEnd(stream, level);
     }
 
-    public Dictionary<ActionDecl, ActionDecl> EliminationMap()
+    public IEnumerable<ActionDecl> EliminatedActionDecls()
     {
       var refinedProc = RefinedAction.ActionDecl;
       var refinedActionCreates = refinedProc.CreateActionDecls.ToHashSet();
@@ -3202,13 +3142,8 @@ namespace Microsoft.Boogie
       }
       var allCreates = InvariantAction == null
         ? FixpointCreates()
-        : InvariantAction.ActionDecl.CreateActionDecls.ToHashSet();
-      var elimMap = allCreates.Except(refinedActionCreates).ToDictionary(x => x, x => x);
-      foreach (var elimDecl in Eliminates)
-      {
-        elimMap[elimDecl.Target.ActionDecl] = elimDecl.Abstraction.ActionDecl;
-      }
-      return elimMap;
+        : InvariantAction.ActionDecl.CreateActionDecls;
+      return allCreates.Except(refinedActionCreates);
     }
 
     public IEnumerable<ActionDeclRef> ActionDeclRefs()
