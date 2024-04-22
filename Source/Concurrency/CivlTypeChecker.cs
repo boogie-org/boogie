@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
       }
 
       SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, new List<Variable>(),
-        new List<Variable>(), true, new List<ActionDeclRef>(), null, null, new List<ElimDecl>(), new List<Requires>(), new List<CallCmd>(),
+        new List<Variable>(), true, new List<ActionDeclRef>(), null, null, new List<Requires>(), new List<CallCmd>(),
         new List<IdentifierExpr>(), null, null);
       var skipImplementation = DeclHelper.Implementation(
         SkipActionDecl,
@@ -146,11 +146,6 @@ namespace Microsoft.Boogie
       {
         SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.RefinedAction.ActionDecl,
           checkingContext);
-        foreach (var elimDecl in actionDecl.Eliminates)
-        {
-          SignatureMatcher.CheckSequentializationSignature(elimDecl.Target.ActionDecl, elimDecl.Abstraction.ActionDecl,
-            checkingContext);
-        }
         if (actionDecl.InvariantAction != null)
         {
           SignatureMatcher.CheckSequentializationSignature(actionDecl, actionDecl.InvariantAction.ActionDecl,

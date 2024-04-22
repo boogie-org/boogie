@@ -647,22 +647,6 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public virtual ElimDecl VisitElimDecl(ElimDecl node)
-    {
-      node.Abstraction = VisitActionDeclRef(node.Abstraction);
-      node.Target = VisitActionDeclRef(node.Target);
-      return node;
-    }
-
-    public virtual List<ElimDecl> VisitElimDeclSeq(List<ElimDecl> node)
-    {
-      for (int i = 0; i < node.Count; i++)
-      {
-        node[i] = VisitElimDecl(node[i]);
-      }
-      return node;
-    }
-
     public virtual Procedure VisitActionDecl(ActionDecl node)
     {
       for (int i = 0; i < node.Creates.Count; i++)
@@ -677,7 +661,6 @@ namespace Microsoft.Boogie
       {
         node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
       }
-      node.Eliminates = VisitElimDeclSeq(node.Eliminates);
       node.YieldRequires = VisitCallCmdSeq(node.YieldRequires);
       return VisitProcedure(node);
     }
