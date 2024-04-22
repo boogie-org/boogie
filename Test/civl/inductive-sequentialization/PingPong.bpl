@@ -71,31 +71,10 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} PING' (x: int, {:linear_in} p: One ChannelHandle)
-creates PING;
-modifies channel;
-{
-  assert channel[p->val->cid]->left[x] == 1;
-  assert channel[p->val->cid]->right == MapConst(0);
-  call PING(x, p);
-}
-
-action {:layer 2} PONG' (y: int, {:linear_in} p: One ChannelHandle)
-creates PONG;
-modifies channel;
-{
-  assert channel[p->val->cid]->right[0] == 1 || channel[p->val->cid]->right[y] == 1;
-  assert channel[p->val->cid]->left == MapConst(0);
-  call PONG(y, p);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 atomic action {:layer 2}
 MAIN (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
 refines MAIN' using INV;
 creates PING, PONG;
-eliminates PING using PING', PONG using PONG';
 modifies channel;
 {
   assert handles == BothHandles(cid);
@@ -108,6 +87,7 @@ modifies channel;
 async atomic action {:layer 2} PING (x: int, {:linear_in} p: One ChannelHandle)
 creates PING;
 modifies channel;
+requires call YieldPing(x, p);
 {
   var left_channel: [int]int;
   var right_channel: [int]int;
@@ -138,6 +118,7 @@ modifies channel;
 async atomic action {:layer 2} PONG (y: int, {:linear_in} p: One ChannelHandle)
 creates PONG;
 modifies channel;
+requires call YieldPong(y, p);
 {
   var left_channel: [int]int;
   var right_channel: [int]int;
@@ -164,6 +145,21 @@ modifies channel;
   }
   channel[p->val->cid] := ChannelPair(left_channel, right_channel);
 }
+
+yield invariant {:layer 2} YieldPing (x: int, {:linear} p: One ChannelHandle);
+invariant p->val is Left;
+invariant (var left_channel := channel[p->val->cid]->left;
+            IsSet(left_channel) &&
+            left_channel[x := 0] == MapConst(0) && left_channel[x] == 1);
+invariant channel[p->val->cid]->right == MapConst(0);
+
+yield invariant {:layer 2} YieldPong (y: int, {:linear} p: One ChannelHandle);
+invariant p->val is Right;
+invariant (var right_channel := channel[p->val->cid]->right;
+            IsSet(right_channel) &&
+            (right_channel[0] == 1 || right_channel[y] == 1) &&
+            (right_channel[0 := 0] == MapConst(0) || right_channel[y := 0] == MapConst(0)));
+invariant channel[p->val->cid]->left == MapConst(0);
 
 ////////////////////////////////////////////////////////////////////////////////
 
