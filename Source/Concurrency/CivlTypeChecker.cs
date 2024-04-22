@@ -24,9 +24,13 @@ namespace Microsoft.Boogie
       this.program = program;
       this.Options = options;
       this.linearTypeChecker = new LinearTypeChecker(this);
-      this.AllRefinementLayers = program.TopLevelDeclarations.OfType<Implementation>()
+      var yieldingProcRefinementLayers = program.TopLevelDeclarations.OfType<Implementation>()
         .Where(impl => impl.Proc is YieldProcedureDecl)
-        .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer)
+        .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer);
+      var actionRefinementLayers = program.TopLevelDeclarations.OfType<ActionDecl>()
+        .Where(actionDecl => actionDecl.RefinedAction != null)
+        .Select(actionDecl => actionDecl.LayerRange.UpperLayer);
+      this.AllRefinementLayers = yieldingProcRefinementLayers.Union(actionRefinementLayers)
         .OrderBy(layer => layer).Distinct().ToList();
       
       this.actionDeclToAction = new Dictionary<ActionDecl, Action>();

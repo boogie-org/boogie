@@ -3540,6 +3540,15 @@ namespace Microsoft.Boogie
             $"caller layer range ({callerActionDecl.LayerRange}) must be subset of callee layer range ({calleeActionDecl.LayerRange})");
         }
       }
+      else if (tc.Impl == null)
+      {
+        // call to yield invariant allowed only in preconditions
+        var yieldInvariantDecl = (YieldInvariantDecl)Proc;
+        if (!callerActionDecl.LayerRange.Contains(yieldInvariantDecl.Layer))
+        {
+          tc.Error(this, "layer of callee must be in the layer range of caller");
+        }
+      }
       else
       {
         tc.Error(this, "an action may only call actions or primitives");

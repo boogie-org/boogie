@@ -4144,6 +4144,7 @@ namespace Microsoft.Boogie
 
       var oldProc = tc.Proc;
       tc.Proc = Proc;
+      tc.Impl = this;
       foreach (Variable /*!*/ v in LocVars)
       {
         Contract.Assert(v != null);
@@ -4154,6 +4155,7 @@ namespace Microsoft.Boogie
         b.Typecheck(tc);
       }
       Contract.Assert(tc.Proc == Proc);
+      tc.Impl = null;
       tc.Proc = oldProc;
 
       if (Proc is ActionDecl || Proc is YieldProcedureDecl)
