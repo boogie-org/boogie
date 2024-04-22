@@ -678,6 +678,7 @@ namespace Microsoft.Boogie
         node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
       }
       node.Eliminates = VisitElimDeclSeq(node.Eliminates);
+      node.YieldRequires = VisitCallCmdSeq(node.YieldRequires);
       return VisitProcedure(node);
     }
 

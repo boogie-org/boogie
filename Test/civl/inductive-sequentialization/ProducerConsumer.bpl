@@ -22,7 +22,6 @@ var {:layer 0,3} channels: [ChannelId]Channel;
 atomic action {:layer 2} MAIN (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
 refines MAIN' using INV;
 creates PRODUCER, CONSUMER;
-eliminates CONSUMER using CONSUMER';
 {
   assert handles == BothHandles(cid);
   assert channels[cid]->head == channels[cid]->tail;
@@ -111,6 +110,7 @@ modifies channels;
 async atomic action {:layer 2} CONSUMER (x: int, {:linear_in} receive_handle: One ChannelHandle)
 creates CONSUMER;
 modifies channels;
+requires call YieldConsumer(receive_handle);
 {
   var channel: Channel;
   var C: [int]int;
@@ -135,21 +135,9 @@ modifies channels;
   assume {:add_to_pool "INV2", channels[receive_handle->val->cid]} true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-action {:layer 2} CONSUMER' (x:int, {:linear_in} receive_handle: One ChannelHandle)
-creates CONSUMER;
-modifies channels;
-{
-  var channel: Channel;
-  var head, tail: int;
-
-  channel := channels[receive_handle->val->cid];
-  head := channel->head;
-  tail := channel->tail;
-  assert head < tail;
-  call CONSUMER(x, receive_handle);
-}
+yield invariant {:layer 2} YieldConsumer({:linear} receive_handle: One ChannelHandle);
+invariant receive_handle->val is Receive;
+invariant (var channel := channels[receive_handle->val->cid]; channel->head < channel->tail);
 
 ////////////////////////////////////////////////////////////////////////////////
 

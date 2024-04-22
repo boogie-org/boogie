@@ -747,6 +747,7 @@ namespace Microsoft.Boogie
   {
     public CoreOptions Options { get; }
     public Procedure Proc;
+    public Implementation Impl;
     public LayerRange ExpectedLayerRange;
     public bool GlobalAccessOnlyInOld;
     public int InsideOld;

@@ -2474,6 +2474,21 @@ namespace Microsoft.Boogie
           rc.Error(this, $"each layer must not be more than {yieldProcedureDecl.Layer}");
         }
       }
+      if (rc.Proc is ActionDecl actionDecl)
+      {
+        if (Layers.Count == 0)
+        {
+          rc.Error(this, "expected layers");
+        }
+        else
+        {
+          var assertLayerRange = new LayerRange(Layers[0], Layers[^1]);
+          if (!assertLayerRange.Subset(actionDecl.LayerRange))
+          {
+            rc.Error(this, $"each layer must be in the range {actionDecl.LayerRange}");
+          }
+        }
+      }
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -2769,6 +2784,9 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       base.Typecheck(tc);
+
+      var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
+      tc.GlobalAccessOnlyInOld = false;
       foreach (IdentifierExpr ide in Modifies)
       {
         Contract.Assert(ide != null);
@@ -2779,6 +2797,7 @@ namespace Microsoft.Boogie
         }
         ide.Typecheck(tc);
       }
+      tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
 
       foreach (Requires e in Requires)
       {
@@ -2920,6 +2939,7 @@ namespace Microsoft.Boogie
     public ActionDeclRef RefinedAction;
     public ActionDeclRef InvariantAction;
     public List<ElimDecl> Eliminates;
+    public List<CallCmd> YieldRequires;
     public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
 
     public Implementation Impl; // set when the implementation of this action is resolved
@@ -2928,16 +2948,17 @@ namespace Microsoft.Boogie
     public ActionDecl(IToken tok, string name, MoverType moverType,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
-      List<ElimDecl> eliminates,
+      List<ElimDecl> eliminates, List<Requires> requires, List<CallCmd> yieldRequires,
       List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
-      isPure, new List<Requires>(), modifies, new List<Ensures>(), kv)
+      isPure, requires, modifies, new List<Ensures>(), kv)
     {
       this.MoverType = moverType;
       this.Creates = creates;
       this.RefinedAction = refinedAction;
       this.InvariantAction = invariantAction;
       this.Eliminates = eliminates;
+      this.YieldRequires = yieldRequires;
       this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
     }
 
@@ -2951,6 +2972,16 @@ namespace Microsoft.Boogie
     {
       rc.Proc = this;
       base.Resolve(rc);
+      rc.PushVarContext();
+      RegisterFormals(InParams, rc);
+      YieldRequires.ForEach(callCmd => {
+        callCmd.Resolve(rc);
+        if (callCmd.Proc is not YieldInvariantDecl)
+        {
+          rc.Error(callCmd, "expected call to yield invariant");
+        }
+      });
+      rc.PopVarContext();
       rc.Proc = null;
       if (Creates.Any())
       {
@@ -3006,8 +3037,15 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      var oldProc = tc.Proc;
+      tc.Proc = this;
+      tc.GlobalAccessOnlyInOld = true;
       base.Typecheck(tc);
-      
+      tc.GlobalAccessOnlyInOld = false;
+      YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
+      Contract.Assert(tc.Proc == this);
+      tc.Proc = oldProc;
+
       Creates.ForEach(actionDeclRef =>
       {
         var pendingAsync = actionDeclRef.ActionDecl;
@@ -3281,10 +3319,28 @@ namespace Microsoft.Boogie
       rc.StateMode = ResolutionContext.State.Two;
       rc.PushVarContext();
       RegisterFormals(InParams, rc);
-      YieldRequires.ForEach(callCmd => callCmd.Resolve(rc));
-      YieldPreserves.ForEach(callCmd => callCmd.Resolve(rc));
+      YieldRequires.ForEach(callCmd => {
+        callCmd.Resolve(rc);
+        if (callCmd.Proc is not YieldInvariantDecl)
+        {
+          rc.Error(callCmd, "expected call to yield invariant");
+        }
+      });
+      YieldPreserves.ForEach(callCmd => {
+        callCmd.Resolve(rc);
+        if (callCmd.Proc is not YieldInvariantDecl)
+        {
+          rc.Error(callCmd, "expected call to yield invariant");
+        }
+      });
       RegisterFormals(OutParams, rc);
-      YieldEnsures.ForEach(callCmd => callCmd.Resolve(rc));
+      YieldEnsures.ForEach(callCmd => {
+        callCmd.Resolve(rc);
+        if (callCmd.Proc is not YieldInvariantDecl)
+        {
+          rc.Error(callCmd, "expected call to yield invariant");
+        }
+      });
       rc.PopVarContext();
       rc.StateMode = oldStateMode;
       rc.Proc = null;
@@ -4088,6 +4144,7 @@ namespace Microsoft.Boogie
 
       var oldProc = tc.Proc;
       tc.Proc = Proc;
+      tc.Impl = this;
       foreach (Variable /*!*/ v in LocVars)
       {
         Contract.Assert(v != null);
@@ -4098,6 +4155,7 @@ namespace Microsoft.Boogie
         b.Typecheck(tc);
       }
       Contract.Assert(tc.Proc == Proc);
+      tc.Impl = null;
       tc.Proc = oldProc;
 
       if (Proc is ActionDecl || Proc is YieldProcedureDecl)

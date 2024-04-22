@@ -107,7 +107,6 @@ atomic action {:layer 3}
 MAIN'({:linear_in} ps: Set perm)
 refines MAIN'' using INV_COLLECT_ELIM;
 creates COLLECT;
-eliminates COLLECT using COLLECT';
 modifies CH;
 {
   assert ps->val == (lambda p:perm :: pid(p->i));
@@ -165,6 +164,7 @@ modifies CH;
 
 async atomic action {:layer 2,3} COLLECT({:linear_in} p: One perm, i:pid)
 modifies decision;
+requires call YieldCollect();
 {
   var received_values:[val]int;
   assert pid(i) && p->val == Collect(i);
@@ -174,14 +174,10 @@ modifies decision;
   decision[i] := max(received_values);
 }
 
-action {:layer 3} COLLECT'({:linear_in} p: One perm, i:pid)
-modifies decision;
-{
-  assert CH == (lambda v:val :: value_card(v, value, 1, n));
-  assert card(CH) == n;
-  assert MultisetSubsetEq(MultisetEmpty, CH);
-  call COLLECT(p, i);
-}
+yield invariant {:layer 3} YieldCollect();
+invariant CH == (lambda v:val :: value_card(v, value, 1, n));
+invariant card(CH) == n;
+invariant MultisetSubsetEq(MultisetEmpty, CH);
 
 ////////////////////////////////////////////////////////////////////////////////
 

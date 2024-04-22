@@ -52,7 +52,7 @@ function {:inline} all_decided' (r_bound:int, init_val:[int]int, dec_dom:[int]bo
 // Main
 
 atomic action {:layer 2} main_atomic ({:linear_in} perms: Set Perm)
-modifies col_dom, col_val, dec_dom, dec_val;
+modifies dec_dom, dec_val;
 {
   havoc dec_dom, dec_val;
   assume all_decided(init_val, dec_dom, dec_val);

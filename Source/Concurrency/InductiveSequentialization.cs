@@ -28,10 +28,33 @@ namespace Microsoft.Boogie
 
     protected abstract List<Declaration> GenerateCheckers();
 
-    public virtual Expr GenerateMoverCheckAssumption(Action action, List<Variable> actionArgs, Action leftMover,
+    public virtual IEnumerable<Expr> GenerateMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
       List<Variable> leftMoverArgs)
     {
-      return Expr.True;
+      return new List<Expr>();
+    }
+
+    public IEnumerable<AssertCmd> Preconditions(Action pendingAsync, Substitution subst)
+    {
+      var cmds = new List<AssertCmd>();
+      pendingAsync.ActionDecl.Requires.Where(req => req.Layers.Contains(Layer)).ForEach(req =>
+      {
+        cmds.Add(CmdHelper.AssertCmd(req.tok, Substituter.Apply(subst, req.Condition), ""));
+      });
+      foreach (var callCmd in pendingAsync.ActionDecl.YieldRequires)
+      {
+        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
+        if (Layer == yieldInvariant.Layer)
+        {
+          Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(yieldInvariant.InParams
+              .Zip(callCmd.Ins)
+              .ToDictionary(x => x.Item1, x => x.Item2));
+          yieldInvariant.Requires.ForEach(req =>
+            cmds.Add(CmdHelper.AssertCmd(req.tok,
+                  Substituter.Apply(subst, Substituter.Apply(callFormalsToActuals, req.Condition)), "")));
+        }
+      }
+      return cmds;
     }
 
     public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
@@ -269,17 +292,14 @@ namespace Microsoft.Boogie
       cmds.Add(RemoveChoice(pendingAsyncType));
 
       Action abs = elim[pendingAsync];
-      Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
       List<Expr> inputExprs = new List<Expr>();
       for (int i = 0; i < abs.Impl.InParams.Count; i++)
       {
-        var pendingAsyncParam = ExprHelper.FieldAccess(Choice(pendingAsyncType), pendingAsyncCtor.InParams[i].Name);
-        map[abs.Impl.InParams[i]] = pendingAsyncParam;
-        inputExprs.Add(pendingAsyncParam);
+        inputExprs.Add(ExprHelper.FieldAccess(Choice(pendingAsyncType), pendingAsyncCtor.InParams[i].Name));
       }
-      var subst = Substituter.SubstitutionFromDictionary(map);
-      cmds.AddRange(abs.GetGateAsserts(subst,
+      cmds.AddRange(abs.GetGateAsserts(Substituter.SubstitutionFromDictionary(abs.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
         $"Gate of {abs.Name} fails in IS induction step for invariant {invariantAction.Name}"));
+      cmds.AddRange(Preconditions(abs, Substituter.SubstitutionFromDictionary(abs.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
 
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
       if (abs.HasPendingAsyncs)
@@ -325,7 +345,7 @@ namespace Microsoft.Boogie
      *   (1) the permissions in the invocation are disjoint from the permissions in the invariant invocation, or
      *   (2) the permissions in the invocation is contained in the permissions of one of the pending asyncs created by the invariant invocation.
      */
-    public override Expr GenerateMoverCheckAssumption(Action action, List<Variable> actionArgs, Action leftMover,
+    public override IEnumerable<Expr> GenerateMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
       List<Variable> leftMoverArgs)
     {
       var invariantFormalMap =
@@ -336,13 +356,20 @@ namespace Microsoft.Boogie
       var invariantTransitionRelationExpr = ExprHelper.FunctionCall(invariantAction.InputOutputRelationWithChoice,
         invariantAction.ImplWithChoice.InParams.Concat(invariantAction.ImplWithChoice.OutParams)
           .Select(v => invariantFormalMap[v]).ToList());
-      return ExprHelper.ExistsExpr(
+
+      Substitution subst = Substituter.SubstitutionFromDictionary(
+        leftMover.ActionDecl.InParams.Zip(leftMoverArgs.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
+
+      return new List<Expr>(Preconditions(leftMover, subst).Select(assertCmd => assertCmd.Expr))
+      {
+        ExprHelper.ExistsExpr(
         invariantFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
         Expr.And(new[]
         {
           invariantTransitionRelationExpr, ActionExpr(action, actionArgs, invariantFormalSubst),
           LeftMoverExpr(leftMover, leftMoverArgs, invariantFormalSubst)
-        }));
+        }))
+      };
     }
 
     private Expr ActionExpr(Action action, List<Variable> actionArgs, Substitution invariantFormalSubst)

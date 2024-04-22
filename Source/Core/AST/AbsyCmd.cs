@@ -1963,7 +1963,7 @@ namespace Microsoft.Boogie
       {
         var e = Rhss[i];
         Contract.Assert(e != null);
-        tc.GlobalAccessOnlyInOld = true;
+        tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl;
         tc.ExpectedLayerRange = tc.Proc is YieldProcedureDecl ? expectedLayerRanges[i] : null;
         e.Typecheck(tc);
         tc.GlobalAccessOnlyInOld = false;
@@ -2454,7 +2454,7 @@ namespace Microsoft.Boogie
 
       lhs.Typecheck(tc);
       
-      tc.GlobalAccessOnlyInOld = true;
+      tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl;
       tc.ExpectedLayerRange = expectedLayerRange;
       rhs.Typecheck(tc);
       tc.GlobalAccessOnlyInOld = false;
@@ -3540,6 +3540,15 @@ namespace Microsoft.Boogie
             $"caller layer range ({callerActionDecl.LayerRange}) must be subset of callee layer range ({calleeActionDecl.LayerRange})");
         }
       }
+      else if (tc.Impl == null)
+      {
+        // call to yield invariant allowed only in preconditions
+        var yieldInvariantDecl = (YieldInvariantDecl)Proc;
+        if (!callerActionDecl.LayerRange.Contains(yieldInvariantDecl.Layer))
+        {
+          tc.Error(this, "layer of callee must be in the layer range of caller");
+        }
+      }
       else
       {
         tc.Error(this, "an action may only call actions or primitives");
@@ -4605,7 +4614,7 @@ namespace Microsoft.Boogie
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
       tc.ExpectedLayerRange = tc.Proc is YieldProcedureDecl decl ? new LayerRange(0, decl.Layer) : null;
-      tc.GlobalAccessOnlyInOld = true;
+      tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl;
       Expr.Typecheck(tc);
       tc.ExpectedLayerRange = null;
       tc.GlobalAccessOnlyInOld = false;

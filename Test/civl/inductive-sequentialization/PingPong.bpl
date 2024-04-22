@@ -28,7 +28,7 @@ function {:inline} BothHandles(cid: ChannelId): Set ChannelHandle {
 }
 
 function {:inline} EmptyChannel () : [int]int
-{ (lambda m:int :: 0) }
+{ MapConst(0) }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -71,31 +71,10 @@ modifies channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-action {:layer 2} PING' (x: int, {:linear_in} p: One ChannelHandle)
-creates PING;
-modifies channel;
-{
-  assert (exists {:pool "INV"} m:int :: {:add_to_pool "INV", m} channel[p->val->cid]->left[m] > 0);
-  assert (forall m:int :: channel[p->val->cid]->right[m] == 0);
-  call PING(x, p);
-}
-
-action {:layer 2} PONG' (y: int, {:linear_in} p: One ChannelHandle)
-creates PONG;
-modifies channel;
-{
-  assert (exists {:pool "INV"} m:int :: {:add_to_pool "INV", m} channel[p->val->cid]->right[m] > 0);
-  assert (forall m:int :: channel[p->val->cid]->left[m] == 0);
-  call PONG(y, p);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 atomic action {:layer 2}
 MAIN (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
 refines MAIN' using INV;
 creates PING, PONG;
-eliminates PING using PING', PONG using PONG';
 modifies channel;
 {
   assert handles == BothHandles(cid);
@@ -108,6 +87,7 @@ modifies channel;
 async atomic action {:layer 2} PING (x: int, {:linear_in} p: One ChannelHandle)
 creates PING;
 modifies channel;
+requires call YieldPing(x, p);
 {
   var left_channel: [int]int;
   var right_channel: [int]int;
@@ -117,7 +97,8 @@ modifies channel;
 
   assert x > 0;
   assert p->val is Left;
-  assert (forall {:pool "INV"} m:int :: {:add_to_pool "INV", m} left_channel[m] > 0 ==> m == x); // assertion to discharge
+  assert IsSet(left_channel);
+  assert left_channel[x := 0] == MapConst(0);
 
   assume left_channel[x] > 0;
   left_channel[x] := left_channel[x] - 1;
@@ -137,6 +118,7 @@ modifies channel;
 async atomic action {:layer 2} PONG (y: int, {:linear_in} p: One ChannelHandle)
 creates PONG;
 modifies channel;
+requires call YieldPong(y, p);
 {
   var left_channel: [int]int;
   var right_channel: [int]int;
@@ -146,7 +128,8 @@ modifies channel;
 
   assert y > 0;
   assert p->val is Right;
-  assert (forall {:pool "INV"} m:int :: {:add_to_pool "INV", m} right_channel[m] > 0 ==> m == y || m == 0); // assertion to discharge
+  assert IsSet(right_channel);
+  assert right_channel[0 := 0] == MapConst(0) || right_channel[y := 0] == MapConst(0);
 
   if (*)
   {
@@ -162,6 +145,21 @@ modifies channel;
   }
   channel[p->val->cid] := ChannelPair(left_channel, right_channel);
 }
+
+yield invariant {:layer 2} YieldPing (x: int, {:linear} p: One ChannelHandle);
+invariant p->val is Left;
+invariant (var left_channel := channel[p->val->cid]->left;
+            IsSet(left_channel) &&
+            left_channel[x := 0] == MapConst(0) && left_channel[x] == 1);
+invariant channel[p->val->cid]->right == MapConst(0);
+
+yield invariant {:layer 2} YieldPong (y: int, {:linear} p: One ChannelHandle);
+invariant p->val is Right;
+invariant (var right_channel := channel[p->val->cid]->right;
+            IsSet(right_channel) &&
+            (right_channel[0] == 1 || right_channel[y] == 1) &&
+            (right_channel[0 := 0] == MapConst(0) || right_channel[y := 0] == MapConst(0)));
+invariant channel[p->val->cid]->left == MapConst(0);
 
 ////////////////////////////////////////////////////////////////////////////////
 

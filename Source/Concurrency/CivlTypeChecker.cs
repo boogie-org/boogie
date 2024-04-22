@@ -24,9 +24,13 @@ namespace Microsoft.Boogie
       this.program = program;
       this.Options = options;
       this.linearTypeChecker = new LinearTypeChecker(this);
-      this.AllRefinementLayers = program.TopLevelDeclarations.OfType<Implementation>()
+      var yieldingProcRefinementLayers = program.TopLevelDeclarations.OfType<Implementation>()
         .Where(impl => impl.Proc is YieldProcedureDecl)
-        .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer)
+        .Select(decl => ((YieldProcedureDecl)decl.Proc).Layer);
+      var actionRefinementLayers = program.TopLevelDeclarations.OfType<ActionDecl>()
+        .Where(actionDecl => actionDecl.RefinedAction != null)
+        .Select(actionDecl => actionDecl.LayerRange.UpperLayer);
+      this.AllRefinementLayers = yieldingProcRefinementLayers.Union(actionRefinementLayers)
         .OrderBy(layer => layer).Distinct().ToList();
       
       this.actionDeclToAction = new Dictionary<ActionDecl, Action>();
@@ -48,7 +52,7 @@ namespace Microsoft.Boogie
       }
 
       SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, new List<Variable>(),
-        new List<Variable>(), true, new List<ActionDeclRef>(), null, null, new List<ElimDecl>(),
+        new List<Variable>(), true, new List<ActionDeclRef>(), null, null, new List<ElimDecl>(), new List<Requires>(), new List<CallCmd>(),
         new List<IdentifierExpr>(), null, null);
       var skipImplementation = DeclHelper.Implementation(
         SkipActionDecl,

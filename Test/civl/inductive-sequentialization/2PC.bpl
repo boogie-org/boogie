@@ -77,19 +77,14 @@ modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
   call set_choice(PARTICIPANT2(One(k+1)));
 }
 
-action {:layer 5} PARTICIPANT2' ({:linear_in} pid: One int)
-modifies DecisionChannel, decisions;
-{
-  assert DecisionChannel[pid->val][COMMIT()] > 0 || DecisionChannel[pid->val][ABORT()] > 0;
-  call PARTICIPANT2(pid);
-}
+yield invariant {:layer 5} YieldParticipant ({:linear} foo: One int);
+invariant DecisionChannel[foo->val][COMMIT()] > 0 || DecisionChannel[foo->val][ABORT()] > 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 
 atomic action {:layer 5} MAIN4 ({:linear_in} pids: Set int)
 refines MAIN5 using INV4;
 creates PARTICIPANT2;
-eliminates PARTICIPANT2 using PARTICIPANT2';
 modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
 {
   var dec:decision;
@@ -191,6 +186,7 @@ modifies RequestChannel, VoteChannel, votes;
 
 async atomic action {:layer 2,5} PARTICIPANT2 ({:linear_in} pid: One int)
 modifies DecisionChannel, decisions;
+requires call YieldParticipant(pid);
 {
   var d:decision;
   assert pid(pid->val);

@@ -1356,6 +1356,10 @@ namespace Microsoft.Boogie
         {
           if (Decl is GlobalVariable)
           {
+            if (!tc.GlobalAccessOk)
+            {
+              tc.Error(this, $"global variable must be accessed inside old expression: {Decl.Name}");
+            }
             var globalVarLayerRange = Decl.LayerRange;
             if (actionDecl.LayerRange.LowerLayer <= globalVarLayerRange.LowerLayer)
             {
