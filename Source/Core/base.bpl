@@ -126,11 +126,17 @@ function {:inline} Vec_Swap<T>(v: Vec T, i: int, j: int): Vec T
   )
 }
 
-function {:inline} Vec_Remove<T>(v: Vec T): Vec T {
-    (
-      var cond, new_len := 0 < v->len, v->len - 1;
-      Vec(v->contents[new_len := if (cond) then Default() else v->contents[new_len]], if (cond) then new_len else v->len)
-    )
+function {:inline} Vec_Remove<T>(v: Vec T): Vec T
+{
+  (
+    var cond, new_len := 0 < v->len, v->len - 1;
+    Vec(v->contents[new_len := if (cond) then Default() else v->contents[new_len]], if (cond) then new_len else v->len)
+  )
+}
+
+function {:inline} Vec_Contains<T>(v: Vec T, i: int): bool
+{
+  0 <= i && i < Vec_Len(v)
 }
 
 // extensionality lemma to be used explicitly by the programmer
