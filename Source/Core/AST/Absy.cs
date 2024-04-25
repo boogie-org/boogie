@@ -4121,9 +4121,9 @@ namespace Microsoft.Boogie
     private void TypecheckLoopAnnotations(TypecheckingContext tc, Graph<Block> graph)
     {
       var yieldingProc = (YieldProcedureDecl)Proc;
-      var yieldingLayer = yieldingProc.Layer;
       foreach (var header in graph.Headers)
       {
+        var yieldingLayer = yieldingProc.Layer;
         var yieldCmd = (PredicateCmd)header.Cmds.FirstOrDefault(cmd =>
           cmd is PredicateCmd predCmd && predCmd.HasAttribute(CivlAttributes.YIELDS));
         if (yieldCmd == null)
