@@ -1,3 +1,6 @@
+// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 type Value;
 
 type Tid;
@@ -6,73 +9,61 @@ datatype StampedValue {
   StampedValue(ts: int, value: Value)
 }
 
-var {:layer 0,2} mem: [int]StampedValue;
-var {:layer 0,1} r1: [Tid][int]StampedValue;
-var {:layer 0,1} r2: [Tid][int]StampedValue;
+var {:layer 0,3} mem: [int]StampedValue;
 
 const n: int;
 axiom n >= 1;
 
-atomic action {:layer 2} scan'({:linear} tid: One Tid) returns (snapshot: [int]StampedValue)
+atomic action {:layer 3} scan'() returns (snapshot: [int]StampedValue)
 {
     assume (forall j:int :: 1 <= j && j <= n  ==> snapshot[j] == mem[j]);
 }
 
-yield procedure {:layer 1} scan({:linear} tid: One Tid) returns (snapshot: [int]StampedValue)
+yield procedure {:layer 2} scan() returns (snapshot: [int]StampedValue)
 refines scan';
 {
     var i: int;
     var b: bool;
+    var r1: [int]StampedValue;
+    var r2: [int]StampedValue;
+    var out: StampedValue;
 
     while (true)
-    invariant {:yields} {:layer 1} true;
+    invariant {:yields} true;
     {
         i := 1;
         while (i <= n)
-        invariant {:layer 1} (forall j:int :: 1 <= j && j < i ==> r1[tid->val][j]->ts <= mem[j]->ts);
-        invariant {:layer 1} (forall j:int :: 1 <= j && j < i ==> (r1[tid->val][j]->ts == mem[j]->ts ==> r1[tid->val][j]->value == mem[j]->value));
+        invariant {:yields} {:layer 1} true;
+        invariant {:layer 2} (forall j:int :: 1 <= j && j < i ==> r1[j]->ts <= mem[j]->ts);
+        invariant {:layer 2} (forall j:int :: 1 <= j && j < i ==> (r1[j]->ts == mem[j]->ts ==> r1[j]->value == mem[j]->value));
         {
-            call read_f(tid, i);
+            call out := read_f(i);
+            r1[i] := out;
             i := i + 1; 
         }
 
         i := 1;
         while (i <= n)
-        invariant {:layer 1} (forall j:int :: 1 <= j && j < i ==> mem[j]->ts <= r2[tid->val][j]->ts);
-        invariant {:layer 1} (forall j:int :: 1 <= j && j < i ==> (r2[tid->val][j]->ts == mem[j]->ts ==> r2[tid->val][j]->value == mem[j]->value));
+        invariant {:yields} {:layer 1} true;
+        invariant {:layer 2} (forall j:int :: 1 <= j && j < i ==> mem[j]->ts <= r2[j]->ts);
+        invariant {:layer 2} (forall j:int :: 1 <= j && j < i ==> (r2[j]->ts == mem[j]->ts ==> r2[j]->value == mem[j]->value));
         {
-            call read_s(tid, i);
+            call out := read_s(i);
+            r2[i] := out;
             i := i + 1; 
         }
    
-        assert {:layer 1} (forall j:int :: 1 <= j && j <= n ==> (r1[tid->val][j] == r2[tid->val][j] ==> r1[tid->val][j] == mem[j]));
+        assert {:layer 2} (forall j:int :: 1 <= j && j <= n ==> (r1[j] == r2[j] ==> r1[j] == mem[j]));
     
-        call b := equality_check(tid);
-        if (b) {
-            assert {:layer 1} (forall j:int :: 1 <= j && j <= n ==> r1[tid->val][j] == mem[j]);
-            call snapshot := read_r1(tid);
+        if (r1 == r2) {
+            assert {:layer 2} (forall j:int :: 1 <= j && j <= n ==> r1[j] == mem[j]);
+            snapshot := r1;
             break;
         }
     }
 }
 
-both action {:layer 1} action_equality_check({:linear} tid: One Tid) returns (b: bool)
-{
-    b := (forall j:int :: 1 <= j && j <= n  ==> r1[tid->val][j] == r2[tid->val][j]);
-}
-
-yield procedure {:layer 0} equality_check({:linear} tid: One Tid) returns (b: bool);
-refines action_equality_check;
-
-both action {:layer 1} action_read_r1({:linear} tid: One Tid) returns (r1_copy: [int]StampedValue)
-{
-    r1_copy := r1[tid->val];
-}
-
-yield procedure {:layer 0} read_r1({:linear} tid: One Tid) returns (r1_copy: [int]StampedValue);
-refines action_read_r1;
-
-atomic action {:layer 1} write ({:linear} tid: One Tid, v:Value, i: int)
+atomic action {:layer 2} write (v:Value, i: int)
 modifies mem;
 {
     var x: StampedValue;
@@ -80,25 +71,34 @@ modifies mem;
     mem[i] := StampedValue(x->ts + 1, v);
 }
 
-right action {:layer 1} action_read_f ({:linear} tid: One Tid, i: int) 
-modifies r1;
+action {:layer 1} action_read (i: int) returns (v: StampedValue)
+{
+    v := mem[i];
+}
+
+yield procedure {:layer 0} read (i: int) returns (v: StampedValue);
+refines action_read;
+
+right action {:layer 2} action_read_f (i: int) returns (out: StampedValue)
 {
     var {:pool "K"} k:int;
     var {:pool "V"} v:Value;
     if (*) {
         assume {:add_to_pool "K", mem[i]->ts, k} {:add_to_pool "V", mem[i]->value, v} true;
         assume k < mem[i]->ts;
-        r1[tid->val][i] := StampedValue(k, v);
+        out := StampedValue(k, v);
     } else {
-        r1[tid->val][i] := mem[i];
+        out := mem[i];
     }
 }
 
-yield procedure {:layer 0} read_f ({:linear} tid: One Tid, i: int);
+yield procedure {:layer 1} read_f (i: int) returns (out: StampedValue)
 refines action_read_f;
+{
+    call out := read(i);
+}
 
-left action {:layer 1} action_read_s({:linear} tid: One Tid, i: int)
-modifies r2;
+left action {:layer 2} action_read_s(i: int) returns (out: StampedValue)
 {
     var {:pool "K"} k:int;
     var {:pool "V"} v:Value;
@@ -106,11 +106,14 @@ modifies r2;
     if (*) {
         assume {:add_to_pool "K", mem[i]->ts, k} {:add_to_pool "V", mem[i]->value, v} true;
         assume k > mem[i]->ts;
-        r2[tid->val][i] := StampedValue(k, v);
+        out := StampedValue(k, v);
     } else {
-        r2[tid->val][i] := mem[i];
+        out := mem[i];
     }
 }
 
-yield procedure {:layer 0} read_s({:linear} tid: One Tid, i: int);
+yield procedure {:layer 1} read_s (i: int) returns (out: StampedValue)
 refines action_read_s;
+{
+    call out := read(i);
+}
