@@ -80,9 +80,6 @@ modifies mem;
     mem[i] := StampedValue(x->ts + 1, v);
 }
 
-yield procedure {:layer 0} read_f ({:linear} tid: One Tid, i: int);
-refines action_read_f;
-
 right action {:layer 1} action_read_f ({:linear} tid: One Tid, i: int) 
 modifies r1;
 {
@@ -97,8 +94,8 @@ modifies r1;
     }
 }
 
-yield procedure {:layer 0} read_s({:linear} tid: One Tid, i: int);
-refines action_read_s;
+yield procedure {:layer 0} read_f ({:linear} tid: One Tid, i: int);
+refines action_read_f;
 
 left action {:layer 1} action_read_s({:linear} tid: One Tid, i: int)
 modifies r2;
@@ -114,3 +111,6 @@ modifies r2;
         r2[tid->val][i] := mem[i];
     }
 }
+
+yield procedure {:layer 0} read_s({:linear} tid: One Tid, i: int);
+refines action_read_s;
