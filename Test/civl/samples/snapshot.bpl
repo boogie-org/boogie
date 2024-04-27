@@ -63,22 +63,6 @@ refines scan';
     }
 }
 
-atomic action {:layer 2} write (v:Value, i: int)
-modifies mem;
-{
-    var x: StampedValue;
-    x := mem[i];
-    mem[i] := StampedValue(x->ts + 1, v);
-}
-
-action {:layer 1} action_read (i: int) returns (v: StampedValue)
-{
-    v := mem[i];
-}
-
-yield procedure {:layer 0} read (i: int) returns (v: StampedValue);
-refines action_read;
-
 right action {:layer 2} action_read_f (i: int) returns (out: StampedValue)
 {
     var {:pool "K"} k:int;
@@ -117,3 +101,19 @@ refines action_read_s;
 {
     call out := read(i);
 }
+
+atomic action {:layer 1,3} action_write (v:Value, i: int)
+modifies mem;
+{
+    var x: StampedValue;
+    x := mem[i];
+    mem[i] := StampedValue(x->ts + 1, v);
+}
+
+action {:layer 1,3} action_read (i: int) returns (v: StampedValue)
+{
+    v := mem[i];
+}
+
+yield procedure {:layer 0} read (i: int) returns (v: StampedValue);
+refines action_read;
