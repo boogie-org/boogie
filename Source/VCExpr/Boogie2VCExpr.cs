@@ -38,7 +38,7 @@ namespace Microsoft.Boogie.VCExprAST {
     }
   }
 
-  public delegate VCExpr CodeExprConverter(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext);
+  public delegate VCExpr CodeExprConverter(CodeExpr codeExpr, List<VCExprLetBinding> bindings, bool isPositiveContext, Dictionary<Cmd, List<object>> debugInfos);
 
   public class Boogie2VCExprTranslator : ReadOnlyVisitor, ICloneable {
     // Stack on which the various Visit-methods put the result of the translation
@@ -566,7 +566,7 @@ namespace Microsoft.Boogie.VCExprAST {
         QKeyValue.FindIntAttribute(node.Attributes, "weight", 1),
         Enumerable.Range(0, boundVars.Count)
           .ToDictionary(x => boundVars[x], x => QuantifierInstantiationEngine.FindInstantiationHints(node.Dummies[x])),
-        QuantifierInstantiationEngine.FindInstantiationSources(node, "add_to_pool", this));
+        QuantifierInstantiationEngine.FindInstantiationSources(node, this));
     }
 
     private string GetQid(QuantifierExpr node) {
@@ -743,7 +743,7 @@ namespace Microsoft.Boogie.VCExprAST {
       Contract.Assume(codeExprConverter != null);
 
       List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
-      VCExpr e = codeExprConverter(codeExpr, bindings, isPositiveContext);
+      VCExpr e = codeExprConverter(codeExpr, bindings, isPositiveContext, new());
       Push(e);
       return codeExpr;
     }

@@ -6,7 +6,7 @@ Execution trace:
     CaptureState.bpl(27,5): anon3
 *** MODEL
 F -> T@FieldName!val!0
-Heap -> |T@[Ref,FieldName]Int!val!0|
+Heap -> (_ (as-array) (k!0))
 m -> 
 m@0 -> (- 8)
 m@1 -> (- 7)
@@ -23,10 +23,10 @@ ControlFlow -> {
   0 3 -> 2
   0 5 -> 3
   0 6 -> 5
-  else -> 2
+  else -> (- 1)
 }
-Select__T@[Ref,FieldName]Int_ -> {
-  |T@[Ref,FieldName]Int!val!0| T@Ref!val!0 T@FieldName!val!0 -> (- 8)
+k!0 -> {
+  T@Ref!val!0 T@FieldName!val!0 -> (- 8)
   else -> (- 8)
 }
 tickleBool -> {
@@ -35,7 +35,7 @@ tickleBool -> {
   else -> true
 }
 *** STATE <initial>
-  Heap -> |T@[Ref,FieldName]Int!val!0|
+  Heap -> (_ (as-array) (k!0))
   m -> 
   r -> 
   this -> T@Ref!val!0

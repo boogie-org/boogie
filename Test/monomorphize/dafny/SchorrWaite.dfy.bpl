@@ -1,6 +1,6 @@
 // Dafny 3.7.3.40719
 // Command Line Options: /compile:0 /print:SchorrWaite.dfy.bpl
-// RUN: %parallel-boogie /monomorphize /noVerify "%s" > "%t"
+// RUN: %parallel-boogie /noVerify "%s" > "%t"
 
 type Ty;
 

@@ -37,7 +37,7 @@ procedure T0(aa: [int,ref]bool)
 procedure T1(aa: [int,ref]bool)
   requires aa[5,null] && !aa[2,null];
 {
-  assert aa[5,null := true] == aa[2,null := false];  // error, because we have no extensionality
+  assert aa[5,null := true] == aa[2,null := false];
 }
 
 procedure T2(aa: [int,ref]bool)

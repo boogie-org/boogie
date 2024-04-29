@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.VCExprAST;
 

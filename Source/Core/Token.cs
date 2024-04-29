@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using System.Collections.Generic;
 using System.IO;
@@ -6,7 +7,7 @@ using System.Diagnostics.Contracts;
 namespace Microsoft.Boogie
 {
   [Immutable]
-  public interface IToken
+  public interface IToken : IComparable<IToken>
   {
     int kind { get; set; } // token kind
     string filename { get; set; } // token file
@@ -87,6 +88,13 @@ namespace Microsoft.Boogie
     public bool IsValid
     {
       get { return this._filename != null; }
+    }
+
+    public int CompareTo(IToken other) {
+      if (line != other.line) {
+        return line.CompareTo(other.line);
+      }
+      return col.CompareTo(other.col);
     }
   }
 }

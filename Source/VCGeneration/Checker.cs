@@ -6,7 +6,6 @@ using System.Threading;
 using Microsoft.Boogie.VCExprAST;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Microsoft.Boogie.SMTLib;
 using VC;
 
 namespace Microsoft.Boogie
@@ -40,7 +39,7 @@ namespace Microsoft.Boogie
     private ProverInterface thmProver;
 
     // state for the async interface
-    private volatile ProverInterface.Outcome outcome;
+    private volatile SolverOutcome outcome;
     private volatile bool hasOutput;
     private volatile UnexpectedProverOutputException outputExn;
     public DateTime ProverStart { get; private set; }
@@ -120,7 +119,7 @@ namespace Microsoft.Boogie
 
       var ctx = Pool.Options.TheProverFactory.NewProverContext(SolverOptions);
 
-      SolverOptions.RandomSeed = Options.RandomSeed;
+      SolverOptions.RandomSeed = Options.RandomSeed ?? 0;
       var prover = Pool.Options.TheProverFactory.SpawnProver(Pool.Options, SolverOptions, ctx);
       
       thmProver = prover;
@@ -150,23 +149,22 @@ namespace Microsoft.Boogie
 
     private void SetRlimit(uint rlimit)
     {
-      TheoremProver.SetRlimit(Util.BoundedMultiply(rlimit, 1000));
+      TheoremProver.SetRlimit(rlimit);
     }
     
     /// <summary>
     /// Set up the context.
     /// </summary>
-    private void Setup(Program prog, ProverContext ctx, Split split)
+    private void Setup(Program program, ProverContext ctx, Split split)
     {
       SolverOptions.RandomSeed = 1 < Options.RandomizeVcIterations ? split.NextRandom() : split.RandomSeed;
-      var random = SolverOptions.RandomSeed == null ? null : new Random(SolverOptions.RandomSeed.Value);
 
-      Program = prog;
+      Program = program;
       // TODO(wuestholz): Is this lock necessary?
       lock (Program.TopLevelDeclarations)
       {
-        var declarations = split == null ? prog.TopLevelDeclarations : split.TopLevelDeclarations;
-        var reorderedDeclarations = GetReorderedDeclarations(declarations, random);
+        var declarations = split.TopLevelDeclarations;
+        var reorderedDeclarations = GetReorderedDeclarations(declarations, SolverOptions.RandomSeed);
         foreach (var declaration in reorderedDeclarations) {
           Contract.Assert(declaration != null);
           if (declaration is TypeCtorDecl typeDecl)
@@ -193,9 +191,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    private IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, Random random)
+    private IEnumerable<Declaration> GetReorderedDeclarations(IEnumerable<Declaration> declarations, int randomSeed)
     {
-      if (random == null) {
+      if (randomSeed == 0) {
         // By ordering the declarations based on their content and naming them based on order, the solver input stays constant under reordering and renaming.
         return Options.NormalizeDeclarationOrder
           ? declarations.OrderBy(d => d.ContentHash)
@@ -203,7 +201,7 @@ namespace Microsoft.Boogie
       }
 
       var copy = declarations.ToList();
-      Util.Shuffle(random, copy);
+      Util.Shuffle(new Random(randomSeed), copy);
       return copy;
     }
 
@@ -261,7 +259,7 @@ namespace Microsoft.Boogie
       get { return proverRunTime; }
     }
 
-    public Task<int> GetProverResourceCount()
+    public int GetProverResourceCount()
     {
       return thmProver.GetRCount();
     }
@@ -292,22 +290,22 @@ namespace Microsoft.Boogie
 
       switch (outcome)
       {
-        case ProverInterface.Outcome.Valid:
+        case SolverOutcome.Valid:
           thmProver.LogComment("Valid");
           break;
-        case ProverInterface.Outcome.Invalid:
+        case SolverOutcome.Invalid:
           thmProver.LogComment("Invalid");
           break;
-        case ProverInterface.Outcome.TimeOut:
+        case SolverOutcome.TimeOut:
           thmProver.LogComment("Timed out");
           break;
-        case ProverInterface.Outcome.OutOfResource:
+        case SolverOutcome.OutOfResource:
           thmProver.LogComment("Out of resource");
           break;
-        case ProverInterface.Outcome.OutOfMemory:
+        case SolverOutcome.OutOfMemory:
           thmProver.LogComment("Out of memory");
           break;
-        case ProverInterface.Outcome.Undetermined:
+        case SolverOutcome.Undetermined:
           thmProver.LogComment("Undetermined");
           break;
       }
@@ -329,10 +327,6 @@ namespace Microsoft.Boogie
       this.handler = handler;
 
       await thmProver.Reset(gen);
-      if (0 < rlimit)
-      {
-        timeout = 0;
-      }
       SetTimeout(timeout);
       SetRlimit(rlimit);
 
@@ -341,7 +335,7 @@ namespace Microsoft.Boogie
       ProverTask = Check(descriptiveName, vc, cancellationToken);
     }
 
-    public ProverInterface.Outcome ReadOutcome()
+    public SolverOutcome ReadOutcome()
     {
       Contract.Requires(IsBusy);
       Contract.Requires(HasOutput);
@@ -389,7 +383,7 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
-    public override Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+    public override Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken) {
       throw new NotImplementedException();
     }

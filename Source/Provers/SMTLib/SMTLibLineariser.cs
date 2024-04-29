@@ -239,7 +239,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.Requires(f != null);
       string retVal = null;
-      retVal = f.FindStringAttribute("bvbuiltin");
+      retVal = (f as ICarriesAttributes).FindStringAttribute("bvbuiltin");
 
       // It used to be "sign_extend 12" in Simplify, and is "(_ sign_extend 12)" with SMT
       if (retVal != null && (retVal.StartsWith("sign_extend ") || retVal.StartsWith("zero_extend ")))
@@ -249,7 +249,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (retVal == null)
       {
-        retVal = f.FindStringAttribute("builtin");
+        retVal = (f as ICarriesAttributes).FindStringAttribute("builtin");
       }
 
       if (retVal != null && !LibOptions.UseArrayTheory && SMTLibOpLineariser.ArrayOps.Contains(retVal))
@@ -398,7 +398,7 @@ namespace Microsoft.Boogie.SMTLib
         return DynamicStack.FromResult(true);
       }
 
-      if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp))
+      if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp) || node.Op.Equals(VCExpressionGenerator.NamedAssertOp))
       {
         var exprVar = node[0] as VCExprVar;
         NamedAssumes.Add(exprVar);

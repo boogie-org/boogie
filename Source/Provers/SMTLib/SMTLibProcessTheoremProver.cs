@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,7 +7,6 @@ using System.Diagnostics.Contracts;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.TypeErasure;
 using System.Text;
-using System.Runtime.CompilerServices;
 
 namespace Microsoft.Boogie.SMTLib
 {
@@ -19,6 +17,7 @@ namespace Microsoft.Boogie.SMTLib
     protected SMTLibProverContext ctx;
     protected VCExpressionGenerator gen;
     protected SMTLibSolverOptions options;
+    protected IEnumerable<OptionValue> additionalSmtOptions = Array.Empty<OptionValue>();
     protected bool usingUnsatCore;
     private string backgroundPredicates;
 
@@ -77,9 +76,9 @@ namespace Microsoft.Boogie.SMTLib
     {
       return (options.RandomSeed, libOptions.NormalizeNames) switch
       {
-        (null, true) => NormalizeNamer.Create(namer),
-        (null, false) => KeepOriginalNamer.Create(namer),
-        _ => RandomiseNamer.Create(new Random(options.RandomSeed.Value), namer)
+        (0, true) => NormalizeNamer.Create(namer),
+        (0, false) => KeepOriginalNamer.Create(namer),
+        _ => RandomiseNamer.Create(new Random(options.RandomSeed), namer)
       };
     }
 
@@ -332,7 +331,7 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       FlushAxioms(); // Flush all dependencies before flushing function definitions
-      generatedFuncDefs.Iter(SendCommon); // Flush function definitions
+      generatedFuncDefs.ForEach(SendCommon); // Flush function definitions
     }
 
     protected virtual void PrepareCommon()
@@ -346,7 +345,7 @@ namespace Microsoft.Boogie.SMTLib
           SendCommon("(set-option :produce-models true)");
         }
 
-        foreach (var opt in options.SmtOptions)
+        foreach (var opt in SmtOptions())
         {
           SendCommon("(set-option :" + opt.Option + " " + opt.Value + ")");
         }
@@ -393,6 +392,11 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
+    private IEnumerable<OptionValue> SmtOptions()
+    {
+      return options.SmtOptions.Concat(additionalSmtOptions);
+    }
+
     private void SetupAxioms()
     {
       var axioms = ctx.Axioms;
@@ -413,7 +417,7 @@ namespace Microsoft.Boogie.SMTLib
 
     protected void FlushAxioms()
     {
-      TypeDecls.Iter(SendCommon);
+      TypeDecls.ForEach(SendCommon);
       TypeDecls.Clear();
       foreach (string s in Axioms)
       {
@@ -434,10 +438,15 @@ namespace Microsoft.Boogie.SMTLib
       {
         SendThisVC("(set-option :" + Z3.TimeoutOption + " " + options.TimeLimit + ")");
         SendThisVC("(set-option :" + Z3.RlimitOption + " " + options.ResourceLimit + ")");
-        if (options.RandomSeed != null) {
-          SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed.Value + ")");
-          SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed.Value + ")");
+        if (options.RandomSeed != 0) {
+          SendThisVC("(set-option :" + Z3.SmtRandomSeed + " " + options.RandomSeed + ")");
+          SendThisVC("(set-option :" + Z3.SatRandomSeed + " " + options.RandomSeed + ")");
         }
+      }
+
+      foreach (var opt in SmtOptions())
+      {
+        SendThisVC("(set-option :" + opt.Option + " " + opt.Value + ")");
       }
     }
 
@@ -1146,7 +1155,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       DeclCollector.AddKnownFunction(f);
       string printedName = Namer.GetQuotedName(f, f.Name);
-      var argTypes = f.InParams.Cast<Variable>().MapConcat(p => DeclCollector.TypeToStringReg(p.TypedIdent.Type), " ");
+      var argTypes = string.Join(" ", f.InParams.Select(p => DeclCollector.TypeToStringReg(p.TypedIdent.Type)));
       string decl = "(define-fun " + printedName + " (" + argTypes + ") " +
                     DeclCollector.TypeToStringReg(f.OutParams[0].TypedIdent.Type) + " " + VCExpr2String(vc, 1) + ")";
       AssertAxioms();
@@ -1168,9 +1177,13 @@ namespace Microsoft.Boogie.SMTLib
       options.ResourceLimit = limit;
     }
 
-    protected Outcome ParseOutcome(SExpr resp, out bool wasUnknown)
+    public override void SetAdditionalSmtOptions(IEnumerable<OptionValue> entries)
     {
-      var result = Outcome.Undetermined;
+      additionalSmtOptions = entries;
+    }
+    protected SolverOutcome ParseOutcome(SExpr resp, out bool wasUnknown)
+    {
+      var result = SolverOutcome.Undetermined;
       wasUnknown = false;
 
       if (resp is null) {
@@ -1181,13 +1194,13 @@ namespace Microsoft.Boogie.SMTLib
       switch (resp.Name)
       {
         case "unsat":
-          result = Outcome.Valid;
+          result = SolverOutcome.Valid;
           break;
         case "sat":
-          result = Outcome.Invalid;
+          result = SolverOutcome.Invalid;
           break;
         case "unknown":
-          result = Outcome.Invalid;
+          result = SolverOutcome.Invalid;
           wasUnknown = true;
           break;
         case "objectives":
@@ -1196,10 +1209,11 @@ namespace Microsoft.Boogie.SMTLib
         case "error":
           if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId &&
               (resp.Arguments[0].Name.Contains("max. resource limit exceeded")
+               || resp.Arguments[0].Name.Contains("push canceled")
                || resp.Arguments[0].Name.Contains("resource limits reached")))
           {
             currentErrorHandler.OnResourceExceeded("max resource limit");
-            result = Outcome.OutOfResource;
+            result = SolverOutcome.OutOfResource;
           }
           else
           {
@@ -1214,9 +1228,9 @@ namespace Microsoft.Boogie.SMTLib
       return result;
     }
 
-    protected Outcome ParseReasonUnknown(SExpr resp, Outcome initialOutcome)
+    protected SolverOutcome ParseReasonUnknown(SExpr resp, SolverOutcome initialOutcome)
     {
-      Outcome result;
+      SolverOutcome result;
       if (resp is null || resp.Name == "") {
         result = initialOutcome;
       }
@@ -1231,15 +1245,15 @@ namespace Microsoft.Boogie.SMTLib
           case "(incomplete quantifiers)":
           case "(incomplete (theory arithmetic))":
           case "smt tactic failed to show goal to be sat/unsat (incomplete (theory arithmetic))":
-            result = Outcome.Invalid;
+            result = SolverOutcome.Invalid;
             break;
           case "memout":
             currentErrorHandler.OnResourceExceeded("memory");
-            result = Outcome.OutOfMemory;
+            result = SolverOutcome.OutOfMemory;
             break;
           case "timeout":
             currentErrorHandler.OnResourceExceeded("timeout");
-            result = Outcome.TimeOut;
+            result = SolverOutcome.TimeOut;
             break;
           case "canceled":
             // both timeout and max resource limit are reported as
@@ -1247,12 +1261,12 @@ namespace Microsoft.Boogie.SMTLib
             if (this.options.TimeLimit > 0)
             {
               currentErrorHandler.OnResourceExceeded("timeout");
-              result = Outcome.TimeOut;
+              result = SolverOutcome.TimeOut;
             }
             else
             {
               currentErrorHandler.OnResourceExceeded("max resource limit");
-              result = Outcome.OutOfResource;
+              result = SolverOutcome.OutOfResource;
             }
 
             break;
@@ -1260,17 +1274,20 @@ namespace Microsoft.Boogie.SMTLib
           case "resource limits reached":
           case "(resource limits reached)":
             currentErrorHandler.OnResourceExceeded("max resource limit");
-            result = Outcome.OutOfResource;
+            result = SolverOutcome.OutOfResource;
+            break;
+          case "unknown":
+            result = SolverOutcome.Undetermined;
             break;
           default:
-            result = Outcome.Undetermined;
+            result = SolverOutcome.Undetermined;
             HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp);
             break;
         }
       }
       else
       {
-        result = Outcome.Undetermined;
+        result = SolverOutcome.Undetermined;
         HandleProverError("Unexpected prover response (getting info about 'unknown' response): " + resp);
       }
 
@@ -1482,6 +1499,18 @@ namespace Microsoft.Boogie.SMTLib
       }
 
       return dict.Count > 0 ? dict : null;
+    }
+
+    protected void ReportCoveredElements(SExpr unsatCoreSExp) {
+      if (libOptions.TrackVerificationCoverage && unsatCoreSExp.Name != "") {
+        currentErrorHandler.AddCoveredElement(TrackedNodeComponent.ParseSolverString(unsatCoreSExp.Name.Substring("aux$$assume$$".Length)));
+      }
+
+      foreach (var arg in unsatCoreSExp.Arguments) {
+        if (libOptions.TrackVerificationCoverage) {
+          currentErrorHandler.AddCoveredElement(TrackedNodeComponent.ParseSolverString(arg.Name.Substring("aux$$assume$$".Length)));
+        }
+      }
     }
 
     protected List<string> ParseUnsatCore(string resp)

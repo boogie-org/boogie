@@ -229,16 +229,16 @@ namespace Microsoft.Boogie
     }
 
     private void SetErrorAndAssertionChecksumsInCachedSnapshot(Implementation implementation,
-      VerificationResult result)
+      ImplementationRunResult result)
     {
-      if (result.Outcome == ConditionGeneration.Outcome.Errors && result.Errors != null &&
+      if (result.VcOutcome == VcOutcome.Errors && result.Errors != null &&
           result.Errors.Count < options.ErrorLimit)
       {
         implementation.SetErrorChecksumToCachedError(result.Errors.Select(cex =>
           new Tuple<byte[], byte[], object>(cex.Checksum, cex.SugaredCmdChecksum, cex)));
         implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
       }
-      else if (result.Outcome == ConditionGeneration.Outcome.Correct)
+      else if (result.VcOutcome == VcOutcome.Correct)
       {
         implementation.SetErrorChecksumToCachedError(new List<Tuple<byte[], byte[], object>>());
         implementation.AssertionChecksumsInCachedSnapshot = result.AssertionChecksums;
@@ -507,7 +507,7 @@ namespace Microsoft.Boogie
         {
           // We found a function call within a trigger of a quantifier expression, or the function does not take any
           // arguments so we don't expect it ever to sit inside a quantifier.
-          funCall.Func.AddOtherDefinitionAxiom(currentAxiom);
+          funCall.Func.OtherDefinitionAxioms.Add(currentAxiom);
         }
       }
 
@@ -690,7 +690,7 @@ namespace Microsoft.Boogie
     private readonly CacheItemPolicy Policy = new CacheItemPolicy
       {SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default};
 
-    public void Insert(Implementation impl, VerificationResult result)
+    public void Insert(Implementation impl, ImplementationRunResult result)
     {
       Contract.Requires(impl != null);
       Contract.Requires(result != null);
@@ -699,11 +699,11 @@ namespace Microsoft.Boogie
     }
 
 
-    public VerificationResult Lookup(Implementation impl, bool runDiagnosticsOnTimeout, out int priority)
+    public ImplementationRunResult Lookup(Implementation impl, bool runDiagnosticsOnTimeout, out int priority)
     {
       Contract.Requires(impl != null);
 
-      var result = Cache.Get(impl.Id) as VerificationResult;
+      var result = Cache.Get(impl.Id) as ImplementationRunResult;
       if (result == null)
       {
         priority = Priority.HIGH;
@@ -716,7 +716,7 @@ namespace Microsoft.Boogie
       {
         priority = Priority.LOW;
       }
-      else if (result.Outcome == ConditionGeneration.Outcome.TimedOut && runDiagnosticsOnTimeout)
+      else if (result.VcOutcome == VcOutcome.TimedOut && runDiagnosticsOnTimeout)
       {
         priority = Priority.MEDIUM;
       }

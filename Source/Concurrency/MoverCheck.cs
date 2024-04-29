@@ -6,12 +6,24 @@ namespace Microsoft.Boogie
 {
   public class MoverCheck
   {
+    private class MoverCheckContext
+    {
+      public int layer;
+      public IEnumerable<Expr> extraAssumptions;
+    }
+
     CivlTypeChecker civlTypeChecker;
     List<Declaration> decls;
 
     HashSet<Tuple<Action, Action>> commutativityCheckerCache;
     HashSet<Tuple<Action, Action>> gatePreservationCheckerCache;
     HashSet<Tuple<Action, Action>> failurePreservationCheckerCache;
+    HashSet<Action> cooperationCheckerCache;
+
+    Dictionary<int, HashSet<Tuple<Action, Action>>> perLayerCommutativityCheckerCache;
+    Dictionary<int, HashSet<Tuple<Action, Action>>> perLayerGatePreservationCheckerCache;
+    Dictionary<int, HashSet<Tuple<Action, Action>>> perLayerFailurePreservationCheckerCache;
+    Dictionary<int, HashSet<Action>> perLayerCooperationCheckerCache;
 
     private MoverCheck(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
@@ -20,6 +32,11 @@ namespace Microsoft.Boogie
       this.commutativityCheckerCache = new HashSet<Tuple<Action, Action>>();
       this.gatePreservationCheckerCache = new HashSet<Tuple<Action, Action>>();
       this.failurePreservationCheckerCache = new HashSet<Tuple<Action, Action>>();
+      this.cooperationCheckerCache = new HashSet<Action>();
+      this.perLayerCommutativityCheckerCache = new Dictionary<int, HashSet<Tuple<Action, Action>>>();
+      this.perLayerGatePreservationCheckerCache = new Dictionary<int, HashSet<Tuple<Action, Action>>>();
+      this.perLayerFailurePreservationCheckerCache = new Dictionary<int, HashSet<Tuple<Action, Action>>>();
+      this.perLayerCooperationCheckerCache = new Dictionary<int, HashSet<Action>>();
     }
 
     private ConcurrencyOptions Options => civlTypeChecker.Options;
@@ -50,42 +67,52 @@ namespace Microsoft.Boogie
         }
       }
 
-      var sequentializationMoverChecks =
-        from sequentialization in civlTypeChecker.Sequentializations
-        from leftMover in sequentialization.Abstractions
-        from action in civlTypeChecker.MoverActions
-        where action.LayerRange.Contains(sequentialization.Layer)
-        let extraAssumption1 = sequentialization.GenerateMoverCheckAssumption(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
-        let extraAssumption2 = sequentialization.GenerateMoverCheckAssumption(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
-        select new {action, leftMover, extraAssumption1, extraAssumption2};
-
-      /*
-       * It is important that the mover checks required for sequentialization are the last ones
-       * to be generated. Each of these mover checks may add an extra assumption. Since mover checks are
-       * cached, if a mover check has already been generated then one generated here with the extra
-       * assumption will get dropped. As a result, we preserve overall soundness.
-       */
-      foreach (var moverCheck in sequentializationMoverChecks)
-      {
-        moverChecking.CreateCommutativityChecker(moverCheck.action, moverCheck.leftMover, moverCheck.extraAssumption1);
-        moverChecking.CreateGatePreservationChecker(moverCheck.leftMover, moverCheck.action, moverCheck.extraAssumption2);
-        moverChecking.CreateFailurePreservationChecker(moverCheck.action, moverCheck.leftMover, moverCheck.extraAssumption1);
-      }
-
       foreach (var action in civlTypeChecker.MoverActions.Where(a => a.IsLeftMover))
       {
         moverChecking.CreateCooperationChecker(action);
       }
 
-      foreach (var action in civlTypeChecker.Sequentializations.SelectMany(sequentialization => sequentialization.Abstractions)
-                 .Where(a => !a.IsLeftMover).Distinct())
-      {
-        moverChecking.CreateCooperationChecker(action);
-      }
+      /*
+       * All the global caches of various mover checks have been populated now.
+       * The global cache is checked before adding per-layer mover checks for sequentializations.
+       * Therefore, it is important that the sequentialization mover checks are generated last.
+       * Each sequentialization mover check is constrained by extra assumptions.
+       * Therefore, presence in global cache of the corresponding unconstrained check
+       * obviates the need to generate it.
+       */
 
-      foreach (var action in civlTypeChecker.LinkActions)
+      foreach (var sequentialization in civlTypeChecker.Sequentializations)
       {
-        moverChecking.CreateCooperationChecker(action);
+        foreach (var leftMover in sequentialization.EliminatedActions)
+        {
+          foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
+          {
+            var moverCheckContext1 = new MoverCheckContext
+            {
+              layer = sequentialization.Layer,
+              extraAssumptions = sequentialization.GenerateMoverCheckAssumptions(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
+            };
+            var moverCheckContext2 = new MoverCheckContext
+            {
+              layer = sequentialization.Layer,
+              extraAssumptions = sequentialization.GenerateMoverCheckAssumptions(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
+            };
+            moverChecking.CreateCommutativityChecker(action, leftMover, moverCheckContext1);
+            moverChecking.CreateGatePreservationChecker(leftMover, action, moverCheckContext2);
+            moverChecking.CreateFailurePreservationChecker(action, leftMover, moverCheckContext1);
+          }
+          if (!leftMover.IsLeftMover)
+          {
+            var subst = Substituter.SubstitutionFromDictionary(
+              leftMover.ActionDecl.InParams.Zip(leftMover.Impl.InParams.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
+            var moverCheckContext = new MoverCheckContext
+            {
+              layer = sequentialization.Layer,
+              extraAssumptions = sequentialization.Preconditions(leftMover, subst).Select(assertCmd => assertCmd.Expr)
+            };
+            moverChecking.CreateCooperationChecker(leftMover, moverCheckContext);
+          }
+        }
       }
     }
 
@@ -93,7 +120,7 @@ namespace Microsoft.Boogie
     {
       var availableVars = paramVars.Union(frame);
       return civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(availableVars)
-        .Union(civlTypeChecker.linearTypeChecker.LheapWellFormedExpressions(availableVars))
+        .Union(civlTypeChecker.linearTypeChecker.MapWellFormedExpressions(availableVars))
         .Select(expr => new Requires(false, expr));
     }
 
@@ -127,7 +154,9 @@ namespace Microsoft.Boogie
       return CmdHelper.CallCmd(action.Impl.Proc, paramProvider.InParams, paramProvider.OutParams);
     }
 
-    private void CreateCommutativityChecker(Action first, Action second, Expr extraAssumption = null)
+    private void CreateCommutativityChecker(Action first, Action second) => CreateCommutativityChecker(first, second, null);
+
+    private void CreateCommutativityChecker(Action first, Action second, MoverCheckContext moverCheckContext)
     {
       if (first == second && first.FirstImpl.InParams.Count == 0 && first.FirstImpl.OutParams.Count == 0)
       {
@@ -144,6 +173,19 @@ namespace Microsoft.Boogie
         return;
       }
 
+      if (moverCheckContext != null)
+      {
+        var layer = moverCheckContext.layer;
+        if (!perLayerCommutativityCheckerCache.ContainsKey(layer))
+        {
+          perLayerCommutativityCheckerCache[layer] = new HashSet<Tuple<Action, Action>>();
+        }
+        if (!perLayerCommutativityCheckerCache[layer].Add(Tuple.Create(first, second)))
+        {
+          return;
+        }
+      }
+
       string checkerName = $"CommutativityChecker_{first.Name}_{second.Name}";
 
       HashSet<Variable> frame = new HashSet<Variable>();
@@ -156,24 +198,25 @@ namespace Microsoft.Boogie
       List<Requires> requires =
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
-            .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
-      foreach (AssertCmd assertCmd in Enumerable.Union(first.FirstGate, second.SecondGate))
+            .Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
+      foreach (AssertCmd assertCmd in first.FirstGate.Union(second.SecondGate))
       {
         requires.Add(new Requires(false, assertCmd.Expr));
       }
-      if (extraAssumption != null)
+      if (moverCheckContext != null)
       {
-        requires.Add(new Requires(false, extraAssumption));
+        checkerName = $"CommutativityChecker_{first.Name}_{second.Name}_{moverCheckContext.layer}";
+        moverCheckContext.extraAssumptions.ForEach(extraAssumption => {
+          requires.Add(new Requires(false, extraAssumption));
+        });
       }
 
       var transitionRelation = TransitionRelationComputation.Commutativity(civlTypeChecker, second, first, frame);
 
       var secondInParamsFiltered =
-        second.SecondImpl.InParams.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_IN);
-      IEnumerable<Expr> linearityAssumes = Enumerable.Union(
-        linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(secondInParamsFiltered)
-          .Union(frame)),
-        linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams)
+        second.SecondImpl.InParams.Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_IN);
+      IEnumerable<Expr> linearityAssumes = linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(secondInParamsFiltered)
+        .Union(frame)).Union(linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams)
           .Union(frame)));
       // TODO: add further disjointness expressions?
       AssertCmd commutativityCheck = CmdHelper.AssertCmd(
@@ -184,17 +227,19 @@ namespace Microsoft.Boogie
       List<Cmd> cmds = new List<Cmd>
       {
         ActionCallCmd(first, first.FirstImpl),
-        ActionCallCmd(second, second.SecondImpl)
+        ActionCallCmd(second, second.SecondImpl),
+        commutativityCheck
       };
-      cmds.Add(commutativityCheck);
 
-      List<Variable> inputs = Enumerable.Union(first.FirstImpl.InParams, second.SecondImpl.InParams).ToList();
-      List<Variable> outputs = Enumerable.Union(first.FirstImpl.OutParams, second.SecondImpl.OutParams).ToList();
+      List<Variable> inputs = first.FirstImpl.InParams.Union(second.SecondImpl.InParams).ToList();
+      List<Variable> outputs = first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams).ToList();
 
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateGatePreservationChecker(Action first, Action second, Expr extraAssumption = null)
+    private void CreateGatePreservationChecker(Action first, Action second) => CreateGatePreservationChecker(first, second, null);
+
+    private void CreateGatePreservationChecker(Action first, Action second, MoverCheckContext moverCheckContext)
     {
       if (!first.UsedGlobalVarsInGate.Intersect(second.ModifiedGlobalVars).Any())
       {
@@ -206,6 +251,21 @@ namespace Microsoft.Boogie
         return;
       }
 
+      if (moverCheckContext != null)
+      {
+        var layer = moverCheckContext.layer;
+        if (!perLayerGatePreservationCheckerCache.ContainsKey(layer))
+        {
+          perLayerGatePreservationCheckerCache[layer] = new HashSet<Tuple<Action, Action>>();
+        }
+        if (!perLayerGatePreservationCheckerCache[layer].Add(Tuple.Create(first, second)))
+        {
+          return;
+        }
+      }
+
+      string checkerName = $"GatePreservationChecker_{first.Name}_{second.Name}";
+
       HashSet<Variable> frame = new HashSet<Variable>();
       frame.UnionWith(first.UsedGlobalVarsInGate);
       frame.UnionWith(second.UsedGlobalVarsInGate);
@@ -215,20 +275,21 @@ namespace Microsoft.Boogie
       List<Requires> requires = 
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
-            .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
+            .Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
       foreach (AssertCmd assertCmd in first.FirstGate.Union(second.SecondGate))
       {
         requires.Add(new Requires(false, assertCmd.Expr));
       }
-      if (extraAssumption != null)
+      if (moverCheckContext != null)
       {
-        requires.Add(new Requires(false, extraAssumption));
+        checkerName = $"GatePreservationChecker_{first.Name}_{second.Name}_{moverCheckContext.layer}";
+        moverCheckContext.extraAssumptions.ForEach(extraAssumption => {
+          requires.Add(new Requires(false, extraAssumption));
+        });
       }
 
-      string checkerName = $"GatePreservationChecker_{first.Name}_{second.Name}";
-
-      List<Variable> inputs = Enumerable.Union(first.FirstImpl.InParams, second.SecondImpl.InParams).ToList();
-      List<Variable> outputs = Enumerable.Union(first.FirstImpl.OutParams, second.SecondImpl.OutParams).ToList();
+      List<Variable> inputs = first.FirstImpl.InParams.Union(second.SecondImpl.InParams).ToList();
+      List<Variable> outputs = first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams).ToList();
 
       List<Cmd> cmds = new List<Cmd> { ActionCallCmd(second, second.SecondImpl) };
 
@@ -249,7 +310,9 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateFailurePreservationChecker(Action first, Action second, Expr extraAssumption = null)
+    private void CreateFailurePreservationChecker(Action first, Action second) => CreateFailurePreservationChecker(first, second, null);
+
+    private void CreateFailurePreservationChecker(Action first, Action second, MoverCheckContext moverCheckContext)
     {
       if (!first.UsedGlobalVarsInGate.Intersect(second.ModifiedGlobalVars).Any())
       {
@@ -261,6 +324,21 @@ namespace Microsoft.Boogie
         return;
       }
 
+      if (moverCheckContext != null)
+      {
+        var layer = moverCheckContext.layer;
+        if (!perLayerFailurePreservationCheckerCache.ContainsKey(layer))
+        {
+          perLayerFailurePreservationCheckerCache[layer] = new HashSet<Tuple<Action, Action>>();
+        }
+        if (!perLayerFailurePreservationCheckerCache[layer].Add(Tuple.Create(first, second)))
+        {
+          return;
+        }
+      }
+
+      string checkerName = $"FailurePreservationChecker_{first.Name}_{second.Name}";
+
       HashSet<Variable> frame = new HashSet<Variable>();
       frame.UnionWith(first.UsedGlobalVarsInGate);
       frame.UnionWith(second.UsedGlobalVarsInGate);
@@ -270,7 +348,7 @@ namespace Microsoft.Boogie
       List<Requires> requires = 
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
-            .Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
+            .Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
       Expr firstNegatedGate = Expr.Not(Expr.And(first.FirstGate.Select(a => a.Expr)));
       firstNegatedGate.Type = Type.Bool; // necessary?
       requires.Add(new Requires(false, firstNegatedGate));
@@ -278,9 +356,12 @@ namespace Microsoft.Boogie
       {
         requires.Add(new Requires(false, assertCmd.Expr));
       }
-      if (extraAssumption != null)
+      if (moverCheckContext != null)
       {
-        requires.Add(new Requires(false, extraAssumption));
+        checkerName = $"FailurePreservationChecker_{first.Name}_{second.Name}_{moverCheckContext.layer}";
+        moverCheckContext.extraAssumptions.ForEach(extraAssumption => {
+          requires.Add(new Requires(false, extraAssumption));
+        });
       }
 
       IEnumerable<Expr> linearityAssumes =
@@ -291,10 +372,8 @@ namespace Microsoft.Boogie
         Expr.Imp(Expr.And(linearityAssumes), firstNegatedGate),
         $"Gate failure of {first.Name} not preserved by {second.Name}");
 
-      string checkerName = $"FailurePreservationChecker_{first.Name}_{second.Name}";
-
-      List<Variable> inputs = Enumerable.Union(first.FirstImpl.InParams, second.SecondImpl.InParams).ToList();
-      List<Variable> outputs = Enumerable.Union(first.FirstImpl.OutParams, second.SecondImpl.OutParams).ToList();
+      List<Variable> inputs = first.FirstImpl.InParams.Union(second.SecondImpl.InParams).ToList();
+      List<Variable> outputs = first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams).ToList();
       var cmds = new List<Cmd>
       {
         ActionCallCmd(second, second.SecondImpl),
@@ -304,11 +383,31 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateCooperationChecker(Action action)
+    private void CreateCooperationChecker(Action action) => CreateCooperationChecker(action, null);
+
+    private void CreateCooperationChecker(Action action, MoverCheckContext moverCheckContext)
     {
       if (!action.HasAssumeCmd)
       {
         return;
+      }
+
+      if (!cooperationCheckerCache.Add(action))
+      {
+        return;
+      }
+
+      if (moverCheckContext != null)
+      {
+        var layer = moverCheckContext.layer;
+        if (!perLayerCooperationCheckerCache.ContainsKey(layer))
+        {
+          perLayerCooperationCheckerCache[layer] = new HashSet<Action>();
+        }
+        if (!perLayerCooperationCheckerCache[layer].Add(action))
+        {
+          return;
+        }
       }
 
       string checkerName = $"CooperationChecker_{action.Name}";
@@ -319,11 +418,13 @@ namespace Microsoft.Boogie
       frame.UnionWith(action.UsedGlobalVarsInAction);
 
       List<Requires> requires =
-        DisjointnessAndWellFormedRequires(impl.InParams.Where(v => LinearDomainCollector.FindLinearKind(v) != LinearKind.LINEAR_OUT),
+        DisjointnessAndWellFormedRequires(impl.InParams.Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),
           frame).ToList();
-      foreach (AssertCmd assertCmd in action.Gate)
+      requires.AddRange(action.Gate.Select(assertCmd => new Requires(false, assertCmd.Expr)));
+      if (moverCheckContext != null)
       {
-        requires.Add(new Requires(false, assertCmd.Expr));
+        checkerName = $"CooperationChecker_{action.Name}_{moverCheckContext.layer}";
+        requires.AddRange(moverCheckContext.extraAssumptions.Select(expr => new Requires(false, expr)));
       }
 
       AssertCmd cooperationCheck = CmdHelper.AssertCmd(
@@ -331,8 +432,9 @@ namespace Microsoft.Boogie
         TransitionRelationComputation.Cooperation(civlTypeChecker, action, frame),
         $"Cooperation check for {action.Name} failed");
 
-      AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(),
-        new List<Variable>(), requires, new List<Cmd> { cooperationCheck });
+      // call action after the cooperation check to exploit quantifier instantiation hints in the body
+      AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(impl.OutParams),
+        new List<Variable>(), requires, new List<Cmd> { cooperationCheck, ActionCallCmd(action, impl) });
     }
   }
 }

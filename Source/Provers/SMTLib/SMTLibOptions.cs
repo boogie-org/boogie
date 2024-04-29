@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Microsoft.Boogie.SMTLib;
 
 namespace Microsoft.Boogie
@@ -14,7 +13,7 @@ namespace Microsoft.Boogie
     bool ProduceUnsatCores { get; }
     bool ImmediatelyAcceptCommands { get; }
     bool RunningBoogieFromCommandLine { get; }
-    bool PrintNecessaryAssumes { get; }
+    bool TrackVerificationCoverage { get; }
     string ProverPreamble { get; }
     bool TraceDiagnosticsOnTimeout { get; }
     uint TimeLimitPerAssertionInPercent { get; }

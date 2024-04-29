@@ -40,11 +40,11 @@ namespace Microsoft.Boogie
           var choiceDatatypeName = $"Choice_{Name}";
           ChoiceDatatypeTypeCtorDecl =
             new DatatypeTypeCtorDecl(Token.NoToken, choiceDatatypeName, new List<TypeVariable>(), null);
-          PendingAsyncs.Iter(elim =>
+          PendingAsyncs.ForEach(elim =>
           {
-            var field = new TypedIdent(Token.NoToken, elim.Name, elim.PendingAsyncType);
+            var field = new Formal(Token.NoToken, new TypedIdent(Token.NoToken, elim.Name, elim.PendingAsyncType), true);
             ChoiceDatatypeTypeCtorDecl.AddConstructor(Token.NoToken, $"{choiceDatatypeName}_{elim.Name}",
-              new List<TypedIdent>() { field });
+              new List<Variable>() { field });
           });
           civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
           DesugarSetChoice(civlTypeChecker, ImplWithChoice);
@@ -73,8 +73,6 @@ namespace Microsoft.Boogie
     public string Name => ActionDecl.Name;
 
     public LayerRange LayerRange => ActionDecl.LayerRange;
-
-    public int LowerLayer => LayerRange.LowerLayer;
 
     public IEnumerable<ActionDecl> PendingAsyncs => ActionDecl.CreateActionDecls;
     
@@ -161,12 +159,12 @@ namespace Microsoft.Boogie
     {
       var alwaysMap = new Dictionary<Variable, Expr>();
       var foroldMap = new Dictionary<Variable, Expr>();
-      civlTypeChecker.program.GlobalVariables.Iter(g =>
+      civlTypeChecker.program.GlobalVariables.ForEach(g =>
       {
         alwaysMap[g] = Expr.Ident(civlTypeChecker.BoundVariable(g.Name, g.TypedIdent.Type));
         foroldMap[g] = Expr.Ident(civlTypeChecker.BoundVariable($"old_{g.Name}", g.TypedIdent.Type));
       });
-      impl.InParams.Concat(impl.OutParams).Iter(v =>
+      impl.InParams.Concat(impl.OutParams).ForEach(v =>
       {
         alwaysMap[v] = Expr.Ident(VarHelper.Formal(v.Name, v.TypedIdent.Type, true));
       });
@@ -186,8 +184,8 @@ namespace Microsoft.Boogie
       var existsVars = foroldMap.Values
         .Concat(alwaysMap.Keys.Where(key => key is GlobalVariable).Select(key => alwaysMap[key]))
         .OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList();
-      inputOutputRelation.Body =
-        ExprHelper.ExistsExpr(existsVars, Expr.And(gateExprs.Append(transitionRelationExpr)));
+      var expr = Expr.And(gateExprs.Append(transitionRelationExpr));
+      inputOutputRelation.Body = existsVars.Any() ? ExprHelper.ExistsExpr(existsVars, expr) : expr;
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputOutputRelation.Body);
       return inputOutputRelation;
     }
@@ -198,7 +196,7 @@ namespace Microsoft.Boogie
       var pendingAsyncTypeToActionDecl = new Dictionary<CtorType, ActionDecl>();
       var lhss = new List<IdentifierExpr>();
       var rhss = new List<Expr>();
-      actionDecl.CreateActionDecls.Iter(decl =>
+      actionDecl.CreateActionDecls.ForEach(decl =>
       {
         pendingAsyncTypeToActionDecl[decl.PendingAsyncType] = decl;
         var pa = civlTypeChecker.Formal($"PAs_{decl.Name}", decl.PendingAsyncMultisetType, false);
@@ -211,14 +209,14 @@ namespace Microsoft.Boogie
       var initAssignCmd = CmdHelper.AssignCmd(lhss, rhss);
       initAssignCmd.Typecheck(tc);
       impl.Blocks[0].Cmds.Insert(0, initAssignCmd);
-      impl.Blocks.Iter(block =>
+      impl.Blocks.ForEach(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProc = (Procedure)civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc);
+            var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(callCmd.Proc);
             if (originalProc.Name == "create_async" || originalProc.Name == "create_asyncs" || originalProc.Name == "create_multi_asyncs")
             {
               var pendingAsyncType =
@@ -250,14 +248,14 @@ namespace Microsoft.Boogie
 
     private void DropSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
-      impl.Blocks.Iter(block =>
+      impl.Blocks.ForEach(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            var originalProcName = Monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
             if (originalProcName == "set_choice")
             {
               continue;
@@ -271,17 +269,17 @@ namespace Microsoft.Boogie
 
     private void DesugarSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
     {
-      var choice = VarHelper.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
+      var choice = civlTypeChecker.Formal("choice", TypeHelper.CtorType(ChoiceDatatypeTypeCtorDecl), false);
       impl.Proc.OutParams.Add(choice);
       impl.OutParams.Add(choice);
-      impl.Blocks.Iter(block =>
+      impl.Blocks.ForEach(block =>
       {
         var newCmds = new List<Cmd>();
         foreach (var cmd in block.Cmds)
         {
           if (cmd is CallCmd callCmd)
           {
-            var originalProcName = civlTypeChecker.program.monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
+            var originalProcName = Monomorphizer.GetOriginalDecl(callCmd.Proc).Name;
             if (originalProcName == "set_choice")
             {
               var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
@@ -440,7 +438,7 @@ namespace Microsoft.Boogie
           Impl.Blocks[0].Cmds.Insert(0, assume);
         }
       }
-      Impl.Blocks.Iter(block =>
+      Impl.Blocks.ForEach(block =>
       {
         block.Cmds = block.Cmds.SelectMany(cmd =>
         {
@@ -449,7 +447,7 @@ namespace Microsoft.Boogie
           {
             var liveHavocVars = new HashSet<Variable>(havocCmd.Vars.Select(x => x.Decl)
               .Where(v => liveVariableAnalysis.IsLiveAfter(v, havocCmd)));
-            Impl.LocVars.Intersect(liveHavocVars).Iter(v =>
+            Impl.LocVars.Intersect(liveHavocVars).ForEach(v =>
             {
               newCmds.Add(CmdHelper.AssumeCmd(ExprHelper.FunctionCall(TriggerFunctions[v], Expr.Ident(v))));
             });
@@ -583,6 +581,13 @@ namespace Microsoft.Boogie
     {
       // Don't remove this implementation! Triggers should be duplicated in VisitBinderExpr.
       return (QuantifierExpr) this.VisitBinderExpr(node);
+    }
+
+    public override Cmd VisitUnpackCmd(UnpackCmd node)
+    {
+      var retNode = (UnpackCmd)base.VisitUnpackCmd(node);
+      retNode.ResetDesugaring();
+      return retNode;
     }
   }
 }

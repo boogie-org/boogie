@@ -1,0 +1,4 @@
+Pure1.bpl(6,12): Error: unnecessary modifies clause for pure action
+Pure1.bpl(10,9): Error: cannot refer to a global variable in this context: x
+Pure1.bpl(17,12): Error: unnecessary creates clause for pure action
+3 name resolution errors detected in Pure1.bpl

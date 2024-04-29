@@ -1,9 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-const N : int;
-axiom N > 0;
-
 // ###########################################################################
 // Global shared variables
 
@@ -17,23 +14,15 @@ atomic action {:layer 2} skip () {}
 yield procedure {:layer 1} Main ()
 refines skip;
 {
-  var i : int;
   var {:layer 1} old_x: int;
 
-  i := 0;
-  call old_x := snapshot_x();
-  while (i != N)
+  call {:layer 1} old_x := Copy(x);
+  while (*)
   invariant {:layer 1} x == old_x;
   {
     async call {:sync} inc();
     async call {:sync} dec();
-    i := i + 1;
   }
-}
-
-action {:layer 1} snapshot_x() returns (snapshot: int)
-{
-   snapshot := x;
 }
 
 // ###########################################################################

@@ -29,7 +29,7 @@ namespace Microsoft.Boogie.SMTLib
       this.options = options;
       smtProcessId = smtProcessIdSeq++;
 
-      var psi = new ProcessStartInfo(options.ExecutablePath(), options.SolverArguments.Concat(" "))
+      var psi = new ProcessStartInfo(options.ExecutablePath(), string.Join(" ", options.SolverArguments))
       {
         CreateNoWindow = true,
         UseShellExecute = false,
@@ -58,6 +58,7 @@ namespace Microsoft.Boogie.SMTLib
       {
         solver = new Process();
         solver.StartInfo = psi;
+        solver.EnableRaisingEvents = true;
         solver.ErrorDataReceived += SolverErrorDataReceived;
         solver.OutputDataReceived += SolverOutputDataReceived;
         solver.Exited += SolverExited;
@@ -74,6 +75,10 @@ namespace Microsoft.Boogie.SMTLib
 
     private void SolverExited(object sender, EventArgs e)
     {
+      if (options.Verbosity >= 2) {
+        Console.WriteLine($"[SMT-ERR-{{0}}] Solver exited with code {solver.ExitCode}.");
+      }
+
       lock (this) {
         while (outputReceivers.TryDequeue(out var source)) {
           source.SetResult(null);
@@ -224,7 +229,11 @@ namespace Microsoft.Boogie.SMTLib
           if (resp.Arguments.Length == 1 && resp.Arguments[0].IsId) {
             if (resp.Arguments[0].Name.Contains("max. resource limit exceeded")) {
               return resp;
+            } else if (resp.Arguments[0].Name.Contains("push canceled")) {
+              return resp;
             } else if (resp.Arguments[0].Name.Contains("model is not available")) {
+              return null;
+            } else if (resp.Arguments[0].Name.Contains("unsat core is not available")) {
               return null;
             } else if (resp.Arguments[0].Name.Contains("context is unsatisfiable")) {
               return null;

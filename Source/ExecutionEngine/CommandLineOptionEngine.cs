@@ -7,7 +7,7 @@ namespace Microsoft.Boogie;
 
 public class CommandLineOptionEngine
 {
-  public TextWriter OutputWriter { get; }
+  public TextWriter OutputWriter { get; set; }
   public string ToolName { get; set; }
   public string DescriptiveToolName { get; set; }
 
@@ -191,7 +191,7 @@ public class CommandLineOptionEngine
     Contract.Requires(cce.NonNullElements(args));
 
     // save the command line options for the log files
-    Environment += "Command Line Options: " + args.Concat(" ");
+    Environment += "Command Line Options: " + string.Join(" ", args);
     args = cce.NonNull((string[]) args.Clone()); // the operations performed may mutate the array, so make a copy
     var ps = InitializeCommandLineParseState(args);
 

@@ -387,9 +387,12 @@ namespace Microsoft.Boogie {
 
     public static readonly VCExprOp TimeoutDiagnosticsOp = new VCExprCustomOp("timeoutDiagnostics", 1, Type.Bool);
 
+    // These operators are temporarily added to VCExprs to track where labels for optimization and unsat
+    // core generation should go, but don't appear in the final SMT-Lib output.
     public static readonly VCExprOp MinimizeOp = new VCExprCustomOp("minimize##dummy", 2, Type.Bool);
     public static readonly VCExprOp MaximizeOp = new VCExprCustomOp("maximize##dummy", 2, Type.Bool);
     public static readonly VCExprOp NamedAssumeOp = new VCExprCustomOp("named_assume##dummy", 2, Type.Bool);
+    public static readonly VCExprOp NamedAssertOp = new VCExprCustomOp("named_assert##dummy", 2, Type.Bool);
 
     public VCExprOp BoogieFunctionOp(Function func) {
       Contract.Requires(func != null);
@@ -699,11 +702,12 @@ namespace Microsoft.Boogie {
 
     // Reference to a bound or free variable
 
-    public VCExprVar Variable(string name, Type type) {
+    public VCExprVar Variable(string name, Type type, VCExprVarKind kind = VCExprVarKind.Normal)
+    {
       Contract.Requires(type != null);
       Contract.Requires(name != null);
       Contract.Ensures(Contract.Result<VCExprVar>() != null);
-      return new VCExprVar(name, type);
+      return new VCExprVar(name, type, kind);
     }
   }
 }

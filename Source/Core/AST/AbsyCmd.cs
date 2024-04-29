@@ -1579,13 +1579,13 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, "command assigns to an immutable variable: {0}", v.Name);
         }
-        else if (!tc.Options.DoModSetAnalysis && v is GlobalVariable)
+        else if (tc.CheckModifies && v is GlobalVariable)
         {
           if (!tc.Yields && !tc.InFrame(v))
           {
             tc.Error(this,
-              "command assigns to a global variable that is not in the enclosing procedure's modifies clause: {0}",
-              v.Name);
+              "command assigns to a global variable that is not in the enclosing {0} modifies clause: {1}",
+              tc.Proc is ActionDecl ? "action's" : "procedure's", v.Name);
           }
         }
       }
@@ -1963,7 +1963,7 @@ namespace Microsoft.Boogie
       {
         var e = Rhss[i];
         Contract.Assert(e != null);
-        tc.GlobalAccessOnlyInOld = true;
+        tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl;
         tc.ExpectedLayerRange = tc.Proc is YieldProcedureDecl ? expectedLayerRanges[i] : null;
         e.Typecheck(tc);
         tc.GlobalAccessOnlyInOld = false;
@@ -2362,9 +2362,10 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      var errorCount = tc.ErrorCount;
       Datatype.Typecheck(tc);
       TypeParameters = SimpleTypeParamInstantiation.EMPTY;
-      if (Datatype.Type != null)
+      if (tc.ErrorCount == errorCount)
       {
         TypeAttr = FieldAccess.Typecheck(Datatype.Type, tc, out TypeParameters);
       }
@@ -2441,7 +2442,7 @@ namespace Microsoft.Boogie
       LayerRange expectedLayerRange = null;
       if (tc.Proc is YieldProcedureDecl)
       {
-        UnpackedLhs.Select(ie => ie.Decl).Iter(v =>
+        UnpackedLhs.Select(ie => ie.Decl).ForEach(v =>
         {
           if (v is GlobalVariable)
           {
@@ -2453,7 +2454,7 @@ namespace Microsoft.Boogie
 
       lhs.Typecheck(tc);
       
-      tc.GlobalAccessOnlyInOld = true;
+      tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl;
       tc.ExpectedLayerRange = expectedLayerRange;
       rhs.Typecheck(tc);
       tc.GlobalAccessOnlyInOld = false;
@@ -2477,7 +2478,7 @@ namespace Microsoft.Boogie
         tc.Error(tok, "left side of unpack command must be a constructor application");
       }
       var assignedVars = new HashSet<Variable>();
-      UnpackedLhs.Iter(ie =>
+      UnpackedLhs.ForEach(ie =>
       {
         if (assignedVars.Contains(ie.Decl))
         {
@@ -2520,7 +2521,7 @@ namespace Microsoft.Boogie
 
     public override void AddAssignedVariables(List<Variable> vars)
     {
-      lhs.Args.Cast<IdentifierExpr>().Iter(arg => vars.Add(arg.Decl));
+      lhs.Args.Cast<IdentifierExpr>().ForEach(arg => vars.Add(arg.Decl));
     }
 
     public override void Emit(TokenTextWriter stream, int level)
@@ -2693,11 +2694,11 @@ namespace Microsoft.Boogie
   }
 
   [ContractClass(typeof(SugaredCmdContracts))]
-  abstract public class SugaredCmd : Cmd
+  public abstract class SugaredCmd : Cmd
   {
     private Cmd desugaring; // null until desugared
 
-    public SugaredCmd(IToken /*!*/ tok)
+    public SugaredCmd(IToken tok)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -2714,6 +2715,11 @@ namespace Microsoft.Boogie
       return desugaring;
     }
 
+    public void ResetDesugaring()
+    {
+      desugaring = null;
+    }
+    
     /// <summary>
     /// This method invokes "visitor.Visit" on the desugaring, and then updates the
     /// desugaring to the result thereof.  The method's intended use is for subclasses
@@ -2936,7 +2942,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
-      if (!tc.Options.DoModSetAnalysis)
+      if (tc.CheckModifies)
       {
         if (!tc.Yields)
         {
@@ -2965,13 +2971,12 @@ namespace Microsoft.Boogie
           tc.Error(this, "at most one arm of a parallel call may be annotated with :mark");
         }
         var callerDecl = (YieldProcedureDecl)tc.Proc;
-        CallCmds.Iter(callCmd =>
+        CallCmds.ForEach(callCmd =>
         {
           if (!CivlAttributes.IsCallMarked(callCmd) && callCmd.Proc is YieldProcedureDecl calleeDecl &&
               callerDecl.Layer == calleeDecl.Layer)
           {
-            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).Iter(
-              ie =>
+            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).ForEach(ie =>
               {
                 tc.Error(ie, $"unmarked call modifies visible output variable of the caller: {ie.Decl}");
               });
@@ -3256,6 +3261,20 @@ namespace Microsoft.Boogie
 
       (this as ICarriesAttributes).ResolveAttributes(rc);
       Layers = (this as ICarriesAttributes).FindLayers();
+      if (rc.Proc is YieldProcedureDecl callerDecl) {
+        if (Layers.Count > 2)
+        {
+          rc.Error(this, "expected layer range");
+        }
+        else if (Layers.Count == 0)
+        {
+          Layers = new List<int>{ LayerRange.Min, callerDecl.Layer };
+        }
+        else if (Layers[^1] > callerDecl.Layer)
+        {
+          rc.Error(this, $"layer must be no more than layer {callerDecl.Layer}");
+        }
+      }
 
       var id = QKeyValue.FindStringAttribute(Attributes, "id");
       if (id != null)
@@ -3276,14 +3295,14 @@ namespace Microsoft.Boogie
       }
       if (rc.Proc is YieldProcedureDecl)
       {
-        if (Proc.IsPure || Proc is YieldProcedureDecl || Proc is YieldInvariantDecl || Proc is ActionDecl)
+        if (Proc.IsPure || Proc is YieldProcedureDecl or YieldInvariantDecl)
         {
           // call ok
         }
         else
         {
           rc.Error(this,
-            "a yielding procedure may only call pure procedures, yield procedures, yield invariants, or link actions");
+            "a yielding procedure may only call pure actions, pure procedures, yield procedures, and yield invariants");
         }
       }
       if (IsAsync)
@@ -3300,11 +3319,11 @@ namespace Microsoft.Boogie
       // checking calls from atomic actions need type information, hence postponed to type checking
     }
 
-    private List<LayerRange> TypecheckCallCmdInYieldProcedureDecl(TypecheckingContext tc)
+    private void TypecheckCallCmdInYieldProcedureDecl(TypecheckingContext tc)
     {
       if (tc.Proc is not YieldProcedureDecl callerDecl)
       {
-        return null;
+        return;
       }
 
       var callerModifiedVars = new HashSet<Variable>(callerDecl.ModifiedVars);
@@ -3319,34 +3338,6 @@ namespace Microsoft.Boogie
         {
           tc.Error(this, $"modified variable does not appear in modifies clause of mover procedure: {v.Name}");
         }
-      }
-      
-      LayerRange FormalLayerRange(Variable formal)
-      {
-        LayerRange formalLayerRange;
-        switch (Proc)
-        {
-          case YieldInvariantDecl yieldInvariantDecl:
-            formalLayerRange = new LayerRange(yieldInvariantDecl.Layer);
-            break;
-          case ActionDecl actionDecl:
-            formalLayerRange = new LayerRange(actionDecl.LayerRange.LowerLayer);
-            break;
-          case YieldProcedureDecl yieldProcedureDecl:
-          {
-            formalLayerRange = formal.LayerRange;
-            if (!yieldProcedureDecl.HasMoverType && yieldProcedureDecl.VisibleFormals.Contains(formal))
-            {
-              formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
-            }
-            break;
-          }
-          default:
-            Debug.Assert(Proc.IsPure);
-            formalLayerRange = new LayerRange(Layers[0]);
-            break;
-        }
-        return formalLayerRange;
       }
 
       // check layers
@@ -3465,70 +3456,43 @@ namespace Microsoft.Boogie
           tc.Error(this, "layer of callee must not be more than layer of caller");
         }
       }
-      else if (Proc is ActionDecl actionDecl)
-      {
-        // link call
-        var calleeLayer = actionDecl.LayerRange.LowerLayer;
-        actionDecl.Modifies.Iter(ie =>
-        {
-          if (ie.Decl.LayerRange.LowerLayer != calleeLayer)
-          {
-            tc.Error(this, $"modified variable of callee introduced below the lower layer of callee: {ie.Decl}");
-          }
-        });
-        if (calleeLayer > callerDecl.Layer)
-        {
-          tc.Error(this, "layer of callee must not be more than layer of caller");
-        }
-        else if (calleeLayer < callerDecl.Layer)
-        {
-          actionDecl.Modifies.Iter(ie =>
-          {
-            if (ie.Decl.LayerRange.UpperLayer != calleeLayer)
-            {
-              tc.Error(this, $"modified variable of callee must be hidden at layer {calleeLayer}: {ie.Decl.Name}");
-            }
-          });
-        }
-        else
-        {
-          CheckModifies(actionDecl.ModifiedVars);
-        }
-      }
       else
       {
         Debug.Assert(Proc.IsPure);
-        if (Layers.Count != 1)
+        var usedVars = VariableCollector.Collect(Ins.Union(Outs));
+        if (usedVars.OfType<GlobalVariable>().Any())
         {
-          tc.Error(this, "call to pure procedure must be annotated with a layer");
-        }
-        else
-        {
-          if (Layers[0] > callerDecl.Layer)
+          if (Layers.Count == 2)
           {
-            tc.Error(this, "layer of callee must not be more than layer of caller");
+            tc.Error(this, "expected singleton layer range");
+          }
+          else
+          {
+            // Check global outputs only; the checking of local outputs is done later
+            var calleeLayer = Layers[0];
+            var globalOutputs = Outs.Select(ie => ie.Decl).OfType<GlobalVariable>().Cast<Variable>();
+            if (CivlPrimitives.LinearPrimitives.Contains(Proc.Name))
+            {
+              var modifiedArgument = CivlPrimitives.ModifiedArgument(this);
+              if (modifiedArgument is { Decl: GlobalVariable })
+              {
+                globalOutputs = globalOutputs.Append(modifiedArgument.Decl);
+              }
+            }
+            globalOutputs.Where(v => v.LayerRange.LowerLayer != calleeLayer).ForEach(v =>
+            {
+              tc.Error(this, $"variable must be introduced at layer {calleeLayer}: {v.Name}");
+            });
+            if (calleeLayer < callerDecl.Layer)
+            {
+              globalOutputs.Where(v => v.LayerRange.UpperLayer != calleeLayer).ForEach(v =>
+              {
+                tc.Error(this, $"variable must be hidden at layer {calleeLayer}: {v.Name}");
+              });
+            }
           }
         }
       }
-      
-      for (int i = 0; i < Proc.OutParams.Count; i++)
-      {
-        var formal = Proc.OutParams[i];
-        var actual = Outs[i];
-        if (actual.Decl is GlobalVariable)
-        {
-          tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
-        }
-        else
-        {
-          var formalLayerRange = FormalLayerRange(formal);
-          if (!actual.Decl.LayerRange.Subset(formalLayerRange))
-          {
-            tc.Error(this, $"variable must be available only within layers in {formalLayerRange}: {actual.Decl.Name}");
-          }
-        }
-      }
-      return Proc.InParams.Select(FormalLayerRange).ToList();
     }
 
     private void TypecheckCallCmdInActionDecl(TypecheckingContext tc)
@@ -3538,7 +3502,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      if (CivlPrimitives.Linear.Contains(Proc.Name))
+      if (CivlPrimitives.LinearPrimitives.Contains(Proc.Name))
       {
         // ok
       }
@@ -3553,12 +3517,12 @@ namespace Microsoft.Boogie
         {
           if (callerActionDecl.Creates.All(x => x.ActionName != datatypeTypeCtorDecl.Name))
           {
-            tc.Error(this, "primitive instantiated on type not in the creates clause of caller");
+            tc.Error(this, "primitive call must be instantiated with a pending async type in the creates clause of caller");
           }
         }
         else
         {
-          tc.Error(this, "type parameter to primitive call must be instantiated with a pending async type");
+          tc.Error(this, "primitive call must be instantiated with a pending async type");
         }
       }
       else if (Proc is ActionDecl calleeActionDecl)
@@ -3572,17 +3536,22 @@ namespace Microsoft.Boogie
         }
         if (!callerActionDecl.LayerRange.Subset(calleeActionDecl.LayerRange))
         {
-          tc.Error(this, "caller layer range must be subset of callee layer range");
+          tc.Error(this,
+            $"caller layer range ({callerActionDecl.LayerRange}) must be subset of callee layer range ({calleeActionDecl.LayerRange})");
         }
-        else if (callerActionDecl.LayerRange.LowerLayer == calleeActionDecl.LayerRange.LowerLayer &&
-                 callerActionDecl.HasMoverType && !calleeActionDecl.HasMoverType)
+      }
+      else if (tc.Impl == null)
+      {
+        // call to yield invariant allowed only in preconditions
+        var yieldInvariantDecl = (YieldInvariantDecl)Proc;
+        if (!callerActionDecl.LayerRange.Contains(yieldInvariantDecl.Layer))
         {
-          tc.Error(this, "lower layer of caller must be greater than lower layer of callee");
+          tc.Error(this, "layer of callee must be in the layer range of caller");
         }
       }
       else
       {
-        tc.Error(this, "an action may only call actions or pending async primitives");
+        tc.Error(this, "an action may only call actions or primitives");
       }
     }
 
@@ -3619,15 +3588,58 @@ namespace Microsoft.Boogie
       Contract.Assume(this.Proc !=
                       null); // we assume the CallCmd has been successfully resolved before calling this Typecheck method
 
+      var errorCount = tc.ErrorCount;
+
       (this as ICarriesAttributes).TypecheckAttributes(tc);
 
-      var errorCount = tc.ErrorCount;
-      List<LayerRange> expectedLayerRanges = TypecheckCallCmdInYieldProcedureDecl(tc);
-      if (errorCount < tc.ErrorCount)
+      List<LayerRange> expectedLayerRanges = null;
+      if (tc.Proc is YieldProcedureDecl callerDecl)
       {
-        return;
+        for (int i = 0; i < Proc.OutParams.Count; i++)
+        {
+          var formal = Proc.OutParams[i];
+          var actual = Outs[i];
+          if (actual.Decl is GlobalVariable)
+          {
+            if (!Proc.IsPure) // global outputs of pure calls already checked
+            {
+              tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
+            }
+          }
+          else
+          {
+            var formalLayerRange = FormalLayerRange(callerDecl, formal);
+            if (!actual.Decl.LayerRange.Subset(formalLayerRange))
+            {
+              tc.Error(this, $"variable must be available only within layers in {formalLayerRange}: {actual.Decl.Name}");
+            }
+          }
+        }
+        // primitive calls have inout parameters that must be checked here
+        if (CivlPrimitives.LinearPrimitives.Contains(Proc.Name))
+        {
+          var modifiedArgument = CivlPrimitives.ModifiedArgument(this);
+          if (modifiedArgument == null)
+          {
+            // nothing to do
+          }
+          else if (modifiedArgument is { Decl: GlobalVariable })
+          {
+            // already done in TypecheckCallCmdInYieldProcedureDecl
+          }
+          else
+          {
+            var modifiedDecl = modifiedArgument.Decl;
+            var callLayerRange = new LayerRange(Layers[0], Layers.Count > 1 ? Layers[1] : Layers[0]);
+            if (!modifiedDecl.LayerRange.Subset(callLayerRange))
+            {
+              tc.Error(this, $"variable must be available only within layers in {callLayerRange}: {modifiedDecl.Name}");
+            }
+          }
+        }
+        expectedLayerRanges = Proc.InParams.Select(formal => FormalLayerRange(callerDecl, formal)).ToList();
       }
-      
+
       // typecheck in-parameters
       for (int i = 0; i < Ins.Count; i++)
       {
@@ -3691,7 +3703,42 @@ namespace Microsoft.Boogie
       TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
         actualTypeParams);
 
+      if (tc.ErrorCount > errorCount)
+      {
+        return;
+      }
+      TypecheckCallCmdInYieldProcedureDecl(tc);
       TypecheckCallCmdInActionDecl(tc);
+    }
+
+    public LayerRange LayerRange => Layers.Count == 0 ? LayerRange.MinMax :
+      Layers.Count == 1 ? new LayerRange(Layers[0]) : new LayerRange(Layers[0], Layers[1]);
+
+    private LayerRange FormalLayerRange(YieldProcedureDecl callerDecl, Variable calleeFormal)
+    {
+      LayerRange formalLayerRange;
+      switch (Proc)
+      {
+        case YieldInvariantDecl yieldInvariantDecl:
+          formalLayerRange = new LayerRange(yieldInvariantDecl.Layer);
+          break;
+        case YieldProcedureDecl yieldProcedureDecl:
+        {
+          formalLayerRange = calleeFormal.LayerRange;
+          if (!yieldProcedureDecl.HasMoverType && yieldProcedureDecl.VisibleFormals.Contains(calleeFormal))
+          {
+            formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
+          }
+          break;
+        }
+        default:
+        {
+          Debug.Assert(Proc.IsPure);
+          formalLayerRange = LayerRange;
+          break;
+        }
+      }
+      return formalLayerRange;
     }
 
     private IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ TypeParamSubstitution()
@@ -3720,6 +3767,7 @@ namespace Microsoft.Boogie
       Dictionary<Variable, Expr> substMapBound = new Dictionary<Variable, Expr>();
       List<Variable> /*!*/
         tempVars = new List<Variable>();
+      string callId = (this as ICarriesAttributes).FindStringAttribute("id");
 
       // proc P(ins) returns (outs)
       //   requires Pre
@@ -3838,12 +3886,19 @@ namespace Microsoft.Boogie
             AssertCmd /*!*/
               a = new AssertRequiresCmd(this, reqCopy);
             Contract.Assert(a != null);
+
             if (Attributes != null)
             {
               // Inherit attributes of call.
               var attrCopy = (QKeyValue) cce.NonNull(Attributes.Clone());
               attrCopy = Substituter.Apply(s, attrCopy);
               a.Attributes = attrCopy;
+            }
+
+            // Do this after copying the attributes so it doesn't get overwritten
+            if (callId is not null) {
+              (a as ICarriesAttributes).CopyIdWithModificationsFrom(tok, req,
+                id => new TrackedCallRequiresGoal(callId, id));
             }
 
             a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
@@ -3857,6 +3912,12 @@ namespace Microsoft.Boogie
           AssumeCmd /*!*/
             a = new AssumeCmd(req.tok, Substituter.Apply(s, req.Condition));
           Contract.Assert(a != null);
+          // These probably won't have IDs, but copy if they do.
+          if (callId is not null) {
+            (a as ICarriesAttributes).CopyIdWithModificationsFrom(tok, req,
+              id => new TrackedCallRequiresAssumed(callId, id));
+          }
+
           newBlockBody.Add(a);
         }
       }
@@ -4019,6 +4080,11 @@ namespace Microsoft.Boogie
 
         #endregion
 
+        if (callId is not null) {
+          (assume as ICarriesAttributes).CopyIdWithModificationsFrom(tok, e,
+            id => new TrackedCallEnsures(callId, id));
+        }
+
         newBlockBody.Add(assume);
       }
 
@@ -4036,6 +4102,9 @@ namespace Microsoft.Boogie
             cout_exp = new IdentifierExpr(cce.NonNull(couts[i]).tok, cce.NonNull(couts[i]));
           Contract.Assert(cout_exp != null);
           AssignCmd assign = Cmd.SimpleAssign(param_i.tok, cce.NonNull(this.Outs[i]), cout_exp);
+          if (callId is not null) {
+            Attributes = new QKeyValue(param_i.tok, "id", new List<object>(){ $"{callId}$out{i}" }, Attributes);
+          }
           newBlockBody.Add(assign);
         }
       }
@@ -4188,8 +4257,7 @@ namespace Microsoft.Boogie
 
   public abstract class MiningStrategy
   {
-    // abstract class to bind all MiningStrategys, i.e., all types of enhanced error data
-    // types together
+    // abstract class to bind all types of enhanced error data types together
   }
 
   public class ListOfMiningStrategies : MiningStrategy
@@ -4339,7 +4407,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
-      tc.ExpectedLayerRange = Layers == null || Layers.Count == 0 ? null : new LayerRange(Layers[0], Layers[^1]);
+      tc.ExpectedLayerRange = Layers?.Count > 0 ? new LayerRange(Layers[0], Layers[^1]) : null;
       Expr.Typecheck(tc);
       tc.ExpectedLayerRange = null;
       Contract.Assert(Expr.Type != null); // follows from Expr.Typecheck postcondition
@@ -4546,7 +4614,7 @@ namespace Microsoft.Boogie
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
       tc.ExpectedLayerRange = tc.Proc is YieldProcedureDecl decl ? new LayerRange(0, decl.Layer) : null;
-      tc.GlobalAccessOnlyInOld = true;
+      tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl;
       Expr.Typecheck(tc);
       tc.ExpectedLayerRange = null;
       tc.GlobalAccessOnlyInOld = false;

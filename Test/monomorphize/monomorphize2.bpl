@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -monomorphize "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type Vec T;
@@ -64,4 +64,3 @@ ensures Set#Size(v) == 0;
 {
     v := Set#Empty();
 }
-

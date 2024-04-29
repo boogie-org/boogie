@@ -1,5 +1,0 @@
-chris5.bpl(7,3): Error: this gate of P could not be proved
-Execution trace:
-    chris5.bpl(12,3): anon0
-
-Boogie program verifier finished with 0 verified, 1 error

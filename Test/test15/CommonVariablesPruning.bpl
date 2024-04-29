@@ -1,6 +1,6 @@
 // VcsCores:1 means we only use a single solver for both procedures in this Boogie program.
 // Prune triggers a full reset after using the solver on one problem
-// RUN: %boogie "%s" -vcsCores:1 -normalizeNames:1 -prune -mv:- > "%t"
+// RUN: %boogie "%s" -typeEncoding:p -vcsCores:1 -normalizeNames:1 -prune:1 -mv:- > "%t"
 // RUN: %diff "%s.expect" "%t" --ignore-matching-lines='else ->'
 
 // Part of the MultiDimArray test from Dafny: https://github.com/dafny-lang/dafny/blob/cc913d9159ded2ad131c048135f817e49f500e50/Test/dafny0/MultiDimArray.dfy
@@ -11,7 +11,7 @@ const a: [int]int;
 const b: [int]bool;
 
 axiom Length(a) == 3;
-axiom Length(b) == 5; 
+axiom Length(b) == 5;
 
 procedure M0()
   ensures true;

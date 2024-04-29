@@ -44,7 +44,7 @@ namespace Microsoft.Boogie
     {
       return new LayerRange(Math.Min(first.LowerLayer, second.LowerLayer), Math.Max(first.UpperLayer, second.UpperLayer));
     }
-    
+
     public static LayerRange Union(List<LayerRange> layerRanges)
     {
       Debug.Assert(layerRanges.Any());
@@ -55,7 +55,7 @@ namespace Microsoft.Boogie
       }
       return unionLayerRange;
     }
-    
+
     public override string ToString()
     {
       return $"[{LowerLayer}, {UpperLayer}]";
@@ -169,7 +169,7 @@ namespace Microsoft.Boogie
     {
       RemoveAttributes(obj, LINEAR_ATTRIBUTES);
     }
-    
+
     public static bool IsCallMarked(CallCmd callCmd)
     {
       return callCmd.HasAttribute(MARK);
@@ -178,12 +178,44 @@ namespace Microsoft.Boogie
 
   public static class CivlPrimitives
   {
-    public static HashSet<string> Linear = new()
+    public static HashSet<string> LinearPrimitives = new()
     {
-      "Lheap_Empty", "Lheap_Split", "Lheap_Transfer", "Lheap_Read", "Lheap_Write", "Lheap_Add", "Lheap_Remove",
-      "Lset_Empty", "Lset_Split", "Lset_Transfer",
-      "Lval_Split", "Lval_Transfer"
+      "One_New",
+      "Map_MakeEmpty", "Map_Pack", "Map_Unpack", "Map_Split", "Map_Get", "Map_Put", "Map_Assume",
+      "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
     };
+
+    public static IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
+    {
+      if (expr is IdentifierExpr identifierExpr)
+      {
+        return identifierExpr;
+      }
+      if (expr is NAryExpr nAryExpr)
+      {
+        if (nAryExpr.Fun is FieldAccess or MapSelect)
+        {
+          return ExtractRootFromAccessPathExpr(nAryExpr.Args[0]);
+        }
+      }
+      return null;
+    }
+
+    public static IdentifierExpr ModifiedArgument(CallCmd callCmd)
+    {
+      switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
+      {
+        case "One_New":
+        case "Set_MakeEmpty":
+        case "Map_MakeEmpty":
+        case "Map_Pack":
+        case "Map_Unpack":
+        case "Map_Assume":
+          return null;
+        default:
+          return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
+      }
+    }
 
     public static HashSet<string> Async = new()
     {

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
+using Microsoft.Boogie.LeanAuto;
 using Microsoft.Boogie.SMTLib;
 using VC;
 
@@ -86,6 +86,42 @@ namespace Microsoft.Boogie
     public bool PrintDesugarings {
       get => printDesugarings;
       set => printDesugarings = value;
+    }
+
+    public bool PrintPassive {
+      get => printPassive;
+      set => printPassive = value;
+    }
+
+    public List<Action<ExecutionEngineOptions, ProcessedProgram>> UseResolvedProgram { get; } = new();
+
+    static void PassifyAllImplementations(ExecutionEngineOptions options, ProcessedProgram processedProgram)
+    {
+      // All three of these objects can be new instances because they're essentially not used by PrepareImplementation.
+      var callback = new VerifierCallback(options.PrintProverWarnings);
+      var checkerPool = new CheckerPool(options);
+      var vcGenerator = new VerificationConditionGenerator(processedProgram.Program, checkerPool);
+
+      foreach(var implementation in processedProgram.Program.Implementations) {
+        vcGenerator.PrepareImplementation(new ImplementationRun(implementation, options.OutputWriter),
+          callback, out _, out _, out _);
+      }
+    }
+
+    public static void PrintPassiveProgram(ExecutionEngineOptions options, ProcessedProgram processedProgram)
+    {
+      options.PrintUnstructured = 1;
+      PassifyAllImplementations(options, processedProgram);
+      ExecutionEngine.PrintBplFile(options, options.PrintFile, processedProgram.Program, true, true, options.PrettyPrint);
+    }
+
+    public static void PrintPassiveProgramAsLean(string fileName, ExecutionEngineOptions options, ProcessedProgram processedProgram)
+    {
+        var writer = new StreamWriter(fileName);
+        PassifyAllImplementations(options, processedProgram);
+        LeanAutoGenerator.EmitPassiveProgramAsLean(options, processedProgram.Program, writer);
+        writer.Close();
+
     }
 
     public bool PrintLambdaLifting { get; set; }
@@ -201,7 +237,8 @@ namespace Microsoft.Boogie
 
     public bool ImmediatelyAcceptCommands => StratifiedInlining > 0 || ContractInfer;
 
-    public bool ProduceUnsatCores => PrintNecessaryAssumes || EnableUnSatCoreExtract == 1 ||
+    public bool ProduceUnsatCores => TrackVerificationCoverage ||
+                                     EnableUnSatCoreExtract == 1 ||
                                      ContractInfer && (UseUnsatCoreForContractInfer || ExplainHoudini);
 
     public bool BatchModeSolver { get; set; }
@@ -279,10 +316,9 @@ namespace Microsoft.Boogie
 
     public bool PrintAssignment  { get; set; }
 
-    // TODO(wuestholz): Add documentation for this flag.
-    public bool PrintNecessaryAssumes {
-      get => printNecessaryAssumes;
-      set => printNecessaryAssumes = value;
+    public bool TrackVerificationCoverage {
+      get => trackVerificationCoverage;
+      set => trackVerificationCoverage = value;
     }
 
     public int InlineDepth  { get; set; } = -1;
@@ -351,10 +387,7 @@ namespace Microsoft.Boogie
     public string PrintCFGPrefix { get; set; }
     public bool ForceBplErrors { get; set; } = false; // if true, boogie error is shown even if "msg" attribute is present
 
-    public bool UseArrayTheory {
-      get => useArrayTheory;
-      set => useArrayTheory = value;
-    }
+    public bool UseArrayTheory => !useArrayAxioms && TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic;
 
     public bool RelaxFocus { get; set; }
 
@@ -405,7 +438,7 @@ namespace Microsoft.Boogie
       get => trustRefinement;
       set => trustRefinement = value;
     }
-    
+
     public int TrustLayersUpto { get; set; } = -1;
     
     public int TrustLayersDownto { get; set; } = int.MaxValue;
@@ -511,14 +544,16 @@ namespace Microsoft.Boogie
 
     public bool ExtractLoopsUnrollIrreducible { get; set; } = true; // unroll irreducible loops? (set programmatically)
 
-
-    public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Predicates;
-
-    public bool Monomorphize { get; set; } = false;
+    public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Monomorphic;
 
     public bool ReflectAdd { get; set; } = false;
 
     public int LiveVariableAnalysis { get; set; } = 1;
+
+    public bool KeepQuantifier {
+      get => keepQuantifier;
+      set => keepQuantifier = value;
+    }
 
     public HashSet<string> Libraries { get; set; } = new HashSet<string>();
 
@@ -540,7 +575,7 @@ namespace Microsoft.Boogie
 
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;
-    private bool useArrayTheory = false;
+    private bool useArrayAxioms = false;
     private bool doModSetAnalysis = false;
     private bool runDiagnosticsOnTimeout = false;
     private bool traceDiagnosticsOnTimeout = false;
@@ -550,7 +585,7 @@ namespace Microsoft.Boogie
     private bool reverseHoudiniWorklist = false;
     private bool houdiniUseCrossDependencies = false;
     private bool useUnsatCoreForContractInfer = false;
-    private bool printNecessaryAssumes = false;
+    private bool trackVerificationCoverage = false;
     private bool useProverEvaluate;
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
@@ -565,9 +600,11 @@ namespace Microsoft.Boogie
     private bool printWithUniqueAstIds = false;
     private int printUnstructured = 0;
     private bool printDesugarings = false;
+    private bool printPassive = false;
     private bool emitDebugInformation = true;
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
+    private bool keepQuantifier = false;
 
     public List<CoreOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
@@ -672,6 +709,15 @@ namespace Microsoft.Boogie
           if (ps.ConfirmArgumentCount(1))
           {
             PrintFile = args[ps.i];
+          }
+
+          return true;
+
+        case "printLean":
+          if (ps.ConfirmArgumentCount(1)) {
+            var fileName = args[ps.i];
+            UseResolvedProgram.Add((o, p) =>
+              PrintPassiveProgramAsLean(fileName, o, p));
           }
 
           return true;
@@ -1071,6 +1117,10 @@ namespace Microsoft.Boogie
           {
             switch (args[ps.i])
             {
+              case "m":
+              case "monomorphic":
+                TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
+                break;
               case "p":
               case "predicates":
                 TypeEncodingMethod = CoreOptions.TypeEncoding.Predicates;
@@ -1083,14 +1133,6 @@ namespace Microsoft.Boogie
                 ps.Error("Invalid argument \"{0}\" to option {1}", args[ps.i], ps.s);
                 break;
             }
-          }
-
-          return true;
-
-        case "monomorphize":
-          if (ps.ConfirmArgumentCount(0))
-          {
-            Monomorphize = true;
           }
 
           return true;
@@ -1216,7 +1258,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "rlimit":
-          ps.GetUnsignedNumericArgument(x => ResourceLimit = x, null);
+          ps.GetUnsignedNumericArgument(x => ResourceLimit = x);
           return true;
 
         case "timeLimitPerAssertionInPercent":
@@ -1261,6 +1303,10 @@ namespace Microsoft.Boogie
           ps.GetIntArgument(x => normalizeDeclarationOrder = x);
           return true;
 
+        case "prune":
+          ps.GetIntArgument(x => Prune = x);
+          return true;
+
         default:
           bool optionValue = false;
           if (ps.CheckBooleanFlag("printUnstructured", x => optionValue = x))
@@ -1272,6 +1318,7 @@ namespace Microsoft.Boogie
           if (ps.CheckBooleanFlag("printDesugared", x => printDesugarings = x) ||
               ps.CheckBooleanFlag("printLambdaLifting", x => PrintLambdaLifting = x) ||
               ps.CheckBooleanFlag("printInstrumented", x => printInstrumented = x) ||
+              ps.CheckBooleanFlag("printPassive", x => UseResolvedProgram.Add(PrintPassiveProgram)) ||
               ps.CheckBooleanFlag("printWithUniqueIds", x => printWithUniqueAstIds = x) ||
               ps.CheckBooleanFlag("wait", x => Wait = x) ||
               ps.CheckBooleanFlag("trace", x => Verbosity = CoreOptions.VerbosityLevel.Trace) ||
@@ -1291,11 +1338,15 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("checkInfer", x => InstrumentWithAsserts = x) ||
               ps.CheckBooleanFlag("restartProver", x => restartProverPerVc = x) ||
               ps.CheckBooleanFlag("printInlined", x => printInlined = x) ||
-              ps.CheckBooleanFlag("smoke", x => SoundnessSmokeTest = x) ||
+              ps.CheckBooleanFlag("smoke", x =>
+              {
+                SoundnessSmokeTest = x;
+                Prune = false;
+              }) ||
               ps.CheckBooleanFlag("vcsDumpSplits", x => VcsDumpSplits = x) ||
               ps.CheckBooleanFlag("dbgRefuted", x => DebugRefuted = x) ||
               ps.CheckBooleanFlag("reflectAdd", x => ReflectAdd = x) ||
-              ps.CheckBooleanFlag("useArrayTheory", x => useArrayTheory = x) ||
+              ps.CheckBooleanFlag("useArrayAxioms", x => useArrayAxioms = x) ||
               ps.CheckBooleanFlag("relaxFocus", x => RelaxFocus = x) ||
               ps.CheckBooleanFlag("doModSetAnalysis", x => doModSetAnalysis = x) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", x => runDiagnosticsOnTimeout = x) ||
@@ -1307,7 +1358,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("crossDependencies", x => houdiniUseCrossDependencies = x) ||
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", x => useUnsatCoreForContractInfer = x) ||
               ps.CheckBooleanFlag("printAssignment", x => PrintAssignment = x) ||
-              ps.CheckBooleanFlag("printNecessaryAssumes", x => printNecessaryAssumes = x) ||
+              ps.CheckBooleanFlag("trackVerificationCoverage", x => trackVerificationCoverage = x) ||
               ps.CheckBooleanFlag("useProverEvaluate", x => useProverEvaluate = x) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", x => DeterministicExtractLoops = x) ||
               ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||
@@ -1317,8 +1368,8 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustSequentialization", x => trustSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
-              ps.CheckBooleanFlag("prune", x => Prune = x) ||
-              ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x)
+              ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x) ||
+              ps.CheckBooleanFlag("keepQuantifier", x => keepQuantifier = x)
           )
           {
             // one of the boolean flags matched
@@ -1362,9 +1413,6 @@ namespace Microsoft.Boogie
 
       if (StratifiedInlining > 0)
       {
-        TypeEncodingMethod = CoreOptions.TypeEncoding.Monomorphic;
-        UseArrayTheory = true;
-        UseAbstractInterpretation = false;
         if (ProverDllName == "SMTLib")
         {
           ErrorLimit = 1;
@@ -1521,7 +1569,10 @@ namespace Microsoft.Boogie
 
      {:id <string>}
        Assign a unique ID to an implementation to be used for verification
-       result caching (default: ""<impl. name>:0"").
+       result caching (default: ""<impl. name>:0""), or assign a unique ID
+       to a statement or contract clause for use in identifying which program
+       elements were necessary to complete verification. The latter form is
+       used by the `/trackVerificationCoverage` option.
 
      {:timeLimit N}
        Set the time limit for verifying a given implementation.
@@ -1532,6 +1583,11 @@ namespace Microsoft.Boogie
      {:random_seed N}
        Set the random seed for verifying a given implementation.
        Has the same effect as setting /randomSeed but only for a single implementation.
+
+     {:smt_option name, value}
+       Set the SMT option 'name' to 'value', using the SMT-Lib command
+       '(set-option :name value)', just for the verification of this
+       procedure.
 
      {:verboseName <string>}
        Set the name to use when printing messages about verification
@@ -1710,6 +1766,7 @@ namespace Microsoft.Boogie
   /printWithUniqueIds : print augmented information that uniquely
                    identifies variables
   /printUnstructured : with /print option, desugars all structured statements
+  /printPassive :  with /print option, prints passive version of program
   /printDesugared : with /print option, desugars calls
   /printLambdaLifting : with /print option, desugars lambda lifting
 
@@ -1726,6 +1783,8 @@ namespace Microsoft.Boogie
                 unroll loops, following up to n back edges (and then some)
   /soundLoopUnrolling
                 sound loop unrolling
+  /doModSetAnalysis
+                automatically infer modifies clauses
   /printModel:<n>
                 0 (default) - do not print Z3's error model
                 1 - print Z3's error model
@@ -1867,37 +1926,38 @@ namespace Microsoft.Boogie
   /smokeTimeout:<n>
                 Timeout, in seconds, for a single theorem prover
                 invocation during smoke test, defaults to 10.
-  /causalImplies
-                Translate Boogie's A ==> B into prover's A ==> A && B.
-  /typeEncoding:<m>
+  /typeEncoding:<t>
                 Encoding of types when generating VC of a polymorphic program:
-                   p = predicates (default)
+                   m = monomorphic (default)
+                   p = predicates
                    a = arguments
                 Boogie automatically detects monomorphic programs and enables
                 monomorphic VC generation, thereby overriding the above option.
-  /monomorphize
-                Try to monomorphize program. An error is reported if
-                monomorphization is not possible. This feature is experimental!
-  /useArrayTheory
-                Use the SMT theory of arrays (as opposed to axioms). Supported
-                only for monomorphic programs.
+                If the latter two options are used, then arrays are handled via axioms.
+  /useArrayAxioms
+                If monomorphic type encoding is used, arrays are handled by default with
+                the SMT theory of arrays. This option allows the use of axioms instead.
   /reflectAdd   In the VC, generate an auxiliary symbol, elsewhere defined
                 to be +, instead of +.
-  /prune
-                Turn on pruning. Pruning will remove any top-level Boogie declarations 
-                that are not accessible by the implementation that is about to be verified.
-                Without pruning, due to the unstable nature of SMT solvers,
-                a change to any part of a Boogie program has the potential 
-                to affect the verification of any other part of the program.
+  /prune:<n>
+                0 - Turn off pruning.
+                1 - Turn on pruning (default). Pruning will remove any top-level
+                Boogie declarations that are not accessible by the implementation
+                that is about to be verified. Without pruning, due to the unstable
+                nature of SMT solvers, a change to any part of a Boogie program
+                has the potential to affect the verification of any other part of
+                the program.
+
+                Only use this if your program contains uses clauses
+                where required, otherwise pruning will break your program.
+                More information can be found here: https://github.com/boogie-org/boogie/blob/afe8eb0ffbb48d593de1ae3bf89712246444daa8/Source/ExecutionEngine/CommandLineOptions.cs#L160
   /printPruned:<file>
                 After pruning, print the Boogie program to the specified file.
   /relaxFocus   Process foci in a bottom-up fashion. This way only generates
                 a linear number of splits. The default way (top-down) is more
                 aggressive and it may create an exponential number of splits.
-
   /randomSeed:<s>
                 Supply the random seed for /randomizeVcIterations option.
-
   /randomizeVcIterations:<n>
                 Turn on randomization of the input that Boogie passes to the
                 SMT solver and turn on randomization in the SMT solver itself.
@@ -1912,6 +1972,18 @@ namespace Microsoft.Boogie
                 This option is implemented by renaming variables and reordering
                 declarations in the input, and by setting solver options that have
                 similar effects.
+  /trackVerificationCoverage
+                Track and report which program elements labeled with an
+                `{:id ...}` attribute were necessary to complete verification.
+                Assumptions, assertions, requires clauses, ensures clauses,
+                assignments, and calls can be labeled for inclusion in this
+                report. This generalizes and replaces the previous
+                (undocumented) `/printNecessaryAssertions` option.
+
+  /keepQuantifier
+                If pool-based quantifier instantiation creates instances of a quantifier
+                then keep the quantifier along with the instances. By default, the quantifier
+                is dropped if any instances are created.
 
   ---- Verification-condition splitting --------------------------------------
 
@@ -1980,7 +2052,7 @@ namespace Microsoft.Boogie
                 Limit the number of seconds spent trying to verify
                 each procedure
   /rlimit:<num>
-                Limit the Z3 resource spent trying to verify each procedure
+                Limit the Z3 resource spent trying to verify each procedure.
   /errorTrace:<n>
                 0 - no Trace labels in the error output,
                 1 (default) - include useful Trace labels in error output,

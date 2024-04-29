@@ -20,7 +20,7 @@ namespace Microsoft.Boogie
     public bool ForceLogStatus = false;
     public uint TimeLimit = 0;
     public uint ResourceLimit = 0;
-    public int? RandomSeed = null;
+    public int RandomSeed;
     public int MemoryLimit = 0;
     public int Verbosity = 0;
     public string ProverName;
@@ -320,7 +320,7 @@ The generic options may or may not be used by the prover plugin.
       Contract.Ensures(cce.IsNew(Contract.Result<ProverFactory>()) && cce.Owner.New(Contract.Result<ProverFactory>()));
       string /*!*/
         path;
-      if (proverName.IndexOf("/") > 0 || proverName.IndexOf("\\") > 0)
+      if (proverName.IndexOf("/") >= 0 || proverName.IndexOf("\\") >= 0)
       {
         path = proverName;
       }

@@ -1,0 +1,11 @@
+non-interference-2.bpl(25,1): Error: Non-interference check failed
+Execution trace:
+    non-interference-2.bpl(7,3): anon0
+    non-interference-2.bpl(12,5): inline$AtomicIncr$0$anon0
+    (0,0): inline$Civl_NoninterferenceChecker_yield_PC$0$L
+non-interference-2.bpl(25,1): Error: Non-interference check failed
+Execution trace:
+    non-interference-2.bpl(34,3): anon0
+    (0,0): inline$Civl_NoninterferenceChecker_yield_PC$0$L
+
+Boogie program verifier finished with 2 verified, 2 errors

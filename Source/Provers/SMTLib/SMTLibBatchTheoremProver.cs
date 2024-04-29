@@ -62,7 +62,7 @@ namespace Microsoft.Boogie.SMTLib
       return 0;
     }
 
-    public override async Task<Outcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
+    public override async Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken)
     {
       currentErrorHandler = handler;
@@ -134,7 +134,7 @@ namespace Microsoft.Boogie.SMTLib
       return Process.SendRequestsAndCloseInput(sanitizedRequests, cancellationToken);
     }
 
-    private async Task<Outcome> CheckSat(CancellationToken cancellationToken)
+    private async Task<SolverOutcome> CheckSat(CancellationToken cancellationToken)
     {
       var requests = new List<string>();
       requests.Add("(check-sat)");
@@ -143,9 +143,12 @@ namespace Microsoft.Boogie.SMTLib
         requests.Add($"(get-info :{Z3.RlimitOption})");
       }
       requests.Add("(get-model)");
+      if (options.LibOptions.ProduceUnsatCores) {
+        requests.Add($"(get-unsat-core)");
+      }
 
       if (Process == null || HadErrors) {
-        return Outcome.Undetermined;
+        return SolverOutcome.Undetermined;
       }
 
       try {
@@ -156,12 +159,16 @@ namespace Microsoft.Boogie.SMTLib
         catch (TimeoutException) {
           currentErrorHandler.OnResourceExceeded("hard solver timeout");
           resourceCount = -1;
-          return Outcome.TimeOut;
+          return SolverOutcome.TimeOut;
         }
         var responseStack = new Stack<SExpr>(responses.Reverse());
 
         var outcomeSExp = responseStack.Pop();
         var result = ParseOutcome(outcomeSExp, out var wasUnknown);
+        // Sometimes Z3 responds with "(error ...)" followed by "unknown"
+        if (outcomeSExp.Name is "error" && responseStack.TryPeek(out var sExpr) && sExpr.Name is "unknown") {
+          responseStack.Pop();
+        }
 
         var unknownSExp = responseStack.Pop();
         if (wasUnknown) {
@@ -171,16 +178,34 @@ namespace Microsoft.Boogie.SMTLib
         if (options.Solver == SolverKind.Z3) {
           var rlimitSExp = responseStack.Pop();
           resourceCount = ParseRCount(rlimitSExp);
+
+          // Sometimes Z3 doesn't tell us that it ran out of resources
+          if (result != SolverOutcome.Valid && resourceCount > options.ResourceLimit && options.ResourceLimit > 0) {
+            result = SolverOutcome.OutOfResource;
+          }
         }
 
-        var modelSExp = responseStack.Pop();
-        errorModel = ParseErrorModel(modelSExp);
+        if (responseStack.Count > 0) {
+          var modelSExp = responseStack.Pop();
+          errorModel = ParseErrorModel(modelSExp);
+        }
 
-        if (result == Outcome.Invalid) {
+        if (options.LibOptions.ProduceUnsatCores) {
+          if (responseStack.Count > 0) {
+            var unsatCoreSExp = responseStack.Pop();
+            if (result == SolverOutcome.Valid) {
+              ReportCoveredElements(unsatCoreSExp);
+            }
+          } else {
+            currentErrorHandler.OnProverError("Solver did not return an unsat core.");
+          }
+        }
+
+        if (result == SolverOutcome.Invalid) {
           var labels = CalculatePath(currentErrorHandler.StartingProcId(), errorModel);
           if (labels.Length == 0) {
             // Without a path to an error, we don't know what to report
-            result = Outcome.Undetermined;
+            result = SolverOutcome.Undetermined;
           } else {
             currentErrorHandler.OnModel(labels, errorModel, result);
           }
@@ -269,9 +294,9 @@ namespace Microsoft.Boogie.SMTLib
       }
     }
 
-    public override Task<int> GetRCount()
+    public override int GetRCount()
     {
-      return Task.FromResult(resourceCount);
+      return resourceCount;
     }
 
     public override Task<List<string>> UnsatCore()
@@ -279,13 +304,13 @@ namespace Microsoft.Boogie.SMTLib
       throw new NotSupportedException("Batch mode solver interface does not support unsat cores.");
     }
 
-    public override Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions,
+    public override Task<(SolverOutcome, List<int>)> CheckAssumptions(List<VCExpr> assumptions,
       ErrorHandler handler, CancellationToken cancellationToken)
     {
       throw new NotSupportedException("Batch mode solver interface does not support checking assumptions.");
     }
 
-    public override Task<(Outcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
+    public override Task<(SolverOutcome, List<int>)> CheckAssumptions(List<VCExpr> hardAssumptions, List<VCExpr> softAssumptions,
       ErrorHandler handler, CancellationToken cancellationToken)
     {
       throw new NotSupportedException("Batch mode solver interface does not support checking assumptions.");

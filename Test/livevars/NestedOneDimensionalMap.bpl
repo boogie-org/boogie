@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -useArrayTheory "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 var k: int;
 var AllMaps__1: [int][int]int;
@@ -23,9 +23,7 @@ lab2:
     $tmp4 := local_0;
     goto lab3;
 
-lab3:    
-    AllMaps__1[$tmp4][0] := 1;   
+lab3:
+    AllMaps__1[$tmp4][0] := 1;
     assert AllMaps__1[local_0][0] == 1;
 }
-
-

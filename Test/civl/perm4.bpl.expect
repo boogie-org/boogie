@@ -1,6 +1,0 @@
-perm4.bpl(87,1): Error: Non-interference check failed
-Execution trace:
-    perm4.bpl(68,13): anon0
-    (0,0): inline$Civl_NoninterferenceChecker_yield_Yield_g$0$L0
-
-Boogie program verifier finished with 4 verified, 1 error

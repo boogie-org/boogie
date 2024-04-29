@@ -1,2 +1,0 @@
-pending-async-2.bpl(17,2): Error: primitive instantiated on type not in the creates clause of caller
-1 type checking errors detected in pending-async-2.bpl

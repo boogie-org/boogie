@@ -1,5 +1,3 @@
-using VC;
-
 namespace Microsoft.Boogie;
 
 public interface VCGenOptions : SMTLibOptions

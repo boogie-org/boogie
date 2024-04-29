@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>Boogie.Provers.LeanAuto</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BaseTypes\BaseTypes.csproj" />
+    <ProjectReference Include="..\..\CodeContractsExtender\CodeContractsExtender.csproj" />
+    <ProjectReference Include="..\..\Core\Core.csproj" />
+    <ProjectReference Include="..\..\VCGeneration\VCGeneration.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Prelude.lean">
+      <LogicalName>Prelude.lean</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

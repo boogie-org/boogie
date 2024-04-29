@@ -1,0 +1,5 @@
+yield-pre-post-resolution.bpl(5,9): Error: expected call to yield invariant
+yield-pre-post-resolution.bpl(7,10): Error: expected call to yield invariant
+yield-pre-post-resolution.bpl(6,8): Error: expected call to yield invariant
+yield-pre-post-resolution.bpl(10,9): Error: expected call to yield invariant
+4 name resolution errors detected in yield-pre-post-resolution.bpl

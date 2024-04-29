@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -typeEncoding:p "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 // UNSUPPORTED: batch_mode
 type set a = [a]bool;

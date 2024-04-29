@@ -7,11 +7,8 @@ Execution trace:
 UpdateExpr.bpl(34,3): Error: this assertion could not be proved
 Execution trace:
     UpdateExpr.bpl(34,3): anon0
-UpdateExpr.bpl(40,3): Error: this assertion could not be proved
-Execution trace:
-    UpdateExpr.bpl(40,3): anon0
 UpdateExpr.bpl(54,3): Error: this assertion could not be proved
 Execution trace:
     UpdateExpr.bpl(53,5): anon0
 
-Boogie program verifier finished with 5 verified, 5 errors
+Boogie program verifier finished with 6 verified, 4 errors

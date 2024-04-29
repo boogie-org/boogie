@@ -1,0 +1,3 @@
+async-bug.bpl(18,15): Error: unavailable source tid for linear parameter at position 0
+async-bug.bpl(19,0): Error: input variable tid must be available at a return
+2 type checking errors detected in async-bug.bpl

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -27,7 +28,11 @@ public class Program : Absy
   {
     Contract.Requires(stream != null);
     stream.SetToken(this);
-    this.topLevelDeclarations.Emit(stream);
+    var functionAxioms = 
+      this.Functions.Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
+    var constantAxioms = 
+      this.Constants.Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
+    this.topLevelDeclarations.Except(functionAxioms.Concat(constantAxioms)).ToList().Emit(stream);
   }
 
   /// <summary>
@@ -57,7 +62,7 @@ public class Program : Absy
 
     ResolveTypes(rc);
       
-    var prunedTopLevelDeclarations = new List<Declaration /*!*/>();
+    var prunedTopLevelDeclarations = new List<Declaration>();
     foreach (var d in TopLevelDeclarations.Where(d => !QKeyValue.FindBoolAttribute(d.Attributes, "ignore")))
     {
       // resolve all the declarations that have not been resolved yet 
@@ -65,11 +70,12 @@ public class Program : Absy
       {
         int e = rc.ErrorCount;
         d.Resolve(rc);
-        if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation)
+        if (rc.Options.OverlookBoogieTypeErrors && rc.ErrorCount != e && d is Implementation impl)
         {
           // ignore this implementation
-          rc.Options.OutputWriter.WriteLine("Warning: Ignoring implementation {0} because of translation resolution errors",
-            ((Implementation) d).Name);
+          rc.Options.OutputWriter.WriteLine(
+            "Warning: Ignoring implementation {0} because of translation resolution errors",
+            impl.Name);
           rc.ErrorCount = e;
           continue;
         }
@@ -395,7 +401,7 @@ public class Program : Absy
     }
   }
 
-  public readonly ISet<string> NecessaryAssumes = new HashSet<string>();
+  public readonly ConcurrentBag<TrackedNodeComponent> AllCoveredElements = new();
 
   public IEnumerable<Block> Blocks()
   {

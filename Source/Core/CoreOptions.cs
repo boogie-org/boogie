@@ -68,7 +68,7 @@ namespace Microsoft.Boogie
     InstrumentationPlaces InstrumentInfer { get; }
     AiFlags Ai { get; }
     bool InstrumentWithAsserts { get; }
-    bool UseArrayTheory { get; set; }
+    bool UseArrayTheory { get; }
     TypeEncoding TypeEncodingMethod { get; set; }
     SubsumptionOption UseSubsumption { get; }
     int VcsCores { get; }
@@ -107,6 +107,7 @@ namespace Microsoft.Boogie
     bool ConcurrentHoudini { get; }
     double VcsPathJoinMult { get; }
     bool VerifySeparately { get; }
+    bool KeepQuantifier { get; }
 
     public enum ProverWarnings
     {

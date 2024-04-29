@@ -549,6 +549,12 @@ namespace Microsoft.Boogie
       }
 
       codeCopier.BeginInline(substMap, substMapOld, GetInlinedProcLabel(proc.Name) + "$");
+
+      foreach (var variable in newLocalVars) {
+        if (variable.TypedIdent.WhereExpr != null) {
+          variable.TypedIdent.WhereExpr = codeCopier.CopyExpr(variable.TypedIdent.WhereExpr);
+        }
+      }
     }
 
     protected void EndInline()
@@ -669,38 +675,6 @@ namespace Microsoft.Boogie
       if (havocVars.Count > 0)
       {
         inCmds.Add(new HavocCmd(Token.NoToken, havocVars));
-      }
-
-      // add where clauses of local vars as assume
-      for (int i = 0; i < locVars.Count; ++i)
-      {
-        Expr whereExpr = (cce.NonNull(locVars[i])).TypedIdent.WhereExpr;
-        if (whereExpr != null)
-        {
-          whereExpr = codeCopier.CopyExpr(whereExpr);
-          // FIXME we cannot overwrite it, can we?!
-          (cce.NonNull(locVars[i])).TypedIdent.WhereExpr = whereExpr;
-          AssumeCmd /*!*/
-            a = new AssumeCmd(Token.NoToken, whereExpr);
-          Contract.Assert(a != null);
-          inCmds.Add(a);
-        }
-      }
-
-      // add where clauses of output params as assume
-      for (int i = 0; i < impl.OutParams.Count; ++i)
-      {
-        Expr whereExpr = (cce.NonNull(impl.OutParams[i])).TypedIdent.WhereExpr;
-        if (whereExpr != null)
-        {
-          whereExpr = codeCopier.CopyExpr(whereExpr);
-          // FIXME likewise
-          (cce.NonNull(impl.OutParams[i])).TypedIdent.WhereExpr = whereExpr;
-          AssumeCmd /*!*/
-            a = new AssumeCmd(Token.NoToken, whereExpr);
-          Contract.Assert(a != null);
-          inCmds.Add(a);
-        }
       }
 
       // assign modifies old values
@@ -865,11 +839,11 @@ namespace Microsoft.Boogie
       {
         Contract.Requires(cmd != null);
         Contract.Ensures(Contract.Result<TransferCmd>() != null);
-        if (cmd is GotoCmd gotocmd)
+        if (cmd is GotoCmd gotoCmd)
         {
-          Contract.Assert(gotocmd.labelNames != null);
+          Contract.Assert(gotoCmd.labelNames != null);
           List<String> labels = new List<String>();
-          labels.AddRange(gotocmd.labelNames);
+          labels.AddRange(gotoCmd.labelNames);
           return new GotoCmd(cmd.tok, labels);
         }
         else if (cmd is ReturnExprCmd returnExprCmd)
@@ -888,7 +862,12 @@ namespace Microsoft.Boogie
         {
           return cmd;
         }
-        return BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
+        var copyCmd = BoundVarAndReplacingOldSubstituter.Apply(substMap, oldSubstMap, prefix, cmd);
+        if (copyCmd is SugaredCmd sugaredCmd)
+        {
+          sugaredCmd.ResetDesugaring();
+        }
+        return copyCmd;
       }
 
       public Expr CopyExpr(Expr expr)

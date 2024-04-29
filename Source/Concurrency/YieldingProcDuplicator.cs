@@ -24,6 +24,8 @@ namespace Microsoft.Boogie
     private Dictionary<CallCmd, CallCmd> refinementCallCmds; // rewritten -> original
     private Dictionary<CallCmd, Block> refinementBlocks; // rewritten -> block
 
+    private LinearRewriter linearRewriter;
+
     private ConcurrencyOptions Options => civlTypeChecker.Options;
 
     public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum)
@@ -34,16 +36,16 @@ namespace Microsoft.Boogie
       this.absyMap = new AbsyMap();
       this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
       this.refinementBlocks = new Dictionary<CallCmd, Block>();
+      this.linearRewriter = new LinearRewriter(civlTypeChecker);
     }
 
     #region Procedure duplication
 
-    public override Procedure VisitProcedure(Procedure node)
+    public override Procedure VisitYieldProcedureDecl(YieldProcedureDecl node)
     {
       if (!procToDuplicate.ContainsKey(node))
       {
-        var yieldProcedureDecl = (YieldProcedureDecl)node;
-        Debug.Assert(layerNum <= yieldProcedureDecl.Layer);
+        Debug.Assert(layerNum <= node.Layer);
         var proc = new Procedure(
           node.tok,
           civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}"),
@@ -52,8 +54,8 @@ namespace Microsoft.Boogie
           VisitVariableSeq(node.OutParams),
           false,
           VisitRequiresSeq(node.Requires),
-          (yieldProcedureDecl.HasMoverType && yieldProcedureDecl.Layer == layerNum
-            ? yieldProcedureDecl.ModifiedVars.Select(g => Expr.Ident(g))
+          (node.HasMoverType && node.Layer == layerNum
+            ? node.ModifiedVars.Select(g => Expr.Ident(g))
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
           VisitEnsuresSeq(node.Ensures));
         procToDuplicate[node] = proc;
@@ -186,32 +188,31 @@ namespace Microsoft.Boogie
 
     public override Block VisitBlock(Block node)
     {
-      Block block = base.VisitBlock(node);
+      var block = base.VisitBlock(node);
       absyMap[block] = node;
       return block;
     }
 
     public override Cmd VisitAssertCmd(AssertCmd node)
     {
-      AssertCmd assertCmd = (AssertCmd) base.VisitAssertCmd(node);
+      var assertCmd = (AssertCmd) base.VisitAssertCmd(node);
       if (!node.Layers.Contains(layerNum))
       {
         assertCmd.Expr = Expr.True;
       }
-
       return assertCmd;
     }
 
     public override Cmd VisitCallCmd(CallCmd call)
     {
-      CallCmd newCall = (CallCmd) base.VisitCallCmd(call);
+      var newCall = (CallCmd) base.VisitCallCmd(call);
       absyMap[newCall] = call;
       return newCall;
     }
 
     public override Cmd VisitParCallCmd(ParCallCmd parCall)
     {
-      ParCallCmd newParCall = (ParCallCmd) base.VisitParCallCmd(parCall);
+      var newParCall = (ParCallCmd) base.VisitParCallCmd(parCall);
       absyMap[newParCall] = parCall;
       foreach (var newCall in newParCall.CallCmds)
       {
@@ -246,23 +247,26 @@ namespace Microsoft.Boogie
 
     private void ProcessCallCmd(CallCmd newCall)
     {
-      if (newCall.Proc is ActionDecl actionDecl)
-      {
-        var linkAction = civlTypeChecker.Action(actionDecl);
-        if (linkAction.LowerLayer == layerNum)
-        {
-          newCall.Proc = linkAction.Impl.Proc;
-          InjectGate(linkAction, newCall);
-          newCmdSeq.Add(newCall);
-        }
-        return;
-      }
-
       if (newCall.Proc.IsPure)
       {
-        if (newCall.Layers[0] == layerNum)
+        var callLayerRange = newCall.LayerRange;
+        if (callLayerRange.Contains(layerNum))
         {
-          newCmdSeq.Add(newCall);
+          if (newCall.Proc is ActionDecl actionDecl)
+          {
+            var pureAction = civlTypeChecker.Action(actionDecl);
+            newCall.Proc = pureAction.Impl.Proc;
+            InjectGate(pureAction, newCall);
+            newCmdSeq.Add(newCall);
+          }
+          else if (LinearRewriter.IsPrimitive(newCall.Proc))
+          {
+            newCmdSeq.AddRange(linearRewriter.RewriteCallCmd(newCall));
+          }
+          else
+          {
+            newCmdSeq.Add(newCall);
+          }
         }
         return;
       }
@@ -489,7 +493,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      calleeRefinedAction.PendingAsyncs.Iter(decl =>
+      calleeRefinedAction.PendingAsyncs.ForEach(decl =>
       {
         if (RefinedAction.PendingAsyncs.Contains(decl))
         {

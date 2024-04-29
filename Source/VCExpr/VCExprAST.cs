@@ -1488,7 +1488,17 @@ namespace Microsoft.Boogie.VCExprAST {
   // Binders (quantifiers and let-expressions). We introduce our own class for
   // term variables, but use the Boogie-AST class for type variables
 
-  public class VCExprVar : VCExpr {
+  public enum VCExprVarKind
+  {
+    Normal, // A normal variable
+    Soft,   // A variable used for tracking an assumption labeled with the `:soft` attribute
+    Try,    // A variable used for tracking an assumption labeled with the `:try` attribute
+    Assert, // A variable used for tracking an assertion labeled with the `:id` attribute
+    Assume  // A variable used for tracking an assumption labeled with the `:id` attribute
+  }
+
+  public class VCExprVar : VCExpr
+  {
     // the name of the variable. Note that the name is not used for comparison,
     // i.e., there can be two distinct variables with the same name
     [ContractInvariantMethod]
@@ -1503,18 +1513,37 @@ namespace Microsoft.Boogie.VCExprAST {
     private readonly Type /*!*/
       VarType;
 
-    public override Type /*!*/ Type {
-      get {
+    public VCExprVarKind VarKind { get; }
+
+    public override Type /*!*/ Type
+    {
+      get
+      {
         Contract.Ensures(Contract.Result<Type>() != null);
         return VarType;
       }
     }
 
-    internal VCExprVar(string name, Type type) {
+    internal VCExprVar(string name, Type type, VCExprVarKind kind = VCExprVarKind.Normal)
+    {
       Contract.Requires(type != null);
       Contract.Requires(name != null);
-      this.Name = name;
+      this.Name = KindPrefix(kind) + name;
       this.VarType = type;
+      this.VarKind = kind;
+    }
+
+    private string KindPrefix(VCExprVarKind kind)
+    {
+      return kind switch
+      {
+        VCExprVarKind.Assert => "assert$$",
+        VCExprVarKind.Assume => "assume$$",
+        VCExprVarKind.Soft => "soft$$",
+        VCExprVarKind.Try => "try$$",
+        VCExprVarKind.Normal => "",
+        _ => throw new cce.UnreachableException()
+      };
     }
 
     public override DynamicStack<Result> Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg) {

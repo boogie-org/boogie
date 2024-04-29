@@ -1,0 +1,58 @@
+
+procedure a();
+
+
+
+implementation a()
+{
+
+  anon0:
+    call b();
+    return;
+}
+
+
+
+procedure {:inline 1} b();
+
+
+
+implementation {:inline 1} b()
+{
+  var v: int where v > 3;
+
+  anon0:
+    assert v > 3;
+    return;
+}
+
+
+after inlining procedure calls
+procedure a();
+
+
+implementation a()
+{
+  var inline$b$0$v: int where inline$b$0$v > 3;
+
+  anon0:
+    goto inline$b$0$Entry;
+
+  inline$b$0$Entry:
+    havoc inline$b$0$v /* where inline$b$0$v > 3 */;
+    goto inline$b$0$anon0;
+
+  inline$b$0$anon0:
+    assert inline$b$0$v > 3;
+    goto inline$b$0$Return;
+
+  inline$b$0$Return:
+    goto anon0$1;
+
+  anon0$1:
+    return;
+}
+
+
+
+Boogie program verifier finished with 2 verified, 0 errors

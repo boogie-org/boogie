@@ -504,19 +504,24 @@ namespace Microsoft.Boogie.TypeErasure {
       List<VCExprLetBinding /*!*/> typeVarBindings =
         GenTypeParamBindings(implicitTypeParams, typedInputVars, bindings, true);
       Contract.Assert(cce.NonNullElements(typeVarBindings));
+      List<VCExpr> boundVarExprs = HelperFuns.ToVCExprList(boundVars);
 
       VCExpr /*!*/
-        funApp = Gen.Function(fun, HelperFuns.ToVCExprList(boundVars));
+        funApp = Gen.Function(fun, boundVarExprs);
       Contract.Assert(funApp != null);
       VCExpr /*!*/
         conclusion = Gen.Eq(TypeOf(funApp),
           Type2Term(originalResultType, bindings.TypeVariableBindings));
       Contract.Assert(conclusion != null);
+
+      // Create `(= (type var) ...)` premises for each U-type argument
+      var typePremisses =
+        boundVarExprs
+          .Where(e => e.Type.Equals(U))
+          .Select((e, i) => Gen.Eq(TypeOf(e), Type2Term(originalInTypes[i], bindings.TypeVariableBindings)))
+          .Aggregate(VCExpressionGenerator.True, (e1, e2) => Gen.AndSimp(e1, e2));
       VCExpr conclusionWithPremisses =
-        // leave out antecedents of function type axioms ... they don't appear necessary,
-        // because a function can always be extended to all U-values (right?)
-        //        AddTypePremisses(typeVarBindings, typePremisses, true, conclusion);
-        Gen.Let(typeVarBindings, conclusion);
+          AddTypePremisses(typeVarBindings, typePremisses, true, conclusion);
 
       if (boundVars.Count > 0) {
         List<VCTrigger /*!*/> triggers = HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(funApp)));
@@ -649,18 +654,9 @@ namespace Microsoft.Boogie.TypeErasure {
       // the store function does not have any explicit type parameters
       Contract.Assert(explicitStoreParams.Count == 0);
 
-      if (AxBuilderPremisses.Options.UseArrayTheory) {
-        select.AddAttribute("builtin", "select");
-        store.AddAttribute("builtin", "store");
-      } else {
-        AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store,
-          abstractedType.Result,
-          implicitSelectParams, explicitSelectParams,
-          originalInTypes));
-        AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store,
-          abstractedType.Result,
-          explicitSelectParams));
-      }
+      AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store, abstractedType.Result, implicitSelectParams,
+        explicitSelectParams, originalInTypes));
+      AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store, abstractedType.Result, explicitSelectParams));
     }
 
     protected void GenTypeAxiomParams(MapType /*!*/ abstractedType, TypeCtorDecl /*!*/ synonymDecl,

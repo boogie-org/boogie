@@ -295,8 +295,15 @@ namespace Microsoft.Boogie
           }
           else if (cmd is PredicateCmd predCmd)
           {
-            var sub = SubstitutionHelper.FromVariableMap(LatestCopies());
-            assumes.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, predCmd.Expr));
+            if (predCmd.HasAttribute("linear"))
+            {
+              // skip for transition relation computation
+            }
+            else
+            {
+              var sub = SubstitutionHelper.FromVariableMap(LatestCopies());
+              assumes.Add(Substituter.ApplyReplacingOldExprs(sub, oldSub, predCmd.Expr));
+            }
           }
           else if (cmd is HavocCmd havocCmd)
           {
@@ -372,6 +379,11 @@ namespace Microsoft.Boogie
                 VariableCollector.Collect(assignment.Expr).Intersect(AllIntroducedVariables).All(Defined))
             {
               varToExpr[assignment.Var] = SubstitutionHelper.Apply(varToExpr, assignment.Expr);
+              changed = true;
+            }
+            else if (Defined(assignment.Var) && assignment.Expr is IdentifierExpr ie && !Defined(ie.Decl))
+            {
+              varToExpr[ie.Decl] = SubstitutionHelper.Apply(varToExpr, Expr.Ident(assignment.Var));
               changed = true;
             }
             else
@@ -453,7 +465,7 @@ namespace Microsoft.Boogie
       private void AddBoundVariablesForRemainingVars()
       {
         existsVarMap = NotEliminatedVars.ToDictionary(v => v, v => (Variable) VarHelper.BoundVariable(v.Name, v.TypedIdent.Type));
-        existsVarMap.Iter(kv =>
+        existsVarMap.ForEach(kv =>
         {
           kv.Value.Attributes = copyToOriginalVar[kv.Key].Attributes;
         });

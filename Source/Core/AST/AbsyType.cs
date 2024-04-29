@@ -2011,7 +2011,7 @@ namespace Microsoft.Boogie
   {
     static int proxies = 0;
 
-    protected readonly string /*!*/
+    public readonly string /*!*/
       Name;
 
     [ContractInvariantMethod]
@@ -3604,7 +3604,7 @@ namespace Microsoft.Boogie
     // be represented using the provided string (and also does not need to be explicitly declared).
     public string GetBuiltin()
     {
-      return this.Decl.FindStringAttribute("builtin");
+      return (this.Decl as ICarriesAttributes).FindStringAttribute("builtin");
     }
 
     //-----------  Cloning  ----------------------------------
@@ -3774,16 +3774,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(stream != null);
       stream.SetToken(this);
-      // If this type has a "builtin" attribute, use the corresponding user-provided string to represent the type.
-      string builtin = GetBuiltin();
-      if (builtin != null)
-      {
-        stream.Write(builtin);
-      }
-      else
-      {
-        EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
-      }
+      EmitCtorType(this.Decl.Name, Arguments, stream, contextBindingStrength);
     }
 
     internal static void EmitCtorType(string name, List<Type> args, TokenTextWriter stream, int contextBindingStrength)

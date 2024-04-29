@@ -14,6 +14,8 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
   string DescriptiveToolName { get; }
   bool TraceProofObligations { get; }
   string PrintFile { get; }
+  List<Action<ExecutionEngineOptions, ProcessedProgram>> UseResolvedProgram { get; }
+
   string PrintCFGPrefix { get; }
   string CivlDesugaredFile { get; }
   bool CoalesceBlocks { get; }
@@ -22,7 +24,6 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
   string Environment { get; }
   bool UseBaseNameForFileName { get; }
   HashSet<string> Libraries { get; set; }
-  bool Monomorphize { get; set; }
   bool NoResolve { get; }
   bool NoTypecheck { get; }
 

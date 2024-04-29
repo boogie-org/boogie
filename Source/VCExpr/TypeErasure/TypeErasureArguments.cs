@@ -222,16 +222,10 @@ namespace Microsoft.Boogie.TypeErasure {
 
       select = HelperFuns.BoogieFunction(baseName + "Select", selectTypes);
       store = HelperFuns.BoogieFunction(baseName + "Store", storeTypes);
-
-      if (options.UseArrayTheory) {
-        select.AddAttribute("builtin", "select");
-        store.AddAttribute("builtin", "store");
-      } else {
-        AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store,
-          abstractedType.TypeParameters.Count, abstractedType.FreeVariables.Count));
-        AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store,
-          abstractedType.TypeParameters.Count, abstractedType.FreeVariables.Count));
-      }
+      AxBuilder.AddTypeAxiom(GenMapAxiom0(select, store,
+        abstractedType.TypeParameters.Count, abstractedType.FreeVariables.Count));
+      AxBuilder.AddTypeAxiom(GenMapAxiom1(select, store,
+        abstractedType.TypeParameters.Count, abstractedType.FreeVariables.Count));
     }
 
     ///////////////////////////////////////////////////////////////////////////

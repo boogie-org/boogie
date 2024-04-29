@@ -3,14 +3,15 @@
 [![License][license-badge]](LICENSE.txt)
 [![NuGet package][nuget-badge]][nuget]
 
-Boogie is an intermediate verification language (IVL), intended as a layer on
+Boogie is a modeling language, intended as a layer on
 which to build program verifiers for other languages. Several program verifiers
 have been built in this way, including the
 [VCC](https://github.com/microsoft/vcc) and
 [HAVOC](https://www.microsoft.com/en-us/research/project/havoc) verifiers for C
 and the verifiers for [Dafny](https://github.com/dafny-lang/dafny),
-[Chalice](https://www.microsoft.com/en-us/research/project/chalice), and
-[Spec#](https://www.microsoft.com/en-us/research/project/spec).
+[Chalice](https://www.microsoft.com/en-us/research/project/chalice),
+[Spec#](https://www.microsoft.com/en-us/research/project/spec), 
+and [Move](https://github.com/Move/move).
 For a sample verifier for a toy language built on top of Boogie, see
 [Forro](https://github.com/boogie-org/forro).
 
@@ -19,6 +20,10 @@ input, optionally infers some invariants in the given Boogie program, and then
 generates verification conditions that are passed to an SMT solver. The default
 SMT solver is [Z3](https://github.com/Z3Prover/z3).
 
+Boogie has long been used for modeling and verifying sequential programs.
+Recently, through its [Civl](https://civl-verifier.github.io/) extension, Boogie 
+has become capable of modeling concurrent and distributed systems.
+
 ## Documentation
 
 Here are some resources to learn more about Boogie. Be aware that some
@@ -26,8 +31,6 @@ information might be incomplete or outdated.
 
 * [Documentation](https://boogie-docs.readthedocs.org/en/latest/)
 * [Language reference](https://boogie-docs.readthedocs.org/en/latest/LangRef.html).
-* [This is Boogie 2](https://research.microsoft.com/en-us/um/people/leino/papers/krml178.pdf)
-  details many aspects of the Boogie IVL but is slightly out of date.
 
 ## Getting help and contribute
 
@@ -85,7 +88,7 @@ Call Boogie with `/proverOpt:SOLVER=CVC5`.
 
 ### Yices2 (experimental)
 
-Call Boogie with `/proverOpt:SOLVER=Yices2 /useArrayTheory`.
+Call Boogie with `/proverOpt:SOLVER=Yices2`.
 
 Works for unquantified fragments, e.g. arrays + arithmetic + bitvectors. Does
 not work for quantifiers, generalized arrays, datatypes.
