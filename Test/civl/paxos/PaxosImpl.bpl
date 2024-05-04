@@ -376,31 +376,37 @@ refines A_ReceiveVoteResponse;
 pure action SendJoinResponseIntro(joinResponse: JoinResponse, {:linear_in} p: One Permission, {:linear_in} permJoinChannel: JoinResponseChannel)
 returns ({:linear} permJoinChannel': JoinResponseChannel)
 {
+  var {:linear} cell_p: Cell Permission JoinResponse;
   permJoinChannel' := permJoinChannel;
-  call Map_Put(permJoinChannel', p, joinResponse);
+  call cell_p := Cell_Pack(p, joinResponse);
+  call Map_Put(permJoinChannel', cell_p);
 }
 
 pure action ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse, {:linear_in} permJoinChannel: JoinResponseChannel)
 returns ({:linear} receivedPermission: One Permission, {:linear} permJoinChannel': JoinResponseChannel)
 {
-  var x: JoinResponse;
+  var _x: JoinResponse;
   permJoinChannel' := permJoinChannel;
-  call receivedPermission, x := Map_Get(permJoinChannel', JoinPerm(round, joinResponse->from));
+  receivedPermission := One(JoinPerm(round, joinResponse->from));
+  call _x := Map_Split(permJoinChannel', receivedPermission);
 }
 
 pure action SendVoteResponseIntro(voteResponse: VoteResponse, {:linear_in} p: One Permission, {:linear_in} permVoteChannel: VoteResponseChannel)
 returns ({:linear} permVoteChannel': VoteResponseChannel)
 {
+  var {:linear} cell_p: Cell Permission VoteResponse;
   permVoteChannel' := permVoteChannel;
-  call Map_Put(permVoteChannel', p, voteResponse);
+  call cell_p := Cell_Pack(p, voteResponse);
+  call Map_Put(permVoteChannel', cell_p);
 }
 
 pure action ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse, {:linear_in} permVoteChannel: VoteResponseChannel)
 returns ({:linear} receivedPermission: One Permission, {:linear} permVoteChannel': VoteResponseChannel)
 {
-  var x: VoteResponse;
+  var _x: VoteResponse;
   permVoteChannel' := permVoteChannel;
-  call receivedPermission, x := Map_Get(permVoteChannel', VotePerm(round, voteResponse->from));
+  receivedPermission := One(VotePerm(round, voteResponse->from));
+  call _x := Map_Split(permVoteChannel', receivedPermission);
 }
 
 //// Permission accounting

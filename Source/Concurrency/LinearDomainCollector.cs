@@ -150,6 +150,12 @@ namespace Microsoft.Boogie
         var collector = program.monomorphizer.InstantiateFunction("Set_Collector", typeParamInstantiationMap);
         collectors[type][permissionType] = collector;
       }
+      else if (typeName == "Cell")
+      {
+        var typeParamInstantiationMap = new Dictionary<string, Type> { { "T", actualTypeParams[0] }, { "U", actualTypeParams[1] } };
+        var collector = program.monomorphizer.InstantiateFunction("Cell_Collector", typeParamInstantiationMap);
+        collectors[type][permissionType] = collector;
+      }
       else
       {
         Debug.Assert(typeName == "One");

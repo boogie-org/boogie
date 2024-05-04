@@ -287,12 +287,20 @@ function {:inline} Map_Collector<T,U>(a: Map T U): [T]bool
   Set_Collector(a->dom)
 }
 
-/// singleton
+/// singleton set
 datatype One<T> { One(val: T) }
 
 function {:inline} One_Collector<T>(a: One T): [T]bool
 {
   MapOne(a->val)
+}
+
+/// singleton map
+datatype Cell<T,U> { Cell(key: T, val: U) }
+
+function {:inline} Cell_Collector<T,U>(a: Cell T U): [T]bool
+{
+  MapOne(a->key)
 }
 
 /// linear primitives
@@ -307,23 +315,23 @@ pure procedure One_Split<K>({:linear} path: Set K, {:linear_out} l: One K);
 pure procedure One_Get<K>({:linear} path: Set K, k: K) returns ({:linear} l: One K);
 pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: One K);
 
+pure procedure {:inline 1} Cell_Pack<K,V>({:linear_in} l: One K, {:linear_in} v: V) returns ({:linear} c: Cell K V)
+{
+  c := Cell(l->val, v);
+}
+pure procedure {:inline 1} Cell_Unpack<K,V>({:linear_in} c: Cell K V) returns ({:linear} l: One K, {:linear} v: V)
+{
+  l := One(c->key);
+  v := c->val;
+}
+
 pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 {
   m := Map_Empty();
 }
-pure procedure {:inline 1} Map_Pack<K,V>({:linear_in} l: One K, {:linear_in} v: V) returns ({:linear} m: Map K V)
-{
-  m := Map_Singleton(l->val, v);
-}
-pure procedure {:inline 1} Map_Unpack<K,V>(k: K, {:linear_in} m: Map K V) returns ({:linear} l: One K, {:linear} v: V)
-{
-  assert Map_Contains(m, k);
-  l := One(k);
-  v := Map_At(m, k);
-}
 pure procedure Map_Split<K,V>({:linear} path: Map K V, {:linear_out} l: One K) returns ({:linear} v: V);
-pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} l: One K, {:linear} v: V);
-pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} l: One K, {:linear_in} v: V);
+pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} c: Cell K V);
+pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} c: Cell K V);
 pure procedure {:inline 1} Map_Assume<K,V>({:linear} src: Map K V, {:linear} dst: Map K V)
 {
   assume Set_IsDisjoint(src->dom, dst->dom);
