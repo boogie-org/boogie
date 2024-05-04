@@ -59,10 +59,10 @@ public class LinearRewriter
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "One_New":
+      case "Cell_Pack":
+      case "Cell_Unpack":
       case "Set_MakeEmpty":
       case "Map_MakeEmpty":
-      case "Map_Pack":
-      case "Map_Unpack":
       case "Map_Assume":
         return new List<Cmd>{callCmd};
       case "Set_Split":
@@ -153,12 +153,25 @@ public class LinearRewriter
     return oneConstructor;
   }
 
+  private Function CellConstructor(Type keyType, Type valType)
+  {
+    var actualTypeParams = new List<Type>() { keyType, valType };
+    var cellTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Cell", actualTypeParams);
+    var cellConstructor = cellTypeCtorDecl.Constructors[0];
+    return cellConstructor;
+  }
+
   private Function SetConstructor(Type type)
   {
     var actualTypeParams = new List<Type>() { type };
     var setTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Set", actualTypeParams);
     var setConstructor = setTypeCtorDecl.Constructors[0];
     return setConstructor;
+  }
+
+  private static Expr Key(Expr path)
+  {
+    return ExprHelper.FieldAccess(path, "key");
   }
 
   private static Expr Val(Expr path)
@@ -299,8 +312,7 @@ public class LinearRewriter
     var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
     var k = callCmd.Ins[1];
-    var l = callCmd.Outs[0];
-    var v = callCmd.Outs[1];
+    var c = callCmd.Outs[0];
 
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     var domain = instantiation["K"];
@@ -309,9 +321,9 @@ public class LinearRewriter
     var mapRemoveFunc = MapRemove(domain, range);
     var mapAtFunc = MapAt(domain, range);
     cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(mapContainsFunc, path, k), "Map_Get failed"));
-    var oneConstructor = OneConstructor(domain);
-    cmdSeq.Add(CmdHelper.AssignCmd(l.Decl, ExprHelper.FunctionCall(oneConstructor, k)));
-    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(mapAtFunc, path, k)));
+    var cellConstructor = CellConstructor(domain, range);
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(c.Decl, ExprHelper.FunctionCall(cellConstructor, k, ExprHelper.FunctionCall(mapAtFunc, path, k))));
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapRemoveFunc, path, k)));
 
@@ -323,8 +335,7 @@ public class LinearRewriter
   {
     var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
-    var l = callCmd.Ins[1];
-    var v = callCmd.Ins[2];
+    var c = callCmd.Ins[1];
 
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     var domain = instantiation["K"];
@@ -332,9 +343,9 @@ public class LinearRewriter
     var mapContainsFunc = MapContains(domain, range);
     var mapUpdateFunc = MapUpdate(domain, range);
     var attribute = new QKeyValue(Token.NoToken, "linear", new List<object>(), null);
-    cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, Val(l))), attribute));
+    cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, Key(c))), attribute));
     cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, Val(l), v)));
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, Key(c), Val(c))));
 
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
