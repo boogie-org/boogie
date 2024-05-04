@@ -2,20 +2,20 @@
 // RUN: %diff "%s.expect" "%t"
 // Issue #359
 
-datatype Cell<T> { Mk(x: T) }
+datatype Foo<T> { Mk(x: T) }
 
 
-function foo<T>(): Cell T;
+function foo<T>(): Foo T;
 
 procedure p() {
-  var x: Cell int;
+  var x: Foo int;
   x := Mk(1);
   assume {:print "x=", x} true;
   assert x->x == 1;
 }
 
 procedure q() {
-  var x: Cell int;
+  var x: Foo int;
   x := Mk(1);
   assume {:print "x=", x} true;
   assert x->x == 0;

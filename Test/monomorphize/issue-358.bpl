@@ -2,16 +2,16 @@
 // RUN: %diff "%s.expect" "%t"
 // test for use of type synonyms
 
-datatype Cell<T> { Mk(x: T) }
+datatype Foo<T> { Mk(x: T) }
 
-function foo<T>(): Cell T;
+function foo<T>(): Foo T;
 
-type Cell_int = Cell int;
-type Cell_bool = Cell bool;
+type Foo_int = Foo int;
+type Foo_bool = Foo bool;
 
 procedure p() {
-  var x: Cell_int;
-  var y: Cell_bool;
+  var x: Foo_int;
+  var y: Foo_bool;
   x := Mk(1);
   y := Mk(false);
   assert x->x == 1;
