@@ -77,8 +77,8 @@ modifies RequestChannel, VoteChannel, DecisionChannel, votes, decisions;
   call set_choice(PARTICIPANT2(One(k+1)));
 }
 
-yield invariant {:layer 5} YieldParticipant ({:linear} foo: One int);
-invariant DecisionChannel[foo->val][COMMIT()] > 0 || DecisionChannel[foo->val][ABORT()] > 0;
+yield invariant {:layer 5} YieldParticipant ({:linear} pid: One int);
+invariant DecisionChannel[pid->val][COMMIT()] > 0 || DecisionChannel[pid->val][ABORT()] > 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 

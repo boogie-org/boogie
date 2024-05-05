@@ -199,6 +199,7 @@ refines AtomicReadTopOfStack#Push;
 }
 
 right action {:layer 3} AtomicLoadNode(loc_t: Loc (Treiber X), loc_n: Loc (Node X)) returns (node: Node X)
+modifies ts;
 {
   assert Map_Contains(ts, loc_t);
   assert Map_Contains(Map_At(ts, loc_t)->stack, loc_n);
@@ -227,18 +228,43 @@ preserves call YieldInv#2(loc_t);
 }
 
 atomic action {:layer 1, 2} AtomicReadTopOfStack(loc_t: Loc (Treiber X)) returns (loc_n: Option (Loc (Node X)))
+modifies ts;
 {
-  assert Map_Contains(ts, loc_t);
-  loc_n := Map_At(ts, loc_t)->top;
+  var {:linear} one_loc_t: One (Loc (Treiber X));
+  var {:linear} treiber: Treiber X;
+  var {:linear} cell_t: Cell (Loc (Treiber X)) (Treiber X);
+
+  call cell_t := Map_Get(ts, loc_t);
+  call one_loc_t, treiber := Cell_Unpack(cell_t);
+  loc_n := treiber->top;
+  call cell_t := Cell_Pack(one_loc_t, treiber);
+  call Map_Put(ts, cell_t);
 }
 yield procedure {:layer 0} ReadTopOfStack(loc_t: Loc (Treiber X)) returns (loc_n: Option (Loc (Node X)));
 refines AtomicReadTopOfStack;
 
 atomic action {:layer 1,2} AtomicLoadNode#0(loc_t: Loc (Treiber X), loc_n: Loc (Node X)) returns (node: Node X)
+modifies ts;
 {
-  assume Map_Contains(ts, loc_t);
-  assume Set_Contains(Domain(ts, loc_t), loc_n);
-  node := Map_At(Map_At(ts, loc_t)->stack, loc_n);
+  var {:linear} one_loc_t: One (Loc (Treiber X));
+  var {:linear} treiber: Treiber X;
+  var {:linear} cell_t: Cell (Loc (Treiber X)) (Treiber X);
+  var top: Option (Loc (Node X));
+  var {:linear} stack: Map (Loc (Node X)) (Node X);
+  var {:linear} one_loc_n: One (Loc (Node X));
+  var {:linear} cell_n: Cell (Loc (Node X)) (Node X);
+
+  call cell_t := Map_Get(ts, loc_t);
+  call one_loc_t, treiber := Cell_Unpack(cell_t);
+  Treiber(top, stack) := treiber;
+  assume Map_Contains(stack, loc_n); // problematic assume
+  call cell_n := Map_Get(stack, loc_n);
+  call one_loc_n, node := Cell_Unpack(cell_n);
+  call cell_n := Cell_Pack(one_loc_n, node);
+  call Map_Put(stack, cell_n);
+  treiber := Treiber(top, stack);
+  call cell_t := Cell_Pack(one_loc_t, treiber);
+  call Map_Put(ts, cell_t);
 }
 yield procedure {:layer 0} LoadNode#0(loc_t: Loc (Treiber X), loc_n: Loc (Node X)) returns (node: Node X);
 refines AtomicLoadNode#0;
@@ -251,7 +277,6 @@ modifies ts;
   var {:linear} treiber: Treiber X;
   var {:linear} cell_t: Cell (Loc (Treiber X)) (Treiber X);
 
-  assert Map_Contains(ts, loc_t);
   call cell_t := Map_Get(ts, loc_t);
   call one_loc_t, treiber := Cell_Unpack(cell_t);
   call Map_Put(treiber->stack, cell_n);
@@ -270,7 +295,6 @@ modifies ts;
   var {:linear} cell_t: Cell (Loc (Treiber X)) (Treiber X);
   var {:linear} one_loc_t: One (Loc (Treiber X));
 
-  assert Map_Contains(ts, loc_t);
   call cell_t := Map_Get(ts, loc_t);
   call one_loc_t, treiber := Cell_Unpack(cell_t);
   if (old_loc_n == treiber->top) {
