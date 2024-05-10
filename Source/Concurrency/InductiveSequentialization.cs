@@ -16,6 +16,21 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.targetAction = targetAction;
       this.eliminatedActions = new HashSet<Action>(targetAction.ActionDecl.EliminatedActionDecls().Select(x => civlTypeChecker.Action(x)));
+      int countl = 0;
+      int countr = 0;
+      foreach(var elim in this.eliminatedActions){
+        if(elim.IsLeftMover){
+          countl++;
+        }
+        if(elim.IsRightMover)
+        {
+          countr++;
+        }
+      }
+      Console.WriteLine(this.eliminatedActions.Count);
+      Console.WriteLine(countl);
+      Console.WriteLine(countr);
+      //Based on counts decide whether to use IS1 or IS2
     }
 
     public IEnumerable<Action> EliminatedActions => eliminatedActions;
