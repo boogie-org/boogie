@@ -1,7 +1,11 @@
 // RUN: %parallel-boogie /lib:base /lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype Treiber<T> { Treiber(top: Option (Loc (Node T)), stack: Map (Loc (Node T)) (Node T)) }
+type TreiberNode _;
+type LocTreiberNode T = Loc (TreiberNode T);
+type StackElem T = Node (LocTreiberNode T) T;
+type StackMap T = Map (LocTreiberNode T) (StackElem T);
+datatype Treiber<T> { Treiber(top: Option (LocTreiberNode T), {:linear} stack: StackMap T) }
 
 type X;
 var ts: Map (Loc (Treiber X)) (Treiber X);
@@ -24,7 +28,7 @@ procedure {:inline 1} AtomicPopIntermediate(loc_t: Loc (Treiber X)) returns (x: 
 modifies ts;
 {
   var treiber: Treiber X;
-  var loc_n_opt: Option (Loc (Node X));
+  var loc_n_opt: Option (LocTreiberNode X);
   assert Map_Contains(ts, loc_t);
   treiber := Map_At(ts, loc_t);
   assume treiber->top is Some && Map_Contains(treiber->stack, treiber->top->t);
@@ -37,7 +41,7 @@ procedure {:inline 1} AtomicPushIntermediate(loc_t: Loc (Treiber X), x: X)
 modifies ts;
 {
   var treiber: Treiber X;
-  var loc_n: Loc (Node X);
+  var loc_n: LocTreiberNode X;
   assert Map_Contains(ts, loc_t);
   treiber := Map_At(ts, loc_t);
   assume !Map_Contains(treiber->stack, loc_n);
