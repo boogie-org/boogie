@@ -61,7 +61,7 @@ preserves call YieldInvDom#4();
   call {:layer 4} old_treiber := Copy(ts->val[loc_t]);
   call success := PushIntermediate(loc_t, x);
   if (success) {
-    call {:layer 4} FrameLemma(old_treiber, ts->val[loc_t]->stack);
+    call {:layer 4} FrameLemma(old_treiber, Treiber(old_treiber->top, ts->val[loc_t]->stack));
     call {:layer 4} Stack := Copy(Map_Update(Stack, loc_t, Vec_Append(Map_At(Stack, loc_t), x)));
     assert {:layer 4} ts->val[loc_t]->top != None();
     call {:layer 4} AbsLemma(ts->val[loc_t]);
@@ -358,11 +358,16 @@ if treiber->top == None() then
       Vec_Append(Abs(treiber'), n->val)))
 }
 
-pure procedure AbsCompute(treiber: Treiber X) returns (absStack: Vec X)
+pure procedure AbsCompute(treiber: Treiber X, treiber': Treiber X) returns (absStack: Vec X)
+requires treiber->top == treiber'->top;
+requires IsSubset(treiber->stack->dom->val, treiber'->stack->dom->val);
+requires MapIte(treiber->stack->dom->val, treiber->stack->val, MapConst(Default())) == MapIte(treiber->stack->dom->val, treiber'->stack->val, MapConst(Default()));
 requires Between(treiber->stack->val, treiber->top, treiber->top, None());
 requires IsSubset(BetweenSet(treiber->stack->val, treiber->top, None()), treiber->stack->dom->val);
 ensures absStack == AbsDefinition(treiber);
+ensures absStack == AbsDefinition(treiber');
 free ensures absStack == Abs(treiber);
+free ensures absStack == Abs(treiber');
 {
   var loc_n: Option (LocTreiberNode X);
   var n: StackElem X;
@@ -374,7 +379,7 @@ free ensures absStack == Abs(treiber);
       assert Map_Contains(treiber->stack, loc_n->t); // soundness of framing
       n := Map_At(treiber->stack, loc_n->t);
       assert Between(treiber->stack->val, loc_n, n->next, None()); // soundness of termination (for induction)
-      call absStack := AbsCompute(Treiber(n->next, treiber->stack));
+      call absStack := AbsCompute(Treiber(n->next, treiber->stack), Treiber(n->next, treiber'->stack));
       absStack := Vec_Append(absStack, n->val);
   }
 }
@@ -385,13 +390,17 @@ requires IsSubset(BetweenSet(treiber->stack->val, treiber->top, None()), treiber
 ensures Abs(treiber) == AbsDefinition(treiber);
 {
   var absStack: Vec X;
-  call absStack := AbsCompute(treiber);
+  call absStack := AbsCompute(treiber, treiber);
 }
 
-pure procedure FrameLemma(treiber: Treiber X, map': StackMap X);
+pure procedure FrameLemma(treiber: Treiber X, treiber': Treiber X)
+requires treiber->top == treiber'->top;
+requires IsSubset(treiber->stack->dom->val, treiber'->stack->dom->val);
+requires MapIte(treiber->stack->dom->val, treiber->stack->val, MapConst(Default())) == MapIte(treiber->stack->dom->val, treiber'->stack->val, MapConst(Default()));
 requires Between(treiber->stack->val, treiber->top, treiber->top, None());
 requires IsSubset(BetweenSet(treiber->stack->val, treiber->top, None()), treiber->stack->dom->val);
-requires IsSubset(treiber->stack->dom->val, map'->dom->val);
-requires MapIte(treiber->stack->dom->val, treiber->stack->val, MapConst(Default())) == 
-         MapIte(treiber->stack->dom->val, map'->val, MapConst(Default()));
-ensures Abs(treiber) == Abs(Treiber(treiber->top, map'));
+ensures Abs(treiber) == Abs(treiber');
+{
+  var absStack: Vec X;
+  call absStack := AbsCompute(treiber, treiber');
+}
