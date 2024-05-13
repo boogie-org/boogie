@@ -59,6 +59,8 @@ public class LinearRewriter
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "One_New":
+      case "One_To_Fractions":
+      case "Fractions_To_One":
       case "Cell_Pack":
       case "Cell_Unpack":
       case "Set_MakeEmpty":

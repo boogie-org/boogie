@@ -278,7 +278,8 @@ function {:inline} Map_Swap<T,U>(a: Map T U, t1: T, t2: T): Map T U
   (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
 }
 
-function {:inline} Map_WellFormed<T,U>(a: Map T U): bool {
+function {:inline} Map_WellFormed<T,U>(a: Map T U): bool
+{
   a->val == MapIte(a->dom->val, a->val, MapConst(Default()))
 }
 
@@ -293,6 +294,19 @@ datatype One<T> { One(val: T) }
 function {:inline} One_Collector<T>(a: One T): [T]bool
 {
   MapOne(a->val)
+}
+
+datatype Fraction<T, K> { Fraction(val: T, id: K, ids: [K]bool) }
+
+pure procedure {:inline 1} One_To_Fractions<T,K>({:linear_in} one_t: One T, ids: [K]bool) returns ({:linear} pieces: Set (Fraction T K))
+{
+  pieces := Set((lambda piece: Fraction T K :: piece->val == one_t->val && ids[piece->id] && piece->ids == ids));
+}
+
+pure procedure {:inline 1} Fractions_To_One<T,K>({:linear_out} one_t: One T, ids: [K]bool, {:linear_in} pieces: Set (Fraction T K))
+{
+  assert (forall piece: Fraction T K:: Set_Contains(pieces, piece) ==> piece->val == one_t->val && piece->ids == ids);
+  assert pieces == Set((lambda piece: Fraction T K :: piece->val == one_t->val && ids[piece->id] && piece->ids == ids));
 }
 
 /// singleton map
