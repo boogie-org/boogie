@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -lib:base -lib:node -noProc:Civl_Push_4 "%s" > "%t"
+// RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 datatype LocPiece { Left(), Right() }
@@ -20,7 +20,7 @@ function {:inline} Domain(ts: Map (Loc (Treiber X)) (Treiber X), loc_t: Loc (Tre
   ts->val[loc_t]->stack->dom
 }
 
-yield invariant {:layer 1} Yield1();
+yield invariant {:layer 1} Yield();
 
 yield invariant {:layer 2} TopInStack(loc_t: Loc (Treiber X));
 invariant Map_Contains(ts, loc_t);
@@ -46,12 +46,12 @@ yield invariant {:layer 4} StackDom();
 invariant Stack->dom == ts->dom;
 
 yield invariant {:layer 4} PushLocInStack(
-  loc_t: Loc (Treiber X), loc_n: Option (LocTreiberNode X), new_loc_n: LocTreiberNode X, {:linear} right_loc_piece: One (LocTreiberNode X));
+  loc_t: Loc (Treiber X), node: StackElem X, new_loc_n: LocTreiberNode X, {:linear} right_loc_piece: One (LocTreiberNode X));
 invariant Map_Contains(ts, loc_t);
 invariant Set_Contains(Domain(ts, loc_t), new_loc_n);
 invariant right_loc_piece->val == Fraction(new_loc_n->val, Right(), AllLocPieces);
 invariant new_loc_n == Fraction(new_loc_n->val, Left(), AllLocPieces);
-invariant (var t := ts->val[loc_t]; Map_At(t->stack, new_loc_n)->next == loc_n && !BetweenSet(t->stack->val, t->top, None())[new_loc_n]);
+invariant (var t := ts->val[loc_t]; Map_At(t->stack, new_loc_n) == node && !BetweenSet(t->stack->val, t->top, None())[new_loc_n]);
 
 atomic action {:layer 5} AtomicAlloc() returns (loc_t: Loc (Treiber X))
 modifies Stack;
@@ -108,7 +108,7 @@ preserves call StackDom();
   call {:layer 4} old_treiber := Copy(ts->val[loc_t]);
   call loc_n, new_loc_n, right_loc_piece := AllocNode#3(loc_t, x);
   call {:layer 4} FrameLemma(old_treiber, ts->val[loc_t]);
-  par ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, loc_n, new_loc_n, right_loc_piece);
+  par ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, Node(loc_n, x), new_loc_n, right_loc_piece);
   call success := WriteTopOfStack#0(loc_t, loc_n, Some(new_loc_n));
   if (success) {
     call {:layer 4} Stack := Copy(Map_Update(Stack, loc_t, Vec_Append(Map_At(Stack, loc_t), x)));
@@ -233,7 +233,7 @@ preserves call TopInStack(loc_t);
   }
   par LocInStack(loc_t, loc_n) | TopInStack(loc_t);
   call node := LoadNode#0(loc_t, loc_n->t);
-  call Yield1();
+  call Yield();
   Node(new_loc_n, x) := node;
   call success := WriteTopOfStack#0(loc_t, loc_n, new_loc_n);
 }
