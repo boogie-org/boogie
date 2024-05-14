@@ -16,6 +16,8 @@ type X; // module type parameter
 var {:layer 4, 5} Stack: Map (Loc (Treiber X)) (Vec X);
 var {:layer 0, 4} {:linear} ts: Map (Loc (Treiber X)) (Treiber X);
 
+/// Yield invariants
+
 function {:inline} Domain(ts: Map (Loc (Treiber X)) (Treiber X), loc_t: Loc (Treiber X)): Set (LocTreiberNode X) {
   ts->val[loc_t]->stack->dom
 }
@@ -52,6 +54,8 @@ invariant Set_Contains(Domain(ts, loc_t), new_loc_n);
 invariant right_loc_piece->val == Fraction(new_loc_n->val, Right(), AllLocPieces);
 invariant new_loc_n == Fraction(new_loc_n->val, Left(), AllLocPieces);
 invariant (var t := ts->val[loc_t]; Map_At(t->stack, new_loc_n) == node && !BetweenSet(t->stack->val, t->top, None())[new_loc_n]);
+
+/// Layered implementation
 
 atomic action {:layer 5} AtomicAlloc() returns (loc_t: Loc (Treiber X))
 modifies Stack;
@@ -303,7 +307,7 @@ yield procedure {:layer 0} ReadTopOfStack#0(loc_t: Loc (Treiber X)) returns (loc
 refines AtomicReadTopOfStack#0;
 
 atomic action {:layer 1,4} AtomicWriteTopOfStack#0(
-  loc_t: Loc (Treiber X), old_loc_n: Option (LocTreiberNode X), new_loc_n: Option (LocTreiberNode X)) returns (r: bool)
+  loc_t: Loc (Treiber X), old_loc_n: Option (LocTreiberNode X), new_loc_n: Option (LocTreiberNode X)) returns (success: bool)
 modifies ts;
 {
   var {:linear} treiber: Treiber X;
@@ -314,14 +318,15 @@ modifies ts;
   call one_loc_t, treiber := Cell_Unpack(cell_t);
   if (old_loc_n == treiber->top) {
     treiber->top := new_loc_n;
-    r := true;
+    success := true;
   } else {
-    r := false;
+    success := false;
   }
   call cell_t := Cell_Pack(one_loc_t, treiber);
   call Map_Put(ts, cell_t);
 }
-yield procedure {:layer 0} WriteTopOfStack#0(loc_t: Loc (Treiber X), old_loc_n: Option (LocTreiberNode X), new_loc_n: Option (LocTreiberNode X)) returns (r: bool);
+yield procedure {:layer 0} WriteTopOfStack#0(
+  loc_t: Loc (Treiber X), old_loc_n: Option (LocTreiberNode X), new_loc_n: Option (LocTreiberNode X)) returns (success: bool);
 refines AtomicWriteTopOfStack#0;
 
 atomic action {:layer 1,3} AtomicAllocNode#0(loc_t: Loc (Treiber X), {:linear_in} cell_n: Cell (LocTreiberNode X) (StackElem X))
@@ -348,9 +353,10 @@ modifies ts;
 yield procedure {:layer 0} AllocTreiber#0({:linear_in} cell_t: Cell (Loc (Treiber X)) (Treiber X));
 refines AtomicAllocTreiber#0;
 
-// Manual encoding of the termination proof for the abstraction
-function Abs(treiber: Treiber X): Vec X;
+/// Proof of abstraction with a manual encoding of termination
 
+// Abs and AbsDefinition together model the abstraction function
+function Abs(treiber: Treiber X): Vec X;
 function {:inline} AbsDefinition(treiber: Treiber X): Vec X {
 if treiber->top == None() then
   Vec_Empty() else
@@ -362,7 +368,8 @@ if treiber->top == None() then
 pure procedure AbsCompute(treiber: Treiber X, treiber': Treiber X) returns (absStack: Vec X)
 requires treiber->top == treiber'->top;
 requires IsSubset(treiber->stack->dom->val, treiber'->stack->dom->val);
-requires MapIte(treiber->stack->dom->val, treiber->stack->val, MapConst(Default())) == MapIte(treiber->stack->dom->val, treiber'->stack->val, MapConst(Default()));
+requires MapIte(treiber->stack->dom->val, treiber->stack->val, MapConst(Default())) ==
+         MapIte(treiber->stack->dom->val, treiber'->stack->val, MapConst(Default()));
 requires Between(treiber->stack->val, treiber->top, treiber->top, None());
 requires IsSubset(BetweenSet(treiber->stack->val, treiber->top, None()), treiber->stack->dom->val);
 ensures absStack == AbsDefinition(treiber);
@@ -385,7 +392,8 @@ free ensures absStack == Abs(treiber');
   }
 }
 
-// Useful lemmas
+/// Useful lemmas obtained by wrapping AbsCompute
+
 pure procedure AbsLemma(treiber: Treiber X)
 requires Between(treiber->stack->val, treiber->top, treiber->top, None());
 requires IsSubset(BetweenSet(treiber->stack->val, treiber->top, None()), treiber->stack->dom->val);
@@ -398,7 +406,8 @@ ensures Abs(treiber) == AbsDefinition(treiber);
 pure procedure FrameLemma(treiber: Treiber X, treiber': Treiber X)
 requires treiber->top == treiber'->top;
 requires IsSubset(treiber->stack->dom->val, treiber'->stack->dom->val);
-requires MapIte(treiber->stack->dom->val, treiber->stack->val, MapConst(Default())) == MapIte(treiber->stack->dom->val, treiber'->stack->val, MapConst(Default()));
+requires MapIte(treiber->stack->dom->val, treiber->stack->val, MapConst(Default())) ==
+         MapIte(treiber->stack->dom->val, treiber'->stack->val, MapConst(Default()));
 requires Between(treiber->stack->val, treiber->top, treiber->top, None());
 requires IsSubset(BetweenSet(treiber->stack->val, treiber->top, None()), treiber->stack->dom->val);
 ensures Abs(treiber) == Abs(treiber');
