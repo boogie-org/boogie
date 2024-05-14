@@ -262,7 +262,7 @@ right action {:layer 2,3} AtomicLoadNode#1(loc_t: Loc (Treiber X), loc_n: LocTre
   node := Map_At(Map_At(ts, loc_t)->stack, loc_n);
 }
 
-// primitives
+/// Primitives
 
 atomic action {:layer 1} AtomicLoadNode#0(loc_t: Loc (Treiber X), loc_n: LocTreiberNode X) returns (node: StackElem X)
 modifies ts;
@@ -384,9 +384,11 @@ free ensures absStack == Abs(treiber');
       absStack := Vec_Empty();
   } else {
       loc_n := treiber->top;
-      assert Map_Contains(treiber->stack, loc_n->t); // soundness of framing
+      assert Map_Contains(treiber->stack, loc_n->t);
       n := Map_At(treiber->stack, loc_n->t);
-      assert Between(treiber->stack->val, loc_n, n->next, None()); // soundness of termination (for induction)
+      // Use well-founded list reachability to prove that recursion will terminate:
+      // treiber@caller->top --> treiber@callee->top --> None()
+      assert Between(treiber->stack->val, loc_n, n->next, None());
       call absStack := AbsCompute(Treiber(n->next, treiber->stack), Treiber(n->next, treiber'->stack));
       absStack := Vec_Append(absStack, n->val);
   }
