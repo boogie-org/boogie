@@ -296,17 +296,17 @@ function {:inline} One_Collector<T>(a: One T): [T]bool
   MapOne(a->val)
 }
 
-datatype Fraction<T, K> { Fraction(val: T, id: K, ids: [K]bool) }
+datatype Fraction<T, K> { Fraction(val: T, id: K, ids: Set K) }
 
-pure procedure {:inline 1} One_To_Fractions<T,K>({:linear_in} one_t: One T, ids: [K]bool) returns ({:linear} pieces: Set (Fraction T K))
+pure procedure {:inline 1} One_To_Fractions<T,K>({:linear_in} one_t: One T, ids: Set K) returns ({:linear} pieces: Set (Fraction T K))
 {
-  pieces := Set((lambda piece: Fraction T K :: piece->val == one_t->val && ids[piece->id] && piece->ids == ids));
+  pieces := Set((lambda piece: Fraction T K :: piece->val == one_t->val && Set_Contains(ids, piece->id) && piece->ids == ids));
 }
 
-pure procedure {:inline 1} Fractions_To_One<T,K>({:linear_out} one_t: One T, ids: [K]bool, {:linear_in} pieces: Set (Fraction T K))
+pure procedure {:inline 1} Fractions_To_One<T,K>({:linear_out} one_t: One T, ids: Set K, {:linear_in} pieces: Set (Fraction T K))
 {
   assert (forall piece: Fraction T K:: Set_Contains(pieces, piece) ==> piece->val == one_t->val && piece->ids == ids);
-  assert pieces == Set((lambda piece: Fraction T K :: piece->val == one_t->val && ids[piece->id] && piece->ids == ids));
+  assert pieces == Set((lambda piece: Fraction T K :: piece->val == one_t->val && Set_Contains(ids, piece->id) && piece->ids == ids));
 }
 
 /// singleton map
