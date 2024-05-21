@@ -122,14 +122,14 @@ namespace Microsoft.Boogie
           {
             moverChecking.CreateRightMoverCheckers(sequentialization.TargetAction, action);
           }
-          foreach (var rightMover in sequentialization.EliminatedActions) // add M
+          foreach (var rightMover in sequentialization.EliminatedActions)
           {
             foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
             {
               moverChecking.CreateRightMoverCheckers(rightMover, action);
             }
           }
-        }
+        }  
       }
     }
 
@@ -289,7 +289,7 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.UsedGlobalVarsInAction);
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      List<Requires> requires =
+      List<Requires> requires = 
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
             .Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
@@ -362,7 +362,7 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.UsedGlobalVarsInAction);
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      List<Requires> requires =
+      List<Requires> requires = 
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
             .Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
