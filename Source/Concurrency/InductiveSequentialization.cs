@@ -20,6 +20,7 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Action> EliminatedActions => eliminatedActions;
 
+    public Action TargetAction => targetAction;
     public int Layer => targetAction.LayerRange.UpperLayer;
 
     protected abstract List<Declaration> GenerateCheckers();
@@ -174,11 +175,16 @@ namespace Microsoft.Boogie
       return cmd;
     }
   }
-
+  
+  public enum InductiveSequentializationRule
+  {
+    IS1,
+    IS2
+  }
   public class InductiveSequentialization : Sequentialization
   {
     private Action invariantAction;
-    private int rule;
+    public InductiveSequentializationRule rule;
     private IdentifierExpr choice;
     private Dictionary<CtorType, Variable> newPAs;
 
@@ -189,6 +195,12 @@ namespace Microsoft.Boogie
       // - the modified set of each of each eliminated and abstract action associated with this invariant.
       // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
       this.invariantAction = invariantAction;
+      if(invariantAction.Name.StartsWith("left")){
+        rule = InductiveSequentializationRule.IS1;
+      }
+      else if(invariantAction.Name.StartsWith("right")){
+        rule = InductiveSequentializationRule.IS2;
+      }
       choice = Expr.Ident(invariantAction.ImplWithChoice.OutParams.Last());
       newPAs = invariantAction.PendingAsyncs.ToDictionary(decl => decl.PendingAsyncType,
         decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
@@ -290,9 +302,9 @@ namespace Microsoft.Boogie
 
       var subst = targetAction.GetSubstitution(invariantAction); 
       var cmds = targetAction.GetGateAsserts(subst,
-        $"Gate of {targetAction.Name} fails in IS base check against invariant {invariantAction.Name}").ToList<Cmd>();
+        $"Gate of {targetAction.Name} fails in IS{rule} base check against invariant {invariantAction.Name}").ToList<Cmd>();
  
-      // Construct call to inputAction
+      // Construct call to targetAction
       var pendingAsyncTypeToOutputParamIndex = invariantAction.PendingAsyncs.Select(x => x.PendingAsyncType)
           .Zip(Enumerable.Range(invariantAction.PendingAsyncStartIndex, invariantAction.PendingAsyncs.Count()))
           .ToDictionary(tuple => tuple.Item1, tuple => tuple.Item2);
@@ -300,6 +312,10 @@ namespace Microsoft.Boogie
       outputVars.AddRange(targetAction.PendingAsyncs.Select(action =>
         invariantAction.Impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.PendingAsyncType]]));
       cmds.Add(CmdHelper.CallCmd(targetAction.Impl.Proc, invariantAction.Impl.InParams, outputVars));
+      
+      if (rule == InductiveSequentializationRule.IS2){
+         cmds.Add(CmdHelper.AssumeCmd(YesPendingAsyncs));
+      }
 
       // Assign empty multiset to the rest
       var remainderPendingAsyncs = invariantAction.PendingAsyncs.Except(targetAction.PendingAsyncs);
@@ -315,9 +331,9 @@ namespace Microsoft.Boogie
 
       var frame = new HashSet<Variable>(invariantAction.ModifiedGlobalVars);
       cmds.Add(GetCheck(targetAction.tok, invariantAction.GetTransitionRelation(civlTypeChecker, frame),
-        $"IS base of {targetAction.Name} failed"));
+        $"IS{rule} base of {targetAction.Name} failed"));
 
-      return GetCheckerTuple($"IS_base_{targetAction.Name}", requires, invariantAction.Impl.InParams,
+      return GetCheckerTuple($"IS{rule}_base_{targetAction.Name}", requires, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams, new List<Variable>(), cmds);
     }
 
@@ -328,16 +344,35 @@ namespace Microsoft.Boogie
       var requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
 
       var cmds = invariantAction.GetGateAsserts(null,
-        $"Gate of {invariantAction.Name} fails in IS conclusion check against {refinedAction.Name}").ToList<Cmd>();
+        $"Gate of {invariantAction.Name} fails in IS{rule} conclusion check against {refinedAction.Name}").ToList<Cmd>();
       cmds.Add(CmdHelper.CallCmd(invariantAction.Impl.Proc, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams));
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
       var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
       cmds.Add(GetCheck(targetAction.tok, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)),
-        $"IS conclusion of {targetAction.Name} failed"));
+        $"IS{rule} conclusion of {targetAction.Name} failed"));
 
-      return GetCheckerTuple($"IS_conclusion_{targetAction.Name}", requires, invariantAction.Impl.InParams,
+      return GetCheckerTuple($"IS{rule}_conclusion_{targetAction.Name}", requires, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams, new List<Variable>(), cmds);
+    }
+
+    private List<Declaration> GenerateConclusionChecker2()
+    {
+      var refinedAction = targetAction.RefinedAction;
+      var subst = refinedAction.GetSubstitution(targetAction);
+      var requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
+
+      var cmds = targetAction.GetGateAsserts(null,
+        $"Gate of {targetAction.Name} fails in IS{rule} conclusion2 check against {refinedAction.Name}").ToList<Cmd>();
+      cmds.Add(CmdHelper.CallCmd(targetAction.Impl.Proc, targetAction.Impl.InParams,
+        targetAction.Impl.OutParams));
+      cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
+      var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
+      cmds.Add(GetCheck(targetAction.tok, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)),
+        $"IS{rule} conclusion2 of {targetAction.Name} failed"));
+
+      return GetCheckerTuple($"IS{rule}_conclusion2_{targetAction.Name}", requires, targetAction.Impl.InParams,
+        targetAction.Impl.OutParams, new List<Variable>(), cmds);
     }
 
     private List<Declaration> GenerateStepChecker(Action pendingAsync)
@@ -360,7 +395,7 @@ namespace Microsoft.Boogie
         inputExprs.Add(ExprHelper.FieldAccess(Choice(pendingAsyncType), pendingAsyncCtor.InParams[i].Name));
       }
       cmds.AddRange(pendingAsync.GetGateAsserts(Substituter.SubstitutionFromDictionary(pendingAsync.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
-        $"Gate of {pendingAsync.Name} fails in IS induction step for invariant {invariantAction.Name}"));
+        $"Gate of {pendingAsync.Name} fails in IS{rule} induction step for invariant {invariantAction.Name}"));
       cmds.AddRange(Preconditions(pendingAsync, Substituter.SubstitutionFromDictionary(pendingAsync.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
 
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
@@ -385,9 +420,9 @@ namespace Microsoft.Boogie
 
       var frame = new HashSet<Variable>(invariantAction.ModifiedGlobalVars);
       cmds.Add(GetCheck(invariantAction.tok, invariantAction.GetTransitionRelation(civlTypeChecker, frame),
-        $"IS step of {invariantAction.Name} with {pendingAsync.Name} failed"));
+        $"IS{rule} step of {invariantAction.Name} with {pendingAsync.Name} failed"));
 
-      return GetCheckerTuple($"IS_step_{invariantAction.Name}_{pendingAsync.Name}", requires,
+      return GetCheckerTuple($"IS{rule}_step_{invariantAction.Name}_{pendingAsync.Name}", requires,
         invariantAction.ImplWithChoice.InParams, invariantAction.ImplWithChoice.OutParams, locals, cmds);
     }
 
@@ -551,6 +586,17 @@ namespace Microsoft.Boogie
       }
     }
 
+    private Expr YesPendingAsyncs
+    {
+      get
+      {
+        var expr = Expr.And(eliminatedActions.Select(action => Expr.Neq(PAs(action.ActionDecl.PendingAsyncType),
+          ExprHelper.FunctionCall(action.ActionDecl.PendingAsyncConst, Expr.Literal(0)))));
+        expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
+        return expr;
+      }
+    }
+
     private AssignCmd RemoveChoice(CtorType pendingAsyncType)
     {
       var rhs = Expr.Sub(Expr.Select(PAs(pendingAsyncType), Choice(pendingAsyncType)), Expr.Literal(1));
@@ -560,7 +606,7 @@ namespace Microsoft.Boogie
     protected override List<Declaration> GenerateCheckers()
     {
       var decls = new List<Declaration>();
-      if(this.rule == 1){
+      if(rule == InductiveSequentializationRule.IS1){
         decls.AddRange(GenerateBaseCaseChecker());
         decls.AddRange(GenerateConclusionChecker());
         foreach (var elim in eliminatedActions)
@@ -568,12 +614,19 @@ namespace Microsoft.Boogie
           decls.AddRange(GenerateStepChecker(elim));
         }
       }
-      if (this.rule == 2){
-      decls.AddRange(GenerateTTChecker(targetAction));
-      foreach (var elim in eliminatedActions)
+      else if (rule == InductiveSequentializationRule.IS2){
+        decls.AddRange(GenerateTTChecker(targetAction));
+        foreach (var elim in eliminatedActions)
         {
           decls.AddRange(GenerateTTChecker(elim));
         }
+        decls.AddRange(GenerateBaseCaseChecker());
+        foreach (var elim in eliminatedActions)
+        {
+          decls.AddRange(GenerateStepChecker(elim));
+        }
+        decls.AddRange(GenerateConclusionChecker());
+        decls.AddRange(GenerateConclusionChecker2());
       }
       return decls;
     }
