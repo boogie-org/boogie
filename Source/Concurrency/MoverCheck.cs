@@ -83,34 +83,51 @@ namespace Microsoft.Boogie
 
       foreach (var sequentialization in civlTypeChecker.Sequentializations)
       {
-        foreach (var leftMover in sequentialization.EliminatedActions)
+        if (sequentialization is InlineSequentialization || (sequentialization is InductiveSequentialization && ((InductiveSequentialization)sequentialization).rule == InductiveSequentializationRule.IS1))
+        {
+          foreach (var leftMover in sequentialization.EliminatedActions)
+          {
+            foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
+            {
+              var moverCheckContext1 = new MoverCheckContext
+              {
+                layer = sequentialization.Layer,
+                extraAssumptions = sequentialization.GenerateMoverCheckAssumptions(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
+              };
+              var moverCheckContext2 = new MoverCheckContext
+              {
+                layer = sequentialization.Layer,
+                extraAssumptions = sequentialization.GenerateMoverCheckAssumptions(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
+              };
+              moverChecking.CreateCommutativityChecker(action, leftMover, moverCheckContext1);
+              moverChecking.CreateGatePreservationChecker(leftMover, action, moverCheckContext2);
+              moverChecking.CreateFailurePreservationChecker(action, leftMover, moverCheckContext1);
+            }
+            if (!leftMover.IsLeftMover)
+            {
+              var subst = Substituter.SubstitutionFromDictionary(
+                leftMover.ActionDecl.InParams.Zip(leftMover.Impl.InParams.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
+              var moverCheckContext = new MoverCheckContext
+              {
+                layer = sequentialization.Layer,
+                extraAssumptions = sequentialization.Preconditions(leftMover, subst).Select(assertCmd => assertCmd.Expr)
+              };
+              moverChecking.CreateCooperationChecker(leftMover, moverCheckContext);
+            }
+          }
+        }
+        if (sequentialization is InductiveSequentialization && ((InductiveSequentialization)sequentialization).rule == InductiveSequentializationRule.IS2)
         {
           foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
           {
-            var moverCheckContext1 = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateMoverCheckAssumptions(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
-            };
-            var moverCheckContext2 = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateMoverCheckAssumptions(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
-            };
-            moverChecking.CreateCommutativityChecker(action, leftMover, moverCheckContext1);
-            moverChecking.CreateGatePreservationChecker(leftMover, action, moverCheckContext2);
-            moverChecking.CreateFailurePreservationChecker(action, leftMover, moverCheckContext1);
+            moverChecking.CreateRightMoverCheckers(sequentialization.TargetAction, action);
           }
-          if (!leftMover.IsLeftMover)
+          foreach (var rightMover in sequentialization.EliminatedActions) // add M
           {
-            var subst = Substituter.SubstitutionFromDictionary(
-              leftMover.ActionDecl.InParams.Zip(leftMover.Impl.InParams.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-            var moverCheckContext = new MoverCheckContext
+            foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
             {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.Preconditions(leftMover, subst).Select(assertCmd => assertCmd.Expr)
-            };
-            moverChecking.CreateCooperationChecker(leftMover, moverCheckContext);
+              moverChecking.CreateRightMoverCheckers(rightMover, action);
+            }
           }
         }
       }
@@ -272,7 +289,7 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.UsedGlobalVarsInAction);
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      List<Requires> requires = 
+      List<Requires> requires =
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
             .Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
@@ -345,7 +362,7 @@ namespace Microsoft.Boogie
       frame.UnionWith(second.UsedGlobalVarsInAction);
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      List<Requires> requires = 
+      List<Requires> requires =
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
             .Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
