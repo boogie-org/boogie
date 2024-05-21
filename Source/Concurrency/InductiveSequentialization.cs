@@ -20,9 +20,8 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Action> EliminatedActions => eliminatedActions;
 
-    public Action TargetAction => targetAction;
     public int Layer => targetAction.LayerRange.UpperLayer;
-
+    public Action TargetAction => targetAction;
     protected abstract List<Declaration> GenerateCheckers();
 
     public virtual IEnumerable<Expr> GenerateMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
@@ -175,7 +174,6 @@ namespace Microsoft.Boogie
       return cmd;
     }
   }
-  
   public enum InductiveSequentializationRule
   {
     IS1,
@@ -183,8 +181,8 @@ namespace Microsoft.Boogie
   }
   public class InductiveSequentialization : Sequentialization
   {
-    private Action invariantAction;
     public InductiveSequentializationRule rule;
+    private Action invariantAction;
     private IdentifierExpr choice;
     private Dictionary<CtorType, Variable> newPAs;
 
@@ -195,10 +193,12 @@ namespace Microsoft.Boogie
       // - the modified set of each of each eliminated and abstract action associated with this invariant.
       // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
       this.invariantAction = invariantAction;
-      if(invariantAction.Name.StartsWith("left")){
+      if (invariantAction.Name.StartsWith("left"))
+      {
         rule = InductiveSequentializationRule.IS1;
       }
-      else if(invariantAction.Name.StartsWith("right")){
+      else if (invariantAction.Name.StartsWith("right"))
+      {
         rule = InductiveSequentializationRule.IS2;
       }
       choice = Expr.Ident(invariantAction.ImplWithChoice.OutParams.Last());
@@ -206,40 +206,43 @@ namespace Microsoft.Boogie
         decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
     }
 
-  private List<Declaration> GenerateTTChecker(Action act){
+    private List<Declaration> GenerateTTChecker(Action act)
+    {
       var cmds = new List<Cmd>();
       var requires = new List<Requires>();
       cmds.Add(CmdHelper.CallCmd(act.Impl.Proc, act.Impl.InParams, act.Impl.OutParams));
-     
+
       IEnumerable<string> elim_action_names = this.eliminatedActions.Select(x => x.Name);
       var listElim = new List<Variable>();
       var listNotElim = new List<Variable>();
 
       foreach (var item in act.Impl.OutParams)
-      {       
-          if (elim_action_names.Contains(item.Name.Remove(0,9)))
-          {
-              listElim.Add(item);
-          }
-          else
-          {
-              listNotElim.Add(item);
-          }
+      {
+        if (elim_action_names.Contains(item.Name.Remove(0, 9)))
+        {
+          listElim.Add(item);
+        }
+        else
+        {
+          listNotElim.Add(item);
+        }
       }
 
       Expr exprlhs = Expr.False;
-      foreach(var outParam in listElim){
-        var outAction = civlTypeChecker.AtomicActions.Single(s => s.Name == outParam.Name.Remove(0,9));
+      foreach (var outParam in listElim)
+      {
+        var outAction = civlTypeChecker.AtomicActions.Single(s => s.Name == outParam.Name.Remove(0, 9));
         var expr = Expr.Neq(Expr.Ident(outParam), ExprHelper.FunctionCall(outAction.ActionDecl.PendingAsyncConst, Expr.Literal(0)));
         exprlhs = Expr.Or(exprlhs, expr);
-      } 
+      }
       Expr exprrhs = Expr.True;
-      foreach(var outParam in listNotElim){
-        var outAction = civlTypeChecker.AtomicActions.Single(s => s.Name == outParam.Name.Remove(0,9));
+      foreach (var outParam in listNotElim)
+      {
+        var outAction = civlTypeChecker.AtomicActions.Single(s => s.Name == outParam.Name.Remove(0, 9));
         var expr = Expr.Eq(Expr.Ident(outParam), ExprHelper.FunctionCall(outAction.ActionDecl.PendingAsyncConst, Expr.Literal(0)));
         exprrhs = Expr.And(exprrhs, expr);
       }
-      var final_expr = Expr.Imp(exprlhs, exprrhs); 
+      var final_expr = Expr.Imp(exprlhs, exprrhs);
       cmds.Add(GetCheck(act.tok, final_expr, "TT checker failed"));
 
       List<Block> checkerBlocks = new List<Block>(listElim.Count);
@@ -247,16 +250,16 @@ namespace Microsoft.Boogie
 
       foreach (var outParam in listElim)
       {
-        var paName = outParam.Name.Remove(0,9);
-        var outAction = civlTypeChecker.AtomicActions.Single(s => s.Name == outParam.Name.Remove(0,9));
+        var paName = outParam.Name.Remove(0, 9);
+        var outAction = civlTypeChecker.AtomicActions.Single(s => s.Name == outParam.Name.Remove(0, 9));
         var paLocal = civlTypeChecker.LocalVariable($"temp_{paName}", outAction.ActionDecl.PendingAsyncType);
         locals.Add(paLocal);
         var pendingAsyncType = outAction.ActionDecl.PendingAsyncType;
         var pendingAsyncCtor = outAction.ActionDecl.PendingAsyncCtor;
-        Expr assume_cmd =  Expr.Ge(Expr.Select(Expr.Ident(outParam), Expr.Ident(paLocal)), Expr.Literal(1));
+        Expr assume_cmd = Expr.Ge(Expr.Select(Expr.Ident(outParam), Expr.Ident(paLocal)), Expr.Literal(1));
         List<Cmd> cmds2 = new List<Cmd>();
         cmds2.Add(CmdHelper.AssumeCmd(assume_cmd));
-      
+
         List<Expr> inputExprs = new List<Expr>();
         for (int i = 0; i < outAction.Impl.InParams.Count; i++)
         {
@@ -281,29 +284,29 @@ namespace Microsoft.Boogie
 
       Procedure proc = DeclHelper.Procedure(
         checkerName,
-        act.Impl.InParams, 
-        act.Impl.OutParams, 
-        requires, 
-        act.ModifiedGlobalVars.Select(Expr.Ident).ToList(), 
+        act.Impl.InParams,
+        act.Impl.OutParams,
+        requires,
+        act.ModifiedGlobalVars.Select(Expr.Ident).ToList(),
         new List<Ensures>());
-      Implementation impl= DeclHelper.Implementation(
+      Implementation impl = DeclHelper.Implementation(
         proc,
-        proc.InParams, 
-        proc.OutParams, 
-        locals, 
+        proc.InParams,
+        proc.OutParams,
+        locals,
         blocks);
 
       return new List<Declaration>(new Declaration[] { proc, impl });
-  }
+    }
 
     private List<Declaration> GenerateBaseCaseChecker()
-    { 
+    {
       var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr)).ToList();
 
-      var subst = targetAction.GetSubstitution(invariantAction); 
+      var subst = targetAction.GetSubstitution(invariantAction);
       var cmds = targetAction.GetGateAsserts(subst,
-        $"Gate of {targetAction.Name} fails in IS{rule} base check against invariant {invariantAction.Name}").ToList<Cmd>();
- 
+        $"Gate of {targetAction.Name} fails in {rule} base check against invariant {invariantAction.Name}").ToList<Cmd>();
+
       // Construct call to targetAction
       var pendingAsyncTypeToOutputParamIndex = invariantAction.PendingAsyncs.Select(x => x.PendingAsyncType)
           .Zip(Enumerable.Range(invariantAction.PendingAsyncStartIndex, invariantAction.PendingAsyncs.Count()))
@@ -312,10 +315,6 @@ namespace Microsoft.Boogie
       outputVars.AddRange(targetAction.PendingAsyncs.Select(action =>
         invariantAction.Impl.OutParams[pendingAsyncTypeToOutputParamIndex[action.PendingAsyncType]]));
       cmds.Add(CmdHelper.CallCmd(targetAction.Impl.Proc, invariantAction.Impl.InParams, outputVars));
-      
-      if (rule == InductiveSequentializationRule.IS2){
-         cmds.Add(CmdHelper.AssumeCmd(YesPendingAsyncs));
-      }
 
       // Assign empty multiset to the rest
       var remainderPendingAsyncs = invariantAction.PendingAsyncs.Except(targetAction.PendingAsyncs);
@@ -331,9 +330,9 @@ namespace Microsoft.Boogie
 
       var frame = new HashSet<Variable>(invariantAction.ModifiedGlobalVars);
       cmds.Add(GetCheck(targetAction.tok, invariantAction.GetTransitionRelation(civlTypeChecker, frame),
-        $"IS{rule} base of {targetAction.Name} failed"));
+        $"{rule} base of {targetAction.Name} failed"));
 
-      return GetCheckerTuple($"IS{rule}_base_{targetAction.Name}", requires, invariantAction.Impl.InParams,
+      return GetCheckerTuple($"{rule}_base_{targetAction.Name}", requires, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams, new List<Variable>(), cmds);
     }
 
@@ -344,35 +343,16 @@ namespace Microsoft.Boogie
       var requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
 
       var cmds = invariantAction.GetGateAsserts(null,
-        $"Gate of {invariantAction.Name} fails in IS{rule} conclusion check against {refinedAction.Name}").ToList<Cmd>();
+        $"Gate of {invariantAction.Name} fails in {rule} conclusion check against {refinedAction.Name}").ToList<Cmd>();
       cmds.Add(CmdHelper.CallCmd(invariantAction.Impl.Proc, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams));
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
       var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
       cmds.Add(GetCheck(targetAction.tok, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)),
-        $"IS{rule} conclusion of {targetAction.Name} failed"));
+        $"{rule} conclusion of {targetAction.Name} failed"));
 
-      return GetCheckerTuple($"IS{rule}_conclusion_{targetAction.Name}", requires, invariantAction.Impl.InParams,
+      return GetCheckerTuple($"{rule}_conclusion_{targetAction.Name}", requires, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams, new List<Variable>(), cmds);
-    }
-
-    private List<Declaration> GenerateConclusionChecker2()
-    {
-      var refinedAction = targetAction.RefinedAction;
-      var subst = refinedAction.GetSubstitution(targetAction);
-      var requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
-
-      var cmds = targetAction.GetGateAsserts(null,
-        $"Gate of {targetAction.Name} fails in IS{rule} conclusion2 check against {refinedAction.Name}").ToList<Cmd>();
-      cmds.Add(CmdHelper.CallCmd(targetAction.Impl.Proc, targetAction.Impl.InParams,
-        targetAction.Impl.OutParams));
-      cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
-      var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
-      cmds.Add(GetCheck(targetAction.tok, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)),
-        $"IS{rule} conclusion2 of {targetAction.Name} failed"));
-
-      return GetCheckerTuple($"IS{rule}_conclusion2_{targetAction.Name}", requires, targetAction.Impl.InParams,
-        targetAction.Impl.OutParams, new List<Variable>(), cmds);
     }
 
     private List<Declaration> GenerateStepChecker(Action pendingAsync)
@@ -395,7 +375,7 @@ namespace Microsoft.Boogie
         inputExprs.Add(ExprHelper.FieldAccess(Choice(pendingAsyncType), pendingAsyncCtor.InParams[i].Name));
       }
       cmds.AddRange(pendingAsync.GetGateAsserts(Substituter.SubstitutionFromDictionary(pendingAsync.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
-        $"Gate of {pendingAsync.Name} fails in IS{rule} induction step for invariant {invariantAction.Name}"));
+        $"Gate of {pendingAsync.Name} fails in {rule} induction step for invariant {invariantAction.Name}"));
       cmds.AddRange(Preconditions(pendingAsync, Substituter.SubstitutionFromDictionary(pendingAsync.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
 
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
@@ -420,9 +400,9 @@ namespace Microsoft.Boogie
 
       var frame = new HashSet<Variable>(invariantAction.ModifiedGlobalVars);
       cmds.Add(GetCheck(invariantAction.tok, invariantAction.GetTransitionRelation(civlTypeChecker, frame),
-        $"IS{rule} step of {invariantAction.Name} with {pendingAsync.Name} failed"));
+        $"{rule} step of {invariantAction.Name} with {pendingAsync.Name} failed"));
 
-      return GetCheckerTuple($"IS{rule}_step_{invariantAction.Name}_{pendingAsync.Name}", requires,
+      return GetCheckerTuple($"{rule}_step_{invariantAction.Name}_{pendingAsync.Name}", requires,
         invariantAction.ImplWithChoice.InParams, invariantAction.ImplWithChoice.OutParams, locals, cmds);
     }
 
@@ -586,17 +566,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    private Expr YesPendingAsyncs
-    {
-      get
-      {
-        var expr = Expr.And(eliminatedActions.Select(action => Expr.Neq(PAs(action.ActionDecl.PendingAsyncType),
-          ExprHelper.FunctionCall(action.ActionDecl.PendingAsyncConst, Expr.Literal(0)))));
-        expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
-        return expr;
-      }
-    }
-
     private AssignCmd RemoveChoice(CtorType pendingAsyncType)
     {
       var rhs = Expr.Sub(Expr.Select(PAs(pendingAsyncType), Choice(pendingAsyncType)), Expr.Literal(1));
@@ -606,27 +575,19 @@ namespace Microsoft.Boogie
     protected override List<Declaration> GenerateCheckers()
     {
       var decls = new List<Declaration>();
-      if(rule == InductiveSequentializationRule.IS1){
-        decls.AddRange(GenerateBaseCaseChecker());
-        decls.AddRange(GenerateConclusionChecker());
-        foreach (var elim in eliminatedActions)
-        {
-          decls.AddRange(GenerateStepChecker(elim));
-        }
+      decls.AddRange(GenerateBaseCaseChecker());
+      decls.AddRange(GenerateConclusionChecker());
+      foreach (var elim in eliminatedActions)
+      {
+        decls.AddRange(GenerateStepChecker(elim));
       }
-      else if (rule == InductiveSequentializationRule.IS2){
+      if (rule == InductiveSequentializationRule.IS2)
+      {
         decls.AddRange(GenerateTTChecker(targetAction));
         foreach (var elim in eliminatedActions)
         {
           decls.AddRange(GenerateTTChecker(elim));
         }
-        decls.AddRange(GenerateBaseCaseChecker());
-        foreach (var elim in eliminatedActions)
-        {
-          decls.AddRange(GenerateStepChecker(elim));
-        }
-        decls.AddRange(GenerateConclusionChecker());
-        decls.AddRange(GenerateConclusionChecker2());
       }
       return decls;
     }
