@@ -1,3 +1,6 @@
+// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 type Value;
 
 type Tid;
