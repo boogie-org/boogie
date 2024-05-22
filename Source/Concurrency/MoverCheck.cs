@@ -83,7 +83,7 @@ namespace Microsoft.Boogie
 
       foreach (var sequentialization in civlTypeChecker.Sequentializations)
       {
-        if (sequentialization is InlineSequentialization || (sequentialization is InductiveSequentialization && ((InductiveSequentialization)sequentialization).rule == InductiveSequentializationRule.IS1))
+        if (sequentialization is InlineSequentialization || (sequentialization is InductiveSequentialization sequentialization1 && sequentialization1.rule == InductiveSequentializationRule.ISL))
         {
           foreach (var leftMover in sequentialization.EliminatedActions)
           {
@@ -116,7 +116,7 @@ namespace Microsoft.Boogie
             }
           }
         }
-        if (sequentialization is InductiveSequentialization && ((InductiveSequentialization)sequentialization).rule == InductiveSequentializationRule.IS2)
+        if (sequentialization is InductiveSequentialization sequentialization2 && sequentialization2.rule == InductiveSequentializationRule.ISR)
         {
           foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
           {
