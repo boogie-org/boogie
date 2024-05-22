@@ -9,12 +9,10 @@ datatype StampedValue {
 const n: int;
 axiom n >= 1;
 
-
 var {:layer 0,2} mem: [int]StampedValue;
 var {:layer 0,2} r1: [Tid][int]StampedValue; 
 
-
-// M =  main_s , \elim = read_s, I = Inv, M' = main_s'
+// M =  main_f , \elim = read_f, I = Inv, M' = main_f'
 action {:layer 1} main_f({:linear_in} tid: One Tid)
 refines {:IS2_right} main_f' using right_Inv;
 creates read_f;
