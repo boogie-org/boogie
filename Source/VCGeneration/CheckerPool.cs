@@ -9,7 +9,7 @@ namespace VC
 {
   public class CheckerPool
   {
-    private readonly ConcurrentBag<Checker> availableCheckers = new();
+    private readonly ConcurrentStack<Checker> availableCheckers = new();
     private readonly SemaphoreSlim checkersSemaphore;
     private bool disposed;
 
@@ -29,7 +29,7 @@ namespace VC
 
       await checkersSemaphore.WaitAsync(cancellationToken);
       try {
-        if (!availableCheckers.TryTake(out var checker)) {
+        if (!availableCheckers.TryPop(out var checker)) {
           checker ??= CreateNewChecker();
         }
         PrepareChecker(program, split, checker);
@@ -57,7 +57,7 @@ namespace VC
       lock(availableCheckers)
       {
         disposed = true;
-        foreach (var checker in availableCheckers.ToArray()) {
+        while (availableCheckers.TryPop(out var checker)) {
           checker.Close();
         }
       }
@@ -86,7 +86,7 @@ namespace VC
           checker.Close();
           return;
         }
-        availableCheckers.Add(checker);
+        availableCheckers.Push(checker);
         checkersSemaphore.Release();
       }
     }

@@ -16,36 +16,14 @@ public class AsyncQueueTest
     var queue = new AsyncQueue<int>();
     var firstValue = 1;
     var secondValue = 2;
-    var waitingDequeueTask = queue.Dequeue(CancellationToken.None);
+    var waitingDequeueTask = queue.Dequeue();
     queue.Enqueue(firstValue);
     queue.Enqueue(secondValue);
     var firstResult = await waitingDequeueTask;
-    var secondResult = await queue.Dequeue(CancellationToken.None);
+    var secondResult = await queue.Dequeue();
 
     Assert.AreEqual(firstValue, firstResult);
     Assert.AreEqual(secondValue, secondResult);
-  }
-
-  [Test]
-  public async Task CancellationSupport()
-  {
-    var queue = new AsyncQueue<int>();
-    var source = new CancellationTokenSource();
-    var firstResultTask = queue.Dequeue(source.Token);
-    var secondResultTask = queue.Dequeue(CancellationToken.None);
-    var firstValue = 3;
-    source.Cancel();
-    queue.Enqueue(firstValue);
-
-    try {
-      await firstResultTask;
-      Assert.True(false);
-    }
-    catch (TaskCanceledException) {
-      Assert.True(firstResultTask.IsCanceled);
-    }
-    var secondResult = await secondResultTask;
-    Assert.AreEqual(firstValue, secondResult);
   }
 
   [Test]
@@ -54,7 +32,7 @@ public class AsyncQueueTest
     var queue = new AsyncQueue<int>();
     var tasks = new List<Task<int>>();
     for (int i = 0; i < 100; i++) {
-      tasks.Add(queue.Dequeue(CancellationToken.None));
+      tasks.Add(queue.Dequeue());
     }
     for (int i = 0; i < 100; i++) {
       queue.Enqueue(i);
@@ -72,7 +50,7 @@ public class AsyncQueueTest
     var queue = new AsyncQueue<int>();
     var semaphore = new Semaphore(0, 1);
 
-    var firstResultTask = queue.Dequeue(CancellationToken.None);
+    var firstResultTask = queue.Dequeue();
     var secondValue = 2;
     var mappedTask = firstResultTask.ContinueWith(t =>
     {
@@ -105,13 +83,13 @@ public class AsyncQueueTest
     void DequeueAction1()
     {
       for (int i = 0; i < amount; i++) {
-        tasks1.Add(queue.Dequeue(CancellationToken.None));
+        tasks1.Add(queue.Dequeue());
       }
     }
     void DequeueAction2()
     {
       for (int i = 0; i < amount; i++) {
-        tasks2.Add(queue.Dequeue(CancellationToken.None));
+        tasks2.Add(queue.Dequeue());
       }
     }
 

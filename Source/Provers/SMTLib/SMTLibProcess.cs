@@ -338,7 +338,7 @@ namespace Microsoft.Boogie.SMTLib
     /// </summary>
     Task<string> ReadProver()
     {
-      return solverOutput.Dequeue(CancellationToken.None);
+      return solverOutput.Dequeue();
     }
 
     void DisposeProver()

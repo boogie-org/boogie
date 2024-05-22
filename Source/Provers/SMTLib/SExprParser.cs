@@ -23,7 +23,7 @@ public class SExprParser
 
   Task<string> ReadLine()
   {
-    return sexpLines.Dequeue(CancellationToken.None);
+    return sexpLines.Dequeue();
   }
   
   async Task<char> SkipWs()

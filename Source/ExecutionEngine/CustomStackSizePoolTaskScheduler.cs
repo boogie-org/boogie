@@ -64,7 +64,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     {
       try
       {
-        var task = queue.Dequeue(disposeTokenSource.Token).Result;
+        var task = queue.Dequeue().Result;
         TryExecuteTask(task);
       }
       catch (AggregateException e)
@@ -80,6 +80,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
   public void Dispose()
   {
     disposeTokenSource.Cancel();
+    queue.Clear();
     foreach (var thread in threads)
     {
       thread.Join();
