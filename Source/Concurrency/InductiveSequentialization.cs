@@ -586,6 +586,10 @@ namespace Microsoft.Boogie
         decls.AddRange(GenerateTTChecker(targetAction));
         foreach (var elim in eliminatedActions)
         {
+          if (elim == targetAction)
+          {
+            continue;
+          }
           decls.AddRange(GenerateTTChecker(elim));
         }
       }
