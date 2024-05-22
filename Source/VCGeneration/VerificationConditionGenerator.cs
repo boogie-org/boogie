@@ -493,7 +493,7 @@ namespace VC
 
       public override void AddCoveredElement(TrackedNodeComponent elt)
       {
-        program.AllCoveredElements.Add(elt);
+        program.AllCoveredElements.Push(elt);
         split.CoveredElements.Add(elt);
       }
 

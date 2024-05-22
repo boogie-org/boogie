@@ -9,11 +9,6 @@ using System.Threading.Tasks;
 using VC;
 using System.Runtime.Caching;
 using System.Diagnostics;
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
-using System.Reactive.Threading.Tasks;
-using Microsoft.Boogie.LeanAuto;
-using Microsoft.Boogie.VCExprAST;
 using VCGeneration;
 
 namespace Microsoft.Boogie
@@ -55,26 +50,22 @@ namespace Microsoft.Boogie
     static readonly CacheItemPolicy policy = new CacheItemPolicy
       { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
-    private const int stackSize = 16 * 1024 * 1024;
+    public const int StackSize = 16 * 1024 * 1024;
 
-    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache)
-      : this(options, cache, CustomStackSizePoolTaskScheduler.Create(stackSize, options.VcsCores))
-    {
-      taskSchedulerCreatedLocally = true;
-    }
-
-    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache, CustomStackSizePoolTaskScheduler scheduler) {
+    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache, TaskScheduler scheduler, bool disposeScheduler = false) {
       Options = options;
       Cache = cache;
       CheckerPool = new CheckerPool(options);
       verifyImplementationSemaphore = new SemaphoreSlim(Options.VcsCores);
 
       largeThreadScheduler = scheduler;
+      this.disposeScheduler = disposeScheduler;
       largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.None, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
     public static ExecutionEngine CreateWithoutSharedCache(ExecutionEngineOptions options) {
-      return new ExecutionEngine(options, new VerificationResultCache());
+      return new ExecutionEngine(options, new VerificationResultCache(),
+        CustomStackSizePoolTaskScheduler.Create(StackSize, options.VcsCores), true);
     }
 
     public ExecutionEngineOptions Options { get; }
@@ -95,8 +86,8 @@ namespace Microsoft.Boogie
     static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource =
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    private readonly CustomStackSizePoolTaskScheduler largeThreadScheduler;
-    private bool taskSchedulerCreatedLocally = false;
+    private readonly TaskScheduler largeThreadScheduler;
+    private readonly bool disposeScheduler;
 
     public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null) {
@@ -115,7 +106,8 @@ namespace Microsoft.Boogie
         var success = true;
         foreach (var snapshots in snapshotsByVersion) {
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
-          using var engine = new ExecutionEngine(Options, Cache);
+          using var engine = new ExecutionEngine(Options, Cache,
+            CustomStackSizePoolTaskScheduler.Create(StackSize, Options.VcsCores), true);
           success &= await engine.ProcessFiles(output, new List<string>(snapshots), false, programId);
         }
         return success;
@@ -1437,8 +1429,8 @@ namespace Microsoft.Boogie
     public void Dispose()
     {
       CheckerPool.Dispose();
-      if (taskSchedulerCreatedLocally) {
-        largeThreadScheduler.Dispose();
+      if (disposeScheduler) {
+        (largeThreadScheduler as IDisposable)?.Dispose();
       }
     }
   }

@@ -31,7 +31,8 @@ public class ExecutionEngineTest {
     var options = new CommandLineOptions(TextWriter.Null, new ConsolePrinter());
     options.VcsCores = 10;
     int beforeCreation = Process.GetCurrentProcess().Threads.Count;
-    var engine = new ExecutionEngine(options, new VerificationResultCache());
+    var engine = new ExecutionEngine(options, new VerificationResultCache(), 
+      CustomStackSizePoolTaskScheduler.Create(ExecutionEngine.StackSize, options.VcsCores), true);
     engine.Dispose();
     for (int i = 0; i < 50; i++)
     {

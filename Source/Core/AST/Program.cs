@@ -401,7 +401,7 @@ public class Program : Absy
     }
   }
 
-  public readonly ConcurrentBag<TrackedNodeComponent> AllCoveredElements = new();
+  public readonly ConcurrentStack<TrackedNodeComponent> AllCoveredElements = new();
 
   public IEnumerable<Block> Blocks()
   {

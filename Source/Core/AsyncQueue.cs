@@ -1,4 +1,4 @@
-using System;
+#nullable enable
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -47,9 +47,15 @@ public class AsyncQueue<T>
     }
   }
 
+  public void Clear() {
+    while (customers.TryDequeue(out var customer)) {
+      customer.TrySetCanceled();
+    }
+  }
+
   public int Size => items.Count;
 
-  public Task<T> Dequeue(CancellationToken cancellationToken)
+  public Task<T> Dequeue()
   {
     lock (myLock) {
       if (items.TryDequeue(out var result)) {
@@ -57,10 +63,9 @@ public class AsyncQueue<T>
       }
 
       var source = new TaskCompletionSource<T>();
-      cancellationToken.Register(() => source.TrySetCanceled(cancellationToken));
       customers.Enqueue(source);
       // Ensure that the TrySetResult call in Enqueue completes immediately.
-      return source.Task.ContinueWith(t => t.Result, cancellationToken,
+      return source.Task.ContinueWith(t => t.Result, CancellationToken.None,
         TaskContinuationOptions.RunContinuationsAsynchronously, TaskScheduler.Current);
     }
   }
