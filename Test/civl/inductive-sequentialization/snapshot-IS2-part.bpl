@@ -17,7 +17,7 @@ var {:layer 0,2} r1: [Tid][int]StampedValue;
 
 // M =  main_f , \elim = read_f, I = Inv, M' = main_f'
 action {:layer 1} main_f({:linear_in} tid: One Tid)
-refines {:IS2_right} main_f' using Inv;
+refines {:IS_right} main_f' using Inv;
 creates read_f;
 {
     assume {:add_to_pool "A", 0} true;

@@ -3,10 +3,10 @@
 // UNSUPPORTED: batch_mode
 
 // This is identical to "rec-IS1.bpl", 
-// but with the {:IS2_right} attribute
+// but with the {:IS_right} attribute
 
 async left action {:layer 1} main_f''()
-refines {:IS2_right} final using Inv;
+refines {:IS_right} final using Inv;
 creates main_f'';
 {
     if(*){

@@ -196,11 +196,11 @@ namespace Microsoft.Boogie
       choice = Expr.Ident(invariantAction.ImplWithChoice.OutParams.Last());
       newPAs = invariantAction.PendingAsyncs.ToDictionary(decl => decl.PendingAsyncType,
         decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
-      if (QKeyValue.FindAttribute(targetAction.ActionDecl.RefinedAction.Attributes, x => x.Key == CivlAttributes.IS2_LEFT) != null)
+      if (targetAction.ActionDecl.RefinedAction.HasAttribute(CivlAttributes.IS_LEFT))
       {
         rule = InductiveSequentializationRule.ISL;
       }
-      else if (QKeyValue.FindAttribute(targetAction.ActionDecl.RefinedAction.Attributes, x => x.Key == CivlAttributes.IS2_RIGHT) != null)
+      else
       {
         rule = InductiveSequentializationRule.ISR;
       }
@@ -581,7 +581,7 @@ namespace Microsoft.Boogie
       {
         decls.AddRange(GenerateStepChecker(elim));
       }
-      if (QKeyValue.FindAttribute(targetAction.ActionDecl.RefinedAction.Attributes, x => x.Key == CivlAttributes.IS2_RIGHT) != null)
+      if (targetAction.ActionDecl.RefinedAction.HasAttribute(CivlAttributes.IS_RIGHT))
       {
         decls.AddRange(GenerateTTChecker(targetAction));
         foreach (var elim in eliminatedActions)
