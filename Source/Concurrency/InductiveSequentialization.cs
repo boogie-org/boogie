@@ -176,8 +176,8 @@ namespace Microsoft.Boogie
   }
   public enum InductiveSequentializationRule
   {
-    IS1,
-    IS2
+    ISL,
+    ISR
   }
   public class InductiveSequentialization : Sequentialization
   {
@@ -193,17 +193,17 @@ namespace Microsoft.Boogie
       // - the modified set of each of each eliminated and abstract action associated with this invariant.
       // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
       this.invariantAction = invariantAction;
-      if (invariantAction.Name.StartsWith("left"))
-      {
-        rule = InductiveSequentializationRule.IS1;
-      }
-      else if (invariantAction.Name.StartsWith("right"))
-      {
-        rule = InductiveSequentializationRule.IS2;
-      }
       choice = Expr.Ident(invariantAction.ImplWithChoice.OutParams.Last());
       newPAs = invariantAction.PendingAsyncs.ToDictionary(decl => decl.PendingAsyncType,
         decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
+      if (QKeyValue.FindAttribute(targetAction.ActionDecl.RefinedAction.Attributes, x => x.Key == CivlAttributes.IS2_LEFT) != null)
+      {
+        rule = InductiveSequentializationRule.ISL;
+      }
+      else if (QKeyValue.FindAttribute(targetAction.ActionDecl.RefinedAction.Attributes, x => x.Key == CivlAttributes.IS2_RIGHT) != null)
+      {
+        rule = InductiveSequentializationRule.ISR;
+      }
     }
 
     private List<Declaration> GenerateTTChecker(Action act)
@@ -581,7 +581,7 @@ namespace Microsoft.Boogie
       {
         decls.AddRange(GenerateStepChecker(elim));
       }
-      if (rule == InductiveSequentializationRule.IS2)
+      if (QKeyValue.FindAttribute(targetAction.ActionDecl.RefinedAction.Attributes, x => x.Key == CivlAttributes.IS2_RIGHT) != null)
       {
         decls.AddRange(GenerateTTChecker(targetAction));
         foreach (var elim in eliminatedActions)
