@@ -62,19 +62,22 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
   {
     while (!disposeTokenSource.IsCancellationRequested)
     {
-      try
-      {
-        var task = queue.Dequeue().Result;
-        TryExecuteTask(task);
-      }
-      catch (AggregateException e)
-      {
-        if (e.InnerException is TaskCanceledException)
-        {
-          break;
-        }
-      }
+      /*
+       * Previously the code from RunItem was inlined, but that caused something akin to a memory leak.
+       * It seems that variables declared inside the loop are not cleared across loop iterations
+       * So values assigned in iteration X can only be garbage collected until they have been reassigned
+       * in iteration X+1. If there is a long pause between that reassignment, which is the case here,
+       * then it may take a long time before dead memory can be garbage collected.
+       */
+      RunItem();
     }
+  }
+
+  private void RunItem()
+  {
+    var taskTask = queue.Dequeue();
+    var task = taskTask.Result;
+    TryExecuteTask(task);
   }
 
   public void Dispose()
