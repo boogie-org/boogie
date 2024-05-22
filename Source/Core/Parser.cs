@@ -1156,11 +1156,14 @@ private class BvBounds : Expr {
 	}
 
 	void SpecRefinedAction(ref ActionDeclRef refinedAction) {
+		IToken m; QKeyValue kv = null; 
 		Expect(39);
-		IToken m; 
+		while (la.kind == 26) {
+			Attribute(ref kv);
+		}
 		Ident(out m);
 		if (refinedAction == null) {
-		 refinedAction = new ActionDeclRef(m, m.val);
+		 refinedAction = new ActionDeclRef(m, m.val, kv);
 		} else {
 		 this.SemErr("a refines specification already exists");
 		}
