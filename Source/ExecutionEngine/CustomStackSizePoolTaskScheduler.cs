@@ -68,6 +68,9 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
        * So values assigned in iteration X can only be garbage collected until they have been reassigned
        * in iteration X+1. If there is a long pause between that reassignment, which is the case here,
        * then it may take a long time before dead memory can be garbage collected.
+       *
+       * Inlining RunItem and manually setting variables to null at the end of the loop body does not work,
+       * probably because such assignments are removed during C# compilation since they seem unused.
        */
       RunItem();
     }
@@ -75,8 +78,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   private void RunItem()
   {
-    var taskTask = queue.Dequeue();
-    var task = taskTask.Result;
+    var task = queue.Dequeue().Result;
     TryExecuteTask(task);
   }
 
