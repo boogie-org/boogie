@@ -117,7 +117,7 @@ namespace Microsoft.Boogie
 
       foreach (var sequentialization in civlTypeChecker.Sequentializations.Where(x => x.rule == InductiveSequentializationRule.ISR))
       {
-        foreach (var rightMover in sequentialization.EliminatedActions)
+        foreach (var rightMover in sequentialization.EliminatedActions.Append(sequentialization.TargetAction))
         {
           foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
           {
