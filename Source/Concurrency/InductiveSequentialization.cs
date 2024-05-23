@@ -105,13 +105,13 @@ namespace Microsoft.Boogie
       var requires = new List<Requires>();
       cmds.Add(CmdHelper.CallCmd(act.Impl.Proc, act.Impl.InParams, act.Impl.OutParams));
 
-      IEnumerable<string> elim_action_names = this.eliminatedActions.Select(x => x.Name);
+      IEnumerable<string> elimActionNames = this.eliminatedActions.Select(x => x.Name);
       var listElim = new List<Variable>();
       var listNotElim = new List<Variable>();
 
       foreach (var item in act.Impl.OutParams)
       {
-        if (elim_action_names.Contains(item.Name.Remove(0, 9)))
+        if (elimActionNames.Contains(item.Name.Remove(0, 9)))
         {
           listElim.Add(item);
         }
@@ -135,8 +135,8 @@ namespace Microsoft.Boogie
         var expr = Expr.Eq(Expr.Ident(outParam), ExprHelper.FunctionCall(outAction.ActionDecl.PendingAsyncConst, Expr.Literal(0)));
         exprrhs = Expr.And(exprrhs, expr);
       }
-      var final_expr = Expr.Imp(exprlhs, exprrhs);
-      cmds.Add(GetCheck(act.tok, final_expr, "TT checker failed"));
+      var finalExpr = Expr.Imp(exprlhs, exprrhs);
+      cmds.Add(GetCheck(act.tok, finalExpr, "TT checker failed"));
 
       List<Block> checkerBlocks = new List<Block>(listElim.Count);
       var locals = new List<Variable>();
@@ -149,9 +149,9 @@ namespace Microsoft.Boogie
         locals.Add(paLocal);
         var pendingAsyncType = outAction.ActionDecl.PendingAsyncType;
         var pendingAsyncCtor = outAction.ActionDecl.PendingAsyncCtor;
-        Expr assume_cmd = Expr.Ge(Expr.Select(Expr.Ident(outParam), Expr.Ident(paLocal)), Expr.Literal(1));
+        Expr assumeCmd = Expr.Ge(Expr.Select(Expr.Ident(outParam), Expr.Ident(paLocal)), Expr.Literal(1));
         List<Cmd> cmds2 = new List<Cmd>();
-        cmds2.Add(CmdHelper.AssumeCmd(assume_cmd));
+        cmds2.Add(CmdHelper.AssumeCmd(assumeCmd));
 
         List<Expr> inputExprs = new List<Expr>();
         for (int i = 0; i < outAction.Impl.InParams.Count; i++)
