@@ -5,24 +5,56 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
+  public enum InductiveSequentializationRule
+  {
+    ISL,
+    ISR
+  }
+
   public abstract class Sequentialization
   {
     protected CivlTypeChecker civlTypeChecker;
     protected Action targetAction;
     protected HashSet<Action> eliminatedActions;
 
+    public InductiveSequentializationRule rule;
+
     protected Sequentialization(CivlTypeChecker civlTypeChecker, Action targetAction)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.targetAction = targetAction;
       this.eliminatedActions = new HashSet<Action>(targetAction.ActionDecl.EliminatedActionDecls().Select(x => civlTypeChecker.Action(x)));
+      if (targetAction.ActionDecl.RefinedAction.HasAttribute(CivlAttributes.IS_RIGHT))
+      {
+        rule = InductiveSequentializationRule.ISR;
+      }
+      else
+      {
+        rule = InductiveSequentializationRule.ISL;
+      }
     }
 
     public IEnumerable<Action> EliminatedActions => eliminatedActions;
 
     public int Layer => targetAction.LayerRange.UpperLayer;
     public Action TargetAction => targetAction;
-    protected abstract List<Declaration> GenerateCheckers();
+    protected virtual List<Declaration> GenerateCheckers()
+    {
+      var decls = new List<Declaration>();
+      if (rule == InductiveSequentializationRule.ISR)
+      {
+        decls.AddRange(GenerateTTChecker(targetAction));
+        foreach (var elim in eliminatedActions)
+        {
+          if (elim == targetAction)
+          {
+            continue;
+          }
+          decls.AddRange(GenerateTTChecker(elim));
+        }
+      }
+      return decls;
+    }
 
     public virtual IEnumerable<Expr> GenerateMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
       List<Variable> leftMoverArgs)
@@ -60,153 +92,14 @@ namespace Microsoft.Boogie
         decls.AddRange(x.GenerateCheckers());
       }
     }
-  }
 
-  public class InlineSequentialization : Sequentialization
-  {
-    private Implementation inlinedImpl;
-
-    public InlineSequentialization(CivlTypeChecker civlTypeChecker, Action targetAction)
-      : base(civlTypeChecker, targetAction)
+    protected AssertCmd GetCheck(IToken tok, Expr expr, string msg)
     {
-      inlinedImpl = CreateInlinedImplementation();
-      var refinedAction = targetAction.RefinedAction;
-      if (refinedAction.HasPendingAsyncs)
-      {
-        Action.DesugarCreateAsyncs(civlTypeChecker, inlinedImpl, refinedAction.ActionDecl);
-      }
-      Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-      for (int i = 0; i < refinedAction.Impl.InParams.Count; i++)
-      {
-        map[refinedAction.Impl.InParams[i]] = Expr.Ident(inlinedImpl.Proc.InParams[i]);
-      }
-      for (int i = 0; i < refinedAction.Impl.OutParams.Count; i++)
-      {
-        map[refinedAction.Impl.OutParams[i]] = Expr.Ident(inlinedImpl.Proc.OutParams[i]);
-      }
-      var subst = Substituter.SubstitutionFromDictionary(map);
-      inlinedImpl.Proc.Requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
-      var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
-      inlinedImpl.Proc.Ensures = new List<Ensures>(new[]
-      {
-        new Ensures(false, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)))
-          { Description = new FailureOnlyDescription($"Refinement check of {targetAction.Name} failed") }
-      });
+      expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
+      return CmdHelper.AssertCmd(tok, expr, msg);
     }
 
-    protected override List<Declaration> GenerateCheckers()
-    {
-      return new List<Declaration>(new Declaration[] { inlinedImpl, inlinedImpl.Proc });
-    }
-
-    private Implementation CreateInlinedImplementation()
-    {
-      var eliminatedActionDecls = targetAction.ActionDecl.EliminatedActionDecls();
-      var graph = new Graph<ActionDecl>();
-      eliminatedActionDecls.ForEach(actionDecl =>
-      {
-        graph.AddSource(actionDecl);
-        CollectionExtensions.ForEach(actionDecl.CreateActionDecls.Intersect(eliminatedActionDecls), x => graph.AddEdge(x, actionDecl));
-      });
-      var eliminatedPendingAsyncs = new Dictionary<CtorType, Implementation>();
-      var decls = new List<Declaration>();
-      graph.TopologicalSort().ForEach(actionDecl =>
-      {
-        var impl = Action.CreateDuplicateImplementation(actionDecl.Impl,
-          $"{actionDecl.Name}_RefinementCheck");
-        eliminatedPendingAsyncs[actionDecl.PendingAsyncType] = impl;
-        decls.Add(impl);
-        decls.Add(impl.Proc);
-      });
-      var inlinedImpl = Action.CreateDuplicateImplementation(targetAction.ActionDecl.Impl,
-        $"{targetAction.ActionDecl.Name}_RefinementCheck");
-      CivlAttributes.RemoveAttributes(inlinedImpl.Proc, new HashSet<string> { "inline" });
-      decls.Add(inlinedImpl);
-      decls.Add(inlinedImpl.Proc);
-      decls.OfType<Implementation>().ForEach(impl =>
-      {
-        var modifies = impl.Proc.Modifies.Select(ie => ie.Decl).ToHashSet();
-        impl.Blocks.ForEach(block =>
-        {
-          for (int i = 0; i < block.Cmds.Count; i++)
-          {
-            block.Cmds[i] = Transform(eliminatedPendingAsyncs, block.Cmds[i], modifies);
-          }
-        });
-        impl.Proc.Modifies = modifies.Select(v => Expr.Ident(v)).ToList();
-      });
-      var oldTopLevelDeclarations = new List<Declaration>(civlTypeChecker.program.TopLevelDeclarations);
-      civlTypeChecker.program.AddTopLevelDeclarations(decls);
-      decls.OfType<Implementation>().ForEach(impl =>
-      {
-        impl.OriginalBlocks = impl.Blocks;
-        impl.OriginalLocVars = impl.LocVars;
-      });
-      Inliner.ProcessImplementation(civlTypeChecker.Options, civlTypeChecker.program, inlinedImpl);
-      civlTypeChecker.program.TopLevelDeclarations = oldTopLevelDeclarations;
-      decls.OfType<Implementation>().ForEach(impl =>
-      {
-        impl.OriginalBlocks = null;
-        impl.OriginalLocVars = null;
-      });
-      return inlinedImpl;
-    }
-
-    private Cmd Transform(Dictionary<CtorType, Implementation> eliminatedPendingAsyncs, Cmd cmd, HashSet<Variable> modifies)
-    {
-      if (cmd is CallCmd callCmd && callCmd.Proc.OriginalDeclWithFormals is { Name: "create_async" })
-      {
-        var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-        var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl)pendingAsyncType.Decl;
-        if (eliminatedPendingAsyncs.ContainsKey(pendingAsyncType))
-        {
-          var newCallee = eliminatedPendingAsyncs[pendingAsyncType].Proc;
-          var newIns = datatypeTypeCtorDecl.Constructors[0].InParams
-            .Select(x => (Expr)ExprHelper.FieldAccess(callCmd.Ins[0], x.Name)).ToList();
-          var newCallCmd = new CallCmd(callCmd.tok, newCallee.Name, newIns, new List<IdentifierExpr>())
-          {
-            Proc = newCallee
-          };
-          modifies.UnionWith(newCallee.Modifies.Select(ie => ie.Decl));
-          return newCallCmd;
-        }
-      }
-      return cmd;
-    }
-  }
-  public enum InductiveSequentializationRule
-  {
-    ISL,
-    ISR
-  }
-  public class InductiveSequentialization : Sequentialization
-  {
-    public InductiveSequentializationRule rule;
-    private Action invariantAction;
-    private IdentifierExpr choice;
-    private Dictionary<CtorType, Variable> newPAs;
-
-    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, Action targetAction, Action invariantAction)
-    : base(civlTypeChecker, targetAction)
-    {
-      // The type checker ensures that the set of modified variables of an invariant is a superset of
-      // - the modified set of each of each eliminated and abstract action associated with this invariant.
-      // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
-      this.invariantAction = invariantAction;
-      choice = Expr.Ident(invariantAction.ImplWithChoice.OutParams.Last());
-      newPAs = invariantAction.PendingAsyncs.ToDictionary(decl => decl.PendingAsyncType,
-        decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
-      if (targetAction.ActionDecl.RefinedAction.HasAttribute(CivlAttributes.IS_LEFT))
-      {
-        rule = InductiveSequentializationRule.ISL;
-      }
-      else
-      {
-        rule = InductiveSequentializationRule.ISR;
-      }
-    }
-
-    private List<Declaration> GenerateTTChecker(Action act)
+    protected List<Declaration> GenerateTTChecker(Action act)
     {
       var cmds = new List<Cmd>();
       var requires = new List<Requires>();
@@ -297,6 +190,140 @@ namespace Microsoft.Boogie
         blocks);
 
       return new List<Declaration>(new Declaration[] { proc, impl });
+    }
+  }
+
+  public class InlineSequentialization : Sequentialization
+  {
+    private Implementation inlinedImpl;
+
+    public InlineSequentialization(CivlTypeChecker civlTypeChecker, Action targetAction)
+      : base(civlTypeChecker, targetAction)
+    {
+      inlinedImpl = CreateInlinedImplementation();
+      var refinedAction = targetAction.RefinedAction;
+      if (refinedAction.HasPendingAsyncs)
+      {
+        Action.DesugarCreateAsyncs(civlTypeChecker, inlinedImpl, refinedAction.ActionDecl);
+      }
+      Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+      for (int i = 0; i < refinedAction.Impl.InParams.Count; i++)
+      {
+        map[refinedAction.Impl.InParams[i]] = Expr.Ident(inlinedImpl.Proc.InParams[i]);
+      }
+      for (int i = 0; i < refinedAction.Impl.OutParams.Count; i++)
+      {
+        map[refinedAction.Impl.OutParams[i]] = Expr.Ident(inlinedImpl.Proc.OutParams[i]);
+      }
+      var subst = Substituter.SubstitutionFromDictionary(map);
+      inlinedImpl.Proc.Requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
+      var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
+      inlinedImpl.Proc.Ensures = new List<Ensures>(new[]
+      {
+        new Ensures(false, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)))
+          { Description = new FailureOnlyDescription($"Refinement check of {targetAction.Name} failed") }
+      });
+    }
+
+    protected override List<Declaration> GenerateCheckers()
+    {
+      var decls = base.GenerateCheckers();
+      decls.AddRange(new List<Declaration>(new Declaration[] { inlinedImpl, inlinedImpl.Proc }));
+      return decls;
+    }
+
+    private Implementation CreateInlinedImplementation()
+    {
+      var eliminatedActionDecls = targetAction.ActionDecl.EliminatedActionDecls();
+      var graph = new Graph<ActionDecl>();
+      eliminatedActionDecls.ForEach(actionDecl =>
+      {
+        graph.AddSource(actionDecl);
+        CollectionExtensions.ForEach(actionDecl.CreateActionDecls.Intersect(eliminatedActionDecls), x => graph.AddEdge(x, actionDecl));
+      });
+      var eliminatedPendingAsyncs = new Dictionary<CtorType, Implementation>();
+      var decls = new List<Declaration>();
+      graph.TopologicalSort().ForEach(actionDecl =>
+      {
+        var impl = Action.CreateDuplicateImplementation(actionDecl.Impl,
+          $"{actionDecl.Name}_RefinementCheck");
+        eliminatedPendingAsyncs[actionDecl.PendingAsyncType] = impl;
+        decls.Add(impl);
+        decls.Add(impl.Proc);
+      });
+      var inlinedImpl = Action.CreateDuplicateImplementation(targetAction.ActionDecl.Impl,
+        $"{targetAction.ActionDecl.Name}_RefinementCheck");
+      CivlAttributes.RemoveAttributes(inlinedImpl.Proc, new HashSet<string> { "inline" });
+      decls.Add(inlinedImpl);
+      decls.Add(inlinedImpl.Proc);
+      decls.OfType<Implementation>().ForEach(impl =>
+      {
+        var modifies = impl.Proc.Modifies.Select(ie => ie.Decl).ToHashSet();
+        impl.Blocks.ForEach(block =>
+        {
+          for (int i = 0; i < block.Cmds.Count; i++)
+          {
+            block.Cmds[i] = Transform(eliminatedPendingAsyncs, block.Cmds[i], modifies);
+          }
+        });
+        impl.Proc.Modifies = modifies.Select(v => Expr.Ident(v)).ToList();
+      });
+      var oldTopLevelDeclarations = new List<Declaration>(civlTypeChecker.program.TopLevelDeclarations);
+      civlTypeChecker.program.AddTopLevelDeclarations(decls);
+      decls.OfType<Implementation>().ForEach(impl =>
+      {
+        impl.OriginalBlocks = impl.Blocks;
+        impl.OriginalLocVars = impl.LocVars;
+      });
+      Inliner.ProcessImplementation(civlTypeChecker.Options, civlTypeChecker.program, inlinedImpl);
+      civlTypeChecker.program.TopLevelDeclarations = oldTopLevelDeclarations;
+      decls.OfType<Implementation>().ForEach(impl =>
+      {
+        impl.OriginalBlocks = null;
+        impl.OriginalLocVars = null;
+      });
+      return inlinedImpl;
+    }
+
+    private Cmd Transform(Dictionary<CtorType, Implementation> eliminatedPendingAsyncs, Cmd cmd, HashSet<Variable> modifies)
+    {
+      if (cmd is CallCmd callCmd && callCmd.Proc.OriginalDeclWithFormals is { Name: "create_async" })
+      {
+        var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
+        var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl)pendingAsyncType.Decl;
+        if (eliminatedPendingAsyncs.ContainsKey(pendingAsyncType))
+        {
+          var newCallee = eliminatedPendingAsyncs[pendingAsyncType].Proc;
+          var newIns = datatypeTypeCtorDecl.Constructors[0].InParams
+            .Select(x => (Expr)ExprHelper.FieldAccess(callCmd.Ins[0], x.Name)).ToList();
+          var newCallCmd = new CallCmd(callCmd.tok, newCallee.Name, newIns, new List<IdentifierExpr>())
+          {
+            Proc = newCallee
+          };
+          modifies.UnionWith(newCallee.Modifies.Select(ie => ie.Decl));
+          return newCallCmd;
+        }
+      }
+      return cmd;
+    }
+  }
+
+  public class InductiveSequentialization : Sequentialization
+  {
+    private Action invariantAction;
+    private IdentifierExpr choice;
+    private Dictionary<CtorType, Variable> newPAs;
+
+    public InductiveSequentialization(CivlTypeChecker civlTypeChecker, Action targetAction, Action invariantAction)
+    : base(civlTypeChecker, targetAction)
+    {
+      // The type checker ensures that the set of modified variables of an invariant is a superset of
+      // - the modified set of each of each eliminated and abstract action associated with this invariant.
+      // - the target and refined action of every application of inductive sequentialization that refers to this invariant.
+      this.invariantAction = invariantAction;
+      choice = Expr.Ident(invariantAction.ImplWithChoice.OutParams.Last());
+      newPAs = invariantAction.PendingAsyncs.ToDictionary(decl => decl.PendingAsyncType,
+        decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
     }
 
     private List<Declaration> GenerateBaseCaseChecker()
@@ -510,12 +537,6 @@ namespace Microsoft.Boogie
       return leftMoverExpr;
     }
 
-    private AssertCmd GetCheck(IToken tok, Expr expr, string msg)
-    {
-      expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
-      return CmdHelper.AssertCmd(tok, expr, msg);
-    }
-
     private List<Declaration> GetCheckerTuple(string checkerName, List<Requires> requires, List<Variable> inParams,
       List<Variable> outParams, List<Variable> locals, List<Cmd> cmds)
     {
@@ -574,24 +595,12 @@ namespace Microsoft.Boogie
 
     protected override List<Declaration> GenerateCheckers()
     {
-      var decls = new List<Declaration>();
+      var decls = base.GenerateCheckers();
       decls.AddRange(GenerateBaseCaseChecker());
       decls.AddRange(GenerateConclusionChecker());
       foreach (var elim in eliminatedActions)
       {
         decls.AddRange(GenerateStepChecker(elim));
-      }
-      if (targetAction.ActionDecl.RefinedAction.HasAttribute(CivlAttributes.IS_RIGHT))
-      {
-        decls.AddRange(GenerateTTChecker(targetAction));
-        foreach (var elim in eliminatedActions)
-        {
-          if (elim == targetAction)
-          {
-            continue;
-          }
-          decls.AddRange(GenerateTTChecker(elim));
-        }
       }
       return decls;
     }
