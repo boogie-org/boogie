@@ -43,14 +43,14 @@ namespace Microsoft.Boogie
       var decls = new List<Declaration>();
       if (rule == InductiveSequentializationRule.ISR)
       {
-        decls.AddRange(GeneratePChecker(targetAction));
+        decls.AddRange(GeneratePartitionChecker(targetAction));
         foreach (var elim in eliminatedActions)
         {
           if (elim == targetAction)
           {
             continue;
           }
-          decls.AddRange(GeneratePChecker(elim));
+          decls.AddRange(GeneratePartitionChecker(elim));
         }
       }
       return decls;
@@ -99,7 +99,7 @@ namespace Microsoft.Boogie
       return CmdHelper.AssertCmd(tok, expr, msg);
     }
 
-    protected List<Declaration> GeneratePChecker(Action act)
+    protected List<Declaration> GeneratePartitionChecker(Action act)
     {
       var cmds = new List<Cmd>();
       var requires = new List<Requires>();

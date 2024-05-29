@@ -27,6 +27,7 @@ modifies pSet;
 creates read_f;
 {
     var {:linear} sps: Set Permission;
+
     assume {:add_to_pool "A", 0} true;
     call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
     call create_asyncs((lambda pa:read_f :: (1 <= pa->i) && (pa->i <= n) && pa->perm == One(Permission(tid->val, pa->i))));
@@ -36,6 +37,7 @@ action {:layer 2} main_f'({:linear_in} tid: One Tid)
 modifies r1, pSet;
 {
     var {:linear} sps: Set Permission;
+
     call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
     havoc r1;
     assume (forall i:int :: ((1 <= i && i <= n) ==> (r1[tid->val][i]->ts < mem[i]->ts  || r1[tid->val][i] == mem[i]))); 
@@ -47,6 +49,7 @@ modifies r1;
 {
     var {:pool "K"} k:int;
     var {:pool "V"} v:Value;
+
     if (*) {
         assume {:add_to_pool "K", mem[i]->ts, k} {:add_to_pool "V", mem[i]->value, v} true;
         assume k < mem[i]->ts; 
@@ -60,6 +63,7 @@ atomic action {: layer 1,2} write(i: int,v: Value)
 modifies mem;
 {
     var x: StampedValue;
+
     x := mem[i];
     mem[i] := StampedValue(x->ts + 1, v);
 }
@@ -70,13 +74,16 @@ creates read_f;
 {
     var {:pool "A"} j: int;
     var {:linear} sps: Set Permission;
+    var choice: read_f;
+
     call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
     assume {:add_to_pool "A", j+1} 0 <= j && j <= n;
     havoc r1;
     assume (forall i:int :: ((1 <= i && i <= j) ==> (r1[tid->val][i]->ts < mem[i]->ts || r1[tid->val][i] == mem[i]))); 
     if (j < n){
-    assume {:add_to_pool "C", read_f(One(Permission(tid->val, j+1)), j+1)} true;
-    call create_asyncs((lambda {:pool "C" } pa:read_f :: ((j+1) <= pa->i) && (pa->i <= n) && pa->perm == One(Permission(tid->val, pa->i))));
-    call set_choice(read_f(One(Permission(tid->val, j+1)), j+1));
+        choice := read_f(One(Permission(tid->val, j+1)), j+1);
+        assume {:add_to_pool "C", choice} true;
+        call create_asyncs((lambda {:pool "C" } pa:read_f :: ((j+1) <= pa->i) && (pa->i <= n) && pa->perm == One(Permission(tid->val, pa->i))));
+        call set_choice(choice);
     }
 }

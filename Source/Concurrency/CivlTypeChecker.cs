@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
       CreateSequentializations(actionDecls);
       foreach (var sequentialization in this.sequentializations.Where(x => x.rule == InductiveSequentializationRule.ISR))
       {
-        DChecker(sequentialization);
+        DescendantChecker(sequentialization);
       }
       AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
@@ -386,7 +386,7 @@ namespace Microsoft.Boogie
       });
     }
 
-    private void DChecker(Sequentialization seq)
+    private void DescendantChecker(Sequentialization seq)
     {
       IEnumerable<string> elimActionNames = seq.EliminatedActions.Select(x => x.Name);
       foreach (var act in seq.EliminatedActions)
