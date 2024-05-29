@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
       CreateSequentializations(actionDecls);
       foreach (var sequentialization in this.sequentializations.Where(x => x.rule == InductiveSequentializationRule.ISR))
       {
-        SEChecker(sequentialization);
+        DChecker(sequentialization);
       }
       AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
@@ -386,14 +386,14 @@ namespace Microsoft.Boogie
       });
     }
 
-    private void SEChecker(Sequentialization seq)
+    private void DChecker(Sequentialization seq)
     {
       IEnumerable<string> elimActionNames = seq.EliminatedActions.Select(x => x.Name);
       foreach (var act in seq.EliminatedActions)
       {
         IEnumerable<string> createsList = act.ActionDecl.Creates.Select(x => x.ActionName);
         if (createsList.Intersect(elimActionNames).Count() != createsList.Count()){
-          Error(act.ActionDecl, $"SE checker failed for action {act.Name}" );
+          Error(act.ActionDecl, $"D checker failed for action {act.Name}" );
           break;
         }
       }

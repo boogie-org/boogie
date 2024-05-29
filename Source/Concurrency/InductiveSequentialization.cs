@@ -43,14 +43,14 @@ namespace Microsoft.Boogie
       var decls = new List<Declaration>();
       if (rule == InductiveSequentializationRule.ISR)
       {
-        decls.AddRange(GenerateTTChecker(targetAction));
+        decls.AddRange(GeneratePChecker(targetAction));
         foreach (var elim in eliminatedActions)
         {
           if (elim == targetAction)
           {
             continue;
           }
-          decls.AddRange(GenerateTTChecker(elim));
+          decls.AddRange(GeneratePChecker(elim));
         }
       }
       return decls;
@@ -99,7 +99,7 @@ namespace Microsoft.Boogie
       return CmdHelper.AssertCmd(tok, expr, msg);
     }
 
-    protected List<Declaration> GenerateTTChecker(Action act)
+    protected List<Declaration> GeneratePChecker(Action act)
     {
       var cmds = new List<Cmd>();
       var requires = new List<Requires>();
@@ -136,7 +136,7 @@ namespace Microsoft.Boogie
         exprrhs = Expr.And(exprrhs, expr);
       }
       var finalExpr = Expr.Imp(exprlhs, exprrhs);
-      cmds.Add(GetCheck(act.tok, finalExpr, "TT checker failed"));
+      cmds.Add(GetCheck(act.tok, finalExpr, "P checker failed"));
 
       List<Block> checkerBlocks = new List<Block>(listElim.Count);
       var locals = new List<Variable>();
@@ -159,14 +159,14 @@ namespace Microsoft.Boogie
           inputExprs.Add(ExprHelper.FieldAccess(Expr.Ident(paLocal), pendingAsyncCtor.InParams[i].Name));
         }
         cmds2.AddRange(outAction.GetGateAsserts(Substituter.SubstitutionFromDictionary(outAction.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
-        $"Gate of {outAction.Name} in TT Checker failed"));
+        $"Gate of {outAction.Name} in P Checker failed"));
 
         var block = BlockHelper.Block($"label_{paName}", cmds2);
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
       }
 
-      string checkerName = civlTypeChecker.AddNamePrefix($"TTChecker_{act.Name}");
+      string checkerName = civlTypeChecker.AddNamePrefix($"PChecker_{act.Name}");
       List<Block> blocks = new List<Block>(listElim.Count + 1);
       blocks.Add(
         BlockHelper.Block(
