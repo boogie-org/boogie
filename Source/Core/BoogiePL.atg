@@ -734,10 +734,13 @@ SpecCreates<.List<ActionDeclRef> creates.>
 
 SpecRefinedAction<ref ActionDeclRef refinedAction>
 =
-  "refines" (. IToken m; .) Ident<out m>
+  (. IToken m; QKeyValue kv = null; .) 
+  "refines"
+  { Attribute<ref kv> } 
+  Ident<out m>
   (.
      if (refinedAction == null) {
-       refinedAction = new ActionDeclRef(m, m.val);
+       refinedAction = new ActionDeclRef(m, m.val, kv);
      } else {
        this.SemErr("a refines specification already exists");
      }

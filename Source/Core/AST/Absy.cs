@@ -2871,14 +2871,23 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class ActionDeclRef : Absy
+  public class ActionDeclRef : Absy, ICarriesAttributes
   {
     public string ActionName;
     public ActionDecl ActionDecl;
 
+    public QKeyValue Attributes { get; set; }
+
     public ActionDeclRef(IToken tok, string name) : base(tok)
     {
       ActionName = name;
+      Attributes = null;
+    }
+
+    public ActionDeclRef(IToken tok, string name, QKeyValue kv) : base(tok)
+    {
+      ActionName = name;
+      Attributes = kv; 
     }
 
     public override void Resolve(ResolutionContext rc)

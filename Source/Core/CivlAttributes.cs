@@ -87,7 +87,10 @@ namespace Microsoft.Boogie
     public const string PENDING_ASYNC = "pending_async";
     public const string SYNC = "sync";
 
-    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, MARK, HIDE, PENDING_ASYNC, SYNC };
+    public const string IS_RIGHT = "IS_right";
+    public const string IS_LEFT = "IS_left";
+
+    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, MARK, HIDE, PENDING_ASYNC, SYNC, IS_LEFT, IS_RIGHT };
 
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
