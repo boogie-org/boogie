@@ -20,7 +20,7 @@ var {:layer 0,2} mem: [int]StampedValue;
 var {:layer 0,2} r1: [Tid][int]StampedValue;  
 var {:linear} {:layer 0,2} pSet: Set Permission;
 
-// M =  main_f , \elim = read_f, I = Inv, M' = main_f'
+// M =  main_f , \elim = read_f, I = Inv_f, M' = main_f'
 action {:layer 1} main_f({:linear_in} tid: One Tid)
 refines {:IS_right} main_f' using Inv_f;
 modifies pSet;
@@ -71,11 +71,12 @@ creates read_f;
     var {:pool "A"} j: int;
     var {:linear} sps: Set Permission;
     call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
-    assume {:add_to_pool "A", j+1, 1, j , n, 0} 0 <= j && j <= n;
+    assume {:add_to_pool "A", j+1} 0 <= j && j <= n;
     havoc r1;
     assume (forall i:int :: ((1 <= i && i <= j) ==> (r1[tid->val][i]->ts < mem[i]->ts || r1[tid->val][i] == mem[i]))); 
     if (j < n){
-    call create_asyncs((lambda pa:read_f :: ((j+1) <= pa->i) && (pa->i <= n) && pa->perm == One(Permission(tid->val, pa->i))));
+    assume {:add_to_pool "C", read_f(One(Permission(tid->val, j+1)), j+1)} true;
+    call create_asyncs((lambda {:pool "C" } pa:read_f :: ((j+1) <= pa->i) && (pa->i <= n) && pa->perm == One(Permission(tid->val, pa->i))));
     call set_choice(read_f(One(Permission(tid->val, j+1)), j+1));
     }
 }
