@@ -3049,8 +3049,23 @@ namespace Microsoft.Boogie
           }
           if (!refinedActionCreates.IsSubsetOf(invariantCreates))
           {
-            tc.Error(this,
-              $"each pending async created by refined action must also be created by invariant action {invariantActionDecl.Name}");
+            Dictionary <ActionDecl, ActionDecl> refinementMapping = new Dictionary <ActionDecl, ActionDecl>();
+            foreach(var act in invariantCreates){
+              if(act.RefinedAction != null)
+              {
+                refinementMapping[act] = act.RefinedAction.ActionDecl;
+              }
+              else
+              {
+              refinementMapping[act] = act;
+              }
+            }
+            var invariantCreates2 = refinementMapping.Values.ToHashSet();
+            if(!refinedActionCreates.IsSubsetOf(invariantCreates2))
+            {
+              tc.Error(this,
+                $"each pending async created by refined action must also be created by invariant action {invariantActionDecl.Name}");
+            }
           }
           var actionModifies = new HashSet<Variable>(Modifies.Select(ie => ie.Decl));
           var refinedActionModifies = new HashSet<Variable>(refinedActionDecl.Modifies.Select(ie => ie.Decl));
