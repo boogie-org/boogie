@@ -15,6 +15,7 @@ namespace Microsoft.Boogie
   {
     protected CivlTypeChecker civlTypeChecker;
     protected Action targetAction;
+    protected Action refinedAction;
     protected HashSet<Action> eliminatedActions;
 
     public InductiveSequentializationRule rule;
@@ -23,6 +24,36 @@ namespace Microsoft.Boogie
     {
       this.civlTypeChecker = civlTypeChecker;
       this.targetAction = targetAction;
+
+      Dictionary <ActionDecl, ActionDecl> refinementMapping = new Dictionary <ActionDecl, ActionDecl>();
+
+      var originalRefinedAction = targetAction.RefinedAction;
+
+      foreach(var act in civlTypeChecker.AtomicActions){
+        if (act.ActionDecl.RefinedAction != null){
+        refinementMapping[act.ActionDecl.RefinedAction.ActionDecl] = act.ActionDecl;
+        }
+        else{
+           refinementMapping[act.ActionDecl] = act.ActionDecl;
+        }
+      }
+      List<ActionDeclRef> creates2  = new List<ActionDeclRef>();
+      foreach(var act in originalRefinedAction.ActionDecl.Creates){
+        ActionDeclRef act2 = new ActionDeclRef(refinementMapping[act.ActionDecl].tok, refinementMapping[act.ActionDecl].Name)
+        {
+          ActionDecl = refinementMapping[act.ActionDecl]
+        };
+        creates2.Add(act2);
+      }
+
+      var newActionDecl = new ActionDecl(originalRefinedAction.tok, originalRefinedAction.Name, originalRefinedAction.ActionDecl.MoverType, originalRefinedAction.ActionDecl.InParams, originalRefinedAction.ActionDecl.OutParams, false, creates2, originalRefinedAction.ActionDecl.RefinedAction, originalRefinedAction.ActionDecl.InvariantAction, originalRefinedAction.ActionDecl.Requires, originalRefinedAction.ActionDecl.YieldRequires, originalRefinedAction.ActionDecl.Modifies, originalRefinedAction.ActionDecl.PendingAsyncCtorDecl, originalRefinedAction.ActionDecl.Attributes);
+      
+      var cmds = new List<Cmd>();
+      var requires = new List<Requires>();
+      cmds.Add(CmdHelper.CallCmd(originalRefinedAction.Impl.Proc, originalRefinedAction.Impl.InParams, originalRefinedAction.Impl.OutParams));
+
+      // this.refinedAction = new Action(civlTypeChecker ,newActionDecl , originalRefinedAction.RefinedAction , false);
+
       this.eliminatedActions = new HashSet<Action>(targetAction.ActionDecl.EliminatedActionDecls().Select(x => civlTypeChecker.Action(x)));
       if (targetAction.ActionDecl.RefinedAction.HasAttribute(CivlAttributes.IS_RIGHT))
       {
