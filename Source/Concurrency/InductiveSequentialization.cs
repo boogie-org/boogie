@@ -301,6 +301,24 @@ namespace Microsoft.Boogie
     private IdentifierExpr choice;
     private Dictionary<CtorType, Variable> newPAs;
 
+    private class LinearityCheck
+    {
+      public LinearDomain domain;
+      public Expr assume;
+      public Expr assert;
+      public string message;
+      public string checkName;
+
+      public LinearityCheck(LinearDomain domain, Expr assume, Expr assert, string message, string checkName)
+      {
+        this.domain = domain;
+        this.assume = assume;
+        this.assert = assert;
+        this.message = message;
+        this.checkName = checkName;
+      }
+    }
+
     public InductiveSequentialization(CivlTypeChecker civlTypeChecker, Action targetAction, Action invariantAction)
     : base(civlTypeChecker, targetAction)
     {
@@ -433,6 +451,73 @@ namespace Microsoft.Boogie
 
       return GetCheckerTuple($"{rule}_step_{invariantAction.Name}_{pendingAsync.Name}", requires,
         invariantAction.ImplWithChoice.InParams, invariantAction.ImplWithChoice.OutParams, locals, cmds);
+    }
+
+    protected List<Declaration> GenerateSideConditionChecker(Action act)
+    {
+      var ltc = civlTypeChecker.linearTypeChecker;
+      var inputs = act.Impl.InParams;
+      var outputs = act.Impl.OutParams;
+      LinearKind[] InKinds = {LinearKind.LINEAR, LinearKind.LINEAR_IN};
+      LinearKind[] OutKinds = {LinearKind.LINEAR, LinearKind.LINEAR_OUT};
+
+      var inputDisjointnessExpr = ltc.DisjointnessExprForEachDomain(
+        inputs.Union(act.ModifiedGlobalVars)
+        .Where(x => InKinds.Contains(LinearTypeChecker.FindLinearKind(x))));
+
+      List<Requires> requires = act.Gate.Select(a => new Requires(false, a.Expr))
+          .Concat(inputDisjointnessExpr.Select(expr => new Requires(false, expr)))
+          .ToList();
+
+      List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
+      foreach (var domain in ltc.LinearDomains)
+      {
+       var existingExpr = Expr.True;
+       var inVars = new List<Variable>().Union(act.ModifiedGlobalVars)
+        .Where(x => InKinds.Contains(LinearTypeChecker.FindLinearKind(x))).Select(Expr.Ident).ToList();
+       var outVars = new List<Variable>().Union(act.ModifiedGlobalVars)
+        .Where(x => InKinds.Contains(LinearTypeChecker.FindLinearKind(x))).Select(Expr.Ident).ToList();
+       var inPermissionSet = ExprHelper.Old(ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, inVars)));
+       var outPermissionSet = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, outVars));
+       var outSubsetInExpr = ltc.SubsetExprForPermissions(domain, inPermissionSet, outPermissionSet);
+       linearityChecks.Add(new LinearityCheck(
+          domain,
+          existingExpr,
+          outSubsetInExpr,
+          $"Only take permissions of type {domain.permissionType}",
+          $"only_take_{act.Name}"));
+      }   
+      
+      List<Block> checkerBlocks = new List<Block>(linearityChecks.Count);
+      foreach (var lc in linearityChecks)
+      {
+        List<Cmd> cmds = new List<Cmd>(2);
+        if (lc.assume != null)
+        {
+          cmds.Add(CmdHelper.AssumeCmd(lc.assume));
+        }
+        cmds.Add(CmdHelper.AssertCmd(act.tok, lc.assert, lc.message));
+        var block = BlockHelper.Block($"{lc.domain.permissionType}_{lc.checkName}", cmds);
+        CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, block, ResolutionContext.State.Two);
+        checkerBlocks.Add(block);
+      }
+      
+      // Create init blocks
+      List<Block> blocks = new List<Block>(linearityChecks.Count + 1);
+      blocks.Add(
+        BlockHelper.Block(
+          "init",
+          new List<Cmd>() { CmdHelper.CallCmd(act.Impl.Proc, inputs, outputs) },
+          checkerBlocks));
+      blocks.AddRange(checkerBlocks);
+
+      // Create the whole check procedure
+      string checkerName = civlTypeChecker.AddNamePrefix($"{rule}_SideCondition_{act.Name}");
+      Procedure linCheckerProc = DeclHelper.Procedure(checkerName,
+        inputs, outputs, requires, act.Impl.Proc.Modifies, new List<Ensures>());
+      Implementation linCheckImpl = DeclHelper.Implementation(linCheckerProc,
+        inputs, outputs,  new List<Variable>(), blocks);
+      return new List<Declaration>(new Declaration[] { linCheckerProc, linCheckImpl });
     }
 
     /*
@@ -603,7 +688,16 @@ namespace Microsoft.Boogie
       foreach (var elim in eliminatedActions)
       {
         decls.AddRange(GenerateStepChecker(elim));
+        if (rule == InductiveSequentializationRule.ISR){
+          decls.AddRange(GenerateSideConditionChecker(elim));
+        }
       }
+
+      // foreach(var action in civlTypeChecker.AtomicActions){
+      //    if (rule == InductiveSequentializationRule.ISR){
+      //     decls.AddRange(GenerateSideConditionChecker(action));
+      //   }
+      // }
       return decls;
     }
   }
