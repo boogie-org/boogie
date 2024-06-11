@@ -1,0 +1,20 @@
+implementation Foo()
+{
+
+  anon0:
+    goto anon3_Then, anon3_Else;
+
+  anon3_Else:
+    assume 2 == 1 + 1;
+    assert 2 == 2;
+    assume 3 == 2 + 1;
+    assume 1 == 1;
+    goto ;
+
+  anon3_Then:
+    assert 2 == 1 + 1;
+    assume false;
+    return;
+}
+
+
