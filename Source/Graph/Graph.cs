@@ -1182,10 +1182,6 @@ namespace Microsoft.Boogie.GraphUtil
           continue;
         }
 
-        if (visit != null && visit(node) == false)
-        {
-          continue;
-        }
         
         if (node is IEnumerable<object> objects) {
           if (!visitedEdges.IsSupersetOf(objects)) {
@@ -1193,6 +1189,10 @@ namespace Microsoft.Boogie.GraphUtil
           }
         }
         visitedEdges.Add(node);
+        if (visit != null && visit(node) == false)
+        {
+          continue;
+        }
 
         var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
         foreach (var x in outgoing)

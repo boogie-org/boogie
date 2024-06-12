@@ -67,21 +67,18 @@ namespace Microsoft.Boogie
         blocksVisitor.Visit(block);
       }
 
-      var revealedOutgoing = options.Prune == PruneMode.AllRevealed
-        ? blocksVisitor.Outgoing
-        : blocksVisitor.Outgoing.Where(d =>
-          DeclarationFilter(d)); 
-
       var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, 
-        revealedOutgoing.Concat(keepRoots).ToHashSet(),
-        node => node is not Function function || blocksVisitor.RevealedFunctions.Contains(function))
-        .OfType<Declaration>().Where(d => DeclarationFilter(d)).ToHashSet();
+        blocksVisitor.Outgoing.Concat(keepRoots).ToHashSet(), DeclarationFilter).ToHashSet();
       return program.TopLevelDeclarations.Where(d => 
         d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
 
-      bool DeclarationFilter(Declaration d)
+      bool DeclarationFilter(object d)
       {
+        if (options.Prune != PruneMode.ExplicitReveal)
+        {
+          return true;
+        }
         return d is not Function function || blocksVisitor.RevealedFunctions.Contains(function);
       }
     }
