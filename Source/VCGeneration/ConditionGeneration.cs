@@ -1421,6 +1421,9 @@ namespace VC
       else if (c is CommentCmd)
       {
         // comments are just for debugging and don't affect verification
+      } else if (c is RevealCmd)
+      {
+        passiveCmds.Add(c);
       }
       else if (c is SugaredCmd sug)
       {

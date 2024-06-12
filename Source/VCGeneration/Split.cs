@@ -90,7 +90,7 @@ namespace VC
 
       private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
       {
-        if (!Options.Prune || Options.PrintPrunedFile == null)
+        if (Options.Prune == PruneMode.Not || Options.PrintPrunedFile == null)
         {
           return;
         }

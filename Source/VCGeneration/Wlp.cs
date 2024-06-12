@@ -180,6 +180,10 @@ namespace VC
           }
         }
       }
+      else if (cmd is RevealCmd)
+      {
+        return N;
+      }
       else if (cmd is AssumeCmd)
       {
         AssumeCmd ac = (AssumeCmd) cmd;

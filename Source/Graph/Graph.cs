@@ -1170,7 +1170,8 @@ namespace Microsoft.Boogie.GraphUtil
      * A merge node is a node that has multiple incoming edges, and which cannot be traversed unless all incoming edges have been traversed.
      * A merge node is represented by an object of type IEnumerable{object}
      */
-    public static IEnumerable<object> FindReachableNodesInGraphWithMergeNodes(Dictionary<object, List<object>> edges, IEnumerable<object> roots)
+    public static IEnumerable<object> FindReachableNodesInGraphWithMergeNodes(
+      Dictionary<object, List<object>> edges, IEnumerable<object> roots, Func<object, bool> visit = null)
     {
       var todo = new Stack<object>(roots);
       var visitedEdges = new HashSet<object>();
@@ -1178,6 +1179,11 @@ namespace Microsoft.Boogie.GraphUtil
       {
         var node = todo.Pop();
         if (visitedEdges.Contains(node)) {
+          continue;
+        }
+
+        if (visit != null && visit(node) == false)
+        {
           continue;
         }
         

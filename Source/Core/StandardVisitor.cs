@@ -81,6 +81,13 @@ namespace Microsoft.Boogie
       VisitAttributes(node);
       return node;
     }
+    
+    public virtual Cmd VisitRevealCmd(RevealCmd node)
+    {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      return node;
+    }
 
     public virtual Cmd VisitAssignCmd(AssignCmd node)
     {

@@ -1111,7 +1111,11 @@ LabelOrCmd<out Cmd c, out IToken label>
      Cmd/*!*/ cn;
      QKeyValue kv = null;
   .)
-  ( LabelOrAssign<out c, out label>
+  ( 
+    "reveal"
+    Ident<out x>          (. var id = new IdentifierExpr(x, x.val); c = new RevealCmd(id); .)
+    ";"
+  | LabelOrAssign<out c, out label>
   | "assert"              (. x = t; .)
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssertCmd(x, e, kv); .)

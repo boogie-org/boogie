@@ -2,13 +2,12 @@ using System.Collections.Generic;
 
 namespace Microsoft.Boogie
 {
-  internal class BlocksVisitor : DependencyEvaluator
+  internal class PruneBlocksVisitor : DependencyEvaluator
   {
-    public List<Block> Blocks;
+    public HashSet<Function> RevealedFunctions { get; } = new();
 
-    public BlocksVisitor(List<Block> blocks) : base(null)
+    public PruneBlocksVisitor() : base(null)
     {
-      Blocks = blocks;
     }
 
     public override Expr VisitExpr(Expr node)
@@ -20,6 +19,13 @@ namespace Microsoft.Boogie
       }
       return base.VisitExpr(node);
     }
+
+    public override Cmd VisitRevealCmd(RevealCmd node)
+    {
+      RevealedFunctions.Add(node.Function);
+      return base.VisitRevealCmd(node);
+    }
+
 
     public override Type VisitType(Type node)
     {

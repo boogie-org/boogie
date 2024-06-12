@@ -1,25 +1,33 @@
-// RUN: %parallel-boogie /prune:1 /errorTrace:0 /printPruned:"%t" "%s" > "%t"
+// RUN: %parallel-boogie /prune:2 /errorTrace:0 /vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-function f1 <T> (x: T) : int uses {
-  axiom (forall <T> x: T :: {f1(x)} f1(x) == 42);
+function outer(x: int) : int uses {
+  axiom (forall x: int :: {outer(x)} outer(x) == inner(x) + 1);
 }
 
-// Both f1 and the axiom will be monomorphized into bool and int instances.
-// Automatic edge inference would already ensure that only the monomorphized instances
-// are incoming, however we want to test here how the new uses clauses are determined.
-//
-// After instantiation, each instance of f1 for some T should *only* have 
-// the T-instantiated axiom as outgoing. 
-
-procedure caller()
-{
-  call callee();
+function inner(x: int): int uses {
+  axiom (forall x: int :: {inner(x)} inner(x) == 42);
 }
 
-
-procedure callee()
-  ensures f1(true) == 42;
-  ensures f1(3) == 42;
+procedure Foo()
 {
+  var x: int;
+  x := outer(3);
+  if (*) {
+    reveal outer;
+    assert x == inner(3) + 1;
+    if (*) {
+      reveal inner;
+      assert x == 43;
+    } else {
+      assert x == 43; // error can not prove
+    }
+  } else {
+    reveal inner;
+    if (*) {
+      assert x == inner(3) + 1; // error can not prove
+    } else {
+      assert x == 43; // can not prove
+    }
+  }
 }

@@ -1,0 +1,5 @@
+Reveal.bpl(23,7): Error: this assertion could not be proved
+Reveal.bpl(28,7): Error: this assertion could not be proved
+Reveal.bpl(30,7): Error: this assertion could not be proved
+
+Boogie program verifier finished with 0 verified, 3 errors
