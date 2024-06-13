@@ -3,11 +3,6 @@ using System.IO;
 
 namespace Microsoft.Boogie
 {
-  public enum PruneMode
-  {
-    Not, AllRevealed, ExplicitReveal 
-  }
-  
   /// <summary>
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
@@ -78,7 +73,7 @@ namespace Microsoft.Boogie
     int VcsCores { get; }
     int RandomizeVcIterations { get; }
     List<string> ProverOptions { get; }
-    PruneMode Prune { get; }
+    bool Prune { get; }
     bool RunDiagnosticsOnTimeout { get; }
     string ProverLogFilePath { get; set; }
     bool ProverLogFileAppend { get; }

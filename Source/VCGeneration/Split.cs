@@ -82,7 +82,7 @@ namespace VC
 
         TopLevelDeclarations = par.program.TopLevelDeclarations;
         PrintTopLevelDeclarationsForPruning(par.program, Implementation, "before");
-        TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
+        TopLevelDeclarations = Prune.GetLiveDeclarations(options, Implementation.IsBlind, par.program, blocks).ToList();
         PrintTopLevelDeclarationsForPruning(par.program, Implementation, "after");
         RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
         randomGen = new Random(RandomSeed);
@@ -90,7 +90,7 @@ namespace VC
 
       private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
       {
-        if (Options.Prune == PruneMode.Not || Options.PrintPrunedFile == null)
+        if (!Options.Prune || Options.PrintPrunedFile == null)
         {
           return;
         }

@@ -9,7 +9,7 @@ namespace Microsoft.Boogie
 
     public static Dictionary<object, List<object>> ComputeDeclarationDependencies(VCGenOptions options, Program program)
     {
-      if (options.Prune == PruneMode.Not)
+      if (!options.Prune)
       {
         return null;
       }
@@ -54,9 +54,9 @@ namespace Microsoft.Boogie
      * See Checker.Setup for more information.
      * Data type constructor declarations are not pruned and they do affect VC generation.
      */
-    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, Program program, List<Block> blocks)
+    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, bool isBlind, Program program, List<Block> blocks)
     {
-      if (program.DeclarationDependencies == null || blocks == null || options.Prune == PruneMode.Not)
+      if (program.DeclarationDependencies == null || blocks == null || !options.Prune)
       {
         return program.TopLevelDeclarations;
       }
@@ -75,7 +75,7 @@ namespace Microsoft.Boogie
 
       bool DeclarationFilter(object d)
       {
-        if (options.Prune != PruneMode.ExplicitReveal)
+        if (!isBlind)
         {
           return true;
         }

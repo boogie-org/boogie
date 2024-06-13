@@ -193,7 +193,7 @@ namespace Microsoft.Boogie
      * The merge node is traversable in the reachability analysis only if each of its incoming edges has been reached.
      *
      */
-    public PruneMode Prune { get; set; }
+    public bool Prune { get; set; }
 
     public CoreOptions.InstrumentationPlaces InstrumentInfer { get; set; } = CoreOptions.InstrumentationPlaces.LoopHeaders;
 
@@ -1304,7 +1304,7 @@ namespace Microsoft.Boogie
           return true;
 
         case "prune":
-          ps.GetIntArgument(x => Prune = (PruneMode)x);
+          ps.GetIntArgument(x => Prune = x);
           return true;
 
         default:
@@ -1341,7 +1341,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("smoke", x =>
               {
                 SoundnessSmokeTest = x;
-                Prune = PruneMode.Not;
+                Prune = false;
               }) ||
               ps.CheckBooleanFlag("vcsDumpSplits", x => VcsDumpSplits = x) ||
               ps.CheckBooleanFlag("dbgRefuted", x => DebugRefuted = x) ||

@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /prune:2 /errorTrace:0 /vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %parallel-boogie /prune:1 /errorTrace:0 /vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 function outer(x: int) : int uses {
@@ -9,7 +9,7 @@ function inner(x: int): int uses {
   axiom (forall x: int :: {inner(x)} inner(x) == 42);
 }
 
-procedure Foo()
+blind procedure Foo()
 {
   var x: int;
   x := outer(3);
