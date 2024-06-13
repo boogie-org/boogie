@@ -119,9 +119,17 @@ namespace Microsoft.Boogie
       {
         foreach (var rightMover in sequentialization.EliminatedActions.Append(sequentialization.TargetAction))
         {
+          var alphaRightMover = rightMover;
+          try {
+           alphaRightMover =  civlTypeChecker.AtomicActions.Single(s => s.Name == ("alpha_"+rightMover.Name));
+          }
+          catch (System.InvalidOperationException)
+          {
+             Console.WriteLine(@"The collection does not contain exactly one element.");
+          }
           foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
           {
-            moverChecking.CreateRightMoverCheckers(rightMover, action);
+            moverChecking.CreateRightMoverCheckers(alphaRightMover, action);
           }
         }
       }

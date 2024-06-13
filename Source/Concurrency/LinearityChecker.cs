@@ -2,6 +2,24 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace Microsoft.Boogie;
+
+public class LinearityCheck
+    {
+      public LinearDomain domain;
+      public Expr assume;
+      public Expr assert;
+      public string message;
+      public string checkName;
+
+      public LinearityCheck(LinearDomain domain, Expr assume, Expr assert, string message, string checkName)
+      {
+        this.domain = domain;
+        this.assume = assume;
+        this.assert = assert;
+        this.message = message;
+        this.checkName = checkName;
+      }
+}
 class LinearityChecker 
 {
     private CivlTypeChecker civlTypeChecker;
@@ -21,23 +39,10 @@ class LinearityChecker
       }
     }
 
-    private class LinearityCheck
-    {
-      public LinearDomain domain;
-      public Expr assume;
-      public Expr assert;
-      public string message;
-      public string checkName;
+    public static LinearKind[] InKinds = {LinearKind.LINEAR, LinearKind.LINEAR_IN};
+    public static LinearKind[] OutKinds = {LinearKind.LINEAR, LinearKind.LINEAR_OUT};
 
-      public LinearityCheck(LinearDomain domain, Expr assume, Expr assert, string message, string checkName)
-      {
-        this.domain = domain;
-        this.assume = assume;
-        this.assert = assert;
-        this.message = message;
-        this.checkName = checkName;
-      }
-    }
+
 
     private IdentifierExpr PAs(Action action, int pendingAsyncIndex)
     {
@@ -89,6 +94,23 @@ class LinearityChecker
       List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
       foreach (var domain in linearTypeChecker.LinearDomains)
       {
+        // ISR kind
+        // permissions should not be taken from globals. They can only be put into globals
+        // var existingExpr2 = Expr.True;
+        // var inVars2 = new List<Variable>().Union(action.ModifiedGlobalVars)
+        // .Where(x => InKinds.Contains(LinearTypeChecker.FindLinearKind(x))).Select(Expr.Ident).ToList();
+        // var outVars2 = new List<Variable>().Union(action.ModifiedGlobalVars)
+        // .Where(x => InKinds.Contains(LinearTypeChecker.FindLinearKind(x))).Select(Expr.Ident).ToList();
+        // var inPermissionSet2 = ExprHelper.Old(linearTypeChecker.UnionExprForPermissions(domain, linearTypeChecker.PermissionExprs(domain, inVars2)));
+        // var outPermissionSet2 = linearTypeChecker.UnionExprForPermissions(domain, linearTypeChecker.PermissionExprs(domain, outVars2));
+        // var outSubsetInExpr2 = linearTypeChecker.SubsetExprForPermissions(domain, inPermissionSet2, outPermissionSet2);
+        // linearityChecks.Add(new LinearityCheck(
+        //   domain,
+        //   existingExpr2,
+        //   outSubsetInExpr2,
+        //   $"Only take permissions of type {domain.permissionType}",
+        //   $"only_take_{action.Name}"));
+
         for (int i = 0; i < pendingAsyncs.Count; i++)
         {
           var pendingAsync = pendingAsyncs[i];
@@ -123,7 +145,11 @@ class LinearityChecker
             noDuplicationExpr,
             $"Duplication of permissions of type {domain.permissionType} in calling context (globals, linear outputs, or linear/linear_out inputs) and pending async of {pendingAsync.Name}",
             $"duplication_{pendingAsync.Name}"));
+
         }
+
+        
+         
         
         for (int i = 0; i < pendingAsyncs.Count; i++)
         {
