@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
       CreateSequentializations(actionDecls);
       foreach (var sequentialization in this.sequentializations.Where(x => x.rule == InductiveSequentializationRule.ISR))
       {
-        DescendantChecker(sequentialization);
+        // DescendantChecker(sequentialization);
       }
       AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
