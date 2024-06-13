@@ -69,17 +69,20 @@ namespace Microsoft.Boogie
 
       var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, 
-        blocksVisitor.Outgoing.Concat(keepRoots).ToHashSet(), DeclarationFilter).ToHashSet();
+        blocksVisitor.Outgoing.Concat(keepRoots).ToHashSet(), TraverseDeclaration).ToHashSet();
       return program.TopLevelDeclarations.Where(d => 
         d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
 
-      bool DeclarationFilter(object d)
+      bool TraverseDeclaration(object d)
       {
         if (!isBlind)
         {
           return true;
         }
-        return d is not Function function || blocksVisitor.RevealedFunctions.Contains(function);
+
+        var result = d is not Function function || blocksVisitor.RevealedFunctions.Contains(function)
+          || function.AlwaysRevealed;
+        return result;
       }
     }
   }

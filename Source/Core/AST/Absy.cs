@@ -2040,6 +2040,7 @@ namespace Microsoft.Boogie
   {
     public string Comment;
 
+    public bool AlwaysRevealed;
     public Expr Body; // Only set if the function is declared with {:inline}
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
@@ -3519,7 +3520,7 @@ namespace Microsoft.Boogie
     [Rep] public StmtList StructuredStmts;
     [Rep] public List<Block> Blocks;
     public Procedure Proc;
-    public bool IsBlind { get; }
+    public bool IsBlind { get; set; }
 
     // Blocks before applying passification etc.
     // Both are used only when /inline is set.
