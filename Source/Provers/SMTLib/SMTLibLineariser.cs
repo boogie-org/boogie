@@ -324,7 +324,7 @@ namespace Microsoft.Boogie.SMTLib
 
     /////////////////////////////////////////////////////////////////////////////////////
 
-    public bool Visit(VCExprNAry node, LineariserOptions options)
+    public DynamicStack<bool> Visit(VCExprNAry node, LineariserOptions options)
     {
       VCExprOp op = node.Op;
       Contract.Assert(op != null);
@@ -379,7 +379,7 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
       if (OptimizationRequests != null
@@ -389,13 +389,13 @@ namespace Microsoft.Boogie.SMTLib
         OptimizationRequests.Add(string.Format("({0} {1})", optOp,
           ToString(node[0], Namer, LibOptions, solverOptions, NamedAssumes)));
         Linearise(node[1], options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
       if (node.Op is VCExprSoftOp)
       {
         Linearise(node[1], options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
       if (node.Op.Equals(VCExpressionGenerator.NamedAssumeOp) || node.Op.Equals(VCExpressionGenerator.NamedAssertOp))
@@ -403,7 +403,7 @@ namespace Microsoft.Boogie.SMTLib
         var exprVar = node[0] as VCExprVar;
         NamedAssumes.Add(exprVar);
         Linearise(node[1], options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
       return node.Accept<bool, LineariserOptions /*!*/>(OpLineariser, options);
@@ -419,7 +419,7 @@ namespace Microsoft.Boogie.SMTLib
 
     /////////////////////////////////////////////////////////////////////////////////////
 
-    public bool Visit(VCExprQuantifier node, LineariserOptions options)
+    public DynamicStack<bool> Visit(VCExprQuantifier node, LineariserOptions options)
     {
       Contract.Assert(node.TypeParameters.Count == 0);
 
@@ -485,7 +485,7 @@ namespace Microsoft.Boogie.SMTLib
 
         wr.Write(")");
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
       finally
       {
@@ -568,7 +568,7 @@ namespace Microsoft.Boogie.SMTLib
 
     /////////////////////////////////////////////////////////////////////////////////////
 
-    public bool Visit(VCExprLet node, LineariserOptions options)
+    public DynamicStack<bool> Visit(VCExprLet node, LineariserOptions options)
     {
       Namer.PushScope();
       try
@@ -588,7 +588,7 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write(")");
         }
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
       finally
       {
@@ -652,10 +652,10 @@ namespace Microsoft.Boogie.SMTLib
 
       ///////////////////////////////////////////////////////////////////////////////////
 
-      public bool VisitNotOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitNotOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("not", node, options); // arguments can be both terms and formulas
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
       private bool PrintEq(VCExprNAry node, LineariserOptions options)
@@ -668,46 +668,46 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      public bool VisitEqOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitEqOp(VCExprNAry node, LineariserOptions options)
       {
-        return PrintEq(node, options);
+        return DynamicStack.FromResult(PrintEq(node, options));
       }
 
-      public bool VisitNeqOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitNeqOp(VCExprNAry node, LineariserOptions options)
       {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
         wr.Write("(not ");
         PrintEq(node, options);
         wr.Write(")");
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitAndOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitAndOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("and", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitOrOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitOrOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("or", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitImpliesOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitImpliesOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("=>", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitIfThenElseOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitIfThenElseOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("ite", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitCustomOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitCustomOp(VCExprNAry node, LineariserOptions options)
       {
         VCExprCustomOp op = (VCExprCustomOp) node.Op;
         if (!ExprLineariser.solverOptions.UseTickleBool && op.Name == "tickleBool")
@@ -719,10 +719,10 @@ namespace Microsoft.Boogie.SMTLib
           WriteApplication(op.Name, node, options);
         }
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitDistinctOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitDistinctOp(VCExprNAry node, LineariserOptions options)
       {
         //Contract.Requires(node != null);
         //Contract.Requires(options != null);
@@ -767,10 +767,10 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFieldAccessOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFieldAccessOp(VCExprNAry node, LineariserOptions options)
       {
         var op = (VCExprFieldAccessOp)node.Op;
         var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
@@ -778,20 +778,20 @@ namespace Microsoft.Boogie.SMTLib
         var name = v.Name + "#" + constructor.Name;
         name = ExprLineariser.Namer.GetQuotedName(v, name);
         WriteApplication(name, node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitIsConstructorOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitIsConstructorOp(VCExprNAry node, LineariserOptions options)
       {
         var op = (VCExprIsConstructorOp)node.Op;
         var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
         var name = "is-" + constructor.Name;
         name = ExprLineariser.Namer.GetQuotedName(name, name);
         WriteApplication(name, node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitSelectOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitSelectOp(VCExprNAry node, LineariserOptions options)
       {
         var name = ExprLineariser.SelectOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
@@ -801,10 +801,10 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         WriteApplication(name, node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitStoreOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitStoreOp(VCExprNAry node, LineariserOptions options)
       {
         var name = ExprLineariser.StoreOpName(node);
         name = ExprLineariser.Namer.GetQuotedName(name, name);
@@ -814,74 +814,74 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         WriteApplication(name, node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatAddOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatAddOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.add RNE", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatSubOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatSubOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.sub RNE", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatMulOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatMulOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.mul RNE", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatDivOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatDivOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.div RNE", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatLeqOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatLeqOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.leq", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatLtOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatLtOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.lt", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatGeqOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatGeqOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.geq", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatGtOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatGtOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.gt", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatEqOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatEqOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("fp.eq", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitFloatNeqOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitFloatNeqOp(VCExprNAry node, LineariserOptions options)
       {
         wr.Write("(not ");
         VisitFloatEqOp(node, options);
         wr.Write(")");
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
       static char[] hex = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
-      public bool VisitBvOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitBvOp(VCExprNAry node, LineariserOptions options)
       {
         var lit = (VCExprIntLit) node[0];
         var bytes = lit.Val.ToByteArray();
@@ -906,115 +906,115 @@ namespace Microsoft.Boogie.SMTLib
           }
         }
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitBvExtractOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitBvExtractOp(VCExprNAry node, LineariserOptions options)
       {
         var op = (VCExprBvExtractOp) node.Op;
         wr.Write("((_ extract {0} {1}) ", op.End - 1, op.Start);
         ExprLineariser.Linearise(node[0], options);
         wr.Write(")");
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitBvConcatOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitBvConcatOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("concat", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitAddOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitAddOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("+", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitSubOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitSubOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("-", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitMulOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitMulOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("*", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitDivOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitDivOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("div", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitModOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitModOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("mod", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitRealDivOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitRealDivOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("/", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitPowOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitPowOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("real_pow", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitLtOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitLtOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("<", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitLeOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitLeOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("<=", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitGtOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitGtOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication(">", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitGeOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitGeOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication(">=", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitSubtypeOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitSubtypeOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("UOrdering2", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitSubtype3Op(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitSubtype3Op(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("UOrdering3", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitToIntOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitToIntOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("to_int", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitToRealOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitToRealOp(VCExprNAry node, LineariserOptions options)
       {
         WriteApplication("to_real", node, options);
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
-      public bool VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)
+      public DynamicStack<bool> VisitBoogieFunctionOp(VCExprNAry node, LineariserOptions options)
       {
         VCExprBoogieFunctionOp op = (VCExprBoogieFunctionOp) node.Op;
         Contract.Assert(op != null);
@@ -1038,7 +1038,7 @@ namespace Microsoft.Boogie.SMTLib
 
         WriteApplication(printedName, node, options);
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
 
       private static Type ResultType(Type type)

@@ -4,8 +4,7 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.TypeErasure;
 
-public class VariableBindings
-{
+public class VariableBindings {
   public readonly IDictionary<VCExprVar /*!*/, VCExprVar /*!*/> /*!*/
     VCExprVarBindings;
 
@@ -13,16 +12,14 @@ public class VariableBindings
     TypeVariableBindings;
 
   [ContractInvariantMethod]
-  void ObjectInvariant()
-  {
+  void ObjectInvariant() {
     Contract.Invariant(cce.NonNullDictionaryAndValues(VCExprVarBindings));
     Contract.Invariant(cce.NonNullDictionaryAndValues(TypeVariableBindings));
   }
 
 
   public VariableBindings(IDictionary<VCExprVar /*!*/, VCExprVar /*!*/> /*!*/ vcExprVarBindings,
-    IDictionary<TypeVariable /*!*/, VCExpr /*!*/> /*!*/ typeVariableBindings)
-  {
+    IDictionary<TypeVariable /*!*/, VCExpr /*!*/> /*!*/ typeVariableBindings) {
     Contract.Requires(cce.NonNullDictionaryAndValues(vcExprVarBindings));
     Contract.Requires(cce.NonNullDictionaryAndValues(typeVariableBindings));
     this.VCExprVarBindings = vcExprVarBindings;
@@ -31,18 +28,15 @@ public class VariableBindings
 
   public VariableBindings() :
     this(new Dictionary<VCExprVar /*!*/, VCExprVar /*!*/>(),
-      new Dictionary<TypeVariable /*!*/, VCExpr /*!*/>())
-  {
+      new Dictionary<TypeVariable /*!*/, VCExpr /*!*/>()) {
   }
 
-  public VariableBindings Clone()
-  {
+  public VariableBindings Clone() {
     Contract.Ensures(Contract.Result<VariableBindings>() != null);
     IDictionary<VCExprVar /*!*/, VCExprVar /*!*/> /*!*/
       newVCExprVarBindings =
         new Dictionary<VCExprVar /*!*/, VCExprVar /*!*/>();
-    foreach (KeyValuePair<VCExprVar /*!*/, VCExprVar /*!*/> pair in VCExprVarBindings)
-    {
+    foreach (KeyValuePair<VCExprVar /*!*/, VCExprVar /*!*/> pair in VCExprVarBindings) {
       Contract.Assert(cce.NonNullElements(pair));
       newVCExprVarBindings.Add(pair);
     }
@@ -50,8 +44,7 @@ public class VariableBindings
     IDictionary<TypeVariable /*!*/, VCExpr /*!*/> /*!*/
       newTypeVariableBindings =
         new Dictionary<TypeVariable /*!*/, VCExpr /*!*/>();
-    foreach (KeyValuePair<TypeVariable /*!*/, VCExpr /*!*/> pair in TypeVariableBindings)
-    {
+    foreach (KeyValuePair<TypeVariable /*!*/, VCExpr /*!*/> pair in TypeVariableBindings) {
       Contract.Assert(cce.NonNullElements(pair));
       newTypeVariableBindings.Add(pair);
     }

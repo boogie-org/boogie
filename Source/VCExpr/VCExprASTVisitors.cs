@@ -3,52 +3,45 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading.Tasks;
 
 // Some visitor skeletons for the VCExpression AST
 
-namespace Microsoft.Boogie.VCExprAST
-{
+namespace Microsoft.Boogie.VCExprAST {
   [ContractClass(typeof(IVCExprVisitorContracts<,>))]
-  public interface IVCExprVisitor<Result, Arg>
-  {
+  public interface IVCExprVisitor<Result, Arg> {
     Result Visit(VCExprLiteral /*!*/ node, Arg arg);
-    Result Visit(VCExprNAry /*!*/ node, Arg arg);
+    DynamicStack<Result> Visit(VCExprNAry node /*!*/, Arg arg);
     Result Visit(VCExprVar /*!*/ node, Arg arg);
-    Result Visit(VCExprQuantifier /*!*/ node, Arg arg);
-    Result Visit(VCExprLet /*!*/ node, Arg arg);
+    DynamicStack<Result> Visit(VCExprQuantifier node /*!*/, Arg arg);
+    DynamicStack<Result> Visit(VCExprLet node /*!*/, Arg arg);
   }
 
   [ContractClassFor(typeof(IVCExprVisitor<,>))]
-  public abstract class IVCExprVisitorContracts<Result, Arg> : IVCExprVisitor<Result, Arg>
-  {
+  public abstract class IVCExprVisitorContracts<Result, Arg> : IVCExprVisitor<Result, Arg> {
     #region IVCExprVisitor Members
 
-    public Result Visit(VCExprLiteral node, Arg arg)
-    {
+    public Result Visit(VCExprLiteral node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result Visit(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> Visit(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result Visit(VCExprVar node, Arg arg)
-    {
+    public Result Visit(VCExprVar node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result Visit(VCExprQuantifier node, Arg arg)
-    {
+    public DynamicStack<Result> Visit(VCExprQuantifier node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result Visit(VCExprLet node, Arg arg)
-    {
+    public DynamicStack<Result> Visit(VCExprLet node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
@@ -57,287 +50,246 @@ namespace Microsoft.Boogie.VCExprAST
   }
 
   [ContractClass(typeof(IVCExprOpVisitorContracts<,>))]
-  public interface IVCExprOpVisitor<Result, Arg>
-  {
-    Result VisitNotOp(VCExprNAry node, Arg arg);
-    Result VisitEqOp(VCExprNAry node, Arg arg);
-    Result VisitNeqOp(VCExprNAry node, Arg arg);
-    Result VisitAndOp(VCExprNAry node, Arg arg);
-    Result VisitOrOp(VCExprNAry node, Arg arg);
-    Result VisitImpliesOp(VCExprNAry node, Arg arg);
-    Result VisitDistinctOp(VCExprNAry node, Arg arg);
-    Result VisitFieldAccessOp(VCExprNAry node, Arg arg);
-    Result VisitIsConstructorOp(VCExprNAry node, Arg arg);
-    Result VisitSelectOp(VCExprNAry node, Arg arg);
-    Result VisitStoreOp(VCExprNAry node, Arg arg);
-    Result VisitFloatAddOp(VCExprNAry node, Arg arg);
-    Result VisitFloatSubOp(VCExprNAry node, Arg arg);
-    Result VisitFloatMulOp(VCExprNAry node, Arg arg);
-    Result VisitFloatDivOp(VCExprNAry node, Arg arg);
-    Result VisitFloatLeqOp(VCExprNAry node, Arg arg);
-    Result VisitFloatLtOp(VCExprNAry node, Arg arg);
-    Result VisitFloatGeqOp(VCExprNAry node, Arg arg);
-    Result VisitFloatGtOp(VCExprNAry node, Arg arg);
-    Result VisitFloatEqOp(VCExprNAry node, Arg arg);
-    Result VisitFloatNeqOp(VCExprNAry node, Arg arg);
-    Result VisitBvOp(VCExprNAry node, Arg arg);
-    Result VisitBvExtractOp(VCExprNAry node, Arg arg);
-    Result VisitBvConcatOp(VCExprNAry node, Arg arg);
-    Result VisitAddOp(VCExprNAry node, Arg arg);
-    Result VisitSubOp(VCExprNAry node, Arg arg);
-    Result VisitMulOp(VCExprNAry node, Arg arg);
-    Result VisitDivOp(VCExprNAry node, Arg arg);
-    Result VisitModOp(VCExprNAry node, Arg arg);
-    Result VisitRealDivOp(VCExprNAry node, Arg arg);
-    Result VisitPowOp(VCExprNAry node, Arg arg);
-    Result VisitLtOp(VCExprNAry node, Arg arg);
-    Result VisitLeOp(VCExprNAry node, Arg arg);
-    Result VisitGtOp(VCExprNAry node, Arg arg);
-    Result VisitGeOp(VCExprNAry node, Arg arg);
-    Result VisitSubtypeOp(VCExprNAry node, Arg arg);
-    Result VisitSubtype3Op(VCExprNAry node, Arg arg);
-    Result VisitToIntOp(VCExprNAry node, Arg arg);
-    Result VisitToRealOp(VCExprNAry node, Arg arg);
-    Result VisitBoogieFunctionOp(VCExprNAry node, Arg arg);
-    Result VisitIfThenElseOp(VCExprNAry node, Arg arg);
-    Result VisitCustomOp(VCExprNAry node, Arg arg);
+  public interface IVCExprOpVisitor<Result, Arg> {
+    DynamicStack<Result> VisitNotOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitEqOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitNeqOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitAndOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitOrOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitImpliesOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitDistinctOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFieldAccessOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitIsConstructorOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitSelectOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitStoreOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatAddOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatSubOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatMulOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatDivOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatLeqOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatLtOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatGeqOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatGtOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatEqOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitFloatNeqOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitBvOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitBvExtractOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitBvConcatOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitAddOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitSubOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitMulOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitDivOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitModOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitRealDivOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitPowOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitLtOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitLeOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitGtOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitGeOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitSubtypeOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitSubtype3Op(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitToIntOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitToRealOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitBoogieFunctionOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitIfThenElseOp(VCExprNAry node, Arg arg);
+    DynamicStack<Result> VisitCustomOp(VCExprNAry node, Arg arg);
   }
 
   [ContractClassFor(typeof(IVCExprOpVisitor<,>))]
-  public abstract class IVCExprOpVisitorContracts<Result, Arg> : IVCExprOpVisitor<Result, Arg>
-  {
+  public abstract class IVCExprOpVisitorContracts<Result, Arg> : IVCExprOpVisitor<Result, Arg> {
     #region IVCExprOpVisitor<Result,Arg> Members
 
-    public Result VisitNotOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitNotOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitEqOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitEqOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitNeqOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitNeqOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitAndOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitAndOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitOrOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitOrOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitImpliesOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitImpliesOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitDistinctOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitDistinctOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFieldAccessOp(VCExprNAry node, Arg arg)
-    {
-      Contract.Requires(node != null);
-      throw new NotImplementedException();
-    }
-    
-    public Result VisitIsConstructorOp(VCExprNAry node, Arg arg)
-    {
-      Contract.Requires(node != null);
-      throw new NotImplementedException();
-    }
-    
-    public Result VisitSelectOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFieldAccessOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitStoreOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitIsConstructorOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatAddOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitSelectOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatSubOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitStoreOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatMulOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatAddOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatDivOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatSubOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatLeqOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatMulOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatLtOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatDivOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatGeqOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatLeqOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatGtOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatLtOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatEqOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatGeqOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitFloatNeqOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatGtOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitBvOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatEqOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitBvExtractOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitFloatNeqOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitBvConcatOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitBvOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitAddOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitBvExtractOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitSubOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitBvConcatOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitMulOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitAddOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitDivOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitSubOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitModOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitMulOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitRealDivOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitDivOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitPowOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitModOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitLtOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitRealDivOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitLeOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitPowOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitGtOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitLtOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitGeOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitLeOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitSubtypeOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitGtOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitSubtype3Op(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitGeOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitToIntOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitSubtypeOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitToRealOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitSubtype3Op(VCExprNAry node, Arg arg) {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
+    public DynamicStack<Result> VisitToIntOp(VCExprNAry node, Arg arg) {
+      Contract.Requires(node != null);
+      throw new NotImplementedException();
+    }
+
+    public DynamicStack<Result> VisitToRealOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
@@ -348,20 +300,17 @@ namespace Microsoft.Boogie.VCExprAST
       throw new NotImplementedException();
     }
 
-    public Result VisitBoogieFunctionOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitBoogieFunctionOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitIfThenElseOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitIfThenElseOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
 
-    public Result VisitCustomOp(VCExprNAry node, Arg arg)
-    {
+    public DynamicStack<Result> VisitCustomOp(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
@@ -381,32 +330,27 @@ namespace Microsoft.Boogie.VCExprAST
 
   [ContractClass(typeof(TraversingVCExprVisitorContracts<,>))]
   public abstract class TraversingVCExprVisitor<Result, Arg>
-    : IVCExprVisitor<Result, Arg>
-  {
+    : IVCExprVisitor<Result, Arg> {
     protected abstract Result StandardResult(VCExpr /*!*/ node, Arg arg);
 
-    public Result Traverse(VCExpr node, Arg arg)
-    {
+    public DynamicStack<Result> Traverse(VCExpr node, Arg arg) {
       Contract.Requires(node != null);
       return node.Accept(this, arg);
     }
 
-    public virtual Result Visit(VCExprLiteral node, Arg arg)
-    {
+    public virtual Result Visit(VCExprLiteral node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result Visit(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> Visit(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       Result res = StandardResult(node, arg);
-      
+
       if (node.TypeParamArity == 0 &&
           (node.Op == VCExpressionGenerator.AndOp ||
            node.Op == VCExpressionGenerator.OrOp ||
-           node.Op == VCExpressionGenerator.ImpliesOp))
-      {
+           node.Op == VCExpressionGenerator.ImpliesOp)) {
         Contract.Assert(node.Op != null);
         VCExprOp op = node.Op;
         HashSet<VCExprOp> ops = new HashSet<VCExprOp>();
@@ -414,77 +358,62 @@ namespace Microsoft.Boogie.VCExprAST
         ops.Add(VCExpressionGenerator.OrOp);
         ops.Add(VCExpressionGenerator.ImpliesOp);
         IEnumerator enumerator = new VCExprNAryMultiUniformOpEnumerator(node, ops);
-        while (enumerator.MoveNext())
-        {
-          VCExpr expr = cce.NonNull((VCExpr) enumerator.Current);
+        while (enumerator.MoveNext()) {
+          VCExpr expr = cce.NonNull((VCExpr)enumerator.Current);
           VCExprNAry naryExpr = expr as VCExprNAry;
-          if (naryExpr == null || !ops.Contains(naryExpr.Op))
-          {
+          if (naryExpr == null || !ops.Contains(naryExpr.Op)) {
             expr.Accept(this, arg);
-          }
-          else
-          {
+          } else {
             StandardResult(expr, arg);
           }
         }
-      }
-      else
-      {
-        foreach (VCExpr e in node.Arguments)
-        {
+      } else {
+        foreach (VCExpr e in node.Arguments) {
           Contract.Assert(e != null);
           e.Accept(this, arg);
         }
       }
 
-      return res;
+      return DynamicStack.FromResult(res);
     }
 
-    public virtual Result Visit(VCExprVar node, Arg arg)
-    {
+    public virtual Result Visit(VCExprVar node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result Visit(VCExprQuantifier node, Arg arg)
-    {
+    public virtual DynamicStack<Result> Visit(VCExprQuantifier node, Arg arg) {
       //Contract.Requires(node != null);
       Result res = StandardResult(node, arg);
-      foreach (VCTrigger /*!*/ trigger in node.Triggers)
-      {
+      foreach (VCTrigger /*!*/ trigger in node.Triggers) {
         Contract.Assert(trigger != null);
-        foreach (VCExpr /*!*/ expr in trigger.Exprs)
-        {
+        foreach (VCExpr /*!*/ expr in trigger.Exprs) {
           Contract.Assert(expr != null);
           expr.Accept(this, arg);
         }
       }
 
       node.Body.Accept(this, arg);
-      return res;
+      return DynamicStack.FromResult(res);
     }
 
-    public virtual Result Visit(VCExprLet node, Arg arg)
-    {
+    public virtual DynamicStack<Result> Visit(VCExprLet node, Arg arg) {
       //Contract.Requires(node != null);
       Result res = StandardResult(node, arg);
       // visit the bound expressions first
-      foreach (VCExprLetBinding /*!*/ binding in node)
-      {
+      foreach (VCExprLetBinding /*!*/ binding in node) {
         Contract.Assert(binding != null);
         binding.E.Accept(this, arg);
       }
 
       node.Body.Accept(this, arg);
-      return res;
+      return DynamicStack.FromResult(res);
     }
   }
 
   [ContractClassFor(typeof(TraversingVCExprVisitor<,>))]
-  public abstract class TraversingVCExprVisitorContracts<Result, Arg> : TraversingVCExprVisitor<Result, Arg>
-  {
-    protected override Result StandardResult(VCExpr node, Arg arg)
-    {
+  public abstract class TraversingVCExprVisitorContracts<Result, Arg> : TraversingVCExprVisitor<Result, Arg> {
+    protected override Result StandardResult(VCExpr node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
@@ -494,8 +423,7 @@ namespace Microsoft.Boogie.VCExprAST
   // used to avoid handling such VCExpr recursively, which can easily
   // lead to stack overflows
 
-  public class VCExprNAryEnumerator : IEnumerator
-  {
+  public class VCExprNAryEnumerator : IEnumerator {
     private readonly VCExprNAry /*!*/
       CompleteExpr;
 
@@ -505,14 +433,12 @@ namespace Microsoft.Boogie.VCExprAST
       ExprTodo = new Stack<VCExpr /*!*/>();
 
     [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
+    void ObjectInvariant() {
       Contract.Invariant(CompleteExpr != null);
       Contract.Invariant(cce.NonNullElements(ExprTodo));
     }
 
-    public VCExprNAryEnumerator(VCExprNAry completeExpr)
-    {
+    public VCExprNAryEnumerator(VCExprNAry completeExpr) {
       Contract.Requires(completeExpr != null);
       this.CompleteExpr = completeExpr;
       Stack<VCExpr /*!*/> /*!*/
@@ -524,27 +450,22 @@ namespace Microsoft.Boogie.VCExprAST
     // Method using which a subclass can decide whether the
     // subexpressions of an expression should be enumerated as well
     // The default is to enumerate all nodes
-    protected virtual bool Descend(VCExprNAry expr)
-    {
+    protected virtual bool Descend(VCExprNAry expr) {
       Contract.Requires(expr != null);
       return true;
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    public bool MoveNext()
-    {
-      if (ExprTodo.Count == 0)
-      {
+    public bool MoveNext() {
+      if (ExprTodo.Count == 0) {
         return false;
       }
 
       CurrentExpr = ExprTodo.Pop();
       VCExprNAry currentNAry = CurrentExpr as VCExprNAry;
-      if (currentNAry != null && Descend(currentNAry))
-      {
-        for (int i = currentNAry.Arity - 1; i >= 0; --i)
-        {
+      if (currentNAry != null && Descend(currentNAry)) {
+        for (int i = currentNAry.Arity - 1; i >= 0; --i) {
           ExprTodo.Push(currentNAry[i]);
         }
       }
@@ -552,13 +473,11 @@ namespace Microsoft.Boogie.VCExprAST
       return true;
     }
 
-    public object Current
-    {
+    public object Current {
       get { return cce.NonNull(CurrentExpr); }
     }
 
-    public void Reset()
-    {
+    public void Reset() {
       ExprTodo.Clear();
       CurrentExpr = null;
       ExprTodo.Push(CompleteExpr);
@@ -568,27 +487,23 @@ namespace Microsoft.Boogie.VCExprAST
 
   //////////////////////////////////////////////////////////////////////////////
 
-  public class VCExprNAryUniformOpEnumerator : VCExprNAryEnumerator
-  {
+  public class VCExprNAryUniformOpEnumerator : VCExprNAryEnumerator {
     private readonly VCExprOp /*!*/
       Op;
 
     [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
+    void ObjectInvariant() {
       Contract.Invariant(Op != null);
     }
 
     public VCExprNAryUniformOpEnumerator(VCExprNAry completeExpr)
-      : base(completeExpr)
-    {
+      : base(completeExpr) {
       Contract.Requires(completeExpr != null);
 
       this.Op = completeExpr.Op;
     }
 
-    protected override bool Descend(VCExprNAry expr)
-    {
+    protected override bool Descend(VCExprNAry expr) {
       //Contract.Requires(expr != null);
       return expr.Op.Equals(Op) &&
              // we never skip nodes with type parameters
@@ -597,26 +512,22 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
-  public class VCExprNAryMultiUniformOpEnumerator : VCExprNAryEnumerator
-  {
+  public class VCExprNAryMultiUniformOpEnumerator : VCExprNAryEnumerator {
     private readonly HashSet<VCExprOp> Ops;
 
     [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
+    void ObjectInvariant() {
       Contract.Invariant(Ops != null);
     }
 
     public VCExprNAryMultiUniformOpEnumerator(VCExprNAry completeExpr, HashSet<VCExprOp> ops)
-      : base(completeExpr)
-    {
+      : base(completeExpr) {
       Contract.Requires(completeExpr != null);
 
       this.Ops = ops;
     }
 
-    protected override bool Descend(VCExprNAry expr)
-    {
+    protected override bool Descend(VCExprNAry expr) {
       return Ops.Contains(expr.Op) && expr.TypeParamArity == 0;
     }
   }
@@ -625,8 +536,7 @@ namespace Microsoft.Boogie.VCExprAST
   // Visitor that knows about the variables bound at each location in a VCExpr
 
   public abstract class BoundVarTraversingVCExprVisitor<Result, Arg>
-    : TraversingVCExprVisitor<Result, Arg>
-  {
+    : TraversingVCExprVisitor<Result, Arg> {
     private readonly IDictionary<VCExprVar, VCExpr> BoundTermVarsMap = new Dictionary<VCExprVar, VCExpr>();
 
     private readonly ISet<TypeVariable> BoundTypeVarsSet = new HashSet<TypeVariable>();
@@ -635,34 +545,27 @@ namespace Microsoft.Boogie.VCExprAST
 
     protected ICollection<TypeVariable> BoundTypeVars => BoundTypeVarsSet;
 
-    public override Result Visit(VCExprQuantifier node, Arg arg)
-    {
+    public override async DynamicStack<Result> Visit(VCExprQuantifier node, Arg arg) {
       // we temporarily add bound (term and type) variables to the
       // corresponding lists
-      foreach (VCExprVar v in node.BoundVars)
-      {
+      foreach (VCExprVar v in node.BoundVars) {
         BoundTermVarsMap.Add(v, null);
       }
 
-      foreach (TypeVariable v in node.TypeParameters)
-      {
+      foreach (TypeVariable v in node.TypeParameters) {
         BoundTypeVarsSet.Add(v);
       }
 
       Result res;
-      try
-      {
-        res = VisitAfterBinding(node, arg);
+      try {
+        res = await VisitAfterBinding(node, arg);
       }
-      finally
-      {
-        foreach (VCExprVar v in node.BoundVars)
-        {
+      finally {
+        foreach (VCExprVar v in node.BoundVars) {
           BoundTermVarsMap.Remove(v);
         }
 
-        foreach (TypeVariable v in node.TypeParameters)
-        {
+        foreach (TypeVariable v in node.TypeParameters) {
           BoundTypeVarsSet.Remove(v);
         }
       }
@@ -670,24 +573,19 @@ namespace Microsoft.Boogie.VCExprAST
       return res;
     }
 
-    public override Result Visit(VCExprLet node, Arg arg)
-    {
+    public override async DynamicStack<Result> Visit(VCExprLet node, Arg arg) {
       // we temporarily add bound term variables to the
       // corresponding lists
-      foreach (var binding in node)
-      {
+      foreach (var binding in node) {
         BoundTermVarsMap.Add(binding.V, binding.E);
       }
 
       Result res;
-      try
-      {
-        res = VisitAfterBinding(node, arg);
+      try {
+        res = await VisitAfterBinding(node, arg);
       }
-      finally
-      {
-        foreach (VCExprVar v in node.BoundVars)
-        {
+      finally {
+        foreach (VCExprVar v in node.BoundVars) {
           BoundTermVarsMap.Remove(v);
         }
       }
@@ -701,25 +599,21 @@ namespace Microsoft.Boogie.VCExprAST
     // (when overriding the normal visit-methods, the node will be visited
     // before the binding happens)
 
-    protected virtual Result VisitAfterBinding(VCExprQuantifier node, Arg arg)
-    {
+    protected virtual DynamicStack<Result> VisitAfterBinding(VCExprQuantifier node, Arg arg) {
       Contract.Requires(node != null);
       return base.Visit(node, arg);
     }
 
-    protected virtual Result VisitAfterBinding(VCExprLet node, Arg arg)
-    {
+    protected virtual DynamicStack<Result> VisitAfterBinding(VCExprLet node, Arg arg) {
       Contract.Requires(node != null);
       return base.Visit(node, arg);
     }
   }
 
-  public class SizeComputingVisitor : TraversingVCExprVisitor<bool, bool>
-  {
+  public class SizeComputingVisitor : TraversingVCExprVisitor<bool, bool> {
     private int Size = 0;
 
-    public static int ComputeSize(VCExpr expr)
-    {
+    public static int ComputeSize(VCExpr expr) {
       Contract.Requires(expr != null);
       SizeComputingVisitor /*!*/
         visitor = new SizeComputingVisitor();
@@ -727,8 +621,7 @@ namespace Microsoft.Boogie.VCExprAST
       return visitor.Size;
     }
 
-    protected override bool StandardResult(VCExpr node, bool arg)
-    {
+    protected override bool StandardResult(VCExpr node, bool arg) {
       //Contract.Requires(node != null);
       Size = Size + 1;
       return true;
@@ -742,29 +635,25 @@ namespace Microsoft.Boogie.VCExprAST
   // parameters of VCExprNAry.
 
   // the result and argument (of type bool) are not used currently
-  public class FreeVariableCollector : BoundVarTraversingVCExprVisitor<bool, bool>
-  {
+  public class FreeVariableCollector : BoundVarTraversingVCExprVisitor<bool, bool> {
     public readonly HashSet<VCExprVar> FreeTermVars = new HashSet<VCExprVar>();
 
     public readonly List<TypeVariable> FreeTypeVars = new List<TypeVariable>();
 
     [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
+    void ObjectInvariant() {
       Contract.Invariant(FreeTermVars != null && Contract.ForAll(FreeTermVars, entry => entry != null));
       Contract.Invariant(cce.NonNullElements(FreeTypeVars));
     }
 
 
     // not used
-    protected override bool StandardResult(VCExpr node, bool arg)
-    {
+    protected override bool StandardResult(VCExpr node, bool arg) {
       //Contract.Requires(node != null);
       return true;
     }
 
-    public static HashSet<VCExprVar> FreeTermVariables(VCExpr node)
-    {
+    public static HashSet<VCExprVar> FreeTermVariables(VCExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Dictionary<VCExprVar, object>>() != null);
       Contract.Ensures(Contract.ForAll(Contract.Result<Dictionary<VCExprVar, object>>(), ftv => ftv.Key != null));
@@ -773,8 +662,7 @@ namespace Microsoft.Boogie.VCExprAST
       return collector.FreeTermVars;
     }
 
-    public static List<TypeVariable> FreeTypeVariables(VCExpr node)
-    {
+    public static List<TypeVariable> FreeTypeVariables(VCExpr node) {
       Contract.Requires(node != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
       FreeVariableCollector collector = new FreeVariableCollector();
@@ -782,54 +670,44 @@ namespace Microsoft.Boogie.VCExprAST
       return collector.FreeTypeVars;
     }
 
-    public void Reset()
-    {
+    public void Reset() {
       FreeTermVars.Clear();
       FreeTypeVars.Clear();
     }
 
-    public void Collect(VCExpr node)
-    {
+    public void Collect(VCExpr node) {
       Contract.Requires(node != null);
       Traverse(node, true);
     }
 
-    public void Collect(Type type)
-    {
+    public void Collect(Type type) {
       Contract.Requires(type != null);
       AddTypeVariables(type.FreeVariables.ToList());
     }
 
     /////////////////////////////////////////////////////////////////////////
 
-    private void CollectTypeVariables(IEnumerable<VCExprVar /*!*/> /*!*/ boundVars)
-    {
+    private void CollectTypeVariables(IEnumerable<VCExprVar /*!*/> /*!*/ boundVars) {
       Contract.Requires(cce.NonNullElements(boundVars));
-      foreach (VCExprVar /*!*/ var in boundVars)
-      {
+      foreach (VCExprVar /*!*/ var in boundVars) {
         Contract.Assert(var != null);
         Collect(var.Type);
       }
     }
 
-    private void AddTypeVariables(IEnumerable<TypeVariable /*!*/> /*!*/ typeVars)
-    {
+    private void AddTypeVariables(IEnumerable<TypeVariable /*!*/> /*!*/ typeVars) {
       Contract.Requires(cce.NonNullElements(typeVars));
-      foreach (TypeVariable /*!*/ tvar in typeVars)
-      {
+      foreach (TypeVariable /*!*/ tvar in typeVars) {
         Contract.Assert(tvar != null);
-        if (!BoundTypeVars.Contains(tvar) && !FreeTypeVars.Contains(tvar))
-        {
+        if (!BoundTypeVars.Contains(tvar) && !FreeTypeVars.Contains(tvar)) {
           FreeTypeVars.Add(tvar);
         }
       }
     }
 
-    public override bool Visit(VCExprVar node, bool arg)
-    {
+    public override bool Visit(VCExprVar node, bool arg) {
       Contract.Requires(node != null);
-      if (!BoundTermVars.ContainsKey(node) && !FreeTermVars.Contains(node))
-      {
+      if (!BoundTermVars.ContainsKey(node) && !FreeTermVars.Contains(node)) {
         FreeTermVars.Add(node);
         Collect(node.Type);
       }
@@ -837,11 +715,9 @@ namespace Microsoft.Boogie.VCExprAST
       return true;
     }
 
-    public override bool Visit(VCExprNAry node, bool arg)
-    {
+    public override DynamicStack<bool> Visit(VCExprNAry node, bool arg) {
       Contract.Requires(node != null);
-      foreach (Type /*!*/ t in node.TypeArguments)
-      {
+      foreach (Type /*!*/ t in node.TypeArguments) {
         Contract.Assert(t != null);
         Collect(t);
       }
@@ -849,15 +725,13 @@ namespace Microsoft.Boogie.VCExprAST
       return base.Visit(node, arg);
     }
 
-    protected override bool VisitAfterBinding(VCExprQuantifier node, bool arg)
-    {
+    protected override DynamicStack<bool> VisitAfterBinding(VCExprQuantifier node, bool arg) {
       //Contract.Requires(node != null);
       CollectTypeVariables(node.BoundVars);
       return base.VisitAfterBinding(node, arg);
     }
 
-    protected override bool VisitAfterBinding(VCExprLet node, bool arg)
-    {
+    protected override DynamicStack<bool> VisitAfterBinding(VCExprLet node, bool arg) {
       //Contract.Requires(node != null);
       CollectTypeVariables(node.BoundVars);
       return base.VisitAfterBinding(node, arg);
@@ -877,14 +751,12 @@ namespace Microsoft.Boogie.VCExprAST
   // Substitutions and a visitor for applying substitutions. A substitution can
   // substitute both type variables and term variables
 
-  public class VCExprSubstitution
-  {
+  public class VCExprSubstitution {
     private readonly List<IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/> /*!*/
       TermSubsts;
 
     [ContractInvariantMethod]
-    void TermSubstsInvariantMethod()
-    {
+    void TermSubstsInvariantMethod() {
       Contract.Invariant(TermSubsts != null && Contract.ForAll(TermSubsts, i => cce.NonNullDictionaryAndValues(i)));
     }
 
@@ -892,14 +764,12 @@ namespace Microsoft.Boogie.VCExprAST
       TypeSubsts;
 
     [ContractInvariantMethod]
-    void TypeSubstsInvariantMethod()
-    {
+    void TypeSubstsInvariantMethod() {
       Contract.Invariant(TermSubsts != null && Contract.ForAll(TypeSubsts, i => cce.NonNullDictionaryAndValues(i)));
     }
 
     public VCExprSubstitution(IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/ termSubst,
-      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ typeSubst)
-    {
+      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ typeSubst) {
       Contract.Requires(cce.NonNullDictionaryAndValues(termSubst));
       Contract.Requires(cce.NonNullDictionaryAndValues(typeSubst));
       List<IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/> /*!*/
@@ -915,31 +785,24 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     public VCExprSubstitution()
-      : this(new Dictionary<VCExprVar /*!*/, VCExpr /*!*/>(), new Dictionary<TypeVariable /*!*/, Type /*!*/>())
-    {
+      : this(new Dictionary<VCExprVar /*!*/, VCExpr /*!*/>(), new Dictionary<TypeVariable /*!*/, Type /*!*/>()) {
     }
 
-    public void PushScope()
-    {
+    public void PushScope() {
       TermSubsts.Add(new Dictionary<VCExprVar /*!*/, VCExpr /*!*/>());
       TypeSubsts.Add(new Dictionary<TypeVariable /*!*/, Type /*!*/>());
     }
 
-    public void PopScope()
-    {
+    public void PopScope() {
       TermSubsts.RemoveAt(TermSubsts.Count - 1);
       TypeSubsts.RemoveAt(TypeSubsts.Count - 1);
     }
 
-    public VCExpr this[VCExprVar /*!*/ var]
-    {
-      get
-      {
+    public VCExpr this[VCExprVar /*!*/ var] {
+      get {
         Contract.Requires(var != null);
-        for (int i = TermSubsts.Count - 1; i >= 0; --i)
-        {
-          if (TermSubsts[i].TryGetValue(var, out var res))
-          {
+        for (int i = TermSubsts.Count - 1; i >= 0; --i) {
+          if (TermSubsts[i].TryGetValue(var, out var res)) {
             return res;
           }
         }
@@ -949,15 +812,11 @@ namespace Microsoft.Boogie.VCExprAST
       set { TermSubsts[TermSubsts.Count - 1][var] = cce.NonNull(value); }
     }
 
-    public Type this[TypeVariable /*!*/ var]
-    {
-      get
-      {
+    public Type this[TypeVariable /*!*/ var] {
+      get {
         Contract.Requires(var != null);
-        for (int i = TypeSubsts.Count - 1; i >= 0; --i)
-        {
-          if (TypeSubsts[i].TryGetValue(var, out var res))
-          {
+        for (int i = TypeSubsts.Count - 1; i >= 0; --i) {
+          if (TypeSubsts[i].TryGetValue(var, out var res)) {
             return res;
           }
         }
@@ -967,39 +826,31 @@ namespace Microsoft.Boogie.VCExprAST
       set { TypeSubsts[TypeSubsts.Count - 1][var] = cce.NonNull(value); }
     }
 
-    public bool ContainsKey(VCExprVar var)
-    {
+    public bool ContainsKey(VCExprVar var) {
       Contract.Requires(var != null);
       return this[var] != null;
     }
 
-    public bool ContainsKey(TypeVariable var)
-    {
+    public bool ContainsKey(TypeVariable var) {
       Contract.Requires(var != null);
       return this[var] != null;
     }
 
-    public bool TermSubstIsEmpty
-    {
+    public bool TermSubstIsEmpty {
       get { return TermSubsts.All(dict => !dict.Any()); }
     }
 
-    public bool TypeSubstIsEmpty
-    {
+    public bool TypeSubstIsEmpty {
       get { return TypeSubsts.All(dict => !dict.Any()); }
     }
 
-    public IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ ToTypeSubst
-    {
-      get
-      {
+    public IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ ToTypeSubst {
+      get {
         Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
         IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
           res = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
-        foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts)
-        {
-          foreach (KeyValuePair<TypeVariable /*!*/, Type /*!*/> pair in dict)
-          {
+        foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts) {
+          foreach (KeyValuePair<TypeVariable /*!*/, Type /*!*/> pair in dict) {
             Contract.Assert(cce.NonNullElements(pair));
             // later ones overwrite earlier ones
             res[pair.Key] = pair.Value;
@@ -1011,21 +862,16 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     // the variables that are not mapped to themselves
-    public IEnumerable<VCExprVar /*!*/> /*!*/ TermDomain
-    {
-      get
-      {
+    public IEnumerable<VCExprVar /*!*/> /*!*/ TermDomain {
+      get {
         Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<VCExprVar>>()));
         HashSet<VCExprVar /*!*/> /*!*/
           domain = new HashSet<VCExprVar /*!*/>();
-        foreach (IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/ dict in TermSubsts)
-        {
+        foreach (IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/ dict in TermSubsts) {
           Contract.Assert(dict != null);
-          foreach (VCExprVar /*!*/ var in dict.Keys)
-          {
+          foreach (VCExprVar /*!*/ var in dict.Keys) {
             Contract.Assert(var != null);
-            if (!var.Equals(this[var]))
-            {
+            if (!var.Equals(this[var])) {
               domain.Add(var);
             }
           }
@@ -1036,21 +882,16 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     // the variables that are not mapped to themselves
-    public IEnumerable<TypeVariable /*!*/> /*!*/ TypeDomain
-    {
-      get
-      {
+    public IEnumerable<TypeVariable /*!*/> /*!*/ TypeDomain {
+      get {
         Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<TypeVariable>>()));
         HashSet<TypeVariable /*!*/> /*!*/
           domain = new HashSet<TypeVariable /*!*/>();
-        foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts)
-        {
+        foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts) {
           Contract.Assert(dict != null);
-          foreach (TypeVariable /*!*/ var in dict.Keys)
-          {
+          foreach (TypeVariable /*!*/ var in dict.Keys) {
             Contract.Assert(var != null);
-            if (!var.Equals(this[var]))
-            {
+            if (!var.Equals(this[var])) {
               domain.Add(var);
             }
           }
@@ -1060,21 +901,17 @@ namespace Microsoft.Boogie.VCExprAST
       }
     }
 
-    public FreeVariableCollector /*!*/ Codomains
-    {
-      get
-      {
+    public FreeVariableCollector /*!*/ Codomains {
+      get {
         Contract.Ensures(Contract.Result<FreeVariableCollector>() != null);
 
         FreeVariableCollector /*!*/
           coll = new FreeVariableCollector();
-        foreach (VCExprVar /*!*/ var in TermDomain)
-        {
+        foreach (VCExprVar /*!*/ var in TermDomain) {
           coll.Collect(cce.NonNull(this)[var]);
         }
 
-        foreach (TypeVariable /*!*/ var in TypeDomain)
-        {
+        foreach (TypeVariable /*!*/ var in TypeDomain) {
           coll.Collect(cce.NonNull(this)[var]);
         }
 
@@ -1082,18 +919,15 @@ namespace Microsoft.Boogie.VCExprAST
       }
     }
 
-    public VCExprSubstitution Clone()
-    {
+    public VCExprSubstitution Clone() {
       Contract.Ensures(Contract.Result<VCExprSubstitution>() != null);
       VCExprSubstitution /*!*/
         res = new VCExprSubstitution();
-      foreach (IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/ dict in TermSubsts)
-      {
+      foreach (IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/ dict in TermSubsts) {
         res.TermSubsts.Add(HelperFuns.Clone(dict));
       }
 
-      foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts)
-      {
+      foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts) {
         res.TypeSubsts.Add(HelperFuns.Clone(dict));
       }
 
@@ -1104,11 +938,9 @@ namespace Microsoft.Boogie.VCExprAST
   /////////////////////////////////////////////////////////////////////////////////
 
   public class SubstitutingVCExprVisitor
-    : MutatingVCExprVisitor<VCExprSubstitution /*!*/>
-  {
+    : MutatingVCExprVisitor<VCExprSubstitution /*!*/> {
     public SubstitutingVCExprVisitor(VCExpressionGenerator gen)
-      : base(gen)
-    {
+      : base(gen) {
       Contract.Requires(gen != null);
     }
 
@@ -1116,15 +948,13 @@ namespace Microsoft.Boogie.VCExprAST
     // or variable capture can occur. if this might happen, we replace the
     // term and type variables bound by the binder with fresh variables
     private bool CollisionPossible(IEnumerable<TypeVariable /*!*/> /*!*/ typeParams,
-      IEnumerable<VCExprVar /*!*/> /*!*/ boundVars, VCExprSubstitution /*!*/ substitution)
-    {
+      IEnumerable<VCExprVar /*!*/> /*!*/ boundVars, VCExprSubstitution /*!*/ substitution) {
       Contract.Requires(cce.NonNullElements(typeParams));
       Contract.Requires(cce.NonNullElements(boundVars));
       Contract.Requires(substitution != null);
       // variables can be shadowed by a binder
       if (typeParams.Any(var => substitution.ContainsKey(var)) ||
-          boundVars.Any(var => substitution.ContainsKey(var)))
-      {
+          boundVars.Any(var => substitution.ContainsKey(var))) {
         return true;
       }
       // compute the codomain of the substitution
@@ -1136,8 +966,7 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     // can be overwritten if names of bound variables are to be changed
-    protected virtual string ChooseNewVariableName(string oldName)
-    {
+    protected virtual string ChooseNewVariableName(string oldName) {
       Contract.Requires(oldName != null);
       Contract.Ensures(Contract.Result<string>() != null);
       return oldName;
@@ -1145,8 +974,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     // handle type parameters in VCExprNAry
     protected override VCExpr /*!*/ UpdateModifiedNode(VCExprNAry /*!*/ originalNode,
-      List<VCExpr /*!*/> /*!*/ newSubExprs, bool changed, VCExprSubstitution /*!*/ substitution)
-    {
+      List<VCExpr /*!*/> /*!*/ newSubExprs, bool changed, VCExprSubstitution /*!*/ substitution) {
       //Contract.Requires(originalNode != null);
       //Contract.Requires(cce.NonNullElements(newSubExprs));
       //Contract.Requires(substitution != null);
@@ -1154,32 +982,26 @@ namespace Microsoft.Boogie.VCExprAST
 
       List<Type /*!*/> /*!*/
         typeParams = new List<Type /*!*/>();
-      foreach (Type /*!*/ t in originalNode.TypeArguments)
-      {
+      foreach (Type /*!*/ t in originalNode.TypeArguments) {
         Contract.Assert(t != null);
         Type /*!*/
           newType = t.Substitute(substitution.ToTypeSubst);
         Contract.Assert(newType != null);
-        if (!ReferenceEquals(t, newType))
-        {
+        if (!ReferenceEquals(t, newType)) {
           changed = true;
         }
 
         typeParams.Add(newType);
       }
 
-      if (changed)
-      {
+      if (changed) {
         return Gen.Function(originalNode.Op, newSubExprs, typeParams);
-      }
-      else
-      {
+      } else {
         return originalNode;
       }
     }
 
-    public override VCExpr /*!*/ Visit(VCExprQuantifier /*!*/ node, VCExprSubstitution /*!*/ substitution)
-    {
+    public override DynamicStack<VCExpr> /*!*/ Visit(VCExprQuantifier node /*!*/, VCExprSubstitution substitution /*!*/) {
       Contract.Requires(node != null);
       Contract.Requires(substitution != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -1189,27 +1011,23 @@ namespace Microsoft.Boogie.VCExprAST
       return Visit(node, substitution, false);
     }
 
-    public VCExpr /*!*/ Visit(VCExprQuantifier /*!*/ node, VCExprSubstitution /*!*/ substitution,
-      bool refreshBoundVariables)
-    {
+    public async DynamicStack<VCExpr> /*!*/ Visit(VCExprQuantifier /*!*/ node, VCExprSubstitution /*!*/ substitution,
+      bool refreshBoundVariables) {
       Contract.Requires(node != null);
       Contract.Requires(substitution != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       substitution.PushScope();
-      try
-      {
+      try {
         List<TypeVariable /*!*/> /*!*/
           typeParams = node.TypeParameters;
         Contract.Assert(cce.NonNullElements(typeParams));
         bool refreshAllVariables = refreshBoundVariables ||
                                    CollisionPossible(node.TypeParameters, node.BoundVars, substitution);
-        if (refreshAllVariables)
-        {
+        if (refreshAllVariables) {
           // we introduce fresh type variables to ensure that none gets captured
           typeParams = new List<TypeVariable /*!*/>();
-          foreach (TypeVariable /*!*/ var in node.TypeParameters)
-          {
+          foreach (TypeVariable /*!*/ var in node.TypeParameters) {
             Contract.Assert(var != null);
             TypeVariable /*!*/
               freshVar =
@@ -1224,8 +1042,7 @@ namespace Microsoft.Boogie.VCExprAST
         List<VCExprVar /*!*/> /*!*/
           boundVars = node.BoundVars;
         Contract.Assert(cce.NonNullElements(boundVars));
-        if (refreshAllVariables || !substitution.TypeSubstIsEmpty)
-        {
+        if (refreshAllVariables || !substitution.TypeSubstIsEmpty) {
           // collisions are possible, or we also substitute type variables. in this case
           // the bound term variables have to be replaced with fresh variables with the
           // right types
@@ -1233,8 +1050,7 @@ namespace Microsoft.Boogie.VCExprAST
           IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
             typeSubst = substitution.ToTypeSubst;
           Contract.Assert(cce.NonNullDictionaryAndValues(typeSubst));
-          foreach (VCExprVar /*!*/ var in node.BoundVars)
-          {
+          foreach (VCExprVar /*!*/ var in node.BoundVars) {
             Contract.Assert(var != null);
             VCExprVar /*!*/
               freshVar =
@@ -1249,10 +1065,9 @@ namespace Microsoft.Boogie.VCExprAST
 
         List<VCTrigger /*!*/> /*!*/
           newTriggers = new List<VCTrigger /*!*/>();
-        foreach (VCTrigger /*!*/ trigger in node.Triggers)
-        {
+        foreach (VCTrigger /*!*/ trigger in node.Triggers) {
           Contract.Assert(trigger != null);
-          newTriggers.Add(Gen.Trigger(trigger.Pos, MutateSeq(trigger.Exprs, substitution)));
+          newTriggers.Add(Gen.Trigger(trigger.Pos, await MutateSeq(trigger.Exprs, substitution)));
         }
 
         VCExpr /*!*/
@@ -1262,45 +1077,39 @@ namespace Microsoft.Boogie.VCExprAST
         return Gen.Quantify(node.Quan, typeParams, boundVars,
           newTriggers, node.Info, newBody);
       }
-      finally
-      {
+      finally {
         substitution.PopScope();
       }
     }
 
-    public override VCExpr Visit(VCExprVar node, VCExprSubstitution substitution)
-    {
+    public override VCExpr Visit(VCExprVar node, VCExprSubstitution substitution) {
       Contract.Requires(substitution != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       VCExpr res = substitution[node];
-      if (res != null)
-      {
+      if (res != null) {
         return res;
       }
 
       return node;
     }
 
-    public override VCExpr Visit(VCExprLet node, VCExprSubstitution substitution)
-    {
+    public override DynamicStack<VCExpr> Visit(VCExprLet node, VCExprSubstitution substitution) {
       Contract.Requires(substitution != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       // the default is to refresh bound variables only if necessary
       // because of collisions
-      return Visit(node, substitution, false);
+      return DynamicStack.FromResult(Visit(node, substitution, false));
     }
 
-    public VCExpr Visit(VCExprLet node, VCExprSubstitution substitution, bool refreshBoundVariables)
-    {
+    public VCExpr Visit(VCExprLet node, VCExprSubstitution substitution, bool refreshBoundVariables) {
       Contract.Requires(substitution != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       // let-expressions do not have type parameters (fortunately ...)
       substitution.PushScope();
-      try
-      {
+      try {
         bool refreshAllVariables =
           refreshBoundVariables ||
           !substitution.TypeSubstIsEmpty ||
@@ -1309,8 +1118,7 @@ namespace Microsoft.Boogie.VCExprAST
         List<VCExprVar /*!*/> /*!*/
           newBoundVars = node.BoundVars;
         Contract.Assert(cce.NonNullElements(newBoundVars));
-        if (refreshAllVariables)
-        {
+        if (refreshAllVariables) {
           // collisions are possible, or we also substitute type variables. in this case
           // the bound term variables have to be replaced with fresh variables with the
           // right types
@@ -1318,8 +1126,7 @@ namespace Microsoft.Boogie.VCExprAST
           IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
             typeSubst = substitution.ToTypeSubst;
           Contract.Assert(cce.NonNullDictionaryAndValues(typeSubst));
-          foreach (VCExprVar /*!*/ var in node.BoundVars)
-          {
+          foreach (VCExprVar /*!*/ var in node.BoundVars) {
             Contract.Assert(var != null);
             VCExprVar /*!*/
               freshVar =
@@ -1334,8 +1141,7 @@ namespace Microsoft.Boogie.VCExprAST
 
         List<VCExprLetBinding /*!*/> /*!*/
           newbindings = new List<VCExprLetBinding /*!*/>();
-        for (int i = 0; i < node.Length; ++i)
-        {
+        for (int i = 0; i < node.Length; ++i) {
           VCExprLetBinding /*!*/
             binding = node[i];
           Contract.Assert(binding != null);
@@ -1347,8 +1153,7 @@ namespace Microsoft.Boogie.VCExprAST
         Contract.Assert(newBody != null);
         return Gen.Let(newbindings, newBody);
       }
-      finally
-      {
+      finally {
         substitution.PopScope();
       }
     }
@@ -1356,10 +1161,8 @@ namespace Microsoft.Boogie.VCExprAST
 
   ////////////////////////////////////////////////////////////////////////////
   [ContractClassFor(typeof(StandardVCExprOpVisitor<,>))]
-  public abstract class StandardVCExprOpVisitorContracts<Result, Arg> : StandardVCExprOpVisitor<Result, Arg>
-  {
-    protected override Result StandardResult(VCExprNAry node, Arg arg)
-    {
+  public abstract class StandardVCExprOpVisitorContracts<Result, Arg> : StandardVCExprOpVisitor<Result, Arg> {
+    protected override DynamicStack<Result> StandardResult(VCExprNAry node, Arg arg) {
       Contract.Requires(node != null);
       throw new NotImplementedException();
     }
@@ -1368,264 +1171,220 @@ namespace Microsoft.Boogie.VCExprAST
 
   [ContractClass(typeof(StandardVCExprOpVisitorContracts<,>))]
   public abstract class StandardVCExprOpVisitor<Result, Arg>
-    : IVCExprOpVisitor<Result, Arg>
-  {
-    protected abstract Result StandardResult(VCExprNAry /*!*/ node, Arg arg);
+    : IVCExprOpVisitor<Result, Arg> {
+    protected abstract DynamicStack<Result> StandardResult(VCExprNAry node /*!*/, Arg arg);
 
-    public virtual Result VisitNotOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitNotOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitEqOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitEqOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitNeqOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitNeqOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitAndOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitAndOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitOrOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitOrOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitImpliesOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitImpliesOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitDistinctOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitDistinctOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFieldAccessOp(VCExprNAry node, Arg arg)
-    {
-      //Contract.Requires(node != null);
-      return StandardResult(node, arg);
-    }
-    
-    public virtual Result VisitIsConstructorOp(VCExprNAry node, Arg arg)
-    {
-      //Contract.Requires(node != null);
-      return StandardResult(node, arg);
-    }
-    
-    public virtual Result VisitSelectOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFieldAccessOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitStoreOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitIsConstructorOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatAddOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitSelectOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatSubOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitStoreOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatMulOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatAddOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatDivOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatSubOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatLeqOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatMulOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatLtOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatDivOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatGeqOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatLeqOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatGtOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatLtOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatEqOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatGeqOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitFloatNeqOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatGtOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitBvOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatEqOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitBvExtractOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitFloatNeqOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitBvConcatOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitBvOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitIfThenElseOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitBvExtractOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitCustomOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitBvConcatOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitAddOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitIfThenElseOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitSubOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitCustomOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitMulOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitAddOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitDivOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitSubOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitModOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitMulOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitRealDivOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitDivOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitPowOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitModOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitLtOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitRealDivOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitLeOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitPowOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitGtOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitLtOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitGeOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitLeOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitSubtypeOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitGtOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitSubtype3Op(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitGeOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitToIntOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitSubtypeOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitToRealOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitSubtype3Op(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitToFloatOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitToIntOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
-    public virtual Result VisitBoogieFunctionOp(VCExprNAry node, Arg arg)
-    {
+    public virtual DynamicStack<Result> VisitToRealOp(VCExprNAry node, Arg arg) {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
+
+    public virtual DynamicStack<Result> VisitToFloatOp(VCExprNAry node, Arg arg) {
+      //Contract.Requires(node != null);
+      return StandardResult(node, arg);
+    }
+
+    public virtual DynamicStack<Result> VisitBoogieFunctionOp(VCExprNAry node, Arg arg) {
       //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }

@@ -9,8 +9,7 @@ namespace Microsoft.Boogie.TypeErasure;
 /// Collect all variables x occurring in expressions of the form Int2U(x) or Bool2U(x), and
 /// collect all variables x occurring outside such forms.
 /// </summary>
-internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
-{
+internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool> {
   /// <summary>
   /// Determine those bound variables in "oldNode" <em>all</em> of whose relevant uses
   /// have to be cast in potential triggers in "newNode".  It is assume that
@@ -18,8 +17,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
   /// variables of "newNode".
   /// </summary>
   public static List<VCExprVar /*!*/> /*!*/ FindCastVariables(VCExprQuantifier oldNode, VCExprQuantifier newNode,
-    TypeAxiomBuilderIntBoolU axBuilder)
-  {
+    TypeAxiomBuilderIntBoolU axBuilder) {
     Contract.Requires((axBuilder != null));
     Contract.Requires((newNode != null));
     Contract.Requires((oldNode != null));
@@ -27,36 +25,28 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
     VariableCastCollector /*!*/
       collector = new VariableCastCollector(axBuilder);
     Contract.Assert(collector != null);
-    if (newNode.Triggers.Any(trigger => trigger.Pos))
-    {
+    if (newNode.Triggers.Any(trigger => trigger.Pos)) {
       // look in the given triggers
-      foreach (VCTrigger /*!*/ trigger in newNode.Triggers)
-      {
+      foreach (VCTrigger /*!*/ trigger in newNode.Triggers) {
         Contract.Assert(trigger != null);
-        if (trigger.Pos)
-        {
-          foreach (VCExpr /*!*/ expr in trigger.Exprs)
-          {
+        if (trigger.Pos) {
+          foreach (VCExpr /*!*/ expr in trigger.Exprs) {
             Contract.Assert(expr != null);
             collector.Traverse(expr, true);
           }
         }
       }
-    }
-    else
-    {
+    } else {
       // look in the body of the quantifier
       collector.Traverse(newNode.Body, true);
     }
 
     List<VCExprVar /*!*/> /*!*/
       castVariables = new List<VCExprVar /*!*/>(collector.varsInCasts.Count);
-    foreach (VCExprVar /*!*/ castVar in collector.varsInCasts)
-    {
+    foreach (VCExprVar /*!*/ castVar in collector.varsInCasts) {
       Contract.Assert(castVar != null);
       int i = newNode.BoundVars.IndexOf(castVar);
-      if (0 <= i && i < oldNode.BoundVars.Count && !collector.varsOutsideCasts.ContainsKey(castVar))
-      {
+      if (0 <= i && i < oldNode.BoundVars.Count && !collector.varsOutsideCasts.ContainsKey(castVar)) {
         castVariables.Add(oldNode.BoundVars[i]);
       }
     }
@@ -64,8 +54,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
     return castVariables;
   }
 
-  public VariableCastCollector(TypeAxiomBuilderIntBoolU axBuilder)
-  {
+  public VariableCastCollector(TypeAxiomBuilderIntBoolU axBuilder) {
     Contract.Requires(axBuilder != null);
     this.AxBuilder = axBuilder;
   }
@@ -77,8 +66,7 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
     varsOutsideCasts = new Dictionary<VCExprVar /*!*/, object>();
 
   [ContractInvariantMethod]
-  void ObjectInvariant()
-  {
+  void ObjectInvariant() {
     Contract.Invariant(cce.NonNullElements(varsInCasts));
     Contract.Invariant(varsOutsideCasts != null && Contract.ForAll(varsOutsideCasts, voc => voc.Key != null));
     Contract.Invariant(AxBuilder != null);
@@ -88,35 +76,27 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
   readonly TypeAxiomBuilderIntBoolU /*!*/
     AxBuilder;
 
-  protected override bool StandardResult(VCExpr node, bool arg)
-  {
+  protected override bool StandardResult(VCExpr node, bool arg) {
     //Contract.Requires(node != null);
     return true; // not used
   }
 
-  public override bool Visit(VCExprNAry node, bool arg)
-  {
+  public override DynamicStack<bool> Visit(VCExprNAry node, bool arg) {
     Contract.Requires(node != null);
-    if (node.Op is VCExprBoogieFunctionOp)
-    {
-      Function func = ((VCExprBoogieFunctionOp) node.Op).Func;
+    if (node.Op is VCExprBoogieFunctionOp) {
+      Function func = ((VCExprBoogieFunctionOp)node.Op).Func;
       Contract.Assert(func != null);
-      if ((AxBuilder.IsCast(func)) && node[0] is VCExprVar)
-      {
-        VCExprVar castVar = (VCExprVar) node[0];
-        if (!varsInCasts.Contains(castVar))
-        {
+      if ((AxBuilder.IsCast(func)) && node[0] is VCExprVar) {
+        VCExprVar castVar = (VCExprVar)node[0];
+        if (!varsInCasts.Contains(castVar)) {
           varsInCasts.Add(castVar);
         }
 
-        return true;
+        return DynamicStack.FromResult(true);
       }
-    }
-    else if (node.Op is VCExprNAryOp)
-    {
+    } else if (node.Op is VCExprNAryOp) {
       VCExpressionGenerator.SingletonOp op = VCExpressionGenerator.SingletonOpDict[node.Op];
-      switch (op)
-      {
+      switch (op) {
         // the following operators cannot be used in triggers, so disregard any uses of variables as direct arguments
         case VCExpressionGenerator.SingletonOp.NotOp:
         case VCExpressionGenerator.SingletonOp.EqOp:
@@ -128,16 +108,14 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
         case VCExpressionGenerator.SingletonOp.LeOp:
         case VCExpressionGenerator.SingletonOp.GtOp:
         case VCExpressionGenerator.SingletonOp.GeOp:
-          foreach (VCExpr n in node.Arguments)
-          {
-            if (!(n is VCExprVar))
-            {
+          foreach (VCExpr n in node.Arguments) {
+            if (!(n is VCExprVar)) {
               // don't recurse on VCExprVar argument
               n.Accept<bool, bool>(this, arg);
             }
           }
 
-          return true;
+          return DynamicStack.FromResult(true);
         default:
           break;
       }
@@ -146,11 +124,9 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
     return base.Visit(node, arg);
   }
 
-  public override bool Visit(VCExprVar node, bool arg)
-  {
+  public override bool Visit(VCExprVar node, bool arg) {
     Contract.Requires(node != null);
-    if (!varsOutsideCasts.ContainsKey(node))
-    {
+    if (!varsOutsideCasts.ContainsKey(node)) {
       varsOutsideCasts.Add(node, null);
     }
 

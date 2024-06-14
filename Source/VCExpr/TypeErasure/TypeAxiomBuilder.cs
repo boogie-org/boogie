@@ -6,15 +6,19 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.TypeErasure;
 
+// The class responsible for creating and keeping track of all
+// axioms related to the type system. This abstract class is made
+// concrete in two subclasses, one for type erasure with type
+// premisses in quantifiers (the semantic approach), and one for
+// type erasure with explicit type arguments of polymorphic
+// functions (the syntactic approach).
 [ContractClass(typeof(TypeAxiomBuilderContracts))]
-public abstract class TypeAxiomBuilder : ICloneable
-{
+public abstract class TypeAxiomBuilder : ICloneable {
   protected readonly VCExpressionGenerator /*!*/
     Gen;
 
   [ContractInvariantMethod]
-  void ObjectInvariant()
-  {
+  void ObjectInvariant() {
     Contract.Invariant(Gen != null);
     Contract.Invariant(Ctor != null);
   }
@@ -30,8 +34,7 @@ public abstract class TypeAxiomBuilder : ICloneable
     AllTypeAxioms;
 
   [ContractInvariantMethod]
-  void AllTypeAxiomsInvariantMethod()
-  {
+  void AllTypeAxiomsInvariantMethod() {
     Contract.Invariant(cce.NonNullElements(AllTypeAxioms));
   }
 
@@ -40,13 +43,11 @@ public abstract class TypeAxiomBuilder : ICloneable
     IncTypeAxioms;
 
   [ContractInvariantMethod]
-  void IncTypeAxiomsInvariantMethod()
-  {
+  void IncTypeAxiomsInvariantMethod() {
     Contract.Invariant(cce.NonNullElements(IncTypeAxioms));
   }
 
-  internal void AddTypeAxiom(VCExpr axiom)
-  {
+  internal void AddTypeAxiom(VCExpr axiom) {
     Contract.Requires(axiom != null);
     AllTypeAxioms.Add(axiom);
     IncTypeAxioms.Add(axiom);
@@ -54,8 +55,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   // Return all axioms that were added since the last time NewAxioms
   // was called
-  public VCExpr GetNewAxioms()
-  {
+  public VCExpr GetNewAxioms() {
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     VCExpr /*!*/
       res = Gen.NAry(VCExpressionGenerator.AndOp, IncTypeAxioms);
@@ -69,8 +69,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   private BigNum CurrentCtorNum;
 
-  private VCExpr GenCtorAssignment(VCExpr typeRepr)
-  {
+  private VCExpr GenCtorAssignment(VCExpr typeRepr) {
     Contract.Requires(typeRepr != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
@@ -80,8 +79,7 @@ public abstract class TypeAxiomBuilder : ICloneable
     return res;
   }
 
-  private VCExpr GenCtorAssignment(Function typeRepr)
-  {
+  private VCExpr GenCtorAssignment(Function typeRepr) {
     Contract.Requires(typeRepr != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
@@ -92,8 +90,7 @@ public abstract class TypeAxiomBuilder : ICloneable
         GenCtorAssignment(Gen.Function(typeRepr,
           HelperFuns.ToVCExprList(quantifiedVars)));
 
-    if (typeRepr.InParams.Count == 0)
-    {
+    if (typeRepr.InParams.Count == 0) {
       return eq;
     }
 
@@ -102,8 +99,7 @@ public abstract class TypeAxiomBuilder : ICloneable
   }
 
   // generate an axiom (forall x0, x1, ... :: invFun(fun(x0, x1, ...) == xi)
-  protected VCExpr GenLeftInverseAxiom(Function fun, Function invFun, int dtorNum)
-  {
+  protected VCExpr GenLeftInverseAxiom(Function fun, Function invFun, int dtorNum) {
     Contract.Requires(invFun != null);
     Contract.Requires(fun != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -130,8 +126,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   // the type of everything that is not int, bool, or a type
   [ContractInvariantMethod]
-  void ObjectInvariant2()
-  {
+  void ObjectInvariant2() {
     Contract.Invariant(UDecl != null);
     Contract.Invariant(TDecl != null);
     Contract.Invariant(U != null);
@@ -163,18 +158,15 @@ public abstract class TypeAxiomBuilder : ICloneable
     BasicTypeReprs;
 
   [ContractInvariantMethod]
-  void BasicTypeReprsInvariantMethod()
-  {
+  void BasicTypeReprsInvariantMethod() {
     Contract.Invariant(cce.NonNullDictionaryAndValues(BasicTypeReprs));
   }
 
-  private VCExpr GetBasicTypeRepr(Type type)
-  {
+  private VCExpr GetBasicTypeRepr(Type type) {
     Contract.Requires(type != null);
     Contract.Requires(type.IsBasic || type.IsBv || type.IsFloat);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    if (!BasicTypeReprs.TryGetValue(type, out var res))
-    {
+    if (!BasicTypeReprs.TryGetValue(type, out var res)) {
       res = Gen.Function(HelperFuns.BoogieFunction(type.ToString() + "Type", T));
       AddTypeAxiom(GenCtorAssignment(res));
       BasicTypeReprs.Add(type, res);
@@ -187,16 +179,13 @@ public abstract class TypeAxiomBuilder : ICloneable
     TypeCtorReprs;
 
   [ContractInvariantMethod]
-  void TypeCtorReprsInvariantMethod()
-  {
+  void TypeCtorReprsInvariantMethod() {
     Contract.Invariant(TypeCtorReprs != null);
   }
 
-  internal TypeCtorRepr GetTypeCtorReprStruct(TypeCtorDecl decl)
-  {
+  internal TypeCtorRepr GetTypeCtorReprStruct(TypeCtorDecl decl) {
     Contract.Requires(decl != null);
-    if (!TypeCtorReprs.TryGetValue(decl, out var reprSet))
-    {
+    if (!TypeCtorReprs.TryGetValue(decl, out var reprSet)) {
       Function /*!*/
         ctor = HelperFuns.UniformBoogieFunction(decl.Name + "Type", decl.Arity, T);
       Contract.Assert(ctor != null);
@@ -204,8 +193,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
       List<Function /*!*/> /*!*/
         dtors = new List<Function /*!*/>(decl.Arity);
-      for (int i = 0; i < decl.Arity; ++i)
-      {
+      for (int i = 0; i < decl.Arity; ++i) {
         Function /*!*/
           dtor = HelperFuns.UniformBoogieFunction(decl.Name + "TypeInv" + i, 1, T);
         dtors.Add(dtor);
@@ -219,15 +207,13 @@ public abstract class TypeAxiomBuilder : ICloneable
     return reprSet;
   }
 
-  public Function GetTypeCtorRepr(TypeCtorDecl decl)
-  {
+  public Function GetTypeCtorRepr(TypeCtorDecl decl) {
     Contract.Requires(decl != null);
     Contract.Ensures(Contract.Result<Function>() != null);
     return GetTypeCtorReprStruct(decl).Ctor;
   }
 
-  public Function GetTypeDtor(TypeCtorDecl decl, int num)
-  {
+  public Function GetTypeDtor(TypeCtorDecl decl, int num) {
     Contract.Requires(decl != null);
     Contract.Ensures(Contract.Result<Function>() != null);
     return GetTypeCtorReprStruct(decl).Dtors[num];
@@ -238,17 +224,14 @@ public abstract class TypeAxiomBuilder : ICloneable
     TypeVariableMapping;
 
   [ContractInvariantMethod]
-  void TypeVariableMappingInvariantMethod()
-  {
+  void TypeVariableMappingInvariantMethod() {
     Contract.Invariant(cce.NonNullDictionaryAndValues(TypeVariableMapping));
   }
 
-  public VCExprVar Typed2Untyped(TypeVariable var)
-  {
+  public VCExprVar Typed2Untyped(TypeVariable var) {
     Contract.Requires(var != null);
     Contract.Ensures(Contract.Result<VCExprVar>() != null);
-    if (!TypeVariableMapping.TryGetValue(var, out var res))
-    {
+    if (!TypeVariableMapping.TryGetValue(var, out var res)) {
       res = new VCExprVar(var.Name, T);
       TypeVariableMapping.Add(var, res);
     }
@@ -265,19 +248,16 @@ public abstract class TypeAxiomBuilder : ICloneable
     Typed2UntypedVariables;
 
   [ContractInvariantMethod]
-  void Typed2UntypedVariablesInvariantMethod()
-  {
+  void Typed2UntypedVariablesInvariantMethod() {
     Contract.Invariant(cce.NonNullDictionaryAndValues(Typed2UntypedVariables));
   }
 
   // This method must only be used for free (unbound) variables
-  public VCExprVar Typed2Untyped(VCExprVar var)
-  {
+  public VCExprVar Typed2Untyped(VCExprVar var) {
     Contract.Requires(var != null);
     Contract.Ensures(Contract.Result<VCExprVar>() != null);
     VCExprVar res = TryTyped2Untyped(var);
-    if (res == null)
-    {
+    if (res == null) {
       res = Gen.Variable(var.Name, TypeAfterErasure(var.Type));
       Typed2UntypedVariables.Add(var, res);
       AddVarTypeAxiom(res, var.Type);
@@ -293,15 +273,11 @@ public abstract class TypeAxiomBuilder : ICloneable
   /// </summary>
   /// <param name="var"></param>
   /// <returns></returns>
-  public VCExprVar TryTyped2Untyped(VCExprVar var)
-  {
+  public VCExprVar TryTyped2Untyped(VCExprVar var) {
     Contract.Requires(var != null);
-    if (Typed2UntypedVariables.TryGetValue(var, out var res))
-    {
+    if (Typed2UntypedVariables.TryGetValue(var, out var res)) {
       return res;
-    }
-    else
-    {
+    } else {
       return null;
     }
   }
@@ -311,40 +287,32 @@ public abstract class TypeAxiomBuilder : ICloneable
   ///////////////////////////////////////////////////////////////////////////
   // Translation function from types to their term representation
 
-  public VCExpr Type2Term(Type type, IDictionary<TypeVariable /*!*/, VCExpr /*!*/> /*!*/ varMapping)
-  {
+  public VCExpr Type2Term(Type type, IDictionary<TypeVariable /*!*/, VCExpr /*!*/> /*!*/ varMapping) {
     Contract.Requires(type != null);
     Contract.Requires(cce.NonNullDictionaryAndValues(varMapping));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     //
-    if (type.IsBasic || type.IsBv || type.IsFloat)
-    {
+    if (type.IsBasic || type.IsBv || type.IsFloat) {
       //
       return GetBasicTypeRepr(type);
       //
-    }
-    else if (type.IsCtor)
-    {
+    } else if (type.IsCtor) {
       //
       CtorType ctype = type.AsCtor;
       Function /*!*/
         repr = GetTypeCtorRepr(ctype.Decl);
       List<VCExpr /*!*/> /*!*/
         args = new List<VCExpr /*!*/>(ctype.Arguments.Count);
-      foreach (Type /*!*/ t in ctype.Arguments.ToArray())
-      {
+      foreach (Type /*!*/ t in ctype.Arguments.ToArray()) {
         Contract.Assert(t != null);
         args.Add(Type2Term(t, varMapping));
       }
 
       return Gen.Function(repr, args);
       //
-    }
-    else if (type.IsVariable)
-    {
+    } else if (type.IsVariable) {
       //
-      if (!varMapping.TryGetValue(type.AsVariable, out var res))
-      {
+      if (!varMapping.TryGetValue(type.AsVariable, out var res)) {
         // then the variable is free and we bind it at this point to a term
         // variable
         res = Typed2Untyped(type.AsVariable);
@@ -352,15 +320,11 @@ public abstract class TypeAxiomBuilder : ICloneable
 
       return cce.NonNull(res);
       //
-    }
-    else if (type.IsMap)
-    {
+    } else if (type.IsMap) {
       //
       return Type2Term(MapTypeAbstracter.AbstractMapType(type.AsMap), varMapping);
       //
-    }
-    else
-    {
+    } else {
       System.Diagnostics.Debug.Fail("Don't know how to handle this type: " + type);
       Contract.Assert(false);
       throw new cce.UnreachableException(); // please the compiler
@@ -369,8 +333,7 @@ public abstract class TypeAxiomBuilder : ICloneable
 
   ////////////////////////////////////////////////////////////////////////////
 
-  public TypeAxiomBuilder(VCExpressionGenerator gen)
-  {
+  public TypeAxiomBuilder(VCExpressionGenerator gen) {
     Contract.Requires(gen != null);
     this.Gen = gen;
     AllTypeAxioms = new List<VCExpr /*!*/>();
@@ -398,16 +361,14 @@ public abstract class TypeAxiomBuilder : ICloneable
     Ctor = HelperFuns.BoogieFunction("Ctor", t, Type.Int);
   }
 
-  public virtual void Setup(List<Type> usedTypes)
-  {
+  public virtual void Setup(List<Type> usedTypes) {
     foreach (var ty in usedTypes) {
       GetBasicTypeRepr(ty);
     }
   }
 
   // constructor to allow cloning
-  internal TypeAxiomBuilder(TypeAxiomBuilder builder)
-  {
+  internal TypeAxiomBuilder(TypeAxiomBuilder builder) {
     Contract.Requires(builder != null);
     Gen = builder.Gen;
     AllTypeAxioms = new List<VCExpr /*!*/>(builder.AllTypeAxioms);
@@ -432,6 +393,291 @@ public abstract class TypeAxiomBuilder : ICloneable
   }
 
   public abstract Object /*!*/ Clone();
-    
+
   public abstract VCExpr Cast(VCExpr expr, Type toType);
+}
+
+// Subclass of the TypeAxiomBuilder that provides all functionality
+// to deal with native sorts of a theorem prover (that are the only
+// types left after erasing all other types). Currently, these are:
+//
+//  U ... sort of all individuals/objects/values
+//  T ... sort of all types
+//  int ... integers
+//  bool ... booleans
+
+[ContractClass(typeof(TypeAxiomBuilderIntBoolUContracts))]
+public abstract class TypeAxiomBuilderIntBoolU : TypeAxiomBuilder {
+  public TypeAxiomBuilderIntBoolU(VCExpressionGenerator gen)
+    : base(gen) {
+    Contract.Requires(gen != null);
+
+    TypeCasts = new Dictionary<Type /*!*/, TypeCastSet>();
+  }
+
+  // constructor to allow cloning
+  internal TypeAxiomBuilderIntBoolU(TypeAxiomBuilderIntBoolU builder)
+    : base(builder) {
+    Contract.Requires(builder != null);
+
+    TypeCasts = new Dictionary<Type /*!*/, TypeCastSet>(builder.TypeCasts);
+  }
+
+  public override void Setup(List<Type> usedTypes) {
+    base.Setup(usedTypes);
+
+    foreach (var ty in usedTypes) {
+      GetTypeCasts(ty);
+    }
+  }
+
+  // generate inverse axioms for casts (castToU(castFromU(x)) = x, under certain premisses)
+  protected abstract VCExpr /*!*/ GenReverseCastAxiom(Function /*!*/ castToU, Function /*!*/ castFromU);
+
+  protected VCExpr GenReverseCastEq(Function castToU, Function castFromU, out VCExprVar var,
+    out List<VCTrigger /*!*/> /*!*/ triggers) {
+    Contract.Requires((castFromU != null));
+    Contract.Requires((castToU != null));
+    Contract.Ensures((cce.NonNullElements(Contract.ValueAtReturn(out triggers))));
+    Contract.Ensures(Contract.ValueAtReturn(out var) != null);
+    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    var = Gen.Variable("x", U);
+
+    VCExpr inner = Gen.Function(castFromU, var);
+    VCExpr lhs = Gen.Function(castToU, inner);
+    triggers = HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(inner)));
+
+    return Gen.Eq(lhs, var);
+  }
+
+  protected abstract VCExpr /*!*/ GenCastTypeAxioms(Function /*!*/ castToU, Function /*!*/ castFromU);
+
+  ///////////////////////////////////////////////////////////////////////////
+  // storage of type casts for types that are supposed to be left over in the
+  // VCs (like int, bool, bitvectors)
+
+  private readonly IDictionary<Type /*!*/, TypeCastSet /*!*/> /*!*/
+    TypeCasts;
+
+  [ContractInvariantMethod]
+  void TypeCastsInvariantMethod() {
+    Contract.Invariant(TypeCasts != null);
+  }
+
+  private TypeCastSet GetTypeCasts(Type type) {
+    Contract.Requires(type != null);
+    if (!TypeCasts.TryGetValue(type, out var res)) {
+      Function /*!*/
+        castToU = HelperFuns.BoogieFunction(type.ToString() + "_2_U", type, U);
+      Function /*!*/
+        castFromU = HelperFuns.BoogieFunction("U_2_" + type.ToString(), U, type);
+
+      AddTypeAxiom(GenLeftInverseAxiom(castToU, castFromU, 0));
+      AddTypeAxiom(GenReverseCastAxiom(castToU, castFromU));
+      AddTypeAxiom(GenCastTypeAxioms(castToU, castFromU));
+
+      res = new TypeCastSet(castToU, castFromU);
+      TypeCasts.Add(type, res);
+    }
+
+    return res;
+  }
+
+  [Pure]
+  public Function CastTo(Type type) {
+    Contract.Requires(type != null);
+    Contract.Requires(UnchangedType(type));
+    Contract.Ensures(Contract.Result<Function>() != null);
+    return GetTypeCasts(type).CastFromU;
+  }
+
+  public Function CastFrom(Type type) {
+    Contract.Requires(type != null);
+    Contract.Requires((UnchangedType(type)));
+    Contract.Ensures(Contract.Result<Function>() != null);
+    return GetTypeCasts(type).CastToU;
+  }
+
+  private struct TypeCastSet {
+    public readonly Function /*!*/
+      CastToU;
+
+    public readonly Function /*!*/
+      CastFromU;
+
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(CastToU != null);
+      Contract.Invariant(CastFromU != null);
+    }
+
+
+    public TypeCastSet(Function castToU, Function castFromU) {
+      Contract.Requires(castFromU != null);
+      Contract.Requires(castToU != null);
+      CastToU = castToU;
+      CastFromU = castFromU;
+    }
+  }
+
+  public bool IsCast(Function fun) {
+    Contract.Requires(fun != null);
+    if (fun.InParams.Count != 1) {
+      return false;
+    }
+
+    Type /*!*/
+      inType = cce.NonNull(fun.InParams[0]).TypedIdent.Type;
+    if (inType.Equals(U)) {
+      Type /*!*/
+        outType = cce.NonNull(fun.OutParams[0]).TypedIdent.Type;
+      if (!TypeCasts.ContainsKey(outType)) {
+        return false;
+      }
+
+      return fun.Equals(CastTo(outType));
+    } else {
+      if (!TypeCasts.ContainsKey(inType)) {
+        return false;
+      }
+
+      Type /*!*/
+        outType = cce.NonNull(fun.OutParams[0]).TypedIdent.Type;
+      if (!outType.Equals(U)) {
+        return false;
+      }
+
+      return fun.Equals(CastFrom(inType));
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+
+  // the only types that we allow in "untyped" expressions are U,
+  // Type.Int, Type.Real, Type.Bool, and Type.RMode
+
+  public override Type TypeAfterErasure(Type type) {
+    //Contract.Requires(type != null);
+    Contract.Ensures(Contract.Result<Type>() != null);
+    if (UnchangedType(type)) {
+      // these types are kept
+      return type;
+    } else {
+      // all other types are replaced by U
+      return U;
+    }
+  }
+
+  [Pure]
+  public override bool UnchangedType(Type type) {
+    //Contract.Requires(type != null);
+    return type.IsInt || type.IsReal || type.IsBool || type.IsBv || type.IsFloat || type.IsRMode || type.IsString ||
+           type.IsRegEx;
+  }
+
+  public override VCExpr Cast(VCExpr expr, Type toType) {
+    Contract.Requires(toType != null);
+    Contract.Requires(expr != null);
+    Contract.Requires((expr.Type.Equals(U) || UnchangedType(expr.Type)));
+    Contract.Requires((toType.Equals(U) || UnchangedType(toType)));
+    Contract.Ensures(Contract.Result<VCExpr>() != null);
+    if (expr.Type.Equals(toType)) {
+      return expr;
+    }
+
+    if (toType.Equals(U)) {
+      return Gen.Function(CastFrom(expr.Type), expr);
+    } else {
+      Contract.Assert(expr.Type.Equals(U));
+      return Gen.Function(CastTo(toType), expr);
+    }
+  }
+
+  public List<VCExpr /*!*/> /*!*/ CastSeq(List<VCExpr /*!*/> /*!*/ exprs, Type toType) {
+    Contract.Requires(toType != null);
+    Contract.Requires(cce.NonNullElements(exprs));
+    Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+    List<VCExpr /*!*/> /*!*/
+      res = new List<VCExpr /*!*/>(exprs.Count);
+    foreach (VCExpr /*!*/ expr in exprs) {
+      Contract.Assert(expr != null);
+      res.Add(Cast(expr, toType));
+    }
+
+    return res;
+  }
+}
+
+[ContractClassFor(typeof(TypeAxiomBuilderIntBoolU))]
+public abstract class TypeAxiomBuilderIntBoolUContracts : TypeAxiomBuilderIntBoolU {
+  public TypeAxiomBuilderIntBoolUContracts()
+    : base((TypeAxiomBuilderIntBoolU)null) {
+  }
+
+  protected override VCExpr GenReverseCastAxiom(Function castToU, Function castFromU) {
+    Contract.Requires(castToU != null);
+    Contract.Requires(castFromU != null);
+    Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+    throw new NotImplementedException();
+  }
+
+  protected override VCExpr GenCastTypeAxioms(Function castToU, Function castFromU) {
+    Contract.Requires(castFromU != null);
+    Contract.Requires(castToU != null);
+    Contract.Ensures(Contract.Result<VCExpr>() != null);
+
+    throw new NotImplementedException();
+  }
+
+  internal override MapTypeAbstractionBuilder MapTypeAbstracter {
+    get { throw new NotImplementedException(); }
+  }
+
+  protected override void AddVarTypeAxiom(VCExprVar var, Type originalType) {
+    throw new NotImplementedException();
+  }
+
+  public override object Clone() {
+    throw new NotImplementedException();
+  }
+}
+
+
+[ContractClassFor(typeof(TypeAxiomBuilder))]
+public abstract class TypeAxiomBuilderContracts : TypeAxiomBuilder {
+  public TypeAxiomBuilderContracts()
+    : base((VCExpressionGenerator)null) {
+  }
+
+  internal override MapTypeAbstractionBuilder MapTypeAbstracter {
+    get {
+      Contract.Ensures(Contract.Result<MapTypeAbstractionBuilder>() != null);
+      throw new NotImplementedException();
+    }
+  }
+
+  public override Type TypeAfterErasure(Type type) {
+    Contract.Requires(type != null);
+    Contract.Ensures(Contract.Result<Type>() != null);
+
+    throw new NotImplementedException();
+  }
+
+  public override bool UnchangedType(Type type) {
+    Contract.Requires(type != null);
+    throw new NotImplementedException();
+  }
+
+  protected override void AddVarTypeAxiom(VCExprVar var, Type originalType) {
+    Contract.Requires(var != null);
+    Contract.Requires(originalType != null);
+    throw new NotImplementedException();
+  }
+
+  public override object Clone() {
+    Contract.Ensures(Contract.Result<object>() != null);
+
+    throw new NotImplementedException();
+  }
 }

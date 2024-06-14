@@ -1,18 +1,21 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.TypeErasure;
 
+// The central class for turning types VCExprs into untyped
+// VCExprs. This class makes use of the type axiom builder to manage
+// the available types and symbols.
 [ContractClass(typeof(TypeEraserContracts))]
-public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
-{
+public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/> {
   protected readonly TypeAxiomBuilderIntBoolU /*!*/
     AxBuilder;
 
   [ContractInvariantMethod]
-  void ObjectInvariant()
-  {
+  void ObjectInvariant() {
     Contract.Invariant(AxBuilder != null);
   }
 
@@ -22,15 +25,13 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
   ////////////////////////////////////////////////////////////////////////////
 
   public TypeEraser(TypeAxiomBuilderIntBoolU axBuilder, VCExpressionGenerator gen)
-    : base(gen)
-  {
+    : base(gen) {
     Contract.Requires(gen != null);
     Contract.Requires(axBuilder != null);
     AxBuilder = axBuilder;
   }
 
-  public VCExpr Erase(VCExpr expr, int polarity)
-  {
+  public VCExpr Erase(VCExpr expr, int polarity) {
     Contract.Requires(expr != null);
     Contract.Requires((polarity >= -1 && polarity <= 1));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -42,8 +43,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
   ////////////////////////////////////////////////////////////////////////////
 
-  public override VCExpr Visit(VCExprLiteral node, VariableBindings bindings)
-  {
+  public override VCExpr Visit(VCExprLiteral node, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -54,21 +54,14 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
   ////////////////////////////////////////////////////////////////////////////
 
-  public override bool AvoidVisit(VCExprNAry node, VariableBindings arg)
-  {
-    return node.Op.Equals(VCExpressionGenerator.AndOp) ||
-           node.Op.Equals(VCExpressionGenerator.OrOp);
-  }
 
-  public override VCExpr Visit(VCExprNAry node, VariableBindings bindings)
-  {
+  public override DynamicStack<VCExpr> Visit(VCExprNAry node, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     VCExprOp /*!*/
       op = node.Op;
-    if (op == VCExpressionGenerator.AndOp || op == VCExpressionGenerator.OrOp)
-    {
+    if (op == VCExpressionGenerator.AndOp || op == VCExpressionGenerator.OrOp) {
       // more efficient on large conjunctions/disjunctions
       return base.Visit(node, bindings);
     }
@@ -79,8 +72,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
   // this method is called by MutatingVCExprVisitor.Visit(VCExprNAry, ...)
   protected override VCExpr /*!*/ UpdateModifiedNode(VCExprNAry /*!*/ originalNode,
-    List<VCExpr /*!*/> /*!*/ newSubExprs, bool changed, VariableBindings /*!*/ bindings)
-  {
+    List<VCExpr /*!*/> /*!*/ newSubExprs, bool changed, VariableBindings /*!*/ bindings) {
     //Contract.Requires(originalNode != null);
     //Contract.Requires(cce.NonNullElements(newSubExprs));
     //Contract.Requires(bindings != null);
@@ -93,13 +85,11 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
   ////////////////////////////////////////////////////////////////////////////
 
-  public override VCExpr Visit(VCExprVar node, VariableBindings bindings)
-  {
+  public override VCExpr Visit(VCExprVar node, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    if (!bindings.VCExprVarBindings.TryGetValue(node, out var res))
-    {
+    if (!bindings.VCExprVarBindings.TryGetValue(node, out var res)) {
       return AxBuilder.Typed2Untyped(node);
     }
 
@@ -108,8 +98,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
   ////////////////////////////////////////////////////////////////////////////
 
-  protected bool IsUniversalQuantifier(VCExprQuantifier node)
-  {
+  protected bool IsUniversalQuantifier(VCExprQuantifier node) {
     Contract.Requires(node != null);
     return Polarity == 1 && node.Quan == Quantifier.EX ||
            Polarity == -1 && node.Quan == Quantifier.ALL;
@@ -118,16 +107,14 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
   protected List<VCExprVar /*!*/> /*!*/ BoundVarsAfterErasure(List<VCExprVar /*!*/> /*!*/ oldBoundVars,
     // the mapping between old and new variables
     // is added to this bindings-object
-    VariableBindings /*!*/ bindings)
-  {
+    VariableBindings /*!*/ bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(cce.NonNullElements(oldBoundVars));
     Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
 
     List<VCExprVar /*!*/> /*!*/
       newBoundVars = new List<VCExprVar /*!*/>(oldBoundVars.Count);
-    foreach (VCExprVar /*!*/ var in oldBoundVars)
-    {
+    foreach (VCExprVar /*!*/ var in oldBoundVars) {
       Type /*!*/
         newType = AxBuilder.TypeAfterErasure(var.Type);
       VCExprVar /*!*/
@@ -151,8 +138,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
     List<VCExprVar /*!*/> /*!*/ occurringVars,
     VariableBindings /*!*/ oldBindings,
     out VariableBindings /*!*/ newBindings,
-    out List<VCExprVar /*!*/> /*!*/ newBoundVars)
-  {
+    out List<VCExprVar /*!*/> /*!*/ newBoundVars) {
     Contract.Requires(node != null);
     Contract.Requires(newNode != null);
     Contract.Requires(cce.NonNullElements(occurringVars));
@@ -161,8 +147,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
     Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out newBoundVars)));
     List<VCExprVar /*!*/> castVariables =
       VariableCastCollector.FindCastVariables(node, newNode, AxBuilder);
-    if (castVariables.Count == 0)
-    {
+    if (castVariables.Count == 0) {
       newBindings = oldBindings; // to make the compiler happy
       newBoundVars = newNode.BoundVars; // to make the compiler happy
       return false;
@@ -172,8 +157,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
     newBindings = oldBindings.Clone();
     newBoundVars = new List<VCExprVar /*!*/>(node.BoundVars.Count);
-    foreach (VCExprVar /*!*/ var in node.BoundVars)
-    {
+    foreach (VCExprVar /*!*/ var in node.BoundVars) {
       Contract.Assert(var != null);
       Type /*!*/
         newType =
@@ -193,8 +177,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
   ////////////////////////////////////////////////////////////////////////////
 
-  public override VCExpr Visit(VCExprLet node, VariableBindings bindings)
-  {
+  public override DynamicStack<VCExpr> Visit(VCExprLet node, VariableBindings bindings) {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
@@ -203,8 +186,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
     List<VCExprVar /*!*/> /*!*/
       newBoundVars = new List<VCExprVar /*!*/>(node.BoundVars.Count);
-    foreach (VCExprVar /*!*/ var in node.BoundVars)
-    {
+    foreach (VCExprVar /*!*/ var in node.BoundVars) {
       Type /*!*/
         newType = AxBuilder.TypeAfterErasure(var.Type);
       VCExprVar /*!*/
@@ -215,8 +197,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
     List<VCExprLetBinding /*!*/> /*!*/
       newbindings = new List<VCExprLetBinding /*!*/>(node.Length);
-    for (int i = 0; i < node.Length; ++i)
-    {
+    for (int i = 0; i < node.Length; ++i) {
       VCExprLetBinding /*!*/
         binding = node[i];
       Contract.Assert(binding != null);
@@ -232,6 +213,6 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
 
     VCExpr /*!*/
       newbody = Mutate(node.Body, newVarBindings);
-    return Gen.Let(newbindings, newbody);
+    return DynamicStack.FromResult(Gen.Let(newbindings, newbody));
   }
 }

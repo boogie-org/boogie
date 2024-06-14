@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -5,8 +6,7 @@ using System.Linq;
 namespace Microsoft.Boogie.TypeErasure;
 
 [ContractClass(typeof(MapTypeAbstractionBuilderContracts))]
-internal abstract class MapTypeAbstractionBuilder
-{
+internal abstract class MapTypeAbstractionBuilder {
   protected readonly TypeAxiomBuilder /*!*/
     AxBuilder;
 
@@ -14,15 +14,13 @@ internal abstract class MapTypeAbstractionBuilder
     Gen;
 
   [ContractInvariantMethod]
-  void ObjectInvariant()
-  {
+  void ObjectInvariant() {
     Contract.Invariant(AxBuilder != null);
     Contract.Invariant(Gen != null);
   }
 
 
-  internal MapTypeAbstractionBuilder(TypeAxiomBuilder axBuilder, VCExpressionGenerator gen)
-  {
+  internal MapTypeAbstractionBuilder(TypeAxiomBuilder axBuilder, VCExpressionGenerator gen) {
     Contract.Requires(gen != null);
     Contract.Requires(axBuilder != null);
     this.AxBuilder = axBuilder;
@@ -33,8 +31,7 @@ internal abstract class MapTypeAbstractionBuilder
 
   // constructor for cloning
   internal MapTypeAbstractionBuilder(TypeAxiomBuilder axBuilder, VCExpressionGenerator gen,
-    MapTypeAbstractionBuilder builder)
-  {
+    MapTypeAbstractionBuilder builder) {
     Contract.Requires(builder != null);
     Contract.Requires(gen != null);
     Contract.Requires(axBuilder != null);
@@ -55,17 +52,14 @@ internal abstract class MapTypeAbstractionBuilder
     AbstractionVariables;
 
   [ContractInvariantMethod]
-  void AbstractionVariablesInvariantMethod()
-  {
+  void AbstractionVariablesInvariantMethod() {
     Contract.Invariant(cce.NonNullElements(AbstractionVariables));
   }
 
-  private TypeVariable AbstractionVariable(int num)
-  {
+  private TypeVariable AbstractionVariable(int num) {
     Contract.Requires((num >= 0));
     Contract.Ensures(Contract.Result<TypeVariable>() != null);
-    while (AbstractionVariables.Count <= num)
-    {
+    while (AbstractionVariables.Count <= num) {
       AbstractionVariables.Add(new TypeVariable(Token.NoToken,
         "aVar" + AbstractionVariables.Count));
     }
@@ -79,8 +73,7 @@ internal abstract class MapTypeAbstractionBuilder
   // possibly contain free type variables. For each such class, a separate type
   // constructor and separate select/store functions are introduced.
 
-  protected struct MapTypeClassRepresentation
-  {
+  protected struct MapTypeClassRepresentation {
     public readonly TypeCtorDecl /*!*/
       RepresentingType;
 
@@ -91,16 +84,14 @@ internal abstract class MapTypeAbstractionBuilder
       Store;
 
     [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
+    void ObjectInvariant() {
       Contract.Invariant(RepresentingType != null);
       Contract.Invariant(Select != null);
       Contract.Invariant(Store != null);
     }
 
 
-    public MapTypeClassRepresentation(TypeCtorDecl representingType, Function select, Function store)
-    {
+    public MapTypeClassRepresentation(TypeCtorDecl representingType, Function select, Function store) {
       Contract.Requires(store != null);
       Contract.Requires(select != null);
       Contract.Requires(representingType != null);
@@ -114,16 +105,13 @@ internal abstract class MapTypeAbstractionBuilder
     ClassRepresentations;
 
   [ContractInvariantMethod]
-  void ClassRepresentationsInvariantMethod()
-  {
+  void ClassRepresentationsInvariantMethod() {
     Contract.Invariant(ClassRepresentations != null);
   }
 
-  protected MapTypeClassRepresentation GetClassRepresentation(MapType abstractedType)
-  {
+  protected MapTypeClassRepresentation GetClassRepresentation(MapType abstractedType) {
     Contract.Requires(abstractedType != null);
-    if (!ClassRepresentations.TryGetValue(abstractedType, out var res))
-    {
+    if (!ClassRepresentations.TryGetValue(abstractedType, out var res)) {
       int num = ClassRepresentations.Count;
       TypeCtorDecl /*!*/
         synonym =
@@ -145,16 +133,14 @@ internal abstract class MapTypeAbstractionBuilder
 
   ///////////////////////////////////////////////////////////////////////////
 
-  public Function Select(MapType rawType, out List<Type> instantiations)
-  {
+  public Function Select(MapType rawType, out List<Type> instantiations) {
     Contract.Requires((rawType != null));
     Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
     Contract.Ensures(Contract.Result<Function>() != null);
     return AbstractAndGetRepresentation(rawType, out instantiations).Select;
   }
 
-  public Function Store(MapType rawType, out List<Type> instantiations)
-  {
+  public Function Store(MapType rawType, out List<Type> instantiations) {
     Contract.Requires((rawType != null));
     Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
     Contract.Ensures(Contract.Result<Function>() != null);
@@ -162,8 +148,7 @@ internal abstract class MapTypeAbstractionBuilder
   }
 
   private MapTypeClassRepresentation
-    AbstractAndGetRepresentation(MapType rawType, out List<Type> instantiations)
-  {
+    AbstractAndGetRepresentation(MapType rawType, out List<Type> instantiations) {
     Contract.Requires((rawType != null));
     Contract.Ensures(Contract.ValueAtReturn(out instantiations) != null);
     instantiations = new List<Type>();
@@ -172,8 +157,7 @@ internal abstract class MapTypeAbstractionBuilder
     return GetClassRepresentation(abstraction);
   }
 
-  public CtorType AbstractMapType(MapType rawType)
-  {
+  public CtorType AbstractMapType(MapType rawType) {
     Contract.Requires(rawType != null);
     Contract.Ensures(Contract.Result<CtorType>() != null);
     List<Type> /*!*/
@@ -187,15 +171,13 @@ internal abstract class MapTypeAbstractionBuilder
   }
 
   // TODO: cache the result of this operation
-  protected MapType ThinOutMapType(MapType rawType, List<Type> instantiations)
-  {
+  protected MapType ThinOutMapType(MapType rawType, List<Type> instantiations) {
     Contract.Requires(instantiations != null);
     Contract.Requires(rawType != null);
     Contract.Ensures(Contract.Result<MapType>() != null);
     List<Type> /*!*/
       newArguments = new List<Type>();
-    foreach (Type /*!*/ subtype in rawType.Arguments.ToList())
-    {
+    foreach (Type /*!*/ subtype in rawType.Arguments.ToList()) {
       Contract.Assert(subtype != null);
       newArguments.Add(ThinOutType(subtype, rawType.TypeParameters,
         instantiations));
@@ -208,15 +190,13 @@ internal abstract class MapTypeAbstractionBuilder
   }
 
   // the instantiations of inserted type variables, the order corresponds to the order in which "AbstractionVariable(int)" delivers variables
-  private Type /*!*/ ThinOutType(Type rawType, List<TypeVariable> boundTypeParams, List<Type> instantiations)
-  {
+  private Type /*!*/ ThinOutType(Type rawType, List<TypeVariable> boundTypeParams, List<Type> instantiations) {
     Contract.Requires(instantiations != null);
     Contract.Requires(boundTypeParams != null);
     Contract.Requires(rawType != null);
     Contract.Ensures(Contract.Result<Type>() != null);
 
-    if (rawType.FreeVariables.All(var => !boundTypeParams.Contains(var)))
-    {
+    if (rawType.FreeVariables.All(var => !boundTypeParams.Contains(var))) {
       // Bingo!
       // if the type does not contain any bound variables, we can simply
       // replace it with a type variable
@@ -227,8 +207,7 @@ internal abstract class MapTypeAbstractionBuilder
       return abstractionVar;
     }
 
-    if (rawType.IsVariable)
-    {
+    if (rawType.IsVariable) {
       //
       // then the variable has to be bound, we cannot do anything
       TypeVariable /*!*/
@@ -236,26 +215,21 @@ internal abstract class MapTypeAbstractionBuilder
       Contract.Assume(boundTypeParams.Contains(rawVar));
       return rawVar;
       //
-    }
-    else if (rawType.IsMap)
-    {
+    } else if (rawType.IsMap) {
       //
       // recursively abstract this map type and continue abstracting
       CtorType /*!*/
         abstraction = AbstractMapType(rawType.AsMap);
       return ThinOutType(abstraction, boundTypeParams, instantiations);
       //
-    }
-    else if (rawType.IsCtor)
-    {
+    } else if (rawType.IsCtor) {
       //
       // traverse the subtypes
       CtorType /*!*/
         rawCtorType = rawType.AsCtor;
       List<Type> /*!*/
         newArguments = new List<Type>();
-      foreach (Type /*!*/ subtype in rawCtorType.Arguments.ToList())
-      {
+      foreach (Type /*!*/ subtype in rawCtorType.Arguments.ToList()) {
         Contract.Assert(subtype != null);
         newArguments.Add(ThinOutType(subtype, boundTypeParams,
           instantiations));
@@ -263,11 +237,63 @@ internal abstract class MapTypeAbstractionBuilder
 
       return new CtorType(Token.NoToken, rawCtorType.Decl, newArguments);
       //
-    }
-    else
-    {
+    } else {
       System.Diagnostics.Debug.Fail("Don't know how to handle this type: " + rawType);
       return rawType; // compiler appeasement policy
     }
+  }
+}
+
+internal struct TypeCtorRepr {
+  // function that represents the application of the type constructor
+  // to smaller types
+  public readonly Function /*!*/
+    Ctor;
+
+  // left-inverse functions that extract the subtypes of a compound type
+  public readonly List<Function /*!*/> /*!*/
+    Dtors;
+
+  [ContractInvariantMethod]
+  void ObjectInvariant() {
+    Contract.Invariant(Ctor != null);
+    Contract.Invariant(cce.NonNullElements(Dtors));
+  }
+
+
+  public TypeCtorRepr(Function ctor, List<Function /*!*/> /*!*/ dtors) {
+    Contract.Requires(ctor != null);
+    Contract.Requires(cce.NonNullElements(dtors));
+    Contract.Requires(ctor.InParams.Count == dtors.Count);
+    this.Ctor = ctor;
+    this.Dtors = dtors;
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// Class for computing most general abstractions of map types. An abstraction
+// of a map type t is a maptype t' in which closed proper subtypes have been replaced
+// with type variables. E.g., an abstraction of <a>[C a, int]a would be <a>[C a, b]a.
+// We subsequently consider most general abstractions as ordinary parametrised types,
+// i.e., "<a>[C a, b]a" would be considered as a type "M b" with polymorphically typed
+// access functions
+//
+//            select<a,b>(M b, C a, b) returns (a)
+//            store<a,b>(M b, C a, b, a) returns (M b)
+
+[ContractClassFor(typeof(MapTypeAbstractionBuilder))]
+internal abstract class MapTypeAbstractionBuilderContracts : MapTypeAbstractionBuilder {
+  public MapTypeAbstractionBuilderContracts()
+    : base(null, null) {
+  }
+
+  protected override void GenSelectStoreFunctions(MapType abstractedType, TypeCtorDecl synonymDecl,
+    out Function select, out Function store) {
+    Contract.Requires(abstractedType != null);
+    Contract.Requires(synonymDecl != null);
+    Contract.Ensures(Contract.ValueAtReturn(out select) != null);
+    Contract.Ensures(Contract.ValueAtReturn(out store) != null);
+
+    throw new NotImplementedException();
   }
 }
