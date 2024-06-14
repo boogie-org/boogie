@@ -42,8 +42,9 @@ function {:inline} WholeTidPermission(tid: Tid): Set Permission {
 action {:layer 1} start ({:linear_in} tid: One Tid)
 creates main_f;
 {
+    var {:linear} sps: Set Permission;
     call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
-    call create_async(main_f(tid), sps);
+    call create_async(main_f(tid, sps));
 }
 
 // M =  main_f , \elim = read_f, I = Inv_f, M' = main_f'
@@ -86,7 +87,9 @@ modifies r1, pSet;
 async action {:layer 1} read_f({:linear_in} perm: One Permission, i: int)
 creates read_f, gather_f;
 modifies r1, pSet;
-{:exit} Set_IsSubset(WholeTidPermission(perm->val->t_id), pSet);
+requires {:layer 1} Set_IsSubset(WholeTidPermission(perm->val->t_id), old(pSet));
+// call YieldPing(x, p);
+// {:exit} 
 {
     var {:pool "K"} k:int;
     var {:pool "V"} v:Value;
@@ -101,7 +104,8 @@ modifies r1, pSet;
     call One_Put(pSet, perm);
 
     if (Set_IsSubset(WholeTidPermission(perm->val->t_id), pSet)){
-        call create_async(main_s(perm->val->t_id));
+        // call create_async(main_s(perm->val->t_id));
+        call create_async(gather_f());
     }
 }
 
