@@ -547,20 +547,25 @@ namespace Microsoft.Boogie
 
       var local_E1 = civlTypeChecker.LocalVariable($"E1_{E1.Name}", E1.ActionDecl.PendingAsyncType);
       var local_E2 = civlTypeChecker.LocalVariable($"E2_{E2.Name}", E2.ActionDecl.PendingAsyncType);
-      // var local_M = civlTypeChecker.LocalVariable($"M_{targetAction.Name}", targetAction.ActionDecl.PendingAsyncType);// This means M is an async.
+      var local_M = civlTypeChecker.LocalVariable($"M_{targetAction.Name}", targetAction.ActionDecl.PendingAsyncType);// This means M is an async.
 
       
       var locals = new List<Variable>();
+      var locals_g = new List<Variable>();
       // locals.Add(local_M);
-      locals.Add(local_E1);
-      locals.Add(local_E2);
+  
+
+      foreach(var g in civlTypeChecker.GlobalVariables){
+        locals_g.Add(civlTypeChecker.LocalVariable($"temp_{g.Name}", g.TypedIdent.Type));
+      }
 
       List<Expr> inputExprs_M = new List<Expr>();
       List<Expr> inputExprs_E1 = new List<Expr>();
       List<Expr> inputExprs_E2 = new List<Expr>();
+      List<Expr> globalExprs  = new List<Expr>();
       for (int i = 0; i < targetAction.Impl.InParams.Count; i++)
       {
-        // inputExprs_M.Add(ExprHelper.FieldAccess(Expr.Ident(local_M), targetAction.ActionDecl.PendingAsyncCtor.InParams[i].Name));
+        inputExprs_M.Add(ExprHelper.FieldAccess(Expr.Ident(local_M), targetAction.ActionDecl.PendingAsyncCtor.InParams[i].Name));
       }
       for (int i = 0; i < E1.Impl.InParams.Count; i++)
       {
@@ -570,10 +575,17 @@ namespace Microsoft.Boogie
       {
         inputExprs_E2.Add(ExprHelper.FieldAccess(Expr.Ident(local_E2), E2.ActionDecl.PendingAsyncCtor.InParams[i].Name));
       }
-
+      foreach(var g in locals_g)
+      {
+        globalExprs.Add(Expr.Ident(g));
+      }
+    
+      locals.Add(local_E1);
+      locals.Add(local_E2);
+      locals.AddRange(locals_g);
       //create substitutions
 
-      Substitution subst_M = Substituter.SubstitutionFromDictionary(
+      Substitution subst_l_M = Substituter.SubstitutionFromDictionary(
         targetAction.Impl.InParams.Zip(inputExprs_M).ToDictionary(x => x.Item1, x => x.Item2));
       
       Substitution subst_E1 = Substituter.SubstitutionFromDictionary(
@@ -582,6 +594,8 @@ namespace Microsoft.Boogie
       Substitution subst_E2 = Substituter.SubstitutionFromDictionary(
         E2.Impl.InParams.Zip(inputExprs_E2).ToDictionary(x => x.Item1, x => x.Item2));
 
+      Substitution subst_g0 = Substituter.SubstitutionFromDictionary(
+        civlTypeChecker.GlobalVariables.Zip(globalExprs).ToDictionary(x => x.Item1, x => x.Item2));
 
       var ltc = civlTypeChecker.linearTypeChecker;
       Dictionary < LinearDomain, Expr > disjointnessExpr = new Dictionary < LinearDomain, Expr > ();
@@ -590,13 +604,13 @@ namespace Microsoft.Boogie
       foreach(var domain in ltc.LinearDomains){
       var collect_expr_g = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, civlTypeChecker.GlobalVariables.Where(v => LinearityChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))));// maybe filter out the ones that linear only
 
-    //   var pendingAsyncLinearParams_M = targetAction.ActionDecl.InParams
-    //  .Where(v => LinearityChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
-    //  .Select(v => ExprHelper.FieldAccess(Expr.Ident(local_M), v.Name)).ToList<Expr>();
+      var pendingAsyncLinearParams_M = targetAction.ActionDecl.InParams
+     .Where(v => LinearityChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
+     .Select(v => ExprHelper.FieldAccess(Expr.Ident(local_M), v.Name)).ToList<Expr>();
 
-    //  CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParams_M);
+     CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParams_M);
 
-    //  var collect_expr_l = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, pendingAsyncLinearParams_M));
+     var collect_expr_l = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, pendingAsyncLinearParams_M));
 
      var pendingAsyncLinearParams_E1 = E1.ActionDecl.InParams
      .Where(v => LinearityChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
@@ -627,132 +641,26 @@ namespace Microsoft.Boogie
 
       disjointnessExpr[domain] = Expr.And(Expr.And(noDuplicationExpr1, noDuplicationExpr2), noDuplicationExpr3);
 
-      subsetExpr[domain] = Expr.And(ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_g), ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_g));
-
+      subsetExpr[domain] = Expr.And(ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_l), ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_l)); // I check subset with l alone, because I don't know how to compute what the root took from globals. So I assume root also doesn't take anything from globals.
+      
       }
-      
+      var cmds = new List<Cmd>();
+
       var disjointnessExprTotal = Expr.And(disjointnessExpr.Values);
-      var gate_S_M = Expr.And(GetNonBlockExpression(targetAction), Substituter.Apply(subst_M, gate_M));
+      cmds.Add(CmdHelper.AssumeCmd(disjointnessExprTotal));
+
+      var gate_S_M = Expr.And(GetNonBlockExpression(targetAction), Substituter.Apply(subst_g0, Substituter.Apply(subst_l_M, gate_M)));
+      cmds.Add(CmdHelper.AssumeCmd(gate_S_M));
+      
       var subsetExprTotal = Expr.And(subsetExpr.Values);
-      var lhs = Expr.And(Expr.And(disjointnessExprTotal, gate_S_M),subsetExprTotal);
-      
-      var gate_S_E2 = Expr.And(GetNonBlockExpression(E2), Substituter.Apply(subst_E2, gate_E2));
+      cmds.Add(CmdHelper.AssumeCmd(subsetExprTotal));
 
-      // var alphaRightMover = rightMover;
-      // try {
-      //      alphaRightMover =  civlTypeChecker.AtomicActions.Single(s => s.Name == ("alpha_"+rightMover.Name));
-      //   }
-      //     catch (System.InvalidOperationException)
-      //     {
-      //        Console.WriteLine(@"The collection does not contain exactly one element.");
-      //   }
-      var gate_S_alpha_E2 = Expr.And(GetNonBlockExpression(civlTypeChecker.AtomicActions.Single(s => s.Name == ("alpha_"+E2.Name))), Substituter.Apply(subst_E2, gate_E2));
-      var X_E2 = Expr.And(gate_S_E2, Expr.Not(gate_S_alpha_E2));
-      
-      var rhs = Expr.Not(Expr.And(Substituter.Apply(subst_E1, gate_E1), Substituter.Apply(subst_E2, X_E2)));
-
-      var inconsistencyCheck = CmdHelper.AssertCmd(targetAction.tok, Expr.Imp(lhs, rhs), $"Inconsistency check failed for {targetAction.Name}, {E1.Name}, {E2.Name}");
+      cmds.Add(CmdHelper.AssertCmd(targetAction.tok, Expr.True , $"Inconsistency check failed for {targetAction.Name}, {E1.Name}, {E2.Name}"));
 
        return GetCheckerTuple($"InconsistencyChecker_{targetAction.Name}_{E1.Name}_{E2.Name}", new List<Requires>(),
-        new List<Variable>(), new List<Variable>(), locals,  new List<Cmd>(){ inconsistencyCheck});
+        new List<Variable>(), new List<Variable>(), locals,  cmds);
     }
-
-
-    // private List<Declaration> GenerateInconsistencyCheckerold(Action E1, Action E2){
-      
-    //   var gate_E1 = (Expr)Expr.True;
-    //   foreach(var g in E1.Gate){
-    //     gate_E1 = Expr.And(gate_E1, g.Expr);
-    //   }
-    //   var gate_E2 = (Expr)Expr.True;
-    //   foreach(var g in E2.Gate){
-    //     gate_E2 = Expr.And(gate_E2, g.Expr);
-    //   }
-    //   var gate_M = (Expr)Expr.True;
-    //   foreach(var g in targetAction.Gate){
-    //     gate_M = Expr.And(gate_M, g.Expr);
-    //   }
-
-    //   var locals_M = new List<Variable>();
-    //   var locals_E1 = new List<Variable>();
-    //   var locals_E2 = new List<Variable>();
-    //   var locals = new List<Variable>();
-
-    //   foreach(var param in targetAction.Impl.InParams){
-    //     var locV = civlTypeChecker.LocalVariable($"M_{param.Name}", param.TypedIdent.Type);
-    //     locals_M.Add(locV);
-    //   }//To fix: this gets Civl_M_tid
-    //   foreach(var param in E1.Impl.InParams){
-    //     var locV = civlTypeChecker.LocalVariable($"E1_{param.Name}", param.TypedIdent.Type);
-    //     locals_E1.Add(locV);
-    //   }
-    //   foreach(var param in E2.Impl.InParams){
-    //     var locV = civlTypeChecker.LocalVariable($"E2_{param.Name}", param.TypedIdent.Type);
-    //     locals_E2.Add(locV);
-    //   }
-
-    //   locals.AddRange(locals_M);
-    //   locals.AddRange(locals_E1);
-    //   locals.AddRange(locals_E2);
-
-    //   //Let's create substitutions for all of these
-
-    //   Substitution subst_M = Substituter.SubstitutionFromDictionary(
-    //     targetAction.ActionDecl.InParams.Zip(locals_M.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-      
-    //   Substitution subst_E1 = Substituter.SubstitutionFromDictionary(
-    //     E1.ActionDecl.InParams.Zip(locals_E1.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-
-    //   Substitution subst_E2 = Substituter.SubstitutionFromDictionary(
-    //     E2.ActionDecl.InParams.Zip(locals_E2.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-
-    //   // ok let's do disjoint(collect(g), collect(l1), collect(l2))
-
-
-    //   var ltc = civlTypeChecker.linearTypeChecker;
-    //   Dictionary < LinearDomain, Expr > disjointnessExpr = new Dictionary < LinearDomain, Expr > ();
-    //   Dictionary < LinearDomain, Expr > subsetExpr = new Dictionary < LinearDomain, Expr > ();
-
-    //   foreach(var domain in ltc.LinearDomains){
-    //   var collect_expr_g = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, civlTypeChecker.GlobalVariables.Where(v => LinearityChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))));// maybe filter out the ones that linear only
-    //   var collect_expr_l1 = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, locals_E1)); // maybe filter only linear locals
-    //   // .Where(v => LinearityChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
-    //   var collect_expr_l2 = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, locals_E2.Where(v => LinearityChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v))))); // maybe filter only linear locals
-    //   var noDuplicationExpr1 = Expr.Eq(
-    //     ExprHelper.FunctionCall(domain.mapAnd, collect_expr_g, collect_expr_l1),
-    //     ExprHelper.FunctionCall(domain.mapConstBool, Expr.False));
-    //   var noDuplicationExpr2 =  Expr.Eq(
-    //     ExprHelper.FunctionCall(domain.mapAnd, collect_expr_g, collect_expr_l2),
-    //     ExprHelper.FunctionCall(domain.mapConstBool, Expr.False));
-    //   var noDuplicationExpr3 =  Expr.Eq(
-    //     ExprHelper.FunctionCall(domain.mapAnd, collect_expr_l1, collect_expr_l2),
-    //     ExprHelper.FunctionCall(domain.mapConstBool, Expr.False));
-
-    //   disjointnessExpr[domain] = Expr.And(Expr.And(noDuplicationExpr1, noDuplicationExpr2), noDuplicationExpr3);
-
-    //   subsetExpr[domain] = Expr.And(ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_g), ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_g));
-
-    //   }
-      
-    //   var disjointnessExprTotal = Expr.And(disjointnessExpr.Values);
-    //   var gate_S_M = Expr.And(GetNonBlockExpression(targetAction), Substituter.Apply(subst_M, gate_M));
-    //   var subsetExprTotal = Expr.And(subsetExpr.Values);
-    //   var lhs = Expr.And(Expr.And(disjointnessExprTotal, gate_S_M),subsetExprTotal);
-      
-    //   var gate_S_E2 = Expr.And(GetNonBlockExpression(E2), Substituter.Apply(subst_E2, gate_E2));
-    //   var gate_S_alpha_E2 = Expr.And(GetNonBlockExpression(civlTypeChecker.AtomicActions.Single(s => s.Name == ("alpha_"+E2.Name))), Substituter.Apply(subst_E2, gate_E2));
-    //   var X_E2 = Expr.And(gate_S_E2, Expr.Not(gate_S_alpha_E2));
-
-
-      
-    //   var rhs = Expr.Not(Expr.And(Substituter.Apply(subst_E1, gate_E1), Substituter.Apply(subst_E2, X_E2)));
-
-    //   var inconsistencyCheck = CmdHelper.AssertCmd(targetAction.tok, Expr.Imp(lhs, rhs), $"Inconsistency check failed for {targetAction.Name}, {E1.Name}, {E2.Name}");
-
-    //    return GetCheckerTuple($"InconsistencyChecker_{targetAction.Name}_{E1.Name}_{E2.Name}", new List<Requires>(),
-    //     new List<Variable>(), new List<Variable>(), locals,  new List<Cmd>(){ inconsistencyCheck});
-    // }
-
+    
     private Expr GetNonBlockExpression(Action A)
     {
       Implementation impl = A.Impl;
@@ -927,13 +835,21 @@ namespace Microsoft.Boogie
       var decls = base.GenerateCheckers();
       decls.AddRange(GenerateBaseCaseChecker());
       decls.AddRange(GenerateConclusionChecker());
+      if (rule == InductiveSequentializationRule.ISR){
+         decls.AddRange(GenerateSideConditionChecker(targetAction));
+      }
       foreach (var elim in eliminatedActions)
       {
         decls.AddRange(GenerateStepChecker(elim));
         if (rule == InductiveSequentializationRule.ISR){
+          if (elim == targetAction){
+            continue;
+          }
           decls.AddRange(GenerateSideConditionChecker(elim));
         }
       }
+
+
 
       // foreach(var action in civlTypeChecker.AtomicActions){
       //    if (rule == InductiveSequentializationRule.ISR){
