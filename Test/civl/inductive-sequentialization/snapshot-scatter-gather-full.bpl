@@ -42,18 +42,18 @@ function {:inline} WholeTidPermission(tid: Tid): Set Permission {
 action {:layer 1} start ({:linear_in} tid: One Tid)
 creates main_f;
 {
-    call create_async(main_f(tid));
+    call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
+    call create_async(main_f(tid), sps);
 }
 
 // M =  main_f , \elim = read_f, I = Inv_f, M' = main_f'
-async action {:layer 1} main_f({:linear_in} tid: One Tid)
+async action {:layer 1} main_f({:linear_in} tid: One Tid, {:linear} sps: Set Permission)
 refines {:IS_right} main_f' using Inv_f;
 modifies pSet;
 creates read_f;
 {
-    var {:linear} sps: Set Permission;
+    // var {:linear} sps: Set Permission;
     // assume {:add_to_pool "A", 0} true;
-    call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
     call create_asyncs((lambda pa:read_f :: (1 <= pa->i) && (pa->i <= n) && pa->perm == One(Permission(tid->val, pa->i))));
 }
 
@@ -86,6 +86,7 @@ modifies r1, pSet;
 async action {:layer 1} read_f({:linear_in} perm: One Permission, i: int)
 creates read_f, gather_f;
 modifies r1, pSet;
+{:exit} Set_IsSubset(WholeTidPermission(perm->val->t_id), pSet);
 {
     var {:pool "K"} k:int;
     var {:pool "V"} v:Value;
@@ -99,11 +100,19 @@ modifies r1, pSet;
     }
     call One_Put(pSet, perm);
 
-    if (beta = Set_IsSubset(WholeTidPermission(perm->val->t_id), pSet)){
-        // call create_async(main_s(perm->val->t_id));
-        call create_async(gather_f());
+    if (Set_IsSubset(WholeTidPermission(perm->val->t_id), pSet)){
+        call create_async(main_s(perm->val->t_id));
     }
 }
+
+// We check for exit that: 
+// 1. assume exit, call A, any pa created is not in \elim  or no pa is created
+// 2. assume not exit, call A, any pa created is in \elim or no pa is created
+// Inconsistency check: forall E1, E2: (E1 and E2 are descendants of M) => gate(E1) and (gate(E2)+exit) can't be true together
+
+
+
+
 // check 1: assume beta, any pa is in \elim or creates no pas
 // check 2: assume not beta, any pa is not in \elim or create no pas
 // beta = true as default (whole action is a right mover)
