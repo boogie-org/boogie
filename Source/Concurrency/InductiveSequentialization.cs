@@ -657,9 +657,21 @@ namespace Microsoft.Boogie
       var subsetExprTotal = Expr.And(subsetExpr.Values);
       cmds.Add(CmdHelper.AssumeCmd(subsetExprTotal));
 
-      cmds.Add(CmdHelper.AssertCmd(targetAction.tok, Expr.True , $"Inconsistency check failed for {targetAction.Name}, {E1.Name}, {E2.Name}"));
+     
+      Expr X_E2 = Expr.True;
+      var E2_Action = civlTypeChecker.AtomicActions.Single(s => s.Name == E2.Name);
+      var assumeCmds = E2_Action.Impl.Blocks[0].Cmds.OfType<AssumeCmd>();
+      foreach (var c in assumeCmds) 
+      {
+         var ex = QKeyValue.FindAttribute(c.Attributes, x => (x.Key == "exit_condition"));
+        if(ex != null){
+          X_E2 = (Expr)ex.Params[0];
+        }
+      } 
 
-       return GetCheckerTuple($"InconsistencyChecker_{targetAction.Name}_{E1.Name}_{E2.Name}", new List<Requires>(),
+      cmds.Add(CmdHelper.AssertCmd(targetAction.tok, Expr.Not(Expr.And(Substituter.Apply(subst_E1, gate_E1), Substituter.Apply(subst_E2, X_E2))) , $"Inconsistency check failed for {targetAction.Name}, {E1.Name}, {E2.Name}"));
+
+      return GetCheckerTuple($"InconsistencyChecker_{targetAction.Name}_{E1.Name}_{E2.Name}", new List<Requires>(),
         new List<Variable>(), new List<Variable>(), locals,  cmds);
     }
     
