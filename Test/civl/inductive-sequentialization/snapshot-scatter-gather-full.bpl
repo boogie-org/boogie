@@ -40,6 +40,7 @@ function {:inline} WholeTidPermission(tid: Tid): Set Permission {
 }
 
 action {:layer 1} start ({:linear_in} tid: One Tid)
+modifies pSet;
 creates main_f;
 {
     var {:linear} sps: Set Permission;
@@ -68,18 +69,18 @@ async action {:layer 1, 2} gather_f()
     // // }
 }
 
-action {:layer 2} main_f'({:linear_in} tid: One Tid)
+action {:layer 2} main_f'({:linear_in} tid: One Tid, {:linear} sps: Set Permission)
 creates gather_f;
 modifies r1, pSet;
 {
-    var {:linear} sps: Set Permission;
+    // var {:linear} sps: Set Permission;
     var {:linear} done_set: Set Permission;
 
-    call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
+    // call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
     havoc r1;
     assume (forall i:int :: ((1 <= i && i <= n) ==> (r1[tid->val][i]->ts < mem[i]->ts  || r1[tid->val][i]== mem[i]))); 
-    call done_set := Set_Get(sps, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n))); 
-    call Set_Put(pSet, done_set);
+    // call done_set := Set_Get(sps, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n))); 
+    // call Set_Put(pSet, done_set);
     call create_async(gather_f());
 
 }
@@ -87,12 +88,13 @@ modifies r1, pSet;
 async action {:layer 1} read_f({:linear_in} perm: One Permission, i: int)
 creates read_f, gather_f;
 modifies r1, pSet;
-requires {:layer 1} Set_IsSubset(WholeTidPermission(perm->val->t_id), old(pSet));
+// requires {:layer 1} Set_IsSubset(WholeTidPermission(perm->val->t_id), old(pSet));
 // call YieldPing(x, p);
 // {:exit} 
 {
     var {:pool "K"} k:int;
     var {:pool "V"} v:Value;
+    assume {:exit_condition Set_IsSubset(WholeTidPermission(perm->val->t_id), old(pSet))} true;
 
     if (*) {
         assume {:add_to_pool "K", mem[i]->ts, k} {:add_to_pool "V", mem[i]->value, v} true;
@@ -108,6 +110,7 @@ requires {:layer 1} Set_IsSubset(WholeTidPermission(perm->val->t_id), old(pSet))
         call create_async(gather_f());
     }
 }
+
 
 // We check for exit that: 
 // 1. assume exit, call A, any pa created is not in \elim  or no pa is created
@@ -154,21 +157,21 @@ modifies mem;
     mem[i] := StampedValue(x->ts + 1, v);
 }
 
-action {:layer 1} Inv_f({:linear_in} tid: One Tid)
+action {:layer 1} Inv_f({:linear_in} tid: One Tid, {:linear} sps: Set Permission)
 modifies r1, pSet;
 creates read_f, gather_f;
 {
     var {:pool "A"} j: int;
-    var {:linear} sps: Set Permission;
+    // var {:linear} sps: Set Permission;
     var {:linear} done_set: Set Permission;
     var choice: read_f;
 
-    call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
+    // call sps := Set_Get(pSet, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= n)));
     assume {:add_to_pool "A", j+1, 0} 0 <= j && j <= n;
     havoc r1;
     assume (forall i:int :: ((1 <= i && i <= j) ==> (r1[tid->val][i]->ts < mem[i]->ts || r1[tid->val][i]== mem[i]))); 
-    call done_set := Set_Get(sps, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= j))); 
-    call Set_Put(pSet, done_set);
+    // call done_set := Set_Get(sps, (lambda x: Permission :: (x->t_id == tid->val) && (1 <= x->mem_index) && (x->mem_index <= j))); 
+    // call Set_Put(pSet, sps);
     if (j < n){
         choice := read_f(One(Permission(tid->val, j+1)), j+1);
         assume {:add_to_pool "C", choice} true;
