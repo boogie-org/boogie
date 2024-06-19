@@ -23,7 +23,7 @@ namespace Microsoft.Boogie
     {
       this.civlTypeChecker = civlTypeChecker;
       this.targetAction = targetAction;
-      this.eliminatedActions = new HashSet<Action>(targetAction.ActionDecl.EliminatedActionDecls().Select(x => civlTypeChecker.Action(x)));
+      this.eliminatedActions = new HashSet<Action>(EliminatedActionDecls.Select(x => civlTypeChecker.Action(x)));
       if (targetAction.ActionDecl.RefinedAction.HasAttribute(CivlAttributes.IS_RIGHT))
       {
         rule = InductiveSequentializationRule.ISR;
@@ -33,6 +33,8 @@ namespace Microsoft.Boogie
         rule = InductiveSequentializationRule.ISL;
       }
     }
+
+    public IEnumerable<ActionDecl> EliminatedActionDecls => targetAction.ActionDecl.EliminatedActionDecls();
 
     public IEnumerable<Action> EliminatedActions => eliminatedActions;
 
@@ -99,88 +101,74 @@ namespace Microsoft.Boogie
       return CmdHelper.AssertCmd(tok, expr, msg);
     }
 
-    protected List<Declaration> GeneratePartitionChecker(Action act)
+    protected List<Declaration> GeneratePartitionChecker(Action action)
     {
-      var cmds = new List<Cmd>();
-      var requires = new List<Requires>();
-      cmds.Add(CmdHelper.CallCmd(act.Impl.Proc, act.Impl.InParams, act.Impl.OutParams));
-
-      IEnumerable<string> elimActionNames = this.eliminatedActions.Select(x => x.Name);
-      var listElim = new List<Variable>();
-      var listNotElim = new List<Variable>();
-
-      foreach (var item in act.Impl.OutParams)
+      var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
+      var lhsExprs = new List<Expr>();
+      var rhsExprs = new List<Expr>();
+      foreach (var pendingAsync in action.PendingAsyncs)
       {
-        if (elimActionNames.Contains(item.Name.Remove(0, 9)))
+        var pendingAsyncExpr = Expr.Ident(action.PAs(pendingAsync.PendingAsyncType));
+        var emptyExpr = ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0));
+        if (eliminatedActionDecls.Contains(pendingAsync))
         {
-          listElim.Add(item);
+          lhsExprs.Add(Expr.Neq(pendingAsyncExpr, emptyExpr));
         }
         else
         {
-          listNotElim.Add(item);
+          rhsExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
         }
       }
+      var cmds = new List<Cmd>() {
+        CmdHelper.CallCmd(action.Impl.Proc, action.Impl.InParams, action.Impl.OutParams),
+        GetCheck(action.tok, Expr.Imp(Expr.Or(lhsExprs), Expr.And(rhsExprs)), "Partition checker failed")
+      };
 
-      Expr exprlhs = Expr.False;
-      foreach (var outParam in listElim)
-      {
-        var outAction = civlTypeChecker.AtomicActions.Single(s => s.Name == outParam.Name.Remove(0, 9));
-        var expr = Expr.Neq(Expr.Ident(outParam), ExprHelper.FunctionCall(outAction.ActionDecl.PendingAsyncConst, Expr.Literal(0)));
-        exprlhs = Expr.Or(exprlhs, expr);
-      }
-      Expr exprrhs = Expr.True;
-      foreach (var outParam in listNotElim)
-      {
-        var outAction = civlTypeChecker.AtomicActions.Single(s => s.Name == outParam.Name.Remove(0, 9));
-        var expr = Expr.Eq(Expr.Ident(outParam), ExprHelper.FunctionCall(outAction.ActionDecl.PendingAsyncConst, Expr.Literal(0)));
-        exprrhs = Expr.And(exprrhs, expr);
-      }
-      var finalExpr = Expr.Imp(exprlhs, exprrhs);
-      cmds.Add(GetCheck(act.tok, finalExpr, "P checker failed"));
-
-      List<Block> checkerBlocks = new List<Block>(listElim.Count);
+      List<Block> checkerBlocks = new List<Block>();
       var locals = new List<Variable>();
-
-      foreach (var outParam in listElim)
+      foreach (var pendingAsync in action.PendingAsyncs.Intersect(eliminatedActionDecls))
       {
-        var paName = outParam.Name.Remove(0, 9);
-        var outAction = civlTypeChecker.AtomicActions.Single(s => s.Name == outParam.Name.Remove(0, 9));
-        var paLocal = civlTypeChecker.LocalVariable($"temp_{paName}", outAction.ActionDecl.PendingAsyncType);
+        var pendingAsyncType = pendingAsync.PendingAsyncType;
+        var pendingAsyncCtor = pendingAsync.PendingAsyncCtor;
+        var pendingAsyncVar = action.PAs(pendingAsyncType);
+        var pendingAsyncExpr = Expr.Ident(pendingAsyncVar);
+        var pendingAsyncAction = civlTypeChecker.Action(pendingAsync);
+
+        var paLocal = civlTypeChecker.LocalVariable($"local_{pendingAsyncVar.Name}", pendingAsyncType);
         locals.Add(paLocal);
-        var pendingAsyncType = outAction.ActionDecl.PendingAsyncType;
-        var pendingAsyncCtor = outAction.ActionDecl.PendingAsyncCtor;
-        Expr assumeCmd = Expr.Ge(Expr.Select(Expr.Ident(outParam), Expr.Ident(paLocal)), Expr.Literal(1));
-        List<Cmd> cmds2 = new List<Cmd>();
-        cmds2.Add(CmdHelper.AssumeCmd(assumeCmd));
 
-        List<Expr> inputExprs = new List<Expr>();
-        for (int i = 0; i < outAction.Impl.InParams.Count; i++)
+        List<Cmd> blockCmds = new List<Cmd>
         {
-          inputExprs.Add(ExprHelper.FieldAccess(Expr.Ident(paLocal), pendingAsyncCtor.InParams[i].Name));
-        }
-        cmds2.AddRange(outAction.GetGateAsserts(Substituter.SubstitutionFromDictionary(outAction.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
-        $"Gate of {outAction.Name} in P Checker failed"));
+          CmdHelper.AssumeCmd(Expr.Ge(Expr.Select(pendingAsyncExpr, Expr.Ident(paLocal)), Expr.Literal(1)))
+        };
 
-        var block = BlockHelper.Block($"label_{paName}", cmds2);
+        var substMap = new Dictionary<Variable, Expr>();
+        for (int i = 0; i < pendingAsyncAction.Impl.InParams.Count; i++)
+        {
+          substMap[pendingAsyncAction.Impl.InParams[i]] = ExprHelper.FieldAccess(Expr.Ident(paLocal), pendingAsyncCtor.InParams[i].Name);
+        }
+        blockCmds.AddRange(pendingAsyncAction.GetGateAsserts(
+          Substituter.SubstitutionFromDictionary(substMap),
+          $"Gate of {pendingAsyncAction.Name} in partition checker failed"));
+
+        var block = BlockHelper.Block($"label_{pendingAsyncVar.Name}", blockCmds);
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
       }
 
-      string checkerName = civlTypeChecker.AddNamePrefix($"PChecker_{act.Name}");
-      List<Block> blocks = new List<Block>(listElim.Count + 1);
-      blocks.Add(
-        BlockHelper.Block(
-          checkerName,
-          cmds,
-          checkerBlocks));
+      string checkerName = civlTypeChecker.AddNamePrefix($"PartitionChecker_{action.Name}");
+      List<Block> blocks = new List<Block>(checkerBlocks.Count + 1)
+      {
+        BlockHelper.Block(checkerName, cmds, checkerBlocks)
+      };
       blocks.AddRange(checkerBlocks);
 
       Procedure proc = DeclHelper.Procedure(
         checkerName,
-        act.Impl.InParams,
-        act.Impl.OutParams,
-        requires,
-        act.ModifiedGlobalVars.Select(Expr.Ident).ToList(),
+        action.Impl.InParams,
+        action.Impl.OutParams,
+        new List<Requires>(),
+        action.ModifiedGlobalVars.Select(Expr.Ident).ToList(),
         new List<Ensures>());
       Implementation impl = DeclHelper.Implementation(
         proc,
@@ -234,12 +222,11 @@ namespace Microsoft.Boogie
 
     private Implementation CreateInlinedImplementation()
     {
-      var eliminatedActionDecls = targetAction.ActionDecl.EliminatedActionDecls();
       var graph = new Graph<ActionDecl>();
-      eliminatedActionDecls.ForEach(actionDecl =>
+      EliminatedActionDecls.ForEach(actionDecl =>
       {
         graph.AddSource(actionDecl);
-        CollectionExtensions.ForEach(actionDecl.CreateActionDecls.Intersect(eliminatedActionDecls), x => graph.AddEdge(x, actionDecl));
+        CollectionExtensions.ForEach(actionDecl.CreateActionDecls.Intersect(EliminatedActionDecls), x => graph.AddEdge(x, actionDecl));
       });
       var eliminatedPendingAsyncs = new Dictionary<CtorType, Implementation>();
       var decls = new List<Declaration>();
@@ -326,9 +313,18 @@ namespace Microsoft.Boogie
         decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
     }
 
+    private IEnumerable<Expr> InputDisjointnessExprs()
+    {
+      return civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(
+        invariantAction.Impl.InParams.Union(invariantAction.UsedGlobalVars)
+        .Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x))));
+    }
+
     private List<Declaration> GenerateBaseCaseChecker()
     {
-      var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr)).ToList();
+      var inputDisjointnessExprs = InputDisjointnessExprs();
+      var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr))
+        .Concat(inputDisjointnessExprs.Select(expr => new Requires(false, expr))).ToList();
 
       var subst = targetAction.GetSubstitution(invariantAction);
       var cmds = targetAction.GetGateAsserts(subst,
@@ -365,9 +361,11 @@ namespace Microsoft.Boogie
 
     private List<Declaration> GenerateConclusionChecker()
     {
+      var inputDisjointnessExprs = InputDisjointnessExprs();
       var refinedAction = targetAction.RefinedAction;
       var subst = refinedAction.GetSubstitution(invariantAction);
-      var requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr))).ToList();
+      var requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr)))
+        .Concat(inputDisjointnessExprs.Select(expr => new Requires(false, expr))).ToList();
 
       var cmds = invariantAction.GetGateAsserts(null,
         $"Gate of {invariantAction.Name} fails in {rule} conclusion check against {refinedAction.Name}").ToList<Cmd>();
@@ -384,17 +382,21 @@ namespace Microsoft.Boogie
 
     private List<Declaration> GenerateStepChecker(Action pendingAsync)
     {
+      var inputDisjointnessExprs = InputDisjointnessExprs();
       var pendingAsyncType = pendingAsync.ActionDecl.PendingAsyncType;
       var pendingAsyncCtor = pendingAsync.ActionDecl.PendingAsyncCtor;
-      var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr)).ToList();
+      var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr))
+        .Concat(inputDisjointnessExprs.Select(expr => new Requires(false, expr))).ToList();
       var locals = new List<Variable>();
-      List<Cmd> cmds = new List<Cmd>();
-      cmds.Add(CmdHelper.CallCmd(invariantAction.ImplWithChoice.Proc, invariantAction.ImplWithChoice.InParams,
-        invariantAction.ImplWithChoice.OutParams));
-      cmds.Add(CmdHelper.AssumeCmd(ChoiceTest(pendingAsyncType)));
-      cmds.Add(CmdHelper.AssumeCmd(Expr.Gt(Expr.Select(PAs(pendingAsyncType), Choice(pendingAsyncType)),
-        Expr.Literal(0))));
-      cmds.Add(RemoveChoice(pendingAsyncType));
+      List<Cmd> cmds = new List<Cmd>
+      {
+        CmdHelper.CallCmd(invariantAction.ImplWithChoice.Proc, invariantAction.ImplWithChoice.InParams,
+        invariantAction.ImplWithChoice.OutParams),
+        CmdHelper.AssumeCmd(ChoiceTest(pendingAsyncType)),
+        CmdHelper.AssumeCmd(Expr.Gt(Expr.Select(PAs(pendingAsyncType), Choice(pendingAsyncType)),
+        Expr.Literal(0))),
+        RemoveChoice(pendingAsyncType)
+      };
 
       List<Expr> inputExprs = new List<Expr>();
       for (int i = 0; i < pendingAsync.Impl.InParams.Count; i++)

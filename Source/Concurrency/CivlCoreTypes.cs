@@ -68,6 +68,8 @@ namespace Microsoft.Boogie
       DeclareTriggerFunctions();
     }
 
+    public IEnumerable<Variable> UsedGlobalVars => UsedGlobalVarsInGate.Union(UsedGlobalVarsInAction);
+
     public IToken tok => ActionDecl.tok;
 
     public string Name => ActionDecl.Name;
