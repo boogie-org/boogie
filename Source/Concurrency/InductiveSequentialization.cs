@@ -331,7 +331,7 @@ namespace Microsoft.Boogie
     private IEnumerable<Expr> InputDisjointnessExprs()
     {
       return civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(
-        invariantAction.Impl.InParams.Union(invariantAction.ModifiedGlobalVars)
+        invariantAction.Impl.InParams.Union(invariantAction.UsedGlobalVars)
         .Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x))));
     }
 
