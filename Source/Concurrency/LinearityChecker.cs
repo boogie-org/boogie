@@ -21,9 +21,6 @@ class LinearityChecker
       }
     }
 
-    private static LinearKind[] InKinds = {LinearKind.LINEAR, LinearKind.LINEAR_IN};
-    private static LinearKind[] OutKinds = {LinearKind.LINEAR, LinearKind.LINEAR_OUT};
-
     private class LinearityCheck
     {
       public LinearDomain domain;
@@ -75,16 +72,18 @@ class LinearityChecker
       
       // Linear in vars
       var inVars = inputs.Union(action.ModifiedGlobalVars)
-          .Where(x => InKinds.Contains(LinearTypeChecker.FindLinearKind(x))).Select(Expr.Ident).ToList();
+          .Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x)))
+          .Select(Expr.Ident).ToList();
       // Linear out vars
       var outVars = inputs.Union(outputs).Union(action.ModifiedGlobalVars)
-          .Where(x => OutKinds.Contains(LinearTypeChecker.FindLinearKind(x))).Select(Expr.Ident).ToList();
+          .Where(x => LinearTypeChecker.OutKinds.Contains(LinearTypeChecker.FindLinearKind(x)))
+          .Select(Expr.Ident).ToList();
 
-      var inputDisjointnessExpr = linearTypeChecker.DisjointnessExprForEachDomain(
+      var inputDisjointnessExprs = linearTypeChecker.DisjointnessExprForEachDomain(
         inputs.Union(action.ModifiedGlobalVars)
-        .Where(x => InKinds.Contains(LinearTypeChecker.FindLinearKind(x))));
+        .Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x))));
       List<Requires> requires = action.Gate.Select(a => new Requires(false, a.Expr))
-          .Concat(inputDisjointnessExpr.Select(expr => new Requires(false, expr)))
+          .Concat(inputDisjointnessExprs.Select(expr => new Requires(false, expr)))
           .ToList();
 
       List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
@@ -208,7 +207,7 @@ class LinearityChecker
     private List<Expr> PendingAsyncLinearParams(ActionDecl pendingAsync, IdentifierExpr pa)
     {
       var pendingAsyncLinearParams = pendingAsync.InParams
-        .Where(v => InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
+        .Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
         .Select(v => ExprHelper.FieldAccess(pa, v.Name)).ToList<Expr>();
       // These expressions must be typechecked since the types are needed later in PermissionMultiset.
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParams);

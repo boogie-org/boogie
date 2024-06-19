@@ -5,6 +5,9 @@ namespace Microsoft.Boogie
 {
   public class LinearTypeChecker : ReadOnlyVisitor
   {
+    public static LinearKind[] InKinds = {LinearKind.LINEAR, LinearKind.LINEAR_IN};
+    public static LinearKind[] OutKinds = {LinearKind.LINEAR, LinearKind.LINEAR_OUT};
+
     public Program program;
     private CheckingContext checkingContext;
     private CivlTypeChecker civlTypeChecker;
