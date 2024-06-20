@@ -121,7 +121,7 @@ namespace Microsoft.Boogie
         {
           foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
           {
-            moverChecking.CreateRightMoverCheckers(rightMover, action);
+            // moverChecking.CreateRightMoverCheckers(rightMover, action);
           }
         }
       }
