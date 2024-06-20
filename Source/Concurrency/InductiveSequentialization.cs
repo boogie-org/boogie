@@ -520,13 +520,15 @@ namespace Microsoft.Boogie
 
     
     private List<Declaration> DescendantCheckerFull(){
-      //I need to get the elim action, and I get the alpha_elim action, now I check that 
-      //Get expression gate_S(elim), gate_S(alpha_elim), then expression for X would be gate_S(elim) - gate_S(alpha_elim)
       var dec =  new List<Declaration>();
-      //note: you are checking twice E1, E2 and E2, E1 which may not be necessary
+      foreach (var E1 in eliminatedActions){
+          dec.AddRange(GenerateInconsistencyChecker(E1, E1)); 
+      }
       foreach (var E1 in eliminatedActions){
         foreach (var E2 in eliminatedActions){
+          if (E1 != E2){
               dec.AddRange(GenerateInconsistencyChecker(E1, E2)); 
+          }
         }
       }
       return dec;
@@ -554,7 +556,7 @@ namespace Microsoft.Boogie
       
       var locals = new List<Variable>();
       var locals_g = new List<Variable>();
-      // locals.Add(local_M);
+      locals.Add(local_M);
   
 
       foreach(var g in civlTypeChecker.GlobalVariables){
@@ -602,6 +604,7 @@ namespace Microsoft.Boogie
       var ltc = civlTypeChecker.linearTypeChecker;
       Dictionary < LinearDomain, Expr > disjointnessExpr = new Dictionary < LinearDomain, Expr > ();
       Dictionary < LinearDomain, Expr > subsetExpr = new Dictionary < LinearDomain, Expr > ();
+       Dictionary < LinearDomain, Expr > nonEmptyExpr = new Dictionary < LinearDomain, Expr > ();
 
       foreach(var domain in ltc.LinearDomains){
       var collect_expr_g = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, civlTypeChecker.GlobalVariables.Where(v => LinearityChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))));// maybe filter out the ones that linear only
@@ -643,20 +646,29 @@ namespace Microsoft.Boogie
 
       disjointnessExpr[domain] = Expr.And(Expr.And(noDuplicationExpr1, noDuplicationExpr2), noDuplicationExpr3);
 
-      subsetExpr[domain] = Expr.And(ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_l), ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_l)); // I check subset with l alone, because I don't know how to compute what the root took from globals. So I assume root also doesn't take anything from globals.
+            // subsetExpr[domain] = Expr.And(ltc.SubsetExprForPermissions(domain,collect_expr_l , collect_expr_g), Expr.And(ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_l), ltc.SubsetExprForPermissions(domain,collect_expr_l2 , collect_expr_l))); // I check subset with l alone, because I don't know how to compute what the root took from globals. So I assume root also doesn't take anything from globals.
+
+
+      subsetExpr[domain] = Expr.And(ltc.SubsetExprForPermissions(domain,collect_expr_l1 , collect_expr_l), ltc.SubsetExprForPermissions(domain,collect_expr_l2 , collect_expr_l)); // I check subset with l alone, because I don't know how to compute what the root took from globals. So I assume root also doesn't take anything from globals.
       
+      // nonEmptyExpr[domain] = Expr.And(Expr.Not(ltc.SubsetExprForPermissions(domain,collect_expr_l1 , ExprHelper.FunctionCall(domain.mapConstBool, Expr.False) )), Expr.Not(ltc.SubsetExprForPermissions(domain,collect_expr_l2 , ExprHelper.FunctionCall(domain.mapConstBool, Expr.False)))); // I check subset with l alone, because I don't know how to compute what the root took from globals. So I assume root also doesn't take anything from globals.
+      nonEmptyExpr[domain] = Expr.And(ltc.NotEmptyExprForPermissions(domain, collect_expr_l1), ltc.NotEmptyExprForPermissions(domain, collect_expr_l1));
       }
       var cmds = new List<Cmd>();
+
+      var gate_S_M = Expr.And(GetNonBlockExpression(targetAction), Substituter.Apply(subst_l_M, Substituter.Apply(subst_g0, gate_M)));
+      cmds.Add(CmdHelper.AssumeCmd(gate_S_M));
 
       var disjointnessExprTotal = Expr.And(disjointnessExpr.Values);
       cmds.Add(CmdHelper.AssumeCmd(disjointnessExprTotal));
 
-      var gate_S_M = Expr.And(GetNonBlockExpression(targetAction), Substituter.Apply(subst_g0, Substituter.Apply(subst_l_M, gate_M)));
-      cmds.Add(CmdHelper.AssumeCmd(gate_S_M));
+      var nonEmptyExprTotal = Expr.And(nonEmptyExpr.Values);
+      cmds.Add(CmdHelper.AssumeCmd(nonEmptyExprTotal));
       
       var subsetExprTotal = Expr.And(subsetExpr.Values);
       cmds.Add(CmdHelper.AssumeCmd(subsetExprTotal));
 
+ 
      
       Expr X_E2 = Expr.True;
       var E2_Action = civlTypeChecker.AtomicActions.Single(s => s.Name == E2.Name);
@@ -871,7 +883,7 @@ namespace Microsoft.Boogie
       //   }
       // }
       if (rule == InductiveSequentializationRule.ISR){
-      decls.AddRange(DescendantCheckerFull());
+      //decls.AddRange(DescendantCheckerFull());
       }
       return decls;
     }

@@ -877,6 +877,11 @@ namespace Microsoft.Boogie
       return Expr.Eq(ExprHelper.FunctionCall(domain.mapImp, lhs, rhs), ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
     }
 
+    public Expr NotEmptyExprForPermissions(LinearDomain domain, Expr exp)
+    {
+      return Expr.Not(Expr.Eq(exp, ExprHelper.FunctionCall(domain.mapConstBool, Expr.False)));
+    }
+
     private IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> scope)
     {
       return scope.Where(v => 
