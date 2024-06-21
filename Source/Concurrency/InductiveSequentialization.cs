@@ -499,25 +499,6 @@ namespace Microsoft.Boogie
         inputs, outputs,  new List<Variable>(), blocks);
       return new List<Declaration>(new Declaration[] { linCheckerProc, linCheckImpl });
     }
-    
-    private List<Declaration> GenerateDescendantChecker()
-    {
-      var decls =  new List<Declaration>();
-      foreach (var action1 in eliminatedActions)
-      {
-        decls.AddRange(GenerateInconsistencyChecker(action1, action1));
-      }
-      foreach (var action1 in eliminatedActions)
-      {
-        foreach (var action2 in eliminatedActions)
-        {
-          if (action1 != action2) {
-            decls.AddRange(GenerateInconsistencyChecker(action1, action2));
-          }
-        }
-      }
-      return decls;
-    }
 
     private List<Declaration> GenerateInconsistencyChecker(Action E1, Action E2)
     {
@@ -635,24 +616,13 @@ namespace Microsoft.Boogie
       var subsetExprTotal = Expr.And(subsetExpr.Values);
       cmds.Add(CmdHelper.AssumeCmd(subsetExprTotal));
      
-      Expr xE2 = Expr.True;
-      var assumeCmds = E2.Impl.Blocks[0].Cmds.OfType<AssumeCmd>();
-      foreach (var c in assumeCmds) 
-      {
-        var ex = QKeyValue.FindAttribute(c.Attributes, x => (x.Key == "exit_condition"));
-        if (ex != null)
-        {
-          xE2 = (Expr)ex.Params[0];
-        }
-      } 
-
       cmds.Add(CmdHelper.AssertCmd(
         targetAction.tok,
-        Expr.Not(Expr.And(Substituter.Apply(substE1, gateE1), Substituter.Apply(substE2, Expr.And(xE2, gateE2)))) ,
+        Expr.Not(Expr.And(Substituter.Apply(substE1, gateE1), Substituter.Apply(substE2, Expr.And(GetExitCondition(E2), gateE2)))) ,
         $"Inconsistency check failed for {targetAction.Name}, {E1.Name}, {E2.Name}"));
 
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
-      return GetCheckerTuple($"InconsistencyChecker_{targetAction.Name}_{E1.Name}_{E2.Name}", new List<Requires>(),
+      return GetCheckerTuple($"{rule}_InconsistencyChecker_{targetAction.Name}_{E1.Name}_{E2.Name}", new List<Requires>(),
         new List<Variable>(), new List<Variable>(), locals,  cmds);
     }
     
@@ -664,6 +634,79 @@ namespace Microsoft.Boogie
       return TransitionRelationComputation.Cooperation(civlTypeChecker, action, frame);
     }
 
+    private Expr GetExitCondition(Action action){
+       Expr X = Expr.False;
+       var assumeCmds = action.Impl.Blocks[0].Cmds.OfType<AssumeCmd>();
+       foreach (var c in assumeCmds) 
+      {
+        var ex = QKeyValue.FindAttribute(c.Attributes, i => (i.Key == "exit_condition"));
+        if (ex != null)
+        {
+          X = (Expr)ex.Params[0];
+        }
+      }
+       return X;
+    }
+
+    protected List<Declaration> GenerateExitConditionProperty1Checker(Action action)
+    {
+      var exit = GetExitCondition(action);
+      var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
+      var elimExprs = new List<Expr>();
+      var notElimExprs = new List<Expr>();
+      foreach (var pendingAsync in action.PendingAsyncs)
+      {
+        var pendingAsyncExpr = Expr.Ident(action.PAs(pendingAsync.PendingAsyncType));
+        var emptyExpr = ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0));
+        if (eliminatedActionDecls.Contains(pendingAsync))
+        {
+          elimExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
+        }
+        else
+        {
+          notElimExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
+        }
+      }
+      var cmds = new List<Cmd>() {
+        CmdHelper.AssumeCmd(GetExitCondition(action)),
+        CmdHelper.CallCmd(action.Impl.Proc, action.Impl.InParams, action.Impl.OutParams),
+        GetCheck(action.tok, Expr.And(elimExprs), "Exit condition property 1 failed"),
+      };
+
+      // CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
+      return GetCheckerTuple($"{rule}_ExitProperty1Checker_{action.Name}", new List<Requires>(),
+        action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
+    }
+
+    protected List<Declaration> GenerateExitConditionProperty2Checker(Action action)
+    {
+      var exit = GetExitCondition(action);
+      var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
+      var elimExprs = new List<Expr>();
+      var notElimExprs = new List<Expr>();
+      foreach (var pendingAsync in action.PendingAsyncs)
+      {
+        var pendingAsyncExpr = Expr.Ident(action.PAs(pendingAsync.PendingAsyncType));
+        var emptyExpr = ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0));
+        if (eliminatedActionDecls.Contains(pendingAsync))
+        {
+          elimExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
+        }
+        else
+        {
+          notElimExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
+        }
+      }
+      var cmds = new List<Cmd>() {
+        CmdHelper.AssumeCmd(Expr.Not(GetExitCondition(action))),
+        CmdHelper.CallCmd(action.Impl.Proc, action.Impl.InParams, action.Impl.OutParams),
+        GetCheck(action.tok, Expr.And(notElimExprs), "Exit condition property 2 failed"),
+      };
+      
+      // CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
+      return GetCheckerTuple($"{rule}_ExitProperty2Checker_{action.Name}", new List<Requires>(),
+        action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
+    }
     /*
      * This method generates the extra assumption for the left-mover check of the abstraction of an eliminated action.
      * The arguments leftMover and leftMoverArgs pertain to the action being moved left.
@@ -838,13 +881,28 @@ namespace Microsoft.Boogie
         decls.AddRange(GenerateSideConditionChecker(targetAction));
         foreach (var elim in eliminatedActions)
         {
+          decls.AddRange(GenerateExitConditionProperty1Checker(elim));
+          decls.AddRange(GenerateExitConditionProperty2Checker(elim));
           if (elim == targetAction)
           {
             continue;
           }
           decls.AddRange(GenerateSideConditionChecker(elim));
         }
-        decls.AddRange(GenerateDescendantChecker());
+
+        foreach (var action1 in eliminatedActions)
+        {
+          decls.AddRange(GenerateInconsistencyChecker(action1, action1));
+        }
+        foreach (var action1 in eliminatedActions)
+        {
+          foreach (var action2 in eliminatedActions)
+          {
+            if (action1 != action2) {
+              decls.AddRange(GenerateInconsistencyChecker(action1, action2));
+            }
+          }
+        }
       }
       return decls;
     }
