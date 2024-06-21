@@ -521,27 +521,31 @@ namespace Microsoft.Boogie
       var locals = new List<Variable>();
       var localE1 = civlTypeChecker.LocalVariable($"E1_{E1.Name}", E1.ActionDecl.PendingAsyncType);
       var localE2 = civlTypeChecker.LocalVariable($"E2_{E2.Name}", E2.ActionDecl.PendingAsyncType);
-      var localM = civlTypeChecker.LocalVariable($"M_{targetAction.Name}", targetAction.ActionDecl.PendingAsyncType); // This means M should be an async.
-      
+
       var localsForGlobals = new List<Variable>();
+      var localsForInM = new List<Variable>();
       foreach(var g in civlTypeChecker.GlobalVariables)
       {
-        localsForGlobals.Add(civlTypeChecker.LocalVariable($"temp_{g.Name}", g.TypedIdent.Type));
+        localsForGlobals.Add(civlTypeChecker.LocalVariable($"tempg_{g.Name}", g.TypedIdent.Type));
+      }
+      foreach(var l in targetAction.Impl.InParams)
+      {
+        localsForInM.Add(civlTypeChecker.LocalVariable($"templ_{l.Name}", l.TypedIdent.Type));
       }
 
-      locals.Add(localM);
       locals.Add(localE1);
       locals.Add(localE2);
       locals.AddRange(localsForGlobals);
+      locals.AddRange(localsForInM);
 
       List<Expr> inputExprsM = new List<Expr>();
       List<Expr> inputExprsE1 = new List<Expr>();
       List<Expr> inputExprsE2 = new List<Expr>();
       List<Expr> globalExprs  = new List<Expr>();
      
-      for (int i = 0; i < targetAction.Impl.InParams.Count; i++)
+      foreach(var l in localsForInM)
       {
-        inputExprsM.Add(ExprHelper.FieldAccess(Expr.Ident(localM), targetAction.ActionDecl.PendingAsyncCtor.InParams[i].Name));
+        inputExprsM.Add(Expr.Ident(l));
       }
       for (int i = 0; i < E1.Impl.InParams.Count; i++)
       {
@@ -568,15 +572,15 @@ namespace Microsoft.Boogie
       var ltc = civlTypeChecker.linearTypeChecker;
       var disjointnessExpr = new Dictionary<LinearDomain, Expr>();
       var subsetExpr = new Dictionary<LinearDomain, Expr>();
-
+   
       foreach(var domain in ltc.LinearDomains)
       {
         var collectG = ltc.UnionExprForPermissions(domain,
           ltc.PermissionExprs(domain, civlTypeChecker.GlobalVariables.Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))));
 
-        var pendingAsyncLinearParamsM = targetAction.ActionDecl.InParams
+        var pendingAsyncLinearParamsM = targetAction.Impl.InParams
           .Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
-          .Select(v => ExprHelper.FieldAccess(Expr.Ident(localM), v.Name)).ToList<Expr>();
+          .Select(v => substM(v)).ToList<Expr>();
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParamsM);
         var collectInM = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, pendingAsyncLinearParamsM));
 
