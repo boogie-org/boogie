@@ -6,7 +6,7 @@ type Value;
 type Tid;
 
 datatype StampedValue {
-  StampedValue(ts: int, value: Value)
+    StampedValue(ts: int, value: Value)
 } 
 
 datatype Permission {
@@ -22,7 +22,7 @@ var {:layer 0,2} r2: [Tid][int]StampedValue;
 var {:linear} {:layer 0,2} pSet: Set Permission;
 
 function {:inline} WholeTidPermission(tid: Tid): Set Permission {
-  Set((lambda {:pool "D"} x: Permission :: x->t_id == tid && (1 <= x->mem_index) && (x->mem_index <= n)))
+    Set((lambda {:pool "D"} x: Permission :: x->t_id == tid && (1 <= x->mem_index) && (x->mem_index <= n)))
 }
 
 action {:layer 1} start (tid: Tid)
