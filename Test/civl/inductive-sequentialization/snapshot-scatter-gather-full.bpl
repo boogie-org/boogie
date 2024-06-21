@@ -73,7 +73,7 @@ modifies r1, pSet;
     var {:pool "V"} v:Value;
     assert 1 <= perm->val->mem_index && perm->val->mem_index <=n;
     assume {:add_to_pool "A", 0, n} true;
-    assume {:exit_condition Set_IsSubset(WholeTidPermission(perm->val->t_id), pSet)} true;
+    assume {:exit_condition Set_IsSubset(WholeTidPermission(perm->val->t_id), Set_Add(pSet, perm->val) )} true;
 
     if (*) {
         assume {:add_to_pool "K", mem[perm->val->mem_index]->ts, k} {:add_to_pool "V", mem[perm->val->mem_index]->value, v} true;
