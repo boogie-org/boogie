@@ -484,11 +484,19 @@ namespace Microsoft.Boogie
       
       // Create init blocks
       List<Block> blocks = new List<Block>(linearityChecks.Count + 1);
+      if(checkerBlocks.Count != 0){
       blocks.Add(
         BlockHelper.Block(
           "init",
           new List<Cmd>() { CmdHelper.CallCmd(act.Impl.Proc, inputs, outputs) },
           checkerBlocks));
+      }
+      else{
+        blocks.Add(
+        BlockHelper.Block(
+          "init",
+          new List<Cmd>() { CmdHelper.CallCmd(act.Impl.Proc, inputs, outputs) }));
+      }
       blocks.AddRange(checkerBlocks);
 
       // Create the whole check procedure
