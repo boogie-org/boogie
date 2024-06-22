@@ -260,12 +260,15 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void TypecheckAttributes(TypecheckingContext rc)
+    public void TypecheckAttributes(TypecheckingContext tc)
     {
+      var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
+      tc.GlobalAccessOnlyInOld = false;
       for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
       {
-        kv.Typecheck(rc);
+        kv.Typecheck(tc);
       }
+      tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
     }
 
     public List<int> FindLayers()

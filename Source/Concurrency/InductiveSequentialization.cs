@@ -58,8 +58,13 @@ namespace Microsoft.Boogie
       return decls;
     }
 
-    public virtual IEnumerable<Expr> GenerateMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
+    public virtual IEnumerable<Expr> GenerateLeftMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
       List<Variable> leftMoverArgs)
+    {
+      return new List<Expr>();
+    }
+
+    public virtual IEnumerable<Expr> GenerateRightMoverCheckAssumptions(Action rightMover, List<Variable> rightMoverArgs)
     {
       return new List<Expr>();
     }
@@ -632,7 +637,7 @@ namespace Microsoft.Boogie
         targetAction.tok,
         Expr.Not(Expr.And(Substituter.Apply(substE1, gateE1), Substituter.Apply(substE2, Expr.And(GetExitCondition(E2), gateE2)))) ,
         $"Inconsistency check failed for {targetAction.Name}, {E1.Name}, {E2.Name}"));
-
+      
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
       return GetCheckerTuple($"{rule}_InconsistencyChecker_{targetAction.Name}_{E1.Name}_{E2.Name}", new List<Requires>(),
         new List<Variable>(), new List<Variable>(), locals,  cmds);
@@ -646,23 +651,16 @@ namespace Microsoft.Boogie
       return TransitionRelationComputation.Cooperation(civlTypeChecker, action, frame);
     }
 
-    private Expr GetExitCondition(Action action){
-       Expr X = Expr.False;
-       var assumeCmds = action.Impl.Blocks[0].Cmds.OfType<AssumeCmd>();
-       foreach (var c in assumeCmds) 
-      {
-        var ex = QKeyValue.FindAttribute(c.Attributes, i => (i.Key == "exit_condition"));
-        if (ex != null)
-        {
-          X = (Expr)ex.Params[0];
-        }
-      }
-       return X;
+    private Expr GetExitCondition(Action action)
+    {
+      var subst = Substituter.SubstitutionFromDictionary(
+        action.ActionDecl.InParams.Zip(action.Impl.InParams.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
+      var exitCondition = action.ExitCondition;
+      return exitCondition == null ? Expr.False : Substituter.Apply(subst, exitCondition);
     }
 
     protected List<Declaration> GenerateExitConditionProperty1Checker(Action action)
     {
-      var exit = GetExitCondition(action);
       var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
       var elimExprs = new List<Expr>();
       var notElimExprs = new List<Expr>();
@@ -685,14 +683,13 @@ namespace Microsoft.Boogie
         GetCheck(action.tok, Expr.And(elimExprs), "Exit condition property 1 failed"),
       };
 
-      // CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
+      //CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
       return GetCheckerTuple($"{rule}_ExitProperty1Checker_{action.Name}", new List<Requires>(),
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
 
     protected List<Declaration> GenerateExitConditionProperty2Checker(Action action)
     {
-      var exit = GetExitCondition(action);
       var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
       var elimExprs = new List<Expr>();
       var notElimExprs = new List<Expr>();
@@ -715,10 +712,21 @@ namespace Microsoft.Boogie
         GetCheck(action.tok, Expr.And(notElimExprs), "Exit condition property 2 failed"),
       };
       
-      // CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
+      //CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
       return GetCheckerTuple($"{rule}_ExitProperty2Checker_{action.Name}", new List<Requires>(),
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
+
+    public override IEnumerable<Expr> GenerateRightMoverCheckAssumptions(Action rightMover, List<Variable> rightMoverArgs)
+    {
+      var subst = Substituter.SubstitutionFromDictionary(
+        rightMover.ActionDecl.InParams.Zip(rightMoverArgs.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
+      var exitCondition = rightMover.ExitCondition;
+      return new List<Expr> {
+        exitCondition == null ? Expr.False : Substituter.Apply(subst, exitCondition)
+      };
+    }
+
     /*
      * This method generates the extra assumption for the left-mover check of the abstraction of an eliminated action.
      * The arguments leftMover and leftMoverArgs pertain to the action being moved left.
@@ -735,7 +743,7 @@ namespace Microsoft.Boogie
      *   (1) the permissions in the invocation are disjoint from the permissions in the invariant invocation, or
      *   (2) the permissions in the invocation is contained in the permissions of one of the pending asyncs created by the invariant invocation.
      */
-    public override IEnumerable<Expr> GenerateMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
+    public override IEnumerable<Expr> GenerateLeftMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
       List<Variable> leftMoverArgs)
     {
       var invariantFormalMap =
