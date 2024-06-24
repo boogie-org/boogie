@@ -672,11 +672,11 @@ namespace Microsoft.Boogie
       var cmds = new List<Cmd>() {
         CmdHelper.AssumeCmd(GetExitCondition(action)),
         CmdHelper.CallCmd(action.Impl.Proc, action.Impl.InParams, action.Impl.OutParams),
-        GetCheck(action.tok, Expr.And(elimExprs), "Exit condition property 1 failed"),
+        GetCheck(action.tok, Expr.And(elimExprs), "Exit condition is true and there is a pending async to an eliminated action."),
       };
 
       // CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
-      return GetCheckerTuple($"{rule}_ExitProperty1Checker_{action.Name}", new List<Requires>(),
+      return GetCheckerTuple($"{rule}_ExitProperty_AllPendingAsyncsNotInElim_{action.Name}", new List<Requires>(),
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
 
@@ -701,11 +701,11 @@ namespace Microsoft.Boogie
       var cmds = new List<Cmd>() {
         CmdHelper.AssumeCmd(Expr.Not(GetExitCondition(action))),
         CmdHelper.CallCmd(action.Impl.Proc, action.Impl.InParams, action.Impl.OutParams),
-        GetCheck(action.tok, Expr.And(notElimExprs), "Exit condition property 2 failed"),
+        GetCheck(action.tok, Expr.And(notElimExprs), "Exit condition is false and there is a pending async to an action not in eliminated actions."),
       };
       
       //CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
-      return GetCheckerTuple($"{rule}_ExitProperty2Checker_{action.Name}", new List<Requires>(),
+      return GetCheckerTuple($"{rule}_ExitProperty_AllPendingAsyncsInElim_{action.Name}", new List<Requires>(),
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
 
