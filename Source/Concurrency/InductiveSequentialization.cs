@@ -651,7 +651,7 @@ namespace Microsoft.Boogie
       return exitCondition == null ? Expr.False : Substituter.Apply(subst, exitCondition);
     }
 
-    protected List<Declaration> GenerateExitConditionProperty1Checker(Action action)
+    protected List<Declaration> GenerateExitPropertyAllPendingAsyncsNotInElimChecker(Action action)
     {
       var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
       var elimExprs = new List<Expr>();
@@ -680,7 +680,7 @@ namespace Microsoft.Boogie
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
 
-    protected List<Declaration> GenerateExitConditionProperty2Checker(Action action)
+    protected List<Declaration> GenerateExitPropertyAllPendingAsyncsInElimChecker(Action action)
     {
       var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
       var elimExprs = new List<Expr>();
@@ -893,8 +893,8 @@ namespace Microsoft.Boogie
         decls.AddRange(GenerateSideConditionChecker(targetAction));
         foreach (var elim in eliminatedActions)
         {
-          decls.AddRange(GenerateExitConditionProperty1Checker(elim));
-          decls.AddRange(GenerateExitConditionProperty2Checker(elim));
+          decls.AddRange(GenerateExitPropertyAllPendingAsyncsInElimChecker(elim));
+          decls.AddRange(GenerateExitPropertyAllPendingAsyncsNotInElimChecker(elim));
           if (elim == targetAction)
           {
             continue;
