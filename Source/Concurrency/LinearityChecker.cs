@@ -20,6 +20,7 @@ public class LinearityCheck
         this.checkName = checkName;
       }
 }
+
 class LinearityChecker 
 {
     private CivlTypeChecker civlTypeChecker;

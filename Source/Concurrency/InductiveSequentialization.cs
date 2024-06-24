@@ -515,21 +515,9 @@ namespace Microsoft.Boogie
 
     private List<Declaration> GenerateInconsistencyChecker(Action E1, Action E2)
     {
-      var gateE1 = (Expr)Expr.True;
-      foreach(var g in E1.Gate)
-      {
-        gateE1 = Expr.And(gateE1, g.Expr);
-      }
-      var gateE2 = (Expr)Expr.True;
-      foreach(var g in E2.Gate)
-      {
-        gateE2 = Expr.And(gateE2, g.Expr);
-      }
-      var gateM = (Expr)Expr.True;
-      foreach(var g in targetAction.Gate)
-      {
-        gateM = Expr.And(gateM, g.Expr);
-      }
+      var gateE1 = Expr.And(E1.Gate.Select(x => x.Expr));
+      var gateE2 = Expr.And(E2.Gate.Select(x => x.Expr));
+      var gateM = Expr.And(targetAction.Gate.Select(x => x.Expr));
 
       var locals = new List<Variable>();
       var localE1 = civlTypeChecker.LocalVariable($"E1_{E1.Name}", E1.ActionDecl.PendingAsyncType);
@@ -551,10 +539,10 @@ namespace Microsoft.Boogie
       locals.AddRange(localsForGlobals);
       locals.AddRange(localsForInM);
 
-      List<Expr> inputExprsM = new List<Expr>();
-      List<Expr> inputExprsE1 = new List<Expr>();
-      List<Expr> inputExprsE2 = new List<Expr>();
-      List<Expr> globalExprs  = new List<Expr>();
+      var inputExprsM = new List<Expr>();
+      var inputExprsE1 = new List<Expr>();
+      var inputExprsE2 = new List<Expr>();
+      var globalExprs  = new List<Expr>();
      
       foreach(var l in localsForInM)
       {
@@ -588,9 +576,10 @@ namespace Microsoft.Boogie
    
       foreach(var domain in ltc.LinearDomains)
       {
+        //Constructing expressions for collection of permissions in globals and local/input params of M, E1, and E2
         var collectG = ltc.UnionExprForPermissions(domain,
           ltc.PermissionExprs(domain, civlTypeChecker.GlobalVariables.Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))));
-
+       
         var pendingAsyncLinearParamsM = targetAction.Impl.InParams
           .Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
           .Select(v => substM(v)).ToList<Expr>();
@@ -609,6 +598,7 @@ namespace Microsoft.Boogie
         CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParamsE2);
         var collectInE2 = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, pendingAsyncLinearParamsE2));
 
+        // Checks for disjointness of permissions in the same state
         var noDuplicationExpr1 = Expr.Eq(
           ExprHelper.FunctionCall(domain.mapAnd, collectG, collectInE1),
           ExprHelper.FunctionCall(domain.mapConstBool, Expr.False));
@@ -620,6 +610,8 @@ namespace Microsoft.Boogie
           ExprHelper.FunctionCall(domain.mapConstBool, Expr.False));
 
         disjointnessExpr[domain] = Expr.And(Expr.And(noDuplicationExpr1, noDuplicationExpr2), noDuplicationExpr3);
+
+        // If E1 and E2 are descendants of M, then the subset property below should hold
         subsetExpr[domain] = Expr.And(ltc.SubsetExprForPermissions(domain, collectInE1 , collectInM), ltc.SubsetExprForPermissions(domain, collectInE2, collectInM));
       }
       
@@ -683,7 +675,7 @@ namespace Microsoft.Boogie
         GetCheck(action.tok, Expr.And(elimExprs), "Exit condition property 1 failed"),
       };
 
-      //CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
+      // CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
       return GetCheckerTuple($"{rule}_ExitProperty1Checker_{action.Name}", new List<Requires>(),
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
