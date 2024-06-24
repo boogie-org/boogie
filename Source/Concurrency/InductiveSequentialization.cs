@@ -651,7 +651,7 @@ namespace Microsoft.Boogie
       return exitCondition == null ? Expr.False : Substituter.Apply(subst, exitCondition);
     }
 
-    protected List<Declaration> GenerateExitPropertyAllPendingAsyncsNotInElimChecker(Action action)
+    protected List<Declaration> GenerateAllPendingAsyncsNotInElimChecker(Action action)
     {
       var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
       var elimExprs = new List<Expr>();
@@ -675,12 +675,12 @@ namespace Microsoft.Boogie
         GetCheck(action.tok, Expr.And(elimExprs), "Exit condition is true and there is a pending async to an eliminated action."),
       };
 
-      // CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
-      return GetCheckerTuple($"{rule}_ExitProperty_AllPendingAsyncsNotInElim_{action.Name}", new List<Requires>(),
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
+      return GetCheckerTuple($"{rule}_AllPendingAsyncsNotInElim_{action.Name}", new List<Requires>(),
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
 
-    protected List<Declaration> GenerateExitPropertyAllPendingAsyncsInElimChecker(Action action)
+    protected List<Declaration> GenerateAllPendingAsyncsInElimChecker(Action action)
     {
       var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
       var elimExprs = new List<Expr>();
@@ -704,8 +704,8 @@ namespace Microsoft.Boogie
         GetCheck(action.tok, Expr.And(notElimExprs), "Exit condition is false and there is a pending async to an action not in eliminated actions."),
       };
       
-      //CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
-      return GetCheckerTuple($"{rule}_ExitProperty_AllPendingAsyncsInElim_{action.Name}", new List<Requires>(),
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
+      return GetCheckerTuple($"{rule}_AllPendingAsyncsInElim_{action.Name}", new List<Requires>(),
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
 
@@ -893,8 +893,8 @@ namespace Microsoft.Boogie
         decls.AddRange(GenerateSideConditionChecker(targetAction));
         foreach (var elim in eliminatedActions)
         {
-          decls.AddRange(GenerateExitPropertyAllPendingAsyncsInElimChecker(elim));
-          decls.AddRange(GenerateExitPropertyAllPendingAsyncsNotInElimChecker(elim));
+          decls.AddRange(GenerateAllPendingAsyncsInElimChecker(elim));
+          decls.AddRange(GenerateAllPendingAsyncsNotInElimChecker(elim));
           if (elim == targetAction)
           {
             continue;
