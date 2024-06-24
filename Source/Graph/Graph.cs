@@ -1175,6 +1175,7 @@ namespace Microsoft.Boogie.GraphUtil
     {
       var todo = new Stack<object>(roots);
       var visitedEdges = new HashSet<object>();
+      var traversableEdges = new HashSet<object>();
       while (todo.Any())
       {
         var node = todo.Pop();
@@ -1184,7 +1185,7 @@ namespace Microsoft.Boogie.GraphUtil
 
         
         if (node is IEnumerable<object> objects) {
-          if (!visitedEdges.IsSupersetOf(objects)) {
+          if (!traversableEdges.IsSupersetOf(objects)) {
             continue;
           }
         }
@@ -1193,6 +1194,8 @@ namespace Microsoft.Boogie.GraphUtil
         {
           continue;
         }
+
+        traversableEdges.Add(node);
 
         var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
         foreach (var x in outgoing)
