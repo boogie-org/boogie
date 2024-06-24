@@ -2,6 +2,25 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace Microsoft.Boogie;
+
+public class LinearityCheck
+    {
+      public LinearDomain domain;
+      public Expr assume;
+      public Expr assert;
+      public string message;
+      public string checkName;
+
+      public LinearityCheck(LinearDomain domain, Expr assume, Expr assert, string message, string checkName)
+      {
+        this.domain = domain;
+        this.assume = assume;
+        this.assert = assert;
+        this.message = message;
+        this.checkName = checkName;
+      }
+}
+
 class LinearityChecker 
 {
     private CivlTypeChecker civlTypeChecker;
@@ -18,24 +37,6 @@ class LinearityChecker
       foreach (var action in civlTypeChecker.MoverActions)
       {
         linearityChecker.AddChecker(action, decls);
-      }
-    }
-
-    private class LinearityCheck
-    {
-      public LinearDomain domain;
-      public Expr assume;
-      public Expr assert;
-      public string message;
-      public string checkName;
-
-      public LinearityCheck(LinearDomain domain, Expr assume, Expr assert, string message, string checkName)
-      {
-        this.domain = domain;
-        this.assume = assume;
-        this.assert = assert;
-        this.message = message;
-        this.checkName = checkName;
       }
     }
 

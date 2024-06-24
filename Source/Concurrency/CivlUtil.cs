@@ -129,6 +129,7 @@ namespace Microsoft.Boogie
       }
 
       var tc = new TypecheckingContext(null, options);
+      tc.CheckModifies = false; // to prevent access to tc.Proc which is null
       absy.Typecheck(tc);
       return tc.ErrorCount;
     }
@@ -144,6 +145,7 @@ namespace Microsoft.Boogie
       }
 
       var tc = new TypecheckingContext(null, options);
+      tc.CheckModifies = false; // to prevent access to tc.Proc which is null
       absy.Typecheck(tc);
       return tc.ErrorCount;
     }

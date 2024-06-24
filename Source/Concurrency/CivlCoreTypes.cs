@@ -86,6 +86,8 @@ namespace Microsoft.Boogie
 
     public int PendingAsyncStartIndex => ActionDecl.OutParams.Count;
 
+    public Expr ExitCondition => ActionDecl.FindExprAttribute("exit_condition");
+
     public bool TriviallyCommutesWith(Action other)
     {
       return !this.ModifiedGlobalVars.Intersect(other.UsedGlobalVarsInAction).Any() &&
