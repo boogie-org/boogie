@@ -162,10 +162,15 @@ namespace Microsoft.Boogie
       }
 
       string checkerName = civlTypeChecker.AddNamePrefix($"PartitionChecker_{action.Name}");
-      List<Block> blocks = new List<Block>(checkerBlocks.Count + 1)
+      List<Block> blocks = new List<Block>(checkerBlocks.Count + 1);
+      if(checkerBlocks.Count != 0)
       {
-        BlockHelper.Block(checkerName, cmds, checkerBlocks)
-      };
+        blocks.Add(BlockHelper.Block(checkerName, cmds, checkerBlocks));
+      }
+      else
+      {
+        blocks.Add(BlockHelper.Block(checkerName, cmds));
+      }
       blocks.AddRange(checkerBlocks);
 
       Procedure proc = DeclHelper.Procedure(
