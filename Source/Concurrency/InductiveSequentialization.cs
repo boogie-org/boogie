@@ -728,7 +728,7 @@ namespace Microsoft.Boogie
         rightMover.ActionDecl.InParams.Zip(rightMoverArgs.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
       var exitCondition = rightMover.ExitCondition;
       return new List<Expr> {
-        exitCondition == null ? Expr.False : Substituter.Apply(subst, exitCondition)
+        exitCondition == null ? Expr.True : Expr.Not(Substituter.Apply(subst, exitCondition))
       };
     }
 
