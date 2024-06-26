@@ -54,6 +54,7 @@ modifies snapshots, pSet, channels;
     var {:pool "K"} k:int;
     var {:pool "V"} v:Value;
     assert 1 <= perm->val->mem_index && perm->val->mem_index <=n;
+    assert channels[perm->val->tid] == None();
     assume {:add_to_pool "A", 0, n} true;
 
     if (*) {
@@ -152,6 +153,7 @@ modifies snapshots, pSet, channels;
     var {:pool "K"} k:int;
     var {:pool "V"} v:Value;
     assert 1 <= perm->val->mem_index && perm->val->mem_index <=n;
+    assert channels[perm->val->tid] == None();
     assume {:add_to_pool "A", 0, n} true;
 
     if (*) {
