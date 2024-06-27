@@ -36,7 +36,7 @@ creates read_f;
     call create_asyncs((lambda pa:read_f :: 1 <= pa->perm->val->mem_index && pa->perm->val->mem_index <= n && pa->perm->val->tid == tid));
 }
 
-action {:layer 2} main_f'(tid: Tid, {:linear_in} sps: Set Permission)
+async action {:layer 2} main_f'(tid: Tid, {:linear_in} sps: Set Permission)
 modifies pSet, channels;
 {
     var snapshot: [int]StampedValue;  
@@ -116,7 +116,7 @@ modifies channels;
     channels[tid] := Some(snapshot);
 }
 
-action {:layer 1,2} ChannelReceive(tid: Tid) returns (snapshot: [int]StampedValue)
+right action {:layer 1,2} ChannelReceive(tid: Tid) returns (snapshot: [int]StampedValue)
 modifies channels;
 {
     assume channels[tid] != None();
@@ -135,7 +135,7 @@ creates read_s;
     call create_asyncs((lambda pa:read_s :: 1 <= pa->perm->val->mem_index && pa->perm->val->mem_index <= n && pa->perm->val->tid == tid));
 }
 
-action {:layer 2} main_s'(tid: Tid, {:linear_in} sps: Set Permission)
+async action {:layer 2} main_s'(tid: Tid, {:linear_in} sps: Set Permission)
 modifies pSet, channels;
 {
     var snapshot: [int]StampedValue;  
