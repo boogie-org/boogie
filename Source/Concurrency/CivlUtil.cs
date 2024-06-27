@@ -119,9 +119,13 @@ namespace Microsoft.Boogie
       decl.AddAttribute("inline", Expr.Literal(1));
     }
 
-    public static int ResolveAndTypecheck(CoreOptions options, Absy absy)
+    public static int ResolveAndTypecheck(CoreOptions options, Absy absy, ResolutionContext.State state = ResolutionContext.State.Single)
     {
       var rc = new ResolutionContext(null, options);
+      if (state == ResolutionContext.State.Two)
+      {
+        rc.StateMode = state;
+      }
       absy.Resolve(rc);
       if (rc.ErrorCount != 0)
       {
@@ -134,28 +138,12 @@ namespace Microsoft.Boogie
       return tc.ErrorCount;
     }
 
-    public static int ResolveAndTypecheck(CoreOptions options, Absy absy, ResolutionContext.State state)
-    {
-      var rc = new ResolutionContext(null, options);
-      rc.StateMode = state;
-      absy.Resolve(rc);
-      if (rc.ErrorCount != 0)
-      {
-        return rc.ErrorCount;
-      }
-
-      var tc = new TypecheckingContext(null, options);
-      tc.CheckModifies = false; // to prevent access to tc.Proc which is null
-      absy.Typecheck(tc);
-      return tc.ErrorCount;
-    }
-
-    public static int ResolveAndTypecheck(CoreOptions options, IEnumerable<Absy> absys)
+    public static int ResolveAndTypecheck(CoreOptions options, IEnumerable<Absy> absys, ResolutionContext.State state = ResolutionContext.State.Single)
     {
       int errorCount = 0;
       foreach (var absy in absys)
       {
-        errorCount += ResolveAndTypecheck(options, absy);
+        errorCount += ResolveAndTypecheck(options, absy, state);
       }
       return errorCount;
     }
