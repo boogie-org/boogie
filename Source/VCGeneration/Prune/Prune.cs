@@ -1,5 +1,9 @@
+#nullable enable
 using System.Linq;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Data;
+using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
@@ -54,12 +58,30 @@ namespace Microsoft.Boogie
      * See Checker.Setup for more information.
      * Data type constructor declarations are not pruned and they do affect VC generation.
      */
-    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, bool isBlind, Program program, List<Block> blocks)
+    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, bool hideAll, Program program, List<Block> blocks)
     {
       if (program.DeclarationDependencies == null || blocks == null || !options.Prune)
       {
         return program.TopLevelDeclarations;
       }
+      
+      /* hide P {
+       *   hide * {
+       *
+       *   }
+       *   P hidden.
+       * }
+       *
+       * Only a single endresult
+       *
+       * Do we need to insert the reverse operations? It seems like it.
+       * A result per command.
+       *
+       * Als we --isolate-assertions en --isolate-paths forceren wordt het simpeler
+       *
+       * We willen de revealed set per assertion.
+       * 
+       */
 
       PruneBlocksVisitor blocksVisitor = new PruneBlocksVisitor();
       foreach (var block in blocks)
@@ -73,15 +95,15 @@ namespace Microsoft.Boogie
       return program.TopLevelDeclarations.Where(d => 
         d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
 
-      bool TraverseDeclaration(object d)
+      bool TraverseDeclaration(object parent, object child)
       {
-        if (!isBlind)
+        if (!hideAll)
         {
           return true;
         }
 
-        var result = d is not Function function || blocksVisitor.RevealedFunctions.Contains(function)
-          || function.AlwaysRevealed;
+        var result = parent is not Function function || child is not Axiom axiom || blocksVisitor.RevealedFunctions.Contains(function)
+          || !axiom.CanHide;
         return result;
       }
     }

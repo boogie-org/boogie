@@ -459,10 +459,7 @@ Function<.out List<Declaration>/*!*/ ds.>
      Expr definition = null;
      Expr/*!*/ tmp;
      Axiom ax;
-     bool revealed = false;
   .)
-  [ "revealed"                         (. revealed = true; .) 
-  ] 
   "function" { Attribute<ref kv> } Ident<out z>
   [ TypeParams<out typeParamTok, out typeParams> ]
   "("
@@ -486,7 +483,6 @@ Function<.out List<Declaration>/*!*/ ds.>
     }
     Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
                                       new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
-    func.AlwaysRevealed = revealed;
     foreach(var axiom in axioms) {
         ds.Add(axiom);
         func.OtherDefinitionAxioms.Add(axiom);

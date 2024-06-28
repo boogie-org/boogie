@@ -573,6 +573,8 @@ namespace Microsoft.Boogie
 
   public class Axiom : Declaration
   {
+    public bool CanHide { get; set; }
+    
     public override string ToString()
     {
       return "Axiom: " + expression.ToString();
@@ -2040,7 +2042,6 @@ namespace Microsoft.Boogie
   {
     public string Comment;
 
-    public bool AlwaysRevealed;
     public Expr Body; // Only set if the function is declared with {:inline}
     public NAryExpr DefinitionBody; // Only set if the function is declared with {:define}
     public Axiom DefinitionAxiom;
@@ -3515,12 +3516,12 @@ namespace Microsoft.Boogie
 
   public class Implementation : DeclWithFormals {
 
+    public bool IsBlind { get; set; }
     public List<Variable> LocVars;
 
     [Rep] public StmtList StructuredStmts;
     [Rep] public List<Block> Blocks;
     public Procedure Proc;
-    public bool IsBlind { get; set; }
 
     // Blocks before applying passification etc.
     // Both are used only when /inline is set.

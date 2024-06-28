@@ -1171,11 +1171,10 @@ namespace Microsoft.Boogie.GraphUtil
      * A merge node is represented by an object of type IEnumerable{object}
      */
     public static IEnumerable<object> FindReachableNodesInGraphWithMergeNodes(
-      Dictionary<object, List<object>> edges, IEnumerable<object> roots, Func<object, bool> visit = null)
+      Dictionary<object, List<object>> edges, IEnumerable<object> roots, Func<object, object, bool> visitChild = null)
     {
       var todo = new Stack<object>(roots);
       var visitedEdges = new HashSet<object>();
-      var traversableEdges = new HashSet<object>();
       while (todo.Any())
       {
         var node = todo.Pop();
@@ -1185,22 +1184,20 @@ namespace Microsoft.Boogie.GraphUtil
 
         
         if (node is IEnumerable<object> objects) {
-          if (!traversableEdges.IsSupersetOf(objects)) {
+          if (!visitedEdges.IsSupersetOf(objects)) {
             continue;
           }
         }
         visitedEdges.Add(node);
-        if (visit != null && visit(node) == false)
-        {
-          continue;
-        }
-
-        traversableEdges.Add(node);
 
         var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
-        foreach (var x in outgoing)
+        foreach (var child in outgoing)
         {
-          todo.Push(x);
+          if (visitChild != null && !visitChild(node, child))
+          {
+            continue;
+          }
+          todo.Push(child);
         }
       }
       return visitedEdges;
