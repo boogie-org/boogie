@@ -8,6 +8,9 @@ record RevealedState(bool AllHiddenNotRevealed, IImmutableSet<Function> Offset) 
   public bool IsRevealed(Function function) {
     return AllHiddenNotRevealed == Offset.Contains(function);
   }
+
+  public static readonly RevealedState AllRevealed = new RevealedState(false, ImmutableHashSet<Function>.Empty);
+  public static readonly RevealedState AllHidden = new RevealedState(true, ImmutableHashSet<Function>.Empty);
 }
 
 class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
@@ -18,12 +21,18 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
   {
   }
 
-  protected override ImmutableStack<RevealedState> Empty => ImmutableStack<RevealedState>.Empty;
+  protected override ImmutableStack<RevealedState> Empty => ImmutableStack<RevealedState>.Empty.Push(
+    RevealedState.AllRevealed);
 
   protected override ImmutableStack<RevealedState> Merge(ImmutableStack<RevealedState> first, ImmutableStack<RevealedState> second) {
     var firstTop = first.Peek();
     var secondTop = second.Peek();
-    return ImmutableStack.Create(MergeStates(firstTop, secondTop));
+    var mergedTop = MergeStates(firstTop, secondTop);
+    return ImmutableStack.Create(mergedTop);
+  }
+
+  protected override bool StateEquals(ImmutableStack<RevealedState> first, ImmutableStack<RevealedState> second) {
+    return first.Peek().Equals(second.Peek());
   }
 
   /// <summary>
@@ -31,7 +40,11 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
   /// </summary>
   public static RevealedState MergeStates(RevealedState first, RevealedState second) {
     if (!first.AllHiddenNotRevealed && !second.AllHiddenNotRevealed) {
-      return new RevealedState(false, first.Offset.Union(second.Offset));
+      var intersect = first.Offset.Intersect(second.Offset);
+      if (intersect.Count == first.Offset.Count) {
+        return first;
+      }
+      return new RevealedState(false, intersect);
     }
 
     if (!first.AllHiddenNotRevealed) {
@@ -42,7 +55,11 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
       return second;
     }
 
-    return new RevealedState(false, first.Offset.Intersect(second.Offset));
+    var union = first.Offset.Union(second.Offset);
+    if (union.Count == first.Offset.Count) {
+      return first;
+    }
+    return new RevealedState(true, union);
   }
 
   static RevealedState GetUpdatedState(HideRevealCmd hideRevealCmd, RevealedState state) {
@@ -65,7 +82,7 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
     if (node is HideRevealCmd hideRevealCmd) {
       var latestState = state.Peek();
       var updatedState = GetUpdatedState(hideRevealCmd, latestState);
-      return state.Push(updatedState);
+      return updatedState.Equals(latestState) ? state : state.Push(updatedState);
     }
 
     return state;

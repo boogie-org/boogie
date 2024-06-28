@@ -2,17 +2,17 @@
 // RUN: %diff "%s.expect" "%t"
 
 function outer(x: int) : int uses {
-  axiom (forall x: int :: {outer(x)} outer(x) == inner(x) + 1);
+  hideable axiom (forall x: int :: {outer(x)} outer(x) == inner(x) + 1);
 }
 
 function inner(x: int): int uses {
-  axiom (forall x: int :: {inner(x)} inner(x) == 42);
+  hideable axiom (forall x: int :: {inner(x)} inner(x) == 42);
 }
-
+  
 procedure Foo()
 {
-  hide *;
   var x: int;
+  hide *;
   x := outer(3);
   if (*) {
     reveal outer;
@@ -32,3 +32,11 @@ procedure Foo()
     }
   }
 }
+
+/* hide P {
+ *   hide * {
+ *
+ *   }
+ *   P hidden.
+ * }
+ */

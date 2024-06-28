@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -65,15 +66,24 @@ namespace Microsoft.Boogie
         return program.TopLevelDeclarations;
       }
 
+      Implementation.ComputePredecessorsForBlocks(blocks);
       var graph = new Graph<Cmd>();
       foreach (var block in blocks) {
+        // Can not use block.Predecessors
         foreach (var predecessor in block.Predecessors) {
-          graph.AddEdge(predecessor.Cmds.Last(), block.Cmds[0]);
+          var last = predecessor.Cmds.LastOrDefault();
+          if (last != null) {
+            graph.AddEdge(last, block.Cmds[0]);
+          } else {
+            if (predecessor.Predecessors.Any()) {
+              throw new Exception();
+            }
+          }
         }
 
         for (var index = 0; index < block.Cmds.Count - 1; index++) {
           var command = block.Cmds[index];
-          var nextCommand = block.Cmds[index];
+          var nextCommand = block.Cmds[index + 1];
           graph.AddEdge(command, nextCommand);
         }
       }
@@ -83,25 +93,8 @@ namespace Microsoft.Boogie
         cmd => graph.Predecessors(cmd));
       revealedAnalysis.Run();
 
-      var merged = revealedAnalysis.States.Values.Select(s => s.Peek()).Aggregate(RevealedAnalysis.MergeStates);
-      
-      /* hide P {
-       *   hide * {
-       *
-       *   }
-       *   P hidden.
-       * }
-       *
-       * Only a single endresult
-       *
-       * Do we need to insert the reverse operations? It seems like it.
-       * A result per command.
-       *
-       * Als we --isolate-assertions en --isolate-paths forceren wordt het simpeler
-       *
-       * We willen de revealed set per assertion.
-       * 
-       */
+      var merged = revealedAnalysis.States.Values.Select(s => s.Peek()).
+        Aggregate(RevealedState.AllHidden, RevealedAnalysis.MergeStates);
 
       PruneBlocksVisitor blocksVisitor = new PruneBlocksVisitor();
       foreach (var block in blocks)

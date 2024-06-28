@@ -4,6 +4,7 @@ using System.Linq;
 
 abstract class DataflowAnalysis<TNode, TState> {
   protected readonly Dictionary<TNode, TState> states;
+  protected readonly Dictionary<TNode, TState> inStates = new();
   private readonly Func<TNode, IEnumerable<TNode>> getNext;
   private readonly Func<TNode, IEnumerable<TNode>> getPrevious;
 
@@ -21,6 +22,8 @@ abstract class DataflowAnalysis<TNode, TState> {
 
   protected abstract TState Merge(TState first, TState second);
 
+  protected abstract bool StateEquals(TState first, TState second);
+  
   protected abstract TState Update(TNode node, TState state);
 
   public void Run() {
@@ -31,10 +34,17 @@ abstract class DataflowAnalysis<TNode, TState> {
     while (queue.Any()) {
       var node = queue.Dequeue();
       var previous = getPrevious(node);
-      var inState = previous.Select(p => states[p]).Aggregate(Merge);
+      var previousStates = previous.Select(p => states[p]).ToList();
+      var inState = previousStates.Any() ? previousStates.Aggregate(Merge) : Empty;
+      var previousInState = inStates.GetValueOrDefault(node);
+      if (previousInState != null && StateEquals(inState, previousInState)) {
+        continue;
+      }
+
+      inStates[node] = inState;
       var outState = Update(node, inState);
       var previousOutState = states[node];
-      if (!outState.Equals(previousOutState)) {
+      if (!StateEquals(outState, previousOutState)) {
         states[node] = outState;
         foreach (var next in getNext(node)) {
           queue.Enqueue(next);

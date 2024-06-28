@@ -580,8 +580,7 @@ namespace Microsoft.Boogie
       return "Axiom: " + expression.ToString();
     }
 
-    private Expr /*!*/
-      expression;
+    private Expr /*!*/  expression;
 
     public Expr Expr
     {
@@ -605,24 +604,25 @@ namespace Microsoft.Boogie
 
     public string Comment;
 
-    public Axiom(IToken tok, Expr expr)
-      : this(tok, expr, null)
+    public Axiom(IToken tok, Expr expr, bool canHide = false)
+      : this(tok, expr, null, canHide)
     {
       Contract.Requires(expr != null);
       Contract.Requires(tok != null);
     }
 
-    public Axiom(IToken /*!*/ tok, Expr /*!*/ expr, string comment)
+    public Axiom(IToken /*!*/ tok, Expr /*!*/ expr, string comment, bool canHide = false)
       : base(tok)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       this.expression = expr;
       Comment = comment;
+      CanHide = canHide;
     }
 
-    public Axiom(IToken tok, Expr expr, string comment, QKeyValue kv)
-      : this(tok, expr, comment)
+    public Axiom(IToken tok, Expr expr, string comment, QKeyValue kv, bool canHide = false)
+      : this(tok, expr, comment, canHide)
     {
       Contract.Requires(expr != null);
       Contract.Requires(tok != null);
@@ -4445,12 +4445,20 @@ namespace Microsoft.Boogie
     /// </summary>
     public void ComputePredecessorsForBlocks()
     {
-      foreach (Block b in this.Blocks)
+      var blocks = this.Blocks;
+      foreach (Block b in blocks)
       {
         b.Predecessors = new List<Block>();
       }
 
-      foreach (Block b in this.Blocks)
+      ComputePredecessorsForBlocks(blocks);
+
+      this.BlockPredecessorsComputed = true;
+    }
+
+    public static void ComputePredecessorsForBlocks(List<Block> blocks)
+    {
+      foreach (Block b in blocks)
       {
         GotoCmd gtc = b.TransferCmd as GotoCmd;
         if (gtc != null)
@@ -4463,8 +4471,6 @@ namespace Microsoft.Boogie
           }
         }
       }
-
-      this.BlockPredecessorsComputed = true;
     }
 
     public void PruneUnreachableBlocks(CoreOptions options)

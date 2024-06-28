@@ -86,10 +86,13 @@ public static class ManualSplitFinder {
   private static List<Block> DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
     Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert) {
     var newBlocks = new List<Block>(blocks.Count); // Copies of the original blocks
-    var duplicator = new Duplicator();
+    //var duplicator = new Duplicator();
     var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count); // Maps original blocks to their new copies in newBlocks
     foreach (var currentBlock in blocks) {
-      var newBlock = duplicator.VisitBlock(currentBlock);
+      var newBlock = new Block();
+      newBlock.Label = currentBlock.Label;
+      // Copy more stuff over?
+      
       oldToNewBlockMap[currentBlock] = newBlock;
       newBlocks.Add(newBlock);
       if (currentBlock == containingBlock) {
