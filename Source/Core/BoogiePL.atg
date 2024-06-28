@@ -1113,7 +1113,7 @@ LabelOrCmd<out Cmd c, out IToken label>
   .)
   ( 
     "reveal"
-    Ident<out x>          (. var id = new IdentifierExpr(x, x.val); c = new RevealCmd(id); .)
+    Ident<out x>          (. var id = new IdentifierExpr(x, x.val); c = new HideRevealCmd(id, false); .)
     ";"
   | LabelOrAssign<out c, out label>
   | "assert"              (. x = t; .)

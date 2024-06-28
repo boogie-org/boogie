@@ -3515,8 +3515,6 @@ namespace Microsoft.Boogie
   }
 
   public class Implementation : DeclWithFormals {
-
-    public bool IsBlind { get; set; }
     public List<Variable> LocVars;
 
     [Rep] public StmtList StructuredStmts;

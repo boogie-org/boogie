@@ -9,8 +9,9 @@ function inner(x: int): int uses {
   axiom (forall x: int :: {inner(x)} inner(x) == 42);
 }
 
-blind procedure Foo()
+procedure Foo()
 {
+  hide *;
   var x: int;
   x := outer(3);
   if (*) {

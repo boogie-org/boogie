@@ -265,7 +265,7 @@ procedure M2(x: int, coloredBarrel: Barrel2 RGBColor2)
 {procedure1}
 {procedure2}";
       var options = CommandLineOptions.FromArguments(TextWriter.Null);
-      options.Prune = PruneMode.AllRevealed;
+      options.Prune = true;
       options.TypeEncodingMethod = CoreOptions.TypeEncoding.Predicates;
       
       var proverLog1 = await GetProverLogs.GetProverLogForProgram(options, procedure1);

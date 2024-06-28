@@ -82,7 +82,7 @@ namespace Microsoft.Boogie
       return node;
     }
     
-    public virtual Cmd VisitRevealCmd(RevealCmd node)
+    public virtual Cmd VisitRevealCmd(HideRevealCmd node)
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);

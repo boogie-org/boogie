@@ -84,7 +84,7 @@ namespace VC
         TopLevelDeclarations = par.program.TopLevelDeclarations;
         var counter = debugCounter++;
         PrintTopLevelDeclarationsForPruning(par.program, Implementation, "before#" + counter);
-        TopLevelDeclarations = Prune.GetLiveDeclarations(options, Implementation.IsBlind, par.program, blocks).ToList();
+        TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
         PrintTopLevelDeclarationsForPruning(par.program, Implementation, "after#" + counter);
         RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
         randomGen = new Random(RandomSeed);

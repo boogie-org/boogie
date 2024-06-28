@@ -4,8 +4,6 @@ namespace Microsoft.Boogie
 {
   internal class PruneBlocksVisitor : DependencyEvaluator
   {
-    public HashSet<Function> RevealedFunctions { get; } = new();
-
     public PruneBlocksVisitor() : base(null)
     {
     }
@@ -18,12 +16,6 @@ namespace Microsoft.Boogie
         AddOutgoing(f.Func);
       }
       return base.VisitExpr(node);
-    }
-
-    public override Cmd VisitRevealCmd(RevealCmd node)
-    {
-      RevealedFunctions.Add(node.Function);
-      return base.VisitRevealCmd(node);
     }
 
 

@@ -58,12 +58,32 @@ namespace Microsoft.Boogie
      * See Checker.Setup for more information.
      * Data type constructor declarations are not pruned and they do affect VC generation.
      */
-    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, bool hideAll, Program program, List<Block> blocks)
+    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, Program program, List<Block> blocks)
     {
       if (program.DeclarationDependencies == null || blocks == null || !options.Prune)
       {
         return program.TopLevelDeclarations;
       }
+
+      var graph = new Graph<Cmd>();
+      foreach (var block in blocks) {
+        foreach (var predecessor in block.Predecessors) {
+          graph.AddEdge(predecessor.Cmds.Last(), block.Cmds[0]);
+        }
+
+        for (var index = 0; index < block.Cmds.Count - 1; index++) {
+          var command = block.Cmds[index];
+          var nextCommand = block.Cmds[index];
+          graph.AddEdge(command, nextCommand);
+        }
+      }
+
+      var revealedAnalysis = new RevealedAnalysis(graph.Nodes,
+        cmd => graph.Successors(cmd),
+        cmd => graph.Predecessors(cmd));
+      revealedAnalysis.Run();
+
+      var merged = revealedAnalysis.States.Values.Select(s => s.Peek()).Aggregate(RevealedAnalysis.MergeStates);
       
       /* hide P {
        *   hide * {
@@ -97,12 +117,7 @@ namespace Microsoft.Boogie
 
       bool TraverseDeclaration(object parent, object child)
       {
-        if (!hideAll)
-        {
-          return true;
-        }
-
-        var result = parent is not Function function || child is not Axiom axiom || blocksVisitor.RevealedFunctions.Contains(function)
+        var result = parent is not Function function || child is not Axiom axiom || merged.IsRevealed(function)
           || !axiom.CanHide;
         return result;
       }

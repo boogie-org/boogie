@@ -1392,7 +1392,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		case 59: {
 			Get();
 			Ident(out x);
-			var id = new IdentifierExpr(x, x.val); c = new RevealCmd(id); 
+			var id = new IdentifierExpr(x, x.val); c = new HideRevealCmd(id, false); 
 			Expect(10);
 			break;
 		}

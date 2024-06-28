@@ -699,7 +699,7 @@ namespace Microsoft.Boogie
       else if (cmd is CommentCmd)
       {
         // comments are just for debugging and don't affect verification
-      } else if (cmd is RevealCmd)
+      } else if (cmd is HideRevealCmd)
       {
         // reveal references no variables
       }

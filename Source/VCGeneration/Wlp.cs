@@ -180,7 +180,7 @@ namespace VC
           }
         }
       }
-      else if (cmd is RevealCmd)
+      else if (cmd is HideRevealCmd)
       {
         return N;
       }

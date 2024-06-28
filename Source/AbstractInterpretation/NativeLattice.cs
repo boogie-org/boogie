@@ -377,7 +377,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       {
         // skip
       }
-      else if (cmd is RevealCmd) {
+      else if (cmd is HideRevealCmd) {
         // skip
       }
       else
