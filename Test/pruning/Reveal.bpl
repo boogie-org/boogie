@@ -33,10 +33,11 @@ procedure Foo()
   }
 }
 
-/* hide P {
- *   hide * {
- *
- *   }
- *   P hidden.
- * }
- */
+procedure Scoping() {
+  hide *;
+  push;
+  reveal outer;
+  assert outer(2) == inner(2) + 1;
+  pop;
+  assert outer(3) == inner(3) + 1; // error
+}

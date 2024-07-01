@@ -702,6 +702,8 @@ namespace Microsoft.Boogie
       } else if (cmd is HideRevealCmd)
       {
         // reveal references no variables
+      } else if (cmd is ChangeScope)
+      {
       }
       else if (cmd is SugaredCmd)
       {

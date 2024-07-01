@@ -1,5 +1,6 @@
 Reveal.bpl(24,7): Error: this assertion could not be proved
 Reveal.bpl(29,7): Error: this assertion could not be proved
 Reveal.bpl(31,7): Error: this assertion could not be proved
+Reveal.bpl(42,3): Error: this assertion could not be proved
 
-Boogie program verifier finished with 0 verified, 3 errors
+Boogie program verifier finished with 0 verified, 4 errors

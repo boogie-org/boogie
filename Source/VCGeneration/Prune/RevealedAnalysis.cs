@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.Boogie;
 
 record RevealedState(bool AllHiddenNotRevealed, IImmutableSet<Function> Offset) {
@@ -15,9 +16,9 @@ record RevealedState(bool AllHiddenNotRevealed, IImmutableSet<Function> Offset) 
 
 class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
   
-  public RevealedAnalysis(IEnumerable<Cmd> nodes, 
+  public RevealedAnalysis(IReadOnlyList<Cmd> roots, 
     Func<Cmd, IEnumerable<Cmd>> getNext, 
-    Func<Cmd, IEnumerable<Cmd>> getPrevious) : base(nodes, getNext, getPrevious)
+    Func<Cmd, IEnumerable<Cmd>> getPrevious) : base(roots, getNext, getPrevious)
   {
   }
 
@@ -75,14 +76,15 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
   }
   
   protected override ImmutableStack<RevealedState> Update(Cmd node, ImmutableStack<RevealedState> state) {
-    if (node is PopHideReveal) {
-      return state.Pop();
+    if (node is ChangeScope changeScope) {
+      return changeScope.Push ? state.Push(state.Peek()) : 
+        state.Pop();
     }
 
     if (node is HideRevealCmd hideRevealCmd) {
       var latestState = state.Peek();
       var updatedState = GetUpdatedState(hideRevealCmd, latestState);
-      return updatedState.Equals(latestState) ? state : state.Push(updatedState);
+      return updatedState.Equals(latestState) ? state : state.Pop().Push(updatedState);
     }
 
     return state;

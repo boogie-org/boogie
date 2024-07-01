@@ -2,9 +2,6 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Data;
-using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
@@ -12,7 +9,7 @@ namespace Microsoft.Boogie
   
   public class Prune {
 
-    public static Dictionary<object, List<object>> ComputeDeclarationDependencies(VCGenOptions options, Program program)
+    public static Dictionary<object, List<object>>? ComputeDeclarationDependencies(VCGenOptions options, Program program)
     {
       if (!options.Prune)
       {
@@ -88,12 +85,14 @@ namespace Microsoft.Boogie
         }
       }
 
-      var revealedAnalysis = new RevealedAnalysis(graph.Nodes,
+      var start = graph.TopologicalSort().FirstOrDefault();
+      var revealedAnalysis = new RevealedAnalysis(start == null ? Array.Empty<Cmd>() : new[] { start },
         cmd => graph.Successors(cmd),
         cmd => graph.Predecessors(cmd));
       revealedAnalysis.Run();
 
-      var merged = revealedAnalysis.States.Values.Select(s => s.Peek()).
+      var assertions = graph.Nodes.OfType<AssertCmd>();
+      var merged = assertions.Select(assertCmd => revealedAnalysis.States[assertCmd].Peek()).
         Aggregate(RevealedState.AllHidden, RevealedAnalysis.MergeStates);
 
       PruneBlocksVisitor blocksVisitor = new PruneBlocksVisitor();

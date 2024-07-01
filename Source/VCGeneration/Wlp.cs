@@ -184,6 +184,10 @@ namespace VC
       {
         return N;
       }
+      else if (cmd is ChangeScope)
+      {
+        return N;
+      }
       else if (cmd is AssumeCmd)
       {
         AssumeCmd ac = (AssumeCmd) cmd;

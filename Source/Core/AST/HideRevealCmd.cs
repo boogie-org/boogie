@@ -3,24 +3,6 @@ using System.Collections.Generic;
 
 namespace Microsoft.Boogie;
 
-public class PopHideReveal : Cmd {
-  public PopHideReveal(IToken tok) : base(tok)
-  {
-  }
-
-  public override void Resolve(ResolutionContext rc) {
-  }
-
-  public override void Typecheck(TypecheckingContext tc) {
-  }
-
-  public override void Emit(TokenTextWriter stream, int level) {
-  }
-
-  public override void AddAssignedVariables(List<Variable> vars) {
-  }
-}
-
 public class HideRevealCmd : Cmd {
   public bool Hide { get; }
   private readonly FunctionCall? functionCall;

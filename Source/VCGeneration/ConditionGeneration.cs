@@ -1424,6 +1424,9 @@ namespace VC
       } else if (c is HideRevealCmd)
       {
         passiveCmds.Add(c);
+      } else if (c is ChangeScope)
+      {
+        passiveCmds.Add(c);
       }
       else if (c is SugaredCmd sug)
       {

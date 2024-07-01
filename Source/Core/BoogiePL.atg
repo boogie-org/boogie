@@ -1129,6 +1129,10 @@ LabelOrCmd<out Cmd c, out IToken label>
       (. c = hideRevealId == null ? new HideRevealCmd(t, isHide) : new HideRevealCmd(hideRevealId, isHide); .)
       ";"
     )
+  | "pop"                 (. c = new ChangeScope(t, false); .)
+    ";"
+  | "push"                (. c = new ChangeScope(t, true); .)
+    ";"
   | "assert"              (. x = t; .)
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssertCmd(x, e, kv); .)

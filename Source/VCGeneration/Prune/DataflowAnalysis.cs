@@ -7,13 +7,15 @@ abstract class DataflowAnalysis<TNode, TState> {
   protected readonly Dictionary<TNode, TState> inStates = new();
   private readonly Func<TNode, IEnumerable<TNode>> getNext;
   private readonly Func<TNode, IEnumerable<TNode>> getPrevious;
+  private readonly IReadOnlyList<TNode> roots;
 
-  protected DataflowAnalysis(IEnumerable<TNode> nodes,  
+  protected DataflowAnalysis(IReadOnlyList<TNode> roots,  
     Func<TNode, IEnumerable<TNode>> getNext,
     Func<TNode, IEnumerable<TNode>> getPrevious) {
     this.getNext = getNext;
     this.getPrevious = getPrevious;
-    states = nodes.ToDictionary(n => n, n => Empty);
+    this.roots = roots;
+    states = roots.ToDictionary(n => n, n => Empty);
   }
 
   public IReadOnlyDictionary<TNode, TState> States => states;
@@ -27,14 +29,14 @@ abstract class DataflowAnalysis<TNode, TState> {
   protected abstract TState Update(TNode node, TState state);
 
   public void Run() {
-    var queue = new Queue<TNode>();
-    foreach (var node in states.Keys) {
-      queue.Enqueue(node);
+    var stack = new Stack<TNode>();
+    foreach (var node in roots) {
+      stack.Push(node);
     }
-    while (queue.Any()) {
-      var node = queue.Dequeue();
+    while (stack.Any()) {
+      var node = stack.Pop();
       var previous = getPrevious(node);
-      var previousStates = previous.Select(p => states[p]).ToList();
+      var previousStates = previous.Select(p => states.GetValueOrDefault(p)).Where(x => x != null).ToList();
       var inState = previousStates.Any() ? previousStates.Aggregate(Merge) : Empty;
       var previousInState = inStates.GetValueOrDefault(node);
       if (previousInState != null && StateEquals(inState, previousInState)) {
@@ -43,11 +45,11 @@ abstract class DataflowAnalysis<TNode, TState> {
 
       inStates[node] = inState;
       var outState = Update(node, inState);
-      var previousOutState = states[node];
-      if (!StateEquals(outState, previousOutState)) {
+      var previousOutState = states.GetValueOrDefault(node);
+      if (previousOutState == null || !StateEquals(outState, previousOutState)) {
         states[node] = outState;
         foreach (var next in getNext(node)) {
-          queue.Enqueue(next);
+          stack.Push(next);
         }
       }
     }
