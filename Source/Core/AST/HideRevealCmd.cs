@@ -29,6 +29,9 @@ public class HideRevealCmd : Cmd {
 
   public override void Emit(TokenTextWriter stream, int level)
   {
+    stream.Write(this, level, Hide ? "hide " : "reveal ");
+    stream.Write(this, level, Function == null ? "*" : Function.Name);
+    stream.WriteLine(";");
   }
 
   public override void AddAssignedVariables(List<Variable> vars)

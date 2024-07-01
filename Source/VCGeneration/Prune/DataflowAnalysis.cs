@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 abstract class DataflowAnalysis<TNode, TState> {
-  protected readonly Dictionary<TNode, TState> states;
+  protected readonly Dictionary<TNode, TState> states = new();
   protected readonly Dictionary<TNode, TState> inStates = new();
   private readonly Func<TNode, IEnumerable<TNode>> getNext;
   private readonly Func<TNode, IEnumerable<TNode>> getPrevious;
@@ -15,7 +15,6 @@ abstract class DataflowAnalysis<TNode, TState> {
     this.getNext = getNext;
     this.getPrevious = getPrevious;
     this.roots = roots;
-    states = roots.ToDictionary(n => n, n => Empty);
   }
 
   public IReadOnlyDictionary<TNode, TState> States => states;

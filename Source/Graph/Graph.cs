@@ -1182,18 +1182,22 @@ namespace Microsoft.Boogie.GraphUtil
           continue;
         }
 
-        
+        IReadOnlyList<object> parents; 
         if (node is IEnumerable<object> objects) {
           if (!visitedEdges.IsSupersetOf(objects)) {
             continue;
           }
+
+          parents = objects.ToList();
+        } else {
+          parents = new[] { node };
         }
         visitedEdges.Add(node);
 
         var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
         foreach (var child in outgoing)
         {
-          if (visitChild != null && !visitChild(node, child))
+          if (visitChild != null && parents.Any(p => !visitChild(p, child)))
           {
             continue;
           }

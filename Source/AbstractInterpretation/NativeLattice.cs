@@ -379,6 +379,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
       else if (cmd is HideRevealCmd) {
         // skip
+      } else if (cmd is ChangeScope) {
+        // skip
       }
       else
       {
