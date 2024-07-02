@@ -3,6 +3,15 @@ using System.Collections.Generic;
 
 namespace Microsoft.Boogie;
 
+/// <summary>
+/// Can be used to hide or reveal a specific function, or all functions
+/// If pruning is turned on, a hidden function will be pruned despite being referenced in a Boogie implementation.
+/// The function is only partially pruned though: the function definition itself is kept, and only axioms
+/// that the function depends on, that are marked as hideable, are pruned.
+///
+/// Hide and revealing takes into account lexical scoping:
+/// A popScope command will undo any hide and reveal operations that came after the last pushScope command.  
+/// </summary>
 public class HideRevealCmd : Cmd {
   public bool Hide { get; }
   private readonly FunctionCall? functionCall;
