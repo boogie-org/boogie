@@ -423,8 +423,8 @@ namespace Microsoft.Boogie.GraphUtil
 
   public class Graph<Node>
   {
-    private HashSet<Tuple<Node /*!*/, Node /*!*/>> es;
-    private HashSet<Node> ns;
+    private HashSet<Tuple<Node /*!*/, Node /*!*/>> edges;
+    private HashSet<Node> nodes;
     private Node source;
     private bool reducible;
     private HashSet<Node> headers;
@@ -440,7 +440,7 @@ namespace Microsoft.Boogie.GraphUtil
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(es == null || Contract.ForAll(es, p => p.Item1 != null && p.Item2 != null));
+      Contract.Invariant(edges == null || Contract.ForAll(edges, p => p.Item1 != null && p.Item2 != null));
       Contract.Invariant(naturalLoops == null ||
                          Contract.ForAll(naturalLoops.Keys, p => p.Item2 != null && p.Item1 != null));
     }
@@ -473,7 +473,7 @@ namespace Microsoft.Boogie.GraphUtil
     public Graph(HashSet<Tuple<Node /*!*/, Node /*!*/>> edges)
     {
       Contract.Requires(cce.NonNullElements(edges) && Contract.ForAll(edges, p => p.Item1 != null && p.Item2 != null));
-      es = edges;
+      this.edges = edges;
 
       // original A#
       //ns = Set<Node>{ x : <x,y> in es } + Set<Node>{ y : <x,y> in es };
@@ -491,20 +491,20 @@ namespace Microsoft.Boogie.GraphUtil
         temp.Add(p.Item2);
       }
 
-      ns = temp;
+      nodes = temp;
     }
 
     public Graph()
     {
-      es = new HashSet<Tuple<Node /*!*/, Node /*!*/>>();
-      ns = new HashSet<Node>();
+      edges = new HashSet<Tuple<Node /*!*/, Node /*!*/>>();
+      nodes = new HashSet<Node>();
     }
 
     // BUGBUG: Set<T>.ToString() should return a non-null string
     [Pure]
     public override string /*!*/ ToString()
     {
-      return "" + es.ToString();
+      return "" + edges.ToString();
     }
 
     public void AddSource(Node /*!*/ x)
@@ -512,7 +512,7 @@ namespace Microsoft.Boogie.GraphUtil
       Contract.Requires(x != null);
       // BUGBUG: This generates bad code in the compiler
       //ns += new Set<Node>{x};
-      ns.Add(x);
+      nodes.Add(x);
       source = x;
     }
 
@@ -522,15 +522,15 @@ namespace Microsoft.Boogie.GraphUtil
       Contract.Requires(dest != null);
       //es += Set<Edge>{<source,dest>};
       //ns += Set<Node>{source, dest};
-      es.Add(new Tuple<Node /*!*/, Node /*!*/>(source, dest));
-      ns.Add(source);
-      ns.Add(dest);
+      edges.Add(new Tuple<Node /*!*/, Node /*!*/>(source, dest));
+      nodes.Add(source);
+      nodes.Add(dest);
       predComputed = false;
     }
 
     public HashSet<Node> Nodes
     {
-      get { return ns; }
+      get { return nodes; }
     }
 
     public IEnumerable<Tuple<Node /*!*/, Node /*!*/>> Edges
@@ -540,7 +540,7 @@ namespace Microsoft.Boogie.GraphUtil
         Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Tuple<Node, Node>>>())
                          && Contract.ForAll(Contract.Result<IEnumerable<Tuple<Node, Node>>>(), n =>
                            n.Item1 != null && n.Item2 != null));
-        return es;
+        return edges;
       }
     }
 
@@ -550,7 +550,7 @@ namespace Microsoft.Boogie.GraphUtil
       Contract.Requires(y != null);
       // original A#
       // return <x,y> in es;
-      return es.Contains(new Tuple<Node /*!*/, Node /*!*/>(x, y));
+      return edges.Contains(new Tuple<Node /*!*/, Node /*!*/>(x, y));
     }
 
     private void ComputePredSuccCaches()
@@ -1170,7 +1170,8 @@ namespace Microsoft.Boogie.GraphUtil
      * A merge node is a node that has multiple incoming edges, and which cannot be traversed unless all incoming edges have been traversed.
      * A merge node is represented by an object of type IEnumerable{object}
      */
-    public static IEnumerable<object> FindReachableNodesInGraphWithMergeNodes(Dictionary<object, List<object>> edges, IEnumerable<object> roots)
+    public static IEnumerable<object> FindReachableNodesInGraphWithMergeNodes(
+      Dictionary<object, List<object>> edges, IEnumerable<object> roots, Func<object, object, bool> visitChild = null)
     {
       var todo = new Stack<object>(roots);
       var visitedEdges = new HashSet<object>();
@@ -1180,18 +1181,26 @@ namespace Microsoft.Boogie.GraphUtil
         if (visitedEdges.Contains(node)) {
           continue;
         }
-        
+
+        IReadOnlyList<object> parents; 
         if (node is IEnumerable<object> objects) {
-          if (!visitedEdges.IsSupersetOf(objects)) {
+          parents = objects.ToList();
+          if (!visitedEdges.IsSupersetOf(parents)) {
             continue;
           }
+        } else {
+          parents = new[] { node };
         }
         visitedEdges.Add(node);
 
         var outgoing = edges.GetValueOrDefault(node) ?? new List<object>();
-        foreach (var x in outgoing)
+        foreach (var child in outgoing)
         {
-          todo.Push(x);
+          if (visitChild != null && parents.Any(p => !visitChild(p, child)))
+          {
+            continue;
+          }
+          todo.Push(child);
         }
       }
       return visitedEdges;

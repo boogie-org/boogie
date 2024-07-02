@@ -1,7 +1,0 @@
-Split.bpl(20,5): Error: this assertion could not be proved
-Execution trace:
-    Split.bpl(13,5): anon0
-    Split.bpl(15,3): anon5_LoopHead
-    Split.bpl(19,7): anon5_LoopBody
-
-Boogie program verifier finished with 0 verified, 1 error

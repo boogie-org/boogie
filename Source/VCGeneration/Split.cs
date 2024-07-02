@@ -66,6 +66,7 @@ namespace VC
       public int SplitIndex { get; set; }
       public VerificationConditionGenerator.ErrorReporter reporter;
 
+      private static int debugCounter;
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
         VerificationConditionGenerator /*!*/ par, ImplementationRun run, int? randomSeed = null)
@@ -81,9 +82,10 @@ namespace VC
         Interlocked.Increment(ref currentId);
 
         TopLevelDeclarations = par.program.TopLevelDeclarations;
-        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "before");
+        var counter = debugCounter++;
+        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "before#" + counter);
         TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
-        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "after");
+        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "after#" + counter);
         RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
         randomGen = new Random(RandomSeed);
       }

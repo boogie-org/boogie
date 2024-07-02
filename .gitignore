@@ -1,5 +1,7 @@
 MSBuild_Logs/
 
+.lit_test_times.txt
+
 # Nuget
 Source/packages/
 
