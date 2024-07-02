@@ -1118,17 +1118,17 @@ LabelOrCmd<out Cmd c, out IToken label>
      bool isHide;
      IdentifierExpr hideRevealId = null;
   .)
-  ( LabelOrAssign<out c, out label>
-  | (
+  ( (
       ( "reveal" (. isHide = false; .) 
       | "hide"   (. isHide = true;  .)
       )
-      ( Ident<out x> (. hideRevealId = new IdentifierExpr(x, x.val); .)
+      ( ident    (. hideRevealId = new IdentifierExpr(t, t.val); .)
       | "*"
       )
       (. c = hideRevealId == null ? new HideRevealCmd(t, isHide) : new HideRevealCmd(hideRevealId, isHide); .)
       ";"
     )
+  | LabelOrAssign<out c, out label>
   | "popScope"            (. c = new ChangeScope(t, false); .)
     ";"
   | "pushScope"           (. c = new ChangeScope(t, true); .)

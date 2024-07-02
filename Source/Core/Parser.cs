@@ -1414,9 +1414,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		bool isHide;
 		IdentifierExpr hideRevealId = null;
 		
-		if (StartOf(14)) {
-			LabelOrAssign(out c, out label);
-		} else if (la.kind == 60 || la.kind == 61) {
+		if (la.kind == 60 || la.kind == 61) {
 			if (la.kind == 60) {
 				Get();
 				isHide = false; 
@@ -1424,14 +1422,16 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				Get();
 				isHide = true;  
 			}
-			if (StartOf(14)) {
-				Ident(out x);
-				hideRevealId = new IdentifierExpr(x, x.val); 
+			if (la.kind == 1) {
+				Get();
+				hideRevealId = new IdentifierExpr(t, t.val); 
 			} else if (la.kind == 58) {
 				Get();
 			} else SynErr(143);
 			c = hideRevealId == null ? new HideRevealCmd(t, isHide) : new HideRevealCmd(hideRevealId, isHide); 
 			Expect(10);
+		} else if (StartOf(14)) {
+			LabelOrAssign(out c, out label);
 		} else if (la.kind == 62) {
 			Get();
 			c = new ChangeScope(t, false); 
