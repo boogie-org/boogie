@@ -90,12 +90,12 @@ namespace Microsoft.Boogie
             var moverCheckContext1 = new MoverCheckContext
             {
               layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateMoverCheckAssumptions(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
+              extraAssumptions = sequentialization.GenerateLeftMoverCheckAssumptions(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
             };
             var moverCheckContext2 = new MoverCheckContext
             {
               layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateMoverCheckAssumptions(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
+              extraAssumptions = sequentialization.GenerateLeftMoverCheckAssumptions(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
             };
             moverChecking.CreateCommutativityChecker(action, leftMover, moverCheckContext1);
             moverChecking.CreateGatePreservationChecker(leftMover, action, moverCheckContext2);
@@ -121,7 +121,18 @@ namespace Microsoft.Boogie
         {
           foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
           {
-            moverChecking.CreateRightMoverCheckers(rightMover, action);
+            var moverCheckContext1 = new MoverCheckContext
+            {
+              layer = sequentialization.Layer,
+              extraAssumptions = sequentialization.GenerateRightMoverCheckAssumptions(rightMover, rightMover.FirstImpl.InParams)
+            };
+            var moverCheckContext2 = new MoverCheckContext
+            {
+              layer = sequentialization.Layer,
+              extraAssumptions = sequentialization.GenerateRightMoverCheckAssumptions(rightMover, rightMover.SecondImpl.InParams)
+            };
+            moverChecking.CreateCommutativityChecker(rightMover, action, moverCheckContext1);
+            moverChecking.CreateGatePreservationChecker(action, rightMover, moverCheckContext2);
           }
         }
       }

@@ -120,10 +120,6 @@ namespace Microsoft.Boogie
       InlineAtomicActions(actionDecls);
       CreateAtomicActions(actionDecls);
       CreateSequentializations(actionDecls);
-      foreach (var sequentialization in this.sequentializations.Where(x => x.rule == InductiveSequentializationRule.ISR))
-      {
-        DescendantChecker(sequentialization);
-      }
       AttributeEraser.Erase(this);
       YieldSufficiencyTypeChecker.TypeCheck(this);
     }
@@ -384,19 +380,6 @@ namespace Microsoft.Boogie
           sequentializations.Add(new InductiveSequentialization(this, action, actionDeclToAction[invariantActionDecl]));
         }
       });
-    }
-
-    private void DescendantChecker(Sequentialization seq)
-    {
-      IEnumerable<string> elimActionNames = seq.EliminatedActions.Select(x => x.Name);
-      foreach (var act in seq.EliminatedActions)
-      {
-        IEnumerable<string> createsList = act.ActionDecl.Creates.Select(x => x.ActionName);
-        if (createsList.Intersect(elimActionNames).Count() != createsList.Count()){
-          Error(act.ActionDecl, $"D checker failed for action {act.Name}" );
-          break;
-        }
-      }
     }
 
     private class SignatureMatcher

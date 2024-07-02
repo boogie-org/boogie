@@ -68,6 +68,8 @@ namespace Microsoft.Boogie
       DeclareTriggerFunctions();
     }
 
+    public IEnumerable<Variable> UsedGlobalVars => UsedGlobalVarsInGate.Union(UsedGlobalVarsInAction);
+
     public IToken tok => ActionDecl.tok;
 
     public string Name => ActionDecl.Name;
@@ -83,6 +85,8 @@ namespace Microsoft.Boogie
     public bool IsLeftMover => ActionDecl.MoverType == MoverType.Left || ActionDecl.MoverType == MoverType.Both;
 
     public int PendingAsyncStartIndex => ActionDecl.OutParams.Count;
+
+    public Expr ExitCondition => ActionDecl.FindExprAttribute("exit_condition");
 
     public bool TriviallyCommutesWith(Action other)
     {
