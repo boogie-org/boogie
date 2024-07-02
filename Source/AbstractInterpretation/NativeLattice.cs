@@ -377,6 +377,11 @@ namespace Microsoft.Boogie.AbstractInterpretation
       {
         // skip
       }
+      else if (cmd is HideRevealCmd) {
+        // skip
+      } else if (cmd is ChangeScope) {
+        // skip
+      }
       else
       {
         Contract.Assert(false); // unknown command

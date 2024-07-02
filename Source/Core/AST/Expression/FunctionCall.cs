@@ -45,7 +45,7 @@ public class FunctionCall : IAppliable
     Contract.Invariant(name != null);
   }
 
-  public FunctionCall createUnresolvedCopy()
+  public FunctionCall CreateUnresolvedCopy()
   {
     return new FunctionCall(new IdentifierExpr(name.tok, name.Name, name.Type));
   }
@@ -72,7 +72,7 @@ public class FunctionCall : IAppliable
     return Func.GetHashCode();
   }
 
-  virtual public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
+  public virtual void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
   {
     //Contract.Requires(stream != null);
     //Contract.Requires(args != null);

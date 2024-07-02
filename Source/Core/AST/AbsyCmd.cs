@@ -43,6 +43,9 @@ namespace Microsoft.Boogie
 
     [Rep] private List<Cmd> /*!*/ _simpleCmds;
 
+    /// <summary>
+    /// These come before the structured command
+    /// </summary>
     public List<Cmd> /*!*/ simpleCmds
     {
       get
@@ -1189,8 +1192,7 @@ namespace Microsoft.Boogie
   // Block
   public sealed class Block : Absy
   {
-    private string /*!*/
-      label; // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
+    private string /*!*/ label; // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
 
     public string /*!*/ Label
     {
@@ -1257,8 +1259,7 @@ namespace Microsoft.Boogie
       iterations; // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
 
     // VC generation and SCC computation
-    public List<Block> /*!*/
-      Predecessors;
+    public List<Block> /*!*/ Predecessors;
 
     // This field is used during passification to null-out entries in block2Incarnation dictionary early
     public int succCount;
@@ -1548,6 +1549,13 @@ namespace Microsoft.Boogie
     }
   }
 
+  /// <summary>
+  /// Could have also been called a statement.
+  ///
+  /// Does not include commands that contain other commands,
+  /// for those, look at StructuredCmd
+  /// 
+  /// </summary>
   [ContractClass(typeof(CmdContracts))]
   public abstract class Cmd : Absy
   {

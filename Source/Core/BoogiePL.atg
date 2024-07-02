@@ -564,11 +564,16 @@ VarOrType<out TypedIdent/*!*/ tyd, out QKeyValue kv>
 
 /*------------------------------------------------------------------------*/
 Axiom<out Axiom/*!*/ m>
-= (.Contract.Ensures(Contract.ValueAtReturn(out m) != null); Expr/*!*/ e; QKeyValue kv = null; .)
+= (.
+    Contract.Ensures(Contract.ValueAtReturn(out m) != null); 
+    Expr/*!*/ e; 
+    QKeyValue kv = null; 
+    bool canHide = false; .)
+  [ "hideable" (. canHide = true; .) ]
   "axiom"
    { Attribute<ref kv> }
    (. IToken/*!*/ x = t; .)
-  Proposition<out e> ";"  (. m = new Axiom(x,e, null, kv); .)
+  Proposition<out e> ";"  (. m = new Axiom(x,e, null, kv, canHide); .)
   .
 
 /*------------------------------------------------------------------------*/
@@ -1110,8 +1115,24 @@ LabelOrCmd<out Cmd c, out IToken label>
      c = dummyCmd;  label = null;
      Cmd/*!*/ cn;
      QKeyValue kv = null;
+     bool isHide;
+     IdentifierExpr hideRevealId = null;
   .)
-  ( LabelOrAssign<out c, out label>
+  ( (
+      ( "reveal" (. isHide = false; .) 
+      | "hide"   (. isHide = true;  .)
+      )
+      ( ident    (. hideRevealId = new IdentifierExpr(t, t.val); .)
+      | "*"
+      )
+      (. c = hideRevealId == null ? new HideRevealCmd(t, isHide) : new HideRevealCmd(hideRevealId, isHide); .)
+      ";"
+    )
+  | LabelOrAssign<out c, out label>
+  | "popScope"            (. c = new ChangeScope(t, false); .)
+    ";"
+  | "pushScope"           (. c = new ChangeScope(t, true); .)
+    ";"
   | "assert"              (. x = t; .)
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssertCmd(x, e, kv); .)
@@ -1682,17 +1703,17 @@ Attribute<ref QKeyValue kv>
 
 AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
 = (. IToken/*!*/ tok;  Expr/*!*/ e;  List<Expr>/*!*/ es;
-     string key;
+     IToken id;
      List<object/*!*/> parameters;  object/*!*/ param;
   .)
   "{"                                         (. tok = t; .)
      (
-       ":" ident                              (. key = t.val;  parameters = new List<object/*!*/>(); .)
+       ":" Ident<out id>                      (. parameters = new List<object/*!*/>(); .)
        [ AttributeParameter<out param>        (. parameters.Add(param); .)
          { "," AttributeParameter<out param>  (. parameters.Add(param); .)
          }
        ]
-       (. if (key == "nopats") {
+       (. if (id.val == "nopats") {
             if (parameters.Count == 1 && parameters[0] is Expr) {
               e = (Expr)parameters[0];
               if(trig==null){
@@ -1705,9 +1726,9 @@ AttributeOrTrigger<ref QKeyValue kv, ref Trigger trig>
             }
           } else {
             if (kv==null) {
-              kv = new QKeyValue(tok, key, parameters, null);
+              kv = new QKeyValue(tok, id.val, parameters, null);
             } else {
-              kv.AddLast(new QKeyValue(tok, key, parameters, null));
+              kv.AddLast(new QKeyValue(tok, id.val, parameters, null));
             }
           }
        .)
@@ -1812,6 +1833,7 @@ Ident<out IToken/*!*/ x>
   | "both"     (. t.kind = _ident; .) // convert to ident
   | "left"     (. t.kind = _ident; .) // convert to ident
   | "right"    (. t.kind = _ident; .) // convert to ident
+  | "hide"     (. t.kind = _ident; .) // convert to ident
   )
   (.
     x = t;

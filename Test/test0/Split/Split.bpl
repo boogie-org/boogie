@@ -1,12 +1,13 @@
 // RUN: %parallel-boogie /vcsDumpSplits "%s" > "%t"
-// RUN: mv %/S/Ex.split* %/S/Output/
+// RUN: mv %/S/Foo.split*.bpl %/S/Output/
+// RUN: mv %/S/Foo.split*.dot %/S/Output/
 // RUN: %diff "%s.expect" "%t"
-// RUN: %diff ./Output/Ex.split.0.bpl ./Output/Ex.split.0.bpl
-// RUN: %diff ./Output/Ex.split.1.bpl ./Output/Ex.split.1.bpl
-// RUN: %diff ./Output/Ex.split.2.bpl ./Output/Ex.split.2.bpl
-// RUN: %diff ./Output/Ex.split.3.bpl ./Output/Ex.split.3.bpl
+// RUN: %diff %S/Foo.split.0.bpl.expect ./Output/Foo.split.0.bpl
+// RUN: %diff %S/Foo.split.1.bpl.expect ./Output/Foo.split.1.bpl
+// RUN: %diff %S/Foo.split.2.bpl.expect ./Output/Foo.split.2.bpl
+// RUN: %diff %S/Foo.split.3.bpl.expect ./Output/Foo.split.3.bpl
 
-procedure Ex() returns (y: int)
+procedure Foo() returns (y: int)
   ensures y >= 0;
 {
   var x: int;

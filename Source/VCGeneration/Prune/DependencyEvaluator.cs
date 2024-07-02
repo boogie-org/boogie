@@ -20,9 +20,9 @@ namespace Microsoft.Boogie
     // with some incoming dependent of B (see method depends).
 
     public readonly Declaration declaration; // a node could either be a function or an axiom.
-    public readonly HashSet<Declaration> outgoing = new(); // an edge can either be a function or a constant.
+    public HashSet<Declaration> Outgoing { get; } = new();
     public List<Declaration[]> incomingSets = new();
-    public HashSet<Type> types = new();
+    protected HashSet<Type> types = new();
 
     protected void AddIncoming(Declaration newIncoming)
     {
@@ -33,7 +33,7 @@ namespace Microsoft.Boogie
 
     protected void AddOutgoing(Declaration newOutgoing)
     {
-      outgoing.Add(newOutgoing);
+      Outgoing.Add(newOutgoing);
     }
 
     protected void AddIncoming(Declaration[] declarations)

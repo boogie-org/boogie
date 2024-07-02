@@ -576,13 +576,14 @@ namespace Microsoft.Boogie
 
   public class Axiom : Declaration
   {
+    public bool CanHide { get; set; }
+    
     public override string ToString()
     {
       return "Axiom: " + expression.ToString();
     }
 
-    private Expr /*!*/
-      expression;
+    private Expr /*!*/  expression;
 
     public Expr Expr
     {
@@ -606,24 +607,25 @@ namespace Microsoft.Boogie
 
     public string Comment;
 
-    public Axiom(IToken tok, Expr expr)
-      : this(tok, expr, null)
+    public Axiom(IToken tok, Expr expr, bool canHide = false)
+      : this(tok, expr, null, canHide)
     {
       Contract.Requires(expr != null);
       Contract.Requires(tok != null);
     }
 
-    public Axiom(IToken /*!*/ tok, Expr /*!*/ expr, string comment)
+    public Axiom(IToken /*!*/ tok, Expr /*!*/ expr, string comment, bool canHide = false)
       : base(tok)
     {
       Contract.Requires(tok != null);
       Contract.Requires(expr != null);
       this.expression = expr;
       Comment = comment;
+      CanHide = canHide;
     }
 
-    public Axiom(IToken tok, Expr expr, string comment, QKeyValue kv)
-      : this(tok, expr, comment)
+    public Axiom(IToken tok, Expr expr, string comment, QKeyValue kv, bool canHide = false)
+      : this(tok, expr, comment, canHide)
     {
       Contract.Requires(expr != null);
       Contract.Requires(tok != null);
@@ -3516,7 +3518,6 @@ namespace Microsoft.Boogie
   }
 
   public class Implementation : DeclWithFormals {
-
     public List<Variable> LocVars;
 
     [Rep] public StmtList StructuredStmts;
@@ -4447,26 +4448,31 @@ namespace Microsoft.Boogie
     /// </summary>
     public void ComputePredecessorsForBlocks()
     {
-      foreach (Block b in this.Blocks)
+      var blocks = this.Blocks;
+      foreach (Block b in blocks)
       {
         b.Predecessors = new List<Block>();
       }
 
-      foreach (Block b in this.Blocks)
-      {
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null)
-        {
-          Contract.Assert(gtc.labelTargets != null);
-          foreach (Block /*!*/ dest in gtc.labelTargets)
-          {
-            Contract.Assert(dest != null);
-            dest.Predecessors.Add(b);
-          }
-        }
-      }
+      ComputePredecessorsForBlocks(blocks);
 
       this.BlockPredecessorsComputed = true;
+    }
+
+    public static void ComputePredecessorsForBlocks(List<Block> blocks)
+    {
+      foreach (var block in blocks) {
+        if (block.TransferCmd is not GotoCmd gtc) {
+          continue;
+        }
+
+        Contract.Assert(gtc.labelTargets != null);
+        foreach (var /*!*/ dest in gtc.labelTargets)
+        {
+          Contract.Assert(dest != null);
+          dest.Predecessors.Add(block);
+        }
+      }
     }
 
     public void PruneUnreachableBlocks(CoreOptions options)

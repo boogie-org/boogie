@@ -34,7 +34,7 @@ public static class ManualSplitFinder {
       Block entryPoint = initialSplit.Blocks[0];
       var blockAssignments = PickBlocksToVerify(initialSplit.Blocks, splitPoints);
       var entryBlockHasSplit = splitPoints.Keys.Contains(entryPoint);
-      var baseSplitBlocks = BlockTransformations.PostProcess(
+      var baseSplitBlocks = BlockTransformations.DeleteNoAssertionBlocks(
         DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
           -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
       splits.Add(new ManualSplit(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
@@ -44,7 +44,7 @@ public static class ManualSplitFinder {
           bool lastSplitInBlock = i == pair.Value.Count - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, pair.Key, lastSplitInBlock, splitOnEveryAssert);
           splits.Add(new ManualSplit(initialSplit.Options, 
-            BlockTransformations.PostProcess(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
+            BlockTransformations.DeleteNoAssertionBlocks(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
         }
       }
     }
@@ -86,10 +86,13 @@ public static class ManualSplitFinder {
   private static List<Block> DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
     Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert) {
     var newBlocks = new List<Block>(blocks.Count); // Copies of the original blocks
-    var duplicator = new Duplicator();
+    //var duplicator = new Duplicator();
     var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count); // Maps original blocks to their new copies in newBlocks
     foreach (var currentBlock in blocks) {
-      var newBlock = duplicator.VisitBlock(currentBlock);
+      var newBlock = new Block();
+      newBlock.Label = currentBlock.Label;
+      newBlock.tok = currentBlock.tok;
+      
       oldToNewBlockMap[currentBlock] = newBlock;
       newBlocks.Add(newBlock);
       if (currentBlock == containingBlock) {
