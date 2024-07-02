@@ -91,7 +91,7 @@ public static class ManualSplitFinder {
     foreach (var currentBlock in blocks) {
       var newBlock = new Block();
       newBlock.Label = currentBlock.Label;
-      // Copy more stuff over?
+      newBlock.tok = currentBlock.tok;
       
       oldToNewBlockMap[currentBlock] = newBlock;
       newBlocks.Add(newBlock);
