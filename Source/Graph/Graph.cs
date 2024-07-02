@@ -1184,11 +1184,10 @@ namespace Microsoft.Boogie.GraphUtil
 
         IReadOnlyList<object> parents; 
         if (node is IEnumerable<object> objects) {
-          if (!visitedEdges.IsSupersetOf(objects)) {
+          parents = objects.ToList();
+          if (!visitedEdges.IsSupersetOf(parents)) {
             continue;
           }
-
-          parents = objects.ToList();
         } else {
           parents = new[] { node };
         }

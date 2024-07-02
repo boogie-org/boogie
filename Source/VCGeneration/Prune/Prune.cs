@@ -57,13 +57,49 @@ namespace Microsoft.Boogie
      * See Checker.Setup for more information.
      * Data type constructor declarations are not pruned and they do affect VC generation.
      */
-    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, Program program, List<Block> blocks)
+    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, Program program, List<Block>? blocks)
     {
       if (program.DeclarationDependencies == null || blocks == null || !options.Prune)
       {
         return program.TopLevelDeclarations;
       }
 
+      var revealedState = GetRevealedState(blocks);
+      var blocksVisitor = new PruneBlocksVisitor();
+      foreach (var block in blocks)
+      {
+        blocksVisitor.Visit(block);
+      }
+
+      var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
+      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, 
+        blocksVisitor.Outgoing.Concat(keepRoots).ToHashSet(), TraverseDeclaration).ToHashSet();
+      return program.TopLevelDeclarations.Where(d => 
+        d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
+
+      bool TraverseDeclaration(object parent, object child)
+      {
+        return parent is not Function function || child is not Axiom axiom || revealedState.IsRevealed(function)
+               || !axiom.CanHide;
+      }
+    }
+
+    private static RevealedState GetRevealedState(List<Block> blocks)
+    {
+      var controlFlowGraph = GetControlFlowGraph(blocks);
+      var start = controlFlowGraph.TopologicalSort().FirstOrDefault();
+      var revealedAnalysis = new RevealedAnalysis(start == null ? Array.Empty<Cmd>() : new[] { start },
+        cmd => controlFlowGraph.Successors(cmd),
+        cmd => controlFlowGraph.Predecessors(cmd));
+      revealedAnalysis.Run();
+
+      var assertions = controlFlowGraph.Nodes.OfType<AssertCmd>();
+      return assertions.Select(assertCmd => revealedAnalysis.States[assertCmd].Peek()).
+        Aggregate(RevealedState.AllHidden, RevealedAnalysis.MergeStates);
+    }
+
+    private static Graph<Cmd> GetControlFlowGraph(List<Block> blocks)
+    {
       // The blocks created by splitting have unset block.Predecessors fields 
       Implementation.ComputePredecessorsForBlocks(blocks);
       var graph = new Graph<Cmd>();
@@ -86,34 +122,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      var start = graph.TopologicalSort().FirstOrDefault();
-      var revealedAnalysis = new RevealedAnalysis(start == null ? Array.Empty<Cmd>() : new[] { start },
-        cmd => graph.Successors(cmd),
-        cmd => graph.Predecessors(cmd));
-      revealedAnalysis.Run();
-
-      var assertions = graph.Nodes.OfType<AssertCmd>();
-      var merged = assertions.Select(assertCmd => revealedAnalysis.States[assertCmd].Peek()).
-        Aggregate(RevealedState.AllHidden, RevealedAnalysis.MergeStates);
-
-      PruneBlocksVisitor blocksVisitor = new PruneBlocksVisitor();
-      foreach (var block in blocks)
-      {
-        blocksVisitor.Visit(block);
-      }
-
-      var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
-      var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, 
-        blocksVisitor.Outgoing.Concat(keepRoots).ToHashSet(), TraverseDeclaration).ToHashSet();
-      return program.TopLevelDeclarations.Where(d => 
-        d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
-
-      bool TraverseDeclaration(object parent, object child)
-      {
-        var result = parent is not Function function || child is not Axiom axiom || merged.IsRevealed(function)
-          || !axiom.CanHide;
-        return result;
-      }
+      return graph;
     }
   }
 }
