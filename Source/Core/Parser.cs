@@ -2771,8 +2771,8 @@ public class Errors {
 			case 59: s = "\"break\" expected"; break;
 			case 60: s = "\"reveal\" expected"; break;
 			case 61: s = "\"hide\" expected"; break;
-			case 62: s = "\"pop\" expected"; break;
-			case 63: s = "\"push\" expected"; break;
+			case 62: s = "\"popScope\" expected"; break;
+			case 63: s = "\"pushScope\" expected"; break;
 			case 64: s = "\"assert\" expected"; break;
 			case 65: s = "\"assume\" expected"; break;
 			case 66: s = "\"havoc\" expected"; break;

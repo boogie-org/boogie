@@ -35,9 +35,9 @@ procedure Foo()
 
 procedure Scoping() {
   hide *;
-  push;
+  pushScope;
   reveal outer;
   assert outer(2) == inner(2) + 1;
-  pop;
+  popScope;
   assert outer(3) == inner(3) + 1; // error
 }
