@@ -398,7 +398,7 @@ namespace Core
         // this will be the lifted function that takes free variables as arguments
         Function fn = new Function(tok, _freshFnName, freshTypeVars, formals.ToList(), res,
           "auto-generated lambda function", liftedLambda.Attributes) {OriginalLambdaExprAsString = lam_str};
-        
+
         fcall = new FunctionCall(new IdentifierExpr(tok, fn.Name));
         fcall.Func = fn;
         _liftedLambdas[liftedLambda] = fcall;
