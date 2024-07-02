@@ -2,8 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+namespace VCGeneration.Prune;
+
+/// <summary>
+/// Allows defining dataflow analysis
+/// </summary>
 abstract class DataflowAnalysis<TNode, TState> {
-  protected readonly Dictionary<TNode, TState> states = new();
+  protected readonly Dictionary<TNode, TState> outStates = new();
   protected readonly Dictionary<TNode, TState> inStates = new();
   private readonly Func<TNode, IEnumerable<TNode>> getNext;
   private readonly Func<TNode, IEnumerable<TNode>> getPrevious;
@@ -17,7 +22,7 @@ abstract class DataflowAnalysis<TNode, TState> {
     this.roots = roots;
   }
 
-  public IReadOnlyDictionary<TNode, TState> States => states;
+  public IReadOnlyDictionary<TNode, TState> States => outStates;
   
   protected abstract TState Empty { get; }
 
@@ -35,7 +40,7 @@ abstract class DataflowAnalysis<TNode, TState> {
     while (stack.Any()) {
       var node = stack.Pop();
       var previous = getPrevious(node);
-      var previousStates = previous.Select(p => states.GetValueOrDefault(p)).Where(x => x != null).ToList();
+      var previousStates = previous.Select(p => outStates.GetValueOrDefault(p)).Where(x => x != null).ToList();
       var inState = previousStates.Any() ? previousStates.Aggregate(Merge) : Empty;
       var previousInState = inStates.GetValueOrDefault(node);
       if (previousInState != null && StateEquals(inState, previousInState)) {
@@ -44,9 +49,9 @@ abstract class DataflowAnalysis<TNode, TState> {
 
       inStates[node] = inState;
       var outState = Update(node, inState);
-      var previousOutState = states.GetValueOrDefault(node);
+      var previousOutState = outStates.GetValueOrDefault(node);
       if (previousOutState == null || !StateEquals(outState, previousOutState)) {
-        states[node] = outState;
+        outStates[node] = outState;
         foreach (var next in getNext(node)) {
           stack.Push(next);
         }

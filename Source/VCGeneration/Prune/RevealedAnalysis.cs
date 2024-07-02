@@ -2,16 +2,17 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 using Microsoft.Boogie;
+
+namespace VCGeneration.Prune;
 
 record RevealedState(bool AllHiddenNotRevealed, IImmutableSet<Function> Offset) {
   public bool IsRevealed(Function function) {
     return AllHiddenNotRevealed == Offset.Contains(function);
   }
 
-  public static readonly RevealedState AllRevealed = new RevealedState(false, ImmutableHashSet<Function>.Empty);
-  public static readonly RevealedState AllHidden = new RevealedState(true, ImmutableHashSet<Function>.Empty);
+  public static readonly RevealedState AllRevealed = new(false, ImmutableHashSet<Function>.Empty);
+  public static readonly RevealedState AllHidden = new(true, ImmutableHashSet<Function>.Empty);
 }
 
 class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
@@ -64,15 +65,15 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
   }
 
   static RevealedState GetUpdatedState(HideRevealCmd hideRevealCmd, RevealedState state) {
-      if (hideRevealCmd.Function == null) {
-        return new RevealedState(hideRevealCmd.Hide, ImmutableHashSet<Function>.Empty);
-      }
+    if (hideRevealCmd.Function == null) {
+      return new RevealedState(hideRevealCmd.Hide, ImmutableHashSet<Function>.Empty);
+    }
 
-      if (hideRevealCmd.Hide == state.AllHiddenNotRevealed) {
-        return state;
-      }
+    if (hideRevealCmd.Hide == state.AllHiddenNotRevealed) {
+      return state;
+    }
 
-      return state with { Offset = state.Offset.Add(hideRevealCmd.Function) };
+    return state with { Offset = state.Offset.Add(hideRevealCmd.Function) };
   }
   
   protected override ImmutableStack<RevealedState> Update(Cmd node, ImmutableStack<RevealedState> state) {

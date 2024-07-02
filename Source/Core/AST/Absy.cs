@@ -4461,17 +4461,16 @@ namespace Microsoft.Boogie
 
     public static void ComputePredecessorsForBlocks(List<Block> blocks)
     {
-      foreach (Block b in blocks)
-      {
-        GotoCmd gtc = b.TransferCmd as GotoCmd;
-        if (gtc != null)
+      foreach (var block in blocks) {
+        if (block.TransferCmd is not GotoCmd gtc) {
+          continue;
+        }
+
+        Contract.Assert(gtc.labelTargets != null);
+        foreach (var /*!*/ dest in gtc.labelTargets)
         {
-          Contract.Assert(gtc.labelTargets != null);
-          foreach (Block /*!*/ dest in gtc.labelTargets)
-          {
-            Contract.Assert(dest != null);
-            dest.Predecessors.Add(b);
-          }
+          Contract.Assert(dest != null);
+          dest.Predecessors.Add(block);
         }
       }
     }

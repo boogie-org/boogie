@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using Microsoft.Boogie.GraphUtil;
+using VCGeneration.Prune;
 
 namespace Microsoft.Boogie
 {
@@ -63,10 +64,10 @@ namespace Microsoft.Boogie
         return program.TopLevelDeclarations;
       }
 
+      // The blocks created by splitting have unset block.Predecessors fields 
       Implementation.ComputePredecessorsForBlocks(blocks);
       var graph = new Graph<Cmd>();
       foreach (var block in blocks) {
-        // Can not use block.Predecessors
         foreach (var predecessor in block.Predecessors) {
           var last = predecessor.Cmds.LastOrDefault();
           if (last != null) {
