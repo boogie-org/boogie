@@ -4482,14 +4482,14 @@ namespace Microsoft.Boogie
 
     public void PruneUnreachableBlocks(CoreOptions options)
     {
-      var toVisit = new Queue<Block>();
+      var toVisit = new Stack<Block>();
       var reachableBlocks = new List<Block /*!*/>();
       var reachable = new HashSet<Block>(); // the set of elements in "reachableBlocks"
 
-      toVisit.Enqueue(Blocks[0]);
+      toVisit.Push(Blocks[0]);
       while (toVisit.Count != 0)
       {
-        var block = toVisit.Dequeue();
+        var block = toVisit.Pop();
         if (!reachable.Add(block)) {
           continue;
         }
@@ -4511,7 +4511,7 @@ namespace Microsoft.Boogie
           // it seems that the goto statement at the end may be reached
           foreach (var next in gotoCmd.labelTargets) {
             Contract.Assume(next != null);
-            toVisit.Enqueue(next);
+            toVisit.Push(next);
           }
         }
 
