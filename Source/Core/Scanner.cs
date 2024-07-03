@@ -554,8 +554,8 @@ public class Scanner {
 			case "break": t.kind = 59; break;
 			case "reveal": t.kind = 60; break;
 			case "hide": t.kind = 61; break;
-			case "popScope": t.kind = 62; break;
-			case "pushScope": t.kind = 63; break;
+			case "pop": t.kind = 62; break;
+			case "push": t.kind = 63; break;
 			case "assert": t.kind = 64; break;
 			case "assume": t.kind = 65; break;
 			case "havoc": t.kind = 66; break;

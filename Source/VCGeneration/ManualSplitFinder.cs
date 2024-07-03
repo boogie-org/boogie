@@ -8,7 +8,7 @@ namespace VCGeneration;
 
 public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par) {
-    List<ManualSplit> focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
+    var focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
     return focussedImpl.SelectMany(FindManualSplits);
   }
 
@@ -33,16 +33,21 @@ public static class ManualSplitFinder {
     } else {
       Block entryPoint = initialSplit.Blocks[0];
       var blockAssignments = PickBlocksToVerify(initialSplit.Blocks, splitPoints);
-      var entryBlockHasSplit = splitPoints.Keys.Contains(entryPoint);
+      var entryBlockHasSplit = splitPoints.ContainsKey(entryPoint);
       var baseSplitBlocks = BlockTransformations.DeleteNoAssertionBlocks(
         DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
           -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
       splits.Add(new ManualSplit(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
-      foreach (var pair in splitPoints) {
-        for (int i = 0; i < pair.Value.Count; i++) {
-          var token = pair.Value[i];
-          bool lastSplitInBlock = i == pair.Value.Count - 1;
-          var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, pair.Key, lastSplitInBlock, splitOnEveryAssert);
+      foreach (var block in initialSplit.Blocks) {
+        var tokens = splitPoints.GetValueOrDefault(block);
+        if (tokens == null) {
+          continue;
+        }
+        
+        for (int i = 0; i < tokens.Count; i++) {
+          var token = tokens[i];
+          bool lastSplitInBlock = i == tokens.Count - 1;
+          var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, block, lastSplitInBlock, splitOnEveryAssert);
           splits.Add(new ManualSplit(initialSplit.Options, 
             BlockTransformations.DeleteNoAssertionBlocks(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
         }
@@ -66,11 +71,13 @@ public static class ManualSplitFinder {
       var currentBlock = todo.Pop();
       if (blockAssignments.Keys.Contains(currentBlock)) {
         continue;
-      } else if (immediateDominator[currentBlock] == currentBlock) // if the currentBlock doesn't have a predecessor.
-        {
+      }
+
+      if (immediateDominator[currentBlock] == currentBlock) // if the currentBlock doesn't have a predecessor.
+      {
         blockAssignments[currentBlock] = currentBlock;
-      } else if (splitPoints.Keys.Contains(immediateDominator[currentBlock])) // if the currentBlock's dominator has a split then it will be associated with that split
-        {
+      } else if (splitPoints.ContainsKey(immediateDominator[currentBlock])) // if the currentBlock's dominator has a split then it will be associated with that split
+      {
         blockAssignments[currentBlock] = immediateDominator[currentBlock];
       } else {
         Contract.Assert(blockAssignments.Keys.Contains(immediateDominator[currentBlock]));

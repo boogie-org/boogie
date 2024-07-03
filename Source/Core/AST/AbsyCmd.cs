@@ -264,8 +264,7 @@ namespace Microsoft.Boogie
   /// </summary>
   public class StmtListBuilder
   {
-    List<BigBlock /*!*/> /*!*/
-      bigBlocks = new List<BigBlock /*!*/>();
+    readonly List<BigBlock /*!*/> /*!*/ bigBlocks = new();
 
     string label;
     List<Cmd> simpleCmds;
@@ -858,16 +857,16 @@ namespace Microsoft.Boogie
             }
 
             // ... goto Then, Else;
-            Block block = new Block(b.tok, predLabel, predCmds,
+            var jumpBlock = new Block(b.tok, predLabel, predCmds,
               new GotoCmd(ifcmd.tok, new List<String> {thenLabel, elseLabel}));
-            blocks.Add(block);
+            blocks.Add(jumpBlock);
 
             if (!thenGuardTakenCareOf)
             {
               // Then: assume guard; goto firstThenBlock;
-              block = new Block(ifcmd.tok, thenLabel, ssThen,
+              var thenJumpBlock = new Block(ifcmd.tok, thenLabel, ssThen,
                 new GotoCmd(ifcmd.tok, new List<String> {ifcmd.thn.BigBlocks[0].LabelName}));
-              blocks.Add(block);
+              blocks.Add(thenJumpBlock);
             }
 
             // recurse to create the blocks for the then branch
@@ -879,9 +878,9 @@ namespace Microsoft.Boogie
               if (!elseGuardTakenCareOf)
               {
                 // Else: assume !guard; goto firstElseBlock;
-                block = new Block(ifcmd.tok, elseLabel, ssElse,
+                var elseJumpBlock = new Block(ifcmd.tok, elseLabel, ssElse,
                   new GotoCmd(ifcmd.tok, new List<String> {ifcmd.elseBlock.BigBlocks[0].LabelName}));
-                blocks.Add(block);
+                blocks.Add(elseJumpBlock);
               }
 
               // recurse to create the blocks for the else branch
@@ -914,7 +913,7 @@ namespace Microsoft.Boogie
                 trCmd = GotoSuccessor(ifcmd.tok, b);
               }
 
-              block = new Block(ifcmd.tok, elseLabel, ssElse, trCmd);
+              var block = new Block(ifcmd.tok, elseLabel, ssElse, trCmd);
               blocks.Add(block);
             }
           }

@@ -1115,24 +1115,24 @@ LabelOrCmd<out Cmd c, out IToken label>
      c = dummyCmd;  label = null;
      Cmd/*!*/ cn;
      QKeyValue kv = null;
-     bool isHide;
+     HideRevealCmd.Modes mode;
      IdentifierExpr hideRevealId = null;
   .)
   ( (
-      ( "reveal" (. isHide = false; .) 
-      | "hide"   (. isHide = true;  .)
+      ( "reveal" (. mode = HideRevealCmd.Modes.Reveal; .) 
+      | "hide"   (. mode = HideRevealCmd.Modes.Hide;  .)
       )
       ( ident    (. hideRevealId = new IdentifierExpr(t, t.val); .)
       | "*"
       )
-      (. c = hideRevealId == null ? new HideRevealCmd(t, isHide) : new HideRevealCmd(hideRevealId, isHide); .)
+      (. c = hideRevealId == null ? new HideRevealCmd(t, mode) : new HideRevealCmd(hideRevealId, mode); .)
       ";"
     )
+  | "pop"            (. c = new ChangeScope(t, ChangeScope.Modes.Pop); .)
+    ";"
+  | "push"           (. c = new ChangeScope(t, ChangeScope.Modes.Push); .)
+    ";"
   | LabelOrAssign<out c, out label>
-  | "popScope"            (. c = new ChangeScope(t, false); .)
-    ";"
-  | "pushScope"           (. c = new ChangeScope(t, true); .)
-    ";"
   | "assert"              (. x = t; .)
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssertCmd(x, e, kv); .)
@@ -1833,7 +1833,10 @@ Ident<out IToken/*!*/ x>
   | "both"     (. t.kind = _ident; .) // convert to ident
   | "left"     (. t.kind = _ident; .) // convert to ident
   | "right"    (. t.kind = _ident; .) // convert to ident
+  | "reveal"     (. t.kind = _ident; .) // convert to ident
   | "hide"     (. t.kind = _ident; .) // convert to ident
+  | "push"     (. t.kind = _ident; .) // convert to ident
+  | "pop"     (. t.kind = _ident; .) // convert to ident
   )
   (.
     x = t;

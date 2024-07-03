@@ -87,8 +87,8 @@ namespace Microsoft.Boogie
     private static RevealedState GetRevealedState(List<Block> blocks)
     {
       var controlFlowGraph = GetControlFlowGraph(blocks);
-      var start = controlFlowGraph.TopologicalSort().FirstOrDefault();
-      var revealedAnalysis = new RevealedAnalysis(start == null ? Array.Empty<Cmd>() : new[] { start },
+      var starts = controlFlowGraph.Nodes.Where(n => !controlFlowGraph.Predecessors(n).Any()).ToList();
+      var revealedAnalysis = new RevealedAnalysis(starts,
         cmd => controlFlowGraph.Successors(cmd),
         cmd => controlFlowGraph.Predecessors(cmd));
       revealedAnalysis.Run();
