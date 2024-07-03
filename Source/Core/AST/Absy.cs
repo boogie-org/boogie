@@ -3521,7 +3521,12 @@ namespace Microsoft.Boogie
     public List<Variable> LocVars;
 
     [Rep] public StmtList StructuredStmts;
-    [Rep] public List<Block> Blocks;
+
+    [field: Rep]
+    public List<Block> Blocks {
+      get; 
+      set;
+    }
     public Procedure Proc;
 
     // Blocks before applying passification etc.
@@ -4477,47 +4482,36 @@ namespace Microsoft.Boogie
 
     public void PruneUnreachableBlocks(CoreOptions options)
     {
-      ArrayList /*Block!*/
-        visitNext = new ArrayList /*Block!*/();
-      List<Block /*!*/> reachableBlocks = new List<Block /*!*/>();
-      HashSet<Block> reachable = new HashSet<Block>(); // the set of elements in "reachableBlocks"
+      var toVisit = new Queue<Block>();
+      var reachableBlocks = new List<Block /*!*/>();
+      var reachable = new HashSet<Block>(); // the set of elements in "reachableBlocks"
 
-      visitNext.Add(this.Blocks[0]);
-      while (visitNext.Count != 0)
+      toVisit.Enqueue(Blocks[0]);
+      while (toVisit.Count != 0)
       {
-        Block b = cce.NonNull((Block) visitNext[visitNext.Count - 1]);
-        visitNext.RemoveAt(visitNext.Count - 1);
-        if (!reachable.Contains(b))
-        {
-          reachableBlocks.Add(b);
-          reachable.Add(b);
-          if (b.TransferCmd is GotoCmd)
-          {
-            if (options.PruneInfeasibleEdges)
-            {
-              foreach (Cmd /*!*/ s in b.Cmds)
-              {
-                Contract.Assert(s != null);
-                if (s is PredicateCmd)
-                {
-                  LiteralExpr e = ((PredicateCmd) s).Expr as LiteralExpr;
-                  if (e != null && e.IsFalse)
-                  {
-                    // This statement sequence will never reach the end, because of this "assume false" or "assert false".
-                    // Hence, it does not reach its successors.
-                    b.TransferCmd = new ReturnCmd(b.TransferCmd.tok);
-                    goto NEXT_BLOCK;
-                  }
-                }
+        var block = toVisit.Dequeue();
+        if (!reachable.Add(block)) {
+          continue;
+        }
+
+        reachableBlocks.Add(block);
+        if (block.TransferCmd is GotoCmd gotoCmd) {
+          if (options.PruneInfeasibleEdges) {
+            foreach (var command in block.Cmds) {
+              Contract.Assert(command != null);
+              if (command is PredicateCmd { Expr: LiteralExpr { IsFalse: true } }) {
+                // This statement sequence will never reach the end, because of this "assume false" or "assert false".
+                // Hence, it does not reach its successors.
+                block.TransferCmd = new ReturnCmd(block.TransferCmd.tok);
+                goto NEXT_BLOCK;
               }
             }
+          }
 
-            // it seems that the goto statement at the end may be reached
-            foreach (Block succ in cce.NonNull((GotoCmd) b.TransferCmd).labelTargets)
-            {
-              Contract.Assume(succ != null);
-              visitNext.Add(succ);
-            }
+          // it seems that the goto statement at the end may be reached
+          foreach (var next in gotoCmd.labelTargets) {
+            Contract.Assume(next != null);
+            toVisit.Enqueue(next);
           }
         }
 
