@@ -13,15 +13,16 @@ namespace Microsoft.Boogie;
 /// A popScope command will undo any hide and reveal operations that came after the last pushScope command.  
 /// </summary>
 public class HideRevealCmd : Cmd {
-  public bool Hide { get; }
+  public enum Modes { Hide, Reveal }
+  public Modes Mode { get; }
   private readonly FunctionCall? functionCall;
 
-  public HideRevealCmd(IToken tok, bool hide) : base(tok) {
-    this.Hide = hide;
+  public HideRevealCmd(IToken tok, Modes mode) : base(tok) {
+    this.Mode = mode;
   }
 
-  public HideRevealCmd(IdentifierExpr name, bool hide) : base(name.tok) {
-    this.Hide = hide;
+  public HideRevealCmd(IdentifierExpr name, Modes mode) : base(name.tok) {
+    this.Mode = mode;
     this.functionCall = new FunctionCall(name);
   }
 
@@ -38,8 +39,8 @@ public class HideRevealCmd : Cmd {
 
   public override void Emit(TokenTextWriter stream, int level)
   {
-    stream.Write(this, level, Hide ? "hide " : "reveal ");
-    stream.Write(this, level, Function == null ? "*" : Function.Name);
+    stream.Write(this, level, Mode == Modes.Hide ? "hide " : "reveal ");
+    stream.Write(this, functionCall == null ? "*" : functionCall.FunctionName);
     stream.WriteLine(";");
   }
 

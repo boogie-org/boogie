@@ -6,13 +6,13 @@ using Microsoft.Boogie;
 
 namespace VCGeneration.Prune;
 
-record RevealedState(bool AllHiddenNotRevealed, IImmutableSet<Function> Offset) {
+record RevealedState(HideRevealCmd.Modes Mode, IImmutableSet<Function> Offset) {
   public bool IsRevealed(Function function) {
-    return AllHiddenNotRevealed == Offset.Contains(function);
+    return (Mode == HideRevealCmd.Modes.Hide) == Offset.Contains(function);
   }
 
-  public static readonly RevealedState AllRevealed = new(false, ImmutableHashSet<Function>.Empty);
-  public static readonly RevealedState AllHidden = new(true, ImmutableHashSet<Function>.Empty);
+  public static readonly RevealedState AllRevealed = new(HideRevealCmd.Modes.Reveal, ImmutableHashSet<Function>.Empty);
+  public static readonly RevealedState AllHidden = new(HideRevealCmd.Modes.Hide, ImmutableHashSet<Function>.Empty);
 }
 
 class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
@@ -41,19 +41,19 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
   /// Takes the union of what is revealed.
   /// </summary>
   public static RevealedState MergeStates(RevealedState first, RevealedState second) {
-    if (!first.AllHiddenNotRevealed && !second.AllHiddenNotRevealed) {
+    if (first.Mode == HideRevealCmd.Modes.Reveal && second.Mode == HideRevealCmd.Modes.Reveal) {
       var intersect = first.Offset.Intersect(second.Offset);
       if (intersect.Count == first.Offset.Count) {
         return first;
       }
-      return new RevealedState(false, intersect);
+      return new RevealedState(HideRevealCmd.Modes.Reveal, intersect);
     }
 
-    if (!first.AllHiddenNotRevealed) {
+    if (first.Mode == HideRevealCmd.Modes.Reveal) {
       return first;
     }
     
-    if (!second.AllHiddenNotRevealed) {
+    if (second.Mode == HideRevealCmd.Modes.Reveal) {
       return second;
     }
 
@@ -61,15 +61,15 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
     if (union.Count == first.Offset.Count) {
       return first;
     }
-    return new RevealedState(true, union);
+    return new RevealedState(HideRevealCmd.Modes.Hide, union);
   }
 
   static RevealedState GetUpdatedState(HideRevealCmd hideRevealCmd, RevealedState state) {
     if (hideRevealCmd.Function == null) {
-      return new RevealedState(hideRevealCmd.Hide, ImmutableHashSet<Function>.Empty);
+      return new RevealedState(hideRevealCmd.Mode, ImmutableHashSet<Function>.Empty);
     }
 
-    if (hideRevealCmd.Hide == state.AllHiddenNotRevealed) {
+    if (hideRevealCmd.Mode == state.Mode) {
       return state;
     }
 
@@ -78,8 +78,9 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
   
   protected override ImmutableStack<RevealedState> Update(Cmd node, ImmutableStack<RevealedState> state) {
     if (node is ChangeScope changeScope) {
-      return changeScope.Push ? state.Push(state.Peek()) : 
-        state.Pop();
+      return changeScope.Mode == ChangeScope.Modes.Push 
+        ? state.Push(state.Peek()) 
+        : state.Pop();
     }
 
     if (node is HideRevealCmd hideRevealCmd) {

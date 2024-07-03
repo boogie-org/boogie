@@ -264,8 +264,7 @@ namespace Microsoft.Boogie
   /// </summary>
   public class StmtListBuilder
   {
-    List<BigBlock /*!*/> /*!*/
-      bigBlocks = new List<BigBlock /*!*/>();
+    readonly List<BigBlock /*!*/> /*!*/ bigBlocks = new();
 
     string label;
     List<Cmd> simpleCmds;

@@ -88,6 +88,13 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<Expr>() != null);
       return node;
     }
+    
+    public virtual Cmd VisitChangeScopeCmd(ChangeScope node)
+    {
+      Contract.Requires(node != null);
+      Contract.Ensures(Contract.Result<Expr>() != null);
+      return node;
+    }
 
     public virtual Cmd VisitAssignCmd(AssignCmd node)
     {

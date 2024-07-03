@@ -10,10 +10,11 @@ namespace Microsoft.Boogie;
 /// However, in the future these scopes should also allow lexical scoping and variable shadowing.
 /// </summary>
 public class ChangeScope : Cmd {
-  public bool Push { get; }
+  public enum Modes { Push, Pop }
+  public Modes Mode { get; }
 
-  public ChangeScope(IToken tok, bool push) : base(tok) {
-    Push = push;
+  public ChangeScope(IToken tok, Modes mode) : base(tok) {
+    Mode = mode;
   }
 
   public override void Resolve(ResolutionContext rc) {
@@ -29,6 +30,6 @@ public class ChangeScope : Cmd {
   }
 
   public override Absy StdDispatch(StandardVisitor visitor) {
-    return this;
+    return visitor.VisitChangeScopeCmd(this);
   }
 }
