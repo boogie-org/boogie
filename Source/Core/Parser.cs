@@ -1445,8 +1445,6 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			} else SynErr(143);
 			c = hideRevealId == null ? new HideRevealCmd(t, mode) : new HideRevealCmd(hideRevealId, mode); 
 			Expect(10);
-		} else if (StartOf(14)) {
-			LabelOrAssign(out c, out label);
 		} else if (la.kind == 62) {
 			Get();
 			c = new ChangeScope(t, ChangeScope.Modes.Pop); 
@@ -1455,6 +1453,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Get();
 			c = new ChangeScope(t, ChangeScope.Modes.Push); 
 			Expect(10);
+		} else if (StartOf(14)) {
+			LabelOrAssign(out c, out label);
 		} else if (la.kind == 64) {
 			Get();
 			x = t; 

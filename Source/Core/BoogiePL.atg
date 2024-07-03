@@ -1128,11 +1128,11 @@ LabelOrCmd<out Cmd c, out IToken label>
       (. c = hideRevealId == null ? new HideRevealCmd(t, mode) : new HideRevealCmd(hideRevealId, mode); .)
       ";"
     )
-  | LabelOrAssign<out c, out label>
   | "pop"            (. c = new ChangeScope(t, ChangeScope.Modes.Pop); .)
     ";"
   | "push"           (. c = new ChangeScope(t, ChangeScope.Modes.Push); .)
     ";"
+  | LabelOrAssign<out c, out label>
   | "assert"              (. x = t; .)
     { Attribute<ref kv> }
     Proposition<out e>    (. c = new AssertCmd(x, e, kv); .)
