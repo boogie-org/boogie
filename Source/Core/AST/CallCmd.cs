@@ -624,7 +624,7 @@ public class CallCmd : CallCommonality
     {
       if (Ins[i] != null)
       {
-        formalInTypes.Add(cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
+        formalInTypes.Add(Cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
         actualIns.Add(Ins[i]);
       }
     }
@@ -633,7 +633,7 @@ public class CallCmd : CallCommonality
     {
       if (Outs[i] != null)
       {
-        formalOutTypes.Add(cce.NonNull(Proc.OutParams[i]).TypedIdent.Type);
+        formalOutTypes.Add(Cce.NonNull(Proc.OutParams[i]).TypedIdent.Type);
         actualOuts.Add(Outs[i]);
       }
     }
@@ -646,7 +646,7 @@ public class CallCmd : CallCommonality
       this.tok,
       "call to " + callee,
       tc);
-    Contract.Assert(cce.NonNullElements(actualTypeParams));
+    Contract.Assert(Cce.NonNullElements(actualTypeParams));
     TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
       actualTypeParams);
 
@@ -690,7 +690,7 @@ public class CallCmd : CallCommonality
 
   private IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ TypeParamSubstitution()
   {
-    Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
+    Contract.Ensures(Cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
     Contract.Assume(TypeParameters != null);
     IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
       res = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
@@ -742,7 +742,7 @@ public class CallCmd : CallCommonality
     for (int i = 0; i < this.Proc.InParams.Count; ++i)
     {
       Variable /*!*/
-        param = cce.NonNull(this.Proc.InParams[i]);
+        param = Cce.NonNull(this.Proc.InParams[i]);
       bool isWildcard = this.Ins[i] == null;
 
       Type /*!*/
@@ -755,7 +755,7 @@ public class CallCmd : CallCommonality
       {
         // during type checking, we have ensured that the type of the actual
         // parameter Ins[i] is correct, so we can use it here
-        actualType = cce.NonNull(cce.NonNull(Ins[i]).Type);
+        actualType = Cce.NonNull(Cce.NonNull(Ins[i]).Type);
       }
 
       Variable cin = CreateTemporaryVariable(tempVars, param, actualType,
@@ -783,11 +783,11 @@ public class CallCmd : CallCommonality
     for (int i = 0, n = this.Ins.Count; i < n; i++)
     {
       IdentifierExpr /*!*/
-        cin_exp = new IdentifierExpr(cce.NonNull(cins[i]).tok, cce.NonNull(cins[i]));
+        cin_exp = new IdentifierExpr(Cce.NonNull(cins[i]).tok, Cce.NonNull(cins[i]));
       Contract.Assert(cin_exp != null);
       if (this.Ins[i] != null)
       {
-        AssignCmd assign = Cmd.SimpleAssign(Token.NoToken, cin_exp, cce.NonNull(this.Ins[i]));
+        AssignCmd assign = Cmd.SimpleAssign(Token.NoToken, cin_exp, Cce.NonNull(this.Ins[i]));
         newBlockBody.Add(assign);
       }
       else
@@ -810,7 +810,7 @@ public class CallCmd : CallCommonality
     for (int i = 0; i < this.Proc.Requires.Count; i++)
     {
       Requires /*!*/
-        req = cce.NonNull(this.Proc.Requires[i]);
+        req = Cce.NonNull(this.Proc.Requires[i]);
       if (!req.Free && !IsFree)
       {
         if (hasWildcard)
@@ -828,7 +828,7 @@ public class CallCmd : CallCommonality
         else
         {
           Requires /*!*/
-            reqCopy = (Requires /*!*/) cce.NonNull(req.Clone());
+            reqCopy = (Requires /*!*/) Cce.NonNull(req.Clone());
           reqCopy.Condition = Substituter.Apply(s, req.Condition);
           AssertCmd /*!*/
             a = new AssertRequiresCmd(this, reqCopy);
@@ -837,7 +837,7 @@ public class CallCmd : CallCommonality
           if (Attributes != null)
           {
             // Inherit attributes of call.
-            var attrCopy = (QKeyValue) cce.NonNull(Attributes.Clone());
+            var attrCopy = (QKeyValue) Cce.NonNull(Attributes.Clone());
             attrCopy = Substituter.Apply(s, attrCopy);
             a.Attributes = attrCopy;
           }
@@ -885,7 +885,7 @@ public class CallCmd : CallCommonality
       if (Attributes != null)
       {
         // Inherit attributes of call.
-        var attrCopy = (QKeyValue) cce.NonNull(Attributes.Clone());
+        var attrCopy = (QKeyValue) Cce.NonNull(Attributes.Clone());
         attrCopy = Substituter.Apply(s, attrCopy);
         a.Attributes = attrCopy;
       }
@@ -904,11 +904,11 @@ public class CallCmd : CallCommonality
       for (int i = 0; i < this.Proc.Requires.Count; i++)
       {
         Requires /*!*/
-          req = cce.NonNull(this.Proc.Requires[i]);
+          req = Cce.NonNull(this.Proc.Requires[i]);
         if (!req.Free)
         {
           Requires /*!*/
-            reqCopy = (Requires /*!*/) cce.NonNull(req.Clone());
+            reqCopy = (Requires /*!*/) Cce.NonNull(req.Clone());
           reqCopy.Condition = Substituter.Apply(s, req.Condition);
           AssumeCmd /*!*/
             a = new AssumeCmd(tok, reqCopy.Condition);
@@ -951,7 +951,7 @@ public class CallCmd : CallCommonality
     for (int i = 0; i < this.Proc.OutParams.Count; ++i)
     {
       Variable /*!*/
-        param = cce.NonNull(this.Proc.OutParams[i]);
+        param = Cce.NonNull(this.Proc.OutParams[i]);
       bool isWildcard = this.Outs[i] == null;
 
       Type /*!*/
@@ -964,7 +964,7 @@ public class CallCmd : CallCommonality
       {
         // during type checking, we have ensured that the type of the actual
         // out parameter Outs[i] is correct, so we can use it here
-        actualType = cce.NonNull(cce.NonNull(Outs[i]).Type);
+        actualType = Cce.NonNull(Cce.NonNull(Outs[i]).Type);
       }
 
       Variable cout = CreateTemporaryVariable(tempVars, param, actualType,
@@ -986,7 +986,7 @@ public class CallCmd : CallCommonality
       Expr w = param.TypedIdent.WhereExpr;
       if (w != null)
       {
-        IdentifierExpr ie = (IdentifierExpr /*!*/) cce.NonNull(substMap[param]);
+        IdentifierExpr ie = (IdentifierExpr /*!*/) Cce.NonNull(substMap[param]);
         Contract.Assert(ie.Decl != null);
         ie.Decl.TypedIdent.WhereExpr = Substituter.Apply(Substituter.SubstitutionFromDictionary(substMap), w);
       }
@@ -1044,11 +1044,11 @@ public class CallCmd : CallCommonality
       if (this.Outs[i] != null)
       {
         Variable /*!*/
-          param_i = cce.NonNull(this.Proc.OutParams[i]);
+          param_i = Cce.NonNull(this.Proc.OutParams[i]);
         Expr /*!*/
-          cout_exp = new IdentifierExpr(cce.NonNull(couts[i]).tok, cce.NonNull(couts[i]));
+          cout_exp = new IdentifierExpr(Cce.NonNull(couts[i]).tok, Cce.NonNull(couts[i]));
         Contract.Assert(cout_exp != null);
-        AssignCmd assign = Cmd.SimpleAssign(param_i.tok, cce.NonNull(this.Outs[i]), cout_exp);
+        AssignCmd assign = Cmd.SimpleAssign(param_i.tok, Cce.NonNull(this.Outs[i]), cout_exp);
         if (callId is not null) {
           Attributes = new QKeyValue(param_i.tok, "id", new List<object>(){ $"{callId}$out{i}" }, Attributes);
         }

@@ -86,7 +86,7 @@ namespace Microsoft.Boogie
     {
       Contract.Ensures(Contract.Result<Absy>() != null);
       Absy /*!*/
-        result = cce.NonNull((Absy /*!*/) this.MemberwiseClone());
+        result = Cce.NonNull((Absy /*!*/) this.MemberwiseClone());
       result.UniqueId = System.Threading.Interlocked.Increment(ref CurrentAbsyNodeId); // BUGBUG??
 
       if (InternalNumberedMetadata != null)
@@ -763,7 +763,7 @@ namespace Microsoft.Boogie
     [Pure]
     public override string ToString()
     {
-      return cce.NonNull(Name);
+      return Cce.NonNull(Name);
     }
     
     public virtual bool MayRename => true;
@@ -1129,7 +1129,7 @@ namespace Microsoft.Boogie
 
     public static void ResolveTypeSynonyms(List<TypeSynonymDecl /*!*/> /*!*/ synonymDecls, ResolutionContext /*!*/ rc)
     {
-      Contract.Requires(cce.NonNullElements(synonymDecls));
+      Contract.Requires(Cce.NonNullElements(synonymDecls));
       Contract.Requires(rc != null);
       // then discover all dependencies between type synonyms
       IDictionary<TypeSynonymDecl /*!*/, List<TypeSynonymDecl /*!*/> /*!*/> /*!*/
@@ -1197,7 +1197,7 @@ namespace Microsoft.Boogie
       ResolutionContext /*!*/ rc)
     {
       Contract.Requires(type != null);
-      Contract.Requires(cce.NonNullElements(deps));
+      Contract.Requires(Cce.NonNullElements(deps));
       Contract.Requires(rc != null);
       if (type.IsVariable || type.IsBasic)
       {
@@ -1399,7 +1399,7 @@ namespace Microsoft.Boogie
         throw new ArgumentException("VariableComparer works only on objects of type Variable");
       }
 
-      return cce.NonNull(A.Name).CompareTo(B.Name);
+      return Cce.NonNull(A.Name).CompareTo(B.Name);
     }
   }
 
@@ -1742,12 +1742,12 @@ namespace Microsoft.Boogie
     }
 
     protected DeclWithFormals(DeclWithFormals that)
-      : base(that.tok, cce.NonNull(that.Name))
+      : base(that.tok, Cce.NonNull(that.Name))
     {
       Contract.Requires(that != null);
       this.TypeParameters = that.TypeParameters;
-      this.inParams = cce.NonNull(that.InParams);
-      this.outParams = cce.NonNull(that.OutParams);
+      this.inParams = Cce.NonNull(that.InParams);
+      this.outParams = Cce.NonNull(that.OutParams);
     }
 
     public byte[] MD5Checksum_;
@@ -1939,7 +1939,7 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(OutParams.Count == 1);
         stream.Write(" : ");
-        cce.NonNull(OutParams[0]).TypedIdent.Type.Emit(stream);
+        Cce.NonNull(OutParams[0]).TypedIdent.Type.Emit(stream);
       }
       else if (OutParams.Count > 0)
       {
@@ -2241,11 +2241,11 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(DefinitionBody == null);
         Body.Typecheck(tc);
-        if (!cce.NonNull(Body.Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
+        if (!Cce.NonNull(Body.Type).Unify(Cce.NonNull(OutParams[0]).TypedIdent.Type))
         {
           tc.Error(Body,
             "function body with invalid type: {0} (expected: {1})",
-            Body.Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
+            Body.Type, Cce.NonNull(OutParams[0]).TypedIdent.Type);
         }
       }
       else if (DefinitionBody != null)
@@ -2254,11 +2254,11 @@ namespace Microsoft.Boogie
 
         // We are matching the type of the function body with output param, and not the type
         // of DefinitionBody, which is always going to be bool (since it is of the form func_call == func_body)
-        if (!cce.NonNull(DefinitionBody.Args[1].Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
+        if (!Cce.NonNull(DefinitionBody.Args[1].Type).Unify(Cce.NonNull(OutParams[0]).TypedIdent.Type))
         {
           tc.Error(DefinitionBody.Args[1],
             "function body with invalid type: {0} (expected: {1})",
-            DefinitionBody.Args[1].Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
+            DefinitionBody.Args[1].Type, Cce.NonNull(OutParams[0]).TypedIdent.Type);
         }
       }
     }
@@ -3627,9 +3627,9 @@ namespace Microsoft.Boogie
     void ObjectInvariant()
     {
       Contract.Invariant(LocVars != null);
-      Contract.Invariant(cce.NonNullElements(Blocks));
-      Contract.Invariant(cce.NonNullElements(OriginalBlocks, true));
-      Contract.Invariant(cce.NonNullElements(scc, true));
+      Contract.Invariant(Cce.NonNullElements(Blocks));
+      Contract.Invariant(Cce.NonNullElements(OriginalBlocks, true));
+      Contract.Invariant(Cce.NonNullElements(scc, true));
     }
 
     private bool BlockPredecessorsComputed;
@@ -3642,7 +3642,7 @@ namespace Microsoft.Boogie
     public bool IsSkipVerification(CoreOptions options)
     {
       bool verify = true;
-      cce.NonNull(this.Proc).CheckBooleanAttribute("verify", ref verify);
+      Cce.NonNull(this.Proc).CheckBooleanAttribute("verify", ref verify);
       this.CheckBooleanAttribute("verify", ref verify);
       if (!verify) {
         return true;
@@ -3909,7 +3909,7 @@ namespace Microsoft.Boogie
       List<Variable> outParams, List<Variable> localVariables, [Captured] List<Block /*!*/> block)
       : this(tok, name, typeParams, inParams, outParams, localVariables, block, null)
     {
-      Contract.Requires(cce.NonNullElements(block));
+      Contract.Requires(Cce.NonNullElements(block));
       Contract.Requires(localVariables != null);
       Contract.Requires(outParams != null);
       Contract.Requires(inParams != null);
@@ -3933,7 +3933,7 @@ namespace Microsoft.Boogie
       Contract.Requires(inParams != null);
       Contract.Requires(outParams != null);
       Contract.Requires(localVariables != null);
-      Contract.Requires(cce.NonNullElements(blocks));
+      Contract.Requires(Cce.NonNullElements(blocks));
       LocVars = localVariables;
       Blocks = blocks;
       BlockPredecessorsComputed = false;
@@ -4008,7 +4008,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      Proc = rc.LookUpProcedure(cce.NonNull(this.Name));
+      Proc = rc.LookUpProcedure(Cce.NonNull(this.Name));
       if (Proc == null)
       {
         rc.Error(this, "implementation given for undeclared procedure: {0}", this.Name);
@@ -4240,15 +4240,15 @@ namespace Microsoft.Boogie
           // the names of the formals are allowed to change from the proc to the impl
 
           // but types must be identical
-          Type t = cce.NonNull((Variable) implFormals[i]).TypedIdent.Type.Substitute(subst2);
-          Type u = cce.NonNull((Variable) procFormals[i]).TypedIdent.Type.Substitute(subst1);
+          Type t = Cce.NonNull((Variable) implFormals[i]).TypedIdent.Type.Substitute(subst2);
+          Type u = Cce.NonNull((Variable) procFormals[i]).TypedIdent.Type.Substitute(subst1);
           if (!t.Equals(u))
           {
             string /*!*/
-              a = cce.NonNull((Variable) implFormals[i]).Name;
+              a = Cce.NonNull((Variable) implFormals[i]).Name;
             Contract.Assert(a != null);
             string /*!*/
-              b = cce.NonNull((Variable) procFormals[i]).Name;
+              b = Cce.NonNull((Variable) procFormals[i]).Name;
             Contract.Assert(b != null);
             string /*!*/
               c;
@@ -4306,9 +4306,9 @@ namespace Microsoft.Boogie
         for (int i = 0; i < OutParams.Count; i++)
         {
           Variable /*!*/
-            v = cce.NonNull(OutParams[i]);
+            v = Cce.NonNull(OutParams[i]);
           IdentifierExpr ie = new IdentifierExpr(v.tok, v);
-          Variable pv = cce.NonNull(Proc.OutParams[i]);
+          Variable pv = Cce.NonNull(Proc.OutParams[i]);
           map.Add(pv, ie);
         }
 
@@ -4322,9 +4322,9 @@ namespace Microsoft.Boogie
           foreach (var e in map)
           {
             options.OutputWriter.Write("  ");
-            cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0);
+            Cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0);
             options.OutputWriter.Write("  --> ");
-            cce.NonNull((Expr) e.Value).Emit(stream);
+            Cce.NonNull((Expr) e.Value).Emit(stream);
             options.OutputWriter.WriteLine();
           }
         }
@@ -4340,7 +4340,7 @@ namespace Microsoft.Boogie
     public ICollection<Block /*!*/> GetConnectedComponents(Block startingBlock)
     {
       Contract.Requires(startingBlock != null);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<ICollection<Block>>(), true));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<ICollection<Block>>(), true));
       Contract.Assert(this.Blocks.Contains(startingBlock));
 
       if (!this.BlockPredecessorsComputed)
@@ -4352,7 +4352,7 @@ namespace Microsoft.Boogie
       System.Console.WriteLine("* Strongly connected components * \n{0} \n ** ", scc);
 #endif
 
-      foreach (ICollection<Block /*!*/> component in cce.NonNull(this.scc))
+      foreach (ICollection<Block /*!*/> component in Cce.NonNull(this.scc))
       {
         foreach (Block /*!*/ b in component)
         {
@@ -4366,7 +4366,7 @@ namespace Microsoft.Boogie
 
       {
         Contract.Assert(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       } // if we are here, it means that the block is not in one of the components. This is an error.
     }
 
@@ -4758,7 +4758,7 @@ namespace Microsoft.Boogie
     public static void Emit(this List<Declaration /*!*/> /*!*/ decls, TokenTextWriter stream)
     {
       Contract.Requires(stream != null);
-      Contract.Requires(cce.NonNullElements(decls));
+      Contract.Requires(Cce.NonNullElements(decls));
       bool first = true;
       foreach (Declaration d in decls)
       {
@@ -5107,7 +5107,7 @@ namespace Microsoft.Boogie
         Contract.Assume(g.labelTargets != null);
         if (g.labelTargets.Count == 1)
         {
-          return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.labelTargets[0])));
+          return new Sequential(new AtomicRE(b), Transform(Cce.NonNull(g.labelTargets[0])));
         }
         else
         {
@@ -5126,7 +5126,7 @@ namespace Microsoft.Boogie
       else
       {
         Contract.Assume(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
     }
   }

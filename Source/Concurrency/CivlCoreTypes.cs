@@ -338,7 +338,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         }
       }
       return wlps[impl.Blocks[0]].Select(assertCmd => Forall(impl.LocVars.Union(impl.OutParams), assertCmd)).ToList();
@@ -383,7 +383,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         }
       }
       cmds.RemoveAll(cmd => cmd is AssertCmd);

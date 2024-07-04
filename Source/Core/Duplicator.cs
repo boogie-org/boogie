@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
         if (g != null)
         {
           List<Block> targets = new List<Block>();
-          foreach (Block t in cce.NonNull(g.labelTargets))
+          foreach (Block t in Cce.NonNull(g.labelTargets))
           {
             Block nt = subst[t];
             targets.Add(nt);
@@ -145,7 +145,7 @@ namespace Microsoft.Boogie
     public override List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
     {
       //Contract.Requires(cce.NonNullElements(blocks));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
       return base.VisitBlockList(new List<Block /*!*/>(blocks));
     }
 
@@ -219,7 +219,7 @@ namespace Microsoft.Boogie
     public override List<Declaration /*!*/> /*!*/ VisitDeclarationList(List<Declaration /*!*/> /*!*/ declarationList)
     {
       //Contract.Requires(cce.NonNullElements(declarationList));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<Declaration>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Declaration>>()));
 
       // For Implementation.Proc to resolve correctly to duplicated Procedures
       // we need to visit the procedures first
@@ -230,7 +230,7 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        declarationList[i] = cce.NonNull((Declaration) this.Visit(declarationList[i]));
+        declarationList[i] = Cce.NonNull((Declaration) this.Visit(declarationList[i]));
       }
 
       // Now visit everything else
@@ -241,7 +241,7 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        declarationList[i] = cce.NonNull((Declaration) this.Visit(declarationList[i]));
+        declarationList[i] = Cce.NonNull((Declaration) this.Visit(declarationList[i]));
       }
 
       return declarationList;
@@ -1026,12 +1026,12 @@ namespace Microsoft.Boogie
 
         if (insideOldExpr)
         {
-          e = forold(cce.NonNull(node.Decl));
+          e = forold(Cce.NonNull(node.Decl));
         }
 
         if (e == null)
         {
-          e = always(cce.NonNull(node.Decl));
+          e = always(Cce.NonNull(node.Decl));
         }
 
         return e == null ? base.VisitIdentifierExpr(node) : e;
@@ -1044,7 +1044,7 @@ namespace Microsoft.Boogie
         bool previouslyInOld = insideOldExpr;
         insideOldExpr = true;
         Expr /*!*/
-          e = (Expr /*!*/) cce.NonNull(this.Visit(node.Expr));
+          e = (Expr /*!*/) Cce.NonNull(this.Visit(node.Expr));
         insideOldExpr = previouslyInOld;
         return new OldExpr(node.tok, e);
       }
@@ -1139,12 +1139,12 @@ namespace Microsoft.Boogie
 
         if (insideOldExpr)
         {
-          e = forold(cce.NonNull(node.Decl));
+          e = forold(Cce.NonNull(node.Decl));
         }
 
         if (e == null)
         {
-          e = always(cce.NonNull(node.Decl));
+          e = always(Cce.NonNull(node.Decl));
         }
 
         return e == null ? base.VisitIdentifierExpr(node) : e;
@@ -1157,7 +1157,7 @@ namespace Microsoft.Boogie
         bool previouslyInOld = insideOldExpr;
         insideOldExpr = true;
         Expr /*!*/
-          e = (Expr /*!*/) cce.NonNull(this.Visit(node.Expr));
+          e = (Expr /*!*/) Cce.NonNull(this.Visit(node.Expr));
         insideOldExpr = previouslyInOld;
         return e;
       }
