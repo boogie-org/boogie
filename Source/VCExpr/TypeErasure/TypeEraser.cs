@@ -82,7 +82,7 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings /*!*/>
     List<VCExpr /*!*/> /*!*/ newSubExprs, bool changed, VariableBindings /*!*/ bindings)
   {
     //Contract.Requires(originalNode != null);
-    //Contract.Requires(cce.NonNullElements(newSubExprs));
+    //Contract.Requires(Cce.NonNullElements(newSubExprs));
     //Contract.Requires(bindings != null);
     Contract.Assume(originalNode.Op == VCExpressionGenerator.AndOp ||
                     originalNode.Op == VCExpressionGenerator.OrOp);

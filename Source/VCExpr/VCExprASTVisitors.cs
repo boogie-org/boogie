@@ -1148,7 +1148,7 @@ namespace Microsoft.Boogie.VCExprAST
       List<VCExpr /*!*/> /*!*/ newSubExprs, bool changed, VCExprSubstitution /*!*/ substitution)
     {
       //Contract.Requires(originalNode != null);
-      //Contract.Requires(cce.NonNullElements(newSubExprs));
+      //Contract.Requires(Cce.NonNullElements(newSubExprs));
       //Contract.Requires(substitution != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 

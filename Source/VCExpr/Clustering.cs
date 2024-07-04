@@ -649,7 +649,7 @@ namespace Microsoft.Boogie.Clustering
     protected override bool StandardResult(VCExpr node, IDictionary<VCExprVar /*!*/, VCExprVar /*!*/> /*!*/ globalVars)
     {
       //Contract.Requires(node != null);
-      //Contract.Requires(cce.NonNullElements(globalVars));
+      //Contract.Requires(Cce.NonNullElements(globalVars));
       VCExprVar nodeAsVar = node as VCExprVar;
       if (nodeAsVar == null || globalVars.ContainsKey(nodeAsVar))
       {

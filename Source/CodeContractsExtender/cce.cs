@@ -10,7 +10,7 @@ public static class Cce
 {
   //[Pure]
   //public static bool NonNullElements<T>(Microsoft.Dafny.Graph<T> collection) {
-  //  return collection != null && cce.NonNullElements(collection.TopologicallySortedComponents());
+  //  return collection != null && Cce.NonNullElements(collection.TopologicallySortedComponents());
   //}
   [Pure]
   public static T NonNull<T>(T t) where T : class
@@ -50,7 +50,7 @@ public static class Cce
     //Should be the same as:
     /*if(nullability&&collection==null)
      * return true;
-     * return cce.NonNullElements(collection)
+     * return Cce.NonNullElements(collection)
      */
   }
 
@@ -75,7 +75,7 @@ public static class Cce
 
   //[Pure]
   //public static bool NonNullElements<T>(Graphing.Graph<T> graph) {
-  //  return cce.NonNullElements(graph.TopologicalSort());
+  //  return Cce.NonNullElements(graph.TopologicalSort());
   //}
   [Pure]
   public static void BeginExpose(object o)

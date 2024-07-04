@@ -202,12 +202,12 @@ namespace Microsoft.Boogie
     public void WriteError(string message, Cci.Node offendingNode, List<Block> trace) {
       Contract.Requires(offendingNode != null);
       Contract.Requires(message != null);
-      Contract.Requires(IsOpen && cce.Owner.Different(this, offendingNode));
-      Contract.Requires(trace == null || cce.Owner.Different(this, trace));
+      Contract.Requires(IsOpen && Cce.Owner.Different(this, offendingNode));
+      Contract.Requires(trace == null || Cce.Owner.Different(this, trace));
       //modifies this.*, offendingNode.*, trace.*;
       Contract.Ensures(IsOpen);
       Contract.Assert(wr != null);
-      cce.BeginExpose(this);
+      Cce.BeginExpose(this);
       {
         wr.WriteStartElement("error");
         wr.WriteAttributeString("message", message);
@@ -216,7 +216,7 @@ namespace Microsoft.Boogie
           wr.WriteStartElement("trace");
           {
             foreach (object bo in trace) {
-              cce.LoopInvariant(wr != null);
+              Cce.LoopInvariant(wr != null);
               Contract.Assume(bo is Block);
               Block b = (Block)bo;
               wr.WriteStartElement("traceNode");
@@ -231,7 +231,7 @@ namespace Microsoft.Boogie
         }
         wr.WriteEndElement();
       }
-      cce.EndExpose();
+      Cce.EndExpose();
     }
 #endif
 
@@ -252,7 +252,7 @@ namespace Microsoft.Boogie
     [Inside]
     private void WriteTokenAttributes(Cci.Node node) {
       Contract.Requires(node != null);
-      Contract.Requires(wr != null && cce.IsPeerConsistent(wr));
+      Contract.Requires(wr != null && Cce.IsPeerConsistent(wr));
       //modifies this.0, wr.*;
       Contract.Assert(wr != null);
       if (node.SourceContext.Document != null) {

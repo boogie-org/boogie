@@ -881,7 +881,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       // BasicTypes are immutable anyway, we do not clone
       return this;
@@ -963,7 +963,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(that != null);
-      //Contract.Requires(cce.NonNullElements(unifier));
+      //Contract.Requires(Cce.NonNullElements(unifier));
       // an idempotent substitution that describes the
       // unification result up to a certain point
 
@@ -982,7 +982,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       return this;
     }
@@ -1107,7 +1107,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       // FloatTypes are immutable anyway, we do not clone
       return this;
@@ -1157,7 +1157,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
-      //Contract.Requires(cce.NonNullElements(unifier));
+      //Contract.Requires(Cce.NonNullElements(unifier));
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable)
       {
@@ -1266,7 +1266,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       // BvTypes are immutable anyway, we do not clone
       return this;
@@ -1319,7 +1319,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
-      //Contract.Requires(cce.NonNullElements(unifier));
+      //Contract.Requires(Cce.NonNullElements(unifier));
       that = that.Expanded;
       if (that is TypeProxy || that is TypeVariable)
       {
@@ -1335,7 +1335,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       return this;
     }
@@ -1444,7 +1444,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       List<Type> /*!*/
         newArgs = new List<Type>();
@@ -1492,7 +1492,7 @@ namespace Microsoft.Boogie
       IDictionary<TypeVariable /*!*/, Type /*!*/> result)
     {
       //Contract.Requires(unifiableVariables != null);
-      //Contract.Requires(cce.NonNullElements(result));
+      //Contract.Requires(Cce.NonNullElements(result));
       //Contract.Requires(that != null);
       {
         Contract.Assert(false);
@@ -1504,7 +1504,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       {
         Contract.Assert(false);
@@ -1779,7 +1779,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       // if this variable is mapped to some new variable, we take the new one
       // otherwise, return this
@@ -1834,7 +1834,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
-      //Contract.Requires(cce.NonNullElements(unifier));
+      //Contract.Requires(Cce.NonNullElements(unifier));
       that = that.Expanded;
       if (that is TypeProxy && !(that is ConstrainedProxy))
       {
@@ -1915,7 +1915,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.TryGetValue(this, out var res))
       {
@@ -2093,7 +2093,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       Type p = ProxyFor;
       if (p != null)
@@ -2154,7 +2154,7 @@ namespace Microsoft.Boogie
       List<TypeVariable> /*!*/ unifiableVariables,
       IDictionary<TypeVariable /*!*/, Type /*!*/> result)
     {
-      //Contract.Requires(cce.NonNullElements(result));
+      //Contract.Requires(Cce.NonNullElements(result));
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(that != null);
       Type p = ProxyFor;
@@ -2179,7 +2179,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       Type p = ProxyFor;
       if (p != null)
@@ -2639,7 +2639,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       Type p = ProxyFor;
       if (p != null)
@@ -2666,7 +2666,7 @@ namespace Microsoft.Boogie
       List<TypeVariable> unifiableVariables,
       IDictionary<TypeVariable, Type> result)
     {
-      //Contract.Requires(cce.NonNullElements(result));
+      //Contract.Requires(Cce.NonNullElements(result));
       //Contract.Requires(unifiableVariables != null);
       //Contract.Requires(that != null);
       Type p = ProxyFor;
@@ -2797,7 +2797,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (this.ProxyFor == null)
       {
@@ -3032,7 +3032,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       Type p = ProxyFor;
       if (p != null)
@@ -3085,7 +3085,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
-      //Contract.Requires(cce.NonNullElements(result));
+      //Contract.Requires(Cce.NonNullElements(result));
       Type p = ProxyFor;
       if (p != null)
       {
@@ -3163,7 +3163,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (this.ProxyFor == null)
       {
@@ -3290,7 +3290,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       List<Type> /*!*/
         newArgs = new List<Type>();
@@ -3352,7 +3352,7 @@ namespace Microsoft.Boogie
     {
       //Contract.Requires(that != null);
       //Contract.Requires(unifiableVariables != null);
-      //Contract.Requires(cce.NonNullElements(result));
+      //Contract.Requires(Cce.NonNullElements(result));
       return ExpandedType.Unify(that, unifiableVariables, result);
     }
 
@@ -3360,7 +3360,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
       {
@@ -3614,7 +3614,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       List<Type> /*!*/
         newArgs = new List<Type>();
@@ -3726,7 +3726,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
       {
@@ -3919,7 +3919,7 @@ namespace Microsoft.Boogie
 
     public override Type Clone(IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/ varMap)
     {
-      //Contract.Requires(cce.NonNullElements(varMap));
+      //Contract.Requires(Cce.NonNullElements(varMap));
       Contract.Ensures(Contract.Result<Type>() != null);
       IDictionary<TypeVariable /*!*/, TypeVariable /*!*/> /*!*/
         newVarMap =
@@ -4137,7 +4137,7 @@ namespace Microsoft.Boogie
 
     public override Type Substitute(IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ subst)
     {
-      //Contract.Requires(cce.NonNullElements(subst));
+      //Contract.Requires(Cce.NonNullElements(subst));
       Contract.Ensures(Contract.Result<Type>() != null);
       if (subst.Count == 0)
       {

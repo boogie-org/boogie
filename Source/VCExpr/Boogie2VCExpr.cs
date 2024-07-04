@@ -235,7 +235,7 @@ namespace Microsoft.Boogie.VCExprAST
         Contract.Requires(boogieVar != null);
         foreach (Dictionary<VarKind /*!*/, VCExprVar /*!*/> /*!*/ d in Mapping)
         {
-          //Contract.Assert(cce.NonNullElements(d));
+          //Contract.Assert(Cce.NonNullElements(d));
           if (d.TryGetValue(boogieVar, out var res))
           {
             Contract.Assert(res != null);
@@ -891,7 +891,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
     {
-      //Contract.Requires(cce.NonNullElements(blocks));
+      //Contract.Requires(Cce.NonNullElements(blocks));
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
       Contract.Assert(false);
       throw new Cce.UnreachableException();
@@ -971,7 +971,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override List<Declaration /*!*/> /*!*/ VisitDeclarationList(List<Declaration /*!*/> /*!*/ declarationList)
     {
-      //Contract.Requires(cce.NonNullElements(declarationList));
+      //Contract.Requires(Cce.NonNullElements(declarationList));
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Declaration>>()));
       Contract.Assert(false);
       throw new Cce.UnreachableException();
@@ -1338,7 +1338,7 @@ namespace Microsoft.Boogie.VCExprAST
         }
         else
         {
-          // if (cce.NonNull(e.Type).IsReal) {
+          // if (Cce.NonNull(e.Type).IsReal) {
           return Gen.Function(VCExpressionGenerator.SubROp, Gen.Real(BigDec.ZERO), e);
         }
 

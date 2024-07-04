@@ -921,8 +921,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
+      //Contract.Requires(Cce.NonNullElements(typeArgs));
+      //Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return OpType;
     }
@@ -1097,8 +1097,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
+      //Contract.Requires(Cce.NonNullElements(typeArgs));
+      //Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       MapType /*!*/
         mapType = args[0].Type.AsMap;
@@ -1174,8 +1174,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
+      //Contract.Requires(Cce.NonNullElements(typeArgs));
+      //Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return args[0].Type;
     }
@@ -1235,8 +1235,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
+      //Contract.Requires(Cce.NonNullElements(typeArgs));
+      //Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return args[1].Type;
     }
@@ -1355,8 +1355,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type /*!*/ InferType(List<VCExpr /*!*/> /*!*/ args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires((cce.NonNullElements(args)));
-      //Contract.Requires((cce.NonNullElements(typeArgs)));
+      //Contract.Requires((Cce.NonNullElements(args)));
+      //Contract.Requires((Cce.NonNullElements(typeArgs)));
       Contract.Ensures(Contract.Result<Type>() != null);
       return Type;
     }
@@ -1393,8 +1393,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
+      //Contract.Requires(Cce.NonNullElements(typeArgs));
+      //Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (op)
       {
@@ -1502,8 +1502,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
+      //Contract.Requires(Cce.NonNullElements(typeArgs));
+      //Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return Type.GetBvType(Bits);
     }
@@ -1565,8 +1565,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
+      //Contract.Requires(Cce.NonNullElements(typeArgs));
+      //Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return Type.GetBvType(End - Start);
     }
@@ -1632,8 +1632,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
+      //Contract.Requires(Cce.NonNullElements(typeArgs));
+      //Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return Type.GetBvType(args[0].Type.BvBits + args[1].Type.BvBits);
     }
@@ -1706,8 +1706,8 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
+      //Contract.Requires(Cce.NonNullElements(typeArgs));
+      //Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Assert(TypeParamArity == Func.TypeParameters.Count);
       if (TypeParamArity == 0)

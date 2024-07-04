@@ -144,7 +144,7 @@ namespace Microsoft.Boogie
 
     public override List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
     {
-      //Contract.Requires(cce.NonNullElements(blocks));
+      //Contract.Requires(Cce.NonNullElements(blocks));
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
       return base.VisitBlockList(new List<Block /*!*/>(blocks));
     }
@@ -218,7 +218,7 @@ namespace Microsoft.Boogie
 
     public override List<Declaration /*!*/> /*!*/ VisitDeclarationList(List<Declaration /*!*/> /*!*/ declarationList)
     {
-      //Contract.Requires(cce.NonNullElements(declarationList));
+      //Contract.Requires(Cce.NonNullElements(declarationList));
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Declaration>>()));
 
       // For Implementation.Proc to resolve correctly to duplicated Procedures
