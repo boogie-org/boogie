@@ -14,6 +14,7 @@
   <ItemGroup>
     <EmbeddedResource Include="base.bpl" />
     <EmbeddedResource Include="node.bpl" />
+    <EmbeddedResource Include="set_size.bpl" />
   </ItemGroup>
 
 </Project>
