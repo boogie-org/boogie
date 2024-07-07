@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //
 
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -lib:set_size "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Tid(i, ps) represents a linear thread id for thread number i, where i > 0 and ps = {Left(i), Right(i)}.

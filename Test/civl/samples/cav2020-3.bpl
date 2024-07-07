@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -lib:set_size "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 datatype Perm { Left(i: int), Right(i: int) }

@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /lib:base "%s" > "%t"
+// RUN: %parallel-boogie /lib:base /lib:set_size "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure Test1() {
