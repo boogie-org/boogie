@@ -501,7 +501,7 @@ namespace Microsoft.Boogie
         var block = BlockHelper.Block($"{lc.domain.permissionType}_{lc.checkName}", cmds);
         checkerBlocks.Add(block);
       }
-      
+
       // Create init blocks
       var blocks = new List<Block>(linearityChecks.Count + 1);
       if (checkerBlocks.Count != 0)
@@ -509,7 +509,7 @@ namespace Microsoft.Boogie
         blocks.Add(
           BlockHelper.Block(
             "init",
-            new List<Cmd>() { CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
+            new List<Cmd>() { CmdHelper.AssumeCmd(Expr.Not(GetExitCondition(action))), CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
             checkerBlocks));
       }
       else
