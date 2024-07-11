@@ -459,6 +459,10 @@ namespace Microsoft.Boogie
     protected List<Declaration> GenerateSideConditionChecker(Action action)
     {
       var ltc = civlTypeChecker.linearTypeChecker;
+      if (ltc.LinearDomains.Count() == 0)
+      {
+        return new List<Declaration>();
+      }
       var inputs = action.Impl.InParams;
       var outputs = action.Impl.OutParams;
     
@@ -501,24 +505,14 @@ namespace Microsoft.Boogie
         var block = BlockHelper.Block($"{lc.domain.permissionType}_{lc.checkName}", cmds);
         checkerBlocks.Add(block);
       }
-      
-      // Create init blocks
-      var blocks = new List<Block>(linearityChecks.Count + 1);
-      if (checkerBlocks.Count != 0)
+
+      var blocks = new List<Block>(linearityChecks.Count + 1)
       {
-        blocks.Add(
-          BlockHelper.Block(
-            "init",
-            new List<Cmd>() { CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
-            checkerBlocks));
-      }
-      else
-      {
-        blocks.Add(
-          BlockHelper.Block(
-            "init",
-            new List<Cmd>() { CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) }));
-      }
+        BlockHelper.Block(
+          "init",
+          new List<Cmd>() { CmdHelper.AssumeCmd(Expr.Not(GetExitCondition(action))), CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
+          checkerBlocks)
+      };
       blocks.AddRange(checkerBlocks);
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, blocks, ResolutionContext.State.Two);
 
