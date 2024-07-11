@@ -396,7 +396,7 @@ public class CallCmd : CallCommonality
         }
       }
       if(!IsAsync){
-        for(int i = 0; i <= callerDecl.Layer; i++){
+        for(int i = 1; i <= callerDecl.Layer; i++){
           if(calleeDecl.RefinedActionAtLayer(i).RefinedAction != null){
             if(calleeDecl.RefinedActionAtLayer(i).RefinedAction.HasAttribute(CivlAttributes.IS_RIGHT)){
                tc.Error(this, "this must be an async call");
