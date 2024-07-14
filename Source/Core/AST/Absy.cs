@@ -3013,9 +3013,7 @@ namespace Microsoft.Boogie
     {
       var oldProc = tc.Proc;
       tc.Proc = this;
-      tc.GlobalAccessOnlyInOld = true;
       base.Typecheck(tc);
-      tc.GlobalAccessOnlyInOld = false;
       YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
       Contract.Assert(tc.Proc == this);
       tc.Proc = oldProc;
