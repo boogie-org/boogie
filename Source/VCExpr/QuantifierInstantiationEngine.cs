@@ -368,10 +368,6 @@ namespace Microsoft.Boogie.VCExprAST
     private VCExpr AugmentWithInstances(VCExprQuantifier quantifierExpr)
     {
       var instances = quantifierInstantiationInfo[quantifierExpr].instances;
-      if (instances.Count == 0)
-      {
-        return quantifierExpr;
-      }
       if (quantifierExpr.Quan == Quantifier.ALL)
       {
         var instantiatedConjuncts = vcExprGen.NAry(VCExpressionGenerator.AndOp, instances.Values.ToList());
