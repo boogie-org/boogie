@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using Microsoft.Boogie;
 
 namespace VCGeneration.Prune;
@@ -27,10 +28,14 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
     RevealedState.AllRevealed);
 
   protected override ImmutableStack<RevealedState> Merge(ImmutableStack<RevealedState> first, ImmutableStack<RevealedState> second) {
-    var firstTop = first.Peek();
-    var secondTop = second.Peek();
-    var mergedTop = MergeStates(firstTop, secondTop);
-    return ImmutableStack.Create(mergedTop);
+    if (first.IsEmpty && second.IsEmpty) {
+      return ImmutableStack<RevealedState>.Empty;
+    }
+    var firstElement = first.Peek();
+    var secondElement = second.Peek();
+    var mergedTop = MergeStates(firstElement, secondElement);
+    var mergedTail = Merge(first.Pop(), second.Pop());
+    return mergedTail.Push(mergedTop);
   }
 
   protected override bool StateEquals(ImmutableStack<RevealedState> first, ImmutableStack<RevealedState> second) {
@@ -77,10 +82,12 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
   }
   
   protected override ImmutableStack<RevealedState> Update(Cmd node, ImmutableStack<RevealedState> state) {
+    if (state.IsEmpty) {
+      throw new Exception("Unbalanced use of push and pop commands");
+    }
+
     if (node is ChangeScope changeScope) {
-      return changeScope.Mode == ChangeScope.Modes.Push 
-        ? state.Push(state.Peek()) 
-        : state.Pop();
+      return changeScope.Mode == ChangeScope.Modes.Push ? state.Push(state.Peek()) : state.Pop();
     }
 
     if (node is HideRevealCmd hideRevealCmd) {

@@ -24,6 +24,8 @@ public class ChangeScope : Cmd {
   }
 
   public override void Emit(TokenTextWriter stream, int level) {
+    stream.Write(this, level, Mode == Modes.Push ? "push" : "pop");
+    stream.WriteLine(";");
   }
 
   public override void AddAssignedVariables(List<Variable> vars) {
