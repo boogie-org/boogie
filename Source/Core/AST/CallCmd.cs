@@ -397,20 +397,20 @@ public class CallCmd : CallCommonality
       }
       
       if (!IsAsync) {
-          var calleeRefAct = calleeDecl.RefinedAction;
-          while (calleeRefAct != null) {
-            var attrAttachAct = calleeRefAct.ActionDecl.RefinedAction;
-            if (attrAttachAct != null) {
-              if (calleeRefAct.ActionDecl.LayerRange.UpperLayer >= callerDecl.Layer) {
-                break;
-              }
-              if (attrAttachAct.HasAttribute(CivlAttributes.IS_RIGHT)) {
-                tc.Error(this, "this must be an async call");
-              }
+        var calleeRefAct = calleeDecl.RefinedAction;
+        while (calleeRefAct != null) {
+          var attrIsrAttachAct = calleeRefAct.ActionDecl.RefinedAction;
+          if (attrIsrAttachAct != null) {
+            if (calleeRefAct.ActionDecl.LayerRange.UpperLayer >= callerDecl.Layer) {
+              break;
             }
-            calleeRefAct = attrAttachAct;
-          } 
-        }
+            if (attrIsrAttachAct.HasAttribute(CivlAttributes.IS_RIGHT)) {
+              tc.Error(this, "this must be an async call");
+            }
+          }
+          calleeRefAct = attrIsrAttachAct;
+        } 
+      }
 
     }
     else if (Proc is YieldInvariantDecl yieldInvariantDecl)
