@@ -353,7 +353,20 @@ public class CallCmd : CallCommonality
           }
         }
 
-        if (IsAsync && !isSynchronized)
+        if (!IsAsync) {
+          var calleeRefinedAction = calleeDecl.RefinedAction;
+          while (calleeRefinedAction != null) {
+            var calleeActionDecl = calleeRefinedAction.ActionDecl;
+            if (calleeActionDecl.LayerRange.UpperLayer >= callerDecl.Layer) {
+              break;
+            }
+            calleeRefinedAction = calleeActionDecl.RefinedAction;
+            if (calleeRefinedAction != null && calleeRefinedAction.HasAttribute(CivlAttributes.IS_RIGHT)) {
+              tc.Error(this, "this must be an async call");
+            }
+          }
+        }
+        else if (!isSynchronized)
         {
           if (callerDecl.HasMoverType)
           {
