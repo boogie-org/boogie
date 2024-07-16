@@ -144,3 +144,4 @@ modifies channels;
     snapshot := channels[tid]->t;
     channels[tid] := None();
 }
+
