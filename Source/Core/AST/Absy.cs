@@ -3421,26 +3421,6 @@ namespace Microsoft.Boogie
       return null;
     }
 
-    public ActionDecl RelaxedRefinedActionAtLayer(int layer)
-    {
-      // Debug.Assert(layer >= Layer);
-      // Debug.Assert(RefinedAction != null);
-      var actionDeclRef = RefinedAction;
-      while (actionDeclRef != null)
-      {
-        var actionDecl = actionDeclRef.ActionDecl;
-        if (layer <= actionDecl.LayerRange.UpperLayer)
-        {
-          return actionDecl;
-        }
-
-        actionDeclRef = actionDecl.RefinedAction;
-      }
-
-      return null;
-    }
-
-
     private static T StripOld<T>(T cmd) where T : Cmd
     {
       var emptySubst = Substituter.SubstitutionFromDictionary(new Dictionary<Variable, Expr>());

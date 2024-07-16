@@ -24,7 +24,7 @@ function {:inline} WholeTidPermission(tid: Tid): Set Permission {
     Set((lambda {:pool "D"} x: Permission :: x->tid == tid && 1 <= x->mem_index && x->mem_index <= n))
 }
 
-yield procedure {:layer 1} coordinator(tid: Tid) returns (snapshot: [int]StampedValue)
+yield procedure {:layer 2} coordinator(tid: Tid) returns (snapshot: [int]StampedValue)
 {
     var {:linear} sps: Set Permission;
 
