@@ -52,3 +52,9 @@ procedure Nesting() {
   pop;
   pop;
 }
+
+procedure HideSpecific() {
+  hide inner;
+  reveal inner;
+  assert inner(3) == 42;
+}
