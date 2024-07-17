@@ -100,7 +100,15 @@ namespace Microsoft.Boogie
 
     private static Graph<Cmd> GetControlFlowGraph(List<Block> blocks)
     {
-      // The blocks created by splitting have unset block.Predecessors fields 
+      /*
+       * Generally the blocks created by splitting have unset block.Predecessors fields
+       * However, when {:focus} is used, the field is already set
+       * To ensure it's correct. We're recomputing it here.
+       */
+      foreach(var block in blocks)
+      {
+        block.Predecessors.Clear();
+      }
       Implementation.ComputePredecessorsForBlocks(blocks);
       var graph = new Graph<Cmd>();
       foreach (var block in blocks) {
