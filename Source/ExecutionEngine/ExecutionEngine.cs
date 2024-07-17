@@ -24,7 +24,7 @@ namespace Microsoft.Boogie
     /// Boogie traverses the Boogie and VCExpr AST using the call-stack,
     /// so it needs to use a large stack to prevent stack overflows.
     /// </summary>
-    private readonly TaskFactory largeThreadTaskFactory;
+    public TaskFactory LargeThreadTaskFactory { get; }
 
     static int autoRequestIdCount;
 
@@ -60,7 +60,7 @@ namespace Microsoft.Boogie
 
       largeThreadScheduler = scheduler;
       this.disposeScheduler = disposeScheduler;
-      largeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.None, TaskContinuationOptions.None, largeThreadScheduler);
+      LargeThreadTaskFactory = new(CancellationToken.None, TaskCreationOptions.None, TaskContinuationOptions.None, largeThreadScheduler);
     }
 
     public static ExecutionEngine CreateWithoutSharedCache(ExecutionEngineOptions options) {
@@ -736,7 +736,7 @@ namespace Microsoft.Boogie
           out var gotoCmdOrigins,
           out var modelViewInfo);
 
-        VerificationConditionGenerator.ResetPredecessors(run.Implementation.Blocks);
+        ConditionGeneration.ResetPredecessors(run.Implementation.Blocks);
         var splits = ManualSplitFinder.FocusAndSplit(Options, run, gotoCmdOrigins, vcGenerator).ToList();
         for (var index = 0; index < splits.Count; index++) {
           var split = splits[index];
@@ -909,7 +909,7 @@ namespace Microsoft.Boogie
       string programId, Implementation impl, TextWriter traceWriter)
     {
 
-      var resultTask = largeThreadTaskFactory.StartNew(async () =>
+      var resultTask = LargeThreadTaskFactory.StartNew(async () =>
       {
         var verificationResult = new ImplementationRunResult(impl, programId);
         var vcGen = new VerificationConditionGenerator(processedProgram.Program, CheckerPool);

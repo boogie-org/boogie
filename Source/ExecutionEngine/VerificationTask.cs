@@ -7,6 +7,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 using VC;
 
 namespace Microsoft.Boogie;
@@ -120,12 +121,13 @@ public class VerificationTask : IVerificationTask {
       yield return new Queued();
     }
     var checker = await checkerTask;
-    try {
+    try
+    {
       yield return new Running();
 
       var collector = new VerificationResultCollector(Split.Options);
-      await Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
-        modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken);
+      await await engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
+        modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken));
 
       await checker.ProverTask;
       var result = Split.ReadOutcome(0, checker, collector);
