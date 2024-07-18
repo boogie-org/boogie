@@ -52,10 +52,12 @@ namespace Microsoft.Boogie
         DropSetChoice(civlTypeChecker, Impl);
       }
 
-      Gate = HoistAsserts(Impl, civlTypeChecker.Options);
+      ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
+
+      AddGateSufficiencyCheckerAndHoistAsserts(civlTypeChecker);
+
       UsedGlobalVarsInGate = new HashSet<Variable>(VariableCollector.Collect(Gate).Where(x => x is GlobalVariable));
       UsedGlobalVarsInAction = new HashSet<Variable>(VariableCollector.Collect(Impl).Where(x => x is GlobalVariable));
-      ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
 
       InputOutputRelation = ComputeInputOutputRelation(civlTypeChecker, Impl);
       if (ImplWithChoice != null)
@@ -157,6 +159,38 @@ namespace Microsoft.Boogie
         proc.OutParams, proc.IsPure, proc.Requires, proc.Modifies, proc.Ensures);
       CivlUtil.AddInlineAttribute(duplicateImpl.Proc);
       return duplicateImpl;
+    }
+
+    public static void AddGateSufficiencyCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+    {
+      decls.AddRange(gateSufficiencyCheckerDecls);
+    }
+
+    private static List<Declaration> gateSufficiencyCheckerDecls = new List<Declaration>();
+
+    private void AddGateSufficiencyCheckerAndHoistAsserts(CivlTypeChecker civlTypeChecker)
+    {
+      if (ActionDecl.Requires.Count == 0)
+      {
+        Gate = HoistAsserts(Impl, civlTypeChecker.Options);
+        return;
+      }
+
+      var checkerName = $"{Name}_GateSufficiencyChecker";
+      var checkerImpl = new Duplicator().VisitImplementation(Impl);
+      checkerImpl.Name = checkerName;
+      checkerImpl.Attributes = null;
+      var proc = checkerImpl.Proc;
+      checkerImpl.Proc = new Procedure(proc.tok, checkerName, proc.TypeParameters, proc.InParams,
+        proc.OutParams, proc.IsPure, proc.Requires, proc.Modifies, proc.Ensures);
+      gateSufficiencyCheckerDecls.AddRange(new Declaration[] { checkerImpl.Proc, checkerImpl });
+
+      HoistAsserts(Impl, civlTypeChecker.Options);
+      var gateSubst = Substituter.SubstitutionFromDictionary(ActionDecl.InParams
+            .Zip(Impl.InParams)
+            .ToDictionary(x => x.Item1, x => (Expr)Expr.Ident(x.Item2)));
+      Gate = ActionDecl.Requires.Select(
+        requires => new AssertCmd(requires.tok, Substituter.Apply(gateSubst, requires.Condition))).ToList();
     }
 
     private Function ComputeInputOutputRelation(CivlTypeChecker civlTypeChecker, Implementation impl)

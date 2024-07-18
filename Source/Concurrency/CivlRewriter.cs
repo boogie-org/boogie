@@ -21,8 +21,12 @@ namespace Microsoft.Boogie
       var originalDecls = origActionDecls.Union<Declaration>(origActionImpls).Union(origYieldProcs)
         .Union(origYieldImpls).Union(origYieldInvariants).ToHashSet();
 
-      // Commutativity checks
       var decls = new List<Declaration>();
+
+      // Gate sufficiency checks
+      Action.AddGateSufficiencyCheckers(civlTypeChecker, decls);
+
+      // Commutativity checks
       civlTypeChecker.AtomicActions.ForEach(x =>
       {
         decls.AddRange(new Declaration[] { x.Impl, x.Impl.Proc, x.InputOutputRelation });
