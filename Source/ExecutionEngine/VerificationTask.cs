@@ -126,8 +126,8 @@ public class VerificationTask : IVerificationTask {
       yield return new Running();
 
       var collector = new VerificationResultCollector(Split.Options);
-      await await engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
-        modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken));
+      await engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
+        modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken), cancellationToken).Unwrap();
 
       await checker.ProverTask;
       var result = Split.ReadOutcome(0, checker, collector);
