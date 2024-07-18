@@ -74,11 +74,10 @@ class RevealedAnalysis : DataflowAnalysis<Cmd, ImmutableStack<RevealedState>> {
       return new RevealedState(hideRevealCmd.Mode, ImmutableHashSet<Function>.Empty);
     }
 
-    if (hideRevealCmd.Mode == state.Mode) {
-      return state;
-    }
-
-    return state with { Offset = state.Offset.Add(hideRevealCmd.Function) };
+    var newOffset = hideRevealCmd.Mode == state.Mode
+      ? state.Offset.Remove(hideRevealCmd.Function)
+      : state.Offset.Add(hideRevealCmd.Function);
+    return state with { Offset = newOffset };
   }
   
   protected override ImmutableStack<RevealedState> Update(Cmd node, ImmutableStack<RevealedState> state) {
