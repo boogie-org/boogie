@@ -76,8 +76,7 @@ modifies leader;
     assume (forall {:pool "ORDER"} x: int :: {:add_to_pool "ORDER", x} Pos(pid) < x && x <= Prev(Pos(self)) ==> Below(Pid(x), pid));
     // create prefix
     call create_asyncs(
-      (lambda {:pool "P_INV2"} pa: P :: {:add_to_pool "P_MAIN2", pa} {:add_to_pool "P_INV2", pa}
-        ValidPid(pa->pid) && Pos(pa->pid) < Pos(pid) && pa->self == Next(pa->pid)));
+      (lambda pa: P :: ValidPid(pa->pid) && Pos(pa->pid) < Pos(pid) && pa->self == Next(pa->pid)));
     // create singleton and set the choice
     call create_async(choice);
     call set_choice(choice);
@@ -94,9 +93,7 @@ creates P;
   assert Init(pids->val, leader);
   assume {:add_to_pool "INV2", P(ExpectedLeader, Prev(ExpectedLeader))} true;
   call create_asyncs(
-    (lambda {:pool "P_MAIN2"} pa: P :: 
-      {:add_to_pool "P_INV2", pa} 
-      ValidPid(pa->pid) && pa->self == Next(pa->pid)));
+    (lambda pa: P :: ValidPid(pa->pid) && pa->self == Next(pa->pid)));
 }
 
 action {:layer 2} INV1({:linear_in} pids: Set int)
