@@ -31,6 +31,7 @@ modifies voteInfo;
     {:add_to_pool "Node", 0}
     {:add_to_pool "NodeSet", ns}
     {:add_to_pool "Permission", ConcludePerm(r)}
+    {:add_to_pool "MaxValue", maxValue}
     true;
 
   if (*) {

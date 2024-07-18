@@ -155,28 +155,6 @@ function {:builtin "seq.extract"} Seq_Extract<T>(a: Seq T, pos: int, length: int
 /// finite sets
 datatype Set<T> { Set(val: [T]bool) }
 
-function Set_Size<T>(a: Set T) : int;
-
-axiom (forall<T> a: Set T :: a == Set_Empty() || 0 < Set_Size(a));
-
-axiom (forall<T> :: Set_Size(Set_Empty(): Set T) == 0);
-
-axiom (forall<T> a: Set T, t: T :: {Set_Add(a, t)} Set_Size(Set_Add(a, t)) == if Set_Contains(a, t) then Set_Size(a) else Set_Size(a) + 1);
-
-axiom (forall<T> a: Set T, t: T :: {Set_Remove(a, t)} Set_Size(Set_Remove(a, t)) == if Set_Contains(a, t) then Set_Size(a) - 1 else Set_Size(a));
-
-axiom (forall<T> a: Set T, b: Set T ::
-        {Set_Difference(a, b)} {Set_Intersection(a, b)} {Set_Union(a, b)}
-        Set_Size(a) == Set_Size(Set_Difference(a, b)) + Set_Size(Set_Intersection(a, b)));
-
-axiom (forall<T> a: Set T, b: Set T ::
-        {Set_Union(a, b)} {Set_Intersection(a, b)}
-        Set_Size(Set_Union(a, b)) + Set_Size(Set_Intersection(a, b)) == Set_Size(a) + Set_Size(b));
-
-pure procedure Lemma_SubsetSize<T>(a: Set T, b: Set T);
-requires Set_IsSubset(a, b);
-ensures a == b || Set_Size(a) < Set_Size(b);
-
 function {:inline} Set_Empty<T>(): Set T
 {
   Set(MapConst(false))
@@ -298,15 +276,18 @@ function {:inline} One_Collector<T>(a: One T): [T]bool
 
 datatype Fraction<T, K> { Fraction(val: T, id: K, ids: Set K) }
 
+function {:inline} AllPieces<T,K>(t: T, ids: Set K): Set (Fraction T K) {
+  Set((lambda piece: Fraction T K :: piece->val == t && Set_Contains(ids, piece->id) && piece->ids == ids))
+}
+
 pure procedure {:inline 1} One_To_Fractions<T,K>({:linear_in} one_t: One T, ids: Set K) returns ({:linear} pieces: Set (Fraction T K))
 {
-  pieces := Set((lambda piece: Fraction T K :: piece->val == one_t->val && Set_Contains(ids, piece->id) && piece->ids == ids));
+  pieces := AllPieces(one_t->val, ids);
 }
 
 pure procedure {:inline 1} Fractions_To_One<T,K>({:linear_out} one_t: One T, ids: Set K, {:linear_in} pieces: Set (Fraction T K))
 {
-  assert (forall piece: Fraction T K:: Set_Contains(pieces, piece) ==> piece->val == one_t->val && piece->ids == ids);
-  assert pieces == Set((lambda piece: Fraction T K :: piece->val == one_t->val && Set_Contains(ids, piece->id) && piece->ids == ids));
+  assert pieces == AllPieces(one_t->val, ids);
 }
 
 /// singleton map

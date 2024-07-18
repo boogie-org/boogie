@@ -41,3 +41,20 @@ procedure Scoping() {
   pop;
   assert outer(3) == inner(3) + 1; // error
 }
+
+procedure Nesting() {
+  hide *;
+  push;
+  push;
+  if (*) {
+    reveal outer;
+  }
+  pop;
+  pop;
+}
+
+procedure HideSpecific() {
+  hide inner;
+  reveal inner;
+  assert inner(3) == 42;
+}

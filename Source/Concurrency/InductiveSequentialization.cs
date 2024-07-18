@@ -165,7 +165,6 @@ namespace Microsoft.Boogie
           $"Gate of {pendingAsyncAction.Name} in partition checker failed"));
 
         var block = BlockHelper.Block($"label_{pendingAsyncVar.Name}", blockCmds);
-        CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
       }
 
@@ -180,6 +179,7 @@ namespace Microsoft.Boogie
       {
         blocks.Add(BlockHelper.Block(checkerName, cmds));
       }
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, blocks, ResolutionContext.State.Two);
       
       Procedure proc = DeclHelper.Procedure(
         checkerName,
@@ -416,14 +416,17 @@ namespace Microsoft.Boogie
         RemoveChoice(pendingAsyncType)
       };
 
-      List<Expr> inputExprs = new List<Expr>();
+      var inputExprs = new List<Expr>();
       for (int i = 0; i < pendingAsync.Impl.InParams.Count; i++)
       {
         inputExprs.Add(ExprHelper.FieldAccess(Choice(pendingAsyncType), pendingAsyncCtor.InParams[i].Name));
       }
-      cmds.AddRange(pendingAsync.GetGateAsserts(Substituter.SubstitutionFromDictionary(pendingAsync.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputExprs);
+      cmds.AddRange(pendingAsync.GetGateAsserts(
+        Substituter.SubstitutionFromDictionary(pendingAsync.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
         $"Gate of {pendingAsync.Name} fails in {rule} induction step for invariant {invariantAction.Name}"));
-      cmds.AddRange(Preconditions(pendingAsync, Substituter.SubstitutionFromDictionary(pendingAsync.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
+      cmds.AddRange(Preconditions(pendingAsync,
+        Substituter.SubstitutionFromDictionary(pendingAsync.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
 
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
       if (pendingAsync.HasPendingAsyncs)
@@ -456,6 +459,10 @@ namespace Microsoft.Boogie
     protected List<Declaration> GenerateSideConditionChecker(Action action)
     {
       var ltc = civlTypeChecker.linearTypeChecker;
+      if (ltc.LinearDomains.Count() == 0)
+      {
+        return new List<Declaration>();
+      }
       var inputs = action.Impl.InParams;
       var outputs = action.Impl.OutParams;
     
@@ -496,26 +503,18 @@ namespace Microsoft.Boogie
         }
         cmds.Add(CmdHelper.AssertCmd(action.tok, lc.assert, lc.message));
         var block = BlockHelper.Block($"{lc.domain.permissionType}_{lc.checkName}", cmds);
-        CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, block, ResolutionContext.State.Two);
         checkerBlocks.Add(block);
       }
-      
-      // Create init blocks
-      List<Block> blocks = new List<Block>(linearityChecks.Count + 1);
-      if(checkerBlocks.Count != 0){
-      blocks.Add(
+
+      var blocks = new List<Block>(linearityChecks.Count + 1)
+      {
         BlockHelper.Block(
           "init",
-          new List<Cmd>() { CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
-          checkerBlocks));
-      }
-      else{
-        blocks.Add(
-        BlockHelper.Block(
-          "init",
-          new List<Cmd>() { CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) }));
-      }
+          new List<Cmd>() { CmdHelper.AssumeCmd(Expr.Not(GetExitCondition(action))), CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
+          checkerBlocks)
+      };
       blocks.AddRange(checkerBlocks);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, blocks, ResolutionContext.State.Two);
 
       // Create the whole check procedure
       string checkerName = civlTypeChecker.AddNamePrefix($"{rule}_SideCondition_{action.Name}");
@@ -565,22 +564,24 @@ namespace Microsoft.Boogie
       {
         inputExprsE1.Add(ExprHelper.FieldAccess(Expr.Ident(localE1), E1.ActionDecl.PendingAsyncCtor.InParams[i].Name));
       }
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputExprsE1);
       for (int i = 0; i < E2.Impl.InParams.Count; i++)
       {
         inputExprsE2.Add(ExprHelper.FieldAccess(Expr.Ident(localE2), E2.ActionDecl.PendingAsyncCtor.InParams[i].Name));
       }
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputExprsE2);
       foreach(var g in localsForGlobals)
       {
         globalExprs.Add(Expr.Ident(g));
       }
 
-      Substitution substM = Substituter.SubstitutionFromDictionary(
+      var substM = Substituter.SubstitutionFromDictionary(
         targetAction.Impl.InParams.Zip(inputExprsM).ToDictionary(x => x.Item1, x => x.Item2));
-      Substitution substE1 = Substituter.SubstitutionFromDictionary(
+      var substE1 = Substituter.SubstitutionFromDictionary(
         E1.Impl.InParams.Zip(inputExprsE1).ToDictionary(x => x.Item1, x => x.Item2));
-      Substitution substE2 = Substituter.SubstitutionFromDictionary(
+      var substE2 = Substituter.SubstitutionFromDictionary(
         E2.Impl.InParams.Zip(inputExprsE2).ToDictionary(x => x.Item1, x => x.Item2));
-      Substitution substG0 = Substituter.SubstitutionFromDictionary(
+      var substG0 = Substituter.SubstitutionFromDictionary(
         civlTypeChecker.GlobalVariables.Zip(globalExprs).ToDictionary(x => x.Item1, x => x.Item2));
 
       var ltc = civlTypeChecker.linearTypeChecker;
@@ -596,7 +597,7 @@ namespace Microsoft.Boogie
         var pendingAsyncLinearParamsM = targetAction.Impl.InParams
           .Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
           .Select(v => substM(v)).ToList<Expr>();
-        CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParamsM);
+        // No need to resolve since inputExprsM have already been resolved above
         var collectInM = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, pendingAsyncLinearParamsM));
 
         var pendingAsyncLinearParamsE1 = E1.ActionDecl.InParams
@@ -629,7 +630,7 @@ namespace Microsoft.Boogie
       }
       
       var cmds = new List<Cmd>();
-      var successM=  Substituter.Apply(substG0,Substituter.Apply(substM, Expr.And(gateM, GetNonBlockExpression(targetAction))));
+      var successM = Substituter.Apply(substG0,Substituter.Apply(substM, Expr.And(gateM, GetNonBlockExpression(targetAction))));
       cmds.Add(CmdHelper.AssumeCmd(successM));
 
       var disjointnessExprTotal = Expr.And(disjointnessExpr.Values);
@@ -643,7 +644,6 @@ namespace Microsoft.Boogie
         Expr.Not(Expr.And(Substituter.Apply(substE1, gateE1), Substituter.Apply(substE2, Expr.And(GetExitCondition(E2), gateE2)))) ,
         $"Inconsistency check failed for {targetAction.Name}, {E1.Name}, {E2.Name}"));
       
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds, ResolutionContext.State.Two);
       return GetCheckerTuple($"{rule}_InconsistencyChecker_{targetAction.Name}_{E1.Name}_{E2.Name}", new List<Requires>(),
         new List<Variable>(), new List<Variable>(), locals,  cmds);
     }
@@ -688,7 +688,6 @@ namespace Microsoft.Boogie
         GetCheck(action.tok, Expr.And(elimExprs), "Exit condition is true and there is a pending async to an eliminated action."),
       };
 
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds, ResolutionContext.State.Two);
       return GetCheckerTuple($"{rule}_AllPendingAsyncsNotInElim_{action.Name}", new List<Requires>(),
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
@@ -717,7 +716,6 @@ namespace Microsoft.Boogie
         GetCheck(action.tok, Expr.And(notElimExprs), "Exit condition is false and there is a pending async to an action not in eliminated actions."),
       };
       
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds, ResolutionContext.State.Two);
       return GetCheckerTuple($"{rule}_AllPendingAsyncsInElim_{action.Name}", new List<Requires>(),
         action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
@@ -839,6 +837,7 @@ namespace Microsoft.Boogie
     private List<Declaration> GetCheckerTuple(string checkerName, List<Requires> requires, List<Variable> inParams,
       List<Variable> outParams, List<Variable> locals, List<Cmd> cmds)
     {
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds, ResolutionContext.State.Two);
       var proc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix(checkerName),
         inParams,

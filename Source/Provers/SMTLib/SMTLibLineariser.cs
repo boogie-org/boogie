@@ -1041,19 +1041,6 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      private static Type ResultType(Type type)
-      {
-        MapType mapType = type as MapType;
-        if (mapType != null)
-        {
-          return ResultType(mapType.Result);
-        }
-        else
-        {
-          return type;
-        }
-      }
-
       private string CheckSeqApply(string name, VCExprNAry node)
       {
         if (name == "seq.empty")
@@ -1104,8 +1091,8 @@ namespace Microsoft.Boogie.SMTLib
         }
         else if (name == "MapEq")
         {
-          Type type = ResultType(node[0].Type);
-          string s = ExprLineariser.TypeToString(type);
+          var mapType = (MapType)node[0].Type;
+          string s = ExprLineariser.TypeToString(mapType.Result);
           return "(_ map (= (" + s + " " + s + ") Bool))";
         }
         else if (name == "MapIff")
@@ -1146,8 +1133,8 @@ namespace Microsoft.Boogie.SMTLib
         }
         else if (name == "MapIte")
         {
-          Type type = ResultType(node.Type);
-          string s = ExprLineariser.TypeToString(type);
+          var mapType = (MapType)node.Type;
+          string s = ExprLineariser.TypeToString(mapType.Result);
           return "(_ map (ite (Bool " + s + " " + s + ") " + s + "))";
         }
         else
