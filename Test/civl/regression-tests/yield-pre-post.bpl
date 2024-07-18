@@ -9,5 +9,9 @@ ensures {:layer 1} g > 0;
 { }
 
 atomic action {:layer 1} A()
-requires {:layer 1} g > 0;
+requires g > 0;
+{}
+
+atomic action {:layer 2} B()
+requires g > 0;
 {}

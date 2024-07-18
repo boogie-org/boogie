@@ -2481,17 +2481,9 @@ namespace Microsoft.Boogie
       }
       if (rc.Proc is ActionDecl actionDecl)
       {
-        if (Layers.Count == 0)
+        if (Layers.Count > 0)
         {
-          rc.Error(this, "expected layers");
-        }
-        else
-        {
-          var assertLayerRange = new LayerRange(Layers[0], Layers[^1]);
-          if (!assertLayerRange.Subset(actionDecl.LayerRange))
-          {
-            rc.Error(this, $"each layer must be in the range {actionDecl.LayerRange}");
-          }
+          rc.Error(this, "did not expect layers");
         }
       }
     }

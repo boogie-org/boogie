@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
+// RUN: %parallel-boogie -lib:base -lib:node -vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 datatype LocPiece { Left(), Right() }
@@ -162,7 +162,7 @@ preserves call StackDom();
 atomic action {:layer 4} AtomicAllocNode#3(loc_t: Loc (Treiber X), x: X)
   returns (loc_n: Option (LocTreiberNode X), new_loc_n: LocTreiberNode X, {:linear} right_loc_piece: One (LocTreiberNode X))
 modifies ts;
-requires {:layer 4} Map_Contains(ts, loc_t);
+requires Map_Contains(ts, loc_t);
 {
   var {:linear} one_loc_t: One (Loc (Treiber X));
   var {:linear} treiber: Treiber X;
