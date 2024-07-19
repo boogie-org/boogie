@@ -71,7 +71,7 @@ public static class FocusAttribute
         }
         newBlocks.Reverse();
         Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
-        result.Add(new ManualSplit(options, BlockTransformations.DeleteNoAssertionBlocks(newBlocks), gotoCmdOrigins, par, run, focusToken));
+        result.Add(new ManualSplit(options, OldBlockTransformations.DeleteNoAssertionBlocks(newBlocks), gotoCmdOrigins, par, run, focusToken));
       }
       else if (!blocksToInclude.Contains(focusBlocks[focusIndex].Block) || freeAssumeBlocks.Contains(focusBlocks[focusIndex].Block))
       {
