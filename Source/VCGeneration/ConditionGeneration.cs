@@ -234,7 +234,7 @@ namespace VC
       {
         Contract.Assert(req != null);
         Expr e = Substituter.Apply(formalProcImplSubst, req.Condition);
-        AssumeCmd c = new AssumeCmd(req.tok, e);
+        AssumeCmd c = new AssumeCmd(req.tok, e, CivlAttributes.ApplySubstitutionToPoolHints(formalProcImplSubst, req.Attributes));
         // Copy any {:id ...} from the precondition to the assumption, so
         // we can track it while analyzing verification coverage.
         (c as ICarriesAttributes).CopyIdFrom(req.tok, req);

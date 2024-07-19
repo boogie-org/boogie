@@ -177,6 +177,40 @@ namespace Microsoft.Boogie
     {
       return callCmd.HasAttribute(MARK);
     }
+
+    public static QKeyValue ApplySubstitutionToPoolHints(Substitution incarnationSubst, QKeyValue attributes)
+    {
+      if (attributes == null)
+      {
+        return null;
+      }
+      attributes = (QKeyValue)new Duplicator().Visit(attributes);
+      var iter = attributes;
+      while (iter != null)
+      {
+        if (iter.Key == "add_to_pool" && iter.Params.Count > 1)
+        {
+          var label = iter.Params[0] as string;
+          if (label != null)
+          {
+            var newParams = new List<object> {label};
+            for (int i = 1; i < iter.Params.Count; i++)
+            {
+              var instance = iter.Params[i] as Expr;
+              if (instance != null)
+              {
+                instance = Substituter.Apply(incarnationSubst, instance);
+                newParams.Add(instance);
+              }
+            }
+            iter.ClearParams();
+            iter.AddParams(newParams);
+          }
+        }
+        iter = iter.Next;
+      }
+      return attributes;
+    }
   }
 
   public static class CivlPrimitives
