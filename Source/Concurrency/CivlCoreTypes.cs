@@ -190,7 +190,8 @@ namespace Microsoft.Boogie
             .Zip(Impl.InParams)
             .ToDictionary(x => x.Item1, x => (Expr)Expr.Ident(x.Item2)));
       Gate = ActionDecl.Requires.Select(
-        requires => new AssertCmd(requires.tok, Substituter.Apply(gateSubst, requires.Condition))).ToList();
+        requires => new AssertCmd(requires.tok, Substituter.Apply(gateSubst, requires.Condition),
+                                  CivlAttributes.ApplySubstitutionToPoolHints(gateSubst, requires.Attributes))).ToList();
     }
 
     private Function ComputeInputOutputRelation(CivlTypeChecker civlTypeChecker, Implementation impl)
