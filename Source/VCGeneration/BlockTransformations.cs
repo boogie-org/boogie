@@ -10,11 +10,9 @@ using VCGeneration.Prune;
 namespace VCGeneration;
 
 public static class BlockTransformations {
-  public static List<Block> Optimize(List<Block> blocks) {
-    var copy = blocks; 
-    PruneAssumptions(copy);
-    OptimizeBlocks(copy);
-    return copy;
+  public static void Optimize(List<Block> blocks) {
+    PruneAssumptions(blocks);
+    OptimizeBlocks(blocks);
   }
 
   public static void OptimizeBlocks(List<Block> blocks) {

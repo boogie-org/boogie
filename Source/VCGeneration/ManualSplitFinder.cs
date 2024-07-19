@@ -34,11 +34,11 @@ public static class ManualSplitFinder {
       Block entryPoint = initialSplit.Blocks[0];
       var blockAssignments = PickBlocksToVerify(initialSplit.Blocks, splitPoints);
       var entryBlockHasSplit = splitPoints.ContainsKey(entryPoint);
-      var unoptimizedBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
+      var firstSplitBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
         -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert);
-      var baseSplitBlocks = BlockTransformations.Optimize(unoptimizedBlocks);
-      if (baseSplitBlocks.Any()) {
-        splits.Add(new ManualSplit(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
+      BlockTransformations.Optimize(firstSplitBlocks);
+      if (firstSplitBlocks.Any()) {
+        splits.Add(new ManualSplit(initialSplit.Options, firstSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
       }
       foreach (var block in initialSplit.Blocks) {
         var tokens = splitPoints.GetValueOrDefault(block);
@@ -50,10 +50,10 @@ public static class ManualSplitFinder {
           var token = tokens[i];
           bool lastSplitInBlock = i == tokens.Count - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, block, lastSplitInBlock, splitOnEveryAssert);
-          var optimized = BlockTransformations.Optimize(newBlocks);
-          if (optimized.Any()) {
+          BlockTransformations.Optimize(newBlocks);
+          if (newBlocks.Any()) {
             splits.Add(new ManualSplit(initialSplit.Options, 
-              optimized, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
+              newBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
           }
         }
       }
