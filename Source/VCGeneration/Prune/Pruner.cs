@@ -8,7 +8,7 @@ using VCGeneration.Prune;
 namespace Microsoft.Boogie
 {
   
-  public class Prune {
+  public class Pruner {
 
     public static Dictionary<object, List<object>>? ComputeDeclarationDependencies(VCGenOptions options, Program program)
     {
@@ -98,7 +98,7 @@ namespace Microsoft.Boogie
         Aggregate(RevealedState.AllHidden, RevealedAnalysis.MergeStates);
     }
 
-    private static Graph<Cmd> GetControlFlowGraph(List<Block> blocks)
+    public static Graph<Absy> GetControlFlowGraph(List<Block> blocks)
     {
       /*
        * Generally the blocks created by splitting have unset block.Predecessors fields
@@ -110,16 +110,14 @@ namespace Microsoft.Boogie
         block.Predecessors.Clear();
       }
       Implementation.ComputePredecessorsForBlocks(blocks);
-      var graph = new Graph<Cmd>();
+      var graph = new Graph<Absy>();
       foreach (var block in blocks) {
         foreach (var predecessor in block.Predecessors) {
-          var last = predecessor.Cmds.LastOrDefault();
-          if (last != null) {
-            graph.AddEdge(last, block.Cmds[0]);
-          } else {
-            if (predecessor.Predecessors.Any()) {
-              throw new Exception();
-            }
+          var previous = predecessor.TransferCmd;
+          if (block.Cmds.Any()) {
+            graph.AddEdge(previous, block.Cmds[0]);
+          } else if (block.TransferCmd != null) {
+            graph.AddEdge(previous, block.TransferCmd);
           }
         }
 

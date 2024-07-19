@@ -1,12 +1,61 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.Boogie;
+using Microsoft.Boogie.GraphUtil;
+using VCGeneration.Prune;
 
 namespace VCGeneration;
 
 public static class BlockTransformations
 {
+  public static List<Block> Optimize(List<Block> blocks) {
+    var result = DeleteNoAssertionBlocks(blocks);
+    PruneAssumptions(blocks);
+    return result;
+  }
+
+  // public static List<Block> OptimizeBlocks(List<Block> blocks) {
+  //   foreach (var block in blocks) {
+  //     if (!block.Cmds.Any()) {
+  //       if (block.TransferCmd == null) {
+  //         foreach (var predecessor in block.Predecessors) {
+  //           var gotoCmd = (GotoCmd)predecessor.TransferCmd;
+  //           got
+  //         }
+  //       } 
+  //     }
+  //   }
+  // }
+  
+  public static void PruneAssumptions(List<Block> blocks) {
+    var commandsPartOfContradiction = new HashSet<Cmd>();
+    var controlFlowGraph = Pruner.GetControlFlowGraph(blocks);
+    var asserts = controlFlowGraph.Nodes.OfType<AssertCmd>().ToList();
+    foreach (var assert in asserts) {
+      if (assert.Expr.Equals(Expr.True)) {
+        foreach (var reachable in controlFlowGraph.ComputeReachability(assert, false).OfType<AssumeCmd>()) {
+          commandsPartOfContradiction.Add(reachable);
+        }
+      }
+    }
+
+    var liveAnalysis = new LiveVariablesAnalysis(asserts, 
+      cmd => controlFlowGraph.Predecessors(cmd),
+      cmd => controlFlowGraph.Successors(cmd));
+    liveAnalysis.Run();
+    
+    foreach (var block in blocks) {
+      block.Cmds = block.Cmds.Where(cmd => 
+        cmd is not AssumeCmd assumeCmd || 
+        commandsPartOfContradiction.Contains(assumeCmd) ||
+        liveAnalysis.LiveCommands.Contains(assumeCmd)).ToList();
+    }
+  }
+  
+  
   public static List<Block> DeleteNoAssertionBlocks(List<Block> blocks)
   {
 
@@ -70,4 +119,61 @@ public static class BlockTransformations
   }
   
   private static bool IsAssumeFalse (Cmd c) { return c is AssumeCmd { Expr: LiteralExpr { asBool: false } }; }
+}
+
+class LiveVariablesAnalysis : DataflowAnalysis<Absy, ImmutableHashSet<Variable>> {
+  private readonly Dictionary<PredicateCmd, ISet<Variable>> commandVariables;
+  public HashSet<Cmd> LiveCommands { get; } = new();
+
+  public LiveVariablesAnalysis(IReadOnlyList<Absy> roots, 
+    Func<Absy, IEnumerable<Absy>> getNext, 
+    Func<Absy, IEnumerable<Absy>> getPrevious) : base(roots, getNext, getPrevious) {
+    commandVariables = roots.OfType<PredicateCmd>().ToDictionary(cmd => cmd, cmd => {
+      var set = new GSet<object>();
+      cmd.Expr.ComputeFreeVariables(set);
+      return (ISet<Variable>)set.OfType<Variable>().ToHashSet();
+    });
+  }
+
+  protected override ImmutableHashSet<Variable> Empty => ImmutableHashSet<Variable>.Empty;
+  
+  protected override ImmutableHashSet<Variable> Merge(ImmutableHashSet<Variable> first, ImmutableHashSet<Variable> second) {
+    return first.Union(second);
+  }
+
+  protected override bool StateEquals(ImmutableHashSet<Variable> first, ImmutableHashSet<Variable> second) {
+    return first.SetEquals(second);
+  }
+
+  ISet<Variable> GetVariables(PredicateCmd cmd) {
+    return commandVariables.GetOrCreate(cmd, () => {
+      var set = new GSet<object>();
+      cmd.Expr.ComputeFreeVariables(set);
+      return (ISet<Variable>)set.OfType<Variable>().ToHashSet();
+    });
+  }
+
+  protected override ImmutableHashSet<Variable> Update(Absy node, ImmutableHashSet<Variable> state) {
+    if (node is PredicateCmd predicateCmd) {
+      var isLive = false;
+      if (node is AssertCmd) {
+        isLive = true;
+      } else if (node is AssumeCmd assumeCmd) {
+        /*
+         * A path that can not be taken is one whose control flow assumptions together, prove false.
+         * By proving false, subsequent assertions are always provable, so the impossible path does not throw errors.
+         * Because of this, we may not prune assumptions resulting from control flow paths.
+         */
+        var isControlFlowCommand = QKeyValue.FindBoolAttribute(assumeCmd.Attributes, "partition");
+        if (isControlFlowCommand || GetVariables(assumeCmd).Intersect(state).Any()) {
+          isLive = true;
+        }
+      }
+      if (isLive) {
+        LiveCommands.Add(predicateCmd);
+        return GetVariables(predicateCmd).Aggregate(state, (set, variable) => set.Add(variable));
+      }
+    }
+    return state;
+  }
 }

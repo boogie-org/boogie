@@ -34,7 +34,7 @@ public static class ManualSplitFinder {
       Block entryPoint = initialSplit.Blocks[0];
       var blockAssignments = PickBlocksToVerify(initialSplit.Blocks, splitPoints);
       var entryBlockHasSplit = splitPoints.ContainsKey(entryPoint);
-      var baseSplitBlocks = BlockTransformations.DeleteNoAssertionBlocks(
+      var baseSplitBlocks = BlockTransformations.Optimize(
         DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
           -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
       splits.Add(new ManualSplit(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
@@ -49,7 +49,7 @@ public static class ManualSplitFinder {
           bool lastSplitInBlock = i == tokens.Count - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, block, lastSplitInBlock, splitOnEveryAssert);
           splits.Add(new ManualSplit(initialSplit.Options, 
-            BlockTransformations.DeleteNoAssertionBlocks(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
+            BlockTransformations.Optimize(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
         }
       }
     }

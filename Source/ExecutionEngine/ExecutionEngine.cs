@@ -605,7 +605,7 @@ namespace Microsoft.Boogie
         program.Emit(new TokenTextWriter(Options.OutputWriter, Options.PrettyPrint, Options));
       }
 
-      program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
+      program.DeclarationDependencies = Pruner.ComputeDeclarationDependencies(Options, program);
       return processedProgram;
     }
 
