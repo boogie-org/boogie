@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -182,13 +183,8 @@ namespace VC
           Options.PrintUnstructured = 2; // print only the unstructured program
           bool oldPrintDesugaringSetting = Options.PrintDesugarings;
           Options.PrintDesugarings = false;
-          List<Block> backup = Implementation.Blocks;
-          Contract.Assert(backup != null);
-          lock (Implementation) {
-            Implementation.Blocks = Blocks;
-            Implementation.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, Options), 0);
-            Implementation.Blocks = backup;
-          }
+          var writer = new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, Options);
+          Implementation.EmitImplementation(writer, 0, Blocks, false);
           Options.PrintDesugarings = oldPrintDesugaringSetting;
           Options.PrintUnstructured = oldPrintUnstructured;
         }
@@ -717,13 +713,7 @@ namespace VC
 
       void Print()
       {
-        List<Block> tmp = Implementation.Blocks;
-        Contract.Assert(tmp != null);
-        lock (Implementation) {
-          Implementation.Blocks = Blocks;
-          ConditionGeneration.EmitImpl(Options, Run, false);
-          Implementation.Blocks = tmp;
-        }
+        ConditionGeneration.EmitImpl(Options, Run, false, Blocks);
       }
 
       public Counterexample ToCounterexample(ProverContext context)

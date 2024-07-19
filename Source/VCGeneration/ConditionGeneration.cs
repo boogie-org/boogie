@@ -506,15 +506,17 @@ namespace VC
     }
 
 
-    public static void EmitImpl(VCGenOptions options, ImplementationRun run, bool printDesugarings)
+    public static void EmitImpl(VCGenOptions options, ImplementationRun run, bool printDesugarings, IEnumerable<Block> overrideBlocks = null)
     {
       var impl = run.Implementation;
+      overrideBlocks ??= impl.Blocks;
+      
       Contract.Requires(impl != null);
       int oldPrintUnstructured = options.PrintUnstructured;
       options.PrintUnstructured = 2; // print only the unstructured program
       bool oldPrintDesugaringSetting = options.PrintDesugarings;
       options.PrintDesugarings = printDesugarings;
-      impl.Emit(new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options), 0);
+      impl.EmitImplementation(new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options), 0, overrideBlocks, true);
       options.PrintDesugarings = oldPrintDesugaringSetting;
       options.PrintUnstructured = oldPrintUnstructured;
     }
