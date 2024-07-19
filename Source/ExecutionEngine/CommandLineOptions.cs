@@ -65,7 +65,8 @@ namespace Microsoft.Boogie
     public int VerifySnapshots { get; set; } = -1;
     public bool VerifySeparately { get; set; }
     public string PrintFile { get; set; }
-    public string PrintPrunedFile { get; set; }
+    public string PrintSplitFile { get; set; }
+    public bool PrintSplitDeclarations { get; set; }
 
     /**
      * Whether to emit {:qid}, {:skolemid} and set-info :boogie-vc-id
@@ -698,9 +699,17 @@ namespace Microsoft.Boogie
           return true;
 
         case "printPruned":
+        case "printSplit":
           if (ps.ConfirmArgumentCount(1))
           {
-            PrintPrunedFile = args[ps.i];
+            PrintSplitFile = args[ps.i];
+          }
+
+          return true;
+        case "printSplitDeclarations":
+          if (ps.ConfirmArgumentCount(0))
+          {
+            PrintSplitDeclarations = true;
           }
 
           return true;

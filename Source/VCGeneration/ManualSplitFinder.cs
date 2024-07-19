@@ -7,7 +7,8 @@ using VC;
 namespace VCGeneration;
 
 public static class ManualSplitFinder {
-  public static IEnumerable<ManualSplit> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par) {
+  public static IEnumerable<ManualSplit> FocusAndSplit(VCGenOptions options, ImplementationRun run, 
+    Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par) {
     var focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
     return focussedImpl.SelectMany(FindManualSplits);
   }

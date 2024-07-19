@@ -109,6 +109,7 @@ namespace VC
     {
       int currentSplitNumber = DoSplitting ? Interlocked.Increment(ref splitNumber) - 1 : -1;
       split.SplitIndex = currentSplitNumber;
+      split.PrintSplit();
       var tasks = Enumerable.Range(0, options.RandomizeVcIterations).Select(iteration =>
         DoWork(iteration, split, cancellationToken));
       await Task.WhenAll(tasks);

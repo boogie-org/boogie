@@ -84,31 +84,37 @@ namespace VC
 
         TopLevelDeclarations = par.program.TopLevelDeclarations;
         var counter = debugCounter++;
-        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "before#" + counter);
         TopLevelDeclarations = Pruner.GetLiveDeclarations(options, par.program, blocks).ToList();
-        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "after#" + counter);
         RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
         randomGen = new Random(RandomSeed);
       }
 
-      private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
-      {
-        if (!Options.Prune || Options.PrintPrunedFile == null)
-        {
+      public void PrintSplit() {
+        if (Options.PrintSplitFile == null) {
           return;
         }
 
         using var writer = new TokenTextWriter(
-          $"{Options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}.bpl", false,
+          $"{Options.PrintSplitFile}-{Util.EscapeFilename(Implementation.Name)}-{SplitIndex}.spl", false,
           Options.PrettyPrint, Options);
 
-        var functionAxioms =
-          program.Functions.Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
-        var constantAxioms =
-          program.Constants.Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
+        Implementation.EmitImplementation(writer, 0, Blocks, false);
+        PrintSplitDeclarations(writer);
+      }
 
-        foreach (var declaration in (TopLevelDeclarations ?? program.TopLevelDeclarations)
-                 .Except(functionAxioms.Concat(constantAxioms)).ToList())
+      private void PrintSplitDeclarations(TokenTextWriter writer)
+      {
+        if (!Options.Prune || !Options.PrintSplitDeclarations)
+        {
+          return;
+        }
+
+        var functionAxioms =
+          TopLevelDeclarations.OfType<Function>().Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
+        var constantAxioms =
+          TopLevelDeclarations.OfType<Constant>().Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
+
+        foreach (var declaration in TopLevelDeclarations.Except(functionAxioms.Concat(constantAxioms)).ToList())
         {
           declaration.Emit(writer, 0);
         }
