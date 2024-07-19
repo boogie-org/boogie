@@ -1,24 +1,28 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Threading.Tasks.Dataflow;
 using Microsoft.Boogie;
 using VC;
 
 namespace VCGeneration;
 
 public static class ManualSplitFinder {
-  public static IEnumerable<ManualSplit> FocusAndSplit(VCGenOptions options, ImplementationRun run, 
+  public static IEnumerable<ManualSplit> FocusAndSplit(Program program, VCGenOptions options, ImplementationRun run, 
     Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par) {
     var focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
-    return focussedImpl.SelectMany(FindManualSplits);
+    return focussedImpl.SelectMany(s => FindManualSplits(program, s));
   }
 
-  private static List<ManualSplit /*!*/> FindManualSplits(ManualSplit initialSplit) {
+  private static List<ManualSplit /*!*/> FindManualSplits(Program program, ManualSplit initialSplit) {
     Contract.Requires(initialSplit.Implementation != null);
     Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
 
     var splitOnEveryAssert = initialSplit.Options.VcsSplitOnEveryAssert;
     initialSplit.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
+    if (splitOnEveryAssert) {
+      return SplitEachAssert(program, initialSplit);
+    }
 
     var splitPoints = new Dictionary<Block, List<IToken>>();
     foreach (var block in initialSplit.Blocks) {
@@ -37,7 +41,7 @@ public static class ManualSplitFinder {
       var entryBlockHasSplit = splitPoints.ContainsKey(entryPoint);
       var firstSplitBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
         -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert);
-      BlockTransformations.Optimize(firstSplitBlocks);
+      BlockTransformations.Optimize(firstSplitBlocks, program);
       if (firstSplitBlocks.Any()) {
         splits.Add(new ManualSplit(initialSplit.Options, firstSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
       }
@@ -51,7 +55,7 @@ public static class ManualSplitFinder {
           var token = tokens[i];
           bool lastSplitInBlock = i == tokens.Count - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, block, lastSplitInBlock, splitOnEveryAssert);
-          BlockTransformations.Optimize(newBlocks);
+          BlockTransformations.Optimize(newBlocks, program);
           if (newBlocks.Any()) {
             splits.Add(new ManualSplit(initialSplit.Options, 
               newBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
@@ -60,6 +64,25 @@ public static class ManualSplitFinder {
       }
     }
     return splits;
+  }
+
+  private static List<ManualSplit> SplitEachAssert(Program program, ManualSplit initialSplit)
+  {
+    var result = new List<ManualSplit>();
+    foreach (var block in initialSplit.Blocks) {
+      foreach (Cmd command in block.Cmds) {
+        if (command is AssertCmd assertCmd) {
+          var newBlocks = SplitOnAssert(initialSplit.Options, initialSplit.Blocks, assertCmd);
+          BlockTransformations.Optimize(newBlocks, program);
+          if (newBlocks.Any()) {
+            result.Add(new ManualSplit(initialSplit.Options, 
+              newBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, assertCmd.tok));
+          }
+        }
+      }
+    }
+
+    return result;
   }
 
   private static bool ShouldSplitHere(Cmd c, bool splitOnEveryAssert) {
@@ -96,7 +119,26 @@ public static class ManualSplitFinder {
     return blockAssignments;
   }
 
-  private static List<Block> DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
+  private static List<Block> SplitOnAssert(VCGenOptions options, List<Block> oldBlocks, AssertCmd assertToKeep) {
+    var oldToNewBlockMap = new Dictionary<Block, Block>(oldBlocks.Count);
+    
+    var newBlocks = new List<Block>(oldBlocks.Count);
+    foreach (var oldBlock in oldBlocks) {
+      var newBlock = new Block {
+        Label = oldBlock.Label,
+        tok = oldBlock.tok,
+        Cmds = oldBlock.Cmds.Select(cmd => 
+          cmd != assertToKeep ? CommandTransformations.AssertIntoAssume(options, cmd) : cmd).ToList()
+      };
+      oldToNewBlockMap[oldBlock] = newBlock;
+      newBlocks.Add(newBlock);
+    }
+
+    AddBlockJumps(oldBlocks, oldToNewBlockMap);
+    return newBlocks;
+  }
+  private static List<Block> DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, 
+    Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
     Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert) {
     var newBlocks = new List<Block>(blocks.Count); // Copies of the original blocks
     //var duplicator = new Duplicator();
@@ -133,8 +175,16 @@ public static class ManualSplitFinder {
       }
     }
     // Patch the edges between the new blocks
-    foreach (var oldBlock in blocks) {
-      if (oldBlock.TransferCmd is ReturnCmd) {
+    AddBlockJumps(blocks, oldToNewBlockMap);
+    return newBlocks;
+  }
+
+  private static void AddBlockJumps(List<Block> oldBlocks, Dictionary<Block, Block> oldToNewBlockMap)
+  {
+    foreach (var oldBlock in oldBlocks) {
+      var newBlock = oldToNewBlockMap[oldBlock];
+      if (oldBlock.TransferCmd is ReturnCmd returnCmd) {
+        ((ReturnCmd)newBlock.TransferCmd).tok = returnCmd.tok;
         continue;
       }
 
@@ -148,6 +198,5 @@ public static class ManualSplitFinder {
 
       oldToNewBlockMap[oldBlock].TransferCmd = new GotoCmd(gotoCmd.tok, newLabelNames, newLabelTargets);
     }
-    return newBlocks;
   }
 }

@@ -112,18 +112,15 @@ namespace Microsoft.Boogie
       Implementation.ComputePredecessorsForBlocks(blocks);
       var graph = new Graph<Absy>();
       foreach (var block in blocks) {
+        var commands = block.Cmds.Append<Absy>(block.TransferCmd).ToList();
         foreach (var predecessor in block.Predecessors) {
           var previous = predecessor.TransferCmd;
-          if (block.Cmds.Any()) {
-            graph.AddEdge(previous, block.Cmds[0]);
-          } else if (block.TransferCmd != null) {
-            graph.AddEdge(previous, block.TransferCmd);
-          }
+          graph.AddEdge(previous, commands.First());
         }
 
-        for (var index = 0; index < block.Cmds.Count - 1; index++) {
-          var command = block.Cmds[index];
-          var nextCommand = block.Cmds[index + 1];
+        for (var index = 0; index < commands.Count - 1; index++) {
+          var command = commands[index];
+          var nextCommand = commands[index + 1];
           graph.AddEdge(command, nextCommand);
         }
       }

@@ -9,8 +9,8 @@ using VCGeneration.Prune;
 namespace VCGeneration;
 
 public static class BlockTransformations {
-  public static void Optimize(List<Block> blocks) {
-    PruneAssumptions(blocks);
+  public static void Optimize(List<Block> blocks, Program program) {
+    PruneAssumptions(program, blocks);
     OptimizeBlocks(blocks);
   }
 
@@ -106,7 +106,7 @@ public static class BlockTransformations {
     }
   }
 
-  public static void PruneAssumptions(List<Block> blocks) {
+  public static void PruneAssumptions(Program program, List<Block> blocks) {
     var commandsPartOfContradiction = new HashSet<Cmd>();
     var controlFlowGraph = Pruner.GetControlFlowGraph(blocks);
     var asserts = controlFlowGraph.Nodes.OfType<AssertCmd>().ToList();
@@ -120,28 +120,38 @@ public static class BlockTransformations {
       }
     }
 
-    var liveAnalysis = new LiveVariablesAnalysis(asserts, 
+    var globals = program.Variables.Where(g => g.Name.Contains("Height")).ToList();
+    var liveAnalysis = new LiveVariablesAnalysis(globals, 
+      asserts, 
       cmd => controlFlowGraph.Predecessors(cmd),
       cmd => controlFlowGraph.Successors(cmd));
     liveAnalysis.Run();
     
     foreach (var block in blocks) {
-      block.Cmds = block.Cmds.Where(cmd => 
-        cmd is not AssumeCmd assumeCmd || 
-        assumeCmd.Expr.Equals(Expr.False) || // Explicit assume false should be kept. // TODO take into account Lit ??
-        commandsPartOfContradiction.Contains(assumeCmd) ||
-        liveAnalysis.LiveCommands.Contains(assumeCmd)).ToList();
+      block.Cmds = block.Cmds.Where(cmd => {
+        var keep = cmd is not AssumeCmd assumeCmd ||
+                   // Do not keep explicit assume false of it does not lead to an assertion.
+                       assumeCmd.Expr.Equals(Expr.False) || // Explicit assume false should be kept. // TODO take into account Lit ??
+                       commandsPartOfContradiction.Contains(assumeCmd) ||
+                       liveAnalysis.LiveCommands.Contains(assumeCmd);
+        
+        return keep;
+      }).ToList();
     }
   }
 }
 
 class LiveVariablesAnalysis : DataflowAnalysis<Absy, ImmutableHashSet<Variable>> {
   private readonly Dictionary<PredicateCmd, ISet<Variable>> commandVariables;
+  private readonly IReadOnlyList<Variable> globals;
   public HashSet<Cmd> LiveCommands { get; } = new();
 
-  public LiveVariablesAnalysis(IReadOnlyList<Absy> roots, 
+  public LiveVariablesAnalysis(
+    IReadOnlyList<Variable> globals,
+    IReadOnlyList<Absy> roots, 
     Func<Absy, IEnumerable<Absy>> getNext, 
     Func<Absy, IEnumerable<Absy>> getPrevious) : base(roots, getNext, getPrevious) {
+    this.globals = globals;
     commandVariables = roots.OfType<PredicateCmd>().ToDictionary(cmd => cmd, cmd => {
       var set = new GSet<object>();
       cmd.Expr.ComputeFreeVariables(set);
@@ -149,7 +159,7 @@ class LiveVariablesAnalysis : DataflowAnalysis<Absy, ImmutableHashSet<Variable>>
     });
   }
 
-  protected override ImmutableHashSet<Variable> Empty => ImmutableHashSet<Variable>.Empty;
+  protected override ImmutableHashSet<Variable> Empty => ImmutableHashSet.CreateRange(globals);
   
   protected override ImmutableHashSet<Variable> Merge(ImmutableHashSet<Variable> first, ImmutableHashSet<Variable> second) {
     return first.Union(second);
@@ -163,7 +173,7 @@ class LiveVariablesAnalysis : DataflowAnalysis<Absy, ImmutableHashSet<Variable>>
     return commandVariables.GetOrCreate(cmd, () => {
       var set = new GSet<object>();
       cmd.Expr.ComputeFreeVariables(set);
-      return (ISet<Variable>)set.OfType<Variable>().ToHashSet();
+      return set.OfType<Variable>().ToHashSet();
     });
   }
 
