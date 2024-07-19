@@ -22,17 +22,7 @@ public static class BlockTransformations {
   // 1-1 connected blocks should be merged
   // X-0 empty blocks should be deleted.
   public static void OptimizeBlocks(List<Block> blocks) {
-    foreach(var block in blocks)
-    {
-      block.Predecessors.Clear();
-    }
-    Implementation.ComputePredecessorsForBlocks(blocks);
     DeleteUselessBlocks(blocks);
-    // foreach(var block in blocks)
-    // {
-    //   block.Predecessors.Clear();
-    // }
-    // Implementation.ComputePredecessorsForBlocks(blocks);
     MergeOneToOneBlocks(blocks);
   }
 

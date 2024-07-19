@@ -184,9 +184,11 @@ namespace VC
           Options.PrintDesugarings = false;
           List<Block> backup = Implementation.Blocks;
           Contract.Assert(backup != null);
-          Implementation.Blocks = Blocks;
-          Implementation.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, Options), 0);
-          Implementation.Blocks = backup;
+          lock (Implementation) {
+            Implementation.Blocks = Blocks;
+            Implementation.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, Options), 0);
+            Implementation.Blocks = backup;
+          }
           Options.PrintDesugarings = oldPrintDesugaringSetting;
           Options.PrintUnstructured = oldPrintUnstructured;
         }
@@ -717,9 +719,11 @@ namespace VC
       {
         List<Block> tmp = Implementation.Blocks;
         Contract.Assert(tmp != null);
-        Implementation.Blocks = Blocks;
-        ConditionGeneration.EmitImpl(Options, Run, false);
-        Implementation.Blocks = tmp;
+        lock (Implementation) {
+          Implementation.Blocks = Blocks;
+          ConditionGeneration.EmitImpl(Options, Run, false);
+          Implementation.Blocks = tmp;
+        }
       }
 
       public Counterexample ToCounterexample(ProverContext context)
