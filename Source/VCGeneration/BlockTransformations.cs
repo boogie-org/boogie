@@ -9,27 +9,120 @@ using VCGeneration.Prune;
 
 namespace VCGeneration;
 
-public static class BlockTransformations
-{
+public static class BlockTransformations {
   public static List<Block> Optimize(List<Block> blocks) {
-    var result = DeleteNoAssertionBlocks(blocks);
-    PruneAssumptions(blocks);
-    return result;
+    var copy = blocks; 
+    PruneAssumptions(copy);
+    OptimizeBlocks(copy);
+    return copy;
   }
 
-  // public static List<Block> OptimizeBlocks(List<Block> blocks) {
-  //   foreach (var block in blocks) {
-  //     if (!block.Cmds.Any()) {
-  //       if (block.TransferCmd == null) {
-  //         foreach (var predecessor in block.Predecessors) {
-  //           var gotoCmd = (GotoCmd)predecessor.TransferCmd;
-  //           got
-  //         }
-  //       } 
-  //     }
-  //   }
-  // }
-  
+  // Jumps to the same block should be merged
+  // Empty blocks should be deleted
+  // 1-1 connected blocks should be merged
+  // X-0 empty blocks should be deleted.
+  public static void OptimizeBlocks(List<Block> blocks) {
+    foreach(var block in blocks)
+    {
+      block.Predecessors.Clear();
+    }
+    Implementation.ComputePredecessorsForBlocks(blocks);
+    DeleteUselessBlocks(blocks);
+    // foreach(var block in blocks)
+    // {
+    //   block.Predecessors.Clear();
+    // }
+    // Implementation.ComputePredecessorsForBlocks(blocks);
+    MergeOneToOneBlocks(blocks);
+  }
+
+  private static void DeleteUselessBlocks(List<Block> blocks) {
+    var stack = new Stack<Block>();
+    foreach (var block in blocks) {
+      stack.Push(block);
+    }
+    while(stack.Any()) {
+      var block = stack.Pop();
+      if (block.Cmds.Any()) {
+        continue;
+      }
+
+      var isBranchingBlock = block.TransferCmd is GotoCmd gotoCmd1 && gotoCmd1.labelTargets.Count > 1 && 
+                             block.Predecessors.Count != 1;
+      if (isBranchingBlock) {
+        continue;
+      }
+
+      blocks.Remove(block);
+
+      foreach (var predecessor in block.Predecessors) {
+        var intoCmd = (GotoCmd)predecessor.TransferCmd;
+        intoCmd.RemoveTarget(block);
+        stack.Push(predecessor);
+      }
+
+      if (block.TransferCmd is not GotoCmd outGoto) {
+        continue;
+      }
+
+      foreach (var outBlock in outGoto.labelTargets) {
+        outBlock.Predecessors.Remove(block);
+        stack.Push(outBlock);
+      }
+
+      foreach (var predecessor in block.Predecessors) {
+        var intoCmd = (GotoCmd)predecessor.TransferCmd;
+        foreach (var outBlock in outGoto.labelTargets) {
+          outBlock.Predecessors.Remove(block);
+          if (!outGoto.labelTargets.Contains(outBlock)) {
+            intoCmd.AddTarget(outBlock);
+            outBlock.Predecessors.Add(predecessor);
+          }
+        }
+      }
+    }
+  }
+
+  private static void MergeOneToOneBlocks(List<Block> blocks) {
+    var stack = new Stack<Block>();
+    foreach (var block in blocks) {
+      if (!block.Predecessors.Any()) {
+        stack.Push(block);
+      }
+    }
+    while (stack.Any()) {
+      var current = stack.Pop();
+      if (current.TransferCmd is not GotoCmd gotoCmd) {
+        continue;
+      }
+
+      if (gotoCmd.labelTargets.Count != 1) {
+        foreach (var aNext in gotoCmd.labelTargets) {
+          stack.Push(aNext);
+        }
+        continue;
+      }
+
+      var next = gotoCmd.labelTargets.Single();
+      if (next.Predecessors.Count != 1) {
+        stack.Push(next);
+        continue;
+      }
+
+      blocks.Remove(next);
+      current.Cmds.AddRange(next.Cmds);
+      gotoCmd.RemoveTarget(next);
+      if (next.TransferCmd is GotoCmd nextGotoCmd) {
+        gotoCmd.AddTargets(nextGotoCmd.labelTargets);
+        foreach (var nextTarget in nextGotoCmd.labelTargets) {
+          nextTarget.Predecessors.Remove(next);
+          nextTarget.Predecessors.Add(current);
+        }
+      }
+      stack.Push(current);
+    }
+  }
+
   public static void PruneAssumptions(List<Block> blocks) {
     var commandsPartOfContradiction = new HashSet<Cmd>();
     var controlFlowGraph = Pruner.GetControlFlowGraph(blocks);
