@@ -432,10 +432,45 @@ public class Implementation : DeclWithFormals {
   }
 
   public override void Emit(TokenTextWriter stream, int level) {
-    EmitImplementation(stream, level, Blocks, showLocals: true);
+    void BlocksWriters(TokenTextWriter stream) {
+      if (this.StructuredStmts != null && !stream.Options.PrintInstrumented && !stream.Options.PrintInlined) {
+        if (this.LocVars.Count > 0) {
+          stream.WriteLine();
+        }
+
+        if (stream.Options.PrintUnstructured < 2) {
+          if (stream.Options.PrintUnstructured == 1) {
+            stream.WriteLine(this, level + 1, "/*** structured program:");
+          }
+
+          this.StructuredStmts.Emit(stream, level + 1);
+          if (stream.Options.PrintUnstructured == 1) {
+            stream.WriteLine(level + 1, "**** end structured program */");
+          }
+        }
+      }
+
+      if (StructuredStmts == null || 1 <= stream.Options.PrintUnstructured ||
+          stream.Options.PrintInstrumented || stream.Options.PrintInlined) {
+        foreach (Block b in Blocks) {
+          b.Emit(stream, level + 1);
+        }
+      }
+    }
+
+    EmitImplementation(stream, level, BlocksWriters, showLocals: true);
   }
 
-  public void EmitImplementation(TokenTextWriter stream, int level, IEnumerable<Block> overrideBlocks, bool showLocals)
+  public void EmitImplementation(TokenTextWriter stream, int level, IEnumerable<Block> blocks,
+    bool showLocals) {
+    EmitImplementation(stream, level, writer => {
+      foreach (var block in Blocks) {
+        block.Emit(writer, level + 1);
+      }
+    }, showLocals);
+  }
+
+  public void EmitImplementation(TokenTextWriter stream, int level, Action<TokenTextWriter> printBlocks, bool showLocals)
   {
     stream.Write(this, level, "implementation ");
     EmitAttributes(stream);
@@ -453,37 +488,7 @@ public class Implementation : DeclWithFormals {
       }
     }
 
-    if (this.StructuredStmts != null && !stream.Options.PrintInstrumented &&
-        !stream.Options.PrintInlined)
-    {
-      if (this.LocVars.Count > 0)
-      {
-        stream.WriteLine();
-      }
-
-      if (stream.Options.PrintUnstructured < 2)
-      {
-        if (stream.Options.PrintUnstructured == 1)
-        {
-          stream.WriteLine(this, level + 1, "/*** structured program:");
-        }
-
-        this.StructuredStmts.Emit(stream, level + 1);
-        if (stream.Options.PrintUnstructured == 1)
-        {
-          stream.WriteLine(level + 1, "**** end structured program */");
-        }
-      }
-    }
-
-    if (StructuredStmts == null || 1 <= stream.Options.PrintUnstructured ||
-        stream.Options.PrintInstrumented || stream.Options.PrintInlined)
-    {
-      foreach (Block b in overrideBlocks)
-      {
-        b.Emit(stream, level + 1);
-      }
-    }
+    printBlocks(stream);
 
     stream.WriteLine(level, "{0}", '}');
 

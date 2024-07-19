@@ -179,14 +179,8 @@ namespace VC
         string filename = string.Format("{0}.split.{1}.bpl", Implementation.Name, splitNum);
         using (StreamWriter sw = File.CreateText(filename))
         {
-          int oldPrintUnstructured = Options.PrintUnstructured;
-          Options.PrintUnstructured = 2; // print only the unstructured program
-          bool oldPrintDesugaringSetting = Options.PrintDesugarings;
-          Options.PrintDesugarings = false;
           var writer = new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, Options);
           Implementation.EmitImplementation(writer, 0, Blocks, false);
-          Options.PrintDesugarings = oldPrintDesugaringSetting;
-          Options.PrintUnstructured = oldPrintUnstructured;
         }
       }
 

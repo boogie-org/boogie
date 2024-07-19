@@ -512,13 +512,11 @@ namespace VC
       overrideBlocks ??= impl.Blocks;
       
       Contract.Requires(impl != null);
-      int oldPrintUnstructured = options.PrintUnstructured;
-      options.PrintUnstructured = 2; // print only the unstructured program
       bool oldPrintDesugaringSetting = options.PrintDesugarings;
       options.PrintDesugarings = printDesugarings;
-      impl.EmitImplementation(new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options), 0, overrideBlocks, true);
+      var writer = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
+      impl.EmitImplementation(writer, 0, overrideBlocks, true);
       options.PrintDesugarings = oldPrintDesugaringSetting;
-      options.PrintUnstructured = oldPrintUnstructured;
     }
 
 
