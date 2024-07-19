@@ -17,10 +17,6 @@ public static class BlockTransformations {
     return copy;
   }
 
-  // Jumps to the same block should be merged
-  // Empty blocks should be deleted
-  // 1-1 connected blocks should be merged
-  // X-0 empty blocks should be deleted.
   public static void OptimizeBlocks(List<Block> blocks) {
     DeleteUselessBlocks(blocks);
     MergeOneToOneBlocks(blocks);
