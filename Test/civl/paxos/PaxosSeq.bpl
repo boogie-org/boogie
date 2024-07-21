@@ -27,12 +27,16 @@ INV({:linear_in} ps: Set Permission)
 creates A_StartRound, A_Propose, A_Conclude, A_Join, A_Vote;
 modifies joinedNodes, voteInfo, decision;
 {
+  var {:linear} ps': Set Permission;
+  var {:linear} proposePermissions: Set Permission;
+  var {:linear} concludePermission: One Permission;
   var {:pool "NumRounds"} numRounds: int;
   var {:pool "Round"} k: int;
   var {:pool "Node"} m: Node;
 
   assert Init(ps, decision);
 
+  ps' := ps;
   havoc joinedNodes, voteInfo, decision;
 
   // This invariant is the "pending async skeleton" which states the possible
@@ -64,7 +68,8 @@ modifies joinedNodes, voteInfo, decision;
         {:add_to_pool "A_Join", A_Join(k+1, numNodes, One(JoinPerm(k+1, numNodes)))}
         0 <= m && m <= numNodes;
       call create_asyncs((lambda pa: A_StartRound :: AllPermissions(pa->r) == pa->r_lin && k+1 < pa->r && pa->r <= numRounds));
-      call create_async(A_Propose(k+1, ProposePermissions(k+1)));
+      call proposePermissions := Set_Get(ps', ProposePermissions(k+1)->val);
+      async call A_Propose(k+1, proposePermissions);
       call create_asyncs((lambda {:pool "A_Join"} pa: A_Join :: pa->r == k+1 && m < pa->n && pa->n <= numNodes && pa->p->val == JoinPerm(k+1, pa->n)));
       if (m == numNodes) { call set_choice(A_Propose(k+1, ProposePermissions(k+1))); }
       else { call set_choice(A_Join(k+1, m+1, One(JoinPerm(k+1, m+1)))); }
@@ -80,7 +85,8 @@ modifies joinedNodes, voteInfo, decision;
         0 <= m && m <= numNodes &&
         (forall n: Node :: n < 1 || n > m ==> !voteInfo[k+1]->t->ns[n]);
       call create_asyncs((lambda {:pool "A_StartRound"} pa: A_StartRound :: AllPermissions(pa->r) == pa->r_lin && k+1 < pa->r && pa->r <= numRounds));
-      call create_async(A_Conclude(k+1, voteInfo[k+1]->t->value, One(ConcludePerm(k+1))));
+      call concludePermission := One_Get(ps', ConcludePerm(k+1));
+      async call A_Conclude(k+1, voteInfo[k+1]->t->value, concludePermission);
       call create_asyncs((lambda {:pool "A_Vote"} pa: A_Vote :: pa->r == k+1 && m < pa->n && pa->n <= numNodes && pa->v == voteInfo[k+1]->t->value && pa->p->val == VotePerm(k+1, pa->n)));
       if (m == numNodes) { call set_choice(A_Conclude(k+1, voteInfo[k+1]->t->value, One(ConcludePerm(k+1)))); }
       else { call set_choice(A_Vote(k+1, m+1, voteInfo[k+1]->t->value, One(VotePerm(k+1, m+1)))); }

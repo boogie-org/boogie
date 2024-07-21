@@ -292,16 +292,14 @@ namespace Microsoft.Boogie
 
     private Cmd Transform(Dictionary<CtorType, Implementation> eliminatedPendingAsyncs, Cmd cmd, HashSet<Variable> modifies)
     {
-      if (cmd is CallCmd callCmd && callCmd.Proc.OriginalDeclWithFormals is { Name: "create_async" })
+      if (cmd is CallCmd callCmd && callCmd.IsAsync)
       {
-        var pendingAsyncType = (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-        var datatypeTypeCtorDecl = (DatatypeTypeCtorDecl)pendingAsyncType.Decl;
+        var actionDecl = (ActionDecl)callCmd.Proc;
+        var pendingAsyncType = actionDecl.PendingAsyncType;
         if (eliminatedPendingAsyncs.ContainsKey(pendingAsyncType))
         {
           var newCallee = eliminatedPendingAsyncs[pendingAsyncType].Proc;
-          var newIns = datatypeTypeCtorDecl.Constructors[0].InParams
-            .Select(x => (Expr)ExprHelper.FieldAccess(callCmd.Ins[0], x.Name)).ToList();
-          var newCallCmd = new CallCmd(callCmd.tok, newCallee.Name, newIns, new List<IdentifierExpr>())
+          var newCallCmd = new CallCmd(callCmd.tok, newCallee.Name, callCmd.Ins, new List<IdentifierExpr>())
           {
             Proc = newCallee
           };

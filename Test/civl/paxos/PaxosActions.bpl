@@ -1,6 +1,9 @@
 async atomic action {:layer 2} A_StartRound(r: Round, {:linear_in} r_lin: Set Permission)
 creates A_Join, A_Propose;
 {
+  var {:linear} r_lin': Set Permission;
+  var {:linear} proposePermissions: Set Permission;
+
   assert AllPermissions(r) == r_lin;
   assert Round(r);
 
@@ -11,13 +14,17 @@ creates A_Join, A_Propose;
     true;
 
   call create_asyncs(JoinPAs(r));
-  call create_async(A_Propose(r, ProposePermissions(r)));
+  r_lin' := r_lin;
+  call proposePermissions := Set_Get(r_lin', ProposePermissions(r)->val);
+  async call A_Propose(r, proposePermissions);
 }
 
 async atomic action {:layer 2} A_Propose(r: Round, {:linear_in} ps: Set Permission)
 creates A_Vote, A_Conclude;
 modifies voteInfo;
 {
+  var {:linear} ps': Set Permission;
+  var {:linear} concludePermission: One Permission;
   var {:pool "Round"} maxRound: int;
   var {:pool "MaxValue"} maxValue: Value;
   var {:pool "NodeSet"} ns: NodeSet;
@@ -43,7 +50,9 @@ modifies voteInfo;
     }
     voteInfo[r] := Some(VoteInfo(maxValue, NoNodes()));
     call create_asyncs(VotePAs(r, maxValue));
-    call create_async(A_Conclude(r, maxValue, One(ConcludePerm(r))));
+    ps' := ps;
+    call concludePermission := One_Get(ps', ConcludePerm(r));
+    async call A_Conclude(r, maxValue, concludePermission);
   }
 }
 

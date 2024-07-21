@@ -21,7 +21,7 @@ refines {:IS_right} main_f' using Inv;
 creates read_f;
 {
     assume {:add_to_pool "A", 0} true;
-    call create_async(read_f(tid, 1));
+    async call read_f(tid, 1);
 }
 
 action {:layer 2} main_f'({:linear_in} tid: One Tid)
@@ -46,7 +46,7 @@ modifies r1;
     }
 
     if (i != n) {
-        call create_async(read_f(tid, i+1));
+        async call read_f(tid, i+1);
     } 
 }
 
@@ -68,7 +68,7 @@ creates read_f;
     havoc r1;
     assume (forall i:int :: ((1 <= i && i <= j) ==> (mem[i]->ts > r1[tid->val][i]->ts || r1[tid->val][i] == mem[i])));
     if (j < n) {
-        call create_async(read_f(tid, j+1));
+        async call read_f(tid, j+1);
         call set_choice(read_f(tid, j+1));
     }
 }

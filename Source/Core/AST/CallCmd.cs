@@ -254,13 +254,23 @@ public class CallCmd : CallCommonality
     }
     if (IsAsync)
     {
-      if (rc.Proc is not YieldProcedureDecl)
+      if (rc.Proc is ActionDecl)
       {
-        rc.Error(this, "calling procedure of an async call must yield");
+        if (Proc is not ActionDecl)
+        {
+          rc.Error(this, "target of async call must be an action");
+        }
       }
-      if (Proc is not YieldProcedureDecl)
+      else if (rc.Proc is YieldProcedureDecl)
       {
-        rc.Error(this, "target procedure of an async call must yield");
+        if (Proc is not YieldProcedureDecl)
+        {
+          rc.Error(this, "target of async call must be a yield procedure");
+        }
+      }
+      else
+      {
+        rc.Error(this, "async call allowed only from a yield procedure or an action");
       }
     }
     // checking calls from atomic actions need type information, hence postponed to type checking
@@ -469,6 +479,13 @@ public class CallCmd : CallCommonality
     else if (Proc.OriginalDeclWithFormals != null && CivlPrimitives.Async.Contains(Proc.OriginalDeclWithFormals.Name))
     {
       // ok
+    }
+    else if (IsAsync)
+    {
+      if (callerActionDecl.Creates.All(x => x.ActionName != Proc.Name))
+      {
+        tc.Error(this, "pending async must be in the creates clause of caller");
+      }
     }
     else if (CivlPrimitives.Async.Contains(Proc.Name))
     {

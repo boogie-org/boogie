@@ -261,15 +261,28 @@ namespace Microsoft.Boogie
           if (cmd is CallCmd callCmd)
           {
             var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(callCmd.Proc);
-            if (originalProc.Name == "create_async" || originalProc.Name == "create_asyncs" || originalProc.Name == "create_multi_asyncs")
+            if (callCmd.IsAsync)
+            {
+              var actionDecl = (ActionDecl)callCmd.Proc;
+              var pendingAsyncMultiset = 
+                Expr.Store(
+                  ExprHelper.FunctionCall(actionDecl.PendingAsyncConst, Expr.Literal(0)),
+                  ExprHelper.FunctionCall(actionDecl.PendingAsyncCtor, callCmd.Ins),
+                  Expr.Literal(1));
+              var pendingAsyncMultisetType = TypeHelper.MapType(actionDecl.PendingAsyncType, Type.Int);
+              var pendingAsyncCollector = impl.OutParams.Skip(actionDecl.OutParams.Count).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
+              var updateAssignCmd = CmdHelper.AssignCmd(pendingAsyncCollector,
+                ExprHelper.FunctionCall(actionDecl.PendingAsyncAdd, Expr.Ident(pendingAsyncCollector), pendingAsyncMultiset));
+              updateAssignCmd.Typecheck(tc);
+              newCmds.Add(updateAssignCmd);
+              continue;
+            }
+            else if (originalProc.Name == "create_asyncs" || originalProc.Name == "create_multi_asyncs")
             {
               var pendingAsyncType =
                 (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
               var pendingAsync = pendingAsyncTypeToActionDecl[pendingAsyncType];
-              var pendingAsyncMultiset = originalProc.Name == "create_async"
-                ? Expr.Store(ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)), callCmd.Ins[0],
-                  Expr.Literal(1))
-                : originalProc.Name == "create_asyncs"
+              var pendingAsyncMultiset = originalProc.Name == "create_asyncs"
                   ? ExprHelper.FunctionCall(pendingAsync.PendingAsyncIte, callCmd.Ins[0],
                     ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(1)),
                     ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)))
@@ -277,8 +290,7 @@ namespace Microsoft.Boogie
               var pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
               var pendingAsyncCollector = impl.OutParams.Skip(actionDecl.OutParams.Count).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
               var updateAssignCmd = CmdHelper.AssignCmd(pendingAsyncCollector,
-                ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(pendingAsyncCollector),
-                  pendingAsyncMultiset));
+                ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(pendingAsyncCollector), pendingAsyncMultiset));
               updateAssignCmd.Typecheck(tc);
               newCmds.Add(updateAssignCmd);
               continue;

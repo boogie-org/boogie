@@ -106,12 +106,17 @@ refines MAIN4;
 creates COORDINATOR2, PARTICIPANT2;
 modifies RequestChannel, VoteChannel, votes;
 {
+  var {:linear} pids': Set int;
+  var {:linear} pid: One int;
   assert Init(pids->val, RequestChannel, VoteChannel, DecisionChannel, decisions);
+  
   havoc RequestChannel, VoteChannel, votes;
   assume VoteChannel[YES()] >= 0 && VoteChannel[NO()] >= 0;
   assume VoteChannel[YES()] + VoteChannel[NO()] <= n;
   assume VoteChannel[YES()] == n ==> (forall i:int :: pid(i) ==> votes[i] == YES());
-  call create_async(COORDINATOR2(One(0)));
+  pids' := pids;
+  call pid := One_Get(pids', 0);
+  async call COORDINATOR2(pid);
   call create_asyncs((lambda pa:PARTICIPANT2 :: pid(pa->pid->val)));
 }
 
@@ -120,6 +125,8 @@ INV2 ({:linear_in} pids: Set int)
 creates COORDINATOR2, PARTICIPANT1, PARTICIPANT2;
 modifies RequestChannel, VoteChannel, votes;
 {
+  var {:linear} pids': Set int;
+  var {:linear} pid: One int;
   var {:pool "INV2"} k: int;
 
   assert Init(pids->val, RequestChannel, VoteChannel, DecisionChannel, decisions);
@@ -133,7 +140,9 @@ modifies RequestChannel, VoteChannel, votes;
     VoteChannel[YES()] >= 0 && VoteChannel[NO()] >= 0 &&
     VoteChannel[YES()] + VoteChannel[NO()] <= k &&
     (VoteChannel[YES()] == k ==> (forall i:int :: pidLe(i,k) ==> votes[i] == YES()));
-  call create_async(COORDINATOR2(One(0)));
+  pids' := pids;
+  call pid := One_Get(pids', 0);
+  async call COORDINATOR2(pid);
   call create_asyncs((lambda pa:PARTICIPANT2 :: pidLe(pa->pid->val, k)));
   call create_asyncs((lambda {:pool "PARTICIPANT1"} pa:PARTICIPANT1 :: pidGt(pa->pid->val, k)));
   call set_choice(PARTICIPANT1(One(k+1)));
@@ -146,11 +155,15 @@ refines MAIN3 using INV2;
 creates COORDINATOR2, PARTICIPANT1;
 modifies RequestChannel;
 {
+  var {:linear} pids': Set int;
+  var {:linear} pid: One int;
   assert Init(pids->val, RequestChannel, VoteChannel, DecisionChannel, decisions);
 
   assume {:add_to_pool "INV2", 0} true;
   RequestChannel := (lambda i:int :: if pid(i) then 1 else 0);
-  call create_async(COORDINATOR2(One(0)));
+  pids' := pids;
+  call pid := One_Get(pids', 0);
+  async call COORDINATOR2(pid);
   call create_asyncs((lambda pa:PARTICIPANT1 :: pid(pa->pid->val)));
 }
 
@@ -160,8 +173,13 @@ atomic action {:layer 2} MAIN1 ({:linear_in} pids: Set int)
 refines MAIN2;
 creates COORDINATOR1, PARTICIPANT1;
 {
+  var {:linear} pids': Set int;
+  var {:linear} pid: One int;
   assert Init(pids->val, RequestChannel, VoteChannel, DecisionChannel, decisions);
-  call create_async(COORDINATOR1(One(0)));
+
+  pids' := pids;
+  call pid := One_Get(pids', 0);
+  async call COORDINATOR1(pid);
   call create_asyncs((lambda pa:PARTICIPANT1 :: pid(pa->pid->val)));
 }
 
@@ -181,7 +199,7 @@ modifies RequestChannel, VoteChannel, votes;
     VoteChannel[v] := VoteChannel[v] + 1;
   }
 
-  call create_async(PARTICIPANT2(pid));
+  async call PARTICIPANT2(pid);
 }
 
 async atomic action {:layer 2,5} PARTICIPANT2 ({:linear_in} pid: One int)
@@ -203,7 +221,7 @@ modifies RequestChannel;
 {
   assert pid->val == 0;
   RequestChannel := (lambda i:int :: if pid(i) then RequestChannel[i] + 1 else RequestChannel[i]);
-  call create_async(COORDINATOR2(One(0)));
+  async call COORDINATOR2(pid);
 }
 
 async atomic action {:layer 2,4} COORDINATOR2 ({:linear_in} pid: One int)
