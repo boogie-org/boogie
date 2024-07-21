@@ -49,7 +49,7 @@ namespace Microsoft.Boogie
           civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
           DesugarSetChoice(civlTypeChecker, ImplWithChoice);
         }
-        DropSetChoice(civlTypeChecker, Impl);
+        DropSetChoice(Impl);
       }
 
       ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
@@ -302,7 +302,7 @@ namespace Microsoft.Boogie
       });
     }
 
-    private void DropSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
+    private void DropSetChoice(Implementation impl)
     {
       impl.Blocks.ForEach(block =>
       {
