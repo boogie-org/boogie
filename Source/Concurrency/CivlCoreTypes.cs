@@ -176,19 +176,24 @@ namespace Microsoft.Boogie
         return;
       }
 
-      var checkerName = $"{Name}_GateSufficiencyChecker";
-      var checkerImpl = new Duplicator().VisitImplementation(ActionDecl.Impl);
-      checkerImpl.Name = checkerName;
-      checkerImpl.Attributes = null;
-      var proc = checkerImpl.Proc;
-      checkerImpl.Proc = new Procedure(proc.tok, checkerName, proc.TypeParameters, proc.InParams,
-        proc.OutParams, proc.IsPure, proc.Requires, proc.Modifies, proc.Ensures);
-      gateSufficiencyCheckerDecls.AddRange(new Declaration[] { checkerImpl.Proc, checkerImpl });
-
-      HoistAsserts(Impl, civlTypeChecker.Options);
       var gateSubst = Substituter.SubstitutionFromDictionary(ActionDecl.InParams
             .Zip(Impl.InParams)
             .ToDictionary(x => x.Item1, x => (Expr)Expr.Ident(x.Item2)));
+
+      var checkerName = $"{Name}_GateSufficiencyChecker";
+      var checkerImpl = new Duplicator().VisitImplementation(Impl);
+      checkerImpl.Name = checkerName;
+      checkerImpl.Attributes = null;
+      var requires = ActionDecl.Requires.Select(
+        requires => new Requires(requires.tok, requires.Free, Substituter.Apply(gateSubst, requires.Condition), 
+                                null, CivlAttributes.ApplySubstitutionToPoolHints(gateSubst, requires.Attributes))).ToList();
+      var proc = checkerImpl.Proc;
+      checkerImpl.Proc = new Procedure(proc.tok, checkerName, proc.TypeParameters, proc.InParams,
+        proc.OutParams, proc.IsPure, requires, proc.Modifies, new List<Ensures>());
+      gateSufficiencyCheckerDecls.AddRange(new Declaration[] { checkerImpl.Proc, checkerImpl });
+
+      HoistAsserts(Impl, civlTypeChecker.Options);
+      
       Gate = ActionDecl.Requires.Select(
         requires => new AssertCmd(requires.tok, Substituter.Apply(gateSubst, requires.Condition),
                                   CivlAttributes.ApplySubstitutionToPoolHints(gateSubst, requires.Attributes))).ToList();
