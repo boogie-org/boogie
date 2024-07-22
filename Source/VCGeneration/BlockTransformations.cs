@@ -146,20 +146,47 @@ public static class BlockTransformations {
     }
     
     var globals = program.Variables.Where(g => g.Name.Contains("Height")).ToList();
-    var liveAnalysis = new LiveVariablesAnalysis(globals, 
-      asserts, 
-      cmd => controlFlowGraph.Predecessors(cmd),
-      cmd => controlFlowGraph.Successors(cmd));
-    liveAnalysis.Run();
+
+    Dictionary<PredicateCmd, ISet<Variable>> commandVariables = new();
+    ISet<Variable> GetVariables(PredicateCmd cmd) {
+      return commandVariables.GetOrCreate(cmd, () => {
+        var set = new GSet<object>();
+        cmd.Expr.ComputeFreeVariables(set);
+        return set.OfType<Variable>().ToHashSet();
+      });
+    }
+    
+    var dependencyGraph = new Graph<Absy>();
+    foreach (var block in blocks) {
+      foreach (var cmd in block.Cmds.OfType<PredicateCmd>()) {
+        foreach (var variable in GetVariables(cmd)) {
+          dependencyGraph.AddEdge(cmd, variable);
+          dependencyGraph.AddEdge(variable, cmd);
+        }
+      }
+    }
+
+    foreach (var global in globals) {
+      dependencyGraph.Nodes.Add(global);
+    }
+
+    var controlFlowAssumes = dependencyGraph.Nodes.OfType<AssumeCmd>().Where(
+      cmd => QKeyValue.FindBoolAttribute(cmd.Attributes, "partition"));
+    HashSet<AssumeCmd> reachableAssumes = new();
+    foreach (var root in asserts.Concat<Absy>(globals).Concat(controlFlowAssumes)) {
+      foreach (var reachable in dependencyGraph.ComputeReachability(root)) {
+        if (reachable is AssumeCmd assumeCmd) {
+          reachableAssumes.Add(assumeCmd);
+        }
+      }
+    }
     
     foreach (var block in blocks) {
       block.Cmds = block.Cmds.Where(cmd => {
         var keep = cmd is not AssumeCmd assumeCmd ||
-                   // Do not keep explicit assume false if it does not lead to an assertion.
-                   // Maybe we need a dummy variable 'false' that is made live when an assertion is hit, that is used by assume false
-                       assumeCmd.Expr.Equals(Expr.False) || // Explicit assume false should be kept. // TODO take into account Lit ??
-                       commandsPartOfContradiction.Contains(assumeCmd) ||
-                       liveAnalysis.LiveCommands.Contains(assumeCmd);
+                   assumeCmd.Expr.Equals(Expr.False) || // Explicit assume false should be kept. // TODO take into account Lit ??
+                   commandsPartOfContradiction.Contains(assumeCmd) ||
+                   reachableAssumes.Contains(assumeCmd);
 
         if (!keep) {
           var b = 3;
@@ -169,12 +196,6 @@ public static class BlockTransformations {
     }
   }
 }
-
-/* assume y == g;
- * assume f == x;
- * assume f == g;
- * assert x == y;
- */
 
 class ReachesAssertionAnalysis : DataflowAnalysis<Absy, bool> {
   public ReachesAssertionAnalysis(IReadOnlyList<Absy> roots, Func<Absy, IEnumerable<Absy>> getNext, Func<Absy, IEnumerable<Absy>> getPrevious) : base(roots, getNext, getPrevious)
@@ -192,66 +213,5 @@ class ReachesAssertionAnalysis : DataflowAnalysis<Absy, bool> {
 
   protected override bool Update(Absy node, bool state) {
     return node is AssertCmd || state;
-  }
-}
-
-class LiveVariablesAnalysis : DataflowAnalysis<Absy, ImmutableHashSet<Variable>> {
-  private readonly Dictionary<PredicateCmd, ISet<Variable>> commandVariables;
-  private readonly IReadOnlyList<Variable> globals;
-  public HashSet<Cmd> LiveCommands { get; } = new();
-
-  public LiveVariablesAnalysis(
-    IReadOnlyList<Variable> globals,
-    IReadOnlyList<Absy> roots, 
-    Func<Absy, IEnumerable<Absy>> getNext, 
-    Func<Absy, IEnumerable<Absy>> getPrevious) : base(roots, getNext, getPrevious) {
-    this.globals = globals;
-    commandVariables = roots.OfType<PredicateCmd>().ToDictionary(cmd => cmd, cmd => {
-      var set = new GSet<object>();
-      cmd.Expr.ComputeFreeVariables(set);
-      return (ISet<Variable>)set.OfType<Variable>().ToHashSet();
-    });
-  }
-
-  protected override ImmutableHashSet<Variable> Empty => ImmutableHashSet.CreateRange(globals);
-  
-  protected override ImmutableHashSet<Variable> Merge(ImmutableHashSet<Variable> first, ImmutableHashSet<Variable> second) {
-    return first.Union(second);
-  }
-
-  protected override bool StateEquals(ImmutableHashSet<Variable> first, ImmutableHashSet<Variable> second) {
-    return first.SetEquals(second);
-  }
-
-  ISet<Variable> GetVariables(PredicateCmd cmd) {
-    return commandVariables.GetOrCreate(cmd, () => {
-      var set = new GSet<object>();
-      cmd.Expr.ComputeFreeVariables(set);
-      return set.OfType<Variable>().ToHashSet();
-    });
-  }
-
-  protected override ImmutableHashSet<Variable> Update(Absy node, ImmutableHashSet<Variable> state) {
-    if (node is PredicateCmd predicateCmd) {
-      var isLive = false;
-      if (node is AssertCmd) {
-        isLive = true;
-      } else if (node is AssumeCmd assumeCmd) {
-        /*
-         * A path that can not be taken is one whose control flow assumptions together, prove false.
-         * By proving false, subsequent assertions are always provable, so the impossible path does not throw errors.
-         * Because of this, we may not prune assumptions resulting from control flow paths.
-         */
-        var isControlFlowCommand = QKeyValue.FindBoolAttribute(assumeCmd.Attributes, "partition");
-        if (isControlFlowCommand || GetVariables(assumeCmd).Intersect(state).Any()) {
-          isLive = true;
-        }
-      }
-      if (isLive) {
-        LiveCommands.Add(predicateCmd);
-        return GetVariables(predicateCmd).Aggregate(state, (set, variable) => set.Add(variable));
-      }
-    }
-    return state;
   }
 }
