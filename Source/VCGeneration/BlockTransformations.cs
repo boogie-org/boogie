@@ -130,7 +130,8 @@ public static class BlockTransformations {
     foreach (var block in blocks) {
       block.Cmds = block.Cmds.Where(cmd => {
         var keep = cmd is not AssumeCmd assumeCmd ||
-                   // Do not keep explicit assume false of it does not lead to an assertion.
+                   // Do not keep explicit assume false if it does not lead to an assertion.
+                   // Maybe we need a dummy variable 'false' that is made live when an assertion is hit, that is used by assume false
                        assumeCmd.Expr.Equals(Expr.False) || // Explicit assume false should be kept. // TODO take into account Lit ??
                        commandsPartOfContradiction.Contains(assumeCmd) ||
                        liveAnalysis.LiveCommands.Contains(assumeCmd);

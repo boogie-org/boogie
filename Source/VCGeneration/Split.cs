@@ -11,6 +11,7 @@ using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.SMTLib;
 using System.Threading.Tasks;
+using VCGeneration;
 
 namespace VC
 {
@@ -20,12 +21,33 @@ namespace VC
       private readonly Random randomGen;
       public ImplementationRun Run { get; }
 
-      public int RandomSeed { get; private set; }
+      public int RandomSeed { get; }
 
-      public List<Block> Blocks { get; }
+      private List<Block> blocks;
+      public List<Block> Blocks {
+        get
+        {
+          lock (this) {
+            blocks ??= getBlocks();
+          }
+
+          return blocks;
+        }
+      }
       readonly List<Block> bigBlocks = new();
       public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
+      public IReadOnlyList<Declaration> prunedDeclarations;
+      
+      public IReadOnlyList<Declaration> PrunedDeclarations {
+        get {
+          if (prunedDeclarations == null) {
+            prunedDeclarations = Pruner.GetLiveDeclarations(parent.Options, parent.program, Blocks).ToList();
+          }
+
+          return prunedDeclarations;
+        }
+      }
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
@@ -51,31 +73,26 @@ namespace VC
 
       public Implementation /*!*/ Implementation => Run.Implementation;
 
-      Dictionary<Block /*!*/, Block /*!*/> /*!*/
-        copies = new Dictionary<Block /*!*/, Block /*!*/>();
+      Dictionary<Block /*!*/, Block /*!*/> /*!*/ copies = new();
 
       bool doingSlice;
       double sliceInitialLimit;
       double sliceLimit;
       bool slicePos;
-
-      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new HashSet<Block /*!*/>();
-
-      HashSet<Block /*!*/> /*!*/ keepAtAll = new HashSet<Block /*!*/>();
+      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new();
+      HashSet<Block /*!*/> /*!*/ keepAtAll = new();
 
       // async interface
       public int SplitIndex { get; set; }
       public VerificationConditionGenerator.ErrorReporter reporter;
 
-      private static int debugCounter;
-      public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
+      public Split(VCGenOptions options, Func<List<Block /*!*/>> /*!*/ getBlocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
         VerificationConditionGenerator /*!*/ par, ImplementationRun run, int? randomSeed = null)
       {
-        Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(par != null);
-        this.Blocks = blocks;
+        this.getBlocks = getBlocks;
         this.GotoCmdOrigins = gotoCmdOrigins;
         parent = par;
         this.Run = run;
@@ -83,11 +100,11 @@ namespace VC
         Interlocked.Increment(ref currentId);
 
         TopLevelDeclarations = par.program.TopLevelDeclarations;
-        var counter = debugCounter++;
-        TopLevelDeclarations = Pruner.GetLiveDeclarations(options, par.program, blocks).ToList();
         RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
         randomGen = new Random(RandomSeed);
       }
+      
+      
 
       public void PrintSplit() {
         if (Options.PrintSplitFile == null) {
@@ -110,11 +127,11 @@ namespace VC
         }
 
         var functionAxioms =
-          TopLevelDeclarations.OfType<Function>().Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
+          PrunedDeclarations.OfType<Function>().Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
         var constantAxioms =
-          TopLevelDeclarations.OfType<Constant>().Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
+          PrunedDeclarations.OfType<Constant>().Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
 
-        foreach (var declaration in TopLevelDeclarations.Except(functionAxioms.Concat(constantAxioms)).ToList())
+        foreach (var declaration in PrunedDeclarations.Except(functionAxioms.Concat(constantAxioms)).ToList())
         {
           declaration.Emit(writer, 0);
         }
@@ -191,6 +208,7 @@ namespace VC
       }
 
       int bsid;
+      private readonly Func<List<Block>> getBlocks;
 
       BlockStats GetBlockStats(Block b)
       {
@@ -677,7 +695,7 @@ namespace VC
           }
         }
 
-        return new Split(Options, newBlocks, newGotoCmdOrigins, parent, Run);
+        return new Split(Options, () => newBlocks, newGotoCmdOrigins, parent, Run);
       }
 
       private Split SplitAt(int idx)

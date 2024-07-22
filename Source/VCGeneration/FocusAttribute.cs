@@ -28,7 +28,7 @@ public static class FocusAttribute
       focusBlocks.Reverse();
     }
     if (!focusBlocks.Any()) {
-      return new List<ManualSplit> { new(options, impl.Blocks, gotoCmdOrigins, par, run, run.Implementation.tok) };
+      return new List<ManualSplit> { new(options, () => impl.Blocks, gotoCmdOrigins, par, run, run.Implementation.tok) };
     }
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
@@ -71,7 +71,7 @@ public static class FocusAttribute
         }
         newBlocks.Reverse();
         Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
-        result.Add(new ManualSplit(options, OldBlockTransformations.DeleteNoAssertionBlocks(newBlocks), gotoCmdOrigins, par, run, focusToken));
+        result.Add(new ManualSplit(options, () => OldBlockTransformations.DeleteNoAssertionBlocks(newBlocks), gotoCmdOrigins, par, run, focusToken));
       }
       else if (!blocksToInclude.Contains(focusBlocks[focusIndex].Block) || freeAssumeBlocks.Contains(focusBlocks[focusIndex].Block))
       {

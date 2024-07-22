@@ -741,7 +741,6 @@ namespace Microsoft.Boogie
         for (var index = 0; index < splits.Count; index++) {
           var split = splits[index];
           split.SplitIndex = index;
-          split.PrintSplit();
         }
 
         return splits.Select(split => new VerificationTask(this, processedProgram, split, modelViewInfo));
