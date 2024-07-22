@@ -41,12 +41,10 @@ public static class ManualSplitFinder {
       var entryBlockHasSplit = splitPoints.ContainsKey(entryPoint);
       var firstSplitBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
         -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert);
-      if (firstSplitBlocks.Any()) {
-        splits.Add(new ManualSplit(initialSplit.Options, () => {
-          BlockTransformations.Optimize(firstSplitBlocks, program);
-          return firstSplitBlocks;
-        }, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
-      }
+      splits.Add(new ManualSplit(initialSplit.Options, () => {
+        BlockTransformations.Optimize(firstSplitBlocks, program);
+        return firstSplitBlocks;
+      }, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
       foreach (var block in initialSplit.Blocks) {
         var tokens = splitPoints.GetValueOrDefault(block);
         if (tokens == null) {
@@ -57,13 +55,11 @@ public static class ManualSplitFinder {
           var token = tokens[i];
           bool lastSplitInBlock = i == tokens.Count - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, block, lastSplitInBlock, splitOnEveryAssert);
-          if (newBlocks.Any()) {
-            splits.Add(new ManualSplit(initialSplit.Options, 
-              () => {
-                BlockTransformations.Optimize(newBlocks, program);
-                return newBlocks;
-              }, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
-          }
+          splits.Add(new ManualSplit(initialSplit.Options, 
+            () => {
+              BlockTransformations.Optimize(newBlocks, program);
+              return newBlocks;
+            }, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
         }
       }
     }
@@ -77,13 +73,11 @@ public static class ManualSplitFinder {
       foreach (Cmd command in block.Cmds) {
         if (command is AssertCmd assertCmd) {
           var newBlocks = SplitOnAssert(initialSplit.Options, initialSplit.Blocks, assertCmd);
-          if (newBlocks.Any()) {
-            result.Add(new ManualSplit(initialSplit.Options, 
-              () => {
-                BlockTransformations.Optimize(newBlocks, program);
-                return newBlocks;
-              }, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, assertCmd.tok));
-          }
+          result.Add(new ManualSplit(initialSplit.Options, 
+            () => {
+              BlockTransformations.Optimize(newBlocks, program);
+              return newBlocks;
+            }, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, assertCmd.tok));
         }
       }
     }
