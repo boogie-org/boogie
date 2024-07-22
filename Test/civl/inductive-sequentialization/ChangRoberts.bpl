@@ -20,8 +20,7 @@ function {:inline} Below(self: int, pid: int): bool
 
 const ExpectedLeader: int;
 axiom ValidPid(ExpectedLeader);
-axiom (forall i: int:: ValidPid(i) ==> Priority(i) <= Priority(ExpectedLeader));
-axiom (forall i: int:: ValidPid(i) && Priority(i) == Priority(ExpectedLeader) ==> i <= ExpectedLeader);
+axiom (forall i: int:: ValidPid(i) ==> i == ExpectedLeader || Below(i, ExpectedLeader));
 
 // alternative coordinates for identifying processes where ExpectedLeader is at position 0
 // Pos converts from process id to its position
