@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reactive;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using VCGeneration.Prune;
@@ -20,12 +21,17 @@ public static class BlockTransformations {
   }
 
   private static void DeleteUselessBlocks(List<Block> blocks) {
-    var stack = new Stack<Block>();
+    var toVisit = new HashSet<Block>();
+    var removed = new HashSet<Block>();
     foreach (var block in blocks) {
-      stack.Push(block);
+      toVisit.Add(block);
     }
-    while(stack.Any()) {
-      var block = stack.Pop();
+    while(toVisit.Count > 0) {
+      var block = toVisit.First();
+      toVisit.Remove(block);
+      if (removed.Contains(block)) {
+        continue;
+      }
       if (block.Cmds.Any()) {
         continue;
       }
@@ -36,12 +42,17 @@ public static class BlockTransformations {
         continue;
       }
 
+      removed.Add(block);
       blocks.Remove(block);
 
+      var noPredecessors = !block.Predecessors.Any();
+      var noSuccessors = block.TransferCmd is not GotoCmd outGoto2 || !outGoto2.labelTargets.Any();
       foreach (var predecessor in block.Predecessors) {
         var intoCmd = (GotoCmd)predecessor.TransferCmd;
         intoCmd.RemoveTarget(block);
-        stack.Push(predecessor);
+        if (noSuccessors) {
+          toVisit.Add(predecessor);
+        }
       }
 
       if (block.TransferCmd is not GotoCmd outGoto) {
@@ -50,7 +61,9 @@ public static class BlockTransformations {
 
       foreach (var outBlock in outGoto.labelTargets) {
         outBlock.Predecessors.Remove(block);
-        stack.Push(outBlock);
+        if (noPredecessors) {
+          toVisit.Add(outBlock);
+        }
       }
 
       foreach (var predecessor in block.Predecessors) {
@@ -106,9 +119,22 @@ public static class BlockTransformations {
   }
 
   public static void PruneAssumptions(Program program, List<Block> blocks) {
+
+    var controlFlowGraph0 = Pruner.GetControlFlowGraph(blocks);
+    var asserts = controlFlowGraph0.Nodes.OfType<AssertCmd>().ToList();
+    var reachesAnalysis = new ReachesAssertionAnalysis(asserts,
+      cmd => controlFlowGraph0.Predecessors(cmd),
+      cmd => controlFlowGraph0.Successors(cmd));
+    reachesAnalysis.Run();
+    foreach (var block in blocks) {
+      block.Cmds = block.Cmds.Where(cmd => {
+        var keep = cmd is not AssumeCmd || reachesAnalysis.States.GetValueOrDefault(cmd, false);
+        return keep;
+      }).ToList();
+    }
+
     var commandsPartOfContradiction = new HashSet<Cmd>();
     var controlFlowGraph = Pruner.GetControlFlowGraph(blocks);
-    var asserts = controlFlowGraph.Nodes.OfType<AssertCmd>().ToList();
     foreach (var assert in asserts) {
       var proofByContradiction = assert.Expr.Equals(Expr.False); // TODO take into account Lit ??
       if (proofByContradiction) {
@@ -118,7 +144,7 @@ public static class BlockTransformations {
         }
       }
     }
-
+    
     var globals = program.Variables.Where(g => g.Name.Contains("Height")).ToList();
     var liveAnalysis = new LiveVariablesAnalysis(globals, 
       asserts, 
@@ -134,10 +160,38 @@ public static class BlockTransformations {
                        assumeCmd.Expr.Equals(Expr.False) || // Explicit assume false should be kept. // TODO take into account Lit ??
                        commandsPartOfContradiction.Contains(assumeCmd) ||
                        liveAnalysis.LiveCommands.Contains(assumeCmd);
-        
+
+        if (!keep) {
+          var b = 3;
+        }
         return keep;
       }).ToList();
     }
+  }
+}
+
+/* assume y == g;
+ * assume f == x;
+ * assume f == g;
+ * assert x == y;
+ */
+
+class ReachesAssertionAnalysis : DataflowAnalysis<Absy, bool> {
+  public ReachesAssertionAnalysis(IReadOnlyList<Absy> roots, Func<Absy, IEnumerable<Absy>> getNext, Func<Absy, IEnumerable<Absy>> getPrevious) : base(roots, getNext, getPrevious)
+  {
+  }
+
+  protected override bool Empty => false;
+  protected override bool Merge(bool first, bool second) {
+    return first || second;
+  }
+
+  protected override bool StateEquals(bool first, bool second) {
+    return first == second;
+  }
+
+  protected override bool Update(Absy node, bool state) {
+    return node is AssertCmd || state;
   }
 }
 

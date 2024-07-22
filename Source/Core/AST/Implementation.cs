@@ -875,7 +875,7 @@ public class Implementation : DeclWithFormals {
   /// Compute the strongly connected compontents of the blocks in the implementation.
   /// As a side effect, it also computes the "predecessor" relation for the block in the implementation
   /// </summary>
-  override public void ComputeStronglyConnectedComponents()
+  public override void ComputeStronglyConnectedComponents()
   {
     if (!this.BlockPredecessorsComputed)
     {
