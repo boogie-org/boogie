@@ -77,7 +77,7 @@ modifies leader;
     call create_asyncs(
       (lambda pa: P :: ValidPid(pa->pid) && Pos(pa->pid) < Pos(pid) && pa->self == Next(pa->pid)));
     // create singleton and set the choice
-    call create_async(choice);
+    async call P(self, pid);
     call set_choice(choice);
   } else {
     leader[ExpectedLeader] := true;
@@ -125,7 +125,7 @@ async left action {:layer 2} PInit(self: int)
 creates P;
 {
   assert ValidPid(self);
-  call create_async(P(Next(self), self));
+  async call P(Next(self), self);
 }
 
 async atomic action {:layer 2, 3} P(self: int, pid: int)
@@ -139,7 +139,7 @@ modifies leader;
   }
   else if (Below(self, pid))
   {
-    call create_async(P(Next(self), pid));
+    async call P(Next(self), pid);
   }
 }
 

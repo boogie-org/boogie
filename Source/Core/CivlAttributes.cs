@@ -257,7 +257,7 @@ namespace Microsoft.Boogie
 
     public static HashSet<string> Async = new()
     {
-      "create_async", "create_asyncs", "create_multi_asyncs", "set_choice"
+      "create_asyncs", "create_multi_asyncs", "set_choice"
     };
   }
 }

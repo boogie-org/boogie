@@ -49,7 +49,7 @@ namespace Microsoft.Boogie
           civlTypeChecker.program.AddTopLevelDeclaration(ChoiceDatatypeTypeCtorDecl);
           DesugarSetChoice(civlTypeChecker, ImplWithChoice);
         }
-        DropSetChoice(civlTypeChecker, Impl);
+        DropSetChoice(Impl);
       }
 
       ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
@@ -176,19 +176,24 @@ namespace Microsoft.Boogie
         return;
       }
 
-      var checkerName = $"{Name}_GateSufficiencyChecker";
-      var checkerImpl = new Duplicator().VisitImplementation(ActionDecl.Impl);
-      checkerImpl.Name = checkerName;
-      checkerImpl.Attributes = null;
-      var proc = checkerImpl.Proc;
-      checkerImpl.Proc = new Procedure(proc.tok, checkerName, proc.TypeParameters, proc.InParams,
-        proc.OutParams, proc.IsPure, proc.Requires, proc.Modifies, proc.Ensures);
-      gateSufficiencyCheckerDecls.AddRange(new Declaration[] { checkerImpl.Proc, checkerImpl });
-
-      HoistAsserts(Impl, civlTypeChecker.Options);
       var gateSubst = Substituter.SubstitutionFromDictionary(ActionDecl.InParams
             .Zip(Impl.InParams)
             .ToDictionary(x => x.Item1, x => (Expr)Expr.Ident(x.Item2)));
+
+      var checkerName = $"{Name}_GateSufficiencyChecker";
+      var checkerImpl = new Duplicator().VisitImplementation(Impl);
+      checkerImpl.Name = checkerName;
+      checkerImpl.Attributes = null;
+      var requires = ActionDecl.Requires.Select(
+        requires => new Requires(requires.tok, requires.Free, Substituter.Apply(gateSubst, requires.Condition), 
+                                null, CivlAttributes.ApplySubstitutionToPoolHints(gateSubst, requires.Attributes))).ToList();
+      var proc = checkerImpl.Proc;
+      checkerImpl.Proc = new Procedure(proc.tok, checkerName, proc.TypeParameters, proc.InParams,
+        proc.OutParams, proc.IsPure, requires, proc.Modifies, new List<Ensures>());
+      gateSufficiencyCheckerDecls.AddRange(new Declaration[] { checkerImpl.Proc, checkerImpl });
+
+      HoistAsserts(Impl, civlTypeChecker.Options);
+      
       Gate = ActionDecl.Requires.Select(
         requires => new AssertCmd(requires.tok, Substituter.Apply(gateSubst, requires.Condition),
                                   CivlAttributes.ApplySubstitutionToPoolHints(gateSubst, requires.Attributes))).ToList();
@@ -256,15 +261,28 @@ namespace Microsoft.Boogie
           if (cmd is CallCmd callCmd)
           {
             var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(callCmd.Proc);
-            if (originalProc.Name == "create_async" || originalProc.Name == "create_asyncs" || originalProc.Name == "create_multi_asyncs")
+            if (callCmd.IsAsync)
+            {
+              var actionDecl = (ActionDecl)callCmd.Proc;
+              var pendingAsyncMultiset = 
+                Expr.Store(
+                  ExprHelper.FunctionCall(actionDecl.PendingAsyncConst, Expr.Literal(0)),
+                  ExprHelper.FunctionCall(actionDecl.PendingAsyncCtor, callCmd.Ins),
+                  Expr.Literal(1));
+              var pendingAsyncMultisetType = TypeHelper.MapType(actionDecl.PendingAsyncType, Type.Int);
+              var pendingAsyncCollector = impl.OutParams.Skip(actionDecl.OutParams.Count).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
+              var updateAssignCmd = CmdHelper.AssignCmd(pendingAsyncCollector,
+                ExprHelper.FunctionCall(actionDecl.PendingAsyncAdd, Expr.Ident(pendingAsyncCollector), pendingAsyncMultiset));
+              updateAssignCmd.Typecheck(tc);
+              newCmds.Add(updateAssignCmd);
+              continue;
+            }
+            else if (originalProc.Name == "create_asyncs" || originalProc.Name == "create_multi_asyncs")
             {
               var pendingAsyncType =
                 (CtorType)civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
               var pendingAsync = pendingAsyncTypeToActionDecl[pendingAsyncType];
-              var pendingAsyncMultiset = originalProc.Name == "create_async"
-                ? Expr.Store(ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)), callCmd.Ins[0],
-                  Expr.Literal(1))
-                : originalProc.Name == "create_asyncs"
+              var pendingAsyncMultiset = originalProc.Name == "create_asyncs"
                   ? ExprHelper.FunctionCall(pendingAsync.PendingAsyncIte, callCmd.Ins[0],
                     ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(1)),
                     ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0)))
@@ -272,8 +290,7 @@ namespace Microsoft.Boogie
               var pendingAsyncMultisetType = TypeHelper.MapType(pendingAsyncType, Type.Int);
               var pendingAsyncCollector = impl.OutParams.Skip(actionDecl.OutParams.Count).First(v => v.TypedIdent.Type.Equals(pendingAsyncMultisetType));
               var updateAssignCmd = CmdHelper.AssignCmd(pendingAsyncCollector,
-                ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(pendingAsyncCollector),
-                  pendingAsyncMultiset));
+                ExprHelper.FunctionCall(pendingAsync.PendingAsyncAdd, Expr.Ident(pendingAsyncCollector), pendingAsyncMultiset));
               updateAssignCmd.Typecheck(tc);
               newCmds.Add(updateAssignCmd);
               continue;
@@ -285,7 +302,7 @@ namespace Microsoft.Boogie
       });
     }
 
-    private void DropSetChoice(CivlTypeChecker civlTypeChecker, Implementation impl)
+    private void DropSetChoice(Implementation impl)
     {
       impl.Blocks.ForEach(block =>
       {
