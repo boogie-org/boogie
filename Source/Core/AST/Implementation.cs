@@ -464,7 +464,7 @@ public class Implementation : DeclWithFormals {
   public void EmitImplementation(TokenTextWriter stream, int level, IEnumerable<Block> blocks,
     bool showLocals) {
     EmitImplementation(stream, level, writer => {
-      foreach (var block in Blocks) {
+      foreach (var block in blocks) {
         block.Emit(writer, level + 1);
       }
     }, showLocals);

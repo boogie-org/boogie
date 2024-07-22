@@ -935,6 +935,7 @@ namespace VC
         ModelViewInfo mvInfo, uint timeout,
         uint rlimit, CancellationToken cancellationToken)
       {
+        PrintSplit();
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
 

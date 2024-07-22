@@ -56,8 +56,7 @@ public static class BlockTransformations {
       foreach (var predecessor in block.Predecessors) {
         var intoCmd = (GotoCmd)predecessor.TransferCmd;
         foreach (var outBlock in outGoto.labelTargets) {
-          outBlock.Predecessors.Remove(block);
-          if (!outGoto.labelTargets.Contains(outBlock)) {
+          if (!intoCmd.labelTargets.Contains(outBlock)) {
             intoCmd.AddTarget(outBlock);
             outBlock.Predecessors.Add(predecessor);
           }

@@ -150,7 +150,6 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         run.Implementation.GetTimeLimit(options);
-      split.PrintSplit();
       await split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
         Implementation.GetResourceLimit(options), cancellationToken);
     }
