@@ -119,34 +119,6 @@ public static class BlockTransformations {
   }
 
   public static void PruneAssumptions(Program program, List<Block> blocks) {
-
-    var controlFlowGraph0 = Pruner.GetControlFlowGraph(blocks);
-    var asserts = controlFlowGraph0.Nodes.OfType<AssertCmd>().ToList();
-    var reachesAnalysis = new ReachesAssertionAnalysis(asserts,
-      cmd => controlFlowGraph0.Predecessors(cmd),
-      cmd => controlFlowGraph0.Successors(cmd));
-    reachesAnalysis.Run();
-    foreach (var block in blocks) {
-      block.Cmds = block.Cmds.Where(cmd => {
-        var keep = cmd is not AssumeCmd || reachesAnalysis.States.GetValueOrDefault(cmd, false);
-        return keep;
-      }).ToList();
-    }
-
-    var commandsPartOfContradiction = new HashSet<Cmd>();
-    var controlFlowGraph = Pruner.GetControlFlowGraph(blocks);
-    foreach (var assert in asserts) {
-      var proofByContradiction = assert.Expr.Equals(Expr.False); // TODO take into account Lit ??
-      if (proofByContradiction) {
-        // Assumptions before a proof by contradiction may all be relevant for proving false
-        foreach (var reachable in controlFlowGraph.ComputeReachability(assert, false).OfType<AssumeCmd>()) {
-          commandsPartOfContradiction.Add(reachable);
-        }
-      }
-    }
-    
-    var globals = program.Variables.Where(g => g.Name.Contains("Height")).ToList();
-
     Dictionary<PredicateCmd, ISet<Variable>> commandVariables = new();
     ISet<Variable> GetVariables(PredicateCmd cmd) {
       return commandVariables.GetOrCreate(cmd, () => {
@@ -155,6 +127,8 @@ public static class BlockTransformations {
         return set.OfType<Variable>().ToHashSet();
       });
     }
+    
+    var globals = program.Variables.Where(g => g.Name.Contains("Height")).ToList();
     
     var dependencyGraph = new Graph<Absy>();
     foreach (var block in blocks) {
@@ -165,28 +139,48 @@ public static class BlockTransformations {
         }
       }
     }
+    
+    var controlFlowGraph = Pruner.GetControlFlowGraph(blocks);
+    var asserts = controlFlowGraph.Nodes.OfType<AssertCmd>().ToList();
+    var assumesToKeep = new HashSet<AssumeCmd>();
+    foreach (var assert in asserts) {
+      var proofByContradiction = assert.Expr.Equals(Expr.False); // TODO take into account Lit ??
+      var reachableAssumes = controlFlowGraph.ComputeReachability(assert, false).OfType<AssumeCmd>().ToHashSet();
+      if (proofByContradiction) {
+        foreach (var assume in reachableAssumes) {
+          assumesToKeep.Add(assume);
+        }
 
-    foreach (var global in globals) {
-      dependencyGraph.Nodes.Add(global);
-    }
+        continue;
+      }
+      
+      var controlFlowAssumes = reachableAssumes.Where(
+        cmd => QKeyValue.FindBoolAttribute(cmd.Attributes, "partition")).ToList();
+      HashSet<AssumeCmd> dependentAssumes = new();
+      // TODO could improve performance related to globals
 
-    var controlFlowAssumes = dependencyGraph.Nodes.OfType<AssumeCmd>().Where(
-      cmd => QKeyValue.FindBoolAttribute(cmd.Attributes, "partition"));
-    HashSet<AssumeCmd> reachableAssumes = new();
-    foreach (var root in asserts.Concat<Absy>(globals).Concat(controlFlowAssumes)) {
-      foreach (var reachable in dependencyGraph.ComputeReachability(root)) {
-        if (reachable is AssumeCmd assumeCmd) {
-          reachableAssumes.Add(assumeCmd);
+      foreach (var root in controlFlowAssumes.Concat<Absy>(globals).Append<Absy>(assert)) {
+        if (!dependencyGraph.Nodes.Contains(root)) {
+          continue;
+        }
+        foreach (var reachable in dependencyGraph.ComputeReachability(root)) {
+          if (reachable is AssumeCmd assumeCmd) {
+            dependentAssumes.Add(assumeCmd);
+          }
+        }
+      }
+      
+      foreach(var assumeCmd in reachableAssumes)
+      {
+        if (assumeCmd.Expr.Equals(Expr.False) || dependentAssumes.Contains(assumeCmd)) {
+          assumesToKeep.Add(assumeCmd); // Explicit assume false should be kept. // TODO take into account Lit ??
         }
       }
     }
     
     foreach (var block in blocks) {
       block.Cmds = block.Cmds.Where(cmd => {
-        var keep = cmd is not AssumeCmd assumeCmd ||
-                   assumeCmd.Expr.Equals(Expr.False) || // Explicit assume false should be kept. // TODO take into account Lit ??
-                   commandsPartOfContradiction.Contains(assumeCmd) ||
-                   reachableAssumes.Contains(assumeCmd);
+        var keep = cmd is not AssumeCmd assumeCmd || assumesToKeep.Contains(assumeCmd);
 
         if (!keep) {
           var b = 3;
@@ -194,24 +188,5 @@ public static class BlockTransformations {
         return keep;
       }).ToList();
     }
-  }
-}
-
-class ReachesAssertionAnalysis : DataflowAnalysis<Absy, bool> {
-  public ReachesAssertionAnalysis(IReadOnlyList<Absy> roots, Func<Absy, IEnumerable<Absy>> getNext, Func<Absy, IEnumerable<Absy>> getPrevious) : base(roots, getNext, getPrevious)
-  {
-  }
-
-  protected override bool Empty => false;
-  protected override bool Merge(bool first, bool second) {
-    return first || second;
-  }
-
-  protected override bool StateEquals(bool first, bool second) {
-    return first == second;
-  }
-
-  protected override bool Update(Absy node, bool state) {
-    return node is AssertCmd || state;
   }
 }
