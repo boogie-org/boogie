@@ -148,7 +148,7 @@ public static class BlockTransformations {
           if (!globals.Contains(variable) && 
               (false
               || variable is Incarnation { OriginalVariable: GlobalVariable } 
-              || variable.Name.Contains("$w$")
+              //|| variable.Name.Contains("$w$")
               || variable is Constant
               || variable is GlobalVariable
               )) 
