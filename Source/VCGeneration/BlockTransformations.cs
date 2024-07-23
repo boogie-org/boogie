@@ -130,16 +130,6 @@ public static class BlockTransformations {
     
     var globals = program.Variables.Where(g => g.Name.Contains("Height")).ToList();
     
-    var dependencyGraph = new Graph<Absy>();
-    foreach (var block in blocks) {
-      foreach (var cmd in block.Cmds.OfType<PredicateCmd>()) {
-        foreach (var variable in GetVariables(cmd)) {
-          dependencyGraph.AddEdge(cmd, variable);
-          dependencyGraph.AddEdge(variable, cmd);
-        }
-      }
-    }
-    
     var controlFlowGraph = Pruner.GetControlFlowGraph(blocks);
     var asserts = controlFlowGraph.Nodes.OfType<AssertCmd>().ToList();
     var assumesToKeep = new HashSet<AssumeCmd>();
@@ -154,8 +144,26 @@ public static class BlockTransformations {
         continue;
       }
       
-      var controlFlowAssumes = reachableAssumes.Where(
-        cmd => QKeyValue.FindBoolAttribute(cmd.Attributes, "partition")).ToList();
+      var dependencyGraph = new Graph<Absy>();
+      foreach (var cmd in reachableAssumes.Append<PredicateCmd>(assert)) {
+        foreach (var variable in GetVariables(cmd)) {
+          if (!globals.Contains(variable) && 
+              (false
+              || variable is Incarnation { OriginalVariable: GlobalVariable } 
+              || variable.Name.Contains("$w$")
+              || variable is Constant
+              || variable is GlobalVariable
+              )) 
+          {
+            continue;
+          }
+          dependencyGraph.AddEdge(cmd, variable);
+          dependencyGraph.AddEdge(variable, cmd);
+        }
+      }
+
+      var controlFlowAssumes = new List<AssumeCmd>();
+      // reachableAssumes.Where(cmd => QKeyValue.FindBoolAttribute(cmd.Attributes, "partition")).ToList();
       HashSet<AssumeCmd> dependentAssumes = new();
       // TODO could improve performance related to globals
 
@@ -172,8 +180,14 @@ public static class BlockTransformations {
       
       foreach(var assumeCmd in reachableAssumes)
       {
+        if (GetVariables(assumeCmd).All(v => v is Constant)) {
+          assumesToKeep.Add(assumeCmd);
+        } 
+        else 
         if (assumeCmd.Expr.Equals(Expr.False) || dependentAssumes.Contains(assumeCmd)) {
           assumesToKeep.Add(assumeCmd); // Explicit assume false should be kept. // TODO take into account Lit ??
+        } else {
+          var c = 3;
         }
       }
     }
