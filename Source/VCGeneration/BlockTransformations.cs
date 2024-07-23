@@ -176,9 +176,10 @@ public static class BlockTransformations {
         }
       }
       
-      foreach(var assumeCmd in reachableAssumes)
-      {
-        if (GetVariables(assumeCmd).All(v => v is Constant)) {
+      foreach(var assumeCmd in reachableAssumes) {
+        var variables = GetVariables(assumeCmd);
+        if (variables.All(v => v is Constant || v is GlobalVariable
+                               || v is Incarnation incarnation && incarnation.OriginalVariable is Constant or GlobalVariable)) {
           assumesToKeep.Add(assumeCmd);
         } 
         else 
