@@ -223,10 +223,9 @@ namespace VC
       Block origStartBlock = impl.Blocks[0];
       Block insertionPoint = new Block(
         new Token(-17, -4), blockLabel, startCmds,
-        new GotoCmd(Token.NoToken, new List<String> {origStartBlock.Label}, new List<Block> {origStartBlock}));
+        new GotoCmd(impl.tok, new List<String> {origStartBlock.Label}, new List<Block> {origStartBlock}));
 
-      impl.Blocks[0] = insertionPoint; // make insertionPoint the start block
-      impl.Blocks.Add(origStartBlock); // and put the previous start block at the end of the list
+      impl.Blocks.Insert(0, insertionPoint); // make insertionPoint the start block
 
       // (free and checked) requires clauses
       foreach (Requires req in impl.Proc.Requires)
@@ -546,20 +545,19 @@ namespace VC
         if (returnBlocks > 1)
         {
           string unifiedExitLabel = "GeneratedUnifiedExit";
-          Block unifiedExit;
-          unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(),
+          var unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(),
             new ReturnCmd(impl.StructuredStmts != null ? impl.StructuredStmts.EndCurly : Token.NoToken));
           Contract.Assert(unifiedExit != null);
           foreach (Block b in impl.Blocks)
           {
-            if (b.TransferCmd is ReturnCmd)
+            if (b.TransferCmd is ReturnCmd returnCmd)
             {
               List<String> labels = new List<String>();
               labels.Add(unifiedExitLabel);
               List<Block> bs = new List<Block>();
               bs.Add(unifiedExit);
-              GotoCmd go = new GotoCmd(Token.NoToken, labels, bs);
-              gotoCmdOrigins[go] = (ReturnCmd) b.TransferCmd;
+              GotoCmd go = new GotoCmd(returnCmd.tok, labels, bs);
+              gotoCmdOrigins[go] = returnCmd;
               b.TransferCmd = go;
               unifiedExit.Predecessors.Add(b);
             }

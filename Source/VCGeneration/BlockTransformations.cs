@@ -106,13 +106,10 @@ public static class BlockTransformations {
 
       blocks.Remove(next);
       current.Cmds.AddRange(next.Cmds);
-      gotoCmd.RemoveTarget(next);
-      if (next.TransferCmd is GotoCmd nextGotoCmd) {
-        gotoCmd.AddTargets(nextGotoCmd.labelTargets);
-        foreach (var nextTarget in nextGotoCmd.labelTargets) {
-          nextTarget.Predecessors.Remove(next);
-          nextTarget.Predecessors.Add(current);
-        }
+      current.TransferCmd = next.TransferCmd;
+      foreach (var nextTarget in current.Exits()) {
+        nextTarget.Predecessors.Remove(next);
+        nextTarget.Predecessors.Add(current);
       }
       stack.Push(current);
     }
@@ -134,7 +131,8 @@ public static class BlockTransformations {
     var asserts = controlFlowGraph.Nodes.OfType<AssertCmd>().ToList();
     var assumesToKeep = new HashSet<AssumeCmd>();
     foreach (var assert in asserts) {
-      var proofByContradiction = assert.Expr.Equals(Expr.False); // TODO take into account Lit ??
+      var proofByContradiction = assert.Expr.Equals(Expr.False) 
+                                 || assert.Expr.ToString() == "Lit(false)"; // TODO use annotation placed by Dafny
       var reachableAssumes = controlFlowGraph.ComputeReachability(assert, false).OfType<AssumeCmd>().ToHashSet();
       if (proofByContradiction) {
         foreach (var assume in reachableAssumes) {
