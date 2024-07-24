@@ -136,6 +136,10 @@ namespace Microsoft.Boogie
         programId = "main_program_id";
       }
 
+      if (Options.PrintFile != null) {
+        PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
+      }
+      
       PipelineOutcome outcome = ResolveAndTypecheck(program, bplFileName, out var civlTypeChecker);
       if (outcome != PipelineOutcome.ResolvedAndTypeChecked) {
         return true;
