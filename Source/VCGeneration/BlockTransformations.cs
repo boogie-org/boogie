@@ -122,14 +122,7 @@ public static class BlockTransformations {
 
   public static void PruneAssumptions(Program program, List<Block> blocks) {
     Dictionary<PredicateCmd, ISet<Variable>> commandVariables = new();
-    ISet<Variable> GetVariables(PredicateCmd cmd) {
-      return commandVariables.GetOrCreate(cmd, () => {
-        var set = new GSet<object>();
-        cmd.Expr.ComputeFreeVariables(set);
-        return set.OfType<Variable>().ToHashSet();
-      });
-    }
-    
+
     var gatekeepers = program.Variables.
       Where(g => g.Name.Contains("Height") || g.Name.StartsWith("reveal__")).ToList();
     
@@ -202,6 +195,16 @@ public static class BlockTransformations {
     
     foreach (var block in blocks) {
       block.Cmds = block.Cmds.Where(cmd => cmd is not AssumeCmd assumeCmd || assumesToKeep.Contains(assumeCmd)).ToList();
+    }
+
+    return;
+
+    ISet<Variable> GetVariables(PredicateCmd cmd) {
+      return commandVariables.GetOrCreate(cmd, () => {
+        var set = new GSet<object>();
+        cmd.Expr.ComputeFreeVariables(set);
+        return set.OfType<Variable>().ToHashSet();
+      });
     }
   }
 }

@@ -55,17 +55,20 @@ class OldBlockTransformations {
     return b.Cmds.Exists(IsNonTrivialAssert);
   }
 
-  public static void StopControlFlowAtAssumeFalse(Block b)
+  public static void StopControlFlowAtAssumeFalse(Block block)
   {
-    var firstFalseIdx = b.Cmds.FindIndex(IsAssumeFalse);
+    var firstFalseIdx = block.Cmds.FindIndex(IsAssumeFalse);
     if (firstFalseIdx == -1)
     {
       return;
     }
 
-    b.Cmds = b.Cmds.Take(firstFalseIdx + 1).ToList();
-    if (b.TransferCmd is GotoCmd) {
-      b.TransferCmd = new ReturnCmd(b.tok);
+    block.Cmds = block.Cmds.Take(firstFalseIdx + 1).ToList();
+    if (block.TransferCmd is GotoCmd gotoCmd) {
+      block.TransferCmd = new ReturnCmd(block.tok);
+      foreach (var target in gotoCmd.labelTargets) {
+        target.Predecessors.Remove(block);
+      }
     }
   }
   
