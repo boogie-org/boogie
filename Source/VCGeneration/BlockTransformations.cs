@@ -21,7 +21,10 @@ public static class BlockTransformations {
 
     DeleteBlocksNotLeadingToAssertions(blocks);
     DeleteUselessBlocks(blocks);
-    MergeOneToOneBlocks(blocks);
+
+    var coalesced = BlockCoalescer.CoalesceFromRootBlock(blocks);
+    blocks.Clear();
+    blocks.AddRange(coalesced);
   }
 
   private static void StopControlFlowAtAssumeFalse(Block b)
@@ -59,7 +62,7 @@ public static class BlockTransformations {
         {
           var gtc = new GotoCmd(exit.tok, exit.labelTargets.Where(l => interestingBlocks.Contains(l)).ToList());
           currentBlock.TransferCmd = gtc;
-          interesting = interesting || gtc.labelTargets.Count != 0;
+          interesting = gtc.labelTargets.Count != 0;
         }
         else
         {
@@ -85,11 +88,6 @@ public static class BlockTransformations {
   {
     bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd ac && !(ac.Expr is LiteralExpr le && le.asBool); }
     return b.Cmds.Exists(IsNonTrivialAssert);
-  }
-
-  private static void OptimizeBlocks(List<Block> blocks) {
-    DeleteUselessBlocks(blocks);
-    MergeOneToOneBlocks(blocks);
   }
 
   private static void DeleteUselessBlocks(List<Block> blocks) {
@@ -147,43 +145,6 @@ public static class BlockTransformations {
           }
         }
       }
-    }
-  }
-
-  private static void MergeOneToOneBlocks(List<Block> blocks) {
-    var stack = new Stack<Block>();
-    foreach (var block in blocks) {
-      if (!block.Predecessors.Any()) {
-        stack.Push(block);
-      }
-    }
-    while (stack.Any()) {
-      var current = stack.Pop();
-      if (current.TransferCmd is not GotoCmd gotoCmd) {
-        continue;
-      }
-
-      if (gotoCmd.labelTargets.Count != 1) {
-        foreach (var aNext in gotoCmd.labelTargets) {
-          stack.Push(aNext);
-        }
-        continue;
-      }
-
-      var next = gotoCmd.labelTargets.Single();
-      if (next.Predecessors.Count != 1) {
-        stack.Push(next);
-        continue;
-      }
-
-      blocks.Remove(next);
-      current.Cmds.AddRange(next.Cmds);
-      current.TransferCmd = next.TransferCmd;
-      foreach (var nextTarget in current.Exits()) {
-        nextTarget.Predecessors.Remove(next);
-        nextTarget.Predecessors.Add(current);
-      }
-      stack.Push(current);
     }
   }
 }

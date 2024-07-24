@@ -1,3 +1,5 @@
+#nullable enable
+
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 
@@ -7,159 +9,148 @@ public class BlockCoalescer : ReadOnlyVisitor
 {
   public static void CoalesceBlocks(Program program)
   {
-    Contract.Requires(program != null);
-    BlockCoalescer blockCoalescer = new BlockCoalescer();
+    var blockCoalescer = new BlockCoalescer();
     blockCoalescer.Visit(program);
   }
 
-  private static HashSet<Block /*!*/> /*!*/ ComputeMultiPredecessorBlocks(Implementation /*!*/ impl)
+  private static HashSet<Block> ComputeMultiPredecessorBlocks(Block rootBlock)
   {
-    Contract.Requires(impl != null);
     Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Block>>()));
-    HashSet<Block /*!*/> visitedBlocks = new HashSet<Block /*!*/>();
-    HashSet<Block /*!*/> multiPredBlocks = new HashSet<Block /*!*/>();
-    Stack<Block /*!*/> dfsStack = new Stack<Block /*!*/>();
-    dfsStack.Push(impl.Blocks[0]);
+    var visitedBlocks = new HashSet<Block /*!*/>();
+    var result = new HashSet<Block>();
+    var dfsStack = new Stack<Block>();
+    dfsStack.Push(rootBlock);
     while (dfsStack.Count > 0)
     {
-      Block /*!*/
-        b = dfsStack.Pop();
-      Contract.Assert(b != null);
-      if (visitedBlocks.Contains(b))
+      var /*!*/ block = dfsStack.Pop();
+      Contract.Assert(block != null);
+      if (!visitedBlocks.Add(block))
       {
-        multiPredBlocks.Add(b);
+        result.Add(block);
         continue;
       }
 
-      visitedBlocks.Add(b);
-      if (b.TransferCmd == null)
+      if (block.TransferCmd == null)
       {
         continue;
       }
 
-      if (b.TransferCmd is ReturnCmd)
+      if (block.TransferCmd is ReturnCmd)
       {
         continue;
       }
 
-      Contract.Assert(b.TransferCmd is GotoCmd);
-      GotoCmd gotoCmd = (GotoCmd) b.TransferCmd;
+      Contract.Assert(block.TransferCmd is GotoCmd);
+      var gotoCmd = (GotoCmd) block.TransferCmd;
       if (gotoCmd.labelTargets == null)
       {
         continue;
       }
 
-      foreach (Block /*!*/ succ in gotoCmd.labelTargets)
+      foreach (var /*!*/ succ in gotoCmd.labelTargets)
       {
         Contract.Assert(succ != null);
         dfsStack.Push(succ);
       }
     }
 
-    return multiPredBlocks;
+    return result;
   }
 
   public override Implementation VisitImplementation(Implementation impl)
   {
-    //Contract.Requires(impl != null);
-    Contract.Ensures(Contract.Result<Implementation>() != null);
-    //Console.WriteLine("Procedure {0}", impl.Name);
-    //Console.WriteLine("Initial number of blocks = {0}", impl.Blocks.Count);
-
-    HashSet<Block /*!*/> multiPredBlocks = ComputeMultiPredecessorBlocks(impl);
-    Contract.Assert(cce.NonNullElements(multiPredBlocks));
-    HashSet<Block /*!*/> visitedBlocks = new HashSet<Block /*!*/>();
-    HashSet<Block /*!*/> removedBlocks = new HashSet<Block /*!*/>();
-    Stack<Block /*!*/> dfsStack = new Stack<Block /*!*/>();
-    dfsStack.Push(impl.Blocks[0]);
-    while (dfsStack.Count > 0)
+    var newBlocks = CoalesceFromRootBlock(impl.Blocks);
+    impl.Blocks = newBlocks;
+    foreach (var block in impl.Blocks)
     {
-      Block /*!*/
-        b = dfsStack.Pop();
-      Contract.Assert(b != null);
-      if (visitedBlocks.Contains(b))
+      if (block.TransferCmd is ReturnCmd)
       {
         continue;
       }
 
-      visitedBlocks.Add(b);
-      if (b.TransferCmd == null)
+      var gotoCmd = (GotoCmd)block.TransferCmd;
+      gotoCmd.labelNames = new List<string>();
+      foreach (var successor in gotoCmd.labelTargets)
+      {
+        gotoCmd.labelNames.Add(successor.Label);
+      }
+    }
+    return impl;
+  }
+
+  public static List<Block> CoalesceFromRootBlock(List<Block> blocks)
+  {
+    var multiPredecessorBlocks = ComputeMultiPredecessorBlocks(blocks[0]);
+    Contract.Assert(cce.NonNullElements(multiPredecessorBlocks));
+    var visitedBlocks = new HashSet<Block>();
+    var removedBlocks = new HashSet<Block>();
+    var toVisit = new Stack<Block>();
+    toVisit.Push(blocks[0]);
+    while (toVisit.Count > 0)
+    {
+      var block = toVisit.Pop();
+      Contract.Assert(block != null);
+      if (!visitedBlocks.Add(block))
       {
         continue;
       }
 
-      if (b.TransferCmd is ReturnCmd)
+      if (block.TransferCmd == null)
       {
         continue;
       }
 
-      Contract.Assert(b.TransferCmd is GotoCmd);
-      GotoCmd gotoCmd = (GotoCmd) b.TransferCmd;
+      if (block.TransferCmd is ReturnCmd)
+      {
+        continue;
+      }
+
+      Contract.Assert(block.TransferCmd is GotoCmd);
+      var gotoCmd = (GotoCmd) block.TransferCmd;
       if (gotoCmd.labelTargets == null)
       {
         continue;
       }
 
-      if (gotoCmd.labelTargets.Count == 1)
+      if (gotoCmd.labelTargets.Count != 1)
       {
-        Block /*!*/
-          succ = cce.NonNull(gotoCmd.labelTargets[0]);
-        if (!multiPredBlocks.Contains(succ))
+        foreach (var aSuccessor in gotoCmd.labelTargets)
         {
-          foreach (Cmd /*!*/ cmd in succ.Cmds)
-          {
-            Contract.Assert(cmd != null);
-            b.Cmds.Add(cmd);
-          }
-
-          b.TransferCmd = succ.TransferCmd;
-          if (!b.tok.IsValid && succ.tok.IsValid)
-          {
-            b.tok = succ.tok;
-            b.Label = succ.Label;
-          }
-
-          removedBlocks.Add(succ);
-          dfsStack.Push(b);
-          visitedBlocks.Remove(b);
-          continue;
+          Contract.Assert(aSuccessor != null);
+          toVisit.Push(aSuccessor);
         }
-      }
-
-      foreach (Block /*!*/ succ in gotoCmd.labelTargets)
-      {
-        Contract.Assert(succ != null);
-        dfsStack.Push(succ);
-      }
-    }
-
-    List<Block /*!*/> newBlocks = new List<Block /*!*/>();
-    foreach (Block /*!*/ b in impl.Blocks)
-    {
-      Contract.Assert(b != null);
-      if (visitedBlocks.Contains(b) && !removedBlocks.Contains(b))
-      {
-        newBlocks.Add(b);
-      }
-    }
-
-    impl.Blocks = newBlocks;
-    foreach (Block b in impl.Blocks)
-    {
-      if (b.TransferCmd is ReturnCmd)
-      {
         continue;
       }
 
-      GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
-      gotoCmd.labelNames = new List<string>();
-      foreach (Block succ in gotoCmd.labelTargets)
+      var successor = cce.NonNull(gotoCmd.labelTargets[0]);
+      if (multiPredecessorBlocks.Contains(successor))
       {
-        gotoCmd.labelNames.Add(succ.Label);
+        toVisit.Push(successor);
+        continue;
       }
+
+      block.Cmds.AddRange(successor.Cmds);
+      block.TransferCmd = successor.TransferCmd;
+      if (!block.tok.IsValid && successor.tok.IsValid)
+      {
+        block.tok = successor.tok;
+        block.Label = successor.Label;
+      }
+
+      removedBlocks.Add(successor);
+      toVisit.Push(block);
+      visitedBlocks.Remove(block);
     }
 
-    // Console.WriteLine("Final number of blocks = {0}", impl.Blocks.Count);
-    return impl;
+    var newBlocks = new List<Block>();
+    foreach (var block in blocks)
+    {
+      Contract.Assert(block != null);
+      if (visitedBlocks.Contains(block) && !removedBlocks.Contains(block))
+      {
+        newBlocks.Add(block);
+      }
+    }
+    return newBlocks;
   }
 }

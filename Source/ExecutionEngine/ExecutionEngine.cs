@@ -221,7 +221,7 @@ namespace Microsoft.Boogie
           Options.OutputWriter.WriteLine("Coalescing blocks...");
         }
 
-        Microsoft.Boogie.BlockCoalescer.CoalesceBlocks(program);
+        BlockCoalescer.CoalesceBlocks(program);
       }
     }
 
@@ -237,7 +237,7 @@ namespace Microsoft.Boogie
 
     public void EliminateDeadVariables(Program program)
     {
-      Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
+      UnusedVarEliminator.Eliminate(program);
     }
     
     public void PrintBplFile(string filename, Program program, 
