@@ -732,11 +732,13 @@ namespace Microsoft.Boogie
       Inline(program);
 
       var processedProgram = PreProcessProgramVerification(program);
+      
       return GetPrioritizedImplementations(program).SelectMany(implementation =>
       {
         var writer = TextWriter.Null;
         var vcGenerator = new VerificationConditionGenerator(processedProgram.Program, CheckerPool);
 
+        
         var run = new ImplementationRun(implementation, writer);
         var collector = new VerificationResultCollector(Options);
         vcGenerator.PrepareImplementation(run, collector, out _,
@@ -744,7 +746,7 @@ namespace Microsoft.Boogie
           out var modelViewInfo);
 
         ConditionGeneration.ResetPredecessors(run.Implementation.Blocks);
-        var splits = ManualSplitFinder.FocusAndSplit(Options, run, gotoCmdOrigins, vcGenerator).ToList();
+        var splits = ManualSplitFinder.FocusAndSplit(program, Options, run, gotoCmdOrigins, vcGenerator).ToList();
         for (var index = 0; index < splits.Count; index++) {
           var split = splits[index];
           split.SplitIndex = index;

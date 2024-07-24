@@ -3497,7 +3497,7 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(labelNames == null || labelTargets == null || labelNames.Count == labelTargets.Count);
     }
-
+    
     [NotDelayed]
     public GotoCmd(IToken /*!*/ tok, List<String> /*!*/ labelSeq)
       : base(tok)
@@ -3539,6 +3539,11 @@ namespace Microsoft.Boogie
       this.labelTargets = blockSeq;
     }
 
+    public void RemoveTarget(Block b) {
+      labelNames.Remove(b.Label);
+      labelTargets.Remove(b);
+    }
+    
     public void AddTarget(Block b)
     {
       Contract.Requires(b != null);

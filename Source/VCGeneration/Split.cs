@@ -63,30 +63,26 @@ namespace VC
 
       public Implementation /*!*/ Implementation => Run.Implementation;
 
-      Dictionary<Block /*!*/, Block /*!*/> /*!*/
-        copies = new Dictionary<Block /*!*/, Block /*!*/>();
+      Dictionary<Block /*!*/, Block /*!*/> /*!*/ copies = new();
 
       bool doingSlice;
       double sliceInitialLimit;
       double sliceLimit;
       bool slicePos;
-
-      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new HashSet<Block /*!*/>();
-
-      HashSet<Block /*!*/> /*!*/ keepAtAll = new HashSet<Block /*!*/>();
+      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new();
+      HashSet<Block /*!*/> /*!*/ keepAtAll = new();
 
       // async interface
       public int SplitIndex { get; set; }
       public VerificationConditionGenerator.ErrorReporter reporter;
 
-      public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
+      public Split(VCGenOptions options, Func<List<Block /*!*/>> /*!*/ getBlocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
         VerificationConditionGenerator /*!*/ par, ImplementationRun run, int? randomSeed = null)
       {
-        Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(par != null);
-        this.Blocks = blocks;
+        this.getBlocks = getBlocks;
         this.GotoCmdOrigins = gotoCmdOrigins;
         parent = par;
         this.Run = run;
@@ -98,8 +94,6 @@ namespace VC
         randomGen = new Random(RandomSeed);
       }
       
-      
-
       public void PrintSplit() {
         if (Options.PrintSplitFile == null) {
           return;
@@ -196,21 +190,13 @@ namespace VC
         string filename = string.Format("{0}.split.{1}.bpl", Implementation.Name, splitNum);
         using (StreamWriter sw = File.CreateText(filename))
         {
-          int oldPrintUnstructured = Options.PrintUnstructured;
-          Options.PrintUnstructured = 2; // print only the unstructured program
-          bool oldPrintDesugaringSetting = Options.PrintDesugarings;
-          Options.PrintDesugarings = false;
-          List<Block> backup = Implementation.Blocks;
-          Contract.Assert(backup != null);
-          Implementation.Blocks = Blocks;
-          Implementation.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, Options), 0);
-          Implementation.Blocks = backup;
-          Options.PrintDesugarings = oldPrintDesugaringSetting;
-          Options.PrintUnstructured = oldPrintUnstructured;
+          var writer = new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, Options);
+          Implementation.Emit(writer, 0);
         }
       }
 
       int bsid;
+      private readonly Func<List<Block>> getBlocks;
 
       BlockStats GetBlockStats(Block b)
       {
@@ -697,7 +683,7 @@ namespace VC
           }
         }
 
-        return new Split(Options, newBlocks, newGotoCmdOrigins, parent, Run);
+        return new Split(Options, () => newBlocks, newGotoCmdOrigins, parent, Run);
       }
 
       private Split SplitAt(int idx)
