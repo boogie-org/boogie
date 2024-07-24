@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -11,7 +10,6 @@ using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.SMTLib;
 using System.Threading.Tasks;
-using VCGeneration;
 
 namespace VC
 {
@@ -23,10 +21,11 @@ namespace VC
 
       public int RandomSeed { get; }
 
-      public List<Block> Blocks { get; set; }
+      private List<Block> blocks;
+      public List<Block> Blocks => blocks ??= getBlocks();
+
       readonly List<Block> bigBlocks = new();
       public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
-      public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
       public IReadOnlyList<Declaration> prunedDeclarations;
       
       public IReadOnlyList<Declaration> PrunedDeclarations {
@@ -89,7 +88,6 @@ namespace VC
         this.Options = options;
         Interlocked.Increment(ref currentId);
 
-        TopLevelDeclarations = par.program.TopLevelDeclarations;
         RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
         randomGen = new Random(RandomSeed);
       }
