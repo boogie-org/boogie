@@ -407,7 +407,7 @@ namespace VC
         }
       }
 
-      var worker = new SplitAndVerifyWorker(Options, this, run, dataGotoCmdOrigins, callback,
+      var worker = new SplitAndVerifyWorker(program, Options, this, run, dataGotoCmdOrigins, callback,
         dataModelViewInfo, vcOutcome);
 
       vcOutcome = await worker.WorkUntilDone(cancellationToken);
@@ -450,6 +450,17 @@ namespace VC
         data.ModelViewInfo = modelViewInfo;
 
         ExpandAsserts(run.Implementation);
+        
+        if (Options.PrintPassiveFile != null) {
+          lock (Options) {
+            var prev = Options.PrintUnstructured;
+            Options.PrintUnstructured = 2;
+            using var writer = new TokenTextWriter(Options.PrintPassiveFile, false, false, Options);
+            writer.WriteLine();
+            program.Emit(writer);
+            Options.PrintUnstructured = prev;
+          }
+        }
       }
       else
       {

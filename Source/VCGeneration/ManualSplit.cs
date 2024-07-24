@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Boogie;
 
@@ -10,7 +11,7 @@ public class ManualSplit : Split
 
 
   public ManualSplit(VCGenOptions options, 
-    List<Block> blocks, 
+    Func<List<Block>> blocks, 
     Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
     VerificationConditionGenerator par, 
     ImplementationRun run, 

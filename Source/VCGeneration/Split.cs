@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -10,6 +11,7 @@ using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.SMTLib;
 using System.Threading.Tasks;
+using VCGeneration;
 
 namespace VC
 {
@@ -19,12 +21,33 @@ namespace VC
       private readonly Random randomGen;
       public ImplementationRun Run { get; }
 
-      public int RandomSeed { get; private set; }
+      public int RandomSeed { get; }
 
-      public List<Block> Blocks { get; }
+      private List<Block> blocks;
+      public List<Block> Blocks {
+        get
+        {
+          lock (this) {
+            blocks ??= getBlocks();
+          }
+
+          return blocks;
+        }
+      }
       readonly List<Block> bigBlocks = new();
       public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
       public readonly IReadOnlyList<Declaration> TopLevelDeclarations;
+      public IReadOnlyList<Declaration> prunedDeclarations;
+      
+      public IReadOnlyList<Declaration> PrunedDeclarations {
+        get {
+          if (prunedDeclarations == null) {
+            prunedDeclarations = Pruner.GetLiveDeclarations(parent.Options, parent.program, Blocks).ToList();
+          }
+
+          return prunedDeclarations;
+        }
+      }
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
         stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
@@ -50,31 +73,26 @@ namespace VC
 
       public Implementation /*!*/ Implementation => Run.Implementation;
 
-      Dictionary<Block /*!*/, Block /*!*/> /*!*/
-        copies = new Dictionary<Block /*!*/, Block /*!*/>();
+      Dictionary<Block /*!*/, Block /*!*/> /*!*/ copies = new();
 
       bool doingSlice;
       double sliceInitialLimit;
       double sliceLimit;
       bool slicePos;
-
-      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new HashSet<Block /*!*/>();
-
-      HashSet<Block /*!*/> /*!*/ keepAtAll = new HashSet<Block /*!*/>();
+      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new();
+      HashSet<Block /*!*/> /*!*/ keepAtAll = new();
 
       // async interface
       public int SplitIndex { get; set; }
       public VerificationConditionGenerator.ErrorReporter reporter;
 
-      private static int debugCounter;
-      public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
+      public Split(VCGenOptions options, Func<List<Block /*!*/>> /*!*/ getBlocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
         VerificationConditionGenerator /*!*/ par, ImplementationRun run, int? randomSeed = null)
       {
-        Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(par != null);
-        this.Blocks = blocks;
+        this.getBlocks = getBlocks;
         this.GotoCmdOrigins = gotoCmdOrigins;
         parent = par;
         this.Run = run;
@@ -82,32 +100,38 @@ namespace VC
         Interlocked.Increment(ref currentId);
 
         TopLevelDeclarations = par.program.TopLevelDeclarations;
-        var counter = debugCounter++;
-        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "before#" + counter);
-        TopLevelDeclarations = Prune.GetLiveDeclarations(options, par.program, blocks).ToList();
-        PrintTopLevelDeclarationsForPruning(par.program, Implementation, "after#" + counter);
         RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
         randomGen = new Random(RandomSeed);
       }
+      
+      
 
-      private void PrintTopLevelDeclarationsForPruning(Program program, Implementation implementation, string suffix)
-      {
-        if (!Options.Prune || Options.PrintPrunedFile == null)
-        {
+      public void PrintSplit() {
+        if (Options.PrintSplitFile == null) {
           return;
         }
 
         using var writer = new TokenTextWriter(
-          $"{Options.PrintPrunedFile}-{suffix}-{Util.EscapeFilename(implementation.Name)}.bpl", false,
+          $"{Options.PrintSplitFile}-{Util.EscapeFilename(Implementation.Name)}-{SplitIndex}.spl", false,
           Options.PrettyPrint, Options);
 
-        var functionAxioms =
-          program.Functions.Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
-        var constantAxioms =
-          program.Constants.Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
+        Implementation.EmitImplementation(writer, 0, Blocks, false);
+        PrintSplitDeclarations(writer);
+      }
 
-        foreach (var declaration in (TopLevelDeclarations ?? program.TopLevelDeclarations)
-                 .Except(functionAxioms.Concat(constantAxioms)).ToList())
+      private void PrintSplitDeclarations(TokenTextWriter writer)
+      {
+        if (!Options.Prune || !Options.PrintSplitDeclarations)
+        {
+          return;
+        }
+
+        var functionAxioms =
+          PrunedDeclarations.OfType<Function>().Where(f => f.DefinitionAxioms.Any()).SelectMany(f => f.DefinitionAxioms);
+        var constantAxioms =
+          PrunedDeclarations.OfType<Constant>().Where(f => f.DefinitionAxioms.Any()).SelectMany(c => c.DefinitionAxioms);
+
+        foreach (var declaration in PrunedDeclarations.Except(functionAxioms.Concat(constantAxioms)).ToList())
         {
           declaration.Emit(writer, 0);
         }
@@ -178,21 +202,13 @@ namespace VC
         string filename = string.Format("{0}.split.{1}.bpl", Implementation.Name, splitNum);
         using (StreamWriter sw = File.CreateText(filename))
         {
-          int oldPrintUnstructured = Options.PrintUnstructured;
-          Options.PrintUnstructured = 2; // print only the unstructured program
-          bool oldPrintDesugaringSetting = Options.PrintDesugarings;
-          Options.PrintDesugarings = false;
-          List<Block> backup = Implementation.Blocks;
-          Contract.Assert(backup != null);
-          Implementation.Blocks = Blocks;
-          Implementation.Emit(new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, Options), 0);
-          Implementation.Blocks = backup;
-          Options.PrintDesugarings = oldPrintDesugaringSetting;
-          Options.PrintUnstructured = oldPrintUnstructured;
+          var writer = new TokenTextWriter(filename, sw, /*setTokens=*/ false, /*pretty=*/ false, Options);
+          Implementation.EmitImplementation(writer, 0, Blocks, false);
         }
       }
 
       int bsid;
+      private readonly Func<List<Block>> getBlocks;
 
       BlockStats GetBlockStats(Block b)
       {
@@ -679,7 +695,7 @@ namespace VC
           }
         }
 
-        return new Split(Options, newBlocks, newGotoCmdOrigins, parent, Run);
+        return new Split(Options, () => newBlocks, newGotoCmdOrigins, parent, Run);
       }
 
       private Split SplitAt(int idx)
@@ -715,11 +731,7 @@ namespace VC
 
       void Print()
       {
-        List<Block> tmp = Implementation.Blocks;
-        Contract.Assert(tmp != null);
-        Implementation.Blocks = Blocks;
-        ConditionGeneration.EmitImpl(Options, Run, false);
-        Implementation.Blocks = tmp;
+        ConditionGeneration.EmitImpl(Options, Run, false, Blocks);
       }
 
       public Counterexample ToCounterexample(ProverContext context)
@@ -923,6 +935,7 @@ namespace VC
         ModelViewInfo mvInfo, uint timeout,
         uint rlimit, CancellationToken cancellationToken)
       {
+        PrintSplit();
         Contract.Requires(checker != null);
         Contract.Requires(callback != null);
 
