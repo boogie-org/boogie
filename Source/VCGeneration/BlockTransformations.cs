@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -142,47 +143,50 @@ public static class BlockTransformations {
         continue;
       }
       
-      var dependencyGraph = new Graph<Absy>();
+      var dependencyGraph = new Graph<object>();
       foreach (var cmd in reachableAssumes.Append<PredicateCmd>(assert)) {
         var variables = GetVariables(cmd);
-        var globalEffect = variables.All(v => v is Constant
-                                              || v is GlobalVariable
-                                              || v is Incarnation { OriginalVariable: Constant or GlobalVariable });
-        
-        foreach (var variable in variables) {
-          dependencyGraph.AddEdge(cmd, variable);
-          if (!globalEffect &&
-              !globals.Contains(variable) && 
-              (false
-              || variable is Incarnation { OriginalVariable: GlobalVariable } 
-              || variable is Constant
-              || variable is GlobalVariable
-              )) 
-          {
-            continue;
+        var groups = variables.GroupBy(v => v is Constant
+                               || v is GlobalVariable
+                               || v is Incarnation { OriginalVariable: Constant or GlobalVariable }).ToList();
+
+        var locals = groups.FirstOrDefault(g => !g.Key) ?? Enumerable.Empty<Variable>();
+        var globalsForCommand = groups.FirstOrDefault(g => g.Key);
+        var localsKnot = new object();
+        foreach (var local in locals) {
+          dependencyGraph.AddEdge(local, localsKnot);
+          dependencyGraph.AddEdge(localsKnot, local);
+        }
+
+        if (globalsForCommand != null) {
+          var globalsKnot = new object();
+          foreach (var global in globalsForCommand) {
+            dependencyGraph.AddEdge(global, globalsKnot);
+            dependencyGraph.AddEdge(globalsKnot, global);
           }
-          dependencyGraph.AddEdge(variable, cmd);
+          dependencyGraph.AddEdge(localsKnot, globalsKnot);
         }
       }
 
       var controlFlowAssumes = new List<AssumeCmd>();
       // reachableAssumes.Where(cmd => QKeyValue.FindBoolAttribute(cmd.Attributes, "partition")).ToList();
-      HashSet<AssumeCmd> dependentAssumes = new();
+      HashSet<Variable> dependentVariables = new();
       // TODO could improve performance related to globals
 
-      foreach (var root in controlFlowAssumes.Concat<Absy>(globals).Append<Absy>(assert)) {
+      foreach (var root in controlFlowAssumes.Concat<Absy>(globals).Concat<Absy>(GetVariables(assert))) {
         if (!dependencyGraph.Nodes.Contains(root)) {
           continue;
         }
         foreach (var reachable in dependencyGraph.ComputeReachability(root)) {
-          if (reachable is AssumeCmd assumeCmd) {
-            dependentAssumes.Add(assumeCmd);
+          if (reachable is Variable variable) {
+            dependentVariables.Add(variable);
           }
         }
       }
       
       foreach(var assumeCmd in reachableAssumes) {
-        if (assumeCmd.Expr.Equals(Expr.False) || dependentAssumes.Contains(assumeCmd)) {
+        if (assumeCmd.Expr.Equals(Expr.False) // TODO take into account Lit, use annotation placed by Dafny 
+            || GetVariables(assumeCmd).Overlaps(dependentVariables)) {
           assumesToKeep.Add(assumeCmd); // Explicit assume false should be kept. // TODO take into account Lit ??
         } else {
           var c = 3;
@@ -191,14 +195,7 @@ public static class BlockTransformations {
     }
     
     foreach (var block in blocks) {
-      block.Cmds = block.Cmds.Where(cmd => {
-        var keep = cmd is not AssumeCmd assumeCmd || assumesToKeep.Contains(assumeCmd);
-
-        if (!keep) {
-          var b = 3;
-        }
-        return keep;
-      }).ToList();
+      block.Cmds = block.Cmds.Where(cmd => cmd is not AssumeCmd assumeCmd || assumesToKeep.Contains(assumeCmd)).ToList();
     }
   }
 }
