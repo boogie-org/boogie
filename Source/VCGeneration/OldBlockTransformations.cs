@@ -55,7 +55,7 @@ class OldBlockTransformations {
     return b.Cmds.Exists(IsNonTrivialAssert);
   }
 
-  private static void StopControlFlowAtAssumeFalse(Block b)
+  public static void StopControlFlowAtAssumeFalse(Block b)
   {
     var firstFalseIdx = b.Cmds.FindIndex(IsAssumeFalse);
     if (firstFalseIdx == -1)
@@ -64,7 +64,9 @@ class OldBlockTransformations {
     }
 
     b.Cmds = b.Cmds.Take(firstFalseIdx + 1).ToList();
-    b.TransferCmd = b.TransferCmd is GotoCmd ? new ReturnCmd(b.tok) : b.TransferCmd;
+    if (b.TransferCmd is GotoCmd) {
+      b.TransferCmd = new ReturnCmd(b.tok);
+    }
   }
   
   private static bool IsAssumeFalse (Cmd c) { return c is AssumeCmd { Expr: LiteralExpr { asBool: false } }; }

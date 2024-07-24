@@ -12,6 +12,10 @@ namespace VCGeneration;
 
 public static class BlockTransformations {
   public static void Optimize(List<Block> blocks, Program program) {
+    foreach (var block in blocks) {
+      // TODO somehow this had 0 effect on my customer codebase
+      OldBlockTransformations.StopControlFlowAtAssumeFalse(block);
+    }
     PruneAssumptions(program, blocks);
     OptimizeBlocks(blocks);
   }
