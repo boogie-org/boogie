@@ -126,7 +126,8 @@ public static class BlockTransformations {
       });
     }
     
-    var globals = program.Variables.Where(g => g.Name.Contains("Height")).ToList();
+    var gatekeepers = program.Variables.
+      Where(g => g.Name.Contains("Height") || g.Name.StartsWith("reveal__")).ToList();
     
     var controlFlowGraph = Pruner.GetControlFlowGraph(blocks);
     var asserts = controlFlowGraph.Nodes.OfType<AssertCmd>().ToList();
@@ -168,12 +169,13 @@ public static class BlockTransformations {
         }
       }
 
-      var controlFlowAssumes = new List<AssumeCmd>();
-      // reachableAssumes.Where(cmd => QKeyValue.FindBoolAttribute(cmd.Attributes, "partition")).ToList();
+      var controlFlowAssumes = new List<Variable>();
+      // var controlFlowAssumes = 
+      //   reachableAssumes.Where(cmd => QKeyValue.FindBoolAttribute(cmd.Attributes, "partition")).
+      //     SelectMany(GetVariables).ToList();
       HashSet<Variable> dependentVariables = new();
-      // TODO could improve performance related to globals
 
-      foreach (var root in controlFlowAssumes.Concat<Absy>(globals).Concat<Absy>(GetVariables(assert))) {
+      foreach (var root in controlFlowAssumes.Concat(gatekeepers).Concat(GetVariables(assert))) {
         if (!dependencyGraph.Nodes.Contains(root)) {
           continue;
         }
