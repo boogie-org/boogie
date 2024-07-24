@@ -431,7 +431,46 @@ public class Implementation : DeclWithFormals {
     Attributes = kv;
   }
 
-  public override void Emit(TokenTextWriter stream, int level)
+  public override void Emit(TokenTextWriter stream, int level) {
+    void BlocksWriters(TokenTextWriter stream) {
+      if (this.StructuredStmts != null && !stream.Options.PrintInstrumented && !stream.Options.PrintInlined) {
+        if (this.LocVars.Count > 0) {
+          stream.WriteLine();
+        }
+
+        if (stream.Options.PrintUnstructured < 2) {
+          if (stream.Options.PrintUnstructured == 1) {
+            stream.WriteLine(this, level + 1, "/*** structured program:");
+          }
+
+          this.StructuredStmts.Emit(stream, level + 1);
+          if (stream.Options.PrintUnstructured == 1) {
+            stream.WriteLine(level + 1, "**** end structured program */");
+          }
+        }
+      }
+
+      if (StructuredStmts == null || 1 <= stream.Options.PrintUnstructured ||
+          stream.Options.PrintInstrumented || stream.Options.PrintInlined) {
+        foreach (Block b in Blocks) {
+          b.Emit(stream, level + 1);
+        }
+      }
+    }
+
+    EmitImplementation(stream, level, BlocksWriters, showLocals: true);
+  }
+
+  public void EmitImplementation(TokenTextWriter stream, int level, IEnumerable<Block> blocks,
+    bool showLocals) {
+    EmitImplementation(stream, level, writer => {
+      foreach (var block in blocks) {
+        block.Emit(writer, level + 1);
+      }
+    }, showLocals);
+  }
+
+  public void EmitImplementation(TokenTextWriter stream, int level, Action<TokenTextWriter> printBlocks, bool showLocals)
   {
     stream.Write(this, level, "implementation ");
     EmitAttributes(stream);
@@ -441,43 +480,15 @@ public class Implementation : DeclWithFormals {
 
     stream.WriteLine(level, "{0}", '{');
 
-    foreach (Variable /*!*/ v in this.LocVars)
-    {
-      Contract.Assert(v != null);
-      v.Emit(stream, level + 1);
-    }
-
-    if (this.StructuredStmts != null && !stream.Options.PrintInstrumented &&
-        !stream.Options.PrintInlined)
-    {
-      if (this.LocVars.Count > 0)
+    if (showLocals) {
+      foreach (Variable /*!*/ v in this.LocVars)
       {
-        stream.WriteLine();
-      }
-
-      if (stream.Options.PrintUnstructured < 2)
-      {
-        if (stream.Options.PrintUnstructured == 1)
-        {
-          stream.WriteLine(this, level + 1, "/*** structured program:");
-        }
-
-        this.StructuredStmts.Emit(stream, level + 1);
-        if (stream.Options.PrintUnstructured == 1)
-        {
-          stream.WriteLine(level + 1, "**** end structured program */");
-        }
+        Contract.Assert(v != null);
+        v.Emit(stream, level + 1);
       }
     }
 
-    if (this.StructuredStmts == null || 1 <= stream.Options.PrintUnstructured ||
-        stream.Options.PrintInstrumented || stream.Options.PrintInlined)
-    {
-      foreach (Block b in this.Blocks)
-      {
-        b.Emit(stream, level + 1);
-      }
-    }
+    printBlocks(stream);
 
     stream.WriteLine(level, "{0}", '}');
 
@@ -864,7 +875,7 @@ public class Implementation : DeclWithFormals {
   /// Compute the strongly connected compontents of the blocks in the implementation.
   /// As a side effect, it also computes the "predecessor" relation for the block in the implementation
   /// </summary>
-  override public void ComputeStronglyConnectedComponents()
+  public override void ComputeStronglyConnectedComponents()
   {
     if (!this.BlockPredecessorsComputed)
     {
