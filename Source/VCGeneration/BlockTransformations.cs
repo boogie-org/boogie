@@ -27,16 +27,24 @@ public static class BlockTransformations {
     blocks.AddRange(coalesced);
   }
 
-  private static void StopControlFlowAtAssumeFalse(Block b)
+  private static void StopControlFlowAtAssumeFalse(Block block)
   {
-    var firstFalseIdx = b.Cmds.FindIndex(IsAssumeFalse);
+    var firstFalseIdx = block.Cmds.FindIndex(IsAssumeFalse);
     if (firstFalseIdx == -1)
     {
       return;
     }
 
-    b.Cmds = b.Cmds.Take(firstFalseIdx + 1).ToList();
-    b.TransferCmd = b.TransferCmd is GotoCmd ? new ReturnCmd(b.tok) : b.TransferCmd;
+    block.Cmds = block.Cmds.Take(firstFalseIdx + 1).ToList();
+    if (block.TransferCmd is not GotoCmd gotoCmd)
+    {
+      return;
+    }
+
+    block.TransferCmd = new ReturnCmd(block.tok);
+    foreach (var target in gotoCmd.labelTargets) {
+      target.Predecessors.Remove(block);
+    }
   }
   
   private static bool IsAssumeFalse (Cmd c) { return c is AssumeCmd { Expr: LiteralExpr { asBool: false } }; }
