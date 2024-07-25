@@ -135,12 +135,11 @@ namespace Microsoft.Boogie
       {
         programId = "main_program_id";
       }
-      
-      if (Options.PrintFile != null && !Options.PrintPassive) {
-        // Printing passive programs happens later
+
+      if (Options.PrintFile != null) {
         PrintBplFile(Options.PrintFile, program, false, true, Options.PrettyPrint);
       }
-
+      
       PipelineOutcome outcome = ResolveAndTypecheck(program, bplFileName, out var civlTypeChecker);
       if (outcome != PipelineOutcome.ResolvedAndTypeChecked) {
         return true;
@@ -240,15 +239,15 @@ namespace Microsoft.Boogie
     {
       Microsoft.Boogie.UnusedVarEliminator.Eliminate(program);
     }
-
-
-    public void PrintBplFile(string filename, Program program, bool allowPrintDesugaring, bool setTokens = true,
-      bool pretty = false)
-    {
+    
+    public void PrintBplFile(string filename, Program program, 
+      bool allowPrintDesugaring, bool setTokens = true,
+      bool pretty = false) {
       PrintBplFile(Options, filename, program, allowPrintDesugaring, setTokens, pretty);
     }
 
-    public static void PrintBplFile(ExecutionEngineOptions options, string filename, Program program, bool allowPrintDesugaring, bool setTokens = true,
+    public static void PrintBplFile(ExecutionEngineOptions options, string filename, Program program, 
+      bool allowPrintDesugaring, bool setTokens = true,
       bool pretty = false)
 
     {
@@ -612,7 +611,7 @@ namespace Microsoft.Boogie
           program.Emit(new TokenTextWriter(Options.OutputWriter, Options.PrettyPrint, Options));
         }
 
-        program.DeclarationDependencies = Prune.ComputeDeclarationDependencies(Options, program);
+        program.DeclarationDependencies = Pruner.ComputeDeclarationDependencies(Options, program);
         return processedProgram;
       }).Result;
     }
