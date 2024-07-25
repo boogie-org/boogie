@@ -146,7 +146,7 @@ public static class ManualSplitFinder {
             verify = splitCount == splitNumberWithinBlock;
           }
 
-          if (verify && command is AssertCmd)
+          if (verify && BlockTransformations.IsNonTrivialAssert(command))
           {
             assertionCount++;
           }
@@ -158,7 +158,7 @@ public static class ManualSplitFinder {
         var newCmds = new List<Cmd>();
         foreach (var command in currentBlock.Cmds) {
           verify = !ShouldSplitHere(command, splitOnEveryAssert) && verify;
-          if (verify && command is AssertCmd)
+          if (verify && BlockTransformations.IsNonTrivialAssert(command))
           {
             assertionCount++;
           }
