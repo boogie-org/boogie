@@ -2,6 +2,7 @@
 
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 
 namespace Microsoft.Boogie;
 
@@ -80,6 +81,10 @@ public class BlockCoalescer : ReadOnlyVisitor
 
   public static List<Block> CoalesceFromRootBlock(List<Block> blocks)
   {
+    if (!blocks.Any())
+    {
+      return blocks;
+    }
     var multiPredecessorBlocks = ComputeMultiPredecessorBlocks(blocks[0]);
     Contract.Assert(cce.NonNullElements(multiPredecessorBlocks));
     var visitedBlocks = new HashSet<Block>();
