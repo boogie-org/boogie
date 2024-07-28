@@ -52,7 +52,8 @@ namespace Microsoft.Boogie
       }
 
       SkipActionDecl = new ActionDecl(Token.NoToken, AddNamePrefix("Skip"), MoverType.Both, new List<Variable>(),
-        new List<Variable>(), true, new List<ActionDeclRef>(), null, null, new List<Requires>(), new List<CallCmd>(),
+        new List<Variable>(), true, new List<ActionDeclRef>(), null, null,
+        new List<Requires>(), new List<CallCmd>(), new List<AssertCmd>(),
         new List<IdentifierExpr>(), null, null);
       var skipImplementation = DeclHelper.Implementation(
         SkipActionDecl,
