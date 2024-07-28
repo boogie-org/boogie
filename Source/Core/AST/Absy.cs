@@ -2480,9 +2480,17 @@ namespace Microsoft.Boogie
       }
       if (rc.Proc is ActionDecl actionDecl)
       {
-        if (Layers.Count > 0)
+        if (Layers.Count == 0)
         {
-          rc.Error(this, "did not expect layers");
+          rc.Error(this, "expected layers");
+        }
+        else
+        {
+          var layerRange = new LayerRange(Layers[0], Layers[^1]);
+          if (!layerRange.Subset(actionDecl.LayerRange))
+          {
+            rc.Error(this, $"each layer must be within {actionDecl.LayerRange}");
+          }
         }
       }
     }
