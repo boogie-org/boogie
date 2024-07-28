@@ -2480,9 +2480,17 @@ namespace Microsoft.Boogie
       }
       if (rc.Proc is ActionDecl actionDecl)
       {
-        if (Layers.Count > 0)
+        if (Layers.Count == 0)
         {
-          rc.Error(this, "did not expect layers");
+          rc.Error(this, "expected layers");
+        }
+        else
+        {
+          var layerRange = new LayerRange(Layers[0], Layers[^1]);
+          if (!layerRange.Subset(actionDecl.LayerRange))
+          {
+            rc.Error(this, $"each layer must be within {actionDecl.LayerRange}");
+          }
         }
       }
     }
@@ -2921,6 +2929,7 @@ namespace Microsoft.Boogie
     public ActionDeclRef RefinedAction;
     public ActionDeclRef InvariantAction;
     public List<CallCmd> YieldRequires;
+    public List<AssertCmd> Asserts;
     public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
 
     public Implementation Impl; // set when the implementation of this action is resolved
@@ -2929,7 +2938,7 @@ namespace Microsoft.Boogie
     public ActionDecl(IToken tok, string name, MoverType moverType,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
-      List<Requires> requires, List<CallCmd> yieldRequires,
+      List<Requires> requires, List<CallCmd> yieldRequires, List<AssertCmd> asserts,
       List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
       isPure, requires, modifies, new List<Ensures>(), kv)
@@ -2939,6 +2948,7 @@ namespace Microsoft.Boogie
       this.RefinedAction = refinedAction;
       this.InvariantAction = invariantAction;
       this.YieldRequires = yieldRequires;
+      this.Asserts = asserts;
       this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
     }
 
@@ -2961,6 +2971,7 @@ namespace Microsoft.Boogie
           rc.Error(callCmd, "expected call to yield invariant");
         }
       });
+      Asserts.ForEach(assertCmd => assertCmd.Resolve(rc));
       rc.PopVarContext();
       rc.Proc = null;
       if (Creates.Any())
@@ -3006,6 +3017,7 @@ namespace Microsoft.Boogie
       tc.Proc = this;
       base.Typecheck(tc);
       YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
+      Asserts.ForEach(assertCmd => assertCmd.Typecheck(tc));
       Contract.Assert(tc.Proc == this);
       tc.Proc = oldProc;
 

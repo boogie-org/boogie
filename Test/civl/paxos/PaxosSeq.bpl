@@ -26,7 +26,7 @@ action {:layer 2}
 INV({:linear_in} ps: Set Permission)
 creates A_StartRound, A_Propose, A_Conclude, A_Join, A_Vote;
 modifies joinedNodes, voteInfo, decision;
-requires Init(ps, decision);
+asserts Init(ps, decision);
 {
   var {:linear} ps': Set Permission;
   var {:linear} proposePermissions: Set Permission;
