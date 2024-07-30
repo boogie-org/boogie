@@ -3166,6 +3166,15 @@ namespace Microsoft.Boogie
       return Creates.Append(RefinedAction).Append(InvariantAction);
     }
 
+    public bool IsSkippable()
+    {
+      return
+        Creates.Count == 0 &&
+        ModifiedVars.All(v => v.LayerRange.UpperLayer == LayerRange.UpperLayer) &&
+        Asserts.Count > 0 &&
+        !VariableCollector.Collect(Asserts).Any(v => v is GlobalVariable);
+    }
+
     public IEnumerable<ActionDecl> CreateActionDecls => Creates.Select(x => x.ActionDecl);
 
     public bool MaybePendingAsync => PendingAsyncCtorDecl != null;
@@ -3415,10 +3424,8 @@ namespace Microsoft.Boogie
         {
           return actionDecl;
         }
-
         actionDeclRef = actionDecl.RefinedAction;
       }
-
       return null;
     }
 
