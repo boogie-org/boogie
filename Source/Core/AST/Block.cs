@@ -128,8 +128,8 @@ public sealed class Block : Absy
     return liveVarsBefore.Contains(v);
   }
 
-  public Block()
-    : this(Token.NoToken, "", new List<Cmd>(), new ReturnCmd(Token.NoToken))
+  public Block(IToken tok)
+    : this(tok, "", new List<Cmd>(), new ReturnCmd(tok))
   {
   }
 
