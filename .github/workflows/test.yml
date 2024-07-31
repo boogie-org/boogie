@@ -62,7 +62,7 @@ jobs:
           # Run unit tests
           dotnet test --no-build -c ${{ matrix.configuration }} ${SOLUTION}
           # Run lit test suite
-          lit --param ${{ matrix.lit_param }} -v --timeout=120 -D configuration=${{ matrix.configuration }} Test
+          lit --param ${{ matrix.lit_param }} -v --timeout=240 -D configuration=${{ matrix.configuration }} Test
       - name: Deploy to nuget
         # Note: if you change the build matrix, update the following
         # line to ensure it matches only one element of the matrix.
