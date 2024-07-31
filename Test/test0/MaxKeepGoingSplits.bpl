@@ -7,7 +7,7 @@
 // CHECK-L: checking split 3/3
 // CHECK-L: checking split 4/5
 // CHECK-L: checking split 5/5
-// CHECK-L: checking split 1/1, 0.00%, (cost:4/1 last) ...
+// CHECK-L: checking split 1/1 (line 28), 0.00%, (cost:4/1 last) ...
 // CHECK-L: Boogie program verifier finished with 1 verified, 1 error
 
 function f(i:int, j:int) returns (int)
