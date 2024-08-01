@@ -607,6 +607,10 @@ namespace Microsoft.Boogie
           {
             Error(node, $"primitive assigns to input variable: {formal}");
           }
+          else if (node.Outs.Any(ie => ie.Decl == modifiedArgument))
+          {
+            Error(node, $"primitive assigns to input variable that is also an output variable: {modifiedArgument}");
+          }
           else if (modifiedArgument is GlobalVariable &&
                    enclosingProc is not YieldProcedureDecl &&
                    enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))

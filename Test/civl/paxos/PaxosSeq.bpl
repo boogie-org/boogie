@@ -73,7 +73,7 @@ asserts Init(ps, decision);
       async call A_Propose(k+1, proposePermissions);
       call joinPermissions := Set_Get(ps', JoinPermissions(k+1)->val);
       call {:linear joinPermissions} create_asyncs((lambda {:pool "A_Join"} pa: A_Join :: pa->r == k+1 && m < pa->n && pa->n <= numNodes && pa->p->val == JoinPerm(k+1, pa->n)));
-      call {:linear ps'} create_asyncs((lambda pa: A_StartRound :: AllPermissions(pa->r) == pa->r_lin && k+1 < pa->r && pa->r <= numRounds));
+      call {:linear ps'} create_asyncs((lambda {:pool "A_StartRound"} pa: A_StartRound :: AllPermissions(pa->r) == pa->r_lin && k+1 < pa->r && pa->r <= numRounds));
       if (m == numNodes) {
         call set_choice(A_Propose(k+1, ProposePermissions(k+1)));
       } else {
