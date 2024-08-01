@@ -59,6 +59,7 @@ asserts Init(ps, decision);
         (forall r: Round :: r < 1 || r > k ==> voteInfo[r] is None) &&
         (forall r: Round :: r < 1 || r > k ==> decision[r] is None);
       call {:linear ps'} create_asyncs((lambda {:pool "A_StartRound"} pa: A_StartRound :: AllPermissions(pa->r) == pa->r_lin && k < pa->r && pa->r <= numRounds));
+      assume {:add_to_pool "A_StartRound", A_StartRound(k+1, AllPermissions(k+1))} true;
       call set_choice(A_StartRound(k+1, AllPermissions(k+1)));
   } else if (*) {
       assume
