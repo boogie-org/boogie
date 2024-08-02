@@ -256,6 +256,21 @@ function {:inline} Map_Swap<T,U>(a: Map T U, t1: T, t2: T): Map T U
   (var u1, u2 := Map_At(a, t1), Map_At(a, t2); Map_Update(Map_Update(a, t1, u2), t2, u1))
 }
 
+function {:inline} Map_Extract<T,U>(a: Map T U, t: Set T): Map T U
+{
+  Map(t, MapIte(t->val, a->val, MapConst(Default())))
+}
+
+function {:inline} Map_Exclude<T,U>(a: Map T U, t: Set T): Map T U
+{
+  Map(Set_Difference(a->dom, t), MapIte(t->val, MapConst(Default()), a->val))
+}
+
+function {:inline} Map_Union<T,U>(a: Map T U, b: Map T U): Map T U
+{
+  Map(Set_Union(a->dom, b->dom), MapIte(a->dom->val, a->val, b->val))
+}
+
 function {:inline} Map_WellFormed<T,U>(a: Map T U): bool
 {
   a->val == MapIte(a->dom->val, a->val, MapConst(Default()))
@@ -325,7 +340,8 @@ pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 {
   m := Map_Empty();
 }
-pure procedure Map_Split<K,V>({:linear} path: Map K V, {:linear_out} l: One K) returns ({:linear} v: V);
+pure procedure Map_Split<K,V>({:linear} path: Map K V, s: Set K) returns ({:linear} m: Map K V);
+pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} m: Map K V);
 pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} c: Cell K V);
 pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} c: Cell K V);
 pure procedure {:inline 1} Map_Assume<K,V>({:linear} src: Map K V, {:linear} dst: Map K V)

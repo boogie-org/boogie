@@ -219,7 +219,7 @@ namespace Microsoft.Boogie
     {
       "One_New", "One_To_Fractions", "Fractions_To_One",
       "Cell_Pack", "Cell_Unpack",
-      "Map_MakeEmpty", "Map_Split", "Map_Get", "Map_Put", "Map_Assume",
+      "Map_MakeEmpty", "Map_Split", "Map_Join", "Map_Get", "Map_Put", "Map_Assume",
       "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
     };
 

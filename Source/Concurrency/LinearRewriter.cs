@@ -172,6 +172,8 @@ public class LinearRewriter
         return RewriteOnePut(callCmd);
       case "Map_Split":
         return RewriteMapSplit(callCmd);
+      case "Map_Join":
+        return RewriteMapJoin(callCmd);
       case "Map_Get":
         return RewriteMapGet(callCmd);
       case "Map_Put":
@@ -190,22 +192,37 @@ public class LinearRewriter
 
   private Function MapRemove(Type domain, Type range)
   {
-    return monomorphizer.InstantiateFunction("Map_Remove",new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
+    return monomorphizer.InstantiateFunction("Map_Remove", new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
+  }
+
+  private Function MapExtract(Type domain, Type range)
+  {
+    return monomorphizer.InstantiateFunction("Map_Extract", new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
+  }
+
+  private Function MapExclude(Type domain, Type range)
+  {
+    return monomorphizer.InstantiateFunction("Map_Exclude", new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
+  }
+
+  private Function MapUnion(Type domain, Type range)
+  {
+    return monomorphizer.InstantiateFunction("Map_Union", new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
   }
 
   private Function MapUpdate(Type domain, Type range)
   {
-    return monomorphizer.InstantiateFunction("Map_Update",new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
+    return monomorphizer.InstantiateFunction("Map_Update", new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
   }
 
   private Function MapAt(Type domain, Type range)
   {
-    return monomorphizer.InstantiateFunction("Map_At",new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
+    return monomorphizer.InstantiateFunction("Map_At", new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
   }
 
   private Function MapContains(Type domain, Type range)
   {
-    return monomorphizer.InstantiateFunction("Map_Contains",new Dictionary<string, Type>() { {"T", domain}, { "U", range } });
+    return monomorphizer.InstantiateFunction("Map_Contains", new Dictionary<string, Type>() { {"T", domain}, { "U", range } });
   }
 
   private Function SetIsSubset(Type type)
@@ -215,32 +232,32 @@ public class LinearRewriter
 
   private Function SetIsDisjoint(Type type)
   {
-    return monomorphizer.InstantiateFunction("Set_IsDisjoint",new Dictionary<string, Type>() { { "T", type } });
+    return monomorphizer.InstantiateFunction("Set_IsDisjoint", new Dictionary<string, Type>() { { "T", type } });
   }
 
   private Function SetAdd(Type type)
   {
-    return monomorphizer.InstantiateFunction("Set_Add",new Dictionary<string, Type>() { { "T", type } });
+    return monomorphizer.InstantiateFunction("Set_Add", new Dictionary<string, Type>() { { "T", type } });
   }
 
   private Function SetRemove(Type type)
   {
-    return monomorphizer.InstantiateFunction("Set_Remove",new Dictionary<string, Type>() { { "T", type } });
+    return monomorphizer.InstantiateFunction("Set_Remove", new Dictionary<string, Type>() { { "T", type } });
   }
 
   private Function SetUnion(Type type)
   {
-    return monomorphizer.InstantiateFunction("Set_Union",new Dictionary<string, Type>() { { "T", type } });
+    return monomorphizer.InstantiateFunction("Set_Union", new Dictionary<string, Type>() { { "T", type } });
   }
 
   private Function SetDifference(Type type)
   {
-    return monomorphizer.InstantiateFunction("Set_Difference",new Dictionary<string, Type>() { { "T", type } });
+    return monomorphizer.InstantiateFunction("Set_Difference", new Dictionary<string, Type>() { { "T", type } });
   }
 
   private Function SetContains(Type type)
   {
-    return monomorphizer.InstantiateFunction("Set_Contains",new Dictionary<string, Type>() { { "T", type } });
+    return monomorphizer.InstantiateFunction("Set_Contains", new Dictionary<string, Type>() { { "T", type } });
   }
 
   private Function OneConstructor(Type type)
@@ -270,6 +287,11 @@ public class LinearRewriter
   private static Expr Key(Expr path)
   {
     return ExprHelper.FieldAccess(path, "key");
+  }
+
+  private static Expr Dom(Expr path)
+  {
+    return ExprHelper.FieldAccess(path, "dom");
   }
 
   private static Expr Val(Expr path)
@@ -387,19 +409,36 @@ public class LinearRewriter
   {
     var cmdSeq = new List<Cmd>();
     var path = callCmd.Ins[0];
-    var l = callCmd.Ins[1];
-    var v = callCmd.Outs[0];
+    var s = callCmd.Ins[1];
+    var m = callCmd.Outs[0];
 
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     var domain = instantiation["K"];
     var range = instantiation["V"];
-    var mapContainsFunc = MapContains(domain, range);
-    var mapRemoveFunc = MapRemove(domain, range);
-    var mapAtFunc = MapAt(domain, range);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(mapContainsFunc, path, Val(l)), "Map_Split failed"));
-    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(mapAtFunc, path, Val(l))));
+    var isSubsetFunc = SetIsSubset(domain);
+    var mapExtractFunc = MapExtract(domain, range);
+    var mapExcludeFunc = MapExclude(domain, range);
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(isSubsetFunc, s, Dom(path)), "Map_Split failed"));
+    cmdSeq.Add(CmdHelper.AssignCmd(m.Decl, ExprHelper.FunctionCall(mapExtractFunc, path, s)));
     cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapRemoveFunc, path, Val(l))));
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapExcludeFunc, path, s)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteMapJoin(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var m = callCmd.Ins[1];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var domain = instantiation["K"];
+    var range = instantiation["V"];
+    var mapUnionFunc = MapUnion(domain, range);
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUnionFunc, path, m)));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
