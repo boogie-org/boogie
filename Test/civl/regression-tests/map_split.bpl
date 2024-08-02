@@ -14,4 +14,7 @@ asserts Set_IsSubset(s, m->dom);
     call y := Map_Split(x, s);
     assert Map_At(y, i) == v;
     assert !Map_Contains(x, i);
+    call Map_Join(x, y);
+    assert Map_Contains(x, i);
+    assert Map_At(x, i) == v;
 }

@@ -172,6 +172,8 @@ public class LinearRewriter
         return RewriteOnePut(callCmd);
       case "Map_Split":
         return RewriteMapSplit(callCmd);
+      case "Map_Join":
+        return RewriteMapJoin(callCmd);
       case "Map_Get":
         return RewriteMapGet(callCmd);
       case "Map_Put":
@@ -201,6 +203,11 @@ public class LinearRewriter
   private Function MapExclude(Type domain, Type range)
   {
     return monomorphizer.InstantiateFunction("Map_Exclude", new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
+  }
+
+  private Function MapUnion(Type domain, Type range)
+  {
+    return monomorphizer.InstantiateFunction("Map_Union", new Dictionary<string, Type>() { { "T", domain }, { "U", range } });
   }
 
   private Function MapUpdate(Type domain, Type range)
@@ -415,6 +422,23 @@ public class LinearRewriter
     cmdSeq.Add(CmdHelper.AssignCmd(m.Decl, ExprHelper.FunctionCall(mapExtractFunc, path, s)));
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapExcludeFunc, path, s)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteMapJoin(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var m = callCmd.Ins[1];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var domain = instantiation["K"];
+    var range = instantiation["V"];
+    var mapUnionFunc = MapUnion(domain, range);
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUnionFunc, path, m)));
     
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
