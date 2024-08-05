@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using BoogiePL = Microsoft.Boogie;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Microsoft.Boogie
 {
@@ -532,11 +533,8 @@ namespace Microsoft.Boogie
 
       Dictionary<Variable, Expr> substMapOld = new Dictionary<Variable, Expr>();
 
-      foreach (IdentifierExpr /*!*/ mie in proc.Modifies)
+      foreach (var mVar in proc.Modifies.Select(ie => ie.Decl).Distinct())
       {
-        Contract.Assert(mie != null);
-        Variable /*!*/
-          mVar = cce.NonNull(mie.Decl);
         LocalVariable localVar = new LocalVariable(Token.NoToken,
           new TypedIdent(Token.NoToken, GetProcVarName(proc.Name, mVar.Name), mVar.TypedIdent.Type));
         newLocalVars.Add(localVar);
