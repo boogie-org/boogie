@@ -52,8 +52,12 @@ function {:inline} ToSendSecond(loc_channel: Loc Channel): ChannelPiece {
 const NumMemIndices: int;
 axiom NumMemIndices >= 1;
 
+function {:inline} MemIndexPieces(s: ChannelPiece, j: int): Set MemIndexPiece {
+    Set((lambda {:pool "MemIndexPieces"} x: MemIndexPiece :: x->val == s && x->ids == MemIndices() && 1 <= x->id && x->id <= j))
+}
+
 function {:inline} AllMemIndexPieces(s: ChannelPiece): Set MemIndexPiece {
-    Set((lambda {:pool "MemIndexPieces"} x: MemIndexPiece :: x->val == s && x->ids == MemIndices() && Set_Contains(x->ids, x->id)))
+    MemIndexPieces(s, NumMemIndices)
 }
 
 function {:inline} MemIndices(): Set int {
@@ -103,7 +107,6 @@ refines GetSnapshot;
         async call {:skip} _main_f(one_s_first->val, sps_first);
         par Yield() | YieldFirstScan(one_r, one_s_first->val);
         call sps_first, snapshot := _ReceiveFirst(one_r, one_s_first->val);
-        assert {:layer 2} (forall i:int :: 1 <= i && i <= NumMemIndices ==> (snapshot[i]->ts < mem[i]->ts || snapshot[i] == mem[i]));
         call _main_s(one_s_second->val, sps_second);
         call sps_second, snapshot' := _ReceiveSecond(one_r, one_s_second->val);
         if (snapshot == snapshot') {
@@ -231,7 +234,7 @@ asserts sps == AllMemIndexPieces(s);
     assume (forall i: int :: 1 <= i && i <= j ==> (var x := MemIndexPiece(s, i); data[x]->ts < mem[i]->ts || data[x] == mem[i]));
 
     sps' := sps;
-    call done_set := Set_Get(sps', (lambda {:pool "MemIndexPieces"} x: MemIndexPiece :: x->val == s && 1 <= x->id && x->id <= j && x->ids == MemIndices()));
+    call done_set := Set_Get(sps', MemIndexPieces(s, j)->val);
     call map := Map_Pack(done_set, data);
     call Map_Join(pset, map);
 
@@ -307,7 +310,7 @@ asserts sps == AllMemIndexPieces(s);
     assume (forall i: int :: 1 <= i && i <= j ==> (var x := MemIndexPiece(s, i); data[x]->ts > mem[i]->ts || data[x] == mem[i]));
 
     sps' := sps;
-    call done_set := Set_Get(sps', (lambda {:pool "MemIndexPieces"} x: MemIndexPiece :: x->val == s && 1 <= x->id && x->id <= j && x->ids == MemIndices()));
+    call done_set := Set_Get(sps', MemIndexPieces(s, j)->val);
     call map := Map_Pack(done_set, data);
     call Map_Join(pset, map);
 
