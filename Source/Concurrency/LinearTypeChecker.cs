@@ -894,8 +894,8 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      var foo = FilterVariables(domain, scope);
-      return foo.Select(v => ExprHelper.FunctionCall(collectors[v.TypedIdent.Type][domain.permissionType], Expr.Ident(v)));
+      return FilterVariables(domain, scope)
+        .Select(v => ExprHelper.FunctionCall(collectors[v.TypedIdent.Type][domain.permissionType], Expr.Ident(v)));
     }
 
     public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Expr> availableExprs)
@@ -928,14 +928,14 @@ namespace Microsoft.Boogie
       return expr;
     }
 
-    public IEnumerable<Expr> MapWellFormedExpressions(IEnumerable<Variable> availableVars)
+    public IEnumerable<Expr> MapWellFormedExpressions(IEnumerable<Variable> scope)
     {
       var monomorphizer = civlTypeChecker.program.monomorphizer;
       if (monomorphizer == null)
       {
         return Enumerable.Empty<Expr>();
       }
-      return availableVars.Where(v =>
+      return scope.Where(v =>
         {
           if (v.TypedIdent.Type is not CtorType ctorType)
           {

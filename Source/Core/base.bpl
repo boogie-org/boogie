@@ -340,6 +340,15 @@ pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 {
   m := Map_Empty();
 }
+pure procedure {:inline 1} Map_Pack<K,V>({:linear_in} dom: Set K, val: [K]V) returns ({:linear} m: Map K V)
+{
+  m := Map(dom, MapIte(dom->val, val, MapConst(Default())));
+}
+pure procedure {:inline 1} Map_Unpack<K,V>({:linear_in} m: Map K V) returns ({:linear} dom: Set K, val: [K]V)
+{
+ dom := m->dom;
+ val := m->val;
+}
 pure procedure Map_Split<K,V>({:linear} path: Map K V, s: Set K) returns ({:linear} m: Map K V);
 pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} m: Map K V);
 pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} c: Cell K V);

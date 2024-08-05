@@ -156,6 +156,8 @@ public class LinearRewriter
       case "Cell_Unpack":
       case "Set_MakeEmpty":
       case "Map_MakeEmpty":
+      case "Map_Pack":
+      case "Map_Unpack":
       case "Map_Assume":
         return new List<Cmd>{callCmd};
       case "Set_Split":
