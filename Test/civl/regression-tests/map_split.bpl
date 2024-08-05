@@ -34,3 +34,23 @@ asserts !Map_Contains(m, j);
     call m' := Map_Pack(s, x);
     assert m == m';
 }
+
+var {:linear} g: Map int int;
+
+atomic action {:layer 1} C(i: int, j: int)
+modifies g;
+asserts Map_Contains(g, i);
+asserts !Map_Contains(g, j);
+{
+    var {:linear} s: Set int;
+    var x: [int]int;
+    var y: [int]int;
+    var m': Map int int;
+
+    m' := g;
+    call s, x := Map_Unpack(g);
+    assert Set_Contains(s, i);
+    x[j] := 42;
+    call g := Map_Pack(s, x);
+    assert g == m';
+}

@@ -894,8 +894,8 @@ namespace Microsoft.Boogie
 
     public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      var foo = FilterVariables(domain, scope);
-      return foo.Select(v => ExprHelper.FunctionCall(collectors[v.TypedIdent.Type][domain.permissionType], Expr.Ident(v)));
+      return FilterVariables(domain, scope)
+        .Select(v => ExprHelper.FunctionCall(collectors[v.TypedIdent.Type][domain.permissionType], Expr.Ident(v)));
     }
 
     public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Expr> availableExprs)
