@@ -311,8 +311,10 @@ public class LoopExtractor {
             continue;
           }
 
-          Block newBlock = new Block();
-          newBlock.Label = block.Label;
+          Block newBlock = new Block(block.tok)
+          {
+            Label = block.Label
+          };
           if (headRecursion && block == header)
           {
             CallCmd callCmd = (CallCmd) (loopHeaderToCallCmd2[header]).Clone();
@@ -330,10 +332,13 @@ public class LoopExtractor {
           blockMap[block] = newBlock;
           if (newBlocksCreated.ContainsKey(block))
           {
-            Block newBlock2 = new Block();
-            newBlock2.Label = newBlocksCreated[block].Label;
-            newBlock2.Cmds = Substituter.Apply(subst, newBlocksCreated[block].Cmds);
-            blockMap[newBlocksCreated[block]] = newBlock2;
+            var original = newBlocksCreated[block];
+            var newBlock2 = new Block(original.tok)
+            {
+              Label = original.Label,
+              Cmds = Substituter.Apply(subst, original.Cmds)
+            };
+            blockMap[original] = newBlock2;
           }
 
           //for detLoopExtract, need the immediate successors even outside the loop
@@ -349,15 +354,16 @@ public class LoopExtractor {
               if (g.Nodes.Contains(bl) && //newly created blocks are not present in NaturalLoop(header, xx, g)
                   !loopNodes.Contains(bl))
               {
-                Block auxNewBlock = new Block();
-                auxNewBlock.Label = bl.Label;
-                //these blocks may have read/write locals that are not present in naturalLoops
-                //we need to capture these variables
-                auxNewBlock.Cmds = Substituter.Apply(subst, bl.Cmds);
-                //add restoration code for such blocks
-                if (loopHeaderToAssignCmd.ContainsKey(header))
+                var auxNewBlock = new Block(bl.tok)
                 {
-                  AssignCmd assignCmd = loopHeaderToAssignCmd[header];
+                  Label = bl.Label,
+                  //these blocks may have read/write locals that are not present in naturalLoops
+                  //we need to capture these variables
+                  Cmds = Substituter.Apply(subst, bl.Cmds)
+                };
+                //add restoration code for such blocks
+                if (loopHeaderToAssignCmd.TryGetValue(header, out var assignCmd))
+                {
                   auxNewBlock.Cmds.Add(assignCmd);
                 }
 
