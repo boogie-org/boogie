@@ -4,6 +4,7 @@ asserts AllPermissions(r) == r_lin;
 asserts Round(r);
 {
   var {:linear} r_lin': Set Permission;
+  var {:linear} proposePermissions: Set Permission;
   var {:linear} joinPermissions: Set Permission;
 
   assume
@@ -13,9 +14,10 @@ asserts Round(r);
     true;
 
   r_lin' := r_lin;
+  call proposePermissions := Set_Get(r_lin', ProposePermissions(r)->val);
+  async call A_Propose(r, proposePermissions);
   call joinPermissions := Set_Get(r_lin', JoinPermissions(r)->val);
   call {:linear joinPermissions} create_asyncs(JoinPAs(r));
-  async call A_Propose(r, r_lin');
 }
 
 async atomic action {:layer 2} A_Propose(r: Round, {:linear_in} ps: Set Permission)

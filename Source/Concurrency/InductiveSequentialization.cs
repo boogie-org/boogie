@@ -347,18 +347,27 @@ namespace Microsoft.Boogie
         decl => (Variable)civlTypeChecker.LocalVariable($"newPAs_{decl.Name}", decl.PendingAsyncMultisetType));
     }
 
+    private IEnumerable<Expr> InputMapWellFormedExprs()
+    {
+      var scope = invariantAction.Impl.InParams.Union(invariantAction.UsedGlobalVars);
+      return civlTypeChecker.linearTypeChecker.MapWellFormedExpressions(scope);
+    }
+
     private IEnumerable<Expr> InputDisjointnessExprs()
     {
-      return civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(
-        invariantAction.Impl.InParams.Union(invariantAction.UsedGlobalVars)
-        .Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x))));
+      var scope = invariantAction.Impl.InParams.Union(invariantAction.UsedGlobalVars);
+      var linearScope = scope.Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x)));
+      return civlTypeChecker.linearTypeChecker.MapWellFormedExpressions(scope)
+        .Union(civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(linearScope));
     }
 
     private List<Declaration> GenerateBaseCaseChecker()
     {
       var inputDisjointnessExprs = InputDisjointnessExprs();
+      var mapWellFormedExprs = InputMapWellFormedExprs();
       var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr))
-        .Concat(inputDisjointnessExprs.Select(expr => new Requires(false, expr))).ToList();
+        .Concat(inputDisjointnessExprs.Concat(mapWellFormedExprs).Select(expr => new Requires(false, expr)))
+        .ToList();
 
       var subst = targetAction.GetSubstitution(invariantAction);
       var cmds = targetAction.GetGateAsserts(subst,
@@ -396,10 +405,12 @@ namespace Microsoft.Boogie
     private List<Declaration> GenerateConclusionChecker()
     {
       var inputDisjointnessExprs = InputDisjointnessExprs();
+      var mapWellFormedExprs = InputMapWellFormedExprs();
       var refinedAction = targetAction.RefinedAction;
       var subst = refinedAction.GetSubstitution(invariantAction);
       var requires = refinedAction.Gate.Select(g => new Requires(false, Substituter.Apply(subst, g.Expr)))
-        .Concat(inputDisjointnessExprs.Select(expr => new Requires(false, expr))).ToList();
+        .Concat(inputDisjointnessExprs.Concat(mapWellFormedExprs).Select(expr => new Requires(false, expr)))
+        .ToList();
 
       var cmds = invariantAction.GetGateAsserts(null,
         $"Gate of {invariantAction.Name} fails in {rule} conclusion check against {refinedAction.Name}").ToList<Cmd>();
@@ -417,10 +428,12 @@ namespace Microsoft.Boogie
     private List<Declaration> GenerateStepChecker(Action pendingAsync)
     {
       var inputDisjointnessExprs = InputDisjointnessExprs();
+      var mapWellFormedExprs = InputMapWellFormedExprs();
       var pendingAsyncType = pendingAsync.ActionDecl.PendingAsyncType;
       var pendingAsyncCtor = pendingAsync.ActionDecl.PendingAsyncCtor;
       var requires = invariantAction.Gate.Select(g => new Requires(false, g.Expr))
-        .Concat(inputDisjointnessExprs.Select(expr => new Requires(false, expr))).ToList();
+        .Concat(inputDisjointnessExprs.Concat(mapWellFormedExprs).Select(expr => new Requires(false, expr)))
+        .ToList();
       var locals = new List<Variable>();
       List<Cmd> cmds = new List<Cmd>
       {
