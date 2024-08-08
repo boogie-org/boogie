@@ -1,25 +1,13 @@
 implementation Foo() returns (y: int)
 {
 
-  PreconditionGeneratedEntry:
-    goto anon0;
-
   anon0:
     assert 5 + 0 == 5;
     assert 5 * 5 <= 25;
-    goto anon5_LoopHead;
-
-  anon5_LoopHead:
     assume x#AT#0 + y#AT#0 == 5;
     assume x#AT#0 * x#AT#0 <= 25;
-    goto anon5_LoopDone;
-
-  anon5_LoopDone:
     assume {:partition} 0 >= x#AT#0;
     assume y#AT#2 == y#AT#0;
-    goto GeneratedUnifiedExit;
-
-  GeneratedUnifiedExit:
     assert y#AT#2 >= 0;
     return;
 }

@@ -35,6 +35,7 @@ namespace VC
     private int totalResourceCount;
 
     public SplitAndVerifyWorker(
+      Program program,
       VCGenOptions options, 
       VerificationConditionGenerator verificationConditionGenerator,
       ImplementationRun run,
@@ -64,7 +65,7 @@ namespace VC
 
 
       ResetPredecessors(Implementation.Blocks);
-      ManualSplits = ManualSplitFinder.FocusAndSplit(options, run, gotoCmdOrigins, verificationConditionGenerator).ToList<Split>();
+      ManualSplits = ManualSplitFinder.FocusAndSplit(program, options, run, gotoCmdOrigins, verificationConditionGenerator).ToList<Split>();
 
       if (ManualSplits.Count == 1 && maxSplits > 1)
       {

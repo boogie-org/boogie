@@ -99,9 +99,9 @@ procedure Procedure(y: int)
     var tasks = await engine.GetVerificationTasks(program);
     
     // The first split is empty. Maybe it can be optimized away
-    Assert.AreEqual(5, tasks.Count);
+    Assert.AreEqual(4, tasks.Count);
 
-    var outcomes = new List<SolverOutcome> { SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid };
+    var outcomes = new List<SolverOutcome> { SolverOutcome.Invalid, SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid };
     for (var index = 0; index < outcomes.Count; index++)
     {
       var result0 = await tasks[index].TryRun()!.ToTask();

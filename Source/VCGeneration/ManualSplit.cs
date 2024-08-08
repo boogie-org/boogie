@@ -8,10 +8,9 @@ public class ManualSplit : Split
 {
 
   public IToken Token { get; }
-
-
+  
   public ManualSplit(VCGenOptions options, 
-    List<Block> blocks, 
+    Func<List<Block>> blocks, 
     Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
     VerificationConditionGenerator par, 
     ImplementationRun run, 
