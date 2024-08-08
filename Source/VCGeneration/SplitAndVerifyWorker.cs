@@ -151,8 +151,13 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         run.Implementation.GetTimeLimit(options);
-      await split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
-        Implementation.GetResourceLimit(options), cancellationToken).WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+      var beginCheckTask = split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
+        Implementation.GetResourceLimit(options), cancellationToken);
+      if (timeout != 0)
+      {
+        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+      }
+      await beginCheckTask;
     }
 
     private Implementation Implementation => run.Implementation;

@@ -65,7 +65,10 @@ namespace Microsoft.Boogie
       Helpers.ExtraTraceInformation(options, "Becoming sentient");
 
       var source = new CancellationTokenSource();
-      source.CancelAfter(TimeSpan.FromSeconds(options.ProcessTimeLimit));
+      if (options.ProcessTimeLimit != 0)
+      {
+        source.CancelAfter(TimeSpan.FromSeconds(options.ProcessTimeLimit));
+      }
 
       var success = executionEngine.ProcessFiles(Console.Out, fileList, cancellationToken: source.Token).Result;
       if (options.XmlSink != null)
