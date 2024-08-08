@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -139,8 +140,9 @@ namespace VC
       {
         var splitNum = split.SplitIndex + 1;
         var splitIdxStr = options.RandomizeVcIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
-        run.OutputWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
-          split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
+        await run.OutputWriter.WriteLineAsync(string.Format(CultureInfo.InvariantCulture, 
+          "    checking split {1}/{2}, {3:0.00}%, {0} ...",
+          split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost)));
       }
 
       callback.OnProgress?.Invoke("VCprove", split.SplitIndex, total,
