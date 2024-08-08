@@ -150,7 +150,7 @@ namespace VC
         KeepGoing ? options.VcsKeepGoingTimeout :
         run.Implementation.GetTimeLimit(options);
       await split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
-        Implementation.GetResourceLimit(options), cancellationToken);
+        Implementation.GetResourceLimit(options), cancellationToken).WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
     }
 
     private Implementation Implementation => run.Implementation;
