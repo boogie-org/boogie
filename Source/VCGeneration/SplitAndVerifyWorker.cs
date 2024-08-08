@@ -139,8 +139,10 @@ namespace VC
       {
         var splitNum = split.SplitIndex + 1;
         var splitIdxStr = options.RandomizeVcIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
-        run.OutputWriter.WriteLine("    checking split {1}/{2}, {3:0.00}%, {0} ...",
-          split.Stats, splitIdxStr, total, 100 * provenCost / (provenCost + remainingCost));
+        run.OutputWriter.WriteLine("    checking split {1}/{2}{3}, {4:0.00}%, {0} ...",
+          split.Stats, splitIdxStr, total, 
+          split is ManualSplit manualSplit ? $" (line {manualSplit.Token.line})" : "", 
+          100 * provenCost / (provenCost + remainingCost));
       }
 
       callback.OnProgress?.Invoke("VCprove", split.SplitIndex, total,

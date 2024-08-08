@@ -3,19 +3,19 @@
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 
 // CHECK: Verifying Ex ...
-// CHECK:      checking split 1/12, .*
-// CHECK:      checking split 2/12, .*
-// CHECK:      checking split 3/12, .*
-// CHECK:      checking split 4/12, .*
+// CHECK:      checking split 1/12 .*
+// CHECK:      checking split 2/12 .*
+// CHECK:      checking split 3/12 .*
+// CHECK:      checking split 4/12 .*
 // CHECK:      --> split #4 done,  \[.* s\] Invalid
-// CHECK:      checking split 5/12, .*
-// CHECK:      checking split 6/12, .*
-// CHECK:      checking split 7/12, .*
-// CHECK:      checking split 8/12, .*
-// CHECK:      checking split 9/12, .*
-// CHECK:      checking split 10/12, .*
-// CHECK:      checking split 11/12, .*
-// CHECK:      checking split 12/12, .*
+// CHECK:      checking split 5/12 .*
+// CHECK:      checking split 6/12 .*
+// CHECK:      checking split 7/12 .*
+// CHECK:      checking split 8/12 .*
+// CHECK:      checking split 9/12 .*
+// CHECK:      checking split 10/12 .*
+// CHECK:      checking split 11/12 .*
+// CHECK:      checking split 12/12 .*
 // CHECK-L: SplitOnEveryAssert.bpl(32,5): Error: this assertion could not be proved
 
 procedure Ex() returns (y: int)
