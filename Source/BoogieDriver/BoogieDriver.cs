@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.IO;
+using System.Threading;
 
 namespace Microsoft.Boogie
 {
@@ -63,8 +64,10 @@ namespace Microsoft.Boogie
 
       Helpers.ExtraTraceInformation(options, "Becoming sentient");
 
-      var success = executionEngine.ProcessFiles(Console.Out, fileList).Result;
+      var source = new CancellationTokenSource();
+      source.CancelAfter(TimeSpan.FromSeconds(options.ProcessTimeLimit));
 
+      var success = executionEngine.ProcessFiles(Console.Out, fileList, cancellationToken: source.Token).Result;
       if (options.XmlSink != null)
       {
         options.XmlSink.Close();

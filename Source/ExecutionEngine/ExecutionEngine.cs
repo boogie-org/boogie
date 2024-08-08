@@ -83,20 +83,17 @@ namespace Microsoft.Boogie
     static readonly ConcurrentDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource =
       new ConcurrentDictionary<string, CancellationTokenSource>();
 
-    static readonly ConcurrentDictionary<string, CancellationTokenSource> RequestIdToCancellationTokenSource =
-      new ConcurrentDictionary<string, CancellationTokenSource>();
-
     private readonly TaskScheduler largeThreadScheduler;
     private readonly bool disposeScheduler;
 
     public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
-      string programId = null) {
+      string programId = null, CancellationToken cancellationToken = default) {
       Contract.Requires(cce.NonNullElements(fileNames));
 
       if (Options.VerifySeparately && 1 < fileNames.Count) {
         var success = true;
         foreach (var fileName in fileNames) {
-          success &= await ProcessFiles(output, new List<string> { fileName }, lookForSnapshots, fileName);
+          success &= await ProcessFiles(output, new List<string> { fileName }, lookForSnapshots, fileName, cancellationToken: cancellationToken);
         }
         return success;
       }
@@ -108,7 +105,7 @@ namespace Microsoft.Boogie
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
           using var engine = new ExecutionEngine(Options, Cache,
             CustomStackSizePoolTaskScheduler.Create(StackSize, Options.VcsCores), true);
-          success &= await engine.ProcessFiles(output, new List<string>(snapshots), false, programId);
+          success &= await engine.ProcessFiles(output, new List<string>(snapshots), false, programId, cancellationToken: cancellationToken);
         }
         return success;
       }
@@ -120,7 +117,7 @@ namespace Microsoft.Boogie
         return true;
       }
 
-      return await ProcessProgram(output, program, bplFileName, programId);
+      return await ProcessProgram(output, program, bplFileName, programId, cancellationToken: cancellationToken);
     }
 
     [Obsolete("Please inline this method call")]
@@ -129,7 +126,7 @@ namespace Microsoft.Boogie
       return ProcessProgram(Options.OutputWriter, program, bplFileName, programId).Result;
     }
 
-    public async Task<bool> ProcessProgram(TextWriter output, Program program, string bplFileName, string programId = null)
+    public async Task<bool> ProcessProgram(TextWriter output, Program program, string bplFileName, string programId = null, CancellationToken cancellationToken = default)
     {
       if (programId == null)
       {
@@ -147,7 +144,7 @@ namespace Microsoft.Boogie
 
       if (Options.PrintCFGPrefix != null) {
         foreach (var impl in program.Implementations) {
-          using StreamWriter sw = new StreamWriter(Options.PrintCFGPrefix + "." + impl.Name + ".dot");
+          await using StreamWriter sw = new StreamWriter(Options.PrintCFGPrefix + "." + impl.Name + ".dot");
           await sw.WriteAsync(program.ProcessLoops(Options, impl).ToDot());
         }
       }
@@ -168,7 +165,7 @@ namespace Microsoft.Boogie
       Inline(program);
 
       var stats = new PipelineStatistics();
-      outcome = await InferAndVerify(output, program, stats, 1 < Options.VerifySnapshots ? programId : null);
+      outcome = await InferAndVerify(output, program, stats, 1 < Options.VerifySnapshots ? programId : null, cancellationToken: cancellationToken);
       switch (outcome) {
         case PipelineOutcome.Done:
         case PipelineOutcome.VerificationCompleted:
@@ -530,7 +527,8 @@ namespace Microsoft.Boogie
       Program program,
       PipelineStatistics stats,
       string programId = null,
-      ErrorReporterDelegate er = null, string requestId = null)
+      ErrorReporterDelegate er = null, string requestId = null, 
+      CancellationToken cancellationToken = default)
     {
       Contract.Requires(program != null);
       Contract.Requires(stats != null);
@@ -542,7 +540,7 @@ namespace Microsoft.Boogie
 
       var start = DateTime.UtcNow;
 
-      var processedProgram = await PreProcessProgramVerification(program);
+      var processedProgram = await PreProcessProgramVerification(program, cancellationToken);
 
       foreach (var action in Options.UseResolvedProgram) {
         action(Options, processedProgram);
@@ -555,7 +553,7 @@ namespace Microsoft.Boogie
 
       if (Options.ContractInfer)
       {
-        return await RunHoudini(program, stats, er);
+        return await RunHoudini(program, stats, er, cancellationToken);
       }
       var stablePrioritizedImpls = GetPrioritizedImplementations(program);
 
@@ -565,7 +563,8 @@ namespace Microsoft.Boogie
           out stats.CachingActionCounts);
       }
 
-      var outcome = await VerifyEachImplementation(output, processedProgram, stats, programId, er, requestId, stablePrioritizedImpls);
+      var outcome = await VerifyEachImplementation(output, processedProgram, stats, 
+        programId, er, stablePrioritizedImpls, cancellationToken);
 
       if (1 < Options.VerifySnapshots && programId != null)
       {
@@ -578,7 +577,7 @@ namespace Microsoft.Boogie
       return outcome;
     }
 
-    private Task<ProcessedProgram> PreProcessProgramVerification(Program program)
+    private Task<ProcessedProgram> PreProcessProgramVerification(Program program, CancellationToken cancellationToken)
     {
       return LargeThreadTaskFactory.StartNew(() =>
       {
@@ -613,7 +612,7 @@ namespace Microsoft.Boogie
 
         program.DeclarationDependencies = Pruner.ComputeDeclarationDependencies(Options, program);
         return processedProgram;
-      });
+      }, cancellationToken);
     }
 
     private ProcessedProgram ExtractLoops(Program program)
@@ -652,18 +651,16 @@ namespace Microsoft.Boogie
 
     private async Task<PipelineOutcome> VerifyEachImplementation(TextWriter outputWriter, ProcessedProgram processedProgram,
       PipelineStatistics stats,
-      string programId, ErrorReporterDelegate er, string requestId, Implementation[] stablePrioritizedImpls)
+      string programId, ErrorReporterDelegate er, Implementation[] stablePrioritizedImpls,
+      CancellationToken cancellationToken)
     {
       var consoleCollector = new ConcurrentToSequentialWriteManager(outputWriter);
-
-      var cts = new CancellationTokenSource();
-      RequestIdToCancellationTokenSource.AddOrUpdate(requestId, cts, (k, ov) => cts);
       
       var tasks = stablePrioritizedImpls.Select(async (impl, index) => {
         await using var taskWriter = consoleCollector.AppendWriter();
         var implementation = stablePrioritizedImpls[index];
         var result = await EnqueueVerifyImplementation(processedProgram, stats, programId, er,
-          implementation, cts, taskWriter);
+          implementation, cancellationToken, taskWriter);
         var output = result.GetOutput(Options.Printer, this, stats, er);
         await taskWriter.WriteAsync(output);
         return result;
@@ -680,9 +677,6 @@ namespace Microsoft.Boogie
       } catch(ProverException e) {
         Options.Printer.ErrorWriteLine(outputWriter, "Fatal Error: ProverException: {0}", e.Message);
         outcome = PipelineOutcome.FatalError;
-      }
-      finally {
-        CleanupRequest(requestId);
       }
 
       if (Options.Trace && Options.TrackVerificationCoverage && processedProgram.Program.AllCoveredElements.Any()) {
@@ -711,7 +705,7 @@ namespace Microsoft.Boogie
       }
     }
     
-    public async Task<IReadOnlyList<IVerificationTask>> GetVerificationTasks(Program program)
+    public async Task<IReadOnlyList<IVerificationTask>> GetVerificationTasks(Program program, CancellationToken cancellationToken = default)
     {
       var sink = new CollectingErrorSink();
       var resolutionErrors = program.Resolve(Options, sink);
@@ -731,7 +725,7 @@ namespace Microsoft.Boogie
       CoalesceBlocks(program);
       Inline(program);
 
-      var processedProgram = await PreProcessProgramVerification(program);
+      var processedProgram = await PreProcessProgramVerification(program, cancellationToken);
       return GetPrioritizedImplementations(program).SelectMany(implementation =>
       {
         var writer = TextWriter.Null;
@@ -793,7 +787,7 @@ namespace Microsoft.Boogie
       await verifyImplementationSemaphore.WaitAsync(cancellationToken);
       try
       {
-        return await VerifyImplementation(processedProgram, stats, errorReporterDelegate, 
+        return await VerifyImplementationWithCaching(processedProgram, stats, errorReporterDelegate, 
           cancellationToken, implementation, programId, taskWriter);
       }
       finally
@@ -843,25 +837,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public static void CancelRequest(string requestId)
-    {
-      Contract.Requires(requestId != null);
-
-      if (RequestIdToCancellationTokenSource.TryGetValue(requestId, out var cts))
-      {
-        cts.Cancel();
-      }
-    }
-
-    private static void CleanupRequest(string requestId)
-    {
-      if (requestId != null)
-      {
-        RequestIdToCancellationTokenSource.TryRemove(requestId, out var old);
-      }
-    }
-
-    private async Task<ImplementationRunResult> VerifyImplementation(
+    private async Task<ImplementationRunResult> VerifyImplementationWithCaching(
       ProcessedProgram processedProgram,
       PipelineStatistics stats,
       ErrorReporterDelegate er,
@@ -878,7 +854,7 @@ namespace Microsoft.Boogie
       Options.Printer.Inform("", traceWriter); // newline
       Options.Printer.Inform($"Verifying {implementation.VerboseName} ...", traceWriter);
 
-      var result = await VerifyImplementationWithoutCaching(processedProgram, stats, er, cancellationToken,
+      var result = await VerifyImplementationWithLargeThread(processedProgram, stats, er, cancellationToken,
         programId, implementation, traceWriter);
       if (0 < Options.VerifySnapshots && !string.IsNullOrEmpty(implementation.Checksum))
       {
@@ -911,7 +887,7 @@ namespace Microsoft.Boogie
       return null;
     }
 
-    private Task<ImplementationRunResult> VerifyImplementationWithoutCaching(ProcessedProgram processedProgram,
+    private Task<ImplementationRunResult> VerifyImplementationWithLargeThread(ProcessedProgram processedProgram,
       PipelineStatistics stats, ErrorReporterDelegate er, CancellationToken cancellationToken,
       string programId, Implementation impl, TextWriter traceWriter)
     {
@@ -927,7 +903,7 @@ namespace Microsoft.Boogie
         try
         {
           (verificationResult.VcOutcome, verificationResult.Errors, verificationResult.RunResults) =
-            await vcGen.VerifyImplementation2(new ImplementationRun(impl, traceWriter), cancellationToken);
+            await vcGen.VerifyImplementationDirectly(new ImplementationRun(impl, traceWriter), cancellationToken);
           processedProgram.PostProcessResult(vcGen, impl, verificationResult);
         }
         catch (VCGenException e)
@@ -984,7 +960,8 @@ namespace Microsoft.Boogie
 
     #region Houdini
 
-    private async Task<PipelineOutcome> RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er)
+    private async Task<PipelineOutcome> RunHoudini(Program program, PipelineStatistics stats, ErrorReporterDelegate er,
+      CancellationToken cancellationToken)
     {
       Contract.Requires(stats != null);
       
