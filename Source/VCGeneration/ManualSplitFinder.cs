@@ -96,10 +96,11 @@ public static class ManualSplitFinder {
     //var duplicator = new Duplicator();
     var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count); // Maps original blocks to their new copies in newBlocks
     foreach (var currentBlock in blocks) {
-      var newBlock = new Block();
-      newBlock.Label = currentBlock.Label;
-      newBlock.tok = currentBlock.tok;
-      
+      var newBlock = new Block(currentBlock.tok)
+      {
+        Label = currentBlock.Label
+      };
+
       oldToNewBlockMap[currentBlock] = newBlock;
       newBlocks.Add(newBlock);
       if (currentBlock == containingBlock) {
