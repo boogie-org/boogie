@@ -84,11 +84,6 @@ namespace Microsoft.Boogie
         Console.ReadLine();
       }
 
-      if (options.ProcessTimeLimit != 0)
-      {
-        Console.WriteLine("Finished execution process, cleaning up");
-      }
-
       return success ? 0 : 1;
     }
 
