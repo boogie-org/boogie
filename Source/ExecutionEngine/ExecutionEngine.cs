@@ -93,6 +93,7 @@ namespace Microsoft.Boogie
       if (Options.VerifySeparately && 1 < fileNames.Count) {
         var success = true;
         foreach (var fileName in fileNames) {
+          cancellationToken.ThrowIfCancellationRequested();
           success &= await ProcessFiles(output, new List<string> { fileName }, lookForSnapshots, fileName, cancellationToken: cancellationToken);
         }
         return success;
@@ -102,6 +103,7 @@ namespace Microsoft.Boogie
         var snapshotsByVersion = LookForSnapshots(fileNames);
         var success = true;
         foreach (var snapshots in snapshotsByVersion) {
+          cancellationToken.ThrowIfCancellationRequested();
           // BUG: Reusing checkers during snapshots doesn't work, even though it should. We create a new engine (and thus checker pool) to workaround this.
           using var engine = new ExecutionEngine(Options, Cache,
             CustomStackSizePoolTaskScheduler.Create(StackSize, Options.VcsCores), true);
@@ -110,14 +112,21 @@ namespace Microsoft.Boogie
         return success;
       }
 
+      return await ProcessProgramFiles(output, fileNames, programId, cancellationToken);
+    }
+
+    private Task<bool> ProcessProgramFiles(TextWriter output, IList<string> fileNames, string programId,
+      CancellationToken cancellationToken)
+    {
       using XmlFileScope xf = new XmlFileScope(Options.XmlSink, fileNames[^1]);
       Program program = ParseBoogieProgram(fileNames, false);
       var bplFileName = fileNames[^1];
-      if (program == null) {
-        return true;
+      if (program == null)
+      {
+        return Task.FromResult(true);
       }
 
-      return await ProcessProgram(output, program, bplFileName, programId, cancellationToken: cancellationToken);
+      return ProcessProgram(output, program, bplFileName, programId, cancellationToken: cancellationToken);
     }
 
     [Obsolete("Please inline this method call")]

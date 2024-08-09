@@ -21,6 +21,11 @@ namespace Microsoft.Boogie
       {
         return 1;
       }
+      var source = new CancellationTokenSource();
+      if (options.ProcessTimeLimit != 0)
+      {
+        source.CancelAfter(TimeSpan.FromSeconds(options.ProcessTimeLimit));
+      }
       using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
       
       if (options.ProcessInfoFlags())
@@ -63,12 +68,6 @@ namespace Microsoft.Boogie
       }
 
       Helpers.ExtraTraceInformation(options, "Becoming sentient");
-
-      var source = new CancellationTokenSource();
-      if (options.ProcessTimeLimit != 0)
-      {
-        source.CancelAfter(TimeSpan.FromSeconds(options.ProcessTimeLimit));
-      }
 
       var success = executionEngine.ProcessFiles(Console.Out, fileList, cancellationToken: source.Token).Result;
       if (options.XmlSink != null)
