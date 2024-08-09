@@ -82,8 +82,8 @@ action {:layer 3}
 INV_COLLECT_ELIM({:linear_in} ps: Set perm)
 creates COLLECT;
 modifies CH, decision;
-requires ps->val == (lambda p:perm :: pid(p->i));
-requires CH == MultisetEmpty;
+asserts ps->val == (lambda p:perm :: pid(p->i));
+asserts CH == MultisetEmpty;
 {
   var {:linear} ps': Set perm;
   var {:linear} remainingCollects: Set perm;
@@ -110,8 +110,8 @@ MAIN'({:linear_in} ps: Set perm)
 refines MAIN'' using INV_COLLECT_ELIM;
 creates COLLECT;
 modifies CH;
-requires ps->val == (lambda p:perm :: pid(p->i));
-requires CH == MultisetEmpty;
+asserts ps->val == (lambda p:perm :: pid(p->i));
+asserts CH == MultisetEmpty;
 {
   var {:linear} ps': Set perm;
   var {:linear} allCollects: Set perm;
@@ -129,8 +129,8 @@ atomic action {:layer 2}
 MAIN({:linear_in} ps: Set perm)
 refines MAIN' using INV_BROADCAST_ELIM;
 creates BROADCAST, COLLECT;
-requires ps->val == (lambda p:perm :: pid(p->i));
-requires CH == MultisetEmpty;
+asserts ps->val == (lambda p:perm :: pid(p->i));
+asserts CH == MultisetEmpty;
 {
   var {:linear} ps': Set perm;
   var {:linear} allBroadcasts: Set perm;
@@ -148,8 +148,8 @@ action {:layer 2}
 INV_BROADCAST_ELIM({:linear_in} ps: Set perm)
 creates BROADCAST, COLLECT;
 modifies CH;
-requires ps->val == (lambda p:perm :: pid(p->i));
-requires CH == MultisetEmpty;
+asserts ps->val == (lambda p:perm :: pid(p->i));
+asserts CH == MultisetEmpty;
 {
   var {:linear} ps': Set perm;
   var {:linear} remainingBroadcasts: Set perm;

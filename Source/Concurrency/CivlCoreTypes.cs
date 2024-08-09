@@ -52,10 +52,9 @@ namespace Microsoft.Boogie
         DropSetChoice(Impl);
       }
 
-      ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
-
       AddGateSufficiencyCheckerAndHoistAsserts(civlTypeChecker);
 
+      ModifiedGlobalVars = new HashSet<Variable>(Impl.Proc.Modifies.Select(x => x.Decl));
       UsedGlobalVarsInGate = new HashSet<Variable>(VariableCollector.Collect(Gate).Where(x => x is GlobalVariable));
       UsedGlobalVarsInAction = new HashSet<Variable>(VariableCollector.Collect(Impl).Where(x => x is GlobalVariable));
 
@@ -170,7 +169,7 @@ namespace Microsoft.Boogie
 
     private void AddGateSufficiencyCheckerAndHoistAsserts(CivlTypeChecker civlTypeChecker)
     {
-      if (ActionDecl.Requires.Count == 0)
+      if (ActionDecl.Asserts.Count == 0)
       {
         Gate = HoistAsserts(Impl, civlTypeChecker.Options);
         return;
@@ -184,9 +183,17 @@ namespace Microsoft.Boogie
       var checkerImpl = new Duplicator().VisitImplementation(Impl);
       checkerImpl.Name = checkerName;
       checkerImpl.Attributes = null;
-      var requires = ActionDecl.Requires.Select(
-        requires => new Requires(requires.tok, requires.Free, Substituter.Apply(gateSubst, requires.Condition), 
-                                null, CivlAttributes.ApplySubstitutionToPoolHints(gateSubst, requires.Attributes))).ToList();
+
+      var requires = new List<Requires>();
+      var globalScope = VariableCollector.Collect(ActionDecl).Union(VariableCollector.Collect(ActionDecl.Impl)).OfType<GlobalVariable>();
+      var scope = globalScope.Union(ActionDecl.InParams);
+      var assumeExprs = civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(scope)
+        .Union(civlTypeChecker.linearTypeChecker.MapWellFormedExpressions(scope));
+      requires.AddRange(assumeExprs.Select(assumeExpr => new Requires(false, Substituter.Apply(gateSubst, assumeExpr))));
+      requires.AddRange(ActionDecl.Asserts.Select(assertCmd =>
+        new Requires(assertCmd.tok, false, Substituter.Apply(gateSubst, assertCmd.Expr),
+                    null, CivlAttributes.ApplySubstitutionToPoolHints(gateSubst, assertCmd.Attributes))));
+
       var proc = checkerImpl.Proc;
       checkerImpl.Proc = new Procedure(proc.tok, checkerName, proc.TypeParameters, proc.InParams,
         proc.OutParams, proc.IsPure, requires, proc.Modifies, new List<Ensures>());
@@ -194,9 +201,9 @@ namespace Microsoft.Boogie
 
       HoistAsserts(Impl, civlTypeChecker.Options);
       
-      Gate = ActionDecl.Requires.Select(
-        requires => new AssertCmd(requires.tok, Substituter.Apply(gateSubst, requires.Condition),
-                                  CivlAttributes.ApplySubstitutionToPoolHints(gateSubst, requires.Attributes))).ToList();
+      Gate = ActionDecl.Asserts.Select(
+        assertCmd => new AssertCmd(assertCmd.tok, Substituter.Apply(gateSubst, assertCmd.Expr),
+                                  CivlAttributes.ApplySubstitutionToPoolHints(gateSubst, assertCmd.Attributes))).ToList();
     }
 
     private Function ComputeInputOutputRelation(CivlTypeChecker civlTypeChecker, Implementation impl)

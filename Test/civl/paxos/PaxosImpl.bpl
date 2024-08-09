@@ -145,7 +145,7 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   invariant {:layer 1} count == Cardinality(ns);
   invariant {:layer 1} (forall x: Node :: ns[x] ==> Node(x));
   invariant {:layer 1} IsSubset(ns, joinedNodes[r]);
-  invariant {:layer 1} receivedPermissions->val == (lambda x: Permission :: x is JoinPerm && x->r == r && ns[x->n]);
+  invariant {:layer 1} receivedPermissions->val == (lambda {:pool "Permission"} x: Permission :: x is JoinPerm && x->r == r && ns[x->n]);
   invariant {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
   invariant {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
@@ -153,6 +153,7 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   {
     call joinResponse := ReceiveJoinResponse(r);
     call {:layer 1} receivedPermission, permJoinChannel := ReceiveJoinResponseIntro(r, joinResponse, permJoinChannel);
+    assume {:add_to_pool "Permission", receivedPermission->val} true;
     call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(receivedPermission->val->n));
     call {:layer 1} ns := AddToQuorum(ns, receivedPermission->val->n);
     call {:layer 1} receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
@@ -386,9 +387,11 @@ pure action ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse, {
 returns ({:linear} receivedPermission: One Permission, {:linear} permJoinChannel': JoinResponseChannel)
 {
   var _x: JoinResponse;
+  var {:linear} cell_p: Cell Permission JoinResponse;
+
   permJoinChannel' := permJoinChannel;
-  receivedPermission := One(JoinPerm(round, joinResponse->from));
-  call _x := Map_Split(permJoinChannel', receivedPermission);
+  call cell_p := Map_Get(permJoinChannel', JoinPerm(round, joinResponse->from));
+  call receivedPermission, _x := Cell_Unpack(cell_p);
 }
 
 pure action SendVoteResponseIntro(voteResponse: VoteResponse, {:linear_in} p: One Permission, {:linear_in} permVoteChannel: VoteResponseChannel)
@@ -403,10 +406,12 @@ returns ({:linear} permVoteChannel': VoteResponseChannel)
 pure action ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse, {:linear_in} permVoteChannel: VoteResponseChannel)
 returns ({:linear} receivedPermission: One Permission, {:linear} permVoteChannel': VoteResponseChannel)
 {
+  var {:linear} cell_p: Cell Permission VoteResponse;
   var _x: VoteResponse;
+
   permVoteChannel' := permVoteChannel;
-  receivedPermission := One(VotePerm(round, voteResponse->from));
-  call _x := Map_Split(permVoteChannel', receivedPermission);
+  call cell_p := Map_Get(permVoteChannel', VotePerm(round, voteResponse->from));
+  call receivedPermission, _x := Cell_Unpack(cell_p);
 }
 
 //// Permission accounting

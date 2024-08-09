@@ -301,6 +301,7 @@ public class CallCmd : CallCommonality
     if (Proc is YieldProcedureDecl calleeDecl)
     {
       var isSynchronized = this.HasAttribute(CivlAttributes.SYNC);
+      var isSkipped = this.HasAttribute(CivlAttributes.SKIP);
       if (calleeDecl.Layer > callerDecl.Layer)
       {
         tc.Error(this, "layer of callee must not be more than layer of caller");
@@ -319,33 +320,58 @@ public class CallCmd : CallCommonality
             else
             {
               CheckModifies(highestRefinedActionDecl.ModifiedVars);
-              if (highestRefinedActionDecl.Creates.Any())
+              if (!IsAsync)
               {
-                if (callerDecl.HasMoverType)
+                if (highestRefinedActionDecl.Creates.Any() && callerDecl.HasMoverType)
                 {
                   tc.Error(this, "caller must not be a mover procedure");
                 }
+                // check there is no application of IS_RIGHT in the entire chain of refined actions
+                var calleeRefinedAction = calleeDecl.RefinedAction;
+                while (calleeRefinedAction != null)
+                {
+                  if (calleeRefinedAction.HasAttribute(CivlAttributes.IS_RIGHT))
+                  {
+                    tc.Error(this, "this must be an async call");
+                    break;
+                  }
+                  var calleeActionDecl = calleeRefinedAction.ActionDecl;
+                  if (calleeActionDecl == highestRefinedActionDecl)
+                  {
+                    break;
+                  }
+                  calleeRefinedAction = calleeActionDecl.RefinedAction;
+                }
               }
-              else if (IsAsync && isSynchronized)
+              else if (isSynchronized)
               {
                 // check that entire chain of refined actions all the way to highestRefinedAction is comprised of left movers
-                var actionDeclRef = calleeDecl.RefinedAction;
-                while (actionDeclRef != null)
+                var calleeRefinedAction = calleeDecl.RefinedAction;
+                while (calleeRefinedAction != null)
                 {
-                  var actionDecl = actionDeclRef.ActionDecl;
-                  if (!actionDecl.IsLeftMover)
+                  var calleeActionDecl = calleeRefinedAction.ActionDecl;
+                  if (!calleeActionDecl.IsLeftMover)
                   {
                     tc.Error(this,
-                      $"callee abstraction in synchronized call must be a left mover: {actionDecl.Name}");
+                      $"callee abstraction in synchronized call must be a left mover: {calleeActionDecl.Name}");
+                    break;
                   }
-                  else if (actionDecl != highestRefinedActionDecl)
+                  if (calleeActionDecl == highestRefinedActionDecl)
                   {
-                    actionDeclRef = actionDecl.RefinedAction;
+                    break;
                   }
-                  else
-                  {
-                    actionDeclRef = null;
-                  }
+                  calleeRefinedAction = calleeActionDecl.RefinedAction;
+                }
+              }
+              else if (isSkipped)
+              {
+                if (highestRefinedActionDecl.LayerRange.UpperLayer != callerDecl.Layer)
+                {
+                  tc.Error(this, $"upper layer of action {highestRefinedActionDecl.Name} must be same as layer of caller");
+                }
+                else if (!highestRefinedActionDecl.IsSkippable())
+                {
+                  tc.Error(this, $"action {highestRefinedActionDecl.Name} must be skippable");
                 }
               }
             }
@@ -357,41 +383,23 @@ public class CallCmd : CallCommonality
           {
             tc.Error(this, "caller must not be a mover procedure");
           }
-          else if (IsAsync && isSynchronized)
+          else if (IsAsync && calleeDecl.RefinedAction != null)
           {
-            tc.Error(this, "layer of callee in synchronized call must be less than layer of caller");
-          }
-        }
-
-        if (!IsAsync) {
-          var calleeRefinedAction = calleeDecl.RefinedAction;
-          while (calleeRefinedAction != null) {
-            var calleeActionDecl = calleeRefinedAction.ActionDecl;
-            if (calleeActionDecl.LayerRange.UpperLayer >= callerDecl.Layer) {
-              break;
-            }
-            calleeRefinedAction = calleeActionDecl.RefinedAction;
-            if (calleeRefinedAction != null && calleeRefinedAction.HasAttribute(CivlAttributes.IS_RIGHT)) {
-              tc.Error(this, "this must be an async call");
-            }
-          }
-        }
-        else if (!isSynchronized)
-        {
-          if (callerDecl.HasMoverType)
-          {
-            tc.Error(this, "caller must not be a mover procedure");
-          }
-          else if (calleeDecl.RefinedAction != null)
-          {
-            var highestRefinedAction = calleeDecl.RefinedActionAtLayer(callerDecl.Layer + 1);
-            if (highestRefinedAction == null)
+            if (isSynchronized)
             {
-              tc.Error(this, $"called action is not available at layer {callerDecl.Layer + 1}");
+              tc.Error(this, "layer of callee in synchronized call must be less than layer of caller");
             }
-            else if (!highestRefinedAction.MaybePendingAsync)
+            else
             {
-              tc.Error(this, $"action {highestRefinedAction.Name} refined by callee must be eligible to be a pending async");
+              var highestRefinedAction = calleeDecl.RefinedActionAtLayer(callerDecl.Layer + 1);
+              if (highestRefinedAction == null)
+              {
+                tc.Error(this, $"called action is not available at layer {callerDecl.Layer + 1}");
+              }
+              else if (!highestRefinedAction.MaybePendingAsync)
+              {
+                tc.Error(this, $"action {highestRefinedAction.Name} refined by callee must be eligible to be a pending async");
+              }
             }
           }
         }

@@ -1,6 +1,6 @@
 // RUN: %parallel-boogie /trace /vcsMaxSplits:2 /vcsMaxCost:0 "%s" > %t.log
 // RUN: %OutputCheck --file-to-check "%t.log" "%s"
-// CHECK-L: checking split 1/2, 0.00%, (cost:17/2)
+// CHECK-L: checking split 1/2, 0.00%
 
 procedure SumFour(a: int, b: int, c: int, d: int) returns (e: int)
   ensures e == a + b + c + d;

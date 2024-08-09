@@ -542,7 +542,7 @@ namespace Microsoft.Boogie
 
       var start = DateTime.UtcNow;
 
-      var processedProgram = PreProcessProgramVerification(program);
+      var processedProgram = await PreProcessProgramVerification(program);
 
       foreach (var action in Options.UseResolvedProgram) {
         action(Options, processedProgram);
@@ -578,7 +578,7 @@ namespace Microsoft.Boogie
       return outcome;
     }
 
-    private ProcessedProgram PreProcessProgramVerification(Program program)
+    private Task<ProcessedProgram> PreProcessProgramVerification(Program program)
     {
       return LargeThreadTaskFactory.StartNew(() =>
       {
@@ -613,7 +613,7 @@ namespace Microsoft.Boogie
 
         program.DeclarationDependencies = Pruner.ComputeDeclarationDependencies(Options, program);
         return processedProgram;
-      }).Result;
+      });
     }
 
     private ProcessedProgram ExtractLoops(Program program)
@@ -711,7 +711,7 @@ namespace Microsoft.Boogie
       }
     }
     
-    public IReadOnlyList<IVerificationTask> GetVerificationTasks(Program program)
+    public async Task<IReadOnlyList<IVerificationTask>> GetVerificationTasks(Program program)
     {
       var sink = new CollectingErrorSink();
       var resolutionErrors = program.Resolve(Options, sink);
@@ -731,7 +731,7 @@ namespace Microsoft.Boogie
       CoalesceBlocks(program);
       Inline(program);
 
-      var processedProgram = PreProcessProgramVerification(program);
+      var processedProgram = await PreProcessProgramVerification(program);
       return GetPrioritizedImplementations(program).SelectMany(implementation =>
       {
         var writer = TextWriter.Null;

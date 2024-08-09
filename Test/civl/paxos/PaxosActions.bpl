@@ -1,9 +1,10 @@
 async atomic action {:layer 2} A_StartRound(r: Round, {:linear_in} r_lin: Set Permission)
 creates A_Join, A_Propose;
-requires AllPermissions(r) == r_lin;
-requires Round(r);
+asserts AllPermissions(r) == r_lin;
+asserts Round(r);
 {
   var {:linear} r_lin': Set Permission;
+  var {:linear} proposePermissions: Set Permission;
   var {:linear} joinPermissions: Set Permission;
 
   assume
@@ -13,17 +14,18 @@ requires Round(r);
     true;
 
   r_lin' := r_lin;
+  call proposePermissions := Set_Get(r_lin', ProposePermissions(r)->val);
+  async call A_Propose(r, proposePermissions);
   call joinPermissions := Set_Get(r_lin', JoinPermissions(r)->val);
   call {:linear joinPermissions} create_asyncs(JoinPAs(r));
-  async call A_Propose(r, r_lin');
 }
 
 async atomic action {:layer 2} A_Propose(r: Round, {:linear_in} ps: Set Permission)
 creates A_Vote, A_Conclude;
 modifies voteInfo;
-requires Round(r);
-requires ps == ProposePermissions(r);
-requires voteInfo[r] is None;
+asserts Round(r);
+asserts ps == ProposePermissions(r);
+asserts voteInfo[r] is None;
 {
   var {:linear} ps': Set Permission;
   var {:linear} concludePermission: One Permission;

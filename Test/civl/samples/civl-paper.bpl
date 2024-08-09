@@ -145,8 +145,8 @@ both action {:layer 1,3} AtomicStore({:linear_in} l_in: Map int int, a: int, v: 
   var _v: int;
 
   l_out := l_in;
-  one_a := One(a);
-  call _v := Map_Split(l_out, one_a);
+  call cell_a := Map_Get(l_out, a);
+  call one_a, _v := Cell_Unpack(cell_a);
   call cell_a := Cell_Pack(one_a, v);
   call Map_Put(l_out, cell_a);
 }

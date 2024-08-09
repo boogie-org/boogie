@@ -26,7 +26,7 @@ action {:layer 2}
 INV({:linear_in} ps: Set Permission)
 creates A_StartRound, A_Propose, A_Conclude, A_Join, A_Vote;
 modifies joinedNodes, voteInfo, decision;
-requires Init(ps, decision);
+asserts Init(ps, decision);
 {
   var {:linear} ps': Set Permission;
   var {:linear} proposePermissions: Set Permission;
@@ -59,6 +59,7 @@ requires Init(ps, decision);
         (forall r: Round :: r < 1 || r > k ==> voteInfo[r] is None) &&
         (forall r: Round :: r < 1 || r > k ==> decision[r] is None);
       call {:linear ps'} create_asyncs((lambda {:pool "A_StartRound"} pa: A_StartRound :: AllPermissions(pa->r) == pa->r_lin && k < pa->r && pa->r <= numRounds));
+      assume {:add_to_pool "A_StartRound", A_StartRound(k+1, AllPermissions(k+1))} true;
       call set_choice(A_StartRound(k+1, AllPermissions(k+1)));
   } else if (*) {
       assume
@@ -72,7 +73,7 @@ requires Init(ps, decision);
       async call A_Propose(k+1, proposePermissions);
       call joinPermissions := Set_Get(ps', JoinPermissions(k+1)->val);
       call {:linear joinPermissions} create_asyncs((lambda {:pool "A_Join"} pa: A_Join :: pa->r == k+1 && m < pa->n && pa->n <= numNodes && pa->p->val == JoinPerm(k+1, pa->n)));
-      call {:linear ps'} create_asyncs((lambda pa: A_StartRound :: AllPermissions(pa->r) == pa->r_lin && k+1 < pa->r && pa->r <= numRounds));
+      call {:linear ps'} create_asyncs((lambda {:pool "A_StartRound"} pa: A_StartRound :: AllPermissions(pa->r) == pa->r_lin && k+1 < pa->r && pa->r <= numRounds));
       if (m == numNodes) {
         call set_choice(A_Propose(k+1, ProposePermissions(k+1)));
       } else {
