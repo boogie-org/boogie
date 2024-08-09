@@ -82,7 +82,8 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
       var task = queue.Dequeue().Result;
       TryExecuteTask(task);
     } catch(Exception e) {
-      if (e.GetBaseException() is OperationCanceledException) {
+      if (e is ThreadInterruptedException) { }
+      else if (e.GetBaseException() is OperationCanceledException) {
         // Async queue cancels tasks when it is disposed, which happens when this scheduler is disposed
       } else {
         throw;
