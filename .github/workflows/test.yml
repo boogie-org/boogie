@@ -60,7 +60,7 @@ jobs:
           # Create packages
           dotnet pack --no-build -c ${{ matrix.configuration }} ${SOLUTION}
           # Run unit tests
-          dotnet test --no-build -c ${{ matrix.configuration }} ${SOLUTION}
+          dotnet test --blame-hang-timeout 120s --no-build -c ${{ matrix.configuration }} ${SOLUTION}
           # Run lit test suite
           lit --param ${{ matrix.lit_param }} -v --timeout=120 -D configuration=${{ matrix.configuration }} Test
       - name: Deploy to nuget

@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie "%s" /timeLimit:90 > "%t"
 // RUN: %diff success.expect "%t"
 type byte, name;
 function OneByteToInt(byte) returns (int);

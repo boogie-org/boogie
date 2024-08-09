@@ -479,6 +479,10 @@ namespace Microsoft.Boogie
       }
     }
 
+    /// <summary>
+    /// A hidden option that configures a time limit for the whole Boogie CLI invocation
+    /// </summary>
+    public uint ProcessTimeLimit { get; set; } = 0;
     public uint TimeLimit { get; set; } = 0; // 0 means no limit
     public uint ResourceLimit { get; set; } = 0; // default to 0
     public uint SmokeTimeout { get; set; } = 10; // default to 10s
@@ -1272,6 +1276,10 @@ namespace Microsoft.Boogie
 
         case "timeLimit":
           ps.GetUnsignedNumericArgument(x => TimeLimit = x, null);
+          return true;
+        
+        case "processTimeLimit":
+          ps.GetUnsignedNumericArgument(x => ProcessTimeLimit = x, null);
           return true;
 
         case "rlimit":

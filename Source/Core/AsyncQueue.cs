@@ -47,7 +47,7 @@ public class AsyncQueue<T>
     }
   }
 
-  public void Clear() {
+  public void CancelWaitsAndClear() {
     while (customers.TryDequeue(out var customer)) {
       customer.TrySetCanceled();
     }

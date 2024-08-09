@@ -15,7 +15,7 @@ namespace Microsoft.Boogie.SMTLib
     private UniqueNamer Namer;
 
     private HashSet<Function /*!*/> /*!*/
-      RegisteredRelations = new HashSet<Function>();
+      RegisteredRelations = new();
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -43,8 +43,8 @@ namespace Microsoft.Boogie.SMTLib
       return true;
     }
 
-    private readonly List<string /*!>!*/> AllDecls = new List<string /*!*/>();
-    private readonly List<string /*!>!*/> IncDecls = new List<string /*!*/>();
+    private readonly List<string /*!>!*/> AllDecls = new();
+    private readonly List<string /*!>!*/> IncDecls = new();
 
     // In order to support push/pop interface of the theorem prover, the "known" declarations
     // must be kept in a stack
@@ -75,12 +75,12 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     // ------
-    private readonly Stack<HashSet<Function /*!*/> /*!*/> _KnownFunctions = new Stack<HashSet<Function /*!*/>>();
-    private readonly Stack<HashSet<VCExprVar /*!*/> /*!*/> _KnownVariables = new Stack<HashSet<VCExprVar /*!*/>>();
+    private readonly Stack<HashSet<Function /*!*/> /*!*/> _KnownFunctions = new();
+    private readonly Stack<HashSet<VCExprVar /*!*/> /*!*/> _KnownVariables = new();
 
-    private readonly Stack<HashSet<Type /*!*/> /*!*/> _KnownTypes = new Stack<HashSet<Type>>();
-    private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownStoreFunctions = new Stack<HashSet<string>>();
-    private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownSelectFunctions = new Stack<HashSet<string>>();
+    private readonly Stack<HashSet<Type /*!*/> /*!*/> _KnownTypes = new();
+    private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownStoreFunctions = new();
+    private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownSelectFunctions = new();
 
     private void InitializeKnownDecls()
     {
