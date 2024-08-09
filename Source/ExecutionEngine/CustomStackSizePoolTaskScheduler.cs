@@ -83,7 +83,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
       var task = queue.Dequeue().Result;
       TryExecuteTask(task);
     }
-    catch (ThreadInterruptedException e)
+    catch (ThreadInterruptedException)
     {
     }
     catch (Exception e)
