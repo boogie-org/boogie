@@ -78,14 +78,22 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
 
   private void RunItem()
   {
-    try {
+    try
+    {
       var task = queue.Dequeue().Result;
       TryExecuteTask(task);
-    } catch(Exception e) {
-      if (e is ThreadInterruptedException) { }
-      else if (e.GetBaseException() is OperationCanceledException) {
+    }
+    catch (ThreadInterruptedException e)
+    {
+    }
+    catch (Exception e)
+    {
+      if (e.GetBaseException() is OperationCanceledException)
+      {
         // Async queue cancels tasks when it is disposed, which happens when this scheduler is disposed
-      } else {
+      }
+      else
+      {
         throw;
       }
     }
@@ -94,7 +102,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
   public void Dispose()
   {
     disposeTokenSource.Cancel();
-    queue.Clear();
+    queue.CancelWaitsAndClear();
     foreach (var thread in threads)
     {
       thread.Interrupt();
