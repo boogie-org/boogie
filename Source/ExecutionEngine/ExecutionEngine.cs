@@ -74,14 +74,11 @@ namespace Microsoft.Boogie
 
     static DateTime FirstRequestStart;
 
-    static readonly ConcurrentDictionary<string, TimeSpan>
-      TimePerRequest = new ConcurrentDictionary<string, TimeSpan>();
+    static readonly ConcurrentDictionary<string, TimeSpan> TimePerRequest = new();
 
-    static readonly ConcurrentDictionary<string, PipelineStatistics> StatisticsPerRequest =
-      new ConcurrentDictionary<string, PipelineStatistics>();
+    static readonly ConcurrentDictionary<string, PipelineStatistics> StatisticsPerRequest = new();
 
-    static readonly ConcurrentDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource =
-      new ConcurrentDictionary<string, CancellationTokenSource>();
+    static readonly ConcurrentDictionary<string, CancellationTokenSource> ImplIdToCancellationTokenSource = new();
 
     private readonly TaskScheduler largeThreadScheduler;
     private readonly bool disposeScheduler;

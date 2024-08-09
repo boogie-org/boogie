@@ -96,7 +96,7 @@ public class CustomStackSizePoolTaskScheduler : TaskScheduler, IDisposable
     queue.Clear();
     foreach (var thread in threads)
     {
-      thread.Join();
+      thread.Interrupt();
     }
   }
 }

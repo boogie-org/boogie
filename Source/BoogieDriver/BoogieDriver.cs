@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Microsoft.Boogie
 {
@@ -24,7 +26,8 @@ namespace Microsoft.Boogie
       var source = new CancellationTokenSource();
       if (options.ProcessTimeLimit != 0)
       {
-        source.CancelAfter(TimeSpan.FromSeconds(options.ProcessTimeLimit));
+        var span = TimeSpan.FromSeconds(options.ProcessTimeLimit);
+        source.CancelAfter(span);
       }
       using var executionEngine = ExecutionEngine.CreateWithoutSharedCache(options);
       
@@ -79,6 +82,11 @@ namespace Microsoft.Boogie
       {
         Console.WriteLine("Press Enter to exit.");
         Console.ReadLine();
+      }
+
+      if (options.ProcessTimeLimit != 0)
+      {
+        Console.WriteLine("Finished execution process, cleaning up");
       }
 
       return success ? 0 : 1;
