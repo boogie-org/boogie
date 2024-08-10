@@ -523,7 +523,7 @@ namespace Microsoft.Boogie
       foreach (var Impl in prog.NonInlinedImplementations())
       {
         Graph<Block> blockGraph = prog.ProcessLoops(options, Impl);
-        LocalCtrlDeps[Impl] = blockGraph.ControlDependence();
+        LocalCtrlDeps[Impl] = blockGraph.ControlDependence(new Block(prog.tok));
         foreach (var KeyValue in LocalCtrlDeps[Impl])
         {
           GlobalCtrlDep.Add(KeyValue.Key, KeyValue.Value);

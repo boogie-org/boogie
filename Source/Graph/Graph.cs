@@ -1211,7 +1211,7 @@ namespace Microsoft.Boogie.GraphUtil
     
     public static Graph<Node> Dual<Node>(this Graph<Node> g, Node dummySource)
     {
-      var exits = g.Nodes.Where(n => g.Successors(n).Count() == 0).ToList();
+      var exits = g.Nodes.Where(n => !g.Successors(n).Any()).ToList();
       Node source;
       if (exits.Count == 0)
       {
@@ -1373,9 +1373,9 @@ namespace Microsoft.Boogie.GraphUtil
 
     // Algorithm from Jeanne Ferrante, Karl J. Ottenstein, Joe D. Warren,
     // "The Program Dependence Graph and Its Use in Optimization"
-    public static Dictionary<Node, HashSet<Node>> ControlDependence<Node>(this Graph<Node> g) where Node : class, new()
+    public static Dictionary<Node, HashSet<Node>> ControlDependence<Node>(this Graph<Node> g, Node dummySource) where Node : class
     {
-      Graph<Node> dual = g.Dual(new Node());
+      Graph<Node> dual = g.Dual(dummySource);
       DomRelation<Node> pdom = dual.DominatorMap;
 
       var result = new Dictionary<Node, HashSet<Node>>();

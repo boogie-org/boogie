@@ -109,9 +109,8 @@ public static class ManualSplitFinder {
     
     var newBlocks = new List<Block>(oldBlocks.Count);
     foreach (var oldBlock in oldBlocks) {
-      var newBlock = new Block {
+      var newBlock = new Block(oldBlock.tok) {
         Label = oldBlock.Label,
-        tok = oldBlock.tok,
         Cmds = oldBlock.Cmds.Select(cmd => 
           cmd != assertToKeep ? CommandTransformations.AssertIntoAssume(options, cmd) : cmd).ToList()
       };
@@ -130,10 +129,11 @@ public static class ManualSplitFinder {
     var assertionCount = 0;
     var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count); // Maps original blocks to their new copies in newBlocks
     foreach (var currentBlock in blocks) {
-      var newBlock = new Block();
-      newBlock.Label = currentBlock.Label;
-      newBlock.tok = currentBlock.tok;
-      
+      var newBlock = new Block(currentBlock.tok)
+      {
+        Label = currentBlock.Label
+      };
+
       oldToNewBlockMap[currentBlock] = newBlock;
       newBlocks.Add(newBlock);
       if (currentBlock == containingBlock) {

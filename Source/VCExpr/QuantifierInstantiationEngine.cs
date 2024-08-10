@@ -51,7 +51,7 @@ namespace Microsoft.Boogie.VCExprAST
     private string skolemConstantNamePrefix;
     internal VCExpressionGenerator vcExprGen;
     private Boogie2VCExprTranslator exprTranslator;
-    internal static ConcurrentDictionary<string, HashSet<Type>> labelToTypes = new(); // pool name may map to multiple types
+    internal static ConcurrentDictionary<string, ConcurrentBag<Type>> labelToTypes = new(); // pool name may map to multiple types
 
     public static VCExpr Instantiate(Implementation impl, VCExpressionGenerator vcExprGen, Boogie2VCExprTranslator exprTranslator, VCExpr vcExpr)
     {
@@ -162,30 +162,28 @@ namespace Microsoft.Boogie.VCExprAST
     public static HashSet<string> FindInstantiationHints(Variable v)
     {
       var labels = new HashSet<string>();
-      var iter = v.Attributes;
-      while (iter != null)
+      for(var iter = v.Attributes; iter != null; iter = iter.Next)
       {
-        if (iter.Key == "pool")
+        if (iter.Key != "pool")
         {
-          var tok = iter.tok;
-          iter.Params.ForEach(x =>
-          {
-            if (x is string poolName)
-            {
-              labels.Add(poolName);
-              if (!labelToTypes.ContainsKey(poolName))
-              {
-                labelToTypes[poolName] = new();
-              }
-              labelToTypes[poolName].Add(v.TypedIdent.Type);
-            }
-            else
-            {
-              Console.WriteLine($"{tok.filename}({tok.line},{tok.col}): expected pool name");
-            }
-          });
+          continue;
         }
-        iter = iter.Next;
+
+        var tok = iter.tok;
+        foreach(var x in iter.Params)
+        {
+          if (x is string poolName)
+          {
+            labels.Add(poolName);
+            var types = labelToTypes.GetOrAdd(poolName, _ => new());
+            
+            types.Add(v.TypedIdent.Type);
+          }
+          else
+          {
+            Console.WriteLine($"{tok.filename}({tok.line},{tok.col}): expected pool name");
+          }
+        }
       }
       return labels;
     }
