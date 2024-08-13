@@ -116,7 +116,7 @@ public class VerificationTask : IVerificationTask {
   private async IAsyncEnumerable<IVerificationStatus> StartRun([EnumeratorCancellation] CancellationToken cancellationToken) {
     var timeout = Split.Run.Implementation.GetTimeLimit(Split.Options);
 
-    var checkerTask = engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, CancellationToken.None);
+    var checkerTask = engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, cancellationToken);
     if (!checkerTask.IsCompleted) {
       yield return new Queued();
     }
