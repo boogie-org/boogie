@@ -1,191 +1,190 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 
-namespace Microsoft.Boogie
+namespace Microsoft.Boogie;
+
+/*
+// An idempotent semiring interface
+abstract public class Weight {
+   abstract public Weight! one();
+   abstract public Weight! zero();
+   abstract public Weight! extend(Weight! w1, Weight! w2);
+   abstract public Weight! combine(Weight! w1, Weight! w2);
+   abstract public Weight! isEqual(Weight! w);
+   abstract public Weight! projectLocals()
+}
+*/
+
+// Weight domain for LiveVariableAnalysis (Gen/Kill)
+
+public class GenKillWeight
 {
-  /*
-  // An idempotent semiring interface
-  abstract public class Weight {
-     abstract public Weight! one();
-     abstract public Weight! zero();
-     abstract public Weight! extend(Weight! w1, Weight! w2);
-     abstract public Weight! combine(Weight! w1, Weight! w2);
-     abstract public Weight! isEqual(Weight! w);
-     abstract public Weight! projectLocals()
-  }
-  */
+  // lambda S. (S - kill) union gen
+  HashSet<Variable /*!*/> /*!*/
+    gen;
 
-  // Weight domain for LiveVariableAnalysis (Gen/Kill)
+  HashSet<Variable /*!*/> /*!*/
+    kill;
 
-  public class GenKillWeight
+  [ContractInvariantMethod]
+  void ObjectInvariant()
   {
-    // lambda S. (S - kill) union gen
-    HashSet<Variable /*!*/> /*!*/
-      gen;
+    Contract.Invariant(cce.NonNullElements(gen));
+    Contract.Invariant(cce.NonNullElements(kill));
+    Contract.Invariant(oneWeight != null);
+    Contract.Invariant(zeroWeight != null);
+  }
 
-    HashSet<Variable /*!*/> /*!*/
-      kill;
+  bool isZero;
 
-    [ContractInvariantMethod]
-    void ObjectInvariant()
+  public static GenKillWeight /*!*/
+    oneWeight = new GenKillWeight(new HashSet<Variable /*!*/>(), new HashSet<Variable /*!*/>());
+
+  public static GenKillWeight /*!*/
+    zeroWeight = new GenKillWeight();
+
+  // initializes to zero
+  public GenKillWeight()
+  {
+    this.isZero = true;
+    this.gen = new HashSet<Variable /*!*/>();
+    this.kill = new HashSet<Variable /*!*/>();
+  }
+
+  public GenKillWeight(HashSet<Variable /*!*/> gen, HashSet<Variable /*!*/> kill)
+  {
+    Contract.Requires(cce.NonNullElements(gen));
+    Contract.Requires(cce.NonNullElements(kill));
+    Contract.Assert(gen != null);
+    Contract.Assert(kill != null);
+    this.gen = gen;
+    this.kill = kill;
+    this.isZero = false;
+  }
+
+  public static GenKillWeight one()
+  {
+    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    return oneWeight;
+  }
+
+  public static GenKillWeight zero()
+  {
+    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    return zeroWeight;
+  }
+
+  public static GenKillWeight extend(GenKillWeight w1, GenKillWeight w2)
+  {
+    Contract.Requires(w2 != null);
+    Contract.Requires(w1 != null);
+    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    if (w1.isZero || w2.isZero)
     {
-      Contract.Invariant(cce.NonNullElements(gen));
-      Contract.Invariant(cce.NonNullElements(kill));
-      Contract.Invariant(oneWeight != null);
-      Contract.Invariant(zeroWeight != null);
+      return zero();
     }
 
-    bool isZero;
+    HashSet<Variable> t = new HashSet<Variable>(w2.gen);
+    t.ExceptWith(w1.kill);
+    HashSet<Variable> g = new HashSet<Variable>(w1.gen);
+    g.UnionWith(t);
+    HashSet<Variable> k = new HashSet<Variable>(w1.kill);
+    k.UnionWith(w2.kill);
+    return new GenKillWeight(g, k);
+    //return new GenKillWeight(w1.gen.Union(w2.gen.Difference(w1.kill)), w1.kill.Union(w2.kill));
+  }
 
-    public static GenKillWeight /*!*/
-      oneWeight = new GenKillWeight(new HashSet<Variable /*!*/>(), new HashSet<Variable /*!*/>());
-
-    public static GenKillWeight /*!*/
-      zeroWeight = new GenKillWeight();
-
-    // initializes to zero
-    public GenKillWeight()
+  public static GenKillWeight combine(GenKillWeight w1, GenKillWeight w2)
+  {
+    Contract.Requires(w2 != null);
+    Contract.Requires(w1 != null);
+    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    if (w1.isZero)
     {
-      this.isZero = true;
-      this.gen = new HashSet<Variable /*!*/>();
-      this.kill = new HashSet<Variable /*!*/>();
+      return w2;
     }
 
-    public GenKillWeight(HashSet<Variable /*!*/> gen, HashSet<Variable /*!*/> kill)
+    if (w2.isZero)
     {
-      Contract.Requires(cce.NonNullElements(gen));
-      Contract.Requires(cce.NonNullElements(kill));
-      Contract.Assert(gen != null);
-      Contract.Assert(kill != null);
-      this.gen = gen;
-      this.kill = kill;
-      this.isZero = false;
+      return w1;
     }
 
-    public static GenKillWeight one()
-    {
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
-      return oneWeight;
-    }
+    HashSet<Variable> g = new HashSet<Variable>(w1.gen);
+    g.UnionWith(w2.gen);
+    HashSet<Variable> k = new HashSet<Variable>(w1.kill);
+    k.IntersectWith(w2.kill);
+    return new GenKillWeight(g, k);
+    //return new GenKillWeight(w1.gen.Union(w2.gen), w1.kill.Intersection(w2.kill));
+  }
 
-    public static GenKillWeight zero()
+  public static GenKillWeight projectLocals(GenKillWeight w)
+  {
+    Contract.Requires(w != null);
+    Contract.Ensures(Contract.Result<GenKillWeight>() != null);
+    HashSet<Variable /*!*/> gen = new HashSet<Variable>();
+    foreach (Variable v in w.gen)
     {
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
-      return zeroWeight;
-    }
-
-    public static GenKillWeight extend(GenKillWeight w1, GenKillWeight w2)
-    {
-      Contract.Requires(w2 != null);
-      Contract.Requires(w1 != null);
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
-      if (w1.isZero || w2.isZero)
+      if (isGlobal(v))
       {
-        return zero();
+        gen.Add(v);
       }
-
-      HashSet<Variable> t = new HashSet<Variable>(w2.gen);
-      t.ExceptWith(w1.kill);
-      HashSet<Variable> g = new HashSet<Variable>(w1.gen);
-      g.UnionWith(t);
-      HashSet<Variable> k = new HashSet<Variable>(w1.kill);
-      k.UnionWith(w2.kill);
-      return new GenKillWeight(g, k);
-      //return new GenKillWeight(w1.gen.Union(w2.gen.Difference(w1.kill)), w1.kill.Union(w2.kill));
     }
 
-    public static GenKillWeight combine(GenKillWeight w1, GenKillWeight w2)
+    HashSet<Variable /*!*/> kill = new HashSet<Variable>();
+    foreach (Variable v in w.kill)
     {
-      Contract.Requires(w2 != null);
-      Contract.Requires(w1 != null);
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
-      if (w1.isZero)
+      if (isGlobal(v))
       {
-        return w2;
+        kill.Add(v);
       }
-
-      if (w2.isZero)
-      {
-        return w1;
-      }
-
-      HashSet<Variable> g = new HashSet<Variable>(w1.gen);
-      g.UnionWith(w2.gen);
-      HashSet<Variable> k = new HashSet<Variable>(w1.kill);
-      k.IntersectWith(w2.kill);
-      return new GenKillWeight(g, k);
-      //return new GenKillWeight(w1.gen.Union(w2.gen), w1.kill.Intersection(w2.kill));
     }
 
-    public static GenKillWeight projectLocals(GenKillWeight w)
+    return new GenKillWeight(gen, kill);
+  }
+
+  public static bool isEqual(GenKillWeight w1, GenKillWeight w2)
+  {
+    Contract.Requires(w2 != null);
+    Contract.Requires(w1 != null);
+    if (w1.isZero)
     {
-      Contract.Requires(w != null);
-      Contract.Ensures(Contract.Result<GenKillWeight>() != null);
-      HashSet<Variable /*!*/> gen = new HashSet<Variable>();
-      foreach (Variable v in w.gen)
-      {
-        if (isGlobal(v))
-        {
-          gen.Add(v);
-        }
-      }
-
-      HashSet<Variable /*!*/> kill = new HashSet<Variable>();
-      foreach (Variable v in w.kill)
-      {
-        if (isGlobal(v))
-        {
-          kill.Add(v);
-        }
-      }
-
-      return new GenKillWeight(gen, kill);
+      return w2.isZero;
     }
 
-    public static bool isEqual(GenKillWeight w1, GenKillWeight w2)
+    if (w2.isZero)
     {
-      Contract.Requires(w2 != null);
-      Contract.Requires(w1 != null);
-      if (w1.isZero)
-      {
-        return w2.isZero;
-      }
-
-      if (w2.isZero)
-      {
-        return w1.isZero;
-      }
-
-      return (w1.gen.Equals(w2.gen) && w1.kill.Equals(w2.kill));
+      return w1.isZero;
     }
 
-    private static bool isGlobal(Variable v)
-    {
-      Contract.Requires(v != null);
-      return (v is GlobalVariable);
-    }
+    return (w1.gen.Equals(w2.gen) && w1.kill.Equals(w2.kill));
+  }
 
-    [Pure]
-    public override string ToString()
-    {
-      Contract.Ensures(Contract.Result<string>() != null);
-      return string.Format("({0},{1})", gen.ToString(), kill.ToString());
-    }
+  private static bool isGlobal(Variable v)
+  {
+    Contract.Requires(v != null);
+    return (v is GlobalVariable);
+  }
 
-    public HashSet<Variable /*!*/> /*!*/ getLiveVars()
-    {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
-      return gen;
-    }
+  [Pure]
+  public override string ToString()
+  {
+    Contract.Ensures(Contract.Result<string>() != null);
+    return string.Format("({0},{1})", gen.ToString(), kill.ToString());
+  }
 
-    public HashSet<Variable /*!*/> /*!*/ getLiveVars(HashSet<Variable /*!*/> /*!*/ lv)
-    {
-      Contract.Requires(cce.NonNullElements(lv));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
-      HashSet<Variable> temp = new HashSet<Variable>(lv);
-      temp.ExceptWith(kill);
-      temp.UnionWith(gen);
-      return temp;
-    }
+  public HashSet<Variable /*!*/> /*!*/ getLiveVars()
+  {
+    Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+    return gen;
+  }
+
+  public HashSet<Variable /*!*/> /*!*/ getLiveVars(HashSet<Variable /*!*/> /*!*/ lv)
+  {
+    Contract.Requires(cce.NonNullElements(lv));
+    Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+    HashSet<Variable> temp = new HashSet<Variable>(lv);
+    temp.ExceptWith(kill);
+    temp.UnionWith(gen);
+    return temp;
   }
 }
