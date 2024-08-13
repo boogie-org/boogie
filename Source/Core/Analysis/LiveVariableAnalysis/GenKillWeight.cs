@@ -16,7 +16,6 @@ abstract public class Weight {
 */
 
 // Weight domain for LiveVariableAnalysis (Gen/Kill)
-
 public class GenKillWeight
 {
   // lambda S. (S - kill) union gen

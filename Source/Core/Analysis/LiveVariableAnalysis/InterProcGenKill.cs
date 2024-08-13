@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using Microsoft.Boogie.GraphUtil;
+using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
 {
