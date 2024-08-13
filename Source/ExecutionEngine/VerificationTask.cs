@@ -115,7 +115,7 @@ public class VerificationTask : IVerificationTask {
 
   private async IAsyncEnumerable<IVerificationStatus> StartRun([EnumeratorCancellation] CancellationToken cancellationToken) {
     var timeout = Split.Run.Implementation.GetTimeLimit(Split.Options);
-
+    
     var checkerTask = engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, CancellationToken.None);
     if (!checkerTask.IsCompleted) {
       yield return new Queued();
@@ -126,8 +126,13 @@ public class VerificationTask : IVerificationTask {
       yield return new Running();
 
       var collector = new VerificationResultCollector(Split.Options);
-      await engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
+      var beginCheckTask = engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
         modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken), cancellationToken).Unwrap();
+      if (timeout != 0)
+      {
+        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+      }
+      await beginCheckTask;
 
       await checker.ProverTask.WaitAsync(cancellationToken);
       var result = Split.ReadOutcome(0, checker, collector);

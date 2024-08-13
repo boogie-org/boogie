@@ -1,5 +1,5 @@
 // We use boogie here because parallel-boogie doesn't work well with -proverLog
-// RUN: %boogie -rlimit:800000 -proverLog:"%t.smt2" "%s"
+// RUN: %boogie -timeLimit:0 -rlimit:800000 -proverLog:"%t.smt2" "%s"
 // RUN: %OutputCheck --file-to-check "%t.smt2" "%s"
 // CHECK-L: (set-option :timeout 4000)
 // CHECK-L: (set-option :rlimit 800000)
