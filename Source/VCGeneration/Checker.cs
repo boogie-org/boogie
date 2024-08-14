@@ -260,6 +260,7 @@ namespace Microsoft.Boogie
     }
 
     public int SmtInputSize => thmProver.SentSize;
+    public string SmtUsed => thmProver.SentSmt.ToString();
 
     public int GetProverResourceCount()
     {

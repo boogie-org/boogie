@@ -46,7 +46,10 @@ namespace Microsoft.Boogie.SMTLib
       if (Process != null && processNeedsRestart) {
         processNeedsRestart = false;
         SetupProcess();
-        Process.Send(common.ToString());
+        var c = common.ToString();
+        SentSize += c.Length;
+        SentSmt.AppendLine(c);
+        Process.Send(c);
       }
     }
 
@@ -124,6 +127,8 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         var result = await CheckSat(cancellationToken, errorLimit);
+        SentSize = 0;
+        SentSmt.Clear();
         SendThisVC("(pop 1)");
 
         return result;
@@ -142,10 +147,12 @@ namespace Microsoft.Boogie.SMTLib
       if (0 < common.Length)
       {
         var c = common.ToString();
+        SentSize += c.Length;
+        SentSmt.AppendLine(c);
         Process.Send(c);
         if (currentLogFile != null)
         {
-          currentLogFile.WriteLine(c);
+          await currentLogFile.WriteLineAsync(c);
         }
       }
 
@@ -264,6 +271,8 @@ namespace Microsoft.Boogie.SMTLib
         {
           if (popLater)
           {
+            SentSize = 0;
+            SentSmt.Clear();
             SendThisVC("(pop 1)");
           }
         }
@@ -301,6 +310,8 @@ namespace Microsoft.Boogie.SMTLib
     {
       if (popLater)
       {
+        SentSize = 0;
+        SentSmt.Clear();
         SendThisVC("(pop 1)");
       }
       SendThisVC("(push 1)");
@@ -648,6 +659,7 @@ namespace Microsoft.Boogie.SMTLib
       if (Process != null)
       {
         SentSize += s.Length;
+        SentSmt.AppendLine(s);
         Process.Send(s);
       }
 

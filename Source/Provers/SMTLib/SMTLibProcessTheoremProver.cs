@@ -1111,6 +1111,8 @@ namespace Microsoft.Boogie.SMTLib
 
     public override void Pop()
     {
+      SentSize = 0;
+      SentSmt.Clear();
       SendThisVC("(pop 1)");
       DeclCollector.Pop();
     }

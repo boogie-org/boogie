@@ -124,6 +124,7 @@ namespace Microsoft.Boogie.SMTLib
       DeclCollector.Reset();
       NamedAssumes.Clear();
       SentSize = 0;
+      SentSmt.Clear();
     }
 
     private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests, CancellationToken cancellationToken) {
@@ -285,7 +286,10 @@ namespace Microsoft.Boogie.SMTLib
       // Boogie emits comments after the solver has responded. In batch
       // mode, sending these to the solver is problematic. But they'll
       // still get sent to the log below.
-      if (Process != null && !checkSatSent) {
+      if (Process != null && !checkSatSent)
+      {
+        SentSize += s.Length;
+        SentSmt.AppendLine(s);
         Process.Send(s);
       }
 
