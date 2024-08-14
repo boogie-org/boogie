@@ -980,11 +980,8 @@ namespace VC
         checker.TheoremProver.SetAdditionalSmtOptions(Implementation.GetExtraSMTOptions()
           .Select(kv => new OptionValue(kv.Key, kv.Value)));
         await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
-        SmtUsed = checker.SmtUsed;
         SmtInputSize = checker.SmtInputSize;
       }
-
-      public string SmtUsed { get; set; }
 
       public string Description
       {

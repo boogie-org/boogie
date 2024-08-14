@@ -1,5 +1,5 @@
-// RUN: %parallel-boogie -randomSeed:0 -xml:"%t-1.xml" "%s"
-// RUN: %parallel-boogie -randomSeed:0 -xml:"%t-2.xml" "%s"
+// RUN: %parallel-boogie -randomSeed:0 -proverLog:%t-1.smt -xml:"%t-1.xml" "%s"
+// RUN: %parallel-boogie -randomSeed:0 -proverLog:%t-2.smt -xml:"%t-2.xml" "%s"
 // RUN: grep -Eo "resourceCount=\"[0-9]+\"" "%t-1.xml" | sort -g > "%t-res1"
 // RUN: grep -Eo "resourceCount=\"[0-9]+\"" "%t-2.xml" | sort -g > "%t-res2"
 // RUN: diff "%t-res1" "%t-res2"

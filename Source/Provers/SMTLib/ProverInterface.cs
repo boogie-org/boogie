@@ -23,7 +23,6 @@ public enum SolverOutcome
 public abstract class ProverInterface
 {
   public int SentSize { get; protected set; }
-  public StringBuilder SentSmt { get; } = new();
   
   public static ProverInterface CreateProver(SMTLibOptions libOptions, Program prog,
     string /*?*/ logFilePath, bool appendLogFile, uint timeout,

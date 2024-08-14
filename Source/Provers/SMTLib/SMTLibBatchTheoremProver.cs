@@ -124,7 +124,6 @@ namespace Microsoft.Boogie.SMTLib
       DeclCollector.Reset();
       NamedAssumes.Clear();
       SentSize = 0;
-      SentSmt.Clear();
     }
 
     private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests, CancellationToken cancellationToken) {
@@ -289,7 +288,6 @@ namespace Microsoft.Boogie.SMTLib
       if (Process != null && !checkSatSent)
       {
         SentSize += s.Length;
-        SentSmt.AppendLine(s);
         Process.Send(s);
       }
 
