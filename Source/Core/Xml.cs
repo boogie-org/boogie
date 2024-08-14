@@ -112,7 +112,7 @@ namespace Microsoft.Boogie
     }
 
     public void WriteSplit(int splitNum, int iteration, IEnumerable<AssertCmd> asserts, DateTime startTime,
-                           string outcome, TimeSpan elapsed, int? resourceCount)
+                           string outcome, TimeSpan elapsed, int? resourceCount, int? smtInputSize)
     {
       Contract.Requires(splitNum > 0);
       Contract.Requires(outcome != null);
@@ -144,6 +144,10 @@ namespace Microsoft.Boogie
         if (resourceCount is not null)
         {
           wr.WriteAttributeString("resourceCount", resourceCount.ToString());
+        }
+        if (smtInputSize is not null)
+        {
+          wr.WriteAttributeString("smtInputSize", smtInputSize.ToString());
         }
         wr.WriteEndElement(); // conclusion
 

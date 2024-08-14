@@ -259,6 +259,8 @@ namespace Microsoft.Boogie
       get { return proverRunTime; }
     }
 
+    public int SmtInputSize => thmProver.SentSize;
+
     public int GetProverResourceCount()
     {
       return thmProver.GetRCount();

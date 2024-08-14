@@ -39,16 +39,14 @@ namespace VC
         }
       }
 
-      readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
-        stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
+      readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/ stats = new();
 
       static int currentId = -1;
 
       Block splitBlock;
       bool assertToAssume;
 
-      List<Block /*!*/> /*!*/
-        assumizedBranches = new List<Block /*!*/>();
+      List<Block /*!*/> /*!*/ assumizedBranches = new();
 
       double score;
       bool scoreComputed;
@@ -58,8 +56,7 @@ namespace VC
 
       public Dictionary<TransferCmd, ReturnCmd> GotoCmdOrigins { get; }
 
-      public readonly VerificationConditionGenerator /*!*/
-        parent;
+      public readonly VerificationConditionGenerator /*!*/ parent;
 
       public Implementation /*!*/ Implementation => Run.Implementation;
 
@@ -78,6 +75,7 @@ namespace VC
       // async interface
       public int SplitIndex { get; set; }
       public VerificationConditionGenerator.ErrorReporter reporter;
+      public int SmtInputSize { get; set; }
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
@@ -915,6 +913,7 @@ namespace VC
           Asserts: Asserts,
           CoveredElements: CoveredElements,
           ResourceCount: resourceCount,
+          SmtInputSize,
           SolverUsed: (Options as SMTLibSolverOptions)?.Solver);
         callback.OnVCResult(result);
 
@@ -981,6 +980,7 @@ namespace VC
         checker.TheoremProver.SetAdditionalSmtOptions(Implementation.GetExtraSMTOptions()
           .Select(kv => new OptionValue(kv.Key, kv.Value)));
         await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
+        SmtInputSize = checker.SmtInputSize;
       }
 
       public string Description

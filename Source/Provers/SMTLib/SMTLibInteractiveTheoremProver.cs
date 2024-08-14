@@ -647,6 +647,7 @@ namespace Microsoft.Boogie.SMTLib
 
       if (Process != null)
       {
+        SentSize += s.Length;
         Process.Send(s);
       }
 

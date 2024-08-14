@@ -11,11 +11,11 @@
 // CHECK: \<method name="ExampleWithSplits" startTime=".*"\>
 // CHECK:   \<assertionBatch number="1" iteration="0" startTime=".*"\>
 // CHECK:     \<assertion file="xml.bpl" line="25" column="3" /\>
-// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" /\>
+// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" smtInputSize="865" /\>
 // CHECK:   \</assertionBatch\>
 // CHECK:   \<assertionBatch number="2" iteration="0" startTime=".*"\>
 // CHECK:     \<assertion file="xml.bpl" line="27" column="3" /\>
-// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" /\>
+// CHECK:     \<conclusion duration=".*" outcome="valid" resourceCount=".*" smtInputSize="1490" /\>
 // CHECK:   \</assertionBatch\>
 // CHECK:   \<conclusion endTime=".*" duration=".*" resourceCount=".*" outcome="correct" /\>
 // CHECK: \</method\>

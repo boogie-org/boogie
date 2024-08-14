@@ -71,9 +71,9 @@ namespace Microsoft.Boogie.SMTLib
         SetupProcess();
         checkSatSent = false;
         FullReset(gen);
-
         if (options.LogFilename != null && currentLogFile == null)
         {
+          
           currentLogFile = OpenOutputFile(descriptiveName);
           await currentLogFile.WriteAsync(common.ToString());
         }
@@ -123,6 +123,7 @@ namespace Microsoft.Boogie.SMTLib
       AxiomsAreSetup = false;
       DeclCollector.Reset();
       NamedAssumes.Clear();
+      SentSize = 0;
     }
 
     private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests, CancellationToken cancellationToken) {
