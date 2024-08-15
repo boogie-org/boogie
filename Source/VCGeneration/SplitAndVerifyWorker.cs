@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,6 +36,7 @@ namespace VC
     private int totalResourceCount;
 
     public SplitAndVerifyWorker(
+      Program program,
       VCGenOptions options, 
       VerificationConditionGenerator verificationConditionGenerator,
       ImplementationRun run,
@@ -64,7 +66,7 @@ namespace VC
 
 
       ResetPredecessors(Implementation.Blocks);
-      ManualSplits = ManualSplitFinder.FocusAndSplit(options, run, gotoCmdOrigins, verificationConditionGenerator).ToList<Split>();
+      ManualSplits = ManualSplitFinder.FocusAndSplit(program, options, run, gotoCmdOrigins, verificationConditionGenerator).ToList<Split>();
 
       if (ManualSplits.Count == 1 && maxSplits > 1)
       {
@@ -139,10 +141,11 @@ namespace VC
       {
         var splitNum = split.SplitIndex + 1;
         var splitIdxStr = options.RandomizeVcIterations > 1 ? $"{splitNum} (iteration {iteration})" : $"{splitNum}";
-        run.OutputWriter.WriteLine("    checking split {1}/{2}{3}, {4:0.00}%, {0} ...",
-          split.Stats, splitIdxStr, total, 
-          split is ManualSplit manualSplit ? $" (line {manualSplit.Token.line})" : "", 
-          100 * provenCost / (provenCost + remainingCost));
+        await run.OutputWriter.WriteLineAsync(string.Format(CultureInfo.InvariantCulture, 
+            "    checking split {1}/{2}{3}, {4:0.00}%, {0} ...",
+            split.Stats, splitIdxStr, total,
+            split is ManualSplit manualSplit ? $" (line {manualSplit.Token.line})" : "", 
+            100 * provenCost / (provenCost + remainingCost)));
       }
 
       callback.OnProgress?.Invoke("VCprove", split.SplitIndex, total,
@@ -151,8 +154,13 @@ namespace VC
       var timeout = KeepGoing && split.LastChance ? options.VcsFinalAssertTimeout :
         KeepGoing ? options.VcsKeepGoingTimeout :
         run.Implementation.GetTimeLimit(options);
-      await split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
+      var beginCheckTask = split.BeginCheck(run.OutputWriter, checker, callback, mvInfo, timeout,
         Implementation.GetResourceLimit(options), cancellationToken);
+      if (timeout != 0)
+      {
+        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+      }
+      await beginCheckTask;
     }
 
     private Implementation Implementation => run.Implementation;

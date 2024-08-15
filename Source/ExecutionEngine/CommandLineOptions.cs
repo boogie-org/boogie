@@ -479,6 +479,10 @@ namespace Microsoft.Boogie
       }
     }
 
+    /// <summary>
+    /// A hidden option that configures a time limit for the whole Boogie CLI invocation
+    /// </summary>
+    public uint ProcessTimeLimit { get; set; } = 0;
     public uint TimeLimit { get; set; } = 0; // 0 means no limit
     public uint ResourceLimit { get; set; } = 0; // default to 0
     public uint SmokeTimeout { get; set; } = 10; // default to 10s
@@ -539,11 +543,6 @@ namespace Microsoft.Boogie
 
     // disable model generation, used by Corral/SI
     public bool StratifiedInliningWithoutModels { get; set; }
-
-    // Sets the recursion bound, used for loop extraction, etc.
-    public int RecursionBound { get; set; } = 500;
-
-    public bool ExtractLoopsUnrollIrreducible { get; set; } = true; // unroll irreducible loops? (set programmatically)
 
     public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Monomorphic;
 
@@ -1114,13 +1113,7 @@ namespace Microsoft.Boogie
           }
 
           return true;
-        case "recursionBound":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
 
-          return true;
         case "enableUnSatCoreExtraction":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1272,6 +1265,10 @@ namespace Microsoft.Boogie
 
         case "timeLimit":
           ps.GetUnsignedNumericArgument(x => TimeLimit = x, null);
+          return true;
+        
+        case "processTimeLimit":
+          ps.GetUnsignedNumericArgument(x => ProcessTimeLimit = x, null);
           return true;
 
         case "rlimit":
@@ -1798,6 +1795,10 @@ namespace Microsoft.Boogie
 
   /loopUnroll:<n>
                 unroll loops, following up to n back edges (and then some)
+                default is -1, which means loops are not unrolled
+  /extractLoops
+                extract reducible loops into recursive procedures and
+                inline irreducible loops using the bound supplied by /loopUnroll:<n>
   /soundLoopUnrolling
                 sound loop unrolling
   /doModSetAnalysis

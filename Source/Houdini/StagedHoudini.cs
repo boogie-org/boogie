@@ -339,17 +339,6 @@ namespace Microsoft.Boogie.Houdini
         return o1;
       }
 
-      // Neither outcome is correct, so if one outcome is ReachedBound, return the other in case it is "worse"
-      if (vcOutcome1 == VcOutcome.ReachedBound)
-      {
-        return o2;
-      }
-
-      if (vcOutcome2 == VcOutcome.ReachedBound)
-      {
-        return o1;
-      }
-
       // Both outcomes must be timeout or memout; arbitrarily choose the first
       return o1;
     }

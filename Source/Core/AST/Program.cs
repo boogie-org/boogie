@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
-using System.Text;
 using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie;
@@ -501,26 +500,30 @@ public class Program : Absy
 
   public static Graph<Block> GraphFromBlocks(List<Block> blocks, bool forward = true)
   {
-    Graph<Block> g = new Graph<Block>();
+    var result = new Graph<Block>();
+    if (!blocks.Any())
+    {
+      return result;
+    }
     void AddEdge(Block a, Block b) {
       Contract.Assert(a != null && b != null);
       if (forward) {
-        g.AddEdge(a, b);
+        result.AddEdge(a, b);
       } else {
-        g.AddEdge(b, a);
+        result.AddEdge(b, a);
       }
     }
 
-    g.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
-    foreach (Block b in blocks)
+    result.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
+    foreach (var block in blocks)
     {
-      if (b.TransferCmd is GotoCmd gtc)
+      if (block.TransferCmd is GotoCmd gtc)
       {
         Contract.Assume(gtc.labelTargets != null);
-        gtc.labelTargets.ForEach(dest => AddEdge(b, dest));
+        gtc.labelTargets.ForEach(dest => AddEdge(block, dest));
       }
     }
-    return g;
+    return result;
   }
 
   public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl, bool forward = true)
