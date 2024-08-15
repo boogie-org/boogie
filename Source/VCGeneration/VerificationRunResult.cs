@@ -18,7 +18,7 @@ namespace VC
     List<AssertCmd> Asserts,
     IEnumerable<TrackedNodeComponent> CoveredElements,
     int ResourceCount,
-    int SmtInputSize,
+    CheckInputs CheckInputs,
     SolverKind? SolverUsed
   ) {
     public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, SolverOutcome> perAssertOutcome,

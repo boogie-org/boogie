@@ -47,7 +47,6 @@ namespace Microsoft.Boogie.SMTLib
         processNeedsRestart = false;
         SetupProcess();
         var c = common.ToString();
-        SentSize += c.Length;
         Process.Send(c);
       }
     }
@@ -65,7 +64,8 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     private bool hasReset = true;
-    public override async Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit, CancellationToken cancellationToken)
+    public override async Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, 
+      int errorLimit, CancellationToken cancellationToken)
     {
       currentErrorHandler = handler;
       try
@@ -102,7 +102,8 @@ namespace Microsoft.Boogie.SMTLib
 
         SendThisVC("(push 1)");
         DeclCollector.Push();
-        string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+        string vcString = "(assert (not\n" + VcExpr2String(vc, 1) + "\n))";
+        VCExprSize = vcString.Length;
         FlushAxioms();
         SendVCId(descriptiveName);
         SendVCOptions();
@@ -126,7 +127,6 @@ namespace Microsoft.Boogie.SMTLib
         }
 
         var result = await CheckSat(cancellationToken, errorLimit);
-        SentSize = 0;
         SendThisVC("(pop 1)");
 
         return result;
@@ -145,7 +145,6 @@ namespace Microsoft.Boogie.SMTLib
       if (0 < common.Length)
       {
         var c = common.ToString();
-        SentSize += c.Length;
         Process.Send(c);
         if (currentLogFile != null)
         {
@@ -268,7 +267,6 @@ namespace Microsoft.Boogie.SMTLib
         {
           if (popLater)
           {
-            SentSize = 0;
             SendThisVC("(pop 1)");
           }
         }
@@ -306,7 +304,6 @@ namespace Microsoft.Boogie.SMTLib
     {
       if (popLater)
       {
-        SentSize = 0;
         SendThisVC("(pop 1)");
       }
       SendThisVC("(push 1)");
@@ -439,7 +436,7 @@ namespace Microsoft.Boogie.SMTLib
         expr = VCExprGen.AndSimp(expr, lit);
       }
 
-      SendThisVC("(assert " + VCExpr2String(expr, 1) + ")");
+      SendThisVC("(assert " + VcExpr2String(expr, 1) + ")");
       if (options.Solver == SolverKind.Z3)
       {
         SendThisVC("(apply (then (using-params propagate-values :max_rounds 1) simplify) :print false)");
@@ -539,7 +536,7 @@ namespace Microsoft.Boogie.SMTLib
 
     public override async Task<object> Evaluate(VCExpr expr)
     {
-      string vcString = VCExpr2String(expr, 1);
+      string vcString = VcExpr2String(expr, 1);
       var resp = await SendVcRequest($"(get-value ({vcString}))");
       if (resp == null)
       {
@@ -653,7 +650,6 @@ namespace Microsoft.Boogie.SMTLib
 
       if (Process != null)
       {
-        SentSize += s.Length;
         Process.Send(s);
       }
 
@@ -704,7 +700,7 @@ namespace Microsoft.Boogie.SMTLib
           nameCounter++;
           nameToAssumption.Add(name, i);
 
-          string vcString = VCExpr2String(vc, 1);
+          string vcString = VcExpr2String(vc, 1);
           AssertAxioms();
           SendThisVC(string.Format("(assert (! {0} :named {1}))", vcString, name));
           i++;
@@ -755,13 +751,13 @@ namespace Microsoft.Boogie.SMTLib
         var hardAssumptionStrings = new List<string>();
         foreach (var a in hardAssumptions)
         {
-          hardAssumptionStrings.Add(VCExpr2String(a, 1));
+          hardAssumptionStrings.Add(VcExpr2String(a, 1));
         }
 
         var currAssumptionStrings = new List<string>();
         foreach (var a in softAssumptions)
         {
-          currAssumptionStrings.Add(VCExpr2String(a, 1));
+          currAssumptionStrings.Add(VcExpr2String(a, 1));
         }
 
         Push();

@@ -19,6 +19,11 @@ namespace Microsoft.Boogie
   }
 
 
+  public record CheckInputs(int VcExprSize, int CommonSize)
+  {
+    public int TotalSize => VcExprSize + CommonSize;
+  }
+    
   /// <summary>
   /// Interface to the theorem prover specialized to Boogie.
   ///
@@ -259,14 +264,13 @@ namespace Microsoft.Boogie
       get { return proverRunTime; }
     }
 
-    public int SmtInputSize => thmProver.SentSize;
+    public int SmtInputSize => thmProver.VCExprSize;
 
     public int GetProverResourceCount()
     {
       return thmProver.GetRCount();
     }
-
-
+    
     private async Task Check(string descriptiveName, VCExpr vc, CancellationToken cancellationToken) {
       try {
         outcome = await thmProver.Check(descriptiveName, vc, cce.NonNull(handler), Options.ErrorLimit,
@@ -316,7 +320,8 @@ namespace Microsoft.Boogie
       proverRunTime = ProverStopwatch.Elapsed;
     }
 
-    public async Task BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, uint timeout, uint rlimit, CancellationToken cancellationToken)
+    public async Task<CheckInputs> BeginCheck(string descriptiveName, VCExpr vc, ProverInterface.ErrorHandler handler, 
+      uint timeout, uint rlimit, CancellationToken cancellationToken)
     {
       Contract.Requires(descriptiveName != null);
       Contract.Requires(vc != null);
@@ -335,6 +340,7 @@ namespace Microsoft.Boogie
       ProverStart = DateTime.UtcNow;
       ProverStopwatch.Restart();
       ProverTask = Check(descriptiveName, vc, cancellationToken);
+      return new CheckInputs(thmProver.VCExprSize, thmProver.CommonSize);
     }
 
     public SolverOutcome ReadOutcome()
@@ -384,6 +390,8 @@ namespace Microsoft.Boogie
     {
       throw new NotImplementedException();
     }
+
+    public override int CommonSize => throw new NotImplementedException();
 
     public override Task<SolverOutcome> Check(string descriptiveName, VCExpr vc, ErrorHandler handler, int errorLimit,
       CancellationToken cancellationToken) {

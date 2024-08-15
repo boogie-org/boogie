@@ -73,9 +73,7 @@ namespace Microsoft.Boogie.SMTLib
         FullReset(gen);
         if (options.LogFilename != null && currentLogFile == null)
         {
-          
           currentLogFile = OpenOutputFile(descriptiveName);
-          await currentLogFile.WriteAsync(common.ToString());
         }
 
         SendVCOptions();
@@ -84,8 +82,8 @@ namespace Microsoft.Boogie.SMTLib
 
         OptimizationRequests.Clear();
 
-        string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
-        FlushAxioms();
+        string vcString = "(assert (not\n" + VcExpr2String(vc, 1) + "\n))";
+        VCExprSize = vcString.Length;
 
         Push();
         SendVCId(descriptiveName);
@@ -123,7 +121,6 @@ namespace Microsoft.Boogie.SMTLib
       AxiomsAreSetup = false;
       DeclCollector.Reset();
       NamedAssumes.Clear();
-      SentSize = 0;
     }
 
     private Task<IReadOnlyList<SExpr>> SendRequestsAndClose(IReadOnlyList<string> requests, CancellationToken cancellationToken) {
@@ -287,7 +284,6 @@ namespace Microsoft.Boogie.SMTLib
       // still get sent to the log below.
       if (Process != null && !checkSatSent)
       {
-        SentSize += s.Length;
         Process.Send(s);
       }
 

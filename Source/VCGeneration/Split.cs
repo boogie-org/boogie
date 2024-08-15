@@ -75,7 +75,7 @@ namespace VC
       // async interface
       public int SplitIndex { get; set; }
       public VerificationConditionGenerator.ErrorReporter reporter;
-      public int SmtInputSize { get; set; }
+      public CheckInputs CheckInputs { get; set; }
 
       public Split(VCGenOptions options, List<Block /*!*/> /*!*/ blocks,
         Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
@@ -913,7 +913,7 @@ namespace VC
           Asserts: Asserts,
           CoveredElements: CoveredElements,
           ResourceCount: resourceCount,
-          SmtInputSize,
+          CheckInputs,
           SolverUsed: (Options as SMTLibSolverOptions)?.Solver);
         callback.OnVCResult(result);
 
@@ -979,8 +979,7 @@ namespace VC
 
         checker.TheoremProver.SetAdditionalSmtOptions(Implementation.GetExtraSMTOptions()
           .Select(kv => new OptionValue(kv.Key, kv.Value)));
-        await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
-        SmtInputSize = checker.SmtInputSize;
+        CheckInputs = await checker.BeginCheck(Description, vc, reporter, timeout, rlimit, cancellationToken);
       }
 
       public string Description

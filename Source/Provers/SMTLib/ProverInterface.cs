@@ -22,7 +22,8 @@ public enum SolverOutcome
 
 public abstract class ProverInterface
 {
-  public int SentSize { get; protected set; }
+  public int VCExprSize { get; protected set; }
+  public abstract int CommonSize { get; }
   
   public static ProverInterface CreateProver(SMTLibOptions libOptions, Program prog,
     string /*?*/ logFilePath, bool appendLogFile, uint timeout,
