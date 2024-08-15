@@ -34,40 +34,42 @@ public class LoopExtractor {
           fullMap[impl.Name] = null;
           hasIrreducibleLoops.Add(impl);
 
-          if (options.ExtractLoopsUnrollIrreducible)
+          if (options.LoopUnrollCount == -1)
           {
-            // statically unroll loops in this procedure
-
-            // First, build a map of the current blocks
-            var origBlocks = new Dictionary<string, Block>();
-            foreach (var blk in impl.Blocks)
-            {
-              origBlocks.Add(blk.Label, blk);
-            }
-
-            // unroll
-            Block start = impl.Blocks[0];
-            impl.Blocks = LoopUnroll.UnrollLoops(start, options.RecursionBound, false);
-
-            // Now construct the "map back" information
-            // Resulting block label -> original block
-            var blockMap = new Dictionary<string, Block>();
-            foreach (var blk in impl.Blocks)
-            {
-              var sl = LoopUnroll.sanitizeLabel(blk.Label);
-              if (sl == blk.Label)
-              {
-                blockMap.Add(blk.Label, blk);
-              }
-              else
-              {
-                Contract.Assert(origBlocks.ContainsKey(sl));
-                blockMap.Add(blk.Label, origBlocks[sl]);
-              }
-            }
-
-            fullMap[impl.Name] = blockMap;
+            continue;
           }
+
+          // statically unroll loops in this procedure
+
+          // First, build a map of the current blocks
+          var origBlocks = new Dictionary<string, Block>();
+          foreach (var blk in impl.Blocks)
+          {
+            origBlocks.Add(blk.Label, blk);
+          }
+
+          // unroll
+          Block start = impl.Blocks[0];
+          impl.Blocks = LoopUnroll.UnrollLoops(start, options.LoopUnrollCount, false);
+
+          // Now construct the "map back" information
+          // Resulting block label -> original block
+          var blockMap = new Dictionary<string, Block>();
+          foreach (var blk in impl.Blocks)
+          {
+            var sl = LoopUnroll.sanitizeLabel(blk.Label);
+            if (sl == blk.Label)
+            {
+              blockMap.Add(blk.Label, blk);
+            }
+            else
+            {
+              Contract.Assert(origBlocks.ContainsKey(sl));
+              blockMap.Add(blk.Label, origBlocks[sl]);
+            }
+          }
+
+          fullMap[impl.Name] = blockMap;
         }
       }
     }
