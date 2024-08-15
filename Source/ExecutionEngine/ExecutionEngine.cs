@@ -1119,10 +1119,6 @@ namespace Microsoft.Boogie
           if (msgIfVerifies != null) {
             tw.WriteLine(msgIfVerifies);
           }
-
-          break;
-        case VcOutcome.ReachedBound:
-          tw.WriteLine($"Stratified Inlining: Reached recursion bound of {options.RecursionBound}");
           break;
         case VcOutcome.Errors:
         case VcOutcome.TimedOut:
@@ -1167,28 +1163,24 @@ namespace Microsoft.Boogie
               }
             }
           }
-
           break;
         case VcOutcome.OutOfResource:
           if (implName != null && implTok != null) {
             string msg = "Verification out of resource (" + implName + ")";
             errorInfo = ErrorInformation.Create(implTok, msg);
           }
-
           break;
         case VcOutcome.OutOfMemory:
           if (implName != null && implTok != null) {
             string msg = "Verification out of memory (" + implName + ")";
             errorInfo = ErrorInformation.Create(implTok, msg);
           }
-
           break;
         case VcOutcome.SolverException:
           if (implName != null && implTok != null) {
             string msg = "Verification encountered solver exception (" + implName + ")";
             errorInfo = ErrorInformation.Create(implTok, msg);
           }
-
           break;
 
         case VcOutcome.Inconclusive:
@@ -1196,7 +1188,6 @@ namespace Microsoft.Boogie
             string msg = "Verification inconclusive (" + implName + ")";
             errorInfo = ErrorInformation.Create(implTok, msg);
           }
-
           break;
       }
 
@@ -1212,9 +1203,6 @@ namespace Microsoft.Boogie
         default:
           Contract.Assert(false); // unexpected outcome
           throw new cce.UnreachableException();
-        case VcOutcome.ReachedBound:
-          traceOutput = "verified";
-          break;
         case VcOutcome.Correct:
           traceOutput = "verified";
           break;
@@ -1252,38 +1240,27 @@ namespace Microsoft.Boogie
         default:
           Contract.Assert(false); // unexpected outcome
           throw new cce.UnreachableException();
-        case VcOutcome.ReachedBound:
-          Interlocked.Increment(ref stats.VerifiedCount);
-
-          break;
         case VcOutcome.Correct:
           Interlocked.Increment(ref stats.VerifiedCount);
-
           break;
         case VcOutcome.TimedOut:
           Interlocked.Increment(ref stats.TimeoutCount);
-
           break;
         case VcOutcome.OutOfResource:
           Interlocked.Increment(ref stats.OutOfResourceCount);
-
           break;
         case VcOutcome.OutOfMemory:
           Interlocked.Increment(ref stats.OutOfMemoryCount);
-
           break;
         case VcOutcome.SolverException:
           Interlocked.Increment(ref stats.SolverExceptionCount);
-
           break;
         case VcOutcome.Inconclusive:
           Interlocked.Increment(ref stats.InconclusiveCount);
-
           break;
         case VcOutcome.Errors:
           int cnt = errors.Count(e => !e.IsAuxiliaryCexForDiagnosingTimeouts);
           Interlocked.Add(ref stats.ErrorCount, cnt);
-
           break;
       }
     }
@@ -1296,38 +1273,27 @@ namespace Microsoft.Boogie
         default:
           Contract.Assert(false); // unexpected outcome
           throw new cce.UnreachableException();
-        case VcOutcome.ReachedBound:
-          Interlocked.Increment(ref stats.CachedVerifiedCount);
-
-          break;
         case VcOutcome.Correct:
           Interlocked.Increment(ref stats.CachedVerifiedCount);
-
           break;
         case VcOutcome.TimedOut:
           Interlocked.Increment(ref stats.CachedTimeoutCount);
-
           break;
         case VcOutcome.OutOfResource:
           Interlocked.Increment(ref stats.CachedOutOfResourceCount);
-
           break;
         case VcOutcome.OutOfMemory:
           Interlocked.Increment(ref stats.CachedOutOfMemoryCount);
-
           break;
         case VcOutcome.SolverException:
           Interlocked.Increment(ref stats.CachedSolverExceptionCount);
-
           break;
         case VcOutcome.Inconclusive:
           Interlocked.Increment(ref stats.CachedInconclusiveCount);
-
           break;
         case VcOutcome.Errors:
           int cnt = errors.Count(e => !e.IsAuxiliaryCexForDiagnosingTimeouts);
           Interlocked.Add(ref stats.CachedErrorCount, cnt);
-
           break;
       }
     }

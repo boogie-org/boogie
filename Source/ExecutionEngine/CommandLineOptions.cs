@@ -544,11 +544,6 @@ namespace Microsoft.Boogie
     // disable model generation, used by Corral/SI
     public bool StratifiedInliningWithoutModels { get; set; }
 
-    // Sets the recursion bound, used for loop extraction, etc.
-    public int RecursionBound { get; set; } = 500;
-
-    public bool ExtractLoopsUnrollIrreducible { get; set; } = true; // unroll irreducible loops? (set programmatically)
-
     public CoreOptions.TypeEncoding TypeEncodingMethod { get; set; } = CoreOptions.TypeEncoding.Monomorphic;
 
     public bool ReflectAdd { get; set; } = false;
@@ -1118,13 +1113,7 @@ namespace Microsoft.Boogie
           }
 
           return true;
-        case "recursionBound":
-          if (ps.ConfirmArgumentCount(1))
-          {
-            RecursionBound = Int32.Parse(cce.NonNull(args[ps.i]));
-          }
 
-          return true;
         case "enableUnSatCoreExtraction":
           if (ps.ConfirmArgumentCount(1))
           {
@@ -1806,6 +1795,10 @@ namespace Microsoft.Boogie
 
   /loopUnroll:<n>
                 unroll loops, following up to n back edges (and then some)
+                default is -1, which means loops are not unrolled
+  /extractLoops
+                extract reducible loops into recursive procedures and
+                inline irreducible loops using the bound supplied by /loopUnroll:<n>
   /soundLoopUnrolling
                 sound loop unrolling
   /doModSetAnalysis
