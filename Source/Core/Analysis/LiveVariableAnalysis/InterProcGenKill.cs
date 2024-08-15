@@ -4,7 +4,6 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie
 {
-  // Interprocedural Gen/Kill Analysis
   public class InterProcGenKill
   {
     private CoreOptions options;
@@ -554,19 +553,6 @@ namespace Microsoft.Boogie
         varsLiveAtEntry.Add(cfg.impl.Name, lv);
         varsLiveSummary.Add(cfg.impl.Name, cfg.summary);
       }
-
-      /*
-      foreach(Block/*!*/
-      /* b in mainImpl.Blocks){
-Contract.Assert(b != null);
-//Set<Variable!> lv = cfg.weightBefore[b].getLiveVars();
-b.liveVarsBefore = procICFG[mainImpl.Name].liveVarsAfter[b];
-//foreach(GlobalVariable/*!*/
-      /* v in program.GlobalVariables){Contract.Assert(v != null);
-//  b.liveVarsBefore.Add(v);
-//}
-}
-*/
     }
 
     // Called when summaries have already been computed

@@ -1,3 +1,4 @@
+#nullable enable
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -7,12 +8,13 @@ using VC;
 namespace VCGeneration;
 
 public static class ManualSplitFinder {
-  public static IEnumerable<ManualSplit> FocusAndSplit(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par) {
+  public static IEnumerable<ManualSplit> FocusAndSplit(Program program, VCGenOptions options, ImplementationRun run, 
+    Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par) {
     var focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
-    return focussedImpl.SelectMany(FindManualSplits);
+    return focussedImpl.SelectMany(s => FindManualSplits(program, s));
   }
 
-  private static List<ManualSplit /*!*/> FindManualSplits(ManualSplit initialSplit) {
+  private static List<ManualSplit /*!*/> FindManualSplits(Program program, ManualSplit initialSplit) {
     Contract.Requires(initialSplit.Implementation != null);
     Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
 
@@ -34,10 +36,15 @@ public static class ManualSplitFinder {
       Block entryPoint = initialSplit.Blocks[0];
       var blockAssignments = PickBlocksToVerify(initialSplit.Blocks, splitPoints);
       var entryBlockHasSplit = splitPoints.ContainsKey(entryPoint);
-      var baseSplitBlocks = BlockTransformations.DeleteNoAssertionBlocks(
-        DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
-          -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert));
-      splits.Add(new ManualSplit(initialSplit.Options, baseSplitBlocks, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
+      var firstSplitBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
+        -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert);
+      if (firstSplitBlocks != null)
+      {
+        splits.Add(new ManualSplit(initialSplit.Options, () => {
+          BlockTransformations.Optimize(firstSplitBlocks);
+          return firstSplitBlocks;
+        }, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, initialSplit.Token));
+      }
       foreach (var block in initialSplit.Blocks) {
         var tokens = splitPoints.GetValueOrDefault(block);
         if (tokens == null) {
@@ -48,8 +55,14 @@ public static class ManualSplitFinder {
           var token = tokens[i];
           bool lastSplitInBlock = i == tokens.Count - 1;
           var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, block, lastSplitInBlock, splitOnEveryAssert);
-          splits.Add(new ManualSplit(initialSplit.Options, 
-            BlockTransformations.DeleteNoAssertionBlocks(newBlocks), initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
+          if (newBlocks != null)
+          {
+            splits.Add(new ManualSplit(initialSplit.Options, 
+              () => {
+                BlockTransformations.Optimize(newBlocks);
+                return newBlocks;
+              }, initialSplit.GotoCmdOrigins, initialSplit.parent, initialSplit.Run, token));
+          }
         }
       }
     }
@@ -90,10 +103,29 @@ public static class ManualSplitFinder {
     return blockAssignments;
   }
 
-  private static List<Block> DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
+  private static List<Block> SplitOnAssert(VCGenOptions options, List<Block> oldBlocks, AssertCmd assertToKeep) {
+    var oldToNewBlockMap = new Dictionary<Block, Block>(oldBlocks.Count);
+    
+    var newBlocks = new List<Block>(oldBlocks.Count);
+    foreach (var oldBlock in oldBlocks) {
+      var newBlock = new Block(oldBlock.tok) {
+        Label = oldBlock.Label,
+        Cmds = oldBlock.Cmds.Select(cmd => 
+          cmd != assertToKeep ? CommandTransformations.AssertIntoAssume(options, cmd) : cmd).ToList()
+      };
+      oldToNewBlockMap[oldBlock] = newBlock;
+      newBlocks.Add(newBlock);
+    }
+
+    AddBlockJumps(oldBlocks, oldToNewBlockMap);
+    return newBlocks;
+  }
+  private static List<Block>? DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, 
+    Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
     Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert) {
     var newBlocks = new List<Block>(blocks.Count); // Copies of the original blocks
     //var duplicator = new Duplicator();
+    var assertionCount = 0;
     var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count); // Maps original blocks to their new copies in newBlocks
     foreach (var currentBlock in blocks) {
       var newBlock = new Block(currentBlock.tok)
@@ -112,14 +144,23 @@ public static class ManualSplitFinder {
             splitCount++;
             verify = splitCount == splitNumberWithinBlock;
           }
+
+          if (verify && BlockTransformations.IsNonTrivialAssert(command))
+          {
+            assertionCount++;
+          }
           newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
         }
         newBlock.Cmds = newCmds;
       } else if (lastSplitInBlock && blockAssignments[currentBlock] == containingBlock) {
         var verify = true;
         var newCmds = new List<Cmd>();
-        foreach (Cmd command in currentBlock.Cmds) {
+        foreach (var command in currentBlock.Cmds) {
           verify = !ShouldSplitHere(command, splitOnEveryAssert) && verify;
+          if (verify && BlockTransformations.IsNonTrivialAssert(command))
+          {
+            assertionCount++;
+          }
           newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
         }
         newBlock.Cmds = newCmds;
@@ -127,9 +168,23 @@ public static class ManualSplitFinder {
         newBlock.Cmds = currentBlock.Cmds.Select(x => CommandTransformations.AssertIntoAssume(options, x)).ToList();
       }
     }
+
+    if (assertionCount == 0)
+    {
+      return null;
+    }
+    
     // Patch the edges between the new blocks
-    foreach (var oldBlock in blocks) {
-      if (oldBlock.TransferCmd is ReturnCmd) {
+    AddBlockJumps(blocks, oldToNewBlockMap);
+    return newBlocks;
+  }
+
+  private static void AddBlockJumps(List<Block> oldBlocks, Dictionary<Block, Block> oldToNewBlockMap)
+  {
+    foreach (var oldBlock in oldBlocks) {
+      var newBlock = oldToNewBlockMap[oldBlock];
+      if (oldBlock.TransferCmd is ReturnCmd returnCmd) {
+        ((ReturnCmd)newBlock.TransferCmd).tok = returnCmd.tok;
         continue;
       }
 
@@ -143,6 +198,5 @@ public static class ManualSplitFinder {
 
       oldToNewBlockMap[oldBlock].TransferCmd = new GotoCmd(gotoCmd.tok, newLabelNames, newLabelTargets);
     }
-    return newBlocks;
   }
 }
