@@ -83,6 +83,7 @@ namespace Microsoft.Boogie.SMTLib
         OptimizationRequests.Clear();
 
         string vcString = "(assert (not\n" + VcExpr2String(vc, 1) + "\n))";
+        FlushAxioms();
         VCExprSize = vcString.Length;
 
         Push();
