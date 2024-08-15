@@ -3497,7 +3497,7 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(labelNames == null || labelTargets == null || labelNames.Count == labelTargets.Count);
     }
-    
+
     [NotDelayed]
     public GotoCmd(IToken /*!*/ tok, List<String> /*!*/ labelSeq)
       : base(tok)
