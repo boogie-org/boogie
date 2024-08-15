@@ -55,12 +55,11 @@ namespace Microsoft.Boogie
     uint ResourceLimit { get; }
     bool DoModSetAnalysis { get; }
     bool DebugStagedHoudini { get; }
+    int LoopUnrollCount { get; }
     bool DeterministicExtractLoops { get; }
     string VariableDependenceIgnore { get; }
     bool PruneInfeasibleEdges { get; }
     bool ModifyTopologicalSorting { get; }
-    bool ExtractLoopsUnrollIrreducible { get; }
-    int RecursionBound { get; }
     int InlineDepth { get; }
     bool TraceTimes { get; }
     bool FreeVarLambdaLifting { get; }

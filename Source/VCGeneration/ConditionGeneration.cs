@@ -1617,7 +1617,6 @@ namespace VC
     OutOfResource,
     OutOfMemory,
     Inconclusive,
-    ReachedBound,
     SolverException
   }
 
