@@ -23,9 +23,7 @@ namespace VC
 
     public async Task<Checker> FindCheckerFor(Program program, Split? split, CancellationToken cancellationToken)
     {
-      if (disposed) {
-        throw new Exception("CheckerPool was already disposed");
-      }
+      cancellationToken.ThrowIfCancellationRequested();
 
       await checkersSemaphore.WaitAsync(cancellationToken);
       try {
@@ -57,6 +55,7 @@ namespace VC
       lock(availableCheckers)
       {
         disposed = true;
+        checkersSemaphore.Dispose();
         while (availableCheckers.TryPop(out var checker)) {
           checker.Close();
         }
