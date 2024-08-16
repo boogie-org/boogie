@@ -23,8 +23,6 @@ namespace VC
 
     public async Task<Checker> FindCheckerFor(Program program, Split? split, CancellationToken cancellationToken)
     {
-      cancellationToken.ThrowIfCancellationRequested();
-
       await checkersSemaphore.WaitAsync(cancellationToken);
       try {
         if (!availableCheckers.TryPop(out var checker)) {
