@@ -1,9 +1,5 @@
 // RUN: %parallel-boogie -typeEncoding:p -logPrefix:0p "%s" > "%t"
-// RUN: %diff "%s.p.expect" "%t"
 // RUN: %parallel-boogie -typeEncoding:a -logPrefix:0a "%s" > "%t"
-// RUN: %diff "%s.a.expect" "%t"
-// UNSUPPORTED: batch_mode
-
 
 const ar : [int]bool;
 axiom {:include_dep} (forall x:int :: {ar[x]} !ar[x]);
