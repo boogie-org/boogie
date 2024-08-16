@@ -39,6 +39,11 @@ namespace VC
     private int createdCheckers;
     private Checker CreateNewChecker()
     {
+      if (disposed)
+      {
+        throw new ObjectDisposedException(nameof(CheckerPool));
+      }
+      
       var log = Options.ProverLogFilePath;
       var index = Interlocked.Increment(ref createdCheckers) - 1;
       if (log != null && !log.Contains("@PROC@") && index > 0) {
