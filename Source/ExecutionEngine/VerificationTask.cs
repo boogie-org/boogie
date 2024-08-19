@@ -89,6 +89,8 @@ public class VerificationTask : IVerificationTask {
 
     StartRun(cancellationSource.Token).ToObservable().
       Catch<IVerificationStatus, OperationCanceledException>(_ => Observable.Return(new Stale())).
+      Catch<IVerificationStatus, ObjectDisposedException>(e => cancellationSource.IsCancellationRequested 
+        ? Observable.Return(new Stale()) : Observable.Throw<IVerificationStatus>(e)).
       Subscribe(next => {
         status.OnNext(next);
       }, e => {
@@ -115,8 +117,8 @@ public class VerificationTask : IVerificationTask {
 
   private async IAsyncEnumerable<IVerificationStatus> StartRun([EnumeratorCancellation] CancellationToken cancellationToken) {
     var timeout = Split.Run.Implementation.GetTimeLimit(Split.Options);
-    
-    var checkerTask = engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, CancellationToken.None);
+
+    var checkerTask = engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, cancellationToken);
     if (!checkerTask.IsCompleted) {
       yield return new Queued();
     }

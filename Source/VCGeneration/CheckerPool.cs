@@ -23,10 +23,6 @@ namespace VC
 
     public async Task<Checker> FindCheckerFor(Program program, Split? split, CancellationToken cancellationToken)
     {
-      if (disposed) {
-        throw new Exception("CheckerPool was already disposed");
-      }
-
       await checkersSemaphore.WaitAsync(cancellationToken);
       try {
         if (!availableCheckers.TryPop(out var checker)) {
@@ -43,6 +39,11 @@ namespace VC
     private int createdCheckers;
     private Checker CreateNewChecker()
     {
+      if (disposed)
+      {
+        throw new ObjectDisposedException(nameof(CheckerPool));
+      }
+      
       var log = Options.ProverLogFilePath;
       var index = Interlocked.Increment(ref createdCheckers) - 1;
       if (log != null && !log.Contains("@PROC@") && index > 0) {
@@ -57,6 +58,7 @@ namespace VC
       lock(availableCheckers)
       {
         disposed = true;
+        checkersSemaphore.Dispose();
         while (availableCheckers.TryPop(out var checker)) {
           checker.Close();
         }
