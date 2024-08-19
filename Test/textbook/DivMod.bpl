@@ -12,16 +12,16 @@ function abs(x: int): int { if 0 <= x then x else -x }
 function divt(int, int): int;
 function modt(int, int): int;
 
-axiom (forall a,b: int :: divt(a,b)*b + modt(a,b) == a);
-axiom (forall a,b: int ::
+axiom {:include_dep} (forall a,b: int :: divt(a,b)*b + modt(a,b) == a);
+axiom {:include_dep} (forall a,b: int ::
   (0 <= a ==> 0 <= modt(a,b) && modt(a,b) < abs(b)) &&
   (a < 0 ==> -abs(b) < modt(a,b) && modt(a,b) <= 0));
 
 function dive(int, int): int;
 function mode(int, int): int;
 
-axiom (forall a,b: int :: dive(a,b)*b + mode(a,b) == a);
-axiom (forall a,b: int :: 0 <= mode(a,b) && mode(a,b) < abs(b));
+axiom {:include_dep} (forall a,b: int :: dive(a,b)*b + mode(a,b) == a);
+axiom {:include_dep} (forall a,b: int :: 0 <= mode(a,b) && mode(a,b) < abs(b));
 
 procedure T_from_E(a,b: int) returns (q,r: int)
   requires b != 0;
