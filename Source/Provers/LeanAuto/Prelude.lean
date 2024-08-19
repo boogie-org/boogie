@@ -1,7 +1,8 @@
 import Auto
 import Auto.Tactic
 import Auto.MathlibEmulator.Basic -- For `Real`
-open Lean Std Auto
+import Auto.Translation.SMTAttributes
+open Lean Std Auto Auto.SMT.Attribute
 
 set_option linter.unusedVariables false
 set_option auto.smt true
