@@ -47,8 +47,12 @@ type Value;
 type ReqId;
 type Pid = int;
 
+datatype timestamp{
+    ts: int, reqid: ReqId
+}
+
 datatype StampedValue {
-    StampedValue(ts: int, value: Value)
+    StampedValue(ts: timestamp, value: Value)
 } 
 
 datatype ReqType { READ(), WRITE()}
@@ -57,18 +61,101 @@ datatype Request { Request(id: ReqId, type: ReqType, val: Option Value)}
 
 type RequestPiece = Fraction ReqId Pid;
 var participant_mem: [Pid](StampedValue, ReqId);
-var participant_read_replies: Map RequestPiece StampedValue;
-var participant_update_replies: Map RequestPiece bool;
-var coordinator_max_ts: int; // initially it is -1;
+var participant_query_replies: Map RequestPiece StampedValue;
+var participant_update_replies: Map RequestPiece StampedValue;
+var coordinator_max_ts[cid]: int; // initially it is -1;
+var {:at_highest_layer} mem: int;
 ```
-
-## Model: Coordinator
-
-client talks to coordinator
 
 Assumptions: 
 1. no faults (everyone replies to the broadcast message)
 
+
+## Model with read/write API
+
+```
+READ'() returns result{
+    return mem;
+}
+```
+
+```
+WRITE(v)'{
+    mem = v;
+    return;
+}
+```
+
+```
+READ(cid) returns result refines READ'{
+    local mem;
+    create_asyncs Query() // 1 to n // R*
+    assume (all pieces in participant_query_replies)
+    
+    mem = find max timestamped value among replies
+    
+    assume mem->ts >= coordinator_max_ts[cid]; // N
+    coordinator_max_ts[cid] = mem->ts;
+
+    create_asyncs Update(req, mem->ts, mem->value, piece) // 1 to n // L*
+    assume (all pieces in participant_update_replies)
+    return mem
+}
+```
+
+
+
+READ0 refines READ
+{
+    //before introducing coordinator_max_ts and assume
+}
+
+```
+WRITE(v){
+    local mem;
+    create_asyncs Query() // 1 to n // R*
+    assume (all pieces in participant_query_replies)
+    
+    mem = find max timestamped value among replies
+    
+    assume mem->ts >= coordinator_max_ts; // N
+    coordinator_max_ts = mem->ts;
+
+    create_asyncs Update(req, mem->ts+1, req->val, piece) // 1 to n // L*
+    assume (all pieces in participant_update_replies)
+    return 
+}
+```
+
+```
+right Query(piece){
+    if(*){
+         var old_piece;
+         assume old_piece->id == piece->id and participant_update_replies[old_piece] exists;
+         participant_query_replies[piece] = participant_update_replies[old_piece];   
+    }
+    else{
+          participant_query_replies[piece] = participant_mem[pid];
+    }
+}
+```
+
+```
+left Update(req, ts, v, piece){
+    if (req->val->ts, reqid) > (participant_mem[pid]->ts, participant_mem[pid]->reqid) 
+    {
+        participant_mem[pid] = (v, req->id);
+    }
+    participant_update_replies[piece] = particpant_mem[pid];
+}
+```
+
+## Proof strategy
+
+READ()/ WRITE() looks like R\*NL\*
+
+
+## Model with Coordinator (maybe not) 
 ```
 Coordinator'(req) returns value
 {
@@ -83,12 +170,12 @@ Coordinator'(req) returns value
 ```
 
 ```
-Coordinator(req) returns mem 
+Coordinator(req, cid) returns mem 
 refines Coordinator'
 {
     local mem;
     create_asyncs Query() // 1 to n // R*
-    assume (all pieces in participant_read_replies)
+    assume (all pieces in participant_query_replies)
     
     mem = find max timestamped value among replies
     
@@ -97,41 +184,13 @@ refines Coordinator'
 
     if (req->type == READ()){
             create_asyncs Update(req, mem->ts, mem->value, piece) // 1 to n // L*
-            assume (all pieces in participant_write_replies)
+            assume (all pieces in participant_update_replies)
             and return mem
     }
     else if(req->type == WRITE()){  
             create_asyncs Update(req, mem->ts+1, req->val, piece) // 1 to n // L*
-            assume (all pieces in participant_write_replies)
+            assume (all pieces in participant_update_replies)
             return
     }
 }
 ```
-
-```
-right Query(req, piece){
-    if(*){
-         var old_piece;
-         assume old_piece->id == pid and participant_read_replies[old_piece] exists;
-         participant_read_replies[piece] = participant_read_replies[old_piece];   
-    }
-    else{
-          participant_read_replies[piece] = participant_mem[pid];
-    }
-}
-```
-
-```
-left Update(req, ts, v, piece){
-    if (req->val->ts, reqid) > (participant_mem[pid]->ts, participant_mem[pid]->reqid) 
-    {
-        participant_mem[pid] = (v, req->id);
-    }
-    participant_write_replies[piece] = true;
-}
-```
-
-## Proof strategy
-
-Coordinator looks like R\*NL\*
-
