@@ -113,12 +113,12 @@ READ0 refines READ
 ```
 WRITE(v){
     local mem;
-    create_asyncs Query() // 1 to n // R*
+    create_asyncs Query() // 1 to n // asyncs of right mover actions
     assume (all pieces in participant_query_replies)
     
     mem = find max timestamped value among replies
     
-    assume mem->ts >= coordinator_max_ts; // N
+    assume mem->ts >= coordinator_max_ts; // non-mover?
     coordinator_max_ts = mem->ts;
 
     create_asyncs Update(req, mem->ts+1, req->val, piece) // 1 to n // L*
