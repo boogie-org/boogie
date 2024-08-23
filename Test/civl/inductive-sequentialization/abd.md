@@ -65,7 +65,6 @@ var participant_mem: [Pid](StampedValue, ReqId);
 var participant_query_replies: Map RequestPiece StampedValue;
 var participant_update_replies: Map RequestPiece StampedValue;
 var coordinator_max_ts: [Cid]int; // initially it is -1;
-var {:at_highest_layer} mem: int;
 ```
 
 ## Assumptions: 
@@ -76,12 +75,14 @@ var {:at_highest_layer} mem: int;
 
 ```
 READ'(cid) returns result{
+    local mem;
     return mem;
 }
 ```
 
 ```
 WRITE(cid, v)'{
+    local mem;
     mem = v;
     return;
 }
