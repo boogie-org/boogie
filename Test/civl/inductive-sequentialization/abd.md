@@ -81,15 +81,16 @@ READ'(cid) returns result{
 ```
 
 ```
-WRITE(cid, v)'{
+WRITE'(cid, v)'{
     local mem;
     mem = v;
-    return;
 }
 ```
 
 ```
-READ(cid) returns result refines READ'{
+READ(cid) returns result 
+refines READ'
+{
     local mem;
     create_asyncs Query() // 1 to n // asyncs of right mover actions
     assume (all pieces in participant_query_replies)
@@ -113,7 +114,9 @@ READ0 refines READ
 ```
 
 ```
-WRITE(cid, v){
+WRITE(cid, v)
+refines WRITE'
+{
     local mem;
     create_asyncs Query() // 1 to n // asyncs of right mover actions
     assume (all pieces in participant_query_replies)
@@ -125,7 +128,6 @@ WRITE(cid, v){
 
     create_asyncs Update(req, mem->ts+1, req->val, piece) // 1 to n // L*
     assume (all pieces in participant_update_replies)
-    return 
 }
 ```
 
