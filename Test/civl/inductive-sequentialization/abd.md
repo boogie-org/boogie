@@ -1,5 +1,6 @@
-##  Algorithm 2 ABD simulation of a multi-writer register in a message-passing system.
+## Algorithm 2 ABD simulation of a multi-writer register in a message-passing system.
 
+Below is the original algorithm for reference:
 ```
 
 function queryPhase():
@@ -82,7 +83,9 @@ Coordinator'(req) returns value
 ```
 
 ```
-Coordinator(req) returns mem {
+Coordinator(req) returns mem 
+refines Coordinator'
+{
     local mem;
     create_asyncs Query() // 1 to n // R*
     assume (all pieces in participant_read_replies)
@@ -128,7 +131,7 @@ left Update(req, ts, v, piece){
 }
 ```
 
-## proof strategy
+## Proof strategy
 
 Coordinator looks like R\*NL\*
 
