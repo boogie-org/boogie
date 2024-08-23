@@ -1,11 +1,6 @@
-Algorithm 2 ABD simulation of a multi-writer register in a message-passing system.
-local variables:
-sn, initially 0 {for readers and writers, sequence number used to identify messages} //process_id -> int
-val, initially v0 {for servers, latest register value} //server_id -> set_of_values
-ts, initially (0, 0) {for servers, timestamp of current register value, (integer, process id) pair} // server_id -> int(ts)
-atmost half can crash (messages can't be lost)
+##  Algorithm 2 ABD simulation of a multi-writer register in a message-passing system.
 
-channel= [pid1][pid2]int??
+```
 
 function queryPhase():
     sn++
@@ -41,48 +36,12 @@ Write(v) for process with id i:
     updatePhase(v,(t + 1))
     return
 
-// To prove: read and write to single register
-
-
-## Coordinator?
+```
+To prove: read and write to single register
 
 ## Types and Datastructures
 
-
-## Read' and Write' 
-
-### Read' 
-
-should look like it is reading directly from memory without querying everyone
-
-### Write'
-
-should look like it is writing directly to memory without updating everyone
-
-## How to go from Read -> Read'?
-
-
-## how to relate participant memory and memory?
-
-## Coordinator
-
-
-
-<!-- 
-Coordinator'(req)
-{
-     if (req->type == READ()){
-            all participant_mem looks exactly the same
-            we return the one value
-    }
-    else if(req->type == WRITE()){
-           all particiapnt_mem looks the same
-           we 
-    }
-} --> -->
-
-
-
+```
 type Value;
 type ReqId;
 type Pid = int;
@@ -96,12 +55,20 @@ datatype ReqType { READ(), WRITE()}
 datatype Request { Request(id: ReqId, type: ReqType, val: Option Value)}
 
 type RequestPiece = Fraction ReqId Pid;
-var participant_mem: [Pid]StampedValue;
+var participant_mem: [Pid](StampedValue, ReqId);
 var participant_read_replies: Map RequestPiece StampedValue;
 var participant_update_replies: Map RequestPiece bool;
+var coordinator_max_ts: int; // initially it is -1;
+```
 
+## Model: Coordinator
 
 client talks to coordinator
+
+Assumptions: 
+1. no faults (everyone replies to the broadcast message)
+
+```
 Coordinator'(req) returns value
 {
     local mem;
@@ -112,44 +79,56 @@ Coordinator'(req) returns value
           write to mem
     }
 }
+```
+
+```
 Coordinator(req) returns mem {
     local mem;
-    create_asyncs to Participant_action(Read req, piece) /1 to n
+    create_asyncs Query() // 1 to n // R*
+    assume (all pieces in participant_read_replies)
+    
+    mem = find max timestamped value among replies
+    
+    assume mem->ts >= coordinator_max_ts; // N
+    coordinator_max_ts = mem->ts;
+
     if (req->type == READ()){
-            block until (n+1)/2 pieces in participant_read_replies
-            mem = find max timestamped value
-            create_asyncs to Participant_action(Write req)
-            block until (n+1)/2 pieces in participant_write_replies
+            create_asyncs Update(req, mem->ts, mem->value, piece) // 1 to n // L*
+            assume (all pieces in participant_write_replies)
             and return mem
     }
-    else if(req->type == WRITE()){
-            block until (n+1)/2 pieces in participant_read_replies
-            mem = find max timestamped value
-            create_asyncs to Participant_action(Write req, mem+1)
-            block until (n+1)/2 pieces in participant_write_replies
+    else if(req->type == WRITE()){  
+            create_asyncs Update(req, mem->ts+1, req->val, piece) // 1 to n // L*
+            assume (all pieces in participant_write_replies)
             return
     }
 }
+```
 
-Participant_action(req, piece) {
-    if(req->type == READ()){
-        participant_read_replies[piece] = participant_mem[pid];
+```
+right Query(req, piece){
+    if(*){
+         var old_piece;
+         assume old_piece->id == pid and participant_read_replies[old_piece] exists;
+         participant_read_replies[piece] = participant_read_replies[old_piece];   
     }
-    else if(req->type == WRITE())
-    {
-        if participant_mem[pid]->ts < req->val->ts:
-            participant_mem[pid][] = req->val;
-            participant_write_replies[piece] = true;
+    else{
+          participant_read_replies[piece] = participant_mem[pid];
     }
 }
+```
 
-//proof strategy
+```
+left Update(req, ts, v, piece){
+    if (req->val->ts, reqid) > (participant_mem[pid]->ts, participant_mem[pid]->reqid) 
+    {
+        participant_mem[pid] = (v, req->id);
+    }
+    participant_write_replies[piece] = true;
+}
+```
 
-No fixed linearization points (no single point where read or write happens, may depend on what happens in the future) (no single syntactic point in the program) (ex: snapshot, so the non-det abstraction helps and this issue does not show up)
-how does lin point in syntactic help? skip* sth skip* refinement proofs (ex: trieber stack)
+## proof strategy
 
-intersection of majority, two consecutive reads the second read does not return an older value (inv)
-
-two parallel writes, same time query phase - may get diff values
-
+Coordinator looks like R\*NL\*
 
