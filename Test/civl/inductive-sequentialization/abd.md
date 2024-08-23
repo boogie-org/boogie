@@ -45,6 +45,7 @@ To prove: read and write to single register
 ```
 type Value;
 type ReqId;
+type CId;
 type Pid = int;
 
 datatype timestamp{
@@ -63,24 +64,24 @@ type RequestPiece = Fraction ReqId Pid;
 var participant_mem: [Pid](StampedValue, ReqId);
 var participant_query_replies: Map RequestPiece StampedValue;
 var participant_update_replies: Map RequestPiece StampedValue;
-var coordinator_max_ts[cid]: int; // initially it is -1;
+var coordinator_max_ts: [Cid]int; // initially it is -1;
 var {:at_highest_layer} mem: int;
 ```
 
-Assumptions: 
+## Assumptions: 
 1. no faults (everyone replies to the broadcast message)
 
 
 ## Model with read/write API
 
 ```
-READ'() returns result{
+READ'(cid) returns result{
     return mem;
 }
 ```
 
 ```
-WRITE(v)'{
+WRITE(cid, v)'{
     mem = v;
     return;
 }
@@ -89,12 +90,12 @@ WRITE(v)'{
 ```
 READ(cid) returns result refines READ'{
     local mem;
-    create_asyncs Query() // 1 to n // R*
+    create_asyncs Query() // 1 to n // asyncs of right mover actions
     assume (all pieces in participant_query_replies)
     
     mem = find max timestamped value among replies
     
-    assume mem->ts >= coordinator_max_ts[cid]; // N
+    assume mem->ts >= coordinator_max_ts[cid]; // non-mover?
     coordinator_max_ts[cid] = mem->ts;
 
     create_asyncs Update(req, mem->ts, mem->value, piece) // 1 to n // L*
@@ -103,23 +104,23 @@ READ(cid) returns result refines READ'{
 }
 ```
 
-
-
+```
 READ0 refines READ
 {
     //before introducing coordinator_max_ts and assume
 }
+```
 
 ```
-WRITE(v){
+WRITE(cid, v){
     local mem;
     create_asyncs Query() // 1 to n // asyncs of right mover actions
     assume (all pieces in participant_query_replies)
     
     mem = find max timestamped value among replies
     
-    assume mem->ts >= coordinator_max_ts; // non-mover?
-    coordinator_max_ts = mem->ts;
+    assume mem->ts >= coordinator_max_ts[cid]; // non-mover?
+    coordinator_max_ts[cid] = mem->ts;
 
     create_asyncs Update(req, mem->ts+1, req->val, piece) // 1 to n // L*
     assume (all pieces in participant_update_replies)
@@ -153,44 +154,3 @@ left Update(req, ts, v, piece){
 ## Proof strategy
 
 READ()/ WRITE() looks like R\*NL\*
-
-
-## Model with Coordinator (maybe not) 
-```
-Coordinator'(req) returns value
-{
-    local mem;
-     if (req->type == READ()){
-          reads from mem
-    }
-    else if(req->type == WRITE()){
-          write to mem
-    }
-}
-```
-
-```
-Coordinator(req, cid) returns mem 
-refines Coordinator'
-{
-    local mem;
-    create_asyncs Query() // 1 to n // R*
-    assume (all pieces in participant_query_replies)
-    
-    mem = find max timestamped value among replies
-    
-    assume mem->ts >= coordinator_max_ts; // N
-    coordinator_max_ts = mem->ts;
-
-    if (req->type == READ()){
-            create_asyncs Update(req, mem->ts, mem->value, piece) // 1 to n // L*
-            assume (all pieces in participant_update_replies)
-            and return mem
-    }
-    else if(req->type == WRITE()){  
-            create_asyncs Update(req, mem->ts+1, req->val, piece) // 1 to n // L*
-            assume (all pieces in participant_update_replies)
-            return
-    }
-}
-```
