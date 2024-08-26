@@ -2995,8 +2995,12 @@ namespace Microsoft.Boogie
     }
   }
 
-  public class AssertCmd : PredicateCmd
-  {
+  public class AssertCmd : PredicateCmd {
+    /// <summary>
+    /// Whether to remember the asserted fact, after it has been asserted
+    /// Particularly relevant when doing splits
+    /// </summary>
+    public bool Remember { get; set; } = true;
     public Expr OrigExpr;
     public Dictionary<Variable, Expr> IncarnationMap;
 
@@ -3048,7 +3052,7 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      stream.Write(this, level, "assert ");
+      stream.Write(this, level, Remember ? "assert " : "check ");
       EmitAttributes(stream, Attributes);
       this.Expr.Emit(stream);
       stream.WriteLine(";");

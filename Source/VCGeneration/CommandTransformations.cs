@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Boogie;
 using VC;
 
@@ -5,13 +7,14 @@ namespace VCGeneration;
 
 public static class CommandTransformations
 {
-  public static Cmd AssertIntoAssume(VCGenOptions options, Cmd c)
+  public static IEnumerable<Cmd> AssertIntoAssumes(VCGenOptions options, Cmd cmd)
   {
-    if (c is AssertCmd assertCmd)
-    {
-      return VerificationConditionGenerator.AssertTurnedIntoAssume(options, assertCmd);
+    if (cmd is AssertCmd assertCmd) {
+      return assertCmd.Remember 
+        ? new[] { VerificationConditionGenerator.AssertTurnedIntoAssume(options, assertCmd) } 
+        : Enumerable.Empty<Cmd>();
     }
 
-    return c;
+    return new[] {cmd};
   }
 }

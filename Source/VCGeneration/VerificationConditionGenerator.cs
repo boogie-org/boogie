@@ -82,10 +82,6 @@ namespace VC
       return assume;
     }
 
-    #region Soundness smoke tester
-
-    #endregion
-
     public class CodeExprConversionClosure
     {
       private readonly TextWriter traceWriter;

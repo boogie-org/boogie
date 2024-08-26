@@ -112,7 +112,12 @@ public static class ManualSplitFinder {
             splitCount++;
             verify = splitCount == splitNumberWithinBlock;
           }
-          newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
+
+          if (verify) {
+            newCmds.Add(command);
+          } else {
+            newCmds.AddRange(CommandTransformations.AssertIntoAssumes(options, command));
+          }
         }
         newBlock.Cmds = newCmds;
       } else if (lastSplitInBlock && blockAssignments[currentBlock] == containingBlock) {
@@ -120,11 +125,15 @@ public static class ManualSplitFinder {
         var newCmds = new List<Cmd>();
         foreach (Cmd command in currentBlock.Cmds) {
           verify = !ShouldSplitHere(command, splitOnEveryAssert) && verify;
-          newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
+          if (verify) {
+            newCmds.Add(command);
+          } else {
+            newCmds.AddRange(CommandTransformations.AssertIntoAssumes(options, command));
+          }
         }
         newBlock.Cmds = newCmds;
       } else {
-        newBlock.Cmds = currentBlock.Cmds.Select(x => CommandTransformations.AssertIntoAssume(options, x)).ToList();
+        newBlock.Cmds = currentBlock.Cmds.SelectMany(cmd => CommandTransformations.AssertIntoAssumes(options, cmd)).ToList();
       }
     }
     // Patch the edges between the new blocks

@@ -59,7 +59,7 @@ public static class FocusAttribute
           // Their assertions turn into assumes and any splits inside them are disabled.
           if(freeAssumeBlocks.Contains(block))
           {
-            newBlock.Cmds = block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(options, c)).Select(DisableSplits).ToList();
+            newBlock.Cmds = block.Cmds.SelectMany(c => CommandTransformations.AssertIntoAssumes(options, c)).Select(DisableSplits).ToList();
           }
           if (block.TransferCmd is GotoCmd gtc)
           {
