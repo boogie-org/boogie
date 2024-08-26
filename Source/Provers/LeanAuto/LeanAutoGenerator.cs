@@ -10,7 +10,7 @@ internal class LeanConversionException : Exception
   public string Msg { get; }
   public LeanConversionException(IToken tok, string s)
   {
-    Msg = tok + ": " + s;
+    Msg = $"{tok.filename}({tok.line},{tok.col}): {s}";
   }
 }
 
@@ -325,7 +325,14 @@ public class LeanAutoGenerator : ReadOnlyVisitor
       VisitTypedIdent(x.TypedIdent);
     }
     WriteText(", ");
+    var triggers = node?.Triggers?.Tr ?? new List<Expr>();
+    foreach (var trigger in triggers) {
+      WriteText("(trigger (");
+      VisitExpr(trigger);
+      WriteText(") ");
+    }
     Visit(node.Body);
+    triggers.ForEach(_ => WriteText(")"));
     WriteText(")");
 
     return node;
@@ -450,10 +457,10 @@ public class LeanAutoGenerator : ReadOnlyVisitor
       Visit(args[1]);
     } else if (fun is FieldAccess fieldAccess) {
       throw new LeanConversionException(node.tok,
-        "Unsupported: field access (since the semantics are complex)");
+        $"Unsupported: field access (field = {fieldAccess.FieldName}) (since the semantics are complex)");
     } else if (fun is FieldUpdate fieldUpdate) {
       throw new LeanConversionException(node.tok,
-        "Unsupported: field update (since the semantics are complex)");
+        $"Unsupported: field update (field = {fieldUpdate.FieldAccess.FieldName}) (since the semantics are complex)");
     } else if (fun is IfThenElse && args.Count == 3) {
       WriteText("if ");
       Visit(args[0]);

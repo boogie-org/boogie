@@ -3543,6 +3543,11 @@ namespace Microsoft.Boogie
       this.labelTargets = blockSeq;
     }
 
+    public void RemoveTarget(Block b) {
+      labelNames.Remove(b.Label);
+      labelTargets.Remove(b);
+    }
+    
     public void AddTarget(Block b)
     {
       Contract.Requires(b != null);

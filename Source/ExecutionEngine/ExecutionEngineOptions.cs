@@ -38,7 +38,6 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
   bool ExpandLambdas { get; }
   bool PrintLambdaLifting { get; }
   bool UseAbstractInterpretation { get; }
-  int LoopUnrollCount { get; }
   bool SoundLoopUnrolling { get; }
   bool Verify { get; }
   bool ContractInfer { get; }

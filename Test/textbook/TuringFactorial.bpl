@@ -28,9 +28,11 @@ INNER:  // E
   goto TOP;
 }
 
-function Factorial(int): int;
-axiom Factorial(0) == 1;
-axiom (forall n: int :: {Factorial(n)}  1 <= n ==> Factorial(n) == n * Factorial_Aux(n-1));
+function Factorial(int): int uses {
+  axiom Factorial(0) == 1;
+  axiom (forall n: int :: {Factorial(n)}  1 <= n ==> Factorial(n) == n * Factorial_Aux(n-1));
+}
 
-function Factorial_Aux(int): int;
-axiom (forall n: int :: {Factorial(n)} Factorial(n) == Factorial_Aux(n));
+function Factorial_Aux(int): int uses {
+  axiom (forall n: int :: {Factorial(n)} Factorial(n) == Factorial_Aux(n));
+}

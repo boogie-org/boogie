@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -lib:base -lib:node -vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %parallel-boogie -lib:base -lib:node -timeLimit:0 -vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 datatype LocPiece { Left(), Right() }

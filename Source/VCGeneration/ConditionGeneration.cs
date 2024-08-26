@@ -105,7 +105,7 @@ namespace VC
     /// <param name="batchCompletedObserver"></param>
     /// <param name="cancellationToken"></param>
     /// <param name="impl"></param>
-    public async Task<(VcOutcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementation2(
+    public async Task<(VcOutcome, List<Counterexample> errors, List<VerificationRunResult> vcResults)> VerifyImplementationDirectly(
       ImplementationRun run, CancellationToken cancellationToken)
     {
       Contract.Requires(run != null);
@@ -1617,7 +1617,6 @@ namespace VC
     OutOfResource,
     OutOfMemory,
     Inconclusive,
-    ReachedBound,
     SolverException
   }
 

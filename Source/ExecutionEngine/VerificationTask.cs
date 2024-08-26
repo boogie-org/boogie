@@ -44,7 +44,7 @@ public class VerificationTask : IVerificationTask {
 
   public IVerificationTask FromSeed(int newSeed)
   {
-    var split = new ManualSplit(Split.Options, Split.Blocks, Split.GotoCmdOrigins, 
+    var split = new ManualSplit(Split.Options, () => Split.Blocks, Split.GotoCmdOrigins, 
       Split.parent, Split.Run, Split.Token, newSeed);
     split.SplitIndex = Split.SplitIndex;
     return new VerificationTask(engine, ProcessedProgram, split, modelViewInfo);
@@ -89,6 +89,8 @@ public class VerificationTask : IVerificationTask {
 
     StartRun(cancellationSource.Token).ToObservable().
       Catch<IVerificationStatus, OperationCanceledException>(_ => Observable.Return(new Stale())).
+      Catch<IVerificationStatus, ObjectDisposedException>(e => cancellationSource.IsCancellationRequested 
+        ? Observable.Return(new Stale()) : Observable.Throw<IVerificationStatus>(e)).
       Subscribe(next => {
         status.OnNext(next);
       }, e => {
@@ -116,7 +118,7 @@ public class VerificationTask : IVerificationTask {
   private async IAsyncEnumerable<IVerificationStatus> StartRun([EnumeratorCancellation] CancellationToken cancellationToken) {
     var timeout = Split.Run.Implementation.GetTimeLimit(Split.Options);
 
-    var checkerTask = engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, CancellationToken.None);
+    var checkerTask = engine.CheckerPool.FindCheckerFor(ProcessedProgram.Program, Split, cancellationToken);
     if (!checkerTask.IsCompleted) {
       yield return new Queued();
     }
@@ -126,8 +128,13 @@ public class VerificationTask : IVerificationTask {
       yield return new Running();
 
       var collector = new VerificationResultCollector(Split.Options);
-      await engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
+      var beginCheckTask = engine.LargeThreadTaskFactory.StartNew(() => Split.BeginCheck(Split.Run.OutputWriter, checker, collector,
         modelViewInfo, timeout, Split.Run.Implementation.GetResourceLimit(Split.Options), cancellationToken), cancellationToken).Unwrap();
+      if (timeout != 0)
+      {
+        beginCheckTask = beginCheckTask.WaitAsync(TimeSpan.FromSeconds(timeout), cancellationToken);
+      }
+      await beginCheckTask;
 
       await checker.ProverTask.WaitAsync(cancellationToken);
       var result = Split.ReadOutcome(0, checker, collector);

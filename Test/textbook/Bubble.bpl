@@ -4,8 +4,9 @@
 // the input.
 
 // Introduce a constant 'N' and postulate that it is non-negative
-const N: int;
-axiom 0 <= N;
+const N: int uses {
+  axiom 0 <= N;
+}
 
 // Declare a map from integers to integers.  In the procedure below, 'a' will be
 // treated as an array of 'N' elements, indexed from 0 to less than 'N'.

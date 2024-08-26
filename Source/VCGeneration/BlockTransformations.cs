@@ -1,16 +1,56 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Reactive;
 using Microsoft.Boogie;
+using Microsoft.Boogie.GraphUtil;
+using VCGeneration.Prune;
 
 namespace VCGeneration;
 
-public static class BlockTransformations
-{
-  public static List<Block> DeleteNoAssertionBlocks(List<Block> blocks)
-  {
+public static class BlockTransformations {
+  
+  public static void Optimize(List<Block> blocks) {
+    foreach (var block in blocks)
+    {
+      // make blocks ending in assume false leaves of the CFG-DAG
+      StopControlFlowAtAssumeFalse(block); 
+    }
 
-    blocks.ForEach(StopControlFlowAtAssumeFalse); // make blocks ending in assume false leaves of the CFG-DAG -- this is probably unnecessary, may have been done previously
+    DeleteBlocksNotLeadingToAssertions(blocks);
+    DeleteUselessBlocks(blocks);
+
+    var coalesced = BlockCoalescer.CoalesceFromRootBlock(blocks);
+    blocks.Clear();
+    blocks.AddRange(coalesced);
+  }
+
+  private static void StopControlFlowAtAssumeFalse(Block block)
+  {
+    var firstFalseIdx = block.Cmds.FindIndex(IsAssumeFalse);
+    if (firstFalseIdx == -1)
+    {
+      return;
+    }
+
+    block.Cmds = block.Cmds.Take(firstFalseIdx + 1).ToList();
+    if (block.TransferCmd is not GotoCmd gotoCmd)
+    {
+      return;
+    }
+
+    block.TransferCmd = new ReturnCmd(block.tok);
+    foreach (var target in gotoCmd.labelTargets) {
+      target.Predecessors.Remove(block);
+    }
+  }
+  
+  private static bool IsAssumeFalse (Cmd c) { return c is AssumeCmd { Expr: LiteralExpr { asBool: false } }; }
+
+  public static void DeleteBlocksNotLeadingToAssertions(List<Block> blocks)
+  {
     var todo = new Stack<Block>();
     var peeked = new HashSet<Block>();
     var interestingBlocks = new HashSet<Block>();
@@ -28,10 +68,9 @@ public static class BlockTransformations
       if (currentBlock.TransferCmd is GotoCmd exit) {
         if (pop)
         {
-          Contract.Assert(pop);
           var gtc = new GotoCmd(exit.tok, exit.labelTargets.Where(l => interestingBlocks.Contains(l)).ToList());
           currentBlock.TransferCmd = gtc;
-          interesting = interesting || gtc.labelTargets.Count != 0;
+          interesting = gtc.labelTargets.Count != 0;
         }
         else
         {
@@ -48,26 +87,73 @@ public static class BlockTransformations
       }
     }
     interestingBlocks.Add(blocks[0]); // must not be empty
-    return blocks.Where(b => interestingBlocks.Contains(b)).ToList(); // this is not the same as interestingBlocks.ToList() because the resulting lists will have different orders.
+    var result = blocks.Where(b => interestingBlocks.Contains(b)).ToList(); // this is not the same as interestingBlocks.ToList() because the resulting lists will have different orders.
+    blocks.Clear();
+    blocks.AddRange(result);
   }
 
   private static bool ContainsAssert(Block b)
   {
-    bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd ac && !(ac.Expr is LiteralExpr le && le.asBool); }
     return b.Cmds.Exists(IsNonTrivialAssert);
   }
-
-  private static void StopControlFlowAtAssumeFalse(Block b)
-  {
-    var firstFalseIdx = b.Cmds.FindIndex(IsAssumeFalse);
-    if (firstFalseIdx == -1)
-    {
-      return;
-    }
-
-    b.Cmds = b.Cmds.Take(firstFalseIdx + 1).ToList();
-    b.TransferCmd = b.TransferCmd is GotoCmd ? new ReturnCmd(b.tok) : b.TransferCmd;
-  }
   
-  private static bool IsAssumeFalse (Cmd c) { return c is AssumeCmd { Expr: LiteralExpr { asBool: false } }; }
+  public static bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd ac && !(ac.Expr is LiteralExpr { asBool: true }); }
+
+  private static void DeleteUselessBlocks(List<Block> blocks) {
+    var toVisit = new HashSet<Block>();
+    var removed = new HashSet<Block>();
+    foreach (var block in blocks) {
+      toVisit.Add(block);
+    }
+    while(toVisit.Count > 0) {
+      var block = toVisit.First();
+      toVisit.Remove(block);
+      if (removed.Contains(block)) {
+        continue;
+      }
+      if (block.Cmds.Any()) {
+        continue;
+      }
+
+      var isBranchingBlock = block.TransferCmd is GotoCmd gotoCmd1 && gotoCmd1.labelTargets.Count > 1 && 
+                             block.Predecessors.Count != 1;
+      if (isBranchingBlock) {
+        continue;
+      }
+
+      removed.Add(block);
+      blocks.Remove(block);
+
+      var noPredecessors = !block.Predecessors.Any();
+      var noSuccessors = block.TransferCmd is not GotoCmd outGoto2 || !outGoto2.labelTargets.Any();
+      foreach (var predecessor in block.Predecessors) {
+        var intoCmd = (GotoCmd)predecessor.TransferCmd;
+        intoCmd.RemoveTarget(block);
+        if (noSuccessors) {
+          toVisit.Add(predecessor);
+        }
+      }
+
+      if (block.TransferCmd is not GotoCmd outGoto) {
+        continue;
+      }
+
+      foreach (var outBlock in outGoto.labelTargets) {
+        outBlock.Predecessors.Remove(block);
+        if (noPredecessors) {
+          toVisit.Add(outBlock);
+        }
+      }
+
+      foreach (var predecessor in block.Predecessors) {
+        var intoCmd = (GotoCmd)predecessor.TransferCmd;
+        foreach (var outBlock in outGoto.labelTargets) {
+          if (!intoCmd.labelTargets.Contains(outBlock)) {
+            intoCmd.AddTarget(outBlock);
+            outBlock.Predecessors.Add(predecessor);
+          }
+        }
+      }
+    }
+  }
 }
