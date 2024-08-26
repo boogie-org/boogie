@@ -46,14 +46,14 @@ To prove: read and write to single register
 type Value;
 type ReqId;
 type CId;
-type Pid = int;
+type PId = int;
 
-datatype timestamp{
-    ts: int, reqid: ReqId
+datatype Timestamp{
+    time: int, reqid: ReqId
 }
 
 datatype StampedValue {
-    StampedValue(ts: timestamp, value: Value)
+    StampedValue(ts: Timestamp, value: Value)
 } 
 
 datatype ReqType { READ(), WRITE()}
@@ -61,14 +61,15 @@ datatype ReqType { READ(), WRITE()}
 datatype Request { Request(id: ReqId, type: ReqType, val: Option Value)}
 
 type RequestPiece = Fraction ReqId Pid;
-var participant_mem: [Pid](StampedValue, ReqId);
+var participant_mem: [PId]StampedValue;
 var participant_query_replies: Map RequestPiece StampedValue;
 var participant_update_replies: Map RequestPiece StampedValue;
-var coordinator_max_ts: [Cid]int; // initially it is -1;
+var coordinator_max_ts: [CId]int; // initially it is -1;
 ```
 
 ## Assumptions: 
-1. no faults (everyone replies to the broadcast message)
+1. no faults (everyone replies to the broadcast message).
+2. Participants also use reqId to choose which timestamp update to pick.
 
 
 ## Model with read/write API
@@ -86,14 +87,20 @@ WRITE'(cid, v)'{
     mem = v;
 }
 ```
+> Are READ' and WRITE' making sense?
 
 ```
-READ(cid) returns result 
+READ({:linear} cid, req: Request) returns result 
 refines READ'
 {
     local mem;
-    create_asyncs Query() // 1 to n // asyncs of right mover actions
+
+    < break reqId into pieces >
+
+    create_asyncs Query(piece) // 1 to n // asyncs of right mover actions
     assume (all pieces in participant_query_replies)
+
+    < get all pieces back to pass to update phase >
     
     mem = find max timestamped value among replies
     
@@ -102,9 +109,15 @@ refines READ'
 
     create_asyncs Update(req, mem->ts, mem->value, piece) // 1 to n // L*
     assume (all pieces in participant_update_replies)
+
     return mem
 }
 ```
+
+> why is cid required?
+So that other coordinators don't interfere with coordinator_max_ts. We don't want this because the we would block some behaviors that are otherwise allowed by the original algorithm.
+
+> Do we need both cid and reqId?
 
 ```
 READ0 refines READ
@@ -112,21 +125,27 @@ READ0 refines READ
     //before introducing coordinator_max_ts and assume
 }
 ```
+> Do we need to model READ0? 
 
 ```
-WRITE(cid, v)
+WRITE({:linear} cid: CId, req: Request)
 refines WRITE'
 {
     local mem;
-    create_asyncs Query() // 1 to n // asyncs of right mover actions
+
+    //break reqId into pieces 
+
+    create_asyncs Query(piece) // 1 to n // asyncs of right mover actions
     assume (all pieces in participant_query_replies)
+
+    //get all pieces so that we can pass to update phase
     
     mem = find max timestamped value among replies
     
     assume mem->ts >= coordinator_max_ts[cid]; // non-mover?
     coordinator_max_ts[cid] = mem->ts;
 
-    create_asyncs Update(req, mem->ts+1, req->val, piece) // 1 to n // L*
+    create_asyncs Update(mem->ts+1, req->val, piece) // 1 to n // L*
     assume (all pieces in participant_update_replies)
 }
 ```
@@ -145,12 +164,12 @@ right Query(piece){
 ```
 
 ```
-left Update(req, ts, v, piece){
-    if (req->val->ts, reqid) > (participant_mem[pid]->ts, participant_mem[pid]->reqid) 
+left Update(ts, v, piece){
+    if (ts, piece->val) > (participant_mem[piece->id]->ts) 
     {
-        participant_mem[pid] = (v, req->id);
+        participant_mem[piece->id] = StampedValue(timestamp(ts, v), piece->val);
     }
-    participant_update_replies[piece] = particpant_mem[pid];
+    participant_update_replies[piece] = particpant_mem[piece->id];
 }
 ```
 
