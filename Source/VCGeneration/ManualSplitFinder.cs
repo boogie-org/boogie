@@ -120,6 +120,7 @@ public static class ManualSplitFinder {
     AddBlockJumps(oldBlocks, oldToNewBlockMap);
     return newBlocks;
   }
+  
   private static List<Block>? DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, 
     Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
     Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert) {
