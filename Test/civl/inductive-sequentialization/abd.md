@@ -113,6 +113,8 @@ refines READ'
     return mem
 }
 ```
+> mem->ts >= coordinator_max_ts[cid]?
+Inorder for the query to be a right mover, they need to be able to send old values. It is okay if some participants send old values, but if everyone does then it is a problem (because we don't meet the spec of the original algo). So the coordinator needs a way to identify and block in such cases. Hence this check. 
 
 > why is cid required?
 So that other coordinators don't interfere with coordinator_max_ts. We don't want this because the we would block some behaviors that are otherwise allowed by the original algorithm.
@@ -125,7 +127,7 @@ READ0 refines READ
     //before introducing coordinator_max_ts and assume
 }
 ```
-> Do we need to model READ0? 
+> Do we need to model READ0? If we do model, is it easy to get from READ0 to READ in civl?
 
 ```
 WRITE({:linear} cid: CId, req: Request)
@@ -172,7 +174,21 @@ left Update(ts, v, piece){
     participant_update_replies[piece] = particpant_mem[piece->id];
 }
 ```
+> why is update a left mover? 
+1. it always commutes w.r.t other updates because it also compares reqid. 
+2. it commutes to query also, because query is a right mover. 
 
 ## Proof strategy
 
 READ()/ WRITE() looks like R\*NL\*
+
+## Other questions
+
+### How do things change if we have (n+1)/2 replies only?
+We can keep using coordinator_ts_max and I think it should work.
+
+### How exactly do you plan to deal with a bunch or async right movers? What is your invariant that will summarize them?
+participant_query_replies[piece] is either participant_update_replies[old_piece] or participant_mem[pid]
+
+invariant (forall piece: Map_Contains(participant_query_replies, piece) ==>
+                         Map_At(participant_query_replies, piece) is participant_update_replies[old_piece of same piece->id] or participant_mem[piece->id])
