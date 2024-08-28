@@ -369,17 +369,21 @@ public class LeanAutoGenerator : ReadOnlyVisitor
 
   public override Expr VisitLetExpr(LetExpr node)
   {
-    if (node.Dummies.Count > 1) {
+    if (node.Dummies.Count != node.Rhss.Count) {
       throw new LeanConversionException(node.tok,
-        "Unsupported: LetExpr with more than one binder");
+        "Unsupported: LetExpr with differing LHS and RHS counts.");
     }
-    WriteText("(let");
-    node.Dummies.ForEach(x => Visit(x.TypedIdent));
-    WriteText(" := ");
-    node.Rhss.ForEach(e => Visit(e));
-    WriteText("; ");
+
+    var bindings = node.Dummies.Zip(node.Rhss);
+    foreach (var (x, e) in bindings) {
+      WriteText("(let ");
+      Visit(x.TypedIdent);
+      WriteText(" := ");
+      Visit(e);
+      WriteText("; ");
+    }
     Visit(node.Body);
-    WriteText(")");
+    bindings.ForEach(b => WriteText(")"));
     return node;
   }
 
