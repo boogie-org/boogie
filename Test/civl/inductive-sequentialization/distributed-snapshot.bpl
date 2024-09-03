@@ -10,7 +10,7 @@ datatype StampedValue {
 } 
 
 type Channel; // Send + Receive
-type ChannelPiece = Fraction (Loc Channel) ChannelOp; // Send or Receive piece
+type ChannelPiece = Fraction (Loc Channel) ChannelOp; // SendFirst or SendSecond or Receive piece
 type MemIndexPiece = Fraction ChannelPiece int; // Each mem index piece of Channel Piece
 
 type Snapshot = [int]StampedValue;
@@ -105,10 +105,10 @@ refines GetSnapshot;
     invariant {:layer 2} sps_second == AllMemIndexPieces(one_s_second->val);
     {
         async call {:skip} _main_f(one_s_first->val, sps_first);
-        par Yield() | YieldFirstScan(one_r, one_s_first->val);
-        call sps_first, snapshot := _ReceiveFirst(one_r, one_s_first->val);
-        call _main_s(one_s_second->val, sps_second);
-        call sps_second, snapshot' := _ReceiveSecond(one_r, one_s_second->val);
+        par Yield() | YieldFirstScan(one_r, one_s_first->val); // like proving an assertion that is non-interference free (Owicki-gries)
+        call sps_first, snapshot := _ReceiveFirst(one_r, one_s_first->val); // right
+        call _main_s(one_s_second->val, sps_second); // non // why not have yield inv similar to first phase // L*
+        call sps_second, snapshot' := _ReceiveSecond(one_r, one_s_second->val); // left
         if (snapshot == snapshot') {
             return;
         }
@@ -121,7 +121,10 @@ yield invariant {:layer 2} YieldFirstScan({:linear} one_r: One ChannelPiece, s_f
 invariant IsReceive(one_r->val);
 invariant s_first == ToSendFirst(one_r->val->val);
 invariant (forall piece: MemIndexPiece :: Set_Contains(AllMemIndexPieces(s_first), piece) && Map_Contains(pset, piece) ==>
-                                          Map_At(pset, piece)->ts < mem[piece->id]->ts || Map_At(pset, piece) == mem[piece->id]);
+                                          Map_At(pset, piece)->ts < mem[piece->id]->ts || Map_At(pset, piece) == mem[piece->id]); // we don't need to actually read less in read_f for this to hold. 
+//summary is not preserved? Is there any example where the async actions of ISR don't preserve the summary?
+//whether ISR gives more power? or simplifies anything? maybe if order matters for something then they can be useful. 
+//
 
 left action {:layer 2} ReceiveSecond({:linear} one_r: One ChannelPiece, s: ChannelPiece) returns ({:linear} sps: Set MemIndexPiece, snapshot: Snapshot)
 modifies pset;
@@ -193,7 +196,7 @@ asserts sps == AllMemIndexPieces(s);
     var data: [MemIndexPiece]StampedValue;
 
     assume {:add_to_pool "MemIndices", 0, NumMemIndices} {:add_to_pool "Data", data} true;
-    call {:linear sps} create_asyncs((lambda pa: read_f :: Set_Contains(sps, pa->perm->val)));
+    call {:linear sps} create_asyncs((lambda pa: read_f :: Set_Contains(sps, pa->perm->val))); // What is {:linear sps???}
 }
 yield procedure {:layer 0} _main_f(s: ChannelPiece, {:linear_in} sps: Set MemIndexPiece);
 refines main_f;
@@ -202,7 +205,10 @@ async action {:layer 1}
 {:exit_condition Set_IsSubset(AllMemIndexPieces(perm->val->val), Set_Add(pset->dom, perm->val))}
 read_f({:linear_in} perm: One MemIndexPiece)
 modifies pset;
+// asserts !exit_condition
 asserts IsSendFirst(perm->val->val) && IsValidMemIndexPiece(perm->val);
+// requires !exit
+// ensures exit
 {
     var {:pool "SV_read_f"} sv: StampedValue;
     var piece: MemIndexPiece;
