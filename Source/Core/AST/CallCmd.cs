@@ -540,8 +540,8 @@ public class CallCmd : CallCommonality
     }
   }
 
-  public override void AddAssignedVariables(List<Variable> vars)
-  {
+  public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
+    
     if (this.IsAsync)
     {
       return;
@@ -551,7 +551,7 @@ public class CallCmd : CallCommonality
     {
       if (e != null)
       {
-        vars.Add(e.Decl);
+        vars.Add(e);
       }
     }
 
@@ -559,12 +559,12 @@ public class CallCmd : CallCommonality
     foreach (IdentifierExpr /*!*/ e in this.Proc.Modifies)
     {
       Contract.Assert(e != null);
-      vars.Add(e.Decl);
+      vars.Add(e);
     }
 
     if (AssignedAssumptionVariable != null)
     {
-      vars.Add(AssignedAssumptionVariable);
+      vars.Add(new IdentifierExpr(tok, AssignedAssumptionVariable));
     }
   }
 

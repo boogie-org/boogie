@@ -160,7 +160,7 @@ public class LoopExtractor {
           foreach (Cmd /*!*/ cmd in block.Cmds)
           {
             Contract.Assert(cmd != null);
-            cmd.AddAssignedVariables(targets);
+            targets.AddRange(cmd.GetAssignedVariables());
 
             VariableCollector c = new VariableCollector();
             c.Visit(cmd);

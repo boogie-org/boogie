@@ -1205,9 +1205,7 @@ namespace Microsoft.Boogie
       throw new NotImplementedException();
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
-    {
-      Contract.Requires(vars != null);
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
       throw new NotImplementedException();
     }
   }
@@ -1352,14 +1350,19 @@ namespace Microsoft.Boogie
     }
 
     public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
-    public abstract void AddAssignedVariables(List<Variable> /*!*/ vars);
+
+    public IEnumerable<Variable> GetAssignedVariables() {
+      List<IdentifierExpr> ids = new();
+      AddAssignedIdentifiers(ids);
+      return ids.Select(id => id.Decl);
+    }
+    
+    public abstract void AddAssignedIdentifiers(List<IdentifierExpr> /*!*/ vars);
 
     public void CheckAssignments(TypecheckingContext tc)
     {
       Contract.Requires(tc != null);
-      List<Variable> /*!*/
-        vars = new List<Variable>();
-      this.AddAssignedVariables(vars);
+      var /*!*/ vars = GetAssignedVariables().ToList();
       foreach (Variable /*!*/ v in vars)
       {
         Contract.Assert(v != null);
@@ -1527,9 +1530,8 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
     }
-
-    public override void AddAssignedVariables(List<Variable> vars)
-    {
+    
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
     }
 
     public override void Typecheck(TypecheckingContext tc)
@@ -1777,12 +1779,10 @@ namespace Microsoft.Boogie
       }
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
-    {
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
       foreach (AssignLhs /*!*/ l in Lhss)
       {
-        Contract.Assert(l != null);
-        vars.Add(l.DeepAssignedVariable);
+        vars.Add(l.DeepAssignedIdentifier);
       }
     }
 
@@ -2307,9 +2307,8 @@ namespace Microsoft.Boogie
 
     public IEnumerable<IdentifierExpr> UnpackedLhs => lhs.Args.Cast<IdentifierExpr>();
 
-    public override void AddAssignedVariables(List<Variable> vars)
-    {
-      lhs.Args.Cast<IdentifierExpr>().ForEach(arg => vars.Add(arg.Decl));
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
+      lhs.Args.Cast<IdentifierExpr>().ForEach(vars.Add);
     }
 
     public override void Emit(TokenTextWriter stream, int level)
@@ -2423,21 +2422,19 @@ namespace Microsoft.Boogie
       rc.PopVarContext();
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
-    {
-      //Contract.Requires(vars != null);
-      List<Variable> vs = new List<Variable>();
-      foreach (Cmd cmd in this.Cmds)
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
+      var vs = new List<IdentifierExpr>();
+      foreach (Cmd cmd in Cmds)
       {
         Contract.Assert(cmd != null);
-        cmd.AddAssignedVariables(vs);
+        cmd.AddAssignedIdentifiers(vs);
       }
 
       var localsSet = new HashSet<Variable>(this.Locals);
-      foreach (Variable v in vs)
+      foreach (var v in vs)
       {
-        Contract.Assert(v != null);
-        if (!localsSet.Contains(v))
+        Debug.Assert(v.Decl != null);
+        if (!localsSet.Contains(v.Decl))
         {
           vars.Add(v);
         }
@@ -2773,11 +2770,10 @@ namespace Microsoft.Boogie
       }
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
-    {
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
       foreach (CallCmd callCmd in CallCmds)
       {
-        callCmd.AddAssignedVariables(vars);
+        callCmd.AddAssignedIdentifiers(vars);
       }
     }
 
@@ -2860,6 +2856,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(Expr != null);
     }
 
+    
     public PredicateCmd(IToken /*!*/ tok, Expr /*!*/ expr)
       : base(tok)
     {
@@ -2900,8 +2897,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
-    {
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
     }
   }
 
@@ -3335,8 +3331,7 @@ namespace Microsoft.Boogie
 
   public class HavocCmd : Cmd
   {
-    private List<IdentifierExpr> /*!*/
-      _vars;
+    private List<IdentifierExpr> /*!*/ _vars;
 
     public List<IdentifierExpr> /*!*/ Vars
     {
@@ -3384,13 +3379,11 @@ namespace Microsoft.Boogie
       }
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
-    {
-      //Contract.Requires(vars != null);
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
       foreach (IdentifierExpr /*!*/ e in this.Vars)
       {
         Contract.Assert(e != null);
-        vars.Add(e.Decl);
+        vars.Add(e);
       }
     }
 

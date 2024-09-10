@@ -3823,9 +3823,8 @@ namespace Microsoft.Boogie
     {
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
     {
-      //Contract.Requires(vars != null);
       throw new NotImplementedException();
     }
   }
