@@ -1206,7 +1206,7 @@ namespace Microsoft.Boogie
     }
 
     public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
-      throw new NotImplementedException();
+      throw new NotSupportedException();
     }
   }
 

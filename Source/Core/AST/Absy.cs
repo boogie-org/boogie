@@ -2042,6 +2042,7 @@ namespace Microsoft.Boogie
 
   public class Function : DeclWithFormals
   {
+    public bool AlwaysRevealed;
     public string Comment;
 
     public Expr Body; // Only set if the function is declared with {:inline}
@@ -3825,7 +3826,7 @@ namespace Microsoft.Boogie
 
     public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
     {
-      throw new NotImplementedException();
+      throw new NotSupportedException();
     }
   }
 

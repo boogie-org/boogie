@@ -77,10 +77,9 @@ namespace Microsoft.Boogie
       return program.TopLevelDeclarations.Where(d => 
         d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
 
-      bool TraverseDeclaration(object parent, object child)
-      {
+      bool TraverseDeclaration(object parent, object child) {
         return parent is not Function function || child is not Axiom axiom || revealedState.IsRevealed(function)
-               || !axiom.CanHide;
+               || !axiom.CanHide || function.AlwaysRevealed;
       }
     }
 
