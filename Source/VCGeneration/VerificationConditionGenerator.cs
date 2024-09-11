@@ -973,16 +973,16 @@ namespace VC
     public static List<Variable> VarsAssignedInLoop(Graph<Block> g, Block header)
     {
       List<Variable> varsToHavoc = new List<Variable>();
-      foreach (Block backEdgeNode in cce.NonNull(g.BackEdgeNodes(header)))
+      foreach (var backEdgeNode in cce.NonNull(g.BackEdgeNodes(header)))
       {
         Contract.Assert(backEdgeNode != null);
         foreach (Block b in g.NaturalLoops(header, backEdgeNode))
         {
           Contract.Assert(b != null);
-          foreach (Cmd c in b.Cmds)
+          foreach (var c in b.Cmds)
           {
             Contract.Assert(c != null);
-            c.AddAssignedVariables(varsToHavoc);
+            varsToHavoc.AddRange(c.GetAssignedVariables());
           }
         }
       }

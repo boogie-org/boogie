@@ -9,7 +9,7 @@ namespace VCGeneration.Prune;
 
 record RevealedState(HideRevealCmd.Modes Mode, IImmutableSet<Function> Offset) {
   public bool IsRevealed(Function function) {
-    return (Mode == HideRevealCmd.Modes.Hide) == Offset.Contains(function);
+    return (Mode == HideRevealCmd.Modes.Hide) == Offset.Contains(function) || function.AlwaysRevealed;
   }
 
   public static readonly RevealedState AllRevealed = new(HideRevealCmd.Modes.Reveal, ImmutableHashSet<Function>.Empty);
