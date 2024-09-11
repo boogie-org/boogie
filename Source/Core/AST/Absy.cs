@@ -2122,7 +2122,7 @@ namespace Microsoft.Boogie
         stream.WriteLine(this, level, "// " + Comment);
       }
 
-      stream.Write(this, level, "function ");
+      stream.Write(this, level, (AlwaysRevealed ? "revealed " : "") + "function ");
       EmitAttributes(stream);
       if (Body != null && !QKeyValue.FindBoolAttribute(Attributes, "inline"))
       {
