@@ -1108,7 +1108,6 @@ namespace Microsoft.Boogie
       Contract.Invariant(cce.NonNullElements(Invariants));
     }
 
-
     public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<CallCmd> yields, StmtList body)
       : base(tok)
     {
@@ -1351,6 +1350,9 @@ namespace Microsoft.Boogie
 
     public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
 
+    /// <summary>
+    /// Should only be called after resolution
+    /// </summary>
     public IEnumerable<Variable> GetAssignedVariables() {
       List<IdentifierExpr> ids = new();
       AddAssignedIdentifiers(ids);

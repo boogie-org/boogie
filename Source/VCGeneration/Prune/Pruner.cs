@@ -79,7 +79,7 @@ namespace Microsoft.Boogie
 
       bool TraverseDeclaration(object parent, object child) {
         return parent is not Function function || child is not Axiom axiom || revealedState.IsRevealed(function)
-               || !axiom.CanHide || function.AlwaysRevealed;
+               || !axiom.CanHide;
       }
     }
 
