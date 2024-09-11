@@ -58,3 +58,12 @@ procedure HideSpecific() {
   reveal inner;
   assert inner(3) == 42;
 }
+
+revealed function alwaysRevealed(x: int): int uses {
+  hideable axiom (forall x: int :: {alwaysRevealed(x)} alwaysRevealed(x) == 42);
+}
+
+procedure AlwaysRevealed() {
+  hide *;
+  assert alwaysRevealed(3) == 42;
+}
