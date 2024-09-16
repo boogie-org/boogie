@@ -16,12 +16,11 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(tok != null);
       Contract.Invariant(Anonymous || this.labelName != null);
-      Contract.Invariant(this._ec == null || this._tc == null);
-      Contract.Invariant(this._simpleCmds != null);
+      Contract.Invariant(this.ec == null || this._tc == null);
+      Contract.Invariant(this.prefixCmds != null);
     }
 
-    public readonly IToken /*!*/
-      tok;
+    public readonly IToken /*!*/ tok;
 
     public readonly bool Anonymous;
 
@@ -41,34 +40,34 @@ namespace Microsoft.Boogie
       }
     }
 
-    [Rep] private List<Cmd> /*!*/ _simpleCmds;
+    [Rep] private List<Cmd> /*!*/ prefixCmds;
 
     /// <summary>
     /// These come before the structured command
     /// </summary>
-    public List<Cmd> /*!*/ simpleCmds
+    public List<Cmd> /*!*/ PrefixCmds
     {
       get
       {
         Contract.Ensures(Contract.Result<List<Cmd>>() != null);
-        return this._simpleCmds;
+        return this.prefixCmds;
       }
       set
       {
         Contract.Requires(value != null);
-        this._simpleCmds = value;
+        this.prefixCmds = value;
       }
     }
 
-    private StructuredCmd _ec;
+    private StructuredCmd ec;
 
-    public StructuredCmd ec
+    public StructuredCmd Ec
     {
-      get { return this._ec; }
+      get => ec;
       set
       {
         Contract.Requires(value == null || this.tc == null);
-        this._ec = value;
+        this.ec = value;
       }
     }
 
@@ -79,24 +78,23 @@ namespace Microsoft.Boogie
       get { return this._tc; }
       set
       {
-        Contract.Requires(value == null || this.ec == null);
+        Contract.Requires(value == null || this.Ec == null);
         this._tc = value;
       }
     }
 
-    public BigBlock
-      successorBigBlock; // semantic successor (may be a back-edge, pointing back to enclosing while statement); null if successor is end of procedure body (or if field has not yet been initialized)
+    public BigBlock Successor; // semantic successor (may be a back-edge, pointing back to enclosing while statement); null if successor is end of procedure body (or if field has not yet been initialized)
 
-    public BigBlock(IToken tok, string labelName, [Captured] List<Cmd> simpleCmds, StructuredCmd ec, TransferCmd tc)
+    public BigBlock(IToken tok, string labelName, [Captured] List<Cmd> prefixCmds, StructuredCmd ec, TransferCmd tc)
     {
-      Contract.Requires(simpleCmds != null);
+      Contract.Requires(prefixCmds != null);
       Contract.Requires(tok != null);
       Contract.Requires(ec == null || tc == null);
       this.tok = tok;
       this.Anonymous = labelName == null;
       this.labelName = labelName;
-      this._simpleCmds = simpleCmds;
-      this._ec = ec;
+      this.prefixCmds = prefixCmds;
+      this.ec = ec;
       this._tc = tc;
     }
 
@@ -111,15 +109,15 @@ namespace Microsoft.Boogie
             : this.LabelName);
       }
 
-      foreach (Cmd /*!*/ c in this.simpleCmds)
+      foreach (Cmd /*!*/ c in this.PrefixCmds)
       {
         Contract.Assert(c != null);
         c.Emit(stream, level + 1);
       }
 
-      if (this.ec != null)
+      if (this.Ec != null)
       {
-        this.ec.Emit(stream, level + 1);
+        this.Ec.Emit(stream, level + 1);
       }
       else if (this.tc != null)
       {
@@ -505,174 +503,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  /// <summary>
-  /// Could have also been called a statement.
-  ///
-  /// Does not include commands that contain other commands,
-  /// for those, look at StructuredCmd
-  /// 
-  /// </summary>
-  [ContractClass(typeof(CmdContracts))]
-  public abstract class Cmd : Absy
-  {
-    public List<int> Layers;
-    
-    public byte[] Checksum { get; internal set; }
-    public byte[] SugaredCmdChecksum { get; internal set; }
-    public bool IrrelevantForChecksumComputation { get; set; }
-
-    public Cmd(IToken /*!*/ tok)
-      : base(tok)
-    {
-      Contract.Assert(tok != null);
-    }
-
-    public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
-
-    /// <summary>
-    /// Should only be called after resolution
-    /// </summary>
-    public IEnumerable<Variable> GetAssignedVariables() {
-      List<IdentifierExpr> ids = new();
-      AddAssignedIdentifiers(ids);
-      return ids.Select(id => id.Decl);
-    }
-    
-    public abstract void AddAssignedIdentifiers(List<IdentifierExpr> /*!*/ vars);
-
-    public void CheckAssignments(TypecheckingContext tc)
-    {
-      Contract.Requires(tc != null);
-      var /*!*/ vars = GetAssignedVariables().ToList();
-      foreach (Variable /*!*/ v in vars)
-      {
-        Contract.Assert(v != null);
-        if (!v.IsMutable)
-        {
-          tc.Error(this, "command assigns to an immutable variable: {0}", v.Name);
-        }
-        else if (tc.CheckModifies && v is GlobalVariable)
-        {
-          if (!tc.Yields && !tc.InFrame(v))
-          {
-            tc.Error(this,
-              "command assigns to a global variable that is not in the enclosing {0} modifies clause: {1}",
-              tc.Proc is ActionDecl ? "action's" : "procedure's", v.Name);
-          }
-        }
-      }
-    }
-
-    // Methods to simulate the old SimpleAssignCmd and MapAssignCmd
-    public static AssignCmd SimpleAssign(IToken tok, IdentifierExpr lhs, Expr rhs)
-    {
-      Contract.Requires(rhs != null);
-      Contract.Requires(lhs != null);
-      Contract.Requires(tok != null);
-      Contract.Ensures(Contract.Result<AssignCmd>() != null);
-      List<AssignLhs /*!*/> /*!*/
-        lhss = new List<AssignLhs /*!*/>();
-      List<Expr /*!*/> /*!*/
-        rhss = new List<Expr /*!*/>();
-
-      lhss.Add(new SimpleAssignLhs(lhs.tok, lhs));
-      rhss.Add(rhs);
-
-      return new AssignCmd(tok, lhss, rhss);
-    }
-
-    public static AssignCmd /*!*/ MapAssign(IToken tok,
-      IdentifierExpr /*!*/ map,
-      List<Expr> /*!*/ indexes, Expr /*!*/ rhs)
-    {
-      Contract.Requires(tok != null);
-      Contract.Requires(map != null);
-      Contract.Requires(indexes != null);
-      Contract.Requires(rhs != null);
-      Contract.Ensures(Contract.Result<AssignCmd>() != null);
-      List<AssignLhs /*!*/> /*!*/
-        lhss = new List<AssignLhs /*!*/>();
-      List<Expr /*!*/> /*!*/
-        rhss = new List<Expr /*!*/>();
-      List<Expr /*!*/> /*!*/
-        indexesList = new List<Expr /*!*/>();
-
-
-      foreach (Expr e in indexes)
-      {
-        indexesList.Add(cce.NonNull(e));
-      }
-
-      lhss.Add(new MapAssignLhs(map.tok,
-        new SimpleAssignLhs(map.tok, map),
-        indexesList));
-      rhss.Add(rhs);
-
-      return new AssignCmd(tok, lhss, rhss);
-    }
-
-    public static AssignCmd /*!*/ MapAssign(IToken tok,
-      IdentifierExpr /*!*/ map,
-      params Expr[] /*!*/ args)
-    {
-      Contract.Requires(tok != null);
-      Contract.Requires(map != null);
-      Contract.Requires(args != null);
-      Contract.Requires(args.Length > 0); // at least the rhs
-      Contract.Requires(Contract.ForAll(args, i => i != null));
-      Contract.Ensures(Contract.Result<AssignCmd>() != null);
-
-      List<AssignLhs /*!*/> /*!*/
-        lhss = new List<AssignLhs /*!*/>();
-      List<Expr /*!*/> /*!*/
-        rhss = new List<Expr /*!*/>();
-      List<Expr /*!*/> /*!*/
-        indexesList = new List<Expr /*!*/>();
-
-      for (int i = 0; i < args.Length - 1; ++i)
-      {
-        indexesList.Add(cce.NonNull(args[i]));
-      }
-
-      lhss.Add(new MapAssignLhs(map.tok,
-        new SimpleAssignLhs(map.tok, map),
-        indexesList));
-      rhss.Add(cce.NonNull(args[args.Length - 1]));
-
-      return new AssignCmd(tok, lhss, rhss);
-    }
-
-    /// <summary>
-    /// This is a helper routine for printing a linked list of attributes.  Each attribute
-    /// is terminated by a space.
-    /// </summary>
-    public static void EmitAttributes(TokenTextWriter stream, QKeyValue attributes)
-    {
-      Contract.Requires(stream != null);
-
-      if (stream.UseForComputingChecksums)
-      {
-        return;
-      }
-
-      for (QKeyValue kv = attributes; kv != null; kv = kv.Next)
-      {
-        kv.Emit(stream);
-        stream.Write(" ");
-      }
-    }
-
-    [Pure]
-    public override string ToString() {
-      Contract.Ensures(Contract.Result<string>() != null);
-      System.IO.StringWriter buffer = new System.IO.StringWriter();
-      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, PrintOptions.Default);
-      this.Emit(stream, 0);
-
-      return buffer.ToString();
-    }
-  }
-  
   public class CommentCmd : Cmd // just a convenience for debugging
   {
     public readonly string /*!*/
@@ -1525,137 +1355,6 @@ namespace Microsoft.Boogie
       }).ToList<Expr>();
       cmds.Add(new AssignCmd(tok, assignLhss, assignRhss));
       return new StateCmd(tok, new List<Variable>(), cmds);
-    }
-  }
-
-  /// <summary>
-  /// A StateCmd is like an imperative-let binding around a sequence of commands.
-  /// There is no user syntax for a StateCmd.  Instead, a StateCmd is only used
-  /// temporarily during the desugaring phase inside the VC generator.
-  /// </summary>
-  public class StateCmd : Cmd
-  {
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(this._locals != null);
-      Contract.Invariant(this._cmds != null);
-    }
-
-    private List<Variable> _locals;
-
-    public /*readonly, except for the StandardVisitor*/ List<Variable> /*!*/ Locals
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<List<Variable>>() != null);
-        return this._locals;
-      }
-      internal set
-      {
-        Contract.Requires(value != null);
-        this._locals = value;
-      }
-    }
-
-    private List<Cmd> _cmds;
-
-    public /*readonly, except for the StandardVisitor*/ List<Cmd> /*!*/ Cmds
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
-        return this._cmds;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this._cmds = value;
-      }
-    }
-
-    public StateCmd(IToken tok, List<Variable> /*!*/ locals, List<Cmd> /*!*/ cmds)
-      : base(tok)
-    {
-      Contract.Requires(locals != null);
-      Contract.Requires(cmds != null);
-      Contract.Requires(tok != null);
-      this._locals = locals;
-      this._cmds = cmds;
-    }
-
-    public override void Resolve(ResolutionContext rc)
-    {
-      //Contract.Requires(rc != null);
-      rc.PushVarContext();
-      foreach (Variable /*!*/ v in Locals)
-      {
-        Contract.Assert(v != null);
-        rc.AddVariable(v);
-      }
-
-      foreach (Cmd /*!*/ cmd in Cmds)
-      {
-        Contract.Assert(cmd != null);
-        cmd.Resolve(rc);
-      }
-
-      rc.PopVarContext();
-    }
-
-    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
-      var vs = new List<IdentifierExpr>();
-      foreach (Cmd cmd in Cmds)
-      {
-        Contract.Assert(cmd != null);
-        cmd.AddAssignedIdentifiers(vs);
-      }
-
-      var localsSet = new HashSet<Variable>(this.Locals);
-      foreach (var v in vs)
-      {
-        Debug.Assert(v.Decl != null);
-        if (!localsSet.Contains(v.Decl))
-        {
-          vars.Add(v);
-        }
-      }
-    }
-
-    public override void Typecheck(TypecheckingContext tc)
-    {
-      //Contract.Requires(tc != null);
-      foreach (Cmd /*!*/ cmd in Cmds)
-      {
-        Contract.Assert(cmd != null);
-        cmd.Typecheck(tc);
-      }
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-      //Contract.Requires(stream != null);
-      stream.WriteLine(this, level, "{");
-      foreach (Variable /*!*/ v in Locals)
-      {
-        Contract.Assert(v != null);
-        v.Emit(stream, level + 1);
-      }
-
-      foreach (Cmd /*!*/ c in Cmds)
-      {
-        Contract.Assert(c != null);
-        c.Emit(stream, level + 1);
-      }
-
-      stream.WriteLine(level, "}");
-    }
-
-    public override Absy StdDispatch(StandardVisitor visitor)
-    {
-      //Contract.Requires(visitor != null);
-      Contract.Ensures(Contract.Result<Absy>() != null);
-      return visitor.VisitStateCmd(this);
     }
   }
 

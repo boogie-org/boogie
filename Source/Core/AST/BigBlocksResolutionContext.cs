@@ -6,27 +6,23 @@ namespace Microsoft.Boogie;
 
 public class BigBlocksResolutionContext
 {
-  StmtList /*!*/ stmtList;
+  private readonly StmtList /*!*/ rootList;
 
-  [Peer] List<Block /*!*/> blocks;
-
-  string /*!*/ prefix = "anon";
-
-  int anon = 0;
-
+  [Peer] private List<Block /*!*/> blocks;
+  private string /*!*/ prefix = "anon";
+  private int anon = 0;
+  private readonly HashSet<string /*!*/> allLabels = new();
+  private Errors ErrorHandler { get; }
+  
   public string FreshPrefix()
   {
     return prefix + anon++;
   }
 
-  HashSet<string /*!*/> allLabels = new();
-
-  public Errors ErrorHandler { get; }
-
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(stmtList != null);
+    Contract.Invariant(rootList != null);
     Contract.Invariant(cce.NonNullElements(blocks, true));
     Contract.Invariant(prefix != null);
     Contract.Invariant(cce.NonNullElements(allLabels, true));
@@ -47,28 +43,29 @@ public class BigBlocksResolutionContext
         allLabels.Add(bb.LabelName);
       }
 
-      if (bb.ec == null)
+      if (bb.Ec == null)
       {
         continue;
       }
       
-      foreach (var list in bb.ec.StatementLists)
+      foreach (var list in bb.Ec.StatementLists)
       {
         ComputeAllLabels(list);
       }
     }
   }
 
-  public BigBlocksResolutionContext(StmtList stmtList, Errors errorHandler)
+  public BigBlocksResolutionContext(StmtList rootList, Errors errorHandler)
   {
     Contract.Requires(errorHandler != null);
-    Contract.Requires(stmtList != null);
-    this.stmtList = stmtList;
+    Contract.Requires(rootList != null);
+    this.rootList = rootList;
+    this.ErrorHandler = errorHandler;
+    
     // Inject an empty big block at the end of the body of a while loop if its current end is another while loop.
     // This transformation creates a suitable jump target for break statements inside the nested while loop.
-    InjectEmptyBigBlockInsideWhileLoopBody(stmtList);
-    this.ErrorHandler = errorHandler;
-    ComputeAllLabels(stmtList);
+    InjectEmptyBigBlockInsideWhileLoopBody(rootList);
+    ComputeAllLabels(rootList);
   }
 
   public void AddBlock(Block block)
@@ -76,46 +73,62 @@ public class BigBlocksResolutionContext
     blocks.Add(block);
   }
 
-  public List<Block /*!*/> /*!*/ Blocks
+  public List<Block /*!*/> /*!*/ GetOrComputeBlocks
   {
     get
     {
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
-      if (blocks == null)
+      if (blocks != null)
       {
-        blocks = new List<Block /*!*/>();
+        return blocks;
+      }
 
-        int startErrorCount = this.ErrorHandler.count;
-        // Check that all goto statements go to a label in allLabels, and no break statement to a non-enclosing loop.
-        // Also, determine a good value for "prefix".
-        CheckLegalLabels(stmtList, null, null);
+      blocks = new List<Block /*!*/>();
 
-        // fill in names of anonymous blocks
-        NameAnonymousBlocks(stmtList);
+      int startErrorCount = this.ErrorHandler.count;
+      // Check that all goto statements go to a label in allLabels, and no break statement to a non-enclosing loop.
+      // Also, determine a good value for "prefix".
+      CheckLegalLabels(rootList, null, null);
 
-        // determine successor blocks
-        RecordSuccessors(stmtList, null);
+      // fill in names of anonymous blocks
+      NameAnonymousBlocks(rootList);
 
-        if (this.ErrorHandler.count == startErrorCount)
-        {
-          // generate blocks from the big blocks
-          CreateBlocks(stmtList, null);
-        }
+      // determine successor blocks
+      RecordSuccessors(rootList, null);
+
+      if (this.ErrorHandler.count == startErrorCount)
+      {
+        // generate blocks from the big blocks
+        CreateBlocks(rootList, null);
       }
 
       return blocks;
     }
   }
 
-  public void InjectEmptyBigBlockInsideWhileLoopBody(StmtList stmtList)
+  private static void InjectEmptyBigBlockInsideWhileLoopBody(StmtList stmtList)
   {
     foreach (var bb in stmtList.BigBlocks)
     {
-      bb.ec.InjectEmptyBigBlockInsideWhileLoopBody(this);
+      foreach (var childList in bb.Ec.StatementLists)
+      {
+        InjectEmptyBigBlockInsideWhileLoopBody(childList);
+      }
+
+      if (bb.Ec is not WhileCmd whileCmd)
+      {
+        continue;
+      }
+
+      var newBigBlocks = new List<BigBlock>(whileCmd.Body.BigBlocks)
+      {
+        new(Token.NoToken, null, new List<Cmd>(), null, null)
+      };
+      whileCmd.Body = new StmtList(newBigBlocks, whileCmd.Body.EndCurly);
     }
   }
 
-  public void CheckLegalLabels(StmtList stmtList, StmtList parentContext, BigBlock parentBigBlock)
+  private void CheckLegalLabels(StmtList stmtList, StmtList parentContext, BigBlock parentBigBlock)
   {
     Contract.Requires(stmtList != null);
     Contract.Requires((parentContext == null) == (parentBigBlock == null));
@@ -148,13 +161,12 @@ public class BigBlocksResolutionContext
     }
 
     // check that labels in this and nested StmtList's are legal
-    foreach (BigBlock b in stmtList.BigBlocks)
+    foreach (var bigBlock in stmtList.BigBlocks)
     {
       // goto's must reference blocks in enclosing blocks
-      if (b.tc is GotoCmd)
+      if (bigBlock.tc is GotoCmd gotoCmd)
       {
-        GotoCmd g = (GotoCmd) b.tc;
-        foreach (string /*!*/ lbl in cce.NonNull(g.labelNames))
+        foreach (string /*!*/ lbl in cce.NonNull(gotoCmd.labelNames))
         {
           Contract.Assert(lbl != null);
           /*
@@ -171,28 +183,28 @@ public class BigBlocksResolutionContext
             */
           if (!allLabels.Contains(lbl))
           {
-            this.ErrorHandler.SemErr(g.tok, "Error: goto label '" + lbl + "' is undefined");
+            this.ErrorHandler.SemErr(gotoCmd.tok, "Error: goto label '" + lbl + "' is undefined");
           }
         }
       }
       else
       {
-        b.ec.CheckLegalLabels(this, this.stmtList, b);
+        foreach (var childList in bigBlock.Ec.StatementLists)
+        {
+          CheckLegalLabels(childList, this.rootList, bigBlock); 
+        }
       }
     }
   }
 
-  void NameAnonymousBlocks(StmtList stmtList)
+  private void NameAnonymousBlocks(StmtList stmtList)
   {
     Contract.Requires(stmtList != null);
-    foreach (BigBlock b in stmtList.BigBlocks)
+    foreach (var b in stmtList.BigBlocks)
     {
-      if (b.LabelName == null)
-      {
-        b.LabelName = FreshPrefix();
-      }
+      b.LabelName ??= FreshPrefix();
 
-      foreach (var l in b.ec.StatementLists)
+      foreach (var l in b.Ec.StatementLists)
       {
         NameAnonymousBlocks(l);
       }
@@ -205,9 +217,9 @@ public class BigBlocksResolutionContext
     for (int i = stmtList.BigBlocks.Count; 0 <= --i;)
     {
       BigBlock big = stmtList.BigBlocks[i];
-      big.successorBigBlock = successor;
+      big.Successor = successor;
 
-      big.ec.RecordSuccessors(this, big);
+      big.Ec.RecordSuccessors(this, big);
       successor = big;
     }
   }
@@ -218,52 +230,52 @@ public class BigBlocksResolutionContext
   {
     Contract.Requires(stmtList != null);
     Contract.Requires(blocks != null);
-    List<Cmd> cmdPrefixToApply = stmtList.PrefixCommands;
+    var cmdPrefixToApply = stmtList.PrefixCommands;
 
     int n = stmtList.BigBlocks.Count;
-    foreach (BigBlock b in stmtList.BigBlocks)
+    foreach (var childBigBlock in stmtList.BigBlocks)
     {
       n--;
-      Contract.Assert(b.LabelName != null);
+      Contract.Assert(childBigBlock.LabelName != null);
       List<Cmd> theSimpleCmds;
       if (cmdPrefixToApply == null)
       {
-        theSimpleCmds = b.simpleCmds;
+        theSimpleCmds = childBigBlock.PrefixCmds;
       }
       else
       {
         theSimpleCmds = new List<Cmd>();
         theSimpleCmds.AddRange(cmdPrefixToApply);
-        theSimpleCmds.AddRange(b.simpleCmds);
+        theSimpleCmds.AddRange(childBigBlock.PrefixCmds);
         cmdPrefixToApply = null; // now, we've used 'em up
       }
 
-      if (b.tc != null)
+      if (childBigBlock.tc != null)
       {
         // this BigBlock has the very same components as a Block
-        Contract.Assert(b.ec == null);
-        Block block = new Block(b.tok, b.LabelName, theSimpleCmds, b.tc);
+        Contract.Assert(childBigBlock.Ec == null);
+        var block = new Block(childBigBlock.tok, childBigBlock.LabelName, theSimpleCmds, childBigBlock.tc);
         blocks.Add(block);
       }
-      else if (b.ec == null)
+      else if (childBigBlock.Ec == null)
       {
         TransferCmd trCmd;
         if (n == 0 && runOffTheEndLabel != null)
         {
           // goto the given label instead of the textual successor block
-          trCmd = new GotoCmd(stmtList.EndCurly, new List<String> {runOffTheEndLabel});
+          trCmd = new GotoCmd(stmtList.EndCurly, new List<string> {runOffTheEndLabel});
         }
         else
         {
-          trCmd = GotoSuccessor(stmtList.EndCurly, b);
+          trCmd = GotoSuccessor(stmtList.EndCurly, childBigBlock);
         }
 
-        Block block = new Block(b.tok, b.LabelName, theSimpleCmds, trCmd);
+        Block block = new Block(childBigBlock.tok, childBigBlock.LabelName, theSimpleCmds, trCmd);
         blocks.Add(block);
       }
       else
       {
-        b.ec.CreateBlocks(this, b, theSimpleCmds, n == 0 ? runOffTheEndLabel : null);
+        childBigBlock.Ec.CreateBlocks(this, childBigBlock, theSimpleCmds, n == 0 ? runOffTheEndLabel : null);
       }
     }
   }
@@ -273,9 +285,9 @@ public class BigBlocksResolutionContext
     Contract.Requires(b != null);
     Contract.Requires(tok != null);
     Contract.Ensures(Contract.Result<TransferCmd>() != null);
-    if (b.successorBigBlock != null)
+    if (b.Successor != null)
     {
-      return new GotoCmd(tok, new List<String> {b.successorBigBlock.LabelName});
+      return new GotoCmd(tok, new List<String> {b.Successor.LabelName});
     }
     else
     {

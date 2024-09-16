@@ -6,12 +6,11 @@ namespace Microsoft.Boogie;
 
 public class IfCmd : StructuredCmd
 {
-  public Expr Guard;
+  public readonly Expr Guard;
 
-  private StmtList /*!*/
-    _thn;
+  private StmtList /*!*/ _thn;
 
-  public StmtList /*!*/ thn
+  public StmtList /*!*/ Thn
   {
     get
     {
@@ -25,27 +24,27 @@ public class IfCmd : StructuredCmd
     }
   }
 
-  private IfCmd _elseIf;
+  private IfCmd elseIf;
 
-  public IfCmd elseIf
+  public IfCmd ElseIf
   {
-    get { return this._elseIf; }
+    get => this.elseIf;
     set
     {
-      Contract.Requires(value == null || this.elseBlock == null);
-      this._elseIf = value;
+      Contract.Requires(value == null || this.ElseBlock == null);
+      this.elseIf = value;
     }
   }
 
-  private StmtList _elseBlock;
+  private StmtList elseBlock;
 
-  public StmtList elseBlock
+  public StmtList ElseBlock
   {
-    get { return this._elseBlock; }
+    get => this.elseBlock;
     set
     {
-      Contract.Requires(value == null || this.elseIf == null);
-      this._elseBlock = value;
+      Contract.Requires(value == null || this.ElseIf == null);
+      this.elseBlock = value;
     }
   }
 
@@ -53,7 +52,7 @@ public class IfCmd : StructuredCmd
   void ObjectInvariant()
   {
     Contract.Invariant(this._thn != null);
-    Contract.Invariant(this._elseIf == null || this._elseBlock == null);
+    Contract.Invariant(this.elseIf == null || this.elseBlock == null);
   }
 
   public IfCmd(IToken /*!*/ tok, Expr guard, StmtList /*!*/ thn, IfCmd elseIf, StmtList elseBlock)
@@ -64,8 +63,8 @@ public class IfCmd : StructuredCmd
     Contract.Requires(elseIf == null || elseBlock == null);
     this.Guard = guard;
     this._thn = thn;
-    this._elseIf = elseIf;
-    this._elseBlock = elseBlock;
+    this.elseIf = elseIf;
+    this.elseBlock = elseBlock;
   }
 
   public override void Emit(TokenTextWriter stream, int level)
@@ -87,20 +86,20 @@ public class IfCmd : StructuredCmd
       stream.WriteLine(")");
 
       stream.WriteLine(level, "{");
-      ifcmd.thn.Emit(stream, level + 1);
+      ifcmd.Thn.Emit(stream, level + 1);
       stream.WriteLine(level, "}");
 
-      if (ifcmd.elseIf != null)
+      if (ifcmd.ElseIf != null)
       {
         stream.Write(level, "else if (");
-        ifcmd = ifcmd.elseIf;
+        ifcmd = ifcmd.ElseIf;
         continue;
       }
-      else if (ifcmd.elseBlock != null)
+      else if (ifcmd.ElseBlock != null)
       {
         stream.WriteLine(level, "else");
         stream.WriteLine(level, "{");
-        ifcmd.elseBlock.Emit(stream, level + 1);
+        ifcmd.ElseBlock.Emit(stream, level + 1);
         stream.WriteLine(level, "}");
       }
 
@@ -108,108 +107,86 @@ public class IfCmd : StructuredCmd
     }
   }
 
-  public override void InjectEmptyBigBlockInsideWhileLoopBody(BigBlocksResolutionContext context)
-  {
-    context.InjectEmptyBigBlockInsideWhileLoopBody(thn);
-    if (elseBlock != null)
-    {
-      context.InjectEmptyBigBlockInsideWhileLoopBody(elseBlock);
-    }
-
-    if (elseIf != null)
-    {
-      elseIf.InjectEmptyBigBlockInsideWhileLoopBody(context);
-    }
-  }
-
-  public override void CheckLegalLabels(BigBlocksResolutionContext context, StmtList stmtList, BigBlock bigBlock)
-  {
-    for (IfCmd ifcmd = this; ifcmd != null; ifcmd = ifcmd.elseIf)
-    {
-      context.CheckLegalLabels(ifcmd.thn, stmtList, bigBlock);
-      if (ifcmd.elseBlock != null)
-      {
-        context.CheckLegalLabels(ifcmd.elseBlock, stmtList, bigBlock);
-      }
-    }
-  }
-
-  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock bigBlock, List<Cmd> theSimpleCmds,
+  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock bigBlock, List<Cmd> incomingCommands,
     string runOffTheEndLabel)
   {
-    IfCmd ifcmd = (IfCmd) bigBlock.ec;
-    string predLabel = bigBlock.LabelName;
-    List<Cmd> predCmds = theSimpleCmds;
+    var ifcmd = this;
+    string previousLabel = bigBlock.LabelName;
+    var previousCommands = incomingCommands;
 
-    for (; ifcmd != null; ifcmd = ifcmd.elseIf)
+    for (; ifcmd != null; ifcmd = ifcmd.ElseIf)
     {
       var prefix = context.FreshPrefix();
       string thenLabel = prefix + "_Then";
-      Contract.Assert(thenLabel != null);
       string elseLabel = prefix + "_Else";
-      Contract.Assert(elseLabel != null);
 
-      List<Cmd> ssThen = new List<Cmd>();
-      List<Cmd> ssElse = new List<Cmd>();
+      var ssThen = new List<Cmd>();
+      var ssElse = new List<Cmd>();
       if (ifcmd.Guard != null)
       {
-        var ac = new AssumeCmd(ifcmd.tok, ifcmd.Guard);
-        ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+        var ac = new AssumeCmd(ifcmd.tok, ifcmd.Guard)
+        {
+          Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null)
+        };
         ssThen.Add(ac);
 
-        ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
-        ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+        ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard))
+        {
+          Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null)
+        };
         ssElse.Add(ac);
       }
 
       // Try to squeeze in ssThen/ssElse into the first block of ifcmd.thn/ifcmd.elseBlock
-      bool thenGuardTakenCareOf = ifcmd.thn.PrefixFirstBlock(ssThen, ref thenLabel);
+      bool thenGuardTakenCareOf = ifcmd.Thn.PrefixFirstBlock(ssThen, ref thenLabel);
       bool elseGuardTakenCareOf = false;
-      if (ifcmd.elseBlock != null)
+      if (ifcmd.ElseBlock != null)
       {
-        elseGuardTakenCareOf = ifcmd.elseBlock.PrefixFirstBlock(ssElse, ref elseLabel);
+        elseGuardTakenCareOf = ifcmd.ElseBlock.PrefixFirstBlock(ssElse, ref elseLabel);
       }
 
       // ... goto Then, Else;
-      var jumpBlock = new Block(bigBlock.tok, predLabel, predCmds,
-        new GotoCmd(ifcmd.tok, new List<String> {thenLabel, elseLabel}));
+      var jumpBlock = new Block(bigBlock.tok, previousLabel, previousCommands,
+        new GotoCmd(ifcmd.tok, new List<string> {thenLabel, elseLabel}));
       context.AddBlock(jumpBlock);
 
       if (!thenGuardTakenCareOf)
       {
         // Then: assume guard; goto firstThenBlock;
         var thenJumpBlock = new Block(ifcmd.tok, thenLabel, ssThen,
-          new GotoCmd(ifcmd.tok, new List<String> {ifcmd.thn.BigBlocks[0].LabelName}));
+          new GotoCmd(ifcmd.tok, new List<string> {ifcmd.Thn.BigBlocks[0].LabelName}));
         context.AddBlock(thenJumpBlock);
       }
 
       // recurse to create the blocks for the then branch
-      context.CreateBlocks(ifcmd.thn, runOffTheEndLabel);
+      context.CreateBlocks(ifcmd.Thn, runOffTheEndLabel);
 
-      if (ifcmd.elseBlock != null)
+      if (ifcmd.ElseBlock != null)
       {
-        Contract.Assert(ifcmd.elseIf == null);
+        Contract.Assert(ifcmd.ElseIf == null);
         if (!elseGuardTakenCareOf)
         {
           // Else: assume !guard; goto firstElseBlock;
           var elseJumpBlock = new Block(ifcmd.tok, elseLabel, ssElse,
-            new GotoCmd(ifcmd.tok, new List<String> {ifcmd.elseBlock.BigBlocks[0].LabelName}));
+            new GotoCmd(ifcmd.tok, new List<String> {ifcmd.ElseBlock.BigBlocks[0].LabelName}));
           context.AddBlock(elseJumpBlock);
         }
 
         // recurse to create the blocks for the else branch
-        context.CreateBlocks(ifcmd.elseBlock, runOffTheEndLabel);
+        context.CreateBlocks(ifcmd.ElseBlock, runOffTheEndLabel);
       }
-      else if (ifcmd.elseIf != null)
+      else if (ifcmd.ElseIf != null)
       {
         // this is an "else if"
-        predLabel = elseLabel;
-        predCmds = new List<Cmd>();
+        previousLabel = elseLabel;
+        previousCommands = new List<Cmd>();
         if (ifcmd.Guard != null)
         {
-          var ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
-          ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
-          predCmds.Add(ac);
+          var ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard))
+          {
+            Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null)
+          };
+          previousCommands.Add(ac);
         }
       }
       else
@@ -220,7 +197,7 @@ public class IfCmd : StructuredCmd
         if (runOffTheEndLabel != null)
         {
           // goto the given label instead of the textual successor block
-          trCmd = new GotoCmd(ifcmd.tok, new List<String> {runOffTheEndLabel});
+          trCmd = new GotoCmd(ifcmd.tok, new List<string> {runOffTheEndLabel});
         }
         else
         {
@@ -236,12 +213,12 @@ public class IfCmd : StructuredCmd
   public override IEnumerable<StmtList> StatementLists {
     get
     {
-      for (var ifcmd = this; ifcmd != null; ifcmd = ifcmd.elseIf)
+      for (var ifcmd = this; ifcmd != null; ifcmd = ifcmd.ElseIf)
       {
-        yield return ifcmd.thn;
-        if (ifcmd.elseBlock != null)
+        yield return ifcmd.Thn;
+        if (ifcmd.ElseBlock != null)
         {
-          yield return ifcmd.elseBlock;
+          yield return ifcmd.ElseBlock;
         }
       }
     }
@@ -249,12 +226,12 @@ public class IfCmd : StructuredCmd
 
   public override void RecordSuccessors(BigBlocksResolutionContext context, BigBlock bigBlock)
   {
-    for (var ifcmd = this; ifcmd != null; ifcmd = ifcmd.elseIf)
+    for (var ifcmd = this; ifcmd != null; ifcmd = ifcmd.ElseIf)
     {
-      context.RecordSuccessors(ifcmd.thn, bigBlock.successorBigBlock);
-      if (ifcmd.elseBlock != null)
+      context.RecordSuccessors(ifcmd.Thn, bigBlock.Successor);
+      if (ifcmd.ElseBlock != null)
       {
-        context.RecordSuccessors(ifcmd.elseBlock, bigBlock.successorBigBlock);
+        context.RecordSuccessors(ifcmd.ElseBlock, bigBlock.Successor);
       }
     }
   }

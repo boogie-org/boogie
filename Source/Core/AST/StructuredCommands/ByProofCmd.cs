@@ -16,25 +16,17 @@ public class ByProofCmd : StructuredCmd
     throw new System.NotImplementedException();
   }
 
-  public override void InjectEmptyBigBlockInsideWhileLoopBody(BigBlocksResolutionContext context)
-  {
-    throw new System.NotImplementedException();
-  }
-
-  public override void CheckLegalLabels(BigBlocksResolutionContext context, StmtList stmtList, BigBlock bigBlock)
-  {
-    throw new System.NotImplementedException();
-  }
-
-  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock bigBlock, List<Cmd> theSimpleCmds,
+  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock bigBlock, List<Cmd> incomingCommands,
     string runOffTheEndLabel)
   {
-    throw new System.NotImplementedException();
+    bigBlock.LabelName
+    context.CreateBlocks(Proof, null);
+    context.CreateBlocks(Body, runOffTheEndLabel);
   }
 
   public override IEnumerable<StmtList> StatementLists => new[] { Body, Proof };
   public override void RecordSuccessors(BigBlocksResolutionContext context, BigBlock bigBlock)
   {
-    throw new System.NotImplementedException();
+    context.RecordSuccessors(Body, bigBlock.Successor);
   }
 }
