@@ -33,7 +33,7 @@ public class BigBlocksResolutionContext
     Contract.Invariant(ErrorHandler != null);
   }
 
-  public void ComputeAllLabels(StmtList stmts)
+  private void ComputeAllLabels(StmtList stmts)
   {
     if (stmts == null)
     {
@@ -47,18 +47,16 @@ public class BigBlocksResolutionContext
         allLabels.Add(bb.LabelName);
       }
 
-      bb.ec?.ComputeAllLabels(this);
+      if (bb.ec == null)
+      {
+        continue;
+      }
+      
+      foreach (var list in bb.ec.StatementLists)
+      {
+        ComputeAllLabels(list);
+      }
     }
-  }
-
-  private void ComputeAllLabels(StructuredCmd cmd)
-  {
-    if (cmd == null)
-    {
-      return;
-    }
-    
-    cmd.ComputeAllLabels(this);
   }
 
   public BigBlocksResolutionContext(StmtList stmtList, Errors errorHandler)
@@ -194,26 +192,14 @@ public class BigBlocksResolutionContext
         b.LabelName = FreshPrefix();
       }
 
-      if (b.ec is WhileCmd)
+      foreach (var l in b.ec.StatementLists)
       {
-        WhileCmd wcmd = (WhileCmd) b.ec;
-        NameAnonymousBlocks(wcmd.Body);
-      }
-      else
-      {
-        for (IfCmd ifcmd = b.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.elseIf)
-        {
-          NameAnonymousBlocks(ifcmd.thn);
-          if (ifcmd.elseBlock != null)
-          {
-            NameAnonymousBlocks(ifcmd.elseBlock);
-          }
-        }
+        NameAnonymousBlocks(l);
       }
     }
   }
 
-  void RecordSuccessors(StmtList stmtList, BigBlock successor)
+  public void RecordSuccessors(StmtList stmtList, BigBlock successor)
   {
     Contract.Requires(stmtList != null);
     for (int i = stmtList.BigBlocks.Count; 0 <= --i;)
@@ -221,23 +207,7 @@ public class BigBlocksResolutionContext
       BigBlock big = stmtList.BigBlocks[i];
       big.successorBigBlock = successor;
 
-      if (big.ec is WhileCmd)
-      {
-        WhileCmd wcmd = (WhileCmd) big.ec;
-        RecordSuccessors(wcmd.Body, big);
-      }
-      else
-      {
-        for (IfCmd ifcmd = big.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.elseIf)
-        {
-          RecordSuccessors(ifcmd.thn, successor);
-          if (ifcmd.elseBlock != null)
-          {
-            RecordSuccessors(ifcmd.elseBlock, successor);
-          }
-        }
-      }
-
+      big.ec.RecordSuccessors(this, big);
       successor = big;
     }
   }
@@ -293,7 +263,7 @@ public class BigBlocksResolutionContext
       }
       else
       {
-        b.ec.CreateBlocks(this, b, theSimpleCmds, stmtList, n == 0 ? runOffTheEndLabel : null);
+        b.ec.CreateBlocks(this, b, theSimpleCmds, n == 0 ? runOffTheEndLabel : null);
       }
     }
   }

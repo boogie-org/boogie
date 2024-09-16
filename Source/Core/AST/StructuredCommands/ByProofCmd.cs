@@ -26,13 +26,14 @@ public class ByProofCmd : StructuredCmd
     throw new System.NotImplementedException();
   }
 
-  public override void ComputeAllLabels(BigBlocksResolutionContext context)
+  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock bigBlock, List<Cmd> theSimpleCmds,
+    string runOffTheEndLabel)
   {
     throw new System.NotImplementedException();
   }
 
-  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock b, List<Cmd> theSimpleCmds, StmtList stmtList,
-    string runOffTheEndLabel)
+  public override IEnumerable<StmtList> StatementLists => new[] { Body, Proof };
+  public override void RecordSuccessors(BigBlocksResolutionContext context, BigBlock bigBlock)
   {
     throw new System.NotImplementedException();
   }

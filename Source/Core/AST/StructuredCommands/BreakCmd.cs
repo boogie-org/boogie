@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 
 namespace Microsoft.Boogie;
 
@@ -84,15 +85,16 @@ public class BreakCmd : StructuredCmd
     }
   }
 
-  public override void ComputeAllLabels(BigBlocksResolutionContext context)
-  {
-  }
-
-  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock b, List<Cmd> theSimpleCmds, StmtList stmtList,
+  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock bigBlock, List<Cmd> theSimpleCmds,
     string runOffTheEndLabel)
   {
     Contract.Assert(this.BreakEnclosure != null);
-    Block block = new Block(b.tok, b.LabelName, theSimpleCmds, BigBlocksResolutionContext.GotoSuccessor(b.ec.tok, BreakEnclosure));
+    Block block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds, BigBlocksResolutionContext.GotoSuccessor(bigBlock.ec.tok, BreakEnclosure));
     context.AddBlock(block);
+  }
+
+  public override IEnumerable<StmtList> StatementLists => Enumerable.Empty<StmtList>();
+  public override void RecordSuccessors(BigBlocksResolutionContext context, BigBlock bigBlock)
+  {
   }
 }

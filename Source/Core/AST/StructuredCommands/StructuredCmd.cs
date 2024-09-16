@@ -39,8 +39,10 @@ public abstract class StructuredCmd
 
   public abstract void InjectEmptyBigBlockInsideWhileLoopBody(BigBlocksResolutionContext context);
   public abstract void CheckLegalLabels(BigBlocksResolutionContext context, StmtList stmtList, BigBlock bigBlock);
-  public abstract void ComputeAllLabels(BigBlocksResolutionContext context);
-  public abstract void CreateBlocks(BigBlocksResolutionContext context, BigBlock b, List<Cmd> theSimpleCmds,
-    StmtList stmtList,
+
+  public abstract void CreateBlocks(BigBlocksResolutionContext context, BigBlock bigBlock, List<Cmd> theSimpleCmds,
     string runOffTheEndLabel);
+
+  public abstract IEnumerable<StmtList> StatementLists { get; }
+  public abstract void RecordSuccessors(BigBlocksResolutionContext context, BigBlock bigBlock);
 }

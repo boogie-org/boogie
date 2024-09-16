@@ -134,18 +134,11 @@ public class IfCmd : StructuredCmd
     }
   }
 
-  public override void ComputeAllLabels(BigBlocksResolutionContext context)
-  {
-    context.ComputeAllLabels(thn);
-    elseIf.ComputeAllLabels(context);
-    context.ComputeAllLabels(elseBlock);
-  }
-
-  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock b, List<Cmd> theSimpleCmds, StmtList stmtList,
+  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock bigBlock, List<Cmd> theSimpleCmds,
     string runOffTheEndLabel)
   {
-    IfCmd ifcmd = (IfCmd) b.ec;
-    string predLabel = b.LabelName;
+    IfCmd ifcmd = (IfCmd) bigBlock.ec;
+    string predLabel = bigBlock.LabelName;
     List<Cmd> predCmds = theSimpleCmds;
 
     for (; ifcmd != null; ifcmd = ifcmd.elseIf)
@@ -178,7 +171,7 @@ public class IfCmd : StructuredCmd
       }
 
       // ... goto Then, Else;
-      var jumpBlock = new Block(b.tok, predLabel, predCmds,
+      var jumpBlock = new Block(bigBlock.tok, predLabel, predCmds,
         new GotoCmd(ifcmd.tok, new List<String> {thenLabel, elseLabel}));
       context.AddBlock(jumpBlock);
 
@@ -231,11 +224,37 @@ public class IfCmd : StructuredCmd
         }
         else
         {
-          trCmd = BigBlocksResolutionContext.GotoSuccessor(ifcmd.tok, b);
+          trCmd = BigBlocksResolutionContext.GotoSuccessor(ifcmd.tok, bigBlock);
         }
 
         var block = new Block(ifcmd.tok, elseLabel, ssElse, trCmd);
         context.AddBlock(block);
+      }
+    }
+  }
+
+  public override IEnumerable<StmtList> StatementLists {
+    get
+    {
+      for (var ifcmd = this; ifcmd != null; ifcmd = ifcmd.elseIf)
+      {
+        yield return ifcmd.thn;
+        if (ifcmd.elseBlock != null)
+        {
+          yield return ifcmd.elseBlock;
+        }
+      }
+    }
+  }
+
+  public override void RecordSuccessors(BigBlocksResolutionContext context, BigBlock bigBlock)
+  {
+    for (var ifcmd = this; ifcmd != null; ifcmd = ifcmd.elseIf)
+    {
+      context.RecordSuccessors(ifcmd.thn, bigBlock.successorBigBlock);
+      if (ifcmd.elseBlock != null)
+      {
+        context.RecordSuccessors(ifcmd.elseBlock, bigBlock.successorBigBlock);
       }
     }
   }

@@ -92,13 +92,7 @@ public class WhileCmd : StructuredCmd
     context.CheckLegalLabels(Body, stmtList, bigBlock);
   }
 
-  public override void ComputeAllLabels(BigBlocksResolutionContext context)
-  {
-    context.ComputeAllLabels(Body);
-  }
-
-  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock b, List<Cmd> theSimpleCmds,
-    StmtList stmtList,
+  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock bigBlock, List<Cmd> theSimpleCmds,
     string runOffTheEndLabel)
   {
       WhileCmd wcmd = (WhileCmd) this;
@@ -124,7 +118,7 @@ public class WhileCmd : StructuredCmd
       bool bodyGuardTakenCareOf = wcmd.Body.PrefixFirstBlock(ssBody, ref loopBodyLabel);
 
       // ... goto LoopHead;
-      Block block = new Block(b.tok, b.LabelName, theSimpleCmds,
+      Block block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds,
         new GotoCmd(wcmd.tok, new List<String> {loopHeadLabel}));
       context.AddBlock(block);
 
@@ -163,10 +157,16 @@ public class WhileCmd : StructuredCmd
       }
       else
       {
-        trCmd = BigBlocksResolutionContext.GotoSuccessor(wcmd.tok, b);
+        trCmd = BigBlocksResolutionContext.GotoSuccessor(wcmd.tok, bigBlock);
       }
 
       block = new Block(wcmd.tok, loopDoneLabel, ssDone, trCmd);
       context.AddBlock(block);
+  }
+
+  public override IEnumerable<StmtList> StatementLists => new [] { Body };
+  public override void RecordSuccessors(BigBlocksResolutionContext context, BigBlock bigBlock)
+  {
+    context.RecordSuccessors(Body, bigBlock);
   }
 }
