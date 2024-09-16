@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie;
@@ -103,6 +105,138 @@ public class IfCmd : StructuredCmd
       }
 
       break;
+    }
+  }
+
+  public override void InjectEmptyBigBlockInsideWhileLoopBody(BigBlocksResolutionContext context)
+  {
+    context.InjectEmptyBigBlockInsideWhileLoopBody(thn);
+    if (elseBlock != null)
+    {
+      context.InjectEmptyBigBlockInsideWhileLoopBody(elseBlock);
+    }
+
+    if (elseIf != null)
+    {
+      elseIf.InjectEmptyBigBlockInsideWhileLoopBody(context);
+    }
+  }
+
+  public override void CheckLegalLabels(BigBlocksResolutionContext context, StmtList stmtList, BigBlock bigBlock)
+  {
+    for (IfCmd ifcmd = this; ifcmd != null; ifcmd = ifcmd.elseIf)
+    {
+      context.CheckLegalLabels(ifcmd.thn, stmtList, bigBlock);
+      if (ifcmd.elseBlock != null)
+      {
+        context.CheckLegalLabels(ifcmd.elseBlock, stmtList, bigBlock);
+      }
+    }
+  }
+
+  public override void ComputeAllLabels(BigBlocksResolutionContext context)
+  {
+    context.ComputeAllLabels(thn);
+    elseIf.ComputeAllLabels(context);
+    context.ComputeAllLabels(elseBlock);
+  }
+
+  public override void CreateBlocks(BigBlocksResolutionContext context, BigBlock b, List<Cmd> theSimpleCmds, StmtList stmtList,
+    string runOffTheEndLabel)
+  {
+    IfCmd ifcmd = (IfCmd) b.ec;
+    string predLabel = b.LabelName;
+    List<Cmd> predCmds = theSimpleCmds;
+
+    for (; ifcmd != null; ifcmd = ifcmd.elseIf)
+    {
+      var prefix = context.FreshPrefix();
+      string thenLabel = prefix + "_Then";
+      Contract.Assert(thenLabel != null);
+      string elseLabel = prefix + "_Else";
+      Contract.Assert(elseLabel != null);
+
+      List<Cmd> ssThen = new List<Cmd>();
+      List<Cmd> ssElse = new List<Cmd>();
+      if (ifcmd.Guard != null)
+      {
+        var ac = new AssumeCmd(ifcmd.tok, ifcmd.Guard);
+        ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+        ssThen.Add(ac);
+
+        ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
+        ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+        ssElse.Add(ac);
+      }
+
+      // Try to squeeze in ssThen/ssElse into the first block of ifcmd.thn/ifcmd.elseBlock
+      bool thenGuardTakenCareOf = ifcmd.thn.PrefixFirstBlock(ssThen, ref thenLabel);
+      bool elseGuardTakenCareOf = false;
+      if (ifcmd.elseBlock != null)
+      {
+        elseGuardTakenCareOf = ifcmd.elseBlock.PrefixFirstBlock(ssElse, ref elseLabel);
+      }
+
+      // ... goto Then, Else;
+      var jumpBlock = new Block(b.tok, predLabel, predCmds,
+        new GotoCmd(ifcmd.tok, new List<String> {thenLabel, elseLabel}));
+      context.AddBlock(jumpBlock);
+
+      if (!thenGuardTakenCareOf)
+      {
+        // Then: assume guard; goto firstThenBlock;
+        var thenJumpBlock = new Block(ifcmd.tok, thenLabel, ssThen,
+          new GotoCmd(ifcmd.tok, new List<String> {ifcmd.thn.BigBlocks[0].LabelName}));
+        context.AddBlock(thenJumpBlock);
+      }
+
+      // recurse to create the blocks for the then branch
+      context.CreateBlocks(ifcmd.thn, runOffTheEndLabel);
+
+      if (ifcmd.elseBlock != null)
+      {
+        Contract.Assert(ifcmd.elseIf == null);
+        if (!elseGuardTakenCareOf)
+        {
+          // Else: assume !guard; goto firstElseBlock;
+          var elseJumpBlock = new Block(ifcmd.tok, elseLabel, ssElse,
+            new GotoCmd(ifcmd.tok, new List<String> {ifcmd.elseBlock.BigBlocks[0].LabelName}));
+          context.AddBlock(elseJumpBlock);
+        }
+
+        // recurse to create the blocks for the else branch
+        context.CreateBlocks(ifcmd.elseBlock, runOffTheEndLabel);
+      }
+      else if (ifcmd.elseIf != null)
+      {
+        // this is an "else if"
+        predLabel = elseLabel;
+        predCmds = new List<Cmd>();
+        if (ifcmd.Guard != null)
+        {
+          var ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
+          ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+          predCmds.Add(ac);
+        }
+      }
+      else
+      {
+        // no else alternative is specified, so else branch is just "skip"
+        // Else: assume !guard; goto ifSuccessor;
+        TransferCmd trCmd;
+        if (runOffTheEndLabel != null)
+        {
+          // goto the given label instead of the textual successor block
+          trCmd = new GotoCmd(ifcmd.tok, new List<String> {runOffTheEndLabel});
+        }
+        else
+        {
+          trCmd = BigBlocksResolutionContext.GotoSuccessor(ifcmd.tok, b);
+        }
+
+        var block = new Block(ifcmd.tok, elseLabel, ssElse, trCmd);
+        context.AddBlock(block);
+      }
     }
   }
 }

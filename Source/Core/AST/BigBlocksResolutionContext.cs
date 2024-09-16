@@ -1,30 +1,27 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Linq;
 
 namespace Microsoft.Boogie;
 
-class BigBlocksResolutionContext
+public class BigBlocksResolutionContext
 {
   StmtList /*!*/ stmtList;
 
   [Peer] List<Block /*!*/> blocks;
 
-  string /*!*/
-    prefix = "anon";
+  string /*!*/ prefix = "anon";
 
   int anon = 0;
 
-  int FreshAnon()
+  public string FreshPrefix()
   {
-    return anon++;
+    return prefix + anon++;
   }
 
-  HashSet<string /*!*/> allLabels = new HashSet<string /*!*/>();
+  HashSet<string /*!*/> allLabels = new();
 
-  Errors /*!*/
-    errorHandler;
+  public Errors ErrorHandler { get; }
 
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -33,10 +30,10 @@ class BigBlocksResolutionContext
     Contract.Invariant(cce.NonNullElements(blocks, true));
     Contract.Invariant(prefix != null);
     Contract.Invariant(cce.NonNullElements(allLabels, true));
-    Contract.Invariant(errorHandler != null);
+    Contract.Invariant(ErrorHandler != null);
   }
 
-  private void ComputeAllLabels(StmtList stmts)
+  public void ComputeAllLabels(StmtList stmts)
   {
     if (stmts == null)
     {
@@ -50,7 +47,7 @@ class BigBlocksResolutionContext
         allLabels.Add(bb.LabelName);
       }
 
-      ComputeAllLabels(bb.ec);
+      bb.ec?.ComputeAllLabels(this);
     }
   }
 
@@ -60,19 +57,8 @@ class BigBlocksResolutionContext
     {
       return;
     }
-
-    if (cmd is IfCmd)
-    {
-      IfCmd ifCmd = (IfCmd) cmd;
-      ComputeAllLabels(ifCmd.thn);
-      ComputeAllLabels(ifCmd.elseIf);
-      ComputeAllLabels(ifCmd.elseBlock);
-    }
-    else if (cmd is WhileCmd)
-    {
-      WhileCmd whileCmd = (WhileCmd) cmd;
-      ComputeAllLabels(whileCmd.Body);
-    }
+    
+    cmd.ComputeAllLabels(this);
   }
 
   public BigBlocksResolutionContext(StmtList stmtList, Errors errorHandler)
@@ -83,8 +69,13 @@ class BigBlocksResolutionContext
     // Inject an empty big block at the end of the body of a while loop if its current end is another while loop.
     // This transformation creates a suitable jump target for break statements inside the nested while loop.
     InjectEmptyBigBlockInsideWhileLoopBody(stmtList);
-    this.errorHandler = errorHandler;
+    this.ErrorHandler = errorHandler;
     ComputeAllLabels(stmtList);
+  }
+
+  public void AddBlock(Block block)
+  {
+    blocks.Add(block);
   }
 
   public List<Block /*!*/> /*!*/ Blocks
@@ -96,7 +87,7 @@ class BigBlocksResolutionContext
       {
         blocks = new List<Block /*!*/>();
 
-        int startErrorCount = this.errorHandler.count;
+        int startErrorCount = this.ErrorHandler.count;
         // Check that all goto statements go to a label in allLabels, and no break statement to a non-enclosing loop.
         // Also, determine a good value for "prefix".
         CheckLegalLabels(stmtList, null, null);
@@ -107,7 +98,7 @@ class BigBlocksResolutionContext
         // determine successor blocks
         RecordSuccessors(stmtList, null);
 
-        if (this.errorHandler.count == startErrorCount)
+        if (this.ErrorHandler.count == startErrorCount)
         {
           // generate blocks from the big blocks
           CreateBlocks(stmtList, null);
@@ -118,42 +109,15 @@ class BigBlocksResolutionContext
     }
   }
 
-  void InjectEmptyBigBlockInsideWhileLoopBody(StmtList stmtList)
+  public void InjectEmptyBigBlockInsideWhileLoopBody(StmtList stmtList)
   {
     foreach (var bb in stmtList.BigBlocks)
     {
-      InjectEmptyBigBlockInsideWhileLoopBody(bb.ec);
+      bb.ec.InjectEmptyBigBlockInsideWhileLoopBody(this);
     }
   }
 
-  void InjectEmptyBigBlockInsideWhileLoopBody(StructuredCmd structuredCmd)
-  {
-    if (structuredCmd is WhileCmd whileCmd)
-    {
-      InjectEmptyBigBlockInsideWhileLoopBody(whileCmd.Body);
-      if (whileCmd.Body.BigBlocks.Count > 0 && whileCmd.Body.BigBlocks.Last().ec is WhileCmd)
-      {
-        var newBigBlocks = new List<BigBlock>(whileCmd.Body.BigBlocks);
-        newBigBlocks.Add(new BigBlock(Token.NoToken, null, new List<Cmd>(), null, null));
-        whileCmd.Body = new StmtList(newBigBlocks, whileCmd.Body.EndCurly);
-      }
-    }
-    else if (structuredCmd is IfCmd ifCmd)
-    {
-      InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.thn);
-      if (ifCmd.elseBlock != null)
-      {
-        InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseBlock);
-      }
-
-      if (ifCmd.elseIf != null)
-      {
-        InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseIf);
-      }
-    }
-  }
-
-  void CheckLegalLabels(StmtList stmtList, StmtList parentContext, BigBlock parentBigBlock)
+  public void CheckLegalLabels(StmtList stmtList, StmtList parentContext, BigBlock parentBigBlock)
   {
     Contract.Requires(stmtList != null);
     Contract.Requires((parentContext == null) == (parentBigBlock == null));
@@ -209,82 +173,13 @@ class BigBlocksResolutionContext
             */
           if (!allLabels.Contains(lbl))
           {
-            this.errorHandler.SemErr(g.tok, "Error: goto label '" + lbl + "' is undefined");
+            this.ErrorHandler.SemErr(g.tok, "Error: goto label '" + lbl + "' is undefined");
           }
         }
-      }
-
-      // break labels must refer to an enclosing while statement
-      else if (b.ec is BreakCmd)
-      {
-        BreakCmd bcmd = (BreakCmd) b.ec;
-        Contract.Assert(bcmd.BreakEnclosure == null); // it hasn't been initialized yet
-        bool found = false;
-        for (StmtList sl = stmtList; sl.ParentBigBlock != null; sl = sl.ParentContext)
-        {
-          cce.LoopInvariant(sl != null);
-          BigBlock bb = sl.ParentBigBlock;
-
-          if (bcmd.Label == null)
-          {
-            // a label-less break statement breaks out of the innermost enclosing while statement
-            if (bb.ec is WhileCmd)
-            {
-              bcmd.BreakEnclosure = bb;
-              found = true;
-              break;
-            }
-          }
-          else if (bcmd.Label == bb.LabelName)
-          {
-            // a break statement with a label can break out of both if statements and while statements
-            if (bb.simpleCmds.Count == 0)
-            {
-              // this is a good target:  the label refers to the if/while statement
-              bcmd.BreakEnclosure = bb;
-            }
-            else
-            {
-              // the label of bb refers to the first statement of bb, which in which case is a simple statement, not an if/while statement
-              this.errorHandler.SemErr(bcmd.tok,
-                "Error: break label '" + bcmd.Label + "' must designate an enclosing statement");
-            }
-
-            found = true; // don't look any further, since we've found a matching label
-            break;
-          }
-        }
-
-        if (!found)
-        {
-          if (bcmd.Label == null)
-          {
-            this.errorHandler.SemErr(bcmd.tok, "Error: break statement is not inside a loop");
-          }
-          else
-          {
-            this.errorHandler.SemErr(bcmd.tok,
-              "Error: break label '" + bcmd.Label + "' must designate an enclosing statement");
-          }
-        }
-      }
-
-      // recurse
-      else if (b.ec is WhileCmd)
-      {
-        WhileCmd wcmd = (WhileCmd) b.ec;
-        CheckLegalLabels(wcmd.Body, stmtList, b);
       }
       else
       {
-        for (IfCmd ifcmd = b.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.elseIf)
-        {
-          CheckLegalLabels(ifcmd.thn, stmtList, b);
-          if (ifcmd.elseBlock != null)
-          {
-            CheckLegalLabels(ifcmd.elseBlock, stmtList, b);
-          }
-        }
+        b.ec.CheckLegalLabels(this, this.stmtList, b);
       }
     }
   }
@@ -296,7 +191,7 @@ class BigBlocksResolutionContext
     {
       if (b.LabelName == null)
       {
-        b.LabelName = prefix + FreshAnon();
+        b.LabelName = FreshPrefix();
       }
 
       if (b.ec is WhileCmd)
@@ -349,7 +244,7 @@ class BigBlocksResolutionContext
 
   // If the enclosing context is a loop, then "runOffTheEndLabel" is the loop head label;
   // otherwise, it is null.
-  void CreateBlocks(StmtList stmtList, string runOffTheEndLabel)
+  public void CreateBlocks(StmtList stmtList, string runOffTheEndLabel)
   {
     Contract.Requires(stmtList != null);
     Contract.Requires(blocks != null);
@@ -396,185 +291,14 @@ class BigBlocksResolutionContext
         Block block = new Block(b.tok, b.LabelName, theSimpleCmds, trCmd);
         blocks.Add(block);
       }
-      else if (b.ec is BreakCmd)
-      {
-        BreakCmd bcmd = (BreakCmd) b.ec;
-        Contract.Assert(bcmd.BreakEnclosure != null);
-        Block block = new Block(b.tok, b.LabelName, theSimpleCmds, GotoSuccessor(b.ec.tok, bcmd.BreakEnclosure));
-        blocks.Add(block);
-      }
-      else if (b.ec is WhileCmd)
-      {
-        WhileCmd wcmd = (WhileCmd) b.ec;
-        var a = FreshAnon();
-        string loopHeadLabel = prefix + a + "_LoopHead";
-        string /*!*/
-          loopBodyLabel = prefix + a + "_LoopBody";
-        string loopDoneLabel = prefix + a + "_LoopDone";
-
-        List<Cmd> ssBody = new List<Cmd>();
-        List<Cmd> ssDone = new List<Cmd>();
-        if (wcmd.Guard != null)
-        {
-          var ac = new AssumeCmd(wcmd.tok, wcmd.Guard);
-          ac.Attributes = new QKeyValue(wcmd.tok, "partition", new List<object>(), null);
-          ssBody.Add(ac);
-
-          ac = new AssumeCmd(wcmd.tok, Expr.Not(wcmd.Guard));
-          ac.Attributes = new QKeyValue(wcmd.tok, "partition", new List<object>(), null);
-          ssDone.Add(ac);
-        }
-
-        // Try to squeeze in ssBody into the first block of wcmd.Body
-        bool bodyGuardTakenCareOf = wcmd.Body.PrefixFirstBlock(ssBody, ref loopBodyLabel);
-
-        // ... goto LoopHead;
-        Block block = new Block(b.tok, b.LabelName, theSimpleCmds,
-          new GotoCmd(wcmd.tok, new List<String> {loopHeadLabel}));
-        blocks.Add(block);
-
-        // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
-        List<Cmd> ssHead = new List<Cmd>();
-        foreach (CallCmd yield in wcmd.Yields)
-        {
-          ssHead.Add(yield);
-        }
-        foreach (PredicateCmd inv in wcmd.Invariants)
-        {
-          ssHead.Add(inv);
-        }
-
-        block = new Block(wcmd.tok, loopHeadLabel, ssHead,
-          new GotoCmd(wcmd.tok, new List<String> {loopDoneLabel, loopBodyLabel}));
-        blocks.Add(block);
-
-        if (!bodyGuardTakenCareOf)
-        {
-          // LoopBody: assume guard; goto firstLoopBlock;
-          block = new Block(wcmd.tok, loopBodyLabel, ssBody,
-            new GotoCmd(wcmd.tok, new List<String> {wcmd.Body.BigBlocks[0].LabelName}));
-          blocks.Add(block);
-        }
-
-        // recurse to create the blocks for the loop body
-        CreateBlocks(wcmd.Body, loopHeadLabel);
-
-        // LoopDone: assume !guard; goto loopSuccessor;
-        TransferCmd trCmd;
-        if (n == 0 && runOffTheEndLabel != null)
-        {
-          // goto the given label instead of the textual successor block
-          trCmd = new GotoCmd(wcmd.tok, new List<String> {runOffTheEndLabel});
-        }
-        else
-        {
-          trCmd = GotoSuccessor(wcmd.tok, b);
-        }
-
-        block = new Block(wcmd.tok, loopDoneLabel, ssDone, trCmd);
-        blocks.Add(block);
-      }
       else
       {
-        IfCmd ifcmd = (IfCmd) b.ec;
-        string predLabel = b.LabelName;
-        List<Cmd> predCmds = theSimpleCmds;
-
-        for (; ifcmd != null; ifcmd = ifcmd.elseIf)
-        {
-          var a = FreshAnon();
-          string thenLabel = prefix + a + "_Then";
-          Contract.Assert(thenLabel != null);
-          string elseLabel = prefix + a + "_Else";
-          Contract.Assert(elseLabel != null);
-
-          List<Cmd> ssThen = new List<Cmd>();
-          List<Cmd> ssElse = new List<Cmd>();
-          if (ifcmd.Guard != null)
-          {
-            var ac = new AssumeCmd(ifcmd.tok, ifcmd.Guard);
-            ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
-            ssThen.Add(ac);
-
-            ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
-            ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
-            ssElse.Add(ac);
-          }
-
-          // Try to squeeze in ssThen/ssElse into the first block of ifcmd.thn/ifcmd.elseBlock
-          bool thenGuardTakenCareOf = ifcmd.thn.PrefixFirstBlock(ssThen, ref thenLabel);
-          bool elseGuardTakenCareOf = false;
-          if (ifcmd.elseBlock != null)
-          {
-            elseGuardTakenCareOf = ifcmd.elseBlock.PrefixFirstBlock(ssElse, ref elseLabel);
-          }
-
-          // ... goto Then, Else;
-          var jumpBlock = new Block(b.tok, predLabel, predCmds,
-            new GotoCmd(ifcmd.tok, new List<String> {thenLabel, elseLabel}));
-          blocks.Add(jumpBlock);
-
-          if (!thenGuardTakenCareOf)
-          {
-            // Then: assume guard; goto firstThenBlock;
-            var thenJumpBlock = new Block(ifcmd.tok, thenLabel, ssThen,
-              new GotoCmd(ifcmd.tok, new List<String> {ifcmd.thn.BigBlocks[0].LabelName}));
-            blocks.Add(thenJumpBlock);
-          }
-
-          // recurse to create the blocks for the then branch
-          CreateBlocks(ifcmd.thn, n == 0 ? runOffTheEndLabel : null);
-
-          if (ifcmd.elseBlock != null)
-          {
-            Contract.Assert(ifcmd.elseIf == null);
-            if (!elseGuardTakenCareOf)
-            {
-              // Else: assume !guard; goto firstElseBlock;
-              var elseJumpBlock = new Block(ifcmd.tok, elseLabel, ssElse,
-                new GotoCmd(ifcmd.tok, new List<String> {ifcmd.elseBlock.BigBlocks[0].LabelName}));
-              blocks.Add(elseJumpBlock);
-            }
-
-            // recurse to create the blocks for the else branch
-            CreateBlocks(ifcmd.elseBlock, n == 0 ? runOffTheEndLabel : null);
-          }
-          else if (ifcmd.elseIf != null)
-          {
-            // this is an "else if"
-            predLabel = elseLabel;
-            predCmds = new List<Cmd>();
-            if (ifcmd.Guard != null)
-            {
-              var ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
-              ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
-              predCmds.Add(ac);
-            }
-          }
-          else
-          {
-            // no else alternative is specified, so else branch is just "skip"
-            // Else: assume !guard; goto ifSuccessor;
-            TransferCmd trCmd;
-            if (n == 0 && runOffTheEndLabel != null)
-            {
-              // goto the given label instead of the textual successor block
-              trCmd = new GotoCmd(ifcmd.tok, new List<String> {runOffTheEndLabel});
-            }
-            else
-            {
-              trCmd = GotoSuccessor(ifcmd.tok, b);
-            }
-
-            var block = new Block(ifcmd.tok, elseLabel, ssElse, trCmd);
-            blocks.Add(block);
-          }
-        }
+        b.ec.CreateBlocks(this, b, theSimpleCmds, stmtList, n == 0 ? runOffTheEndLabel : null);
       }
     }
   }
 
-  TransferCmd GotoSuccessor(IToken tok, BigBlock b)
+  public static TransferCmd GotoSuccessor(IToken tok, BigBlock b)
   {
     Contract.Requires(b != null);
     Contract.Requires(tok != null);

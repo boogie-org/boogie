@@ -351,41 +351,6 @@ namespace Microsoft.Boogie
     }
   }
 
-  [ContractClass(typeof(StructuredCmdContracts))]
-  public abstract class StructuredCmd
-  {
-    private IToken /*!*/
-      _tok;
-
-    public IToken /*!*/ tok
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<IToken>() != null);
-        return this._tok;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this._tok = value;
-      }
-    }
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(this._tok != null);
-    }
-
-    public StructuredCmd(IToken tok)
-    {
-      Contract.Requires(tok != null);
-      this._tok = tok;
-    }
-
-    public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
-  }
-
   [ContractClassFor(typeof(StructuredCmd))]
   public abstract class StructuredCmdContracts : StructuredCmd
   {
@@ -397,31 +362,6 @@ namespace Microsoft.Boogie
 
     public StructuredCmdContracts() : base(null)
     {
-    }
-  }
-
-  public class BreakCmd : StructuredCmd
-  {
-    public string Label;
-    public BigBlock BreakEnclosure;
-
-    public BreakCmd(IToken tok, string label)
-      : base(tok)
-    {
-      Contract.Requires(tok != null);
-      this.Label = label;
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-      if (Label == null)
-      {
-        stream.WriteLine(level, "break;");
-      }
-      else
-      {
-        stream.WriteLine(level, "break {0};", Label);
-      }
     }
   }
 
