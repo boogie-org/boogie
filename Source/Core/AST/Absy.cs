@@ -2042,6 +2042,7 @@ namespace Microsoft.Boogie
 
   public class Function : DeclWithFormals
   {
+    public bool AlwaysRevealed;
     public string Comment;
 
     public Expr Body; // Only set if the function is declared with {:inline}
@@ -2121,7 +2122,7 @@ namespace Microsoft.Boogie
         stream.WriteLine(this, level, "// " + Comment);
       }
 
-      stream.Write(this, level, "function ");
+      stream.Write(this, level, (AlwaysRevealed ? "revealed " : "") + "function ");
       EmitAttributes(stream);
       if (Body != null && !QKeyValue.FindBoolAttribute(Attributes, "inline"))
       {
@@ -3823,10 +3824,9 @@ namespace Microsoft.Boogie
     {
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
     {
-      //Contract.Requires(vars != null);
-      throw new NotImplementedException();
+      throw new NotSupportedException();
     }
   }
 

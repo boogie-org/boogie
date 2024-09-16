@@ -229,8 +229,7 @@ namespace Microsoft.Boogie
               Error(callCmd, "unable to eliminate pending async since a global is modified subsequently");
             }
           }
-          var assignedVariables = new List<Variable>();
-          cmd.AddAssignedVariables(assignedVariables);
+          var assignedVariables = cmd.GetAssignedVariables().ToList();
           if (assignedVariables.OfType<GlobalVariable>().Any())
           {
             modifiedGlobals = true;

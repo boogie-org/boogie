@@ -28,7 +28,7 @@ public class ChangeScope : Cmd {
     stream.WriteLine(";");
   }
 
-  public override void AddAssignedVariables(List<Variable> vars) {
+  public override void AddAssignedIdentifiers(List<IdentifierExpr> vars) {
   }
 
   public override Absy StdDispatch(StandardVisitor visitor) {
