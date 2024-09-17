@@ -226,7 +226,15 @@ namespace Microsoft.Boogie
       //Contract.Requires(ax != null);
       base.AddAxiom(ax, attributes);
 
-      axiomConjuncts.Add(translator.Translate(ax.Expr));
+      var expr = translator.Translate(ax.Expr);
+      var assumeId = QKeyValue.FindStringAttribute(ax.Attributes, "id");
+      if (assumeId != null && options.TrackVerificationCoverage)
+      {
+        var v = gen.Variable(assumeId, Microsoft.Boogie.Type.Bool, VCExprVarKind.Assume);
+        expr = gen.Function(VCExpressionGenerator.NamedAssumeOp, v, gen.ImpliesSimp(v, expr));
+      }
+
+      axiomConjuncts.Add(expr);
     }
 
     public override void AddAxiom(VCExpr vc)

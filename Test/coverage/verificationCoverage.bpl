@@ -50,6 +50,8 @@
 // CHECK:   ensures clause cont_ens_abs from call call_cont
 // CHECK:   requires clause xpos_abs proved for call call_cont
 // CHECK:   xpos_caller
+// CHECK: Proof dependencies:
+// CHECK:   someInteger_value_axiom
 // CHECK: Proof dependencies of whole program:
 // CHECK:   a_gt_10
 // CHECK:   a0
@@ -79,6 +81,7 @@
 // CHECK:   requires clause ter0 proved for call call1
 // CHECK:   requires clause ter0 proved for call call2
 // CHECK:   requires clause xpos_abs proved for call call_cont
+// CHECK:   someInteger_value_axiom
 // CHECK:   spost
 // CHECK:   spre1
 // CHECK:   tee_not_1
@@ -201,4 +204,16 @@ procedure callContradictoryFunction(x: int) returns (r: int)
 {
   call {:id "call_cont"} r := contradictoryEnsuresClause(x); // requires and ensures covered
   r := {:id "unreachable_assignment"} r - 1; // not covered
+}
+
+function someInteger(i: int) : int uses {
+  axiom {:id "someInteger_value_axiom"} (forall i: int :: someInteger(i) == 3);
+
+  axiom {:id "uselessAxiom"} (3 == 3);
+}
+
+procedure usesSomeInteger() returns (r: bool)
+  ensures r;
+{
+  r := someInteger(7) == 3;
 }
