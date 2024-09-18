@@ -649,7 +649,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          var newAxiom = new Axiom(axiom.tok, expr);
+          var newAxiom = new Axiom(axiom.tok, expr, axiom.Comment, axiom.Attributes);
           if (monomorphizationVisitor.originalAxiomToSplitAxioms.ContainsKey(axiom)) {
             monomorphizationVisitor.originalAxiomToSplitAxioms[axiom].Add(newAxiom);
           }
