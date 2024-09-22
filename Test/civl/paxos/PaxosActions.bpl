@@ -20,6 +20,23 @@ asserts Round(r);
   call {:linear joinPermissions} create_asyncs(JoinPAs(r));
 }
 
+async atomic action {:layer 2} A_Join(r: Round, n: Node, {:linear_in} p: One Permission)
+modifies joinedNodes;
+{
+  assert Round(r);
+  assert p->val == JoinPerm(r, n);
+
+  assume
+    {:add_to_pool "Round", r, r-1}
+    {:add_to_pool "Node", n}
+    true;
+
+  if (*) {
+    assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' < r);
+    joinedNodes[r][n] := true;
+  }
+}
+
 async atomic action {:layer 2} A_Propose(r: Round, {:linear_in} ps: Set Permission)
 creates A_Vote, A_Conclude;
 modifies voteInfo;
@@ -56,41 +73,6 @@ asserts voteInfo[r] is None;
   }
 }
 
-async atomic action {:layer 2} A_Conclude(r: Round, v: Value, {:linear_in} p: One Permission)
-modifies decision;
-{
-  var {:pool "NodeSet"} q: NodeSet;
-
-  assert Round(r);
-  assert p->val == ConcludePerm(r);
-  assert voteInfo[r] is Some;
-  assert voteInfo[r]->t->value == v;
-
-  assume {:add_to_pool "Round", r} {:add_to_pool "NodeSet", q} true;
-
-  if (*) {
-    assume IsSubset(q, voteInfo[r]->t->ns) && IsQuorum(q);
-    decision[r] := Some(v);
-  }
-}
-
-async atomic action {:layer 2} A_Join(r: Round, n: Node, {:linear_in} p: One Permission)
-modifies joinedNodes;
-{
-  assert Round(r);
-  assert p->val == JoinPerm(r, n);
-
-  assume
-    {:add_to_pool "Round", r, r-1}
-    {:add_to_pool "Node", n}
-    true;
-
-  if (*) {
-    assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' < r);
-    joinedNodes[r][n] := true;
-  }
-}
-
 async atomic action {:layer 2} A_Vote(r: Round, n: Node, v: Value, {:linear_in} p: One Permission)
 modifies joinedNodes, voteInfo;
 {
@@ -109,6 +91,24 @@ modifies joinedNodes, voteInfo;
     assume (forall r': Round :: Round(r') && joinedNodes[r'][n] ==> r' <= r);
     voteInfo[r] := Some(VoteInfo(v, voteInfo[r]->t->ns[n := true]));
     joinedNodes[r][n] := true;
+  }
+}
+
+async atomic action {:layer 2} A_Conclude(r: Round, v: Value, {:linear_in} p: One Permission)
+modifies decision;
+{
+  var {:pool "NodeSet"} q: NodeSet;
+
+  assert Round(r);
+  assert p->val == ConcludePerm(r);
+  assert voteInfo[r] is Some;
+  assert voteInfo[r]->t->value == v;
+
+  assume {:add_to_pool "Round", r} {:add_to_pool "NodeSet", q} true;
+
+  if (*) {
+    assume IsSubset(q, voteInfo[r]->t->ns) && IsQuorum(q);
+    decision[r] := Some(v);
   }
 }
 
