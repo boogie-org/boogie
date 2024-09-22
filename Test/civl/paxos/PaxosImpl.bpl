@@ -121,6 +121,24 @@ requires call YieldInvChannels();
   async call Propose(r, ps');
 }
 
+yield procedure {:layer 1}
+Join(r: Round, n: Node, {:layer 1}{:linear_in} p: One Permission)
+refines A_Join;
+requires {:layer 1} Round(r) && Node(n) && p->val == JoinPerm(r, n);
+requires call YieldInv();
+{
+  var doJoin: bool;
+  var lastVoteRound: Round;
+  var lastVoteValue: Value;
+
+  call doJoin, lastVoteRound, lastVoteValue := JoinUpdate(r, n);
+  if (doJoin) {
+    call SendJoinResponse(r, n, lastVoteRound, lastVoteValue);
+    call {:layer 1} permJoinChannel := SendJoinResponseIntro(JoinResponse(n, lastVoteRound, lastVoteValue), p, permJoinChannel);
+    call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
+  }
+}
+
 yield right procedure {:layer 1} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, {:layer 1} ns: NodeSet)
 modifies permJoinChannel, joinChannel;
 requires {:layer 1} Round(r);
@@ -202,6 +220,23 @@ requires call YieldInvChannels();
 }
 
 yield procedure {:layer 1}
+Vote(r: Round, n: Node, v: Value, {:layer 1}{:linear_in} p: One Permission)
+refines A_Vote;
+requires {:layer 1} Round(r) && Node(n) && p->val == VotePerm(r, n);
+requires call YieldInv();
+{
+  var doVote:bool;
+
+  call doVote := VoteUpdate(r, n, v);
+  if (doVote) {
+    call SendVoteResponse(r, n);
+    call {:layer 1} permVoteChannel := SendVoteResponseIntro(VoteResponse(n), p, permVoteChannel);
+    call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
+    call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]))]);
+  }
+}
+
+yield procedure {:layer 1}
 Conclude(r: Round, v: Value, {:layer 1}{:linear_in} p: One Permission)
 refines A_Conclude;
 requires {:layer 1} Round(r) && p->val == ConcludePerm(r);
@@ -235,41 +270,6 @@ requires call YieldInvChannels();
       assume {:add_to_pool "NodeSet", q} true;
       break;
     }
-  }
-}
-
-yield procedure {:layer 1}
-Join(r: Round, n: Node, {:layer 1}{:linear_in} p: One Permission)
-refines A_Join;
-requires {:layer 1} Round(r) && Node(n) && p->val == JoinPerm(r, n);
-requires call YieldInv();
-{
-  var doJoin: bool;
-  var lastVoteRound: Round;
-  var lastVoteValue: Value;
-
-  call doJoin, lastVoteRound, lastVoteValue := JoinUpdate(r, n);
-  if (doJoin) {
-    call SendJoinResponse(r, n, lastVoteRound, lastVoteValue);
-    call {:layer 1} permJoinChannel := SendJoinResponseIntro(JoinResponse(n, lastVoteRound, lastVoteValue), p, permJoinChannel);
-    call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
-  }
-}
-
-yield procedure {:layer 1}
-Vote(r: Round, n: Node, v: Value, {:layer 1}{:linear_in} p: One Permission)
-refines A_Vote;
-requires {:layer 1} Round(r) && Node(n) && p->val == VotePerm(r, n);
-requires call YieldInv();
-{
-  var doVote:bool;
-
-  call doVote := VoteUpdate(r, n, v);
-  if (doVote) {
-    call SendVoteResponse(r, n);
-    call {:layer 1} permVoteChannel := SendVoteResponseIntro(VoteResponse(n), p, permVoteChannel);
-    call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
-    call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]))]);
   }
 }
 
