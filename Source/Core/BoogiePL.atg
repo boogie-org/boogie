@@ -267,7 +267,7 @@ LocalVars<.List<Variable>/*!*/ ds.>
     QKeyValue kv = null;
     bool monotonic = false;
   .)
-  [ "monotonic" ] (. monotonic = true; .)
+  [ "monotonic" (. monotonic = true; .) ] 
   "var"
   { Attribute<ref kv> }
   IdsTypeWheres<true, "local variables", delegate(TypedIdent tyd) { ds.Add(new LocalVariable(tyd.tok, tyd, kv) {

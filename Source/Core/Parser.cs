@@ -794,8 +794,8 @@ private class BvBounds : Expr {
 		
 		if (la.kind == 11) {
 			Get();
+			monotonic = true; 
 		}
-		monotonic = true; 
 		Expect(9);
 		while (la.kind == 27) {
 			Attribute(ref kv);
