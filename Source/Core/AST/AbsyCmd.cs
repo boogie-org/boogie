@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Diagnostics.Contracts;
 using Set = Microsoft.Boogie.GSet<object>;
@@ -3333,34 +3334,20 @@ namespace Microsoft.Boogie
 
   public class HavocCmd : Cmd
   {
-    private List<IdentifierExpr> /*!*/ _vars;
-
-    public List<IdentifierExpr> /*!*/ Vars
-    {
-      get
-      {
-        Contract.Ensures(Contract.Result<List<IdentifierExpr>>() != null);
-        return this._vars;
-      }
-      set
-      {
-        Contract.Requires(value != null);
-        this._vars = value;
-      }
-    }
+    public List<IdentifierExpr> /*!*/ Vars { get; set; }
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(this._vars != null);
+      Contract.Invariant(this.Vars != null);
     }
 
-    public HavocCmd(IToken /*!*/ tok, List<IdentifierExpr> /*!*/ vars)
+    public HavocCmd(IToken /*!*/ tok, IEnumerable<IdentifierExpr> /*!*/ vars)
       : base(tok)
     {
       Contract.Requires(tok != null);
       Contract.Requires(vars != null);
-      this._vars = vars;
+      this.Vars = vars.Where(ie => !ie.Decl.Monotonic).ToList();
     }
 
     public override void Emit(TokenTextWriter stream, int level)

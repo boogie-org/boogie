@@ -941,17 +941,13 @@ namespace VC
         foreach (var variable in varsToHavoc)
         {
           Contract.Assert(variable != null);
-          if (variable.Monotonic)
-          {
-            continue;
-          }
           var ie = new IdentifierExpr(Token.NoToken, variable);
           havocExprs.Add(ie);
         }
 
         // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
         // the source location for this later on
-        var hc = new HavocCmd(header.tok, havocExprs.ToList());
+        var hc = new HavocCmd(header.tok, havocExprs);
         List<Cmd> newCmds = new List<Cmd> { hc };
         foreach (Cmd c in header.Cmds)
         {
@@ -1075,17 +1071,13 @@ namespace VC
           foreach (Variable v in varsToHavoc)
           {
             Contract.Assert(v != null);
-            if (v.Monotonic)
-            {
-              continue;
-            }
             var ie = new IdentifierExpr(Token.NoToken, v);
             havocExprs.Add(ie);
           }
 
           // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
           // the source location for this later on
-          HavocCmd hc = new HavocCmd(newHeader.tok, havocExprs.ToList());
+          HavocCmd hc = new HavocCmd(newHeader.tok, havocExprs);
           List<Cmd> havocCmds = new List<Cmd> { hc };
 
           Block havocBlock = new Block(newHeader.tok, newHeader.Label + "_havoc", havocCmds,

@@ -134,10 +134,8 @@ public class LiveVariableAnalysis
         index++;
       }
     }
-    else if (cmd is HavocCmd)
+    else if (cmd is HavocCmd havocCmd)
     {
-      HavocCmd /*!*/
-        havocCmd = (HavocCmd) cmd;
       foreach (IdentifierExpr /*!*/ expr in havocCmd.Vars)
       {
         Contract.Assert(expr != null);
