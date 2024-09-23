@@ -1369,7 +1369,7 @@ namespace VC
         // We do not need to havoc it if we have performed a modular proof of the loop (i.e., using only the loop
         // invariant) in the previous snapshot and, consequently, the corresponding assumption did not affect the
         // anything after the loop. We can achieve this by simply not updating/adding it in the incarnation map.
-        List<IdentifierExpr> havocVars = hc.Vars.Where(v =>
+        var havocVars = hc.Vars.Where(v =>
             !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##cached##")))
           .ToList();
         // First, compute the new incarnations

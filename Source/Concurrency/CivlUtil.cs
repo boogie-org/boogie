@@ -301,7 +301,7 @@ namespace Microsoft.Boogie
 
     public static HavocCmd HavocCmd(params IdentifierExpr[] vars)
     {
-      return new HavocCmd(Token.NoToken, vars);
+      return new HavocCmd(Token.NoToken, vars.ToList());
     }
   }
 

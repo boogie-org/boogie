@@ -3334,34 +3334,36 @@ namespace Microsoft.Boogie
 
   public class HavocCmd : Cmd
   {
-    public List<IdentifierExpr> /*!*/ Vars { get; set; }
+    private readonly List<IdentifierExpr> vars;
+
+    public IEnumerable<IdentifierExpr> /*!*/ Vars => vars.Where(v => !v.Decl.Monotonic);
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(this.Vars != null);
+      Contract.Invariant(this.vars != null);
     }
 
-    public HavocCmd(IToken /*!*/ tok, IEnumerable<IdentifierExpr> /*!*/ vars)
+    public HavocCmd(IToken /*!*/ tok, List<IdentifierExpr> /*!*/ vars)
       : base(tok)
     {
       Contract.Requires(tok != null);
       Contract.Requires(vars != null);
-      this.Vars = vars.Where(ie => !ie.Decl.Monotonic).ToList();
+      this.vars = vars;
     }
 
     public override void Emit(TokenTextWriter stream, int level)
     {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "havoc ");
-      Vars.Emit(stream, true);
+      vars.Emit(stream, true);
       stream.WriteLine(";");
     }
 
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      foreach (IdentifierExpr /*!*/ ide in Vars)
+      foreach (IdentifierExpr /*!*/ ide in vars)
       {
         Contract.Assert(ide != null);
         ide.Resolve(rc);
@@ -3379,7 +3381,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      foreach (IdentifierExpr ie in Vars)
+      foreach (IdentifierExpr ie in vars)
       {
         ie.Typecheck(tc);
       }
