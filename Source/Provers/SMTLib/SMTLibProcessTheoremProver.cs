@@ -91,11 +91,11 @@ namespace Microsoft.Boogie.SMTLib
       string vcString;
       if (polarity)
       {
-        vcString = VCExpr2String(vc, 1);
+        vcString = VcExpr2String(vc, 1);
       }
       else
       {
-        vcString = "(not " + VCExpr2String(vc, 1) + ")";
+        vcString = "(not " + VcExpr2String(vc, 1) + ")";
       }
 
       AssertAxioms();
@@ -149,6 +149,8 @@ namespace Microsoft.Boogie.SMTLib
       return msg;
     }
 
+    public override int CommonSize => common.Length;
+
     public override void LogComment(string comment)
     {
       SendCommon("; " + comment);
@@ -191,63 +193,65 @@ namespace Microsoft.Boogie.SMTLib
 
     private void PrepareDataTypes()
     {
-      if (ctx.KnownDatatypes.Count > 0)
+      if (ctx.KnownDatatypes.Count <= 0)
       {
-        GraphUtil.Graph<DatatypeTypeCtorDecl> dependencyGraph = new GraphUtil.Graph<DatatypeTypeCtorDecl>();
-        foreach (var datatype in ctx.KnownDatatypes)
+        return;
+      }
+
+      var dependencyGraph = new GraphUtil.Graph<DatatypeTypeCtorDecl>();
+      foreach (var datatype in ctx.KnownDatatypes)
+      {
+        dependencyGraph.AddSource(datatype);
+        foreach (DatatypeConstructor f in datatype.Constructors)
         {
-          dependencyGraph.AddSource(datatype);
+          var dependentTypes = new List<DatatypeTypeCtorDecl>();
+          foreach (Variable v in f.InParams)
+          {
+            FindDependentTypes(v.TypedIdent.Type, dependentTypes);
+          }
+          foreach (var result in dependentTypes)
+          {
+            dependencyGraph.AddEdge(datatype, result);
+          }
+        }
+      }
+
+      var sccs =
+        new GraphUtil.StronglyConnectedComponents<DatatypeTypeCtorDecl>(dependencyGraph.Nodes, dependencyGraph.Predecessors,
+          dependencyGraph.Successors);
+      sccs.Compute();
+      foreach (var scc in sccs)
+      {
+        string datatypesString = "";
+        string datatypeConstructorsString = "";
+        foreach (var datatype in scc)
+        {
+          datatypesString += "(" + new SMTLibExprLineariser(libOptions).TypeToString(new CtorType(Token.NoToken, datatype, new List<Type>())) + " 0)";
+          string datatypeConstructorString = "";
           foreach (Function f in datatype.Constructors)
           {
-            var dependentTypes = new List<DatatypeTypeCtorDecl>();
+            string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
+            datatypeConstructorString += "(" + quotedConstructorName + " ";
             foreach (Variable v in f.InParams)
             {
-              FindDependentTypes(v.TypedIdent.Type, dependentTypes);
+              string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
+              datatypeConstructorString += "(" + quotedSelectorName + " " +
+                                           DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
             }
-            foreach (var result in dependentTypes)
-            {
-              dependencyGraph.AddEdge(datatype, result);
-            }
+
+            datatypeConstructorString += ") ";
           }
+
+          datatypeConstructorsString += "(" + datatypeConstructorString + ") ";
         }
 
-        GraphUtil.StronglyConnectedComponents<DatatypeTypeCtorDecl> sccs =
-          new GraphUtil.StronglyConnectedComponents<DatatypeTypeCtorDecl>(dependencyGraph.Nodes, dependencyGraph.Predecessors,
-            dependencyGraph.Successors);
-        sccs.Compute();
-        foreach (GraphUtil.SCC<DatatypeTypeCtorDecl> scc in sccs)
+        List<string> decls = DeclCollector.GetNewDeclarations();
+        foreach (string decl in decls)
         {
-          string datatypesString = "";
-          string datatypeConstructorsString = "";
-          foreach (var datatype in scc)
-          {
-            datatypesString += "(" + new SMTLibExprLineariser(libOptions).TypeToString(new CtorType(Token.NoToken, datatype, new List<Type>())) + " 0)";
-            string datatypeConstructorString = "";
-            foreach (Function f in datatype.Constructors)
-            {
-              string quotedConstructorName = Namer.GetQuotedName(f, f.Name);
-              datatypeConstructorString += "(" + quotedConstructorName + " ";
-              foreach (Variable v in f.InParams)
-              {
-                string quotedSelectorName = Namer.GetQuotedName(v, v.Name + "#" + f.Name);
-                datatypeConstructorString += "(" + quotedSelectorName + " " +
-                                             DeclCollector.TypeToStringReg(v.TypedIdent.Type) + ") ";
-              }
-
-              datatypeConstructorString += ") ";
-            }
-
-            datatypeConstructorsString += "(" + datatypeConstructorString + ") ";
-          }
-
-          List<string> decls = DeclCollector.GetNewDeclarations();
-          foreach (string decl in decls)
-          {
-            SendCommon(decl);
-          }
-
-          SendCommon("(declare-datatypes (" + datatypesString + ") (" + datatypeConstructorsString + "))");
+          SendCommon(decl);
         }
+
+        SendCommon("(declare-datatypes (" + datatypesString + ") (" + datatypeConstructorsString + "))");
       }
     }
 
@@ -318,7 +322,7 @@ namespace Microsoft.Boogie.SMTLib
           funcDef += ") ";
 
           funcDef += new SMTLibExprLineariser(libOptions).TypeToString(defBody[0].Type) + " ";
-          funcDef += VCExpr2String(defBody[1], -1);
+          funcDef += VcExpr2String(defBody[1], -1);
           funcDef += ")";
           generatedFuncDefs.Add(funcDef);
           definitionAdded.Add(f);
@@ -402,13 +406,13 @@ namespace Microsoft.Boogie.SMTLib
       var axioms = ctx.Axioms;
       if (axioms is VCExprNAry nary && nary.Op == VCExpressionGenerator.AndOp) {
         foreach (var expr in nary.UniformArguments) {
-          var str = VCExpr2String(expr, -1);
+          var str = VcExpr2String(expr, -1);
           if (str != "true") {
             AddAxiom(str);
           }
         }
       } else {
-        AddAxiom(VCExpr2String(axioms, -1));
+        AddAxiom(VcExpr2String(axioms, -1));
       }
 
       AxiomsAreSetup = true;
@@ -970,7 +974,7 @@ namespace Microsoft.Boogie.SMTLib
 
     protected readonly IList<string> OptimizationRequests = new List<string>();
 
-    protected string VCExpr2String(VCExpr expr, int polarity)
+    public string VcExpr2String(VCExpr expr, int polarity)
     {
       Contract.Requires(expr != null);
       Contract.Ensures(Contract.Result<string>() != null);
@@ -1101,7 +1105,7 @@ namespace Microsoft.Boogie.SMTLib
     //int numRealPushes;
     public override string VCExpressionToString(VCExpr vc)
     {
-      return VCExpr2String(vc, 1);
+      return VcExpr2String(vc, 1);
     }
 
     public override void PushVCExpression(VCExpr vc)
@@ -1135,7 +1139,7 @@ namespace Microsoft.Boogie.SMTLib
         assert += "-soft";
       }
 
-      var expr = polarity ? VCExpr2String(vc, 1) : "(not\n" + VCExpr2String(vc, 1) + "\n)";
+      var expr = polarity ? VcExpr2String(vc, 1) : "(not\n" + VcExpr2String(vc, 1) + "\n)";
       if (options.Solver == SolverKind.Z3 && isSoft)
       {
         expr += " :weight " + weight;
@@ -1157,7 +1161,7 @@ namespace Microsoft.Boogie.SMTLib
       string printedName = Namer.GetQuotedName(f, f.Name);
       var argTypes = string.Join(" ", f.InParams.Select(p => DeclCollector.TypeToStringReg(p.TypedIdent.Type)));
       string decl = "(define-fun " + printedName + " (" + argTypes + ") " +
-                    DeclCollector.TypeToStringReg(f.OutParams[0].TypedIdent.Type) + " " + VCExpr2String(vc, 1) + ")";
+                    DeclCollector.TypeToStringReg(f.OutParams[0].TypedIdent.Type) + " " + VcExpr2String(vc, 1) + ")";
       AssertAxioms();
       SendThisVC(decl);
     }

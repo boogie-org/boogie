@@ -71,11 +71,9 @@ namespace Microsoft.Boogie.SMTLib
         SetupProcess();
         checkSatSent = false;
         FullReset(gen);
-
         if (options.LogFilename != null && currentLogFile == null)
         {
           currentLogFile = OpenOutputFile(descriptiveName);
-          await currentLogFile.WriteAsync(common.ToString());
         }
 
         SendVCOptions();
@@ -84,8 +82,9 @@ namespace Microsoft.Boogie.SMTLib
 
         OptimizationRequests.Clear();
 
-        string vcString = "(assert (not\n" + VCExpr2String(vc, 1) + "\n))";
+        string vcString = "(assert (not\n" + VcExpr2String(vc, 1) + "\n))";
         FlushAxioms();
+        VCExprSize = vcString.Length;
 
         Push();
         SendVCId(descriptiveName);
@@ -284,7 +283,8 @@ namespace Microsoft.Boogie.SMTLib
       // Boogie emits comments after the solver has responded. In batch
       // mode, sending these to the solver is problematic. But they'll
       // still get sent to the log below.
-      if (Process != null && !checkSatSent) {
+      if (Process != null && !checkSatSent)
+      {
         Process.Send(s);
       }
 

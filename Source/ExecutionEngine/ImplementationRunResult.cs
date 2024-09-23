@@ -78,7 +78,7 @@ public sealed class ImplementationRunResult
 
       foreach (var vcResult in RunResults.OrderBy(s => (vcNum: s.VcNum, iteration: s.Iteration))) {
         engine.Options.XmlSink.WriteSplit(vcResult.VcNum, vcResult.Iteration, vcResult.Asserts, vcResult.StartTime,
-          vcResult.Outcome.ToString().ToLowerInvariant(), vcResult.RunTime, vcResult.ResourceCount);
+          vcResult.Outcome.ToString().ToLowerInvariant(), vcResult.RunTime, vcResult.ResourceCount, vcResult.CheckInputs.TotalSize);
       }
 
       engine.Options.XmlSink.WriteEndMethod(VcOutcome.ToString().ToLowerInvariant(),

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Boogie.SMTLib;
@@ -21,6 +22,9 @@ public enum SolverOutcome
 
 public abstract class ProverInterface
 {
+  public int VCExprSize { get; protected set; }
+  public abstract int CommonSize { get; }
+  
   public static ProverInterface CreateProver(SMTLibOptions libOptions, Program prog,
     string /*?*/ logFilePath, bool appendLogFile, uint timeout,
     int taskID = -1)
