@@ -523,7 +523,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Cmd>() != null);
-      node.Vars = this.VisitIdentifierExprSeq(node.Vars);
+      node.VarsIncludingMonotonic = this.VisitIdentifierExprSeq(node.VarsIncludingMonotonic);
       return node;
     }
 
@@ -1395,7 +1395,7 @@ namespace Microsoft.Boogie
     public override Cmd VisitHavocCmd(HavocCmd node)
     {
       Contract.Ensures(Contract.Result<Cmd>() == node);
-      this.VisitIdentifierExprSeq(node.Vars);
+      this.VisitIdentifierExprSeq(node.VarsIncludingMonotonic);
       return node;
     }
 

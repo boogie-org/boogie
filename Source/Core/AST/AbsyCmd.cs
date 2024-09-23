@@ -3334,14 +3334,17 @@ namespace Microsoft.Boogie
 
   public class HavocCmd : Cmd
   {
-    private readonly List<IdentifierExpr> vars;
+    public List<IdentifierExpr> /*!*/ VarsIncludingMonotonic {
+      get; set;d .
+      gi
+    }
 
-    public IEnumerable<IdentifierExpr> /*!*/ Vars => vars.Where(v => !v.Decl.Monotonic);
+    public IEnumerable<IdentifierExpr> /*!*/ Vars => VarsIncludingMonotonic.Where(v => !v.Decl.Monotonic);
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(this.vars != null);
+      Contract.Invariant(this.VarsIncludingMonotonic != null);
     }
 
     public HavocCmd(IToken /*!*/ tok, List<IdentifierExpr> /*!*/ vars)
@@ -3349,21 +3352,21 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(tok != null);
       Contract.Requires(vars != null);
-      this.vars = vars;
+      this.VarsIncludingMonotonic = vars;
     }
 
     public override void Emit(TokenTextWriter stream, int level)
     {
       //Contract.Requires(stream != null);
       stream.Write(this, level, "havoc ");
-      vars.Emit(stream, true);
+      VarsIncludingMonotonic.Emit(stream, true);
       stream.WriteLine(";");
     }
 
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      foreach (IdentifierExpr /*!*/ ide in vars)
+      foreach (IdentifierExpr /*!*/ ide in VarsIncludingMonotonic)
       {
         Contract.Assert(ide != null);
         ide.Resolve(rc);
@@ -3381,7 +3384,7 @@ namespace Microsoft.Boogie
     public override void Typecheck(TypecheckingContext tc)
     {
       //Contract.Requires(tc != null);
-      foreach (IdentifierExpr ie in vars)
+      foreach (IdentifierExpr ie in VarsIncludingMonotonic)
       {
         ie.Typecheck(tc);
       }
