@@ -1304,6 +1304,14 @@ namespace Microsoft.Boogie
     }
 
     public abstract bool IsMutable { get; }
+    
+    /// <summary>
+    /// Prevents this variable from being havoc'd after a loop
+    ///
+    /// One use-case is the definite assignment tracking variables in Dafny, that only go from false to true,
+    /// And can return an error if they're still false at the wrong point.
+    /// </summary>
+    public bool Monotonic { get; set;  }
 
     public override void Emit(TokenTextWriter stream, int level)
     {

@@ -741,16 +741,14 @@ namespace VC
 
         #region Find the (possibly empty) prefix of assert commands in the header, replace each assert with an assume of the same condition
 
-        List<Cmd> prefixOfPredicateCmdsInit = new List<Cmd>();
-        List<Cmd> prefixOfPredicateCmdsMaintained = new List<Cmd>();
+        var prefixOfPredicateCmdsInit = new List<Cmd>();
+        var prefixOfPredicateCmdsMaintained = new List<Cmd>();
         for (int i = 0, n = header.Cmds.Count; i < n; i++)
         {
-          PredicateCmd predicateCmd = header.Cmds[i] as PredicateCmd;
-          if (predicateCmd != null)
+          if (header.Cmds[i] is PredicateCmd predicateCmd)
           {
-            if (predicateCmd is AssertCmd)
+            if (predicateCmd is AssertCmd assertCmd)
             {
-              AssertCmd assertCmd = (AssertCmd)predicateCmd;
               AssertCmd initAssertCmd = null;
 
               if (Options.ConcurrentHoudini)
@@ -938,23 +936,23 @@ namespace VC
 
         #region Collect all variables that are assigned to in all of the natural loops for which this is the header
 
-        List<Variable> varsToHavoc = VarsAssignedInLoop(g, header);
-        List<IdentifierExpr> havocExprs = new List<IdentifierExpr>();
-        foreach (Variable v in varsToHavoc)
+        var varsToHavoc = VarsAssignedInLoop(g, header);
+        var havocExprs = new HashSet<IdentifierExpr>();
+        foreach (var variable in varsToHavoc)
         {
-          Contract.Assert(v != null);
-          IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-          if (!havocExprs.Contains(ie))
+          Contract.Assert(variable != null);
+          if (variable.Monotonic)
           {
-            havocExprs.Add(ie);
+            continue;
           }
+          var ie = new IdentifierExpr(Token.NoToken, variable);
+          havocExprs.Add(ie);
         }
 
         // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
         // the source location for this later on
-        HavocCmd hc = new HavocCmd(header.tok, havocExprs);
-        List<Cmd> newCmds = new List<Cmd>();
-        newCmds.Add(hc);
+        var hc = new HavocCmd(header.tok, havocExprs.ToList());
+        List<Cmd> newCmds = new List<Cmd> { hc };
         foreach (Cmd c in header.Cmds)
         {
           newCmds.Add(c);
@@ -1073,22 +1071,22 @@ namespace VC
           #region havoc variables that can be assigned in the loop
 
           List<Variable> varsToHavoc = VarsAssignedInLoop(g, header);
-          List<IdentifierExpr> havocExprs = new List<IdentifierExpr>();
+          var havocExprs = new HashSet<IdentifierExpr>();
           foreach (Variable v in varsToHavoc)
           {
             Contract.Assert(v != null);
-            IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-            if (!havocExprs.Contains(ie))
+            if (v.Monotonic)
             {
-              havocExprs.Add(ie);
+              continue;
             }
+            var ie = new IdentifierExpr(Token.NoToken, v);
+            havocExprs.Add(ie);
           }
 
           // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
           // the source location for this later on
-          HavocCmd hc = new HavocCmd(newHeader.tok, havocExprs);
-          List<Cmd> havocCmds = new List<Cmd>();
-          havocCmds.Add(hc);
+          HavocCmd hc = new HavocCmd(newHeader.tok, havocExprs.ToList());
+          List<Cmd> havocCmds = new List<Cmd> { hc };
 
           Block havocBlock = new Block(newHeader.tok, newHeader.Label + "_havoc", havocCmds,
             new GotoCmd(newHeader.tok, new List<Block> { newHeader }));

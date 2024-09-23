@@ -265,10 +265,14 @@ LocalVars<.List<Variable>/*!*/ ds.>
 = (.
     Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
     QKeyValue kv = null;
+    bool monotonic = false;
   .)
+  [ "monotonic" ] (. monotonic = true; .)
   "var"
   { Attribute<ref kv> }
-  IdsTypeWheres<true, "local variables", delegate(TypedIdent tyd) { ds.Add(new LocalVariable(tyd.tok, tyd, kv)); } > ";"
+  IdsTypeWheres<true, "local variables", delegate(TypedIdent tyd) { ds.Add(new LocalVariable(tyd.tok, tyd, kv) {
+    Monotonic = monotonic 
+  }); } > ";"
   .
 
 ProcFormals<.bool incoming, bool allowWhereClauses, out List<Variable>/*!*/ ds.>
