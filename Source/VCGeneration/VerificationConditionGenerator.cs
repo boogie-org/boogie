@@ -939,7 +939,7 @@ namespace VC
         foreach (Variable variable in varsToHavoc)
         {
           Contract.Assert(variable != null);
-          if (variable.MayBeHavoccedAfterLoop)
+          if (variable.Monotonic)
           {
             continue;
           }

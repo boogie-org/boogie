@@ -1304,7 +1304,7 @@ namespace Microsoft.Boogie
     }
 
     public abstract bool IsMutable { get; }
-    public bool MayBeHavoccedAfterLoop { get; }
+    public bool Monotonic { get; }
 
     public override void Emit(TokenTextWriter stream, int level)
     {
