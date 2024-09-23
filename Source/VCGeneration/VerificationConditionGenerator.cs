@@ -935,23 +935,22 @@ namespace VC
         #region Collect all variables that are assigned to in all of the natural loops for which this is the header
 
         List<Variable> varsToHavoc = VarsAssignedInLoop(g, header);
-        List<IdentifierExpr> havocExprs = new List<IdentifierExpr>();
-        foreach (Variable v in varsToHavoc)
+        var havocExprs = new HashSet<IdentifierExpr>();
+        foreach (Variable variable in varsToHavoc)
         {
-          Contract.Assert(v != null);
-          IdentifierExpr ie = new IdentifierExpr(Token.NoToken, v);
-          if (!havocExprs.Contains(ie))
+          Contract.Assert(variable != null);
+          if (variable.MayBeHavoccedAfterLoop)
           {
-            havocExprs.Add(ie);
+            continue;
           }
+          havocExprs.Add(new IdentifierExpr(Token.NoToken, variable));
         }
 
         // pass the token of the enclosing loop header to the HavocCmd so we can reconstruct
         // the source location for this later on
-        HavocCmd hc = new HavocCmd(header.tok, havocExprs);
-        List<Cmd> newCmds = new List<Cmd>();
-        newCmds.Add(hc);
-        foreach (Cmd c in header.Cmds)
+        HavocCmd hc = new HavocCmd(header.tok, havocExprs.ToList());
+        var newCmds = new List<Cmd> { hc };
+        foreach (var c in header.Cmds)
         {
           newCmds.Add(c);
         }

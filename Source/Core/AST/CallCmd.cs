@@ -14,11 +14,9 @@ public class CallCmd : CallCommonality
 
   // Element of the following lists can be null, which means that
   // the call happens with * as these parameters
-  public List<Expr> /*!*/
-    Ins;
+  public List<Expr> /*!*/ Ins;
 
-  public List<IdentifierExpr> /*!*/
-    Outs;
+  public List<IdentifierExpr> /*!*/ Outs;
 
   [ContractInvariantMethod]
   void ObjectInvariant()
