@@ -1306,7 +1306,8 @@ namespace Microsoft.Boogie
     public abstract bool IsMutable { get; }
     
     /// <summary>
-    /// Prevents this variable from being havoc'd
+    /// Prevents this variable from being havoc'd. Useful in situations where Havoc commands are generated,
+    /// such as after While commands.
     ///
     /// One use-case is the definite assignment tracking variables in Dafny, that only go from false to true,
     /// And can return an error if they're still false at the wrong point.
