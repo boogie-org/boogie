@@ -3334,10 +3334,7 @@ namespace Microsoft.Boogie
 
   public class HavocCmd : Cmd
   {
-    public List<IdentifierExpr> /*!*/ VarsIncludingMonotonic {
-      get; set;d .
-      gi
-    }
+    public List<IdentifierExpr> /*!*/ VarsIncludingMonotonic { get; set; }
 
     public IEnumerable<IdentifierExpr> /*!*/ Vars => VarsIncludingMonotonic.Where(v => !v.Decl.Monotonic);
 
