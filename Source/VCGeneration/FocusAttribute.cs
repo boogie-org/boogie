@@ -16,7 +16,7 @@ namespace VCGeneration;
 public static class FocusAttribute
 {
   
-  public static List<ManualSplit> FocusImpl(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
+  public static List<ManualSplit> SplitOnFocus(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
   {
     var impl = run.Implementation;
     var dag = Program.GraphFromImpl(impl);

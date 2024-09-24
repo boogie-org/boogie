@@ -9,12 +9,12 @@ using VC;
 namespace VCGeneration;
 
 public static class ManualSplitFinder {
-  public static IEnumerable<ManualSplit> FocusAndSplit(Program program, VCGenOptions options, ImplementationRun run, 
+  public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(Program program, VCGenOptions options, ImplementationRun run, 
     Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par) {
     var paths = options.IsolatePaths || QKeyValue.FindBoolAttribute(run.Implementation.Attributes, "isolate_paths") 
       ? PathSplits(options, run, gotoCmdOrigins, par) 
-      : FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
-    return paths.SelectMany(s => FindManualSplits(program, s));
+      : FocusAttribute.SplitOnFocus(options, run, gotoCmdOrigins, par);
+    return paths.SelectMany(s => SplitOnAssertions(program, s));
   }
 
   private static List<ManualSplit> PathSplits(VCGenOptions options, ImplementationRun run,
@@ -52,7 +52,7 @@ public static class ManualSplitFinder {
     return result;
   }
 
-  private static List<ManualSplit /*!*/> FindManualSplits(Program program, ManualSplit initialSplit) {
+  private static List<ManualSplit /*!*/> SplitOnAssertions(Program program, ManualSplit initialSplit) {
 
     var splitOnEveryAssert = initialSplit.Options.VcsSplitOnEveryAssert;
     initialSplit.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
@@ -137,24 +137,6 @@ public static class ManualSplitFinder {
       }
     }
     return blockAssignments;
-  }
-
-  private static List<Block> SplitOnAssert(VCGenOptions options, List<Block> oldBlocks, AssertCmd assertToKeep) {
-    var oldToNewBlockMap = new Dictionary<Block, Block>(oldBlocks.Count);
-    
-    var newBlocks = new List<Block>(oldBlocks.Count);
-    foreach (var oldBlock in oldBlocks) {
-      var newBlock = new Block(oldBlock.tok) {
-        Label = oldBlock.Label,
-        Cmds = oldBlock.Cmds.Select(cmd => 
-          cmd != assertToKeep ? CommandTransformations.AssertIntoAssume(options, cmd) : cmd).ToList()
-      };
-      oldToNewBlockMap[oldBlock] = newBlock;
-      newBlocks.Add(newBlock);
-    }
-
-    AddBlockJumps(oldBlocks, oldToNewBlockMap);
-    return newBlocks;
   }
   
   private static List<Block>? DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, 

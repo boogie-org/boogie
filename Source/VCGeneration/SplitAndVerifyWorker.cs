@@ -66,7 +66,7 @@ namespace VC
 
 
       ResetPredecessors(Implementation.Blocks);
-      ManualSplits = ManualSplitFinder.FocusAndSplit(program, options, run, gotoCmdOrigins, verificationConditionGenerator).ToList<Split>();
+      ManualSplits = ManualSplitFinder.SplitOnPathsAndAssertions(program, options, run, gotoCmdOrigins, verificationConditionGenerator).ToList<Split>();
 
       if (ManualSplits.Count == 1 && maxSplits > 1)
       {
