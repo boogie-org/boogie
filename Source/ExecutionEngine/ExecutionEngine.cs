@@ -736,7 +736,6 @@ namespace Microsoft.Boogie
       {
         var writer = TextWriter.Null;
         var vcGenerator = new VerificationConditionGenerator(processedProgram.Program, CheckerPool);
-
         
         var run = new ImplementationRun(implementation, writer);
         var collector = new VerificationResultCollector(Options);
@@ -745,7 +744,8 @@ namespace Microsoft.Boogie
           out var modelViewInfo);
 
         ConditionGeneration.ResetPredecessors(run.Implementation.Blocks);
-        var splits = ManualSplitFinder.SplitOnPathsAndAssertions(program, Options, run, gotoCmdOrigins, vcGenerator).ToList();
+        var splits = ManualSplitFinder.SplitOnPathsAndAssertions(Options, run, 
+          (token, blocks) => new ManualSplit(Options, () => blocks, gotoCmdOrigins, vcGenerator, run, token)).ToList();
         for (var index = 0; index < splits.Count; index++) {
           var split = splits[index];
           split.SplitIndex = index;

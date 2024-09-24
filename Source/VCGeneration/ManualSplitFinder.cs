@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.Contracts;
@@ -9,16 +10,16 @@ using VC;
 namespace VCGeneration;
 
 public static class ManualSplitFinder {
-  public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(Program program, VCGenOptions options, ImplementationRun run, 
-    Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par) {
+  public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
+    Func<IToken, List<Block>, ManualSplit> createSplit) {
     var paths = options.IsolatePaths || QKeyValue.FindBoolAttribute(run.Implementation.Attributes, "isolate_paths") 
-      ? PathSplits(options, run, gotoCmdOrigins, par) 
-      : FocusAttribute.SplitOnFocus(options, run, gotoCmdOrigins, par);
-    return paths.SelectMany(s => SplitOnAssertions(program, s));
+      ? PathSplits(run, createSplit) 
+      : FocusAttribute.SplitOnFocus(options, run, createSplit);
+    return paths.SelectMany(s => SplitOnAssertions(s));
   }
 
-  private static List<ManualSplit> PathSplits(VCGenOptions options, ImplementationRun run,
-    Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
+  private static List<ManualSplit> PathSplits(ImplementationRun run,
+    Func<IToken, List<Block>, ManualSplit> createSplit)
   {
     var result = new List<ManualSplit>();
     var firstBlock = run.Implementation.Blocks[0];
@@ -30,16 +31,13 @@ public static class ManualSplitFinder {
       var last = current.Peek();
       if (last.TransferCmd is not GotoCmd gotoCmd)
       {
-        result.Add(new ManualSplit(options, () =>
+        var masterBlock = new Block(firstBlock.tok)
         {
-          var masterBlock = new Block(firstBlock.tok)
-          {
-            Label = firstBlock.Label,
-            Cmds = current.Reverse().SelectMany(block => block.Cmds).ToList(),
-            TransferCmd = current.Peek().TransferCmd
-          };
-          return new List<Block> { masterBlock };
-        }, gotoCmdOrigins, par, run, run.Implementation.tok));
+          Label = firstBlock.Label,
+          Cmds = current.Reverse().SelectMany(block => block.Cmds).ToList(),
+          TransferCmd = current.Peek().TransferCmd
+        };
+        result.Add(createSplit(run.Implementation.tok, new List<Block> { masterBlock }));
         continue;
       }
 
@@ -52,7 +50,7 @@ public static class ManualSplitFinder {
     return result;
   }
 
-  private static List<ManualSplit /*!*/> SplitOnAssertions(Program program, ManualSplit initialSplit) {
+  private static List<ManualSplit> SplitOnAssertions(ManualSplit initialSplit) {
 
     var splitOnEveryAssert = initialSplit.Options.VcsSplitOnEveryAssert;
     initialSplit.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);

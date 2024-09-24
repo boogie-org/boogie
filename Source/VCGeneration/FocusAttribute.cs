@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
@@ -7,8 +8,6 @@ using Block = Microsoft.Boogie.Block;
 using Cmd = Microsoft.Boogie.Cmd;
 using PredicateCmd = Microsoft.Boogie.PredicateCmd;
 using QKeyValue = Microsoft.Boogie.QKeyValue;
-using ReturnCmd = Microsoft.Boogie.ReturnCmd;
-using TransferCmd = Microsoft.Boogie.TransferCmd;
 using VCGenOptions = Microsoft.Boogie.VCGenOptions;
 
 namespace VCGeneration;
@@ -16,7 +15,8 @@ namespace VCGeneration;
 public static class FocusAttribute
 {
   
-  public static List<ManualSplit> SplitOnFocus(VCGenOptions options, ImplementationRun run, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
+  public static List<ManualSplit> SplitOnFocus(VCGenOptions options, ImplementationRun run,
+    Func<IToken, List<Block>, ManualSplit> createSplit)
   {
     var impl = run.Implementation;
     var dag = Program.GraphFromImpl(impl);
@@ -24,17 +24,17 @@ public static class FocusAttribute
     // By default, we process the foci in a top-down fashion, i.e., in the topological order.
     // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
     var focusBlocks = GetFocusBlocks(topologicallySortedBlocks);
-    if (par.CheckerPool.Options.RelaxFocus) {
+    if (options.RelaxFocus) {
       focusBlocks.Reverse();
     }
     if (!focusBlocks.Any()) {
-      return new List<ManualSplit> { new(options, () => impl.Blocks, gotoCmdOrigins, par, run, run.Implementation.tok) };
+      return new List<ManualSplit> { createSplit(run.Implementation.tok, impl.Blocks) };
     }
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
     var descendantsPerBlock = new Dictionary<Block, HashSet<Block>>();
     focusBlocks.ForEach(fb => ancestorsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block, false).ToHashSet());
-    focusBlocks.ForEach(fb => descendantsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block, true).ToHashSet());
+    focusBlocks.ForEach(fb => descendantsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block).ToHashSet());
     var result = new List<ManualSplit>();
     var duplicator = new Duplicator();
 
@@ -71,11 +71,8 @@ public static class FocusAttribute
         }
         newBlocks.Reverse();
         Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
-        result.Add(new ManualSplit(options, () =>
-        {
-          BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
-          return newBlocks;
-        }, gotoCmdOrigins, par, run, focusToken));
+        BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
+        result.Add(createSplit(focusToken, newBlocks));
       }
       else if (!blocksToInclude.Contains(focusBlocks[focusIndex].Block) || freeAssumeBlocks.Contains(focusBlocks[focusIndex].Block))
       {
@@ -100,7 +97,7 @@ public static class FocusAttribute
     
   // finds all the blocks dominated by focusBlock in the subgraph
   // which only contains vertices of subgraph.
-  private static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, IEnumerable<Block> subgraph)
+  private static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, IReadOnlyList<Block> subgraph)
   {
     var dominators = new Dictionary<Block, HashSet<Block>>();
     foreach (var b in topologicallySortedBlocks.Where(subgraph.Contains))
