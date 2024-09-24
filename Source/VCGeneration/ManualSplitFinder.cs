@@ -13,12 +13,12 @@ public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
     Func<IToken, List<Block>, ManualSplit> createSplit) {
     var paths = options.IsolatePaths || QKeyValue.FindBoolAttribute(run.Implementation.Attributes, "isolate_paths") 
-      ? PathSplits(run, createSplit) 
+      ? PathSplits(options, run, createSplit) 
       : FocusAttribute.SplitOnFocus(options, run, createSplit);
     return paths.SelectMany(SplitOnAssertions);
   }
 
-  private static List<ManualSplit> PathSplits(ImplementationRun run,
+  private static List<ManualSplit> PathSplits(VCGenOptions options, ImplementationRun run,
     Func<IToken, List<Block>, ManualSplit> createSplit)
   {
     var result = new List<ManualSplit>();
@@ -29,7 +29,7 @@ public static class ManualSplitFinder {
     {
       var current = paths.Pop();
       var last = current.Peek();
-      if (last.TransferCmd is not GotoCmd gotoCmd)
+      if (last.TransferCmd is not GotoCmd gotoCmd || !gotoCmd.labelTargets.Any())
       {
         var masterBlock = new Block(firstBlock.tok)
         {
@@ -41,9 +41,20 @@ public static class ManualSplitFinder {
         continue;
       }
 
-      foreach (var target in gotoCmd.labelTargets)
+      var firstTarget = gotoCmd.labelTargets.First();
+      paths.Push(current.Push(firstTarget));
+
+      if (gotoCmd.labelTargets.Count <= 1) {
+        continue;
+      }
+
+      var assumedBlock = new Block(run.Implementation.tok) {
+        Cmds = current.Reverse().SelectMany(block => 
+          block.Cmds.Select(command => CommandTransformations.AssertIntoAssume(options, command))).ToList()
+      };
+      foreach (var target in gotoCmd.labelTargets.Skip(1))
       {
-        paths.Push(current.Push(target));
+        paths.Push(ImmutableStack<Block>.Empty.Push(assumedBlock).Push(target));
       }
     }
 

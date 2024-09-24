@@ -1,0 +1,10 @@
+implementation {:isolate_paths} EarlyAssertions()
+{
+
+  PreconditionGeneratedEntry:
+    assert 10 > 5;
+    assert 10 > 6;
+    goto ;
+}
+
+
