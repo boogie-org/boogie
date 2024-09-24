@@ -6,4 +6,5 @@ public interface VCGenOptions : SMTLibOptions
   bool AlwaysAssumeFreeLoopInvariants { get; }
   int LiveVariableAnalysis { get; }
   bool RemoveEmptyBlocks { get; }
+  bool IsolatePaths { get; }
 }

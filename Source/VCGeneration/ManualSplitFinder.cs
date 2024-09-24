@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.Boogie;
@@ -10,13 +11,48 @@ namespace VCGeneration;
 public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> FocusAndSplit(Program program, VCGenOptions options, ImplementationRun run, 
     Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par) {
-    var focussedImpl = FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
-    return focussedImpl.SelectMany(s => FindManualSplits(program, s));
+    var paths = options.IsolatePaths || QKeyValue.FindBoolAttribute(run.Implementation.Attributes, "isolate_paths") 
+      ? PathSplits(options, run, gotoCmdOrigins, par) 
+      : FocusAttribute.FocusImpl(options, run, gotoCmdOrigins, par);
+    return paths.SelectMany(s => FindManualSplits(program, s));
+  }
+
+  private static List<ManualSplit> PathSplits(VCGenOptions options, ImplementationRun run,
+    Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, VerificationConditionGenerator par)
+  {
+    var result = new List<ManualSplit>();
+    var firstBlock = run.Implementation.Blocks[0];
+    var paths = new Stack<ImmutableStack<Block>>();
+    paths.Push(ImmutableStack<Block>.Empty.Push(firstBlock));
+    while (paths.Any())
+    {
+      var current = paths.Pop();
+      var last = current.Peek();
+      if (last.TransferCmd is not GotoCmd gotoCmd)
+      {
+        result.Add(new ManualSplit(options, () =>
+        {
+          var masterBlock = new Block(firstBlock.tok)
+          {
+            Label = firstBlock.Label,
+            Cmds = current.Reverse().SelectMany(block => block.Cmds).ToList(),
+            TransferCmd = current.Peek().TransferCmd
+          };
+          return new List<Block> { masterBlock };
+        }, gotoCmdOrigins, par, run, run.Implementation.tok));
+        continue;
+      }
+
+      foreach (var target in gotoCmd.labelTargets)
+      {
+        paths.Push(current.Push(target));
+      }
+    }
+
+    return result;
   }
 
   private static List<ManualSplit /*!*/> FindManualSplits(Program program, ManualSplit initialSplit) {
-    Contract.Requires(initialSplit.Implementation != null);
-    Contract.Ensures(Contract.Result<List<Split>>() == null || cce.NonNullElements(Contract.Result<List<Split>>()));
 
     var splitOnEveryAssert = initialSplit.Options.VcsSplitOnEveryAssert;
     initialSplit.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
@@ -120,6 +156,7 @@ public static class ManualSplitFinder {
     AddBlockJumps(oldBlocks, oldToNewBlockMap);
     return newBlocks;
   }
+  
   private static List<Block>? DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, 
     Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
     Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert) {

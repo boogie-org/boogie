@@ -2153,34 +2153,34 @@ namespace VC
       IEnumerable sortedNodes = dag.TopologicalSort();
       Contract.Assert(sortedNodes != null);
 
-      Dictionary<Block, VCExprVar> blockVariables = new Dictionary<Block, VCExprVar>();
+      var blockVariables = new Dictionary<Block, VCExprVar>();
       List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
       VCExpressionGenerator gen = proverCtxt.ExprGen;
       Contract.Assert(gen != null);
       foreach (Block block in sortedNodes)
       {
-        VCExpr SuccCorrect;
-        GotoCmd gotocmd = block.TransferCmd as GotoCmd;
+        VCExpr succCorrect;
+        var gotocmd = block.TransferCmd as GotoCmd;
         if (gotocmd == null)
         {
           ReturnExprCmd re = block.TransferCmd as ReturnExprCmd;
           if (re == null)
           {
-            SuccCorrect = VCExpressionGenerator.True;
+            succCorrect = VCExpressionGenerator.True;
           }
           else
           {
-            SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
+            succCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
             if (isPositiveContext)
             {
-              SuccCorrect = gen.Not(SuccCorrect);
+              succCorrect = gen.Not(succCorrect);
             }
           }
         }
         else
         {
           Contract.Assert(gotocmd.labelTargets != null);
-          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Count);
+          var succCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Count);
           foreach (Block successor in gotocmd.labelTargets)
           {
             Contract.Assert(successor != null);
@@ -2194,14 +2194,14 @@ namespace VC
               s = gen.Implies(controlTransferExpr, s);
             }
 
-            SuccCorrectVars.Add(s);
+            succCorrectVars.Add(s);
           }
 
-          SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
+          succCorrect = gen.NAry(VCExpressionGenerator.AndOp, succCorrectVars);
         }
 
         VCContext context = new VCContext(Options, absyIds, proverCtxt, controlFlowVariableExpr, isPositiveContext);
-        VCExpr vc = Wlp.Block(block, SuccCorrect, context);
+        VCExpr vc = Wlp.Block(block, succCorrect, context);
         assertionCount += context.AssertionCount;
 
         VCExprVar v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);

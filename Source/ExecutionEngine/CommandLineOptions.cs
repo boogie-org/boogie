@@ -450,6 +450,7 @@ namespace Microsoft.Boogie
     }
 
     public bool RemoveEmptyBlocks { get; set; } = true;
+    public bool IsolatePaths { get; set; }
     public bool CoalesceBlocks { get; set; } = true;
     public bool PruneInfeasibleEdges { get; set; } = true;
 
@@ -969,6 +970,16 @@ namespace Microsoft.Boogie
           return true;
         }
 
+        case "isolatePaths":
+        {
+          int cb = 0;
+          if (ps.GetIntArgument(x => cb = x, 2))
+          {
+            CoalesceBlocks = cb == 1;
+          }
+
+          return true;
+        }
         case "coalesceBlocks":
         {
           int cb = 0;
