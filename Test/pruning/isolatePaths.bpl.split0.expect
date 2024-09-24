@@ -1,0 +1,10 @@
+implementation {:isolate_paths} NoDuplicateErrors()
+{
+
+  anon0:
+    assume x#AT#0 == 2;
+    assert x#AT#0 == 1;
+    return;
+}
+
+

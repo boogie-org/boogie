@@ -1310,7 +1310,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      errors = errors.DistinctBy(e => e.AssertCmd).ToList();
+      errors = errors.DistinctBy(e => e.FailingAssert).ToList();
       errors.Sort(new CounterexampleComparer());
       foreach (Counterexample error in errors)
       {

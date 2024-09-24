@@ -8,7 +8,6 @@ public class ReturnCounterexample : Counterexample
 {
   public TransferCmd FailingReturn;
   public readonly Ensures FailingEnsures;
-  public readonly AssertEnsuresCmd FailingAssert;
 
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -19,11 +18,11 @@ public class ReturnCounterexample : Counterexample
 
 
   public ReturnCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, 
-    AssertEnsuresCmd assertEnsuresCmd, TransferCmd failingReturn, Model model,
+    AssertEnsuresCmd failingAssertEnsures, TransferCmd failingReturn, Model model,
     VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum)
-    : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun, assertEnsuresCmd)
+    : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun, failingAssertEnsures)
   {
-    var failingEnsures = assertEnsuresCmd.Ensures;
+    var failingEnsures = failingAssertEnsures.Ensures;
     Contract.Requires(trace != null);
     Contract.Requires(context != null);
     Contract.Requires(failingReturn != null);
@@ -31,7 +30,6 @@ public class ReturnCounterexample : Counterexample
     Contract.Requires(!failingEnsures.Free);
     this.FailingReturn = failingReturn;
     this.FailingEnsures = failingEnsures;
-    this.FailingAssert = assertEnsuresCmd;
     this.checksum = checksum;
   }
 
@@ -42,19 +40,16 @@ public class ReturnCounterexample : Counterexample
     return FailingReturn.tok.line * 1000 + FailingReturn.tok.col;
   }
 
-  byte[] checksum;
+  readonly byte[] checksum;
 
   /// <summary>
   /// Returns the checksum of the corresponding assertion.
   /// </summary>
-  public override byte[] Checksum
-  {
-    get { return checksum; }
-  }
+  public override byte[] Checksum => checksum;
 
   public override Counterexample Clone()
   {
-    var ret = new ReturnCounterexample(Options, Trace, AugmentedTrace, FailingAssert, FailingReturn, Model, MvInfo, Context, ProofRun, checksum);
+    var ret = new ReturnCounterexample(Options, Trace, AugmentedTrace, (AssertEnsuresCmd)FailingAssert, FailingReturn, Model, MvInfo, Context, ProofRun, checksum);
     ret.CalleeCounterexamples = CalleeCounterexamples;
     return ret;
   }

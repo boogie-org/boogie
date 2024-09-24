@@ -1,0 +1,3 @@
+isolatePaths.bpl(15,3): Error: this assertion could not be proved
+
+Boogie program verifier finished with 0 verified, 2 errors

@@ -8,7 +8,6 @@ public class CallCounterexample : Counterexample
 {
   public readonly CallCmd FailingCall;
   public readonly Requires FailingRequires;
-  public readonly AssertRequiresCmd FailingAssert;
 
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -18,12 +17,12 @@ public class CallCounterexample : Counterexample
   }
 
 
-  public CallCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertRequiresCmd assertRequiresCmd, Model model,
+  public CallCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertRequiresCmd failingAssertRequires, Model model,
     VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum = null)
-    : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun, assertRequiresCmd)
+    : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun, failingAssertRequires)
   {
-    var failingRequires = assertRequiresCmd.Requires;
-    var failingCall = assertRequiresCmd.Call;
+    var failingRequires = failingAssertRequires.Requires;
+    var failingCall = failingAssertRequires.Call;
     Contract.Requires(!failingRequires.Free);
     Contract.Requires(trace != null);
     Contract.Requires(context != null);
@@ -31,7 +30,6 @@ public class CallCounterexample : Counterexample
     Contract.Requires(failingRequires != null);
     this.FailingCall = failingCall;
     this.FailingRequires = failingRequires;
-    this.FailingAssert = assertRequiresCmd;
     this.checksum = checksum;
     this.SugaredCmdChecksum = failingCall.Checksum;
   }
@@ -52,7 +50,7 @@ public class CallCounterexample : Counterexample
 
   public override Counterexample Clone()
   {
-    var ret = new CallCounterexample(Options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context, ProofRun, Checksum);
+    var ret = new CallCounterexample(Options, Trace, AugmentedTrace, (AssertRequiresCmd)FailingAssert, Model, MvInfo, Context, ProofRun, Checksum);
     ret.CalleeCounterexamples = CalleeCounterexamples;
     return ret;
   }

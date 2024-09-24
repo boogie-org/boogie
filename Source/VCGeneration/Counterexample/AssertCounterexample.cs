@@ -6,12 +6,9 @@ namespace Microsoft.Boogie;
 
 public class AssertCounterexample : Counterexample
 {
-  [Peer] public readonly AssertCmd FailingAssert;
-
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(FailingAssert != null);
   }
 
 
@@ -22,7 +19,6 @@ public class AssertCounterexample : Counterexample
     Contract.Requires(trace != null);
     Contract.Requires(failingAssert != null);
     Contract.Requires(context != null);
-    this.FailingAssert = failingAssert;
   }
 
   protected override Cmd ModelFailingCommand => FailingAssert;
@@ -32,10 +28,7 @@ public class AssertCounterexample : Counterexample
     return FailingAssert.tok.line * 1000 + FailingAssert.tok.col;
   }
 
-  public override byte[] Checksum
-  {
-    get { return FailingAssert.Checksum; }
-  }
+  public override byte[] Checksum => FailingAssert.Checksum;
 
   public override Counterexample Clone()
   {

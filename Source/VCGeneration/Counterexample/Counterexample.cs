@@ -25,7 +25,7 @@ namespace Microsoft.Boogie
     protected readonly VCGenOptions Options;
     [Peer] public List<Block> Trace;
     public readonly List<object> AugmentedTrace;
-    public AssertCmd AssertCmd { get; }
+    public AssertCmd FailingAssert { get; }
     public Model Model { get; }
     public readonly ModelViewInfo MvInfo;
     public readonly ProverContext Context;
@@ -36,7 +36,7 @@ namespace Microsoft.Boogie
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> CalleeCounterexamples;
 
     internal Counterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, Model model,
-      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, AssertCmd assertCmd)
+      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, AssertCmd failingAssert)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
@@ -46,7 +46,7 @@ namespace Microsoft.Boogie
       this.MvInfo = mvInfo;
       this.Context = context;
       this.ProofRun = proofRun;
-      this.AssertCmd = assertCmd;
+      this.FailingAssert = failingAssert;
       this.CalleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
       // the call to instance method GetModelValue in the following code requires the fields Model and Context to be initialized
       if (augmentedTrace != null)
