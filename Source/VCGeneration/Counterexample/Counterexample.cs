@@ -10,60 +10,6 @@ using VCGeneration;
 
 namespace Microsoft.Boogie
 {
-  public class CalleeCounterexampleInfo
-  {
-    public Counterexample counterexample;
-
-    public List<object> /*!>!*/
-      args;
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(cce.NonNullElements(args));
-    }
-
-    public CalleeCounterexampleInfo(Counterexample cex, List<object /*!>!*/> x)
-    {
-      Contract.Requires(cce.NonNullElements(x));
-      counterexample = cex;
-      args = x;
-    }
-  }
-
-  public class TraceLocation : IEquatable<TraceLocation>
-  {
-    public int numBlock;
-    public int numInstr;
-
-    public TraceLocation(int numBlock, int numInstr)
-    {
-      this.numBlock = numBlock;
-      this.numInstr = numInstr;
-    }
-
-    public override bool Equals(object obj)
-    {
-      TraceLocation that = obj as TraceLocation;
-      if (that == null)
-      {
-        return false;
-      }
-
-      return (numBlock == that.numBlock && numInstr == that.numInstr);
-    }
-
-    public bool Equals(TraceLocation that)
-    {
-      return (numBlock == that.numBlock && numInstr == that.numInstr);
-    }
-
-    public override int GetHashCode()
-    {
-      return numBlock.GetHashCode() ^ 131 * numInstr.GetHashCode();
-    }
-  }
-
   public abstract class Counterexample
   {
 
@@ -72,34 +18,36 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(Trace != null);
       Contract.Invariant(Context != null);
-      Contract.Invariant(cce.NonNullDictionaryAndValues(calleeCounterexamples));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(CalleeCounterexamples));
     }
 
     public ProofRun ProofRun { get; }
-    protected readonly VCGenOptions options;
+    protected readonly VCGenOptions Options;
     [Peer] public List<Block> Trace;
-    public List<object> AugmentedTrace;
+    public readonly List<object> AugmentedTrace;
+    public AssertCmd AssertCmd { get; }
     public Model Model { get; }
-    public ModelViewInfo MvInfo;
-    public ProverContext Context;
+    public readonly ModelViewInfo MvInfo;
+    public readonly ProverContext Context;
     public abstract byte[] Checksum { get; }
     public byte[] SugaredCmdChecksum;
     public bool IsAuxiliaryCexForDiagnosingTimeouts;
 
-    public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
+    public Dictionary<TraceLocation, CalleeCounterexampleInfo> CalleeCounterexamples;
 
     internal Counterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, Model model,
-      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun)
+      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, AssertCmd assertCmd)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
-      this.options = options;
+      this.Options = options;
       this.Trace = trace;
       this.Model = model;
       this.MvInfo = mvInfo;
       this.Context = context;
       this.ProofRun = proofRun;
-      this.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
+      this.AssertCmd = assertCmd;
+      this.CalleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
       // the call to instance method GetModelValue in the following code requires the fields Model and Context to be initialized
       if (augmentedTrace != null)
       {
@@ -114,13 +62,13 @@ namespace Microsoft.Boogie
     public void AddCalleeCounterexample(TraceLocation loc, CalleeCounterexampleInfo cex)
     {
       Contract.Requires(cex != null);
-      calleeCounterexamples[loc] = cex;
+      CalleeCounterexamples[loc] = cex;
     }
 
     public void AddCalleeCounterexample(int numBlock, int numInstr, CalleeCounterexampleInfo cex)
     {
       Contract.Requires(cex != null);
-      calleeCounterexamples[new TraceLocation(numBlock, numInstr)] = cex;
+      CalleeCounterexamples[new TraceLocation(numBlock, numInstr)] = cex;
     }
 
     public void AddCalleeCounterexample(Dictionary<TraceLocation, CalleeCounterexampleInfo> cs)
@@ -179,7 +127,7 @@ namespace Microsoft.Boogie
           // for ErrorTrace == 1 restrict the output;
           // do not print tokens with -17:-4 as their location because they have been
           // introduced in the translation and do not give any useful feedback to the user
-          if (!(options.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4))
+          if (!(Options.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4))
           {
             if (blockAction != null)
             {
@@ -191,21 +139,21 @@ namespace Microsoft.Boogie
             for (int numInstr = 0; numInstr < b.Cmds.Count; numInstr++)
             {
               var loc = new TraceLocation(numBlock, numInstr);
-              if (calleeCounterexamples.ContainsKey(loc))
+              if (CalleeCounterexamples.ContainsKey(loc))
               {
                 var cmd = GetTraceCmd(loc);
                 var calleeName = GetCalledProcName(cmd);
                 if (calleeName.StartsWith(VC.StratifiedVerificationConditionGeneratorBase.recordProcName) &&
-                    options.StratifiedInlining > 0)
+                    Options.StratifiedInlining > 0)
                 {
-                  Contract.Assert(calleeCounterexamples[loc].args.Count == 1);
-                  var arg = calleeCounterexamples[loc].args[0];
+                  Contract.Assert(CalleeCounterexamples[loc].Args.Count == 1);
+                  var arg = CalleeCounterexamples[loc].Args[0];
                   tw.WriteLine("{0}value = {1}", ind, arg.ToString());
                 }
                 else
                 {
                   tw.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
-                  calleeCounterexamples[loc].counterexample.Print(indent + 4, tw);
+                  CalleeCounterexamples[loc].Counterexample.Print(indent + 4, tw);
                   tw.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
                 }
               }
@@ -219,8 +167,8 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(counterexample != null);
 
-      var filenameTemplate = options.ModelViewFile;
-      if (Model == null || filenameTemplate == null || options.StratifiedInlining > 0)
+      var filenameTemplate = Options.ModelViewFile;
+      if (Model == null || filenameTemplate == null || Options.StratifiedInlining > 0)
       {
         return;
       }
@@ -476,298 +424,6 @@ namespace Microsoft.Boogie
       }
 
       return errorInfo;
-    }
-  }
-
-  public class CounterexampleComparer : IComparer<Counterexample>, IEqualityComparer<Counterexample>
-  {
-    private int Compare(List<Block> bs1, List<Block> bs2)
-    {
-      if (bs1.Count < bs2.Count)
-      {
-        return -1;
-      }
-      else if (bs2.Count < bs1.Count)
-      {
-        return 1;
-      }
-
-      for (int i = 0; i < bs1.Count; i++)
-      {
-        var b1 = bs1[i];
-        var b2 = bs2[i];
-        if (b1.tok.pos < b2.tok.pos)
-        {
-          return -1;
-        }
-        else if (b2.tok.pos < b1.tok.pos)
-        {
-          return 1;
-        }
-      }
-
-      return 0;
-    }
-
-    public int Compare(Counterexample c1, Counterexample c2)
-    {
-      //Contract.Requires(c1 != null);
-      //Contract.Requires(c2 != null);
-      if (c1.GetLocation() == c2.GetLocation())
-      {
-        var c = Compare(c1.Trace, c2.Trace);
-        if (c != 0)
-        {
-          return c;
-        }
-
-        // TODO(wuestholz): Generalize this to compare all Descriptions of the counterexample.
-        var a1 = c1 as AssertCounterexample;
-        var a2 = c2 as AssertCounterexample;
-        if (a1 != null && a2 != null) {
-          var s1 = a1.FailingAssert.Description?.FailureDescription;
-          var s2 = a2.FailingAssert.Description?.FailureDescription;
-          if (s1 != null && s2 != null)
-          {
-            return s1.CompareTo(s2);
-          }
-        }
-
-        return 0;
-      }
-
-      if (c1.GetLocation() > c2.GetLocation())
-      {
-        return 1;
-      }
-
-      return -1;
-    }
-
-    public bool Equals(Counterexample x, Counterexample y)
-    {
-      return Compare(x, y) == 0;
-    }
-
-    public int GetHashCode(Counterexample obj)
-    {
-      return 0;
-    }
-  }
-
-  public class AssertCounterexample : Counterexample
-  {
-    [Peer] public AssertCmd FailingAssert;
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(FailingAssert != null);
-    }
-
-
-    public AssertCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertCmd failingAssert, Model model, VC.ModelViewInfo mvInfo,
-      ProverContext context, ProofRun proofRun)
-      : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
-    {
-      Contract.Requires(trace != null);
-      Contract.Requires(failingAssert != null);
-      Contract.Requires(context != null);
-      this.FailingAssert = failingAssert;
-    }
-
-    protected override Cmd ModelFailingCommand => FailingAssert;
-
-    public override int GetLocation()
-    {
-      return FailingAssert.tok.line * 1000 + FailingAssert.tok.col;
-    }
-
-    public override byte[] Checksum
-    {
-      get { return FailingAssert.Checksum; }
-    }
-
-    public override Counterexample Clone()
-    {
-      var ret = new AssertCounterexample(options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context, ProofRun);
-      ret.calleeCounterexamples = calleeCounterexamples;
-      return ret;
-    }
-  }
-
-  public class CallCounterexample : Counterexample
-  {
-    public CallCmd FailingCall;
-    public Requires FailingRequires;
-    public AssertRequiresCmd FailingAssert;
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(FailingCall != null);
-      Contract.Invariant(FailingRequires != null);
-    }
-
-
-    public CallCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertRequiresCmd assertRequiresCmd, Model model,
-      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum = null)
-      : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
-    {
-      var failingRequires = assertRequiresCmd.Requires;
-      var failingCall = assertRequiresCmd.Call;
-      Contract.Requires(!failingRequires.Free);
-      Contract.Requires(trace != null);
-      Contract.Requires(context != null);
-      Contract.Requires(failingCall != null);
-      Contract.Requires(failingRequires != null);
-      this.FailingCall = failingCall;
-      this.FailingRequires = failingRequires;
-      this.FailingAssert = assertRequiresCmd;
-      this.checksum = checksum;
-      this.SugaredCmdChecksum = failingCall.Checksum;
-    }
-
-    protected override Cmd ModelFailingCommand => FailingCall;
-
-    public override int GetLocation()
-    {
-      return FailingCall.tok.line * 1000 + FailingCall.tok.col;
-    }
-
-    byte[] checksum;
-
-    public override byte[] Checksum
-    {
-      get { return checksum; }
-    }
-
-    public override Counterexample Clone()
-    {
-      var ret = new CallCounterexample(options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context, ProofRun, Checksum);
-      ret.calleeCounterexamples = calleeCounterexamples;
-      return ret;
-    }
-  }
-
-  public class ReturnCounterexample : Counterexample
-  {
-    public TransferCmd FailingReturn;
-    public Ensures FailingEnsures;
-    public AssertEnsuresCmd FailingAssert;
-
-    [ContractInvariantMethod]
-    void ObjectInvariant()
-    {
-      Contract.Invariant(FailingEnsures != null);
-      Contract.Invariant(FailingReturn != null);
-    }
-
-
-    public ReturnCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertEnsuresCmd assertEnsuresCmd, TransferCmd failingReturn, Model model,
-      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum)
-      : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
-    {
-      var failingEnsures = assertEnsuresCmd.Ensures;
-      Contract.Requires(trace != null);
-      Contract.Requires(context != null);
-      Contract.Requires(failingReturn != null);
-      Contract.Requires(failingEnsures != null);
-      Contract.Requires(!failingEnsures.Free);
-      this.FailingReturn = failingReturn;
-      this.FailingEnsures = failingEnsures;
-      this.FailingAssert = assertEnsuresCmd;
-      this.checksum = checksum;
-    }
-
-    protected override Cmd ModelFailingCommand => null;
-
-    public override int GetLocation()
-    {
-      return FailingReturn.tok.line * 1000 + FailingReturn.tok.col;
-    }
-
-    byte[] checksum;
-
-    /// <summary>
-    /// Returns the checksum of the corresponding assertion.
-    /// </summary>
-    public override byte[] Checksum
-    {
-      get { return checksum; }
-    }
-
-    public override Counterexample Clone()
-    {
-      var ret = new ReturnCounterexample(options, Trace, AugmentedTrace, FailingAssert, FailingReturn, Model, MvInfo, Context, ProofRun, checksum);
-      ret.calleeCounterexamples = calleeCounterexamples;
-      return ret;
-    }
-  }
-
-  public class VerifierCallback
-  {
-    private CoreOptions.ProverWarnings printProverWarnings;
-
-    public VerifierCallback(CoreOptions.ProverWarnings printProverWarnings)
-    {
-      this.printProverWarnings = printProverWarnings;
-    }
-
-    // reason == null means this is genuine counterexample returned by the prover
-    // other reason means it's time out/memory out/crash
-    public virtual void OnCounterexample(Counterexample ce, string /*?*/ reason)
-    {
-      Contract.Requires(ce != null);
-    }
-
-    // called in case resource is exceeded and we don't have counterexample
-    public virtual void OnTimeout(string reason)
-    {
-      Contract.Requires(reason != null);
-    }
-
-    public virtual void OnOutOfMemory(string reason)
-    {
-      Contract.Requires(reason != null);
-    }
-
-    public virtual void OnOutOfResource(string reason)
-    {
-      Contract.Requires(reason != null);
-    }
-
-    public delegate void ProgressDelegate(string phase, int step, int totalSteps, double progressEstimate);
-    
-    public virtual ProgressDelegate OnProgress => null;
-
-    public virtual void OnUnreachableCode(ImplementationRun run)
-    {
-      Contract.Requires(run != null);
-    }
-
-    public virtual void OnWarning(CoreOptions options, string msg)
-    {
-      Contract.Requires(msg != null);
-      switch (printProverWarnings)
-      {
-        case CoreOptions.ProverWarnings.None:
-          break;
-        case CoreOptions.ProverWarnings.Stdout:
-          options.OutputWriter.WriteLine("Prover warning: " + msg);
-          break;
-        case CoreOptions.ProverWarnings.Stderr:
-          Console.Error.WriteLine("Prover warning: " + msg);
-          break;
-        default:
-          Contract.Assume(false);
-          throw new cce.UnreachableException(); // unexpected case
-      }
-    }
-
-    public virtual void OnVCResult(VerificationRunResult result)
-    {
-      Contract.Requires(result != null);
     }
   }
 }

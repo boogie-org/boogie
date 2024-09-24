@@ -964,7 +964,7 @@ namespace VC
 
       return ExtractLoopTraceRec(
         new CalleeCounterexampleInfo(cex, new List<object>()),
-        mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
+        mainProcName, inlinedProcs, extractLoopMappingInfo).Counterexample;
     }
 
     protected override bool ProcIsLoop(string procname)

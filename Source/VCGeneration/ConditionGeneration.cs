@@ -117,11 +117,11 @@ namespace VC
       VcOutcome vcOutcome = await VerifyImplementation(run, collector, cancellationToken);
       var /*?*/ errors = new List<Counterexample>();
       if (vcOutcome is VcOutcome.Errors or VcOutcome.TimedOut or VcOutcome.OutOfMemory or VcOutcome.OutOfResource) {
-        errors = collector.examples.ToList();
+        errors = collector.Examples.ToList();
       }
 
       Helpers.ExtraTraceInformation(Options, "Finished implementation verification");
-      return (vcOutcome, errors, collector.vcResults.ToList());
+      return (vcOutcome, errors, collector.VcResults.ToList());
     }
 
     private VCGenOptions Options => CheckerPool.Options;

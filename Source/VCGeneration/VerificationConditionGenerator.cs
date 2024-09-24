@@ -1740,7 +1740,7 @@ namespace VC
 
       return ExtractLoopTraceRec(
         new CalleeCounterexampleInfo(cex, new List<object>()),
-        mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
+        mainProcName, inlinedProcs, extractLoopMappingInfo).Counterexample;
     }
 
     protected CalleeCounterexampleInfo ExtractLoopTraceRec(
@@ -1749,16 +1749,16 @@ namespace VC
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
       Contract.Requires(currProc != null);
-      if (cexInfo.counterexample == null)
+      if (cexInfo.Counterexample == null)
       {
         return cexInfo;
       }
 
-      var cex = cexInfo.counterexample;
+      var cex = cexInfo.Counterexample;
       // Go through all blocks in the trace, map them back to blocks in the original program (if there is one)
       var ret = cex.Clone();
       ret.Trace = new List<Block>();
-      ret.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
+      ret.CalleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
 
       for (int numBlock = 0; numBlock < cex.Trace.Count; numBlock++)
       {
@@ -1774,7 +1774,7 @@ namespace VC
         {
           Cmd cmd = block.Cmds[numInstr];
           var loc = new TraceLocation(numBlock, numInstr);
-          if (!cex.calleeCounterexamples.ContainsKey(loc))
+          if (!cex.CalleeCounterexamples.ContainsKey(loc))
           {
             if (GetCallee(cex.GetTraceCmd(loc), inlinedProcs) != null)
             {
@@ -1786,7 +1786,7 @@ namespace VC
 
           string callee = cex.GetCalledProcName(cex.GetTraceCmd(loc));
           Contract.Assert(callee != null);
-          var calleeTrace = cex.calleeCounterexamples[loc];
+          var calleeTrace = cex.CalleeCounterexamples[loc];
           Debug.Assert(calleeTrace != null);
 
           var origTrace = ExtractLoopTraceRec(calleeTrace, callee, inlinedProcs, extractLoopMappingInfo);
@@ -1796,25 +1796,25 @@ namespace VC
             // Absorb the trace into the current trace
 
             int currLen = ret.Trace.Count;
-            ret.Trace.AddRange(origTrace.counterexample.Trace);
+            ret.Trace.AddRange(origTrace.Counterexample.Trace);
 
-            foreach (var kvp in origTrace.counterexample.calleeCounterexamples)
+            foreach (var kvp in origTrace.Counterexample.CalleeCounterexamples)
             {
               var newloc = new TraceLocation(kvp.Key.numBlock + currLen, kvp.Key.numInstr);
-              ret.calleeCounterexamples.Add(newloc, kvp.Value);
+              ret.CalleeCounterexamples.Add(newloc, kvp.Value);
             }
           }
           else
           {
             var origLoc = new TraceLocation(ret.Trace.Count - 1,
               GetCallCmdPosition(origBlock, callCnt, inlinedProcs, callee));
-            ret.calleeCounterexamples.Add(origLoc, origTrace);
+            ret.CalleeCounterexamples.Add(origLoc, origTrace);
             callCnt++;
           }
         }
       }
 
-      return new CalleeCounterexampleInfo(ret, cexInfo.args);
+      return new CalleeCounterexampleInfo(ret, cexInfo.Args);
     }
 
     // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs).
@@ -2014,23 +2014,20 @@ namespace VC
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       Counterexample cc;
-      if (assrt is AssertRequiresCmd)
+      if (assrt is AssertRequiresCmd assertRequiresCmd)
       {
-        var aa = (AssertRequiresCmd)assrt;
-        cc = new CallCounterexample(options, cex.Trace, cex.AugmentedTrace, aa, cex.Model, cex.MvInfo, cex.Context,
-          cex.ProofRun, aa.Checksum);
+        cc = new CallCounterexample(options, cex.Trace, cex.AugmentedTrace, assertRequiresCmd, cex.Model, cex.MvInfo, cex.Context,
+          cex.ProofRun, assertRequiresCmd.Checksum);
       }
-      else if (assrt is AssertEnsuresCmd && cex is ReturnCounterexample)
+      else if (assrt is AssertEnsuresCmd assertEnsuresCmd && cex is ReturnCounterexample returnCounterexample)
       {
-        var aa = (AssertEnsuresCmd)assrt;
-        var oldCex = (ReturnCounterexample)cex;
         // The first three parameters of ReturnCounterexample are: List<Block> trace, List<object> augmentedTrace, TransferCmd failingReturn, Ensures failingEnsures.
         // We have the "aa" version of failingEnsures, namely aa.Ensures.  The first and third parameters take more work to reconstruct.
         // (The code here assumes the labels of blocks remain the same. If that's not the case, then it is possible that the trace
         // computed does not lead to where the error is, but at least the error will not be masked.)
         List<Block> reconstructedTrace = null;
         Block prevBlock = null;
-        foreach (var blk in cex.Trace)
+        foreach (var blk in returnCounterexample.Trace)
         {
           if (reconstructedTrace == null)
           {
@@ -2100,9 +2097,9 @@ namespace VC
           }
         }
 
-        cc = new ReturnCounterexample(options, reconstructedTrace ?? cex.Trace, cex.AugmentedTrace, aa,
-          returnCmd ?? oldCex.FailingReturn,
-          cex.Model, cex.MvInfo, cex.Context, cex.ProofRun, aa.Checksum);
+        cc = new ReturnCounterexample(options, reconstructedTrace ?? returnCounterexample.Trace, returnCounterexample.AugmentedTrace, assertEnsuresCmd,
+          returnCmd ?? returnCounterexample.FailingReturn,
+          returnCounterexample.Model, returnCounterexample.MvInfo, returnCounterexample.Context, returnCounterexample.ProofRun, assertEnsuresCmd.Checksum);
       }
       else
       {

@@ -3166,11 +3166,9 @@ namespace Microsoft.Boogie
   /// </summary>
   public class AssertRequiresCmd : AssertCmd
   {
-    public CallCmd /*!*/
-      Call;
+    public CallCmd /*!*/ Call;
 
-    public Requires /*!*/
-      Requires;
+    public Requires /*!*/ Requires;
 
     [ContractInvariantMethod]
     void ObjectInvariant()

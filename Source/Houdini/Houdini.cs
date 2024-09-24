@@ -1451,8 +1451,7 @@ namespace Microsoft.Boogie.Houdini
     private RefutedAnnotation ExtractRefutedAnnotation(Counterexample error)
     {
       Variable houdiniConstant;
-      CallCounterexample callCounterexample = error as CallCounterexample;
-      if (callCounterexample != null)
+      if (error is CallCounterexample callCounterexample)
       {
         Procedure failingProcedure = callCounterexample.FailingCall.Proc;
         Requires failingRequires = callCounterexample.FailingRequires;
@@ -1464,8 +1463,7 @@ namespace Microsoft.Boogie.Houdini
         }
       }
 
-      ReturnCounterexample returnCounterexample = error as ReturnCounterexample;
-      if (returnCounterexample != null)
+      if (error is ReturnCounterexample returnCounterexample)
       {
         Ensures failingEnsures = returnCounterexample.FailingEnsures;
         if (MatchCandidate(failingEnsures.Condition, out houdiniConstant))
@@ -1475,8 +1473,7 @@ namespace Microsoft.Boogie.Houdini
         }
       }
 
-      AssertCounterexample assertCounterexample = error as AssertCounterexample;
-      if (assertCounterexample != null)
+      if (error is AssertCounterexample assertCounterexample)
       {
         AssertCmd failingAssert = assertCounterexample.FailingAssert;
         if (MatchCandidate(failingAssert.OrigExpr, out houdiniConstant))
