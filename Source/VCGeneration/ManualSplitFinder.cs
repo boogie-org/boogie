@@ -15,7 +15,7 @@ public static class ManualSplitFinder {
     var paths = options.IsolatePaths || QKeyValue.FindBoolAttribute(run.Implementation.Attributes, "isolate_paths") 
       ? PathSplits(run, createSplit) 
       : FocusAttribute.SplitOnFocus(options, run, createSplit);
-    return paths.SelectMany(s => SplitOnAssertions(s));
+    return paths.SelectMany(SplitOnAssertions);
   }
 
   private static List<ManualSplit> PathSplits(ImplementationRun run,

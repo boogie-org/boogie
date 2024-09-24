@@ -975,7 +975,7 @@ namespace Microsoft.Boogie
           int cb = 0;
           if (ps.GetIntArgument(x => cb = x, 2))
           {
-            CoalesceBlocks = cb == 1;
+            IsolatePaths = cb == 1;
           }
 
           return true;
@@ -1926,6 +1926,11 @@ namespace Microsoft.Boogie
   /removeEmptyBlocks:<c>
                 0 - do not remove empty blocks during VC generation
                 1 - remove empty blocks (default)
+  /isolatePaths:<c>
+                0 = do not isolate paths
+                1 = generate a separate group of VCs for each control flow path through an implementation.
+                Each group has only a single VC by default, but usage of options and attribute that split VCs based on assertions
+                can introduce more.
   /coalesceBlocks:<c>
                 0 = do not coalesce blocks
                 1 = coalesce blocks (default)
