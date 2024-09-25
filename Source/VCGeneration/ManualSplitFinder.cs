@@ -13,48 +13,59 @@ public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
     Func<IToken, List<Block>, ManualSplit> createSplit) {
     var paths = options.IsolatePaths || QKeyValue.FindBoolAttribute(run.Implementation.Attributes, "isolate_paths") 
-      ? PathSplits(options, run, createSplit) 
+      ? IsolatedPathSplits(options, run, createSplit) 
       : FocusAttribute.SplitOnFocus(options, run, createSplit);
     return paths.SelectMany(SplitOnAssertions);
   }
 
-  private static List<ManualSplit> PathSplits(VCGenOptions options, ImplementationRun run,
+  record PathBlocks(ImmutableStack<Block> Assumed, ImmutableStack<Block> UnAssumed);
+
+  private static List<ManualSplit> IsolatedPathSplits(VCGenOptions options, ImplementationRun run,
     Func<IToken, List<Block>, ManualSplit> createSplit)
   {
     var result = new List<ManualSplit>();
     var firstBlock = run.Implementation.Blocks[0];
-    var paths = new Stack<ImmutableStack<Block>>();
-    paths.Push(ImmutableStack<Block>.Empty.Push(firstBlock));
+    var paths = new Stack<PathBlocks>();
+    paths.Push(new PathBlocks(ImmutableStack<Block>.Empty, ImmutableStack.Create(firstBlock)));
     while (paths.Any())
     {
       var current = paths.Pop();
-      var last = current.Peek();
+      var last = current.UnAssumed.Peek();
       if (last.TransferCmd is not GotoCmd gotoCmd || !gotoCmd.labelTargets.Any())
       {
         var masterBlock = new Block(firstBlock.tok)
         {
           Label = firstBlock.Label,
-          Cmds = current.Reverse().SelectMany(block => block.Cmds).ToList(),
-          TransferCmd = current.Peek().TransferCmd
+          Cmds = current.Assumed.Concat(current.UnAssumed).Reverse().SelectMany(block => block.Cmds).ToList(),
+          TransferCmd = current.UnAssumed.Peek().TransferCmd
         };
         result.Add(createSplit(run.Implementation.tok, new List<Block> { masterBlock }));
         continue;
       }
 
       var firstTarget = gotoCmd.labelTargets.First();
-      paths.Push(current.Push(firstTarget));
-
+      paths.Push(current with { UnAssumed = current.UnAssumed.Push(firstTarget) });
+      
       if (gotoCmd.labelTargets.Count <= 1) {
         continue;
       }
-
-      var assumedBlock = new Block(run.Implementation.tok) {
-        Cmds = current.Reverse().SelectMany(block => 
-          block.Cmds.Select(command => CommandTransformations.AssertIntoAssume(options, command))).ToList()
-      };
       foreach (var target in gotoCmd.labelTargets.Skip(1))
       {
-        paths.Push(ImmutableStack<Block>.Empty.Push(assumedBlock).Push(target));
+        paths.Push(new PathBlocks(Assumed: current.UnAssumed, UnAssumed: ImmutableStack.Create(target)));
+      }
+      
+      
+      var assumed = current.Assumed;
+      var remainingUnassumed = current.UnAssumed;
+      while (!remainingUnassumed.IsEmpty) {
+        assumed = assumed.Push(new Block(remainingUnassumed.Peek().tok) {
+          Cmds = remainingUnassumed.Peek().Cmds.Select(command => CommandTransformations.AssertIntoAssume(options, command)).ToList()
+        });
+        remainingUnassumed = remainingUnassumed.Pop();
+      }
+      foreach (var target in gotoCmd.labelTargets.Skip(1))
+      {
+        paths.Push(new PathBlocks(assumed, ImmutableStack.Create(target)));
       }
     }
 
