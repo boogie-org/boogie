@@ -1225,8 +1225,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      var assumeCmd = cmd as AssumeCmd;
-      if (assumeCmd != null
+      if (cmd is AssumeCmd assumeCmd
           && QKeyValue.FindBoolAttribute(assumeCmd.Attributes, "assumption_variable_initialization"))
       {
         // Ignore assumption variable initializations.
@@ -1238,8 +1237,7 @@ namespace Microsoft.Boogie
       using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false, options))
       {
         tokTxtWr.UseForComputingChecksums = true;
-        var havocCmd = cmd as HavocCmd;
-        if (havocCmd != null)
+        if (cmd is HavocCmd havocCmd)
         {
           tokTxtWr.Write("havoc ");
           var relevantVars = havocCmd.Vars
@@ -1265,11 +1263,9 @@ namespace Microsoft.Boogie
         cmd.Checksum = currentChecksum;
       }
 
-      var assertCmd = cmd as AssertCmd;
-      if (assertCmd != null && assertCmd.Checksum != null)
+      if (cmd is AssertCmd { Checksum: not null } assertCmd)
       {
-        var assertRequiresCmd = assertCmd as AssertRequiresCmd;
-        if (assertRequiresCmd != null)
+        if (assertCmd is AssertRequiresCmd assertRequiresCmd)
         {
           impl.AddAssertionChecksum(assertRequiresCmd.Checksum);
           impl.AddAssertionChecksum(assertRequiresCmd.Call.Checksum);
@@ -1281,12 +1277,10 @@ namespace Microsoft.Boogie
         }
       }
 
-      var sugaredCmd = cmd as SugaredCmd;
-      if (sugaredCmd != null)
+      if (cmd is SugaredCmd sugaredCmd)
       {
         // The checksum of a sugared command should not depend on the desugaring itself.
-        var stateCmd = sugaredCmd.GetDesugaring(options) as StateCmd;
-        if (stateCmd != null)
+        if (sugaredCmd.GetDesugaring(options) is StateCmd stateCmd)
         {
           foreach (var c in stateCmd.Cmds)
           {

@@ -7,6 +7,7 @@
 // RUN: %diff %S/isolatePaths.bpl.EarlyAssertionsVariant-1.expect %t-EarlyAssertionsVariant-1.spl
 // RUN: %diff %S/isolatePaths.bpl.EmptyPath--1.expect %t-EmptyPath--1.spl
 
+// Two VCs, each with one assertion
 procedure {:isolate_paths} NoDuplicateErrors()
 {
   var x: int;
@@ -53,4 +54,21 @@ procedure {:isolate_paths} EarlyAssertionsVariant()
   } else {
     assert x > 6;
   }
+}
+
+procedure {:isolate_paths} EquivalentPrePaths() {
+  var x: int;
+  x := 10;
+  if (*) {
+    check true;
+  }
+  assert x > 4; // Only asserted once
+  
+  if (*) {
+    // Previous assertion stays one in the first follow-up path
+    check true;
+  } else {
+    // Previous assertion became an assume in this path
+  }
+  assert x > 5; // Only asserted once
 }

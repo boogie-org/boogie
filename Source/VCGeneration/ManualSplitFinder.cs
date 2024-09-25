@@ -5,9 +5,25 @@ using System.Collections.Immutable;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.Boogie;
+using Microsoft.CSharp.RuntimeBinder;
 using VC;
 
 namespace VCGeneration;
+
+static class HashCodeExtensions {
+  internal static int GetHashCodeByItems<T>(this IEnumerable<T> lst)
+  {
+    unchecked
+    {
+      int hash = 19;
+      foreach (T item in lst)
+      {
+        hash = hash * 31 + (item != null ? item.GetHashCode() : 1);
+      }
+      return hash;
+    }
+  }
+}
 
 public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
@@ -18,60 +34,83 @@ public static class ManualSplitFinder {
     return paths.SelectMany(SplitOnAssertions);
   }
 
-  record PathBlocks(ImmutableStack<Block> Assumed, ImmutableStack<Block> UnAssumed);
+  class PathBlocksComparer : IEqualityComparer<PathBlocks> {
+
+    public PathBlocksComparer() {
+    }
+
+    public bool Equals(PathBlocks? x, PathBlocks? y) {
+      if (x == null || y == null) {
+        return x == y;
+      }
+
+      return x.TransferCmd == y.TransferCmd && x.Commands.SequenceEqual(y.Commands);
+    }
+
+    public int GetHashCode(PathBlocks obj) {
+      return HashCode.Combine(obj.TransferCmd.GetHashCode(), obj.Commands.GetHashCodeByItems());
+    }
+  }
+
+  record PathBlocks(ImmutableStack<Cmd> Assumed, ImmutableStack<Cmd> UnAssumed, TransferCmd TransferCmd) {
+    public IEnumerable<Cmd> Commands => UnAssumed.Concat(Assumed);
+  }
 
   private static List<ManualSplit> IsolatedPathSplits(VCGenOptions options, ImplementationRun run,
-    Func<IToken, List<Block>, ManualSplit> createSplit)
-  {
+    Func<IToken, List<Block>, ManualSplit> createSplit) {
+    var comparer = new PathBlocksComparer();
+    var visitedPathBlocks = new HashSet<PathBlocks>(comparer);
+    
     var result = new List<ManualSplit>();
     var firstBlock = run.Implementation.Blocks[0];
     var paths = new Stack<PathBlocks>();
-    paths.Push(new PathBlocks(ImmutableStack<Block>.Empty, ImmutableStack.Create(firstBlock)));
+    paths.Push(new PathBlocks(ImmutableStack<Cmd>.Empty, ImmutableStack.CreateRange(firstBlock.Cmds), firstBlock.TransferCmd));
     while (paths.Any())
     {
       var current = paths.Pop();
-      var last = current.UnAssumed.Peek();
-      if (last.TransferCmd is not GotoCmd gotoCmd || !gotoCmd.labelTargets.Any())
+      // if (!visitedPathBlocks.Add(current)) {
+      //   continue;
+      // }
+      
+      if (current.TransferCmd is not GotoCmd gotoCmd || !gotoCmd.labelTargets.Any())
       {
         var masterBlock = new Block(firstBlock.tok)
         {
           Label = firstBlock.Label,
-          Cmds = current.Assumed.Concat(current.UnAssumed).Reverse().SelectMany(block => block.Cmds).ToList(),
-          TransferCmd = current.UnAssumed.Peek().TransferCmd
+          Cmds = current.UnAssumed.Concat(current.Assumed).Reverse().ToList(),
+          TransferCmd = current.TransferCmd
         };
         result.Add(createSplit(run.Implementation.tok, new List<Block> { masterBlock }));
         continue;
       }
 
       var firstTarget = gotoCmd.labelTargets.First();
-      paths.Push(current with { UnAssumed = current.UnAssumed.Push(firstTarget) });
+
+      paths.Push(current with { UnAssumed = PushRange(firstTarget.Cmds, current.UnAssumed), TransferCmd = firstTarget.TransferCmd });
       
       if (gotoCmd.labelTargets.Count <= 1) {
         continue;
       }
+
+      var assumed = PushRange(current.UnAssumed.ToList(), current.Assumed);
       foreach (var target in gotoCmd.labelTargets.Skip(1))
       {
-        paths.Push(new PathBlocks(Assumed: current.UnAssumed, UnAssumed: ImmutableStack.Create(target)));
+        paths.Push(new PathBlocks(assumed, ImmutableStack.CreateRange(target.Cmds), target.TransferCmd));
       }
-      
-      
-      var assumed = current.Assumed;
-      var remainingUnassumed = current.UnAssumed;
-      while (!remainingUnassumed.IsEmpty) {
-        assumed = assumed.Push(new Block(remainingUnassumed.Peek().tok) {
-          Cmds = remainingUnassumed.Peek().Cmds.Select(command => CommandTransformations.AssertIntoAssume(options, command)).ToList()
-        });
-        remainingUnassumed = remainingUnassumed.Pop();
-      }
-      foreach (var target in gotoCmd.labelTargets.Skip(1))
-      {
-        paths.Push(new PathBlocks(assumed, ImmutableStack.Create(target)));
-      }
+
     }
 
     return result;
   }
 
+  private static ImmutableStack<T> PushRange<T>(IReadOnlyList<T> newElements, ImmutableStack<T> stack) {
+    for (var i = newElements.Count - 1; i >= 0; i--) {
+      stack = stack.Push(newElements[i]);
+    }
+
+    return stack;
+  }
+  
   private static List<ManualSplit> SplitOnAssertions(ManualSplit initialSplit) {
 
     var splitOnEveryAssert = initialSplit.Options.VcsSplitOnEveryAssert;
