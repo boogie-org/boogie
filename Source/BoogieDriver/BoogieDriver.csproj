@@ -10,6 +10,9 @@
     <AssemblyName>BoogieDriver</AssemblyName>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>boogie</ToolCommandName>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <SelfContained>true</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
