@@ -3,48 +3,45 @@ using Microsoft.Boogie;
 namespace VCGeneration;
 
 class TokenWrapper : IToken {
-  private readonly IToken inner;
+  public IToken Inner { get; }
 
   public TokenWrapper(IToken inner) {
-    this.inner = inner;
+    this.Inner = inner;
   }
 
   public int CompareTo(IToken? other) {
-    return inner.CompareTo(other);
+    return Inner.CompareTo(other);
   }
 
   public int kind {
-    get => inner.kind;
-    set => inner.kind = value;
+    get => Inner.kind;
+    set => Inner.kind = value;
   }
 
   public string filename {
-    get => inner.filename;
-    set => inner.filename = value;
+    get => Inner.filename;
+    set => Inner.filename = value;
   }
 
   public int pos {
-    get => inner.pos;
-    set => inner.pos = value;
+    get => Inner.pos;
+    set => Inner.pos = value;
   }
 
   public int col {
-    get => inner.col;
-    set => inner.col = value;
+    get => Inner.col;
+    set => Inner.col = value;
   }
 
   public int line {
-    get => inner.line;
-    set => inner.line = value;
+    get => Inner.line;
+    set => Inner.line = value;
   }
 
   public string val {
-    get => inner.val;
-    set => inner.val = value;
+    get => Inner.val;
+    set => Inner.val = value;
   }
 
-  public bool IsValid => inner.IsValid;
-  public virtual string Render(CoreOptions options) {
-    return inner.Render(options);
-  }
+  public bool IsValid => Inner.IsValid;
 }

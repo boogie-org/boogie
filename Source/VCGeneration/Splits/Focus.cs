@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.Contracts;
 using System.Linq;
-using System.Text.Json.Nodes;
 using Microsoft.Boogie;
 using VC;
 using Block = Microsoft.Boogie.Block;
@@ -22,7 +20,7 @@ public static class Focus
   /// We recurse twice for each focus, leading to potentially 2^N splits
   /// </summary>
   public static List<ManualSplit> SplitOnFocus(VCGenOptions options, ImplementationRun run,
-    Func<IToken, List<Block>, ManualSplit> createSplit)
+    Func<ImplementationPartToken, List<Block>, ManualSplit> createSplit)
   {
     var impl = run.Implementation;
     var dag = Program.GraphFromImpl(impl);
@@ -35,7 +33,7 @@ public static class Focus
       focusBlocks.Reverse();
     }
     if (!focusBlocks.Any()) {
-      return new List<ManualSplit> { createSplit(run.Implementation.tok, impl.Blocks) };
+      return new List<ManualSplit> { createSplit(new ImplementationRootToken(run.Implementation), impl.Blocks) };
     }
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();

@@ -1,8 +1,6 @@
 #nullable enable
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.Boogie;
@@ -13,7 +11,7 @@ namespace VCGeneration;
 
 public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
-    Func<IToken, List<Block>, ManualSplit> createSplit) {
+    Func<ImplementationPartToken, List<Block>, ManualSplit> createSplit) {
     var paths = Focus.SplitOnFocus(options, run, createSplit);
     return paths.SelectMany(GetVcsForSplits);
   }
@@ -70,7 +68,7 @@ public static class ManualSplitFinder {
     }
     return vcs;
 
-    ManualSplit CreateVc(IToken token, List<Block> blocks) {
+    ManualSplit CreateVc(ImplementationPartToken token, List<Block> blocks) {
       return new ManualSplit(partToSplit.Options, () => {
         BlockTransformations.Optimize(blocks);
         return blocks;
@@ -118,7 +116,7 @@ public static class ManualSplitFinder {
     return blockAssignments;
   }
   
-  private static ManualSplit? GetImplementationPartAfterSplit(Func<IToken, List<Block>, ManualSplit> createVc, 
+  private static ManualSplit? GetImplementationPartAfterSplit(Func<ImplementationPartToken, List<Block>, ManualSplit> createVc, 
     ManualSplit partToSplit, 
     Dictionary<Block, Cmd?> blockStartToSplit, Block blockWithSplit, HashSet<Cmd> splits, Cmd? split) 
   {
@@ -149,7 +147,7 @@ public static class ManualSplitFinder {
     
     AddJumpsToNewBlocks(partToSplit.Blocks, oldToNewBlockMap);
     var partToken = split == null ? partToSplit.Token : new SplitToken(split.tok, partToSplit.Token);
-    return createVc(new SplitToken(partToken, partToSplit.Token), newBlocks);
+    return createVc(partToken, newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
     {
@@ -207,12 +205,21 @@ public static class ManualSplitFinder {
       oldToNewBlockMap[oldBlock].TransferCmd = new GotoCmd(gotoCmd.tok, newLabelNames, newLabelTargets);
     }
   }
-  
-  class SplitToken : TokenWrapper {
-    public IToken PartThatWasSplit { get; }
+}
 
-    public SplitToken(IToken split, IToken partThatWasSplit) : base(split) {
-      PartThatWasSplit = partThatWasSplit;
-    }
+public interface ImplementationPartToken : IToken {
+  string Render(CoreOptions options);
+}
+  
+class SplitToken : TokenWrapper, ImplementationPartToken {
+  public ImplementationPartToken PartThatWasSplit { get; }
+
+  public SplitToken(IToken split, ImplementationPartToken partThatWasSplit) : base(split) {
+    PartThatWasSplit = partThatWasSplit;
+  }
+
+  public string Render(CoreOptions options) {
+    var name = options.VcsSplitOnEveryAssert ? "assertion" : "split";
+    return $"{name} at ({Inner.line}, {Inner.col}){PartThatWasSplit.Render(options)}";
   }
 }

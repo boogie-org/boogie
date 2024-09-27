@@ -17,8 +17,6 @@ namespace Microsoft.Boogie
     string /*!*/ val { get; set; } // token value
 
     bool IsValid { get; }
-
-    string Render(CoreOptions options);
   }
 
   [Immutable]
@@ -90,10 +88,6 @@ namespace Microsoft.Boogie
     public bool IsValid
     {
       get { return this._filename != null; }
-    }
-
-    public virtual string Render(CoreOptions options) {
-      return $"{options.GetFileNameForConsole(filename)}({line},{col})";
     }
 
     public int CompareTo(IToken other) {
