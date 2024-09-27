@@ -1,9 +1,7 @@
-#nullable enable
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Text; // for StringBuilder
+using System.Text;
 using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.GraphUtil
@@ -650,7 +648,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public static HashSet<T> Intersection<T>(IEnumerable<ISet<T>> sets) {
       var first = true;
-      HashSet<T>? result = null;
+      HashSet<T> result = null;
       foreach (var set in sets) {
         if (first) {
           result = set.ToHashSet();

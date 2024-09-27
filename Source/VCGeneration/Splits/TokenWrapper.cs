@@ -1,3 +1,4 @@
+#nullable enable
 using Microsoft.Boogie;
 
 namespace VCGeneration;
