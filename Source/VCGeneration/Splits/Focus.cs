@@ -20,7 +20,7 @@ public static class Focus
   /// We recurse twice for each focus, leading to potentially 2^N splits
   /// </summary>
   public static List<ManualSplit> SplitOnFocus(VCGenOptions options, ImplementationRun run,
-    Func<ImplementationPartToken, List<Block>, ManualSplit> createSplit)
+    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit)
   {
     var impl = run.Implementation;
     var dag = Program.GraphFromImpl(impl);
@@ -33,7 +33,7 @@ public static class Focus
       focusBlocks.Reverse();
     }
     if (!focusBlocks.Any()) {
-      return new List<ManualSplit> { createSplit(new ImplementationRootToken(run.Implementation), impl.Blocks) };
+      return new List<ManualSplit> { createSplit(new ImplementationRootOrigin(run.Implementation), impl.Blocks) };
     }
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
@@ -53,7 +53,7 @@ public static class Focus
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
         var newBlocks = ComputeNewBlocks(options, blocksToInclude, blocksReversed, freeAssumeBlocks);
-        result.Add(createSplit(new PathToken(run.Implementation.tok, path), newBlocks));
+        result.Add(createSplit(new PathOrigin(run.Implementation.tok, path), newBlocks));
       } else {
         var (focusBlock, nextToken) = focusBlocks[focusIndex]; // assert b in blocks
         if (!blocksToInclude.Contains(focusBlock) || freeAssumeBlocks.Contains(focusBlock))

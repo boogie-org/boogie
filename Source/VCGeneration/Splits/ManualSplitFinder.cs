@@ -11,7 +11,7 @@ namespace VCGeneration;
 
 public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
-    Func<ImplementationPartToken, List<Block>, ManualSplit> createSplit) {
+    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
     var paths = Focus.SplitOnFocus(options, run, createSplit);
     return paths.SelectMany(GetVcsForSplits);
   }
@@ -68,7 +68,7 @@ public static class ManualSplitFinder {
     }
     return vcs;
 
-    ManualSplit CreateVc(ImplementationPartToken token, List<Block> blocks) {
+    ManualSplit CreateVc(ImplementationPartOrigin token, List<Block> blocks) {
       return new ManualSplit(partToSplit.Options, () => {
         BlockTransformations.Optimize(blocks);
         return blocks;
@@ -116,7 +116,7 @@ public static class ManualSplitFinder {
     return blockAssignments;
   }
   
-  private static ManualSplit? GetImplementationPartAfterSplit(Func<ImplementationPartToken, List<Block>, ManualSplit> createVc, 
+  private static ManualSplit? GetImplementationPartAfterSplit(Func<ImplementationPartOrigin, List<Block>, ManualSplit> createVc, 
     ManualSplit partToSplit, 
     Dictionary<Block, Cmd?> blockStartToSplit, Block blockWithSplit, HashSet<Cmd> splits, Cmd? split) 
   {
@@ -146,7 +146,7 @@ public static class ManualSplitFinder {
     }
     
     AddJumpsToNewBlocks(partToSplit.Blocks, oldToNewBlockMap);
-    var partToken = split == null ? partToSplit.Token : new SplitToken(split.tok, partToSplit.Token);
+    var partToken = split == null ? partToSplit.Origin : new SplitOrigin(split.tok, partToSplit.Origin);
     return createVc(partToken, newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
@@ -207,14 +207,14 @@ public static class ManualSplitFinder {
   }
 }
 
-public interface ImplementationPartToken : IToken {
+public interface ImplementationPartOrigin : IToken {
   string Render(CoreOptions options);
 }
   
-class SplitToken : TokenWrapper, ImplementationPartToken {
-  public ImplementationPartToken PartThatWasSplit { get; }
+class SplitOrigin : TokenWrapper, ImplementationPartOrigin {
+  public ImplementationPartOrigin PartThatWasSplit { get; }
 
-  public SplitToken(IToken split, ImplementationPartToken partThatWasSplit) : base(split) {
+  public SplitOrigin(IToken split, ImplementationPartOrigin partThatWasSplit) : base(split) {
     PartThatWasSplit = partThatWasSplit;
   }
 

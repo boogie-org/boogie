@@ -145,7 +145,7 @@ namespace VC
         await run.OutputWriter.WriteLineAsync(string.Format(CultureInfo.InvariantCulture, 
             "    checking split {1}/{2}{3}, {4:0.00}%, {0} ...",
             split.Stats, splitIdxStr, total,
-            split is ManualSplit manualSplit ? $" (line {manualSplit.Token.line})" : "", 
+            split is ManualSplit manualSplit ? $" (line {manualSplit.Origin.line})" : "", 
             100 * provenCost / (provenCost + remainingCost)));
       }
 

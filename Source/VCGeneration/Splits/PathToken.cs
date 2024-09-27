@@ -6,9 +6,9 @@ using Microsoft.Boogie;
 
 namespace VCGeneration;
 
-class PathToken : TokenWrapper, ImplementationPartToken {
+class PathOrigin : TokenWrapper, ImplementationPartOrigin {
 
-  public PathToken(IToken inner, ImmutableStack<IToken> branches) : base(inner) {
+  public PathOrigin(IToken inner, ImmutableStack<IToken> branches) : base(inner) {
     Branches = branches;
   }
   
@@ -19,8 +19,8 @@ class PathToken : TokenWrapper, ImplementationPartToken {
   }
 }
 
-class ImplementationRootToken : TokenWrapper, ImplementationPartToken {
-  public ImplementationRootToken(Implementation implementation) : base(implementation.tok)
+class ImplementationRootOrigin : TokenWrapper, ImplementationPartOrigin {
+  public ImplementationRootOrigin(Implementation implementation) : base(implementation.tok)
   {
   }
 

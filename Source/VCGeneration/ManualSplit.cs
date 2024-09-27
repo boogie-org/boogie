@@ -8,16 +8,16 @@ namespace VC;
 public class ManualSplit : Split
 {
 
-  public ImplementationPartToken Token { get; }
+  public ImplementationPartOrigin Origin { get; }
   
   public ManualSplit(VCGenOptions options, 
     Func<List<Block>> blocks, 
     Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
     VerificationConditionGenerator par, 
     ImplementationRun run, 
-    ImplementationPartToken token, int? randomSeed = null) 
+    ImplementationPartOrigin origin, int? randomSeed = null) 
     : base(options, blocks, gotoCmdOrigins, par, run, randomSeed)
   {
-    Token = token;
+    Origin = origin;
   }
 }
