@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 
 namespace VC
 {
+  // TODO rename since it's not only used to split a proof into two. For example focus doesn't really split
   public class Split : ProofRun
   {
       public VCGenOptions Options { get; }

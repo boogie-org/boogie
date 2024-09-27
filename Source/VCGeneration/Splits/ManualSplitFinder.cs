@@ -14,7 +14,7 @@ namespace VCGeneration;
 public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
     Func<IToken, List<Block>, ManualSplit> createSplit) {
-    var paths = FocusAttribute.SplitOnFocus(options, run, createSplit);
+    var paths = Focus.SplitOnFocus(options, run, createSplit);
     return paths.SelectMany(SplitOnAssertions);
   }
   
@@ -188,27 +188,4 @@ public static class ManualSplitFinder {
       oldToNewBlockMap[oldBlock].TransferCmd = new GotoCmd(gotoCmd.tok, newLabelNames, newLabelTargets);
     }
   }
-}
-
-
-public class SelectReadOnlyLists<T, U> : IReadOnlyList<U> {
-  private readonly Func<T, U> f;
-
-  public SelectReadOnlyLists(IReadOnlyList<T> inner, Func<T, U> f) {
-    this.f = f;
-    Inner = inner;
-  }
-
-  public IReadOnlyList<T> Inner { get; }
-  public IEnumerator<U> GetEnumerator() {
-    return Inner.Select(inner => f(inner)).GetEnumerator();
-  }
-
-  IEnumerator IEnumerable.GetEnumerator() {
-    return GetEnumerator();
-  }
-
-  public int Count => Inner.Count;
-
-  public U this[int index] => f(Inner[index]);
 }
