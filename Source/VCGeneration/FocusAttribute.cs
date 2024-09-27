@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Text.Json.Nodes;
 using Microsoft.Boogie;
 using VC;
 using Block = Microsoft.Boogie.Block;
@@ -15,6 +16,10 @@ namespace VCGeneration;
 public static class FocusAttribute
 {
   
+  /// <summary>
+  /// Each focus block creates two options.
+  /// We recurse twice for each focus, leading to potentially 2^N splits 
+  /// </summary>
   public static List<ManualSplit> SplitOnFocus(VCGenOptions options, ImplementationRun run,
     Func<IToken, List<Block>, ManualSplit> createSplit)
   {
@@ -33,7 +38,11 @@ public static class FocusAttribute
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
     var descendantsPerBlock = new Dictionary<Block, HashSet<Block>>();
-    focusBlocks.ForEach(fb => ancestorsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block, false).ToHashSet());
+    focusBlocks.ForEach(fb => {
+      var reachables = dag.ComputeReachability(fb.Block, false).ToHashSet();
+      reachables.Remove(fb.Block);
+      ancestorsPerBlock[fb.Block] = reachables;
+    });
     focusBlocks.ForEach(fb => descendantsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block).ToHashSet());
     var result = new List<ManualSplit>();
     var duplicator = new Duplicator();
@@ -46,11 +55,11 @@ public static class FocusAttribute
       if (focusIndex == focusBlocks.Count)
       {
         // it is important for l to be consistent with reverse topological order.
-        var sortedBlocks = dag.TopologicalSort().Where(blocksToInclude.Contains).Reverse();
+        var reverseSortedBlocks = topologicallySortedBlocks.Where(blocksToInclude.Contains).Reverse();
         // assert that the root block, impl.Blocks[0], is in l
         var newBlocks = new List<Block>();
         var oldToNewBlockMap = new Dictionary<Block, Block>(blocksToInclude.Count());
-        foreach (var block in sortedBlocks)
+        foreach (var block in reverseSortedBlocks)
         {
           var newBlock = (Block)duplicator.Visit(block);
           newBlocks.Add(newBlock);
@@ -73,24 +82,30 @@ public static class FocusAttribute
         Contract.Assert(newBlocks[0] == oldToNewBlockMap[impl.Blocks[0]]);
         BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
         result.Add(createSplit(focusToken, newBlocks));
-      }
-      else if (!blocksToInclude.Contains(focusBlocks[focusIndex].Block) || freeAssumeBlocks.Contains(focusBlocks[focusIndex].Block))
-      {
-        FocusRec(focusBlocks[focusIndex].Token, focusIndex + 1, blocksToInclude, freeAssumeBlocks);
-      }
-      else
-      {
-        var (block, nextToken) = focusBlocks[focusIndex]; // assert b in blocks
-        var dominatedBlocks = DominatedBlocks(topologicallySortedBlocks, block, blocksToInclude);
-        // the first part takes all blocks except the ones dominated by the focus block
-        FocusRec(nextToken, focusIndex + 1, blocksToInclude.Where(blk => !dominatedBlocks.Contains(blk)).ToList(), freeAssumeBlocks);
-        var ancestors = ancestorsPerBlock[block];
-        ancestors.Remove(block);
-        var descendants = descendantsPerBlock[block];
-        // the other part takes all the ancestors, the focus block, and the descendants.
-        FocusRec(nextToken, focusIndex + 1, 
-          ancestors.Union(descendants).Intersect(blocksToInclude).ToList(), 
-          ancestors.Union(freeAssumeBlocks).ToList());
+      } else {
+        var (focusBlock, nextToken) = focusBlocks[focusIndex]; // assert b in blocks
+        if (!blocksToInclude.Contains(focusBlocks[focusIndex].Block) || freeAssumeBlocks.Contains(focusBlocks[focusIndex].Block))
+        {
+          // This focus block can not be reached in our current path, so we ignore it by continuing
+          FocusRec(focusToken, focusIndex + 1, blocksToInclude, freeAssumeBlocks);
+        }
+        else
+        {
+          var dominatedBlocks = DominatedBlocks(topologicallySortedBlocks, focusBlock, blocksToInclude);
+          // Recursive call that does NOT focus the block
+          // Contains all blocks except the ones dominated by the focus block
+          FocusRec(focusToken, focusIndex + 1, 
+            blocksToInclude.Where(blk => !dominatedBlocks.Contains(blk)).ToList(), freeAssumeBlocks);
+          var ancestors = ancestorsPerBlock[focusBlock];
+          var descendants = descendantsPerBlock[focusBlock];
+          
+          // TODO: nextToken should be a combination of focusToken and nextToken
+          // Recursive call that does focus the block
+          // Contains all the ancestors, the focus block, and the descendants.
+          FocusRec(nextToken, focusIndex + 1, 
+            ancestors.Union(descendants).Intersect(blocksToInclude).ToList(), 
+            ancestors.Union(freeAssumeBlocks).ToList());
+        } 
       }
     }
   }
@@ -122,13 +137,8 @@ public static class FocusAttribute
       return command;
     }
 
-    for (var kv = pc.Attributes; kv != null; kv = kv.Next)
-    {
-      if (kv.Key == "split")
-      {
-        kv.AddParam(new LiteralExpr(Token.NoToken, false));
-      }
-    }
+    pc.Attributes = new QKeyValue(Token.NoToken, "split", 
+      new List<object> { new LiteralExpr(Token.NoToken, false) }, pc.Attributes);
     return command;
   }
   

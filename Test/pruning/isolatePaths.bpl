@@ -56,17 +56,33 @@ procedure {:isolate_paths} EarlyAssertionsVariant()
   }
 }
 
+// Only three VCs, not four
+procedure {:isolate_paths} AssumeFalse() {
+  var x: int;
+  x := 10;
+  if (*) {
+    assume false;
+  }
+  assert x > 4; // Only asserted once
+  
+  if (*) {
+    assume false;
+  } else {
+  }
+  assert x > 5; // Only asserted once
+}
+
 procedure {:isolate_paths} EquivalentPrePaths() {
   var x: int;
   x := 10;
   if (*) {
-    check true;
+    //check true;
   }
   assert x > 4; // Only asserted once
   
   if (*) {
     // Previous assertion stays one in the first follow-up path
-    check true;
+    // check true;
   } else {
     // Previous assertion became an assume in this path
   }

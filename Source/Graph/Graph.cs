@@ -1151,7 +1151,7 @@ namespace Microsoft.Boogie.GraphUtil
           continue;
         }
 
-        var targets = forward ? this.Successors(current) : this.Predecessors(current);
+        var targets = forward ? Successors(current) : Predecessors(current);
         foreach (var target in targets) {
           if (!visited.Contains(target)) {
             todo.Push(target);

@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.Contracts;
@@ -92,10 +93,14 @@ public static class ManualSplitFinder {
         continue;
       }
 
-      var assumed = PushRange(current.UnAssumed.ToList(), current.Assumed);
-      foreach (var target in gotoCmd.labelTargets.Skip(1))
-      {
-        paths.Push(new PathBlocks(assumed, ImmutableStack.CreateRange(target.Cmds), target.TransferCmd));
+      var assumed = current.Assumed;
+      var unassumedList = current.UnAssumed.ToList();
+      for (int i = unassumedList.Count - 1; i >= 0; i--) {
+        assumed = assumed.Push(CommandTransformations.AssertIntoAssume(options, unassumedList[i]));
+      }
+      foreach (var target in gotoCmd.labelTargets.Skip(1)) {
+        var immutableStack = ImmutableStack.CreateRange(target.Cmds);
+        paths.Push(new PathBlocks(assumed, immutableStack, target.TransferCmd));
       }
 
     }
@@ -104,8 +109,8 @@ public static class ManualSplitFinder {
   }
 
   private static ImmutableStack<T> PushRange<T>(IReadOnlyList<T> newElements, ImmutableStack<T> stack) {
-    for (var i = newElements.Count - 1; i >= 0; i--) {
-      stack = stack.Push(newElements[i]);
+    foreach (var element in newElements) {
+      stack = stack.Push(element);
     }
 
     return stack;
@@ -165,8 +170,12 @@ public static class ManualSplitFinder {
   }
 
   private static bool ShouldSplitHere(Cmd c, bool splitOnEveryAssert) {
-    return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "split_here")
-           || c is AssertCmd && splitOnEveryAssert;
+    if (c is not PredicateCmd predicateCmd) {
+      return false;
+    }
+
+    var findBoolAttribute = QKeyValue.FindNullableBoolAttribute(predicateCmd.Attributes, "split_here");
+    return findBoolAttribute ?? (c is AssertCmd && splitOnEveryAssert);
   }
 
   // Verify b with the last split in blockAssignments[b]
@@ -277,4 +286,27 @@ public static class ManualSplitFinder {
       oldToNewBlockMap[oldBlock].TransferCmd = new GotoCmd(gotoCmd.tok, newLabelNames, newLabelTargets);
     }
   }
+}
+
+
+public class SelectReadOnlyLists<T, U> : IReadOnlyList<U> {
+  private readonly Func<T, U> f;
+
+  public SelectReadOnlyLists(IReadOnlyList<T> inner, Func<T, U> f) {
+    this.f = f;
+    Inner = inner;
+  }
+
+  public IReadOnlyList<T> Inner { get; }
+  public IEnumerator<U> GetEnumerator() {
+    return Inner.Select(inner => f(inner)).GetEnumerator();
+  }
+
+  IEnumerator IEnumerable.GetEnumerator() {
+    return GetEnumerator();
+  }
+
+  public int Count => Inner.Count;
+
+  public U this[int index] => f(Inner[index]);
 }
