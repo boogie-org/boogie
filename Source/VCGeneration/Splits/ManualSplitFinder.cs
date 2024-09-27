@@ -12,7 +12,7 @@ namespace VCGeneration;
 public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
     Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
-    var paths = Focus.SplitOnFocus(options, run, createSplit);
+    var paths = FocusApplier.GetFocusParts(options, run, createSplit);
     return paths.SelectMany(GetVcsForSplits);
   }
   
@@ -25,7 +25,6 @@ public static class ManualSplitFinder {
     var splits = new HashSet<Cmd>();
     foreach (var block in partToSplit.Blocks) {
       var splitsForThisBlock = new List<Cmd>();
-      splitsPerBlock[block] = splitsForThisBlock;
       foreach (var command in block.Cmds) {
         if (!ShouldSplitHere(command, splitOnEveryAssert)) {
           continue;
@@ -33,6 +32,10 @@ public static class ManualSplitFinder {
 
         splits.Add(command);
         splitsForThisBlock.Add(command);
+      }
+
+      if (splitsForThisBlock.Any()) {
+        splitsPerBlock[block] = splitsForThisBlock;
       }
     }
 
@@ -45,7 +48,7 @@ public static class ManualSplitFinder {
     var blockStartToSplit = GetMapFromBlockStartToSplit(partToSplit.Blocks, splitsPerBlock);
 
     var beforeSplitsVc = GetImplementationPartAfterSplit(CreateVc, partToSplit, blockStartToSplit,
-      entryPoint, splits, null);
+      entryPoint, splits, null, splitOnEveryAssert);
     if (beforeSplitsVc != null)
     {
       vcs.Add(beforeSplitsVc);
@@ -59,7 +62,7 @@ public static class ManualSplitFinder {
       foreach (var split in splitsForBlock)
       {
         var splitVc = GetImplementationPartAfterSplit(CreateVc, partToSplit, 
-          blockStartToSplit, block, splits, split);
+          blockStartToSplit, block, splits, split, splitOnEveryAssert);
         if (splitVc != null)
         {
           vcs.Add(splitVc);
@@ -118,7 +121,8 @@ public static class ManualSplitFinder {
   
   private static ManualSplit? GetImplementationPartAfterSplit(Func<ImplementationPartOrigin, List<Block>, ManualSplit> createVc, 
     ManualSplit partToSplit, 
-    Dictionary<Block, Cmd?> blockStartToSplit, Block blockWithSplit, HashSet<Cmd> splits, Cmd? split) 
+    Dictionary<Block, Cmd?> blockStartToSplit, Block blockWithSplit, 
+    HashSet<Cmd> splits, Cmd? split, bool implicitSplits) 
   {
     var newBlocks = new List<Block>(partToSplit.Blocks.Count);
     var assertionCount = 0;
@@ -146,7 +150,7 @@ public static class ManualSplitFinder {
     }
     
     AddJumpsToNewBlocks(partToSplit.Blocks, oldToNewBlockMap);
-    var partToken = split == null ? partToSplit.Origin : new SplitOrigin(split.tok, partToSplit.Origin);
+    var partToken = split == null ? partToSplit.Origin : new SplitOrigin(implicitSplits, split.tok, partToSplit.Origin);
     return createVc(partToken, newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
@@ -208,18 +212,16 @@ public static class ManualSplitFinder {
 }
 
 public interface ImplementationPartOrigin : IToken {
-  string Render(CoreOptions options);
 }
   
-class SplitOrigin : TokenWrapper, ImplementationPartOrigin {
+public class SplitOrigin : TokenWrapper, ImplementationPartOrigin {
+  public bool Implicit { get; }
   public ImplementationPartOrigin PartThatWasSplit { get; }
 
-  public SplitOrigin(IToken split, ImplementationPartOrigin partThatWasSplit) : base(split) {
+  public SplitOrigin(bool @implicit, IToken split, ImplementationPartOrigin partThatWasSplit) : base(split) {
+    Implicit = @implicit;
     PartThatWasSplit = partThatWasSplit;
   }
 
-  public string Render(CoreOptions options) {
-    var name = options.VcsSplitOnEveryAssert ? "assertion" : "split";
-    return $"{name} at ({Inner.line}, {Inner.col}){PartThatWasSplit.Render(options)}";
-  }
+  public string KindName => Implicit ? "assertion" : "split";
 }

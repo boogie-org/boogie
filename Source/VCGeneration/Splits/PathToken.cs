@@ -6,7 +6,7 @@ using Microsoft.Boogie;
 
 namespace VCGeneration;
 
-class PathOrigin : TokenWrapper, ImplementationPartOrigin {
+public class PathOrigin : TokenWrapper, ImplementationPartOrigin {
 
   public PathOrigin(IToken inner, ImmutableStack<IToken> branches) : base(inner) {
     Branches = branches;
@@ -15,7 +15,7 @@ class PathOrigin : TokenWrapper, ImplementationPartOrigin {
   public ImmutableStack<IToken> Branches { get; }
 
   public string Render(CoreOptions options) {
-    return $" after passing through: [{string.Join(", ", Branches.Select(b => $"({b.line},{b.col})"))}]";
+    return $" passing through: [{string.Join(", ", Branches.Select(b => $"({b.line},{b.col})"))}]";
   }
 }
 

@@ -2,7 +2,7 @@ using Microsoft.Boogie;
 
 namespace VCGeneration;
 
-class TokenWrapper : IToken {
+public class TokenWrapper : IToken {
   public IToken Inner { get; }
 
   public TokenWrapper(IToken inner) {

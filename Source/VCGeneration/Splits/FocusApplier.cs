@@ -12,15 +12,15 @@ using VCGenOptions = Microsoft.Boogie.VCGenOptions;
 
 namespace VCGeneration;
 
-public static class Focus
+public static class FocusApplier
 {
   
   /// <summary>
   /// Each focus block creates two options.
   /// We recurse twice for each focus, leading to potentially 2^N splits
   /// </summary>
-  public static List<ManualSplit> SplitOnFocus(VCGenOptions options, ImplementationRun run,
-    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit)
+  public static List<ManualSplit> GetFocusParts(VCGenOptions options, ImplementationRun run,
+    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createPart)
   {
     var impl = run.Implementation;
     var dag = Program.GraphFromImpl(impl);
@@ -33,7 +33,7 @@ public static class Focus
       focusBlocks.Reverse();
     }
     if (!focusBlocks.Any()) {
-      return new List<ManualSplit> { createSplit(new ImplementationRootOrigin(run.Implementation), impl.Blocks) };
+      return new List<ManualSplit> { createPart(new ImplementationRootOrigin(run.Implementation), impl.Blocks) };
     }
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
@@ -53,7 +53,10 @@ public static class Focus
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
         var newBlocks = ComputeNewBlocks(options, blocksToInclude, blocksReversed, freeAssumeBlocks);
-        result.Add(createSplit(new PathOrigin(run.Implementation.tok, path), newBlocks));
+        ImplementationPartOrigin token = path.Any() 
+          ? new PathOrigin(run.Implementation.tok, path) 
+          : new ImplementationRootOrigin(run.Implementation); 
+        result.Add(createPart(token, newBlocks));
       } else {
         var (focusBlock, nextToken) = focusBlocks[focusIndex]; // assert b in blocks
         if (!blocksToInclude.Contains(focusBlock) || freeAssumeBlocks.Contains(focusBlock))
@@ -120,20 +123,20 @@ public static class Focus
   // which only contains vertices of subgraph.
   private static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, ISet<Block> subgraph)
   {
-    var dominators = new Dictionary<Block, HashSet<Block>>();
-    foreach (var b in topologicallySortedBlocks.Where(subgraph.Contains))
+    var dominatorsPerBlock = new Dictionary<Block, HashSet<Block>>();
+    foreach (var block in topologicallySortedBlocks.Where(subgraph.Contains))
     {
-      var s = new HashSet<Block>();
-      var pred = b.Predecessors.Where(subgraph.Contains).ToList();
-      if (pred.Count != 0)
+      var dominatorsForBlock = new HashSet<Block>();
+      var predecessors = block.Predecessors.Where(subgraph.Contains).ToList();
+      if (predecessors.Count != 0)
       {
-        s.UnionWith(dominators[pred[0]]);
-        pred.ForEach(blk => s.IntersectWith(dominators[blk]));
+        dominatorsForBlock.UnionWith(dominatorsPerBlock[predecessors[0]]);
+        predecessors.ForEach(blk => dominatorsForBlock.IntersectWith(dominatorsPerBlock[blk]));
       }
-      s.Add(b);
-      dominators[b] = s;
+      dominatorsForBlock.Add(block);
+      dominatorsPerBlock[block] = dominatorsForBlock;
     }
-    return subgraph.Where(blk => dominators[blk].Contains(focusBlock)).ToHashSet();
+    return subgraph.Where(blk => dominatorsPerBlock[blk].Contains(focusBlock)).ToHashSet();
   }
 
   private static Cmd DisableSplits(Cmd command)
