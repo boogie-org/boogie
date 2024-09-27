@@ -450,7 +450,6 @@ namespace Microsoft.Boogie
     }
 
     public bool RemoveEmptyBlocks { get; set; } = true;
-    public bool IsolatePaths { get; set; }
     public bool CoalesceBlocks { get; set; } = true;
     public bool PruneInfeasibleEdges { get; set; } = true;
 

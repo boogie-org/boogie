@@ -6,114 +6,16 @@ using System.Collections.Immutable;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.Boogie;
-using Microsoft.CSharp.RuntimeBinder;
 using VC;
 
 namespace VCGeneration;
 
-static class HashCodeExtensions {
-  internal static int GetHashCodeByItems<T>(this IEnumerable<T> lst)
-  {
-    unchecked
-    {
-      int hash = 19;
-      foreach (T item in lst)
-      {
-        hash = hash * 31 + (item != null ? item.GetHashCode() : 1);
-      }
-      return hash;
-    }
-  }
-}
 
 public static class ManualSplitFinder {
   public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
     Func<IToken, List<Block>, ManualSplit> createSplit) {
-    var paths = options.IsolatePaths || QKeyValue.FindBoolAttribute(run.Implementation.Attributes, "isolate_paths") 
-      ? IsolatedPathSplits(options, run, createSplit) 
-      : FocusAttribute.SplitOnFocus(options, run, createSplit);
+    var paths = FocusAttribute.SplitOnFocus(options, run, createSplit);
     return paths.SelectMany(SplitOnAssertions);
-  }
-
-  class PathBlocksComparer : IEqualityComparer<PathBlocks> {
-
-    public PathBlocksComparer() {
-    }
-
-    public bool Equals(PathBlocks? x, PathBlocks? y) {
-      if (x == null || y == null) {
-        return x == y;
-      }
-
-      return x.TransferCmd == y.TransferCmd && x.Commands.SequenceEqual(y.Commands);
-    }
-
-    public int GetHashCode(PathBlocks obj) {
-      return HashCode.Combine(obj.TransferCmd.GetHashCode(), obj.Commands.GetHashCodeByItems());
-    }
-  }
-
-  record PathBlocks(ImmutableStack<Cmd> Assumed, ImmutableStack<Cmd> UnAssumed, TransferCmd TransferCmd) {
-    public IEnumerable<Cmd> Commands => UnAssumed.Concat(Assumed);
-  }
-
-  private static List<ManualSplit> IsolatedPathSplits(VCGenOptions options, ImplementationRun run,
-    Func<IToken, List<Block>, ManualSplit> createSplit) {
-    var comparer = new PathBlocksComparer();
-    var visitedPathBlocks = new HashSet<PathBlocks>(comparer);
-    
-    var result = new List<ManualSplit>();
-    var firstBlock = run.Implementation.Blocks[0];
-    var paths = new Stack<PathBlocks>();
-    paths.Push(new PathBlocks(ImmutableStack<Cmd>.Empty, ImmutableStack.CreateRange(firstBlock.Cmds), firstBlock.TransferCmd));
-    while (paths.Any())
-    {
-      var current = paths.Pop();
-      // if (!visitedPathBlocks.Add(current)) {
-      //   continue;
-      // }
-      
-      if (current.TransferCmd is not GotoCmd gotoCmd || !gotoCmd.labelTargets.Any())
-      {
-        var masterBlock = new Block(firstBlock.tok)
-        {
-          Label = firstBlock.Label,
-          Cmds = current.UnAssumed.Concat(current.Assumed).Reverse().ToList(),
-          TransferCmd = current.TransferCmd
-        };
-        result.Add(createSplit(run.Implementation.tok, new List<Block> { masterBlock }));
-        continue;
-      }
-
-      var firstTarget = gotoCmd.labelTargets.First();
-
-      paths.Push(current with { UnAssumed = PushRange(firstTarget.Cmds, current.UnAssumed), TransferCmd = firstTarget.TransferCmd });
-      
-      if (gotoCmd.labelTargets.Count <= 1) {
-        continue;
-      }
-
-      var assumed = current.Assumed;
-      var unassumedList = current.UnAssumed.ToList();
-      for (int i = unassumedList.Count - 1; i >= 0; i--) {
-        assumed = assumed.Push(CommandTransformations.AssertIntoAssume(options, unassumedList[i]));
-      }
-      foreach (var target in gotoCmd.labelTargets.Skip(1)) {
-        var immutableStack = ImmutableStack.CreateRange(target.Cmds);
-        paths.Push(new PathBlocks(assumed, immutableStack, target.TransferCmd));
-      }
-
-    }
-
-    return result;
-  }
-
-  private static ImmutableStack<T> PushRange<T>(IReadOnlyList<T> newElements, ImmutableStack<T> stack) {
-    foreach (var element in newElements) {
-      stack = stack.Push(element);
-    }
-
-    return stack;
   }
   
   private static List<ManualSplit> SplitOnAssertions(ManualSplit initialSplit) {

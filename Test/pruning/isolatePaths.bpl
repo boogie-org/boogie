@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" /printSplit:%t /errorTrace:0 > "%t"
+// RUN: %parallel-boogie "%s" /printSplit:%t /trace /errorTrace:0 > "%t"
 // RUN: %diff "%s.expect" "%t"
 // RUN: %diff %S/isolatePaths.bpl.NoDuplicateErrors-0.expect %t-NoDuplicateErrors-0.spl
 // RUN: %diff %S/isolatePaths.bpl.NoDuplicateErrors-1.expect %t-NoDuplicateErrors-1.spl
