@@ -174,19 +174,10 @@ public class ConsolePrinter : OutputPrinter
 
     if (category != null)
     {
-      message = string.Format("{0}: {1}", category, message);
+      message = $"{category}: {message}";
     }
 
-    string s;
-    if (tok != null)
-    {
-      s = string.Format("{0}({1},{2}): {3}", ExecutionEngine.GetFileNameForConsole(Options, tok.filename), tok.line, tok.col,
-        message);
-    }
-    else
-    {
-      s = message;
-    }
+    var s = tok != null ? $"{tok.Render(Options)}: {message}" : message;
 
     if (error)
     {

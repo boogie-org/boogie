@@ -3,6 +3,16 @@ using System.IO;
 
 namespace Microsoft.Boogie
 {
+  public static class CoreOptionsExtensions {
+    public static string GetFileNameForConsole(this CoreOptions options, string filename)
+    {
+      return options.UseBaseNameForFileName && !string.IsNullOrEmpty(filename) &&
+             filename != "<console>"
+        ? Path.GetFileName(filename)
+        : filename;
+    }
+  }
+  
   /// <summary>
   /// Boogie command-line options (other tools can subclass this class in order to support a
   /// superset of Boogie's options).
@@ -10,6 +20,8 @@ namespace Microsoft.Boogie
   public interface CoreOptions : PrintOptions {
     public TextWriter OutputWriter { get; }
 
+    bool UseBaseNameForFileName { get; }
+    
     public enum TypeEncoding
     {
       Predicates,

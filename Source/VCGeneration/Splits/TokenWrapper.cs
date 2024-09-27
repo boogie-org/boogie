@@ -44,4 +44,7 @@ class TokenWrapper : IToken {
   }
 
   public bool IsValid => inner.IsValid;
+  public virtual string Render(CoreOptions options) {
+    return inner.Render(options);
+  }
 }

@@ -422,8 +422,7 @@ namespace Microsoft.Boogie.GraphUtil
     }
   }
 
-  public class Graph<Node> 
-    where Node : class
+  public class Graph<Node>
   {
     private HashSet<Tuple<Node /*!*/, Node /*!*/>> edges;
     private HashSet<Node> nodes;
@@ -657,7 +656,7 @@ namespace Microsoft.Boogie.GraphUtil
     /// <summary>
     /// Use this method only for DAGs because it uses DominatorsFast() for computing dominators
     /// </summary>
-    public Dictionary<Node, Node?> ImmediateDominator()
+    public Dictionary<Node, Node> ImmediateDominator()
     {
       var topoSorted = TopologicalSort().ToList();
       var indexPerNode = new Dictionary<Node, int>();
@@ -674,7 +673,6 @@ namespace Microsoft.Boogie.GraphUtil
         }
         immediateDominator[node] = topoSorted.ElementAt(dominators[node].Max(e => indexPerNode[e]));
       }
-      immediateDominator[source] = null;
       return immediateDominator;
     }
 

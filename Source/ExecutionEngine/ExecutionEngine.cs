@@ -303,7 +303,7 @@ namespace Microsoft.Boogie
 
           if (Options.Trace)
           {
-            Options.OutputWriter.WriteLine("Parsing " + GetFileNameForConsole(Options, bplFileName));
+            Options.OutputWriter.WriteLine("Parsing " + Options.GetFileNameForConsole(bplFileName));
           }
         }
 
@@ -314,7 +314,7 @@ namespace Microsoft.Boogie
             Options.UseBaseNameForFileName);
           if (programSnippet == null || errorCount != 0)
           {
-            Options.OutputWriter.WriteLine("{0} parse errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
+            Options.OutputWriter.WriteLine("{0} parse errors detected in {1}", errorCount, Options.GetFileNameForConsole(bplFileName));
             okay = false;
           }
           else
@@ -325,7 +325,7 @@ namespace Microsoft.Boogie
         catch (IOException e)
         {
           Options.Printer.ErrorWriteLine(Options.OutputWriter, "Error opening file \"{0}\": {1}",
-            GetFileNameForConsole(Options, bplFileName), e.Message);
+            Options.GetFileNameForConsole(bplFileName), e.Message);
           okay = false;
         }
       }
@@ -349,14 +349,6 @@ namespace Microsoft.Boogie
 
         return program;
       }
-    }
-
-    internal static string GetFileNameForConsole(ExecutionEngineOptions options, string filename)
-    {
-      return options.UseBaseNameForFileName && !string.IsNullOrEmpty(filename) &&
-             filename != "<console>"
-        ? Path.GetFileName(filename)
-        : filename;
     }
 
 
@@ -386,7 +378,7 @@ namespace Microsoft.Boogie
       var errorCount = program.Resolve(Options);
       if (errorCount != 0)
       {
-        Options.OutputWriter.WriteLine("{0} name resolution errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
+        Options.OutputWriter.WriteLine("{0} name resolution errors detected in {1}", errorCount, Options.GetFileNameForConsole(bplFileName));
         return PipelineOutcome.ResolutionError;
       }
 
@@ -405,7 +397,7 @@ namespace Microsoft.Boogie
       errorCount = program.Typecheck(Options);
       if (errorCount != 0)
       {
-        Options.OutputWriter.WriteLine("{0} type checking errors detected in {1}", errorCount, GetFileNameForConsole(Options, bplFileName));
+        Options.OutputWriter.WriteLine("{0} type checking errors detected in {1}", errorCount, Options.GetFileNameForConsole(bplFileName));
         return PipelineOutcome.TypeCheckingError;
       }
 
@@ -449,7 +441,7 @@ namespace Microsoft.Boogie
       if (civlTypeChecker.checkingContext.ErrorCount != 0)
       {
         Options.OutputWriter.WriteLine("{0} type checking errors detected in {1}", civlTypeChecker.checkingContext.ErrorCount,
-          GetFileNameForConsole(Options, bplFileName));
+          Options.GetFileNameForConsole(bplFileName));
         return PipelineOutcome.TypeCheckingError;
       }
 

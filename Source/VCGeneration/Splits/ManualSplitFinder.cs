@@ -90,7 +90,7 @@ public static class ManualSplitFinder {
   private static Dictionary<Block, Cmd?> GetMapFromBlockStartToSplit(List<Block> blocks, Dictionary<Block, List<Cmd>> splitsPerBlock) {
     var todo = new Stack<Block>();
     var blockAssignments = new Dictionary<Block, Cmd?>();
-    var immediateDominator = Program.GraphFromBlocks(blocks).ImmediateDominator();
+    var immediateDominators = Program.GraphFromBlocks(blocks).ImmediateDominator();
     todo.Push(blocks[0]);
     while (todo.Count > 0) {
       var currentBlock = todo.Pop();
@@ -98,18 +98,17 @@ public static class ManualSplitFinder {
         continue;
       }
 
-      var dominator = immediateDominator[currentBlock];
-      if (dominator == null)
+      if (!immediateDominators.TryGetValue(currentBlock, out var immediateDominator))
       {
         blockAssignments[currentBlock] = null;
       } 
-      else if (splitsPerBlock.TryGetValue(dominator, out var splitsForDominator)) // if the currentBlock's dominator has a split then it will be associated with that split
+      else if (splitsPerBlock.TryGetValue(immediateDominator, out var splitsForDominator)) // if the currentBlock's dominator has a split then it will be associated with that split
       {
         blockAssignments[currentBlock] = splitsForDominator.Last();
       } 
       else {
-        Contract.Assert(blockAssignments.Keys.Contains(dominator));
-        blockAssignments[currentBlock] = blockAssignments[dominator];
+        Contract.Assert(blockAssignments.Keys.Contains(immediateDominator));
+        blockAssignments[currentBlock] = blockAssignments[immediateDominator];
       }
       
       if (currentBlock.TransferCmd is GotoCmd gotoCmd) {

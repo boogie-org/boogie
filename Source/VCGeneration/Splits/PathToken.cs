@@ -12,4 +12,7 @@ class PathToken : TokenWrapper {
   }
   
   public ImmutableStack<IToken> Branches { get; }
+  public override string Render(CoreOptions options) {
+    return base.Render(options);
+  }
 }
