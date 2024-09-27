@@ -519,8 +519,8 @@ public class Program : Absy
     {
       if (block.TransferCmd is GotoCmd gtc)
       {
-        Contract.Assume(gtc.labelTargets != null);
-        gtc.labelTargets.ForEach(dest => AddEdge(block, dest));
+        Contract.Assume(gtc.LabelTargets != null);
+        gtc.LabelTargets.ForEach(dest => AddEdge(block, dest));
       }
     }
     return result;

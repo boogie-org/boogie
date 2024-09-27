@@ -197,9 +197,9 @@ public class LeanAutoGenerator : ReadOnlyVisitor
 
   public override GotoCmd VisitGotoCmd(GotoCmd node)
   {
-    string cmd = node.labelTargets.Any()
+    string cmd = node.LabelTargets.Any()
       ? node
-        .labelTargets
+        .LabelTargets
         .Select(l => $"goto {BlockName(l)}")
         .Aggregate((a, b) => $"{a} {AndString} {b}")
       : "ret";

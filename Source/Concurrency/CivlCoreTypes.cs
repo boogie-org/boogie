@@ -392,7 +392,7 @@ namespace Microsoft.Boogie
         else if (block.TransferCmd is GotoCmd gotoCmd)
         {
           var wlp =
-            HoistAsserts(block.Cmds, gotoCmd.labelTargets.SelectMany(b => wlps[b]).ToList(), options);
+            HoistAsserts(block.Cmds, gotoCmd.LabelTargets.SelectMany(b => wlps[b]).ToList(), options);
           wlps.Add(block, wlp);
         }
         else

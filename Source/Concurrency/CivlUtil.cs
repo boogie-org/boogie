@@ -32,7 +32,7 @@ namespace Microsoft.Boogie
         else if (block.TransferCmd is GotoCmd gotoCmd)
         {
           liveVarsBefore[block] =
-            Propagate(block.Cmds, gotoCmd.labelTargets.SelectMany(x => liveVarsBefore[x]).ToHashSet());
+            Propagate(block.Cmds, gotoCmd.LabelTargets.SelectMany(x => liveVarsBefore[x]).ToHashSet());
         }
         else
         {

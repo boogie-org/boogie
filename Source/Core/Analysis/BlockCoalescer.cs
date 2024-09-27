@@ -43,12 +43,12 @@ public class BlockCoalescer : ReadOnlyVisitor
 
       Contract.Assert(block.TransferCmd is GotoCmd);
       var gotoCmd = (GotoCmd) block.TransferCmd;
-      if (gotoCmd.labelTargets == null)
+      if (gotoCmd.LabelTargets == null)
       {
         continue;
       }
 
-      foreach (var /*!*/ succ in gotoCmd.labelTargets)
+      foreach (var /*!*/ succ in gotoCmd.LabelTargets)
       {
         Contract.Assert(succ != null);
         dfsStack.Push(succ);
@@ -70,10 +70,10 @@ public class BlockCoalescer : ReadOnlyVisitor
       }
 
       var gotoCmd = (GotoCmd)block.TransferCmd;
-      gotoCmd.labelNames = new List<string>();
-      foreach (var successor in gotoCmd.labelTargets)
+      gotoCmd.LabelNames = new List<string>();
+      foreach (var successor in gotoCmd.LabelTargets)
       {
-        gotoCmd.labelNames.Add(successor.Label);
+        gotoCmd.LabelNames.Add(successor.Label);
       }
     }
     return impl;
@@ -112,14 +112,14 @@ public class BlockCoalescer : ReadOnlyVisitor
 
       Contract.Assert(block.TransferCmd is GotoCmd);
       var gotoCmd = (GotoCmd) block.TransferCmd;
-      if (gotoCmd.labelTargets == null)
+      if (gotoCmd.LabelTargets == null)
       {
         continue;
       }
 
-      if (gotoCmd.labelTargets.Count != 1)
+      if (gotoCmd.LabelTargets.Count != 1)
       {
-        foreach (var aSuccessor in gotoCmd.labelTargets)
+        foreach (var aSuccessor in gotoCmd.LabelTargets)
         {
           Contract.Assert(aSuccessor != null);
           toVisit.Push(aSuccessor);
@@ -127,7 +127,7 @@ public class BlockCoalescer : ReadOnlyVisitor
         continue;
       }
 
-      var successor = cce.NonNull(gotoCmd.labelTargets[0]);
+      var successor = cce.NonNull(gotoCmd.LabelTargets[0]);
       if (multiPredecessorBlocks.Contains(successor))
       {
         toVisit.Push(successor);

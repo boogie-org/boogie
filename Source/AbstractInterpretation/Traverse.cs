@@ -73,9 +73,9 @@ namespace Microsoft.Boogie
 
         // labelTargets is made non-null by Resolve, which we assume
         // has already called in a prior pass.
-        Contract.Assume(g.labelTargets != null);
-        cce.BeginExpose(g.labelTargets);
-        foreach (Block succ in g.labelTargets)
+        Contract.Assume(g.LabelTargets != null);
+        cce.BeginExpose(g.LabelTargets);
+        foreach (Block succ in g.LabelTargets)
           //              invariant b.currentlyTraversed;
           //PM: The following loop invariant will work once properties are axiomatized
           //&& (g.labelNames != null && g.labelTargets != null ==> g.labelNames.Length == g.labelTargets.Length);
@@ -93,7 +93,7 @@ namespace Microsoft.Boogie
 
         //PM: The folowing assumption is needed because we cannot prove that a simple field update
         //PM: leaves the value of a property unchanged.
-        Contract.Assume(g.labelNames == null || g.labelNames.Count == g.labelTargets.Count);
+        Contract.Assume(g.LabelNames == null || g.LabelNames.Count == g.LabelTargets.Count);
         cce.EndExpose();
       }
       else
@@ -169,9 +169,9 @@ namespace Microsoft.Boogie
         GotoCmd successors = (GotoCmd) block.TransferCmd;
         Contract.Assert(successors != null);
 
-        if (successors.labelTargets != null)
+        if (successors.LabelTargets != null)
         {
-          foreach (Block nextBlock in successors.labelTargets)
+          foreach (Block nextBlock in successors.LabelTargets)
           {
             Contract.Assert(nextBlock != null);
             if (path.Contains(nextBlock)) // If the current path has already seen the block, just skip it 

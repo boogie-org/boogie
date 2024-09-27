@@ -742,7 +742,7 @@ namespace Microsoft.Boogie
       GotoCmd gotoCmd = transferCmd as GotoCmd;
       if (gotoCmd != null)
       {
-        List<String> gotoSeq = gotoCmd.labelNames;
+        List<String> gotoSeq = gotoCmd.LabelNames;
         List<String> newGotoSeq = new List<String>();
         foreach (string /*!*/ blockLabel in cce.NonNull(gotoSeq))
         {
@@ -838,9 +838,9 @@ namespace Microsoft.Boogie
         Contract.Ensures(Contract.Result<TransferCmd>() != null);
         if (cmd is GotoCmd gotoCmd)
         {
-          Contract.Assert(gotoCmd.labelNames != null);
+          Contract.Assert(gotoCmd.LabelNames != null);
           List<String> labels = new List<String>();
-          labels.AddRange(gotoCmd.labelNames);
+          labels.AddRange(gotoCmd.LabelNames);
           return new GotoCmd(cmd.tok, labels);
         }
         else if (cmd is ReturnExprCmd returnExprCmd)

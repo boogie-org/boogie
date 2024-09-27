@@ -267,7 +267,7 @@ namespace Microsoft.Boogie
           // Block exit edges
           if (block.TransferCmd is GotoCmd gotoCmd)
           {
-            foreach (Block successor in gotoCmd.labelTargets)
+            foreach (Block successor in gotoCmd.LabelTargets)
             {
               var edge = new Tuple<Absy, Absy>(block.TransferCmd, successor);
               atomicityLabels[edge] = P;

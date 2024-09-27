@@ -535,7 +535,7 @@ namespace VC
         if (gc != null)
         {
           VCExpr succ = VCExpressionGenerator.False;
-          foreach (var sb in gc.labelTargets)
+          foreach (var sb in gc.LabelTargets)
           {
             succ = gen.OrSimp(succ, blockToControlVar[sb]);
           }

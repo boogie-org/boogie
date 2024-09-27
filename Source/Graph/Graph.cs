@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Linq;
 using System.Collections.Generic;
@@ -421,7 +422,8 @@ namespace Microsoft.Boogie.GraphUtil
     }
   }
 
-  public class Graph<Node>
+  public class Graph<Node> 
+    where Node : class
   {
     private HashSet<Tuple<Node /*!*/, Node /*!*/>> edges;
     private HashSet<Node> nodes;
@@ -652,21 +654,27 @@ namespace Microsoft.Boogie.GraphUtil
       return dominators;
     }
 
-    // Use this method only for DAGs because it uses DominatorsFast() for computing dominators
-    public Dictionary<Node, Node> ImmediateDominator()
+    /// <summary>
+    /// Use this method only for DAGs because it uses DominatorsFast() for computing dominators
+    /// </summary>
+    public Dictionary<Node, Node?> ImmediateDominator()
     {
-      List<Node> topoSorted = this.TopologicalSort().ToList();
-      Dictionary<Node, HashSet<Node>> dominators = DominatorsFast();
-      var immediateDominator = new Dictionary<Node, Node>();
-      foreach (var u in this.Nodes)
-      {
-        if (dominators[u].Count() > 1)
-        {
-          dominators[u].Remove(u);
-        }
-        immediateDominator[u] = topoSorted.ElementAt(dominators[u].Max(e => topoSorted.IndexOf(e)));
+      var topoSorted = TopologicalSort().ToList();
+      var indexPerNode = new Dictionary<Node, int>();
+      for (int index = 0; index < topoSorted.Count; index++) {
+        indexPerNode[topoSorted[index]] = index;
       }
-      immediateDominator[this.source] = this.source;
+      var dominators = DominatorsFast();
+      var immediateDominator = new Dictionary<Node, Node?>();
+      foreach (var node in Nodes)
+      {
+        if (dominators[node].Count > 1)
+        {
+          dominators[node].Remove(node);
+        }
+        immediateDominator[node] = topoSorted.ElementAt(dominators[node].Max(e => indexPerNode[e]));
+      }
+      immediateDominator[source] = null;
       return immediateDominator;
     }
 

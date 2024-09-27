@@ -354,7 +354,7 @@ namespace VC
             continue;
           }
 
-          List<Block> targ = cce.NonNull(gt.labelTargets);
+          List<Block> targ = cce.NonNull(gt.LabelTargets);
           if (targ.Count < 2)
           {
             continue;
@@ -631,7 +631,7 @@ namespace VC
           GotoCmd newGoto = new GotoCmd(gt.tok, new List<String>(), new List<Block>());
           res.TransferCmd = newGoto;
           int pos = 0;
-          foreach (Block ch in cce.NonNull(gt.labelTargets))
+          foreach (Block ch in cce.NonNull(gt.LabelTargets))
           {
             Contract.Assert(ch != null);
             Contract.Assert(doingSlice ||
@@ -798,7 +798,7 @@ namespace VC
               if (g != null)
               {
                 run.OutputWriter.Write("    exits: ");
-                foreach (Block b in cce.NonNull(g.labelTargets))
+                foreach (Block b in cce.NonNull(g.LabelTargets))
                 {
                   Contract.Assert(b != null);
                   run.OutputWriter.Write("{0} ", b.Label);
