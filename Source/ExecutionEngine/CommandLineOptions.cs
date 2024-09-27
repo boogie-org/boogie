@@ -969,16 +969,6 @@ namespace Microsoft.Boogie
           return true;
         }
 
-        case "isolatePaths":
-        {
-          int cb = 0;
-          if (ps.GetIntArgument(x => cb = x, 2))
-          {
-            IsolatePaths = cb == 1;
-          }
-
-          return true;
-        }
         case "coalesceBlocks":
         {
           int cb = 0;

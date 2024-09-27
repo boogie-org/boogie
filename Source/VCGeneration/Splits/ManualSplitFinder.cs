@@ -35,7 +35,7 @@ public static class ManualSplitFinder {
     if (!splitPoints.Any()) {
       splits.Add(initialSplit);
     } else {
-      Block entryPoint = initialSplit.Blocks[0];
+      var entryPoint = initialSplit.Blocks[0];
       var blockAssignments = PickBlocksToVerify(initialSplit.Blocks, splitPoints);
       var entryBlockHasSplit = splitPoints.ContainsKey(entryPoint);
       var firstSplitBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
