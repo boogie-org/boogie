@@ -38,7 +38,7 @@ public static class ManualSplitFinder {
       var entryPoint = initialSplit.Blocks[0];
       var blockAssignments = PickBlocksToVerify(initialSplit.Blocks, splitPoints);
       var entryBlockHasSplit = splitPoints.ContainsKey(entryPoint);
-      var firstSplitBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments,
+      var firstSplitBlocks = GetPostSplitVcBlocks(initialSplit.Options, initialSplit.Blocks, blockAssignments,
         -1, entryPoint, !entryBlockHasSplit, splitOnEveryAssert);
       if (firstSplitBlocks != null)
       {
@@ -56,7 +56,7 @@ public static class ManualSplitFinder {
         for (int i = 0; i < tokens.Count; i++) {
           var token = tokens[i];
           bool lastSplitInBlock = i == tokens.Count - 1;
-          var newBlocks = DoPreAssignedManualSplit(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, block, lastSplitInBlock, splitOnEveryAssert);
+          var newBlocks = GetPostSplitVcBlocks(initialSplit.Options, initialSplit.Blocks, blockAssignments, i, block, lastSplitInBlock, splitOnEveryAssert);
           if (newBlocks != null)
           {
             splits.Add(new ManualSplit(initialSplit.Options, 
@@ -109,11 +109,10 @@ public static class ManualSplitFinder {
     return blockAssignments;
   }
   
-  private static List<Block>? DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, 
+  private static List<Block>? GetPostSplitVcBlocks(VCGenOptions options, List<Block> blocks, 
     Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
-    Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert) {
-    var newBlocks = new List<Block>(blocks.Count); // Copies of the original blocks
-    //var duplicator = new Duplicator();
+    Block blockWithSplit, bool lastSplitInBlock, bool splitOnEveryAssert) {
+    var newBlocks = new List<Block>(blocks.Count);
     var assertionCount = 0;
     var oldToNewBlockMap = new Dictionary<Block, Block>(blocks.Count); // Maps original blocks to their new copies in newBlocks
     foreach (var currentBlock in blocks) {
@@ -124,7 +123,7 @@ public static class ManualSplitFinder {
 
       oldToNewBlockMap[currentBlock] = newBlock;
       newBlocks.Add(newBlock);
-      if (currentBlock == containingBlock) {
+      if (currentBlock == blockWithSplit) {
         var newCmds = new List<Cmd>();
         var splitCount = -1;
         var verify = splitCount == splitNumberWithinBlock;
@@ -141,7 +140,7 @@ public static class ManualSplitFinder {
           newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
         }
         newBlock.Cmds = newCmds;
-      } else if (lastSplitInBlock && blockAssignments[currentBlock] == containingBlock) {
+      } else if (lastSplitInBlock && blockAssignments[currentBlock] == blockWithSplit) {
         var verify = true;
         var newCmds = new List<Cmd>();
         foreach (var command in currentBlock.Cmds) {
