@@ -150,7 +150,7 @@ public static class ManualSplitFinder {
     }
     
     AddJumpsToNewBlocks(partToSplit.Blocks, oldToNewBlockMap);
-    var partToken = split == null ? partToSplit.Origin : new SplitOrigin(implicitSplits, split.tok, partToSplit.Origin);
+    var partToken = split == null ? partToSplit.Origin : new SplitOrigin(implicitSplits, split.tok, blockWithSplit, partToSplit.Origin);
     return createVc(partToken, newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
@@ -213,13 +213,15 @@ public static class ManualSplitFinder {
 
 public interface ImplementationPartOrigin : IToken {
 }
-  
+
 public class SplitOrigin : TokenWrapper, ImplementationPartOrigin {
   public bool Implicit { get; }
+  public Block ContainingBlock { get; }
   public ImplementationPartOrigin PartThatWasSplit { get; }
 
-  public SplitOrigin(bool @implicit, IToken split, ImplementationPartOrigin partThatWasSplit) : base(split) {
+  public SplitOrigin(bool @implicit, IToken split, Block containingBlock, ImplementationPartOrigin partThatWasSplit) : base(split) {
     Implicit = @implicit;
+    ContainingBlock = containingBlock;
     PartThatWasSplit = partThatWasSplit;
   }
 

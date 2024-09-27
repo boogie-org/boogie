@@ -22,9 +22,9 @@ public static class FocusApplier
   public static List<ManualSplit> GetFocusParts(VCGenOptions options, ImplementationRun run,
     Func<ImplementationPartOrigin, List<Block>, ManualSplit> createPart)
   {
-    var impl = run.Implementation;
-    var dag = Program.GraphFromImpl(impl);
-    var topologicallySortedBlocks = dag.TopologicalSort().ToList();
+    var implementation = run.Implementation;
+    var dag = Program.GraphFromImpl(implementation);
+    var topologicallySortedBlocks = dag.TopologicalSort();
     var blocksReversed = Enumerable.Reverse(topologicallySortedBlocks).ToList();
     // By default, we process the foci in a top-down fashion, i.e., in the topological order.
     // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
@@ -33,7 +33,7 @@ public static class FocusApplier
       focusBlocks.Reverse();
     }
     if (!focusBlocks.Any()) {
-      return new List<ManualSplit> { createPart(new ImplementationRootOrigin(run.Implementation), impl.Blocks) };
+      return new List<ManualSplit> { createPart(new ImplementationRootOrigin(run.Implementation), implementation.Blocks) };
     }
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
@@ -43,18 +43,19 @@ public static class FocusApplier
       reachables.Remove(fb.Block);
       ancestorsPerBlock[fb.Block] = reachables;
     });
+    var dominators = dag.DominatorMap;
     focusBlocks.ForEach(fb => descendantsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block).ToHashSet());
     var result = new List<ManualSplit>();
 
-    AddSplitsFromIndex(ImmutableStack<IToken>.Empty, 0, impl.Blocks.ToHashSet(), ImmutableHashSet<Block>.Empty);
+    AddSplitsFromIndex(ImmutableStack<Block>.Empty, 0, implementation.Blocks.ToHashSet(), ImmutableHashSet<Block>.Empty);
     return result;
 
-    void AddSplitsFromIndex(ImmutableStack<IToken> path, int focusIndex, ISet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
+    void AddSplitsFromIndex(ImmutableStack<Block> path, int focusIndex, ISet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
         var newBlocks = ComputeNewBlocks(options, blocksToInclude, blocksReversed, freeAssumeBlocks);
         ImplementationPartOrigin token = path.Any() 
-          ? new PathOrigin(run.Implementation.tok, path) 
+          ? new PathOrigin(run.Implementation.tok, path, dominators) 
           : new ImplementationRootOrigin(run.Implementation); 
         result.Add(createPart(token, newBlocks));
       } else {
@@ -76,7 +77,7 @@ public static class FocusApplier
           
           // Recursive call that does focus the block
           // Contains all the ancestors, the focus block, and the descendants.
-          AddSplitsFromIndex(path.Push(nextToken), focusIndex + 1, 
+          AddSplitsFromIndex(path.Push(focusBlock), focusIndex + 1, 
             ancestors.Union(descendants).Intersect(blocksToInclude).ToHashSet(), 
             ancestors.Union(freeAssumeBlocks).ToHashSet());
         } 
