@@ -148,10 +148,9 @@ public static class ManualSplitFinder {
       return null;
     }
     
-    // Patch the edges between the new blocks
-    AddBlockJumps(partToSplit.Blocks, oldToNewBlockMap);
-    var vcToken = split == null ? partToSplit.Token : split.tok;
-    return createVc(vcToken, newBlocks);
+    AddJumpsToNewBlocks(partToSplit.Blocks, oldToNewBlockMap);
+    var partToken = split == null ? partToSplit.Token : new SplitToken(split.tok, partToSplit.Token);
+    return createVc(new SplitToken(partToken, partToSplit.Token), newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
     {
@@ -189,7 +188,7 @@ public static class ManualSplitFinder {
     }
   }
 
-  private static void AddBlockJumps(List<Block> oldBlocks, Dictionary<Block, Block> oldToNewBlockMap)
+  private static void AddJumpsToNewBlocks(List<Block> oldBlocks, Dictionary<Block, Block> oldToNewBlockMap)
   {
     foreach (var oldBlock in oldBlocks) {
       var newBlock = oldToNewBlockMap[oldBlock];
@@ -207,6 +206,14 @@ public static class ManualSplitFinder {
       }
 
       oldToNewBlockMap[oldBlock].TransferCmd = new GotoCmd(gotoCmd.tok, newLabelNames, newLabelTargets);
+    }
+  }
+  
+  class SplitToken : TokenWrapper {
+    public IToken PartThatWasSplit { get; }
+
+    public SplitToken(IToken split, IToken partThatWasSplit) : base(split) {
+      PartThatWasSplit = partThatWasSplit;
     }
   }
 }
