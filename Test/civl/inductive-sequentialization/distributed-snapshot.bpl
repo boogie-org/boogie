@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type Value;
@@ -52,26 +52,25 @@ function {:inline} ToSendSecond(loc_channel: Loc): ChannelPiece {
 const NumMemIndices: int;
 axiom NumMemIndices >= 1;
 
+const MemIndices: Set int;
+axiom (forall x: int :: Set_Contains(MemIndices, x) <==> 1 <= x && x <= NumMemIndices);
+
 function {:inline} MemIndexPieces(s: ChannelPiece, j: int): Set MemIndexPiece {
-    Set((lambda {:pool "MemIndexPieces"} x: MemIndexPiece :: x->val == s && x->ids == MemIndices() && 1 <= x->id && x->id <= j))
+    Set((lambda {:pool "MemIndexPieces"} x: MemIndexPiece :: x->val == s && x->ids == MemIndices && 1 <= x->id && x->id <= j))
 }
 
 function {:inline} AllMemIndexPieces(s: ChannelPiece): Set MemIndexPiece {
     MemIndexPieces(s, NumMemIndices)
 }
 
-function {:inline} MemIndices(): Set int {
-    Set((lambda {:pool "MemIndices"} x: int :: 1 <= x && x <= NumMemIndices))
-}
-
 function {:inline} IsValidMemIndexPiece(piece: MemIndexPiece): bool {
     Set_Contains(piece->ids, piece->id) &&
-    piece->ids == MemIndices()
+    piece->ids == MemIndices
 }
 
 function {:inline} MemIndexPiece(cp: ChannelPiece, i: int): MemIndexPiece
 {
-    Fraction(cp, i, MemIndices())
+    Fraction(cp, i, MemIndices)
 }
 
 var {:layer 0,3} mem: Snapshot;
@@ -96,8 +95,8 @@ refines GetSnapshot;
     call one_r := One_Get(channelOps, ToReceive(one_loc_channel->val));
     call one_s_first := One_Get(channelOps, ToSendFirst(one_loc_channel->val));
     call one_s_second := One_Get(channelOps, ToSendSecond(one_loc_channel->val));
-    call sps_first := One_To_Fractions(one_s_first, MemIndices());
-    call sps_second := One_To_Fractions(one_s_second, MemIndices());
+    call sps_first := One_To_Fractions(one_s_first, MemIndices);
+    call sps_second := One_To_Fractions(one_s_second, MemIndices);
 
     while (true)
     invariant {:yields} true;
@@ -135,7 +134,7 @@ asserts Set_IsSubset(AllMemIndexPieces(s), pset->dom);
 
     call map := Map_Split(pset, AllMemIndexPieces(s));
     call sps, data := Map_Unpack(map);
-    snapshot := (lambda x: int :: data[Fraction(s, x, MemIndices())]);
+    snapshot := (lambda x: int :: data[Fraction(s, x, MemIndices)]);
 }
 yield procedure {:layer 1} _ReceiveSecond({:linear} one_r: One ChannelPiece, s: ChannelPiece) returns ({:linear} sps: Set MemIndexPiece, snapshot: Snapshot)
 refines ReceiveSecond;
@@ -155,7 +154,7 @@ asserts IsSendFirst(s) || IsSendSecond(s);
     assume Set_IsSubset(AllMemIndexPieces(s), pset->dom);
     call map := Map_Split(pset, AllMemIndexPieces(s));
     call sps, data := Map_Unpack(map);
-    snapshot := (lambda x: int :: data[Fraction(s, x, MemIndices())]);
+    snapshot := (lambda x: int :: data[Fraction(s, x, MemIndices)]);
 }
 yield procedure {:layer 0} _ReceiveFirst({:linear} one_r: One ChannelPiece, s: ChannelPiece) returns ({:linear} sps: Set MemIndexPiece, snapshot: Snapshot);
 refines ReceiveFirst;
@@ -239,7 +238,7 @@ asserts sps == AllMemIndexPieces(s);
     call Map_Join(pset, map);
 
     if (j < NumMemIndices) {
-        choice := read_f(One(Fraction(s, j+1, MemIndices())));
+        choice := read_f(One(Fraction(s, j+1, MemIndices)));
         call set_choice(choice);
         assume {:add_to_pool "Read_PAs", choice} true;
         call {:linear sps'} create_asyncs((lambda {:pool "Read_PAs"} pa: read_f :: Set_Contains(sps', pa->perm->val)));
@@ -315,7 +314,7 @@ asserts sps == AllMemIndexPieces(s);
     call Map_Join(pset, map);
 
     if (j < NumMemIndices) {
-        choice := read_s(One(Fraction(s, j+1, MemIndices())));
+        choice := read_s(One(Fraction(s, j+1, MemIndices)));
         call set_choice(choice);
         assume {:add_to_pool "Read_PAs", choice} true;
         call {:linear sps'} create_asyncs((lambda {:pool "Read_PAs"} pa: read_s :: Set_Contains(sps', pa->perm->val)));
