@@ -298,8 +298,8 @@ namespace Microsoft.Boogie
     {
       var primitiveImpls = program.TopLevelDeclarations.OfType<Implementation>().Where(impl =>
       {
-        var originalDecl = impl.Proc.OriginalDeclWithFormals;
-        return originalDecl != null && CivlPrimitives.LinearPrimitives.Contains(originalDecl.Name);
+        var originalDecl = Monomorphizer.GetOriginalDecl(impl);
+        return CivlPrimitives.LinearPrimitives.Contains(originalDecl.Name);
       });
       primitiveImpls.ForEach(impl => {
         impl.OriginalBlocks = impl.Blocks;

@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type Value;
@@ -10,7 +10,7 @@ datatype StampedValue {
 } 
 
 type Channel; // Send + Receive
-type ChannelPiece = Fraction (Loc Channel) ChannelOp; // Send or Receive piece
+type ChannelPiece = Fraction Loc ChannelOp; // Send or Receive piece
 type MemIndexPiece = Fraction ChannelPiece int; // Each mem index piece of Channel Piece
 
 type Snapshot = [int]StampedValue;
@@ -37,15 +37,15 @@ function {:inline} IsSendSecond(piece: ChannelPiece): bool {
     piece == Fraction(piece->val, SendSecond(), ChannelOps())
 }
 
-function {:inline} ToReceive(loc_channel: Loc Channel): ChannelPiece {
+function {:inline} ToReceive(loc_channel: Loc): ChannelPiece {
     Fraction(loc_channel, Receive(), ChannelOps())
 }
 
-function {:inline} ToSendFirst(loc_channel: Loc Channel): ChannelPiece {
+function {:inline} ToSendFirst(loc_channel: Loc): ChannelPiece {
     Fraction(loc_channel, SendFirst(), ChannelOps())
 }
 
-function {:inline} ToSendSecond(loc_channel: Loc Channel): ChannelPiece {
+function {:inline} ToSendSecond(loc_channel: Loc): ChannelPiece {
     Fraction(loc_channel, SendSecond(), ChannelOps())
 }
 
@@ -77,11 +77,11 @@ function {:inline} MemIndexPiece(cp: ChannelPiece, i: int): MemIndexPiece
 var {:layer 0,3} mem: Snapshot;
 var {:linear} {:layer 0,2} pset: Map MemIndexPiece StampedValue;
 
-atomic action {:layer 3} GetSnapshot({:linear_in} one_loc_channel: One (Loc Channel)) returns (snapshot: [int]StampedValue)
+atomic action {:layer 3} GetSnapshot({:linear_in} one_loc_channel: One Loc) returns (snapshot: [int]StampedValue)
 {
     assume (forall i:int :: 1 <= i && i <= NumMemIndices ==> snapshot[i] == mem[i]);
 }
-yield procedure {:layer 2} Coordinator({:linear_in} one_loc_channel: One (Loc Channel)) returns (snapshot: [int]StampedValue)
+yield procedure {:layer 2} Coordinator({:linear_in} one_loc_channel: One Loc) returns (snapshot: [int]StampedValue)
 refines GetSnapshot;
 {
     var {:linear} channelOps: Set ChannelPiece;
@@ -179,7 +179,7 @@ asserts sps == AllMemIndexPieces(s);
     var {:linear} map: Map MemIndexPiece StampedValue;
 
     assume {:add_to_pool "MemIndices", 0, NumMemIndices} {:add_to_pool "Data", data} true;
-    assume (forall i: int :: 1 <= i && i <= NumMemIndices ==> (var x := MemIndexPiece(s, i); data[x]->ts < mem[i]->ts || data[x] == mem[i]));
+    assume (forall i: int :: {:add_to_pool "X", i} 1 <= i && i <= NumMemIndices ==> (var x := MemIndexPiece(s, i); data[x]->ts < mem[i]->ts || data[x] == mem[i]));
     call map := Map_Pack(sps, data);
     call Map_Join(pset, map);
 }
@@ -231,7 +231,7 @@ asserts sps == AllMemIndexPieces(s);
     var {:pool "Data"} data: [MemIndexPiece]StampedValue;
     
     assume {:add_to_pool "MemIndices", 0, j+1, NumMemIndices} {:add_to_pool "Data", data} 0 <= j && j <= NumMemIndices;
-    assume (forall i: int :: 1 <= i && i <= j ==> (var x := MemIndexPiece(s, i); data[x]->ts < mem[i]->ts || data[x] == mem[i]));
+    assume (forall {:pool "X"} i: int :: {:add_to_pool "X", i} 1 <= i && i <= j ==> (var x := MemIndexPiece(s, i); data[x]->ts < mem[i]->ts || data[x] == mem[i]));
 
     sps' := sps;
     call done_set := Set_Get(sps', MemIndexPieces(s, j)->val);
@@ -257,7 +257,7 @@ asserts sps == AllMemIndexPieces(s);
     var {:linear} map: Map MemIndexPiece StampedValue;
 
     assume {:add_to_pool "MemIndices", 0, NumMemIndices} {:add_to_pool "Data", data} true;
-    assume (forall i: int :: 1 <= i && i <= NumMemIndices ==> (var x := MemIndexPiece(s, i); data[x]->ts > mem[i]->ts || data[x] == mem[i]));
+    assume (forall i: int :: {:add_to_pool "X", i} 1 <= i && i <= NumMemIndices ==> (var x := MemIndexPiece(s, i); data[x]->ts > mem[i]->ts || data[x] == mem[i]));
     call map := Map_Pack(sps, data);
     call Map_Join(pset, map);
 }
@@ -307,7 +307,7 @@ asserts sps == AllMemIndexPieces(s);
     var {:pool "Data"} data: [MemIndexPiece]StampedValue;
     
     assume {:add_to_pool "MemIndices", 0, j+1, NumMemIndices} {:add_to_pool "Data", data} 0 <= j && j <= NumMemIndices;
-    assume (forall i: int :: 1 <= i && i <= j ==> (var x := MemIndexPiece(s, i); data[x]->ts > mem[i]->ts || data[x] == mem[i]));
+    assume (forall {:pool "X"} i: int :: {:add_to_pool "X", i} 1 <= i && i <= j ==> (var x := MemIndexPiece(s, i); data[x]->ts > mem[i]->ts || data[x] == mem[i]));
 
     sps' := sps;
     call done_set := Set_Get(sps', MemIndexPieces(s, j)->val);
