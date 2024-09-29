@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 type Value;
@@ -73,16 +73,25 @@ function {:inline} MemIndexPiece(cp: ChannelPiece, i: int): MemIndexPiece
     Fraction(cp, i, MemIndices)
 }
 
+function {:inline} Read_f_asyncs(sps: Set MemIndexPiece): [read_f]bool {
+    (lambda {:pool "Read_PAs"} pa: read_f :: Set_Contains(sps, pa->perm->val))
+}
+
+function {:inline} Read_s_asyncs(sps: Set MemIndexPiece): [read_s]bool {
+    (lambda {:pool "Read_PAs"} pa: read_s :: Set_Contains(sps, pa->perm->val))
+}
+
 var {:layer 0,3} mem: Snapshot;
 var {:linear} {:layer 0,2} pset: Map MemIndexPiece StampedValue;
 
-atomic action {:layer 3} GetSnapshot({:linear_in} one_loc_channel: One Loc) returns (snapshot: [int]StampedValue)
+atomic action {:layer 3} GetSnapshot() returns (snapshot: [int]StampedValue)
 {
     assume (forall i:int :: 1 <= i && i <= NumMemIndices ==> snapshot[i] == mem[i]);
 }
-yield procedure {:layer 2} Coordinator({:linear_in} one_loc_channel: One Loc) returns (snapshot: [int]StampedValue)
+yield procedure {:layer 2} Coordinator() returns (snapshot: [int]StampedValue)
 refines GetSnapshot;
 {
+    var {:linear} one_loc_channel: One Loc;
     var {:linear} channelOps: Set ChannelPiece;
     var {:linear} one_r: One ChannelPiece;
     var {:linear} one_s_first: One ChannelPiece;
@@ -91,6 +100,7 @@ refines GetSnapshot;
     var {:linear} sps_second: Set MemIndexPiece;
     var snapshot': Snapshot;
 
+    call one_loc_channel := One_New();
     call channelOps := One_To_Fractions(one_loc_channel, ChannelOps());
     call one_r := One_Get(channelOps, ToReceive(one_loc_channel->val));
     call one_s_first := One_Get(channelOps, ToSendFirst(one_loc_channel->val));
@@ -192,7 +202,7 @@ asserts sps == AllMemIndexPieces(s);
     var data: [MemIndexPiece]StampedValue;
 
     assume {:add_to_pool "MemIndices", 0, NumMemIndices} {:add_to_pool "Data", data} true;
-    call {:linear sps} create_asyncs((lambda pa: read_f :: Set_Contains(sps, pa->perm->val)));
+    call {:linear sps} create_asyncs(Read_f_asyncs(sps));
 }
 yield procedure {:layer 0} _main_f(s: ChannelPiece, {:linear_in} sps: Set MemIndexPiece);
 refines main_f;
@@ -231,7 +241,7 @@ asserts sps == AllMemIndexPieces(s);
     
     assume {:add_to_pool "MemIndices", 0, j+1, NumMemIndices} {:add_to_pool "Data", data} 0 <= j && j <= NumMemIndices;
     assume (forall {:pool "X"} i: int :: {:add_to_pool "X", i} 1 <= i && i <= j ==> (var x := MemIndexPiece(s, i); data[x]->ts < mem[i]->ts || data[x] == mem[i]));
-
+    assume {:add_to_pool "MemIndexPieces", Fraction(s, 1, MemIndices), Fraction(s, j+1, MemIndices), Fraction(s, NumMemIndices, MemIndices)} true;
     sps' := sps;
     call done_set := Set_Get(sps', MemIndexPieces(s, j)->val);
     call map := Map_Pack(done_set, data);
@@ -241,7 +251,7 @@ asserts sps == AllMemIndexPieces(s);
         choice := read_f(One(Fraction(s, j+1, MemIndices)));
         call set_choice(choice);
         assume {:add_to_pool "Read_PAs", choice} true;
-        call {:linear sps'} create_asyncs((lambda {:pool "Read_PAs"} pa: read_f :: Set_Contains(sps', pa->perm->val)));
+        call {:linear sps'} create_asyncs((Read_f_asyncs(sps')));
     }
 }
 
@@ -270,7 +280,7 @@ asserts sps == AllMemIndexPieces(s);
     var data: [MemIndexPiece]StampedValue;
 
     assume {:add_to_pool "MemIndices", 0, NumMemIndices} {:add_to_pool "Data", data} true;
-    call {:linear sps} create_asyncs((lambda pa: read_s :: Set_Contains(sps, pa->perm->val)));
+    call {:linear sps} create_asyncs(Read_s_asyncs(sps));
 }
 yield procedure {:layer 0} _main_s(s: ChannelPiece, {:linear_in} sps: Set MemIndexPiece);
 refines main_s;
@@ -307,6 +317,7 @@ asserts sps == AllMemIndexPieces(s);
     
     assume {:add_to_pool "MemIndices", 0, j+1, NumMemIndices} {:add_to_pool "Data", data} 0 <= j && j <= NumMemIndices;
     assume (forall {:pool "X"} i: int :: {:add_to_pool "X", i} 1 <= i && i <= j ==> (var x := MemIndexPiece(s, i); data[x]->ts > mem[i]->ts || data[x] == mem[i]));
+    assume {:add_to_pool "MemIndexPieces", Fraction(s, 1, MemIndices), Fraction(s, j+1, MemIndices), Fraction(s, NumMemIndices, MemIndices)} true;
 
     sps' := sps;
     call done_set := Set_Get(sps', MemIndexPieces(s, j)->val);
@@ -317,6 +328,6 @@ asserts sps == AllMemIndexPieces(s);
         choice := read_s(One(Fraction(s, j+1, MemIndices)));
         call set_choice(choice);
         assume {:add_to_pool "Read_PAs", choice} true;
-        call {:linear sps'} create_asyncs((lambda {:pool "Read_PAs"} pa: read_s :: Set_Contains(sps', pa->perm->val)));
+        call {:linear sps'} create_asyncs(Read_s_asyncs(sps'));
     }
 }
