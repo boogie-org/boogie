@@ -8,6 +8,11 @@ using VC;
 
 namespace VCGeneration;
 
+class SplitOrigin : TokenWrapper, ImplementationPartOrigin {
+  public SplitOrigin(IToken inner) : base(inner)
+  {
+  }
+}
 public static class ManualSplitFinder {
   public static List<Block> UpdateBlocks(IReadOnlyList<Block> blocks,
     Func<Block, List<Cmd>> getCommands)
@@ -164,8 +169,7 @@ public static class ManualSplitFinder {
       return null;
     }
 
-    var partToken = split == null ? partToSplit.Origin : new SplitOrigin(false, split.tok, blockWithSplit, partToSplit.Origin);
-    return createVc(partToken, newBlocks);
+    return createVc(new SplitOrigin(split?.tok ?? partToSplit.Origin), newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
     {
@@ -227,16 +231,12 @@ public static class ManualSplitFinder {
 public interface ImplementationPartOrigin : IToken {
 }
 
-public class SplitOrigin : TokenWrapper, ImplementationPartOrigin {
-  public bool Implicit { get; }
+public class IsolateOrigin : TokenWrapper, ImplementationPartOrigin {
   public Block ContainingBlock { get; }
   public ImplementationPartOrigin PartThatWasSplit { get; }
 
-  public SplitOrigin(bool @implicit, IToken split, Block containingBlock, ImplementationPartOrigin partThatWasSplit) : base(split) {
-    Implicit = @implicit;
+  public IsolateOrigin(IToken split, Block containingBlock, ImplementationPartOrigin partThatWasSplit) : base(split) {
     ContainingBlock = containingBlock;
     PartThatWasSplit = partThatWasSplit;
   }
-
-  public string KindName => Implicit ? "assertion" : "split";
 }

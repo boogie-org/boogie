@@ -368,10 +368,9 @@ namespace Microsoft.Boogie
       return anon++;
     }
 
-    HashSet<string /*!*/> allLabels = new HashSet<string /*!*/>();
+    private readonly HashSet<string /*!*/> allLabels = new();
 
-    Errors /*!*/
-      errorHandler;
+    private readonly Errors /*!*/ errorHandler;
 
     [ContractInvariantMethod]
     void ObjectInvariant()

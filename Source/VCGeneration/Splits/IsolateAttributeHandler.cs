@@ -18,17 +18,28 @@ static class IsolateAttributeHandler {
     var isolatedAssertions = new HashSet<AssertCmd>();
     var results = new List<ManualSplit>();
     var dag = Program.GraphFromBlocks(partToDivide.Blocks);
-
+    
     var assumedAssertions = new Dictionary<AssertCmd, Cmd>();
     foreach (var block in partToDivide.Blocks) {
       foreach (var assert in block.Cmds.OfType<AssertCmd>()) {
         var isolateAttribute = QKeyValue.FindAttribute(assert.Attributes, p => p.Key == "isolate");
-        if (isolateAttribute == null || (splitOnEveryAssert && isolateAttribute.Params.OfType<string>().All(p => p != "none"))) {
-          continue;
+        if (splitOnEveryAssert) {
+          if (isolateAttribute != null) {
+            if (isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "none"))) {
+              continue;
+            }
+            // isolate
+          }
+          // isolate
+        } else {
+          if (isolateAttribute == null) {
+            continue;
+          }
+          // isolate
         }
 
         isolatedAssertions.Add(assert);
-        if (isolateAttribute.Params.OfType<string>().Any(p => p == "path")) {
+        if (isolateAttribute != null && isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "paths"))) {
           results.AddRange(GetSplitsForIsolatedPathAssertion(block, assert));
         } else {
           results.Add(GetSplitForIsolatedAssertion(block, assert));
@@ -36,7 +47,7 @@ static class IsolateAttributeHandler {
       }
     }
 
-    results.Add(GetSplitWithoutIsolatedAssertions(partToDivide.Implementation));
+    results.Add(GetSplitWithoutIsolatedAssertions());
 
     return results;
 
@@ -52,26 +63,34 @@ static class IsolateAttributeHandler {
       var blockToVisit = new Stack<ImmutableStack<Block>>();
       blockToVisit.Push(ImmutableStack.Create(new Block(blockWithAssert.tok)
       {
+        Predecessors = blockWithAssert.Predecessors,
         Label = blockWithAssert.Label,
         TransferCmd = new GotoCmd(Token.NoToken, new List<string>(), new List<Block>()),
         Cmds = GetCommandsForBlockWithAssert(blockWithAssert, assertCmd)
       }));
       while(blockToVisit.Any()) {
         var path = blockToVisit.Pop();
-        var block = path.Peek();
-        if (!block.Predecessors.Any()) {
-          yield return createSplit(new PathOrigin(assertCmd.tok, path, dag.DominatorMap), path.ToList());
+        var firstBlock = path.Peek();
+        if (!firstBlock.Predecessors.Any()) {
+          yield return createSplit(new PathOrigin(assertCmd.tok, path, dag.DominatorMap), new List<Block>() { new(firstBlock.tok) {
+            Label = firstBlock.Label,
+            Cmds = path.SelectMany(b => b.Cmds).ToList() 
+          } });
         }
-        foreach (var oldPrevious in block.Predecessors) {
+        foreach (var oldPrevious in firstBlock.Predecessors) {
           var newPrevious = new Block(oldPrevious.tok)
           {
+            Predecessors = oldPrevious.Predecessors,
             Label = oldPrevious.Label,
             TransferCmd = oldPrevious.TransferCmd,
             Cmds = oldPrevious.Cmds.Select(TransformAssertCmd).ToList()
           };
           if (newPrevious.TransferCmd is GotoCmd gotoCmd) {
             newPrevious.TransferCmd =
-              new GotoCmd(gotoCmd.tok, new List<string>() { block.Label }, new List<Block> { block });
+              new GotoCmd(gotoCmd.tok, new List<string>() { firstBlock.Label }, new List<Block>
+                {
+                  firstBlock
+                });
           }
           blockToVisit.Push(path.Push(newPrevious));
         }
@@ -83,8 +102,13 @@ static class IsolateAttributeHandler {
       var oldToNewBlockMap = new Dictionary<Block, Block>();
       var blockToVisit = new Stack<Block>();
       blockToVisit.Push(blockWithAssert);
+      var visitedBlocks = new HashSet<Block>();
       while(blockToVisit.Any()) {
         var oldBlock = blockToVisit.Pop();
+        if (!visitedBlocks.Add(oldBlock)) {
+          continue;
+        }
+        
         var newBlock = new Block(oldBlock.tok)
         {
           Label = oldBlock.Label,
@@ -109,7 +133,7 @@ static class IsolateAttributeHandler {
         }
       }
 
-      return createSplit(new IsolatedAssertionOrigin(assertCmd), newBlocks);
+      return createSplit(new IsolatedAssertionOrigin(assertCmd), newBlocks.OrderBy(b => b.tok).ToList());
     }
     
     List<Cmd> GetCommandsForBlockWithAssert(Block currentBlock, AssertCmd assert)
@@ -126,20 +150,28 @@ static class IsolateAttributeHandler {
       return result;
     }
 
-    ManualSplit GetSplitWithoutIsolatedAssertions(Implementation implementation) {
+    ManualSplit GetSplitWithoutIsolatedAssertions() {
       var origin = new ImplementationRootOrigin(partToDivide.Implementation);
       if (!isolatedAssertions.Any()) {
         return createSplit(origin, partToDivide.Blocks);
       }
 
       // TODO don't copy list if it is unchanged.
-      return createSplit(origin, ManualSplitFinder.UpdateBlocks(implementation.Blocks, block => block.Cmds.Select(TransformAssertCmd).ToList()));
+      var newBlocks = ManualSplitFinder.UpdateBlocks(partToDivide.Blocks, 
+        block => block.Cmds.Select(cmd => {
+          if (isolatedAssertions.Contains(cmd)) {
+            return TransformAssertCmd(cmd);
+          }
+
+          return cmd;
+        }).ToList());
+      return createSplit(origin, newBlocks);
     }
   }
 }
 
 
-class IsolatedAssertionOrigin : TokenWrapper, ImplementationPartOrigin {
+public class IsolatedAssertionOrigin : TokenWrapper, ImplementationPartOrigin {
   public AssertCmd IsolatedAssert { get; }
 
   public IsolatedAssertionOrigin(AssertCmd isolatedAssert) : base(isolatedAssert.tok) {
