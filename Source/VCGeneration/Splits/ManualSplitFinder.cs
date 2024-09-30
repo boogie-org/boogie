@@ -8,25 +8,48 @@ using VC;
 
 namespace VCGeneration;
 
-
 public static class ManualSplitFinder {
+  public static List<Block> UpdateBlocks(IReadOnlyList<Block> blocks,
+    Func<Block, List<Cmd>> getCommands)
+  {
+    var newBlocks = new List<Block>(blocks.Count);
+    var oldToNewBlockMap = new Dictionary<Block, Block>(newBlocks.Count);
+    foreach (var currentBlock in blocks) {
+      var newBlock = new Block(currentBlock.tok)
+      {
+        Label = currentBlock.Label
+      };
+
+      oldToNewBlockMap[currentBlock] = newBlock;
+      newBlocks.Add(newBlock);
+      newBlock.Cmds = getCommands(currentBlock);
+    }
+      
+    AddJumpsToNewBlocks(oldToNewBlockMap);
+    return newBlocks;
+  }
+  
   public static IEnumerable<ManualSplit> SplitOnPathsAndAssertions(VCGenOptions options, ImplementationRun run, 
     Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
-    var paths = FocusApplier.GetFocusParts(options, run, createSplit);
-    return paths.SelectMany(GetVcsForSplits);
+    var focussedParts = FocusApplier.GetFocusParts(options, run, createSplit);
+    var isolatedParts = focussedParts.SelectMany(s =>
+      IsolateAttributeHandler.GetPartsFromIsolatedAssertions(options, s, createSplit)).ToList();
+
+    if (!isolatedParts.Any()) {
+      return Enumerable.Empty<ManualSplit>();
+    }
+
+    var notIsolatedPart = isolatedParts.First();
+    return GetVcsForSplits(notIsolatedPart).Concat(isolatedParts.Skip(1));
   }
   
   private static List<ManualSplit> GetVcsForSplits(ManualSplit partToSplit) {
-
-    var splitOnEveryAssert = partToSplit.Options.VcsSplitOnEveryAssert;
-    partToSplit.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
-
     var splitsPerBlock = new Dictionary<Block, List<Cmd>>();
     var splits = new HashSet<Cmd>();
     foreach (var block in partToSplit.Blocks) {
       var splitsForThisBlock = new List<Cmd>();
       foreach (var command in block.Cmds) {
-        if (!ShouldSplitHere(command, splitOnEveryAssert)) {
+        if (!ShouldSplitHere(command)) {
           continue;
         }
 
@@ -48,7 +71,7 @@ public static class ManualSplitFinder {
     var blockStartToSplit = GetMapFromBlockStartToSplit(partToSplit.Blocks, splitsPerBlock);
 
     var beforeSplitsVc = GetImplementationPartAfterSplit(CreateVc, partToSplit, blockStartToSplit,
-      entryPoint, splits, null, splitOnEveryAssert);
+      entryPoint, splits, null);
     if (beforeSplitsVc != null)
     {
       vcs.Add(beforeSplitsVc);
@@ -62,7 +85,7 @@ public static class ManualSplitFinder {
       foreach (var split in splitsForBlock)
       {
         var splitVc = GetImplementationPartAfterSplit(CreateVc, partToSplit, 
-          blockStartToSplit, block, splits, split, splitOnEveryAssert);
+          blockStartToSplit, block, splits, split);
         if (splitVc != null)
         {
           vcs.Add(splitVc);
@@ -79,13 +102,12 @@ public static class ManualSplitFinder {
     }
   }
 
-  private static bool ShouldSplitHere(Cmd c, bool splitOnEveryAssert) {
+  private static bool ShouldSplitHere(Cmd c) {
     if (c is not PredicateCmd predicateCmd) {
       return false;
     }
 
-    var findBoolAttribute = QKeyValue.FindNullableBoolAttribute(predicateCmd.Attributes, "split_here");
-    return findBoolAttribute ?? (c is AssertCmd && splitOnEveryAssert);
+    return QKeyValue.FindBoolAttribute(predicateCmd.Attributes, "split_here");
   }
 
   private static Dictionary<Block, Cmd?> GetMapFromBlockStartToSplit(List<Block> blocks, Dictionary<Block, List<Cmd>> splitsPerBlock) {
@@ -122,35 +144,27 @@ public static class ManualSplitFinder {
   private static ManualSplit? GetImplementationPartAfterSplit(Func<ImplementationPartOrigin, List<Block>, ManualSplit> createVc, 
     ManualSplit partToSplit, 
     Dictionary<Block, Cmd?> blockStartToSplit, Block blockWithSplit, 
-    HashSet<Cmd> splits, Cmd? split, bool implicitSplits) 
+    HashSet<Cmd> splits, Cmd? split) 
   {
-    var newBlocks = new List<Block>(partToSplit.Blocks.Count);
     var assertionCount = 0;
-    var oldToNewBlockMap = new Dictionary<Block, Block>(newBlocks.Count); // Maps original blocks to their new copies in newBlocks
-    foreach (var currentBlock in partToSplit.Blocks) {
-      var newBlock = new Block(currentBlock.tok)
-      {
-        Label = currentBlock.Label
-      };
-
-      oldToNewBlockMap[currentBlock] = newBlock;
-      newBlocks.Add(newBlock);
+    
+    var newBlocks = UpdateBlocks(partToSplit.Implementation.Blocks, currentBlock => {
       if (currentBlock == blockWithSplit) {
-        newBlock.Cmds = GetCommandsForBlockWithSplit(currentBlock);
-      } else if (blockStartToSplit[currentBlock] == split) {
-        newBlock.Cmds = GetCommandsForBlockImmediatelyDominatedBySplit(currentBlock);
-      } else {
-        newBlock.Cmds = currentBlock.Cmds.Select(x => CommandTransformations.AssertIntoAssume(partToSplit.Options, x)).ToList();
+        return GetCommandsForBlockWithSplit(currentBlock);
       }
-    }
 
-    if (assertionCount == 0)
-    {
+      if (blockStartToSplit[currentBlock] == split) {
+        return GetCommandsForBlockImmediatelyDominatedBySplit(currentBlock);
+      }
+
+      return currentBlock.Cmds.Select(x => CommandTransformations.AssertIntoAssume(partToSplit.Options, x)).ToList();
+    });
+
+    if (assertionCount == 0) {
       return null;
     }
-    
-    AddJumpsToNewBlocks(partToSplit.Blocks, oldToNewBlockMap);
-    var partToken = split == null ? partToSplit.Origin : new SplitOrigin(implicitSplits, split.tok, blockWithSplit, partToSplit.Origin);
+
+    var partToken = split == null ? partToSplit.Origin : new SplitOrigin(false, split.tok, blockWithSplit, partToSplit.Origin);
     return createVc(partToken, newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
@@ -189,18 +203,17 @@ public static class ManualSplitFinder {
     }
   }
 
-  private static void AddJumpsToNewBlocks(List<Block> oldBlocks, Dictionary<Block, Block> oldToNewBlockMap)
+  public static void AddJumpsToNewBlocks(Dictionary<Block, Block> oldToNewBlockMap)
   {
-    foreach (var oldBlock in oldBlocks) {
-      var newBlock = oldToNewBlockMap[oldBlock];
+    foreach (var (oldBlock, newBlock) in oldToNewBlockMap) {
       if (oldBlock.TransferCmd is ReturnCmd returnCmd) {
         ((ReturnCmd)newBlock.TransferCmd).tok = returnCmd.tok;
         continue;
       }
 
       var gotoCmd = (GotoCmd)oldBlock.TransferCmd;
-      var newLabelTargets = new List<Block>(gotoCmd.LabelTargets.Count());
-      var newLabelNames = new List<string>(gotoCmd.LabelTargets.Count());
+      var newLabelTargets = new List<Block>(gotoCmd.LabelTargets.Count);
+      var newLabelNames = new List<string>(gotoCmd.LabelTargets.Count);
       foreach (var target in gotoCmd.LabelTargets) {
         newLabelTargets.Add(oldToNewBlockMap[target]);
         newLabelNames.Add(oldToNewBlockMap[target].Label);

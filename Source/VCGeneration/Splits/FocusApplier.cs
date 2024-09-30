@@ -92,6 +92,7 @@ public static class FocusApplier
     var newBlocks = new List<Block>();
     var oldToNewBlockMap = new Dictionary<Block, Block>(blocksToInclude.Count);
         
+    // TODO, use ManualSplitFinder.CreateSplit()
     // Traverse backwards to allow settings the jumps to the new blocks
     foreach (var block in blocksReversed)
     {
@@ -116,6 +117,8 @@ public static class FocusApplier
       }
     }
     newBlocks.Reverse();
+    
+    // TODO remove?
     BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
     return newBlocks;
   }
