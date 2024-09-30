@@ -388,8 +388,8 @@ public class Implementation : DeclWithFormals {
     Contract.Requires(errorHandler != null);
     LocVars = localVariables;
     StructuredStmts = structuredStmts;
-    BigBlocksResolutionContext ctx = new BigBlocksResolutionContext(structuredStmts, errorHandler);
-    Blocks = ctx.Blocks;
+    var ctx = new BigBlocksResolutionContext(structuredStmts, errorHandler);
+    Blocks = ctx.GetOrComputeBlocks;
     BlockPredecessorsComputed = false;
     scc = null;
     Attributes = kv;

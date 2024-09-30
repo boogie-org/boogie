@@ -1286,7 +1286,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(this.typedIdent != null);
     }
 
-    public Variable(IToken tok, TypedIdent typedIdent)
+    protected Variable(IToken tok, TypedIdent typedIdent)
       : base(tok, typedIdent.Name)
     {
       Contract.Requires(tok != null);
@@ -1304,6 +1304,7 @@ namespace Microsoft.Boogie
     }
 
     public abstract bool IsMutable { get; }
+    public bool Monotonic { get; }
 
     public override void Emit(TokenTextWriter stream, int level)
     {

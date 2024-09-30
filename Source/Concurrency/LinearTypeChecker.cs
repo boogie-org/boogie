@@ -764,8 +764,8 @@ namespace Microsoft.Boogie
         while (stmtLists.Count > 0)
         {
           var stmtList = stmtLists.Pop();
-          stmtList.BigBlocks.Where(bigBlock => bigBlock.ec != null).ForEach(bigBlock => {
-            switch (bigBlock.ec) {
+          stmtList.BigBlocks.Where(bigBlock => bigBlock.Ec != null).ForEach(bigBlock => {
+            switch (bigBlock.Ec) {
               case IfCmd ifCmd:
                 void ProcessIfCmd(IfCmd ifCmd)
                 {
@@ -773,14 +773,14 @@ namespace Microsoft.Boogie
                   {
                     checkingContext.Error(ifCmd.tok, "access to linear store not allowed");
                   }
-                  stmtLists.Push(ifCmd.thn);
-                  if (ifCmd.elseIf != null)
+                  stmtLists.Push(ifCmd.Thn);
+                  if (ifCmd.ElseIf != null)
                   {
-                    ProcessIfCmd(ifCmd.elseIf);
+                    ProcessIfCmd(ifCmd.ElseIf);
                   }
-                  else if (ifCmd.elseBlock != null)
+                  else if (ifCmd.ElseBlock != null)
                   {
-                    stmtLists.Push(ifCmd.elseBlock);
+                    stmtLists.Push(ifCmd.ElseBlock);
                   }
                 }
                 ProcessIfCmd(ifCmd);

@@ -19,11 +19,11 @@ procedure Foo() returns (y: int)
     assert {:split_here} (x+y) * (x+y) > 25;
     y := y + 1;
     if (x < 3) {
-      assert 2 < 2;
+      check 2 < 2;
       assert {:split_here} y*y > 4;
     }
     else {
-      assert {:split_here} y*y*y < 8;
+      check {:split_here} y*y*y < 8;
       assert 2 < 2;
     }
     assert {:split_here} (x+y) * (x+y) == 25;

@@ -11,7 +11,7 @@ implementation Foo() returns (y: int)
     assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
     assume y#AT#1 == y#AT#0 + 1;
     assume {:partition} 3 <= x#AT#1;
-    assert {:split_here} y#AT#1 * y#AT#1 * y#AT#1 < 8;
+    check {:split_here} y#AT#1 * y#AT#1 * y#AT#1 < 8;
     assert 2 < 2;
     goto ;
 }

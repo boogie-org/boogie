@@ -49,8 +49,7 @@ public sealed class Block : Absy
   }
 
   [Rep] //PM: needed to verify Traverse.Visit
-  public TransferCmd
-    TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
+  public TransferCmd TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
 
   public byte[] Checksum;
 

@@ -110,8 +110,8 @@ public static class ManualSplitFinder {
     foreach (var oldBlock in oldBlocks) {
       var newBlock = new Block(oldBlock.tok) {
         Label = oldBlock.Label,
-        Cmds = oldBlock.Cmds.Select(cmd => 
-          cmd != assertToKeep ? CommandTransformations.AssertIntoAssume(options, cmd) : cmd).ToList()
+        Cmds = oldBlock.Cmds.SelectMany(cmd => 
+          cmd != assertToKeep ? CommandTransformations.AssertIntoAssumes(options, cmd) : new[] { cmd }).ToList()
       };
       oldToNewBlockMap[oldBlock] = newBlock;
       newBlocks.Add(newBlock);
@@ -120,6 +120,7 @@ public static class ManualSplitFinder {
     AddBlockJumps(oldBlocks, oldToNewBlockMap);
     return newBlocks;
   }
+  
   private static List<Block>? DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, 
     Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
     Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert) {
@@ -145,11 +146,15 @@ public static class ManualSplitFinder {
             verify = splitCount == splitNumberWithinBlock;
           }
 
-          if (verify && BlockTransformations.IsNonTrivialAssert(command))
-          {
-            assertionCount++;
+          if (verify) {
+            if (BlockTransformations.IsNonTrivialAssert(command))
+            {
+              assertionCount++;
+            }
+            newCmds.Add(command);
+          } else {
+            newCmds.AddRange(CommandTransformations.AssertIntoAssumes(options, command));
           }
-          newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
         }
         newBlock.Cmds = newCmds;
       } else if (lastSplitInBlock && blockAssignments[currentBlock] == containingBlock) {
@@ -157,15 +162,19 @@ public static class ManualSplitFinder {
         var newCmds = new List<Cmd>();
         foreach (var command in currentBlock.Cmds) {
           verify = !ShouldSplitHere(command, splitOnEveryAssert) && verify;
-          if (verify && BlockTransformations.IsNonTrivialAssert(command))
-          {
-            assertionCount++;
+          if (verify) {
+            if (BlockTransformations.IsNonTrivialAssert(command))
+            {
+              assertionCount++;
+            }
+            newCmds.Add(command);
+          } else {
+            newCmds.AddRange(CommandTransformations.AssertIntoAssumes(options, command));
           }
-          newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
         }
         newBlock.Cmds = newCmds;
       } else {
-        newBlock.Cmds = currentBlock.Cmds.Select(x => CommandTransformations.AssertIntoAssume(options, x)).ToList();
+        newBlock.Cmds = currentBlock.Cmds.SelectMany(cmd => CommandTransformations.AssertIntoAssumes(options, cmd)).ToList();
       }
     }
 

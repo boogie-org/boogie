@@ -119,6 +119,10 @@ namespace VC
 
         foreach (var declaration in PrunedDeclarations.Except(functionAxioms.Concat(constantAxioms)).ToList())
         {
+          if (declaration is Implementation || declaration is Procedure)
+          {
+            continue;
+          }
           declaration.Emit(writer, 0);
         }
 
