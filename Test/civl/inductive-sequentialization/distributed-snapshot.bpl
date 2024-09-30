@@ -100,7 +100,7 @@ refines GetSnapshot;
     var {:linear} sps_second: Set MemIndexPiece;
     var snapshot': Snapshot;
 
-    call one_loc_channel := One_New();
+    call one_loc_channel := Loc_New();
     call channelOps := One_To_Fractions(one_loc_channel, ChannelOps());
     call one_r := One_Get(channelOps, ToReceive(one_loc_channel->val));
     call one_s_first := One_Get(channelOps, ToSendFirst(one_loc_channel->val));

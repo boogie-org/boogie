@@ -360,9 +360,9 @@ pure procedure {:inline 1} Map_Assume<K,V>({:linear} src: Map K V, {:linear} dst
 
 type Loc;
 
-pure procedure {:inline 1} One_New() returns ({:linear} {:pool "One_New"} l: One Loc)
+pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One Loc)
 {
-  assume {:add_to_pool "One_New", l} true;
+  assume {:add_to_pool "Loc_New", l} true;
 }
 
 procedure create_async<T>(PA: T);

@@ -217,7 +217,7 @@ namespace Microsoft.Boogie
   {
     public static HashSet<string> LinearPrimitives = new()
     {
-      "One_New", "One_To_Fractions", "Fractions_To_One",
+      "Loc_New", "One_To_Fractions", "Fractions_To_One",
       "Cell_Pack", "Cell_Unpack",
       "Map_MakeEmpty", "Map_Pack", "Map_Unpack", "Map_Split", "Map_Join", "Map_Get", "Map_Put", "Map_Assume",
       "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
@@ -243,7 +243,7 @@ namespace Microsoft.Boogie
     {
       switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
-        case "One_New":
+        case "Loc_New":
         case "One_To_Fractions":
         case "Fractions_To_One":
         case "Cell_Pack":

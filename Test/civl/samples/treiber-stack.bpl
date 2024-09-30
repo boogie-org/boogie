@@ -67,7 +67,7 @@ modifies Stack;
 {
   var {:linear} one_loc_t: One Loc;
 
-  call one_loc_t := One_New();
+  call one_loc_t := Loc_New();
   loc_t := one_loc_t->val;
   assume !Map_Contains(Stack, loc_t);
   Stack := Map_Update(Stack, loc_t, Vec_Empty());
@@ -85,7 +85,7 @@ preserves call StackDom();
   top := None();
   call stack := Map_MakeEmpty();
   treiber := Treiber(top, stack);
-  call one_loc_t := One_New();
+  call one_loc_t := Loc_New();
   call cell_t := Cell_Pack(one_loc_t, treiber);
   loc_t := one_loc_t->val;
   call AllocTreiber#0(cell_t);
@@ -178,7 +178,7 @@ asserts Map_Contains(ts, loc_t);
   call one_loc_t, treiber := Cell_Unpack(cell_t);
   Treiber(top, stack) := treiber;
   assume loc_n is None || Map_Contains(stack, loc_n->t);
-  call one_loc_n := One_New();
+  call one_loc_n := Loc_New();
   call loc_pieces := One_To_Fractions(one_loc_n, AllLocPieces());
   call left_loc_piece := One_Get(loc_pieces, Fraction(one_loc_n->val, Left(), AllLocPieces()));
   new_loc_n := left_loc_piece->val;
@@ -201,7 +201,7 @@ refines AtomicAllocNode#3;
   var {:linear} left_loc_piece: One (Fraction Loc LocPiece);
 
   call loc_n := ReadTopOfStack#Push(loc_t);
-  call one_loc_n := One_New();
+  call one_loc_n := Loc_New();
   call loc_pieces := One_To_Fractions(one_loc_n, AllLocPieces());
   call left_loc_piece := One_Get(loc_pieces, Fraction(one_loc_n->val, Left(), AllLocPieces()));
   new_loc_n := left_loc_piece->val;
