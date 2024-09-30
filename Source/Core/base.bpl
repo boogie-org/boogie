@@ -358,9 +358,9 @@ pure procedure {:inline 1} Map_Assume<K,V>({:linear} src: Map K V, {:linear} dst
   assume Set_IsDisjoint(src->dom, dst->dom);
 }
 
-type Loc _;
+type Loc;
 
-pure procedure {:inline 1} One_New<V>() returns ({:linear} {:pool "One_New"} l: One (Loc V))
+pure procedure {:inline 1} One_New() returns ({:linear} {:pool "One_New"} l: One Loc)
 {
   assume {:add_to_pool "One_New", l} true;
 }
