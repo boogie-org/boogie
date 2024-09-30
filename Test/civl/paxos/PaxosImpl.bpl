@@ -377,41 +377,33 @@ refines A_ReceiveVoteResponse;
 pure action SendJoinResponseIntro(joinResponse: JoinResponse, {:linear_in} p: One Permission, {:linear_in} permJoinChannel: JoinResponseChannel)
 returns ({:linear} permJoinChannel': JoinResponseChannel)
 {
-  var {:linear} cell_p: Cell Permission JoinResponse;
   permJoinChannel' := permJoinChannel;
-  call cell_p := Cell_Pack(p, joinResponse);
-  call Map_Put(permJoinChannel', cell_p);
+  call Map_Put(permJoinChannel', p, joinResponse);
 }
 
 pure action ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse, {:linear_in} permJoinChannel: JoinResponseChannel)
 returns ({:linear} receivedPermission: One Permission, {:linear} permJoinChannel': JoinResponseChannel)
 {
   var _x: JoinResponse;
-  var {:linear} cell_p: Cell Permission JoinResponse;
 
   permJoinChannel' := permJoinChannel;
-  call cell_p := Map_Get(permJoinChannel', JoinPerm(round, joinResponse->from));
-  call receivedPermission, _x := Cell_Unpack(cell_p);
+  call receivedPermission, _x := Map_Get(permJoinChannel', JoinPerm(round, joinResponse->from));
 }
 
 pure action SendVoteResponseIntro(voteResponse: VoteResponse, {:linear_in} p: One Permission, {:linear_in} permVoteChannel: VoteResponseChannel)
 returns ({:linear} permVoteChannel': VoteResponseChannel)
 {
-  var {:linear} cell_p: Cell Permission VoteResponse;
   permVoteChannel' := permVoteChannel;
-  call cell_p := Cell_Pack(p, voteResponse);
-  call Map_Put(permVoteChannel', cell_p);
+  call Map_Put(permVoteChannel', p, voteResponse);
 }
 
 pure action ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse, {:linear_in} permVoteChannel: VoteResponseChannel)
 returns ({:linear} receivedPermission: One Permission, {:linear} permVoteChannel': VoteResponseChannel)
 {
-  var {:linear} cell_p: Cell Permission VoteResponse;
   var _x: VoteResponse;
 
   permVoteChannel' := permVoteChannel;
-  call cell_p := Map_Get(permVoteChannel', VotePerm(round, voteResponse->from));
-  call receivedPermission, _x := Cell_Unpack(cell_p);
+  call receivedPermission, _x := Map_Get(permVoteChannel', VotePerm(round, voteResponse->from));
 }
 
 //// Permission accounting

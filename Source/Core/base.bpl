@@ -351,8 +351,8 @@ pure procedure {:inline 1} Map_Unpack<K,V>({:linear_in} m: Map K V) returns ({:l
 }
 pure procedure Map_Split<K,V>({:linear} path: Map K V, s: Set K) returns ({:linear} m: Map K V);
 pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} m: Map K V);
-pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} c: Cell K V);
-pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} c: Cell K V);
+pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} l: One K, {:linear} v: V);
+pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} l: One K, {:linear_in} v: V);
 pure procedure {:inline 1} Map_Assume<K,V>({:linear} src: Map K V, {:linear} dst: Map K V)
 {
   assume Set_IsDisjoint(src->dom, dst->dom);

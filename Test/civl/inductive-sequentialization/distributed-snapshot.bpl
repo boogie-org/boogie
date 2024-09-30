@@ -215,14 +215,12 @@ asserts IsSendFirst(perm->val->val) && IsValidMemIndexPiece(perm->val);
 {
     var {:pool "SV_read_f"} sv: StampedValue;
     var piece: MemIndexPiece;
-    var {:linear} cell: Cell MemIndexPiece StampedValue;
 
     piece := perm->val;
     assume {:add_to_pool "MemIndexPieces", piece} true;
     assume {:add_to_pool "MemIndices", 0, NumMemIndices} true;
     assume {:add_to_pool "SV_read_f", sv, mem[piece->id]} sv->ts < mem[piece->id]->ts || sv == mem[piece->id];
-    call cell := Cell_Pack(perm, sv);
-    call Map_Put(pset, cell);
+    call Map_Put(pset, perm, sv);
     assume {:add_to_pool "Data", pset->val} true;
 }
 
@@ -291,14 +289,12 @@ asserts {:add_to_pool "SV_read_s", mem[perm->val->id]} IsSendSecond(perm->val->v
 {
     var {:pool "SV_read_s"} sv: StampedValue;
     var piece: MemIndexPiece;
-    var {:linear} cell: Cell MemIndexPiece StampedValue;
 
     piece := perm->val;
     assume {:add_to_pool "MemIndexPieces", piece} true;
     assume {:add_to_pool "MemIndices", 0, NumMemIndices} true;
     assume {:add_to_pool "SV_read_s", sv, mem[piece->id]} sv->ts > mem[piece->id]->ts || sv == mem[piece->id];
-    call cell := Cell_Pack(perm, sv);
-    call Map_Put(pset, cell);
+    call Map_Put(pset, perm, sv);
     assume {:add_to_pool "Data", pset->val} true;
 }
 
