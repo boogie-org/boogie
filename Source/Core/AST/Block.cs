@@ -43,7 +43,7 @@ public sealed class Block : Absy
   {
     if (TransferCmd is GotoCmd g)
     {
-      return cce.NonNull(g.labelTargets);
+      return cce.NonNull(g.LabelTargets);
     }
     return new List<Block>();
   }

@@ -922,9 +922,9 @@ public class Implementation : DeclWithFormals {
     if (gotoCmd != null)
     {
       // If it is a gotoCmd
-      Contract.Assert(gotoCmd.labelTargets != null);
+      Contract.Assert(gotoCmd.LabelTargets != null);
 
-      return gotoCmd.labelTargets;
+      return gotoCmd.LabelTargets;
     }
     else
     {
@@ -972,8 +972,8 @@ public class Implementation : DeclWithFormals {
         continue;
       }
 
-      Contract.Assert(gtc.labelTargets != null);
-      foreach (var /*!*/ dest in gtc.labelTargets)
+      Contract.Assert(gtc.LabelTargets != null);
+      foreach (var /*!*/ dest in gtc.LabelTargets)
       {
         Contract.Assert(dest != null);
         dest.Predecessors.Add(block);
@@ -1010,7 +1010,7 @@ public class Implementation : DeclWithFormals {
         }
 
         // it seems that the goto statement at the end may be reached
-        foreach (var next in gotoCmd.labelTargets) {
+        foreach (var next in gotoCmd.LabelTargets) {
           Contract.Assume(next != null);
           toVisit.Push(next);
         }

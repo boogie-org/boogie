@@ -347,11 +347,11 @@ public class LoopExtractor {
           if (detLoopExtract)
           {
             GotoCmd auxGotoCmd = block.TransferCmd as GotoCmd;
-            Contract.Assert(auxGotoCmd != null && auxGotoCmd.labelNames != null &&
-                            auxGotoCmd.labelTargets != null && auxGotoCmd.labelTargets.Count >= 1);
+            Contract.Assert(auxGotoCmd != null && auxGotoCmd.LabelNames != null &&
+                            auxGotoCmd.LabelTargets != null && auxGotoCmd.LabelTargets.Count >= 1);
             //BUGFIX on 10/26/15: this contains nodes present in NaturalLoops for a different backedgenode
             var loopNodes = GetBlocksInAllNaturalLoops(options, header, g); //var loopNodes = g.NaturalLoops(header, source);
-            foreach (var bl in auxGotoCmd.labelTargets)
+            foreach (var bl in auxGotoCmd.LabelTargets)
             {
               if (g.Nodes.Contains(bl) && //newly created blocks are not present in NaturalLoop(header, xx, g)
                   !loopNodes.Contains(bl))
@@ -418,27 +418,27 @@ public class LoopExtractor {
         dummyBlocks.Add(block1.Label);
 
         GotoCmd gotoCmd = source.TransferCmd as GotoCmd;
-        Contract.Assert(gotoCmd != null && gotoCmd.labelNames != null && gotoCmd.labelTargets != null &&
-                        gotoCmd.labelTargets.Count >= 1);
+        Contract.Assert(gotoCmd != null && gotoCmd.LabelNames != null && gotoCmd.LabelTargets != null &&
+                        gotoCmd.LabelTargets.Count >= 1);
         List<String> /*!*/
           newLabels = new List<String>();
         List<Block> /*!*/
           newTargets = new List<Block>();
-        for (int i = 0; i < gotoCmd.labelTargets.Count; i++)
+        for (int i = 0; i < gotoCmd.LabelTargets.Count; i++)
         {
-          if (gotoCmd.labelTargets[i] == header)
+          if (gotoCmd.LabelTargets[i] == header)
           {
             continue;
           }
 
-          newTargets.Add(gotoCmd.labelTargets[i]);
-          newLabels.Add(gotoCmd.labelNames[i]);
+          newTargets.Add(gotoCmd.LabelTargets[i]);
+          newLabels.Add(gotoCmd.LabelNames[i]);
         }
 
         newTargets.Add(block1);
         newLabels.Add(block1.Label);
-        gotoCmd.labelNames = newLabels;
-        gotoCmd.labelTargets = newTargets;
+        gotoCmd.LabelNames = newLabels;
+        gotoCmd.LabelTargets = newTargets;
         blockMap[block1] = block2;
       }
 
@@ -479,15 +479,15 @@ public class LoopExtractor {
         }
         else
         {
-          Contract.Assume(gotoCmd.labelNames != null && gotoCmd.labelTargets != null);
+          Contract.Assume(gotoCmd.LabelNames != null && gotoCmd.LabelTargets != null);
           List<String> newLabels = new List<String>();
           List<Block> newTargets = new List<Block>();
-          for (int i = 0; i < gotoCmd.labelTargets.Count; i++)
+          for (int i = 0; i < gotoCmd.LabelTargets.Count; i++)
           {
-            Block target = gotoCmd.labelTargets[i];
+            Block target = gotoCmd.LabelTargets[i];
             if (blockMap.ContainsKey(target))
             {
-              newLabels.Add(gotoCmd.labelNames[i]);
+              newLabels.Add(gotoCmd.LabelNames[i]);
               newTargets.Add(blockMap[target]);
             }
           }
@@ -613,7 +613,7 @@ public class LoopExtractor {
         continue;
       }
 
-      foreach (var bl in auxCmd.labelTargets)
+      foreach (var bl in auxCmd.LabelTargets)
       {
         if (loopBlocks.Contains(bl))
         {

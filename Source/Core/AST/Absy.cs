@@ -4038,15 +4038,15 @@ namespace Microsoft.Boogie
         GotoCmd /*!*/
           g = (GotoCmd) tc;
         Contract.Assert(g != null);
-        Contract.Assume(g.labelTargets != null);
-        if (g.labelTargets.Count == 1)
+        Contract.Assume(g.LabelTargets != null);
+        if (g.LabelTargets.Count == 1)
         {
-          return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.labelTargets[0])));
+          return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.LabelTargets[0])));
         }
         else
         {
           List<RE> rs = new List<RE>();
-          foreach (Block /*!*/ target in g.labelTargets)
+          foreach (Block /*!*/ target in g.LabelTargets)
           {
             Contract.Assert(target != null);
             RE r = Transform(target);

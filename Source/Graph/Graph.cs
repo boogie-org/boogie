@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
-using System.Text; // for StringBuilder
+using System.Text;
 using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie.GraphUtil
@@ -43,7 +43,7 @@ namespace Microsoft.Boogie.GraphUtil
           sb.Append(", ");
         }
 
-        Contract.Assert(!object.Equals(de.Key, default(Node)));
+        Contract.Assert(!Equals(de.Key, default(Node)));
         sb.Append(de.Key.ToString());
         sb.Append("~>");
         sb.Append(ListToString(de.Value));
@@ -59,48 +59,47 @@ namespace Microsoft.Boogie.GraphUtil
   {
     // doms maps (unique) node numbers to the node numbers of the immediate dominator
     // to use it on Nodes, one needs the two way mapping between nodes and their numbers.
-    private int[] doms; // 0 is unused: means undefined
+    private int[] nodeNumberToImmediateDominator; // 0 is unused: means undefined
 
     // here are the two mappings
     private Node[] postOrderNumberToNode;
     private Dictionary<Node, int> nodeToPostOrderNumber;
     private int sourceNum; // (number for) root of the graph
-    private Node source; // root of the graph
-    private Graph<Node> graph;
+    private readonly Node source; // root of the graph
+    private readonly Graph<Node> graph;
     private Dictionary<Node, List<Node>> immediateDominatorMap;
 
     [NotDelayed]
     internal DomRelation(Graph<Node> g, Node source)
     {
-      this.graph = g;
+      graph = g;
       // slot 0 not used: nodes are numbered from 1 to n so zero
       // can represent undefined.
       this.source = source;
-      //:base();
-      this.NewComputeDominators();
+      NewComputeDominators();
     }
 
     public Dictionary<Node, List<Node>> ImmediateDominatorMap
     {
       get
       {
-        Contract.Assume(this.immediateDominatorMap != null);
-        return this.immediateDominatorMap;
+        Contract.Assume(immediateDominatorMap != null);
+        return immediateDominatorMap;
       }
     }
 
     public bool DominatedBy(Node dominee, Node dominator, List<Node> path = null)
     {
-      Contract.Assume(this.nodeToPostOrderNumber != null);
-      Contract.Assume(this.doms != null);
-      int domineeNum = this.nodeToPostOrderNumber[dominee];
-      int dominatorNum = this.nodeToPostOrderNumber[dominator];
+      Contract.Assume(nodeToPostOrderNumber != null);
+      Contract.Assume(nodeNumberToImmediateDominator != null);
+      int domineeNum = nodeToPostOrderNumber[dominee];
+      int dominatorNum = nodeToPostOrderNumber[dominator];
       if (domineeNum == dominatorNum)
       {
         return true;
       }
 
-      int currentNodeNum = this.doms[domineeNum];
+      int currentNodeNum = nodeNumberToImmediateDominator[domineeNum];
       while (true)
       {
         if (currentNodeNum == dominatorNum)
@@ -108,28 +107,25 @@ namespace Microsoft.Boogie.GraphUtil
           return true;
         }
 
-        if (currentNodeNum == this.sourceNum)
+        if (currentNodeNum == sourceNum)
         {
           return false;
         }
 
-        if (path != null)
-        {
-          path.Add(postOrderNumberToNode[currentNodeNum]);
-        }
+        path?.Add(postOrderNumberToNode[currentNodeNum]);
 
-        currentNodeNum = this.doms[currentNodeNum];
+        currentNodeNum = nodeNumberToImmediateDominator[currentNodeNum];
       }
     }
 
-    private Dictionary<Node, List<Node>> domMap = null;
+    private Dictionary<Node, List<Node>> domMap;
 
     [Pure]
     public override string ToString()
     {
-      Contract.Assume(this.doms != null);
-      int[] localDoms = this.doms;
-      Contract.Assume(this.postOrderNumberToNode != null);
+      Contract.Assume(nodeNumberToImmediateDominator != null);
+      int[] localDoms = nodeNumberToImmediateDominator;
+      Contract.Assume(postOrderNumberToNode != null);
       if (domMap == null)
       {
         domMap = new Dictionary<Node, List<Node>>();
@@ -139,14 +135,14 @@ namespace Microsoft.Boogie.GraphUtil
           int domineeNum = i;
           int currentNodeNum = domineeNum;
           List<Node> dominators = new List<Node>();
-          while (currentNodeNum != this.sourceNum)
+          while (currentNodeNum != sourceNum)
           {
-            dominators.Add(this.postOrderNumberToNode[currentNodeNum]);
-            currentNodeNum = this.doms[currentNodeNum];
+            dominators.Add(postOrderNumberToNode[currentNodeNum]);
+            currentNodeNum = nodeNumberToImmediateDominator[currentNodeNum];
           }
 
-          dominators.Add(this.postOrderNumberToNode[this.sourceNum]);
-          domMap.Add(this.postOrderNumberToNode[i], dominators);
+          dominators.Add(postOrderNumberToNode[sourceNum]);
+          domMap.Add(postOrderNumberToNode[i], dominators);
         }
       }
 
@@ -160,7 +156,7 @@ namespace Microsoft.Boogie.GraphUtil
           sb.Append(", ");
         }
 
-        Contract.Assert(!object.Equals(de.Key, default(Node)));
+        Contract.Assert(!Equals(de.Key, default(Node)));
         sb.Append(de.Key.ToString());
         sb.Append("~>");
         sb.Append(ListToString(de.Value));
@@ -232,19 +228,19 @@ namespace Microsoft.Boogie.GraphUtil
     // http://citeseer.ist.psu.edu/cooper01simple.html
     private void NewComputeDominators()
     {
-      int n = this.graph.Nodes.Count;
-      this.postOrderNumberToNode = new Node[n + 1];
-      this.nodeToPostOrderNumber = new Dictionary<Node, int>();
+      int n = graph.Nodes.Count;
+      postOrderNumberToNode = new Node[n + 1];
+      nodeToPostOrderNumber = new Dictionary<Node, int>();
       //HashSet<Node> visited = new HashSet<Node>();
       //int currentNumber = 1;
-      Contract.Assume(this.source != null);
+      Contract.Assume(source != null);
       //this.PostOrderVisit(this.source, visited, ref currentNumber);
-      this.PostOrderVisitIterative(this.source);
-      this.sourceNum = this.nodeToPostOrderNumber[source];
+      PostOrderVisitIterative(source);
+      this.sourceNum = nodeToPostOrderNumber[source];
       //    for (int i = 1; i <= n; i++){ Console.WriteLine(postOrderNumberToNode[i]); }
-      this.doms = new int[n + 1]; // 0 is unused: means undefined
-      Node start_node = this.source;
-      this.doms[this.nodeToPostOrderNumber[start_node]] = this.nodeToPostOrderNumber[start_node];
+      nodeNumberToImmediateDominator = new int[n + 1]; // 0 is unused: means undefined
+      Node start_node = source;
+      nodeNumberToImmediateDominator[nodeToPostOrderNumber[start_node]] = nodeToPostOrderNumber[start_node];
       bool changed = true;
       //    PrintIntArray(doms);
       while (changed)
@@ -253,8 +249,8 @@ namespace Microsoft.Boogie.GraphUtil
         // for all nodes, b, in reverse postorder (except start_node)
         for (int nodeNum = n - 1; 1 <= nodeNum; nodeNum--)
         {
-          Node b = this.postOrderNumberToNode[nodeNum];
-          IEnumerable<Node> predecessors = this.graph.Predecessors(b);
+          Node b = postOrderNumberToNode[nodeNum];
+          IEnumerable<Node> predecessors = graph.Predecessors(b);
           // find a predecessor (i.e., a higher number) for which
           // the doms array has been set
           int new_idom = 0;
@@ -264,9 +260,9 @@ namespace Microsoft.Boogie.GraphUtil
 
           foreach (Node p in predecessors)
           {
-            if (this.doms[this.nodeToPostOrderNumber[p]] != 0)
+            if (nodeNumberToImmediateDominator[nodeToPostOrderNumber[p]] != 0)
             {
-              int x = this.nodeToPostOrderNumber[p];
+              int x = nodeToPostOrderNumber[p];
               new_idom = x;
               first_processed_predecessor = x;
               break;
@@ -279,22 +275,22 @@ namespace Microsoft.Boogie.GraphUtil
 
           foreach (Node p in predecessors)
           {
-            if (this.nodeToPostOrderNumber[p] == first_processed_predecessor)
+            if (nodeToPostOrderNumber[p] == first_processed_predecessor)
             {
               continue;
             }
 
-            if (this.doms[this.nodeToPostOrderNumber[p]] != 0)
+            if (nodeNumberToImmediateDominator[nodeToPostOrderNumber[p]] != 0)
             {
-              new_idom = intersect(this.nodeToPostOrderNumber[p], new_idom, this.doms);
+              new_idom = Intersect(nodeToPostOrderNumber[p], new_idom, nodeNumberToImmediateDominator);
             }
           }
 
           #endregion
 
-          if (this.doms[this.nodeToPostOrderNumber[b]] != new_idom)
+          if (nodeNumberToImmediateDominator[nodeToPostOrderNumber[b]] != new_idom)
           {
-            this.doms[this.nodeToPostOrderNumber[b]] = new_idom;
+            nodeNumberToImmediateDominator[nodeToPostOrderNumber[b]] = new_idom;
             changed = true;
           }
         }
@@ -302,13 +298,13 @@ namespace Microsoft.Boogie.GraphUtil
 
       #region Populate the Immediate Dominator Map
 
-      int sourceNum = this.nodeToPostOrderNumber[this.source];
+      int sourceNum = nodeToPostOrderNumber[source];
       immediateDominatorMap = new Dictionary<Node, List<Node>>();
       for (int i = 1; i <= n; i++)
       {
-        Node node = this.postOrderNumberToNode[i];
-        Node idomNode = this.postOrderNumberToNode[this.doms[i]];
-        if (i == sourceNum && this.doms[i] == sourceNum)
+        Node node = postOrderNumberToNode[i];
+        Node idomNode = postOrderNumberToNode[nodeNumberToImmediateDominator[i]];
+        if (i == sourceNum && nodeNumberToImmediateDominator[i] == sourceNum)
         {
           continue;
         }
@@ -328,7 +324,7 @@ namespace Microsoft.Boogie.GraphUtil
       #endregion
     }
 
-    private int intersect(int b1, int b2, int[] doms)
+    private static int Intersect(int b1, int b2, int[] doms)
     {
       int finger1 = b1;
       int finger2 = b2;
@@ -357,16 +353,16 @@ namespace Microsoft.Boogie.GraphUtil
       }
 
       visited.Add(n);
-      foreach (Node /*!*/ child in this.graph.Successors(n))
+      foreach (Node /*!*/ child in graph.Successors(n))
       {
         Contract.Assert(child != null);
         PostOrderVisit(child, visited, ref currentNumber);
       }
 
-      Contract.Assume(this.postOrderNumberToNode != null);
-      Contract.Assume(this.nodeToPostOrderNumber != null);
-      this.postOrderNumberToNode[currentNumber] = n;
-      this.nodeToPostOrderNumber[n] = currentNumber;
+      Contract.Assume(postOrderNumberToNode != null);
+      Contract.Assume(nodeToPostOrderNumber != null);
+      postOrderNumberToNode[currentNumber] = n;
+      nodeToPostOrderNumber[n] = currentNumber;
       currentNumber++;
       return;
     }
@@ -390,17 +386,17 @@ namespace Microsoft.Boogie.GraphUtil
 
         if (grey.Contains(curr))
         {
-          Contract.Assume(this.postOrderNumberToNode != null);
-          Contract.Assume(this.nodeToPostOrderNumber != null);
-          this.postOrderNumberToNode[currentNumber] = curr;
-          this.nodeToPostOrderNumber[curr] = currentNumber;
+          Contract.Assume(postOrderNumberToNode != null);
+          Contract.Assume(nodeToPostOrderNumber != null);
+          postOrderNumberToNode[currentNumber] = curr;
+          nodeToPostOrderNumber[curr] = currentNumber;
           currentNumber++;
         }
         else
         {
           grey.Add(curr);
           stack.Push(curr);
-          foreach (Node /*!*/ child in this.graph.Successors(curr))
+          foreach (Node /*!*/ child in graph.Successors(curr))
           {
             Contract.Assert(child != null);
             if (!visited.Contains(child))
@@ -416,7 +412,7 @@ namespace Microsoft.Boogie.GraphUtil
     public Node LeastCommonAncestor(Node n1, Node n2)
     {
       int num1 = nodeToPostOrderNumber[n1], num2 = nodeToPostOrderNumber[n2];
-      int lca = intersect(num1, num2, this.doms);
+      int lca = Intersect(num1, num2, nodeNumberToImmediateDominator);
       return postOrderNumberToNode[lca];
     }
   }
@@ -586,7 +582,7 @@ namespace Microsoft.Boogie.GraphUtil
       }
     }
 
-    public IEnumerable<Node> Predecessors(Node n)
+    public IReadOnlyCollection<Node> Predecessors(Node n)
     {
       // original A#
       //Set<Node> result = Set{ x : x in Nodes, Edge(x,n) };
@@ -618,12 +614,12 @@ namespace Microsoft.Boogie.GraphUtil
       get
       {
         Contract.Assert(source != null);
-        if (this.dominatorMap == null)
+        if (dominatorMap == null)
         {
-          this.dominatorMap = new DomRelation<Node>(this, this.source);
+          dominatorMap = new DomRelation<Node>(this, source);
         }
 
-        return this.dominatorMap;
+        return dominatorMap;
       }
     }
 
@@ -633,21 +629,20 @@ namespace Microsoft.Boogie.GraphUtil
     // The method does not check the graph for the DAG property. That risk is on the caller.
     public Dictionary<Node, HashSet<Node>> DominatorsFast()
     {
-      List<Node> topoSorted = this.TopologicalSort().ToList();
+      var topoSorted = TopologicalSort().ToList();
       var dominators = new Dictionary<Node, HashSet<Node>>();
       topoSorted.ForEach(u => dominators[u] = topoSorted.ToHashSet());
-      var todo = new Queue<Node>();
-      foreach (var u in topoSorted)
+      foreach (var node in topoSorted)
       {
         var s = new HashSet<Node>();
-        var predecessors = this.Predecessors(u).ToList();
-        if (predecessors.Count() != 0)
+        var predecessors = Predecessors(node).ToList();
+        if (predecessors.Count != 0)
         {
           s.UnionWith(dominators[predecessors.First()]);
           predecessors.ForEach(v => s.IntersectWith(dominators[v]));
         }
-        s.Add(u);
-        dominators[u] = s;
+        s.Add(node);
+        dominators[node] = s;
       }
       return dominators;
     }
@@ -655,18 +650,18 @@ namespace Microsoft.Boogie.GraphUtil
     // Use this method only for DAGs because it uses DominatorsFast() for computing dominators
     public Dictionary<Node, Node> ImmediateDominator()
     {
-      List<Node> topoSorted = this.TopologicalSort().ToList();
+      List<Node> topoSorted = TopologicalSort().ToList();
       Dictionary<Node, HashSet<Node>> dominators = DominatorsFast();
       var immediateDominator = new Dictionary<Node, Node>();
-      foreach (var u in this.Nodes)
+      foreach (var node in Nodes)
       {
-        if (dominators[u].Count() > 1)
+        if (dominators[node].Count > 1)
         {
-          dominators[u].Remove(u);
+          dominators[node].Remove(node);
         }
-        immediateDominator[u] = topoSorted.ElementAt(dominators[u].Max(e => topoSorted.IndexOf(e)));
+        immediateDominator[node] = topoSorted.ElementAt(dominators[node].Max(e => topoSorted.IndexOf(e)));
       }
-      immediateDominator[this.source] = this.source;
+      immediateDominator[source] = source;
       return immediateDominator;
     }
 
@@ -675,32 +670,32 @@ namespace Microsoft.Boogie.GraphUtil
       get
       {
         Contract.Assert(source != null);
-        if (this.dominatorMap == null)
+        if (dominatorMap == null)
         {
-          this.dominatorMap = new DomRelation<Node>(this, this.source);
+          dominatorMap = new DomRelation<Node>(this, source);
         }
 
-        return this.dominatorMap.ImmediateDominatorMap;
+        return dominatorMap.ImmediateDominatorMap;
       }
     }
 
     public List<Node> ImmediatelyDominatedBy(Node /*!*/ n)
     {
       Contract.Requires(n != null);
-      this.ImmediateDominatorMap.TryGetValue(n, out var dominees);
-      return dominees == null ? new List<Node>() : dominees;
+      ImmediateDominatorMap.TryGetValue(n, out var dominees);
+      return dominees ?? new List<Node>();
     }
 
-    public IEnumerable<Node /*?*/> TopologicalSort(bool reversed = false)
+    public List<Node /*?*/> TopologicalSort(bool reversed = false)
     {
-      this.TarjanTopSort(out var acyclic, out var sortedList, reversed);
+      TarjanTopSort(out var acyclic, out var sortedList, reversed);
       return acyclic ? sortedList : new List<Node>();
     }
 
     // From Tarjan 1972
     public void TarjanTopSort(out bool acyclic, out List<Node> sortedNodes, bool reversed = false)
     {
-      int n = this.Nodes.Count;
+      int n = Nodes.Count;
       if (n == 0)
       {
         acyclic = true;
@@ -714,14 +709,14 @@ namespace Microsoft.Boogie.GraphUtil
       Dictionary<Node, int> nodeToNumber = new Dictionary<Node, int>(n);
       Node[] numberToNode = new Node[n];
       int counter = 0;
-      foreach (Node node in this.Nodes)
+      foreach (Node node in Nodes)
       {
         numberToNode[counter] = node;
         nodeToNumber[node] = counter;
         counter++;
       }
 
-      foreach (Tuple<Node /*!*/, Node /*!*/> e in this.Edges)
+      foreach (Tuple<Node /*!*/, Node /*!*/> e in Edges)
       {
         Contract.Assert(e.Item1 != null);
         Contract.Assert(e.Item2 != null);
@@ -771,7 +766,7 @@ namespace Microsoft.Boogie.GraphUtil
         Node root = numberToNode[rootIndex];
         sorted.Add(root);
         ++sortedIndex;
-        foreach (Node s in this.Successors(root))
+        foreach (Node s in Successors(root))
         {
           incomingEdges[nodeToNumber[s]]--;
         }
@@ -784,7 +779,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     private IEnumerable<Node> OldTopologicalSort()
     {
-      Tuple<bool, List<Node>> result = this.TopSort();
+      Tuple<bool, List<Node>> result = TopSort();
       return result.Item1 ? result.Item2 : (IEnumerable<Node>) new List<Node>();
     }
 
@@ -792,7 +787,7 @@ namespace Microsoft.Boogie.GraphUtil
     private Tuple<bool, List<Node>> TopSort()
     {
       List<Node> S = new List<Node>();
-      HashSet<Node> V = this.Nodes;
+      HashSet<Node> V = Nodes;
       HashSet<Node> X = new HashSet<Node>();
       foreach (Node /*!*/ n in V)
       {
@@ -815,7 +810,7 @@ namespace Microsoft.Boogie.GraphUtil
             foreach (Node /*!*/ u in X)
             {
               Contract.Assert(u != null);
-              if (this.Edge(u, n))
+              if (Edge(u, n))
               {
                 inDegreeZero = false;
                 break; // no point looking further
@@ -902,7 +897,7 @@ namespace Microsoft.Boogie.GraphUtil
       {
         Contract.Requires(naturalLoops == null ||
                           Contract.ForAll(naturalLoops.Keys, Key => Key.Item1 != null && Key.Item2 != null));
-        this.reducible = b;
+        reducible = b;
         this.headers = headers;
         this.backEdgeNodes = backEdgeNodes;
         this.naturalLoops = naturalLoops;
@@ -1085,12 +1080,12 @@ namespace Microsoft.Boogie.GraphUtil
 
     public void ComputeLoops()
     {
-      ReducibleResult r = ComputeReducible(this, this.source);
-      this.reducible = r.reducible;
-      this.headers = r.headers;
-      this.backEdgeNodes = r.backEdgeNodes;
-      this.naturalLoops = r.naturalLoops;
-      this.splitCandidates = r.splitCandidates;
+      ReducibleResult r = ComputeReducible(this, source);
+      reducible = r.reducible;
+      headers = r.headers;
+      backEdgeNodes = r.backEdgeNodes;
+      naturalLoops = r.naturalLoops;
+      splitCandidates = r.splitCandidates;
       return;
     }
 
@@ -1151,7 +1146,7 @@ namespace Microsoft.Boogie.GraphUtil
           continue;
         }
 
-        var targets = forward ? this.Successors(current) : this.Predecessors(current);
+        var targets = forward ? Successors(current) : Predecessors(current);
         foreach (var target in targets) {
           if (!visited.Contains(target)) {
             todo.Push(target);
@@ -1600,7 +1595,7 @@ namespace Microsoft.Boogie.GraphUtil
       Contract.Requires(!Computed);
       Contract.Ensures(Computed);
       // Compute post times on graph with edges reversed
-      this.dfsNext = this.preds;
+      dfsNext = preds;
       foreach (Node /*!*/ n in cce.NonNull(graph.Keys))
       {
         Contract.Assert(n != null);
@@ -1614,7 +1609,7 @@ namespace Microsoft.Boogie.GraphUtil
       seen.Clear();
 
       // Compute SCCs
-      this.dfsNext = this.succs;
+      dfsNext = succs;
       while (postOrder.Count > 0)
       {
         Node /*!*/
@@ -1633,7 +1628,7 @@ namespace Microsoft.Boogie.GraphUtil
       // Clear seen
       seen.Clear();
 
-      this.computed = true;
+      computed = true;
     }
 
     private Adjacency<Node> /*?*/
@@ -1708,7 +1703,7 @@ namespace Microsoft.Boogie.GraphUtil
       foreach (ICollection<Node> component in this)
       {
         string /*!*/
-          tmp = System.String.Format("\nComponent #{0} = ", i++);
+          tmp = String.Format("\nComponent #{0} = ", i++);
         Contract.Assert(tmp != null);
         outStr += tmp;
 
@@ -1717,7 +1712,7 @@ namespace Microsoft.Boogie.GraphUtil
         foreach (Node b in component)
         {
           string /*!*/
-            tmpComponent = System.String.Format("{0}{1}", firstInRow ? "" : ", ", b);
+            tmpComponent = String.Format("{0}{1}", firstInRow ? "" : ", ", b);
           Contract.Assert(tmpComponent != null);
           outStr += tmpComponent;
           firstInRow = false;

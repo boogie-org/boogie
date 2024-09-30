@@ -380,7 +380,7 @@ namespace Microsoft.Boogie
         HashSet<Variable> end = PropagateAvailableLinearVarsAcrossBlock(b);
         if (b.TransferCmd is GotoCmd gotoCmd)
         {
-          foreach (Block target in gotoCmd.labelTargets)
+          foreach (Block target in gotoCmd.LabelTargets)
           {
             if (!availableLinearVars.ContainsKey(target))
             {

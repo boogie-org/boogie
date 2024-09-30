@@ -148,7 +148,7 @@ namespace Microsoft.Boogie
       else
       {
         GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
-        foreach (Block target in gotoCmd.labelTargets)
+        foreach (Block target in gotoCmd.LabelTargets)
         {
           EnumeratePathsRec(target, inFirst);
         }
