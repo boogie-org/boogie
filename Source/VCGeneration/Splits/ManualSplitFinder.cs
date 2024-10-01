@@ -38,7 +38,7 @@ public static class ManualSplitFinder {
     Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
     var focussedParts = FocusApplier.GetFocusParts(options, run, createSplit);
     var isolatedParts = focussedParts.SelectMany(s =>
-      IsolateAttributeHandler.GetPartsFromIsolatedAssertions(options, s, createSplit)).ToList();
+      new IsolateAttributeOnAsserts(options).GetPartsFromIsolatedAssertions(s, createSplit)).ToList();
 
     if (!isolatedParts.Any()) {
       return Enumerable.Empty<ManualSplit>();
@@ -229,14 +229,4 @@ public static class ManualSplitFinder {
 }
 
 public interface ImplementationPartOrigin : IToken {
-}
-
-public class IsolateOrigin : TokenWrapper, ImplementationPartOrigin {
-  public Block ContainingBlock { get; }
-  public ImplementationPartOrigin PartThatWasSplit { get; }
-
-  public IsolateOrigin(IToken split, Block containingBlock, ImplementationPartOrigin partThatWasSplit) : base(split) {
-    ContainingBlock = containingBlock;
-    PartThatWasSplit = partThatWasSplit;
-  }
 }

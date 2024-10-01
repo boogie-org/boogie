@@ -89,7 +89,7 @@ public static class DesugarReturns {
         debugWriter.WriteLine("Effective postcondition:");
       }
 
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
+      var formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
 
       // (free and checked) ensures clauses
       foreach (Ensures ens in impl.Proc.Ensures)
@@ -98,18 +98,18 @@ public static class DesugarReturns {
 
         if (!ens.Free)
         {
-          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          Ensures ensCopy = (Ensures) cce.NonNull(ens.Clone());
-          ensCopy.Condition = e;
-          AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
-          c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
+          var ensuresCopy = (Ensures) cce.NonNull(ens.Clone());
+          ensuresCopy.Condition = Substituter.Apply(formalProcImplSubst, ens.Condition);
+          AssertEnsuresCmd assert = new AssertEnsuresCmd(ensuresCopy) {
+            ErrorDataEnhanced = ensuresCopy.ErrorDataEnhanced
+          };
           // Copy any {:id ...} from the postcondition to the assumption, so
           // we can track it while analyzing verification coverage.
-          (c as ICarriesAttributes).CopyIdFrom(ens.tok, ens);
-          unifiedExitBlock.Cmds.Add(c);
+          assert.CopyIdFrom(ens.tok, ens);
+          unifiedExitBlock.Cmds.Add(assert);
           if (debugWriter != null)
           {
-            c.Emit(debugWriter, 1);
+            assert.Emit(debugWriter, 1);
           }
         }
         else if (ens.CanAlwaysAssume())

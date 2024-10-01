@@ -85,7 +85,7 @@ public static class FocusApplier
     }
   }
 
-  private static List<Block> ComputeNewBlocks(VCGenOptions options, ISet<Block> blocksToInclude, List<Block> blocksReversed,
+  public static List<Block> ComputeNewBlocks(VCGenOptions options, ISet<Block> blocksToInclude, IEnumerable<Block> blocksReversed,
     ISet<Block> freeAssumeBlocks)
   {
     var duplicator = new Duplicator();

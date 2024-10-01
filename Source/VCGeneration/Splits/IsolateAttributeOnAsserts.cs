@@ -5,11 +5,27 @@ using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.Boogie;
 using VC;
+using VCGeneration.Splits;
 
 namespace VCGeneration;
 
-static class IsolateAttributeHandler {
-  public static List<ManualSplit> GetPartsFromIsolatedAssertions(VCGenOptions options, ManualSplit partToDivide,
+class IsolateAttributeOnAsserts {
+  private readonly Dictionary<AssertCmd, Cmd> assumedAssertions = new();
+  private readonly VCGenOptions options;
+
+  public IsolateAttributeOnAsserts(VCGenOptions options) {
+    this.options = options;
+  }
+
+  private Cmd TransformAssertCmd(Cmd cmd) {
+    if (cmd is AssertCmd assertCmd) {
+      return assumedAssertions.GetOrCreate(assertCmd, () => VerificationConditionGenerator.AssertTurnedIntoAssume(options, assertCmd));
+    }
+
+    return cmd;
+  }
+
+  public List<ManualSplit> GetPartsFromIsolatedAssertions(ManualSplit partToDivide,
     Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
     
     var splitOnEveryAssert = partToDivide.Options.VcsSplitOnEveryAssert;
@@ -19,23 +35,12 @@ static class IsolateAttributeHandler {
     var results = new List<ManualSplit>();
     var dag = Program.GraphFromBlocks(partToDivide.Blocks);
     
-    var assumedAssertions = new Dictionary<AssertCmd, Cmd>();
     foreach (var block in partToDivide.Blocks) {
       foreach (var assert in block.Cmds.OfType<AssertCmd>()) {
-        var isolateAttribute = QKeyValue.FindAttribute(assert.Attributes, p => p.Key == "isolate");
-        if (splitOnEveryAssert) {
-          if (isolateAttribute != null) {
-            if (isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "none"))) {
-              continue;
-            }
-            // isolate
-          }
-          // isolate
-        } else {
-          if (isolateAttribute == null) {
-            continue;
-          }
-          // isolate
+        var attributes = assert.Attributes;
+        var isolateAttribute = QKeyValue.FindAttribute(attributes, p => p.Key == "isolate");
+        if (!ShouldIsolate(splitOnEveryAssert, isolateAttribute)) {
+          continue;
         }
 
         isolatedAssertions.Add(assert);
@@ -50,14 +55,6 @@ static class IsolateAttributeHandler {
     results.Add(GetSplitWithoutIsolatedAssertions());
 
     return results;
-
-    Cmd TransformAssertCmd(Cmd cmd) {
-      if (cmd is AssertCmd assertCmd) {
-        return assumedAssertions.GetOrCreate(assertCmd, () => VerificationConditionGenerator.AssertTurnedIntoAssume(options, assertCmd));
-      }
-
-      return cmd;
-    }
 
     IEnumerable<ManualSplit> GetSplitsForIsolatedPathAssertion(Block blockWithAssert, AssertCmd assertCmd) {
       var blockToVisit = new Stack<ImmutableStack<Block>>();
@@ -87,7 +84,7 @@ static class IsolateAttributeHandler {
           };
           if (newPrevious.TransferCmd is GotoCmd gotoCmd) {
             newPrevious.TransferCmd =
-              new GotoCmd(gotoCmd.tok, new List<string>() { firstBlock.Label }, new List<Block>
+              new GotoCmd(gotoCmd.tok, new List<string> { firstBlock.Label }, new List<Block>
                 {
                   firstBlock
                 });
@@ -98,42 +95,13 @@ static class IsolateAttributeHandler {
     }
 
     ManualSplit GetSplitForIsolatedAssertion(Block blockWithAssert, AssertCmd assertCmd) {
-      var newBlocks = new List<Block>();
-      var oldToNewBlockMap = new Dictionary<Block, Block>();
-      var blockToVisit = new Stack<Block>();
-      blockToVisit.Push(blockWithAssert);
-      var visitedBlocks = new HashSet<Block>();
-      while(blockToVisit.Any()) {
-        var oldBlock = blockToVisit.Pop();
-        if (!visitedBlocks.Add(oldBlock)) {
-          continue;
-        }
-        
-        var newBlock = new Block(oldBlock.tok)
-        {
-          Label = oldBlock.Label,
-          TransferCmd = oldBlock.TransferCmd
-        };
-        oldToNewBlockMap[oldBlock] = newBlock;
-
-        newBlocks.Add(newBlock);
-        newBlock.Cmds = oldBlock == blockWithAssert
-          ? GetCommandsForBlockWithAssert(oldBlock, assertCmd)
-          : oldBlock.Cmds.Select(TransformAssertCmd).ToList();
-        foreach (var previous in oldBlock.Predecessors) {
-          blockToVisit.Push(previous);
-        }
-        
-        if (newBlock.TransferCmd is GotoCmd gtc)
-        {
-          var targets = gtc.LabelTargets.Where(oldToNewBlockMap.ContainsKey).ToList();
-          newBlock.TransferCmd = new GotoCmd(gtc.tok,
-            targets.Select(block => oldToNewBlockMap[block].Label).ToList(),
-            targets.Select(block => oldToNewBlockMap[block]).ToList());
-        }
-      }
-
-      return createSplit(new IsolatedAssertionOrigin(assertCmd), newBlocks.OrderBy(b => b.tok).ToList());
+      var blocksToVisit = new Stack<Block>(new[] { blockWithAssert });
+      var orderedNewBlocks = BlockRewriter.UpdateBlocks(blocksToVisit, 
+        new HashSet<Block>(), 
+        oldBlock => oldBlock == blockWithAssert
+        ? GetCommandsForBlockWithAssert(oldBlock, assertCmd)
+        : oldBlock.Cmds.Select(TransformAssertCmd).ToList());
+      return createSplit(new IsolatedAssertionOrigin(assertCmd), orderedNewBlocks.Values.OrderBy(b => b.tok).ToList());
     }
     
     List<Cmd> GetCommandsForBlockWithAssert(Block currentBlock, AssertCmd assert)
@@ -156,17 +124,22 @@ static class IsolateAttributeHandler {
         return createSplit(origin, partToDivide.Blocks);
       }
 
-      // TODO don't copy list if it is unchanged.
       var newBlocks = ManualSplitFinder.UpdateBlocks(partToDivide.Blocks, 
-        block => block.Cmds.Select(cmd => {
-          if (isolatedAssertions.Contains(cmd)) {
-            return TransformAssertCmd(cmd);
-          }
-
-          return cmd;
-        }).ToList());
+        block => block.Cmds.Select(cmd => isolatedAssertions.Contains(cmd) ? TransformAssertCmd(cmd) : cmd).ToList());
       return createSplit(origin, newBlocks);
     }
+  }
+
+  private static bool ShouldIsolate(bool splitOnEveryAssert, QKeyValue? isolateAttribute) {
+    if (splitOnEveryAssert) {
+      if (isolateAttribute == null) {
+        return true;
+      }
+
+      return !isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "none"));
+    }
+
+    return isolateAttribute != null;
   }
 }
 

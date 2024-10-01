@@ -3447,6 +3447,8 @@ namespace Microsoft.Boogie
 
   public class ReturnCmd : TransferCmd
   {
+    public QKeyValue Attributes { get; set; }
+    
     public ReturnCmd(IToken /*!*/ tok)
       : base(tok)
     {
