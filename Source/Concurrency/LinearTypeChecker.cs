@@ -1045,6 +1045,7 @@ namespace Microsoft.Boogie
     {
       return scope.Where(v => 
         FindLinearKind(v) != LinearKind.ORDINARY &&
+        AreKeysCollected(v) &&
         collectors.ContainsKey(v.TypedIdent.Type) &&
         collectors[v.TypedIdent.Type].ContainsKey(domain.permissionType));
     }
