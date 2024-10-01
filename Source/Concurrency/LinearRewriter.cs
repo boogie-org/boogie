@@ -150,7 +150,7 @@ public class LinearRewriter
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "Loc_New":
-      case "KeyedLocs_New":
+      case "KeyedLocSet_New":
       case "Cell_Pack":
       case "Cell_Unpack":
       case "Set_MakeEmpty":

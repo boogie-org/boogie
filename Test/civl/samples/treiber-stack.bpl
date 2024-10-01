@@ -172,7 +172,7 @@ asserts Map_Contains(ts, loc_t);
   call one_loc_t, treiber := Map_Get(ts, loc_t);
   Treiber(top, stack) := treiber;
   assume loc_n is None || Map_Contains(stack, loc_n->t);
-  call loc, loc_pieces := KeyedLocs_New(AllLocPieces());
+  call loc, loc_pieces := KeyedLocSet_New(AllLocPieces());
   call left_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Left()));
   new_loc_n := left_loc_piece->val;
   call right_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Right()));
@@ -191,7 +191,7 @@ refines AtomicAllocNode#3;
   var {:linear} left_loc_piece: One LocTreiberNode;
 
   call loc_n := ReadTopOfStack#Push(loc_t);
-  call loc, loc_pieces := KeyedLocs_New(AllLocPieces());
+  call loc, loc_pieces := KeyedLocSet_New(AllLocPieces());
   call left_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Left()));
   new_loc_n := left_loc_piece->val;
   call right_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Right()));
