@@ -1077,7 +1077,7 @@ namespace Microsoft.Boogie
         return;
       }
       var typeCtorDeclName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
-      if (typeCtorDeclName == "Map" || typeCtorDeclName == "Cell")
+      if (typeCtorDeclName == "Map")
       {
         hasLinearStoreAccess = true;
       }
