@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
+using VCGeneration.Transformations;
 
 namespace VC
 {
@@ -1293,8 +1294,7 @@ namespace VC
       Contract.Ensures(Contract.Result<Dictionary<TransferCmd, ReturnCmd>>() != null);
 
       var impl = run.Implementation;
-      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
-      Block exitBlock = GenerateUnifiedExit(impl, gotoCmdOrigins);
+      var exitBlock = DesugarReturns.GenerateUnifiedExit(impl, out var gotoCmdOrigins);
 
       #region Debug Tracing
 
@@ -1349,7 +1349,7 @@ namespace VC
         InjectPreconditions(Options, run, cc);
 
         // append postconditions, starting in exitBlock and continuing into other blocks, if needed
-        InjectPostConditions(Options, run, exitBlock, gotoCmdOrigins);
+        DesugarReturns.InjectPostConditions(Options, run, exitBlock, gotoCmdOrigins);
       }
 
       #endregion
