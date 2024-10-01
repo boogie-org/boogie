@@ -24,7 +24,8 @@ class IsolateAttributeOnJumpsHandler {
     var results = new List<ManualSplit>();
     var blocks = partToDivide.Blocks;
     var dag = Program.GraphFromBlocks(blocks);
-    var reversedBlocks = dag.TopologicalSort().Reversed();
+    var topoSorted = dag.TopologicalSort();
+    var reversedBlocks = topoSorted.Reversed();
     
     var splitOnEveryAssert = partToDivide.Options.VcsSplitOnEveryAssert;
     partToDivide.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
@@ -56,7 +57,7 @@ class IsolateAttributeOnJumpsHandler {
       } else {
         var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude,
           reversedBlocks, ancestors.ToHashSet());
-        results.Add(createSplit(new ReturnOrigin(gotoToOriginalReturn[gotoCmd]), newBlocks));
+        results.Add(rewriter.CreateSplit(new ReturnOrigin(gotoToOriginalReturn[gotoCmd]), newBlocks));
       }
 
     }
@@ -64,14 +65,14 @@ class IsolateAttributeOnJumpsHandler {
     return (results, GetPartWithoutIsolatedReturns());
     
     ManualSplit GetPartWithoutIsolatedReturns() {
-      var newBlocks = BlockRewriter.UpdateBlocks(new Stack<Block>(reversedBlocks), new HashSet<Block>(), 
-        oldBlock => oldBlock.Cmds.Select(rewriter.TransformAssertCmd).ToList());
+      var newBlocks = BlockRewriter.UpdateBlocks(new Stack<Block>(topoSorted), new HashSet<Block>(), 
+        oldBlock => oldBlock.Cmds.ToList());
       foreach (var (oldBlock, newBlock) in newBlocks) {
         if (isolatedBlocks.Contains(oldBlock)) {
           newBlock.TransferCmd = null;
         }
       }
-      return createSplit(new ImplementationRootOrigin(partToDivide.Implementation), newBlocks.Values.ToList());
+      return rewriter.CreateSplit(new ImplementationRootOrigin(partToDivide.Implementation), newBlocks.Values.ToList());
     }
   }
 

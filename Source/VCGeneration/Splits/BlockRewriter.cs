@@ -132,6 +132,9 @@ public class BlockRewriter {
         blocksToVisit.Push(previous);
       }
         
+    }
+
+    foreach (var (oldBlock, newBlock) in oldToNewBlockMap) {
       if (oldBlock.TransferCmd is GotoCmd gtc)
       {
         var targets = gtc.LabelTargets.Where(oldToNewBlockMap.ContainsKey).ToList();

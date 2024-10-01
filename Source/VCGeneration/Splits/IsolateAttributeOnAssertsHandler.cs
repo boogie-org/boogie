@@ -1,5 +1,4 @@
 #nullable enable
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Boogie;
@@ -22,7 +21,8 @@ class IsolateAttributeOnAssertsHandler {
     
     var isolatedAssertions = new HashSet<AssertCmd>();
     var results = new List<ManualSplit>();
-    
+
+    Implementation.ComputePredecessorsForBlocks(partToDivide.Blocks);
     foreach (var block in partToDivide.Blocks) {
       foreach (var assert in block.Cmds.OfType<AssertCmd>()) {
         var attributes = assert.Attributes;
@@ -77,9 +77,10 @@ class IsolateAttributeOnAssertsHandler {
         return rewriter.CreateSplit(origin, partToDivide.Blocks);
       }
 
-      var newBlocks = ManualSplitFinder.UpdateBlocks(partToDivide.Blocks, 
+      var newBlocks = BlockRewriter.UpdateBlocks(new Stack<Block>(partToDivide.Blocks), 
+        new HashSet<Block>(), 
         block => block.Cmds.Select(cmd => isolatedAssertions.Contains(cmd) ? rewriter.TransformAssertCmd(cmd) : cmd).ToList());
-      return rewriter.CreateSplit(origin, newBlocks);
+      return rewriter.CreateSplit(origin, newBlocks.Values.OrderBy(b => b.tok).ToList());
     }
   }
 

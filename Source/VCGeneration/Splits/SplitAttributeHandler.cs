@@ -121,7 +121,7 @@ class SplitAttributeHandler {
   {
     var assertionCount = 0;
     
-    var newBlocks = UpdateBlocks(partToSplit.Implementation.Blocks, currentBlock => {
+    var newBlocks = UpdateBlocks(partToSplit.Blocks, currentBlock => {
       if (currentBlock == blockWithSplit) {
         return GetCommandsForBlockWithSplit(currentBlock);
       }

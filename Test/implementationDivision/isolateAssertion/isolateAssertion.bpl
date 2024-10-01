@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie /printSplit:%t /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure IsolatedAssertion(x: int, y: int)
+procedure IsolateAssertion(x: int, y: int)
 {
   var z: int;
   z := 0;
@@ -21,7 +21,7 @@ procedure IsolatedAssertion(x: int, y: int)
   assert z > 3;
 }
 
-procedure IsolatedPathsAssertion(x: int, y: int)
+procedure IsolatePathsAssertion(x: int, y: int)
 {
   var z: int;
   z := 0;
