@@ -155,7 +155,6 @@ public class LinearRewriter
       case "Map_MakeEmpty":
       case "Map_Pack":
       case "Map_Unpack":
-      case "Map_Assume":
         return new List<Cmd>{callCmd};
       case "Set_Split":
         return RewriteSetSplit(callCmd);
@@ -177,6 +176,10 @@ public class LinearRewriter
         return RewriteMapGet(callCmd);
       case "Map_Put":
         return RewriteMapPut(callCmd);
+      case "Map_GetValue":
+        return RewriteMapGetValue(callCmd);
+      case "Map_PutValue":
+        return RewriteMapPutValue(callCmd);
       default:
         Contract.Assume(false);
         return null;
@@ -476,6 +479,50 @@ public class LinearRewriter
     cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, Val(l))), attribute));
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, Val(l), v)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteMapGetValue(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var k = callCmd.Ins[1];
+    var v = callCmd.Outs[0];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var domain = instantiation["K"];
+    var range = instantiation["V"];
+    var mapContainsFunc = MapContains(domain, range);
+    var mapRemoveFunc = MapRemove(domain, range);
+    var mapAtFunc = MapAt(domain, range);
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(mapContainsFunc, path, k), "Map_GetValue failed"));
+    var oneConstructor = OneConstructor(domain);
+    cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(mapAtFunc, path, k)));
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapRemoveFunc, path, k)));
+
+    ResolveAndTypecheck(options, cmdSeq);
+    return cmdSeq;
+  }
+
+  private List<Cmd> RewriteMapPutValue(CallCmd callCmd)
+  {
+    var cmdSeq = new List<Cmd>();
+    var path = callCmd.Ins[0];
+    var k = callCmd.Ins[1];
+    var v = callCmd.Ins[2];
+
+    var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
+    var domain = instantiation["K"];
+    var range = instantiation["V"];
+    var mapContainsFunc = MapContains(domain, range);
+    var mapUpdateFunc = MapUpdate(domain, range);
+    var attribute = new QKeyValue(Token.NoToken, "linear", new List<object>(), null);
+    cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, k)), attribute));
+    cmdSeq.Add(
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, k, v)));
 
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;

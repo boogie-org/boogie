@@ -218,7 +218,8 @@ namespace Microsoft.Boogie
     public static HashSet<string> LinearPrimitives = new()
     {
       "Loc_New", "KeyedLocSet_New",
-      "Map_MakeEmpty", "Map_Pack", "Map_Unpack", "Map_Split", "Map_Join", "Map_Get", "Map_Put", "Map_Assume",
+      "Map_MakeEmpty", "Map_Pack", "Map_Unpack", "Map_Split", "Map_Join",
+      "Map_Get", "Map_Put", "Map_GetValue", "Map_PutValue",
       "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
     };
 
@@ -248,7 +249,6 @@ namespace Microsoft.Boogie
         case "Map_MakeEmpty":
         case "Map_Pack":
         case "Map_Unpack":
-        case "Map_Assume":
           return null;
         default:
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);

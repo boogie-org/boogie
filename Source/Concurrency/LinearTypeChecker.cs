@@ -462,6 +462,10 @@ namespace Microsoft.Boogie
           {
             Error(rhs, $"linear variable {rhs.Decl.Name} can occur at most once as the source of an assignment");
           }
+          else if (InvalidAssignmentWithKeyCollection(lhs.DeepAssignedVariable, rhs.Decl))
+          {
+            Error(rhs, $"Mismatch in key collection between source and target");
+          }
           else
           {
             rhsVars.Add(rhs.Decl);
@@ -485,6 +489,10 @@ namespace Microsoft.Boogie
             else if (rhsVars.Contains(ie.Decl))
             {
               Error(arg, $"linear variable {ie.Decl.Name} can occur at most once as the source of an assignment");
+            }
+            else if (InvalidAssignmentWithKeyCollection(field, ie.Decl))
+            {
+              Error(arg, $"Mismatch in key collection between source and target");
             }
             else
             {
@@ -568,6 +576,11 @@ namespace Microsoft.Boogie
           Error(node, $"linear variable {actual.Decl.Name} can occur only once as an input parameter");
           continue;
         }
+        if (!isPrimitive && InvalidAssignmentWithKeyCollection(formal, actual.Decl))
+        {
+          Error(node, $"Mismatch in key collection between source and target");
+          continue;
+        }
         inVars.Add(actual.Decl);
         if (actual.Decl is GlobalVariable && actualKind == LinearKind.LINEAR_IN)
         {
@@ -590,6 +603,11 @@ namespace Microsoft.Boogie
           Error(node, $"only linear parameter can be assigned to a linear variable: {formal}");
           continue;
         }
+        if (!isPrimitive && InvalidAssignmentWithKeyCollection(actual.Decl, formal))
+        {
+          Error(node, $"Mismatch in key collection between source and target");
+          continue;
+        }
       }
 
       var globalOutVars = node.Outs.Select(ie => ie.Decl).ToHashSet();
@@ -597,6 +615,8 @@ namespace Microsoft.Boogie
       {
         Error(node, $"global variable passed as input to pure call but not received as output: {v}");
       });
+
+      var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(node.Proc);
 
       if (isPrimitive)
       {
@@ -612,17 +632,48 @@ namespace Microsoft.Boogie
             Error(node, $"primitive assigns to input variable that is also an output variable: {modifiedArgument}");
           }
           else if (modifiedArgument is GlobalVariable &&
-                   enclosingProc is not YieldProcedureDecl &&
-                   enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
+                    enclosingProc is not YieldProcedureDecl &&
+                    enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
           {
             var str = enclosingProc is ActionDecl ? "action's" : "procedure's";
             Error(node,
               $"primitive assigns to a global variable that is not in the enclosing {str} modifies clause: {modifiedArgument}");
           }
+
+          if (originalProc.Name == "Map_Split")
+          {
+            if (InvalidAssignmentWithKeyCollection(node.Outs[0].Decl, modifiedArgument))
+            {
+              Error(node, $"Mismatch in key collection between source and target");
+            }
+          }
+          else if (originalProc.Name == "Map_Join")
+          {
+            if (node.Ins[1] is IdentifierExpr ie)
+            {
+              if (InvalidAssignmentWithKeyCollection(modifiedArgument, ie.Decl))
+              {
+                Error(node, $"Mismatch in key collection between source and target");
+              }
+            }
+          }
+          else if (originalProc.Name == "Map_Get" || originalProc.Name == "Map_Put")
+          {
+            if (!AreKeysCollected(modifiedArgument))
+            {
+              Error(node, $"Keys must be collected");
+            }
+          }
+          else if (originalProc.Name == "Map_GetValue" || originalProc.Name == "Map_PutValue")
+          {
+            if (AreKeysCollected(modifiedArgument))
+            {
+              Error(node, $"Keys must not be collected");
+            }
+          }
         }
       }
 
-      var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(node.Proc);
       if (originalProc.Name == "create_multi_asyncs" || originalProc.Name == "create_asyncs")
       {
         var actionDecl = GetActionDeclFromCreateAsyncs(node);
@@ -747,6 +798,25 @@ namespace Microsoft.Boogie
         checkingContext.Error(node, "variable must be declared linear (as opposed to linear_in or linear_out)");
       }
       return node;
+    }
+
+    private bool AreKeysCollected(Variable v)
+    {
+      var attr = QKeyValue.FindAttribute(v.Attributes, x => x.Key == "linear");
+      var attrParams = attr == null ? new List<object>() : attr.Params;
+      foreach (var param in attrParams)
+      {
+        if (param is string s && s == "no_collect_keys")
+        {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private bool InvalidAssignmentWithKeyCollection(Variable target, Variable source)
+    {
+      return AreKeysCollected(target) && !AreKeysCollected(source);
     }
 
     private void CheckLinearStoreAccessInGuards()
