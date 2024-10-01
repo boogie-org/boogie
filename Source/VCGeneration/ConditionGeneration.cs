@@ -117,11 +117,11 @@ namespace VC
       VcOutcome vcOutcome = await VerifyImplementation(run, collector, cancellationToken);
       var /*?*/ errors = new List<Counterexample>();
       if (vcOutcome is VcOutcome.Errors or VcOutcome.TimedOut or VcOutcome.OutOfMemory or VcOutcome.OutOfResource) {
-        errors = collector.examples.ToList();
+        errors = collector.Examples.ToList();
       }
 
       Helpers.ExtraTraceInformation(Options, "Finished implementation verification");
-      return (vcOutcome, errors, collector.vcResults.ToList());
+      return (vcOutcome, errors, collector.VcResults.ToList());
     }
 
     private VCGenOptions Options => CheckerPool.Options;
@@ -921,7 +921,7 @@ namespace VC
         else
         {
           // incarnationMap needs to be added only if there is some successor of b
-          b.succCount = gotoCmd.labelNames.Count;
+          b.succCount = gotoCmd.LabelNames.Count;
           block2Incarnation.Add(b, incarnationMap);
         }
 
@@ -1539,14 +1539,14 @@ namespace VC
       #region Change the edge "pred->succ" to "pred->newBlock"
 
       GotoCmd gtc = (GotoCmd) cce.NonNull(pred.TransferCmd);
-      Contract.Assume(gtc.labelTargets != null);
-      Contract.Assume(gtc.labelNames != null);
-      for (int i = 0, n = gtc.labelTargets.Count; i < n; i++)
+      Contract.Assume(gtc.LabelTargets != null);
+      Contract.Assume(gtc.LabelNames != null);
+      for (int i = 0, n = gtc.LabelTargets.Count; i < n; i++)
       {
-        if (gtc.labelTargets[i] == succ)
+        if (gtc.LabelTargets[i] == succ)
         {
-          gtc.labelTargets[i] = newBlock;
-          gtc.labelNames[i] = newBlockLabel;
+          gtc.LabelTargets[i] = newBlock;
+          gtc.LabelNames[i] = newBlockLabel;
           break;
         }
       }
@@ -1575,7 +1575,7 @@ namespace VC
           for (int i = 0; i < nPreds; i++)
           {
             GotoCmd gotocmd = (GotoCmd) (cce.NonNull(b.Predecessors[i]).TransferCmd);
-            if (gotocmd.labelNames != null && gotocmd.labelNames.Count > 1)
+            if (gotocmd.LabelNames != null && gotocmd.LabelNames.Count > 1)
             {
               tweens.Add(CreateBlockBetween(i, b));
             }

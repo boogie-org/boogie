@@ -63,7 +63,7 @@ public static class FocusAttribute
           }
           if (block.TransferCmd is GotoCmd gtc)
           {
-            var targets = gtc.labelTargets.Where(blocksToInclude.Contains).ToList();
+            var targets = gtc.LabelTargets.Where(blocksToInclude.Contains).ToList();
             newBlock.TransferCmd = new GotoCmd(gtc.tok,
               targets.Select(blk => oldToNewBlockMap[blk].Label).ToList(),
               targets.Select(blk => oldToNewBlockMap[blk]).ToList());

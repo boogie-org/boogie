@@ -418,9 +418,9 @@ namespace Microsoft.Boogie
 
       HashSet<VariableDescriptor> result = new HashSet<VariableDescriptor>();
       var gotoCmd = b.TransferCmd as GotoCmd;
-      if (gotoCmd != null && gotoCmd.labelTargets.Count >= 2)
+      if (gotoCmd != null && gotoCmd.LabelTargets.Count >= 2)
       {
-        foreach (Block succ in gotoCmd.labelTargets)
+        foreach (Block succ in gotoCmd.LabelTargets)
         {
           foreach (Cmd c in succ.Cmds)
           {

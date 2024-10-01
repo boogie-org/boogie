@@ -257,7 +257,7 @@ namespace Microsoft.Boogie.Houdini
       Dictionary<Variable, bool> assignment,
       int errorLimit)
     {
-      collector.examples.Clear();
+      collector.Examples.Clear();
 
       if (Options.Trace)
       {
@@ -278,7 +278,7 @@ namespace Microsoft.Boogie.Houdini
         Console.WriteLine("Time taken = " + queryTime);
       }
 
-      return (proverOutcome, collector.examples.ToList());
+      return (proverOutcome, collector.Examples.ToList());
     }
 
     // MAXSAT
@@ -287,7 +287,7 @@ namespace Microsoft.Boogie.Houdini
     {
       Contract.Assert(houdini.Options.ExplainHoudini);
 
-      collector.examples.Clear();
+      collector.Examples.Clear();
 
       // debugging
       houdiniAssertConstants.ForEach(v => System.Diagnostics.Debug.Assert(assignment.ContainsKey(v)));

@@ -1451,38 +1451,42 @@ namespace Microsoft.Boogie.Houdini
     private RefutedAnnotation ExtractRefutedAnnotation(Counterexample error)
     {
       Variable houdiniConstant;
-      CallCounterexample callCounterexample = error as CallCounterexample;
-      if (callCounterexample != null)
+      switch (error)
       {
-        Procedure failingProcedure = callCounterexample.FailingCall.Proc;
-        Requires failingRequires = callCounterexample.FailingRequires;
-        if (MatchCandidate(failingRequires.Condition, out houdiniConstant))
+        case CallCounterexample callCounterexample:
         {
-          Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedRequires(houdiniConstant, failingProcedure,
-            currentHoudiniState.Implementation);
-        }
-      }
+          var failingProcedure = callCounterexample.FailingCall.Proc;
+          var failingRequires = callCounterexample.FailingRequires;
+          if (MatchCandidate(failingRequires.Condition, out houdiniConstant))
+          {
+            Contract.Assert(houdiniConstant != null);
+            return RefutedAnnotation.BuildRefutedRequires(houdiniConstant, failingProcedure,
+              currentHoudiniState.Implementation);
+          }
 
-      ReturnCounterexample returnCounterexample = error as ReturnCounterexample;
-      if (returnCounterexample != null)
-      {
-        Ensures failingEnsures = returnCounterexample.FailingEnsures;
-        if (MatchCandidate(failingEnsures.Condition, out houdiniConstant))
-        {
-          Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedEnsures(houdiniConstant, currentHoudiniState.Implementation);
+          break;
         }
-      }
-
-      AssertCounterexample assertCounterexample = error as AssertCounterexample;
-      if (assertCounterexample != null)
-      {
-        AssertCmd failingAssert = assertCounterexample.FailingAssert;
-        if (MatchCandidate(failingAssert.OrigExpr, out houdiniConstant))
+        case ReturnCounterexample returnCounterexample:
         {
-          Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedAssert(houdiniConstant, currentHoudiniState.Implementation);
+          var failingEnsures = returnCounterexample.FailingEnsures;
+          if (MatchCandidate(failingEnsures.Condition, out houdiniConstant))
+          {
+            Contract.Assert(houdiniConstant != null);
+            return RefutedAnnotation.BuildRefutedEnsures(houdiniConstant, currentHoudiniState.Implementation);
+          }
+
+          break;
+        }
+        case AssertCounterexample assertCounterexample:
+        {
+          var failingAssert = assertCounterexample.FailingAssert;
+          if (MatchCandidate(failingAssert.OrigExpr, out houdiniConstant))
+          {
+            Contract.Assert(houdiniConstant != null);
+            return RefutedAnnotation.BuildRefutedAssert(houdiniConstant, currentHoudiniState.Implementation);
+          }
+
+          break;
         }
       }
 

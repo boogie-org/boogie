@@ -97,7 +97,7 @@ public static class ManualSplitFinder {
         blockAssignments[currentBlock] = blockAssignments[immediateDominator[currentBlock]];
       }
       if (currentBlock.TransferCmd is GotoCmd exit) {
-        exit.labelTargets.ForEach(blk => todo.Push(blk));
+        exit.LabelTargets.ForEach(blk => todo.Push(blk));
       }
     }
     return blockAssignments;
@@ -135,35 +135,12 @@ public static class ManualSplitFinder {
 
       oldToNewBlockMap[currentBlock] = newBlock;
       newBlocks.Add(newBlock);
-      if (currentBlock == containingBlock) {
-        var newCmds = new List<Cmd>();
-        var splitCount = -1;
-        var verify = splitCount == splitNumberWithinBlock;
-        foreach (Cmd command in currentBlock.Cmds) {
-          if (ShouldSplitHere(command, splitOnEveryAssert)) {
-            splitCount++;
-            verify = splitCount == splitNumberWithinBlock;
-          }
-
-          if (verify && BlockTransformations.IsNonTrivialAssert(command))
-          {
-            assertionCount++;
-          }
-          newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
-        }
-        newBlock.Cmds = newCmds;
-      } else if (lastSplitInBlock && blockAssignments[currentBlock] == containingBlock) {
-        var verify = true;
-        var newCmds = new List<Cmd>();
-        foreach (var command in currentBlock.Cmds) {
-          verify = !ShouldSplitHere(command, splitOnEveryAssert) && verify;
-          if (verify && BlockTransformations.IsNonTrivialAssert(command))
-          {
-            assertionCount++;
-          }
-          newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
-        }
-        newBlock.Cmds = newCmds;
+      if (currentBlock == containingBlock)
+      {
+        newBlock.Cmds = GetCommandsForBlockWithSplit(currentBlock);
+      } else if (lastSplitInBlock && blockAssignments[currentBlock] == containingBlock)
+      {
+        newBlock.Cmds = GetCommandsForBlockImmediatelyDominatedBySplit(currentBlock);
       } else {
         newBlock.Cmds = currentBlock.Cmds.Select(x => CommandTransformations.AssertIntoAssume(options, x)).ToList();
       }
@@ -177,6 +154,43 @@ public static class ManualSplitFinder {
     // Patch the edges between the new blocks
     AddBlockJumps(blocks, oldToNewBlockMap);
     return newBlocks;
+
+    List<Cmd> GetCommandsForBlockWithSplit(Block currentBlock)
+    {
+      var newCmds = new List<Cmd>();
+      var splitCount = -1;
+      var verify = splitCount == splitNumberWithinBlock;
+      foreach (Cmd command in currentBlock.Cmds) {
+        if (ShouldSplitHere(command, splitOnEveryAssert)) {
+          splitCount++;
+          verify = splitCount == splitNumberWithinBlock;
+        }
+
+        if (verify && BlockTransformations.IsNonTrivialAssert(command))
+        {
+          assertionCount++;
+        }
+        newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
+      }
+
+      return newCmds;
+    }
+
+    List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
+    {
+      var verify = true;
+      var newCmds = new List<Cmd>();
+      foreach (var command in currentBlock.Cmds) {
+        verify = !ShouldSplitHere(command, splitOnEveryAssert) && verify;
+        if (verify && BlockTransformations.IsNonTrivialAssert(command))
+        {
+          assertionCount++;
+        }
+        newCmds.Add(verify ? command : CommandTransformations.AssertIntoAssume(options, command));
+      }
+
+      return newCmds;
+    }
   }
 
   private static void AddBlockJumps(List<Block> oldBlocks, Dictionary<Block, Block> oldToNewBlockMap)
@@ -189,9 +203,9 @@ public static class ManualSplitFinder {
       }
 
       var gotoCmd = (GotoCmd)oldBlock.TransferCmd;
-      var newLabelTargets = new List<Block>(gotoCmd.labelTargets.Count());
-      var newLabelNames = new List<string>(gotoCmd.labelTargets.Count());
-      foreach (var target in gotoCmd.labelTargets) {
+      var newLabelTargets = new List<Block>(gotoCmd.LabelTargets.Count());
+      var newLabelNames = new List<string>(gotoCmd.LabelTargets.Count());
+      foreach (var target in gotoCmd.LabelTargets) {
         newLabelTargets.Add(oldToNewBlockMap[target]);
         newLabelNames.Add(oldToNewBlockMap[target].Label);
       }

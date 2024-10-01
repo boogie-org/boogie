@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
         GotoCmd gotoCmd = n.TransferCmd as GotoCmd;
         if (gotoCmd != null)
         {
-          foreach (Block b in gotoCmd.labelTargets)
+          foreach (Block b in gotoCmd.LabelTargets)
           {
             reachabilityGraph.AddEdge(n, b);
           }
@@ -90,14 +90,14 @@ namespace Microsoft.Boogie
           GotoCmd gotoCmd = n.TransferCmd as GotoCmd;
           Debug.Assert(gotoCmd != null);
 
-          for (int i = 0; i < gotoCmd.labelTargets.Count; i++)
+          for (int i = 0; i < gotoCmd.LabelTargets.Count; i++)
           {
-            (newProcedureExitNodes[proc].TransferCmd as GotoCmd).labelTargets.Add(gotoCmd.labelTargets[i]);
-            (newProcedureExitNodes[proc].TransferCmd as GotoCmd).labelNames.Add(gotoCmd.labelNames[i]);
+            (newProcedureExitNodes[proc].TransferCmd as GotoCmd).LabelTargets.Add(gotoCmd.LabelTargets[i]);
+            (newProcedureExitNodes[proc].TransferCmd as GotoCmd).LabelNames.Add(gotoCmd.LabelNames[i]);
           }
 
-          gotoCmd.labelTargets = new List<Block> {newProcedureEntryNodes[proc]};
-          gotoCmd.labelNames = new List<String> {newProcedureEntryNodes[proc].Label};
+          gotoCmd.LabelTargets = new List<Block> {newProcedureEntryNodes[proc]};
+          gotoCmd.LabelNames = new List<String> {newProcedureEntryNodes[proc].Label};
         }
       }
 
@@ -114,7 +114,7 @@ namespace Microsoft.Boogie
         if (gotoCmd != null)
         {
           List<Block> newTargets = new List<Block>();
-          foreach (Block t in gotoCmd.labelTargets)
+          foreach (Block t in gotoCmd.LabelTargets)
           {
             if (originalToNew.ContainsKey(t))
             {
@@ -126,7 +126,7 @@ namespace Microsoft.Boogie
             }
           }
 
-          gotoCmd.labelTargets = newTargets;
+          gotoCmd.LabelTargets = newTargets;
         }
       }
 
@@ -195,7 +195,7 @@ namespace Microsoft.Boogie
 
           Debug.Assert(prev != null);
           if (b.TransferCmd is ReturnCmd || (b.TransferCmd is GotoCmd &&
-                                             ((GotoCmd) b.TransferCmd).labelTargets.Count == 0))
+                                             ((GotoCmd) b.TransferCmd).LabelTargets.Count == 0))
           {
             prev.TransferCmd = new GotoCmd(Token.NoToken, new List<String> {exitLabel}, new List<Block> {newExit});
           }
@@ -209,7 +209,7 @@ namespace Microsoft.Boogie
             {
               var gotoCmd = b.TransferCmd as GotoCmd;
               Debug.Assert(gotoCmd != null);
-              prev.TransferCmd = new GotoCmd(gotoCmd.tok, gotoCmd.labelNames, gotoCmd.labelTargets);
+              prev.TransferCmd = new GotoCmd(gotoCmd.tok, gotoCmd.LabelNames, gotoCmd.LabelTargets);
             }
           }
         }
@@ -329,7 +329,7 @@ namespace Microsoft.Boogie
       {
         options.OutputWriter.WriteLine(n.Label + " -> {");
         GotoCmd gotoCmd = n.TransferCmd as GotoCmd;
-        foreach (Block m in gotoCmd.labelTargets)
+        foreach (Block m in gotoCmd.LabelTargets)
         {
           options.OutputWriter.WriteLine("   " + m.Label);
         }

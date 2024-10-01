@@ -844,9 +844,9 @@ namespace VC
 
           // Create a block between header and pred for the predicate commands if pred has more than one successor
           GotoCmd gotocmd = cce.NonNull((GotoCmd)pred.TransferCmd);
-          Contract.Assert(gotocmd.labelNames !=
+          Contract.Assert(gotocmd.LabelNames !=
                           null); // if "pred" is really a predecessor, it may be a GotoCmd with at least one label
-          if (gotocmd.labelNames.Count > 1)
+          if (gotocmd.LabelNames.Count > 1)
           {
             Block newBlock = CreateBlockBetween(predIndex, header);
             impl.Blocks.Add(newBlock);
@@ -882,18 +882,18 @@ namespace VC
           Debug.Assert(backEdgeNode.TransferCmd is GotoCmd,
             "An node was identified as the source for a backedge, but it does not have a goto command.");
           GotoCmd gtc = backEdgeNode.TransferCmd as GotoCmd;
-          if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Count > 1)
+          if (gtc != null && gtc.LabelTargets != null && gtc.LabelTargets.Count > 1)
           {
             // then remove the backedge by removing the target block from the list of gotos
             List<Block> remainingTargets = new List<Block>();
             List<String> remainingLabels = new List<String>();
-            Contract.Assume(gtc.labelNames != null);
-            for (int i = 0, n = gtc.labelTargets.Count; i < n; i++)
+            Contract.Assume(gtc.LabelNames != null);
+            for (int i = 0, n = gtc.LabelTargets.Count; i < n; i++)
             {
-              if (gtc.labelTargets[i] != header)
+              if (gtc.LabelTargets[i] != header)
               {
-                remainingTargets.Add(gtc.labelTargets[i]);
-                remainingLabels.Add(gtc.labelNames[i]);
+                remainingTargets.Add(gtc.LabelTargets[i]);
+                remainingLabels.Add(gtc.LabelNames[i]);
               }
               else
               {
@@ -901,8 +901,8 @@ namespace VC
               }
             }
 
-            gtc.labelTargets = remainingTargets;
-            gtc.labelNames = remainingLabels;
+            gtc.LabelTargets = remainingTargets;
+            gtc.LabelNames = remainingLabels;
           }
           else
           {
@@ -912,9 +912,9 @@ namespace VC
             AssumeCmd ac = new AssumeCmd(Token.NoToken, Expr.False);
             backEdgeNode.Cmds.Add(ac);
             backEdgeNode.TransferCmd = new ReturnCmd(Token.NoToken);
-            if (gtc != null && gtc.labelTargets != null && gtc.labelTargets.Count == 1)
+            if (gtc != null && gtc.LabelTargets != null && gtc.LabelTargets.Count == 1)
             {
-              RecordCutEdge(edgesCut, backEdgeNode, gtc.labelTargets[0]);
+              RecordCutEdge(edgesCut, backEdgeNode, gtc.LabelTargets[0]);
             }
           }
 
@@ -1126,12 +1126,12 @@ namespace VC
             {
               GotoCmd gc = pred.TransferCmd as GotoCmd;
               Contract.Assert(gc != null);
-              for (int i = 0; i < gc.labelTargets.Count(); ++i)
+              for (int i = 0; i < gc.LabelTargets.Count(); ++i)
               {
-                if (gc.labelTargets[i] == header)
+                if (gc.LabelTargets[i] == header)
                 {
-                  gc.labelTargets[i] = newHeader;
-                  gc.labelNames[i] = newHeader.Label;
+                  gc.LabelTargets[i] = newHeader;
+                  gc.LabelNames[i] = newHeader.Label;
                   newHeader.Predecessors.Add(pred);
                 }
               }
@@ -1209,9 +1209,9 @@ namespace VC
           List<Block> newTargets = new List<Block>();
           List<string> newLabels = new List<string>();
 
-          for (int i = 0; i < gc.labelTargets.Count(); ++i)
+          for (int i = 0; i < gc.LabelTargets.Count(); ++i)
           {
-            if (gc.labelTargets[i] == header)
+            if (gc.LabelTargets[i] == header)
             {
               if (nextHeader != null)
               {
@@ -1220,7 +1220,7 @@ namespace VC
                 nextHeader.Predecessors.Add(copy);
               }
             }
-            else if (ori2CopiedBlocks.TryGetValue(gc.labelTargets[i], out var newTarget))
+            else if (ori2CopiedBlocks.TryGetValue(gc.LabelTargets[i], out var newTarget))
             {
               newTargets.Add(newTarget);
               newLabels.Add(newTarget.Label);
@@ -1228,9 +1228,9 @@ namespace VC
             }
             else if (!cutExits)
             {
-              newTargets.Add(gc.labelTargets[i]);
-              newLabels.Add(gc.labelNames[i]);
-              gc.labelTargets[i].Predecessors.Add(copy);
+              newTargets.Add(gc.LabelTargets[i]);
+              newLabels.Add(gc.LabelNames[i]);
+              gc.LabelTargets[i].Predecessors.Add(copy);
             }
           }
 
@@ -1455,7 +1455,7 @@ namespace VC
         }
 
         var gotoCmd = block.TransferCmd as GotoCmd;
-        if (gotoCmd != null && gotoCmd.labelTargets.Any(b => !conditionOnBlockEntry.ContainsKey(b)))
+        if (gotoCmd != null && gotoCmd.LabelTargets.Any(b => !conditionOnBlockEntry.ContainsKey(b)))
         {
           q.Enqueue(block);
           continue;
@@ -1466,7 +1466,7 @@ namespace VC
         {
           var mayInstrs = new List<Block>();
           bool noInstr = true;
-          foreach (var succ in gotoCmd.labelTargets)
+          foreach (var succ in gotoCmd.LabelTargets)
           {
             var c = conditionOnBlockEntry[succ];
             if (c != null)
@@ -1673,7 +1673,7 @@ namespace VC
             var ex = x.TransferCmd as GotoCmd;
             if (ex != null)
             {
-              foreach (Block e in ex.labelTargets)
+              foreach (Block e in ex.LabelTargets)
               {
                 todo.Push(e);
               }
@@ -1944,7 +1944,7 @@ namespace VC
         }
 
         Block foundBlock = null;
-        foreach (Block bb in cce.NonNull(gotoCmd.labelTargets))
+        foreach (Block bb in cce.NonNull(gotoCmd.LabelTargets))
         {
           Contract.Assert(bb != null);
           if (traceNodes.Contains(bb))
@@ -2048,14 +2048,14 @@ namespace VC
           {
             var gto = (GotoCmd)prevBlock.TransferCmd;
             Block nb = null;
-            Contract.Assert(gto.labelNames.Count ==
-                            gto.labelTargets
+            Contract.Assert(gto.LabelNames.Count ==
+                            gto.LabelTargets
                               .Count); // follows from GotoCmd invariant and the fact that resolution should have made both lists non-null
-            for (int i = 0; i < gto.labelNames.Count; i++)
+            for (int i = 0; i < gto.LabelNames.Count; i++)
             {
-              if (gto.labelNames[i] == blk.Label)
+              if (gto.LabelNames[i] == blk.Label)
               {
-                nb = gto.labelTargets[i];
+                nb = gto.LabelTargets[i];
                 break;
               }
             }
@@ -2179,9 +2179,9 @@ namespace VC
         }
         else
         {
-          Contract.Assert(gotocmd.labelTargets != null);
-          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.labelTargets.Count);
-          foreach (Block successor in gotocmd.labelTargets)
+          Contract.Assert(gotocmd.LabelTargets != null);
+          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.LabelTargets.Count);
+          foreach (Block successor in gotocmd.LabelTargets)
           {
             Contract.Assert(successor != null);
             VCExpr s = blockVariables[successor];
@@ -2242,7 +2242,7 @@ namespace VC
       GotoCmd gotocmd = block.TransferCmd as GotoCmd;
       if (gotocmd != null)
       {
-        foreach (Block successor in cce.NonNull(gotocmd.labelTargets))
+        foreach (Block successor in cce.NonNull(gotocmd.LabelTargets))
         {
           Contract.Assert(successor != null);
           VCExpr c = DagVC(successor, controlFlowVariableExpr, absyIds, blockEquations, proverCtxt, out var ac);
@@ -2303,7 +2303,7 @@ namespace VC
           // generate renameInfoForStartBlock
           GotoCmd gtc = curr.TransferCmd as GotoCmd;
           renameInfo[curr] = null;
-          if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Count == 0)
+          if (gtc == null || gtc.LabelTargets == null || gtc.LabelTargets.Count == 0)
           {
             if (curr.Cmds.Count == 0 && curr.tok.IsValid)
             {
@@ -2321,7 +2321,7 @@ namespace VC
               else
               {
                 HashSet<Block> successorRenameInfo = new HashSet<Block>();
-                foreach (Block s in gtc.labelTargets)
+                foreach (Block s in gtc.LabelTargets)
                 {
                   if (keep.Contains(s))
                   {
@@ -2348,12 +2348,12 @@ namespace VC
           grey.Add(curr);
           stack.Push(curr);
           GotoCmd gtc = curr.TransferCmd as GotoCmd;
-          if (gtc == null || gtc.labelTargets == null || gtc.labelTargets.Count == 0)
+          if (gtc == null || gtc.LabelTargets == null || gtc.LabelTargets.Count == 0)
           {
             continue;
           }
 
-          foreach (Block s in gtc.labelTargets)
+          foreach (Block s in gtc.LabelTargets)
           {
             if (!visited.Contains(s))
             {
@@ -2380,16 +2380,16 @@ namespace VC
           {
             GotoCmd pGtc = p.TransferCmd as GotoCmd;
             Contract.Assert(pGtc != null);
-            pGtc.labelTargets.Remove(b);
-            pGtc.labelNames.Remove(b.Label);
+            pGtc.LabelTargets.Remove(b);
+            pGtc.LabelNames.Remove(b.Label);
           }
 
-          if (bGtc == null || bGtc.labelTargets == null || bGtc.labelTargets.Count == 0)
+          if (bGtc == null || bGtc.LabelTargets == null || bGtc.LabelTargets.Count == 0)
           {
             continue;
           }
 
-          List<Block> successors = bGtc.labelTargets;
+          List<Block> successors = bGtc.LabelTargets;
 
           // Try to push token information if possible
           if (b.tok.IsValid && successors.Count == 1 && b != renameInfo[startBlock])
@@ -2403,10 +2403,10 @@ namespace VC
                 {
                   GotoCmd pGtc = p.TransferCmd as GotoCmd;
                   Contract.Assert(pGtc != null);
-                  pGtc.labelTargets.Remove(s);
-                  pGtc.labelNames.Remove(s.Label);
-                  pGtc.labelTargets.Add(s);
-                  pGtc.labelNames.Add(b.Label);
+                  pGtc.LabelTargets.Remove(s);
+                  pGtc.LabelNames.Remove(s.Label);
+                  pGtc.LabelTargets.Add(s);
+                  pGtc.LabelNames.Add(b.Label);
                 }
               }
 
@@ -2421,10 +2421,10 @@ namespace VC
             Contract.Assert(pGtc != null);
             foreach (Block s in successors)
             {
-              if (!pGtc.labelTargets.Contains(s))
+              if (!pGtc.LabelTargets.Contains(s))
               {
-                pGtc.labelTargets.Add(s);
-                pGtc.labelNames.Add(s.Label);
+                pGtc.LabelTargets.Add(s);
+                pGtc.LabelNames.Add(s.Label);
               }
             }
           }

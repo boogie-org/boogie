@@ -539,7 +539,7 @@ namespace Microsoft.Boogie
         if (b.tc is GotoCmd)
         {
           GotoCmd g = (GotoCmd) b.tc;
-          foreach (string /*!*/ lbl in cce.NonNull(g.labelNames))
+          foreach (string /*!*/ lbl in cce.NonNull(g.LabelNames))
           {
             Contract.Assert(lbl != null);
             /*
@@ -1225,8 +1225,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      var assumeCmd = cmd as AssumeCmd;
-      if (assumeCmd != null
+      if (cmd is AssumeCmd assumeCmd
           && QKeyValue.FindBoolAttribute(assumeCmd.Attributes, "assumption_variable_initialization"))
       {
         // Ignore assumption variable initializations.
@@ -1238,8 +1237,7 @@ namespace Microsoft.Boogie
       using (var tokTxtWr = new TokenTextWriter("<no file>", strWr, false, false, options))
       {
         tokTxtWr.UseForComputingChecksums = true;
-        var havocCmd = cmd as HavocCmd;
-        if (havocCmd != null)
+        if (cmd is HavocCmd havocCmd)
         {
           tokTxtWr.Write("havoc ");
           var relevantVars = havocCmd.Vars
@@ -1265,11 +1263,9 @@ namespace Microsoft.Boogie
         cmd.Checksum = currentChecksum;
       }
 
-      var assertCmd = cmd as AssertCmd;
-      if (assertCmd != null && assertCmd.Checksum != null)
+      if (cmd is AssertCmd { Checksum: not null } assertCmd)
       {
-        var assertRequiresCmd = assertCmd as AssertRequiresCmd;
-        if (assertRequiresCmd != null)
+        if (assertCmd is AssertRequiresCmd assertRequiresCmd)
         {
           impl.AddAssertionChecksum(assertRequiresCmd.Checksum);
           impl.AddAssertionChecksum(assertRequiresCmd.Call.Checksum);
@@ -1281,21 +1277,16 @@ namespace Microsoft.Boogie
         }
       }
 
-      var sugaredCmd = cmd as SugaredCmd;
-      if (sugaredCmd != null)
+      if (cmd is SugaredCmd sugaredCmd)
       {
         // The checksum of a sugared command should not depend on the desugaring itself.
-        var stateCmd = sugaredCmd.GetDesugaring(options) as StateCmd;
-        if (stateCmd != null)
+        if (sugaredCmd.GetDesugaring(options) is StateCmd stateCmd)
         {
           foreach (var c in stateCmd.Cmds)
           {
             ComputeChecksums(options, c, impl, usedVariables, currentChecksum);
             currentChecksum = c.Checksum;
-            if (c.SugaredCmdChecksum == null)
-            {
-              c.SugaredCmdChecksum = cmd.Checksum;
-            }
+            c.SugaredCmdChecksum ??= cmd.Checksum;
           }
         }
         else
@@ -3166,11 +3157,9 @@ namespace Microsoft.Boogie
   /// </summary>
   public class AssertRequiresCmd : AssertCmd
   {
-    public CallCmd /*!*/
-      Call;
+    public CallCmd /*!*/ Call;
 
-    public Requires /*!*/
-      Requires;
+    public Requires /*!*/ Requires;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -3484,13 +3473,13 @@ namespace Microsoft.Boogie
 
   public class GotoCmd : TransferCmd
   {
-    [Rep] public List<String> labelNames;
-    [Rep] public List<Block> labelTargets;
+    [Rep] public List<String> LabelNames;
+    [Rep] public List<Block> LabelTargets;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(labelNames == null || labelTargets == null || labelNames.Count == labelTargets.Count);
+      Contract.Invariant(LabelNames == null || LabelTargets == null || LabelNames.Count == LabelTargets.Count);
     }
 
     [NotDelayed]
@@ -3499,7 +3488,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(tok != null);
       Contract.Requires(labelSeq != null);
-      this.labelNames = labelSeq;
+      this.LabelNames = labelSeq;
     }
 
     public GotoCmd(IToken /*!*/ tok, List<String> /*!*/ labelSeq, List<Block> /*!*/ blockSeq)
@@ -3514,8 +3503,8 @@ namespace Microsoft.Boogie
         Debug.Assert(Equals(labelSeq[i], cce.NonNull(blockSeq[i]).Label));
       }
 
-      this.labelNames = labelSeq;
-      this.labelTargets = blockSeq;
+      this.LabelNames = labelSeq;
+      this.LabelTargets = blockSeq;
     }
 
     public GotoCmd(IToken /*!*/ tok, List<Block> /*!*/ blockSeq)
@@ -3530,31 +3519,31 @@ namespace Microsoft.Boogie
         labelSeq.Add(cce.NonNull(blockSeq[i]).Label);
       }
 
-      this.labelNames = labelSeq;
-      this.labelTargets = blockSeq;
+      this.LabelNames = labelSeq;
+      this.LabelTargets = blockSeq;
     }
 
     public void RemoveTarget(Block b) {
-      labelNames.Remove(b.Label);
-      labelTargets.Remove(b);
+      LabelNames.Remove(b.Label);
+      LabelTargets.Remove(b);
     }
     
     public void AddTarget(Block b)
     {
       Contract.Requires(b != null);
       Contract.Requires(b.Label != null);
-      Contract.Requires(this.labelTargets != null);
-      Contract.Requires(this.labelNames != null);
-      this.labelTargets.Add(b);
-      this.labelNames.Add(b.Label);
+      Contract.Requires(this.LabelTargets != null);
+      Contract.Requires(this.LabelNames != null);
+      this.LabelTargets.Add(b);
+      this.LabelNames.Add(b.Label);
     }
 
     public void AddTargets(IEnumerable<Block> blocks)
     {
       Contract.Requires(blocks != null);
       Contract.Requires(cce.NonNullElements(blocks));
-      Contract.Requires(this.labelTargets != null);
-      Contract.Requires(this.labelNames != null);
+      Contract.Requires(this.LabelTargets != null);
+      Contract.Requires(this.LabelNames != null);
       foreach (var block in blocks)
       {
         AddTarget(block);
@@ -3564,14 +3553,14 @@ namespace Microsoft.Boogie
     public override void Emit(TokenTextWriter stream, int level)
     {
       //Contract.Requires(stream != null);
-      Contract.Assume(this.labelNames != null);
+      Contract.Assume(this.LabelNames != null);
       stream.Write(this, level, "goto ");
       if (stream.Options.PrintWithUniqueASTIds)
       {
-        if (labelTargets == null)
+        if (LabelTargets == null)
         {
           string sep = "";
-          foreach (string name in labelNames)
+          foreach (string name in LabelNames)
           {
             stream.Write("{0}{1}^^{2}", sep, "NoDecl", name);
             sep = ", ";
@@ -3580,7 +3569,7 @@ namespace Microsoft.Boogie
         else
         {
           string sep = "";
-          foreach (Block /*!*/ b in labelTargets)
+          foreach (Block /*!*/ b in LabelTargets)
           {
             Contract.Assert(b != null);
             stream.Write("{0}h{1}^^{2}", sep, b.GetHashCode(), b.Label);
@@ -3590,7 +3579,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        labelNames.Emit(stream);
+        LabelNames.Emit(stream);
       }
 
       stream.WriteLine(";");
@@ -3599,16 +3588,16 @@ namespace Microsoft.Boogie
     public override void Resolve(ResolutionContext rc)
     {
       //Contract.Requires(rc != null);
-      Contract.Ensures(labelTargets != null);
-      if (labelTargets != null)
+      Contract.Ensures(LabelTargets != null);
+      if (LabelTargets != null)
       {
         // already resolved
         return;
       }
 
-      Contract.Assume(this.labelNames != null);
-      labelTargets = new List<Block>();
-      foreach (string /*!*/ lbl in labelNames)
+      Contract.Assume(this.LabelNames != null);
+      LabelTargets = new List<Block>();
+      foreach (string /*!*/ lbl in LabelNames)
       {
         Contract.Assert(lbl != null);
         Block b = rc.LookUpBlock(lbl);
@@ -3618,11 +3607,11 @@ namespace Microsoft.Boogie
         }
         else
         {
-          labelTargets.Add(b);
+          LabelTargets.Add(b);
         }
       }
 
-      Debug.Assert(rc.ErrorCount > 0 || labelTargets.Count == labelNames.Count);
+      Debug.Assert(rc.ErrorCount > 0 || LabelTargets.Count == LabelNames.Count);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)

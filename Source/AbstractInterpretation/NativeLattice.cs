@@ -258,7 +258,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
         if (g != null)
         {
           // if g==null, it's a pity we didn't pay attention to that earlier, because then we could have skipped analyzing the code in this block
-          foreach (Block succ in g.labelTargets)
+          foreach (Block succ in g.LabelTargets)
           {
             workItems.Enqueue(new Tuple<Block, NativeLattice.Element>(succ, e));
           }

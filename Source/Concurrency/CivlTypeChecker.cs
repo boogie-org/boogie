@@ -217,7 +217,7 @@ namespace Microsoft.Boogie
       graph.TopologicalSort().ForEach(block =>
       {
         var modifiedGlobals = block.TransferCmd is GotoCmd gotoCmd &&
-                              gotoCmd.labelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
+                              gotoCmd.LabelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
         for (int i = block.Cmds.Count - 1; 0 <= i; i--)
         {
           var cmd = block.Cmds[i];
