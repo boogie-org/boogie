@@ -6,7 +6,7 @@ function {:inline} AllLocPieces(): Set LocPiece {
   Set_Add(Set_Add(Set_Empty(), Left()), Right())
 }
 
-type LocTreiberNode = Fraction Loc LocPiece;
+type LocTreiberNode = KeyedLoc LocPiece;
 type StackElem T = Node LocTreiberNode T;
 type StackMap T = Map LocTreiberNode (StackElem T);
 datatype Treiber<T> { Treiber(top: Option LocTreiberNode, {:linear} stack: StackMap T) }
@@ -44,7 +44,7 @@ invariant (var t := ts->val[loc_t]; Between(t->stack->val, t->top, t->top, None(
 invariant (var t := ts->val[loc_t]; IsSubset(BetweenSet(t->stack->val, t->top, None()), Domain(ts, loc_t)->val));
 invariant (var loc_n := Map_At(ts, loc_t)->top; loc_n is None || Set_Contains(Domain(ts, loc_t), loc_n->t));
 invariant (forall {:pool "A"} loc_n: LocTreiberNode :: {:add_to_pool "A", loc_n} Set_Contains(Domain(ts, loc_t), loc_n) ==>
-              loc_n == Fraction(loc_n->val, Left(), AllLocPieces()) &&
+              loc_n == KeyedLoc(loc_n->l, Left()) &&
               (var loc_n' := Map_At(Map_At(ts, loc_t)->stack, loc_n)->next; loc_n' is None || Set_Contains(Domain(ts, loc_t), loc_n'->t)));
 invariant Map_At(Stack, loc_t) == Abs(Map_At(ts, loc_t));
 
@@ -55,8 +55,8 @@ yield invariant {:layer 4} PushLocInStack(
   loc_t: Loc, node: StackElem X, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One LocTreiberNode);
 invariant Map_Contains(ts, loc_t);
 invariant Set_Contains(Domain(ts, loc_t), new_loc_n);
-invariant right_loc_piece->val == Fraction(new_loc_n->val, Right(), AllLocPieces());
-invariant new_loc_n == Fraction(new_loc_n->val, Left(), AllLocPieces());
+invariant right_loc_piece->val == KeyedLoc(new_loc_n->l, Right());
+invariant new_loc_n == KeyedLoc(new_loc_n->l, Left());
 invariant (var t := ts->val[loc_t]; Map_At(t->stack, new_loc_n) == node && !BetweenSet(t->stack->val, t->top, None())[new_loc_n]);
 
 /// Layered implementation
@@ -165,18 +165,17 @@ asserts Map_Contains(ts, loc_t);
   var {:linear} treiber: Treiber X;
   var top: Option LocTreiberNode;
   var {:linear} stack: StackMap X;
-  var {:linear} one_loc_n: One Loc;
+  var loc: Loc;
   var {:linear} loc_pieces: Set LocTreiberNode;
   var {:linear} left_loc_piece: One LocTreiberNode;
   
   call one_loc_t, treiber := Map_Get(ts, loc_t);
   Treiber(top, stack) := treiber;
   assume loc_n is None || Map_Contains(stack, loc_n->t);
-  call one_loc_n := Loc_New();
-  call loc_pieces := One_To_Fractions(one_loc_n, AllLocPieces());
-  call left_loc_piece := One_Get(loc_pieces, Fraction(one_loc_n->val, Left(), AllLocPieces()));
+  call loc, loc_pieces := KeyedLocs_New(AllLocPieces());
+  call left_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Left()));
   new_loc_n := left_loc_piece->val;
-  call right_loc_piece := One_Get(loc_pieces, Fraction(one_loc_n->val, Right(), AllLocPieces()));
+  call right_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Right()));
   call Map_Put(stack, left_loc_piece, Node(loc_n, x));
   treiber := Treiber(top, stack);
   call Map_Put(ts, one_loc_t, treiber);
@@ -187,16 +186,15 @@ preserves call TopInStack(loc_t);
 ensures call LocInStackOrNone(loc_t, Some(new_loc_n));
 refines AtomicAllocNode#3;
 {
-  var {:linear} one_loc_n: One Loc;
+  var loc: Loc;
   var {:linear} loc_pieces: Set LocTreiberNode;
   var {:linear} left_loc_piece: One LocTreiberNode;
 
   call loc_n := ReadTopOfStack#Push(loc_t);
-  call one_loc_n := Loc_New();
-  call loc_pieces := One_To_Fractions(one_loc_n, AllLocPieces());
-  call left_loc_piece := One_Get(loc_pieces, Fraction(one_loc_n->val, Left(), AllLocPieces()));
+  call loc, loc_pieces := KeyedLocs_New(AllLocPieces());
+  call left_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Left()));
   new_loc_n := left_loc_piece->val;
-  call right_loc_piece := One_Get(loc_pieces, Fraction(one_loc_n->val, Right(), AllLocPieces()));
+  call right_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Right()));
   call AllocNode#0(loc_t, left_loc_piece, Node(loc_n, x));
 }
 

@@ -150,8 +150,7 @@ public class LinearRewriter
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "Loc_New":
-      case "One_To_Fractions":
-      case "Fractions_To_One":
+      case "KeyedLocs_New":
       case "Cell_Pack":
       case "Cell_Unpack":
       case "Set_MakeEmpty":

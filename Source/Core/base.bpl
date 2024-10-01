@@ -289,23 +289,6 @@ function {:inline} One_Collector<T>(a: One T): [T]bool
   MapOne(a->val)
 }
 
-datatype Fraction<T, K> { Fraction(val: T, id: K, ids: Set K) }
-
-function {:inline} AllPieces<T,K>(t: T, ids: Set K): Set (Fraction T K)
-{
-  Set((lambda piece: Fraction T K :: piece->val == t && Set_Contains(ids, piece->id) && piece->ids == ids))
-}
-
-pure procedure {:inline 1} One_To_Fractions<T,K>({:linear_in} one_t: One T, ids: Set K) returns ({:linear} pieces: Set (Fraction T K))
-{
-  pieces := AllPieces(one_t->val, ids);
-}
-
-pure procedure {:inline 1} Fractions_To_One<T,K>({:linear_out} one_t: One T, ids: Set K, {:linear_in} pieces: Set (Fraction T K))
-{
-  assert pieces == AllPieces(one_t->val, ids);
-}
-
 /// singleton map
 datatype Cell<T,U> { Cell(key: T, val: U) }
 
@@ -363,6 +346,14 @@ type Loc;
 pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One Loc)
 {
   assume {:add_to_pool "Loc_New", l} true;
+}
+
+datatype KeyedLoc<K> { KeyedLoc(l: Loc, k: K) }
+
+pure procedure {:inline 1} KeyedLocs_New<K>(ks: Set K) returns ({:pool "Loc_New"} l: Loc, {:linear} keyed_locs: Set (KeyedLoc K))
+{
+  assume {:add_to_pool "Loc_New", l} true;
+  keyed_locs := Set((lambda x: KeyedLoc K :: x->l == l && Set_Contains(ks, x->k)));
 }
 
 procedure create_async<T>(PA: T);
