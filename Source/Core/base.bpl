@@ -290,11 +290,11 @@ function {:inline} One_Collector<T>(a: One T): [T]bool
 }
 
 /// singleton map
-datatype Cell<T,U> { Cell(key: T, val: U) }
+datatype Cell<T,U> { Cell({:linear} key: One T, val: U) }
 
 function {:inline} Cell_Collector<T,U>(a: Cell T U): [T]bool
 {
-  MapOne(a->key)
+  MapOne(a->key->val)
 }
 
 /// linear primitives
@@ -308,16 +308,6 @@ pure procedure Set_Put<K>({:linear} path: Set K, {:linear_in} l: Set K);
 pure procedure One_Split<K>({:linear} path: Set K, {:linear_out} l: One K);
 pure procedure One_Get<K>({:linear} path: Set K, k: K) returns ({:linear} l: One K);
 pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: One K);
-
-pure procedure {:inline 1} Cell_Pack<K,V>({:linear_in} l: One K, {:linear_in} v: V) returns ({:linear} c: Cell K V)
-{
-  c := Cell(l->val, v);
-}
-pure procedure {:inline 1} Cell_Unpack<K,V>({:linear_in} c: Cell K V) returns ({:linear} l: One K, {:linear} v: V)
-{
-  l := One(c->key);
-  v := c->val;
-}
 
 pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 {

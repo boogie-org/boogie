@@ -871,7 +871,7 @@ namespace Microsoft.Boogie
       {
         var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
         var typeName = originalTypeCtorDecl.Name;
-        if (typeName == "Map" || typeName == "Set" || typeName == "Cell" | typeName == "One")
+        if (typeName == "Map" || typeName == "Set" || typeName == "One")
         {
           var actualTypeParams = program.monomorphizer.GetTypeInstantiation(datatypeTypeCtorDecl);
           return actualTypeParams[0];

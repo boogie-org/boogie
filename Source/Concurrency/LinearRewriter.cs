@@ -151,8 +151,6 @@ public class LinearRewriter
     {
       case "Loc_New":
       case "KeyedLocSet_New":
-      case "Cell_Pack":
-      case "Cell_Unpack":
       case "Set_MakeEmpty":
       case "Map_MakeEmpty":
       case "Map_Pack":
@@ -267,14 +265,6 @@ public class LinearRewriter
     var oneTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("One", actualTypeParams);
     var oneConstructor = oneTypeCtorDecl.Constructors[0];
     return oneConstructor;
-  }
-
-  private Function CellConstructor(Type keyType, Type valType)
-  {
-    var actualTypeParams = new List<Type>() { keyType, valType };
-    var cellTypeCtorDecl = (DatatypeTypeCtorDecl)monomorphizer.InstantiateTypeCtorDecl("Cell", actualTypeParams);
-    var cellConstructor = cellTypeCtorDecl.Constructors[0];
-    return cellConstructor;
   }
 
   private Function SetConstructor(Type type)
