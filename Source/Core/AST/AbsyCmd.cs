@@ -3480,6 +3480,8 @@ namespace Microsoft.Boogie
     [Rep] public List<String> LabelNames;
     [Rep] public List<Block> LabelTargets;
 
+    public QKeyValue Attributes { get; set; }
+    
     [ContractInvariantMethod]
     void ObjectInvariant()
     {

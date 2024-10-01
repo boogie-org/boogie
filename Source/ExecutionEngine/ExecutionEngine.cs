@@ -744,7 +744,7 @@ namespace Microsoft.Boogie
           out var modelViewInfo);
 
         ConditionGeneration.ResetPredecessors(run.Implementation.Blocks);
-        var splits = ManualSplitFinder.SplitOnPathsAndAssertions(Options, run, 
+        var splits = ManualSplitFinder.GetParts(Options, run, 
           (token, blocks) => new ManualSplit(Options, () => blocks, gotoCmdOrigins, vcGenerator, run, token)).ToList();
         for (var index = 0; index < splits.Count; index++) {
           var split = splits[index];

@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.Boogie;
 using VC;
+using VCGeneration.Splits;
 using Block = Microsoft.Boogie.Block;
 using Cmd = Microsoft.Boogie.Cmd;
 using PredicateCmd = Microsoft.Boogie.PredicateCmd;
@@ -12,15 +13,18 @@ using VCGenOptions = Microsoft.Boogie.VCGenOptions;
 
 namespace VCGeneration;
 
-public static class FocusApplier
-{
-  
+public class FocusAttributeHandler {
+  private readonly BlockRewriter rewriter;
+
+  public FocusAttributeHandler(BlockRewriter rewriter) {
+    this.rewriter = rewriter;
+  }
+
   /// <summary>
   /// Each focus block creates two options.
   /// We recurse twice for each focus, leading to potentially 2^N splits
   /// </summary>
-  public static List<ManualSplit> GetFocusParts(VCGenOptions options, ImplementationRun run,
-    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createPart)
+  public List<ManualSplit> GetParts(ImplementationRun run)
   {
     var implementation = run.Implementation;
     var dag = Program.GraphFromImpl(implementation);
@@ -29,11 +33,11 @@ public static class FocusApplier
     // By default, we process the foci in a top-down fashion, i.e., in the topological order.
     // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
     var focusBlocks = GetFocusBlocks(topologicallySortedBlocks);
-    if (options.RelaxFocus) {
+    if (rewriter.Options.RelaxFocus) {
       focusBlocks.Reverse();
     }
     if (!focusBlocks.Any()) {
-      return new List<ManualSplit> { createPart(new ImplementationRootOrigin(run.Implementation), implementation.Blocks) };
+      return new List<ManualSplit> { rewriter.CreateSplit(new ImplementationRootOrigin(run.Implementation), implementation.Blocks) };
     }
 
     var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
@@ -53,11 +57,11 @@ public static class FocusApplier
     void AddSplitsFromIndex(ImmutableStack<Block> path, int focusIndex, ISet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
-        var newBlocks = ComputeNewBlocks(options, blocksToInclude, blocksReversed, freeAssumeBlocks);
+        var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, blocksReversed, freeAssumeBlocks);
         ImplementationPartOrigin token = path.Any() 
           ? new PathOrigin(run.Implementation.tok, path, dominators) 
           : new ImplementationRootOrigin(run.Implementation); 
-        result.Add(createPart(token, newBlocks));
+        result.Add(rewriter.CreateSplit(token, newBlocks));
       } else {
         var (focusBlock, nextToken) = focusBlocks[focusIndex]; // assert b in blocks
         if (!blocksToInclude.Contains(focusBlock) || freeAssumeBlocks.Contains(focusBlock))
@@ -85,44 +89,6 @@ public static class FocusApplier
     }
   }
 
-  public static List<Block> ComputeNewBlocks(VCGenOptions options, ISet<Block> blocksToInclude, IEnumerable<Block> blocksReversed,
-    ISet<Block> freeAssumeBlocks)
-  {
-    var duplicator = new Duplicator();
-    var newBlocks = new List<Block>();
-    var oldToNewBlockMap = new Dictionary<Block, Block>(blocksToInclude.Count);
-        
-    // TODO, use ManualSplitFinder.CreateSplit()
-    // Traverse backwards to allow settings the jumps to the new blocks
-    foreach (var block in blocksReversed)
-    {
-      if (!blocksToInclude.Contains(block)) {
-        continue;
-      }
-      var newBlock = (Block)duplicator.Visit(block);
-      newBlocks.Add(newBlock);
-      oldToNewBlockMap[block] = newBlock;
-      // freeBlocks consist of the predecessors of the relevant foci.
-      // Their assertions turn into assumes and any splits inside them are disabled.
-      if(freeAssumeBlocks.Contains(block))
-      {
-        newBlock.Cmds = block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(options, c)).Select(DisableSplits).ToList();
-      }
-      if (block.TransferCmd is GotoCmd gtc)
-      {
-        var targets = gtc.LabelTargets.Where(blocksToInclude.Contains).ToList();
-        newBlock.TransferCmd = new GotoCmd(gtc.tok,
-          targets.Select(blk => oldToNewBlockMap[blk].Label).ToList(),
-          targets.Select(blk => oldToNewBlockMap[blk]).ToList());
-      }
-    }
-    newBlocks.Reverse();
-    
-    // TODO remove?
-    BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
-    return newBlocks;
-  }
-
   // finds all the blocks dominated by focusBlock in the subgraph
   // which only contains vertices of subgraph.
   private static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, ISet<Block> subgraph)
@@ -141,18 +107,6 @@ public static class FocusApplier
       dominatorsPerBlock[block] = dominatorsForBlock;
     }
     return subgraph.Where(blk => dominatorsPerBlock[blk].Contains(focusBlock)).ToHashSet();
-  }
-
-  private static Cmd DisableSplits(Cmd command)
-  {
-    if (command is not PredicateCmd pc)
-    {
-      return command;
-    }
-
-    pc.Attributes = new QKeyValue(Token.NoToken, "split", 
-      new List<object> { new LiteralExpr(Token.NoToken, false) }, pc.Attributes);
-    return command;
   }
   
   private static List<(Block Block, IToken Token)> GetFocusBlocks(List<Block> blocks) {

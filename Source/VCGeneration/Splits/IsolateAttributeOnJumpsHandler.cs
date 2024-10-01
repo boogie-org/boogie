@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.Boogie;
 using VC;
@@ -9,26 +10,16 @@ using VCGeneration.Splits;
 
 namespace VCGeneration;
 
-class IsolateAttributeOnReturns {
-  private readonly Dictionary<AssertCmd, Cmd> assumedAssertions = new();
-  private readonly VCGenOptions options;
+class IsolateAttributeOnJumpsHandler {
+  private readonly BlockRewriter rewriter;
 
-  public IsolateAttributeOnReturns(VCGenOptions options) {
-    this.options = options;
-  }
-
-  private Cmd TransformAssertCmd(Cmd cmd) {
-    if (cmd is AssertCmd assertCmd) {
-      return assumedAssertions.GetOrCreate(assertCmd, () => VerificationConditionGenerator.AssertTurnedIntoAssume(options, assertCmd));
-    }
-
-    return cmd;
+  public IsolateAttributeOnJumpsHandler(BlockRewriter rewriter) {
+    this.rewriter = rewriter;
   }
   
-  public List<ManualSplit> GetPartsFromIsolatedReturns( 
+  public (List<ManualSplit> Isolated, ManualSplit Remainder) GetParts( 
     Dictionary<TransferCmd, ReturnCmd> gotoToOriginalReturn, 
-    ManualSplit partToDivide,
-    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
+    ManualSplit partToDivide) {
 
     var results = new List<ManualSplit>();
     var blocks = partToDivide.Blocks;
@@ -45,34 +36,36 @@ class IsolateAttributeOnReturns {
         continue;
       }
 
-      if (!gotoToOriginalReturn.TryGetValue(gotoCmd, out var returnCmd)) {
-        continue;
-      }
-
-      var isolateAttribute = QKeyValue.FindAttribute(returnCmd.Attributes, p => p.Key == "isolate");
-      var isolate = ShouldIsolate(splitOnEveryAssert, isolateAttribute);
+      var isTypeOfAssert = gotoToOriginalReturn.ContainsKey(gotoCmd);
+      var isolateAttribute = QKeyValue.FindAttribute(gotoCmd.Attributes, p => p.Key == "isolate");
+      var isolate = ShouldIsolate(isTypeOfAssert && splitOnEveryAssert, isolateAttribute);
       if (!isolate) {
         continue;
       }
 
-      // TODO support isolate paths for returns
       isolatedBlocks.Add(block);
       var ancestors = dag.ComputeReachability(block, false);
       var descendants = dag.ComputeReachability(block, true);
       var blocksToInclude = ancestors.Union(descendants).ToHashSet();
-      var newBlocks = FocusApplier.ComputeNewBlocks(options, blocksToInclude,
-        reversedBlocks, ancestors.ToHashSet());
-      var partFromIsolatedReturn = createSplit(new ReturnOrigin(gotoToOriginalReturn[gotoCmd]), newBlocks);
-      results.Add(partFromIsolatedReturn);
-    }
-    
-    results.Add(GetPartWithoutIsolatedReturns());
 
-    return results;
+      if (isolateAttribute != null && isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "paths"))) {
+        // These conditions hold if the goto was originally a return
+        Debug.Assert(gotoCmd.LabelTargets.Count == 1);
+        Debug.Assert(gotoCmd.LabelTargets[0].TransferCmd is not GotoCmd);
+        results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, gotoToOriginalReturn[gotoCmd].tok));
+      } else {
+        var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude,
+          reversedBlocks, ancestors.ToHashSet());
+        results.Add(createSplit(new ReturnOrigin(gotoToOriginalReturn[gotoCmd]), newBlocks));
+      }
+
+    }
+
+    return (results, GetPartWithoutIsolatedReturns());
     
     ManualSplit GetPartWithoutIsolatedReturns() {
       var newBlocks = BlockRewriter.UpdateBlocks(new Stack<Block>(reversedBlocks), new HashSet<Block>(), 
-        oldBlock => oldBlock.Cmds.Select(TransformAssertCmd).ToList());
+        oldBlock => oldBlock.Cmds.Select(rewriter.TransformAssertCmd).ToList());
       foreach (var (oldBlock, newBlock) in newBlocks) {
         if (isolatedBlocks.Contains(oldBlock)) {
           newBlock.TransferCmd = null;
