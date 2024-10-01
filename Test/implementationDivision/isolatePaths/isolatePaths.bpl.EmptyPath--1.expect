@@ -1,9 +1,0 @@
-implementation {:isolate_paths} EmptyPath()
-{
-
-  anon0:
-    assert 10 > 5;
-    goto ;
-}
-
-
