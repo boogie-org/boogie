@@ -7,6 +7,7 @@ using System.Linq;
 using Microsoft.Boogie;
 using VC;
 using VCGeneration.Splits;
+using VCGeneration.Transformations;
 
 namespace VCGeneration;
 
@@ -17,8 +18,7 @@ class IsolateAttributeOnJumpsHandler {
     this.rewriter = rewriter;
   }
   
-  public (List<ManualSplit> Isolated, ManualSplit Remainder) GetParts( 
-    Dictionary<TransferCmd, ReturnCmd> gotoToOriginalReturn, 
+  public (List<ManualSplit> Isolated, ManualSplit Remainder) GetParts(
     ManualSplit partToDivide) {
 
     var results = new List<ManualSplit>();
@@ -37,7 +37,7 @@ class IsolateAttributeOnJumpsHandler {
         continue;
       }
 
-      var isTypeOfAssert = gotoToOriginalReturn.ContainsKey(gotoCmd);
+      var isTypeOfAssert = gotoCmd.tok is GotoFromReturn;
       var isolateAttribute = QKeyValue.FindAttribute(gotoCmd.Attributes, p => p.Key == "isolate");
       var isolate = ShouldIsolate(isTypeOfAssert && splitOnEveryAssert, isolateAttribute);
       if (!isolate) {
@@ -49,15 +49,16 @@ class IsolateAttributeOnJumpsHandler {
       var descendants = dag.ComputeReachability(block, true);
       var blocksToInclude = ancestors.Union(descendants).ToHashSet();
 
+      var originalReturn = ((GotoFromReturn)gotoCmd.tok).Origin;
       if (isolateAttribute != null && isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "paths"))) {
         // These conditions hold if the goto was originally a return
         Debug.Assert(gotoCmd.LabelTargets.Count == 1);
         Debug.Assert(gotoCmd.LabelTargets[0].TransferCmd is not GotoCmd);
-        results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, gotoToOriginalReturn[gotoCmd].tok));
+        results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, originalReturn.tok));
       } else {
         var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude,
           reversedBlocks, ancestors.ToHashSet());
-        results.Add(rewriter.CreateSplit(new ReturnOrigin(gotoToOriginalReturn[gotoCmd]), newBlocks));
+        results.Add(rewriter.CreateSplit(new ReturnOrigin(originalReturn), newBlocks));
       }
     }
 

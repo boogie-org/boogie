@@ -740,12 +740,11 @@ namespace Microsoft.Boogie
         var run = new ImplementationRun(implementation, writer);
         var collector = new VerificationResultCollector(Options);
         vcGenerator.PrepareImplementation(run, collector, out _,
-          out var gotoCmdOrigins,
           out var modelViewInfo);
 
         ConditionGeneration.ResetPredecessors(run.Implementation.Blocks);
-        var splits = ManualSplitFinder.GetParts(Options, run, gotoCmdOrigins, 
-          (token, blocks) => new ManualSplit(Options, () => blocks, gotoCmdOrigins, vcGenerator, run, token)).ToList();
+        var splits = ManualSplitFinder.GetParts(Options, run,  
+          (token, blocks) => new ManualSplit(Options, () => blocks, vcGenerator, run, token)).ToList();
         for (var index = 0; index < splits.Count; index++) {
           var split = splits[index];
           split.SplitIndex = index;

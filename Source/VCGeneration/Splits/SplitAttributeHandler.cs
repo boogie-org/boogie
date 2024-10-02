@@ -71,7 +71,7 @@ class SplitAttributeHandler {
       return new ManualSplit(partToSplit.Options, () => {
         BlockTransformations.Optimize(blocks);
         return blocks;
-      }, partToSplit.GotoCmdOrigins, partToSplit.parent, partToSplit.Run, token);
+      }, partToSplit.parent, partToSplit.Run, token);
     }
   }
 

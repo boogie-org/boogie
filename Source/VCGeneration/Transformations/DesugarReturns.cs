@@ -8,13 +8,11 @@ using VC;
 namespace VCGeneration.Transformations;
 
 public static class DesugarReturns {
-  public static Block GenerateUnifiedExit(Implementation impl, out Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
+  public static Block GenerateUnifiedExit(Implementation impl)
   {
     Contract.Requires(impl != null);
-    Contract.Requires(gotoCmdOrigins != null);
     Contract.Ensures(Contract.Result<Block>() != null);
 
-    gotoCmdOrigins = new();
     Contract.Ensures(Contract.Result<Block>().TransferCmd is ReturnCmd);
     Block exitBlock = null;
 
@@ -41,7 +39,6 @@ public static class DesugarReturns {
         var gotoCmd = new GotoCmd(new GotoFromReturn(returnCmd), gotoLabels, gotoTargets) {
           Attributes = returnCmd.Attributes
         };
-        gotoCmdOrigins[gotoCmd] = returnCmd;
         block.TransferCmd = gotoCmd;
         unifiedExit.Predecessors.Add(block);
       }
@@ -63,13 +60,11 @@ public static class DesugarReturns {
   /// already been constructed for the implementation (and so
   /// is already an element of impl.Blocks)
   /// </param>
-  public static void InjectPostConditions(VCGenOptions options, ImplementationRun run, Block unifiedExitBlock,
-      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
+  public static void InjectPostConditions(VCGenOptions options, ImplementationRun run, Block unifiedExitBlock)
   {
     var impl = run.Implementation;
     Contract.Requires(impl != null);
     Contract.Requires(unifiedExitBlock != null);
-    Contract.Requires(gotoCmdOrigins != null);
     Contract.Requires(impl.Proc != null);
     Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
 
