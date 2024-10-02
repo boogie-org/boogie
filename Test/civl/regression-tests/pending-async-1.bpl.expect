@@ -5,7 +5,6 @@ Execution trace:
     pending-async-1.bpl(51,3): anon0$1
     pending-async-1.bpl(11,9): inline$B$1$anon0
     pending-async-1.bpl(51,3): anon0$2
-    (0,0): Civl_ReturnChecker
 pending-async-1.bpl(67,3): Error: Pending asyncs to action A created by this call are not summarized
 Execution trace:
     pending-async-1.bpl(67,3): anon0

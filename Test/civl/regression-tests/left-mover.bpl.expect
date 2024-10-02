@@ -10,6 +10,5 @@ Execution trace:
     left-mover.bpl(6,24): inline$inc$0$Return
 left-mover.bpl(26,24): Error: Cooperation check for block failed
 Execution trace:
-    (0,0): init
 
 Boogie program verifier finished with 3 verified, 3 errors
