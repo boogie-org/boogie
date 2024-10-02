@@ -680,7 +680,7 @@ namespace VC
       // Recompute the predecessors, but first insert a dummy start node that is sure not to be the target of any goto (because the cutting of back edges
       // below assumes that the start node has no predecessor)
       impl.Blocks.Insert(0,
-        new Block(new Token(-17, -4), "0", new List<Cmd>(),
+        new Block(Token.NoToken, "0", new List<Cmd>(),
           new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] })));
       ResetPredecessors(impl.Blocks);
 
@@ -882,19 +882,19 @@ namespace VC
           Contract.Assert(backEdgeNode != null);
           Debug.Assert(backEdgeNode.TransferCmd is GotoCmd,
             "An node was identified as the source for a backedge, but it does not have a goto command.");
-          GotoCmd gtc = backEdgeNode.TransferCmd as GotoCmd;
-          if (gtc != null && gtc.LabelTargets != null && gtc.LabelTargets.Count > 1)
+          GotoCmd gotoCmd = backEdgeNode.TransferCmd as GotoCmd;
+          if (gotoCmd is { LabelTargets.Count: > 1 })
           {
             // then remove the backedge by removing the target block from the list of gotos
             List<Block> remainingTargets = new List<Block>();
             List<String> remainingLabels = new List<String>();
-            Contract.Assume(gtc.LabelNames != null);
-            for (int i = 0, n = gtc.LabelTargets.Count; i < n; i++)
+            Contract.Assume(gotoCmd.LabelNames != null);
+            for (int i = 0, n = gotoCmd.LabelTargets.Count; i < n; i++)
             {
-              if (gtc.LabelTargets[i] != header)
+              if (gotoCmd.LabelTargets[i] != header)
               {
-                remainingTargets.Add(gtc.LabelTargets[i]);
-                remainingLabels.Add(gtc.LabelNames[i]);
+                remainingTargets.Add(gotoCmd.LabelTargets[i]);
+                remainingLabels.Add(gotoCmd.LabelNames[i]);
               }
               else
               {
@@ -902,20 +902,20 @@ namespace VC
               }
             }
 
-            gtc.LabelTargets = remainingTargets;
-            gtc.LabelNames = remainingLabels;
+            gotoCmd.LabelTargets = remainingTargets;
+            gotoCmd.LabelNames = remainingLabels;
           }
           else
           {
             // This backedge is the only out-going edge from this node.
             // Add an "assume false" statement to the end of the statements
             // inside of the block and change the goto command to a return command.
-            AssumeCmd ac = new AssumeCmd(Token.NoToken, Expr.False);
+            var ac = new AssumeCmd(Token.NoToken, Expr.False);
             backEdgeNode.Cmds.Add(ac);
-            backEdgeNode.TransferCmd = new ReturnCmd(Token.NoToken);
-            if (gtc != null && gtc.LabelTargets != null && gtc.LabelTargets.Count == 1)
+            backEdgeNode.TransferCmd = new ReturnCmd(backEdgeNode.TransferCmd.tok);
+            if (gotoCmd is { LabelTargets.Count: 1 })
             {
-              RecordCutEdge(edgesCut, backEdgeNode, gtc.LabelTargets[0]);
+              RecordCutEdge(edgesCut, backEdgeNode, gotoCmd.LabelTargets[0]);
             }
           }
 

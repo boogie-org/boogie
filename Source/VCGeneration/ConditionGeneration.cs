@@ -222,7 +222,7 @@ namespace VC
 
       Block origStartBlock = impl.Blocks[0];
       Block insertionPoint = new Block(
-        new Token(-17, -4), blockLabel, startCmds,
+        Token.NoToken, blockLabel, startCmds,
         new GotoCmd(impl.tok, new List<String> {origStartBlock.Label}, new List<Block> {origStartBlock}));
 
       impl.Blocks.Insert(0, insertionPoint); // make insertionPoint the start block
@@ -1391,7 +1391,7 @@ namespace VC
       bs.Add(succ);
 
       Block newBlock = new Block(
-        new Token(-17, -4),
+        Token.NoToken,
         newBlockLabel,
         new List<Cmd>(),
         new GotoCmd(Token.NoToken, ls, bs)

@@ -114,49 +114,47 @@ namespace Microsoft.Boogie
     {
       int numBlock = -1;
       string ind = new string(' ', indent);
-      foreach (Block b in Trace)
+      foreach (Block block in Trace)
       {
-        Contract.Assert(b != null);
+        Contract.Assert(block != null);
         numBlock++;
-        if (b.tok == null)
+        if (block.tok == null)
         {
           tw.WriteLine("{0}<intermediate block>", ind);
         }
-        else
-        {
+        else {
           // for ErrorTrace == 1 restrict the output;
           // do not print tokens with -17:-4 as their location because they have been
           // introduced in the translation and do not give any useful feedback to the user
-          if (!(Options.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4))
+          if (Options.ErrorTrace == 1 && block.tok == Token.NoToken) {
+            continue;
+          }
+
+          blockAction?.Invoke(block);
+
+          tw.WriteLine("{4}{0}({1},{2}): {3}", block.tok.filename, block.tok.line, block.tok.col, block.Label, ind);
+
+          for (int numInstr = 0; numInstr < block.Cmds.Count; numInstr++)
           {
-            if (blockAction != null)
-            {
-              blockAction(b);
+            var loc = new TraceLocation(numBlock, numInstr);
+            if (!CalleeCounterexamples.ContainsKey(loc)) {
+              continue;
             }
 
-            tw.WriteLine("{4}{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label, ind);
-
-            for (int numInstr = 0; numInstr < b.Cmds.Count; numInstr++)
+            var cmd = GetTraceCmd(loc);
+            var calleeName = GetCalledProcName(cmd);
+            if (calleeName.StartsWith(VC.StratifiedVerificationConditionGeneratorBase.recordProcName) &&
+                Options.StratifiedInlining > 0)
             {
-              var loc = new TraceLocation(numBlock, numInstr);
-              if (CalleeCounterexamples.ContainsKey(loc))
-              {
-                var cmd = GetTraceCmd(loc);
-                var calleeName = GetCalledProcName(cmd);
-                if (calleeName.StartsWith(VC.StratifiedVerificationConditionGeneratorBase.recordProcName) &&
-                    Options.StratifiedInlining > 0)
-                {
-                  Contract.Assert(CalleeCounterexamples[loc].Args.Count == 1);
-                  var arg = CalleeCounterexamples[loc].Args[0];
-                  tw.WriteLine("{0}value = {1}", ind, arg.ToString());
-                }
-                else
-                {
-                  tw.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
-                  CalleeCounterexamples[loc].Counterexample.Print(indent + 4, tw);
-                  tw.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
-                }
-              }
+              Contract.Assert(CalleeCounterexamples[loc].Args.Count == 1);
+              var arg = CalleeCounterexamples[loc].Args[0];
+              tw.WriteLine("{0}value = {1}", ind, arg.ToString());
+            }
+            else
+            {
+              tw.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
+              CalleeCounterexamples[loc].Counterexample.Print(indent + 4, tw);
+              tw.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
             }
           }
         }
