@@ -879,16 +879,8 @@ namespace VC
           {
             foreach (var param in current.Params)
             {
-              if (param is IdentifierExpr identifierExpr)
-              {
-                if (incarnationMap.ContainsKey(identifierExpr.Decl))
-                {
-                  debugExprs.Add(incarnationMap[identifierExpr.Decl]);
-                }
-                else
-                {
-                  debugExprs.Add(identifierExpr);
-                }
+              if (param is IdentifierExpr identifierExpr) {
+                debugExprs.Add(incarnationMap.GetValueOrDefault(identifierExpr.Decl, identifierExpr));
               }
               else
               {

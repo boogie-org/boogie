@@ -568,7 +568,7 @@ namespace VC
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        Counterexample newCounterexample = TraceCounterexample(options, entryBlock, traceNodes, trace, model, MvInfo,
+        var newCounterexample = TraceCounterexample(options, entryBlock, traceNodes, trace, model, MvInfo,
           debugInfos, context, split, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)

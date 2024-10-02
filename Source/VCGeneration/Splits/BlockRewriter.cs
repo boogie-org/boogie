@@ -86,7 +86,6 @@ public class BlockRewriter {
   public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(ISet<Block> blocksToInclude, IEnumerable<Block> blocksReversed,
     ISet<Block> freeAssumeBlocks)
   {
-    var duplicator = new Duplicator();
     var newBlocks = new List<Block>();
     var oldToNewBlockMap = new Dictionary<Block, Block>(blocksToInclude.Count);
         
@@ -97,15 +96,18 @@ public class BlockRewriter {
       if (!blocksToInclude.Contains(block)) {
         continue;
       }
-      var newBlock = (Block)duplicator.Visit(block);
+
+      var newBlock = new Block(block.tok) {
+        Label = block.Label
+      };
       newBlocks.Add(newBlock);
       oldToNewBlockMap[block] = newBlock;
       // freeBlocks consist of the predecessors of the relevant foci.
       // Their assertions turn into assumes and any splits inside them are disabled.
-      if(freeAssumeBlocks.Contains(block))
-      {
-        newBlock.Cmds = block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(Options, c)).ToList();
-      }
+      newBlock.Cmds = freeAssumeBlocks.Contains(block) 
+        ? block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(Options, c)).ToList() 
+        : block.Cmds;
+      
       if (block.TransferCmd is GotoCmd gtc)
       {
         var targets = gtc.LabelTargets.Where(blocksToInclude.Contains).ToList();
