@@ -57,9 +57,9 @@ public class FocusAttributeHandler {
     void AddSplitsFromIndex(ImmutableStack<Block> path, int focusIndex, ISet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
-        var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, blocksReversed, freeAssumeBlocks);
+        var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude, blocksReversed, freeAssumeBlocks);
         ImplementationPartOrigin token = path.Any() 
-          ? new PathOrigin(run.Implementation.tok, path, dominators) 
+          ? new PathOrigin(run.Implementation.tok, path.ToList()) // TODO fix 
           : new ImplementationRootOrigin(run.Implementation); 
         result.Add(rewriter.CreateSplit(token, newBlocks));
       } else {

@@ -10,6 +10,7 @@ using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.SMTLib;
 using System.Threading.Tasks;
+using VCGeneration;
 
 namespace VC
 {
@@ -92,17 +93,26 @@ namespace VC
         RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
         randomGen = new Random(RandomSeed);
       }
-      
-      public void PrintSplit() {
+
+      private void PrintSplit() {
         if (Options.PrintSplitFile == null) {
           return;
         }
+        
+        var printToConsole = Options.PrintSplitFile == "-";
+        if (printToConsole) {
+          Thread.Sleep(100);
+        }
 
-        using var writer = new TokenTextWriter(
-          $"{Options.PrintSplitFile}-{Util.EscapeFilename(Implementation.Name)}-{SplitIndex}.spl", false,
-          Options.PrettyPrint, Options);
+        var prefix = (this is ManualSplit manualSplit) ? manualSplit.Origin.ShortName : "";
+        var name = Implementation.Name + prefix; 
+        using var writer = printToConsole
+          ? new TokenTextWriter("<console>", Options.OutputWriter, false, Options.PrettyPrint, Options) 
+          : new TokenTextWriter(
+            $"{Options.PrintSplitFile}-{Util.EscapeFilename(name)}.spl", false,
+            Options.PrettyPrint, Options);
 
-        Implementation.EmitImplementation(writer, 0, Blocks, false);
+        Implementation.EmitImplementation(writer, 0, Blocks, false, prefix);
         PrintSplitDeclarations(writer);
       }
 

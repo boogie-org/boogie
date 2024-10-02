@@ -1,4 +1,5 @@
 #nullable enable
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -7,37 +8,20 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace VCGeneration;
 
-
-public class AssertPathOrigin : TokenWrapper, ImplementationPartOrigin {
-
-  public AssertPathOrigin(AssertCmd assert, Block assertBlock, 
-    ImmutableStack<Block> branches, DomRelation<Block> dominators) : base(assert.tok) 
-  {
-    Assert = assert;
-    AssertBlock = assertBlock;
-    Branches = branches;
-    Dominators = dominators;
-  }
-
-  public AssertCmd Assert { get; }
-  public Block AssertBlock { get; }
-  public ImmutableStack<Block> Branches { get; }
-  public DomRelation<Block> Dominators { get; }
-}
-
 public class PathOrigin : TokenWrapper, ImplementationPartOrigin {
 
-  public PathOrigin(IToken inner, ImmutableStack<Block> branches, DomRelation<Block> dominators) : base(inner) {
+  public PathOrigin(IToken inner, List<Block> branches) : base(inner) {
     Branches = branches;
-    Dominators = dominators;
   }
   
-  public ImmutableStack<Block> Branches { get; }
-  public DomRelation<Block> Dominators { get; }
+  public List<Block> Branches { get; }
+  public string ShortName => $"/assert@{line}[{string.Join(",", Branches.Select(b => b.tok.line))}]";
 }
 
 class ImplementationRootOrigin : TokenWrapper, ImplementationPartOrigin {
   public ImplementationRootOrigin(Implementation implementation) : base(implementation.tok)
   {
   }
+
+  public string ShortName => "";
 }

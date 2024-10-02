@@ -220,4 +220,6 @@ class SplitOrigin : TokenWrapper, ImplementationPartOrigin {
   public SplitOrigin(IToken inner) : base(inner)
   {
   }
+
+  public string ShortName => $"/split@{line}";
 }

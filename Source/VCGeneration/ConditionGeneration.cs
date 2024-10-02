@@ -450,8 +450,6 @@ namespace VC
       options.PrintDesugarings = oldPrintDesugaringSetting;
     }
 
-
-
     public static void ResetPredecessors(List<Block> blocks)
     {
       Contract.Requires(blocks != null);

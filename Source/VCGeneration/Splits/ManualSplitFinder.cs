@@ -22,7 +22,7 @@ public static class ManualSplitFinder {
       var (isolatedJumps, withoutIsolatedJumps) =
         new IsolateAttributeOnJumpsHandler(blockRewriter).GetParts(gotoToOriginalReturn, focussedPart);
       var (isolatedAssertions, withoutIsolatedAssertions) =
-        new IsolateAttributeOnAssertsHandler(blockRewriter).GetParts(withoutIsolatedJumps);
+        new IsolateAttributeOnAssertsHandler(new BlockRewriter(options, withoutIsolatedJumps.Blocks, createPart)).GetParts(withoutIsolatedJumps);
 
       var splitParts = new SplitAttributeHandler(blockRewriter).GetParts(withoutIsolatedAssertions);
       return isolatedJumps.Concat(isolatedAssertions).Concat(splitParts);
@@ -31,4 +31,5 @@ public static class ManualSplitFinder {
 }
 
 public interface ImplementationPartOrigin : IToken {
+  string ShortName { get; }
 }

@@ -55,24 +55,25 @@ class IsolateAttributeOnJumpsHandler {
         Debug.Assert(gotoCmd.LabelTargets[0].TransferCmd is not GotoCmd);
         results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, gotoToOriginalReturn[gotoCmd].tok));
       } else {
-        var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude,
+        var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude,
           reversedBlocks, ancestors.ToHashSet());
         results.Add(rewriter.CreateSplit(new ReturnOrigin(gotoToOriginalReturn[gotoCmd]), newBlocks));
       }
-
     }
 
     return (results, GetPartWithoutIsolatedReturns());
     
     ManualSplit GetPartWithoutIsolatedReturns() {
-      var newBlocks = BlockRewriter.UpdateBlocks(new Stack<Block>(topoSorted), new HashSet<Block>(), 
-        oldBlock => oldBlock.Cmds.ToList());
-      foreach (var (oldBlock, newBlock) in newBlocks) {
+      // TODO this needs an extra test. In case the isolated jump is followed by something it dominates
+      var (newBlocks, mapping) = rewriter.ComputeNewBlocks(blocks.ToHashSet(), reversedBlocks, new HashSet<Block>());
+      foreach (var (oldBlock, newBlock) in mapping) {
         if (isolatedBlocks.Contains(oldBlock)) {
-          newBlock.TransferCmd = null;
+          newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
         }
       }
-      return rewriter.CreateSplit(new ImplementationRootOrigin(partToDivide.Implementation), newBlocks.Values.ToList());
+      BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
+      return rewriter.CreateSplit(new ImplementationRootOrigin(partToDivide.Implementation), 
+        newBlocks);
     }
   }
 
@@ -96,4 +97,6 @@ public class ReturnOrigin : TokenWrapper, ImplementationPartOrigin {
   public ReturnOrigin(ReturnCmd isolatedReturn) : base(isolatedReturn.tok) {
     this.IsolatedReturn = isolatedReturn;
   }
+
+  public string ShortName => $"/return@{IsolatedReturn.Line}";
 }

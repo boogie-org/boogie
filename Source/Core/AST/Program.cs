@@ -498,6 +498,37 @@ public class Program : Absy
     return callGraph;
   }
 
+  public static Graph<Block> GraphFromBlocksSet(Block source, IReadOnlySet<Block> blocks, bool forward = true)
+  {
+    var result = new Graph<Block>();
+    if (!blocks.Any())
+    {
+      return result;
+    }
+    void AddEdge(Block a, Block b) {
+      if (!blocks.Contains(a) || !blocks.Contains(b)) {
+        return;
+      }
+      Contract.Assert(a != null && b != null);
+      if (forward) {
+        result.AddEdge(a, b);
+      } else {
+        result.AddEdge(b, a);
+      }
+    }
+
+    result.AddSource(source);
+    foreach (var block in blocks)
+    {
+      if (block.TransferCmd is GotoCmd gtc)
+      {
+        Contract.Assume(gtc.LabelTargets != null);
+        gtc.LabelTargets.ForEach(dest => AddEdge(block, dest));
+      }
+    }
+    return result;
+  }
+  
   public static Graph<Block> GraphFromBlocks(IReadOnlyList<Block> blocks, bool forward = true)
   {
     var result = new Graph<Block>();

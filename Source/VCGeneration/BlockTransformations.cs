@@ -97,7 +97,7 @@ public static class BlockTransformations {
     return b.Cmds.Exists(IsNonTrivialAssert);
   }
   
-  public static bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd { Expr: LiteralExpr { asBool: true } }; }
+  public static bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd { Expr: not LiteralExpr { asBool: true } }; }
 
   private static void DeleteUselessBlocks(List<Block> blocks) {
     var toVisit = new HashSet<Block>();

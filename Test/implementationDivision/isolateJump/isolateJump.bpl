@@ -1,38 +1,38 @@
-// RUN: %parallel-boogie /printSplit:%t /errorTrace:0 "%s" > "%t"
+// RUN: %boogie /printSplit:- /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure IsolateReturn(x: int) returns (r: int)
-  ensures r > 4
+procedure IsolateReturn(x: int, y: int) returns (r: int)
+  ensures r > 4;
 {
-  z := 0;
+  r := 0;
   if (x > 0) {
-    z := z + 1;
+    r := r + 1;
   } else {
-    z := z + 2
+    r := r + 2;
   }
   
   if (y > 0) {
-    z := z + 3;
+    r := r + 3;
     return {:isolate};
   }
   
-  z := z + 4;
+  r := r + 4;
 }
 
-procedure IsolateReturnPath(x: int) returns (r: int)
-  ensures r > 4
+procedure IsolateReturnPaths(x: int, y: int) returns (r: int)
+  ensures r > 4;
 {
-  z := 0;
+  r := 0;
   if (x > 0) {
-    z := z + 1;
+    r := r + 1;
   } else {
-    z := z + 2
+    r := r + 2;
   }
   
   if (y > 0) {
-    z := z + 3;
-    return {:isolate "path"};
+    r := r + 3;
+    return {:isolate "paths"};
   }
   
-  z := z + 4;
+  r := r + 4;
 }

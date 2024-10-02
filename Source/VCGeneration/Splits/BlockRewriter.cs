@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -28,16 +29,19 @@ public class BlockRewriter {
     return cmd;
   }
 
-  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, ISet<Block>? blocksToInclude, IToken origin) {
+  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block>? blocksToInclude, IToken origin) {
     var blockToVisit = new Stack<ImmutableStack<Block>>();
-    blockToVisit.Push(ImmutableStack.Create(new Block(lastBlock.tok)
+    var newToOldBlocks = new Dictionary<Block, Block>();
+    var newLastBlock = new Block(lastBlock.tok)
     {
       Predecessors = lastBlock.Predecessors,
       Label = lastBlock.Label,
-      TransferCmd = null,
+      TransferCmd = new ReturnCmd(Token.NoToken),
       Cmds = lastBlock.Cmds
-    }));
-    
+    };
+    blockToVisit.Push(ImmutableStack.Create(newLastBlock));
+    newToOldBlocks[newLastBlock] = lastBlock;
+
     while(blockToVisit.Any()) {
       var path = blockToVisit.Pop();
       var firstBlock = path.Peek();
@@ -56,6 +60,7 @@ public class BlockRewriter {
           TransferCmd = oldPrevious.TransferCmd,
           Cmds = oldPrevious.Cmds.Select(TransformAssertCmd).ToList()
         };
+        newToOldBlocks[newPrevious] = oldPrevious;
         if (newPrevious.TransferCmd is GotoCmd gotoCmd) {
           newPrevious.TransferCmd =
             new GotoCmd(gotoCmd.tok, new List<string> { firstBlock.Label }, new List<Block>
@@ -66,7 +71,11 @@ public class BlockRewriter {
         blockToVisit.Push(path.Push(newPrevious));
       }
       if (!hadPredecessors) {
-        yield return CreateSplit(new PathOrigin(origin, path, dag.DominatorMap), new List<Block> { new(firstBlock.tok) {
+        
+        var filteredDag = blocksToInclude == null ? dag : Program.GraphFromBlocksSet(newToOldBlocks[path.Peek()], blocksToInclude);
+        var nonDominatedBranches = path.Where(b => 
+          !filteredDag.DominatorMap.DominatedBy(lastBlock, newToOldBlocks[b])).ToList();
+        yield return CreateSplit(new PathOrigin(origin, nonDominatedBranches), new List<Block> { new(firstBlock.tok) {
           Label = firstBlock.Label,
           Cmds = path.SelectMany(b => b.Cmds).ToList() 
         } });
@@ -74,7 +83,7 @@ public class BlockRewriter {
     }
   }
   
-  public List<Block> ComputeNewBlocks(ISet<Block> blocksToInclude, IEnumerable<Block> blocksReversed,
+  public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(ISet<Block> blocksToInclude, IEnumerable<Block> blocksReversed,
     ISet<Block> freeAssumeBlocks)
   {
     var duplicator = new Duplicator();
@@ -95,7 +104,7 @@ public class BlockRewriter {
       // Their assertions turn into assumes and any splits inside them are disabled.
       if(freeAssumeBlocks.Contains(block))
       {
-        newBlock.Cmds = block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(Options, c)).Select(DisableSplits).ToList();
+        newBlock.Cmds = block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(Options, c)).ToList();
       }
       if (block.TransferCmd is GotoCmd gtc)
       {
@@ -109,7 +118,7 @@ public class BlockRewriter {
     
     // TODO remove?
     BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
-    return newBlocks;
+    return (newBlocks, oldToNewBlockMap);
   }
   
   public static OrderedDictionary<Block, Block> UpdateBlocks(Stack<Block> blocksToVisit, 

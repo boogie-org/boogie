@@ -22,6 +22,9 @@ class IsolateAttributeOnAssertsHandler {
     var isolatedAssertions = new HashSet<AssertCmd>();
     var results = new List<ManualSplit>();
 
+    foreach (var b in partToDivide.Blocks) {
+      b.Predecessors.Clear();
+    }
     Implementation.ComputePredecessorsForBlocks(partToDivide.Blocks);
     foreach (var block in partToDivide.Blocks) {
       foreach (var assert in block.Cmds.OfType<AssertCmd>()) {
@@ -104,4 +107,6 @@ public class IsolatedAssertionOrigin : TokenWrapper, ImplementationPartOrigin {
   public IsolatedAssertionOrigin(AssertCmd isolatedAssert) : base(isolatedAssert.tok) {
     this.IsolatedAssert = isolatedAssert;
   }
+
+  public string ShortName => $"/assert@{IsolatedAssert.Line}";
 }
