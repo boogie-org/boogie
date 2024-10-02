@@ -66,7 +66,7 @@ namespace VC
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(IncarnationOriginMap));
       Contract.Invariant(program != null);
     }
 
@@ -81,9 +81,9 @@ namespace VC
     public List<Variable> CurrentLocalVariables { get; set; } = null;
 
     // shared across each implementation; created anew for each implementation
-    protected Dictionary<Variable, int> variable2SequenceNumber;
+    public Dictionary<Variable, int> Variable2SequenceNumber;
 
-    public Dictionary<Incarnation, Absy> incarnationOriginMap = new Dictionary<Incarnation, Absy>();
+    public Dictionary<Incarnation, Absy> IncarnationOriginMap = new();
 
     public Program program;
     public CheckerPool CheckerPool { get; }
@@ -474,7 +474,7 @@ namespace VC
 
     protected Variable CreateIncarnation(Variable x, Absy a)
     {
-      Contract.Requires(this.variable2SequenceNumber != null);
+      Contract.Requires(this.Variable2SequenceNumber != null);
       Contract.Requires(this.CurrentLocalVariables != null);
       Contract.Requires(a is Block || a is AssignCmd || a is HavocCmd);
 
@@ -482,13 +482,13 @@ namespace VC
       Contract.Ensures(Contract.Result<Variable>() != null);
 
       int currentIncarnationNumber =
-        variable2SequenceNumber.ContainsKey(x)
-          ? variable2SequenceNumber[x]
+        Variable2SequenceNumber.ContainsKey(x)
+          ? Variable2SequenceNumber[x]
           : -1;
       Variable v = new Incarnation(x, currentIncarnationNumber + 1);
-      variable2SequenceNumber[x] = currentIncarnationNumber + 1;
+      Variable2SequenceNumber[x] = currentIncarnationNumber + 1;
       CurrentLocalVariables.Add(v);
-      incarnationOriginMap.Add((Incarnation) v, a);
+      IncarnationOriginMap.Add((Incarnation) v, a);
       return v;
     }
 
@@ -1382,7 +1382,7 @@ namespace VC
     /// Creates a new block to add to impl.Blocks, where impl is the implementation that contains
     /// succ.  Caller must do the add to impl.Blocks.
     /// </summary>
-    protected Block CreateBlockBetween(int predIndex, Block succ)
+    public Block CreateBlockBetween(int predIndex, Block succ)
     {
       Contract.Requires(0 <= predIndex && predIndex < succ.Predecessors.Count);
 

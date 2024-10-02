@@ -8,6 +8,7 @@ using VC;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using VCGeneration.Transformations;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -166,7 +167,7 @@ namespace Microsoft.Boogie.Houdini
       collector = new VerificationResultCollector(houdini.Options);
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
-      vcgen.ConvertCFG2DAG(run, taskID: taskId);
+      new RemoveBackEdges(vcgen).ConvertCfg2Dag(run, taskID: taskId);
       var gotoCmdOrigins = vcgen.PassifyImpl(run, out var mvInfo);
 
       ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out var ecollector);
