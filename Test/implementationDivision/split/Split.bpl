@@ -1,9 +1,5 @@
-// RUN: %parallel-boogie /printSplit:%t "%s" > "%t"
+// RUN: %boogie /printSplit:- "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// RUN: %diff %S/Foo.split.0.bpl.expect %t-Foo-0.spl
-// RUN: %diff %S/Foo.split.1.bpl.expect %t-Foo-1.spl
-// RUN: %diff %S/Foo.split.2.bpl.expect %t-Foo-2.spl
-// RUN: %diff %S/Foo.split.3.bpl.expect %t-Foo-3.spl
 
 procedure Foo() returns (y: int)
   ensures y >= 0;
