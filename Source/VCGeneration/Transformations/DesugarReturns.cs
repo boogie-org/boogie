@@ -38,7 +38,7 @@ public static class DesugarReturns {
 
         var gotoLabels = new List<String> { unifiedExitLabel };
         var gotoTargets = new List<Block> { unifiedExit };
-        var gotoCmd = new GotoCmd(returnCmd.tok, gotoLabels, gotoTargets) {
+        var gotoCmd = new GotoCmd(new GotoFromReturn(returnCmd), gotoLabels, gotoTargets) {
           Attributes = returnCmd.Attributes
         };
         gotoCmdOrigins[gotoCmd] = returnCmd;
@@ -65,58 +65,66 @@ public static class DesugarReturns {
   /// </param>
   public static void InjectPostConditions(VCGenOptions options, ImplementationRun run, Block unifiedExitBlock,
       Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
+  {
+    var impl = run.Implementation;
+    Contract.Requires(impl != null);
+    Contract.Requires(unifiedExitBlock != null);
+    Contract.Requires(gotoCmdOrigins != null);
+    Contract.Requires(impl.Proc != null);
+    Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
+
+    TokenTextWriter debugWriter = null;
+    if (options.PrintWithUniqueASTIds)
     {
-      var impl = run.Implementation;
-      Contract.Requires(impl != null);
-      Contract.Requires(unifiedExitBlock != null);
-      Contract.Requires(gotoCmdOrigins != null);
-      Contract.Requires(impl.Proc != null);
-      Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
+      debugWriter = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
+      debugWriter.WriteLine("Effective postcondition:");
+    }
 
-      TokenTextWriter debugWriter = null;
-      if (options.PrintWithUniqueASTIds)
+    var formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
+
+    // (free and checked) ensures clauses
+    foreach (Ensures ens in impl.Proc.Ensures)
+    {
+      Contract.Assert(ens != null);
+
+      if (!ens.Free)
       {
-        debugWriter = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
-        debugWriter.WriteLine("Effective postcondition:");
-      }
-
-      var formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
-
-      // (free and checked) ensures clauses
-      foreach (Ensures ens in impl.Proc.Ensures)
-      {
-        Contract.Assert(ens != null);
-
-        if (!ens.Free)
+        var ensuresCopy = (Ensures) cce.NonNull(ens.Clone());
+        ensuresCopy.Condition = Substituter.Apply(formalProcImplSubst, ens.Condition);
+        AssertEnsuresCmd assert = new AssertEnsuresCmd(ensuresCopy) {
+          ErrorDataEnhanced = ensuresCopy.ErrorDataEnhanced
+        };
+        // Copy any {:id ...} from the postcondition to the assumption, so
+        // we can track it while analyzing verification coverage.
+        assert.CopyIdFrom(ens.tok, ens);
+        unifiedExitBlock.Cmds.Add(assert);
+        if (debugWriter != null)
         {
-          var ensuresCopy = (Ensures) cce.NonNull(ens.Clone());
-          ensuresCopy.Condition = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          AssertEnsuresCmd assert = new AssertEnsuresCmd(ensuresCopy) {
-            ErrorDataEnhanced = ensuresCopy.ErrorDataEnhanced
-          };
-          // Copy any {:id ...} from the postcondition to the assumption, so
-          // we can track it while analyzing verification coverage.
-          assert.CopyIdFrom(ens.tok, ens);
-          unifiedExitBlock.Cmds.Add(assert);
-          if (debugWriter != null)
-          {
-            assert.Emit(debugWriter, 1);
-          }
-        }
-        else if (ens.CanAlwaysAssume())
-        {
-          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          unifiedExitBlock.Cmds.Add(new AssumeCmd(ens.tok, e));
-        }
-        else
-        {
-          // skip free ensures if it doesn't have the :always_assume attr
+          assert.Emit(debugWriter, 1);
         }
       }
-
-      if (debugWriter != null)
+      else if (ens.CanAlwaysAssume())
       {
-        debugWriter.WriteLine();
+        Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
+        unifiedExitBlock.Cmds.Add(new AssumeCmd(ens.tok, e));
+      }
+      else
+      {
+        // skip free ensures if it doesn't have the :always_assume attr
       }
     }
+
+    if (debugWriter != null)
+    {
+      debugWriter.WriteLine();
+    }
+  }
+}
+
+class GotoFromReturn : TokenWrapper {
+  public ReturnCmd Origin { get; }
+
+  public GotoFromReturn(ReturnCmd origin) : base(origin.tok) {
+    this.Origin = origin;
+  }
 }

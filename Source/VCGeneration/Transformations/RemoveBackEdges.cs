@@ -9,7 +9,7 @@ using VC;
 namespace VCGeneration.Transformations;
 
 public class RemoveBackEdges {
-  private VerificationConditionGenerator generator;
+  private readonly VerificationConditionGenerator generator;
 
   public RemoveBackEdges(VerificationConditionGenerator generator) {
     this.generator = generator;
@@ -206,14 +206,7 @@ public class RemoveBackEdges {
         }
 
         // Add the predicate commands
-        if (backEdgeNodes.ContainsKey(pred))
-        {
-          pred.Cmds.AddRange(prefixOfPredicateCmdsMaintained);
-        }
-        else
-        {
-          pred.Cmds.AddRange(prefixOfPredicateCmdsInit);
-        }
+        pred.Cmds.AddRange(backEdgeNodes.ContainsKey(pred) ? prefixOfPredicateCmdsMaintained : prefixOfPredicateCmdsInit);
       }
 
       #endregion

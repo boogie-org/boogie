@@ -578,18 +578,14 @@ namespace VC
 
         #region Map passive program errors back to original program errors
 
-        ReturnCounterexample returnExample = newCounterexample as ReturnCounterexample;
-        if (returnExample != null)
+        if (newCounterexample is ReturnCounterexample returnExample)
         {
-          foreach (Block b in returnExample.Trace)
+          foreach (var b in returnExample.Trace)
           {
             Contract.Assert(b != null);
             Contract.Assume(b.TransferCmd != null);
-            ReturnCmd cmd = gotoCmdOrigins.ContainsKey(b.TransferCmd) ? gotoCmdOrigins[b.TransferCmd] : null;
-            if (cmd != null)
-            {
-              returnExample.FailingReturn = cmd;
-              break;
+            if (b.TransferCmd.tok is GotoFromReturn gotoFromReturn) {
+              returnExample.FailingReturn = gotoFromReturn.Origin;
             }
           }
         }
