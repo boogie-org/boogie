@@ -68,6 +68,7 @@ public class BlockRewriter {
         var nonDominatedBranches = path.Where(b => 
           !filteredDag.DominatorMap.DominatedBy(lastBlock, newToOldBlocks[b])).ToList();
         var newFirstBlock = Block.ShallowClone(firstBlock);
+        newFirstBlock.TransferCmd = new ReturnCmd(firstBlock.TransferCmd.tok);
         newFirstBlock.Cmds = path.SelectMany(b => b.Cmds).ToList();
         yield return CreateSplit(new PathOrigin(origin, nonDominatedBranches), new List<Block> { newFirstBlock });
       }
