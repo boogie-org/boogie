@@ -519,8 +519,6 @@ public class LinearRewriter
     var range = instantiation["V"];
     var mapContainsFunc = MapContains(domain, range);
     var mapUpdateFunc = MapUpdate(domain, range);
-    var attribute = new QKeyValue(Token.NoToken, "linear", new List<object>(), null);
-    cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, k)), attribute));
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, k, v)));
 
