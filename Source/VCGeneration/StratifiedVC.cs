@@ -7,6 +7,7 @@ using Microsoft.Boogie;
 using System.Diagnostics.Contracts;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
+using VCGeneration.Transformations;
 
 namespace VC
 {
@@ -485,7 +486,7 @@ namespace VC
       // Passify
       Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
-      vcgen.ConvertCFG2DAG(run);
+      new RemoveBackEdges(vcgen).ConvertCfg2Dag(run);
       vcgen.PassifyImpl(run, out mvInfo);
 
       VCExpressionGenerator gen = proverInterface.VCExprGen;
@@ -633,7 +634,7 @@ namespace VC
 
       Program program = vcgen.program;
       ProverInterface proverInterface = vcgen.prover;
-      vcgen.ConvertCFG2DAG(run);
+      new RemoveBackEdges(vcgen).ConvertCfg2Dag(run);
       vcgen.PassifyImpl(run, out mvInfo);
 
       VCExpressionGenerator gen = proverInterface.VCExprGen;
