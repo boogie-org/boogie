@@ -498,15 +498,15 @@ public class Program : Absy
     return callGraph;
   }
 
-  public static Graph<Block> GraphFromBlocksSet(Block source, IReadOnlySet<Block> blocks, bool forward = true)
+  public static Graph<Block> GraphFromBlocksSubset(Block source, IReadOnlySet<Block> subset, bool forward = true)
   {
     var result = new Graph<Block>();
-    if (!blocks.Any())
+    if (!subset.Any())
     {
       return result;
     }
     void AddEdge(Block a, Block b) {
-      if (!blocks.Contains(a) || !blocks.Contains(b)) {
+      if (!subset.Contains(a) || !subset.Contains(b)) {
         return;
       }
       Contract.Assert(a != null && b != null);
@@ -518,7 +518,7 @@ public class Program : Absy
     }
 
     result.AddSource(source);
-    foreach (var block in blocks)
+    foreach (var block in subset)
     {
       if (block.TransferCmd is GotoCmd gtc)
       {

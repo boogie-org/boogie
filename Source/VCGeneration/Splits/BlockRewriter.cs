@@ -72,7 +72,7 @@ public class BlockRewriter {
       }
       if (!hadPredecessors) {
         
-        var filteredDag = blocksToInclude == null ? dag : Program.GraphFromBlocksSet(newToOldBlocks[path.Peek()], blocksToInclude);
+        var filteredDag = blocksToInclude == null ? dag : Program.GraphFromBlocksSubset(newToOldBlocks[path.Peek()], blocksToInclude);
         var nonDominatedBranches = path.Where(b => 
           !filteredDag.DominatorMap.DominatedBy(lastBlock, newToOldBlocks[b])).ToList();
         yield return CreateSplit(new PathOrigin(origin, nonDominatedBranches), new List<Block> { new(firstBlock.tok) {

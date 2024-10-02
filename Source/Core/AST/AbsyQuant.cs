@@ -553,17 +553,6 @@ namespace Microsoft.Boogie
       return kv != null;
     }
     
-    public static bool? FindNullableBoolAttribute(QKeyValue kv, string name)
-    {
-      Contract.Requires(name != null);
-      kv = FindAttribute(kv, qkv => qkv.Key == name);
-      if (kv == null) {
-        return null;
-      }
-      return kv.Params.Count == 0 || (kv.Params.Count == 1 && kv.Params[0] is LiteralExpr &&
-                                      ((LiteralExpr)kv.Params[0]).IsTrue);
-    }
-
     public static int FindIntAttribute(QKeyValue kv, string name, int defl)
     {
       Contract.Requires(name != null);

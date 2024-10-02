@@ -1310,6 +1310,7 @@ namespace Microsoft.Boogie
         return;
       }
 
+      // When an assertion fails on multiple paths, only show an error for one of them.
       errors = errors.DistinctBy(e => e.FailingAssert).ToList();
       errors.Sort(new CounterexampleComparer());
       foreach (Counterexample error in errors)

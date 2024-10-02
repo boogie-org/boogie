@@ -37,6 +37,6 @@ procedure IsolatePathsAssertion(x: int, y: int)
     z := z + 4;
   }
   assert z > 1;
-  assert {:isolate "paths"} z > 2;
-  assert z > 3;
+  assert {:isolate "paths"} z > 5; // fails on three out of four paths
+  assert z > 6;
 }
