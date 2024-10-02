@@ -1455,8 +1455,8 @@ namespace Microsoft.Boogie.Houdini
       {
         case CallCounterexample callCounterexample:
         {
-          Procedure failingProcedure = callCounterexample.FailingCall.Proc;
-          Requires failingRequires = callCounterexample.FailingRequires;
+          var failingProcedure = callCounterexample.FailingCall.Proc;
+          var failingRequires = callCounterexample.FailingRequires;
           if (MatchCandidate(failingRequires.Condition, out houdiniConstant))
           {
             Contract.Assert(houdiniConstant != null);
@@ -1468,7 +1468,7 @@ namespace Microsoft.Boogie.Houdini
         }
         case ReturnCounterexample returnCounterexample:
         {
-          Ensures failingEnsures = returnCounterexample.FailingEnsures;
+          var failingEnsures = returnCounterexample.FailingEnsures;
           if (MatchCandidate(failingEnsures.Condition, out houdiniConstant))
           {
             Contract.Assert(houdiniConstant != null);
@@ -1479,7 +1479,7 @@ namespace Microsoft.Boogie.Houdini
         }
         case AssertCounterexample assertCounterexample:
         {
-          AssertCmd failingAssert = assertCounterexample.FailingAssert;
+          var failingAssert = assertCounterexample.FailingAssert;
           if (MatchCandidate(failingAssert.OrigExpr, out houdiniConstant))
           {
             Contract.Assert(houdiniConstant != null);

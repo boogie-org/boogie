@@ -65,8 +65,8 @@ namespace Microsoft.Boogie.GraphUtil
     private Node[] postOrderNumberToNode;
     private Dictionary<Node, int> nodeToPostOrderNumber;
     private int sourceNum; // (number for) root of the graph
-    private Node source; // root of the graph
-    private Graph<Node> graph;
+    private readonly Node source; // root of the graph
+    private readonly Graph<Node> graph;
     private Dictionary<Node, List<Node>> immediateDominatorMap;
 
     [NotDelayed]
@@ -79,7 +79,6 @@ namespace Microsoft.Boogie.GraphUtil
       // slot 0 not used: nodes are numbered from 1 to n so zero
       // can represent undefined.
       this.source = source;
-      //:base();
       NewComputeDominators();
     }
 
@@ -122,7 +121,7 @@ namespace Microsoft.Boogie.GraphUtil
       }
     }
 
-    private Dictionary<Node, List<Node>> domMap = null;
+    private Dictionary<Node, List<Node>> domMap;
 
     [Pure]
     public override string ToString()
@@ -328,7 +327,7 @@ namespace Microsoft.Boogie.GraphUtil
       #endregion
     }
 
-    private int Intersect(int b1, int b2, int[] doms)
+    private static int Intersect(int b1, int b2, int[] doms)
     {
       int finger1 = b1;
       int finger2 = b2;
