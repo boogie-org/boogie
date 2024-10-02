@@ -515,18 +515,18 @@ namespace Microsoft.Boogie
 
     private Dictionary<Block, HashSet<Block>> ComputeGlobalControlDependences()
     {
-      Dictionary<Block, HashSet<Block>> GlobalCtrlDep = new Dictionary<Block, HashSet<Block>>();
-      Dictionary<Implementation, Dictionary<Block, HashSet<Block>>> LocalCtrlDeps =
+      var globalCtrlDep = new Dictionary<Block, HashSet<Block>>();
+      var localCtrlDeps =
         new Dictionary<Implementation, Dictionary<Block, HashSet<Block>>>();
 
       // Work out and union together local control dependences
-      foreach (var Impl in prog.NonInlinedImplementations())
+      foreach (var impl in prog.NonInlinedImplementations())
       {
-        Graph<Block> blockGraph = prog.ProcessLoops(options, Impl);
-        LocalCtrlDeps[Impl] = blockGraph.ControlDependence(new Block(prog.tok));
-        foreach (var KeyValue in LocalCtrlDeps[Impl])
+        var blockGraph = prog.ProcessLoops(options, impl);
+        localCtrlDeps[impl] = blockGraph.ControlDependence(new Block(prog.tok, new ReturnCmd(prog.tok)));
+        foreach (var keyValue in localCtrlDeps[impl])
         {
-          GlobalCtrlDep.Add(KeyValue.Key, KeyValue.Value);
+          globalCtrlDep.Add(keyValue.Key, keyValue.Value);
         }
       }
 
@@ -543,11 +543,11 @@ namespace Microsoft.Boogie
             if (DirectCallee != null)
             {
               HashSet<Implementation> IndirectCallees = ComputeIndirectCallees(callGraph, DirectCallee);
-              foreach (var control in GetControllingBlocks(b, LocalCtrlDeps[Impl]))
+              foreach (var control in GetControllingBlocks(b, localCtrlDeps[Impl]))
               {
                 foreach (var c in IndirectCallees.Select(Item => Item.Blocks).SelectMany(Item => Item))
                 {
-                  GlobalCtrlDep[control].Add(c);
+                  globalCtrlDep[control].Add(c);
                 }
               }
             }
@@ -556,13 +556,13 @@ namespace Microsoft.Boogie
       }
 
       // Compute transitive closure
-      GlobalCtrlDep.TransitiveClosure();
+      globalCtrlDep.TransitiveClosure();
 
       // Finally reverse the dependences
 
       Dictionary<Block, HashSet<Block>> result = new Dictionary<Block, HashSet<Block>>();
 
-      foreach (var KeyValue in GlobalCtrlDep)
+      foreach (var KeyValue in globalCtrlDep)
       {
         foreach (var v in KeyValue.Value)
         {

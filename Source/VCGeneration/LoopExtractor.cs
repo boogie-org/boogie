@@ -313,10 +313,7 @@ public class LoopExtractor {
             continue;
           }
 
-          Block newBlock = new Block(block.tok)
-          {
-            Label = block.Label
-          };
+          var newBlock = Block.ShallowClone(block);
           if (headRecursion && block == header)
           {
             CallCmd callCmd = (CallCmd) (loopHeaderToCallCmd2[header]).Clone();
@@ -332,14 +329,10 @@ public class LoopExtractor {
           }
 
           blockMap[block] = newBlock;
-          if (newBlocksCreated.ContainsKey(block))
+          if (newBlocksCreated.TryGetValue(block, out var original))
           {
-            var original = newBlocksCreated[block];
-            var newBlock2 = new Block(original.tok)
-            {
-              Label = original.Label,
-              Cmds = Substituter.Apply(subst, original.Cmds)
-            };
+            var newBlock2 = Block.ShallowClone(original);
+            newBlock2.Cmds = Substituter.Apply(subst, original.Cmds);
             blockMap[original] = newBlock2;
           }
 
@@ -351,46 +344,44 @@ public class LoopExtractor {
                             auxGotoCmd.LabelTargets != null && auxGotoCmd.LabelTargets.Count >= 1);
             //BUGFIX on 10/26/15: this contains nodes present in NaturalLoops for a different backedgenode
             var loopNodes = GetBlocksInAllNaturalLoops(options, header, g); //var loopNodes = g.NaturalLoops(header, source);
-            foreach (var bl in auxGotoCmd.LabelTargets)
-            {
-              if (g.Nodes.Contains(bl) && //newly created blocks are not present in NaturalLoop(header, xx, g)
-                  !loopNodes.Contains(bl))
-              {
-                var auxNewBlock = new Block(bl.tok)
-                {
-                  Label = bl.Label,
-                  //these blocks may have read/write locals that are not present in naturalLoops
-                  //we need to capture these variables
-                  Cmds = Substituter.Apply(subst, bl.Cmds)
-                };
-                //add restoration code for such blocks
-                if (loopHeaderToAssignCmd.TryGetValue(header, out var assignCmd))
-                {
-                  auxNewBlock.Cmds.Add(assignCmd);
-                }
-
-                List<AssignLhs> lhsg = new List<AssignLhs>();
-                List<IdentifierExpr> /*!*/
-                  globalsMods = loopHeaderToLoopProc[header].Modifies;
-                foreach (IdentifierExpr gl in globalsMods)
-                {
-                  lhsg.Add(new SimpleAssignLhs(Token.NoToken, gl));
-                }
-
-                List<Expr> rhsg = new List<Expr>();
-                foreach (IdentifierExpr gl in globalsMods)
-                {
-                  rhsg.Add(new OldExpr(Token.NoToken, gl));
-                }
-
-                if (lhsg.Count != 0)
-                {
-                  AssignCmd globalAssignCmd = new AssignCmd(Token.NoToken, lhsg, rhsg);
-                  auxNewBlock.Cmds.Add(globalAssignCmd);
-                }
-
-                blockMap[(Block) bl] = auxNewBlock;
+            foreach (var bl in auxGotoCmd.LabelTargets) {
+              if (!g.Nodes.Contains(bl) || // newly created blocks are not present in NaturalLoop(header, xx, g)
+                  loopNodes.Contains(bl)) {
+                continue;
               }
+
+              var auxNewBlock = Block.ShallowClone(bl);
+              // these blocks may have read/write locals that are not present in naturalLoops
+              // we need to capture these variables
+              auxNewBlock.Cmds = Substituter.Apply(subst, bl.Cmds);
+                
+              // add restoration code for such blocks
+              if (loopHeaderToAssignCmd.TryGetValue(header, out var assignCmd))
+              {
+                auxNewBlock.Cmds.Add(assignCmd);
+              }
+
+              List<AssignLhs> lhsg = new List<AssignLhs>();
+              List<IdentifierExpr> /*!*/
+                globalsMods = loopHeaderToLoopProc[header].Modifies;
+              foreach (IdentifierExpr gl in globalsMods)
+              {
+                lhsg.Add(new SimpleAssignLhs(Token.NoToken, gl));
+              }
+
+              List<Expr> rhsg = new List<Expr>();
+              foreach (IdentifierExpr gl in globalsMods)
+              {
+                rhsg.Add(new OldExpr(Token.NoToken, gl));
+              }
+
+              if (lhsg.Count != 0)
+              {
+                AssignCmd globalAssignCmd = new AssignCmd(Token.NoToken, lhsg, rhsg);
+                auxNewBlock.Cmds.Add(globalAssignCmd);
+              }
+
+              blockMap[bl] = auxNewBlock;
             }
           }
         }

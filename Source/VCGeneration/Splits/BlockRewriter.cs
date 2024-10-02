@@ -32,13 +32,8 @@ public class BlockRewriter {
   public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block>? blocksToInclude, IToken origin) {
     var blockToVisit = new Stack<ImmutableStack<Block>>();
     var newToOldBlocks = new Dictionary<Block, Block>();
-    var newLastBlock = new Block(lastBlock.tok)
-    {
-      Predecessors = lastBlock.Predecessors,
-      Label = lastBlock.Label,
-      TransferCmd = new ReturnCmd(Token.NoToken),
-      Cmds = lastBlock.Cmds
-    };
+    var newLastBlock = Block.ShallowClone(lastBlock);
+    newLastBlock.Predecessors = lastBlock.Predecessors;
     blockToVisit.Push(ImmutableStack.Create(newLastBlock));
     newToOldBlocks[newLastBlock] = lastBlock;
 
@@ -53,13 +48,10 @@ public class BlockRewriter {
       var hadPredecessors = false;
       foreach (var oldPrevious in predecessors) {
         hadPredecessors = true;
-        var newPrevious = new Block(oldPrevious.tok)
-        {
-          Predecessors = oldPrevious.Predecessors,
-          Label = oldPrevious.Label,
-          TransferCmd = oldPrevious.TransferCmd,
-          Cmds = oldPrevious.Cmds.Select(TransformAssertCmd).ToList()
-        };
+        var newPrevious = Block.ShallowClone(oldPrevious);
+        newPrevious.Predecessors = oldPrevious.Predecessors;
+        newPrevious.Cmds = oldPrevious.Cmds.Select(TransformAssertCmd).ToList();
+        
         newToOldBlocks[newPrevious] = oldPrevious;
         if (newPrevious.TransferCmd is GotoCmd gotoCmd) {
           newPrevious.TransferCmd =
@@ -75,10 +67,9 @@ public class BlockRewriter {
         var filteredDag = blocksToInclude == null ? dag : Program.GraphFromBlocksSubset(newToOldBlocks[path.Peek()], blocksToInclude);
         var nonDominatedBranches = path.Where(b => 
           !filteredDag.DominatorMap.DominatedBy(lastBlock, newToOldBlocks[b])).ToList();
-        yield return CreateSplit(new PathOrigin(origin, nonDominatedBranches), new List<Block> { new(firstBlock.tok) {
-          Label = firstBlock.Label,
-          Cmds = path.SelectMany(b => b.Cmds).ToList() 
-        } });
+        var newFirstBlock = Block.ShallowClone(firstBlock);
+        newFirstBlock.Cmds = path.SelectMany(b => b.Cmds).ToList();
+        yield return CreateSplit(new PathOrigin(origin, nonDominatedBranches), new List<Block> { newFirstBlock });
       }
     }
   }
@@ -97,9 +88,7 @@ public class BlockRewriter {
         continue;
       }
 
-      var newBlock = new Block(block.tok) {
-        Label = block.Label
-      };
+      var newBlock = Block.ShallowClone(block);
       newBlocks.Add(newBlock);
       oldToNewBlockMap[block] = newBlock;
       // freeBlocks consist of the predecessors of the relevant foci.
@@ -133,10 +122,7 @@ public class BlockRewriter {
         continue;
       }
         
-      var newBlock = new Block(oldBlock.tok)
-      {
-        Label = oldBlock.Label
-      };
+      var newBlock = Block.ShallowClone(oldBlock);
       oldToNewBlockMap.Add(oldBlock, newBlock);
       newBlock.Cmds = getCommands(oldBlock);
       foreach (var previous in oldBlock.Predecessors) {

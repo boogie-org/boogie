@@ -181,10 +181,7 @@ class SplitAttributeHandler {
     var newBlocks = new List<Block>(blocks.Count);
     var oldToNewBlockMap = new Dictionary<Block, Block>(newBlocks.Count);
     foreach (var currentBlock in blocks) {
-      var newBlock = new Block(currentBlock.tok)
-      {
-        Label = currentBlock.Label
-      };
+      var newBlock = Block.ShallowClone(currentBlock);
 
       oldToNewBlockMap[currentBlock] = newBlock;
       newBlocks.Add(newBlock);
