@@ -443,12 +443,10 @@ namespace VC
       void ComputeBlockSetsHelper(Block b, bool allowSmall)
       {
         Contract.Requires(b != null);
-        if (keepAtAll.Contains(b))
+        if (!keepAtAll.Add(b))
         {
           return;
         }
-
-        keepAtAll.Add(b);
 
         if (allowSmall)
         {
@@ -478,7 +476,7 @@ namespace VC
         }
       }
 
-      void ComputeBlockSets(bool allowSmall)
+      private void ComputeBlockSets(bool allowSmall)
       {
         protectedFromAssertToAssume.Clear();
         keepAtAll.Clear();
@@ -488,12 +486,12 @@ namespace VC
 
         if (assertToAssume)
         {
-          foreach (Block b in allowSmall ? Blocks : bigBlocks)
+          foreach (var block in allowSmall ? Blocks : bigBlocks)
           {
-            Contract.Assert(b != null);
-            if (ComputeReachableNodes(b).Contains(cce.NonNull(splitBlock)))
+            Contract.Assert(block != null);
+            if (ComputeReachableNodes(block).Contains(cce.NonNull(splitBlock)))
             {
-              keepAtAll.Add(b);
+              keepAtAll.Add(block);
             }
           }
 

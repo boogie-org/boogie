@@ -77,7 +77,7 @@ namespace VC
         // Copy any {:id ...} from the assertion to the assumption, so
         // we can track it while analyzing verification coverage. But
         // skip it if it's `true` because that's never useful to track.
-        (assume as ICarriesAttributes).CopyIdFrom(assrt.tok, assrt);
+        assume.CopyIdFrom(assrt.tok, assrt);
       }
 
       return assume;
@@ -578,14 +578,13 @@ namespace VC
 
         #region Map passive program errors back to original program errors
 
-        ReturnCounterexample returnExample = newCounterexample as ReturnCounterexample;
-        if (returnExample != null)
+        if (newCounterexample is ReturnCounterexample returnExample)
         {
-          foreach (Block b in returnExample.Trace)
+          foreach (var block in returnExample.Trace)
           {
-            Contract.Assert(b != null);
-            Contract.Assume(b.TransferCmd != null);
-            ReturnCmd cmd = gotoCmdOrigins.ContainsKey(b.TransferCmd) ? gotoCmdOrigins[b.TransferCmd] : null;
+            Contract.Assert(block != null);
+            Contract.Assume(block.TransferCmd != null);
+            var cmd = gotoCmdOrigins.GetValueOrDefault(block.TransferCmd);
             if (cmd != null)
             {
               returnExample.FailingReturn = cmd;
@@ -797,17 +796,6 @@ namespace VC
       #endregion Peep-hole optimizations
 
       HandleSelectiveChecking(impl);
-
-
-//      #region Constant Folding
-//      #endregion
-//      #region Debug Tracing
-//      if (CommandLineOptions.Clo.TraceVerify)
-//      {
-//        Console.WriteLine("after constant folding");
-//        EmitImpl(impl, true);
-//      }
-//      #endregion
 
       return gotoCmdOrigins;
     }
@@ -1114,7 +1102,7 @@ namespace VC
 
       return ExtractLoopTraceRec(
         new CalleeCounterexampleInfo(cex, new List<object>()),
-        mainProcName, inlinedProcs, extractLoopMappingInfo).counterexample;
+        mainProcName, inlinedProcs, extractLoopMappingInfo).Counterexample;
     }
 
     protected CalleeCounterexampleInfo ExtractLoopTraceRec(
@@ -1123,16 +1111,16 @@ namespace VC
       Dictionary<string, Dictionary<string, Block>> extractLoopMappingInfo)
     {
       Contract.Requires(currProc != null);
-      if (cexInfo.counterexample == null)
+      if (cexInfo.Counterexample == null)
       {
         return cexInfo;
       }
 
-      var cex = cexInfo.counterexample;
+      var cex = cexInfo.Counterexample;
       // Go through all blocks in the trace, map them back to blocks in the original program (if there is one)
       var ret = cex.Clone();
       ret.Trace = new List<Block>();
-      ret.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
+      ret.CalleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
 
       for (int numBlock = 0; numBlock < cex.Trace.Count; numBlock++)
       {
@@ -1148,7 +1136,7 @@ namespace VC
         {
           Cmd cmd = block.Cmds[numInstr];
           var loc = new TraceLocation(numBlock, numInstr);
-          if (!cex.calleeCounterexamples.ContainsKey(loc))
+          if (!cex.CalleeCounterexamples.ContainsKey(loc))
           {
             if (GetCallee(cex.GetTraceCmd(loc), inlinedProcs) != null)
             {
@@ -1160,7 +1148,7 @@ namespace VC
 
           string callee = cex.GetCalledProcName(cex.GetTraceCmd(loc));
           Contract.Assert(callee != null);
-          var calleeTrace = cex.calleeCounterexamples[loc];
+          var calleeTrace = cex.CalleeCounterexamples[loc];
           Debug.Assert(calleeTrace != null);
 
           var origTrace = ExtractLoopTraceRec(calleeTrace, callee, inlinedProcs, extractLoopMappingInfo);
@@ -1170,25 +1158,25 @@ namespace VC
             // Absorb the trace into the current trace
 
             int currLen = ret.Trace.Count;
-            ret.Trace.AddRange(origTrace.counterexample.Trace);
+            ret.Trace.AddRange(origTrace.Counterexample.Trace);
 
-            foreach (var kvp in origTrace.counterexample.calleeCounterexamples)
+            foreach (var kvp in origTrace.Counterexample.CalleeCounterexamples)
             {
               var newloc = new TraceLocation(kvp.Key.numBlock + currLen, kvp.Key.numInstr);
-              ret.calleeCounterexamples.Add(newloc, kvp.Value);
+              ret.CalleeCounterexamples.Add(newloc, kvp.Value);
             }
           }
           else
           {
             var origLoc = new TraceLocation(ret.Trace.Count - 1,
               GetCallCmdPosition(origBlock, callCnt, inlinedProcs, callee));
-            ret.calleeCounterexamples.Add(origLoc, origTrace);
+            ret.CalleeCounterexamples.Add(origLoc, origTrace);
             callCnt++;
           }
         }
       }
 
-      return new CalleeCounterexampleInfo(ret, cexInfo.args);
+      return new CalleeCounterexampleInfo(ret, cexInfo.Args);
     }
 
     // return the position of the i^th CallCmd in the block (count only those Calls that call a procedure in inlinedProcs).
@@ -1377,34 +1365,31 @@ namespace VC
     /// <summary>
     /// Returns a clone of "cex", but with the location stored in "cex" replaced by those from "assrt".
     /// </summary>
-    public static Counterexample AssertCmdToCloneCounterexample(VCGenOptions options, AssertCmd assrt,
+    public static Counterexample AssertCmdToCloneCounterexample(VCGenOptions options, AssertCmd assert,
       Counterexample cex,
       Block implEntryBlock, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
     {
-      Contract.Requires(assrt != null);
+      Contract.Requires(assert != null);
       Contract.Requires(cex != null);
       Contract.Requires(implEntryBlock != null);
       Contract.Requires(gotoCmdOrigins != null);
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       Counterexample cc;
-      if (assrt is AssertRequiresCmd)
+      if (assert is AssertRequiresCmd assertRequiresCmd)
       {
-        var aa = (AssertRequiresCmd)assrt;
-        cc = new CallCounterexample(options, cex.Trace, cex.AugmentedTrace, aa, cex.Model, cex.MvInfo, cex.Context,
-          cex.ProofRun, aa.Checksum);
+        cc = new CallCounterexample(options, cex.Trace, cex.AugmentedTrace, assertRequiresCmd, cex.Model, cex.MvInfo, cex.Context,
+          cex.ProofRun, assertRequiresCmd.Checksum);
       }
-      else if (assrt is AssertEnsuresCmd && cex is ReturnCounterexample)
+      else if (assert is AssertEnsuresCmd assertEnsuresCmd && cex is ReturnCounterexample returnCounterexample)
       {
-        var aa = (AssertEnsuresCmd)assrt;
-        var oldCex = (ReturnCounterexample)cex;
         // The first three parameters of ReturnCounterexample are: List<Block> trace, List<object> augmentedTrace, TransferCmd failingReturn, Ensures failingEnsures.
         // We have the "aa" version of failingEnsures, namely aa.Ensures.  The first and third parameters take more work to reconstruct.
         // (The code here assumes the labels of blocks remain the same. If that's not the case, then it is possible that the trace
         // computed does not lead to where the error is, but at least the error will not be masked.)
         List<Block> reconstructedTrace = null;
         Block prevBlock = null;
-        foreach (var blk in cex.Trace)
+        foreach (var blk in returnCounterexample.Trace)
         {
           if (reconstructedTrace == null)
           {
@@ -1456,11 +1441,11 @@ namespace VC
         if (reconstructedTrace != null)
         {
           // The reconstructed trace ends with a "return;" in the passive command, so we now try to convert it to the original (non-passive) "return;"
-          foreach (Block b in reconstructedTrace)
+          foreach (var block in reconstructedTrace)
           {
-            Contract.Assert(b != null);
-            Contract.Assume(b.TransferCmd != null);
-            returnCmd = gotoCmdOrigins.ContainsKey(b.TransferCmd) ? gotoCmdOrigins[b.TransferCmd] : null;
+            Contract.Assert(block != null);
+            Contract.Assume(block.TransferCmd != null);
+            returnCmd = gotoCmdOrigins.GetValueOrDefault(block.TransferCmd);
             if (returnCmd != null)
             {
               break;
@@ -1474,13 +1459,13 @@ namespace VC
           }
         }
 
-        cc = new ReturnCounterexample(options, reconstructedTrace ?? cex.Trace, cex.AugmentedTrace, aa,
-          returnCmd ?? oldCex.FailingReturn,
-          cex.Model, cex.MvInfo, cex.Context, cex.ProofRun, aa.Checksum);
+        cc = new ReturnCounterexample(options, reconstructedTrace ?? returnCounterexample.Trace, returnCounterexample.AugmentedTrace, assertEnsuresCmd,
+          returnCmd ?? returnCounterexample.FailingReturn,
+          returnCounterexample.Model, returnCounterexample.MvInfo, returnCounterexample.Context, returnCounterexample.ProofRun, assertEnsuresCmd.Checksum);
       }
       else
       {
-        cc = new AssertCounterexample(options, cex.Trace, cex.AugmentedTrace, assrt, cex.Model, cex.MvInfo, cex.Context,
+        cc = new AssertCounterexample(options, cex.Trace, cex.AugmentedTrace, assert, cex.Model, cex.MvInfo, cex.Context,
           cex.ProofRun);
       }
 
@@ -1527,34 +1512,34 @@ namespace VC
       IEnumerable sortedNodes = dag.TopologicalSort();
       Contract.Assert(sortedNodes != null);
 
-      Dictionary<Block, VCExprVar> blockVariables = new Dictionary<Block, VCExprVar>();
+      var blockVariables = new Dictionary<Block, VCExprVar>();
       List<VCExprLetBinding> bindings = new List<VCExprLetBinding>();
       VCExpressionGenerator gen = proverCtxt.ExprGen;
       Contract.Assert(gen != null);
       foreach (Block block in sortedNodes)
       {
-        VCExpr SuccCorrect;
-        GotoCmd gotocmd = block.TransferCmd as GotoCmd;
+        VCExpr succCorrect;
+        var gotocmd = block.TransferCmd as GotoCmd;
         if (gotocmd == null)
         {
           ReturnExprCmd re = block.TransferCmd as ReturnExprCmd;
           if (re == null)
           {
-            SuccCorrect = VCExpressionGenerator.True;
+            succCorrect = VCExpressionGenerator.True;
           }
           else
           {
-            SuccCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
+            succCorrect = proverCtxt.BoogieExprTranslator.Translate(re.Expr);
             if (isPositiveContext)
             {
-              SuccCorrect = gen.Not(SuccCorrect);
+              succCorrect = gen.Not(succCorrect);
             }
           }
         }
         else
         {
           Contract.Assert(gotocmd.LabelTargets != null);
-          List<VCExpr> SuccCorrectVars = new List<VCExpr>(gotocmd.LabelTargets.Count);
+          var succCorrectVars = new List<VCExpr>(gotocmd.LabelTargets.Count);
           foreach (Block successor in gotocmd.LabelTargets)
           {
             Contract.Assert(successor != null);
@@ -1568,14 +1553,14 @@ namespace VC
               s = gen.Implies(controlTransferExpr, s);
             }
 
-            SuccCorrectVars.Add(s);
+            succCorrectVars.Add(s);
           }
 
-          SuccCorrect = gen.NAry(VCExpressionGenerator.AndOp, SuccCorrectVars);
+          succCorrect = gen.NAry(VCExpressionGenerator.AndOp, succCorrectVars);
         }
 
         VCContext context = new VCContext(Options, absyIds, proverCtxt, controlFlowVariableExpr, isPositiveContext);
-        VCExpr vc = Wlp.Block(block, SuccCorrect, context);
+        VCExpr vc = Wlp.Block(block, succCorrect, context);
         assertionCount += context.AssertionCount;
 
         VCExprVar v = gen.Variable(block.Label + "_correct", Bpl.Type.Bool);

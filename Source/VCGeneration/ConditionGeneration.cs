@@ -236,7 +236,7 @@ namespace VC
         AssumeCmd c = new AssumeCmd(req.tok, e, CivlAttributes.ApplySubstitutionToPoolHints(formalProcImplSubst, req.Attributes));
         // Copy any {:id ...} from the precondition to the assumption, so
         // we can track it while analyzing verification coverage.
-        (c as ICarriesAttributes).CopyIdFrom(req.tok, req);
+        c.CopyIdFrom(req.tok, req);
         c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null)
@@ -883,14 +883,7 @@ namespace VC
             {
               if (param is IdentifierExpr identifierExpr)
               {
-                if (incarnationMap.ContainsKey(identifierExpr.Decl))
-                {
-                  debugExprs.Add(incarnationMap[identifierExpr.Decl]);
-                }
-                else
-                {
-                  debugExprs.Add(identifierExpr);
-                }
+                debugExprs.Add(incarnationMap.GetValueOrDefault(identifierExpr.Decl, identifierExpr));
               }
               else
               {
@@ -1207,7 +1200,7 @@ namespace VC
           var assumeCmd = new AssumeCmd(c.tok, assumption);
           // Copy any {:id ...} from the assignment to the assumption, so
           // we can track it while analyzing verification coverage.
-          (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
+          assumeCmd.CopyIdFrom(assign.tok, assign);
           passiveCmds.Add(assumeCmd);
         }
 

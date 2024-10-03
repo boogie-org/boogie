@@ -18,34 +18,34 @@ namespace Microsoft.Boogie
     {
       Contract.Invariant(Trace != null);
       Contract.Invariant(Context != null);
-      Contract.Invariant(cce.NonNullDictionaryAndValues(calleeCounterexamples));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(CalleeCounterexamples));
     }
 
     public ProofRun ProofRun { get; }
-    protected readonly VCGenOptions options;
+    protected readonly VCGenOptions Options;
     [Peer] public List<Block> Trace;
-    public List<object> AugmentedTrace;
+    public readonly List<object> AugmentedTrace;
     public Model Model { get; }
-    public ModelViewInfo MvInfo;
-    public ProverContext Context;
+    public readonly ModelViewInfo MvInfo;
+    public readonly ProverContext Context;
     public abstract byte[] Checksum { get; }
     public byte[] SugaredCmdChecksum;
     public bool IsAuxiliaryCexForDiagnosingTimeouts;
 
-    public Dictionary<TraceLocation, CalleeCounterexampleInfo> calleeCounterexamples;
+    public Dictionary<TraceLocation, CalleeCounterexampleInfo> CalleeCounterexamples;
 
     internal Counterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, Model model,
       VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
-      this.options = options;
+      this.Options = options;
       this.Trace = trace;
       this.Model = model;
       this.MvInfo = mvInfo;
       this.Context = context;
       this.ProofRun = proofRun;
-      this.calleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
+      this.CalleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
       // the call to instance method GetModelValue in the following code requires the fields Model and Context to be initialized
       if (augmentedTrace != null)
       {
@@ -60,13 +60,13 @@ namespace Microsoft.Boogie
     public void AddCalleeCounterexample(TraceLocation loc, CalleeCounterexampleInfo cex)
     {
       Contract.Requires(cex != null);
-      calleeCounterexamples[loc] = cex;
+      CalleeCounterexamples[loc] = cex;
     }
 
     public void AddCalleeCounterexample(int numBlock, int numInstr, CalleeCounterexampleInfo cex)
     {
       Contract.Requires(cex != null);
-      calleeCounterexamples[new TraceLocation(numBlock, numInstr)] = cex;
+      CalleeCounterexamples[new TraceLocation(numBlock, numInstr)] = cex;
     }
 
     public void AddCalleeCounterexample(Dictionary<TraceLocation, CalleeCounterexampleInfo> cs)
@@ -112,11 +112,11 @@ namespace Microsoft.Boogie
     {
       int numBlock = -1;
       string ind = new string(' ', indent);
-      foreach (Block b in Trace)
+      foreach (var block in Trace)
       {
-        Contract.Assert(b != null);
+        Contract.Assert(block != null);
         numBlock++;
-        if (b.tok == null)
+        if (block.tok == null)
         {
           tw.WriteLine("{0}<intermediate block>", ind);
         }
@@ -125,36 +125,37 @@ namespace Microsoft.Boogie
           // for ErrorTrace == 1 restrict the output;
           // do not print tokens with -17:-4 as their location because they have been
           // introduced in the translation and do not give any useful feedback to the user
-          if (!(options.ErrorTrace == 1 && b.tok.line == -17 && b.tok.col == -4))
+          if (Options.ErrorTrace == 1 && block.tok.line == -17 && block.tok.col == -4)
           {
-            if (blockAction != null)
+            continue;
+          }
+
+          blockAction?.Invoke(block);
+
+          tw.WriteLine("{4}{0}({1},{2}): {3}", block.tok.filename, block.tok.line, block.tok.col, block.Label, ind);
+
+          for (int numInstr = 0; numInstr < block.Cmds.Count; numInstr++)
+          {
+            var loc = new TraceLocation(numBlock, numInstr);
+            if (!CalleeCounterexamples.ContainsKey(loc))
             {
-              blockAction(b);
+              continue;
             }
 
-            tw.WriteLine("{4}{0}({1},{2}): {3}", b.tok.filename, b.tok.line, b.tok.col, b.Label, ind);
-
-            for (int numInstr = 0; numInstr < b.Cmds.Count; numInstr++)
+            var cmd = GetTraceCmd(loc);
+            var calleeName = GetCalledProcName(cmd);
+            if (calleeName.StartsWith(VC.StratifiedVerificationConditionGeneratorBase.recordProcName) &&
+                Options.StratifiedInlining > 0)
             {
-              var loc = new TraceLocation(numBlock, numInstr);
-              if (calleeCounterexamples.ContainsKey(loc))
-              {
-                var cmd = GetTraceCmd(loc);
-                var calleeName = GetCalledProcName(cmd);
-                if (calleeName.StartsWith(VC.StratifiedVerificationConditionGeneratorBase.recordProcName) &&
-                    options.StratifiedInlining > 0)
-                {
-                  Contract.Assert(calleeCounterexamples[loc].args.Count == 1);
-                  var arg = calleeCounterexamples[loc].args[0];
-                  tw.WriteLine("{0}value = {1}", ind, arg.ToString());
-                }
-                else
-                {
-                  tw.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
-                  calleeCounterexamples[loc].counterexample.Print(indent + 4, tw);
-                  tw.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
-                }
-              }
+              Contract.Assert(CalleeCounterexamples[loc].Args.Count == 1);
+              var arg = CalleeCounterexamples[loc].Args[0];
+              tw.WriteLine("{0}value = {1}", ind, arg.ToString());
+            }
+            else
+            {
+              tw.WriteLine("{1}Inlined call to procedure {0} begins", calleeName, ind);
+              CalleeCounterexamples[loc].Counterexample.Print(indent + 4, tw);
+              tw.WriteLine("{1}Inlined call to procedure {0} ends", calleeName, ind);
             }
           }
         }
@@ -165,8 +166,8 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(counterexample != null);
 
-      var filenameTemplate = options.ModelViewFile;
-      if (Model == null || filenameTemplate == null || options.StratifiedInlining > 0)
+      var filenameTemplate = Options.ModelViewFile;
+      if (Model == null || filenameTemplate == null || Options.StratifiedInlining > 0)
       {
         return;
       }

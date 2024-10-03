@@ -55,8 +55,6 @@ public interface ICarriesAttributes
 
 public static class CarriesAttributesExtensions
 {
-  
-
   public static void CopyIdFrom(this ICarriesAttributes dest, IToken tok, ICarriesAttributes src)
   {
     var id = src.FindStringAttribute("id");

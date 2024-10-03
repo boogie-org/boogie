@@ -105,7 +105,7 @@ public static class DesugarReturns {
         c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
         // Copy any {:id ...} from the postcondition to the assumption, so
         // we can track it while analyzing verification coverage.
-        (c as ICarriesAttributes).CopyIdFrom(ens.tok, ens);
+        c.CopyIdFrom(ens.tok, ens);
         unifiedExitBlock.Cmds.Add(c);
         if (debugWriter != null)
         {
