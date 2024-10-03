@@ -1285,10 +1285,7 @@ namespace Microsoft.Boogie
           {
             ComputeChecksums(options, c, impl, usedVariables, currentChecksum);
             currentChecksum = c.Checksum;
-            if (c.SugaredCmdChecksum == null)
-            {
-              c.SugaredCmdChecksum = cmd.Checksum;
-            }
+            c.SugaredCmdChecksum ??= cmd.Checksum;
           }
         }
         else

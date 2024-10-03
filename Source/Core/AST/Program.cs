@@ -498,15 +498,15 @@ public class Program : Absy
     return callGraph;
   }
 
-  public static Graph<Block> GraphFromBlocksSubset(Block source, IReadOnlySet<Block> subset, bool forward = true)
+  public static Graph<Block> GraphFromBlocksSubset(IReadOnlyList<Block> blocks, IReadOnlySet<Block> subset = null, bool forward = true)
   {
     var result = new Graph<Block>();
-    if (!subset.Any())
+    if (!blocks.Any())
     {
       return result;
     }
     void AddEdge(Block a, Block b) {
-      if (!subset.Contains(a) || !subset.Contains(b)) {
+      if (subset != null && (!subset.Contains(a) || !subset.Contains(b))) {
         return;
       }
       Contract.Assert(a != null && b != null);
@@ -517,8 +517,8 @@ public class Program : Absy
       }
     }
 
-    result.AddSource(source);
-    foreach (var block in subset)
+    result.AddSource(blocks[0]);
+    foreach (var block in blocks)
     {
       if (block.TransferCmd is GotoCmd gtc)
       {
@@ -529,32 +529,8 @@ public class Program : Absy
     return result;
   }
   
-  public static Graph<Block> GraphFromBlocks(IReadOnlyList<Block> blocks, bool forward = true)
-  {
-    var result = new Graph<Block>();
-    if (!blocks.Any())
-    {
-      return result;
-    }
-    void AddEdge(Block a, Block b) {
-      Contract.Assert(a != null && b != null);
-      if (forward) {
-        result.AddEdge(a, b);
-      } else {
-        result.AddEdge(b, a);
-      }
-    }
-
-    result.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
-    foreach (var block in blocks)
-    {
-      if (block.TransferCmd is GotoCmd gtc)
-      {
-        Contract.Assume(gtc.LabelTargets != null);
-        gtc.LabelTargets.ForEach(dest => AddEdge(block, dest));
-      }
-    }
-    return result;
+  public static Graph<Block> GraphFromBlocks(IReadOnlyList<Block> blocks, bool forward = true) {
+    return GraphFromBlocksSubset(blocks, null, forward);
   }
 
   public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl, bool forward = true)

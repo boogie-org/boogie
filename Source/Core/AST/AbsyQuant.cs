@@ -552,7 +552,7 @@ namespace Microsoft.Boogie
                                       ((LiteralExpr) qkv.Params[0]).IsTrue)));
       return kv != null;
     }
-    
+
     public static int FindIntAttribute(QKeyValue kv, string name, int defl)
     {
       Contract.Requires(name != null);

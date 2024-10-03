@@ -25,10 +25,10 @@ public class FocusAttributeHandler {
     
     var implementation = run.Implementation;
     var dag = rewriter.Dag;
-    var topologicallySortedBlocks = dag.TopologicalSort();
+    
     // By default, we process the foci in a top-down fashion, i.e., in the topological order.
     // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
-    var focusBlocks = GetFocusBlocks(topologicallySortedBlocks);
+    var focusBlocks = GetFocusBlocks(rewriter.OrderedBlocks);
     if (rewriter.Options.RelaxFocus) {
       focusBlocks.Reverse();
     }
@@ -66,7 +66,7 @@ public class FocusAttributeHandler {
         }
         else
         {
-          var dominatedBlocks = DominatedBlocks(topologicallySortedBlocks, focusBlock, blocksToInclude);
+          var dominatedBlocks = DominatedBlocks(rewriter.OrderedBlocks, focusBlock, blocksToInclude);
           // Recursive call that does NOT focus the block
           // Contains all blocks except the ones dominated by the focus block
           AddSplitsFromIndex(path, focusIndex + 1, 

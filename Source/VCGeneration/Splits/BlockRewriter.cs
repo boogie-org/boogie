@@ -12,6 +12,7 @@ namespace VCGeneration.Splits;
 public class BlockRewriter {
   private readonly Dictionary<AssertCmd, Cmd> assumedAssertions = new();
   private readonly IReadOnlyList<Block> reversedBlocks;
+  public List<Block> OrderedBlocks { get; }
   public VCGenOptions Options { get; }
   public Graph<Block> Dag { get; }
   public Func<ImplementationPartOrigin, List<Block>, ManualSplit> CreateSplit { get; }
@@ -21,7 +22,8 @@ public class BlockRewriter {
     this.Options = options;
     CreateSplit = createSplit;
     Dag = Program.GraphFromBlocks(blocks);
-    reversedBlocks = Dag.TopologicalSort().Reversed();
+    OrderedBlocks = Dag.TopologicalSort();
+    reversedBlocks = OrderedBlocks.Reversed();
   }
 
   public Cmd TransformAssertCmd(Cmd cmd) {
@@ -69,10 +71,9 @@ public class BlockRewriter {
       }
 
       if (!hadPredecessors) {
-
         var filteredDag = blocksToInclude == null
           ? Dag
-          : Program.GraphFromBlocksSubset(newToOldBlocks[path.Peek()], blocksToInclude);
+          : Program.GraphFromBlocksSubset(OrderedBlocks, blocksToInclude);
         var nonDominatedBranches = path.Where(b =>
           !filteredDag.DominatorMap.DominatedBy(lastBlock, newToOldBlocks[b])).ToList();
         var singletonBlock = Block.ShallowClone(firstBlock);

@@ -462,19 +462,19 @@ public class Implementation : DeclWithFormals {
   }
 
   public void EmitImplementation(TokenTextWriter stream, int level, IEnumerable<Block> blocks,
-    bool showLocals, string namePrefix = "") {
+    bool showLocals, string nameSuffix = "") {
     EmitImplementation(stream, level, writer => {
       foreach (var block in blocks) {
         block.Emit(writer, level + 1);
       }
-    }, showLocals, namePrefix);
+    }, showLocals, nameSuffix);
   }
 
-  public void EmitImplementation(TokenTextWriter stream, int level, Action<TokenTextWriter> printBlocks, bool showLocals, string namePrefix = "")
+  private void EmitImplementation(TokenTextWriter stream, int level, Action<TokenTextWriter> printBlocks, bool showLocals, string nameSuffix = "")
   {
     stream.Write(this, level, "implementation ");
     EmitAttributes(stream);
-    stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(Name) + namePrefix);
+    stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(Name) + nameSuffix);
     EmitSignature(stream, false);
     stream.WriteLine();
 
