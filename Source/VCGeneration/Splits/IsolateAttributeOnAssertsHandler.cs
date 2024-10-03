@@ -1,4 +1,5 @@
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -9,14 +10,11 @@ using VCGeneration.Splits;
 namespace VCGeneration;
 
 class IsolateAttributeOnAssertsHandler {
-  private readonly BlockRewriter rewriter;
 
-  public IsolateAttributeOnAssertsHandler(BlockRewriter rewriter) {
-    this.rewriter = rewriter;
-  }
-
-  public (List<ManualSplit> IsolatedParts, ManualSplit Remainder) GetParts(ManualSplit partToDivide) {
-    
+  public static (List<ManualSplit> IsolatedParts, ManualSplit Remainder) GetParts(VCGenOptions options, ManualSplit partToDivide, 
+    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
+    var rewriter = new BlockRewriter(options, partToDivide.Blocks, createPart);
+      
     var splitOnEveryAssert = partToDivide.Options.VcsSplitOnEveryAssert;
     partToDivide.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
     
@@ -56,10 +54,13 @@ class IsolateAttributeOnAssertsHandler {
 
     ManualSplit GetSplitForIsolatedAssertion(Block blockWithAssert, AssertCmd assertCmd) {
       var blocksToKeep = rewriter.Dag.ComputeReachability(blockWithAssert, false);
-      var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToKeep, rewriter.Dag.TopologicalSort().Reversed(), 
-        oldBlock => oldBlock == blockWithAssert
-        ? GetCommandsForBlockWithAssert(oldBlock, assertCmd)
-        : oldBlock.Cmds.Select(rewriter.TransformAssertCmd).ToList());
+
+      List<Cmd> GetCommands(Block oldBlock) =>
+        oldBlock == blockWithAssert
+          ? GetCommandsForBlockWithAssert(oldBlock, assertCmd)
+          : oldBlock.Cmds.Select(rewriter.TransformAssertCmd).ToList();
+
+      var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToKeep, GetCommands);
       return rewriter.CreateSplit(new IsolatedAssertionOrigin(assertCmd), newBlocks);
     }
     
@@ -83,11 +84,12 @@ class IsolateAttributeOnAssertsHandler {
         return rewriter.CreateSplit(origin, partToDivide.Blocks);
       }
 
-      
-      var (newBlocks, mapping) = rewriter.ComputeNewBlocks(null, rewriter.Dag.TopologicalSort().Reversed(), 
-        block => block.Cmds.Select(cmd => isolatedAssertions.Contains(cmd) ? rewriter.TransformAssertCmd(cmd) : cmd).ToList());
+      var (newBlocks, mapping) = rewriter.ComputeNewBlocks(null, GetCommands);
       
       return rewriter.CreateSplit(origin, newBlocks);
+
+      List<Cmd> GetCommands(Block block) => block.Cmds.Select(cmd => 
+        isolatedAssertions.Contains(cmd) ? rewriter.TransformAssertCmd(cmd) : cmd).ToList();
     }
   }
 

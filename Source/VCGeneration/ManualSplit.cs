@@ -12,10 +12,10 @@ public class ManualSplit : Split
   
   public ManualSplit(VCGenOptions options, 
     Func<List<Block>> blocks, 
-    VerificationConditionGenerator par, 
+    VerificationConditionGenerator parent, 
     ImplementationRun run, 
     ImplementationPartOrigin origin, int? randomSeed = null) 
-    : base(options, blocks, par, run, randomSeed)
+    : base(options, blocks, parent, run, randomSeed)
   {
     Origin = origin;
   }

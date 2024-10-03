@@ -5,18 +5,12 @@ using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.Boogie;
 using VC;
-using VCGeneration.Splits;
 
 namespace VCGeneration;
 
 class SplitAttributeHandler {
-  private readonly BlockRewriter rewriter;
 
-  public SplitAttributeHandler(BlockRewriter rewriter) {
-    this.rewriter = rewriter;
-  }
-
-  public List<ManualSplit> GetParts(ManualSplit partToSplit) {
+  public static List<ManualSplit> GetParts(ManualSplit partToSplit) {
     var splitsPerBlock = new Dictionary<Block, List<Cmd>>();
     var splits = new HashSet<Cmd>();
     foreach (var block in partToSplit.Blocks) {

@@ -12,19 +12,14 @@ using VCGeneration.Transformations;
 namespace VCGeneration;
 
 class IsolateAttributeOnJumpsHandler {
-  private readonly BlockRewriter rewriter;
+  public static (List<ManualSplit> Isolated, ManualSplit Remainder) GetParts(VCGenOptions options, ManualSplit partToDivide, 
+    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
 
-  public IsolateAttributeOnJumpsHandler(BlockRewriter rewriter) {
-    this.rewriter = rewriter;
-  }
-  
-  public (List<ManualSplit> Isolated, ManualSplit Remainder) GetParts(ManualSplit partToDivide) {
-
+    var rewriter = new BlockRewriter(options, partToDivide.Blocks, createPart);
+    
     var results = new List<ManualSplit>();
     var blocks = partToDivide.Blocks;
     var dag = Program.GraphFromBlocks(blocks);
-    var topoSorted = dag.TopologicalSort();
-    var reversedBlocks = topoSorted.Reversed();
     
     var splitOnEveryAssert = partToDivide.Options.VcsSplitOnEveryAssert;
     partToDivide.Run.Implementation.CheckBooleanAttribute("vcs_split_on_every_assert", ref splitOnEveryAssert);
@@ -55,8 +50,7 @@ class IsolateAttributeOnJumpsHandler {
         Debug.Assert(gotoCmd.LabelTargets[0].TransferCmd is not GotoCmd);
         results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, originalReturn.tok));
       } else {
-        var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude,
-          reversedBlocks, ancestors.ToHashSet());
+        var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude, ancestors.ToHashSet());
         results.Add(rewriter.CreateSplit(new ReturnOrigin(originalReturn), newBlocks));
       }
     }
@@ -69,7 +63,7 @@ class IsolateAttributeOnJumpsHandler {
     
     ManualSplit GetPartWithoutIsolatedReturns() {
       // TODO this needs an extra test. In case the isolated jump is followed by something it dominates
-      var (newBlocks, mapping) = rewriter.ComputeNewBlocks(blocks.ToHashSet(), reversedBlocks, new HashSet<Block>());
+      var (newBlocks, mapping) = rewriter.ComputeNewBlocks(blocks.ToHashSet(), new HashSet<Block>());
       foreach (var (oldBlock, newBlock) in mapping) {
         if (isolatedBlocks.Contains(oldBlock)) {
           newBlock.TransferCmd = new ReturnCmd(Token.NoToken);

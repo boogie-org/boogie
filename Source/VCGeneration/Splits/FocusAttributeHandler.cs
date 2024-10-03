@@ -9,27 +9,23 @@ using Block = Microsoft.Boogie.Block;
 using Cmd = Microsoft.Boogie.Cmd;
 using PredicateCmd = Microsoft.Boogie.PredicateCmd;
 using QKeyValue = Microsoft.Boogie.QKeyValue;
-using VCGenOptions = Microsoft.Boogie.VCGenOptions;
 
 namespace VCGeneration;
 
 public class FocusAttributeHandler {
-  private readonly BlockRewriter rewriter;
-
-  public FocusAttributeHandler(BlockRewriter rewriter) {
-    this.rewriter = rewriter;
-  }
 
   /// <summary>
   /// Each focus block creates two options.
   /// We recurse twice for each focus, leading to potentially 2^N splits
   /// </summary>
-  public List<ManualSplit> GetParts(ImplementationRun run)
+  public static List<ManualSplit> GetParts(VCGenOptions options, ImplementationRun run, 
+    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createPart)
   {
+    var rewriter = new BlockRewriter(options, run.Implementation.Blocks, createPart);
+    
     var implementation = run.Implementation;
-    var dag = Program.GraphFromImpl(implementation);
+    var dag = rewriter.Dag;
     var topologicallySortedBlocks = dag.TopologicalSort();
-    var blocksReversed = Enumerable.Reverse(topologicallySortedBlocks).ToList();
     // By default, we process the foci in a top-down fashion, i.e., in the topological order.
     // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
     var focusBlocks = GetFocusBlocks(topologicallySortedBlocks);
@@ -56,7 +52,7 @@ public class FocusAttributeHandler {
     void AddSplitsFromIndex(ImmutableStack<Block> path, int focusIndex, ISet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
-        var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude, blocksReversed, freeAssumeBlocks);
+        var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude, freeAssumeBlocks);
         ImplementationPartOrigin token = path.Any() 
           ? new PathOrigin(run.Implementation.tok, path.ToList()) // TODO fix 
           : new ImplementationRootOrigin(run.Implementation); 

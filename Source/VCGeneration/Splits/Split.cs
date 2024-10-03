@@ -76,11 +76,11 @@ namespace VC
       public VerificationConditionGenerator.ErrorReporter reporter;
 
       public Split(VCGenOptions options, Func<List<Block /*!*/>> /*!*/ getBlocks,
-        VerificationConditionGenerator /*!*/ par, ImplementationRun run, int? randomSeed = null)
+        VerificationConditionGenerator /*!*/ parent, ImplementationRun run, int? randomSeed = null)
       {
-        Contract.Requires(par != null);
+        Contract.Requires(parent != null);
         this.getBlocks = getBlocks;
-        parent = par;
+        this.parent = parent;
         this.Run = run;
         this.Options = options;
         Interlocked.Increment(ref currentId);

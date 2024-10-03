@@ -11,6 +11,7 @@ namespace VCGeneration.Splits;
 
 public class BlockRewriter {
   private readonly Dictionary<AssertCmd, Cmd> assumedAssertions = new();
+  private readonly IReadOnlyList<Block> reversedBlocks;
   public VCGenOptions Options { get; }
   public Graph<Block> Dag { get; }
   public Func<ImplementationPartOrigin, List<Block>, ManualSplit> CreateSplit { get; }
@@ -20,6 +21,7 @@ public class BlockRewriter {
     this.Options = options;
     CreateSplit = createSplit;
     Dag = Program.GraphFromBlocks(blocks);
+    reversedBlocks = Dag.TopologicalSort().Reversed();
   }
 
   public Cmd TransformAssertCmd(Cmd cmd) {
@@ -83,24 +85,22 @@ public class BlockRewriter {
 
   public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(
     ISet<Block> blocksToInclude,
-    IReadOnlyList<Block> blocksReversed,
     ISet<Block> freeAssumeBlocks) {
-    return ComputeNewBlocks(blocksToInclude, blocksReversed, block =>
+    return ComputeNewBlocks(blocksToInclude, block =>
       freeAssumeBlocks.Contains(block)
         ? block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(Options, c)).ToList()
         : block.Cmds);
   }
 
   public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(
-    ISet<Block>? blocksToInclude, 
-    IReadOnlyList<Block> blocksReversed,
+    ISet<Block>? blocksToInclude,
     Func<Block, List<Cmd>> getCommands)
   {
     var newBlocks = new List<Block>();
-    var oldToNewBlockMap = new Dictionary<Block, Block>(blocksReversed.Count);
+    var oldToNewBlockMap = new Dictionary<Block, Block>(reversedBlocks.Count);
         
     // Traverse backwards to allow settings the jumps to the new blocks
-    foreach (var block in blocksReversed)
+    foreach (var block in reversedBlocks)
     {
       if (blocksToInclude != null && !blocksToInclude.Contains(block)) {
         continue;
