@@ -120,7 +120,7 @@ implementation IsolateReturnPaths(x: int, y: int) returns (r: int)
 }
 
 
-isolateJump.bpl(34,11): Error: a postcondition could not be proved on this return path
+isolateJump.bpl(34,29): Error: a postcondition could not be proved on this return path
 isolateJump.bpl(23,3): Related location: this is the postcondition that could not be proved
 
 Boogie program verifier finished with 0 verified, 2 errors
