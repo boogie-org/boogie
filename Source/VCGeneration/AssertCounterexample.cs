@@ -39,8 +39,8 @@ public class AssertCounterexample : Counterexample
 
   public override Counterexample Clone()
   {
-    var ret = new AssertCounterexample(options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context, ProofRun);
-    ret.calleeCounterexamples = calleeCounterexamples;
+    var ret = new AssertCounterexample(Options, Trace, AugmentedTrace, FailingAssert, Model, MvInfo, Context, ProofRun);
+    ret.CalleeCounterexamples = CalleeCounterexamples;
     return ret;
   }
 }

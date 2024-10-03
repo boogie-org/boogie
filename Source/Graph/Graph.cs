@@ -99,22 +99,22 @@ namespace Microsoft.Boogie.GraphUtil
         return true;
       }
 
-      int currentNodeNum = nodeNumberToImmediateDominator[domineeNum];
+      int currentDominatorNum = nodeNumberToImmediateDominator[domineeNum];
       while (true)
       {
-        if (currentNodeNum == dominatorNum)
+        if (currentDominatorNum == dominatorNum)
         {
           return true;
         }
 
-        if (currentNodeNum == sourceNum)
+        if (currentDominatorNum == sourceNum)
         {
           return false;
         }
 
-        path?.Add(postOrderNumberToNode[currentNodeNum]);
+        path?.Add(postOrderNumberToNode[currentDominatorNum]);
 
-        currentNodeNum = nodeNumberToImmediateDominator[currentNodeNum];
+        currentDominatorNum = nodeNumberToImmediateDominator[currentDominatorNum];
       }
     }
 
@@ -429,8 +429,8 @@ namespace Microsoft.Boogie.GraphUtil
     private HashSet<Node> splitCandidates;
 
     private DomRelation<Node> dominatorMap = null;
-    private Dictionary<Node, HashSet<Node>> predCache = new Dictionary<Node, HashSet<Node>>();
-    private Dictionary<Node, HashSet<Node>> succCache = new Dictionary<Node, HashSet<Node>>();
+    private Dictionary<Node, HashSet<Node>> predCache = new();
+    private Dictionary<Node, HashSet<Node>> succCache = new();
     private bool predComputed;
 
     [ContractInvariantMethod]

@@ -882,7 +882,7 @@ public class CallCmd : CallCommonality
 
           // Do this after copying the attributes so it doesn't get overwritten
           if (callId is not null) {
-            (a as ICarriesAttributes).CopyIdWithModificationsFrom(tok, req,
+            a.CopyIdWithModificationsFrom(tok, req,
               id => new TrackedCallRequiresGoal(callId, id));
           }
 
@@ -899,7 +899,7 @@ public class CallCmd : CallCommonality
         Contract.Assert(a != null);
         // These probably won't have IDs, but copy if they do.
         if (callId is not null) {
-          (a as ICarriesAttributes).CopyIdWithModificationsFrom(tok, req,
+          a.CopyIdWithModificationsFrom(tok, req,
             id => new TrackedCallRequiresAssumed(callId, id));
         }
 
@@ -1066,7 +1066,7 @@ public class CallCmd : CallCommonality
       #endregion
 
       if (callId is not null) {
-        (assume as ICarriesAttributes).CopyIdWithModificationsFrom(tok, e,
+        assume.CopyIdWithModificationsFrom(tok, e,
           id => new TrackedCallEnsures(callId, id));
       }
 

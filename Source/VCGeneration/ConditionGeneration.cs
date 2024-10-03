@@ -66,7 +66,7 @@ namespace VC
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(IncarnationOriginMap));
       Contract.Invariant(program != null);
     }
 
@@ -81,9 +81,9 @@ namespace VC
     public List<Variable> CurrentLocalVariables { get; set; } = null;
 
     // shared across each implementation; created anew for each implementation
-    protected Dictionary<Variable, int> variable2SequenceNumber;
+    public Dictionary<Variable, int> Variable2SequenceNumber;
 
-    public Dictionary<Incarnation, Absy> incarnationOriginMap = new Dictionary<Incarnation, Absy>();
+    public Dictionary<Incarnation, Absy> IncarnationOriginMap = new();
 
     public Program program;
     public CheckerPool CheckerPool { get; }
@@ -236,7 +236,7 @@ namespace VC
         AssumeCmd c = new AssumeCmd(req.tok, e, CivlAttributes.ApplySubstitutionToPoolHints(formalProcImplSubst, req.Attributes));
         // Copy any {:id ...} from the precondition to the assumption, so
         // we can track it while analyzing verification coverage.
-        (c as ICarriesAttributes).CopyIdFrom(req.tok, req);
+        c.CopyIdFrom(req.tok, req);
         c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null)
@@ -257,74 +257,6 @@ namespace VC
         debugWriter.WriteLine();
       }
     }
-
-    /// <summary>
-    /// Modifies an implementation by inserting all postconditions
-    /// as assert statements at the end of the implementation
-    /// Returns the possibly-new unified exit block of the implementation
-    /// </summary>
-    /// <param name="impl"></param>
-    /// <param name="unifiedExitblock">The unified exit block that has
-    /// already been constructed for the implementation (and so
-    /// is already an element of impl.Blocks)
-    /// </param>
-    protected static void InjectPostConditions(VCGenOptions options, ImplementationRun run, Block unifiedExitBlock,
-      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
-    {
-      var impl = run.Implementation;
-      Contract.Requires(impl != null);
-      Contract.Requires(unifiedExitBlock != null);
-      Contract.Requires(gotoCmdOrigins != null);
-      Contract.Requires(impl.Proc != null);
-      Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
-
-      TokenTextWriter debugWriter = null;
-      if (options.PrintWithUniqueASTIds)
-      {
-        debugWriter = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
-        debugWriter.WriteLine("Effective postcondition:");
-      }
-
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
-
-      // (free and checked) ensures clauses
-      foreach (Ensures ens in impl.Proc.Ensures)
-      {
-        Contract.Assert(ens != null);
-
-        if (!ens.Free)
-        {
-          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          Ensures ensCopy = (Ensures) cce.NonNull(ens.Clone());
-          ensCopy.Condition = e;
-          AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
-          c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
-          // Copy any {:id ...} from the postcondition to the assumption, so
-          // we can track it while analyzing verification coverage.
-          (c as ICarriesAttributes).CopyIdFrom(ens.tok, ens);
-          unifiedExitBlock.Cmds.Add(c);
-          if (debugWriter != null)
-          {
-            c.Emit(debugWriter, 1);
-          }
-        }
-        else if (ens.CanAlwaysAssume())
-        {
-          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          unifiedExitBlock.Cmds.Add(new AssumeCmd(ens.tok, e));
-        }
-        else
-        {
-          // skip free ensures if it doesn't have the :always_assume attr
-        }
-      }
-
-      if (debugWriter != null)
-      {
-        debugWriter.WriteLine();
-      }
-    }
-
 
     /// <summary>
     /// Get the pre-condition of an implementation, including the where clauses from the in-parameters.
@@ -519,60 +451,6 @@ namespace VC
     }
 
 
-    protected Block GenerateUnifiedExit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
-    {
-      Contract.Requires(impl != null);
-      Contract.Requires(gotoCmdOrigins != null);
-      Contract.Ensures(Contract.Result<Block>() != null);
-
-      Contract.Ensures(Contract.Result<Block>().TransferCmd is ReturnCmd);
-      Block /*?*/
-        exitBlock = null;
-
-      #region Create a unified exit block, if there's more than one
-
-      {
-        int returnBlocks = 0;
-        foreach (Block b in impl.Blocks)
-        {
-          if (b.TransferCmd is ReturnCmd)
-          {
-            exitBlock = b;
-            returnBlocks++;
-          }
-        }
-
-        if (returnBlocks > 1)
-        {
-          string unifiedExitLabel = "GeneratedUnifiedExit";
-          var unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(),
-            new ReturnCmd(impl.StructuredStmts != null ? impl.StructuredStmts.EndCurly : Token.NoToken));
-          Contract.Assert(unifiedExit != null);
-          foreach (Block b in impl.Blocks)
-          {
-            if (b.TransferCmd is ReturnCmd returnCmd)
-            {
-              List<String> labels = new List<String>();
-              labels.Add(unifiedExitLabel);
-              List<Block> bs = new List<Block>();
-              bs.Add(unifiedExit);
-              GotoCmd go = new GotoCmd(returnCmd.tok, labels, bs);
-              gotoCmdOrigins[go] = returnCmd;
-              b.TransferCmd = go;
-              unifiedExit.Predecessors.Add(b);
-            }
-          }
-
-          exitBlock = unifiedExit;
-          impl.Blocks.Add(unifiedExit);
-        }
-
-        Contract.Assert(exitBlock != null);
-      }
-      return exitBlock;
-
-      #endregion
-    }
 
     public static void ResetPredecessors(List<Block> blocks)
     {
@@ -596,7 +474,7 @@ namespace VC
 
     protected Variable CreateIncarnation(Variable x, Absy a)
     {
-      Contract.Requires(this.variable2SequenceNumber != null);
+      Contract.Requires(this.Variable2SequenceNumber != null);
       Contract.Requires(this.CurrentLocalVariables != null);
       Contract.Requires(a is Block || a is AssignCmd || a is HavocCmd);
 
@@ -604,13 +482,13 @@ namespace VC
       Contract.Ensures(Contract.Result<Variable>() != null);
 
       int currentIncarnationNumber =
-        variable2SequenceNumber.ContainsKey(x)
-          ? variable2SequenceNumber[x]
+        Variable2SequenceNumber.ContainsKey(x)
+          ? Variable2SequenceNumber[x]
           : -1;
       Variable v = new Incarnation(x, currentIncarnationNumber + 1);
-      variable2SequenceNumber[x] = currentIncarnationNumber + 1;
+      Variable2SequenceNumber[x] = currentIncarnationNumber + 1;
       CurrentLocalVariables.Add(v);
-      incarnationOriginMap.Add((Incarnation) v, a);
+      IncarnationOriginMap.Add((Incarnation) v, a);
       return v;
     }
 
@@ -1005,14 +883,7 @@ namespace VC
             {
               if (param is IdentifierExpr identifierExpr)
               {
-                if (incarnationMap.ContainsKey(identifierExpr.Decl))
-                {
-                  debugExprs.Add(incarnationMap[identifierExpr.Decl]);
-                }
-                else
-                {
-                  debugExprs.Add(identifierExpr);
-                }
+                debugExprs.Add(incarnationMap.GetValueOrDefault(identifierExpr.Decl, identifierExpr));
               }
               else
               {
@@ -1329,7 +1200,7 @@ namespace VC
           var assumeCmd = new AssumeCmd(c.tok, assumption);
           // Copy any {:id ...} from the assignment to the assumption, so
           // we can track it while analyzing verification coverage.
-          (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
+          assumeCmd.CopyIdFrom(assign.tok, assign);
           passiveCmds.Add(assumeCmd);
         }
 
@@ -1504,7 +1375,7 @@ namespace VC
     /// Creates a new block to add to impl.Blocks, where impl is the implementation that contains
     /// succ.  Caller must do the add to impl.Blocks.
     /// </summary>
-    protected Block CreateBlockBetween(int predIndex, Block succ)
+    public Block CreateBlockBetween(int predIndex, Block succ)
     {
       Contract.Requires(0 <= predIndex && predIndex < succ.Predecessors.Count);
 
