@@ -32,25 +32,6 @@ implementation Foo/split@15() returns (y: int)
 }
 
 
-implementation Foo/split@19() returns (y: int)
-{
-
-  anon0:
-    assume 5 + 0 == 5;
-    assume 5 * 5 <= 25;
-    assume x#AT#0 + y#AT#0 == 5;
-    assume x#AT#0 * x#AT#0 <= 25;
-    assume {:partition} x#AT#0 > 0;
-    assume x#AT#1 == x#AT#0 - 1;
-    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
-    assume y#AT#1 == y#AT#0 + 1;
-    assume {:partition} x#AT#1 < 3;
-    assume 2 < 2;
-    assert {:split_here} y#AT#1 * y#AT#1 > 4;
-    goto ;
-}
-
-
 implementation Foo/split@22() returns (y: int)
 {
 
@@ -84,12 +65,6 @@ implementation Foo/split@25() returns (y: int)
     assume y#AT#1 == y#AT#0 + 1;
     goto anon6_Then, anon6_Else;
 
-  anon6_Then:
-    assume {:partition} x#AT#1 < 3;
-    assume 2 < 2;
-    assume y#AT#1 * y#AT#1 > 4;
-    goto anon4;
-
   anon6_Else:
     assume {:partition} 3 <= x#AT#1;
     assume y#AT#1 * y#AT#1 * y#AT#1 < 8;
@@ -102,6 +77,31 @@ implementation Foo/split@25() returns (y: int)
     assert x#AT#1 * x#AT#1 <= 25;
     assume false;
     return;
+
+  anon6_Then:
+    assume {:partition} x#AT#1 < 3;
+    assume 2 < 2;
+    assume y#AT#1 * y#AT#1 > 4;
+    goto anon4;
+}
+
+
+implementation Foo/split@19() returns (y: int)
+{
+
+  anon0:
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} x#AT#0 > 0;
+    assume x#AT#1 == x#AT#0 - 1;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
+    assume y#AT#1 == y#AT#0 + 1;
+    assume {:partition} x#AT#1 < 3;
+    assume 2 < 2;
+    assert {:split_here} y#AT#1 * y#AT#1 > 4;
+    goto ;
 }
 
 

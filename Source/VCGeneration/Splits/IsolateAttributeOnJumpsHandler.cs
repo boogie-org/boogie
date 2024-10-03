@@ -18,8 +18,7 @@ class IsolateAttributeOnJumpsHandler {
     this.rewriter = rewriter;
   }
   
-  public (List<ManualSplit> Isolated, ManualSplit Remainder) GetParts(
-    ManualSplit partToDivide) {
+  public (List<ManualSplit> Isolated, ManualSplit Remainder) GetParts(ManualSplit partToDivide) {
 
     var results = new List<ManualSplit>();
     var blocks = partToDivide.Blocks;
@@ -60,6 +59,10 @@ class IsolateAttributeOnJumpsHandler {
           reversedBlocks, ancestors.ToHashSet());
         results.Add(rewriter.CreateSplit(new ReturnOrigin(originalReturn), newBlocks));
       }
+    }
+
+    if (!results.Any()) {
+      return (results,partToDivide);
     }
 
     return (results, GetPartWithoutIsolatedReturns());

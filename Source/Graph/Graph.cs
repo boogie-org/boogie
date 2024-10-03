@@ -1157,7 +1157,7 @@ namespace Microsoft.Boogie.GraphUtil
       return s.ToString();
     }
 
-    public ICollection<Node> ComputeReachability(Node start, bool forward = true)
+    public ISet<Node> ComputeReachability(Node start, bool forward = true)
     {
       var todo = new Stack<Node>();
       var visited = new HashSet<Node>();

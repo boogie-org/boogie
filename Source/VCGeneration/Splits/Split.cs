@@ -449,12 +449,10 @@ namespace VC
       void ComputeBlockSetsHelper(Block b, bool allowSmall)
       {
         Contract.Requires(b != null);
-        if (keepAtAll.Contains(b))
+        if (!keepAtAll.Add(b))
         {
           return;
         }
-
-        keepAtAll.Add(b);
 
         if (allowSmall)
         {

@@ -1,5 +1,6 @@
 #nullable enable
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.Boogie;
 using VC;
@@ -47,17 +48,19 @@ class IsolateAttributeOnAssertsHandler {
       }
     }
 
+    if (!results.Any()) {
+      return (results,partToDivide);
+    }
+    
     return (results,GetSplitWithoutIsolatedAssertions());
 
-
     ManualSplit GetSplitForIsolatedAssertion(Block blockWithAssert, AssertCmd assertCmd) {
-      var blocksToVisit = new Stack<Block>(new[] { blockWithAssert });
-      var orderedNewBlocks = BlockRewriter.UpdateBlocks(blocksToVisit, 
-        new HashSet<Block>(), 
+      var blocksToKeep = rewriter.Dag.ComputeReachability(blockWithAssert, false);
+      var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToKeep, rewriter.Dag.TopologicalSort().Reversed(), 
         oldBlock => oldBlock == blockWithAssert
         ? GetCommandsForBlockWithAssert(oldBlock, assertCmd)
         : oldBlock.Cmds.Select(rewriter.TransformAssertCmd).ToList());
-      return rewriter.CreateSplit(new IsolatedAssertionOrigin(assertCmd), orderedNewBlocks.Values.OrderBy(b => b.tok).ToList());
+      return rewriter.CreateSplit(new IsolatedAssertionOrigin(assertCmd), newBlocks);
     }
     
     List<Cmd> GetCommandsForBlockWithAssert(Block currentBlock, AssertCmd assert)

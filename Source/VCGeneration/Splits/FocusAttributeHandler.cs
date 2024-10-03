@@ -47,7 +47,6 @@ public class FocusAttributeHandler {
       reachables.Remove(fb.Block);
       ancestorsPerBlock[fb.Block] = reachables;
     });
-    var dominators = dag.DominatorMap;
     focusBlocks.ForEach(fb => descendantsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block).ToHashSet());
     var result = new List<ManualSplit>();
 

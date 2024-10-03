@@ -73,32 +73,16 @@ implementation IsolateAssertion(x: int, y: int)
 }
 
 
-implementation IsolatePathsAssertion/assert@40[31,37](x: int, y: int)
-{
-
-  anon0:
-    assume {:partition} 0 >= x;
-    assume z#AT#1 == 0 + 2;
-    assume z#AT#2 == z#AT#1;
-    assume {:partition} 0 >= y;
-    assume z#AT#4 == z#AT#2 + 4;
-    assume z#AT#5 == z#AT#4;
-    assume z#AT#5 > 1;
-    assert {:isolate "paths"} z#AT#5 > 5;
-    return;
-}
-
-
-implementation IsolatePathsAssertion/assert@40[29,37](x: int, y: int)
+implementation IsolatePathsAssertion/assert@40[29,35](x: int, y: int)
 {
 
   anon0:
     assume {:partition} x > 0;
     assume z#AT#0 == 0 + 1;
     assume z#AT#2 == z#AT#0;
-    assume {:partition} 0 >= y;
-    assume z#AT#4 == z#AT#2 + 4;
-    assume z#AT#5 == z#AT#4;
+    assume {:partition} y > 0;
+    assume z#AT#3 == z#AT#2 + 3;
+    assume z#AT#5 == z#AT#3;
     assume z#AT#5 > 1;
     assert {:isolate "paths"} z#AT#5 > 5;
     return;
@@ -121,16 +105,32 @@ implementation IsolatePathsAssertion/assert@40[31,35](x: int, y: int)
 }
 
 
-implementation IsolatePathsAssertion/assert@40[29,35](x: int, y: int)
+implementation IsolatePathsAssertion/assert@40[29,37](x: int, y: int)
 {
 
   anon0:
     assume {:partition} x > 0;
     assume z#AT#0 == 0 + 1;
     assume z#AT#2 == z#AT#0;
-    assume {:partition} y > 0;
-    assume z#AT#3 == z#AT#2 + 3;
-    assume z#AT#5 == z#AT#3;
+    assume {:partition} 0 >= y;
+    assume z#AT#4 == z#AT#2 + 4;
+    assume z#AT#5 == z#AT#4;
+    assume z#AT#5 > 1;
+    assert {:isolate "paths"} z#AT#5 > 5;
+    return;
+}
+
+
+implementation IsolatePathsAssertion/assert@40[31,37](x: int, y: int)
+{
+
+  anon0:
+    assume {:partition} 0 >= x;
+    assume z#AT#1 == 0 + 2;
+    assume z#AT#2 == z#AT#1;
+    assume {:partition} 0 >= y;
+    assume z#AT#4 == z#AT#2 + 4;
+    assume z#AT#5 == z#AT#4;
     assume z#AT#5 > 1;
     assert {:isolate "paths"} z#AT#5 > 5;
     return;

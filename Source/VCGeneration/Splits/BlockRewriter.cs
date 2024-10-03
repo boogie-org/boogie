@@ -12,24 +12,27 @@ namespace VCGeneration.Splits;
 public class BlockRewriter {
   private readonly Dictionary<AssertCmd, Cmd> assumedAssertions = new();
   public VCGenOptions Options { get; }
-  private readonly Graph<Block> dag;
+  public Graph<Block> Dag { get; }
   public Func<ImplementationPartOrigin, List<Block>, ManualSplit> CreateSplit { get; }
 
-  public BlockRewriter(VCGenOptions options, List<Block> blocks, Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
+  public BlockRewriter(VCGenOptions options, List<Block> blocks,
+    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
     this.Options = options;
     CreateSplit = createSplit;
-    dag = Program.GraphFromBlocks(blocks);
+    Dag = Program.GraphFromBlocks(blocks);
   }
 
   public Cmd TransformAssertCmd(Cmd cmd) {
     if (cmd is AssertCmd assertCmd) {
-      return assumedAssertions.GetOrCreate(assertCmd, () => VerificationConditionGenerator.AssertTurnedIntoAssume(Options, assertCmd));
+      return assumedAssertions.GetOrCreate(assertCmd,
+        () => VerificationConditionGenerator.AssertTurnedIntoAssume(Options, assertCmd));
     }
 
     return cmd;
   }
 
-  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block>? blocksToInclude, IToken origin) {
+  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block>? blocksToInclude,
+    IToken origin) {
     var blockToVisit = new Stack<ImmutableStack<Block>>();
     var newToOldBlocks = new Dictionary<Block, Block>();
     var newLastBlock = Block.ShallowClone(lastBlock);
@@ -37,7 +40,7 @@ public class BlockRewriter {
     blockToVisit.Push(ImmutableStack.Create(newLastBlock));
     newToOldBlocks[newLastBlock] = lastBlock;
 
-    while(blockToVisit.Any()) {
+    while (blockToVisit.Any()) {
       var path = blockToVisit.Pop();
       var firstBlock = path.Peek();
       IEnumerable<Block> predecessors = firstBlock.Predecessors;
@@ -51,21 +54,24 @@ public class BlockRewriter {
         var newPrevious = Block.ShallowClone(oldPrevious);
         newPrevious.Predecessors = oldPrevious.Predecessors;
         newPrevious.Cmds = oldPrevious.Cmds.Select(TransformAssertCmd).ToList();
-        
+
         newToOldBlocks[newPrevious] = oldPrevious;
         if (newPrevious.TransferCmd is GotoCmd gotoCmd) {
           newPrevious.TransferCmd =
-            new GotoCmd(gotoCmd.tok, new List<string> { firstBlock.Label }, new List<Block>
-            {
+            new GotoCmd(gotoCmd.tok, new List<string> { firstBlock.Label }, new List<Block> {
               firstBlock
             });
         }
+
         blockToVisit.Push(path.Push(newPrevious));
       }
+
       if (!hadPredecessors) {
-        
-        var filteredDag = blocksToInclude == null ? dag : Program.GraphFromBlocksSubset(newToOldBlocks[path.Peek()], blocksToInclude);
-        var nonDominatedBranches = path.Where(b => 
+
+        var filteredDag = blocksToInclude == null
+          ? Dag
+          : Program.GraphFromBlocksSubset(newToOldBlocks[path.Peek()], blocksToInclude);
+        var nonDominatedBranches = path.Where(b =>
           !filteredDag.DominatorMap.DominatedBy(lastBlock, newToOldBlocks[b])).ToList();
         var newFirstBlock = Block.ShallowClone(firstBlock);
         newFirstBlock.TransferCmd = new ReturnCmd(firstBlock.TransferCmd.tok);
@@ -74,14 +80,25 @@ public class BlockRewriter {
       }
     }
   }
-  
-  public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(ISet<Block> blocksToInclude, IEnumerable<Block> blocksReversed,
-    ISet<Block> freeAssumeBlocks)
+
+  public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(
+    ISet<Block> blocksToInclude,
+    IEnumerable<Block> blocksReversed,
+    ISet<Block> freeAssumeBlocks) {
+    return ComputeNewBlocks(blocksToInclude, blocksReversed, block =>
+      freeAssumeBlocks.Contains(block)
+        ? block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(Options, c)).ToList()
+        : block.Cmds);
+  }
+
+  public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(
+    ISet<Block> blocksToInclude, 
+    IEnumerable<Block> blocksReversed,
+    Func<Block, List<Cmd>> getCommands)
   {
     var newBlocks = new List<Block>();
     var oldToNewBlockMap = new Dictionary<Block, Block>(blocksToInclude.Count);
         
-    // TODO, use ManualSplitFinder.CreateSplit()
     // Traverse backwards to allow settings the jumps to the new blocks
     foreach (var block in blocksReversed)
     {
@@ -94,9 +111,7 @@ public class BlockRewriter {
       oldToNewBlockMap[block] = newBlock;
       // freeBlocks consist of the predecessors of the relevant foci.
       // Their assertions turn into assumes and any splits inside them are disabled.
-      newBlock.Cmds = freeAssumeBlocks.Contains(block) 
-        ? block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(Options, c)).ToList() 
-        : block.Cmds;
+      newBlock.Cmds = getCommands(block);
       
       if (block.TransferCmd is GotoCmd gtc)
       {
