@@ -100,11 +100,8 @@ public static class BlockTransformations {
   public static bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd { Expr: not LiteralExpr { asBool: true } }; }
 
   private static void DeleteUselessBlocks(List<Block> blocks) {
-    var toVisit = new HashSet<Block>();
+    var toVisit = new HashSet<Block>(blocks);
     var removed = new HashSet<Block>();
-    foreach (var block in blocks) {
-      toVisit.Add(block);
-    }
     while(toVisit.Count > 0) {
       var block = toVisit.First();
       toVisit.Remove(block);
