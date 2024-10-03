@@ -83,10 +83,11 @@ class IsolateAttributeOnAssertsHandler {
         return rewriter.CreateSplit(origin, partToDivide.Blocks);
       }
 
-      var newBlocks = BlockRewriter.UpdateBlocks(new Stack<Block>(partToDivide.Blocks), 
-        new HashSet<Block>(), 
+      
+      var (newBlocks, mapping) = rewriter.ComputeNewBlocks(null, rewriter.Dag.TopologicalSort().Reversed(), 
         block => block.Cmds.Select(cmd => isolatedAssertions.Contains(cmd) ? rewriter.TransformAssertCmd(cmd) : cmd).ToList());
-      return rewriter.CreateSplit(origin, newBlocks.Values.OrderBy(b => b.tok).ToList());
+      
+      return rewriter.CreateSplit(origin, newBlocks);
     }
   }
 

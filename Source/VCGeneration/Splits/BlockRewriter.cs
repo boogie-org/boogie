@@ -83,7 +83,7 @@ public class BlockRewriter {
 
   public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(
     ISet<Block> blocksToInclude,
-    IEnumerable<Block> blocksReversed,
+    IReadOnlyList<Block> blocksReversed,
     ISet<Block> freeAssumeBlocks) {
     return ComputeNewBlocks(blocksToInclude, blocksReversed, block =>
       freeAssumeBlocks.Contains(block)
@@ -92,17 +92,17 @@ public class BlockRewriter {
   }
 
   public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(
-    ISet<Block> blocksToInclude, 
-    IEnumerable<Block> blocksReversed,
+    ISet<Block>? blocksToInclude, 
+    IReadOnlyList<Block> blocksReversed,
     Func<Block, List<Cmd>> getCommands)
   {
     var newBlocks = new List<Block>();
-    var oldToNewBlockMap = new Dictionary<Block, Block>(blocksToInclude.Count);
+    var oldToNewBlockMap = new Dictionary<Block, Block>(blocksReversed.Count);
         
     // Traverse backwards to allow settings the jumps to the new blocks
     foreach (var block in blocksReversed)
     {
-      if (!blocksToInclude.Contains(block)) {
+      if (blocksToInclude != null && !blocksToInclude.Contains(block)) {
         continue;
       }
 
@@ -115,7 +115,7 @@ public class BlockRewriter {
       
       if (block.TransferCmd is GotoCmd gtc)
       {
-        var targets = gtc.LabelTargets.Where(blocksToInclude.Contains).ToList();
+        var targets = blocksToInclude == null ? gtc.LabelTargets : gtc.LabelTargets.Where(blocksToInclude.Contains).ToList();
         newBlock.TransferCmd = new GotoCmd(gtc.tok,
           targets.Select(blk => oldToNewBlockMap[blk].Label).ToList(),
           targets.Select(blk => oldToNewBlockMap[blk]).ToList());
@@ -126,49 +126,5 @@ public class BlockRewriter {
     // TODO remove?
     BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
     return (newBlocks, oldToNewBlockMap);
-  }
-  
-  public static OrderedDictionary<Block, Block> UpdateBlocks(Stack<Block> blocksToVisit, 
-    HashSet<Block> visitedBlocks, Func<Block, List<Cmd>> getCommands)
-  {
-    var oldToNewBlockMap = new OrderedDictionary<Block, Block>();
-    while(blocksToVisit.Any()) {
-      var oldBlock = blocksToVisit.Pop();
-      if (!visitedBlocks.Add(oldBlock)) {
-        continue;
-      }
-        
-      var newBlock = Block.ShallowClone(oldBlock);
-      oldToNewBlockMap.Add(oldBlock, newBlock);
-      newBlock.Cmds = getCommands(oldBlock);
-      foreach (var previous in oldBlock.Predecessors) {
-        blocksToVisit.Push(previous);
-      }
-        
-    }
-
-    foreach (var (oldBlock, newBlock) in oldToNewBlockMap) {
-      if (oldBlock.TransferCmd is GotoCmd gtc)
-      {
-        var targets = gtc.LabelTargets.Where(oldToNewBlockMap.ContainsKey).ToList();
-        newBlock.TransferCmd = new GotoCmd(gtc.tok,
-          targets.Select(block => oldToNewBlockMap[block].Label).ToList(),
-          targets.Select(block => oldToNewBlockMap[block]).ToList());
-      }
-    }
-
-    return oldToNewBlockMap;
-  }
-  
-  private static Cmd DisableSplits(Cmd command)
-  {
-    if (command is not PredicateCmd pc)
-    {
-      return command;
-    }
-
-    pc.Attributes = new QKeyValue(Token.NoToken, "split", 
-      new List<object> { new LiteralExpr(Token.NoToken, false) }, pc.Attributes);
-    return command;
   }
 }
