@@ -123,7 +123,6 @@ public class BlockRewriter {
     }
     newBlocks.Reverse();
     
-    // TODO remove?
     BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
     return (newBlocks, oldToNewBlockMap);
   }
