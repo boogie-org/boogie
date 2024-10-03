@@ -24,7 +24,7 @@ public class VerificationTask : IVerificationTask {
   public IToken ScopeToken => Split.Implementation.tok;
   public string ScopeId => Split.Implementation.VerboseName;
 
-  public IToken Token => Split.Origin;
+  public IToken Token => Split.Token;
   public ManualSplit Split { get; }
 
   public VerificationTask(ExecutionEngine engine, ProcessedProgram processedProgram, ManualSplit split,
@@ -45,7 +45,7 @@ public class VerificationTask : IVerificationTask {
   public IVerificationTask FromSeed(int newSeed)
   {
     var split = new ManualSplit(Split.Options, () => Split.Blocks, 
-      Split.parent, Split.Run, Split.Origin, newSeed);
+      Split.parent, Split.Run, Split.Token, newSeed);
     split.SplitIndex = Split.SplitIndex;
     return new VerificationTask(engine, ProcessedProgram, split, modelViewInfo);
   }

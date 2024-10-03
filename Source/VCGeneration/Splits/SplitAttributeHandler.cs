@@ -131,7 +131,7 @@ class SplitAttributeHandler {
       return null;
     }
 
-    return createVc(new SplitOrigin(split?.tok ?? partToSplit.Origin), newBlocks);
+    return createVc(new SplitOrigin(split?.tok ?? partToSplit.Token), newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
     {

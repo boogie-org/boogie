@@ -8,7 +8,7 @@ namespace VC;
 public class ManualSplit : Split
 {
 
-  public ImplementationPartOrigin Origin { get; }
+  public ImplementationPartOrigin Token { get; }
   
   public ManualSplit(VCGenOptions options, 
     Func<List<Block>> blocks, 
@@ -17,6 +17,6 @@ public class ManualSplit : Split
     ImplementationPartOrigin origin, int? randomSeed = null) 
     : base(options, blocks, parent, run, randomSeed)
   {
-    Origin = origin;
+    Token = origin;
   }
 }
