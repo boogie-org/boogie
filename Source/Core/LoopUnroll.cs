@@ -184,8 +184,8 @@ namespace Microsoft.Boogie
             GotoCmd gcmd = b.TransferCmd as GotoCmd;
             if (gcmd != null)
             {
-              Contract.Assume(gcmd.labelTargets != null);
-              foreach (Block /*!*/ succ in gcmd.labelTargets)
+              Contract.Assume(gcmd.LabelTargets != null);
+              foreach (Block /*!*/ succ in gcmd.LabelTargets)
               {
                 Contract.Assert(succ != null);
                 ComputeGraphInfo(g, succ, gd, beingVisited);

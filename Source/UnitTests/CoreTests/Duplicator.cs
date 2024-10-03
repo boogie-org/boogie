@@ -143,13 +143,13 @@ namespace CoreTests
       var main = p.TopLevelDeclarations.OfType<Implementation>().Where(x => x.Name == "main").First();
 
       // Access blocks via their labels of gotocmds
-      var oldEntryBlock = (main.Blocks[1].TransferCmd as GotoCmd).labelTargets[0];
+      var oldEntryBlock = (main.Blocks[1].TransferCmd as GotoCmd).LabelTargets[0];
       Assert.AreEqual("entry", oldEntryBlock.Label);
 
-      var oldThing1Block = (main.Blocks[1].TransferCmd as GotoCmd).labelTargets[1];
+      var oldThing1Block = (main.Blocks[1].TransferCmd as GotoCmd).LabelTargets[1];
       Assert.AreEqual("thing1", oldThing1Block.Label);
 
-      var oldThing2Block = (main.Blocks[0].TransferCmd as GotoCmd).labelTargets[1];
+      var oldThing2Block = (main.Blocks[0].TransferCmd as GotoCmd).LabelTargets[1];
       Assert.AreEqual("thing2", oldThing2Block.Label);
 
       // Now duplicate
@@ -173,15 +173,15 @@ namespace CoreTests
       var newEntryGotoCmd = newEntryBlock.TransferCmd as GotoCmd;
       var newthing1GotoCmd = newThing1Block.TransferCmd as GotoCmd;
 
-      Assert.AreNotSame(newEntryGotoCmd.labelTargets[0], oldThing1Block);
-      Assert.AreSame(newEntryGotoCmd.labelTargets[0], newThing1Block);
-      Assert.AreNotSame(newEntryGotoCmd.labelTargets[1], oldThing2Block);
-      Assert.AreSame(newEntryGotoCmd.labelTargets[1], newThing2Block);
+      Assert.AreNotSame(newEntryGotoCmd.LabelTargets[0], oldThing1Block);
+      Assert.AreSame(newEntryGotoCmd.LabelTargets[0], newThing1Block);
+      Assert.AreNotSame(newEntryGotoCmd.LabelTargets[1], oldThing2Block);
+      Assert.AreSame(newEntryGotoCmd.LabelTargets[1], newThing2Block);
 
-      Assert.AreNotSame(newthing1GotoCmd.labelTargets[0], oldEntryBlock);
-      Assert.AreSame(newthing1GotoCmd.labelTargets[0], newEntryBlock);
-      Assert.AreNotSame(newthing1GotoCmd.labelTargets[1], oldThing1Block);
-      Assert.AreSame(newthing1GotoCmd.labelTargets[1], newThing1Block);
+      Assert.AreNotSame(newthing1GotoCmd.LabelTargets[0], oldEntryBlock);
+      Assert.AreSame(newthing1GotoCmd.LabelTargets[0], newEntryBlock);
+      Assert.AreNotSame(newthing1GotoCmd.LabelTargets[1], oldThing1Block);
+      Assert.AreSame(newthing1GotoCmd.LabelTargets[1], newThing1Block);
     }
 
     [Test()]

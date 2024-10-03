@@ -480,7 +480,7 @@ namespace Microsoft.Boogie
         {
           var targetBlocks = new List<Block>();
           var addEdge = false;
-          foreach (var nextBlock in gotoCmd.labelTargets)
+          foreach (var nextBlock in gotoCmd.LabelTargets)
           {
             if (nextBlock.cmds.Count > 0)
             {

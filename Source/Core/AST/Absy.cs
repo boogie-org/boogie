@@ -247,71 +247,6 @@ namespace Microsoft.Boogie
     #endregion
   }
 
-  public interface ICarriesAttributes
-  {
-    QKeyValue Attributes { get; set; }
-
-    public void ResolveAttributes(ResolutionContext rc)
-    {
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        kv.Resolve(rc);
-      }
-    }
-
-    public void TypecheckAttributes(TypecheckingContext tc)
-    {
-      var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
-      tc.GlobalAccessOnlyInOld = false;
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        kv.Typecheck(tc);
-      }
-      tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
-    }
-
-    public List<int> FindLayers()
-    {
-      List<int> layers = new List<int>();
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        if (kv.Key == CivlAttributes.LAYER)
-        {
-          layers.AddRange(kv.Params.Select(o => ((LiteralExpr)o).asBigNum.ToIntSafe));
-        }
-      }
-      return layers.Distinct().OrderBy(l => l).ToList();
-    }
-
-    // Look for {:name string} in list of attributes.
-    public string FindStringAttribute(string name)
-    {
-      return QKeyValue.FindStringAttribute(Attributes, name);
-    }
-
-    public void AddStringAttribute(IToken tok, string name, string parameter)
-    {
-      Attributes = new QKeyValue(tok, name, new List<object>() {parameter}, Attributes);
-    }
-
-    public void CopyIdFrom(IToken tok, ICarriesAttributes src)
-    {
-      var id = src.FindStringAttribute("id");
-      if (id is not null) {
-        AddStringAttribute(tok, "id", id);
-      }
-    }
-
-    public void CopyIdWithModificationsFrom(IToken tok, ICarriesAttributes src, Func<string,TrackedNodeComponent> modifier)
-    {
-      var id = src.FindStringAttribute("id");
-      if (id is not null) {
-        AddStringAttribute(tok, "id", modifier(id).SolverLabel);
-      }
-    }
-
-  }
-
   [ContractClassFor(typeof(Absy))]
   public abstract class AbsyContracts : Absy
   {
@@ -4038,15 +3973,15 @@ namespace Microsoft.Boogie
         GotoCmd /*!*/
           g = (GotoCmd) tc;
         Contract.Assert(g != null);
-        Contract.Assume(g.labelTargets != null);
-        if (g.labelTargets.Count == 1)
+        Contract.Assume(g.LabelTargets != null);
+        if (g.LabelTargets.Count == 1)
         {
-          return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.labelTargets[0])));
+          return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.LabelTargets[0])));
         }
         else
         {
           List<RE> rs = new List<RE>();
-          foreach (Block /*!*/ target in g.labelTargets)
+          foreach (Block /*!*/ target in g.LabelTargets)
           {
             Contract.Assert(target != null);
             RE r = Transform(target);

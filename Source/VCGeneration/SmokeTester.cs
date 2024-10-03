@@ -90,7 +90,7 @@ public class SmokeTester
     copies[b] = res;
     if (b.TransferCmd is GotoCmd)
     {
-      foreach (Block ch in cce.NonNull((GotoCmd) b.TransferCmd).labelTargets)
+      foreach (Block ch in cce.NonNull((GotoCmd) b.TransferCmd).LabelTargets)
       {
         Contract.Assert(ch != null);
         CloneBlock(ch);
@@ -167,7 +167,7 @@ public class SmokeTester
       {
         GotoCmd copy = new GotoCmd(go.tok, new List<String>(), new List<Block>());
         kv.Value.TransferCmd = copy;
-        foreach (Block b in cce.NonNull(go.labelTargets))
+        foreach (Block b in cce.NonNull(go.LabelTargets))
         {
           Contract.Assert(b != null);
           if (copies.TryGetValue(b, out var c))
@@ -426,9 +426,9 @@ public class SmokeTester
     GotoCmd go = cur.TransferCmd as GotoCmd;
     ReturnCmd ret = cur.TransferCmd as ReturnCmd;
 
-    Contract.Assume(!(go != null && go.labelTargets == null && go.labelNames != null && go.labelNames.Count > 0));
+    Contract.Assume(!(go != null && go.LabelTargets == null && go.LabelNames != null && go.LabelNames.Count > 0));
 
-    if (ret != null || (go != null && cce.NonNull(go.labelTargets).Count == 0))
+    if (ret != null || (go != null && cce.NonNull(go.LabelTargets).Count == 0))
     {
       // we end in return, so there will be no more places to check
       await CheckUnreachable(traceWriter, cur, seq);
@@ -438,7 +438,7 @@ public class SmokeTester
       bool needToCheck = true;
       // if all of our children have more than one parent, then
       // we're in the right place to check
-      foreach (Block target in cce.NonNull(go.labelTargets))
+      foreach (Block target in cce.NonNull(go.LabelTargets))
       {
         Contract.Assert(target != null);
         if (target.Predecessors.Count == 1)
@@ -452,7 +452,7 @@ public class SmokeTester
         await CheckUnreachable(traceWriter, cur, seq);
       }
 
-      foreach (Block target in go.labelTargets)
+      foreach (Block target in go.LabelTargets)
       {
         Contract.Assert(target != null);
         await DepthFirstSearch(traceWriter, target);

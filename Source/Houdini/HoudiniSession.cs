@@ -8,6 +8,7 @@ using VC;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using VCGeneration.Transformations;
 
 namespace Microsoft.Boogie.Houdini
 {
@@ -157,7 +158,7 @@ namespace Microsoft.Boogie.Houdini
     }
 
     public HoudiniSession(Houdini houdini, VerificationConditionGenerator vcgen, ProverInterface proverInterface, Program program,
-      ImplementationRun run, HoudiniStatistics stats, int taskID = -1)
+      ImplementationRun run, HoudiniStatistics stats, int taskId = -1)
     {
       var impl = run.Implementation;
       this.Description = impl.Name;
@@ -166,7 +167,7 @@ namespace Microsoft.Boogie.Houdini
       collector = new VerificationResultCollector(houdini.Options);
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
-      vcgen.ConvertCFG2DAG(run, taskID: taskID);
+      new RemoveBackEdges(vcgen).ConvertCfg2Dag(run, taskID: taskId);
       var gotoCmdOrigins = vcgen.PassifyImpl(run, out var mvInfo);
 
       ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out var ecollector);
@@ -257,7 +258,7 @@ namespace Microsoft.Boogie.Houdini
       Dictionary<Variable, bool> assignment,
       int errorLimit)
     {
-      collector.examples.Clear();
+      collector.Examples.Clear();
 
       if (Options.Trace)
       {
@@ -278,7 +279,7 @@ namespace Microsoft.Boogie.Houdini
         Console.WriteLine("Time taken = " + queryTime);
       }
 
-      return (proverOutcome, collector.examples.ToList());
+      return (proverOutcome, collector.Examples.ToList());
     }
 
     // MAXSAT
@@ -287,7 +288,7 @@ namespace Microsoft.Boogie.Houdini
     {
       Contract.Assert(houdini.Options.ExplainHoudini);
 
-      collector.examples.Clear();
+      collector.Examples.Clear();
 
       // debugging
       houdiniAssertConstants.ForEach(v => System.Diagnostics.Debug.Assert(assignment.ContainsKey(v)));

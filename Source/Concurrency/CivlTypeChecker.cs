@@ -217,7 +217,7 @@ namespace Microsoft.Boogie
       graph.TopologicalSort().ForEach(block =>
       {
         var modifiedGlobals = block.TransferCmd is GotoCmd gotoCmd &&
-                              gotoCmd.labelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
+                              gotoCmd.LabelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
         for (int i = block.Cmds.Count - 1; 0 <= i; i--)
         {
           var cmd = block.Cmds[i];
@@ -298,8 +298,8 @@ namespace Microsoft.Boogie
     {
       var primitiveImpls = program.TopLevelDeclarations.OfType<Implementation>().Where(impl =>
       {
-        var originalDecl = impl.Proc.OriginalDeclWithFormals;
-        return originalDecl != null && CivlPrimitives.LinearPrimitives.Contains(originalDecl.Name);
+        var originalDecl = Monomorphizer.GetOriginalDecl(impl);
+        return CivlPrimitives.LinearPrimitives.Contains(originalDecl.Name);
       });
       primitiveImpls.ForEach(impl => {
         impl.OriginalBlocks = impl.Blocks;

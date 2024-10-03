@@ -42,7 +42,7 @@ public static class BlockTransformations {
     }
 
     block.TransferCmd = new ReturnCmd(block.tok);
-    foreach (var target in gotoCmd.labelTargets) {
+    foreach (var target in gotoCmd.LabelTargets) {
       target.Predecessors.Remove(block);
     }
   }
@@ -68,13 +68,13 @@ public static class BlockTransformations {
       if (currentBlock.TransferCmd is GotoCmd exit) {
         if (pop)
         {
-          var gtc = new GotoCmd(exit.tok, exit.labelTargets.Where(l => interestingBlocks.Contains(l)).ToList());
+          var gtc = new GotoCmd(exit.tok, exit.LabelTargets.Where(l => interestingBlocks.Contains(l)).ToList());
           currentBlock.TransferCmd = gtc;
-          interesting = gtc.labelTargets.Count != 0;
+          interesting = gtc.LabelTargets.Count != 0;
         }
         else
         {
-          exit.labelTargets.ForEach(b => todo.Push(b));
+          exit.LabelTargets.ForEach(b => todo.Push(b));
         }
       }
       if (pop)
@@ -97,7 +97,7 @@ public static class BlockTransformations {
     return b.Cmds.Exists(IsNonTrivialAssert);
   }
   
-  public static bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd ac && !(ac.Expr is LiteralExpr { asBool: true }); }
+  public static bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd { Expr: not LiteralExpr { asBool: true } }; }
 
   private static void DeleteUselessBlocks(List<Block> blocks) {
     var toVisit = new HashSet<Block>();
@@ -115,7 +115,7 @@ public static class BlockTransformations {
         continue;
       }
 
-      var isBranchingBlock = block.TransferCmd is GotoCmd gotoCmd1 && gotoCmd1.labelTargets.Count > 1 && 
+      var isBranchingBlock = block.TransferCmd is GotoCmd gotoCmd1 && gotoCmd1.LabelTargets.Count > 1 && 
                              block.Predecessors.Count != 1;
       if (isBranchingBlock) {
         continue;
@@ -125,7 +125,7 @@ public static class BlockTransformations {
       blocks.Remove(block);
 
       var noPredecessors = !block.Predecessors.Any();
-      var noSuccessors = block.TransferCmd is not GotoCmd outGoto2 || !outGoto2.labelTargets.Any();
+      var noSuccessors = block.TransferCmd is not GotoCmd outGoto2 || !outGoto2.LabelTargets.Any();
       foreach (var predecessor in block.Predecessors) {
         var intoCmd = (GotoCmd)predecessor.TransferCmd;
         intoCmd.RemoveTarget(block);
@@ -138,7 +138,7 @@ public static class BlockTransformations {
         continue;
       }
 
-      foreach (var outBlock in outGoto.labelTargets) {
+      foreach (var outBlock in outGoto.LabelTargets) {
         outBlock.Predecessors.Remove(block);
         if (noPredecessors) {
           toVisit.Add(outBlock);
@@ -147,8 +147,8 @@ public static class BlockTransformations {
 
       foreach (var predecessor in block.Predecessors) {
         var intoCmd = (GotoCmd)predecessor.TransferCmd;
-        foreach (var outBlock in outGoto.labelTargets) {
-          if (!intoCmd.labelTargets.Contains(outBlock)) {
+        foreach (var outBlock in outGoto.LabelTargets) {
+          if (!intoCmd.LabelTargets.Contains(outBlock)) {
             intoCmd.AddTarget(outBlock);
             outBlock.Predecessors.Add(predecessor);
           }

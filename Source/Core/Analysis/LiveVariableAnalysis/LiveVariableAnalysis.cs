@@ -54,9 +54,9 @@ public class LiveVariableAnalysis
       if (block.TransferCmd is GotoCmd)
       {
         GotoCmd gotoCmd = (GotoCmd) block.TransferCmd;
-        if (gotoCmd.labelTargets != null)
+        if (gotoCmd.LabelTargets != null)
         {
-          foreach (Block /*!*/ succ in gotoCmd.labelTargets)
+          foreach (Block /*!*/ succ in gotoCmd.LabelTargets)
           {
             Contract.Assert(succ != null);
             Contract.Assert(succ.liveVarsBefore != null);
