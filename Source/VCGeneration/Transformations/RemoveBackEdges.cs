@@ -48,7 +48,7 @@ public class RemoveBackEdges {
     // Recompute the predecessors, but first insert a dummy start node that is sure not to be the target of any goto (because the cutting of back edges
     // below assumes that the start node has no predecessor)
     impl.Blocks.Insert(0,
-      new Block(Token.NoToken, "0", new List<Cmd>(),
+      new Block(new Token(-17, -4), "0", new List<Cmd>(),
         new GotoCmd(Token.NoToken, new List<String> { impl.Blocks[0].Label }, new List<Block> { impl.Blocks[0] })));
     ConditionGeneration.ResetPredecessors(impl.Blocks);
 
