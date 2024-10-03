@@ -30,7 +30,7 @@ implementation IsolateAssertion/assert@20(x: int, y: int)
 
   anon6:
     assume z#AT#5 > 1;
-    assert {:isolate} z#AT#5 > 2;
+    assert {:isolate} z#AT#5 > 5;
     return;
 }
 
@@ -67,12 +67,14 @@ implementation IsolateAssertion(x: int, y: int)
 
   anon6:
     assert z#AT#5 > 1;
-    assume z#AT#5 > 2;
-    assert z#AT#5 > 3;
+    assume z#AT#5 > 5;
+    assert z#AT#5 > 6;
     return;
 }
 
 
+isolateAssertion.bpl(20,3): Error: this assertion could not be proved
+isolateAssertion.bpl(21,3): Error: this assertion could not be proved
 implementation IsolatePathsAssertion/assert@40[29,35](x: int, y: int)
 {
 
@@ -178,4 +180,4 @@ implementation IsolatePathsAssertion(x: int, y: int)
 isolateAssertion.bpl(40,3): Error: this assertion could not be proved
 isolateAssertion.bpl(41,3): Error: this assertion could not be proved
 
-Boogie program verifier finished with 1 verified, 4 errors
+Boogie program verifier finished with 0 verified, 6 errors

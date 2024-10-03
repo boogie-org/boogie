@@ -17,8 +17,8 @@ procedure IsolateAssertion(x: int, y: int)
     z := z + 4;
   }
   assert z > 1;
-  assert {:isolate} z > 2;
-  assert z > 3;
+  assert {:isolate} z > 5;
+  assert z > 6;
 }
 
 procedure IsolatePathsAssertion(x: int, y: int)
