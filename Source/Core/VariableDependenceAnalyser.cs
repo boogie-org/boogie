@@ -515,40 +515,42 @@ namespace Microsoft.Boogie
 
     private Dictionary<Block, HashSet<Block>> ComputeGlobalControlDependences()
     {
-      Dictionary<Block, HashSet<Block>> GlobalCtrlDep = new Dictionary<Block, HashSet<Block>>();
-      Dictionary<Implementation, Dictionary<Block, HashSet<Block>>> LocalCtrlDeps =
+      var globalCtrlDep = new Dictionary<Block, HashSet<Block>>();
+      var localCtrlDeps =
         new Dictionary<Implementation, Dictionary<Block, HashSet<Block>>>();
 
       // Work out and union together local control dependences
-      foreach (var Impl in prog.NonInlinedImplementations())
+      foreach (var impl in prog.NonInlinedImplementations())
       {
-        Graph<Block> blockGraph = prog.ProcessLoops(options, Impl);
-        LocalCtrlDeps[Impl] = blockGraph.ControlDependence(new Block(prog.tok));
-        foreach (var KeyValue in LocalCtrlDeps[Impl])
+        var blockGraph = prog.ProcessLoops(options, impl);
+        localCtrlDeps[impl] = blockGraph.ControlDependence(new Block(prog.tok));
+        foreach (var keyValue in localCtrlDeps[impl])
         {
-          GlobalCtrlDep.Add(KeyValue.Key, KeyValue.Value);
+          globalCtrlDep.Add(keyValue.Key, keyValue.Value);
         }
       }
 
-      Graph<Implementation> callGraph = Program.BuildCallGraph(options, prog);
+      var callGraph = Program.BuildCallGraph(options, prog);
 
       // Add inter-procedural control dependence nodes based on calls
-      foreach (var Impl in prog.NonInlinedImplementations())
+      foreach (var impl in prog.NonInlinedImplementations())
       {
-        foreach (var b in Impl.Blocks)
+        foreach (var b in impl.Blocks)
         {
           foreach (var cmd in b.Cmds.OfType<CallCmd>())
           {
-            var DirectCallee = GetImplementation(cmd.callee);
-            if (DirectCallee != null)
+            var directCallee = GetImplementation(cmd.callee);
+            if (directCallee == null)
             {
-              HashSet<Implementation> IndirectCallees = ComputeIndirectCallees(callGraph, DirectCallee);
-              foreach (var control in GetControllingBlocks(b, LocalCtrlDeps[Impl]))
+              continue;
+            }
+
+            var indirectCallees = ComputeIndirectCallees(callGraph, directCallee);
+            foreach (var control in GetControllingBlocks(b, localCtrlDeps[impl]))
+            {
+              foreach (var c in indirectCallees.Select(Item => Item.Blocks).SelectMany(Item => Item))
               {
-                foreach (var c in IndirectCallees.Select(Item => Item.Blocks).SelectMany(Item => Item))
-                {
-                  GlobalCtrlDep[control].Add(c);
-                }
+                globalCtrlDep[control].Add(c);
               }
             }
           }
@@ -556,22 +558,21 @@ namespace Microsoft.Boogie
       }
 
       // Compute transitive closure
-      GlobalCtrlDep.TransitiveClosure();
+      globalCtrlDep.TransitiveClosure();
 
       // Finally reverse the dependences
 
-      Dictionary<Block, HashSet<Block>> result = new Dictionary<Block, HashSet<Block>>();
-
-      foreach (var KeyValue in GlobalCtrlDep)
+      var result = new Dictionary<Block, HashSet<Block>>();
+      foreach (var keyValue in globalCtrlDep)
       {
-        foreach (var v in KeyValue.Value)
+        foreach (var v in keyValue.Value)
         {
           if (!result.ContainsKey(v))
           {
             result[v] = new HashSet<Block>();
           }
 
-          result[v].Add(KeyValue.Key);
+          result[v].Add(keyValue.Key);
         }
       }
 
