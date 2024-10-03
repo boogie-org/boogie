@@ -72,9 +72,6 @@ namespace Microsoft.Boogie.GraphUtil
     [NotDelayed]
     internal DomRelation(Graph<Node> g, Node source)
     {
-      // TODO should we enable saying that the graph is a DAG, to enable an O(N) dominance algorithm?
-      // Or is the algorithm already O(N) for DAG graphs?
-      
       graph = g;
       // slot 0 not used: nodes are numbered from 1 to n so zero
       // can represent undefined.
