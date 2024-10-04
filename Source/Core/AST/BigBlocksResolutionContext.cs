@@ -12,14 +12,13 @@ class BigBlocksResolutionContext
 
   [Peer] List<Block /*!*/> blocks;
 
-  string /*!*/
-    prefix = "anon";
+  string /*!*/ prefix = "anon";
 
   int anon = 0;
 
-  int FreshAnon()
+  string FreshPrefix()
   {
-    return anon++;
+    return prefix + anon++;
   }
 
   private readonly HashSet<string /*!*/> allLabels = new();
@@ -296,7 +295,7 @@ class BigBlocksResolutionContext
     {
       if (b.LabelName == null)
       {
-        b.LabelName = prefix + FreshAnon();
+        b.LabelName = FreshPrefix();
       }
 
       if (b.ec is WhileCmd)
@@ -410,11 +409,11 @@ class BigBlocksResolutionContext
           }
           case WhileCmd ec:
           {
-            var a = FreshAnon();
-            string loopHeadLabel = prefix + a + "_LoopHead";
+            var freshPrefix = FreshPrefix();
+            string loopHeadLabel = freshPrefix + "_LoopHead";
             string /*!*/
-              loopBodyLabel = prefix + a + "_LoopBody";
-            string loopDoneLabel = prefix + a + "_LoopDone";
+              loopBodyLabel = freshPrefix + "_LoopBody";
+            string loopDoneLabel = freshPrefix + "_LoopDone";
 
             List<Cmd> ssBody = new List<Cmd>();
             List<Cmd> ssDone = new List<Cmd>();
@@ -486,10 +485,10 @@ class BigBlocksResolutionContext
 
             for (; ifcmd != null; ifcmd = ifcmd.ElseIf)
             {
-              var a = FreshAnon();
-              string thenLabel = prefix + a + "_Then";
+              var freshPrefix = FreshPrefix();
+              string thenLabel = freshPrefix + "_Then";
               Contract.Assert(thenLabel != null);
-              string elseLabel = prefix + a + "_Else";
+              string elseLabel = freshPrefix + "_Else";
               Contract.Assert(elseLabel != null);
 
               List<Cmd> ssThen = new List<Cmd>();
