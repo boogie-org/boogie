@@ -474,65 +474,73 @@ namespace Microsoft.Boogie
 
       // add jumps to noninterferenceChecker, returnChecker, and refinementChecker blocks
       var implRefinementCheckingBlocks = new List<Block>();
-      foreach (var b in impl.Blocks)
+      foreach (var block in impl.Blocks)
       {
-        if (b.TransferCmd is GotoCmd gotoCmd)
+        if (block.TransferCmd is not GotoCmd gotoCmd)
+        {
+          block.TransferCmd = new GotoCmd(block.TransferCmd.tok,
+            new List<Block> { returnCheckerBlock, returnBlock, noninterferenceCheckerBlock });
+        }
+        else
         {
           var targetBlocks = new List<Block>();
           var addEdge = false;
           foreach (var nextBlock in gotoCmd.LabelTargets)
           {
-            if (nextBlock.cmds.Count > 0)
+            if (nextBlock.Cmds.Count <= 0)
             {
-              var cmd = nextBlock.cmds[0];
-              if (cmd is ParCallCmd parCallCmd)
-              {
-                foreach (var callCmd in parCallCmd.CallCmds)
-                {
-                  if (refinementBlocks.ContainsKey(callCmd))
-                  {
-                    var targetBlock = refinementBlocks[callCmd];
-                    FixUpImplRefinementCheckingBlock(targetBlock,
-                      CivlAttributes.IsCallMarked(callCmd)
-                        ? returnCheckerBlock
-                        : unchangedCheckerBlock);
-                    targetBlocks.Add(targetBlock);
-                    implRefinementCheckingBlocks.Add(targetBlock);
-                  }
-                }
-                addEdge = true;
-              }
+              continue;
             }
+
+            var cmd = nextBlock.Cmds[0];
+            if (cmd is not ParCallCmd parCallCmd)
+            {
+              continue;
+            }
+
+            foreach (var callCmd in parCallCmd.CallCmds)
+            {
+              if (!refinementBlocks.TryGetValue(callCmd, out var targetBlock))
+              {
+                continue;
+              }
+
+              FixUpImplRefinementCheckingBlock(targetBlock,
+                CivlAttributes.IsCallMarked(callCmd)
+                  ? returnCheckerBlock
+                  : unchangedCheckerBlock);
+              targetBlocks.Add(targetBlock);
+              implRefinementCheckingBlocks.Add(targetBlock);
+            }
+
+            addEdge = true;
           }
 
           gotoCmd.AddTargets(targetBlocks);
-          if (addEdge)
+          if (!addEdge)
           {
-            AddEdge(gotoCmd, noninterferenceCheckerBlock);
-            if (blocksInYieldingLoops.Contains(b))
-            {
-              AddEdge(gotoCmd, unchangedCheckerBlock);
-            }
-            else
-            {
-              b.Cmds.AddRange(refinementInstrumentation.CreateActionEvaluationCmds());
-              AddEdge(gotoCmd, refinementCheckerBlock);
-            }
+            continue;
           }
-        }
-        else
-        {
-          b.TransferCmd = new GotoCmd(b.TransferCmd.tok,
-            new List<Block> {returnCheckerBlock, returnBlock, noninterferenceCheckerBlock});
+
+          AddEdge(gotoCmd, noninterferenceCheckerBlock);
+          if (blocksInYieldingLoops.Contains(block))
+          {
+            AddEdge(gotoCmd, unchangedCheckerBlock);
+          }
+          else
+          {
+            block.Cmds.AddRange(refinementInstrumentation.CreateActionEvaluationCmds());
+            AddEdge(gotoCmd, refinementCheckerBlock);
+          }
         }
       }
 
       // desugar ParCallCmd 
       foreach (Block b in impl.Blocks)
       {
-        if (b.cmds.Count > 0)
+        if (b.Cmds.Count > 0)
         {
-          var cmd = b.cmds[0];
+          var cmd = b.Cmds[0];
           if (cmd is ParCallCmd)
           {
             DesugarParCallCmdInBlock(b, blocksInYieldingLoops.Contains(b));
@@ -578,11 +586,11 @@ namespace Microsoft.Boogie
       {
         var currTransferCmd = b.TransferCmd;
         int labelCount = 0;
-        int lastSplitIndex = b.cmds.Count;
-        for (int i = b.cmds.Count - 1; i >= 0; i--)
+        int lastSplitIndex = b.Cmds.Count;
+        for (int i = b.Cmds.Count - 1; i >= 0; i--)
         {
           var split = false;
-          var cmd = b.cmds[i];
+          var cmd = b.Cmds[i];
           if (cmd is ParCallCmd)
           {
             split = true;
@@ -590,7 +598,7 @@ namespace Microsoft.Boogie
 
           if (split)
           {
-            var newBlock = new Block(b.tok, $"{b.Label}_{labelCount++}", b.cmds.GetRange(i, lastSplitIndex - i),
+            var newBlock = new Block(b.tok, $"{b.Label}_{labelCount++}", b.Cmds.GetRange(i, lastSplitIndex - i),
               currTransferCmd);
             newBlocks.Add(newBlock);
             currTransferCmd = new GotoCmd(b.tok, new List<Block> {newBlock});
@@ -598,7 +606,7 @@ namespace Microsoft.Boogie
           }
         }
 
-        b.cmds = b.cmds.GetRange(0, lastSplitIndex);
+        b.Cmds = b.Cmds.GetRange(0, lastSplitIndex);
         b.TransferCmd = currTransferCmd;
       }
 
@@ -714,8 +722,8 @@ namespace Microsoft.Boogie
       newCmds.AddRange(CreateUpdatesToOldGlobalVars());
       newCmds.AddRange(refinementInstrumentation.CreateUpdatesToOldOutputVars());
       newCmds.AddRange(CreateUpdatesToPermissionCollector(parCallCmd));
-      newCmds.AddRange(block.cmds.GetRange(1, block.cmds.Count - 1));
-      block.cmds = newCmds;
+      newCmds.AddRange(block.Cmds.GetRange(1, block.Cmds.Count - 1));
+      block.Cmds = newCmds;
     }
 
     private Formal ParCallDesugarFormal(Variable v, int count, bool incoming)

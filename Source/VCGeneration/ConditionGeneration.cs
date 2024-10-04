@@ -766,7 +766,7 @@ namespace VC
         Dictionary<Variable, Expr> incarnationMap = ComputeIncarnationMap(b, block2Incarnation);
 
         // b.liveVarsBefore has served its purpose in the just-finished call to ComputeIncarnationMap; null it out.
-        b.liveVarsBefore = null;
+        b.LiveVarsBefore = null;
 
         // Decrement the succCount field in each predecessor. Once the field reaches zero in any block,
         // all its successors have been passified.  Consequently, its entry in block2Incarnation can be removed.
@@ -775,7 +775,7 @@ namespace VC
         variableCollectors[b] = mvc;
         foreach (Block p in b.Predecessors)
         {
-          p.succCount--;
+          p.SuccCount--;
           if (p.Checksum != null)
           {
             // Compute the checksum based on the checksums of the predecessor. The order should not matter.
@@ -783,7 +783,7 @@ namespace VC
           }
 
           mvc.AddUsedVariables(variableCollectors[p].UsedVariables);
-          if (p.succCount == 0)
+          if (p.SuccCount == 0)
           {
             block2Incarnation.Remove(p);
           }
@@ -794,12 +794,12 @@ namespace VC
         GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
         if (gotoCmd == null)
         {
-          b.succCount = 0;
+          b.SuccCount = 0;
         }
         else
         {
           // incarnationMap needs to be added only if there is some successor of b
-          b.succCount = gotoCmd.LabelNames.Count;
+          b.SuccCount = gotoCmd.LabelNames.Count;
           block2Incarnation.Add(b, incarnationMap);
         }
 
