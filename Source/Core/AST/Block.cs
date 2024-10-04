@@ -23,21 +23,9 @@ public sealed class Block : Absy
     }
   }
 
-  [Rep] [ElementsPeer] public List<Cmd> /*!*/ cmds;
-
-  public List<Cmd> /*!*/ Cmds
-  {
-    get
-    {
-      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
-      return this.cmds;
-    }
-    set
-    {
-      Contract.Requires(value != null);
-      this.cmds = value;
-    }
-  }
+  [field: Rep]
+  [field: ElementsPeer]
+  public List<Cmd> Cmds { get; set; }
 
   public IEnumerable<Block> Exits()
   {
@@ -70,8 +58,7 @@ public sealed class Block : Absy
   public int aiId; // block ID used by the abstract interpreter, which may change these numbers with each AI run
   public bool widenBlock;
 
-  public int
-    iterations; // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
+  public int iterations; // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
 
   // VC generation and SCC computation
   public List<Block> /*!*/ Predecessors;
@@ -113,7 +100,7 @@ public sealed class Block : Absy
   void ObjectInvariant()
   {
     Contract.Invariant(this.label != null);
-    Contract.Invariant(this.cmds != null);
+    Contract.Invariant(this.Cmds != null);
     Contract.Invariant(cce.NonNullElements(this._liveVarsBefore, true));
   }
 
@@ -140,7 +127,7 @@ public sealed class Block : Absy
     Contract.Requires(cmds != null);
     Contract.Requires(tok != null);
     this.label = label;
-    this.cmds = cmds;
+    this.Cmds = cmds;
     this.TransferCmd = transferCmd;
     this.Predecessors = new List<Block>();
     this._liveVarsBefore = null;

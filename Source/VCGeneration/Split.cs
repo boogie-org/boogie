@@ -25,7 +25,7 @@ namespace VC
       public List<Block> Blocks => blocks ??= getBlocks();
 
       readonly List<Block> bigBlocks = new();
-      public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
+      public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.Cmds.OfType<AssertCmd>()).ToList();
       public IReadOnlyList<Declaration> prunedDeclarations;
       
       public IReadOnlyList<Declaration> PrunedDeclarations {

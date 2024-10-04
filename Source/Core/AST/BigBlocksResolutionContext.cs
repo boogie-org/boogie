@@ -491,8 +491,8 @@ class BigBlocksResolutionContext
               string elseLabel = freshPrefix + "_Else";
               Contract.Assert(elseLabel != null);
 
-              List<Cmd> ssThen = new List<Cmd>();
-              List<Cmd> ssElse = new List<Cmd>();
+              var ssThen = new List<Cmd>();
+              var ssElse = new List<Cmd>();
               if (ifcmd.Guard != null)
               {
                 var ac = new AssumeCmd(ifcmd.tok, ifcmd.Guard);
@@ -514,7 +514,7 @@ class BigBlocksResolutionContext
 
               // ... goto Then, Else;
               var jumpBlock = new Block(bigBlock.tok, predLabel, predCmds,
-                new GotoCmd(ifcmd.tok, new List<String> {thenLabel, elseLabel}));
+                new GotoCmd(ifcmd.tok, new List<string> {thenLabel, elseLabel}));
               blocks.Add(jumpBlock);
 
               if (!thenGuardTakenCareOf)
