@@ -7,21 +7,7 @@ namespace Microsoft.Boogie;
 
 public sealed class Block : Absy
 {
-  private string /*!*/ label; // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
-
-  public string /*!*/ Label
-  {
-    get
-    {
-      Contract.Ensures(Contract.Result<string>() != null);
-      return this.label;
-    }
-    set
-    {
-      Contract.Requires(value != null);
-      this.label = value;
-    }
-  }
+  public string Label { get; set; }
 
   [field: Rep]
   [field: ElementsPeer]
@@ -37,8 +23,7 @@ public sealed class Block : Absy
   }
 
   [Rep] //PM: needed to verify Traverse.Visit
-  public TransferCmd
-    TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
+  public TransferCmd TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
 
   public byte[] Checksum;
 
@@ -55,31 +40,31 @@ public sealed class Block : Absy
 
   public VisitState TraversingStatus;
 
-  public int aiId; // block ID used by the abstract interpreter, which may change these numbers with each AI run
-  public bool widenBlock;
+  public int AiId; // block ID used by the abstract interpreter, which may change these numbers with each AI run
+  public bool WidenBlock;
 
-  public int iterations; // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
+  public int Iterations; // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
 
   // VC generation and SCC computation
   public List<Block> /*!*/ Predecessors;
 
   // This field is used during passification to null-out entries in block2Incarnation dictionary early
-  public int succCount;
+  public int SuccCount;
 
-  private HashSet<Variable /*!*/> _liveVarsBefore;
+  private HashSet<Variable /*!*/> liveVarsBefore;
 
-  public IEnumerable<Variable /*!*/> liveVarsBefore
+  public IEnumerable<Variable /*!*/> LiveVarsBefore
   {
     get
     {
       Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Variable /*!*/>>(), true));
-      if (this._liveVarsBefore == null)
+      if (this.liveVarsBefore == null)
       {
         return null;
       }
       else
       {
-        return this._liveVarsBefore.AsEnumerable<Variable>();
+        return this.liveVarsBefore.AsEnumerable<Variable>();
       }
     }
     set
@@ -87,11 +72,11 @@ public sealed class Block : Absy
       Contract.Requires(cce.NonNullElements(value, true));
       if (value == null)
       {
-        this._liveVarsBefore = null;
+        this.liveVarsBefore = null;
       }
       else
       {
-        this._liveVarsBefore = new HashSet<Variable>(value);
+        this.liveVarsBefore = new HashSet<Variable>(value);
       }
     }
   }
@@ -99,24 +84,28 @@ public sealed class Block : Absy
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(this.label != null);
+    Contract.Invariant(this.Label != null);
     Contract.Invariant(this.Cmds != null);
-    Contract.Invariant(cce.NonNullElements(this._liveVarsBefore, true));
+    Contract.Invariant(cce.NonNullElements(this.liveVarsBefore, true));
   }
 
   public bool IsLive(Variable v)
   {
     Contract.Requires(v != null);
-    if (liveVarsBefore == null)
+    if (LiveVarsBefore == null)
     {
       return true;
     }
 
-    return liveVarsBefore.Contains(v);
+    return LiveVarsBefore.Contains(v);
   }
 
-  public Block(IToken tok)
-    : this(tok, "", new List<Cmd>(), new ReturnCmd(tok))
+  public static Block ShallowClone(Block block) {
+    return new Block(block.tok, block.Label, block.Cmds, block.TransferCmd);
+  }
+  
+  public Block(IToken tok, TransferCmd cmd)
+    : this(tok, "", new List<Cmd>(), cmd)
   {
   }
 
@@ -126,13 +115,13 @@ public sealed class Block : Absy
     Contract.Requires(label != null);
     Contract.Requires(cmds != null);
     Contract.Requires(tok != null);
-    this.label = label;
+    this.Label = label;
     this.Cmds = cmds;
     this.TransferCmd = transferCmd;
     this.Predecessors = new List<Block>();
-    this._liveVarsBefore = null;
+    this.liveVarsBefore = null;
     this.TraversingStatus = VisitState.ToVisit;
-    this.iterations = 0;
+    this.Iterations = 0;
   }
 
   public void Emit(TokenTextWriter stream, int level)
@@ -146,7 +135,7 @@ public sealed class Block : Absy
       stream.Options.PrintWithUniqueASTIds
         ? String.Format("h{0}^^{1}", this.GetHashCode(), this.Label)
         : this.Label,
-      this.widenBlock ? "  // cut point" : "");
+      this.WidenBlock ? "  // cut point" : "");
 
     foreach (Cmd /*!*/ c in this.Cmds)
     {
@@ -178,10 +167,10 @@ public sealed class Block : Absy
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    foreach (Cmd /*!*/ c in Cmds)
+    foreach (var /*!*/ cmd in Cmds)
     {
-      Contract.Assert(c != null);
-      c.Typecheck(tc);
+      Contract.Assert(cmd != null);
+      cmd.Typecheck(tc);
     }
 
     Contract.Assume(this.TransferCmd != null);
@@ -195,14 +184,14 @@ public sealed class Block : Absy
   {
     //      this.currentlyTraversed = false;
     this.TraversingStatus = VisitState.ToVisit;
-    this.iterations = 0;
+    this.Iterations = 0;
   }
 
   [Pure]
   public override string ToString()
   {
     Contract.Ensures(Contract.Result<string>() != null);
-    return this.Label + (this.widenBlock ? "[w]" : "");
+    return this.Label + (this.WidenBlock ? "[w]" : "");
   }
 
   public override Absy StdDispatch(StandardVisitor visitor)
