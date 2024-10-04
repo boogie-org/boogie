@@ -103,23 +103,6 @@ public static class ManualSplitFinder {
     return blockAssignments;
   }
 
-  private static List<Block> SplitOnAssert(VCGenOptions options, List<Block> oldBlocks, AssertCmd assertToKeep) {
-    var oldToNewBlockMap = new Dictionary<Block, Block>(oldBlocks.Count);
-    
-    var newBlocks = new List<Block>(oldBlocks.Count);
-    foreach (var oldBlock in oldBlocks) {
-      var newBlock = new Block(oldBlock.tok) {
-        Label = oldBlock.Label,
-        Cmds = oldBlock.Cmds.Select(cmd => 
-          cmd != assertToKeep ? CommandTransformations.AssertIntoAssume(options, cmd) : cmd).ToList()
-      };
-      oldToNewBlockMap[oldBlock] = newBlock;
-      newBlocks.Add(newBlock);
-    }
-
-    AddBlockJumps(oldBlocks, oldToNewBlockMap);
-    return newBlocks;
-  }
   private static List<Block>? DoPreAssignedManualSplit(VCGenOptions options, List<Block> blocks, 
     Dictionary<Block, Block> blockAssignments, int splitNumberWithinBlock,
     Block containingBlock, bool lastSplitInBlock, bool splitOnEveryAssert) {

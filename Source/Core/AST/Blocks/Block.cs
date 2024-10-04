@@ -27,10 +27,6 @@ public sealed class Block : Absy
 
   public byte[] Checksum;
 
-  // Abstract interpretation
-
-  // public bool currentlyTraversed;
-
   public enum VisitState
   {
     ToVisit,
@@ -99,13 +95,9 @@ public sealed class Block : Absy
 
     return LiveVarsBefore.Contains(v);
   }
-
-  public static Block ShallowClone(Block block) {
-    return new Block(block.tok, block.Label, block.Cmds, block.TransferCmd);
-  }
   
-  public Block(IToken tok, TransferCmd cmd)
-    : this(tok, "", new List<Cmd>(), cmd)
+  public Block(IToken tok)
+    : this(tok, "", new List<Cmd>(), new ReturnCmd(tok))
   {
   }
 
