@@ -323,7 +323,7 @@ class BigBlocksResolutionContext
     for (int i = stmtList.BigBlocks.Count; 0 <= --i;)
     {
       BigBlock big = stmtList.BigBlocks[i];
-      big.successorBigBlock = successor;
+      big.SuccessorBigBlock = successor;
 
       if (big.ec is WhileCmd)
       {
@@ -591,9 +591,9 @@ class BigBlocksResolutionContext
     Contract.Requires(b != null);
     Contract.Requires(tok != null);
     Contract.Ensures(Contract.Result<TransferCmd>() != null);
-    if (b.successorBigBlock != null)
+    if (b.SuccessorBigBlock != null)
     {
-      return new GotoCmd(tok, new List<string> {b.successorBigBlock.LabelName});
+      return new GotoCmd(tok, new List<string> {b.SuccessorBigBlock.LabelName});
     }
     else
     {
