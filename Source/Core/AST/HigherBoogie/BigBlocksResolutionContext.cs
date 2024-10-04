@@ -104,7 +104,7 @@ class BigBlocksResolutionContext
         NameAnonymousBlocks(stmtList);
 
         // determine successor blocks
-        RecordSuccessors(stmtList, null);
+        AssignSuccessors(stmtList, null);
 
         if (this.errorHandler.count == startErrorCount)
         {
@@ -288,61 +288,56 @@ class BigBlocksResolutionContext
     }
   }
 
-  void NameAnonymousBlocks(StmtList stmtList)
+  private void NameAnonymousBlocks(StmtList stmtList)
   {
     Contract.Requires(stmtList != null);
     foreach (BigBlock b in stmtList.BigBlocks)
     {
-      if (b.LabelName == null)
-      {
-        b.LabelName = FreshPrefix();
-      }
+      b.LabelName ??= FreshPrefix();
 
-      if (b.ec is WhileCmd)
+      if (b.ec is WhileCmd whileCmd)
       {
-        WhileCmd wcmd = (WhileCmd) b.ec;
-        NameAnonymousBlocks(wcmd.Body);
+        NameAnonymousBlocks(whileCmd.Body);
       }
       else
       {
-        for (IfCmd ifcmd = b.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.ElseIf)
+        for (IfCmd ifCmd = b.ec as IfCmd; ifCmd != null; ifCmd = ifCmd.ElseIf)
         {
-          NameAnonymousBlocks(ifcmd.Thn);
-          if (ifcmd.ElseBlock != null)
+          NameAnonymousBlocks(ifCmd.Thn);
+          if (ifCmd.ElseBlock != null)
           {
-            NameAnonymousBlocks(ifcmd.ElseBlock);
+            NameAnonymousBlocks(ifCmd.ElseBlock);
           }
         }
       }
     }
   }
 
-  void RecordSuccessors(StmtList stmtList, BigBlock successor)
+  private static void AssignSuccessors(StmtList stmtList, BigBlock next)
   {
     Contract.Requires(stmtList != null);
     for (int i = stmtList.BigBlocks.Count; 0 <= --i;)
     {
-      BigBlock big = stmtList.BigBlocks[i];
-      big.SuccessorBigBlock = successor;
+      var current = stmtList.BigBlocks[i];
+      current.SuccessorBigBlock = next;
 
-      if (big.ec is WhileCmd)
+      if (current.ec is WhileCmd whileCmd)
       {
-        WhileCmd wcmd = (WhileCmd) big.ec;
-        RecordSuccessors(wcmd.Body, big);
+        AssignSuccessors(whileCmd.Body, current);
       }
       else
       {
-        for (IfCmd ifcmd = big.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.ElseIf)
+        for (IfCmd ifCmd = current.ec as IfCmd; ifCmd != null; ifCmd = ifCmd.ElseIf)
         {
-          RecordSuccessors(ifcmd.Thn, successor);
-          if (ifcmd.ElseBlock != null)
+          AssignSuccessors(ifCmd.Thn, next);
+          if (ifCmd.ElseBlock != null)
           {
-            RecordSuccessors(ifcmd.ElseBlock, successor);
+            AssignSuccessors(ifCmd.ElseBlock, next);
           }
         }
       }
 
-      successor = big;
+      next = current;
     }
   }
 
@@ -586,7 +581,7 @@ class BigBlocksResolutionContext
     }
   }
 
-  TransferCmd GotoSuccessor(IToken tok, BigBlock b)
+  private static TransferCmd GotoSuccessor(IToken tok, BigBlock b)
   {
     Contract.Requires(b != null);
     Contract.Requires(tok != null);
