@@ -15,10 +15,10 @@ public class BlockRewriter {
   public List<Block> OrderedBlocks { get; }
   public VCGenOptions Options { get; }
   public Graph<Block> Dag { get; }
-  public Func<ImplementationPartOrigin, List<Block>, ManualSplit> CreateSplit { get; }
+  public Func<IImplementationPartOrigin, List<Block>, ManualSplit> CreateSplit { get; }
 
   public BlockRewriter(VCGenOptions options, List<Block> blocks,
-    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
+    Func<IImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
     this.Options = options;
     CreateSplit = createSplit;
     Dag = Program.GraphFromBlocks(blocks);
@@ -126,5 +126,11 @@ public class BlockRewriter {
     
     BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
     return (newBlocks, oldToNewBlockMap);
+  }
+
+
+  public static bool ShouldIsolate(bool splitOnEveryAssert, QKeyValue? isolateAttribute)
+  {
+    return splitOnEveryAssert || isolateAttribute != null;
   }
 }

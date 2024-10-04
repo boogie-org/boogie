@@ -1351,22 +1351,22 @@ namespace VC
     /// <summary>
     /// Returns a clone of "cex", but with the location stored in "cex" replaced by those from "assrt".
     /// </summary>
-    public static Counterexample AssertCmdToCloneCounterexample(VCGenOptions options, AssertCmd assrt,
+    public static Counterexample AssertCmdToCloneCounterexample(VCGenOptions options, AssertCmd assert,
       Counterexample cex,
       Block implEntryBlock)
     {
-      Contract.Requires(assrt != null);
+      Contract.Requires(assert != null);
       Contract.Requires(cex != null);
       Contract.Requires(implEntryBlock != null);
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       Counterexample cc;
-      if (assrt is AssertRequiresCmd assertRequiresCmd)
+      if (assert is AssertRequiresCmd assertRequiresCmd)
       {
         cc = new CallCounterexample(options, cex.Trace, cex.AugmentedTrace, assertRequiresCmd, cex.Model, cex.MvInfo, cex.Context,
           cex.ProofRun, assertRequiresCmd.Checksum);
       }
-      else if (assrt is AssertEnsuresCmd assertEnsuresCmd && cex is ReturnCounterexample returnCounterexample)
+      else if (assert is AssertEnsuresCmd assertEnsuresCmd && cex is ReturnCounterexample returnCounterexample)
       {
         // The first three parameters of ReturnCounterexample are: List<Block> trace, List<object> augmentedTrace, TransferCmd failingReturn, Ensures failingEnsures.
         // We have the "aa" version of failingEnsures, namely aa.Ensures.  The first and third parameters take more work to reconstruct.
@@ -1450,7 +1450,7 @@ namespace VC
       }
       else
       {
-        cc = new AssertCounterexample(options, cex.Trace, cex.AugmentedTrace, assrt, cex.Model, cex.MvInfo, cex.Context,
+        cc = new AssertCounterexample(options, cex.Trace, cex.AugmentedTrace, assert, cex.Model, cex.MvInfo, cex.Context,
           cex.ProofRun);
       }
 

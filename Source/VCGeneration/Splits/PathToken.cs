@@ -8,7 +8,7 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace VCGeneration;
 
-public class PathOrigin : TokenWrapper, ImplementationPartOrigin {
+public class PathOrigin : TokenWrapper, IImplementationPartOrigin {
 
   public PathOrigin(IToken inner, List<Block> branches) : base(inner) {
     Branches = branches;
@@ -18,7 +18,7 @@ public class PathOrigin : TokenWrapper, ImplementationPartOrigin {
   public string ShortName => $"/assert@{line}[{string.Join(",", Branches.Select(b => b.tok.line))}]";
 }
 
-class ImplementationRootOrigin : TokenWrapper, ImplementationPartOrigin {
+class ImplementationRootOrigin : TokenWrapper, IImplementationPartOrigin {
   public ImplementationRootOrigin(Implementation implementation) : base(implementation.tok)
   {
   }

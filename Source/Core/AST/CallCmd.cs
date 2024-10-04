@@ -882,7 +882,7 @@ public class CallCmd : CallCommonality
 
           // Do this after copying the attributes so it doesn't get overwritten
           if (callId is not null) {
-            (a as ICarriesAttributes).CopyIdWithModificationsFrom(tok, req,
+            a.CopyIdWithModificationsFrom(tok, req,
               id => new TrackedCallRequiresGoal(callId, id));
           }
 

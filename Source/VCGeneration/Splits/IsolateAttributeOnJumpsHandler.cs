@@ -13,7 +13,7 @@ namespace VCGeneration;
 
 class IsolateAttributeOnJumpsHandler {
   public static (List<ManualSplit> Isolated, ManualSplit Remainder) GetParts(VCGenOptions options, ManualSplit partToDivide, 
-    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
+    Func<IImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
 
     var rewriter = new BlockRewriter(options, partToDivide.Blocks, createPart);
     
@@ -33,7 +33,7 @@ class IsolateAttributeOnJumpsHandler {
 
       var isTypeOfAssert = gotoCmd.tok is GotoFromReturn;
       var isolateAttribute = QKeyValue.FindAttribute(gotoCmd.Attributes, p => p.Key == "isolate");
-      var isolate = ShouldIsolate(isTypeOfAssert && splitOnEveryAssert, isolateAttribute);
+      var isolate = BlockRewriter.ShouldIsolate(isTypeOfAssert && splitOnEveryAssert, isolateAttribute);
       if (!isolate) {
         continue;
       }
@@ -62,7 +62,6 @@ class IsolateAttributeOnJumpsHandler {
     return (results, GetPartWithoutIsolatedReturns());
     
     ManualSplit GetPartWithoutIsolatedReturns() {
-      // TODO this needs an extra test. In case the isolated jump is followed by something it dominates
       var (newBlocks, mapping) = rewriter.ComputeNewBlocks(blocks.ToHashSet(), new HashSet<Block>());
       foreach (var (oldBlock, newBlock) in mapping) {
         if (isolatedBlocks.Contains(oldBlock)) {
@@ -74,22 +73,10 @@ class IsolateAttributeOnJumpsHandler {
         newBlocks);
     }
   }
-
-  private static bool ShouldIsolate(bool splitOnEveryAssert, QKeyValue? isolateAttribute) {
-    if (splitOnEveryAssert) {
-      if (isolateAttribute == null) {
-        return true;
-      }
-
-      return !isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "none"));
-    }
-
-    return isolateAttribute != null;
-  }
 }
 
 
-public class ReturnOrigin : TokenWrapper, ImplementationPartOrigin {
+public class ReturnOrigin : TokenWrapper, IImplementationPartOrigin {
   public ReturnCmd IsolatedReturn { get; }
 
   public ReturnOrigin(ReturnCmd isolatedReturn) : base(isolatedReturn.tok) {

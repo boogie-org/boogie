@@ -11,7 +11,7 @@ namespace VCGeneration;
 public static class ManualSplitFinder {
   
   public static IEnumerable<ManualSplit> GetParts(VCGenOptions options, ImplementationRun run,
-    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
+    Func<IImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
     
     var focussedParts = FocusAttributeHandler.GetParts(options, run, createPart);
     var result = focussedParts.SelectMany(focussedPart => {
@@ -27,6 +27,6 @@ public static class ManualSplitFinder {
   }
 }
 
-public interface ImplementationPartOrigin : IToken {
+public interface IImplementationPartOrigin : IToken {
   string ShortName { get; }
 }

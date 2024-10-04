@@ -12,7 +12,7 @@ namespace VCGeneration;
 class IsolateAttributeOnAssertsHandler {
 
   public static (List<ManualSplit> IsolatedParts, ManualSplit Remainder) GetParts(VCGenOptions options, ManualSplit partToDivide, 
-    Func<ImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
+    Func<IImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
     var rewriter = new BlockRewriter(options, partToDivide.Blocks, createPart);
       
     var splitOnEveryAssert = partToDivide.Options.VcsSplitOnEveryAssert;
@@ -29,7 +29,7 @@ class IsolateAttributeOnAssertsHandler {
       foreach (var assert in block.Cmds.OfType<AssertCmd>()) {
         var attributes = assert.Attributes;
         var isolateAttribute = QKeyValue.FindAttribute(attributes, p => p.Key == "isolate");
-        if (!ShouldIsolate(splitOnEveryAssert, isolateAttribute)) {
+        if (!BlockRewriter.ShouldIsolate(splitOnEveryAssert, isolateAttribute)) {
           continue;
         }
 
@@ -92,22 +92,10 @@ class IsolateAttributeOnAssertsHandler {
         isolatedAssertions.Contains(cmd) ? rewriter.TransformAssertCmd(cmd) : cmd).ToList();
     }
   }
-
-  private static bool ShouldIsolate(bool splitOnEveryAssert, QKeyValue? isolateAttribute) {
-    if (splitOnEveryAssert) {
-      if (isolateAttribute == null) {
-        return true;
-      }
-
-      return !isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "none"));
-    }
-
-    return isolateAttribute != null;
-  }
 }
 
 
-public class IsolatedAssertionOrigin : TokenWrapper, ImplementationPartOrigin {
+public class IsolatedAssertionOrigin : TokenWrapper, IImplementationPartOrigin {
   public AssertCmd IsolatedAssert { get; }
 
   public IsolatedAssertionOrigin(AssertCmd isolatedAssert) : base(isolatedAssert.tok) {

@@ -61,7 +61,7 @@ class SplitAttributeHandler {
     }
     return vcs;
 
-    ManualSplit CreateVc(ImplementationPartOrigin token, List<Block> blocks) {
+    ManualSplit CreateVc(IImplementationPartOrigin token, List<Block> blocks) {
       return new ManualSplit(partToSplit.Options, () => {
         BlockTransformations.Optimize(blocks);
         return blocks;
@@ -108,7 +108,7 @@ class SplitAttributeHandler {
     return blockAssignments;
   }
   
-  private static ManualSplit? GetImplementationPartAfterSplit(Func<ImplementationPartOrigin, List<Block>, ManualSplit> createVc, 
+  private static ManualSplit? GetImplementationPartAfterSplit(Func<IImplementationPartOrigin, List<Block>, ManualSplit> createVc, 
     ManualSplit partToSplit, 
     Dictionary<Block, Cmd?> blockStartToSplit, Block blockWithSplit, 
     HashSet<Cmd> splits, Cmd? split) 
@@ -207,7 +207,7 @@ class SplitAttributeHandler {
   }
 }
 
-class SplitOrigin : TokenWrapper, ImplementationPartOrigin {
+class SplitOrigin : TokenWrapper, IImplementationPartOrigin {
   public SplitOrigin(IToken inner) : base(inner)
   {
   }

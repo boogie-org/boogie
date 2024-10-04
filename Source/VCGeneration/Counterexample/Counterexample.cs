@@ -124,8 +124,6 @@ namespace Microsoft.Boogie
         }
         else {
           // for ErrorTrace == 1 restrict the output;
-          // do not print tokens with -17:-4 as their location because they have been
-          // introduced in the translation and do not give any useful feedback to the user
           if (Options.ErrorTrace == 1 && block.tok == Token.NoToken) {
             continue;
           }

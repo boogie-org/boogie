@@ -98,7 +98,7 @@ namespace VC
           Thread.Sleep(100);
         }
 
-        var prefix = (this is ManualSplit manualSplit) ? manualSplit.Token.ShortName : "";
+        var prefix = this is ManualSplit manualSplit ? manualSplit.Token.ShortName : "";
         var name = Implementation.Name + prefix; 
         using var writer = printToConsole
           ? new TokenTextWriter("<console>", Options.OutputWriter, false, Options.PrettyPrint, Options) 

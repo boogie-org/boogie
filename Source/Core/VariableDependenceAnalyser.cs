@@ -533,22 +533,24 @@ namespace Microsoft.Boogie
       Graph<Implementation> callGraph = Program.BuildCallGraph(options, prog);
 
       // Add inter-procedural control dependence nodes based on calls
-      foreach (var Impl in prog.NonInlinedImplementations())
+      foreach (var impl in prog.NonInlinedImplementations())
       {
-        foreach (var b in Impl.Blocks)
+        foreach (var b in impl.Blocks)
         {
           foreach (var cmd in b.Cmds.OfType<CallCmd>())
           {
-            var DirectCallee = GetImplementation(cmd.callee);
-            if (DirectCallee != null)
+            var directCallee = GetImplementation(cmd.callee);
+            if (directCallee == null)
             {
-              HashSet<Implementation> IndirectCallees = ComputeIndirectCallees(callGraph, DirectCallee);
-              foreach (var control in GetControllingBlocks(b, localCtrlDeps[Impl]))
+              continue;
+            }
+
+            var indirectCallees = ComputeIndirectCallees(callGraph, directCallee);
+            foreach (var control in GetControllingBlocks(b, localCtrlDeps[impl]))
+            {
+              foreach (var c in indirectCallees.Select(item => item.Blocks).SelectMany(Item => Item))
               {
-                foreach (var c in IndirectCallees.Select(Item => Item.Blocks).SelectMany(Item => Item))
-                {
-                  globalCtrlDep[control].Add(c);
-                }
+                globalCtrlDep[control].Add(c);
               }
             }
           }
