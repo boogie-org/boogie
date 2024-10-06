@@ -898,7 +898,7 @@ namespace VC
           CoveredElements: CoveredElements,
           ResourceCount: resourceCount,
           SolverUsed: (Options as SMTLibSolverOptions)?.Solver,
-          PrunedDeclarations: PrunedDeclarations
+          DeclarationsAfterPruning: PrunedDeclarations
           );
         callback.OnVCResult(result);
 

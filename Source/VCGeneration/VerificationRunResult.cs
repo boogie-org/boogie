@@ -19,7 +19,7 @@ namespace VC
     IEnumerable<TrackedNodeComponent> CoveredElements,
     int ResourceCount,
     SolverKind? SolverUsed,
-    IReadOnlyList<Declaration> PrunedDeclarations
+    IReadOnlyList<Declaration> DeclarationsAfterPruning
   ) {
     public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, SolverOutcome> perAssertOutcome,
       out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
