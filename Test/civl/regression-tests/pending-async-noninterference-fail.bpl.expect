@@ -1,5 +1,6 @@
 pending-async-noninterference-fail.bpl(7,1): Error: Non-interference check failed
 Execution trace:
+    (0,0): init
     pending-async-noninterference-fail.bpl(12,5): inline$A$0$anon0
     pending-async-noninterference-fail.bpl(9,32): inline$A$0$Return
 
