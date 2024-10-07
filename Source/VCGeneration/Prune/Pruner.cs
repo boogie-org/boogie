@@ -71,7 +71,7 @@ namespace Microsoft.Boogie
         blocksVisitor.Visit(block);
       }
 
-      var keepRoots = program.TopLevelDeclarations.Where(d => QKeyValue.FindBoolAttribute(d.Attributes, "keep"));
+      var keepRoots = program.TopLevelDeclarations.Where(d => d.Attributes.FindBoolAttribute("keep"));
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, 
         blocksVisitor.Outgoing.Concat(keepRoots).ToHashSet(), TraverseDeclaration).ToHashSet();
       return program.TopLevelDeclarations.Where(d => 

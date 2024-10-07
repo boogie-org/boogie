@@ -436,7 +436,7 @@ namespace Microsoft.Boogie
         Options.OutputWriter.WriteLine("Datatypes only supported with monomorphic encoding");
         return PipelineOutcome.FatalError;
       }
-      else if (program.TopLevelDeclarations.OfType<Function>().Any(f => QKeyValue.FindBoolAttribute(f.Attributes, "define")))
+      else if (program.TopLevelDeclarations.OfType<Function>().Any(f => f.Attributes.FindBoolAttribute("define")))
       {
         Options.OutputWriter.WriteLine("Functions with :define attribute only supported with monomorphic encoding");
         return PipelineOutcome.FatalError;

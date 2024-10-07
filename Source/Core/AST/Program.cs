@@ -63,7 +63,7 @@ public class Program : Absy
     ResolveTypes(rc);
       
     var prunedTopLevelDeclarations = new List<Declaration>();
-    foreach (var d in TopLevelDeclarations.Where(d => !QKeyValue.FindBoolAttribute(d.Attributes, "ignore")))
+    foreach (var d in TopLevelDeclarations.Where(d => !d.Attributes.FindBoolAttribute("ignore")))
     {
       // resolve all the declarations that have not been resolved yet 
       if (!(d is TypeCtorDecl || d is TypeSynonymDecl))
@@ -98,7 +98,7 @@ public class Program : Absy
     // first resolve type constructors
     foreach (var d in TopLevelDeclarations.OfType<TypeCtorDecl>())
     {
-      if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
+      if (!d.Attributes.FindBoolAttribute("ignore"))
       {
         d.Resolve(rc);
       }
@@ -110,7 +110,7 @@ public class Program : Absy
     foreach (var d in TopLevelDeclarations.OfType<TypeSynonymDecl>())
     {
       Contract.Assert(d != null);
-      if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
+      if (!d.Attributes.FindBoolAttribute("ignore"))
       {
         synonymDecls.Add(d);
       }

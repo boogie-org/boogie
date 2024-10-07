@@ -501,11 +501,11 @@ private class BvBounds : Expr {
 		}
 		if (definition != null) {
 		 // generate either an axiom or a function body
-		 if (QKeyValue.FindBoolAttribute(kv, "inline")) {
-		   if (QKeyValue.FindBoolAttribute(kv, "define"))
+		 if (kv.FindBoolAttribute("inline")) {
+		   if (kv.FindBoolAttribute("define"))
 		     SemErr("function cannot have both :inline and :define attributes");
 		   func.Body = definition;
-		 } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
+		 } else if (kv.FindBoolAttribute("define")) {
 		   if (func.TypeParameters.Count > 0)
 		     SemErr("function with :define attribute has to be monomorphic");
 		   func.DefinitionBody = func.CreateFunctionDefinition(definition);

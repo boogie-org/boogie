@@ -79,20 +79,20 @@ public sealed class Block : Absy
   // This field is used during passification to null-out entries in block2Incarnation dictionary early
   public int succCount;
 
-  private HashSet<Variable /*!*/> _liveVarsBefore;
+  private HashSet<Variable /*!*/> liveVarsBefore;
 
-  public IEnumerable<Variable /*!*/> liveVarsBefore
+  public IEnumerable<Variable /*!*/> LiveVarsBefore
   {
     get
     {
       Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Variable /*!*/>>(), true));
-      if (this._liveVarsBefore == null)
+      if (this.liveVarsBefore == null)
       {
         return null;
       }
       else
       {
-        return this._liveVarsBefore.AsEnumerable<Variable>();
+        return this.liveVarsBefore.AsEnumerable<Variable>();
       }
     }
     set
@@ -100,11 +100,11 @@ public sealed class Block : Absy
       Contract.Requires(cce.NonNullElements(value, true));
       if (value == null)
       {
-        this._liveVarsBefore = null;
+        this.liveVarsBefore = null;
       }
       else
       {
-        this._liveVarsBefore = new HashSet<Variable>(value);
+        this.liveVarsBefore = new HashSet<Variable>(value);
       }
     }
   }
@@ -114,18 +114,18 @@ public sealed class Block : Absy
   {
     Contract.Invariant(this.label != null);
     Contract.Invariant(this.cmds != null);
-    Contract.Invariant(cce.NonNullElements(this._liveVarsBefore, true));
+    Contract.Invariant(cce.NonNullElements(this.liveVarsBefore, true));
   }
 
   public bool IsLive(Variable v)
   {
     Contract.Requires(v != null);
-    if (liveVarsBefore == null)
+    if (LiveVarsBefore == null)
     {
       return true;
     }
 
-    return liveVarsBefore.Contains(v);
+    return LiveVarsBefore.Contains(v);
   }
 
   public static Block ShallowClone(Block block) {
@@ -147,7 +147,7 @@ public sealed class Block : Absy
     this.cmds = cmds;
     this.TransferCmd = transferCmd;
     this.Predecessors = new List<Block>();
-    this._liveVarsBefore = null;
+    this.liveVarsBefore = null;
     this.TraversingStatus = VisitState.ToVisit;
     this.iterations = 0;
   }
