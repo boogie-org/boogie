@@ -289,29 +289,12 @@ function {:inline} One_Collector<T>(a: One T): [T]bool
   MapOne(a->val)
 }
 
-datatype Fraction<T, K> { Fraction(val: T, id: K, ids: Set K) }
-
-function {:inline} AllPieces<T,K>(t: T, ids: Set K): Set (Fraction T K)
-{
-  Set((lambda piece: Fraction T K :: piece->val == t && Set_Contains(ids, piece->id) && piece->ids == ids))
-}
-
-pure procedure {:inline 1} One_To_Fractions<T,K>({:linear_in} one_t: One T, ids: Set K) returns ({:linear} pieces: Set (Fraction T K))
-{
-  pieces := AllPieces(one_t->val, ids);
-}
-
-pure procedure {:inline 1} Fractions_To_One<T,K>({:linear_out} one_t: One T, ids: Set K, {:linear_in} pieces: Set (Fraction T K))
-{
-  assert pieces == AllPieces(one_t->val, ids);
-}
-
 /// singleton map
-datatype Cell<T,U> { Cell(key: T, val: U) }
+datatype Cell<T,U> { Cell({:linear} key: One T, val: U) }
 
 function {:inline} Cell_Collector<T,U>(a: Cell T U): [T]bool
 {
-  MapOne(a->key)
+  MapOne(a->key->val)
 }
 
 /// linear primitives
@@ -326,16 +309,6 @@ pure procedure One_Split<K>({:linear} path: Set K, {:linear_out} l: One K);
 pure procedure One_Get<K>({:linear} path: Set K, k: K) returns ({:linear} l: One K);
 pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: One K);
 
-pure procedure {:inline 1} Cell_Pack<K,V>({:linear_in} l: One K, {:linear_in} v: V) returns ({:linear} c: Cell K V)
-{
-  c := Cell(l->val, v);
-}
-pure procedure {:inline 1} Cell_Unpack<K,V>({:linear_in} c: Cell K V) returns ({:linear} l: One K, {:linear} v: V)
-{
-  l := One(c->key);
-  v := c->val;
-}
-
 pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 {
   m := Map_Empty();
@@ -346,23 +319,29 @@ pure procedure {:inline 1} Map_Pack<K,V>({:linear_in} dom: Set K, val: [K]V) ret
 }
 pure procedure {:inline 1} Map_Unpack<K,V>({:linear_in} m: Map K V) returns ({:linear} dom: Set K, val: [K]V)
 {
- dom := m->dom;
- val := m->val;
+  dom := m->dom;
+  val := m->val;
 }
 pure procedure Map_Split<K,V>({:linear} path: Map K V, s: Set K) returns ({:linear} m: Map K V);
 pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} m: Map K V);
-pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} c: Cell K V);
-pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} c: Cell K V);
-pure procedure {:inline 1} Map_Assume<K,V>({:linear} src: Map K V, {:linear} dst: Map K V)
-{
-  assume Set_IsDisjoint(src->dom, dst->dom);
-}
+pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} l: One K, {:linear} v: V);
+pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} l: One K, {:linear_in} v: V);
+pure procedure Map_GetValue<K,V>({:linear} path: Map K V, k: K) returns ({:linear} v: V);
+pure procedure Map_PutValue<K,V>({:linear} path: Map K V, k: K, {:linear_in} v: V);
 
 type Loc;
 
-pure procedure {:inline 1} One_New() returns ({:linear} {:pool "One_New"} l: One Loc)
+pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One Loc)
 {
-  assume {:add_to_pool "One_New", l} true;
+  assume {:add_to_pool "Loc_New", l} true;
+}
+
+datatype KeyedLoc<K> { KeyedLoc(l: Loc, k: K) }
+
+pure procedure {:inline 1} KeyedLocSet_New<K>(ks: Set K) returns ({:pool "Loc_New"} l: Loc, {:linear} keyed_locs: Set (KeyedLoc K))
+{
+  assume {:add_to_pool "Loc_New", l} true;
+  keyed_locs := Set((lambda x: KeyedLoc K :: x->l == l && Set_Contains(ks, x->k)));
 }
 
 procedure create_async<T>(PA: T);
