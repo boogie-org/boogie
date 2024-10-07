@@ -141,14 +141,11 @@ both action {:layer 1,3} AtomicStore({:linear_in} l_in: Map int int, a: int, v: 
   returns ({:linear} l_out: Map int int)
 {
   var {:linear} one_a: One int;
-  var {:linear} cell_a: Cell int int;
   var _v: int;
 
   l_out := l_in;
-  call cell_a := Map_Get(l_out, a);
-  call one_a, _v := Cell_Unpack(cell_a);
-  call cell_a := Cell_Pack(one_a, v);
-  call Map_Put(l_out, cell_a);
+  call one_a, _v := Map_Get(l_out, a);
+  call Map_Put(l_out, one_a, v);
 }
 
 yield procedure {:layer 0} Store({:linear_in} l_in: Map int int, a: int, v: int) returns ({:linear} l_out: Map int int);

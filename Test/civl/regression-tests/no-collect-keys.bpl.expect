@@ -1,0 +1,13 @@
+no-collect-keys.bpl(21,9): Error: Mismatch in key collection between source and target
+no-collect-keys.bpl(46,4): Error: Mismatch in key collection between source and target
+no-collect-keys.bpl(57,4): Error: Mismatch in key collection between source and target
+no-collect-keys.bpl(82,6): Error: Mismatch in key collection between source and target
+no-collect-keys.bpl(85,11): Error: Mismatch in key collection between source and target
+no-collect-keys.bpl(99,28): Error: Mismatch in key collection between source and target
+no-collect-keys.bpl(100,4): Error: Keys must be collected
+no-collect-keys.bpl(101,4): Error: Keys must be collected
+no-collect-keys.bpl(102,4): Error: Keys must not be collected
+no-collect-keys.bpl(103,4): Error: Keys must not be collected
+no-collect-keys.bpl(104,9): Error: Mismatch in key collection between source and target
+no-collect-keys.bpl(105,22): Error: Mismatch in key collection between source and target
+12 type checking errors detected in no-collect-keys.bpl

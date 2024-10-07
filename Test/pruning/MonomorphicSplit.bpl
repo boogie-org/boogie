@@ -1,5 +1,5 @@
 // RUN: %parallel-boogie /prune:1 /errorTrace:0 /printSplit:"%t" /printSplitDeclarations "%s" > "%t"
-// RUN: %OutputCheck "%s" --file-to-check="%t-monomorphicSplit--1.spl"
+// RUN: %OutputCheck "%s" --file-to-check="%t-monomorphicSplit.spl"
 
 // The following checks are a bit simplistic, but this is
 // on purpose to reduce brittleness. We assume there would now be two uses clauses
