@@ -897,7 +897,9 @@ namespace VC
           Asserts: Asserts,
           CoveredElements: CoveredElements,
           ResourceCount: resourceCount,
-          SolverUsed: (Options as SMTLibSolverOptions)?.Solver);
+          SolverUsed: (Options as SMTLibSolverOptions)?.Solver,
+          DeclarationsAfterPruning: PrunedDeclarations
+          );
         callback.OnVCResult(result);
 
         if (Options.VcsDumpSplits)
