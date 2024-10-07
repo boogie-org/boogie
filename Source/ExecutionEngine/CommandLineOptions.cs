@@ -105,7 +105,7 @@ namespace Microsoft.Boogie
 
       foreach(var implementation in processedProgram.Program.Implementations) {
         vcGenerator.PrepareImplementation(new ImplementationRun(implementation, options.OutputWriter),
-          callback, out _, out _, out _);
+          callback, out _, out _);
       }
     }
 

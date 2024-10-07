@@ -98,8 +98,9 @@ procedure Procedure(y: int)
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
     var tasks = await engine.GetVerificationTasks(program);
     
-    // The first split is empty. Maybe it can be optimized away
-    Assert.AreEqual(4, tasks.Count);
+    // The implicit return at the end gets a separate VC.
+    // first split is empty. Maybe it can be optimized away
+    Assert.AreEqual(5, tasks.Count);
 
     var outcomes = new List<SolverOutcome> { SolverOutcome.Invalid, SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid };
     for (var index = 0; index < outcomes.Count; index++)

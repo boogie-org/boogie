@@ -6,9 +6,8 @@ namespace Microsoft.Boogie;
 
 public class CallCounterexample : Counterexample
 {
-  public CallCmd FailingCall;
-  public Requires FailingRequires;
-  public AssertRequiresCmd FailingFailingAssert;
+  public readonly CallCmd FailingCall;
+  public readonly Requires FailingRequires;
 
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -20,7 +19,7 @@ public class CallCounterexample : Counterexample
 
   public CallCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, AssertRequiresCmd failingAssertRequires, Model model,
     VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum = null)
-    : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
+    : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun, failingAssertRequires)
   {
     var failingRequires = failingAssertRequires.Requires;
     var failingCall = failingAssertRequires.Call;
@@ -31,7 +30,6 @@ public class CallCounterexample : Counterexample
     Contract.Requires(failingRequires != null);
     this.FailingCall = failingCall;
     this.FailingRequires = failingRequires;
-    this.FailingFailingAssert = failingAssertRequires;
     this.checksum = checksum;
     this.SugaredCmdChecksum = failingCall.Checksum;
   }
@@ -52,7 +50,7 @@ public class CallCounterexample : Counterexample
 
   public override Counterexample Clone()
   {
-    var ret = new CallCounterexample(Options, Trace, AugmentedTrace, FailingFailingAssert, Model, MvInfo, Context, ProofRun, Checksum);
+    var ret = new CallCounterexample(Options, Trace, AugmentedTrace, (AssertRequiresCmd)FailingAssert, Model, MvInfo, Context, ProofRun, Checksum);
     ret.CalleeCounterexamples = CalleeCounterexamples;
     return ret;
   }

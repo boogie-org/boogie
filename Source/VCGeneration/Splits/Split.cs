@@ -10,6 +10,7 @@ using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
 using Microsoft.Boogie.SMTLib;
 using System.Threading.Tasks;
+using VCGeneration;
 
 namespace VC
 {
@@ -55,8 +56,6 @@ namespace VC
       int assertionCount;
       double assertionCost; // without multiplication by paths
 
-      public Dictionary<TransferCmd, ReturnCmd> GotoCmdOrigins { get; }
-
       public readonly VerificationConditionGenerator /*!*/
         parent;
 
@@ -76,14 +75,11 @@ namespace VC
       public VerificationConditionGenerator.ErrorReporter reporter;
 
       public Split(VCGenOptions options, Func<List<Block /*!*/>> /*!*/ getBlocks,
-        Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
-        VerificationConditionGenerator /*!*/ par, ImplementationRun run, int? randomSeed = null)
+        VerificationConditionGenerator /*!*/ parent, ImplementationRun run, int? randomSeed = null)
       {
-        Contract.Requires(gotoCmdOrigins != null);
-        Contract.Requires(par != null);
+        Contract.Requires(parent != null);
         this.getBlocks = getBlocks;
-        this.GotoCmdOrigins = gotoCmdOrigins;
-        parent = par;
+        this.parent = parent;
         this.Run = run;
         this.Options = options;
         Interlocked.Increment(ref currentId);
@@ -91,17 +87,26 @@ namespace VC
         RandomSeed = randomSeed ?? Implementation.RandomSeed ?? Options.RandomSeed ?? 0;
         randomGen = new Random(RandomSeed);
       }
-      
-      public void PrintSplit() {
+
+      private void PrintSplit() {
         if (Options.PrintSplitFile == null) {
           return;
         }
+        
+        var printToConsole = Options.PrintSplitFile == "-";
+        if (printToConsole) {
+          Thread.Sleep(100);
+        }
 
-        using var writer = new TokenTextWriter(
-          $"{Options.PrintSplitFile}-{Util.EscapeFilename(Implementation.Name)}-{SplitIndex}.spl", false,
-          Options.PrettyPrint, Options);
+        var prefix = this is ManualSplit manualSplit ? manualSplit.Token.ShortName : "";
+        var name = Implementation.Name + prefix; 
+        using var writer = printToConsole
+          ? new TokenTextWriter("<console>", Options.OutputWriter, false, Options.PrettyPrint, Options) 
+          : new TokenTextWriter(
+            $"{Options.PrintSplitFile}-{Util.EscapeFilename(name)}.spl", false,
+            Options.PrettyPrint, Options);
 
-        Implementation.EmitImplementation(writer, 0, Blocks, false);
+        Implementation.EmitImplementation(writer, 0, Blocks, false, prefix);
         PrintSplitDeclarations(writer);
       }
 
@@ -654,7 +659,6 @@ namespace VC
         copies.Clear();
         CloneBlock(Blocks[0]);
         var newBlocks = new List<Block>();
-        var newGotoCmdOrigins = new Dictionary<TransferCmd, ReturnCmd>();
         foreach (var block in Blocks)
         {
           Contract.Assert(block != null);
@@ -664,10 +668,6 @@ namespace VC
           }
 
           newBlocks.Add(cce.NonNull(tmp));
-          if (GotoCmdOrigins.TryGetValue(block.TransferCmd, out var origin))
-          {
-            newGotoCmdOrigins[tmp.TransferCmd] = origin;
-          }
 
           foreach (var predecessor in block.Predecessors)
           {
@@ -679,7 +679,7 @@ namespace VC
           }
         }
 
-        return new Split(Options, () => newBlocks, newGotoCmdOrigins, parent, Run);
+        return new Split(Options, () => newBlocks, parent, Run);
       }
 
       private Split SplitAt(int idx)
@@ -949,7 +949,7 @@ namespace VC
           VCExpr eqExpr = exprGen.Eq(controlFlowFunctionAppl,
             exprGen.Integer(BigNum.FromInt(absyIds.GetId(Implementation.Blocks[0]))));
           vc = exprGen.Implies(eqExpr, vc);
-          reporter = new VerificationConditionGenerator.ErrorReporter(Options, GotoCmdOrigins, absyIds,
+          reporter = new VerificationConditionGenerator.ErrorReporter(Options, absyIds,
             Implementation.Blocks, Implementation.debugInfos, callback,
             mvInfo, checker.TheoremProver.Context, parent.program, this);
         }

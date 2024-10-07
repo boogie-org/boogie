@@ -1032,6 +1032,7 @@ TransferCmd<out TransferCmd/*!*/ tc>
 = (. Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
      Token y;  List<IToken>/*!*/ xs;
      List<String> ss = new List<String>();
+     QKeyValue kv = null;
   .)
   ( "goto"             (. y = t; .)
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
@@ -1039,7 +1040,9 @@ TransferCmd<out TransferCmd/*!*/ tc>
                             ss.Add(s.val); }
                           tc = new GotoCmd(y, ss);
                        .)
-  | "return"           (. tc = new ReturnCmd(t); .)
+  | "return"
+    { Attribute<ref kv> }         
+    (. tc = new ReturnCmd(t) { Attributes = kv }; .)
   ) ";"
   .
 
@@ -1688,6 +1691,7 @@ SpecBlock<out Block/*!*/ b>
      List<IToken>/*!*/ xs;
      List<String> ss = new List<String>();
      b = dummyBlock;
+     QKeyValue kv = null;
      Expr/*!*/ e;
   .)
   Ident<out x> ":"
@@ -1706,8 +1710,13 @@ SpecBlock<out Block/*!*/ b>
                             ss.Add(s.val); }
                           b = new Block(x,x.val,cs,new GotoCmd(y,ss));
                        .)
-  | "return" Expression<out e>
-                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); .)
+  | "return" 
+    { Attribute<ref kv> }
+    Expression<out e>
+                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(t,e) {
+                            Attributes = kv
+                          }); 
+                       .)
   )
   ";"
   .

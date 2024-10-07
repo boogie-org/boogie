@@ -25,6 +25,7 @@ namespace Microsoft.Boogie
     protected readonly VCGenOptions Options;
     [Peer] public List<Block> Trace;
     public readonly List<object> AugmentedTrace;
+    public AssertCmd FailingAssert { get; }
     public Model Model { get; }
     public readonly ModelViewInfo MvInfo;
     public readonly ProverContext Context;
@@ -35,7 +36,7 @@ namespace Microsoft.Boogie
     public Dictionary<TraceLocation, CalleeCounterexampleInfo> CalleeCounterexamples;
 
     internal Counterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, Model model,
-      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun)
+      VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, AssertCmd failingAssert)
     {
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
@@ -45,6 +46,7 @@ namespace Microsoft.Boogie
       this.MvInfo = mvInfo;
       this.Context = context;
       this.ProofRun = proofRun;
+      this.FailingAssert = failingAssert;
       this.CalleeCounterexamples = new Dictionary<TraceLocation, CalleeCounterexampleInfo>();
       // the call to instance method GetModelValue in the following code requires the fields Model and Context to be initialized
       if (augmentedTrace != null)
@@ -112,7 +114,7 @@ namespace Microsoft.Boogie
     {
       int numBlock = -1;
       string ind = new string(' ', indent);
-      foreach (var block in Trace)
+      foreach (Block block in Trace)
       {
         Contract.Assert(block != null);
         numBlock++;
@@ -120,13 +122,9 @@ namespace Microsoft.Boogie
         {
           tw.WriteLine("{0}<intermediate block>", ind);
         }
-        else
-        {
+        else {
           // for ErrorTrace == 1 restrict the output;
-          // do not print tokens with -17:-4 as their location because they have been
-          // introduced in the translation and do not give any useful feedback to the user
-          if (Options.ErrorTrace == 1 && block.tok.line == -17 && block.tok.col == -4)
-          {
+          if (Options.ErrorTrace == 1 && block.tok == Token.NoToken) {
             continue;
           }
 
@@ -137,8 +135,7 @@ namespace Microsoft.Boogie
           for (int numInstr = 0; numInstr < block.Cmds.Count; numInstr++)
           {
             var loc = new TraceLocation(numBlock, numInstr);
-            if (!CalleeCounterexamples.ContainsKey(loc))
-            {
+            if (!CalleeCounterexamples.ContainsKey(loc)) {
               continue;
             }
 

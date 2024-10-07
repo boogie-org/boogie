@@ -368,10 +368,9 @@ namespace Microsoft.Boogie
       return anon++;
     }
 
-    HashSet<string /*!*/> allLabels = new HashSet<string /*!*/>();
+    private readonly HashSet<string /*!*/> allLabels = new();
 
-    Errors /*!*/
-      errorHandler;
+    private readonly Errors /*!*/ errorHandler;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -3445,6 +3444,8 @@ namespace Microsoft.Boogie
 
   public class ReturnCmd : TransferCmd
   {
+    public QKeyValue Attributes { get; set; }
+    
     public ReturnCmd(IToken /*!*/ tok)
       : base(tok)
     {
@@ -3476,6 +3477,8 @@ namespace Microsoft.Boogie
     [Rep] public List<String> LabelNames;
     [Rep] public List<Block> LabelTargets;
 
+    public QKeyValue Attributes { get; set; }
+    
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
