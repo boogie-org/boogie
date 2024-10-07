@@ -20,7 +20,7 @@ public class LiveVariableAnalysis
     foreach (Block /*!*/ block in impl.Blocks)
     {
       Contract.Assert(block != null);
-      block.liveVarsBefore = null;
+      block.LiveVarsBefore = null;
     }
   }
 
@@ -59,8 +59,8 @@ public class LiveVariableAnalysis
           foreach (Block /*!*/ succ in gotoCmd.LabelTargets)
           {
             Contract.Assert(succ != null);
-            Contract.Assert(succ.liveVarsBefore != null);
-            liveVarsAfter.UnionWith(succ.liveVarsBefore);
+            Contract.Assert(succ.LiveVarsBefore != null);
+            liveVarsAfter.UnionWith(succ.LiveVarsBefore);
           }
         }
       }
@@ -84,7 +84,7 @@ public class LiveVariableAnalysis
         Propagate(cmds[i], liveVarsAfter);
       }
 
-      block.liveVarsBefore = liveVarsAfter;
+      block.LiveVarsBefore = liveVarsAfter;
     }
   }
 

@@ -764,7 +764,7 @@ namespace VC
         Dictionary<Variable, Expr> incarnationMap = ComputeIncarnationMap(b, block2Incarnation);
 
         // b.liveVarsBefore has served its purpose in the just-finished call to ComputeIncarnationMap; null it out.
-        b.liveVarsBefore = null;
+        b.LiveVarsBefore = null;
 
         // Decrement the succCount field in each predecessor. Once the field reaches zero in any block,
         // all its successors have been passified.  Consequently, its entry in block2Incarnation can be removed.
