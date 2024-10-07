@@ -111,6 +111,6 @@ public class FocusAttributeHandler {
   }
 
   private static bool IsFocusCmd(Cmd c) {
-    return c is PredicateCmd p && QKeyValue.FindBoolAttribute(p.Attributes, "focus");
+    return c is PredicateCmd p && p.Attributes.FindBoolAttribute("focus");
   }
 }

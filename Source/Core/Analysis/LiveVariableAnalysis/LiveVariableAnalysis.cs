@@ -141,7 +141,7 @@ public class LiveVariableAnalysis
       foreach (IdentifierExpr /*!*/ expr in havocCmd.Vars)
       {
         Contract.Assert(expr != null);
-        if (expr.Decl != null && !(QKeyValue.FindBoolAttribute(expr.Decl.Attributes, "assumption") &&
+        if (expr.Decl != null && !(expr.Decl.Attributes.FindBoolAttribute("assumption") &&
                                    expr.Decl.Name.StartsWith("a##cached##")))
         {
           liveSet.Remove(expr.Decl);

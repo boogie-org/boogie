@@ -326,7 +326,7 @@ namespace VC
               attr = ae.Ensures.Attributes;
             }
 
-            if (QKeyValue.FindExprAttribute(attr, "expand") != null || QKeyValue.FindBoolAttribute(attr, "expand"))
+            if (QKeyValue.FindExprAttribute(attr, "expand") != null || attr.FindBoolAttribute("expand"))
             {
               int depth = QKeyValue.FindIntAttribute(attr, "expand", 100);
               Func<Expr, Expr> fe = e => Expr.Or(a.Expr, e);
@@ -699,7 +699,7 @@ namespace VC
               new QKeyValue(lvar.tok, "where", new List<object>(new object[] { idExp }), null));
             cc.Add(c);
           }
-          else if (QKeyValue.FindBoolAttribute(lvar.Attributes, "assumption"))
+          else if (lvar.Attributes.FindBoolAttribute("assumption"))
           {
             cc.Add(new AssumeCmd(lvar.tok, idExp,
               new QKeyValue(lvar.tok, "assumption_variable_initialization", new List<object>(), null)));
@@ -752,7 +752,7 @@ namespace VC
       modelViewInfo = new ModelViewInfo(program, impl);
       Convert2PassiveCmd(run, modelViewInfo);
 
-      if (QKeyValue.FindBoolAttribute(impl.Attributes, "may_unverified_instrumentation"))
+      if (impl.Attributes.FindBoolAttribute("may_unverified_instrumentation"))
       {
         InstrumentWithMayUnverifiedConditions(impl, exitBlock);
       }
@@ -922,13 +922,13 @@ namespace VC
 
     static bool IsAssumptionVariableOrIncarnation(Variable v)
     {
-      if (QKeyValue.FindBoolAttribute(v.Attributes, "assumption"))
+      if (v.Attributes.FindBoolAttribute("assumption"))
       {
         return true;
       }
 
       var incar = v as Incarnation;
-      return incar == null || QKeyValue.FindBoolAttribute(incar.OriginalVariable.Attributes, "assumption");
+      return incar == null || incar.OriginalVariable.Attributes.FindBoolAttribute("assumption");
     }
 
     static bool IsConjunctionOfAssumptionVariables(Expr expr, out HashSet<Variable> variables)
@@ -985,8 +985,8 @@ namespace VC
 
     private void HandleSelectiveChecking(Implementation impl)
     {
-      if (QKeyValue.FindBoolAttribute(impl.Attributes, "selective_checking") ||
-          QKeyValue.FindBoolAttribute(impl.Proc.Attributes, "selective_checking"))
+      if (impl.Attributes.FindBoolAttribute("selective_checking") ||
+          impl.Proc.Attributes.FindBoolAttribute("selective_checking"))
       {
         var startPoints = new List<Block>();
         foreach (var b in impl.Blocks)
@@ -994,7 +994,7 @@ namespace VC
           foreach (Cmd c in b.Cmds)
           {
             var p = c as PredicateCmd;
-            if (p != null && QKeyValue.FindBoolAttribute(p.Attributes, "start_checking_here"))
+            if (p != null && p.Attributes.FindBoolAttribute("start_checking_here"))
             {
               startPoints.Add(b);
               break;
@@ -1047,7 +1047,7 @@ namespace VC
           foreach (Cmd c in b.Cmds)
           {
             var p = c as PredicateCmd;
-            if (p != null && QKeyValue.FindBoolAttribute(p.Attributes, "start_checking_here"))
+            if (p != null && p.Attributes.FindBoolAttribute("start_checking_here"))
             {
               copyMode = true;
             }

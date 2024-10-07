@@ -44,7 +44,7 @@ namespace Microsoft.Boogie
       }
 
       if (cmd is AssumeCmd assumeCmd
-          && QKeyValue.FindBoolAttribute(assumeCmd.Attributes, "assumption_variable_initialization"))
+          && assumeCmd.Attributes.FindBoolAttribute("assumption_variable_initialization"))
       {
         // Ignore assumption variable initializations.
         assumeCmd.Checksum = currentChecksum;
@@ -512,7 +512,7 @@ namespace Microsoft.Boogie
           continue;
         }
         var decl = lhs.AssignedVariable.Decl;
-        if (lhs.AssignedVariable.Decl != null && QKeyValue.FindBoolAttribute(decl.Attributes, "assumption"))
+        if (lhs.AssignedVariable.Decl != null && decl.Attributes.FindBoolAttribute("assumption"))
         {
           var rhs = Rhss[i] as NAryExpr;
           if (rhs == null

@@ -580,7 +580,7 @@ namespace Microsoft.Boogie
 
     private Cmd InlinedEnsures(CallCmd callCmd, Ensures ens)
     {
-      if (QKeyValue.FindBoolAttribute(ens.Attributes, "InlineAssume"))
+      if (ens.Attributes.FindBoolAttribute("InlineAssume"))
       {
         return new AssumeCmd(ens.tok, codeCopier.CopyExpr(ens.Condition));
       }

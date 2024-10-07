@@ -1052,12 +1052,12 @@ public class CallCmd : CallCommonality
 
       #region stratified inlining support
 
-      if (QKeyValue.FindBoolAttribute(e.Attributes, "si_fcall"))
+      if (e.Attributes.FindBoolAttribute("si_fcall"))
       {
         assume.Attributes = Attributes;
       }
 
-      if (QKeyValue.FindBoolAttribute(e.Attributes, "candidate"))
+      if (e.Attributes.FindBoolAttribute("candidate"))
       {
         assume.Attributes = new QKeyValue(Token.NoToken, "candidate", new List<object>(), assume.Attributes);
         assume.Attributes.AddParam(this.callee);

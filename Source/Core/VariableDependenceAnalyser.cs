@@ -425,7 +425,7 @@ namespace Microsoft.Boogie
           foreach (Cmd c in succ.Cmds)
           {
             AssumeCmd a = c as AssumeCmd;
-            if (a != null && QKeyValue.FindBoolAttribute(a.Attributes, "partition"))
+            if (a != null && a.Attributes.FindBoolAttribute("partition"))
             {
               var VarCollector = new VariableCollector();
               VarCollector.VisitExpr(a.Expr);

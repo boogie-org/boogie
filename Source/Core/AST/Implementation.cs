@@ -151,7 +151,7 @@ public class Implementation : DeclWithFormals {
     }
 
     if (options.StratifiedInlining > 0) {
-      return !QKeyValue.FindBoolAttribute(Attributes, "entrypoint");
+      return !Attributes.FindBoolAttribute("entrypoint");
     }
 
     return false;
