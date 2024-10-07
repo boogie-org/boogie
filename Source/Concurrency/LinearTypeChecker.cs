@@ -515,9 +515,14 @@ namespace Microsoft.Boogie
           continue;
         }
         isLinearUnpack = true;
-        if (FindLinearKind(node.Constructor.InParams[j]) == LinearKind.ORDINARY)
+        var field = node.Constructor.InParams[j];
+        if (FindLinearKind(field) == LinearKind.ORDINARY)
         {
-          Error(unpackedLhs[j], $"source of unpack must be linear field: {node.Constructor.InParams[j]}");
+          Error(unpackedLhs[j], $"source of unpack must be linear field: {field}");
+        }
+        else if (InvalidAssignmentWithKeyCollection(unpackedLhs[j].Decl, field))
+        {
+          Error(unpackedLhs[j], $"Mismatch in key collection between source and target");
         }
       }
       if (isLinearUnpack)
@@ -644,17 +649,14 @@ namespace Microsoft.Boogie
           {
             if (InvalidAssignmentWithKeyCollection(node.Outs[0].Decl, modifiedArgument))
             {
-              Error(node, $"Mismatch in key collection between source and target");
+              Error(node.Outs[0], $"Mismatch in key collection between source and target");
             }
           }
           else if (originalProc.Name == "Map_Join")
           {
-            if (node.Ins[1] is IdentifierExpr ie)
+            if (node.Ins[1] is IdentifierExpr ie && InvalidAssignmentWithKeyCollection(modifiedArgument, ie.Decl))
             {
-              if (InvalidAssignmentWithKeyCollection(modifiedArgument, ie.Decl))
-              {
-                Error(node, $"Mismatch in key collection between source and target");
-              }
+              Error(node.Ins[1], $"Mismatch in key collection between source and target");
             }
           }
           else if (originalProc.Name == "Map_Get" || originalProc.Name == "Map_Put")
@@ -670,6 +672,13 @@ namespace Microsoft.Boogie
             {
               Error(node, $"Keys must not be collected");
             }
+          }
+        }
+        else if (originalProc.Name == "Map_Unpack")
+        {
+          if (node.Ins[0] is IdentifierExpr ie && !AreKeysCollected(ie.Decl))
+          {
+            Error(node.Ins[0], $"Mismatch in key collection between source and target");
           }
         }
       }
