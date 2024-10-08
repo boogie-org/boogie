@@ -450,7 +450,7 @@ namespace VC
       options.PrintDesugarings = oldPrintDesugaringSetting;
     }
 
-    public static void ResetPredecessors(List<Block> blocks)
+    public static void ResetPredecessors(IList<Block> blocks)
     {
       Contract.Requires(blocks != null);
       foreach (Block b in blocks)
@@ -686,7 +686,7 @@ namespace VC
 
       var start = DateTime.UtcNow;
 
-      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(run.OutputWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo, implementation.debugInfos);
+      var r = ConvertBlocks2PassiveCmd(run.OutputWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo, implementation.debugInfos);
 
       var end = DateTime.UtcNow;
 
@@ -722,7 +722,7 @@ namespace VC
       return r;
     }
 
-    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(TextWriter traceWriter, List<Block> blocks, List<IdentifierExpr> modifies,
+    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(TextWriter traceWriter, IList<Block> blocks, List<IdentifierExpr> modifies,
       ModelViewInfo mvInfo, Dictionary<Cmd, List<object>> debugInfos)
     {
       Contract.Requires(blocks != null);
@@ -1427,7 +1427,7 @@ namespace VC
       return newBlock;
     }
 
-    protected void AddBlocksBetween(List<Block> blocks)
+    protected void AddBlocksBetween(IList<Block> blocks)
     {
       Contract.Requires(blocks != null);
 
@@ -1451,7 +1451,9 @@ namespace VC
         }
       }
 
-      blocks.AddRange(tweens); // must wait until iteration is done before changing the list
+      foreach (var tween in tweens) {
+        blocks.Add(tween); // must wait until iteration is done before changing the list
+      }
 
       #endregion
     }

@@ -354,7 +354,7 @@ namespace Microsoft.Boogie
       return nextlblCount;
     }
 
-    public virtual List<Block /*!*/> /*!*/ DoInlineBlocks(List<Block /*!*/> /*!*/ blocks, ref bool inlinedSomething)
+    public virtual List<Block /*!*/> /*!*/ DoInlineBlocks(IList<Block /*!*/> /*!*/ blocks, ref bool inlinedSomething)
     {
       Contract.Requires(cce.NonNullElements(blocks));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
@@ -625,8 +625,7 @@ namespace Microsoft.Boogie
       Contract.Requires(codeCopier.oldSubstMap != null);
 
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
-      List<Block /*!*/> /*!*/
-        implBlocks = cce.NonNull(impl.OriginalBlocks);
+      var /*!*/ implBlocks = cce.NonNull(impl.OriginalBlocks);
       Contract.Assert(implBlocks.Count > 0);
 
       Procedure proc = impl.Proc;

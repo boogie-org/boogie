@@ -13,7 +13,7 @@ namespace VCGeneration;
 
 class IsolateAttributeOnJumpsHandler {
   public static (List<ManualSplit> Isolated, ManualSplit Remainder) GetParts(VCGenOptions options, ManualSplit partToDivide, 
-    Func<IImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
+    Func<IImplementationPartOrigin, IList<Block>, ManualSplit> createPart) {
 
     var rewriter = new BlockRewriter(options, partToDivide.Blocks, createPart);
     

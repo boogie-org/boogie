@@ -541,7 +541,9 @@ namespace Microsoft.Boogie
       impl.Blocks.Add(unchangedCheckerBlock);
       impl.Blocks.Add(returnCheckerBlock);
       impl.Blocks.Add(returnBlock);
-      impl.Blocks.AddRange(implRefinementCheckingBlocks);
+      foreach (var block in implRefinementCheckingBlocks) {
+        impl.Blocks.Add(block);
+      }
       impl.Blocks.Insert(0, CreateInitialBlock(impl, preconditions));
     }
 
@@ -598,7 +600,9 @@ namespace Microsoft.Boogie
         b.TransferCmd = currTransferCmd;
       }
 
-      impl.Blocks.AddRange(newBlocks);
+      foreach (var newBlock in newBlocks) {
+        impl.Blocks.Add(newBlock);
+      }
     }
 
     private Block CreateNoninterferenceCheckerBlock()

@@ -142,7 +142,7 @@ namespace Microsoft.Boogie
       return base.VisitBlockSeq(new List<Block>(blockSeq));
     }
 
-    public override List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
+    public override IList<Block> /*!*/ VisitBlockList(IList<Block> blocks /*!*/ /*!*/)
     {
       //Contract.Requires(cce.NonNullElements(blocks));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));

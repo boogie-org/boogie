@@ -10,10 +10,11 @@ namespace Microsoft.Boogie;
 public class Implementation : DeclWithFormals {
   public List<Variable> LocVars;
 
-  [Rep] public StmtList StructuredStmts;
+  [Rep] 
+  public StmtList StructuredStmts { get; set; }
 
-  [field: Rep]
-  public List<Block> Blocks {
+  [Rep]
+  public IList<Block> Blocks {
     get; 
     set;
   }
@@ -21,7 +22,7 @@ public class Implementation : DeclWithFormals {
 
   // Blocks before applying passification etc.
   // Both are used only when /inline is set.
-  public List<Block> OriginalBlocks;
+  public IList<Block> OriginalBlocks;
   public List<Variable> OriginalLocVars;
     
   // Map filled in during passification to allow augmented error trace reporting
@@ -965,7 +966,7 @@ public class Implementation : DeclWithFormals {
     this.BlockPredecessorsComputed = true;
   }
 
-  public static void ComputePredecessorsForBlocks(List<Block> blocks)
+  public static void ComputePredecessorsForBlocks(IList<Block> blocks)
   {
     foreach (var block in blocks) {
       if (block.TransferCmd is not GotoCmd gtc) {

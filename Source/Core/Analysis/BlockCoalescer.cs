@@ -79,7 +79,7 @@ public class BlockCoalescer : ReadOnlyVisitor
     return impl;
   }
 
-  public static List<Block> CoalesceFromRootBlock(List<Block> blocks)
+  public static IList<Block> CoalesceFromRootBlock(IList<Block> blocks)
   {
     if (!blocks.Any())
     {
