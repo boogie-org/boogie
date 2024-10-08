@@ -77,7 +77,7 @@ class SplitAttributeHandler {
     return predicateCmd.Attributes.FindBoolAttribute("split_here");
   }
 
-  private static Dictionary<Block, Cmd?> GetMapFromBlockStartToSplit(List<Block> blocks, Dictionary<Block, List<Cmd>> splitsPerBlock) {
+  private static Dictionary<Block, Cmd?> GetMapFromBlockStartToSplit(IList<Block> blocks, Dictionary<Block, List<Cmd>> splitsPerBlock) {
     var todo = new Stack<Block>();
     var blockAssignments = new Dictionary<Block, Cmd?>();
     var immediateDominators = Program.GraphFromBlocks(blocks).ImmediateDominator();
@@ -169,7 +169,7 @@ class SplitAttributeHandler {
     }
   }
 
-  private static List<Block> UpdateBlocks(IReadOnlyList<Block> blocks,
+  private static List<Block> UpdateBlocks(IList<Block> blocks,
     Func<Block, List<Cmd>> getCommands)
   {
     var newBlocks = new List<Block>(blocks.Count);

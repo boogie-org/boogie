@@ -1,3 +1,154 @@
-focus.bpl(15,5): Error: this assertion could not be proved
+implementation Ex() returns (y: int)
+{
 
-Boogie program verifier finished with 1 verified, 1 error
+  anon0:
+    assert 5 + 0 == 5;
+    assert 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} 0 >= x#AT#0;
+    assume y#AT#2 == y#AT#0;
+    assert y#AT#2 >= 0;
+    return;
+}
+
+
+implementation Ex/split@15() returns (y: int)
+{
+
+  anon0:
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} 0 >= x#AT#0;
+    assume y#AT#2 == y#AT#0;
+    assume y#AT#2 >= 0;
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} x#AT#0 > 0;
+    assume x#AT#1 == x#AT#0 - 1;
+    assert {:split_here} (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 16;
+    assert {:focus} (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
+    assume y#AT#1 == y#AT#0 + 1;
+    assume {:partition} 3 <= x#AT#1;
+    assert 2 < 2;
+    goto ;
+}
+
+
+implementation Ex/assert@4[25,14]() returns (y: int)
+{
+
+  anon0:
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} 0 >= x#AT#0;
+    assume y#AT#2 == y#AT#0;
+    assume y#AT#2 >= 0;
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} x#AT#0 > 0;
+    assume x#AT#1 == x#AT#0 - 1;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 16;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
+    assume y#AT#1 == y#AT#0 + 1;
+    assume {:partition} 3 <= x#AT#1;
+    assume 2 < 2;
+    assert {:focus} (x#AT#1 + y#AT#1) * (x#AT#1 + y#AT#1) == 25;
+    assert x#AT#1 + y#AT#1 == 5;
+    assert x#AT#1 * x#AT#1 <= 25;
+    assume false;
+    assume y#AT#2 == y#AT#1;
+    return;
+}
+
+
+implementation Ex/assert@4[19,14]() returns (y: int)
+{
+
+  anon0:
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} 0 >= x#AT#0;
+    assume y#AT#2 == y#AT#0;
+    assume y#AT#2 >= 0;
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} x#AT#0 > 0;
+    assume x#AT#1 == x#AT#0 - 1;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 16;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
+    assume y#AT#1 == y#AT#0 + 1;
+    assume {:partition} x#AT#1 < 3;
+    assert 2 < 2;
+    assert {:focus} y#AT#1 * y#AT#1 > 4;
+    goto ;
+}
+
+
+implementation Ex/assert@4[25,19,14]() returns (y: int)
+{
+
+  anon0:
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} 0 >= x#AT#0;
+    assume y#AT#2 == y#AT#0;
+    assume y#AT#2 >= 0;
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} x#AT#0 > 0;
+    assume x#AT#1 == x#AT#0 - 1;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 16;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
+    assume y#AT#1 == y#AT#0 + 1;
+    assume {:partition} x#AT#1 < 3;
+    assume 2 < 2;
+    assume y#AT#1 * y#AT#1 > 4;
+    assert {:focus} (x#AT#1 + y#AT#1) * (x#AT#1 + y#AT#1) == 25;
+    assert x#AT#1 + y#AT#1 == 5;
+    assert x#AT#1 * x#AT#1 <= 25;
+    assume false;
+    assume y#AT#2 == y#AT#1;
+    return;
+}
+
+
+implementation focusInconsistency(x: int) returns (y: int)
+{
+
+  anon0:
+    assume {:where i} false && true;
+    goto ;
+}
+
+
+implementation focusInconsistency/assert@29[38](x: int) returns (y: int)
+{
+
+  anon0:
+    assume {:where i} false && true;
+    assume {:partition} 0 >= x;
+    assume {:focus} true;
+    assert false;
+    return;
+}
+
+
+
+Boogie program verifier finished with 2 verified, 0 errors

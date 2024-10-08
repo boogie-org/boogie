@@ -2490,7 +2490,7 @@ namespace Microsoft.Boogie
 
     public bool CanAlwaysAssume ()
     {
-      return Free && this.Attributes.FindBoolAttribute("always_assume");
+      return Free && Attributes.FindBoolAttribute("always_assume");
     }
 
     public Ensures(IToken token, bool free, Expr condition, string comment, QKeyValue kv)

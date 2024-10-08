@@ -57,7 +57,7 @@ namespace Microsoft.Boogie
      * See Checker.Setup for more information.
      * Data type constructor declarations are not pruned and they do affect VC generation.
      */
-    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, Program program, List<Block>? blocks)
+    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, Program program, IList<Block>? blocks)
     {
       if (program.DeclarationDependencies == null || blocks == null || !options.Prune)
       {
@@ -83,7 +83,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static RevealedState GetRevealedState(List<Block> blocks)
+    private static RevealedState GetRevealedState(IList<Block> blocks)
     {
       var controlFlowGraph = GetControlFlowGraph(blocks);
       var starts = controlFlowGraph.Nodes.Where(n => !controlFlowGraph.Predecessors(n).Any()).ToList();
@@ -97,7 +97,7 @@ namespace Microsoft.Boogie
         Aggregate(RevealedState.AllHidden, RevealedAnalysis.MergeStates);
     }
 
-    public static Graph<Absy> GetControlFlowGraph(List<Block> blocks)
+    public static Graph<Absy> GetControlFlowGraph(IList<Block> blocks)
     {
       /*
        * Generally the blocks created by splitting have unset block.Predecessors fields

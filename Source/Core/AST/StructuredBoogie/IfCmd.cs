@@ -4,73 +4,74 @@ namespace Microsoft.Boogie;
 
 public class IfCmd : StructuredCmd
 {
+  public QKeyValue Attributes;
   public Expr Guard;
 
-  private StmtList /*!*/
-    _thn;
+  private StmtList /*!*/ thn;
 
-  public StmtList /*!*/ thn
+  public StmtList /*!*/ Thn
   {
     get
     {
       Contract.Ensures(Contract.Result<StmtList>() != null);
-      return this._thn;
+      return this.thn;
     }
     set
     {
       Contract.Requires(value != null);
-      this._thn = value;
+      this.thn = value;
     }
   }
 
-  private IfCmd _elseIf;
+  private IfCmd elseIf;
 
-  public IfCmd elseIf
+  public IfCmd ElseIf
   {
-    get { return this._elseIf; }
+    get { return this.elseIf; }
     set
     {
-      Contract.Requires(value == null || this.elseBlock == null);
-      this._elseIf = value;
+      Contract.Requires(value == null || this.ElseBlock == null);
+      this.elseIf = value;
     }
   }
 
-  private StmtList _elseBlock;
+  private StmtList elseBlock;
 
-  public StmtList elseBlock
+  public StmtList ElseBlock
   {
-    get { return this._elseBlock; }
+    get { return this.elseBlock; }
     set
     {
-      Contract.Requires(value == null || this.elseIf == null);
-      this._elseBlock = value;
+      Contract.Requires(value == null || this.ElseIf == null);
+      this.elseBlock = value;
     }
   }
 
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(this._thn != null);
-    Contract.Invariant(this._elseIf == null || this._elseBlock == null);
+    Contract.Invariant(this.thn != null);
+    Contract.Invariant(this.elseIf == null || this.elseBlock == null);
   }
 
-  public IfCmd(IToken /*!*/ tok, Expr guard, StmtList /*!*/ thn, IfCmd elseIf, StmtList elseBlock)
+  public IfCmd(IToken /*!*/ tok, Expr guard, StmtList /*!*/ thn, IfCmd elseIf, StmtList elseBlock, 
+    QKeyValue attributes = null)
     : base(tok)
   {
     Contract.Requires(tok != null);
     Contract.Requires(thn != null);
     Contract.Requires(elseIf == null || elseBlock == null);
     this.Guard = guard;
-    this._thn = thn;
-    this._elseIf = elseIf;
-    this._elseBlock = elseBlock;
+    this.thn = thn;
+    this.elseIf = elseIf;
+    this.elseBlock = elseBlock;
+    Attributes = attributes;
   }
 
   public override void Emit(TokenTextWriter stream, int level)
   {
     stream.Write(level, "if (");
-    IfCmd /*!*/
-      ifcmd = this;
+    var /*!*/ ifcmd = this;
     while (true)
     {
       if (ifcmd.Guard == null)
@@ -85,20 +86,20 @@ public class IfCmd : StructuredCmd
       stream.WriteLine(")");
 
       stream.WriteLine(level, "{");
-      ifcmd.thn.Emit(stream, level + 1);
+      ifcmd.Thn.Emit(stream, level + 1);
       stream.WriteLine(level, "}");
 
-      if (ifcmd.elseIf != null)
+      if (ifcmd.ElseIf != null)
       {
         stream.Write(level, "else if (");
-        ifcmd = ifcmd.elseIf;
+        ifcmd = ifcmd.ElseIf;
         continue;
       }
-      else if (ifcmd.elseBlock != null)
+      else if (ifcmd.ElseBlock != null)
       {
         stream.WriteLine(level, "else");
         stream.WriteLine(level, "{");
-        ifcmd.elseBlock.Emit(stream, level + 1);
+        ifcmd.ElseBlock.Emit(stream, level + 1);
         stream.WriteLine(level, "}");
       }
 

@@ -1563,9 +1563,13 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		StmtList/*!*/ thn;
 		IfCmd/*!*/ elseIf;  IfCmd elseIfOption = null;
 		StmtList/*!*/ els;  StmtList elseOption = null;
+		QKeyValue kv = null;
 		
 		Expect(57);
 		x = t; 
+		while (la.kind == 26) {
+			Attribute(ref kv);
+		}
 		Guard(out guard);
 		Expect(26);
 		StmtList(out thn);
@@ -1580,7 +1584,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				elseOption = els; 
 			} else SynErr(149);
 		}
-		ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); 
+		ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption, kv); 
 	}
 
 	void WhileCmd(out WhileCmd wcmd) {

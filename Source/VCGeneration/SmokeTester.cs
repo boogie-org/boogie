@@ -262,7 +262,7 @@ public class SmokeTester
     Block copy = CopyBlock(cur);
     Contract.Assert(copy != null);
     copy.Cmds = seq;
-    List<Block> backup = run.Implementation.Blocks;
+    var backup = run.Implementation.Blocks;
     Contract.Assert(backup != null);
     run.Implementation.Blocks = GetCopiedBlocks();
     copy.TransferCmd = new ReturnCmd(Token.NoToken);

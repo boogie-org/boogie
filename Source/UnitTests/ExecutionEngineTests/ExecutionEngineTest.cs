@@ -252,7 +252,7 @@ Boogie program verifier finished with 1 verified, 1 error
 
     Parser.Parse(programString, "fakeFilename", out var program1);
     foreach (var block in program1.Implementations.First().Blocks) {
-      foreach (var cmd in block.cmds) {
+      foreach (var cmd in block.Cmds) {
         if (cmd is AssertCmd assertCmd) {
           assertCmd.Description = new FakeDescription();
         }

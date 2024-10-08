@@ -11,7 +11,7 @@ public class ManualSplit : Split
   public IImplementationPartOrigin Token { get; }
   
   public ManualSplit(VCGenOptions options, 
-    Func<List<Block>> blocks, 
+    Func<IList<Block>> blocks, 
     VerificationConditionGenerator parent, 
     ImplementationRun run, 
     IImplementationPartOrigin origin, int? randomSeed = null) 

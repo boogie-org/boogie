@@ -5,6 +5,12 @@ using System.Linq;
 namespace Microsoft.Boogie;
 
 public static class ListExtensions {
+  public static void AddRange<T>(this IList<T> list, IEnumerable<T> newValues) {
+    foreach (var value in newValues) {
+      list.Add(value);
+    }
+  }
+  
   public static IReadOnlyList<T> Reversed<T>(this IReadOnlyList<T> list) {
     return new ReversedReadOnlyList<T>(list);
   }

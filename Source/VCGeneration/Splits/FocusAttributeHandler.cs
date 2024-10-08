@@ -19,7 +19,7 @@ public class FocusAttributeHandler {
   /// We recurse twice for each focus, leading to potentially 2^N splits
   /// </summary>
   public static List<ManualSplit> GetParts(VCGenOptions options, ImplementationRun run, 
-    Func<IImplementationPartOrigin, List<Block>, ManualSplit> createPart)
+    Func<IImplementationPartOrigin, IList<Block>, ManualSplit> createPart)
   {
     var rewriter = new BlockRewriter(options, run.Implementation.Blocks, createPart);
     
@@ -52,7 +52,10 @@ public class FocusAttributeHandler {
     void AddSplitsFromIndex(ImmutableStack<Block> path, int focusIndex, ISet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
-        var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude, freeAssumeBlocks);
+        
+        // freeBlocks consist of the predecessors of the relevant foci.
+        // Their assertions turn into assumes and any splits inside them are disabled.
+        var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, freeAssumeBlocks);
         IImplementationPartOrigin token = path.Any() 
           ? new PathOrigin(run.Implementation.tok, path.ToList()) // TODO fix 
           : new ImplementationRootOrigin(run.Implementation); 

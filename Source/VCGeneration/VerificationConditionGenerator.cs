@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
+using VCGeneration;
 using VCGeneration.Transformations;
 
 namespace VC
@@ -31,7 +32,7 @@ namespace VC
 
   public class VerificationConditionGenerator : ConditionGeneration
   {
-    private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
+    private static readonly ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
 
 
     /// <summary>
@@ -474,7 +475,7 @@ namespace VC
 
       ControlFlowIdMap<Absy> absyIds;
 
-      List<Block> blocks;
+      IList<Block> blocks;
 
       protected Dictionary<Cmd, List<object>> debugInfos;
 
@@ -505,7 +506,7 @@ namespace VC
 
       public ErrorReporter(VCGenOptions options,
         ControlFlowIdMap<Absy> /*!*/ absyIds,
-        List<Block /*!*/> /*!*/ blocks,
+        IList<Block /*!*/> /*!*/ blocks,
         Dictionary<Cmd, List<object>> debugInfos,
         VerifierCallback /*!*/ callback,
         ModelViewInfo mvInfo,
@@ -571,11 +572,11 @@ namespace VC
 
         if (newCounterexample is ReturnCounterexample returnExample)
         {
-          foreach (var b in returnExample.Trace)
+          foreach (var block in returnExample.Trace)
           {
-            Contract.Assert(b != null);
-            Contract.Assume(b.TransferCmd != null);
-            if (b.TransferCmd.tok is GotoFromReturn gotoFromReturn) {
+            Contract.Assert(block != null);
+            Contract.Assume(block.TransferCmd != null);
+            if (block.TransferCmd.tok is GotoFromReturn gotoFromReturn) {
               returnExample.FailingReturn = gotoFromReturn.Origin;
             }
           }
@@ -764,7 +765,7 @@ namespace VC
         #region Get rid of empty blocks
 
         {
-          RemoveEmptyBlocks(impl.Blocks);
+          BlockTransformations.DeleteStraightLineBlocksWithoutCommands(impl.Blocks);
           impl.PruneUnreachableBlocks(Options);
         }
 
@@ -1479,7 +1480,7 @@ namespace VC
      *
      */
 
-    VCExpr LetVC(List<Block> blocks,
+    VCExpr LetVC(IList<Block> blocks,
       VCExpr controlFlowVariableExpr,
       ControlFlowIdMap<Absy> absyIds,
       ProverContext proverCtxt,

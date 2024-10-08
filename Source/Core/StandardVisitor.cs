@@ -219,7 +219,7 @@ namespace Microsoft.Boogie
       return blockSeq;
     }
 
-    public virtual List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
+    public virtual IList<Block> /*!*/ VisitBlockList(IList<Block> blocks /*!*/ /*!*/)
     {
       Contract.Requires(blocks != null);
       Contract.Ensures(Contract.Result<List<Block>>() != null);
@@ -1150,14 +1150,12 @@ namespace Microsoft.Boogie
       return blockSeq;
     }
 
-    public override List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
+    public override IList<Block> /*!*/ VisitBlockList(IList<Block> blocks /*!*/ /*!*/)
     {
       Contract.Ensures(Contract.Result<List<Block>>() == blocks);
-      for (int i = 0, n = blocks.Count; i < n; i++)
-      {
-        this.VisitBlock(blocks[i]);
+      foreach (var block in blocks) {
+        this.VisitBlock(block);
       }
-
       return blocks;
     }
 

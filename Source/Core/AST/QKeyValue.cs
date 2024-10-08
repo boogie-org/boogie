@@ -48,14 +48,14 @@ public class QKeyValue : Absy
     Contract.Invariant(cce.NonNullElements(this._params));
   }
 
-  public QKeyValue(IToken tok, string key, IList<object /*!*/> /*!*/ parameters, QKeyValue next)
+  public QKeyValue(IToken tok, string key, IList<object /*!*/> /*!*/ parameters = null, QKeyValue next = null)
     : base(tok)
   {
     Contract.Requires(key != null);
     Contract.Requires(tok != null);
     Contract.Requires(cce.NonNullElements(parameters));
     Key = key;
-    this._params = new List<object>(parameters);
+    this._params = parameters == null ? new List<object>() : new List<object>(parameters);
     Next = next;
   }
 

@@ -879,7 +879,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     throw new LeanConversionException(Token.NoToken, $"Internal: List<Block> should never be directly visited ({blockSeq}).");
   }
 
-  public override List<Block> VisitBlockList(List<Block> blocks)
+  public override IList<Block> VisitBlockList(IList<Block> blocks)
   {
     throw new LeanConversionException(Token.NoToken, $"Internal: List<Block> should never be directly visited ({blocks}).");
   }
