@@ -773,7 +773,7 @@ namespace VC
         variableCollectors[b] = mvc;
         foreach (Block p in b.Predecessors)
         {
-          p.succCount--;
+          p.SuccCount--;
           if (p.Checksum != null)
           {
             // Compute the checksum based on the checksums of the predecessor. The order should not matter.
@@ -781,7 +781,7 @@ namespace VC
           }
 
           mvc.AddUsedVariables(variableCollectors[p].UsedVariables);
-          if (p.succCount == 0)
+          if (p.SuccCount == 0)
           {
             block2Incarnation.Remove(p);
           }
@@ -792,12 +792,12 @@ namespace VC
         GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
         if (gotoCmd == null)
         {
-          b.succCount = 0;
+          b.SuccCount = 0;
         }
         else
         {
           // incarnationMap needs to be added only if there is some successor of b
-          b.succCount = gotoCmd.LabelNames.Count;
+          b.SuccCount = gotoCmd.LabelNames.Count;
           block2Incarnation.Add(b, incarnationMap);
         }
 
