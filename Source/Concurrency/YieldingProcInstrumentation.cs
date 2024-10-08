@@ -474,62 +474,56 @@ namespace Microsoft.Boogie
 
       // add jumps to noninterferenceChecker, returnChecker, and refinementChecker blocks
       var implRefinementCheckingBlocks = new List<Block>();
-      foreach (var block in impl.Blocks) {
-        if (block.TransferCmd is not GotoCmd gotoCmd)
+      foreach (var b in impl.Blocks)
+      {
+        if (b.TransferCmd is GotoCmd gotoCmd)
         {
-          block.TransferCmd = new GotoCmd(block.TransferCmd.tok,
-            new List<Block> { returnCheckerBlock, returnBlock, noninterferenceCheckerBlock });
-          continue;
-        }
-
-        var targetBlocks = new List<Block>();
-        var addEdge = false;
-        foreach (var nextBlock in gotoCmd.LabelTargets)
-        {
-          if (nextBlock.Cmds.Count <= 0)
+          var targetBlocks = new List<Block>();
+          var addEdge = false;
+          foreach (var nextBlock in gotoCmd.LabelTargets)
           {
-            continue;
-          }
-
-          var cmd = nextBlock.Cmds[0];
-          if (cmd is not ParCallCmd parCallCmd)
-          {
-            continue;
-          }
-
-          foreach (var callCmd in parCallCmd.CallCmds)
-          {
-            if (!refinementBlocks.TryGetValue(callCmd, out var targetBlock))
+            if (nextBlock.Cmds.Count > 0)
             {
-              continue;
+              var cmd = nextBlock.Cmds[0];
+              if (cmd is ParCallCmd parCallCmd)
+              {
+                foreach (var callCmd in parCallCmd.CallCmds)
+                {
+                  if (refinementBlocks.ContainsKey(callCmd))
+                  {
+                    var targetBlock = refinementBlocks[callCmd];
+                    FixUpImplRefinementCheckingBlock(targetBlock,
+                      CivlAttributes.IsCallMarked(callCmd)
+                        ? returnCheckerBlock
+                        : unchangedCheckerBlock);
+                    targetBlocks.Add(targetBlock);
+                    implRefinementCheckingBlocks.Add(targetBlock);
+                  }
+                }
+                addEdge = true;
+              }
             }
-
-            FixUpImplRefinementCheckingBlock(targetBlock,
-              CivlAttributes.IsCallMarked(callCmd)
-                ? returnCheckerBlock
-                : unchangedCheckerBlock);
-            targetBlocks.Add(targetBlock);
-            implRefinementCheckingBlocks.Add(targetBlock);
           }
 
-          addEdge = true;
-        }
-
-        gotoCmd.AddTargets(targetBlocks);
-        if (!addEdge)
-        {
-          continue;
-        }
-
-        AddEdge(gotoCmd, noninterferenceCheckerBlock);
-        if (blocksInYieldingLoops.Contains(block))
-        {
-          AddEdge(gotoCmd, unchangedCheckerBlock);
+          gotoCmd.AddTargets(targetBlocks);
+          if (addEdge)
+          {
+            AddEdge(gotoCmd, noninterferenceCheckerBlock);
+            if (blocksInYieldingLoops.Contains(b))
+            {
+              AddEdge(gotoCmd, unchangedCheckerBlock);
+            }
+            else
+            {
+              b.Cmds.AddRange(refinementInstrumentation.CreateActionEvaluationCmds());
+              AddEdge(gotoCmd, refinementCheckerBlock);
+            }
+          }
         }
         else
         {
-          block.Cmds.AddRange(refinementInstrumentation.CreateActionEvaluationCmds());
-          AddEdge(gotoCmd, refinementCheckerBlock);
+          b.TransferCmd = new GotoCmd(b.TransferCmd.tok,
+            new List<Block> {returnCheckerBlock, returnBlock, noninterferenceCheckerBlock});
         }
       }
 
@@ -551,9 +545,7 @@ namespace Microsoft.Boogie
       impl.Blocks.Add(unchangedCheckerBlock);
       impl.Blocks.Add(returnCheckerBlock);
       impl.Blocks.Add(returnBlock);
-      foreach (var block in implRefinementCheckingBlocks) {
-        impl.Blocks.Add(block);
-      }
+      impl.Blocks.AddRange(implRefinementCheckingBlocks);
       impl.Blocks.Insert(0, CreateInitialBlock(impl, preconditions));
     }
 
@@ -610,9 +602,7 @@ namespace Microsoft.Boogie
         b.TransferCmd = currTransferCmd;
       }
 
-      foreach (var newBlock in newBlocks) {
-        impl.Blocks.Add(newBlock);
-      }
+      impl.Blocks.AddRange(newBlocks);
     }
 
     private Block CreateNoninterferenceCheckerBlock()
