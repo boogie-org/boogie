@@ -85,7 +85,7 @@ namespace VC
 
     public Dictionary<Incarnation, Absy> IncarnationOriginMap = new();
 
-    public Program program;
+    public readonly Program program;
     public CheckerPool CheckerPool { get; }
 
     public ConditionGeneration(Program program, CheckerPool checkerPool)
