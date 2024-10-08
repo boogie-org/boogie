@@ -7,37 +7,11 @@ namespace Microsoft.Boogie;
 
 public sealed class Block : Absy
 {
-  private string /*!*/ label; // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
+  public string /*!*/ Label { get; set; } // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
 
-  public string /*!*/ Label
-  {
-    get
-    {
-      Contract.Ensures(Contract.Result<string>() != null);
-      return this.label;
-    }
-    set
-    {
-      Contract.Requires(value != null);
-      this.label = value;
-    }
-  }
-
-  [Rep] [ElementsPeer] public List<Cmd> /*!*/ cmds;
-
-  public List<Cmd> /*!*/ Cmds
-  {
-    get
-    {
-      Contract.Ensures(Contract.Result<List<Cmd>>() != null);
-      return this.cmds;
-    }
-    set
-    {
-      Contract.Requires(value != null);
-      this.cmds = value;
-    }
-  }
+  [Rep] 
+  [ElementsPeer] 
+  public List<Cmd> /*!*/ Cmds;
 
   public IEnumerable<Block> Exits()
   {
@@ -54,10 +28,6 @@ public sealed class Block : Absy
 
   public byte[] Checksum;
 
-  // Abstract interpretation
-
-  // public bool currentlyTraversed;
-
   public enum VisitState
   {
     ToVisit,
@@ -67,17 +37,16 @@ public sealed class Block : Absy
 
   public VisitState TraversingStatus;
 
-  public int aiId; // block ID used by the abstract interpreter, which may change these numbers with each AI run
-  public bool widenBlock;
+  public int AiId; // block ID used by the abstract interpreter, which may change these numbers with each AI run
+  public bool WidenBlock;
 
-  public int
-    iterations; // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
+  public int Iterations; // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
 
   // VC generation and SCC computation
   public List<Block> /*!*/ Predecessors;
 
   // This field is used during passification to null-out entries in block2Incarnation dictionary early
-  public int succCount;
+  public int SuccCount;
 
   private HashSet<Variable /*!*/> liveVarsBefore;
 
@@ -112,8 +81,8 @@ public sealed class Block : Absy
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(this.label != null);
-    Contract.Invariant(this.cmds != null);
+    Contract.Invariant(this.Label != null);
+    Contract.Invariant(this.Cmds != null);
     Contract.Invariant(cce.NonNullElements(this.liveVarsBefore, true));
   }
 
@@ -143,13 +112,13 @@ public sealed class Block : Absy
     Contract.Requires(label != null);
     Contract.Requires(cmds != null);
     Contract.Requires(tok != null);
-    this.label = label;
-    this.cmds = cmds;
+    this.Label = label;
+    this.Cmds = cmds;
     this.TransferCmd = transferCmd;
     this.Predecessors = new List<Block>();
     this.liveVarsBefore = null;
     this.TraversingStatus = VisitState.ToVisit;
-    this.iterations = 0;
+    this.Iterations = 0;
   }
 
   public void Emit(TokenTextWriter stream, int level)
@@ -163,7 +132,7 @@ public sealed class Block : Absy
       stream.Options.PrintWithUniqueASTIds
         ? String.Format("h{0}^^{1}", this.GetHashCode(), this.Label)
         : this.Label,
-      this.widenBlock ? "  // cut point" : "");
+      this.WidenBlock ? "  // cut point" : "");
 
     foreach (Cmd /*!*/ c in this.Cmds)
     {
@@ -212,14 +181,14 @@ public sealed class Block : Absy
   {
     //      this.currentlyTraversed = false;
     this.TraversingStatus = VisitState.ToVisit;
-    this.iterations = 0;
+    this.Iterations = 0;
   }
 
   [Pure]
   public override string ToString()
   {
     Contract.Ensures(Contract.Result<string>() != null);
-    return this.Label + (this.widenBlock ? "[w]" : "");
+    return this.Label + (this.WidenBlock ? "[w]" : "");
   }
 
   public override Absy StdDispatch(StandardVisitor visitor)

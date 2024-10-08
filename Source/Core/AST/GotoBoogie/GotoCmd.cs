@@ -7,7 +7,7 @@ namespace Microsoft.Boogie;
 
 public class GotoCmd : TransferCmd
 {
-  [Rep] public List<String> LabelNames;
+  [Rep] public List<string> LabelNames;
   [Rep] public List<Block> LabelTargets;
 
   public QKeyValue Attributes { get; set; }
@@ -19,28 +19,28 @@ public class GotoCmd : TransferCmd
   }
 
   [NotDelayed]
-  public GotoCmd(IToken /*!*/ tok, List<String> /*!*/ labelSeq)
+  public GotoCmd(IToken /*!*/ tok, List<string> /*!*/ labels)
     : base(tok)
   {
     Contract.Requires(tok != null);
-    Contract.Requires(labelSeq != null);
-    this.LabelNames = labelSeq;
+    Contract.Requires(labels != null);
+    this.LabelNames = labels;
   }
 
-  public GotoCmd(IToken /*!*/ tok, List<String> /*!*/ labelSeq, List<Block> /*!*/ blockSeq)
+  public GotoCmd(IToken /*!*/ tok, List<string> /*!*/ labels, List<Block> /*!*/ blocks)
     : base(tok)
   {
     Contract.Requires(tok != null);
-    Contract.Requires(labelSeq != null);
-    Contract.Requires(blockSeq != null);
-    Debug.Assert(labelSeq.Count == blockSeq.Count);
-    for (int i = 0; i < labelSeq.Count; i++)
+    Contract.Requires(labels != null);
+    Contract.Requires(blocks != null);
+    Debug.Assert(labels.Count == blocks.Count);
+    for (int i = 0; i < labels.Count; i++)
     {
-      Debug.Assert(Equals(labelSeq[i], cce.NonNull(blockSeq[i]).Label));
+      Debug.Assert(Equals(labels[i], cce.NonNull(blocks[i]).Label));
     }
 
-    this.LabelNames = labelSeq;
-    this.LabelTargets = blockSeq;
+    this.LabelNames = labels;
+    this.LabelTargets = blocks;
   }
 
   public GotoCmd(IToken /*!*/ tok, List<Block> /*!*/ blockSeq)
@@ -49,7 +49,7 @@ public class GotoCmd : TransferCmd
     //requires (blockSeq[i] != null ==> blockSeq[i].Label != null);
     Contract.Requires(tok != null);
     Contract.Requires(blockSeq != null);
-    List<String> labelSeq = new List<String>();
+    List<string> labelSeq = new List<string>();
     for (int i = 0; i < blockSeq.Count; i++)
     {
       labelSeq.Add(cce.NonNull(blockSeq[i]).Label);
