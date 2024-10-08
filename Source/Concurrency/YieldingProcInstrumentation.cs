@@ -474,27 +474,33 @@ namespace Microsoft.Boogie
 
       // add jumps to noninterferenceChecker, returnChecker, and refinementChecker blocks
       var implRefinementCheckingBlocks = new List<Block>();
-      foreach (var b in impl.Blocks) {
-        if (b.TransferCmd is not GotoCmd gotoCmd) {
-          b.TransferCmd = new GotoCmd(b.TransferCmd.tok,
+      foreach (var block in impl.Blocks) {
+        if (block.TransferCmd is not GotoCmd gotoCmd)
+        {
+          block.TransferCmd = new GotoCmd(block.TransferCmd.tok,
             new List<Block> { returnCheckerBlock, returnBlock, noninterferenceCheckerBlock });
           continue;
         }
 
         var targetBlocks = new List<Block>();
         var addEdge = false;
-        foreach (var nextBlock in gotoCmd.LabelTargets) {
-          if (nextBlock.Cmds.Count <= 0) {
+        foreach (var nextBlock in gotoCmd.LabelTargets)
+        {
+          if (nextBlock.Cmds.Count <= 0)
+          {
             continue;
           }
 
           var cmd = nextBlock.Cmds[0];
-          if (cmd is not ParCallCmd parCallCmd) {
+          if (cmd is not ParCallCmd parCallCmd)
+          {
             continue;
           }
 
-          foreach (var callCmd in parCallCmd.CallCmds) {
-            if (!refinementBlocks.TryGetValue(callCmd, out var targetBlock)) {
+          foreach (var callCmd in parCallCmd.CallCmds)
+          {
+            if (!refinementBlocks.TryGetValue(callCmd, out var targetBlock))
+            {
               continue;
             }
 
@@ -510,15 +516,19 @@ namespace Microsoft.Boogie
         }
 
         gotoCmd.AddTargets(targetBlocks);
-        if (!addEdge) {
+        if (!addEdge)
+        {
           continue;
         }
 
         AddEdge(gotoCmd, noninterferenceCheckerBlock);
-        if (blocksInYieldingLoops.Contains(b)) {
+        if (blocksInYieldingLoops.Contains(block))
+        {
           AddEdge(gotoCmd, unchangedCheckerBlock);
-        } else {
-          b.Cmds.AddRange(refinementInstrumentation.CreateActionEvaluationCmds());
+        }
+        else
+        {
+          block.Cmds.AddRange(refinementInstrumentation.CreateActionEvaluationCmds());
           AddEdge(gotoCmd, refinementCheckerBlock);
         }
       }

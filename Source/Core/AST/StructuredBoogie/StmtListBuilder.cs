@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 
 namespace Microsoft.Boogie;
 
@@ -21,7 +22,7 @@ public class StmtListBuilder
     Contract.Invariant(cce.NonNullElements(bigBlocks));
   }
 
-  void Dump(StructuredCmd scmd, TransferCmd tcmd)
+  void Dump(IToken token, StructuredCmd scmd, TransferCmd tcmd)
   {
     Contract.Requires(scmd == null || tcmd == null);
     Contract.Ensures(label == null && simpleCmds == null);
@@ -36,7 +37,7 @@ public class StmtListBuilder
         simpleCmds = new List<Cmd>();
       }
 
-      bigBlocks.Add(new BigBlock(Token.NoToken, label, simpleCmds, scmd, tcmd));
+      bigBlocks.Add(new BigBlock(token, label, simpleCmds, scmd, tcmd));
       label = null;
       simpleCmds = null;
     }
@@ -50,11 +51,11 @@ public class StmtListBuilder
   {
     Contract.Requires(endCurlyBrace != null);
     Contract.Ensures(Contract.Result<StmtList>() != null);
-    Dump(null, null);
+    Dump(endCurlyBrace, null, null);
     if (bigBlocks.Count == 0)
     {
       simpleCmds = new List<Cmd>(); // the StmtList constructor doesn't like an empty list of BigBlock's
-      Dump(null, null);
+      Dump(endCurlyBrace, null, null);
     }
 
     return new StmtList(bigBlocks, endCurlyBrace);
@@ -74,19 +75,19 @@ public class StmtListBuilder
   public void Add(StructuredCmd scmd)
   {
     Contract.Requires(scmd != null);
-    Dump(scmd, null);
+    Dump(scmd.tok, scmd, null);
   }
 
   public void Add(TransferCmd tcmd)
   {
     Contract.Requires(tcmd != null);
-    Dump(null, tcmd);
+    Dump(tcmd.tok, null, tcmd);
   }
 
-  public void AddLabelCmd(string label)
+  public void AddLabelCmd(IToken token, string label)
   {
     Contract.Requires(label != null);
-    Dump(null, null);
+    Dump(token, null, null);
     this.label = label;
   }
 
