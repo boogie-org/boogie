@@ -54,7 +54,7 @@ namespace Microsoft.Boogie
       {
         cce.BeginExpose(b);
         // we got here through a back-edge
-        b.widenBlock = true;
+        b.WidenBlock = true;
         cce.EndExpose();
       }
       else if (b.TraversingStatus == Block.VisitState.AlreadyVisited)
@@ -111,7 +111,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public static List<Block> ComputeLoopBodyFrom(Block block)
     {
-      Contract.Requires(block.widenBlock);
+      Contract.Requires(block.WidenBlock);
       Contract.Requires(block != null);
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
 
