@@ -474,7 +474,7 @@ namespace VC
 
       ControlFlowIdMap<Absy> absyIds;
 
-      List<Block> blocks;
+      IList<Block> blocks;
 
       protected Dictionary<Cmd, List<object>> debugInfos;
 
@@ -505,7 +505,7 @@ namespace VC
 
       public ErrorReporter(VCGenOptions options,
         ControlFlowIdMap<Absy> /*!*/ absyIds,
-        List<Block /*!*/> /*!*/ blocks,
+        IList<Block /*!*/> /*!*/ blocks,
         Dictionary<Cmd, List<object>> debugInfos,
         VerifierCallback /*!*/ callback,
         ModelViewInfo mvInfo,
@@ -1479,7 +1479,7 @@ namespace VC
      *
      */
 
-    VCExpr LetVC(List<Block> blocks,
+    VCExpr LetVC(IList<Block> blocks,
       VCExpr controlFlowVariableExpr,
       ControlFlowIdMap<Absy> absyIds,
       ProverContext proverCtxt,
@@ -1622,7 +1622,7 @@ namespace VC
     /// <summary>
     /// Remove empty blocks reachable from the startBlock of the CFG
     /// </summary>
-    static void RemoveEmptyBlocks(List<Block> blocks)
+    static void RemoveEmptyBlocks(IList<Block> blocks)
     {
       // postorder traversal of cfg
       //   noting loop heads in [keep] and
