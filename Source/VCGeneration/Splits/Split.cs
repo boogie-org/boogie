@@ -56,8 +56,7 @@ namespace VC
       int assertionCount;
       double assertionCost; // without multiplication by paths
 
-      public readonly VerificationConditionGenerator /*!*/
-        parent;
+      public readonly VerificationConditionGenerator /*!*/ parent;
 
       public Implementation /*!*/ Implementation => Run.Implementation;
 

@@ -32,7 +32,7 @@ namespace VC
 
   public class VerificationConditionGenerator : ConditionGeneration
   {
-    private static ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
+    private static readonly ConditionalWeakTable<Implementation, ImplementationTransformationData> implementationData = new();
 
 
     /// <summary>
