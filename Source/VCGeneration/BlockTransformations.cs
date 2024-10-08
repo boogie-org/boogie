@@ -96,7 +96,7 @@ public static class BlockTransformations {
   
   public static bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd { Expr: not LiteralExpr { asBool: true } }; }
 
-  public static void DeleteStraightLineBlocksWithoutCommands(List<Block> blocks) {
+  public static void DeleteStraightLineBlocksWithoutCommands(IList<Block> blocks) {
     var toVisit = new HashSet<Block>(blocks);
     var removed = new HashSet<Block>();
     while(toVisit.Count > 0) {

@@ -498,7 +498,7 @@ public class Program : Absy
     return callGraph;
   }
 
-  public static Graph<Block> GraphFromBlocksSubset(IReadOnlyList<Block> blocks, IReadOnlySet<Block> subset = null, bool forward = true)
+  public static Graph<Block> GraphFromBlocksSubset(IList<Block> blocks, IReadOnlySet<Block> subset = null, bool forward = true)
   {
     var result = new Graph<Block>();
     if (!blocks.Any())
@@ -529,7 +529,7 @@ public class Program : Absy
     return result;
   }
   
-  public static Graph<Block> GraphFromBlocks(IReadOnlyList<Block> blocks, bool forward = true) {
+  public static Graph<Block> GraphFromBlocks(IList<Block> blocks, bool forward = true) {
     return GraphFromBlocksSubset(blocks, null, forward);
   }
 

@@ -85,7 +85,7 @@ public class BlockCoalescer : ReadOnlyVisitor
     blocks.AddRange(coalesced);
   }
   
-  public static List<Block> CoalesceFromRootBlock(List<Block> blocks)
+  public static IList<Block> CoalesceFromRootBlock(IList<Block> blocks)
   {
     if (!blocks.Any())
     {

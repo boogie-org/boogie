@@ -11,7 +11,7 @@ namespace VCGeneration;
 class IsolateAttributeOnAssertsHandler {
 
   public static (List<ManualSplit> IsolatedParts, ManualSplit Remainder) GetParts(VCGenOptions options, ManualSplit partToDivide, 
-    Func<IImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
+    Func<IImplementationPartOrigin, IList<Block>, ManualSplit> createPart) {
     var rewriter = new BlockRewriter(options, partToDivide.Blocks, createPart);
       
     var splitOnEveryAssert = partToDivide.Options.VcsSplitOnEveryAssert;

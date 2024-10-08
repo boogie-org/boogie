@@ -185,8 +185,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       // We need to keep track of some information for each(some) block(s).  To do that efficiently,
       // we number the implementation's blocks sequentially, and then we can use arrays to store
       // the additional information.
-      var pre = new NativeLattice.Element[impl.Blocks
-        .Count]; // set to null if we never compute a join/widen at this block
+      var pre = new NativeLattice.Element[impl.Blocks.Count]; // set to null if we never compute a join/widen at this block
       var post = options.InstrumentInfer == CoreOptions.InstrumentationPlaces.Everywhere
         ? new NativeLattice.Element[impl.Blocks.Count]
         : null;

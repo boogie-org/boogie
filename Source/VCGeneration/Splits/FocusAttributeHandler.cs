@@ -19,7 +19,7 @@ public class FocusAttributeHandler {
   /// We recurse twice for each focus, leading to potentially 2^N splits
   /// </summary>
   public static List<ManualSplit> GetParts(VCGenOptions options, ImplementationRun run, 
-    Func<IImplementationPartOrigin, List<Block>, ManualSplit> createPart)
+    Func<IImplementationPartOrigin, IList<Block>, ManualSplit> createPart)
   {
     var rewriter = new BlockRewriter(options, run.Implementation.Blocks, createPart);
     

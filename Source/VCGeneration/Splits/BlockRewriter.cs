@@ -19,10 +19,10 @@ public class BlockRewriter {
   public List<Block> OrderedBlocks { get; }
   public VCGenOptions Options { get; }
   public Graph<Block> Dag { get; }
-  public Func<IImplementationPartOrigin, List<Block>, ManualSplit> CreateSplit { get; }
+  public Func<IImplementationPartOrigin, IList<Block>, ManualSplit> CreateSplit { get; }
 
-  public BlockRewriter(VCGenOptions options, List<Block> blocks,
-    Func<IImplementationPartOrigin, List<Block>, ManualSplit> createSplit) {
+  public BlockRewriter(VCGenOptions options, IList<Block> blocks,
+    Func<IImplementationPartOrigin, IList<Block>, ManualSplit> createSplit) {
     this.Options = options;
     CreateSplit = createSplit;
     Dag = Program.GraphFromBlocks(blocks);
