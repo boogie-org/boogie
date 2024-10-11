@@ -45,14 +45,14 @@ namespace Microsoft.Boogie
       return -1;
     }
 
-    public readonly VerificationResultCache Cache;
+    public readonly IVerificationResultCache Cache;
 
     static readonly CacheItemPolicy policy = new CacheItemPolicy
       { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
     public const int StackSize = 16 * 1024 * 1024;
 
-    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache, TaskScheduler scheduler, bool disposeScheduler = false) {
+    public ExecutionEngine(ExecutionEngineOptions options, IVerificationResultCache cache, TaskScheduler scheduler, bool disposeScheduler = false) {
       Options = options;
       Cache = cache;
       CheckerPool = new CheckerPool(options);
