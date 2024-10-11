@@ -12,7 +12,7 @@ namespace Microsoft.Boogie
     private readonly MemoryCache programCache = new("ProgramCache");
     private readonly MemoryCache Cache = new("VerificationResultCache");
 
-    public Program CachedProgram(string programId) {
+    public Program? CachedProgram(string programId) {
       return programCache.Get(programId) as Program;
     }
 
@@ -21,17 +21,13 @@ namespace Microsoft.Boogie
 
     public void Insert(Implementation impl, ImplementationRunResult result)
     {
-      Contract.Requires(impl != null);
       Contract.Requires(result != null);
-
       Cache.Set(impl.Id, result, Policy);
     }
 
 
     public ImplementationRunResult? Lookup(Implementation impl, bool runDiagnosticsOnTimeout, out int priority)
     {
-      Contract.Requires(impl != null);
-
       var result = Cache.Get(impl.Id) as ImplementationRunResult;
       if (result == null)
       {
@@ -66,8 +62,6 @@ namespace Microsoft.Boogie
 
     public void RemoveMatchingKeys(Regex keyRegexp)
     {
-      Contract.Requires(keyRegexp != null);
-
       foreach (var kv in Cache)
       {
         if (keyRegexp.IsMatch(kv.Key))
@@ -80,8 +74,6 @@ namespace Microsoft.Boogie
 
     public int VerificationPriority(Implementation impl, bool runDiagnosticsOnTimeout)
     {
-      Contract.Requires(impl != null);
-
       Lookup(impl, runDiagnosticsOnTimeout, out var priority);
       return priority;
     }
