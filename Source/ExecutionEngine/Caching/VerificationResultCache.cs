@@ -9,10 +9,6 @@ namespace Microsoft.Boogie
 {
   public sealed class VerificationResultCache : IVerificationResultCache
   {
-    public VerificationResultCache() {
-      throw new Exception();
-    }
-
     private readonly MemoryCache programCache = new("ProgramCache");
     private readonly MemoryCache Cache = new("VerificationResultCache");
 
