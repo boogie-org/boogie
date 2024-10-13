@@ -7,7 +7,7 @@
 // CHECK:      checking split 2/11 .*
 // CHECK:      checking split 3/11 .*
 // CHECK:      checking split 4/11 .*
-// CHECK:      --> split #3 done,  \[.* s\] Invalid
+// CHECK:      --> split #4 done,  \[.* s\] Invalid
 // CHECK:      checking split 5/11 .*
 // CHECK:      checking split 6/11 .*
 // CHECK:      checking split 7/11 .*
