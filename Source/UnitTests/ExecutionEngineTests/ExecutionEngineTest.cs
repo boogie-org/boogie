@@ -100,7 +100,7 @@ procedure Procedure(y: int)
     
     // The implicit return at the end gets a separate VC.
     // first split is empty. Maybe it can be optimized away
-    Assert.AreEqual(5, tasks.Count);
+    Assert.AreEqual(4, tasks.Count);
 
     var outcomes = new List<SolverOutcome> { SolverOutcome.Invalid, SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid };
     for (var index = 0; index < outcomes.Count; index++)
