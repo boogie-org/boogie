@@ -212,12 +212,12 @@ namespace VC
         var assumeId = QKeyValue.FindStringAttribute(ac.Attributes, "id");
         if (assumeId != null && ctxt.Options.TrackVerificationCoverage)
         {
-          var isTry = ac.Attributes.FindBoolAttribute("try");
+          var isTry = QKeyValue.FindBoolAttribute(ac.Attributes, "try");
           var v = gen.Variable(assumeId, Microsoft.Boogie.Type.Bool, isTry ? VCExprVarKind.Try : VCExprVarKind.Assume);
           expr = gen.Function(VCExpressionGenerator.NamedAssumeOp, v, gen.ImpliesSimp(v, expr));
         }
 
-        var soft = ac.Attributes.FindBoolAttribute("soft");
+        var soft = QKeyValue.FindBoolAttribute(ac.Attributes, "soft");
         var softWeight = QKeyValue.FindIntAttribute(ac.Attributes, "soft", 0);
         if ((soft || 0 < softWeight) && assumeId != null)
         {

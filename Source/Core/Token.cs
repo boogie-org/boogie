@@ -33,7 +33,8 @@ namespace Microsoft.Boogie
 
     public Token next; // ML 2005-03-11 Tokens are kept in linked list
 
-    public static readonly IToken /*!*/ NoToken = new Token();
+    public static readonly IToken /*!*/
+      NoToken = new Token();
 
     public Token()
     {

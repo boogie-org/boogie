@@ -425,7 +425,7 @@ namespace Microsoft.Boogie
           foreach (Cmd c in succ.Cmds)
           {
             AssumeCmd a = c as AssumeCmd;
-            if (a != null && a.Attributes.FindBoolAttribute("partition"))
+            if (a != null && QKeyValue.FindBoolAttribute(a.Attributes, "partition"))
             {
               var VarCollector = new VariableCollector();
               VarCollector.VisitExpr(a.Expr);
@@ -523,14 +523,14 @@ namespace Microsoft.Boogie
       foreach (var impl in prog.NonInlinedImplementations())
       {
         var blockGraph = prog.ProcessLoops(options, impl);
-        localCtrlDeps[impl] = blockGraph.ControlDependence(new Block(prog.tok, new ReturnCmd(prog.tok)));
+        localCtrlDeps[impl] = blockGraph.ControlDependence(new Block(prog.tok));
         foreach (var keyValue in localCtrlDeps[impl])
         {
           globalCtrlDep.Add(keyValue.Key, keyValue.Value);
         }
       }
 
-      Graph<Implementation> callGraph = Program.BuildCallGraph(options, prog);
+      var callGraph = Program.BuildCallGraph(options, prog);
 
       // Add inter-procedural control dependence nodes based on calls
       foreach (var impl in prog.NonInlinedImplementations())
@@ -548,7 +548,7 @@ namespace Microsoft.Boogie
             var indirectCallees = ComputeIndirectCallees(callGraph, directCallee);
             foreach (var control in GetControllingBlocks(b, localCtrlDeps[impl]))
             {
-              foreach (var c in indirectCallees.Select(item => item.Blocks).SelectMany(Item => Item))
+              foreach (var c in indirectCallees.Select(Item => Item.Blocks).SelectMany(Item => Item))
               {
                 globalCtrlDep[control].Add(c);
               }
@@ -562,18 +562,17 @@ namespace Microsoft.Boogie
 
       // Finally reverse the dependences
 
-      Dictionary<Block, HashSet<Block>> result = new Dictionary<Block, HashSet<Block>>();
-
-      foreach (var KeyValue in globalCtrlDep)
+      var result = new Dictionary<Block, HashSet<Block>>();
+      foreach (var keyValue in globalCtrlDep)
       {
-        foreach (var v in KeyValue.Value)
+        foreach (var v in keyValue.Value)
         {
           if (!result.ContainsKey(v))
           {
             result[v] = new HashSet<Block>();
           }
 
-          result[v].Add(KeyValue.Key);
+          result[v].Add(keyValue.Key);
         }
       }
 

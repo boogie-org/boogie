@@ -177,9 +177,8 @@ public class ConsolePrinter : OutputPrinter
       message = $"{category}: {message}";
     }
 
-    var s = tok != null
-      ? string.Format("{0}({1},{2}): {3}", ExecutionEngine.GetFileNameForConsole(Options, tok.filename), tok.line,
-        tok.col, message)
+    var s = tok != null 
+      ? $"{ExecutionEngine.GetFileNameForConsole(Options, tok.filename)}({tok.line},{tok.col}): {message}" 
       : message;
 
     if (error)

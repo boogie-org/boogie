@@ -63,7 +63,7 @@ public class Program : Absy
     ResolveTypes(rc);
       
     var prunedTopLevelDeclarations = new List<Declaration>();
-    foreach (var d in TopLevelDeclarations.Where(d => !d.Attributes.FindBoolAttribute("ignore")))
+    foreach (var d in TopLevelDeclarations.Where(d => !QKeyValue.FindBoolAttribute(d.Attributes, "ignore")))
     {
       // resolve all the declarations that have not been resolved yet 
       if (!(d is TypeCtorDecl || d is TypeSynonymDecl))
@@ -98,7 +98,7 @@ public class Program : Absy
     // first resolve type constructors
     foreach (var d in TopLevelDeclarations.OfType<TypeCtorDecl>())
     {
-      if (!d.Attributes.FindBoolAttribute("ignore"))
+      if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
       {
         d.Resolve(rc);
       }
@@ -110,7 +110,7 @@ public class Program : Absy
     foreach (var d in TopLevelDeclarations.OfType<TypeSynonymDecl>())
     {
       Contract.Assert(d != null);
-      if (!d.Attributes.FindBoolAttribute("ignore"))
+      if (!QKeyValue.FindBoolAttribute(d.Attributes, "ignore"))
       {
         synonymDecls.Add(d);
       }
@@ -498,7 +498,7 @@ public class Program : Absy
     return callGraph;
   }
 
-  public static Graph<Block> GraphFromBlocksSubset(IReadOnlyList<Block> blocks, IReadOnlySet<Block> subset = null, bool forward = true)
+  public static Graph<Block> GraphFromBlocks(List<Block> blocks, bool forward = true)
   {
     var result = new Graph<Block>();
     if (!blocks.Any())
@@ -506,9 +506,6 @@ public class Program : Absy
       return result;
     }
     void AddEdge(Block a, Block b) {
-      if (subset != null && (!subset.Contains(a) || !subset.Contains(b))) {
-        return;
-      }
       Contract.Assert(a != null && b != null);
       if (forward) {
         result.AddEdge(a, b);
@@ -517,7 +514,7 @@ public class Program : Absy
       }
     }
 
-    result.AddSource(blocks[0]);
+    result.AddSource(cce.NonNull(blocks[0])); // there is always at least one node in the graph
     foreach (var block in blocks)
     {
       if (block.TransferCmd is GotoCmd gtc)
@@ -527,10 +524,6 @@ public class Program : Absy
       }
     }
     return result;
-  }
-  
-  public static Graph<Block> GraphFromBlocks(IReadOnlyList<Block> blocks, bool forward = true) {
-    return GraphFromBlocksSubset(blocks, null, forward);
   }
 
   public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl, bool forward = true)

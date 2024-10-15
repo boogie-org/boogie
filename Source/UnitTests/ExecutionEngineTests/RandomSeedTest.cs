@@ -17,7 +17,7 @@ public class RandomSeedTest
   axiom N <= 3;
 
   procedure nEquals3()
-  ensures 1 == 1;
+  ensures true;
   {
   }";
 

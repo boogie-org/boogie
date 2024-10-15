@@ -168,7 +168,7 @@ namespace Microsoft.Boogie.Houdini
       collector.OnProgress?.Invoke("HdnVCGen", 0, 0, 0.0);
 
       new RemoveBackEdges(vcgen).ConvertCfg2Dag(run, taskID: taskId);
-      vcgen.PassifyImpl(run, out var mvInfo);
+      var gotoCmdOrigins = vcgen.PassifyImpl(run, out var mvInfo);
 
       ExistentialConstantCollector.CollectHoudiniConstants(houdini, impl, out var ecollector);
       this.houdiniAssertConstants = ecollector.houdiniAssertConstants;
@@ -196,7 +196,7 @@ namespace Microsoft.Boogie.Houdini
         new Formal(Token.NoToken, new TypedIdent(Token.NoToken, "", Type.Bool), false));
       proverInterface.DefineMacro(macro, conjecture);
       conjecture = exprGen.Function(macro);
-      handler = new VerificationConditionGenerator.ErrorReporter(this.houdini.Options, absyIds, impl.Blocks, impl.debugInfos, collector,
+      handler = new VerificationConditionGenerator.ErrorReporter(this.houdini.Options, gotoCmdOrigins, absyIds, impl.Blocks, impl.debugInfos, collector,
         mvInfo, proverInterface.Context, program, this);
     }
 

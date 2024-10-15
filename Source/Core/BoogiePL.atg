@@ -529,11 +529,11 @@ Function<.out List<Declaration>/*!*/ ds.>
     }
     if (definition != null) {
       // generate either an axiom or a function body
-      if (kv.FindBoolAttribute("inline")) {
-        if (kv.FindBoolAttribute("define"))
+      if (QKeyValue.FindBoolAttribute(kv, "inline")) {
+        if (QKeyValue.FindBoolAttribute(kv, "define"))
           SemErr("function cannot have both :inline and :define attributes");
         func.Body = definition;
-      } else if (kv.FindBoolAttribute("define")) {
+      } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
         if (func.TypeParameters.Count > 0)
           SemErr("function with :define attribute has to be monomorphic");
         func.DefinitionBody = func.CreateFunctionDefinition(definition);
@@ -1032,7 +1032,6 @@ TransferCmd<out TransferCmd/*!*/ tc>
 = (. Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
      Token y;  List<IToken>/*!*/ xs;
      List<String> ss = new List<String>();
-     QKeyValue kv = null;
   .)
   ( "goto"             (. y = t; .)
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
@@ -1040,9 +1039,7 @@ TransferCmd<out TransferCmd/*!*/ tc>
                             ss.Add(s.val); }
                           tc = new GotoCmd(y, ss);
                        .)
-  | "return"
-    { Attribute<ref kv> }         
-    (. tc = new ReturnCmd(t) { Attributes = kv }; .)
+  | "return"           (. tc = new ReturnCmd(t); .)
   ) ";"
   .
 
@@ -1691,7 +1688,6 @@ SpecBlock<out Block/*!*/ b>
      List<IToken>/*!*/ xs;
      List<String> ss = new List<String>();
      b = dummyBlock;
-     QKeyValue kv = null;
      Expr/*!*/ e;
   .)
   Ident<out x> ":"
@@ -1710,13 +1706,8 @@ SpecBlock<out Block/*!*/ b>
                             ss.Add(s.val); }
                           b = new Block(x,x.val,cs,new GotoCmd(y,ss));
                        .)
-  | "return" 
-    { Attribute<ref kv> }
-    Expression<out e>
-                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(t,e) {
-                            Attributes = kv
-                          }); 
-                       .)
+  | "return" Expression<out e>
+                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); .)
   )
   ";"
   .

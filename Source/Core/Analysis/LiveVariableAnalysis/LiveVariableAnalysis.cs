@@ -20,7 +20,7 @@ public class LiveVariableAnalysis
     foreach (Block /*!*/ block in impl.Blocks)
     {
       Contract.Assert(block != null);
-      block.LiveVarsBefore = null;
+      block.liveVarsBefore = null;
     }
   }
 
@@ -59,8 +59,8 @@ public class LiveVariableAnalysis
           foreach (Block /*!*/ succ in gotoCmd.LabelTargets)
           {
             Contract.Assert(succ != null);
-            Contract.Assert(succ.LiveVarsBefore != null);
-            liveVarsAfter.UnionWith(succ.LiveVarsBefore);
+            Contract.Assert(succ.liveVarsBefore != null);
+            liveVarsAfter.UnionWith(succ.liveVarsBefore);
           }
         }
       }
@@ -84,7 +84,7 @@ public class LiveVariableAnalysis
         Propagate(cmds[i], liveVarsAfter);
       }
 
-      block.LiveVarsBefore = liveVarsAfter;
+      block.liveVarsBefore = liveVarsAfter;
     }
   }
 
@@ -141,7 +141,7 @@ public class LiveVariableAnalysis
       foreach (IdentifierExpr /*!*/ expr in havocCmd.Vars)
       {
         Contract.Assert(expr != null);
-        if (expr.Decl != null && !(expr.Decl.Attributes.FindBoolAttribute("assumption") &&
+        if (expr.Decl != null && !(QKeyValue.FindBoolAttribute(expr.Decl.Attributes, "assumption") &&
                                    expr.Decl.Name.StartsWith("a##cached##")))
         {
           liveSet.Remove(expr.Decl);

@@ -1,0 +1,10 @@
+implementation Foo()
+{
+
+  anon3_Then:
+    assert 2 == 1 + 1;
+    assume false;
+    return;
+}
+
+

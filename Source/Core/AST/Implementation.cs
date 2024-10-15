@@ -151,7 +151,7 @@ public class Implementation : DeclWithFormals {
     }
 
     if (options.StratifiedInlining > 0) {
-      return !Attributes.FindBoolAttribute("entrypoint");
+      return !QKeyValue.FindBoolAttribute(Attributes, "entrypoint");
     }
 
     return false;
@@ -462,19 +462,19 @@ public class Implementation : DeclWithFormals {
   }
 
   public void EmitImplementation(TokenTextWriter stream, int level, IEnumerable<Block> blocks,
-    bool showLocals, string nameSuffix = "") {
+    bool showLocals) {
     EmitImplementation(stream, level, writer => {
       foreach (var block in blocks) {
         block.Emit(writer, level + 1);
       }
-    }, showLocals, nameSuffix);
+    }, showLocals);
   }
 
-  private void EmitImplementation(TokenTextWriter stream, int level, Action<TokenTextWriter> printBlocks, bool showLocals, string nameSuffix = "")
+  public void EmitImplementation(TokenTextWriter stream, int level, Action<TokenTextWriter> printBlocks, bool showLocals)
   {
     stream.Write(this, level, "implementation ");
     EmitAttributes(stream);
-    stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(Name) + nameSuffix);
+    stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
     EmitSignature(stream, false);
     stream.WriteLine();
 

@@ -127,7 +127,7 @@ namespace Microsoft.Boogie
 
     public static bool HasAttribute(this ICarriesAttributes obj, string name)
     {
-      return obj.Attributes.FindBoolAttribute(name);
+      return QKeyValue.FindBoolAttribute(obj.Attributes, name);
     }
 
     public static bool RemoveAttributes(ICarriesAttributes obj, Func<QKeyValue, bool> cond)

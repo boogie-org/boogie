@@ -501,11 +501,11 @@ private class BvBounds : Expr {
 		}
 		if (definition != null) {
 		 // generate either an axiom or a function body
-		 if (kv.FindBoolAttribute("inline")) {
-		   if (kv.FindBoolAttribute("define"))
+		 if (QKeyValue.FindBoolAttribute(kv, "inline")) {
+		   if (QKeyValue.FindBoolAttribute(kv, "define"))
 		     SemErr("function cannot have both :inline and :define attributes");
 		   func.Body = definition;
-		 } else if (kv.FindBoolAttribute("define")) {
+		 } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
 		   if (func.TypeParameters.Count > 0)
 		     SemErr("function with :define attribute has to be monomorphic");
 		   func.DefinitionBody = func.CreateFunctionDefinition(definition);
@@ -1536,7 +1536,6 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
 		Token y;  List<IToken>/*!*/ xs;
 		List<String> ss = new List<String>();
-		QKeyValue kv = null;
 		
 		if (la.kind == 55) {
 			Get();
@@ -1549,10 +1548,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			
 		} else if (la.kind == 56) {
 			Get();
-			while (la.kind == 26) {
-				Attribute(ref kv);
-			}
-			tc = new ReturnCmd(t) { Attributes = kv }; 
+			tc = new ReturnCmd(t); 
 		} else SynErr(148);
 		Expect(10);
 	}
@@ -2562,7 +2558,6 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		List<IToken>/*!*/ xs;
 		List<String> ss = new List<String>();
 		b = dummyBlock;
-		QKeyValue kv = null;
 		Expr/*!*/ e;
 		
 		Ident(out x);
@@ -2588,14 +2583,8 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 			
 		} else if (la.kind == 56) {
 			Get();
-			while (la.kind == 26) {
-				Attribute(ref kv);
-			}
 			Expression(out e);
-			b = new Block(x,x.val,cs,new ReturnExprCmd(t,e) {
-			 Attributes = kv
-			}); 
-			
+			b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); 
 		} else SynErr(174);
 		Expect(10);
 	}

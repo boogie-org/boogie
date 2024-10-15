@@ -16,17 +16,17 @@ namespace Microsoft.Boogie
                 {
                     checkingContext.Error(function.tok, "Parameter to :inline attribute on a function must be Boolean");
                 }
-                if (function.Attributes.FindBoolAttribute("inline") &&
-                    function.Attributes.FindBoolAttribute("define"))
+                if (QKeyValue.FindBoolAttribute(function.Attributes, "inline") &&
+                    QKeyValue.FindBoolAttribute(function.Attributes, "define"))
                 {
                     checkingContext.Error(function.tok, "A function may not have both :inline and :define attributes");
                 }
-                if (function.Attributes.FindBoolAttribute("inline") &&
+                if (QKeyValue.FindBoolAttribute(function.Attributes, "inline") &&
                     function.Body == null)
                 {
                     checkingContext.Error(function.tok, "Function with :inline attribute must have a body");
                 }
-                if (function.Attributes.FindBoolAttribute("define") &&
+                if (QKeyValue.FindBoolAttribute(function.Attributes, "define") &&
                     function.DefinitionBody == null)
                 {
                     checkingContext.Error(function.tok, "Function with :define attribute must have a body");
@@ -84,13 +84,13 @@ namespace Microsoft.Boogie
 
         public override Function VisitFunction(Function node)
         {
-            if (node.Attributes.FindBoolAttribute("inline"))
+            if (QKeyValue.FindBoolAttribute(node.Attributes, "inline"))
             {
                 this.enclosingFunction = node;
                 base.Visit(node.Body);
                 this.enclosingFunction = null;
             }
-            else if (node.Attributes.FindBoolAttribute("define"))
+            else if (QKeyValue.FindBoolAttribute(node.Attributes, "define"))
             {
                 this.enclosingFunction = node;
                 base.Visit(node.DefinitionBody.Args[1]);
@@ -103,8 +103,8 @@ namespace Microsoft.Boogie
         {
             if (node.Fun is FunctionCall functionCall)
             {
-                if (functionCall.Func.Attributes.FindBoolAttribute("inline") ||
-                    functionCall.Func.Attributes.FindBoolAttribute("define"))
+                if (QKeyValue.FindBoolAttribute(functionCall.Func.Attributes, "inline") ||
+                    QKeyValue.FindBoolAttribute(functionCall.Func.Attributes, "define"))
                 {
                     functionDependencyGraph.AddEdge(enclosingFunction, functionCall.Func);
                 }

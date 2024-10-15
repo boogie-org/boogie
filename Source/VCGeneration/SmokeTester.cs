@@ -242,7 +242,7 @@ public class SmokeTester
     foreach (Cmd cmd in seq)
     {
       AssertCmd assrt = cmd as AssertCmd;
-      if (assrt != null && assrt.Attributes.FindBoolAttribute("PossiblyUnreachable"))
+      if (assrt != null && QKeyValue.FindBoolAttribute(assrt.Attributes, "PossiblyUnreachable"))
       {
         return false;
       }
