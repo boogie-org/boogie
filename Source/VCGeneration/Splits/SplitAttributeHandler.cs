@@ -74,7 +74,7 @@ class SplitAttributeHandler {
       return false;
     }
 
-    return predicateCmd.Attributes.FindBoolAttribute("split_here");
+    return QKeyValue.FindBoolAttribute(predicateCmd.Attributes, "split_here");
   }
 
   private static Dictionary<Block, Cmd?> GetMapFromBlockStartToSplit(List<Block> blocks, Dictionary<Block, List<Cmd>> splitsPerBlock) {

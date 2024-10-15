@@ -8,6 +8,1187 @@ using Set = Microsoft.Boogie.GSet<object>;
 namespace Microsoft.Boogie
 {
   //---------------------------------------------------------------------
+  // BigBlock
+  public class BigBlock
+  {
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(tok != null);
+      Contract.Invariant(Anonymous || this.labelName != null);
+      Contract.Invariant(this._ec == null || this._tc == null);
+      Contract.Invariant(this._simpleCmds != null);
+    }
+
+    public readonly IToken /*!*/
+      tok;
+
+    public readonly bool Anonymous;
+
+    private string labelName;
+
+    public string LabelName
+    {
+      get
+      {
+        Contract.Ensures(Anonymous || Contract.Result<string>() != null);
+        return this.labelName;
+      }
+      set
+      {
+        Contract.Requires(Anonymous || value != null);
+        this.labelName = value;
+      }
+    }
+
+    [Rep] private List<Cmd> /*!*/ _simpleCmds;
+
+    /// <summary>
+    /// These come before the structured command
+    /// </summary>
+    public List<Cmd> /*!*/ simpleCmds
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<List<Cmd>>() != null);
+        return this._simpleCmds;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._simpleCmds = value;
+      }
+    }
+
+    private StructuredCmd _ec;
+
+    public StructuredCmd ec
+    {
+      get { return this._ec; }
+      set
+      {
+        Contract.Requires(value == null || this.tc == null);
+        this._ec = value;
+      }
+    }
+
+    private TransferCmd _tc;
+
+    public TransferCmd tc
+    {
+      get { return this._tc; }
+      set
+      {
+        Contract.Requires(value == null || this.ec == null);
+        this._tc = value;
+      }
+    }
+
+    public BigBlock
+      successorBigBlock; // semantic successor (may be a back-edge, pointing back to enclosing while statement); null if successor is end of procedure body (or if field has not yet been initialized)
+
+    public BigBlock(IToken tok, string labelName, [Captured] List<Cmd> simpleCmds, StructuredCmd ec, TransferCmd tc)
+    {
+      Contract.Requires(simpleCmds != null);
+      Contract.Requires(tok != null);
+      Contract.Requires(ec == null || tc == null);
+      this.tok = tok;
+      this.Anonymous = labelName == null;
+      this.labelName = labelName;
+      this._simpleCmds = simpleCmds;
+      this._ec = ec;
+      this._tc = tc;
+    }
+
+    public void Emit(TokenTextWriter stream, int level)
+    {
+      Contract.Requires(stream != null);
+      if (!Anonymous)
+      {
+        stream.WriteLine(level, "{0}:",
+          stream.Options.PrintWithUniqueASTIds
+            ? String.Format("h{0}^^{1}", this.GetHashCode(), this.LabelName)
+            : this.LabelName);
+      }
+
+      foreach (Cmd /*!*/ c in this.simpleCmds)
+      {
+        Contract.Assert(c != null);
+        c.Emit(stream, level + 1);
+      }
+
+      if (this.ec != null)
+      {
+        this.ec.Emit(stream, level + 1);
+      }
+      else if (this.tc != null)
+      {
+        this.tc.Emit(stream, level + 1);
+      }
+    }
+  }
+
+  public class StmtList
+  {
+    [Rep] private readonly List<BigBlock /*!*/> /*!*/ bigBlocks;
+
+    public IList<BigBlock /*!*/> /*!*/ BigBlocks
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IList<BigBlock>>() != null);
+        Contract.Ensures(Contract.Result<IList<BigBlock>>().IsReadOnly);
+        return this.bigBlocks.AsReadOnly();
+      }
+    }
+
+    public List<Cmd> PrefixCommands;
+
+    public readonly IToken /*!*/
+      EndCurly;
+
+    public StmtList ParentContext;
+    public BigBlock ParentBigBlock;
+
+    private readonly HashSet<string /*!*/> /*!*/
+      labels = new HashSet<string /*!*/>();
+
+    public void AddLabel(string label)
+    {
+      labels.Add(label);
+    }
+
+    public IEnumerable<string /*!*/> /*!*/ Labels
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string /*!*/> /*!*/>()));
+        return this.labels.AsEnumerable<string>();
+      }
+    }
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(EndCurly != null);
+      Contract.Invariant(cce.NonNullElements(this.bigBlocks));
+      Contract.Invariant(cce.NonNullElements(this.labels));
+    }
+
+    public StmtList(IList<BigBlock /*!*/> /*!*/ bigblocks, IToken endCurly)
+    {
+      Contract.Requires(endCurly != null);
+      Contract.Requires(cce.NonNullElements(bigblocks));
+      Contract.Requires(bigblocks.Count > 0);
+      this.bigBlocks = new List<BigBlock>(bigblocks);
+      this.EndCurly = endCurly;
+    }
+
+    // prints the list of statements, not the surrounding curly braces
+    public void Emit(TokenTextWriter stream, int level)
+    {
+      Contract.Requires(stream != null);
+      bool needSeperator = false;
+      foreach (BigBlock b in BigBlocks)
+      {
+        Contract.Assert(b != null);
+        Contract.Assume(cce.IsPeerConsistent(b));
+        if (needSeperator)
+        {
+          stream.WriteLine();
+        }
+
+        b.Emit(stream, level);
+        needSeperator = true;
+      }
+    }
+
+    /// <summary>
+    /// Tries to insert the commands "prefixCmds" at the beginning of the first block
+    /// of the StmtList, and returns "true" iff it succeeded.
+    /// In the event of success, the "suggestedLabel" returns as the name of the
+    /// block inside StmtList where "prefixCmds" were inserted.  This name may be the
+    /// same as the one passed in, in case this StmtList has no preference as to what
+    /// to call its first block.  In the event of failure, "suggestedLabel" is returned
+    /// as its input value.
+    /// Note, to be conservative (that is, ignoring the possible optimization that this
+    /// method enables), this method can do nothing and return false.
+    /// </summary>
+    public bool PrefixFirstBlock([Captured] List<Cmd> prefixCmds, ref string suggestedLabel)
+    {
+      Contract.Requires(suggestedLabel != null);
+      Contract.Requires(prefixCmds != null);
+      Contract.Ensures(Contract.Result<bool>() ||
+                       cce.Owner.None(prefixCmds)); // "prefixCmds" is captured only on success
+      Contract.Assume(PrefixCommands == null); // prefix has not been used
+
+      BigBlock bb0 = BigBlocks[0];
+      if (prefixCmds.Count == 0)
+      {
+        // This is always a success, since there is nothing to insert.  Now, decide
+        // which name to use for the first block.
+        if (bb0.Anonymous)
+        {
+          bb0.LabelName = suggestedLabel;
+        }
+        else
+        {
+          Contract.Assert(bb0.LabelName != null);
+          suggestedLabel = bb0.LabelName;
+        }
+
+        return true;
+      }
+      else
+      {
+        // There really is something to insert.  We can do this inline only if the first
+        // block is anonymous (which implies there is no branch to it from within the block).
+        if (bb0.Anonymous)
+        {
+          PrefixCommands = prefixCmds;
+          bb0.LabelName = suggestedLabel;
+          return true;
+        }
+        else
+        {
+          return false;
+        }
+      }
+    }
+  }
+
+  /// <summary>
+  /// The AST for Boogie structured commands was designed to support backward compatibility with
+  /// the Boogie unstructured commands.  This has made the structured commands hard to construct.
+  /// The StmtListBuilder class makes it easier to build structured commands.
+  /// </summary>
+  public class StmtListBuilder
+  {
+    readonly List<BigBlock /*!*/> /*!*/ bigBlocks = new();
+
+    string label;
+    List<Cmd> simpleCmds;
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(cce.NonNullElements(bigBlocks));
+    }
+
+    void Dump(StructuredCmd scmd, TransferCmd tcmd)
+    {
+      Contract.Requires(scmd == null || tcmd == null);
+      Contract.Ensures(label == null && simpleCmds == null);
+      if (label == null && simpleCmds == null && scmd == null && tcmd == null)
+      {
+        // nothing to do
+      }
+      else
+      {
+        if (simpleCmds == null)
+        {
+          simpleCmds = new List<Cmd>();
+        }
+
+        bigBlocks.Add(new BigBlock(Token.NoToken, label, simpleCmds, scmd, tcmd));
+        label = null;
+        simpleCmds = null;
+      }
+    }
+
+    /// <summary>
+    /// Collects the StmtList built so far and returns it.  The StmtListBuilder should no longer
+    /// be used once this method has been invoked.
+    /// </summary>
+    public StmtList Collect(IToken endCurlyBrace)
+    {
+      Contract.Requires(endCurlyBrace != null);
+      Contract.Ensures(Contract.Result<StmtList>() != null);
+      Dump(null, null);
+      if (bigBlocks.Count == 0)
+      {
+        simpleCmds = new List<Cmd>(); // the StmtList constructor doesn't like an empty list of BigBlock's
+        Dump(null, null);
+      }
+
+      return new StmtList(bigBlocks, endCurlyBrace);
+    }
+
+    public void Add(Cmd cmd)
+    {
+      Contract.Requires(cmd != null);
+      if (simpleCmds == null)
+      {
+        simpleCmds = new List<Cmd>();
+      }
+
+      simpleCmds.Add(cmd);
+    }
+
+    public void Add(StructuredCmd scmd)
+    {
+      Contract.Requires(scmd != null);
+      Dump(scmd, null);
+    }
+
+    public void Add(TransferCmd tcmd)
+    {
+      Contract.Requires(tcmd != null);
+      Dump(null, tcmd);
+    }
+
+    public void AddLabelCmd(string label)
+    {
+      Contract.Requires(label != null);
+      Dump(null, null);
+      this.label = label;
+    }
+
+    public void AddLocalVariable(string name)
+    {
+      Contract.Requires(name != null);
+      // TODO
+    }
+  }
+
+  class BigBlocksResolutionContext
+  {
+    StmtList /*!*/
+      stmtList;
+
+    [Peer] List<Block /*!*/> blocks;
+
+    string /*!*/
+      prefix = "anon";
+
+    int anon = 0;
+
+    int FreshAnon()
+    {
+      return anon++;
+    }
+
+    private readonly HashSet<string /*!*/> allLabels = new();
+
+    private readonly Errors /*!*/ errorHandler;
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(stmtList != null);
+      Contract.Invariant(cce.NonNullElements(blocks, true));
+      Contract.Invariant(prefix != null);
+      Contract.Invariant(cce.NonNullElements(allLabels, true));
+      Contract.Invariant(errorHandler != null);
+    }
+
+    private void ComputeAllLabels(StmtList stmts)
+    {
+      if (stmts == null)
+      {
+        return;
+      }
+
+      foreach (BigBlock bb in stmts.BigBlocks)
+      {
+        if (bb.LabelName != null)
+        {
+          allLabels.Add(bb.LabelName);
+        }
+
+        ComputeAllLabels(bb.ec);
+      }
+    }
+
+    private void ComputeAllLabels(StructuredCmd cmd)
+    {
+      if (cmd == null)
+      {
+        return;
+      }
+
+      if (cmd is IfCmd)
+      {
+        IfCmd ifCmd = (IfCmd) cmd;
+        ComputeAllLabels(ifCmd.thn);
+        ComputeAllLabels(ifCmd.elseIf);
+        ComputeAllLabels(ifCmd.elseBlock);
+      }
+      else if (cmd is WhileCmd)
+      {
+        WhileCmd whileCmd = (WhileCmd) cmd;
+        ComputeAllLabels(whileCmd.Body);
+      }
+    }
+
+    public BigBlocksResolutionContext(StmtList stmtList, Errors errorHandler)
+    {
+      Contract.Requires(errorHandler != null);
+      Contract.Requires(stmtList != null);
+      this.stmtList = stmtList;
+      // Inject an empty big block at the end of the body of a while loop if its current end is another while loop.
+      // This transformation creates a suitable jump target for break statements inside the nested while loop.
+      InjectEmptyBigBlockInsideWhileLoopBody(stmtList);
+      this.errorHandler = errorHandler;
+      ComputeAllLabels(stmtList);
+    }
+
+    public List<Block /*!*/> /*!*/ Blocks
+    {
+      get
+      {
+        Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
+        if (blocks == null)
+        {
+          blocks = new List<Block /*!*/>();
+
+          int startErrorCount = this.errorHandler.count;
+          // Check that all goto statements go to a label in allLabels, and no break statement to a non-enclosing loop.
+          // Also, determine a good value for "prefix".
+          CheckLegalLabels(stmtList, null, null);
+
+          // fill in names of anonymous blocks
+          NameAnonymousBlocks(stmtList);
+
+          // determine successor blocks
+          RecordSuccessors(stmtList, null);
+
+          if (this.errorHandler.count == startErrorCount)
+          {
+            // generate blocks from the big blocks
+            CreateBlocks(stmtList, null);
+          }
+        }
+
+        return blocks;
+      }
+    }
+
+    void InjectEmptyBigBlockInsideWhileLoopBody(StmtList stmtList)
+    {
+      foreach (var bb in stmtList.BigBlocks)
+      {
+        InjectEmptyBigBlockInsideWhileLoopBody(bb.ec);
+      }
+    }
+
+    void InjectEmptyBigBlockInsideWhileLoopBody(StructuredCmd structuredCmd)
+    {
+      if (structuredCmd is WhileCmd whileCmd)
+      {
+        InjectEmptyBigBlockInsideWhileLoopBody(whileCmd.Body);
+        if (whileCmd.Body.BigBlocks.Count > 0 && whileCmd.Body.BigBlocks.Last().ec is WhileCmd)
+        {
+          var newBigBlocks = new List<BigBlock>(whileCmd.Body.BigBlocks);
+          newBigBlocks.Add(new BigBlock(Token.NoToken, null, new List<Cmd>(), null, null));
+          whileCmd.Body = new StmtList(newBigBlocks, whileCmd.Body.EndCurly);
+        }
+      }
+      else if (structuredCmd is IfCmd ifCmd)
+      {
+        InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.thn);
+        if (ifCmd.elseBlock != null)
+        {
+          InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseBlock);
+        }
+
+        if (ifCmd.elseIf != null)
+        {
+          InjectEmptyBigBlockInsideWhileLoopBody(ifCmd.elseIf);
+        }
+      }
+    }
+
+    void CheckLegalLabels(StmtList stmtList, StmtList parentContext, BigBlock parentBigBlock)
+    {
+      Contract.Requires(stmtList != null);
+      Contract.Requires((parentContext == null) == (parentBigBlock == null));
+      Contract.Requires(stmtList.ParentContext == null); // it hasn't been set yet
+      //modifies stmtList.*;
+      Contract.Ensures(stmtList.ParentContext == parentContext);
+      stmtList.ParentContext = parentContext;
+      stmtList.ParentBigBlock = parentBigBlock;
+
+      // record the labels declared in this StmtList
+      foreach (BigBlock b in stmtList.BigBlocks)
+      {
+        if (b.LabelName != null)
+        {
+          string n = b.LabelName;
+          if (n.StartsWith(prefix))
+          {
+            if (prefix.Length < n.Length && n[prefix.Length] == '0')
+            {
+              prefix += "1";
+            }
+            else
+            {
+              prefix += "0";
+            }
+          }
+
+          stmtList.AddLabel(b.LabelName);
+        }
+      }
+
+      // check that labels in this and nested StmtList's are legal
+      foreach (BigBlock b in stmtList.BigBlocks)
+      {
+        // goto's must reference blocks in enclosing blocks
+        if (b.tc is GotoCmd)
+        {
+          GotoCmd g = (GotoCmd) b.tc;
+          foreach (string /*!*/ lbl in cce.NonNull(g.LabelNames))
+          {
+            Contract.Assert(lbl != null);
+            /*
+            bool found = false;
+            for (StmtList sl = stmtList; sl != null; sl = sl.ParentContext) {
+              if (sl.Labels.Contains(lbl)) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              this.errorHandler.SemErr(g.tok, "Error: goto label '" + lbl + "' is undefined or out of reach");
+            }
+            */
+            if (!allLabels.Contains(lbl))
+            {
+              this.errorHandler.SemErr(g.tok, "Error: goto label '" + lbl + "' is undefined");
+            }
+          }
+        }
+
+        // break labels must refer to an enclosing while statement
+        else if (b.ec is BreakCmd)
+        {
+          BreakCmd bcmd = (BreakCmd) b.ec;
+          Contract.Assert(bcmd.BreakEnclosure == null); // it hasn't been initialized yet
+          bool found = false;
+          for (StmtList sl = stmtList; sl.ParentBigBlock != null; sl = sl.ParentContext)
+          {
+            cce.LoopInvariant(sl != null);
+            BigBlock bb = sl.ParentBigBlock;
+
+            if (bcmd.Label == null)
+            {
+              // a label-less break statement breaks out of the innermost enclosing while statement
+              if (bb.ec is WhileCmd)
+              {
+                bcmd.BreakEnclosure = bb;
+                found = true;
+                break;
+              }
+            }
+            else if (bcmd.Label == bb.LabelName)
+            {
+              // a break statement with a label can break out of both if statements and while statements
+              if (bb.simpleCmds.Count == 0)
+              {
+                // this is a good target:  the label refers to the if/while statement
+                bcmd.BreakEnclosure = bb;
+              }
+              else
+              {
+                // the label of bb refers to the first statement of bb, which in which case is a simple statement, not an if/while statement
+                this.errorHandler.SemErr(bcmd.tok,
+                  "Error: break label '" + bcmd.Label + "' must designate an enclosing statement");
+              }
+
+              found = true; // don't look any further, since we've found a matching label
+              break;
+            }
+          }
+
+          if (!found)
+          {
+            if (bcmd.Label == null)
+            {
+              this.errorHandler.SemErr(bcmd.tok, "Error: break statement is not inside a loop");
+            }
+            else
+            {
+              this.errorHandler.SemErr(bcmd.tok,
+                "Error: break label '" + bcmd.Label + "' must designate an enclosing statement");
+            }
+          }
+        }
+
+        // recurse
+        else if (b.ec is WhileCmd)
+        {
+          WhileCmd wcmd = (WhileCmd) b.ec;
+          CheckLegalLabels(wcmd.Body, stmtList, b);
+        }
+        else
+        {
+          for (IfCmd ifcmd = b.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.elseIf)
+          {
+            CheckLegalLabels(ifcmd.thn, stmtList, b);
+            if (ifcmd.elseBlock != null)
+            {
+              CheckLegalLabels(ifcmd.elseBlock, stmtList, b);
+            }
+          }
+        }
+      }
+    }
+
+    void NameAnonymousBlocks(StmtList stmtList)
+    {
+      Contract.Requires(stmtList != null);
+      foreach (BigBlock b in stmtList.BigBlocks)
+      {
+        if (b.LabelName == null)
+        {
+          b.LabelName = prefix + FreshAnon();
+        }
+
+        if (b.ec is WhileCmd)
+        {
+          WhileCmd wcmd = (WhileCmd) b.ec;
+          NameAnonymousBlocks(wcmd.Body);
+        }
+        else
+        {
+          for (IfCmd ifcmd = b.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.elseIf)
+          {
+            NameAnonymousBlocks(ifcmd.thn);
+            if (ifcmd.elseBlock != null)
+            {
+              NameAnonymousBlocks(ifcmd.elseBlock);
+            }
+          }
+        }
+      }
+    }
+
+    void RecordSuccessors(StmtList stmtList, BigBlock successor)
+    {
+      Contract.Requires(stmtList != null);
+      for (int i = stmtList.BigBlocks.Count; 0 <= --i;)
+      {
+        BigBlock big = stmtList.BigBlocks[i];
+        big.successorBigBlock = successor;
+
+        if (big.ec is WhileCmd)
+        {
+          WhileCmd wcmd = (WhileCmd) big.ec;
+          RecordSuccessors(wcmd.Body, big);
+        }
+        else
+        {
+          for (IfCmd ifcmd = big.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.elseIf)
+          {
+            RecordSuccessors(ifcmd.thn, successor);
+            if (ifcmd.elseBlock != null)
+            {
+              RecordSuccessors(ifcmd.elseBlock, successor);
+            }
+          }
+        }
+
+        successor = big;
+      }
+    }
+
+    // If the enclosing context is a loop, then "runOffTheEndLabel" is the loop head label;
+    // otherwise, it is null.
+    void CreateBlocks(StmtList stmtList, string runOffTheEndLabel)
+    {
+      Contract.Requires(stmtList != null);
+      Contract.Requires(blocks != null);
+      List<Cmd> cmdPrefixToApply = stmtList.PrefixCommands;
+
+      int n = stmtList.BigBlocks.Count;
+      foreach (BigBlock b in stmtList.BigBlocks)
+      {
+        n--;
+        Contract.Assert(b.LabelName != null);
+        List<Cmd> theSimpleCmds;
+        if (cmdPrefixToApply == null)
+        {
+          theSimpleCmds = b.simpleCmds;
+        }
+        else
+        {
+          theSimpleCmds = new List<Cmd>();
+          theSimpleCmds.AddRange(cmdPrefixToApply);
+          theSimpleCmds.AddRange(b.simpleCmds);
+          cmdPrefixToApply = null; // now, we've used 'em up
+        }
+
+        if (b.tc != null)
+        {
+          // this BigBlock has the very same components as a Block
+          Contract.Assert(b.ec == null);
+          Block block = new Block(b.tok, b.LabelName, theSimpleCmds, b.tc);
+          blocks.Add(block);
+        }
+        else if (b.ec == null)
+        {
+          TransferCmd trCmd;
+          if (n == 0 && runOffTheEndLabel != null)
+          {
+            // goto the given label instead of the textual successor block
+            trCmd = new GotoCmd(stmtList.EndCurly, new List<String> {runOffTheEndLabel});
+          }
+          else
+          {
+            trCmd = GotoSuccessor(stmtList.EndCurly, b);
+          }
+
+          Block block = new Block(b.tok, b.LabelName, theSimpleCmds, trCmd);
+          blocks.Add(block);
+        }
+        else if (b.ec is BreakCmd)
+        {
+          BreakCmd bcmd = (BreakCmd) b.ec;
+          Contract.Assert(bcmd.BreakEnclosure != null);
+          Block block = new Block(b.tok, b.LabelName, theSimpleCmds, GotoSuccessor(b.ec.tok, bcmd.BreakEnclosure));
+          blocks.Add(block);
+        }
+        else if (b.ec is WhileCmd)
+        {
+          WhileCmd wcmd = (WhileCmd) b.ec;
+          var a = FreshAnon();
+          string loopHeadLabel = prefix + a + "_LoopHead";
+          string /*!*/
+            loopBodyLabel = prefix + a + "_LoopBody";
+          string loopDoneLabel = prefix + a + "_LoopDone";
+
+          List<Cmd> ssBody = new List<Cmd>();
+          List<Cmd> ssDone = new List<Cmd>();
+          if (wcmd.Guard != null)
+          {
+            var ac = new AssumeCmd(wcmd.tok, wcmd.Guard);
+            ac.Attributes = new QKeyValue(wcmd.tok, "partition", new List<object>(), null);
+            ssBody.Add(ac);
+
+            ac = new AssumeCmd(wcmd.tok, Expr.Not(wcmd.Guard));
+            ac.Attributes = new QKeyValue(wcmd.tok, "partition", new List<object>(), null);
+            ssDone.Add(ac);
+          }
+
+          // Try to squeeze in ssBody into the first block of wcmd.Body
+          bool bodyGuardTakenCareOf = wcmd.Body.PrefixFirstBlock(ssBody, ref loopBodyLabel);
+
+          // ... goto LoopHead;
+          Block block = new Block(b.tok, b.LabelName, theSimpleCmds,
+            new GotoCmd(wcmd.tok, new List<String> {loopHeadLabel}));
+          blocks.Add(block);
+
+          // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
+          List<Cmd> ssHead = new List<Cmd>();
+          foreach (CallCmd yield in wcmd.Yields)
+          {
+            ssHead.Add(yield);
+          }
+          foreach (PredicateCmd inv in wcmd.Invariants)
+          {
+            ssHead.Add(inv);
+          }
+
+          block = new Block(wcmd.tok, loopHeadLabel, ssHead,
+            new GotoCmd(wcmd.tok, new List<String> {loopDoneLabel, loopBodyLabel}));
+          blocks.Add(block);
+
+          if (!bodyGuardTakenCareOf)
+          {
+            // LoopBody: assume guard; goto firstLoopBlock;
+            block = new Block(wcmd.tok, loopBodyLabel, ssBody,
+              new GotoCmd(wcmd.tok, new List<String> {wcmd.Body.BigBlocks[0].LabelName}));
+            blocks.Add(block);
+          }
+
+          // recurse to create the blocks for the loop body
+          CreateBlocks(wcmd.Body, loopHeadLabel);
+
+          // LoopDone: assume !guard; goto loopSuccessor;
+          TransferCmd trCmd;
+          if (n == 0 && runOffTheEndLabel != null)
+          {
+            // goto the given label instead of the textual successor block
+            trCmd = new GotoCmd(wcmd.tok, new List<String> {runOffTheEndLabel});
+          }
+          else
+          {
+            trCmd = GotoSuccessor(wcmd.tok, b);
+          }
+
+          block = new Block(wcmd.tok, loopDoneLabel, ssDone, trCmd);
+          blocks.Add(block);
+        }
+        else
+        {
+          IfCmd ifcmd = (IfCmd) b.ec;
+          string predLabel = b.LabelName;
+          List<Cmd> predCmds = theSimpleCmds;
+
+          for (; ifcmd != null; ifcmd = ifcmd.elseIf)
+          {
+            var a = FreshAnon();
+            string thenLabel = prefix + a + "_Then";
+            Contract.Assert(thenLabel != null);
+            string elseLabel = prefix + a + "_Else";
+            Contract.Assert(elseLabel != null);
+
+            List<Cmd> ssThen = new List<Cmd>();
+            List<Cmd> ssElse = new List<Cmd>();
+            if (ifcmd.Guard != null)
+            {
+              var ac = new AssumeCmd(ifcmd.tok, ifcmd.Guard);
+              ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+              ssThen.Add(ac);
+
+              ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
+              ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+              ssElse.Add(ac);
+            }
+
+            // Try to squeeze in ssThen/ssElse into the first block of ifcmd.thn/ifcmd.elseBlock
+            bool thenGuardTakenCareOf = ifcmd.thn.PrefixFirstBlock(ssThen, ref thenLabel);
+            bool elseGuardTakenCareOf = false;
+            if (ifcmd.elseBlock != null)
+            {
+              elseGuardTakenCareOf = ifcmd.elseBlock.PrefixFirstBlock(ssElse, ref elseLabel);
+            }
+
+            // ... goto Then, Else;
+            var jumpBlock = new Block(b.tok, predLabel, predCmds,
+              new GotoCmd(ifcmd.tok, new List<String> {thenLabel, elseLabel}));
+            blocks.Add(jumpBlock);
+
+            if (!thenGuardTakenCareOf)
+            {
+              // Then: assume guard; goto firstThenBlock;
+              var thenJumpBlock = new Block(ifcmd.tok, thenLabel, ssThen,
+                new GotoCmd(ifcmd.tok, new List<String> {ifcmd.thn.BigBlocks[0].LabelName}));
+              blocks.Add(thenJumpBlock);
+            }
+
+            // recurse to create the blocks for the then branch
+            CreateBlocks(ifcmd.thn, n == 0 ? runOffTheEndLabel : null);
+
+            if (ifcmd.elseBlock != null)
+            {
+              Contract.Assert(ifcmd.elseIf == null);
+              if (!elseGuardTakenCareOf)
+              {
+                // Else: assume !guard; goto firstElseBlock;
+                var elseJumpBlock = new Block(ifcmd.tok, elseLabel, ssElse,
+                  new GotoCmd(ifcmd.tok, new List<String> {ifcmd.elseBlock.BigBlocks[0].LabelName}));
+                blocks.Add(elseJumpBlock);
+              }
+
+              // recurse to create the blocks for the else branch
+              CreateBlocks(ifcmd.elseBlock, n == 0 ? runOffTheEndLabel : null);
+            }
+            else if (ifcmd.elseIf != null)
+            {
+              // this is an "else if"
+              predLabel = elseLabel;
+              predCmds = new List<Cmd>();
+              if (ifcmd.Guard != null)
+              {
+                var ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
+                ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+                predCmds.Add(ac);
+              }
+            }
+            else
+            {
+              // no else alternative is specified, so else branch is just "skip"
+              // Else: assume !guard; goto ifSuccessor;
+              TransferCmd trCmd;
+              if (n == 0 && runOffTheEndLabel != null)
+              {
+                // goto the given label instead of the textual successor block
+                trCmd = new GotoCmd(ifcmd.tok, new List<String> {runOffTheEndLabel});
+              }
+              else
+              {
+                trCmd = GotoSuccessor(ifcmd.tok, b);
+              }
+
+              var block = new Block(ifcmd.tok, elseLabel, ssElse, trCmd);
+              blocks.Add(block);
+            }
+          }
+        }
+      }
+    }
+
+    TransferCmd GotoSuccessor(IToken tok, BigBlock b)
+    {
+      Contract.Requires(b != null);
+      Contract.Requires(tok != null);
+      Contract.Ensures(Contract.Result<TransferCmd>() != null);
+      if (b.successorBigBlock != null)
+      {
+        return new GotoCmd(tok, new List<String> {b.successorBigBlock.LabelName});
+      }
+      else
+      {
+        return new ReturnCmd(tok);
+      }
+    }
+  }
+
+  [ContractClass(typeof(StructuredCmdContracts))]
+  public abstract class StructuredCmd
+  {
+    private IToken /*!*/
+      _tok;
+
+    public IToken /*!*/ tok
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<IToken>() != null);
+        return this._tok;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._tok = value;
+      }
+    }
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(this._tok != null);
+    }
+
+    public StructuredCmd(IToken tok)
+    {
+      Contract.Requires(tok != null);
+      this._tok = tok;
+    }
+
+    public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
+  }
+
+  [ContractClassFor(typeof(StructuredCmd))]
+  public abstract class StructuredCmdContracts : StructuredCmd
+  {
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      Contract.Requires(stream != null);
+      throw new NotImplementedException();
+    }
+
+    public StructuredCmdContracts() : base(null)
+    {
+    }
+  }
+
+  public class IfCmd : StructuredCmd
+  {
+    public Expr Guard;
+
+    private StmtList /*!*/
+      _thn;
+
+    public StmtList /*!*/ thn
+    {
+      get
+      {
+        Contract.Ensures(Contract.Result<StmtList>() != null);
+        return this._thn;
+      }
+      set
+      {
+        Contract.Requires(value != null);
+        this._thn = value;
+      }
+    }
+
+    private IfCmd _elseIf;
+
+    public IfCmd elseIf
+    {
+      get { return this._elseIf; }
+      set
+      {
+        Contract.Requires(value == null || this.elseBlock == null);
+        this._elseIf = value;
+      }
+    }
+
+    private StmtList _elseBlock;
+
+    public StmtList elseBlock
+    {
+      get { return this._elseBlock; }
+      set
+      {
+        Contract.Requires(value == null || this.elseIf == null);
+        this._elseBlock = value;
+      }
+    }
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(this._thn != null);
+      Contract.Invariant(this._elseIf == null || this._elseBlock == null);
+    }
+
+    public IfCmd(IToken /*!*/ tok, Expr guard, StmtList /*!*/ thn, IfCmd elseIf, StmtList elseBlock)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(thn != null);
+      Contract.Requires(elseIf == null || elseBlock == null);
+      this.Guard = guard;
+      this._thn = thn;
+      this._elseIf = elseIf;
+      this._elseBlock = elseBlock;
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      stream.Write(level, "if (");
+      IfCmd /*!*/
+        ifcmd = this;
+      while (true)
+      {
+        if (ifcmd.Guard == null)
+        {
+          stream.Write("*");
+        }
+        else
+        {
+          ifcmd.Guard.Emit(stream);
+        }
+
+        stream.WriteLine(")");
+
+        stream.WriteLine(level, "{");
+        ifcmd.thn.Emit(stream, level + 1);
+        stream.WriteLine(level, "}");
+
+        if (ifcmd.elseIf != null)
+        {
+          stream.Write(level, "else if (");
+          ifcmd = ifcmd.elseIf;
+          continue;
+        }
+        else if (ifcmd.elseBlock != null)
+        {
+          stream.WriteLine(level, "else");
+          stream.WriteLine(level, "{");
+          ifcmd.elseBlock.Emit(stream, level + 1);
+          stream.WriteLine(level, "}");
+        }
+
+        break;
+      }
+    }
+  }
+
+  public class WhileCmd : StructuredCmd
+  {
+    [Peer] public Expr Guard;
+
+    public List<PredicateCmd> Invariants;
+
+    public List<CallCmd> Yields;
+
+    public StmtList Body;
+
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(Body != null);
+      Contract.Invariant(cce.NonNullElements(Invariants));
+    }
+
+    public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<CallCmd> yields, StmtList body)
+      : base(tok)
+    {
+      Contract.Requires(cce.NonNullElements(invariants));
+      Contract.Requires(body != null);
+      Contract.Requires(tok != null);
+      this.Guard = guard;
+      this.Invariants = invariants;
+      this.Yields = yields;
+      this.Body = body;
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      stream.Write(level, "while (");
+      if (Guard == null)
+      {
+        stream.Write("*");
+      }
+      else
+      {
+        Guard.Emit(stream);
+      }
+
+      stream.WriteLine(")");
+
+      foreach (var yield in Yields)
+      {
+        stream.Write(level + 1, "invariant");
+        yield.Emit(stream, level + 1);
+      }
+      foreach (var inv in Invariants)
+      {
+        if (inv is AssumeCmd)
+        {
+          stream.Write(level + 1, "free invariant ");
+        }
+        else
+        {
+          stream.Write(level + 1, "invariant ");
+        }
+
+        Cmd.EmitAttributes(stream, inv.Attributes);
+        inv.Expr.Emit(stream);
+        stream.WriteLine(";");
+      }
+
+      stream.WriteLine(level, "{");
+      Body.Emit(stream, level + 1);
+      stream.WriteLine(level, "}");
+    }
+  }
+
+  public class BreakCmd : StructuredCmd
+  {
+    public string Label;
+    public BigBlock BreakEnclosure;
+
+    public BreakCmd(IToken tok, string label)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      this.Label = label;
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      if (Label == null)
+      {
+        stream.WriteLine(level, "break;");
+      }
+      else
+      {
+        stream.WriteLine(level, "break {0};", Label);
+      }
+    }
+  }
+
+  //---------------------------------------------------------------------
+  // Block
+
+  //---------------------------------------------------------------------
   // Commands
   [ContractClassFor(typeof(Cmd))]
   public abstract class CmdContracts : Cmd
@@ -44,7 +1225,7 @@ namespace Microsoft.Boogie
       }
 
       if (cmd is AssumeCmd assumeCmd
-          && assumeCmd.Attributes.FindBoolAttribute("assumption_variable_initialization"))
+          && QKeyValue.FindBoolAttribute(assumeCmd.Attributes, "assumption_variable_initialization"))
       {
         // Ignore assumption variable initializations.
         assumeCmd.Checksum = currentChecksum;
@@ -512,7 +1693,7 @@ namespace Microsoft.Boogie
           continue;
         }
         var decl = lhs.AssignedVariable.Decl;
-        if (lhs.AssignedVariable.Decl != null && decl.Attributes.FindBoolAttribute("assumption"))
+        if (lhs.AssignedVariable.Decl != null && QKeyValue.FindBoolAttribute(decl.Attributes, "assumption"))
         {
           var rhs = Rhss[i] as NAryExpr;
           if (rhs == null
@@ -2217,6 +3398,35 @@ namespace Microsoft.Boogie
 
   //---------------------------------------------------------------------
   // Transfer commands
+  [ContractClass(typeof(TransferCmdContracts))]
+  public abstract class TransferCmd : Absy
+  {
+    public ProofObligationDescription Description { get; set; } = new PostconditionDescription();
+
+    internal TransferCmd(IToken /*!*/ tok)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+    }
+
+    public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
+
+    public override void Typecheck(TypecheckingContext tc)
+    {
+      //Contract.Requires(tc != null);
+      // nothing to typecheck
+    }
+
+    public override string ToString()
+    {
+      Contract.Ensures(Contract.Result<string>() != null);
+      System.IO.StringWriter buffer = new System.IO.StringWriter();
+      using TokenTextWriter stream = new TokenTextWriter("<buffer>", buffer, false, false, PrintOptions.Default);
+      this.Emit(stream, 0);
+
+      return buffer.ToString();
+    }
+  }
 
   [ContractClassFor(typeof(TransferCmd))]
   public abstract class TransferCmdContracts : TransferCmd
@@ -2229,6 +3439,189 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(stream != null);
       throw new NotImplementedException();
+    }
+  }
+
+  public class ReturnCmd : TransferCmd
+  {
+    public QKeyValue Attributes { get; set; }
+    
+    public ReturnCmd(IToken /*!*/ tok)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      //Contract.Requires(stream != null);
+      stream.WriteLine(this, level, "return;");
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      //Contract.Requires(rc != null);
+      // nothing to resolve
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      //Contract.Requires(visitor != null);
+      Contract.Ensures(Contract.Result<Absy>() != null);
+      return visitor.VisitReturnCmd(this);
+    }
+  }
+
+  public class GotoCmd : TransferCmd
+  {
+    [Rep] public List<String> LabelNames;
+    [Rep] public List<Block> LabelTargets;
+
+    public QKeyValue Attributes { get; set; }
+    
+    [ContractInvariantMethod]
+    void ObjectInvariant()
+    {
+      Contract.Invariant(LabelNames == null || LabelTargets == null || LabelNames.Count == LabelTargets.Count);
+    }
+
+    [NotDelayed]
+    public GotoCmd(IToken /*!*/ tok, List<String> /*!*/ labelSeq)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(labelSeq != null);
+      this.LabelNames = labelSeq;
+    }
+
+    public GotoCmd(IToken /*!*/ tok, List<String> /*!*/ labelSeq, List<Block> /*!*/ blockSeq)
+      : base(tok)
+    {
+      Contract.Requires(tok != null);
+      Contract.Requires(labelSeq != null);
+      Contract.Requires(blockSeq != null);
+      Debug.Assert(labelSeq.Count == blockSeq.Count);
+      for (int i = 0; i < labelSeq.Count; i++)
+      {
+        Debug.Assert(Equals(labelSeq[i], cce.NonNull(blockSeq[i]).Label));
+      }
+
+      this.LabelNames = labelSeq;
+      this.LabelTargets = blockSeq;
+    }
+
+    public GotoCmd(IToken /*!*/ tok, List<Block> /*!*/ blockSeq)
+      : base(tok)
+    {
+      //requires (blockSeq[i] != null ==> blockSeq[i].Label != null);
+      Contract.Requires(tok != null);
+      Contract.Requires(blockSeq != null);
+      List<String> labelSeq = new List<String>();
+      for (int i = 0; i < blockSeq.Count; i++)
+      {
+        labelSeq.Add(cce.NonNull(blockSeq[i]).Label);
+      }
+
+      this.LabelNames = labelSeq;
+      this.LabelTargets = blockSeq;
+    }
+
+    public void RemoveTarget(Block b) {
+      LabelNames.Remove(b.Label);
+      LabelTargets.Remove(b);
+    }
+    
+    public void AddTarget(Block b)
+    {
+      Contract.Requires(b != null);
+      Contract.Requires(b.Label != null);
+      Contract.Requires(this.LabelTargets != null);
+      Contract.Requires(this.LabelNames != null);
+      this.LabelTargets.Add(b);
+      this.LabelNames.Add(b.Label);
+    }
+
+    public void AddTargets(IEnumerable<Block> blocks)
+    {
+      Contract.Requires(blocks != null);
+      Contract.Requires(cce.NonNullElements(blocks));
+      Contract.Requires(this.LabelTargets != null);
+      Contract.Requires(this.LabelNames != null);
+      foreach (var block in blocks)
+      {
+        AddTarget(block);
+      }
+    }
+
+    public override void Emit(TokenTextWriter stream, int level)
+    {
+      //Contract.Requires(stream != null);
+      Contract.Assume(this.LabelNames != null);
+      stream.Write(this, level, "goto ");
+      if (stream.Options.PrintWithUniqueASTIds)
+      {
+        if (LabelTargets == null)
+        {
+          string sep = "";
+          foreach (string name in LabelNames)
+          {
+            stream.Write("{0}{1}^^{2}", sep, "NoDecl", name);
+            sep = ", ";
+          }
+        }
+        else
+        {
+          string sep = "";
+          foreach (Block /*!*/ b in LabelTargets)
+          {
+            Contract.Assert(b != null);
+            stream.Write("{0}h{1}^^{2}", sep, b.GetHashCode(), b.Label);
+            sep = ", ";
+          }
+        }
+      }
+      else
+      {
+        LabelNames.Emit(stream);
+      }
+
+      stream.WriteLine(";");
+    }
+
+    public override void Resolve(ResolutionContext rc)
+    {
+      //Contract.Requires(rc != null);
+      Contract.Ensures(LabelTargets != null);
+      if (LabelTargets != null)
+      {
+        // already resolved
+        return;
+      }
+
+      Contract.Assume(this.LabelNames != null);
+      LabelTargets = new List<Block>();
+      foreach (string /*!*/ lbl in LabelNames)
+      {
+        Contract.Assert(lbl != null);
+        Block b = rc.LookUpBlock(lbl);
+        if (b == null)
+        {
+          rc.Error(this, "goto to unknown block: {0}", lbl);
+        }
+        else
+        {
+          LabelTargets.Add(b);
+        }
+      }
+
+      Debug.Assert(rc.ErrorCount > 0 || LabelTargets.Count == LabelNames.Count);
+    }
+
+    public override Absy StdDispatch(StandardVisitor visitor)
+    {
+      //Contract.Requires(visitor != null);
+      Contract.Ensures(Contract.Result<Absy>() != null);
+      return visitor.VisitGotoCmd(this);
     }
   }
 }

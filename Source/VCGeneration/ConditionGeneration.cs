@@ -764,7 +764,7 @@ namespace VC
         Dictionary<Variable, Expr> incarnationMap = ComputeIncarnationMap(b, block2Incarnation);
 
         // b.liveVarsBefore has served its purpose in the just-finished call to ComputeIncarnationMap; null it out.
-        b.LiveVarsBefore = null;
+        b.liveVarsBefore = null;
 
         // Decrement the succCount field in each predecessor. Once the field reaches zero in any block,
         // all its successors have been passified.  Consequently, its entry in block2Incarnation can be removed.
@@ -1037,7 +1037,7 @@ namespace VC
           }
         }
         else if (pc is AssumeCmd
-                 && pc.Attributes.FindBoolAttribute("precondition_previous_snapshot")
+                 && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot")
                  && pc.SugaredCmdChecksum != null)
         {
           if (!relevantDoomedAssumpVars.Any()
@@ -1062,7 +1062,7 @@ namespace VC
             dropCmd = true;
           }
         }
-        else if (pc is AssumeCmd && pc.Attributes.FindBoolAttribute("assumption_variable_initialization"))
+        else if (pc is AssumeCmd && QKeyValue.FindBoolAttribute(pc.Attributes, "assumption_variable_initialization"))
         {
           var identExpr = pc.Expr as IdentifierExpr;
           if (identExpr != null && identExpr.Decl != null && !incarnationMap.ContainsKey(identExpr.Decl))
@@ -1210,7 +1210,7 @@ namespace VC
         {
           var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
           if (identExpr != null && identExpr.Decl != null &&
-              identExpr.Decl.Attributes.FindBoolAttribute("assumption") &&
+              QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") &&
               incarnationMap.TryGetValue(identExpr.Decl, out var incarnation))
           {
             TraceCachingAction(traceWriter, assign, CachingAction.AssumeNegationOfAssumptionVariable);
@@ -1238,7 +1238,7 @@ namespace VC
         // invariant) in the previous snapshot and, consequently, the corresponding assumption did not affect the
         // anything after the loop. We can achieve this by simply not updating/adding it in the incarnation map.
         List<IdentifierExpr> havocVars = hc.Vars.Where(v =>
-            !(v.Decl.Attributes.FindBoolAttribute("assumption") && v.Decl.Name.StartsWith("a##cached##")))
+            !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##cached##")))
           .ToList();
         // First, compute the new incarnations
         foreach (IdentifierExpr ie in havocVars)
@@ -1273,7 +1273,7 @@ namespace VC
         // assume v_post ==> v_pre;
         foreach (IdentifierExpr ie in havocVars)
         {
-          if (ie.Decl.Attributes.FindBoolAttribute("assumption"))
+          if (QKeyValue.FindBoolAttribute(ie.Decl.Attributes, "assumption"))
           {
             var preInc = (Expr) (preHavocIncarnationMap[ie.Decl].Clone());
             var postInc = (Expr) (incarnationMap[ie.Decl].Clone());
