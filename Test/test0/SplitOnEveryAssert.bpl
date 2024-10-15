@@ -3,18 +3,18 @@
 // RUN: %OutputCheck --file-to-check "%t" "%s"
 
 // CHECK: Verifying DoTheSplitting ...
-// CHECK:      checking split 1/11.*
-// CHECK:      checking split 2/11.*
-// CHECK:      checking split 3/11.*
-// CHECK:      checking split 4/11.*
+// CHECK:      checking split 1/12.*
+// CHECK:      checking split 2/12.*
+// CHECK:      checking split 3/12.*
+// CHECK:      checking split 4/12.*
 // CHECK:      --> split #4 done,  \[.* s\] Invalid
-// CHECK:      checking split 5/11.*
-// CHECK:      checking split 6/11.*
-// CHECK:      checking split 7/11.*
-// CHECK:      checking split 8/11.*
-// CHECK:      checking split 9/11.*
-// CHECK:      checking split 10/11.*
-// CHECK:      checking split 11/11.*
+// CHECK:      checking split 5/12.*
+// CHECK:      checking split 6/12.*
+// CHECK:      checking split 7/12.*
+// CHECK:      checking split 8/12.*
+// CHECK:      checking split 9/12.*
+// CHECK:      checking split 10/12.*
+// CHECK:      checking split 11/12.*
 // CHECK-L: SplitOnEveryAssert.bpl(36,5): Error: this assertion could not be proved
 
 // Verify the second procedure is NOT split. .* is necessary to match the blank line in-between.

@@ -21,8 +21,7 @@ public static class ManualSplitFinder {
         IsolateAttributeOnAssertsHandler.GetParts(options, withoutIsolatedJumps, createPart);
     
       var splitParts = SplitAttributeHandler.GetParts(withoutIsolatedAssertions);
-      var splits = isolatedJumps.Concat(isolatedAssertions).Concat(splitParts).Where(s => s.Asserts.Any()).ToList();
-      return splits.Any() ? splits : new List<ManualSplit> { focussedPart };
+      return isolatedJumps.Concat(isolatedAssertions).Concat(splitParts);
     });
     return result;
   }
