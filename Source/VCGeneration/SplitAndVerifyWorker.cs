@@ -39,7 +39,8 @@ namespace VC
       Program program,
       VCGenOptions options, 
       VerificationConditionGenerator verificationConditionGenerator,
-      ImplementationRun run, 
+      ImplementationRun run,
+      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
       VerifierCallback callback, 
       ModelViewInfo mvInfo,
       VcOutcome vcOutcome)
@@ -65,8 +66,7 @@ namespace VC
 
 
       ResetPredecessors(Implementation.Blocks);
-      ManualSplits = ManualSplitFinder.GetParts(options, run,  
-        (token, blocks) => new ManualSplit(options, () => blocks, verificationConditionGenerator, run, token)).ToList<Split>();
+      ManualSplits = ManualSplitFinder.FocusAndSplit(program, options, run, gotoCmdOrigins, verificationConditionGenerator).ToList<Split>();
 
       if (ManualSplits.Count == 1 && maxSplits > 1)
       {

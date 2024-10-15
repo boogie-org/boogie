@@ -44,7 +44,7 @@ public class VerificationTask : IVerificationTask {
 
   public IVerificationTask FromSeed(int newSeed)
   {
-    var split = new ManualSplit(Split.Options, () => Split.Blocks, 
+    var split = new ManualSplit(Split.Options, () => Split.Blocks, Split.GotoCmdOrigins, 
       Split.parent, Split.Run, Split.Token, newSeed);
     split.SplitIndex = Split.SplitIndex;
     return new VerificationTask(engine, ProcessedProgram, split, modelViewInfo);

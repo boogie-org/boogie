@@ -128,11 +128,7 @@ public sealed class Block : Absy
     return liveVarsBefore.Contains(v);
   }
 
-  public static Block ShallowClone(Block block) {
-    return new Block(block.tok, block.Label, block.Cmds, block.TransferCmd);
-  }
-  
-  public Block(IToken tok, TransferCmd cmd)
+  public Block(IToken tok)
     : this(tok, "", new List<Cmd>(), new ReturnCmd(tok))
   {
   }

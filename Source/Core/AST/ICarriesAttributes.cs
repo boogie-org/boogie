@@ -51,25 +51,23 @@ public interface ICarriesAttributes
     Attributes = new QKeyValue(tok, name, new List<object>() {parameter}, Attributes);
   }
 
-
 }
 
-public static class CarriesAttributesExtensions {
-  
-  public static void CopyIdFrom(this ICarriesAttributes destination, IToken tok, ICarriesAttributes src)
+public static class CarriesAttributesExtensions
+{
+  public static void CopyIdFrom(this ICarriesAttributes dest, IToken tok, ICarriesAttributes src)
   {
     var id = src.FindStringAttribute("id");
     if (id is not null) {
-      destination.AddStringAttribute(tok, "id", id);
+      dest.AddStringAttribute(tok, "id", id);
     }
   }
 
-  public static void CopyIdWithModificationsFrom(this ICarriesAttributes destination, IToken tok, 
-    ICarriesAttributes src, Func<string,TrackedNodeComponent> modifier)
+  public static void CopyIdWithModificationsFrom(this ICarriesAttributes dest, IToken tok, ICarriesAttributes src, Func<string,TrackedNodeComponent> modifier)
   {
     var id = src.FindStringAttribute("id");
     if (id is not null) {
-      destination.AddStringAttribute(tok, "id", modifier(id).SolverLabel);
+      dest.AddStringAttribute(tok, "id", modifier(id).SolverLabel);
     }
   }
 }

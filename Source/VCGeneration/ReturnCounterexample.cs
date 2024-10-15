@@ -7,7 +7,8 @@ namespace Microsoft.Boogie;
 public class ReturnCounterexample : Counterexample
 {
   public TransferCmd FailingReturn;
-  public readonly Ensures FailingEnsures;
+  public Ensures FailingEnsures;
+  public AssertEnsuresCmd FailingFailingAssert;
 
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -20,7 +21,7 @@ public class ReturnCounterexample : Counterexample
   public ReturnCounterexample(VCGenOptions options, List<Block> trace, List<object> augmentedTrace, 
     AssertEnsuresCmd failingAssertEnsures, TransferCmd failingReturn, Model model,
     VC.ModelViewInfo mvInfo, ProverContext context, ProofRun proofRun, byte[] checksum)
-    : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun, failingAssertEnsures)
+    : base(options, trace, augmentedTrace, model, mvInfo, context, proofRun)
   {
     var failingEnsures = failingAssertEnsures.Ensures;
     Contract.Requires(trace != null);
@@ -30,6 +31,7 @@ public class ReturnCounterexample : Counterexample
     Contract.Requires(!failingEnsures.Free);
     this.FailingReturn = failingReturn;
     this.FailingEnsures = failingEnsures;
+    this.FailingFailingAssert = failingAssertEnsures;
     this.checksum = checksum;
   }
 
@@ -40,7 +42,7 @@ public class ReturnCounterexample : Counterexample
     return FailingReturn.tok.line * 1000 + FailingReturn.tok.col;
   }
 
-  readonly byte[] checksum;
+  private readonly byte[] checksum;
 
   /// <summary>
   /// Returns the checksum of the corresponding assertion.
@@ -49,7 +51,7 @@ public class ReturnCounterexample : Counterexample
 
   public override Counterexample Clone()
   {
-    var ret = new ReturnCounterexample(Options, Trace, AugmentedTrace, (AssertEnsuresCmd)FailingAssert, FailingReturn, Model, MvInfo, Context, ProofRun, checksum);
+    var ret = new ReturnCounterexample(Options, Trace, AugmentedTrace, FailingFailingAssert, FailingReturn, Model, MvInfo, Context, ProofRun, checksum);
     ret.CalleeCounterexamples = CalleeCounterexamples;
     return ret;
   }

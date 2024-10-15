@@ -25,6 +25,7 @@ namespace VC
 
     public bool Passified { get; set; } = false;
     public bool ConvertedToDAG { get; set; } = false;
+    public Dictionary<TransferCmd, ReturnCmd> GotoCmdOrigins { get; set; }
     public ModelViewInfo ModelViewInfo { get; set; }
   }
 
@@ -113,7 +114,7 @@ namespace VC
 
         ResetPredecessors(codeExpr.Blocks);
         vcgen.AddBlocksBetween(codeExpr.Blocks);
-        vcgen.ConvertBlocks2PassiveCmd(traceWriter, codeExpr.Blocks,
+        Dictionary<Variable, Expr> gotoCmdOrigins = vcgen.ConvertBlocks2PassiveCmd(traceWriter, codeExpr.Blocks,
           new List<IdentifierExpr>(), new ModelViewInfo(codeExpr), debugInfos);
         VCExpr startCorrect = vcgen.LetVC(codeExpr.Blocks, null, absyIds, ctx, out var ac, isPositiveContext);
         VCExpr vce = ctx.ExprGen.Let(bindings, startCorrect);
@@ -379,7 +380,7 @@ namespace VC
 
       callback.OnProgress?.Invoke("VCgen", 0, 0, 0.0);
 
-      PrepareImplementation(run, callback, out var smokeTester, out var dataModelViewInfo);
+      PrepareImplementation(run, callback, out var smokeTester, out var dataGotoCmdOrigins, out var dataModelViewInfo);
 
       VcOutcome vcOutcome = VcOutcome.Correct;
 
@@ -399,14 +400,15 @@ namespace VC
             else
             {
               // If possible, we use the old counterexample, but with the location information of "a"
-              var cex = AssertCmdToCloneCounterexample(CheckerPool.Options, a, oldCex, impl.Blocks[0]);
+              var cex = AssertCmdToCloneCounterexample(CheckerPool.Options, a, oldCex, impl.Blocks[0],
+                dataGotoCmdOrigins);
               callback.OnCounterexample(cex, null);
             }
           }
         }
       }
 
-      var worker = new SplitAndVerifyWorker(program, Options, this, run, callback,
+      var worker = new SplitAndVerifyWorker(program, Options, this, run, dataGotoCmdOrigins, callback,
         dataModelViewInfo, vcOutcome);
 
       vcOutcome = await worker.WorkUntilDone(cancellationToken);
@@ -425,6 +427,7 @@ namespace VC
 
     public void PrepareImplementation(ImplementationRun run, VerifierCallback callback,
       out SmokeTester smokeTester,
+      out Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins,
       out ModelViewInfo modelViewInfo)
     {
       var data = implementationData.GetOrCreateValue(run.Implementation)!;
@@ -444,7 +447,7 @@ namespace VC
       if (!data.Passified)
       {
         data.Passified = true;
-        PassifyImpl(run, out modelViewInfo);
+        data.GotoCmdOrigins = gotoCmdOrigins = PassifyImpl(run, out modelViewInfo);
         data.ModelViewInfo = modelViewInfo;
 
         ExpandAsserts(run.Implementation);
@@ -463,6 +466,7 @@ namespace VC
       else
       {
         modelViewInfo = data.ModelViewInfo;
+        gotoCmdOrigins = data.GotoCmdOrigins;
       }
 
     }
@@ -471,6 +475,7 @@ namespace VC
     {
       private ProofRun split;
       private new VCGenOptions options;
+      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins;
 
       ControlFlowIdMap<Absy> absyIds;
 
@@ -486,6 +491,7 @@ namespace VC
       [ContractInvariantMethod]
       void ObjectInvariant()
       {
+        Contract.Invariant(gotoCmdOrigins != null);
         Contract.Invariant(absyIds != null);
         Contract.Invariant(cce.NonNullElements(blocks));
         Contract.Invariant(callback != null);
@@ -504,6 +510,7 @@ namespace VC
       }
 
       public ErrorReporter(VCGenOptions options,
+        Dictionary<TransferCmd, ReturnCmd> /*!*/ gotoCmdOrigins,
         ControlFlowIdMap<Absy> /*!*/ absyIds,
         List<Block /*!*/> /*!*/ blocks,
         Dictionary<Cmd, List<object>> debugInfos,
@@ -512,11 +519,13 @@ namespace VC
         ProverContext /*!*/ context,
         Program /*!*/ program, ProofRun split) : base(options)
       {
+        Contract.Requires(gotoCmdOrigins != null);
         Contract.Requires(absyIds != null);
         Contract.Requires(cce.NonNullElements(blocks));
         Contract.Requires(callback != null);
         Contract.Requires(context != null);
         Contract.Requires(program != null);
+        this.gotoCmdOrigins = gotoCmdOrigins;
         this.absyIds = absyIds;
         this.blocks = blocks;
         this.debugInfos = debugInfos;
@@ -559,7 +568,7 @@ namespace VC
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
-        var newCounterexample = TraceCounterexample(options, entryBlock, traceNodes, trace, model, MvInfo,
+        Counterexample newCounterexample = TraceCounterexample(options, entryBlock, traceNodes, trace, model, MvInfo,
           debugInfos, context, split, new Dictionary<TraceLocation, CalleeCounterexampleInfo>());
 
         if (newCounterexample == null)
@@ -571,12 +580,15 @@ namespace VC
 
         if (newCounterexample is ReturnCounterexample returnExample)
         {
-          foreach (var b in returnExample.Trace)
+          foreach (var block in returnExample.Trace)
           {
-            Contract.Assert(b != null);
-            Contract.Assume(b.TransferCmd != null);
-            if (b.TransferCmd.tok is GotoFromReturn gotoFromReturn) {
-              returnExample.FailingReturn = gotoFromReturn.Origin;
+            Contract.Assert(block != null);
+            Contract.Assume(block.TransferCmd != null);
+            var cmd = gotoCmdOrigins.GetValueOrDefault(block.TransferCmd);
+            if (cmd != null)
+            {
+              returnExample.FailingReturn = cmd;
+              break;
             }
           }
         }
@@ -648,14 +660,14 @@ namespace VC
       }
     }
 
-    public void PassifyImpl(ImplementationRun run, out ModelViewInfo modelViewInfo)
+    public Dictionary<TransferCmd, ReturnCmd> PassifyImpl(ImplementationRun run, out ModelViewInfo modelViewInfo)
     {
       Contract.Requires(run != null);
       Contract.Requires(program != null);
       Contract.Ensures(Contract.Result<Dictionary<TransferCmd, ReturnCmd>>() != null);
 
       var impl = run.Implementation;
-      var exitBlock = DesugarReturns.GenerateUnifiedExit(impl);
+      var exitBlock = DesugarReturns.GenerateUnifiedExit(impl, out var gotoCmdOrigins);
 
       #region Debug Tracing
 
@@ -694,7 +706,7 @@ namespace VC
           if (lvar.TypedIdent.WhereExpr != null)
           {
             var exp = Expr.Binary(lvar.tok, BinaryOperator.Opcode.And, lvar.TypedIdent.WhereExpr,
-              Expr.Literal(true));
+              LiteralExpr.Literal(true));
             Cmd c = new AssumeCmd(lvar.tok, exp,
               new QKeyValue(lvar.tok, "where", new List<object>(new object[] { idExp }), null));
             cc.Add(c);
@@ -710,7 +722,7 @@ namespace VC
         InjectPreconditions(Options, run, cc);
 
         // append postconditions, starting in exitBlock and continuing into other blocks, if needed
-        DesugarReturns.InjectPostConditions(Options, run, exitBlock);
+        DesugarReturns.InjectPostConditions(Options, run, exitBlock, gotoCmdOrigins);
       }
 
       #endregion
@@ -784,6 +796,8 @@ namespace VC
       #endregion Peep-hole optimizations
 
       HandleSelectiveChecking(impl);
+
+      return gotoCmdOrigins;
     }
 
     #region Simplified May-Unverified Analysis and Instrumentation
@@ -1353,11 +1367,12 @@ namespace VC
     /// </summary>
     public static Counterexample AssertCmdToCloneCounterexample(VCGenOptions options, AssertCmd assert,
       Counterexample cex,
-      Block implEntryBlock)
+      Block implEntryBlock, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
     {
       Contract.Requires(assert != null);
       Contract.Requires(cex != null);
       Contract.Requires(implEntryBlock != null);
+      Contract.Requires(gotoCmdOrigins != null);
       Contract.Ensures(Contract.Result<Counterexample>() != null);
 
       Counterexample cc;
@@ -1430,7 +1445,7 @@ namespace VC
           {
             Contract.Assert(block != null);
             Contract.Assume(block.TransferCmd != null);
-            returnCmd = block.TransferCmd.tok is GotoFromReturn gotoFromReturn ? gotoFromReturn.Origin : null;
+            returnCmd = gotoCmdOrigins.GetValueOrDefault(block.TransferCmd);
             if (returnCmd != null)
             {
               break;

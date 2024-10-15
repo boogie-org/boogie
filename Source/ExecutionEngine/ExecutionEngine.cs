@@ -736,15 +736,16 @@ namespace Microsoft.Boogie
       {
         var writer = TextWriter.Null;
         var vcGenerator = new VerificationConditionGenerator(processedProgram.Program, CheckerPool);
+
         
         var run = new ImplementationRun(implementation, writer);
         var collector = new VerificationResultCollector(Options);
         vcGenerator.PrepareImplementation(run, collector, out _,
+          out var gotoCmdOrigins,
           out var modelViewInfo);
 
         ConditionGeneration.ResetPredecessors(run.Implementation.Blocks);
-        var splits = ManualSplitFinder.GetParts(Options, run,  
-          (token, blocks) => new ManualSplit(Options, () => blocks, vcGenerator, run, token)).ToList();
+        var splits = ManualSplitFinder.FocusAndSplit(program, Options, run, gotoCmdOrigins, vcGenerator).ToList();
         for (var index = 0; index < splits.Count; index++) {
           var split = splits[index];
           split.SplitIndex = index;
@@ -1309,8 +1310,6 @@ namespace Microsoft.Boogie
         return;
       }
 
-      // When an assertion fails on multiple paths, only show an error for one of them.
-      errors = errors.DistinctBy(e => e.FailingAssert).ToList();
       errors.Sort(new CounterexampleComparer());
       foreach (Counterexample error in errors)
       {

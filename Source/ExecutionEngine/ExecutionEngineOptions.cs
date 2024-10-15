@@ -22,6 +22,7 @@ public interface ExecutionEngineOptions : HoudiniOptions, ConcurrencyOptions
   ShowEnvironment ShowEnv { get; }
   string Version { get; }
   string Environment { get; }
+  bool UseBaseNameForFileName { get; }
   HashSet<string> Libraries { get; set; }
   bool NoResolve { get; }
   bool NoTypecheck { get; }

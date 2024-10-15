@@ -99,22 +99,22 @@ namespace Microsoft.Boogie.GraphUtil
         return true;
       }
 
-      int currentDominator = nodeNumberToImmediateDominator[domineeNum];
+      int currentDominatorNum = nodeNumberToImmediateDominator[domineeNum];
       while (true)
       {
-        if (currentDominator == dominatorNum)
+        if (currentDominatorNum == dominatorNum)
         {
           return true;
         }
 
-        if (currentDominator == sourceNum)
+        if (currentDominatorNum == sourceNum)
         {
           return false;
         }
 
-        path?.Add(postOrderNumberToNode[currentDominator]);
+        path?.Add(postOrderNumberToNode[currentDominatorNum]);
 
-        currentDominator = nodeNumberToImmediateDominator[currentDominator];
+        currentDominatorNum = nodeNumberToImmediateDominator[currentDominatorNum];
       }
     }
 
@@ -623,55 +623,35 @@ namespace Microsoft.Boogie.GraphUtil
       }
     }
 
-    /// <summary>
-    /// This method gives a simpler way to compute dominators but it assmumes the graph is a DAG.
-    /// With acyclicty we can compute all dominators by traversing the graph (once) in topological order
-    /// (using the property: A vertex's dominator set is unaffected by vertices that come later).
-    /// The method does not check the graph for the DAG property. That risk is on the caller.
-    /// </summary>
-    public Dictionary<Node, HashSet<Node>> AcyclicDominators()
-    {
-      var dominatorsPerNode = new Dictionary<Node, HashSet<Node>>();
-      foreach (var node in TopologicalSort())
-      {
-        var predecessors = Predecessors(node);
-        var dominatorsForNode = Intersection(predecessors.Select(p => dominatorsPerNode[p]));
-        dominatorsForNode.Add(node);
-        dominatorsPerNode[node] = dominatorsForNode;
-      }
-      return dominatorsPerNode;
-    }
-
-    public static HashSet<T> Intersection<T>(IEnumerable<ISet<T>> sets) {
-      var first = true;
-      HashSet<T> result = null;
-      foreach (var set in sets) {
-        if (first) {
-          result = set.ToHashSet();
-          first = false;
-        } else {
-          result!.IntersectWith(set);
-        }
-      }
-
-      if (result == null) {
-        return new HashSet<T>();
-      }
-
-      return result;
-    }
-
-    /// <summary>
-    /// Use this method only for DAGs because it uses DominatorsFast() for computing dominators
-    /// </summary>
-    public Dictionary<Node, Node> ImmediateDominator()
+    // This method gives a simpler way to compute dominators but it assmumes the graph is a DAG.
+    // With acyclicty we can compute all dominators by traversing the graph (once) in topological order
+    // (using the property: A vertex's dominator set is unaffected by vertices that come later).
+    // The method does not check the graph for the DAG property. That risk is on the caller.
+    public Dictionary<Node, HashSet<Node>> DominatorsFast()
     {
       var topoSorted = TopologicalSort().ToList();
-      var indexPerNode = new Dictionary<Node, int>();
-      for (int index = 0; index < topoSorted.Count; index++) {
-        indexPerNode[topoSorted[index]] = index;
+      var dominators = new Dictionary<Node, HashSet<Node>>();
+      topoSorted.ForEach(u => dominators[u] = topoSorted.ToHashSet());
+      foreach (var node in topoSorted)
+      {
+        var s = new HashSet<Node>();
+        var predecessors = Predecessors(node).ToList();
+        if (predecessors.Count != 0)
+        {
+          s.UnionWith(dominators[predecessors.First()]);
+          predecessors.ForEach(v => s.IntersectWith(dominators[v]));
+        }
+        s.Add(node);
+        dominators[node] = s;
       }
-      var dominators = AcyclicDominators();
+      return dominators;
+    }
+
+    // Use this method only for DAGs because it uses DominatorsFast() for computing dominators
+    public Dictionary<Node, Node> ImmediateDominator()
+    {
+      List<Node> topoSorted = TopologicalSort().ToList();
+      Dictionary<Node, HashSet<Node>> dominators = DominatorsFast();
       var immediateDominator = new Dictionary<Node, Node>();
       foreach (var node in Nodes)
       {
@@ -679,10 +659,9 @@ namespace Microsoft.Boogie.GraphUtil
         {
           dominators[node].Remove(node);
         }
-        immediateDominator[node] = topoSorted.ElementAt(dominators[node].Max(e => indexPerNode[e]));
+        immediateDominator[node] = topoSorted.ElementAt(dominators[node].Max(e => topoSorted.IndexOf(e)));
       }
-
-      immediateDominator.Remove(source);
+      immediateDominator[source] = source;
       return immediateDominator;
     }
 
@@ -707,7 +686,7 @@ namespace Microsoft.Boogie.GraphUtil
       return dominees ?? new List<Node>();
     }
 
-    public List<Node> TopologicalSort(bool reversed = false)
+    public List<Node /*?*/> TopologicalSort(bool reversed = false)
     {
       TarjanTopSort(out var acyclic, out var sortedList, reversed);
       return acyclic ? sortedList : new List<Node>();
@@ -1154,7 +1133,7 @@ namespace Microsoft.Boogie.GraphUtil
       return s.ToString();
     }
 
-    public ISet<Node> ComputeReachability(Node start, bool forward = true)
+    public ICollection<Node> ComputeReachability(Node start, bool forward = true)
     {
       var todo = new Stack<Node>();
       var visited = new HashSet<Node>();

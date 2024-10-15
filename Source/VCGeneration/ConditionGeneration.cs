@@ -222,7 +222,7 @@ namespace VC
 
       Block origStartBlock = impl.Blocks[0];
       Block insertionPoint = new Block(
-        Token.NoToken, blockLabel, startCmds,
+        new Token(-17, -4), blockLabel, startCmds,
         new GotoCmd(impl.tok, new List<String> {origStartBlock.Label}, new List<Block> {origStartBlock}));
 
       impl.Blocks.Insert(0, insertionPoint); // make insertionPoint the start block
@@ -236,7 +236,7 @@ namespace VC
         AssumeCmd c = new AssumeCmd(req.tok, e, CivlAttributes.ApplySubstitutionToPoolHints(formalProcImplSubst, req.Attributes));
         // Copy any {:id ...} from the precondition to the assumption, so
         // we can track it while analyzing verification coverage.
-        (c as ICarriesAttributes).CopyIdFrom(req.tok, req);
+        c.CopyIdFrom(req.tok, req);
         c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null)
@@ -449,6 +449,8 @@ namespace VC
       impl.EmitImplementation(writer, 0, overrideBlocks, true);
       options.PrintDesugarings = oldPrintDesugaringSetting;
     }
+
+
 
     public static void ResetPredecessors(List<Block> blocks)
     {
@@ -879,7 +881,8 @@ namespace VC
           {
             foreach (var param in current.Params)
             {
-              if (param is IdentifierExpr identifierExpr) {
+              if (param is IdentifierExpr identifierExpr)
+              {
                 debugExprs.Add(incarnationMap.GetValueOrDefault(identifierExpr.Decl, identifierExpr));
               }
               else
@@ -1197,7 +1200,7 @@ namespace VC
           var assumeCmd = new AssumeCmd(c.tok, assumption);
           // Copy any {:id ...} from the assignment to the assumption, so
           // we can track it while analyzing verification coverage.
-          (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
+          assumeCmd.CopyIdFrom(assign.tok, assign);
           passiveCmds.Add(assumeCmd);
         }
 
@@ -1391,7 +1394,7 @@ namespace VC
       bs.Add(succ);
 
       Block newBlock = new Block(
-        Token.NoToken,
+        new Token(-17, -4),
         newBlockLabel,
         new List<Cmd>(),
         new GotoCmd(Token.NoToken, ls, bs)
