@@ -4,6 +4,7 @@ namespace Microsoft.Boogie;
 
 public class IfCmd : StructuredCmd
 {
+  public QKeyValue Attributes;
   public Expr Guard;
 
   private StmtList /*!*/ thn;
@@ -53,7 +54,8 @@ public class IfCmd : StructuredCmd
     Contract.Invariant(this.elseIf == null || this.elseBlock == null);
   }
 
-  public IfCmd(IToken /*!*/ tok, Expr guard, StmtList /*!*/ thn, IfCmd elseIf, StmtList elseBlock)
+  public IfCmd(IToken /*!*/ tok, Expr guard, StmtList /*!*/ thn, IfCmd elseIf, StmtList elseBlock, 
+    QKeyValue attributes = null)
     : base(tok)
   {
     Contract.Requires(tok != null);
@@ -63,13 +65,13 @@ public class IfCmd : StructuredCmd
     this.thn = thn;
     this.elseIf = elseIf;
     this.elseBlock = elseBlock;
+    Attributes = attributes;
   }
 
   public override void Emit(TokenTextWriter stream, int level)
   {
     stream.Write(level, "if (");
-    IfCmd /*!*/
-      ifcmd = this;
+    var /*!*/ ifcmd = this;
     while (true)
     {
       if (ifcmd.Guard == null)

@@ -17,14 +17,16 @@ public static class ManualSplitFinder {
     var result = focussedParts.SelectMany(focussedPart => {
       var (isolatedJumps, withoutIsolatedJumps) =
         IsolateAttributeOnJumpsHandler.GetParts(options, focussedPart, createPart);
-      var (isolatedAssertions, withoutIsolatedAssertions) =
-        IsolateAttributeOnAssertsHandler.GetParts(options, withoutIsolatedJumps, createPart);
-    
-      var splitParts = SplitAttributeHandler.GetParts(withoutIsolatedAssertions);
-      var splits = isolatedJumps.Concat(isolatedAssertions).Concat(splitParts).Where(s => s.Asserts.Any()).ToList();
-      return splits.Any() ? splits : new List<ManualSplit> { focussedPart };
+      return new[] { withoutIsolatedJumps }.Concat(isolatedJumps).SelectMany(isolatedJumpSplit => {
+        var (isolatedAssertions, withoutIsolatedAssertions) =
+          IsolateAttributeOnAssertsHandler.GetParts(options, isolatedJumpSplit, createPart);
+
+        var splitParts =  SplitAttributeHandler.GetParts(withoutIsolatedAssertions);
+        return isolatedAssertions.Concat(splitParts).ToList();
+      });
     });
-    return result;
+    var nonEmptyResults = result.Where(s => s.Asserts.Any()).ToList();
+    return nonEmptyResults.Any() ? nonEmptyResults : focussedParts;
   }
 }
 

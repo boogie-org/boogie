@@ -26,8 +26,7 @@ public static class DesugarReturns {
     if (returnBlocks > 1)
     {
       string unifiedExitLabel = "GeneratedUnifiedExit";
-      var unifiedExit = new Block(Token.NoToken, unifiedExitLabel, new List<Cmd>(),
-        new ReturnCmd(impl.StructuredStmts != null ? impl.StructuredStmts.EndCurly : Token.NoToken));
+      var unifiedExit = new Block(Token.NoToken, unifiedExitLabel, new List<Cmd>(), new ReturnCmd(Token.NoToken));
       Contract.Assert(unifiedExit != null);
       foreach (var block in impl.Blocks) {
         if (block.TransferCmd is not ReturnCmd returnCmd) {

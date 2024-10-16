@@ -20,11 +20,8 @@ public static class BlockTransformations {
     }
 
     DeleteBlocksNotLeadingToAssertions(blocks);
-    DeleteUselessBlocks(blocks);
-
-    var coalesced = BlockCoalescer.CoalesceFromRootBlock(blocks);
-    blocks.Clear();
-    blocks.AddRange(coalesced);
+    DeleteStraightLineBlocksWithoutCommands(blocks);
+    BlockCoalescer.CoalesceInPlace(blocks);
   }
 
   private static void StopControlFlowAtAssumeFalse(Block block)
@@ -99,7 +96,7 @@ public static class BlockTransformations {
   
   public static bool IsNonTrivialAssert (Cmd c) { return c is AssertCmd { Expr: not LiteralExpr { asBool: true } }; }
 
-  private static void DeleteUselessBlocks(IList<Block> blocks) {
+  public static void DeleteStraightLineBlocksWithoutCommands(IList<Block> blocks) {
     var toVisit = new HashSet<Block>(blocks);
     var removed = new HashSet<Block>();
     while(toVisit.Count > 0) {

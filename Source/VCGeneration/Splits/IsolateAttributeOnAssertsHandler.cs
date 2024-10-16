@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.Boogie;
 using VC;
@@ -49,8 +48,9 @@ class IsolateAttributeOnAssertsHandler {
     if (!results.Any()) {
       return (results,partToDivide);
     }
-    
-    return (results,GetSplitWithoutIsolatedAssertions());
+
+    var remainder = GetSplitWithoutIsolatedAssertions();
+    return (results,remainder);
 
     ManualSplit GetSplitForIsolatedAssertion(Block blockWithAssert, AssertCmd assertCmd) {
       var blocksToKeep = rewriter.Dag.ComputeReachability(blockWithAssert, false);
@@ -60,8 +60,8 @@ class IsolateAttributeOnAssertsHandler {
           ? GetCommandsForBlockWithAssert(oldBlock, assertCmd)
           : oldBlock.Cmds.Select(rewriter.TransformAssertCmd).ToList();
 
-      var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToKeep, GetCommands);
-      return rewriter.CreateSplit(new IsolatedAssertionOrigin(assertCmd), newBlocks);
+      var newBlocks = rewriter.ComputeNewBlocks(blocksToKeep, (oldBlock, newBlock) => newBlock.Cmds = GetCommands(oldBlock));
+      return rewriter.CreateSplit(new IsolatedAssertionOrigin(partToDivide.Token, assertCmd), newBlocks);
     }
     
     List<Cmd> GetCommandsForBlockWithAssert(Block currentBlock, AssertCmd assert)
@@ -84,8 +84,7 @@ class IsolateAttributeOnAssertsHandler {
         return rewriter.CreateSplit(origin, partToDivide.Blocks);
       }
 
-      var (newBlocks, mapping) = rewriter.ComputeNewBlocks(null, GetCommands);
-      
+      var newBlocks = rewriter.ComputeNewBlocks(null, (oldBlock, newBlock) => newBlock.Cmds = GetCommands(oldBlock));
       return rewriter.CreateSplit(origin, newBlocks);
 
       List<Cmd> GetCommands(Block block) => block.Cmds.Select(cmd => 
@@ -96,11 +95,13 @@ class IsolateAttributeOnAssertsHandler {
 
 
 public class IsolatedAssertionOrigin : TokenWrapper, IImplementationPartOrigin {
+  public IImplementationPartOrigin Origin { get; }
   public AssertCmd IsolatedAssert { get; }
 
-  public IsolatedAssertionOrigin(AssertCmd isolatedAssert) : base(isolatedAssert.tok) {
+  public IsolatedAssertionOrigin(IImplementationPartOrigin origin, AssertCmd isolatedAssert) : base(isolatedAssert.tok) {
+    Origin = origin;
     this.IsolatedAssert = isolatedAssert;
   }
 
-  public string ShortName => $"/assert@{IsolatedAssert.Line}";
+  public string ShortName => $"{Origin.ShortName}/assert@{IsolatedAssert.Line}";
 }

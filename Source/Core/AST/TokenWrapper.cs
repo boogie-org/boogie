@@ -3,6 +3,12 @@ using Microsoft.Boogie;
 
 namespace VCGeneration;
 
+public class ImplicitJump : TokenWrapper {
+  public ImplicitJump(IToken inner) : base(inner)
+  {
+  }
+}
+
 public class TokenWrapper : IToken {
   public IToken Inner { get; }
 

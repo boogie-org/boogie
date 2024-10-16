@@ -20,8 +20,7 @@ public class StmtList
 
   public List<Cmd> PrefixCommands;
 
-  public readonly IToken /*!*/
-    EndCurly;
+  public readonly IToken /*!*/ EndCurly;
 
   public StmtList ParentContext;
   public BigBlock ParentBigBlock;
