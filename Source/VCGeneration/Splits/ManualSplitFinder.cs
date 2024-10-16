@@ -25,8 +25,9 @@ public static class ManualSplitFinder {
         return isolatedAssertions.Concat(splitParts).ToList();
       });
     });
-    var nonEmptyResults = result.Where(s => s.Asserts.Any()).ToList();
-    return nonEmptyResults.Any() ? nonEmptyResults : focussedParts;
+    return result;
+    // var nonEmptyResults = result.Where(s => s.Asserts.Any()).ToList();
+    // return nonEmptyResults.Any() ? nonEmptyResults : focussedParts;
   }
 }
 
