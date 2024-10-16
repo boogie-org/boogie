@@ -764,7 +764,8 @@ namespace VC
       {
         #region Get rid of empty blocks
         {
-          RemoveEmptyBlocks(impl.Blocks.ToList());
+          // RemoveEmptyBlocks(impl.Blocks.ToList());
+          var copy = impl.Blocks.ToList();
           BlockTransformations.DeleteStraightLineBlocksWithoutCommands(impl.Blocks);
           impl.PruneUnreachableBlocks(Options);
         }

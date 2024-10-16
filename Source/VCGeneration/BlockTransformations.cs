@@ -99,7 +99,7 @@ public static class BlockTransformations {
   public static void DeleteStraightLineBlocksWithoutCommands(IList<Block> blocks) {
     var toVisit = new HashSet<Block>(blocks);
     var removed = new HashSet<Block>();
-    while(toVisit.Count > 0) {
+    while(toVisit.Count > 0 && blocks.Count > 1) {
       var block = toVisit.First();
       toVisit.Remove(block);
       if (removed.Contains(block)) {
@@ -121,6 +121,7 @@ public static class BlockTransformations {
         var successor = gotoCmd2.LabelTargets.FirstOrDefault();
         if (successor != null && !successor.tok.IsValid && block.tok.IsValid) {
           successor.tok = block.tok;
+          successor.Label = block.Label; 
         }
       }
 
@@ -129,6 +130,7 @@ public static class BlockTransformations {
         var predecessor = block.Predecessors.First();
         if (!predecessor.tok.IsValid && block.tok.IsValid) {
           predecessor.tok = block.tok;
+          predecessor.Label = block.Label; // TODO should update targetLabels
         }
       }
 
