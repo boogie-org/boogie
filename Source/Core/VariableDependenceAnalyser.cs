@@ -137,8 +137,8 @@ namespace Microsoft.Boogie
     private CoreOptions options;
     private Graph<VariableDescriptor> dependsOnNonTransitive;
     private Program prog;
-    private Dictionary<Block, HashSet<Block>> BlockToControllingBlocks;
-    private Dictionary<Block, HashSet<VariableDescriptor>> ControllingBlockToVariables;
+    private Dictionary<Block, HashSet<Block>> blockToControllingBlocks;
+    private Dictionary<Block, HashSet<VariableDescriptor>> controllingBlockToVariables;
 
     public VariableDependenceAnalyser(Program prog, CoreOptions options)
     {
@@ -151,30 +151,30 @@ namespace Microsoft.Boogie
     private void Initialise()
     {
       foreach (var descriptor in
-        prog.Variables.Where(Item => VariableRelevantToAnalysis(Item, null)).Select(Variable => Variable.Name)
-          .Select(Name => new GlobalDescriptor(Name)))
+        prog.Variables.Where(item => VariableRelevantToAnalysis(item, null)).Select(variable => variable.Name)
+          .Select(name => new GlobalDescriptor(name)))
       {
         dependsOnNonTransitive.AddEdge(descriptor, descriptor);
       }
 
-      foreach (var Proc in prog.NonInlinedProcedures())
+      foreach (var proc in prog.NonInlinedProcedures())
       {
         List<Variable> parameters = new List<Variable>();
-        parameters.AddRange(Proc.InParams);
-        parameters.AddRange(Proc.OutParams);
+        parameters.AddRange(proc.InParams);
+        parameters.AddRange(proc.OutParams);
         foreach (var descriptor in
-          parameters.Select(Variable => Variable.Name).Select(Name => new LocalDescriptor(Proc.Name, Name)))
+          parameters.Select(variable => variable.Name).Select(name => new LocalDescriptor(proc.Name, name)))
         {
           dependsOnNonTransitive.AddEdge(descriptor, descriptor);
         }
       }
 
-      foreach (var Impl in prog.NonInlinedImplementations())
+      foreach (var impl in prog.NonInlinedImplementations())
       {
         List<Variable> locals = new List<Variable>();
-        locals.AddRange(Impl.LocVars);
+        locals.AddRange(impl.LocVars);
         foreach (var descriptor in
-          locals.Select(Variable => Variable.Name).Select(Name => new LocalDescriptor(Impl.Name, Name)))
+          locals.Select(variable => variable.Name).Select(name => new LocalDescriptor(impl.Name, name)))
         {
           dependsOnNonTransitive.AddEdge(descriptor, descriptor);
         }
@@ -279,29 +279,29 @@ namespace Microsoft.Boogie
         options.OutputWriter.WriteLine("Variable dependence analysis: Computing control dependence info");
       }
 
-      BlockToControllingBlocks = ComputeGlobalControlDependences();
+      blockToControllingBlocks = ComputeGlobalControlDependences();
 
       if (options.Trace)
       {
         options.OutputWriter.WriteLine("Variable dependence analysis: Computing control dependence variables");
       }
 
-      ControllingBlockToVariables = ComputeControllingVariables(BlockToControllingBlocks);
-      foreach (var Impl in prog.NonInlinedImplementations())
+      controllingBlockToVariables = ComputeControllingVariables(blockToControllingBlocks);
+      foreach (var impl in prog.NonInlinedImplementations())
       {
         if (options.Trace)
         {
-          options.OutputWriter.WriteLine("Variable dependence analysis: Analysing " + Impl.Name);
+          options.OutputWriter.WriteLine("Variable dependence analysis: Analysing " + impl.Name);
         }
 
-        Analyse(Impl);
+        Analyse(impl);
       }
     }
 
-    private void Analyse(Implementation Impl)
+    private void Analyse(Implementation impl)
     {
-      string proc = Impl.Name;
-      foreach (Block b in Impl.Blocks)
+      string proc = impl.Name;
+      foreach (Block b in impl.Blocks)
       {
         Analyse(proc, b);
       }
@@ -349,7 +349,7 @@ namespace Microsoft.Boogie
     private void HandleAssign(string proc, Block b, AssignCmd assign)
     {
       foreach (var assignPair in assign.Lhss.Zip(assign.Rhss).Where(
-        Item => VariableRelevantToAnalysis(Item.Item1.DeepAssignedVariable, proc)))
+        item => VariableRelevantToAnalysis(item.Item1.DeepAssignedVariable, proc)))
       {
         VariableDescriptor assignedVariable = MakeDescriptor(proc, assignPair.Item1.DeepAssignedVariable);
         AddDependences(assignedVariable, GetReferencedVariables(assignPair.Item1, proc),
@@ -362,24 +362,24 @@ namespace Microsoft.Boogie
 
     private void AddControlDependences(Block b, VariableDescriptor v, string reason, IToken tok)
     {
-      if (!BlockToControllingBlocks.ContainsKey(b))
+      if (!blockToControllingBlocks.ContainsKey(b))
       {
         return;
       }
 
-      foreach (var controller in BlockToControllingBlocks[b])
+      foreach (var controller in blockToControllingBlocks[b])
       {
-        AddDependences(v, ControllingBlockToVariables[controller],
+        AddDependences(v, controllingBlockToVariables[controller],
           reason + " controlling block at (" + controller.tok.line + ":" + controller.tok.col + ")", tok);
       }
     }
 
     private IEnumerable<VariableDescriptor> GetReferencedVariables(Absy node, string proc)
     {
-      var VarCollector = new VariableCollector();
-      VarCollector.Visit(node);
-      return VarCollector.usedVars.Where(Item => VariableRelevantToAnalysis(Item, proc))
-        .Select(Item => MakeDescriptor(proc, Item));
+      var varCollector = new VariableCollector();
+      varCollector.Visit(node);
+      return varCollector.usedVars.Where(item => VariableRelevantToAnalysis(item, proc))
+        .Select(item => MakeDescriptor(proc, item));
     }
 
     void AddDependences(VariableDescriptor v, IEnumerable<VariableDescriptor> vs, string reason, IToken tok)
@@ -397,14 +397,14 @@ namespace Microsoft.Boogie
     }
 
     private Dictionary<Block, HashSet<VariableDescriptor>> ComputeControllingVariables(
-      Dictionary<Block, HashSet<Block>> GlobalCtrlDep)
+      Dictionary<Block, HashSet<Block>> globalCtrlDep)
     {
-      Dictionary<Block, HashSet<VariableDescriptor>> result = new Dictionary<Block, HashSet<VariableDescriptor>>();
-      foreach (var Impl in prog.NonInlinedImplementations())
+      var result = new Dictionary<Block, HashSet<VariableDescriptor>>();
+      foreach (var impl in prog.NonInlinedImplementations())
       {
-        foreach (var b in Impl.Blocks)
+        foreach (var b in impl.Blocks)
         {
-          result[b] = GetControlDependencyVariables(Impl.Name, b);
+          result[b] = GetControlDependencyVariables(impl.Name, b);
         }
       }
 
@@ -427,10 +427,10 @@ namespace Microsoft.Boogie
             AssumeCmd a = c as AssumeCmd;
             if (a != null && a.Attributes.FindBoolAttribute("partition"))
             {
-              var VarCollector = new VariableCollector();
-              VarCollector.VisitExpr(a.Expr);
-              result.UnionWith(VarCollector.usedVars.Where(Item => VariableRelevantToAnalysis(Item, proc))
-                .Select(Item => MakeDescriptor(proc, Item)));
+              var varCollector = new VariableCollector();
+              varCollector.VisitExpr(a.Expr);
+              result.UnionWith(varCollector.usedVars.Where(item => VariableRelevantToAnalysis(item, proc))
+                .Select(item => MakeDescriptor(proc, item)));
             }
             else
             {
@@ -443,21 +443,21 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    private HashSet<VariableDescriptor> IgnoredVariables = null;
+    private HashSet<VariableDescriptor> ignoredVariables;
 
     public bool Ignoring(Variable v, string proc)
     {
-      if (IgnoredVariables == null)
+      if (ignoredVariables == null)
       {
         MakeIgnoreList();
       }
 
-      if (proc != null && IgnoredVariables.Contains(new LocalDescriptor(proc, v.Name)))
+      if (proc != null && ignoredVariables.Contains(new LocalDescriptor(proc, v.Name)))
       {
         return true;
       }
 
-      if (IgnoredVariables.Contains(new GlobalDescriptor(v.Name)))
+      if (ignoredVariables.Contains(new GlobalDescriptor(v.Name)))
       {
         return true;
       }
@@ -472,7 +472,7 @@ namespace Microsoft.Boogie
 
     private void MakeIgnoreList()
     {
-      IgnoredVariables = new HashSet<VariableDescriptor>();
+      ignoredVariables = new HashSet<VariableDescriptor>();
       if (options.VariableDependenceIgnore == null)
       {
         return;
@@ -498,12 +498,12 @@ namespace Microsoft.Boogie
 
           if (tokens.Count() == 1)
           {
-            IgnoredVariables.Add(new GlobalDescriptor(tokens[0]));
+            ignoredVariables.Add(new GlobalDescriptor(tokens[0]));
             continue;
           }
 
           Debug.Assert(tokens.Count() == 2);
-          IgnoredVariables.Add(new LocalDescriptor(tokens[0], tokens[1]));
+          ignoredVariables.Add(new LocalDescriptor(tokens[0], tokens[1]));
         }
       }
       catch (System.IO.IOException e)
@@ -548,7 +548,7 @@ namespace Microsoft.Boogie
             var indirectCallees = ComputeIndirectCallees(callGraph, directCallee);
             foreach (var control in GetControllingBlocks(b, localCtrlDeps[impl]))
             {
-              foreach (var c in indirectCallees.Select(item => item.Blocks).SelectMany(Item => Item))
+              foreach (var c in indirectCallees.Select(item => item.Blocks).SelectMany(item => item))
               {
                 globalCtrlDep[control].Add(c);
               }
@@ -580,23 +580,23 @@ namespace Microsoft.Boogie
       return result;
     }
 
-    private HashSet<Implementation> ComputeIndirectCallees(Graph<Implementation> callGraph, Implementation DirectCallee)
+    private HashSet<Implementation> ComputeIndirectCallees(Graph<Implementation> callGraph, Implementation directCallee)
     {
-      return ComputeIndirectCallees(callGraph, DirectCallee, new HashSet<Implementation>());
+      return ComputeIndirectCallees(callGraph, directCallee, new HashSet<Implementation>());
     }
 
-    private HashSet<Implementation> ComputeIndirectCallees(Graph<Implementation> callGraph, Implementation DirectCallee,
+    private HashSet<Implementation> ComputeIndirectCallees(Graph<Implementation> callGraph, Implementation directCallee,
       HashSet<Implementation> seen)
     {
-      if (seen.Contains(DirectCallee))
+      if (seen.Contains(directCallee))
       {
         return new HashSet<Implementation>();
       }
 
       HashSet<Implementation> result = new HashSet<Implementation>();
-      result.Add(DirectCallee);
-      seen.Add(DirectCallee);
-      foreach (var succ in callGraph.Successors(DirectCallee))
+      result.Add(directCallee);
+      seen.Add(directCallee);
+      foreach (var succ in callGraph.Successors(directCallee))
       {
         result.UnionWith(ComputeIndirectCallees(callGraph, succ, seen));
       }
@@ -607,11 +607,11 @@ namespace Microsoft.Boogie
     private HashSet<Block> GetControllingBlocks(Block b, Dictionary<Block, HashSet<Block>> ctrlDep)
     {
       HashSet<Block> result = new HashSet<Block>();
-      foreach (var KeyValue in ctrlDep)
+      foreach (var keyValue in ctrlDep)
       {
-        if (KeyValue.Value.Contains(b))
+        if (keyValue.Value.Contains(b))
         {
-          result.Add(KeyValue.Key);
+          result.Add(keyValue.Key);
         }
       }
 
@@ -620,11 +620,11 @@ namespace Microsoft.Boogie
 
     private Implementation GetImplementation(string proc)
     {
-      foreach (var Impl in prog.Implementations)
+      foreach (var impl in prog.Implementations)
       {
-        if (Impl.Name.Equals(proc))
+        if (impl.Name.Equals(proc))
         {
-          return Impl;
+          return impl;
         }
       }
 
@@ -634,29 +634,29 @@ namespace Microsoft.Boogie
     public VariableDescriptor MakeDescriptor(string proc, Variable v)
     {
       // Check whether there is an (Impl, v) match
-      var MatchingLocals = dependsOnNonTransitive.Nodes.Where(Item => Item is LocalDescriptor).Select(
-        Item => (LocalDescriptor) Item).Where(Item => Item.Proc.Equals(proc) &&
-                                                      Item.Name.Equals(v.Name));
-      if (MatchingLocals.Count() > 0)
+      var matchingLocals = dependsOnNonTransitive.Nodes.Where(item => item is LocalDescriptor).Select(
+        item => (LocalDescriptor) item).Where(item => item.Proc.Equals(proc) &&
+                                                      item.Name.Equals(v.Name));
+      if (matchingLocals.Count() > 0)
       {
-        Debug.Assert(MatchingLocals.Count() == 1);
-        return MatchingLocals.ToArray()[0];
+        Debug.Assert(matchingLocals.Count() == 1);
+        return matchingLocals.ToArray()[0];
       }
 
       // It must be a global with same name as v
-      return dependsOnNonTransitive.Nodes.Where(Item => Item is GlobalDescriptor &&
-                                                        Item.Name.Equals(v.Name)).ToArray()[0];
+      return dependsOnNonTransitive.Nodes.Where(item => item is GlobalDescriptor &&
+                                                        item.Name.Equals(v.Name)).ToArray()[0];
     }
 
-    private Dictionary<SCC<VariableDescriptor>, HashSet<VariableDescriptor>> DependsOnCache =
+    private Dictionary<SCC<VariableDescriptor>, HashSet<VariableDescriptor>> dependsOnCache =
       new Dictionary<SCC<VariableDescriptor>, HashSet<VariableDescriptor>>();
 
-    private Graph<SCC<VariableDescriptor>> DependsOnSCCsDAG;
-    private Dictionary<VariableDescriptor, SCC<VariableDescriptor>> VariableDescriptorToSCC;
+    private Graph<SCC<VariableDescriptor>> dependsOnScCsDag;
+    private Dictionary<VariableDescriptor, SCC<VariableDescriptor>> variableDescriptorToScc;
 
     public HashSet<VariableDescriptor> DependsOn(VariableDescriptor v)
     {
-      if (DependsOnSCCsDAG == null)
+      if (dependsOnScCsDag == null)
       {
         if (options.Trace)
         {
@@ -665,33 +665,33 @@ namespace Microsoft.Boogie
 
         Adjacency<VariableDescriptor> next = new Adjacency<VariableDescriptor>(dependsOnNonTransitive.Successors);
         Adjacency<VariableDescriptor> prev = new Adjacency<VariableDescriptor>(dependsOnNonTransitive.Predecessors);
-        StronglyConnectedComponents<VariableDescriptor> DependsOnSCCs =
+        StronglyConnectedComponents<VariableDescriptor> dependsOnScCs =
           new StronglyConnectedComponents<VariableDescriptor>(
             dependsOnNonTransitive.Nodes, next, prev);
-        DependsOnSCCs.Compute();
+        dependsOnScCs.Compute();
 
-        VariableDescriptorToSCC = new Dictionary<VariableDescriptor, SCC<VariableDescriptor>>();
-        foreach (var scc in DependsOnSCCs)
+        variableDescriptorToScc = new Dictionary<VariableDescriptor, SCC<VariableDescriptor>>();
+        foreach (var scc in dependsOnScCs)
         {
           foreach (var s in scc)
           {
-            VariableDescriptorToSCC[s] = scc;
+            variableDescriptorToScc[s] = scc;
           }
         }
 
-        DependsOnSCCsDAG = new Graph<SCC<VariableDescriptor>>();
+        dependsOnScCsDag = new Graph<SCC<VariableDescriptor>>();
         foreach (var edge in dependsOnNonTransitive.Edges)
         {
-          if (VariableDescriptorToSCC[edge.Item1] != VariableDescriptorToSCC[edge.Item2])
+          if (variableDescriptorToScc[edge.Item1] != variableDescriptorToScc[edge.Item2])
           {
-            DependsOnSCCsDAG.AddEdge(VariableDescriptorToSCC[edge.Item1], VariableDescriptorToSCC[edge.Item2]);
+            dependsOnScCsDag.AddEdge(variableDescriptorToScc[edge.Item1], variableDescriptorToScc[edge.Item2]);
           }
         }
 
         SCC<VariableDescriptor> dummy = new SCC<VariableDescriptor>();
         foreach (var n in dependsOnNonTransitive.Nodes)
         {
-          DependsOnSCCsDAG.AddEdge(VariableDescriptorToSCC[n], dummy);
+          dependsOnScCsDag.AddEdge(variableDescriptorToScc[n], dummy);
         }
 
         if (options.Trace)
@@ -700,27 +700,27 @@ namespace Microsoft.Boogie
         }
       }
 
-      return DependsOn(VariableDescriptorToSCC[v]);
+      return DependsOn(variableDescriptorToScc[v]);
     }
 
-    public HashSet<VariableDescriptor> DependsOn(SCC<VariableDescriptor> vSCC)
+    public HashSet<VariableDescriptor> DependsOn(SCC<VariableDescriptor> vScc)
     {
-      if (!DependsOnCache.ContainsKey(vSCC))
+      if (!dependsOnCache.ContainsKey(vScc))
       {
         HashSet<VariableDescriptor> result = new HashSet<VariableDescriptor>();
-        if (vSCC.Count() > 0)
+        if (vScc.Count() > 0)
         {
-          result.UnionWith(vSCC);
-          foreach (var wSCC in DependsOnSCCsDAG.Successors(vSCC))
+          result.UnionWith(vScc);
+          foreach (var wScc in dependsOnScCsDag.Successors(vScc))
           {
-            result.UnionWith(DependsOn(wSCC));
+            result.UnionWith(DependsOn(wScc));
           }
         }
 
-        DependsOnCache[vSCC] = result;
+        dependsOnCache[vScc] = result;
       }
 
-      return DependsOnCache[vSCC];
+      return dependsOnCache[vScc];
     }
 
     public void Dump()
@@ -731,34 +731,34 @@ namespace Microsoft.Boogie
       options.OutputWriter.WriteLine("Global variables");
       options.OutputWriter.WriteLine("================");
 
-      foreach (var GlobalEntry in dependsOnNonTransitive.Nodes.Where(Item => Item is GlobalDescriptor))
+      foreach (var globalEntry in dependsOnNonTransitive.Nodes.Where(item => item is GlobalDescriptor))
       {
-        dump(GlobalEntry);
+        Dump(globalEntry);
       }
 
       foreach (var proc in Procedures())
       {
         options.OutputWriter.WriteLine("Variables of " + proc);
         options.OutputWriter.WriteLine("=====================");
-        foreach (var LocalEntry in dependsOnNonTransitive.Nodes.Where(Item => Item is LocalDescriptor
-                                                                              && ((LocalDescriptor) Item).Proc.Equals(
+        foreach (var localEntry in dependsOnNonTransitive.Nodes.Where(item => item is LocalDescriptor
+                                                                              && ((LocalDescriptor) item).Proc.Equals(
                                                                                 proc)))
         {
-          dump(LocalEntry);
+          Dump(localEntry);
         }
       }
     }
 
-    private void dump(VariableDescriptor vd)
+    private void Dump(VariableDescriptor vd)
     {
       options.OutputWriter.Write(vd + " <- {");
       bool first = true;
 
-      var SortedDependents = DependsOn(vd).ToList();
-      SortedDependents.Sort();
-      foreach (var Descriptor in SortedDependents)
+      var sortedDependents = DependsOn(vd).ToList();
+      sortedDependents.Sort();
+      foreach (var descriptor in sortedDependents)
       {
-        options.OutputWriter.Write((first ? "" : ",") + "\n  " + Descriptor);
+        options.OutputWriter.Write((first ? "" : ",") + "\n  " + descriptor);
         if (first)
         {
           first = false;
@@ -771,8 +771,8 @@ namespace Microsoft.Boogie
 
     private HashSet<string> Procedures()
     {
-      return new HashSet<string>(dependsOnNonTransitive.Nodes.Where(Item =>
-        Item is LocalDescriptor).Select(Item => ((LocalDescriptor) Item).Proc));
+      return new HashSet<string>(dependsOnNonTransitive.Nodes.Where(item =>
+        item is LocalDescriptor).Select(item => ((LocalDescriptor) item).Proc));
     }
   }
 

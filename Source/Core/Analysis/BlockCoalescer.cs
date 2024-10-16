@@ -79,6 +79,12 @@ public class BlockCoalescer : ReadOnlyVisitor
     return impl;
   }
 
+  public static void CoalesceInPlace(List<Block> blocks) {
+    var coalesced = CoalesceFromRootBlock(blocks);
+    blocks.Clear();
+    blocks.AddRange(coalesced);
+  }
+  
   public static IList<Block> CoalesceFromRootBlock(IList<Block> blocks)
   {
     if (!blocks.Any())
@@ -135,7 +141,13 @@ public class BlockCoalescer : ReadOnlyVisitor
       }
 
       block.Cmds.AddRange(successor.Cmds);
+      var originalTransferToken = block.TransferCmd.tok;
       block.TransferCmd = successor.TransferCmd;
+      if (!block.TransferCmd.tok.IsValid) {
+        block.TransferCmd = (TransferCmd)block.TransferCmd.Clone();
+        block.TransferCmd.tok = originalTransferToken;
+      }
+      
       if (!block.tok.IsValid && successor.tok.IsValid)
       {
         block.tok = successor.tok;

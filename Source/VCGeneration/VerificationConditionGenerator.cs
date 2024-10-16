@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
+using VCGeneration;
 using VCGeneration.Transformations;
 
 namespace VC
@@ -571,11 +572,11 @@ namespace VC
 
         if (newCounterexample is ReturnCounterexample returnExample)
         {
-          foreach (var b in returnExample.Trace)
+          foreach (var block in returnExample.Trace)
           {
-            Contract.Assert(b != null);
-            Contract.Assume(b.TransferCmd != null);
-            if (b.TransferCmd.tok is GotoFromReturn gotoFromReturn) {
+            Contract.Assert(block != null);
+            Contract.Assume(block.TransferCmd != null);
+            if (block.TransferCmd.tok is GotoFromReturn gotoFromReturn) {
               returnExample.FailingReturn = gotoFromReturn.Origin;
             }
           }
@@ -764,7 +765,7 @@ namespace VC
         #region Get rid of empty blocks
 
         {
-          RemoveEmptyBlocks(impl.Blocks);
+          BlockTransformations.DeleteStraightLineBlocksWithoutCommands(impl.Blocks);
           impl.PruneUnreachableBlocks(Options);
         }
 
@@ -1622,7 +1623,7 @@ namespace VC
     /// <summary>
     /// Remove empty blocks reachable from the startBlock of the CFG
     /// </summary>
-    static void RemoveEmptyBlocks(IList<Block> blocks)
+    static void RemoveEmptyBlocks(List<Block> blocks)
     {
       // postorder traversal of cfg
       //   noting loop heads in [keep] and

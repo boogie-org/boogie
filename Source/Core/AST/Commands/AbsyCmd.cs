@@ -3,12 +3,9 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics.Contracts;
-using Set = Microsoft.Boogie.GSet<object>;
 
 namespace Microsoft.Boogie
 {
-  //---------------------------------------------------------------------
-  // Commands
   [ContractClassFor(typeof(Cmd))]
   public abstract class CmdContracts : Cmd
   {
@@ -2088,8 +2085,7 @@ namespace Microsoft.Boogie
 
   public class ReturnExprCmd : ReturnCmd
   {
-    public Expr /*!*/
-      Expr;
+    public Expr /*!*/ Expr;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -2212,23 +2208,6 @@ namespace Microsoft.Boogie
       //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitHavocCmd(this);
-    }
-  }
-
-  //---------------------------------------------------------------------
-  // Transfer commands
-
-  [ContractClassFor(typeof(TransferCmd))]
-  public abstract class TransferCmdContracts : TransferCmd
-  {
-    public TransferCmdContracts() : base(null)
-    {
-    }
-
-    public override void Emit(TokenTextWriter stream, int level)
-    {
-      Contract.Requires(stream != null);
-      throw new NotImplementedException();
     }
   }
 }

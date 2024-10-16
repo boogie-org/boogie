@@ -7,11 +7,11 @@ namespace Microsoft.Boogie;
 
 public sealed class Block : Absy
 {
-  public string /*!*/ Label { get; set; } // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
+  public string Label { get; set; } // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
 
-  [Rep] 
-  [ElementsPeer] 
-  public List<Cmd> /*!*/ Cmds;
+  [Rep]
+  [ElementsPeer]
+  public List<Cmd> Cmds { get; set; }
 
   public IEnumerable<Block> Exits()
   {
@@ -23,8 +23,7 @@ public sealed class Block : Absy
   }
 
   [Rep] //PM: needed to verify Traverse.Visit
-  public TransferCmd
-    TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
+  public TransferCmd TransferCmd; // maybe null only because we allow deferred initialization (necessary for cyclic structures)
 
   public byte[] Checksum;
 
@@ -164,10 +163,10 @@ public sealed class Block : Absy
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    foreach (Cmd /*!*/ c in Cmds)
+    foreach (var /*!*/ cmd in Cmds)
     {
-      Contract.Assert(c != null);
-      c.Typecheck(tc);
+      Contract.Assert(cmd != null);
+      cmd.Typecheck(tc);
     }
 
     Contract.Assume(this.TransferCmd != null);
