@@ -1,84 +1,70 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Microsoft.Boogie;
 using VC;
 
 namespace VCGeneration.Transformations;
 
 public static class DesugarReturns {
-  public static Block GenerateUnifiedExit(Implementation impl, out Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
+  public static Block GenerateUnifiedExit(Implementation impl)
+  {
+    Contract.Requires(impl != null);
+    Contract.Ensures(Contract.Result<Block>() != null);
+
+    Contract.Ensures(Contract.Result<Block>().TransferCmd is ReturnCmd);
+    Block exitBlock = null;
+
+    int returnBlocks = 0;
+    foreach (var block in impl.Blocks.Where(block => block.TransferCmd is ReturnCmd))
     {
-      Contract.Requires(impl != null);
-      Contract.Requires(gotoCmdOrigins != null);
-      Contract.Ensures(Contract.Result<Block>() != null);
-
-      gotoCmdOrigins = new();
-      Contract.Ensures(Contract.Result<Block>().TransferCmd is ReturnCmd);
-      Block exitBlock = null;
-
-      #region Create a unified exit block, if there's more than one
-
-      {
-        int returnBlocks = 0;
-        foreach (Block b in impl.Blocks)
-        {
-          if (b.TransferCmd is ReturnCmd)
-          {
-            exitBlock = b;
-            returnBlocks++;
-          }
-        }
-
-        if (returnBlocks > 1)
-        {
-          string unifiedExitLabel = "GeneratedUnifiedExit";
-          var unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(),
-            new ReturnCmd(impl.StructuredStmts != null ? impl.StructuredStmts.EndCurly : Token.NoToken));
-          Contract.Assert(unifiedExit != null);
-          foreach (Block b in impl.Blocks)
-          {
-            if (b.TransferCmd is ReturnCmd returnCmd)
-            {
-              List<String> labels = new List<String>();
-              labels.Add(unifiedExitLabel);
-              List<Block> bs = new List<Block>();
-              bs.Add(unifiedExit);
-              GotoCmd go = new GotoCmd(returnCmd.tok, labels, bs);
-              gotoCmdOrigins[go] = returnCmd;
-              b.TransferCmd = go;
-              unifiedExit.Predecessors.Add(b);
-            }
-          }
-
-          exitBlock = unifiedExit;
-          impl.Blocks.Add(unifiedExit);
-        }
-
-        Contract.Assert(exitBlock != null);
-      }
-      return exitBlock;
-
-      #endregion
+      exitBlock = block;
+      returnBlocks++;
     }
-    
-    /// <summary>
-    /// Modifies an implementation by inserting all postconditions
-    /// as assert statements at the end of the implementation
-    /// Returns the possibly-new unified exit block of the implementation
-    /// </summary>
-    /// <param name="impl"></param>
-    /// <param name="unifiedExitblock">The unified exit block that has
-    /// already been constructed for the implementation (and so
-    /// is already an element of impl.Blocks)
-    /// </param>
-  public static void InjectPostConditions(VCGenOptions options, ImplementationRun run, Block unifiedExitBlock,
-    Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
+
+    if (returnBlocks > 1)
+    {
+      string unifiedExitLabel = "GeneratedUnifiedExit";
+      var unifiedExit = new Block(Token.NoToken, unifiedExitLabel, new List<Cmd>(),
+        new ReturnCmd(impl.StructuredStmts != null ? impl.StructuredStmts.EndCurly : Token.NoToken));
+      Contract.Assert(unifiedExit != null);
+      foreach (var block in impl.Blocks) {
+        if (block.TransferCmd is not ReturnCmd returnCmd) {
+          continue;
+        }
+
+        var gotoLabels = new List<String> { unifiedExitLabel };
+        var gotoTargets = new List<Block> { unifiedExit };
+        var gotoCmd = new GotoCmd(new GotoFromReturn(returnCmd), gotoLabels, gotoTargets) {
+          Attributes = returnCmd.Attributes
+        };
+        block.TransferCmd = gotoCmd;
+        unifiedExit.Predecessors.Add(block);
+      }
+
+      exitBlock = unifiedExit;
+      impl.Blocks.Add(unifiedExit);
+    }
+
+    Contract.Assert(exitBlock != null);
+    return exitBlock;
+  }
+  
+  /// <summary>
+  /// Modifies an implementation by inserting all postconditions
+  /// as assert statements at the end of the implementation
+  /// Returns the possibly-new unified exit block of the implementation
+  /// </summary>
+  /// <param name="unifiedExitblock">The unified exit block that has
+  /// already been constructed for the implementation (and so
+  /// is already an element of impl.Blocks)
+  /// </param>
+  public static void InjectPostConditions(VCGenOptions options, ImplementationRun run, Block unifiedExitBlock)
   {
     var impl = run.Implementation;
     Contract.Requires(impl != null);
     Contract.Requires(unifiedExitBlock != null);
-    Contract.Requires(gotoCmdOrigins != null);
     Contract.Requires(impl.Proc != null);
     Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
 
@@ -89,7 +75,7 @@ public static class DesugarReturns {
       debugWriter.WriteLine("Effective postcondition:");
     }
 
-    Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
+    var formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
 
     // (free and checked) ensures clauses
     foreach (Ensures ens in impl.Proc.Ensures)
@@ -98,18 +84,18 @@ public static class DesugarReturns {
 
       if (!ens.Free)
       {
-        Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-        Ensures ensCopy = (Ensures) cce.NonNull(ens.Clone());
-        ensCopy.Condition = e;
-        AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
-        c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
+        var ensuresCopy = (Ensures) cce.NonNull(ens.Clone());
+        ensuresCopy.Condition = Substituter.Apply(formalProcImplSubst, ens.Condition);
+        AssertEnsuresCmd assert = new AssertEnsuresCmd(ensuresCopy) {
+          ErrorDataEnhanced = ensuresCopy.ErrorDataEnhanced
+        };
         // Copy any {:id ...} from the postcondition to the assumption, so
         // we can track it while analyzing verification coverage.
-        c.CopyIdFrom(ens.tok, ens);
-        unifiedExitBlock.Cmds.Add(c);
+        assert.CopyIdFrom(ens.tok, ens);
+        unifiedExitBlock.Cmds.Add(assert);
         if (debugWriter != null)
         {
-          c.Emit(debugWriter, 1);
+          assert.Emit(debugWriter, 1);
         }
       }
       else if (ens.CanAlwaysAssume())
@@ -127,5 +113,13 @@ public static class DesugarReturns {
     {
       debugWriter.WriteLine();
     }
+  }
+}
+
+class GotoFromReturn : TokenWrapper {
+  public ReturnCmd Origin { get; }
+
+  public GotoFromReturn(ReturnCmd origin) : base(origin.tok) {
+    this.Origin = origin;
   }
 }
