@@ -128,7 +128,11 @@ namespace Microsoft.Boogie
 
     public void Target(Program prog, ProverContext ctx, Split split)
     {
-      var usedTypes = new BasicTypeVisitor(prog).GetBasicTypes().ToList();
+      /* We should not traverse implementations other than the current one, because they might be in the process of being modified.
+       */
+      bool EnterNode(Absy node) => node is not Implementation implementation || implementation == split.Implementation;
+
+      var usedTypes = new BasicTypeVisitor(prog, EnterNode).GetBasicTypes().ToList();
       lock (this)
       {
         hasOutput = default;

@@ -889,7 +889,7 @@ namespace Microsoft.Boogie.VCExprAST
       throw new cce.UnreachableException();
     }
 
-    public override List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
+    public override IList<Block> /*!*/ VisitBlockList(IList<Block> blocks /*!*/ /*!*/)
     {
       //Contract.Requires(cce.NonNullElements(blocks));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));

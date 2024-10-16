@@ -22,6 +22,5 @@ Execution trace:
     Structured.bpl(355,3): anon4_LoopHead
     Structured.bpl(358,7): anon4_LoopBody
     Structured.bpl(361,7): anon5_LoopBody
-    (0,0): anon3
 
 Boogie program verifier finished with 16 verified, 4 errors

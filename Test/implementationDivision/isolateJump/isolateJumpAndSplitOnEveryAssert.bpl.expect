@@ -1,0 +1,76 @@
+implementation {:vcs_split_on_every_assert} MergeAtEnd/assert@5(x: int) returns (r: int)
+{
+
+  anon0:
+    goto anon3_Then, anon3_Else;
+
+  anon3_Then:
+    assume {:partition} x > 0;
+    assume r#AT#0 == 1;
+    goto GeneratedUnifiedExit;
+
+  anon3_Else:
+    assume {:partition} 0 >= x;
+    assume r#AT#0 == 2;
+    goto GeneratedUnifiedExit;
+
+  GeneratedUnifiedExit:
+    assert r#AT#0 > 1;
+    return;
+}
+
+
+isolateJumpAndSplitOnEveryAssert.bpl(9,3): Error: a postcondition could not be proved on this return path
+isolateJumpAndSplitOnEveryAssert.bpl(5,3): Related location: this is the postcondition that could not be proved
+implementation {:vcs_split_on_every_assert} MultipleEnsures/return@25/assert@16(x: int) returns (r: int)
+{
+
+  anon0:
+    assume {:partition} 0 >= x;
+    assume r#AT#0 == 20;
+    assert r#AT#0 > 1;
+    return;
+}
+
+
+implementation {:vcs_split_on_every_assert} MultipleEnsures/return@25/assert@17(x: int) returns (r: int)
+{
+
+  anon0:
+    assume {:partition} 0 >= x;
+    assume r#AT#0 == 20;
+    assume r#AT#0 > 1;
+    assert r#AT#0 < 10;
+    return;
+}
+
+
+implementation {:vcs_split_on_every_assert} MultipleEnsures/return@21/assert@16(x: int) returns (r: int)
+{
+
+  anon0:
+    assume {:partition} x > 0;
+    assume r#AT#0 == 1;
+    assert r#AT#0 > 1;
+    return;
+}
+
+
+implementation {:vcs_split_on_every_assert} MultipleEnsures/return@21/assert@17(x: int) returns (r: int)
+{
+
+  anon0:
+    assume {:partition} x > 0;
+    assume r#AT#0 == 1;
+    assume r#AT#0 > 1;
+    assert r#AT#0 < 10;
+    return;
+}
+
+
+isolateJumpAndSplitOnEveryAssert.bpl(21,5): Error: a postcondition could not be proved on this return path
+isolateJumpAndSplitOnEveryAssert.bpl(16,3): Related location: this is the postcondition that could not be proved
+isolateJumpAndSplitOnEveryAssert.bpl(25,5): Error: a postcondition could not be proved on this return path
+isolateJumpAndSplitOnEveryAssert.bpl(17,3): Related location: this is the postcondition that could not be proved
+
+Boogie program verifier finished with 0 verified, 3 errors

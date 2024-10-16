@@ -560,12 +560,12 @@ namespace Microsoft.Boogie
                        Contract.Result<T>() == b);
 
       T ignore, keep;
-      if (QKeyValue.FindBoolAttribute(a.Attributes, "extern"))
+      if (a.Attributes.FindBoolAttribute("extern"))
       {
         ignore = a;
         keep = b;
       }
-      else if (QKeyValue.FindBoolAttribute(b.Attributes, "extern"))
+      else if (b.Attributes.FindBoolAttribute("extern"))
       {
         ignore = b;
         keep = a;
