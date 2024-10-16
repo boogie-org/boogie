@@ -109,10 +109,27 @@ public static class BlockTransformations {
         continue;
       }
 
-      var isBranchingBlock = block.TransferCmd is GotoCmd gotoCmd1 && gotoCmd1.LabelTargets.Count > 1 && 
-                             block.Predecessors.Count != 1;
-      if (isBranchingBlock) {
+      var hasMultipleOuts = block.TransferCmd is GotoCmd gotoCmd && gotoCmd.LabelTargets.Count > 1;
+      var hasMultipleInsOrIsSource = block.Predecessors.Count != 1;
+      var hasMultipleInsAndOuts = hasMultipleOuts && hasMultipleInsOrIsSource;
+      if (hasMultipleInsAndOuts) {
         continue;
+      }
+
+      if (!hasMultipleOuts && block.TransferCmd is GotoCmd gotoCmd2) {
+        // Attempt to transfer token forward 
+        var successor = gotoCmd2.LabelTargets.FirstOrDefault();
+        if (successor != null && !successor.tok.IsValid && block.tok.IsValid) {
+          successor.tok = block.tok;
+        }
+      }
+
+      if (!hasMultipleInsOrIsSource) {
+        // Attempt to transfer token backward
+        var predecessor = block.Predecessors.First();
+        if (!predecessor.tok.IsValid && block.tok.IsValid) {
+          predecessor.tok = block.tok;
+        }
       }
 
       removed.Add(block);
@@ -124,17 +141,21 @@ public static class BlockTransformations {
         var intoCmd = (GotoCmd)predecessor.TransferCmd;
         intoCmd.RemoveTarget(block);
         if (noSuccessors) {
+          // The predecessor might now have become eligible for deletion
           toVisit.Add(predecessor);
         }
       }
 
       if (block.TransferCmd is not GotoCmd outGoto) {
+        // No successors means no added targets to our predecessors
+        // And no updates to successors
         continue;
       }
 
       foreach (var outBlock in outGoto.LabelTargets) {
         outBlock.Predecessors.Remove(block);
         if (noPredecessors) {
+          // The successor might now have become eligible for deletion
           toVisit.Add(outBlock);
         }
       }
