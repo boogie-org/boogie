@@ -764,9 +764,9 @@ namespace VC
       {
         #region Get rid of empty blocks
         {
-          // RemoveEmptyBlocks(impl.Blocks.ToList());
-          var copy = impl.Blocks.ToList();
-          BlockTransformations.DeleteStraightLineBlocksWithoutCommands(impl.Blocks);
+          RemoveEmptyBlocks(impl.Blocks);
+          // var copy = impl.Blocks.ToList();
+          // BlockTransformations.DeleteStraightLineBlocksWithoutCommands(impl.Blocks);
           impl.PruneUnreachableBlocks(Options);
         }
 
@@ -1624,7 +1624,7 @@ namespace VC
     /// <summary>
     /// Remove empty blocks reachable from the startBlock of the CFG
     /// </summary>
-    static void RemoveEmptyBlocks(List<Block> blocks)
+    static void RemoveEmptyBlocks(IList<Block> blocks)
     {
       // postorder traversal of cfg
       //   noting loop heads in [keep] and
@@ -1648,6 +1648,7 @@ namespace VC
 
           // generate renameInfoForStartBlock
           GotoCmd gtc = curr.TransferCmd as GotoCmd;
+          
           renameInfo[curr] = null;
           if (gtc == null || gtc.LabelTargets == null || gtc.LabelTargets.Count == 0)
           {
@@ -1699,17 +1700,19 @@ namespace VC
             continue;
           }
 
-          foreach (Block s in gtc.LabelTargets)
+          foreach (Block successor in gtc.LabelTargets)
           {
-            if (!visited.Contains(s))
+            if (!visited.Contains(successor))
             {
-              visited.Add(s);
-              stack.Push(s);
+              visited.Add(successor);
+              stack.Push(successor);
             }
-            else if (grey.Contains(s) && !postorder.Contains(s))
+            else if (grey.Contains(successor) && !postorder.Contains(successor))
             {
               // s is a loop head
-              keep.Add(s);
+              keep.Add(successor);
+            } else if (gtc is { Attributes: not null }) {
+              keep.Add(successor);
             }
           }
         }
