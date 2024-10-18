@@ -482,6 +482,7 @@ class BigBlocksResolutionContext
             string predLabel = bigBlock.LabelName;
             var predCmds = theSimpleCmds;
 
+            var jumpBlockToken = bigBlock.tok;
             for (; ifCmd != null; ifCmd = ifCmd.ElseIf)
             {
               var freshPrefix = FreshPrefix();
@@ -516,11 +517,11 @@ class BigBlocksResolutionContext
               }
 
               // ... goto Then, Else;
-              var jump = new GotoCmd(ifCmd.tok, new List<string> {thenLabel, elseLabel})
+              var jump = new GotoCmd(jumpBlockToken, new List<string> {thenLabel, elseLabel})
               {
                 Attributes = ifCmd.Attributes
               };
-              var jumpBlock = new Block(bigBlock.tok, predLabel, predCmds, jump);
+              var jumpBlock = new Block(jumpBlockToken, predLabel, predCmds, jump);
               blocks.Add(jumpBlock);
 
               if (!thenGuardTakenCareOf)
@@ -551,6 +552,7 @@ class BigBlocksResolutionContext
               else if (ifCmd.ElseIf != null)
               {
                 // this is an "else if"
+                jumpBlockToken = ifCmd.ElseIf.tok;
                 predLabel = elseLabel;
                 predCmds = new List<Cmd>();
                 if (ifCmd.Guard != null)

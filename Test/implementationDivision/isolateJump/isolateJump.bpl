@@ -1,4 +1,4 @@
-// RUN: %boogie /printSplit:- /errorTrace:0 "%s" > "%t"
+// RUN: %boogie /printSplit:- /printPassive:/Users/rwillems/SourceCode/dafny2/boogie/isolateJump.ppl /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure IsolateReturn(x: int, y: int) returns (r: int)
@@ -26,9 +26,9 @@ procedure IsolateReturnPaths(x: int, y: int) returns (r: int)
   if {:allow_split} (x > 0) {
     r := r + 1;
   } 
-  //else if (x > 1) {
-  //  r := r + 2;
-  //} 
+  else if {:allow_split} (x > 1) {
+    r := r + 2;
+  } 
   else {
     r := r + 3;
   }

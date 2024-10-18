@@ -58,6 +58,11 @@ public class BlockRewriter {
     return result;
 
     void AddSplitsFromIndex(ImmutableStack<Block> choices, int gotoIndex, IReadOnlySet<Block> blocksToIncludeForChoices) {
+      
+      if (!blocksToIncludeForChoices.Any()) {
+        return;
+      }
+      
       var allFocusBlocksHaveBeenProcessed = gotoIndex == splitCommands.Count;
       if (allFocusBlocksHaveBeenProcessed) {
         
@@ -81,12 +86,11 @@ public class BlockRewriter {
 
           var remainingBlocks = blocksToIncludeForChoices.Where(
             blk => Dag.DominatorMap.DominatedBy(splitGoto.Block, blk)).ToHashSet();
-          AddSplitsFromIndex(choices, gotoIndex + 1, 
-            remainingBlocks);
+          AddSplitsFromIndex(choices, gotoIndex + 1, remainingBlocks);
 
           var addChoice = /*remainingBlocks.Any() ||*/ includedTargetBlocks.Count > 1;
           var ancestors = Dag.ComputeReachability(splitGoto.Block, false);
-          foreach (var targetBlock in splitGoto.Goto.LabelTargets) {
+          foreach (var targetBlock in includedTargetBlocks) {
             var descendants = Dag.ComputeReachability(targetBlock, true);
           
             // Recursive call that does focus the block
