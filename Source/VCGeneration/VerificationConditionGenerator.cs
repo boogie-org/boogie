@@ -1699,6 +1699,10 @@ namespace VC
           {
             continue;
           }
+          
+          if (gtc is { Attributes: not null }) {
+            keep.Add(curr);
+          }
 
           foreach (Block successor in gtc.LabelTargets)
           {
@@ -1711,9 +1715,7 @@ namespace VC
             {
               // s is a loop head
               keep.Add(successor);
-            } else if (gtc is { Attributes: not null }) {
-              keep.Add(successor);
-            }
+            } 
           }
         }
       }

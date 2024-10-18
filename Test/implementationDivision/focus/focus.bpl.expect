@@ -129,15 +129,6 @@ implementation Ex/assert@4[25,19,14]() returns (y: int)
 }
 
 
-implementation focusInconsistency(x: int) returns (y: int)
-{
-
-  anon0:
-    assume {:where i} false && true;
-    goto ;
-}
-
-
 implementation focusInconsistency/assert@29[38](x: int) returns (y: int)
 {
 

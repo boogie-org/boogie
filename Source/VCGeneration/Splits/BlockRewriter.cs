@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Security.Principal;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using VC;
@@ -39,89 +38,100 @@ public class BlockRewriter {
     return cmd;
   }
 
-  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block>? blocksToInclude,
-    IToken origin) {
-    var filteredDag = blocksToInclude == null
-      ? Dag
-      : Program.GraphFromBlocksSubset(OrderedBlocks, blocksToInclude);
+
+  /// <summary>
+  /// Each focus block creates two options.
+  /// We recurse twice for each focus, leading to potentially 2^N splits
+  /// </summary>
+  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block>? blocksToInclude, IImplementationPartOrigin origin) 
+  {
+    // By default, we process the foci in a top-down fashion, i.e., in the topological order.
+    // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
+    var splitCommands = GetSplitCommands(blocksToInclude ?? (IEnumerable<Block>)OrderedBlocks);
+    if (!splitCommands.Any()) {
+      return new List<ManualSplit> { CreateSplit(origin, OrderedBlocks) };
+    }
+
+    var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
+    var descendantsPerBlock = new Dictionary<Block, HashSet<Block>>();
+    foreach(var blockForSplit in splitCommands.SelectMany(g => g.Goto.LabelTargets)) {
+      var reachables = Dag.ComputeReachability(blockForSplit, false).ToHashSet();
+      reachables.Remove(blockForSplit);
+      ancestorsPerBlock[blockForSplit] = reachables;
+
+      descendantsPerBlock[blockForSplit] = Dag.ComputeReachability(blockForSplit).ToHashSet();
+    }
     
-    var blockToVisit = new Stack<(Block Current, ImmutableStack<Block> Choices, ImmutableHashSet<Block> Included)>();
-    
-    blockToVisit.Push((lastBlock, ImmutableStack<Block>.Empty, ImmutableHashSet.Create(lastBlock)));
+    var result = new List<ManualSplit>();
 
-    while (blockToVisit.Any()) {
-      var path = blockToVisit.Pop();
-      var current = path.Current;
-      var predecessors = current.Predecessors;
-      if (blocksToInclude != null) {
-        predecessors = predecessors.Where(blocksToInclude.Contains).ToList();
-      }
+    AddSplitsFromIndex(ImmutableStack<Block>.Empty, 0, OrderedBlocks.ToHashSet());
+    return result;
 
-      switch (predecessors.Count)
-      {
-        case 0:
-          var newBlocks = ComputeNewBlocks(path.Included.ToHashSet(),
-              (oldBlock, newBlock) => {
-                newBlock.Cmds = oldBlock == lastBlock ? oldBlock.Cmds : oldBlock.Cmds.Select(TransformAssertCmd).ToList();
-                if (oldBlock == lastBlock) {
-                  newBlock.TransferCmd = new ReturnCmd(origin);
-                }
-              });
-            
-          yield return CreateSplit(new PathOrigin(origin, path.Choices.ToList()), newBlocks);
-          break;
-        case 1:
-          var singlePredecessor = predecessors.First();
-          blockToVisit.Push((singlePredecessor, path.Choices, path.Included.Add(singlePredecessor)));
-          break;
-        default:
-          var immediateDominator = Dag.DominatorMap.GetImmediateDominator(current);
-          if (immediateDominator.TransferCmd is GotoCmd gotoCmd && gotoCmd.Attributes.FindBoolAttribute(AllowSplit))
-          {
-            foreach (var predecessor in predecessors)
-            {
-              blockToVisit.Push((predecessor, path.Choices.Push(predecessor), path.Included.Add(predecessor)));
+    void AddSplitsFromIndex(ImmutableStack<Block> choices, int gotoIndex, ISet<Block> blocksToIncludeForChoices) {
+      var allFocusBlocksHaveBeenProcessed = gotoIndex == splitCommands.Count;
+      if (allFocusBlocksHaveBeenProcessed) {
+        
+        // freeBlocks consist of the predecessors of the relevant foci.
+        // Their assertions turn into assumes and any splits inside them are disabled.
+        var newBlocks = ComputeNewBlocks(blocksToIncludeForChoices,
+          (oldBlock, newBlock) => {
+            newBlock.Cmds = oldBlock == lastBlock ? oldBlock.Cmds : oldBlock.Cmds.Select(TransformAssertCmd).ToList();
+            if (oldBlock == lastBlock) {
+              newBlock.TransferCmd = new ReturnCmd(origin);
             }
+          });
+        result.Add(CreateSplit(new PathOrigin(origin, choices.ToList()), newBlocks));
+      } else {
+        var splitGoto = splitCommands[gotoIndex];
+        if (!blocksToIncludeForChoices.Contains(splitGoto.Block))
+        {
+          AddSplitsFromIndex(choices, gotoIndex + 1, blocksToIncludeForChoices);
+        } else 
+        {
+          var dominatedBlocks = DominatedBlocks(OrderedBlocks, splitGoto.Block, blocksToIncludeForChoices);
+        
+          AddSplitsFromIndex(choices, gotoIndex + 1, 
+            blocksToIncludeForChoices.Where(blk => !dominatedBlocks.Contains(blk)).ToHashSet());
+        
+          foreach (var targetBlock in splitGoto.Goto.LabelTargets) {
+            var ancestors = ancestorsPerBlock[splitGoto.Block];
+            var descendants = descendantsPerBlock[targetBlock];
+          
+            // Recursive call that does focus the block
+            // Contains all the ancestors, the focus block, and the descendants.
+            AddSplitsFromIndex(choices.Push(splitGoto.Block), gotoIndex + 1, 
+                ancestors.Union(descendants).Intersect(blocksToIncludeForChoices).ToHashSet()); 
           }
-          else
-          {
-            var included = path.Included;
-            foreach (var inBetweenNode in Dag.DominatorMap.GetNodesUntilImmediateDominatorForDag(current))
-            {
-              included = included.Add(inBetweenNode);
-            }
-
-            included = included.Add(immediateDominator);
-            blockToVisit.Push((immediateDominator, path.Choices, included));
-          }
-
-          break;
+        }
       }
-
-
     }
   }
 
-  private static IEnumerable<Block> GetNodesBetween(List<Block> predecessors, ImmutableStack<Block> path,
-    Block immediateDominator)
-  {
-    var smallStack = new Stack<Block>(predecessors);
-    var nextPath = path;
-    while (smallStack.Any())
-    {
-      var addition = smallStack.Pop();
-      if (addition == immediateDominator)
-      {
-        continue;
-      }
 
-      foreach (var pred in addition.Predecessors)
+  // finds all the blocks dominated by focusBlock in the subgraph
+  // which only contains vertices of subgraph.
+  public static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, ISet<Block> subgraph)
+  {
+    var dominatorsPerBlock = new Dictionary<Block, HashSet<Block>>();
+    foreach (var block in topologicallySortedBlocks.Where(subgraph.Contains))
+    {
+      var dominatorsForBlock = new HashSet<Block>();
+      var predecessors = block.Predecessors.Where(subgraph.Contains).ToList();
+      if (predecessors.Count != 0)
       {
-        smallStack.Push(pred);
+        dominatorsForBlock.UnionWith(dominatorsPerBlock[predecessors[0]]);
+        predecessors.ForEach(blk => dominatorsForBlock.IntersectWith(dominatorsPerBlock[blk]));
       }
-      nextPath = nextPath.Push(addition);
-    } 
-    return nextPath.Push(immediateDominator);
+      dominatorsForBlock.Add(block);
+      dominatorsPerBlock[block] = dominatorsForBlock;
+    }
+    return subgraph.Where(blk => dominatorsPerBlock[blk].Contains(focusBlock)).ToHashSet();
+  }
+  
+  private static List<(Block Block, GotoCmd Goto)> GetSplitCommands(IEnumerable<Block> blocks) {
+    return blocks.
+      Where(t => t.TransferCmd is GotoCmd gotoCmd && gotoCmd.Attributes.FindBoolAttribute(AllowSplit)).
+      Select(block => (block, (GotoCmd)block.TransferCmd)).ToList();
   }
 
   public List<Block> ComputeNewBlocks(

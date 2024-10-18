@@ -449,7 +449,7 @@ namespace Microsoft.Boogie.GraphUtil
   {
     private HashSet<Tuple<Node /*!*/, Node /*!*/>> edges;
     private HashSet<Node> nodes;
-    private Node source;
+    public Node Source { get; set; }
     private bool reducible;
     private HashSet<Node> headers;
     private Dictionary<Node, HashSet<Node>> backEdgeNodes;
@@ -537,7 +537,7 @@ namespace Microsoft.Boogie.GraphUtil
       // BUGBUG: This generates bad code in the compiler
       //ns += new Set<Node>{x};
       nodes.Add(x);
-      source = x;
+      Source = x;
     }
 
     public void AddEdge(Node /*!*/ source, Node /*!*/ dest)
@@ -641,10 +641,10 @@ namespace Microsoft.Boogie.GraphUtil
     {
       get
       {
-        Contract.Assert(source != null);
+        Contract.Assert(Source != null);
         if (dominatorMap == null)
         {
-          dominatorMap = new DomRelation<Node>(this, source);
+          dominatorMap = new DomRelation<Node>(this, Source);
         }
 
         return dominatorMap;
@@ -710,7 +710,7 @@ namespace Microsoft.Boogie.GraphUtil
         immediateDominator[node] = topoSorted.ElementAt(dominators[node].Max(e => indexPerNode[e]));
       }
 
-      immediateDominator.Remove(source);
+      immediateDominator.Remove(Source);
       return immediateDominator;
     }
 
@@ -718,10 +718,10 @@ namespace Microsoft.Boogie.GraphUtil
     {
       get
       {
-        Contract.Assert(source != null);
+        Contract.Assert(Source != null);
         if (dominatorMap == null)
         {
-          dominatorMap = new DomRelation<Node>(this, source);
+          dominatorMap = new DomRelation<Node>(this, Source);
         }
 
         return dominatorMap.ImmediateDominateesMap;
@@ -1129,7 +1129,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public void ComputeLoops()
     {
-      ReducibleResult r = ComputeReducible(this, source);
+      ReducibleResult r = ComputeReducible(this, Source);
       reducible = r.reducible;
       headers = r.headers;
       backEdgeNodes = r.backEdgeNodes;
@@ -1207,7 +1207,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     public ICollection<Node> Reachable()
     {
-      return ComputeReachability(source);
+      return ComputeReachability(Source);
     }
   } // end: class Graph
 

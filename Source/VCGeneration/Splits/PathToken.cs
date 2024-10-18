@@ -10,12 +10,14 @@ namespace VCGeneration;
 
 public class PathOrigin : TokenWrapper, IImplementationPartOrigin {
 
-  public PathOrigin(IToken inner, List<Block> branches) : base(inner) {
+  public PathOrigin(IImplementationPartOrigin inner, List<Block> branches) : base(inner) {
+    Inner = inner;
     Branches = branches;
   }
-  
+
+  public new IImplementationPartOrigin Inner { get; }
   public List<Block> Branches { get; }
-  public string ShortName => $"/assert@{line}[{string.Join(",", Branches.Select(b => b.tok.line))}]";
+  public string ShortName => $"{Inner.ShortName}[{string.Join(",", Branches.Select(b => b.tok.line))}]";
 }
 
 class ImplementationRootOrigin : TokenWrapper, IImplementationPartOrigin {

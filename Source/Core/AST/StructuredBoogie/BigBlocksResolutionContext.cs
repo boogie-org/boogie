@@ -515,10 +515,7 @@ class BigBlocksResolutionContext
               }
 
               // ... goto Then, Else;
-              var jump = new GotoCmd(ifCmd.tok, new List<string> {thenLabel, elseLabel})
-              {
-                Attributes = ifCmd.Attributes
-              };
+              var jump = new GotoCmd(ifCmd.tok, new List<string> {thenLabel, elseLabel});
               var jumpBlock = new Block(bigBlock.tok, predLabel, predCmds, jump);
               blocks.Add(jumpBlock);
 
