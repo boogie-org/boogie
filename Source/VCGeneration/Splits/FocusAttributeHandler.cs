@@ -8,7 +8,6 @@ using VCGeneration.Splits;
 using Block = Microsoft.Boogie.Block;
 using Cmd = Microsoft.Boogie.Cmd;
 using PredicateCmd = Microsoft.Boogie.PredicateCmd;
-using QKeyValue = Microsoft.Boogie.QKeyValue;
 
 namespace VCGeneration;
 
@@ -49,7 +48,7 @@ public class FocusAttributeHandler {
     AddSplitsFromIndex(ImmutableStack<Block>.Empty, 0, implementation.Blocks.ToHashSet(), ImmutableHashSet<Block>.Empty);
     return result;
 
-    void AddSplitsFromIndex(ImmutableStack<Block> path, int focusIndex, ISet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
+    void AddSplitsFromIndex(ImmutableStack<Block> path, int focusIndex, IReadOnlySet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
         

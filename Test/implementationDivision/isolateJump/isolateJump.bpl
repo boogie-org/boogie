@@ -25,13 +25,17 @@ procedure IsolateReturnPaths(x: int, y: int) returns (r: int)
   r := 0;
   if {:allow_split} (x > 0) {
     r := r + 1;
-  } else if (x > 1) {
-    r := r + 2;
-  } else {
+  } 
+  //else if (x > 1) {
+  //  r := r + 2;
+  //} 
+  else {
     r := r + 3;
   }
   
   if (x + y > 0) {
+    r := 0;
+  } else {
     r := 0;
   }
   
