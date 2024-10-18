@@ -1617,7 +1617,7 @@ namespace Microsoft.Boogie.Houdini
     public static void ApplyAssignment(Program prog, HoudiniOutcome outcome)
     {
       var Candidates = prog.TopLevelDeclarations.OfType<Constant>().Where(
-        Item => QKeyValue.FindBoolAttribute(Item.Attributes, "existential")).Select(Item => Item.Name);
+        Item => Item.Attributes.FindBoolAttribute("existential")).Select(Item => Item.Name);
 
       // Treat all assertions
       // TODO: do we need to also consider assumptions?
