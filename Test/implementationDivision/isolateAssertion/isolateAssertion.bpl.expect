@@ -81,7 +81,7 @@ implementation IsolateAssertion(x: int, y: int)
 
 isolateAssertion.bpl(20,3): Error: this assertion could not be proved
 isolateAssertion.bpl(21,3): Error: this assertion could not be proved
-implementation IsolatePathsAssertion/assert@48[29,43](x: int, y: int)
+implementation IsolatePathsAssertion/assert@50[29,43](x: int, y: int)
 {
 
   anon0:
@@ -112,7 +112,7 @@ implementation IsolatePathsAssertion/assert@48[29,43](x: int, y: int)
 }
 
 
-implementation IsolatePathsAssertion/assert@48[31,43](x: int, y: int)
+implementation IsolatePathsAssertion/assert@50[31,43](x: int, y: int)
 {
 
   anon0:
@@ -144,7 +144,7 @@ implementation IsolatePathsAssertion/assert@48[31,43](x: int, y: int)
 }
 
 
-implementation IsolatePathsAssertion/assert@48[33,43](x: int, y: int)
+implementation IsolatePathsAssertion/assert@50[33,43](x: int, y: int)
 {
 
   anon0:
@@ -176,7 +176,7 @@ implementation IsolatePathsAssertion/assert@48[33,43](x: int, y: int)
 }
 
 
-implementation IsolatePathsAssertion/assert@48[29,45](x: int, y: int)
+implementation IsolatePathsAssertion/assert@50[29,45](x: int, y: int)
 {
 
   anon0:
@@ -207,7 +207,7 @@ implementation IsolatePathsAssertion/assert@48[29,45](x: int, y: int)
 }
 
 
-implementation IsolatePathsAssertion/assert@48[31,45](x: int, y: int)
+implementation IsolatePathsAssertion/assert@50[31,45](x: int, y: int)
 {
 
   anon0:
