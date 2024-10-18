@@ -1,22 +1,22 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Boogie;
+using VCGeneration;
 
 namespace VC;
 
 public class ManualSplit : Split
 {
 
-  public IToken Token { get; }
+  public IImplementationPartOrigin Token { get; }
   
   public ManualSplit(VCGenOptions options, 
-    Func<List<Block>> blocks, 
-    Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins, 
-    VerificationConditionGenerator par, 
+    Func<IList<Block>> blocks, 
+    VerificationConditionGenerator parent, 
     ImplementationRun run, 
-    IToken token, int? randomSeed = null) 
-    : base(options, blocks, gotoCmdOrigins, par, run, randomSeed)
+    IImplementationPartOrigin origin, int? randomSeed = null) 
+    : base(options, blocks, parent, run, randomSeed)
   {
-    Token = token;
+    Token = origin;
   }
 }

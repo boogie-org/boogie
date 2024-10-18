@@ -232,7 +232,7 @@ namespace Microsoft.Boogie.Houdini
           {
             yield return new AnnotationInstance(c, impl.Name, p.Expr);
           }
-          else if ((p is AssertCmd) && QKeyValue.FindBoolAttribute(p.Attributes, "originated_from_invariant"))
+          else if ((p is AssertCmd) && p.Attributes.FindBoolAttribute("originated_from_invariant"))
           {
             var tag = GetTagFromNonCandidateAttributes(p.Attributes);
             if (tag != null)
@@ -467,7 +467,7 @@ namespace Microsoft.Boogie.Houdini
           continue;
         }
 
-        if (!QKeyValue.FindBoolAttribute(Assertion.Attributes, "originated_from_invariant"))
+        if (!Assertion.Attributes.FindBoolAttribute("originated_from_invariant"))
         {
           continue;
         }
@@ -528,7 +528,7 @@ namespace Microsoft.Boogie.Houdini
     private IEnumerable<string> GetCandidates()
     {
       return prog.Variables.Where(Item =>
-        QKeyValue.FindBoolAttribute(Item.Attributes, "existential")).Select(Item => Item.Name);
+        Item.Attributes.FindBoolAttribute("existential")).Select(Item => Item.Name);
     }
 
 
@@ -611,7 +611,7 @@ namespace Microsoft.Boogie.Houdini
               newCmds.Add(new AssumeCmd(a.tok, Houdini.AddConditionToCandidate(a.Expr,
                 Expr.Ident(stageToCompleteBoolean[Plan.StageForAnnotation(c).GetId()]), c), a.Attributes));
             }
-            else if (QKeyValue.FindBoolAttribute(a.Attributes, "originated_from_invariant"))
+            else if (a.Attributes.FindBoolAttribute("originated_from_invariant"))
             {
               string tag = GetTagFromNonCandidateAttributes(a.Attributes);
               if (tag == null)

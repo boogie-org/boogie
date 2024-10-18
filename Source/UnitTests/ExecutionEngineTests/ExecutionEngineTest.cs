@@ -98,7 +98,8 @@ procedure Procedure(y: int)
     var engine = ExecutionEngine.CreateWithoutSharedCache(options);
     var tasks = await engine.GetVerificationTasks(program);
     
-    // The first split is empty. Maybe it can be optimized away
+    // The implicit return at the end gets a separate VC.
+    // first split is empty. Maybe it can be optimized away
     Assert.AreEqual(4, tasks.Count);
 
     var outcomes = new List<SolverOutcome> { SolverOutcome.Invalid, SolverOutcome.Valid, SolverOutcome.Invalid, SolverOutcome.Valid };
@@ -251,7 +252,7 @@ Boogie program verifier finished with 1 verified, 1 error
 
     Parser.Parse(programString, "fakeFilename", out var program1);
     foreach (var block in program1.Implementations.First().Blocks) {
-      foreach (var cmd in block.cmds) {
+      foreach (var cmd in block.Cmds) {
         if (cmd is AssertCmd assertCmd) {
           assertCmd.Description = new FakeDescription();
         }

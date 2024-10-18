@@ -85,7 +85,7 @@ namespace VC
 
     public Dictionary<Incarnation, Absy> IncarnationOriginMap = new();
 
-    public Program program;
+    public readonly Program program;
     public CheckerPool CheckerPool { get; }
 
     public ConditionGeneration(Program program, CheckerPool checkerPool)
@@ -222,7 +222,7 @@ namespace VC
 
       Block origStartBlock = impl.Blocks[0];
       Block insertionPoint = new Block(
-        new Token(-17, -4), blockLabel, startCmds,
+        Token.NoToken, blockLabel, startCmds,
         new GotoCmd(impl.tok, new List<String> {origStartBlock.Label}, new List<Block> {origStartBlock}));
 
       impl.Blocks.Insert(0, insertionPoint); // make insertionPoint the start block
@@ -236,7 +236,7 @@ namespace VC
         AssumeCmd c = new AssumeCmd(req.tok, e, CivlAttributes.ApplySubstitutionToPoolHints(formalProcImplSubst, req.Attributes));
         // Copy any {:id ...} from the precondition to the assumption, so
         // we can track it while analyzing verification coverage.
-        c.CopyIdFrom(req.tok, req);
+        (c as ICarriesAttributes).CopyIdFrom(req.tok, req);
         c.IrrelevantForChecksumComputation = true;
         insertionPoint.Cmds.Add(c);
         if (debugWriter != null)
@@ -450,9 +450,7 @@ namespace VC
       options.PrintDesugarings = oldPrintDesugaringSetting;
     }
 
-
-
-    public static void ResetPredecessors(List<Block> blocks)
+    public static void ResetPredecessors(IList<Block> blocks)
     {
       Contract.Requires(blocks != null);
       foreach (Block b in blocks)
@@ -688,7 +686,7 @@ namespace VC
 
       var start = DateTime.UtcNow;
 
-      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(run.OutputWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo, implementation.debugInfos);
+      var r = ConvertBlocks2PassiveCmd(run.OutputWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo, implementation.debugInfos);
 
       var end = DateTime.UtcNow;
 
@@ -724,7 +722,7 @@ namespace VC
       return r;
     }
 
-    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(TextWriter traceWriter, List<Block> blocks, List<IdentifierExpr> modifies,
+    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(TextWriter traceWriter, IList<Block> blocks, List<IdentifierExpr> modifies,
       ModelViewInfo mvInfo, Dictionary<Cmd, List<object>> debugInfos)
     {
       Contract.Requires(blocks != null);
@@ -766,7 +764,7 @@ namespace VC
         Dictionary<Variable, Expr> incarnationMap = ComputeIncarnationMap(b, block2Incarnation);
 
         // b.liveVarsBefore has served its purpose in the just-finished call to ComputeIncarnationMap; null it out.
-        b.liveVarsBefore = null;
+        b.LiveVarsBefore = null;
 
         // Decrement the succCount field in each predecessor. Once the field reaches zero in any block,
         // all its successors have been passified.  Consequently, its entry in block2Incarnation can be removed.
@@ -775,7 +773,7 @@ namespace VC
         variableCollectors[b] = mvc;
         foreach (Block p in b.Predecessors)
         {
-          p.succCount--;
+          p.SuccCount--;
           if (p.Checksum != null)
           {
             // Compute the checksum based on the checksums of the predecessor. The order should not matter.
@@ -783,7 +781,7 @@ namespace VC
           }
 
           mvc.AddUsedVariables(variableCollectors[p].UsedVariables);
-          if (p.succCount == 0)
+          if (p.SuccCount == 0)
           {
             block2Incarnation.Remove(p);
           }
@@ -794,12 +792,12 @@ namespace VC
         GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
         if (gotoCmd == null)
         {
-          b.succCount = 0;
+          b.SuccCount = 0;
         }
         else
         {
           // incarnationMap needs to be added only if there is some successor of b
-          b.succCount = gotoCmd.LabelNames.Count;
+          b.SuccCount = gotoCmd.LabelNames.Count;
           block2Incarnation.Add(b, incarnationMap);
         }
 
@@ -881,8 +879,7 @@ namespace VC
           {
             foreach (var param in current.Params)
             {
-              if (param is IdentifierExpr identifierExpr)
-              {
+              if (param is IdentifierExpr identifierExpr) {
                 debugExprs.Add(incarnationMap.GetValueOrDefault(identifierExpr.Decl, identifierExpr));
               }
               else
@@ -1040,7 +1037,7 @@ namespace VC
           }
         }
         else if (pc is AssumeCmd
-                 && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot")
+                 && pc.Attributes.FindBoolAttribute("precondition_previous_snapshot")
                  && pc.SugaredCmdChecksum != null)
         {
           if (!relevantDoomedAssumpVars.Any()
@@ -1065,7 +1062,7 @@ namespace VC
             dropCmd = true;
           }
         }
-        else if (pc is AssumeCmd && QKeyValue.FindBoolAttribute(pc.Attributes, "assumption_variable_initialization"))
+        else if (pc is AssumeCmd && pc.Attributes.FindBoolAttribute("assumption_variable_initialization"))
         {
           var identExpr = pc.Expr as IdentifierExpr;
           if (identExpr != null && identExpr.Decl != null && !incarnationMap.ContainsKey(identExpr.Decl))
@@ -1200,7 +1197,7 @@ namespace VC
           var assumeCmd = new AssumeCmd(c.tok, assumption);
           // Copy any {:id ...} from the assignment to the assumption, so
           // we can track it while analyzing verification coverage.
-          assumeCmd.CopyIdFrom(assign.tok, assign);
+          (assumeCmd as ICarriesAttributes).CopyIdFrom(assign.tok, assign);
           passiveCmds.Add(assumeCmd);
         }
 
@@ -1213,7 +1210,7 @@ namespace VC
         {
           var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
           if (identExpr != null && identExpr.Decl != null &&
-              QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") &&
+              identExpr.Decl.Attributes.FindBoolAttribute("assumption") &&
               incarnationMap.TryGetValue(identExpr.Decl, out var incarnation))
           {
             TraceCachingAction(traceWriter, assign, CachingAction.AssumeNegationOfAssumptionVariable);
@@ -1241,7 +1238,7 @@ namespace VC
         // invariant) in the previous snapshot and, consequently, the corresponding assumption did not affect the
         // anything after the loop. We can achieve this by simply not updating/adding it in the incarnation map.
         List<IdentifierExpr> havocVars = hc.Vars.Where(v =>
-            !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##cached##")))
+            !(v.Decl.Attributes.FindBoolAttribute("assumption") && v.Decl.Name.StartsWith("a##cached##")))
           .ToList();
         // First, compute the new incarnations
         foreach (IdentifierExpr ie in havocVars)
@@ -1276,7 +1273,7 @@ namespace VC
         // assume v_post ==> v_pre;
         foreach (IdentifierExpr ie in havocVars)
         {
-          if (QKeyValue.FindBoolAttribute(ie.Decl.Attributes, "assumption"))
+          if (ie.Decl.Attributes.FindBoolAttribute("assumption"))
           {
             var preInc = (Expr) (preHavocIncarnationMap[ie.Decl].Clone());
             var postInc = (Expr) (incarnationMap[ie.Decl].Clone());
@@ -1394,7 +1391,7 @@ namespace VC
       bs.Add(succ);
 
       Block newBlock = new Block(
-        new Token(-17, -4),
+        Token.NoToken,
         newBlockLabel,
         new List<Cmd>(),
         new GotoCmd(Token.NoToken, ls, bs)
@@ -1430,7 +1427,7 @@ namespace VC
       return newBlock;
     }
 
-    protected void AddBlocksBetween(List<Block> blocks)
+    protected void AddBlocksBetween(IList<Block> blocks)
     {
       Contract.Requires(blocks != null);
 
@@ -1454,7 +1451,9 @@ namespace VC
         }
       }
 
-      blocks.AddRange(tweens); // must wait until iteration is done before changing the list
+      foreach (var tween in tweens) {
+        blocks.Add(tween); // must wait until iteration is done before changing the list
+      }
 
       #endregion
     }
