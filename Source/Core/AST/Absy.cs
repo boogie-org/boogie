@@ -1300,7 +1300,7 @@ namespace Microsoft.Boogie
 
     public void ResolveWhere(ResolutionContext rc)
     {
-      if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && this.TypedIdent.WhereExpr != null)
+      if (Attributes.FindBoolAttribute("assumption") && this.TypedIdent.WhereExpr != null)
       {
         rc.Error(tok, "assumption variable may not be declared with a where clause");
       }
@@ -1315,7 +1315,7 @@ namespace Microsoft.Boogie
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
       this.TypedIdent.Typecheck(tc);
-      if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && !this.TypedIdent.Type.IsBool)
+      if (Attributes.FindBoolAttribute("assumption") && !this.TypedIdent.Type.IsBool)
       {
         tc.Error(tok, "assumption variable must be of type 'bool'");
       }
@@ -2059,7 +2059,7 @@ namespace Microsoft.Boogie
 
       stream.Write(this, level, (AlwaysRevealed ? "revealed " : "") + "function ");
       EmitAttributes(stream);
-      if (Body != null && !QKeyValue.FindBoolAttribute(Attributes, "inline"))
+      if (Body != null && !Attributes.FindBoolAttribute("inline"))
       {
         Contract.Assert(DefinitionBody == null);
         // Boogie inlines any function whose .Body field is non-null.  The parser populates the .Body field
@@ -2069,7 +2069,7 @@ namespace Microsoft.Boogie
         stream.Write("{:inline} ");
       }
 
-      if (DefinitionBody != null && !QKeyValue.FindBoolAttribute(Attributes, "define"))
+      if (DefinitionBody != null && !Attributes.FindBoolAttribute("define"))
       {
         // Boogie defines any function whose .DefinitionBody field is non-null.  The parser populates the .DefinitionBody field
         // if the :define attribute is present, but if someone creates the Boogie file directly as an AST, then
@@ -2350,7 +2350,7 @@ namespace Microsoft.Boogie
 
     public bool CanAlwaysAssume()
     {
-      return Free && QKeyValue.FindBoolAttribute(Attributes, "always_assume");
+      return Free && Attributes.FindBoolAttribute("always_assume");
     }
 
 
@@ -2490,7 +2490,7 @@ namespace Microsoft.Boogie
 
     public bool CanAlwaysAssume ()
     {
-      return Free && QKeyValue.FindBoolAttribute(this.Attributes, "always_assume");
+      return Free && this.Attributes.FindBoolAttribute("always_assume");
     }
 
     public Ensures(IToken token, bool free, Expr condition, string comment, QKeyValue kv)
