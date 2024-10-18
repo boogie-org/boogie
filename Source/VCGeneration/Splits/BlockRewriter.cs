@@ -43,21 +43,21 @@ public class BlockRewriter {
   /// Each focus block creates two options.
   /// We recurse twice for each focus, leading to potentially 2^N splits
   /// </summary>
-  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block>? blocksToInclude, IImplementationPartOrigin origin) 
+  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block> blocksToInclude, IImplementationPartOrigin origin) 
   {
     // By default, we process the foci in a top-down fashion, i.e., in the topological order.
     // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
-    var splitCommands = GetSplitCommands(blocksToInclude ?? (IEnumerable<Block>)OrderedBlocks);
+    var splitCommands = GetSplitCommands(blocksToInclude);
     if (!splitCommands.Any()) {
       return new List<ManualSplit> { CreateSplit(origin, OrderedBlocks) };
     }
     
     var result = new List<ManualSplit>();
 
-    AddSplitsFromIndex(ImmutableStack<Block>.Empty, 0, OrderedBlocks.ToHashSet());
+    AddSplitsFromIndex(ImmutableStack<Block>.Empty, 0, blocksToInclude);
     return result;
 
-    void AddSplitsFromIndex(ImmutableStack<Block> choices, int gotoIndex, ISet<Block> blocksToIncludeForChoices) {
+    void AddSplitsFromIndex(ImmutableStack<Block> choices, int gotoIndex, IReadOnlySet<Block> blocksToIncludeForChoices) {
       var allFocusBlocksHaveBeenProcessed = gotoIndex == splitCommands.Count;
       if (allFocusBlocksHaveBeenProcessed) {
         
@@ -76,20 +76,23 @@ public class BlockRewriter {
         if (!blocksToIncludeForChoices.Contains(splitGoto.Block))
         {
           AddSplitsFromIndex(choices, gotoIndex + 1, blocksToIncludeForChoices);
-        } else 
-        {
-          var dominatedBlocks = DominatedBlocks(OrderedBlocks, splitGoto.Block, blocksToIncludeForChoices);
-        
+        } else {
+          var includedTargetBlocks = splitGoto.Goto.LabelTargets.Where(blocksToIncludeForChoices.Contains).ToList();
+
+          var remainingBlocks = blocksToIncludeForChoices.Where(
+            blk => Dag.DominatorMap.DominatedBy(splitGoto.Block, blk)).ToHashSet();
           AddSplitsFromIndex(choices, gotoIndex + 1, 
-            blocksToIncludeForChoices.Where(blk => !dominatedBlocks.Contains(blk)).ToHashSet());
-        
+            remainingBlocks);
+
+          var addChoice = /*remainingBlocks.Any() ||*/ includedTargetBlocks.Count > 1;
           var ancestors = Dag.ComputeReachability(splitGoto.Block, false);
           foreach (var targetBlock in splitGoto.Goto.LabelTargets) {
             var descendants = Dag.ComputeReachability(targetBlock, true);
           
             // Recursive call that does focus the block
             // Contains all the ancestors, the focus block, and the descendants.
-            AddSplitsFromIndex(choices.Push(targetBlock), gotoIndex + 1, 
+            var newChoices = addChoice ? choices.Push(targetBlock) : choices;
+            AddSplitsFromIndex(newChoices, gotoIndex + 1, 
                 ancestors.Union(descendants).Intersect(blocksToIncludeForChoices).ToHashSet()); 
           }
         }
@@ -100,7 +103,7 @@ public class BlockRewriter {
 
   // finds all the blocks dominated by focusBlock in the subgraph
   // which only contains vertices of subgraph.
-  public static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, ISet<Block> subgraph)
+  public static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, IReadOnlySet<Block> subgraph)
   {
     var dominatorsPerBlock = new Dictionary<Block, HashSet<Block>>();
     foreach (var block in topologicallySortedBlocks.Where(subgraph.Contains))
@@ -125,7 +128,7 @@ public class BlockRewriter {
   }
 
   public List<Block> ComputeNewBlocks(
-    ISet<Block> blocksToInclude,
+    IReadOnlySet<Block> blocksToInclude,
     ISet<Block> freeAssumeBlocks) {
     return ComputeNewBlocks(blocksToInclude, (oldBlock, newBlock) => {
         newBlock.Cmds = freeAssumeBlocks.Contains(oldBlock)
@@ -135,7 +138,7 @@ public class BlockRewriter {
   }
 
   public List<Block> ComputeNewBlocks(
-    ISet<Block>? blocksToInclude,
+    IReadOnlySet<Block>? blocksToInclude,
     Action<Block, Block> updateNewBlock)
   {
     var newBlocks = new List<Block>();

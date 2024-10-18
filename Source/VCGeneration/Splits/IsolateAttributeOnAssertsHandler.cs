@@ -35,7 +35,7 @@ class IsolateAttributeOnAssertsHandler {
         isolatedAssertions.Add(assert);
         if (isolateAttribute != null && isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "paths"))) {
           var origin = new IsolatedAssertionOrigin(new ImplementationRootOrigin(partToDivide.Implementation), assert);
-          results.AddRange(rewriter.GetSplitsForIsolatedPaths(block, null, origin).Select(p => {
+          results.AddRange(rewriter.GetSplitsForIsolatedPaths(block, rewriter.OrderedBlocks.ToHashSet(), origin).Select(p => {
             var newAssertBlock = p.Blocks.Last();
             newAssertBlock.Cmds = GetCommandsForBlockWithAssert(newAssertBlock, assert);
             return p;
