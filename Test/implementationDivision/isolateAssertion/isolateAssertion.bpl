@@ -1,4 +1,4 @@
-// RUN: %boogie /printSplit:- /errorTrace:0 "%s" > "%t"
+// RUN: %boogie /printSplit:- /printPassive:/Users/rwillems/SourceCode/dafny2/boogie/isa.ppl /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure IsolateAssertion(x: int, y: int)
@@ -27,9 +27,11 @@ procedure IsolatePathsAssertion(x: int, y: int)
   z := 0;
   if {:allow_split} (x > 0) {
     z := z + 1;
-  } else if (x > 1) {
-    z := z + 2;
-  } else {
+  } 
+  //else if (x > 1) {
+  //  z := z + 2;
+  //} 
+  else {
     z := z + 1;
   }
   

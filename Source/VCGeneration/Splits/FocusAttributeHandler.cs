@@ -57,7 +57,7 @@ public class FocusAttributeHandler {
         // Their assertions turn into assumes and any splits inside them are disabled.
         var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, freeAssumeBlocks);
         IImplementationPartOrigin token = path.Any() 
-          ? new PathOrigin(run.Implementation.tok, path.ToList()) // TODO fix 
+          ? new PathOrigin(new ImplementationRootOrigin(run.Implementation), path.ToList()) // TODO fix 
           : new ImplementationRootOrigin(run.Implementation); 
         result.Add(rewriter.CreateSplit(token, newBlocks));
       } else {
@@ -69,7 +69,7 @@ public class FocusAttributeHandler {
         }
         else
         {
-          var dominatedBlocks = DominatedBlocks(rewriter.OrderedBlocks, focusBlock, blocksToInclude);
+          var dominatedBlocks = BlockRewriter.DominatedBlocks(rewriter.OrderedBlocks, focusBlock, blocksToInclude);
           // Recursive call that does NOT focus the block
           // Contains all blocks except the ones dominated by the focus block
           AddSplitsFromIndex(path, focusIndex + 1, 
@@ -85,26 +85,6 @@ public class FocusAttributeHandler {
         } 
       }
     }
-  }
-
-  // finds all the blocks dominated by focusBlock in the subgraph
-  // which only contains vertices of subgraph.
-  private static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, ISet<Block> subgraph)
-  {
-    var dominatorsPerBlock = new Dictionary<Block, HashSet<Block>>();
-    foreach (var block in topologicallySortedBlocks.Where(subgraph.Contains))
-    {
-      var dominatorsForBlock = new HashSet<Block>();
-      var predecessors = block.Predecessors.Where(subgraph.Contains).ToList();
-      if (predecessors.Count != 0)
-      {
-        dominatorsForBlock.UnionWith(dominatorsPerBlock[predecessors[0]]);
-        predecessors.ForEach(blk => dominatorsForBlock.IntersectWith(dominatorsPerBlock[blk]));
-      }
-      dominatorsForBlock.Add(block);
-      dominatorsPerBlock[block] = dominatorsForBlock;
-    }
-    return subgraph.Where(blk => dominatorsPerBlock[blk].Contains(focusBlock)).ToHashSet();
   }
   
   private static List<(Block Block, IToken Token)> GetFocusBlocks(List<Block> blocks) {
