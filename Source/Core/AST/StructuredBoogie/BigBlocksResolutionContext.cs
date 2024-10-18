@@ -329,6 +329,7 @@ class BigBlocksResolutionContext
       {
         for (IfCmd ifCmd = current.ec as IfCmd; ifCmd != null; ifCmd = ifCmd.ElseIf)
         {
+          //next.
           AssignSuccessors(ifCmd.Thn, next);
           if (ifCmd.ElseBlock != null)
           {
@@ -515,7 +516,10 @@ class BigBlocksResolutionContext
               }
 
               // ... goto Then, Else;
-              var jump = new GotoCmd(ifCmd.tok, new List<string> {thenLabel, elseLabel});
+              var jump = new GotoCmd(ifCmd.tok, new List<string> {thenLabel, elseLabel})
+              {
+                Attributes = ifCmd.Attributes
+              };
               var jumpBlock = new Block(bigBlock.tok, predLabel, predCmds, jump);
               blocks.Add(jumpBlock);
 

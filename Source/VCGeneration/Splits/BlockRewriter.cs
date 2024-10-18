@@ -51,16 +51,6 @@ public class BlockRewriter {
     if (!splitCommands.Any()) {
       return new List<ManualSplit> { CreateSplit(origin, OrderedBlocks) };
     }
-
-    var ancestorsPerBlock = new Dictionary<Block, HashSet<Block>>();
-    var descendantsPerBlock = new Dictionary<Block, HashSet<Block>>();
-    foreach(var blockForSplit in splitCommands.SelectMany(g => g.Goto.LabelTargets)) {
-      var reachables = Dag.ComputeReachability(blockForSplit, false).ToHashSet();
-      reachables.Remove(blockForSplit);
-      ancestorsPerBlock[blockForSplit] = reachables;
-
-      descendantsPerBlock[blockForSplit] = Dag.ComputeReachability(blockForSplit).ToHashSet();
-    }
     
     var result = new List<ManualSplit>();
 
@@ -93,13 +83,13 @@ public class BlockRewriter {
           AddSplitsFromIndex(choices, gotoIndex + 1, 
             blocksToIncludeForChoices.Where(blk => !dominatedBlocks.Contains(blk)).ToHashSet());
         
+          var ancestors = Dag.ComputeReachability(splitGoto.Block, false);
           foreach (var targetBlock in splitGoto.Goto.LabelTargets) {
-            var ancestors = ancestorsPerBlock[splitGoto.Block];
-            var descendants = descendantsPerBlock[targetBlock];
+            var descendants = Dag.ComputeReachability(targetBlock, true);
           
             // Recursive call that does focus the block
             // Contains all the ancestors, the focus block, and the descendants.
-            AddSplitsFromIndex(choices.Push(splitGoto.Block), gotoIndex + 1, 
+            AddSplitsFromIndex(choices.Push(targetBlock), gotoIndex + 1, 
                 ancestors.Union(descendants).Intersect(blocksToIncludeForChoices).ToHashSet()); 
           }
         }
