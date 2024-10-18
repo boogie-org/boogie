@@ -44,11 +44,16 @@ class IsolateAttributeOnJumpsHandler {
       var blocksToInclude = ancestors.Union(descendants).ToHashSet();
 
       var originalReturn = ((GotoFromReturn)gotoCmd.tok).Origin;
+      if (originalReturn.tok is ImplicitJump) {
+        continue;
+      }
+      
       if (isolateAttribute != null && isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "paths"))) {
         // These conditions hold if the goto was originally a return
         Debug.Assert(gotoCmd.LabelTargets.Count == 1);
         Debug.Assert(gotoCmd.LabelTargets[0].TransferCmd is not GotoCmd);
-        results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, originalReturn.tok));
+        var origin = new ReturnOrigin(originalReturn);
+        results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, origin));
       } else {
         var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude, ancestors.ToHashSet());
         results.Add(rewriter.CreateSplit(new ReturnOrigin(originalReturn), newBlocks));

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
+using VCGeneration;
 
 namespace Microsoft.Boogie;
 
@@ -581,11 +582,11 @@ class BigBlocksResolutionContext
     Contract.Ensures(Contract.Result<TransferCmd>() != null);
     if (b.successorBigBlock != null)
     {
-      return new GotoCmd(tok, new List<String> {b.successorBigBlock.LabelName});
+      return new GotoCmd(new ImplicitJump(tok), new List<String> {b.successorBigBlock.LabelName});
     }
     else
     {
-      return new ReturnCmd(tok);
+      return new ReturnCmd(new ImplicitJump(tok));
     }
   }
 }

@@ -61,7 +61,8 @@ class IsolateAttributeOnAssertsHandler {
           : oldBlock.Cmds.Select(rewriter.TransformAssertCmd).ToList();
 
       var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToKeep, GetCommands);
-      return rewriter.CreateSplit(new IsolatedAssertionOrigin(assertCmd), newBlocks);
+      var origin = new IsolatedAssertionOrigin(partToDivide.Token, assertCmd);
+      return rewriter.CreateSplit(origin, newBlocks);
     }
     
     List<Cmd> GetCommandsForBlockWithAssert(Block currentBlock, AssertCmd assert)
@@ -79,14 +80,13 @@ class IsolateAttributeOnAssertsHandler {
     }
 
     ManualSplit GetSplitWithoutIsolatedAssertions() {
-      var origin = new ImplementationRootOrigin(partToDivide.Implementation);
       if (!isolatedAssertions.Any()) {
-        return rewriter.CreateSplit(origin, partToDivide.Blocks);
+        return rewriter.CreateSplit(partToDivide.Token, partToDivide.Blocks);
       }
 
-      var (newBlocks, mapping) = rewriter.ComputeNewBlocks(null, GetCommands);
+      var (newBlocks, _) = rewriter.ComputeNewBlocks(null, GetCommands);
       
-      return rewriter.CreateSplit(origin, newBlocks);
+      return rewriter.CreateSplit(partToDivide.Token, newBlocks);
 
       List<Cmd> GetCommands(Block block) => block.Cmds.Select(cmd => 
         isolatedAssertions.Contains(cmd) ? rewriter.TransformAssertCmd(cmd) : cmd).ToList();
@@ -94,13 +94,14 @@ class IsolateAttributeOnAssertsHandler {
   }
 }
 
-
 public class IsolatedAssertionOrigin : TokenWrapper, IImplementationPartOrigin {
+  public IImplementationPartOrigin Origin { get; }
   public AssertCmd IsolatedAssert { get; }
 
-  public IsolatedAssertionOrigin(AssertCmd isolatedAssert) : base(isolatedAssert.tok) {
+  public IsolatedAssertionOrigin(IImplementationPartOrigin origin, AssertCmd isolatedAssert) : base(isolatedAssert.tok) {
+    Origin = origin;
     this.IsolatedAssert = isolatedAssert;
   }
 
-  public string ShortName => $"/assert@{IsolatedAssert.Line}";
+  public string ShortName => $"{Origin.ShortName}/assert@{IsolatedAssert.Line}";
 }

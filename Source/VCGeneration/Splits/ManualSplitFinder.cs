@@ -14,17 +14,26 @@ public static class ManualSplitFinder {
     Func<IImplementationPartOrigin, List<Block>, ManualSplit> createPart) {
     
     var focussedParts = FocusAttributeHandler.GetParts(options, run, createPart);
-    var result = focussedParts.SelectMany(focussedPart => {
+    var result = focussedParts.SelectMany(focussedPart =>
+    {
       var (isolatedJumps, withoutIsolatedJumps) =
         IsolateAttributeOnJumpsHandler.GetParts(options, focussedPart, createPart);
-      var (isolatedAssertions, withoutIsolatedAssertions) =
-        IsolateAttributeOnAssertsHandler.GetParts(options, withoutIsolatedJumps, createPart);
-    
-      var splitParts = SplitAttributeHandler.GetParts(withoutIsolatedAssertions);
-      var splits = isolatedJumps.Concat(isolatedAssertions).Concat(splitParts).Where(s => s.Asserts.Any()).ToList();
-      return splits.Any() ? splits : new List<ManualSplit> { focussedPart };
-    });
-    return result;
+      return new[] { withoutIsolatedJumps }.Concat(isolatedJumps).SelectMany(isolatedJumpSplit =>
+      {
+        var (isolatedAssertions, withoutIsolatedAssertions) =
+          IsolateAttributeOnAssertsHandler.GetParts(options, isolatedJumpSplit, createPart);
+
+        var splitParts = SplitAttributeHandler.GetParts(withoutIsolatedAssertions);
+        return isolatedAssertions.Concat(splitParts);
+      });
+    }).Where(s => s.Asserts.Any()).ToList();
+
+    if (result.Any())
+    {
+      return result;
+    }
+
+    return focussedParts.Take(1);
   }
 }
 
