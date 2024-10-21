@@ -81,7 +81,7 @@ implementation IsolateAssertion(x: int, y: int)
 
 isolateAssertion.bpl(20,3): Error: this assertion could not be proved
 isolateAssertion.bpl(21,3): Error: this assertion could not be proved
-implementation IsolatePathsAssertion/assert@50[29,43](x: int, y: int)
+implementation IsolatePathsAssertion/assert@50[29,45](x: int, y: int)
 {
 
   anon0:
@@ -112,7 +112,38 @@ implementation IsolatePathsAssertion/assert@50[29,43](x: int, y: int)
 }
 
 
-implementation IsolatePathsAssertion/assert@50[31,43](x: int, y: int)
+implementation IsolatePathsAssertion/assert@50[29,47](x: int, y: int)
+{
+
+  anon0:
+    assume {:partition} x > 0;
+    assume z#AT#0 == 0 + 1;
+    assume z#AT#3 == z#AT#0;
+    goto anon13_Then, anon13_Else;
+
+  anon13_Then:
+    assume {:partition} y > 0;
+    assume z#AT#4 == z#AT#3 + 0;
+    assume z#AT#6 == z#AT#4;
+    goto anon7;
+
+  anon13_Else:
+    assume {:partition} 0 >= y;
+    assume z#AT#5 == z#AT#3 + 0;
+    assume z#AT#6 == z#AT#5;
+    goto anon7;
+
+  anon7:
+    assume {:partition} 0 >= y;
+    assume z#AT#8 == z#AT#6 + 4;
+    assume z#AT#9 == z#AT#8;
+    assume z#AT#9 > 1;
+    assert {:isolate "paths"} z#AT#9 > 5;
+    return;
+}
+
+
+implementation IsolatePathsAssertion/assert@50[31,32,45](x: int, y: int)
 {
 
   anon0:
@@ -144,7 +175,39 @@ implementation IsolatePathsAssertion/assert@50[31,43](x: int, y: int)
 }
 
 
-implementation IsolatePathsAssertion/assert@50[33,43](x: int, y: int)
+implementation IsolatePathsAssertion/assert@50[31,32,47](x: int, y: int)
+{
+
+  anon0:
+    assume {:partition} 0 >= x;
+    assume {:partition} x > 1;
+    assume z#AT#1 == 0 + 2;
+    assume z#AT#3 == z#AT#1;
+    goto anon13_Then, anon13_Else;
+
+  anon13_Then:
+    assume {:partition} y > 0;
+    assume z#AT#4 == z#AT#3 + 0;
+    assume z#AT#6 == z#AT#4;
+    goto anon7;
+
+  anon13_Else:
+    assume {:partition} 0 >= y;
+    assume z#AT#5 == z#AT#3 + 0;
+    assume z#AT#6 == z#AT#5;
+    goto anon7;
+
+  anon7:
+    assume {:partition} 0 >= y;
+    assume z#AT#8 == z#AT#6 + 4;
+    assume z#AT#9 == z#AT#8;
+    assume z#AT#9 > 1;
+    assert {:isolate "paths"} z#AT#9 > 5;
+    return;
+}
+
+
+implementation IsolatePathsAssertion/assert@50[31,35,45](x: int, y: int)
 {
 
   anon0:
@@ -176,70 +239,7 @@ implementation IsolatePathsAssertion/assert@50[33,43](x: int, y: int)
 }
 
 
-implementation IsolatePathsAssertion/assert@50[29,45](x: int, y: int)
-{
-
-  anon0:
-    assume {:partition} x > 0;
-    assume z#AT#0 == 0 + 1;
-    assume z#AT#3 == z#AT#0;
-    goto anon13_Then, anon13_Else;
-
-  anon13_Then:
-    assume {:partition} y > 0;
-    assume z#AT#4 == z#AT#3 + 0;
-    assume z#AT#6 == z#AT#4;
-    goto anon7;
-
-  anon13_Else:
-    assume {:partition} 0 >= y;
-    assume z#AT#5 == z#AT#3 + 0;
-    assume z#AT#6 == z#AT#5;
-    goto anon7;
-
-  anon7:
-    assume {:partition} 0 >= y;
-    assume z#AT#8 == z#AT#6 + 4;
-    assume z#AT#9 == z#AT#8;
-    assume z#AT#9 > 1;
-    assert {:isolate "paths"} z#AT#9 > 5;
-    return;
-}
-
-
-implementation IsolatePathsAssertion/assert@50[31,45](x: int, y: int)
-{
-
-  anon0:
-    assume {:partition} 0 >= x;
-    assume {:partition} x > 1;
-    assume z#AT#1 == 0 + 2;
-    assume z#AT#3 == z#AT#1;
-    goto anon13_Then, anon13_Else;
-
-  anon13_Then:
-    assume {:partition} y > 0;
-    assume z#AT#4 == z#AT#3 + 0;
-    assume z#AT#6 == z#AT#4;
-    goto anon7;
-
-  anon13_Else:
-    assume {:partition} 0 >= y;
-    assume z#AT#5 == z#AT#3 + 0;
-    assume z#AT#6 == z#AT#5;
-    goto anon7;
-
-  anon7:
-    assume {:partition} 0 >= y;
-    assume z#AT#8 == z#AT#6 + 4;
-    assume z#AT#9 == z#AT#8;
-    assume z#AT#9 > 1;
-    assert {:isolate "paths"} z#AT#9 > 5;
-    return;
-}
-
-
-implementation IsolatePathsAssertion/assert@48[33,45](x: int, y: int)
+implementation IsolatePathsAssertion/assert@50[31,35,47](x: int, y: int)
 {
 
   anon0:
@@ -281,7 +281,7 @@ implementation IsolatePathsAssertion(x: int, y: int)
     assume {:partition} x > 0;
     assume z#AT#0 == 0 + 1;
     assume z#AT#3 == z#AT#0;
-    goto anon4;
+    goto anon13_Then, anon13_Else;
 
   anon11_Else:
     assume {:partition} 0 >= x;
@@ -291,15 +291,12 @@ implementation IsolatePathsAssertion(x: int, y: int)
     assume {:partition} x > 1;
     assume z#AT#1 == 0 + 2;
     assume z#AT#3 == z#AT#1;
-    goto anon4;
+    goto anon13_Then, anon13_Else;
 
   anon12_Else:
     assume {:partition} 1 >= x;
     assume z#AT#2 == 0 + 1;
     assume z#AT#3 == z#AT#2;
-    goto anon4;
-
-  anon4:
     goto anon13_Then, anon13_Else;
 
   anon13_Then:
@@ -337,6 +334,6 @@ implementation IsolatePathsAssertion(x: int, y: int)
 }
 
 
-isolateAssertion.bpl(48,3): Error: this assertion could not be proved
+isolateAssertion.bpl(50,3): Error: this assertion could not be proved
 
 Boogie program verifier finished with 0 verified, 6 errors

@@ -125,7 +125,7 @@ implementation IsolateReturnPaths/return@44[27](x: int, y: int) returns (r: int)
 }
 
 
-implementation IsolateReturnPaths/return@44[30,29](x: int, y: int) returns (r: int)
+implementation IsolateReturnPaths/return@44[29,30](x: int, y: int) returns (r: int)
 {
 
   anon0:
@@ -153,7 +153,7 @@ implementation IsolateReturnPaths/return@44[30,29](x: int, y: int) returns (r: i
 }
 
 
-implementation IsolateReturnPaths/return@44[33,29](x: int, y: int) returns (r: int)
+implementation IsolateReturnPaths/return@44[29,33](x: int, y: int) returns (r: int)
 {
 
   anon0:
