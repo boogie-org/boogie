@@ -28,7 +28,7 @@ procedure IsolatePathsAssertion(x: int, y: int)
   if {:allow_split} (x > 0) {
     z := z + 1;
   } 
-  else if (x > 1) {
+  else if {:allow_split} (x > 1) {
     z := z + 2;
   } 
   else {

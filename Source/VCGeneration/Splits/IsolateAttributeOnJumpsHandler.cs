@@ -55,7 +55,17 @@ class IsolateAttributeOnJumpsHandler {
         var origin = new ReturnOrigin(originalReturn);
         results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, origin));
       } else {
-        var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, ancestors.ToHashSet());
+        var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, (oldBlock, newBlock) => {
+          if (ancestors.Contains(oldBlock)) {
+            newBlock.Cmds = oldBlock.Cmds.Select(c => CommandTransformations.AssertIntoAssume(rewriter.Options, c))
+              .ToList();
+          } else {
+            newBlock.Cmds = oldBlock.Cmds;
+            if (newBlock.TransferCmd is ReturnCmd) {
+              newBlock.TransferCmd = originalReturn;
+            }
+          }
+        });
         results.Add(rewriter.CreateSplit(new ReturnOrigin(originalReturn), newBlocks));
       }
     }
