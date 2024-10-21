@@ -1,4 +1,4 @@
-// RUN: %boogie /printSplit:- /printPassive:/Users/rwillems/SourceCode/dafny2/boogie/isa.ppl /errorTrace:0 "%s" > "%t"
+// RUN: %boogie /printSplit:- /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure IsolateAssertion(x: int, y: int)
