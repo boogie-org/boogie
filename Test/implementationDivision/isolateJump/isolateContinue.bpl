@@ -1,11 +1,12 @@
 // RUN: %boogie /printSplit:- /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-procedure IsolateContinue(x: int, y: int) returns (r: int)
+procedure IsolateContinue(x: int) returns (r: int)
+  requires x >= 10;
   ensures r >= 10;
 {
   var i: int;
-  i := 10;
+  i := x;
   r := 0;
   while(i > 0) 
     invariant r >= 10 - i;

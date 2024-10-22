@@ -31,8 +31,9 @@ class IsolateAttributeOnJumpsHandler {
         continue;
       }
 
-      var isTypeOfAssert = gotoCmd.tok is GotoFromReturn;
+      var gotoFromReturn = gotoCmd.tok as GotoFromReturn;
       var isolateAttribute = QKeyValue.FindAttribute(gotoCmd.Attributes, p => p.Key == "isolate");
+      var isTypeOfAssert = gotoFromReturn != null && gotoFromReturn.Origin.tok is Token;
       var isolate = BlockRewriter.ShouldIsolate(isTypeOfAssert && splitOnEveryAssert, isolateAttribute);
       if (!isolate) {
         continue;
@@ -43,17 +44,13 @@ class IsolateAttributeOnJumpsHandler {
       var descendants = dag.ComputeReachability(block, true);
       var blocksToInclude = ancestors.Union(descendants).ToHashSet();
 
-      var originalReturn = ((GotoFromReturn)gotoCmd.tok).Origin;
-      var returnWasFromOriginalSource = originalReturn.tok is not Token;
-      if (returnWasFromOriginalSource) {
-        continue;
-      }
+      var originalJump = gotoFromReturn?.Origin ?? (TransferCmd)gotoCmd;
       
       if (isolateAttribute != null && isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "paths"))) {
         // These conditions hold if the goto was originally a return
         Debug.Assert(gotoCmd.LabelTargets.Count == 1);
         Debug.Assert(gotoCmd.LabelTargets[0].TransferCmd is not GotoCmd);
-        var origin = new ReturnOrigin(originalReturn);
+        var origin = new JumpOrigin(originalJump);
         results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, origin));
       } else {
         var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, (oldBlock, newBlock) => {
@@ -62,12 +59,12 @@ class IsolateAttributeOnJumpsHandler {
               .ToList();
           } else {
             newBlock.Cmds = oldBlock.Cmds;
-            if (newBlock.TransferCmd is ReturnCmd) {
-              newBlock.TransferCmd = originalReturn;
-            }
+            // if (newBlock.TransferCmd is ReturnCmd) {
+            //   newBlock.TransferCmd = gotoFromReturn?.Origin;
+            // }
           }
         });
-        results.Add(rewriter.CreateSplit(new ReturnOrigin(originalReturn), newBlocks));
+        results.Add(rewriter.CreateSplit(new JumpOrigin(originalJump), newBlocks));
       }
     }
 
@@ -90,13 +87,13 @@ class IsolateAttributeOnJumpsHandler {
 }
 
 
-public class ReturnOrigin : TokenWrapper, IImplementationPartOrigin {
-  public ReturnCmd IsolatedReturn { get; }
+public class JumpOrigin : TokenWrapper, IImplementationPartOrigin {
+  public TransferCmd IsolatedReturn { get; }
 
-  public ReturnOrigin(ReturnCmd isolatedReturn) : base(isolatedReturn.tok) {
+  public JumpOrigin(TransferCmd isolatedReturn) : base(isolatedReturn.tok) {
     this.IsolatedReturn = isolatedReturn;
   }
 
-  public string ShortName => $"/return@{IsolatedReturn.Line}";
-  public string KindName => "return";
+  public string ShortName => $"/{KindName}@{IsolatedReturn.Line}";
+  public string KindName => IsolatedReturn is ReturnCmd ? "return" : "goto";
 }
