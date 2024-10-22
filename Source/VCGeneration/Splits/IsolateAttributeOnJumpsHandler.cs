@@ -59,9 +59,13 @@ class IsolateAttributeOnJumpsHandler {
               .ToList();
           } else {
             newBlock.Cmds = oldBlock.Cmds;
-            // if (newBlock.TransferCmd is ReturnCmd) {
-            //   newBlock.TransferCmd = gotoFromReturn?.Origin;
-            // }
+            if (newBlock.TransferCmd is ReturnCmd && gotoFromReturn != null) {
+              /*
+               I'm not sure why this is necessary.
+               Possibly two block are coalesced which deletes the goto with the GotoFromReturn
+               */
+              newBlock.TransferCmd = gotoFromReturn.Origin;
+            }
           }
         });
         results.Add(rewriter.CreateSplit(new JumpOrigin(originalJump), newBlocks));
