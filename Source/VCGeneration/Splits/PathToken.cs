@@ -18,6 +18,7 @@ public class PathOrigin : TokenWrapper, IImplementationPartOrigin {
   public new IImplementationPartOrigin Inner { get; }
   public List<Block> Branches { get; }
   public string ShortName => $"{Inner.ShortName}[{string.Join(",", Branches.Select(b => b.tok.line))}]";
+  public string KindName => "path";
 }
 
 class ImplementationRootOrigin : TokenWrapper, IImplementationPartOrigin {
@@ -26,4 +27,5 @@ class ImplementationRootOrigin : TokenWrapper, IImplementationPartOrigin {
   }
 
   public string ShortName => "";
+  public string KindName => "root";
 }

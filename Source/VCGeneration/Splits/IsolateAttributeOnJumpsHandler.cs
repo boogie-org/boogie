@@ -97,4 +97,5 @@ public class ReturnOrigin : TokenWrapper, IImplementationPartOrigin {
   }
 
   public string ShortName => $"/return@{IsolatedReturn.Line}";
+  public string KindName => "return";
 }

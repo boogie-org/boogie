@@ -213,4 +213,5 @@ class SplitOrigin : TokenWrapper, IImplementationPartOrigin {
   }
 
   public string ShortName => $"/split@{line}";
+  public string KindName => "split";
 }

@@ -103,4 +103,5 @@ public class IsolatedAssertionOrigin : TokenWrapper, IImplementationPartOrigin {
   }
 
   public string ShortName => $"{Origin.ShortName}/assert@{IsolatedAssert.Line}";
+  public string KindName => "assertion";
 }
