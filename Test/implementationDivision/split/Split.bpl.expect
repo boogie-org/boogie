@@ -1,0 +1,112 @@
+implementation Foo/split@4() returns (y: int)
+{
+
+  anon0:
+    assert 5 + 0 == 5;
+    assert 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} 0 >= x#AT#0;
+    assume y#AT#2 == y#AT#0;
+    assert y#AT#2 >= 0;
+    return;
+}
+
+
+implementation Foo/split@15() returns (y: int)
+{
+
+  anon0:
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} x#AT#0 > 0;
+    assume x#AT#1 == x#AT#0 - 1;
+    assert {:split_here} (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
+    assume y#AT#1 == y#AT#0 + 1;
+    assume {:partition} x#AT#1 < 3;
+    assert 2 < 2;
+    assume y#AT#1 * y#AT#1 > 4;
+    goto ;
+}
+
+
+implementation Foo/split@22() returns (y: int)
+{
+
+  anon0:
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} x#AT#0 > 0;
+    assume x#AT#1 == x#AT#0 - 1;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
+    assume y#AT#1 == y#AT#0 + 1;
+    assume {:partition} 3 <= x#AT#1;
+    assert {:split_here} y#AT#1 * y#AT#1 * y#AT#1 < 8;
+    assert 2 < 2;
+    goto ;
+}
+
+
+implementation Foo/split@25() returns (y: int)
+{
+
+  anon0:
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} x#AT#0 > 0;
+    assume x#AT#1 == x#AT#0 - 1;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
+    assume y#AT#1 == y#AT#0 + 1;
+    goto anon6_Then, anon6_Else;
+
+  anon6_Else:
+    assume {:partition} 3 <= x#AT#1;
+    assume y#AT#1 * y#AT#1 * y#AT#1 < 8;
+    assume 2 < 2;
+    goto anon4;
+
+  anon4:
+    assert {:split_here} (x#AT#1 + y#AT#1) * (x#AT#1 + y#AT#1) == 25;
+    assert x#AT#1 + y#AT#1 == 5;
+    assert x#AT#1 * x#AT#1 <= 25;
+    assume false;
+    return;
+
+  anon6_Then:
+    assume {:partition} x#AT#1 < 3;
+    assume 2 < 2;
+    assume y#AT#1 * y#AT#1 > 4;
+    goto anon4;
+}
+
+
+implementation Foo/split@19() returns (y: int)
+{
+
+  anon0:
+    assume 5 + 0 == 5;
+    assume 5 * 5 <= 25;
+    assume x#AT#0 + y#AT#0 == 5;
+    assume x#AT#0 * x#AT#0 <= 25;
+    assume {:partition} x#AT#0 > 0;
+    assume x#AT#1 == x#AT#0 - 1;
+    assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 25;
+    assume y#AT#1 == y#AT#0 + 1;
+    assume {:partition} x#AT#1 < 3;
+    assume 2 < 2;
+    assert {:split_here} y#AT#1 * y#AT#1 > 4;
+    goto ;
+}
+
+
+Split.bpl(15,5): Error: this assertion could not be proved
+Execution trace:
+    Split.bpl(8,5): anon0
+
+Boogie program verifier finished with 0 verified, 1 error
