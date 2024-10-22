@@ -2584,11 +2584,16 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		if (la.kind == 55) {
 			Get();
 			y = t; 
+			while (la.kind == 26) {
+				Attribute(ref kv);
+			}
 			Idents(out xs);
 			foreach(IToken/*!*/ s in xs){
 			 Contract.Assert(s != null);
 			 ss.Add(s.val); }
-			b = new Block(x,x.val,cs,new GotoCmd(y,ss));
+			b = new Block(x,x.val,cs,new GotoCmd(y,ss) {
+			 Attributes = kv
+			});
 			
 		} else if (la.kind == 56) {
 			Get();

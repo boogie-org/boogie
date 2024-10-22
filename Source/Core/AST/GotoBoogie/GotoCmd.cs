@@ -91,6 +91,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
     //Contract.Requires(stream != null);
     Contract.Assume(this.LabelNames != null);
     stream.Write(this, level, "goto ");
+    Attributes?.Emit(stream);
     if (stream.Options.PrintWithUniqueASTIds)
     {
       if (LabelTargets == null)
