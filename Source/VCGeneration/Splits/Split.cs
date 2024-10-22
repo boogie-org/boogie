@@ -22,11 +22,11 @@ namespace VC
 
       public int RandomSeed { get; }
 
-      private List<Block> blocks;
-      public List<Block> Blocks => blocks ??= getBlocks();
+      private IList<Block> blocks;
+      public IList<Block> Blocks => blocks ??= getBlocks();
 
       readonly List<Block> bigBlocks = new();
-      public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.cmds.OfType<AssertCmd>()).ToList();
+      public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.Cmds.OfType<AssertCmd>()).ToList();
       public IReadOnlyList<Declaration> prunedDeclarations;
       
       public IReadOnlyList<Declaration> PrunedDeclarations {
@@ -56,8 +56,7 @@ namespace VC
       int assertionCount;
       double assertionCost; // without multiplication by paths
 
-      public readonly VerificationConditionGenerator /*!*/
-        parent;
+      public readonly VerificationConditionGenerator /*!*/ parent;
 
       public Implementation /*!*/ Implementation => Run.Implementation;
 
@@ -74,7 +73,7 @@ namespace VC
       public int SplitIndex { get; set; }
       public VerificationConditionGenerator.ErrorReporter reporter;
 
-      public Split(VCGenOptions options, Func<List<Block /*!*/>> /*!*/ getBlocks,
+      public Split(VCGenOptions options, Func<IList<Block /*!*/>> /*!*/ getBlocks,
         VerificationConditionGenerator /*!*/ parent, ImplementationRun run, int? randomSeed = null)
       {
         Contract.Requires(parent != null);
@@ -199,7 +198,7 @@ namespace VC
       }
 
       int bsid;
-      private readonly Func<List<Block>> getBlocks;
+      private readonly Func<IList<Block>> getBlocks;
 
       BlockStats GetBlockStats(Block b)
       {

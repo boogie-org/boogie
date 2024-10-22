@@ -79,8 +79,7 @@ public class BigBlock
     }
   }
 
-  public BigBlock
-    successorBigBlock; // semantic successor (may be a back-edge, pointing back to enclosing while statement); null if successor is end of procedure body (or if field has not yet been initialized)
+  public BigBlock SuccessorBigBlock; // semantic successor (may be a back-edge, pointing back to enclosing while statement); null if successor is end of procedure body (or if field has not yet been initialized)
 
   public BigBlock(IToken tok, string labelName, [Captured] List<Cmd> simpleCmds, StructuredCmd ec, TransferCmd tc)
   {

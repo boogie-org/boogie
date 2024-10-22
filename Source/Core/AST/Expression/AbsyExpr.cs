@@ -3890,7 +3890,7 @@ namespace Microsoft.Boogie
     public List<Variable> /*!*/
       LocVars;
 
-    [Rep] public List<Block /*!*/> /*!*/ Blocks;
+    [Rep] public IList<Block /*!*/> /*!*/ Blocks;
 
     [ContractInvariantMethod]
     void ObjectInvariant()

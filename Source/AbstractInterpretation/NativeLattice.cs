@@ -185,8 +185,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       // We need to keep track of some information for each(some) block(s).  To do that efficiently,
       // we number the implementation's blocks sequentially, and then we can use arrays to store
       // the additional information.
-      var pre = new NativeLattice.Element[impl.Blocks
-        .Count]; // set to null if we never compute a join/widen at this block
+      var pre = new NativeLattice.Element[impl.Blocks.Count]; // set to null if we never compute a join/widen at this block
       var post = options.InstrumentInfer == CoreOptions.InstrumentationPlaces.Everywhere
         ? new NativeLattice.Element[impl.Blocks.Count]
         : null;
@@ -195,7 +194,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       int n = 0;
       foreach (var block in impl.Blocks)
       {
-        block.aiId = n;
+        block.AiId = n;
         // Note:  The forward analysis below will store lattice elements in pre[n] if pre[n] is non-null.
         // Thus, the assignment "pre[n] = bottom;" below must be done under the following condition:
         //    n == 0 || block.widenBlock
@@ -219,7 +218,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       {
         var workItem = workItems.Dequeue();
         var b = workItem.Item1;
-        var id = b.aiId;
+        var id = b.AiId;
         var e = workItem.Item2;
         if (pre[id] == null)
         {
@@ -230,7 +229,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
           // no change
           continue;
         }
-        else if (b.widenBlock && options.Ai.StepsBeforeWidening <= iterations[id])
+        else if (b.WidenBlock && options.Ai.StepsBeforeWidening <= iterations[id])
         {
           e = lattice.Widen(pre[id], e);
           pre[id] = e;
@@ -275,8 +274,8 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
       foreach (var b in impl.Blocks)
       {
-        var element = pre[b.aiId];
-        if (element != null && (b.widenBlock || options.InstrumentInfer ==
+        var element = pre[b.AiId];
+        if (element != null && (b.WidenBlock || options.InstrumentInfer ==
           CoreOptions.InstrumentationPlaces.Everywhere))
         {
           List<Cmd> newCommands = new List<Cmd>();
@@ -294,9 +293,9 @@ namespace Microsoft.Boogie.AbstractInterpretation
 
           newCommands.Add(cmd);
           newCommands.AddRange(b.Cmds);
-          if (post != null && post[b.aiId] != null)
+          if (post != null && post[b.AiId] != null)
           {
-            inv = post[b.aiId].ToExpr(options);
+            inv = post[b.AiId].ToExpr(options);
             kv = new QKeyValue(Token.NoToken, "inferred", new List<object>(), null);
             if (options.InstrumentWithAsserts)
             {
