@@ -52,7 +52,7 @@ implementation IsolateReturn/return@16(x: int, y: int) returns (r: int)
 }
 
 
-isolateJump.bpl(20,1): Error: a postcondition could not be proved on this return path
+isolateJump.bpl(16,21): Error: a postcondition could not be proved on this return path
 isolateJump.bpl(5,3): Related location: this is the postcondition that could not be proved
 implementation IsolateReturnPaths(x: int, y: int) returns (r: int)
 {
