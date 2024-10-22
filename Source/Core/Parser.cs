@@ -1541,11 +1541,16 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		if (la.kind == 55) {
 			Get();
 			y = t; 
+			while (la.kind == 26) {
+				Attribute(ref kv);
+			}
 			Idents(out xs);
 			foreach(IToken/*!*/ s in xs){
 			 Contract.Assert(s != null);
 			 ss.Add(s.val); }
-			tc = new GotoCmd(y, ss);
+			tc = new GotoCmd(y, ss) {
+			 Attributes = kv
+			};
 			
 		} else if (la.kind == 56) {
 			Get();

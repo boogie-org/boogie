@@ -1035,10 +1035,13 @@ TransferCmd<out TransferCmd/*!*/ tc>
      QKeyValue kv = null;
   .)
   ( "goto"             (. y = t; .)
+    { Attribute<ref kv> }
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
                             Contract.Assert(s != null);
                             ss.Add(s.val); }
-                          tc = new GotoCmd(y, ss);
+                          tc = new GotoCmd(y, ss) {
+                            Attributes = kv
+                          };
                        .)
   | "return"
     { Attribute<ref kv> }         
