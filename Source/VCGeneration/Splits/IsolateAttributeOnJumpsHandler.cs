@@ -44,7 +44,8 @@ class IsolateAttributeOnJumpsHandler {
       var blocksToInclude = ancestors.Union(descendants).ToHashSet();
 
       var originalReturn = ((GotoFromReturn)gotoCmd.tok).Origin;
-      if (originalReturn.tok is ImplicitJump) {
+      var returnWasFromOriginalSource = originalReturn.tok is not Token;
+      if (returnWasFromOriginalSource) {
         continue;
       }
       
