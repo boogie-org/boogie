@@ -1667,6 +1667,14 @@ namespace Microsoft.Boogie
      {:subsumption n}
        Overrides the /subsumption command-line setting for this assertion.
 
+     {:isolate}
+       Places this assertion into a separate VC, where all other assertions are assumptions.
+       In the remaining VC, this assertion becomes an assumption
+
+     {:isolate ""paths""}
+       Similar to the above, except a separate VC is created for each control flow path that leads to the marked assertion.
+       However, only goto commands that are annotated with {:allow_split} cause additional VCs to be created.
+
      {:focus}
        Splits verification into two problems. First problem deletes all paths
        that do not have the focus block. Second problem considers the paths
