@@ -18,8 +18,6 @@ public class LeanAutoGenerator : ReadOnlyVisitor
 {
   private readonly TextWriter writer;
   private readonly VCGenOptions options;
-  private readonly List<NamedDeclaration> globalVars = new();
-  private readonly HashSet<string> usedNames = new();
   private bool usesMaps;
   private readonly List<string> mapAxiomNames =
     new(new[]
@@ -216,7 +214,6 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   public override Expr VisitIdentifierExpr(IdentifierExpr node)
   {
     var name = SanitizeNameForLean(node.Name);
-    usedNames.Add(name);
     WriteText(name);
     return node;
   }
@@ -279,13 +276,13 @@ public class LeanAutoGenerator : ReadOnlyVisitor
   public override Constant VisitConstant(Constant node)
   {
     var ti = node.TypedIdent;
-    WriteText("variable ");
-    Visit(ti);
+    var name = SanitizeNameForLean(ti.Name);
+    WriteText($"axiom {name} : ");
+    Visit(ti.Type);
     if (node.Unique) {
       AddUniqueConst(ti.Type, Name(node));
     }
     WriteLine();
-    globalVars.Add(node);
     return node;
   }
 
@@ -340,10 +337,8 @@ public class LeanAutoGenerator : ReadOnlyVisitor
 
   public override TypedIdent VisitTypedIdent(TypedIdent node)
   {
-    WriteText("(");
     var name = SanitizeNameForLean(node.Name);
-    WriteText(name);
-    WriteText(" : ");
+    WriteText($"( {name} : ");
     Visit(node.Type);
     WriteText(")");
     return node;
@@ -385,10 +380,11 @@ public class LeanAutoGenerator : ReadOnlyVisitor
 
   public override GlobalVariable VisitGlobalVariable(GlobalVariable node)
   {
-    WriteText("variable ");
-    Visit(node.TypedIdent);
+    var ti = node.TypedIdent;
+    var name = SanitizeNameForLean(ti.Name);
+    WriteText($"axiom {name} : ");
+    Visit(ti.Type);
     WriteLine();
-    globalVars.Add(node);
     return node;
   }
 
@@ -822,7 +818,6 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     var name = Name(node);
     var entryLabel = BlockName(node.Blocks[0]);
 
-    usedNames.Clear(); // Skip any globals used only by axioms, etc.
     WriteLine();
     WriteLine($"namespace impl_{name}");
     WriteLine();
@@ -837,8 +832,7 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     WriteLine($"theorem {name}_correct");
     WriteParams(node);
     var paramNames =
-      globalVars.Select(Name).Where(x => usedNames.Contains(x))
-        .Concat(node.InParams.Select(Name))
+        node.InParams.Select(Name)
         .Concat(node.OutParams.Select(Name))
         .Concat(node.LocVars.Select(Name));
     var paramString = String.Join(' ', paramNames);
@@ -852,7 +846,6 @@ public class LeanAutoGenerator : ReadOnlyVisitor
     WriteLine($"end impl_{name}");
 
     usesMaps = false; // Skip map axioms in the next implementation if it doesn't need them
-    usedNames.Clear(); // Skip any globals not used by the next implementation
 
     return node;
   }
