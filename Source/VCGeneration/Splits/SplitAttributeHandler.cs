@@ -62,10 +62,8 @@ class SplitAttributeHandler {
     return vcs;
 
     ManualSplit CreateVc(IImplementationPartOrigin token, List<Block> blocks) {
-      return new ManualSplit(partToSplit.Options, () => {
-        BlockTransformations.Optimize(blocks);
-        return blocks;
-      }, partToSplit.parent, partToSplit.Run, token);
+      return new ManualSplit(partToSplit.Options, () => blocks, 
+        partToSplit.parent, partToSplit.Run, token);
     }
   }
 

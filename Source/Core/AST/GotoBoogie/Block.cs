@@ -7,6 +7,7 @@ namespace Microsoft.Boogie;
 
 public sealed class Block : Absy
 {
+  
   public string Label { get; set; } // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
 
   [Rep]

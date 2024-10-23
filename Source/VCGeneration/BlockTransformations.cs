@@ -12,7 +12,7 @@ namespace VCGeneration;
 
 public static class BlockTransformations {
   
-  public static void Optimize(List<Block> blocks) {
+  public static void Optimize(IList<Block> blocks) {
     foreach (var block in blocks)
     {
       // make blocks ending in assume false leaves of the CFG-DAG
@@ -46,7 +46,7 @@ public static class BlockTransformations {
   
   private static bool IsAssumeFalse (Cmd c) { return c is AssumeCmd { Expr: LiteralExpr { asBool: false } }; }
 
-  public static void DeleteBlocksNotLeadingToAssertions(List<Block> blocks)
+  public static void DeleteBlocksNotLeadingToAssertions(IList<Block> blocks)
   {
     var todo = new Stack<Block>();
     var peeked = new HashSet<Block>();
