@@ -32,10 +32,7 @@ public static class ManualSplitFinder {
         return isolatedAssertions.Concat(splitParts);
       }).ToList();
       return resultForFocusPart;
-    }).Where(s => s.Asserts.Any()).Select(s => {
-      BlockTransformations.Optimize(s.Blocks);
-      return s;
-    }).ToList();
+    }).Where(s => s.Asserts.Any()).ToList();
 
     if (result.Any())
     {
