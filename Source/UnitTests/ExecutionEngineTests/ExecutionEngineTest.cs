@@ -266,6 +266,7 @@ Boogie program verifier finished with 1 verified, 1 error
 fakeFilename(10,5): Related message: fake failure
 Execution trace:
     fakeFilename(5,3): entry
+    fakeFilename(9,3): block850
 
 Boogie program verifier finished with 0 verified, 1 error
 ".ReplaceLineEndings();
