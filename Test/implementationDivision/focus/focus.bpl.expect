@@ -21,13 +21,6 @@ implementation Ex/split@15() returns (y: int)
     assume 5 * 5 <= 25;
     assume x#AT#0 + y#AT#0 == 5;
     assume x#AT#0 * x#AT#0 <= 25;
-    assume {:partition} 0 >= x#AT#0;
-    assume y#AT#2 == y#AT#0;
-    assume y#AT#2 >= 0;
-    assume 5 + 0 == 5;
-    assume 5 * 5 <= 25;
-    assume x#AT#0 + y#AT#0 == 5;
-    assume x#AT#0 * x#AT#0 <= 25;
     assume {:partition} x#AT#0 > 0;
     assume x#AT#1 == x#AT#0 - 1;
     assert {:split_here} (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 16;
@@ -43,13 +36,6 @@ implementation Ex[25,14]() returns (y: int)
 {
 
   anon0:
-    assume 5 + 0 == 5;
-    assume 5 * 5 <= 25;
-    assume x#AT#0 + y#AT#0 == 5;
-    assume x#AT#0 * x#AT#0 <= 25;
-    assume {:partition} 0 >= x#AT#0;
-    assume y#AT#2 == y#AT#0;
-    assume y#AT#2 >= 0;
     assume 5 + 0 == 5;
     assume 5 * 5 <= 25;
     assume x#AT#0 + y#AT#0 == 5;
@@ -78,13 +64,6 @@ implementation Ex[19,14]() returns (y: int)
     assume 5 * 5 <= 25;
     assume x#AT#0 + y#AT#0 == 5;
     assume x#AT#0 * x#AT#0 <= 25;
-    assume {:partition} 0 >= x#AT#0;
-    assume y#AT#2 == y#AT#0;
-    assume y#AT#2 >= 0;
-    assume 5 + 0 == 5;
-    assume 5 * 5 <= 25;
-    assume x#AT#0 + y#AT#0 == 5;
-    assume x#AT#0 * x#AT#0 <= 25;
     assume {:partition} x#AT#0 > 0;
     assume x#AT#1 == x#AT#0 - 1;
     assume (x#AT#1 + y#AT#0) * (x#AT#1 + y#AT#0) > 16;
@@ -101,13 +80,6 @@ implementation Ex[25,19,14]() returns (y: int)
 {
 
   anon0:
-    assume 5 + 0 == 5;
-    assume 5 * 5 <= 25;
-    assume x#AT#0 + y#AT#0 == 5;
-    assume x#AT#0 * x#AT#0 <= 25;
-    assume {:partition} 0 >= x#AT#0;
-    assume y#AT#2 == y#AT#0;
-    assume y#AT#2 >= 0;
     assume 5 + 0 == 5;
     assume 5 * 5 <= 25;
     assume x#AT#0 + y#AT#0 == 5;
@@ -129,6 +101,7 @@ implementation Ex[25,19,14]() returns (y: int)
 }
 
 
+focus.bpl(15,5): Error: this assertion could not be proved
 implementation focusInconsistency[38](x: int) returns (y: int)
 {
 
@@ -142,4 +115,4 @@ implementation focusInconsistency[38](x: int) returns (y: int)
 
 
 
-Boogie program verifier finished with 2 verified, 0 errors
+Boogie program verifier finished with 1 verified, 1 error
