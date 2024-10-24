@@ -1072,10 +1072,13 @@ TransferCmd<out TransferCmd/*!*/ tc>
      QKeyValue kv = null;
   .)
   ( "goto"             (. y = t; .)
+    { Attribute<ref kv> }
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
                             Contract.Assert(s != null);
                             ss.Add(s.val); }
-                          tc = new GotoCmd(y, ss);
+                          tc = new GotoCmd(y, ss) {
+                            Attributes = kv
+                          };
                        .)
   | "return"
     { Attribute<ref kv> }         
@@ -1099,8 +1102,10 @@ IfCmd<out IfCmd/*!*/ ifcmd>
      StmtList/*!*/ thn;
      IfCmd/*!*/ elseIf;  IfCmd elseIfOption = null;
      StmtList/*!*/ els;  StmtList elseOption = null;
+     QKeyValue kv = null;
   .)
   "if"                       (. x = t; .)
+  { Attribute<ref kv> }
   Guard<out guard>
   "{" StmtList<out thn>
   [ "else"
@@ -1109,7 +1114,7 @@ IfCmd<out IfCmd/*!*/ ifcmd>
       StmtList<out els>      (. elseOption = els; .)
     )
   ]
-  (. ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); .)
+  (. ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption, kv); .)
   .
 
 WhileCmd<out WhileCmd wcmd>
@@ -1742,10 +1747,13 @@ SpecBlock<out Block/*!*/ b>
                        .)
   }
   ( "goto"             (. y = t; .)
+    { Attribute<ref kv> }
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
                             Contract.Assert(s != null);
                             ss.Add(s.val); }
-                          b = new Block(x,x.val,cs,new GotoCmd(y,ss));
+                          b = new Block(x,x.val,cs,new GotoCmd(y,ss) {
+                            Attributes = kv
+                          });
                        .)
   | "return" 
     { Attribute<ref kv> }

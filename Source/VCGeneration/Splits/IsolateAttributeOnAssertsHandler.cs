@@ -1,7 +1,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.Boogie;
 using VC;
@@ -35,7 +34,8 @@ class IsolateAttributeOnAssertsHandler {
 
         isolatedAssertions.Add(assert);
         if (isolateAttribute != null && isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "paths"))) {
-          results.AddRange(rewriter.GetSplitsForIsolatedPaths(block, null, assert.tok).Select(p => {
+          var origin = new IsolatedAssertionOrigin(new ImplementationRootOrigin(partToDivide.Implementation), assert);
+          results.AddRange(rewriter.GetSplitsForIsolatedPaths(block, rewriter.OrderedBlocks.ToHashSet(), origin).Select(p => {
             var newAssertBlock = p.Blocks.Last();
             newAssertBlock.Cmds = GetCommandsForBlockWithAssert(newAssertBlock, assert);
             return p;
@@ -49,8 +49,9 @@ class IsolateAttributeOnAssertsHandler {
     if (!results.Any()) {
       return (results,partToDivide);
     }
-    
-    return (results,GetSplitWithoutIsolatedAssertions());
+
+    var remainder = GetSplitWithoutIsolatedAssertions();
+    return (results,remainder);
 
     ManualSplit GetSplitForIsolatedAssertion(Block blockWithAssert, AssertCmd assertCmd) {
       var blocksToKeep = rewriter.Dag.ComputeReachability(blockWithAssert, false);
@@ -60,9 +61,8 @@ class IsolateAttributeOnAssertsHandler {
           ? GetCommandsForBlockWithAssert(oldBlock, assertCmd)
           : oldBlock.Cmds.Select(rewriter.TransformAssertCmd).ToList();
 
-      var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToKeep, GetCommands);
-      var origin = new IsolatedAssertionOrigin(partToDivide.Token, assertCmd);
-      return rewriter.CreateSplit(origin, newBlocks);
+      var newBlocks = rewriter.ComputeNewBlocks(blocksToKeep, (oldBlock, newBlock) => newBlock.Cmds = GetCommands(oldBlock));
+      return rewriter.CreateSplit(new IsolatedAssertionOrigin(partToDivide.Token, assertCmd), newBlocks);
     }
     
     List<Cmd> GetCommandsForBlockWithAssert(Block currentBlock, AssertCmd assert)
@@ -84,8 +84,7 @@ class IsolateAttributeOnAssertsHandler {
         return rewriter.CreateSplit(partToDivide.Token, partToDivide.Blocks);
       }
 
-      var (newBlocks, _) = rewriter.ComputeNewBlocks(null, GetCommands);
-      
+      var newBlocks = rewriter.ComputeNewBlocks(null, (oldBlock, newBlock) => newBlock.Cmds = GetCommands(oldBlock));
       return rewriter.CreateSplit(partToDivide.Token, newBlocks);
 
       List<Cmd> GetCommands(Block block) => block.Cmds.Select(cmd => 
@@ -104,4 +103,5 @@ public class IsolatedAssertionOrigin : TokenWrapper, IImplementationPartOrigin {
   }
 
   public string ShortName => $"{Origin.ShortName}/assert@{IsolatedAssert.Line}";
+  public string KindName => "assertion";
 }

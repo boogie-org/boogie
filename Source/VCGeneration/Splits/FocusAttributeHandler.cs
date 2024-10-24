@@ -8,7 +8,6 @@ using VCGeneration.Splits;
 using Block = Microsoft.Boogie.Block;
 using Cmd = Microsoft.Boogie.Cmd;
 using PredicateCmd = Microsoft.Boogie.PredicateCmd;
-using QKeyValue = Microsoft.Boogie.QKeyValue;
 
 namespace VCGeneration;
 
@@ -46,15 +45,19 @@ public class FocusAttributeHandler {
     focusBlocks.ForEach(fb => descendantsPerBlock[fb.Block] = dag.ComputeReachability(fb.Block).ToHashSet());
     var result = new List<ManualSplit>();
 
-    AddSplitsFromIndex(ImmutableStack<Block>.Empty, 0, implementation.Blocks.ToHashSet(), ImmutableHashSet<Block>.Empty);
+    AddSplitsFromIndex(ImmutableStack<IToken>.Empty, 0, implementation.Blocks.ToHashSet(), ImmutableHashSet<Block>.Empty);
     return result;
 
-    void AddSplitsFromIndex(ImmutableStack<Block> path, int focusIndex, ISet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
+    void AddSplitsFromIndex(ImmutableStack<IToken> path, int focusIndex, IReadOnlySet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
-        var (newBlocks, _) = rewriter.ComputeNewBlocks(blocksToInclude, freeAssumeBlocks);
+        
+        // freeBlocks consist of the predecessors of the relevant foci.
+        // Their assertions turn into assumes and any splits inside them are disabled.
+        var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, freeAssumeBlocks);
         IImplementationPartOrigin token = path.Any() 
-          ? new PathOrigin(run.Implementation.tok, path.ToList()) // TODO fix 
+          ? new PathOrigin(new ImplementationRootOrigin(run.Implementation), 
+            path.OrderBy(t => t.pos).ToList(), "focus") 
           : new ImplementationRootOrigin(run.Implementation); 
         result.Add(rewriter.CreateSplit(token, newBlocks));
       } else {
@@ -66,7 +69,7 @@ public class FocusAttributeHandler {
         }
         else
         {
-          var dominatedBlocks = DominatedBlocks(rewriter.OrderedBlocks, focusBlock, blocksToInclude);
+          var dominatedBlocks = BlockRewriter.DominatedBlocks(rewriter.OrderedBlocks, focusBlock, blocksToInclude);
           // Recursive call that does NOT focus the block
           // Contains all blocks except the ones dominated by the focus block
           AddSplitsFromIndex(path, focusIndex + 1, 
@@ -76,32 +79,12 @@ public class FocusAttributeHandler {
           
           // Recursive call that does focus the block
           // Contains all the ancestors, the focus block, and the descendants.
-          AddSplitsFromIndex(path.Push(focusBlock), focusIndex + 1, 
+          AddSplitsFromIndex(path.Push(nextToken), focusIndex + 1, 
             ancestors.Union(descendants).Intersect(blocksToInclude).ToHashSet(), 
             ancestors.Union(freeAssumeBlocks).ToHashSet());
         } 
       }
     }
-  }
-
-  // finds all the blocks dominated by focusBlock in the subgraph
-  // which only contains vertices of subgraph.
-  private static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, ISet<Block> subgraph)
-  {
-    var dominatorsPerBlock = new Dictionary<Block, HashSet<Block>>();
-    foreach (var block in topologicallySortedBlocks.Where(subgraph.Contains))
-    {
-      var dominatorsForBlock = new HashSet<Block>();
-      var predecessors = block.Predecessors.Where(subgraph.Contains).ToList();
-      if (predecessors.Count != 0)
-      {
-        dominatorsForBlock.UnionWith(dominatorsPerBlock[predecessors[0]]);
-        predecessors.ForEach(blk => dominatorsForBlock.IntersectWith(dominatorsPerBlock[blk]));
-      }
-      dominatorsForBlock.Add(block);
-      dominatorsPerBlock[block] = dominatorsForBlock;
-    }
-    return subgraph.Where(blk => dominatorsPerBlock[blk].Contains(focusBlock)).ToHashSet();
   }
   
   private static List<(Block Block, IToken Token)> GetFocusBlocks(List<Block> blocks) {

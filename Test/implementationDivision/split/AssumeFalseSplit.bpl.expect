@@ -1,4 +1,4 @@
-implementation Foo/split@4()
+implementation Foo()
 {
 
   anon3_Then:

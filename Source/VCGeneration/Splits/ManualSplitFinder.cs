@@ -16,16 +16,22 @@ public static class ManualSplitFinder {
     var focussedParts = FocusAttributeHandler.GetParts(options, run, createPart);
     var result = focussedParts.SelectMany(focussedPart =>
     {
+      foreach(var block in focussedPart.Blocks)
+      {
+        block.Predecessors.Clear();
+      }
+      Implementation.ComputePredecessorsForBlocks(focussedPart.Blocks);
       var (isolatedJumps, withoutIsolatedJumps) =
         IsolateAttributeOnJumpsHandler.GetParts(options, focussedPart, createPart);
-      return new[] { withoutIsolatedJumps }.Concat(isolatedJumps).SelectMany(isolatedJumpSplit =>
+      var resultForFocusPart = new[] { withoutIsolatedJumps }.Concat(isolatedJumps).SelectMany(isolatedJumpSplit =>
       {
         var (isolatedAssertions, withoutIsolatedAssertions) =
           IsolateAttributeOnAssertsHandler.GetParts(options, isolatedJumpSplit, createPart);
 
         var splitParts = SplitAttributeHandler.GetParts(withoutIsolatedAssertions);
         return isolatedAssertions.Concat(splitParts);
-      });
+      }).ToList();
+      return resultForFocusPart;
     }).Where(s => s.Asserts.Any()).ToList();
 
     if (result.Any())
@@ -39,4 +45,5 @@ public static class ManualSplitFinder {
 
 public interface IImplementationPartOrigin : IToken {
   string ShortName { get; }
+  string KindName { get; }
 }

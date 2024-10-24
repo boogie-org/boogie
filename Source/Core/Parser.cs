@@ -1580,11 +1580,16 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		if (la.kind == 55) {
 			Get();
 			y = t; 
+			while (la.kind == 26) {
+				Attribute(ref kv);
+			}
 			Idents(out xs);
 			foreach(IToken/*!*/ s in xs){
 			 Contract.Assert(s != null);
 			 ss.Add(s.val); }
-			tc = new GotoCmd(y, ss);
+			tc = new GotoCmd(y, ss) {
+			 Attributes = kv
+			};
 			
 		} else if (la.kind == 56) {
 			Get();
@@ -1602,9 +1607,13 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		StmtList/*!*/ thn;
 		IfCmd/*!*/ elseIf;  IfCmd elseIfOption = null;
 		StmtList/*!*/ els;  StmtList elseOption = null;
+		QKeyValue kv = null;
 		
 		Expect(57);
 		x = t; 
+		while (la.kind == 26) {
+			Attribute(ref kv);
+		}
 		Guard(out guard);
 		Expect(26);
 		StmtList(out thn);
@@ -1619,7 +1628,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				elseOption = els; 
 			} else SynErr(150);
 		}
-		ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); 
+		ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption, kv); 
 	}
 
 	void WhileCmd(out WhileCmd wcmd) {
@@ -2619,11 +2628,16 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		if (la.kind == 55) {
 			Get();
 			y = t; 
+			while (la.kind == 26) {
+				Attribute(ref kv);
+			}
 			Idents(out xs);
 			foreach(IToken/*!*/ s in xs){
 			 Contract.Assert(s != null);
 			 ss.Add(s.val); }
-			b = new Block(x,x.val,cs,new GotoCmd(y,ss));
+			b = new Block(x,x.val,cs,new GotoCmd(y,ss) {
+			 Attributes = kv
+			});
 			
 		} else if (la.kind == 56) {
 			Get();

@@ -5,13 +5,13 @@ procedure IsolateAssertion(x: int, y: int)
 {
   var z: int;
   z := 0;
-  if (x > 0) {
+  if {:allow_path_isolation} (x > 0) {
     z := z + 1;
   } else {
     z := z + 2;
   }
   
-  if (y > 0) {
+  if {:allow_path_isolation} (y > 0) {
     z := z + 3;
   } else {
     z := z + 4;
@@ -25,13 +25,23 @@ procedure IsolatePathsAssertion(x: int, y: int)
 {
   var z: int;
   z := 0;
-  if (x > 0) {
+  if {:allow_path_isolation} (x > 0) {
     z := z + 1;
-  } else {
+  } 
+  else if {:allow_path_isolation} (x > 1) {
     z := z + 2;
+  } 
+  else {
+    z := z + 1;
   }
   
   if (y > 0) {
+    z := z + 0;
+  } else {
+    z := z + 0;
+  }
+  
+  if {:allow_path_isolation} (y > 0) {
     z := z + 3;
   } else {
     z := z + 4;

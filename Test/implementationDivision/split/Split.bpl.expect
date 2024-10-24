@@ -1,4 +1,4 @@
-implementation Foo/split@4() returns (y: int)
+implementation Foo() returns (y: int)
 {
 
   anon0:

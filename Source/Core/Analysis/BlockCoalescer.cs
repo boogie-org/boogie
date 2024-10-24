@@ -79,6 +79,12 @@ public class BlockCoalescer : ReadOnlyVisitor
     return impl;
   }
 
+  public static void CoalesceInPlace(IList<Block> blocks) {
+    var coalesced = CoalesceFromRootBlock(blocks);
+    blocks.Clear();
+    blocks.AddRange(coalesced);
+  }
+  
   public static IList<Block> CoalesceFromRootBlock(IList<Block> blocks)
   {
     if (!blocks.Any())
@@ -134,8 +140,17 @@ public class BlockCoalescer : ReadOnlyVisitor
         continue;
       }
 
-      block.Cmds.AddRange(successor.Cmds);
+      // Previously this was block.Cmds.AddRange,
+      // command lists are reused between blocks
+      // so that was buggy. Maybe Block.Cmds should be made immutable
+      block.Cmds = block.Cmds.Concat(successor.Cmds).ToList();
+      var originalTransferToken = block.TransferCmd.tok;
       block.TransferCmd = successor.TransferCmd;
+      if (!block.TransferCmd.tok.IsValid) {
+        block.TransferCmd = (TransferCmd)block.TransferCmd.Clone();
+        block.TransferCmd.tok = originalTransferToken;
+      }
+      
       if (!block.tok.IsValid && successor.tok.IsValid)
       {
         block.tok = successor.tok;

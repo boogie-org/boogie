@@ -26,14 +26,8 @@ implementation {:vcs_split_on_every_assert} MultipleEnsures/return@25/assert@16(
 {
 
   anon0:
-    goto anon3_Else;
-
-  anon3_Else:
     assume {:partition} 0 >= x;
     assume r#AT#0 == 20;
-    goto GeneratedUnifiedExit;
-
-  GeneratedUnifiedExit:
     assert r#AT#0 > 1;
     return;
 }
@@ -43,14 +37,8 @@ implementation {:vcs_split_on_every_assert} MultipleEnsures/return@25/assert@17(
 {
 
   anon0:
-    goto anon3_Else;
-
-  anon3_Else:
     assume {:partition} 0 >= x;
     assume r#AT#0 == 20;
-    goto GeneratedUnifiedExit;
-
-  GeneratedUnifiedExit:
     assume r#AT#0 > 1;
     assert r#AT#0 < 10;
     return;
@@ -61,14 +49,8 @@ implementation {:vcs_split_on_every_assert} MultipleEnsures/return@21/assert@16(
 {
 
   anon0:
-    goto anon3_Then;
-
-  anon3_Then:
     assume {:partition} x > 0;
     assume r#AT#0 == 1;
-    goto GeneratedUnifiedExit;
-
-  GeneratedUnifiedExit:
     assert r#AT#0 > 1;
     return;
 }
@@ -78,14 +60,8 @@ implementation {:vcs_split_on_every_assert} MultipleEnsures/return@21/assert@17(
 {
 
   anon0:
-    goto anon3_Then;
-
-  anon3_Then:
     assume {:partition} x > 0;
     assume r#AT#0 == 1;
-    goto GeneratedUnifiedExit;
-
-  GeneratedUnifiedExit:
     assume r#AT#0 > 1;
     assert r#AT#0 < 10;
     return;

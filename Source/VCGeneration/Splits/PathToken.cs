@@ -9,13 +9,18 @@ using Microsoft.Boogie.GraphUtil;
 namespace VCGeneration;
 
 public class PathOrigin : TokenWrapper, IImplementationPartOrigin {
+  private readonly string kindName;
 
-  public PathOrigin(IToken inner, List<Block> branches) : base(inner) {
-    Branches = branches;
+  public PathOrigin(IImplementationPartOrigin inner, List<IToken> branchTokens, string kindName) : base(inner) {
+    this.kindName = kindName;
+    Inner = inner;
+    BranchTokens = branchTokens;
   }
-  
-  public List<Block> Branches { get; }
-  public string ShortName => $"/assert@{line}[{string.Join(",", Branches.Select(b => b.tok.line))}]";
+
+  public new IImplementationPartOrigin Inner { get; }
+  public List<IToken> BranchTokens { get; }
+  public string ShortName => $"{Inner.ShortName}/{kindName}[{string.Join(",", BranchTokens.Select(b => b.line))}]";
+  public string KindName => "path";
 }
 
 class ImplementationRootOrigin : TokenWrapper, IImplementationPartOrigin {
@@ -24,4 +29,5 @@ class ImplementationRootOrigin : TokenWrapper, IImplementationPartOrigin {
   }
 
   public string ShortName => "";
+  public string KindName => "root";
 }

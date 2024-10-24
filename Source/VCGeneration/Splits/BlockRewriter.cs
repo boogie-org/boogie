@@ -10,6 +10,9 @@ using VC;
 namespace VCGeneration.Splits;
 
 public class BlockRewriter {
+  private const string AllowPathIsolation = "allow_path_isolation";
+  public static readonly QKeyValue AllowSplitQ = new(Token.NoToken, AllowPathIsolation);
+  
   private readonly Dictionary<AssertCmd, Cmd> assumedAssertions = new();
   private readonly IReadOnlyList<Block> reversedBlocks;
   public List<Block> OrderedBlocks { get; }
@@ -35,67 +38,111 @@ public class BlockRewriter {
     return cmd;
   }
 
-  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block>? blocksToInclude,
-    IToken origin) {
-    var blockToVisit = new Stack<ImmutableStack<Block>>();
-    var newToOldBlocks = new Dictionary<Block, Block>();
-    var newLastBlock = Block.ShallowClone(lastBlock);
-    newLastBlock.Predecessors = lastBlock.Predecessors;
-    blockToVisit.Push(ImmutableStack.Create(newLastBlock));
-    newToOldBlocks[newLastBlock] = lastBlock;
 
-    while (blockToVisit.Any()) {
-      var path = blockToVisit.Pop();
-      var firstBlock = path.Peek();
-      IEnumerable<Block> predecessors = firstBlock.Predecessors;
-      if (blocksToInclude != null) {
-        predecessors = predecessors.Where(blocksToInclude.Contains);
+  /// <summary>
+  /// Each {:allow_isolate_paths} goto creates a new VC for each jump target
+  /// </summary>
+  public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block> blocksToInclude, IImplementationPartOrigin origin) 
+  {
+    // By default, we process the foci in a top-down fashion, i.e., in the topological order.
+    // If the user sets the RelaxFocus flag, we use the reverse (topological) order.
+    var splitCommands = GetSplitCommands(blocksToInclude);
+    if (!splitCommands.Any()) {
+      return new List<ManualSplit> { CreateSplit(origin, OrderedBlocks) };
+    }
+    
+    var result = new List<ManualSplit>();
+
+    AddSplitsFromIndex(ImmutableStack<IToken>.Empty, 0, blocksToInclude);
+    return result;
+
+    void AddSplitsFromIndex(ImmutableStack<IToken> choices, int gotoIndex, IReadOnlySet<Block> blocksToIncludeForChoices) {
+      
+      if (!blocksToIncludeForChoices.Any()) {
+        return;
       }
+      
+      var allFocusBlocksHaveBeenProcessed = gotoIndex == splitCommands.Count;
+      if (allFocusBlocksHaveBeenProcessed) {
+        
+        // freeBlocks consist of the predecessors of the relevant foci.
+        // Their assertions turn into assumes and any splits inside them are disabled.
+        var newBlocks = ComputeNewBlocks(blocksToIncludeForChoices,
+          (oldBlock, newBlock) => {
+            newBlock.Cmds = oldBlock == lastBlock ? oldBlock.Cmds : oldBlock.Cmds.Select(TransformAssertCmd).ToList();
+            if (oldBlock == lastBlock) {
+              newBlock.TransferCmd = new ReturnCmd(origin);
+            }
+          });
+        result.Add(CreateSplit(new PathOrigin(origin, choices.OrderBy(b => b.pos).ToList(), "paths"), newBlocks));
+      } else {
+        var splitGoto = splitCommands[gotoIndex];
+        if (!blocksToIncludeForChoices.Contains(splitGoto.Block))
+        {
+          AddSplitsFromIndex(choices, gotoIndex + 1, blocksToIncludeForChoices);
+        } else {
+          var includedTargetBlocks = splitGoto.Goto.LabelTargets.Where(blocksToIncludeForChoices.Contains).ToList();
 
-      var hadPredecessors = false;
-      foreach (var oldPrevious in predecessors) {
-        hadPredecessors = true;
-        var newPrevious = Block.ShallowClone(oldPrevious);
-        newPrevious.Predecessors = oldPrevious.Predecessors;
-        newPrevious.Cmds = oldPrevious.Cmds.Select(TransformAssertCmd).ToList();
+          var remainingBlocks = blocksToIncludeForChoices.Where(
+            blk => Dag.DominatorMap.DominatedBy(splitGoto.Block, blk)).ToHashSet();
+          AddSplitsFromIndex(choices, gotoIndex + 1, remainingBlocks);
 
-        newToOldBlocks[newPrevious] = oldPrevious;
-        if (newPrevious.TransferCmd is GotoCmd gotoCmd) {
-          newPrevious.TransferCmd =
-            new GotoCmd(gotoCmd.tok, new List<string> { firstBlock.Label }, new List<Block> {
-              firstBlock
-            });
+          var addChoice = /*remainingBlocks.Any() ||*/ includedTargetBlocks.Count > 1;
+          var ancestors = Dag.ComputeReachability(splitGoto.Block, false);
+          foreach (var targetBlock in includedTargetBlocks) {
+            var descendants = Dag.ComputeReachability(targetBlock, true);
+          
+            // Recursive call that does focus the block
+            // Contains all the ancestors, the focus block, and the descendants.
+            var newChoices = addChoice ? choices.Push(targetBlock.tok) : choices;
+            AddSplitsFromIndex(newChoices, gotoIndex + 1, 
+                ancestors.Union(descendants).Intersect(blocksToIncludeForChoices).ToHashSet()); 
+          }
         }
-
-        blockToVisit.Push(path.Push(newPrevious));
-      }
-
-      if (!hadPredecessors) {
-        var filteredDag = blocksToInclude == null
-          ? Dag
-          : Program.GraphFromBlocksSubset(OrderedBlocks, blocksToInclude);
-        var nonDominatedBranches = path.Where(b =>
-          !filteredDag.DominatorMap.DominatedBy(lastBlock, newToOldBlocks[b])).ToList();
-        var singletonBlock = Block.ShallowClone(firstBlock);
-        singletonBlock.TransferCmd = new ReturnCmd(origin);
-        singletonBlock.Cmds = path.SelectMany(b => b.Cmds).ToList();
-        yield return CreateSplit(new PathOrigin(origin, nonDominatedBranches), new List<Block> { singletonBlock });
       }
     }
   }
 
-  public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(
-    ISet<Block> blocksToInclude,
-    ISet<Block> freeAssumeBlocks) {
-    return ComputeNewBlocks(blocksToInclude, block =>
-      freeAssumeBlocks.Contains(block)
-        ? block.Cmds.Select(c => CommandTransformations.AssertIntoAssume(Options, c)).ToList()
-        : block.Cmds);
+
+  // finds all the blocks dominated by focusBlock in the subgraph
+  // which only contains vertices of subgraph.
+  public static HashSet<Block> DominatedBlocks(List<Block> topologicallySortedBlocks, Block focusBlock, IReadOnlySet<Block> subgraph)
+  {
+    var dominatorsPerBlock = new Dictionary<Block, HashSet<Block>>();
+    foreach (var block in topologicallySortedBlocks.Where(subgraph.Contains))
+    {
+      var dominatorsForBlock = new HashSet<Block>();
+      var predecessors = block.Predecessors.Where(subgraph.Contains).ToList();
+      if (predecessors.Count != 0)
+      {
+        dominatorsForBlock.UnionWith(dominatorsPerBlock[predecessors[0]]);
+        predecessors.ForEach(blk => dominatorsForBlock.IntersectWith(dominatorsPerBlock[blk]));
+      }
+      dominatorsForBlock.Add(block);
+      dominatorsPerBlock[block] = dominatorsForBlock;
+    }
+    return subgraph.Where(blk => dominatorsPerBlock[blk].Contains(focusBlock)).ToHashSet();
+  }
+  
+  private static List<(Block Block, GotoCmd Goto)> GetSplitCommands(IEnumerable<Block> blocks) {
+    return blocks.
+      Where(t => t.TransferCmd is GotoCmd gotoCmd && gotoCmd.Attributes.FindBoolAttribute(AllowPathIsolation)).
+      Select(block => (block, (GotoCmd)block.TransferCmd)).ToList();
   }
 
-  public (List<Block> NewBlocks, Dictionary<Block, Block> Mapping) ComputeNewBlocks(
-    ISet<Block>? blocksToInclude,
-    Func<Block, List<Cmd>> getCommands)
+  public List<Block> ComputeNewBlocks(
+    IReadOnlySet<Block> blocksToInclude,
+    ISet<Block> freeAssumeBlocks) {
+    return ComputeNewBlocks(blocksToInclude, (oldBlock, newBlock) => {
+        newBlock.Cmds = freeAssumeBlocks.Contains(oldBlock)
+          ? oldBlock.Cmds.Select(c => CommandTransformations.AssertIntoAssume(Options, c)).ToList()
+          : oldBlock.Cmds;
+      });
+  }
+
+  public List<Block> ComputeNewBlocks(
+    IReadOnlySet<Block>? blocksToInclude,
+    Action<Block, Block> updateNewBlock)
   {
     var newBlocks = new List<Block>();
     var oldToNewBlockMap = new Dictionary<Block, Block>(reversedBlocks.Count);
@@ -110,10 +157,6 @@ public class BlockRewriter {
       var newBlock = Block.ShallowClone(block);
       newBlocks.Add(newBlock);
       oldToNewBlockMap[block] = newBlock;
-      // freeBlocks consist of the predecessors of the relevant foci.
-      // Their assertions turn into assumes and any splits inside them are disabled.
-      newBlock.Cmds = getCommands(block);
-      
       if (block.TransferCmd is GotoCmd gtc)
       {
         var targets = blocksToInclude == null ? gtc.LabelTargets : gtc.LabelTargets.Where(blocksToInclude.Contains).ToList();
@@ -121,11 +164,14 @@ public class BlockRewriter {
           targets.Select(blk => oldToNewBlockMap[blk].Label).ToList(),
           targets.Select(blk => oldToNewBlockMap[blk]).ToList());
       }
+      updateNewBlock(block, newBlock);
     }
     newBlocks.Reverse();
     
     BlockTransformations.DeleteBlocksNotLeadingToAssertions(newBlocks);
-    return (newBlocks, oldToNewBlockMap);
+    
+    BlockCoalescer.CoalesceInPlace(newBlocks);
+    return newBlocks;
   }
 
 

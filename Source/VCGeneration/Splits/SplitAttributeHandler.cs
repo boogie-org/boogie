@@ -63,9 +63,10 @@ class SplitAttributeHandler {
 
     ManualSplit CreateVc(IImplementationPartOrigin token, List<Block> blocks) {
       return new ManualSplit(partToSplit.Options, () => {
-        BlockTransformations.Optimize(blocks);
-        return blocks;
-      }, partToSplit.parent, partToSplit.Run, token);
+          BlockTransformations.Optimize(blocks);
+          return blocks;
+        }, 
+        partToSplit.parent, partToSplit.Run, token);
     }
   }
 
@@ -131,7 +132,7 @@ class SplitAttributeHandler {
       return null;
     }
 
-    return createVc(new SplitOrigin(split?.tok ?? partToSplit.Token), newBlocks);
+    return createVc(split == null ? partToSplit.Token : new SplitOrigin(partToSplit.Token, split.tok), newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
     {
@@ -208,9 +209,14 @@ class SplitAttributeHandler {
 }
 
 class SplitOrigin : TokenWrapper, IImplementationPartOrigin {
-  public SplitOrigin(IToken inner) : base(inner)
-  {
+  public new IImplementationPartOrigin Inner { get; }
+  public IToken Tok { get; }
+
+  public SplitOrigin(IImplementationPartOrigin inner, IToken tok) : base(tok) {
+    Inner = inner;
+    Tok = tok;
   }
 
-  public string ShortName => $"/split@{line}";
+  public string ShortName => $"{Inner.ShortName}/split@{line}";
+  public string KindName => "split";
 }

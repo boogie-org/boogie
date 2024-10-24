@@ -13,14 +13,13 @@ class BigBlocksResolutionContext
 
   [Peer] List<Block /*!*/> blocks;
 
-  string /*!*/
-    prefix = "anon";
+  string /*!*/ prefix = "anon";
 
   int anon = 0;
 
-  int FreshAnon()
+  string FreshPrefix()
   {
-    return anon++;
+    return prefix + anon++;
   }
 
   private readonly HashSet<string /*!*/> allLabels = new();
@@ -271,10 +270,9 @@ class BigBlocksResolutionContext
       }
 
       // recurse
-      else if (bigBlock.ec is WhileCmd)
+      else if (bigBlock.ec is WhileCmd whileCmd)
       {
-        WhileCmd wcmd = (WhileCmd) bigBlock.ec;
-        CheckLegalLabels(wcmd.Body, stmtList, bigBlock);
+        CheckLegalLabels(whileCmd.Body, stmtList, bigBlock);
       }
       else
       {
@@ -290,29 +288,25 @@ class BigBlocksResolutionContext
     }
   }
 
-  void NameAnonymousBlocks(StmtList stmtList)
+  private void NameAnonymousBlocks(StmtList stmtList)
   {
     Contract.Requires(stmtList != null);
     foreach (var bigBlock in stmtList.BigBlocks)
     {
-      if (bigBlock.LabelName == null)
-      {
-        bigBlock.LabelName = prefix + FreshAnon();
-      }
+      bigBlock.LabelName ??= FreshPrefix();
 
-      if (bigBlock.ec is WhileCmd)
+      if (bigBlock.ec is WhileCmd whileCmd)
       {
-        WhileCmd wcmd = (WhileCmd) bigBlock.ec;
-        NameAnonymousBlocks(wcmd.Body);
+        NameAnonymousBlocks(whileCmd.Body);
       }
       else
       {
-        for (IfCmd ifcmd = bigBlock.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.ElseIf)
+        for (IfCmd ifCmd = bigBlock.ec as IfCmd; ifCmd != null; ifCmd = ifCmd.ElseIf)
         {
-          NameAnonymousBlocks(ifcmd.Thn);
-          if (ifcmd.ElseBlock != null)
+          NameAnonymousBlocks(ifCmd.Thn);
+          if (ifCmd.ElseBlock != null)
           {
-            NameAnonymousBlocks(ifcmd.ElseBlock);
+            NameAnonymousBlocks(ifCmd.ElseBlock);
           }
         }
       }
@@ -324,7 +318,7 @@ class BigBlocksResolutionContext
     Contract.Requires(stmtList != null);
     for (int i = stmtList.BigBlocks.Count; 0 <= --i;)
     {
-      BigBlock current = stmtList.BigBlocks[i];
+      var current = stmtList.BigBlocks[i];
       current.SuccessorBigBlock = next;
 
       if (current.ec is WhileCmd whileCmd)
@@ -333,12 +327,13 @@ class BigBlocksResolutionContext
       }
       else
       {
-        for (IfCmd ifcmd = current.ec as IfCmd; ifcmd != null; ifcmd = ifcmd.ElseIf)
+        for (IfCmd ifCmd = current.ec as IfCmd; ifCmd != null; ifCmd = ifCmd.ElseIf)
         {
-          AssignSuccessors(ifcmd.Thn, next);
-          if (ifcmd.ElseBlock != null)
+          //next.
+          AssignSuccessors(ifCmd.Thn, next);
+          if (ifCmd.ElseBlock != null)
           {
-            AssignSuccessors(ifcmd.ElseBlock, next);
+            AssignSuccessors(ifCmd.ElseBlock, next);
           }
         }
       }
@@ -349,7 +344,7 @@ class BigBlocksResolutionContext
 
   // If the enclosing context is a loop, then "runOffTheEndLabel" is the loop head label;
   // otherwise, it is null.
-  void CreateBlocks(StmtList stmtList, string runOffTheEndLabel)
+  private void CreateBlocks(StmtList stmtList, string runOffTheEndLabel)
   {
     Contract.Requires(stmtList != null);
     Contract.Requires(blocks != null);
@@ -377,10 +372,11 @@ class BigBlocksResolutionContext
       {
         // this BigBlock has the very same components as a Block
         Contract.Assert(bigBlock.ec == null);
-        Block block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds, bigBlock.tc);
+        var block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds, bigBlock.tc);
         blocks.Add(block);
       }
-      else {
+      else
+      {
         switch (bigBlock.ec)
         {
           case null:
@@ -389,171 +385,182 @@ class BigBlocksResolutionContext
             if (remainingBigBlocks == 0 && runOffTheEndLabel != null)
             {
               // goto the given label instead of the textual successor block
-              trCmd = new GotoCmd(stmtList.EndCurly, new List<String> {runOffTheEndLabel});
+              trCmd = new GotoCmd(stmtList.EndCurly, new List<string> {runOffTheEndLabel});
             }
             else
             {
               trCmd = GotoSuccessor(stmtList.EndCurly, bigBlock);
             }
 
-            Block block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds, trCmd);
+            var block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds, trCmd);
             blocks.Add(block);
             break;
           }
           case BreakCmd breakCmd:
           {
-            BreakCmd bcmd = breakCmd;
-            Contract.Assert(bcmd.BreakEnclosure != null);
-            Block block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds, GotoSuccessor(breakCmd.tok, bcmd.BreakEnclosure));
+            Contract.Assert(breakCmd.BreakEnclosure != null);
+            var block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds, GotoSuccessor(breakCmd.tok, breakCmd.BreakEnclosure));
             blocks.Add(block);
             break;
           }
           case WhileCmd whileCmd:
           {
-            WhileCmd wcmd = whileCmd;
-            var a = FreshAnon();
-            string loopHeadLabel = prefix + a + "_LoopHead";
-            string /*!*/
-              loopBodyLabel = prefix + a + "_LoopBody";
-            string loopDoneLabel = prefix + a + "_LoopDone";
+            var freshPrefix = FreshPrefix();
+            string loopHeadLabel = freshPrefix + "_LoopHead";
+            string loopBodyLabel = freshPrefix + "_LoopBody";
+            string loopDoneLabel = freshPrefix + "_LoopDone";
 
-            List<Cmd> ssBody = new List<Cmd>();
-            List<Cmd> ssDone = new List<Cmd>();
-            if (wcmd.Guard != null)
+            var ssBody = new List<Cmd>();
+            var ssDone = new List<Cmd>();
+            if (whileCmd.Guard != null)
             {
-              var ac = new AssumeCmd(wcmd.tok, wcmd.Guard);
-              ac.Attributes = new QKeyValue(wcmd.tok, "partition", new List<object>(), null);
+              var ac = new AssumeCmd(whileCmd.tok, whileCmd.Guard)
+              {
+                Attributes = new QKeyValue(whileCmd.tok, "partition", new List<object>(), null)
+              };
               ssBody.Add(ac);
 
-              ac = new AssumeCmd(wcmd.tok, Expr.Not(wcmd.Guard));
-              ac.Attributes = new QKeyValue(wcmd.tok, "partition", new List<object>(), null);
+              ac = new AssumeCmd(whileCmd.tok, Expr.Not(whileCmd.Guard))
+              {
+                Attributes = new QKeyValue(whileCmd.tok, "partition", new List<object>(), null)
+              };
               ssDone.Add(ac);
             }
 
             // Try to squeeze in ssBody into the first block of wcmd.Body
-            bool bodyGuardTakenCareOf = wcmd.Body.PrefixFirstBlock(ssBody, ref loopBodyLabel);
+            bool bodyGuardTakenCareOf = whileCmd.Body.PrefixFirstBlock(ssBody, ref loopBodyLabel);
 
             // ... goto LoopHead;
-            Block block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds,
-              new GotoCmd(wcmd.tok, new List<String> {loopHeadLabel}));
+            var block = new Block(bigBlock.tok, bigBlock.LabelName, theSimpleCmds,
+              new GotoCmd(whileCmd.tok, new List<string> {loopHeadLabel}));
             blocks.Add(block);
 
             // LoopHead: assert/assume loop_invariant; goto LoopDone, LoopBody;
             List<Cmd> ssHead = new List<Cmd>();
-            foreach (CallCmd yield in wcmd.Yields)
+            foreach (CallCmd yield in whileCmd.Yields)
             {
               ssHead.Add(yield);
             }
-            foreach (PredicateCmd inv in wcmd.Invariants)
+            foreach (PredicateCmd inv in whileCmd.Invariants)
             {
               ssHead.Add(inv);
             }
 
-            block = new Block(wcmd.tok, loopHeadLabel, ssHead,
-              new GotoCmd(wcmd.tok, new List<String> {loopDoneLabel, loopBodyLabel}));
+            block = new Block(whileCmd.tok, loopHeadLabel, ssHead,
+              new GotoCmd(whileCmd.tok, new List<string> {loopDoneLabel, loopBodyLabel}));
             blocks.Add(block);
 
             if (!bodyGuardTakenCareOf)
             {
               // LoopBody: assume guard; goto firstLoopBlock;
-              block = new Block(wcmd.tok, loopBodyLabel, ssBody,
-                new GotoCmd(wcmd.tok, new List<String> {wcmd.Body.BigBlocks[0].LabelName}));
+              block = new Block(whileCmd.tok, loopBodyLabel, ssBody,
+                new GotoCmd(whileCmd.tok, new List<string> {whileCmd.Body.BigBlocks[0].LabelName}));
               blocks.Add(block);
             }
 
             // recurse to create the blocks for the loop body
-            CreateBlocks(wcmd.Body, loopHeadLabel);
+            CreateBlocks(whileCmd.Body, loopHeadLabel);
 
             // LoopDone: assume !guard; goto loopSuccessor;
             TransferCmd trCmd;
             if (remainingBigBlocks == 0 && runOffTheEndLabel != null)
             {
               // goto the given label instead of the textual successor block
-              trCmd = new GotoCmd(wcmd.tok, new List<String> {runOffTheEndLabel});
+              trCmd = new GotoCmd(whileCmd.tok, new List<string> {runOffTheEndLabel});
             }
             else
             {
-              trCmd = GotoSuccessor(wcmd.tok, bigBlock);
+              trCmd = GotoSuccessor(whileCmd.tok, bigBlock);
             }
 
-            block = new Block(wcmd.tok, loopDoneLabel, ssDone, trCmd);
+            block = new Block(whileCmd.tok, loopDoneLabel, ssDone, trCmd);
             blocks.Add(block);
             break;
           }
-          default:
+          case IfCmd ifCmd:
           {
-            IfCmd ifcmd = (IfCmd) bigBlock.ec;
             string predLabel = bigBlock.LabelName;
-            List<Cmd> predCmds = theSimpleCmds;
+            var predCmds = theSimpleCmds;
 
-            for (; ifcmd != null; ifcmd = ifcmd.ElseIf)
+            var jumpBlockToken = bigBlock.tok;
+            for (; ifCmd != null; ifCmd = ifCmd.ElseIf)
             {
-              var a = FreshAnon();
-              string thenLabel = prefix + a + "_Then";
+              var freshPrefix = FreshPrefix();
+              string thenLabel = freshPrefix + "_Then";
               Contract.Assert(thenLabel != null);
-              string elseLabel = prefix + a + "_Else";
+              string elseLabel = freshPrefix + "_Else";
               Contract.Assert(elseLabel != null);
 
-              List<Cmd> ssThen = new List<Cmd>();
-              List<Cmd> ssElse = new List<Cmd>();
-              if (ifcmd.Guard != null)
+              var ssThen = new List<Cmd>();
+              var ssElse = new List<Cmd>();
+              if (ifCmd.Guard != null)
               {
-                var ac = new AssumeCmd(ifcmd.tok, ifcmd.Guard);
-                ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+                var ac = new AssumeCmd(ifCmd.tok, ifCmd.Guard)
+                {
+                  Attributes = new QKeyValue(ifCmd.tok, "partition", new List<object>(), null)
+                };
                 ssThen.Add(ac);
 
-                ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
-                ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+                ac = new AssumeCmd(ifCmd.tok, Expr.Not(ifCmd.Guard))
+                {
+                  Attributes = new QKeyValue(ifCmd.tok, "partition", new List<object>(), null)
+                };
                 ssElse.Add(ac);
               }
 
               // Try to squeeze in ssThen/ssElse into the first block of ifcmd.thn/ifcmd.elseBlock
-              bool thenGuardTakenCareOf = ifcmd.Thn.PrefixFirstBlock(ssThen, ref thenLabel);
+              bool thenGuardTakenCareOf = ifCmd.Thn.PrefixFirstBlock(ssThen, ref thenLabel);
               bool elseGuardTakenCareOf = false;
-              if (ifcmd.ElseBlock != null)
+              if (ifCmd.ElseBlock != null)
               {
-                elseGuardTakenCareOf = ifcmd.ElseBlock.PrefixFirstBlock(ssElse, ref elseLabel);
+                elseGuardTakenCareOf = ifCmd.ElseBlock.PrefixFirstBlock(ssElse, ref elseLabel);
               }
 
               // ... goto Then, Else;
-              var jumpBlock = new Block(bigBlock.tok, predLabel, predCmds,
-                new GotoCmd(ifcmd.tok, new List<String> {thenLabel, elseLabel}));
+              var jump = new GotoCmd(jumpBlockToken, new List<string> {thenLabel, elseLabel})
+              {
+                Attributes = ifCmd.Attributes
+              };
+              var jumpBlock = new Block(jumpBlockToken, predLabel, predCmds, jump);
               blocks.Add(jumpBlock);
 
               if (!thenGuardTakenCareOf)
               {
                 // Then: assume guard; goto firstThenBlock;
-                var thenJumpBlock = new Block(ifcmd.tok, thenLabel, ssThen,
-                  new GotoCmd(ifcmd.tok, new List<String> {ifcmd.Thn.BigBlocks[0].LabelName}));
+                var thenJumpBlock = new Block(ifCmd.tok, thenLabel, ssThen,
+                  new GotoCmd(ifCmd.tok, new List<string> {ifCmd.Thn.BigBlocks[0].LabelName}));
                 blocks.Add(thenJumpBlock);
               }
 
               // recurse to create the blocks for the then branch
-              CreateBlocks(ifcmd.Thn, remainingBigBlocks == 0 ? runOffTheEndLabel : null);
+              CreateBlocks(ifCmd.Thn, remainingBigBlocks == 0 ? runOffTheEndLabel : null);
 
-              if (ifcmd.ElseBlock != null)
+              if (ifCmd.ElseBlock != null)
               {
-                Contract.Assert(ifcmd.ElseIf == null);
+                Contract.Assert(ifCmd.ElseIf == null);
                 if (!elseGuardTakenCareOf)
                 {
                   // Else: assume !guard; goto firstElseBlock;
-                  var elseJumpBlock = new Block(ifcmd.tok, elseLabel, ssElse,
-                    new GotoCmd(ifcmd.tok, new List<String> {ifcmd.ElseBlock.BigBlocks[0].LabelName}));
+                  var elseJumpBlock = new Block(ifCmd.tok, elseLabel, ssElse,
+                    new GotoCmd(ifCmd.tok, new List<string> {ifCmd.ElseBlock.BigBlocks[0].LabelName}));
                   blocks.Add(elseJumpBlock);
                 }
 
                 // recurse to create the blocks for the else branch
-                CreateBlocks(ifcmd.ElseBlock, remainingBigBlocks == 0 ? runOffTheEndLabel : null);
+                CreateBlocks(ifCmd.ElseBlock, remainingBigBlocks == 0 ? runOffTheEndLabel : null);
               }
-              else if (ifcmd.ElseIf != null)
+              else if (ifCmd.ElseIf != null)
               {
                 // this is an "else if"
+                jumpBlockToken = ifCmd.ElseIf.tok;
                 predLabel = elseLabel;
                 predCmds = new List<Cmd>();
-                if (ifcmd.Guard != null)
+                if (ifCmd.Guard != null)
                 {
-                  var ac = new AssumeCmd(ifcmd.tok, Expr.Not(ifcmd.Guard));
-                  ac.Attributes = new QKeyValue(ifcmd.tok, "partition", new List<object>(), null);
+                  var ac = new AssumeCmd(ifCmd.tok, Expr.Not(ifCmd.Guard))
+                  {
+                    Attributes = new QKeyValue(ifCmd.tok, "partition", new List<object>(), null)
+                  };
                   predCmds.Add(ac);
                 }
               }
@@ -565,14 +572,14 @@ class BigBlocksResolutionContext
                 if (remainingBigBlocks == 0 && runOffTheEndLabel != null)
                 {
                   // goto the given label instead of the textual successor block
-                  trCmd = new GotoCmd(ifcmd.tok, new List<String> {runOffTheEndLabel});
+                  trCmd = new GotoCmd(ifCmd.tok, new List<string> {runOffTheEndLabel});
                 }
                 else
                 {
-                  trCmd = GotoSuccessor(ifcmd.tok, bigBlock);
+                  trCmd = GotoSuccessor(ifCmd.tok, bigBlock);
                 }
 
-                var block = new Block(ifcmd.tok, elseLabel, ssElse, trCmd);
+                var block = new Block(ifCmd.tok, elseLabel, ssElse, trCmd);
                 blocks.Add(block);
               }
             }
@@ -584,7 +591,7 @@ class BigBlocksResolutionContext
     }
   }
 
-  TransferCmd GotoSuccessor(IToken tok, BigBlock b)
+  private static TransferCmd GotoSuccessor(IToken tok, BigBlock b)
   {
     Contract.Requires(b != null);
     Contract.Requires(tok != null);

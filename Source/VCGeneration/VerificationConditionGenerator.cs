@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.BaseTypes;
 using Microsoft.Boogie.VCExprAST;
+using VCGeneration;
 using VCGeneration.Transformations;
 
 namespace VC
@@ -571,11 +572,11 @@ namespace VC
 
         if (newCounterexample is ReturnCounterexample returnExample)
         {
-          foreach (var b in returnExample.Trace)
+          foreach (var block in returnExample.Trace)
           {
-            Contract.Assert(b != null);
-            Contract.Assume(b.TransferCmd != null);
-            if (b.TransferCmd.tok is GotoFromReturn gotoFromReturn) {
+            Contract.Assert(block != null);
+            Contract.Assume(block.TransferCmd != null);
+            if (block.TransferCmd.tok is GotoFromReturn gotoFromReturn) {
               returnExample.FailingReturn = gotoFromReturn.Origin;
             }
           }
@@ -762,9 +763,10 @@ namespace VC
       if (Options.RemoveEmptyBlocks)
       {
         #region Get rid of empty blocks
-
         {
           RemoveEmptyBlocks(impl.Blocks);
+          // var copy = impl.Blocks.ToList();
+          // BlockTransformations.DeleteStraightLineBlocksWithoutCommands(impl.Blocks);
           impl.PruneUnreachableBlocks(Options);
         }
 
@@ -1646,6 +1648,7 @@ namespace VC
 
           // generate renameInfoForStartBlock
           GotoCmd gtc = curr.TransferCmd as GotoCmd;
+          
           renameInfo[curr] = null;
           if (gtc == null || gtc.LabelTargets == null || gtc.LabelTargets.Count == 0)
           {
@@ -1696,19 +1699,23 @@ namespace VC
           {
             continue;
           }
+          
+          if (gtc is { Attributes: not null }) {
+            keep.Add(curr);
+          }
 
-          foreach (Block s in gtc.LabelTargets)
+          foreach (Block successor in gtc.LabelTargets)
           {
-            if (!visited.Contains(s))
+            if (!visited.Contains(successor))
             {
-              visited.Add(s);
-              stack.Push(s);
+              visited.Add(successor);
+              stack.Push(successor);
             }
-            else if (grey.Contains(s) && !postorder.Contains(s))
+            else if (grey.Contains(successor) && !postorder.Contains(successor))
             {
               // s is a loop head
-              keep.Add(s);
-            }
+              keep.Add(successor);
+            } 
           }
         }
       }

@@ -5,7 +5,7 @@ using System.Diagnostics.Contracts;
 
 namespace Microsoft.Boogie;
 
-public class GotoCmd : TransferCmd
+public class GotoCmd : TransferCmd, ICarriesAttributes
 {
   [Rep] public List<string> LabelNames;
   [Rep] public List<Block> LabelTargets;
@@ -43,20 +43,20 @@ public class GotoCmd : TransferCmd
     this.LabelTargets = blocks;
   }
 
-  public GotoCmd(IToken /*!*/ tok, List<Block> /*!*/ blockSeq)
+  public GotoCmd(IToken /*!*/ tok, List<Block> /*!*/ blocks)
     : base(tok)
   {
     //requires (blockSeq[i] != null ==> blockSeq[i].Label != null);
     Contract.Requires(tok != null);
-    Contract.Requires(blockSeq != null);
-    List<string> labelSeq = new List<string>();
-    for (int i = 0; i < blockSeq.Count; i++)
+    Contract.Requires(blocks != null);
+    var labels = new List<string>();
+    foreach (var block in blocks)
     {
-      labelSeq.Add(cce.NonNull(blockSeq[i]).Label);
+      labels.Add(block.Label);
     }
 
-    this.LabelNames = labelSeq;
-    this.LabelTargets = blockSeq;
+    this.LabelNames = labels;
+    this.LabelTargets = blocks;
   }
 
   public void RemoveTarget(Block b) {
@@ -91,6 +91,7 @@ public class GotoCmd : TransferCmd
     //Contract.Requires(stream != null);
     Contract.Assume(this.LabelNames != null);
     stream.Write(this, level, "goto ");
+    Attributes?.Emit(stream);
     if (stream.Options.PrintWithUniqueASTIds)
     {
       if (LabelTargets == null)

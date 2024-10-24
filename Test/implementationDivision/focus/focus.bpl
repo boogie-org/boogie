@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie /printSplit:%t /errorTrace:0 "%s" > "%t"
+// RUN: %boogie /printSplit:- /errorTrace:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 procedure Ex() returns (y: int)
