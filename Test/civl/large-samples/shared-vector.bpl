@@ -305,32 +305,26 @@ type Tid;
 type Mutex = Option Tid;
 var {:layer 0, 9} MutexPool: Map Loc Mutex;
 
-right action {:layer 1, 9} Atomic_Mutex_Alloc() returns ({:linear} one_loc_l: One Loc)
-modifies MutexPool;
+yield procedure {:layer 0} Mutex_Alloc() returns ({:linear} one_loc_l: One Loc);
+refines right action {:layer 1, 9} _
 {
   call one_loc_l := Loc_New();
   assume !Map_Contains(MutexPool, one_loc_l->val);
   MutexPool := Map_Update(MutexPool, one_loc_l->val, None());
 }
-yield procedure {:layer 0} Mutex_Alloc() returns ({:linear} one_loc_l: One Loc);
-refines Atomic_Mutex_Alloc;
 
-right action {:layer 1, 9} Atomic_Mutex_Acquire({:linear} tid: One Tid, loc_l: Loc)
-modifies MutexPool;
+yield procedure {:layer 0} Mutex_Acquire({:linear} tid: One Tid, loc_l: Loc);
+refines right action {:layer 1, 9} _
 {
   assert Map_Contains(MutexPool, loc_l);
   assume Map_At(MutexPool, loc_l) == None();
   MutexPool := Map_Update(MutexPool, loc_l, Some(tid->val));
 }
-yield procedure {:layer 0} Mutex_Acquire({:linear} tid: One Tid, loc_l: Loc);
-refines Atomic_Mutex_Acquire;
 
-left action {:layer 1, 9} Atomic_Mutex_Release({:linear} tid: One Tid, loc_l: Loc)
-modifies MutexPool;
+yield procedure {:layer 0} Mutex_Release({:linear} tid: One Tid, loc_l: Loc);
+refines left action {:layer 1, 9} _
 {
   assert Map_Contains(MutexPool, loc_l);
   assert Map_At(MutexPool, loc_l) == Some(tid->val);
   MutexPool := Map_Update(MutexPool, loc_l, None());
 }
-yield procedure {:layer 0} Mutex_Release({:linear} tid: One Tid, loc_l: Loc);
-refines Atomic_Mutex_Release;

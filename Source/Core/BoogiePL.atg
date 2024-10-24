@@ -701,7 +701,7 @@ ActionDecl<bool isPure, out ActionDecl actionDecl, out Implementation impl, out 
     ImplBody<out locals, out stmtList>
     (.
        impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
-                                      locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
+                                      locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone());
     .)
   )
   (.
@@ -742,25 +742,63 @@ SpecCreates<.List<ActionDeclRef> creates.>
   ";"
   .
 
-SpecRefinedAction<ref ActionDeclRef refinedAction>
+SpecRefinedActionForAtomicAction<ref ActionDeclRef refinedAction>
 =
   (. IToken m; QKeyValue kv = null; .) 
   "refines"
-  { Attribute<ref kv> } 
+  { Attribute<ref kv> }
   Ident<out m>
   (.
      if (refinedAction == null) {
-       refinedAction = new ActionDeclRef(m, m.val, kv);
+        refinedAction = new ActionDeclRef(m, m.val, kv);
      } else {
-       this.SemErr("a refines specification already exists");
+        this.SemErr("a refines specification already exists");
      }
   .)
+  .
+
+SpecRefinedActionForYieldProcedure<.ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs.>
+=
+  (. IToken tok, unused; QKeyValue kv = null, akv = null; MoverType moverType = MoverType.None; List<Variable> locals; StmtList stmtList; .)
+  "refines"
+  { Attribute<ref kv> }
+  (
+    MoverQualifier<ref moverType>
+    "action" (. tok = t; .)
+    { Attribute<ref akv> }
+    Ident<out unused>
+    ImplBody<out locals, out stmtList>
+    (.
+      if (refinedAction == null) {
+        var actionDecl = new ActionDecl(tok, null, moverType, Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+                                      false, new List<ActionDeclRef>(), null, null,
+                                      new List<Requires>(), new List<CallCmd>(), new List<AssertCmd>(), new List<IdentifierExpr>(), null, akv);
+        Pgm.AddTopLevelDeclaration(actionDecl);
+        var impl = new Implementation(tok, actionDecl.Name, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+                                      locals, stmtList, akv == null ? null : (QKeyValue)akv.Clone());
+        Pgm.AddTopLevelDeclaration(impl);
+        refinedAction = new ActionDeclRef(tok, actionDecl.Name);
+      } else {
+        this.SemErr("a refines specification already exists");
+      }
+    .)
+  |
+    Ident<out tok>
+    (.
+     if (refinedAction == null) {
+        refinedAction = new ActionDeclRef(tok, tok.val, kv);
+     } else {
+        this.SemErr("a refines specification already exists");
+     }
+    .)
+    ";"
+  )
   .
 
 SpecAction<.ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAction, List<IdentifierExpr> mods, List<ActionDeclRef> creates, List<Requires> requires, List<CallCmd> yieldRequires, List<AssertCmd> asserts.>
 =
   (
-    SpecRefinedAction<ref refinedAction>
+    SpecRefinedActionForAtomicAction<ref refinedAction>
     (. IToken m; .)
     ["using" Ident<out m> (. invariantAction = new ActionDeclRef(m, m.val); .)]
     ";"
@@ -803,8 +841,8 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
     ProcFormals<true, true, out ins>
       [ "returns" ProcFormals<false, true, out outs> ]
     ( ";"
-      { SpecYieldPrePost<ref refinedAction, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
-    | { SpecYieldPrePost<ref refinedAction, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
+      { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
+    | { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
       ImplBody<out locals, out stmtList>
       (.
          impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
@@ -855,11 +893,10 @@ SpecYieldPreserves<. List<CallCmd> yieldPreserves .>
   ";"
   .
 
-SpecYieldPrePost<. ref ActionDeclRef refinedAction, List<Requires> pre, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves, List<IdentifierExpr> mods.>
+SpecYieldPrePost<. ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs, List<Requires> pre, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves, List<IdentifierExpr> mods.>
 =
   (  
-    SpecRefinedAction<ref refinedAction>
-    ";"
+    SpecRefinedActionForYieldProcedure<ref refinedAction, name, ins, outs>
   | SpecYieldRequires<pre, yieldRequires>
   | SpecYieldEnsures<post, yieldEnsures>
   | SpecYieldPreserves<yieldPreserves>

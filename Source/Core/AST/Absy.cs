@@ -2867,6 +2867,7 @@ namespace Microsoft.Boogie
     public List<CallCmd> YieldRequires;
     public List<AssertCmd> Asserts;
     public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
+    public bool IsAnonymous;
 
     public Implementation Impl; // set when the implementation of this action is resolved
     public LayerRange LayerRange; // set during registration
@@ -2886,6 +2887,11 @@ namespace Microsoft.Boogie
       this.YieldRequires = yieldRequires;
       this.Asserts = asserts;
       this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
+      this.IsAnonymous = name == null;
+      if (IsAnonymous)
+      {
+        this.Name = $"AnonymousAction_{this.UniqueId}";
+      }
     }
 
     public override void Register(ResolutionContext rc)
@@ -2949,6 +2955,12 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      if (IsAnonymous)
+      {
+        var modSetCollector = new ModSetCollector(tc.Options);
+        modSetCollector.DoModSetAnalysis(this.Impl);
+      }
+
       var oldProc = tc.Proc;
       tc.Proc = this;
       base.Typecheck(tc);
