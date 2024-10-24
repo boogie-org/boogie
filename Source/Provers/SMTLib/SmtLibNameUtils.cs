@@ -3,7 +3,7 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.SMTLib
 {
-  public static class SmtLibNameUtils
+  public static class SMTLibNameUtils
   {
 
     public static string QuoteId(string s)
@@ -70,7 +70,7 @@ namespace Microsoft.Boogie.SMTLib
     static HashSet<string> reservedSmtWords;
     static bool[] validIdChar;
 
-    static SmtLibNameUtils()
+    static SMTLibNameUtils()
     {
       reservedSmtWords = new HashSet<string>();
       foreach (var w in reservedSmtWordsList)
@@ -112,7 +112,7 @@ namespace Microsoft.Boogie.SMTLib
     }
 
     
-    static string AddQuotes(string s)
+    public static string AddQuotes(string s)
     {
       var allGood = true;
 
