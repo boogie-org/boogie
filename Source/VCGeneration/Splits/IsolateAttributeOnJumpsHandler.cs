@@ -45,12 +45,12 @@ class IsolateAttributeOnJumpsHandler {
       var blocksToInclude = ancestors.Union(descendants).ToHashSet();
 
       var originalJump = gotoFromReturn?.Origin ?? (TransferCmd)gotoCmd;
+      var origin = new JumpOrigin(partToDivide.Token, originalJump);
       
       if (isolateAttribute != null && isolateAttribute.Params.OfType<string>().Any(p => Equals(p, "paths"))) {
         // These conditions hold if the goto was originally a return
         Debug.Assert(gotoCmd.LabelTargets.Count == 1);
         Debug.Assert(gotoCmd.LabelTargets[0].TransferCmd is not GotoCmd);
-        var origin = new JumpOrigin(originalJump);
         results.AddRange(rewriter.GetSplitsForIsolatedPaths(gotoCmd.LabelTargets[0], blocksToInclude, origin));
       } else {
         var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, (oldBlock, newBlock) => {
@@ -68,7 +68,7 @@ class IsolateAttributeOnJumpsHandler {
             }
           }
         });
-        results.Add(rewriter.CreateSplit(new JumpOrigin(originalJump), newBlocks));
+        results.Add(rewriter.CreateSplit(origin, newBlocks));
       }
     }
 
@@ -84,20 +84,20 @@ class IsolateAttributeOnJumpsHandler {
           newBlock.TransferCmd = new ReturnCmd(Token.NoToken);
         }
       });
-      return rewriter.CreateSplit(new ImplementationRootOrigin(partToDivide.Implementation), 
-        newBlocks);
+      return rewriter.CreateSplit(new RemainingAssertionsOrigin(partToDivide.Token), newBlocks);
     }
   }
 }
 
-
 public class JumpOrigin : TokenWrapper, IImplementationPartOrigin {
+  public IImplementationPartOrigin Origin { get; }
   public TransferCmd IsolatedReturn { get; }
 
-  public JumpOrigin(TransferCmd isolatedReturn) : base(isolatedReturn.tok) {
+  public JumpOrigin(IImplementationPartOrigin origin, TransferCmd isolatedReturn) : base(isolatedReturn.tok) {
+    Origin = origin;
     this.IsolatedReturn = isolatedReturn;
   }
 
-  public string ShortName => $"/{KindName}@{IsolatedReturn.Line}";
+  public string ShortName => $"{Origin.ShortName}/{KindName}@{IsolatedReturn.Line}";
   public string KindName => IsolatedReturn is ReturnCmd ? "return" : "goto";
 }

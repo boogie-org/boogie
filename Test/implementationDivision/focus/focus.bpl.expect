@@ -13,7 +13,7 @@ implementation Ex() returns (y: int)
 }
 
 
-implementation Ex/focus[16]/split@15() returns (y: int)
+implementation Ex/focus[+16,-20,-25]/afterSplit@15() returns (y: int)
 {
 
   anon0:
@@ -32,7 +32,7 @@ implementation Ex/focus[16]/split@15() returns (y: int)
 }
 
 
-implementation Ex/focus[16,25]() returns (y: int)
+implementation Ex/focus[+16,-20,+25]() returns (y: int)
 {
 
   anon0:
@@ -56,7 +56,7 @@ implementation Ex/focus[16,25]() returns (y: int)
 }
 
 
-implementation Ex/focus[16,20]() returns (y: int)
+implementation Ex/focus[+16,+20,-25]() returns (y: int)
 {
 
   anon0:
@@ -76,7 +76,7 @@ implementation Ex/focus[16,20]() returns (y: int)
 }
 
 
-implementation Ex/focus[16,20,25]() returns (y: int)
+implementation Ex/focus[+16,+20,+25]() returns (y: int)
 {
 
   anon0:
@@ -102,7 +102,7 @@ implementation Ex/focus[16,20,25]() returns (y: int)
 
 
 focus.bpl(15,5): Error: this assertion could not be proved
-implementation focusInconsistency/focus[38](x: int) returns (y: int)
+implementation focusInconsistency/focus[+38](x: int) returns (y: int)
 {
 
   anon0:

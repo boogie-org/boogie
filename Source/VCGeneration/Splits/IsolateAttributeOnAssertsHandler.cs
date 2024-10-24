@@ -81,7 +81,7 @@ class IsolateAttributeOnAssertsHandler {
 
     ManualSplit GetSplitWithoutIsolatedAssertions() {
       if (!isolatedAssertions.Any()) {
-        return rewriter.CreateSplit(partToDivide.Token, partToDivide.Blocks);
+        return rewriter.CreateSplit(new RemainingAssertionsOrigin(partToDivide.Token), partToDivide.Blocks);
       }
 
       var newBlocks = rewriter.ComputeNewBlocks(null, (oldBlock, newBlock) => newBlock.Cmds = GetCommands(oldBlock));
@@ -103,5 +103,4 @@ public class IsolatedAssertionOrigin : TokenWrapper, IImplementationPartOrigin {
   }
 
   public string ShortName => $"{Origin.ShortName}/assert@{IsolatedAssert.Line}";
-  public string KindName => "assertion";
 }

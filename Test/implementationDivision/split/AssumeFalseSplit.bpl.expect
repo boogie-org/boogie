@@ -1,4 +1,4 @@
-implementation Foo()
+implementation Foo/untilFirstSplit()
 {
 
   anon3_Then:
@@ -8,7 +8,7 @@ implementation Foo()
 }
 
 
-implementation Foo/split@11()
+implementation Foo/afterSplit@11()
 {
 
   anon3_Else:
@@ -20,7 +20,7 @@ implementation Foo/split@11()
 }
 
 
-implementation Foo/split@12()
+implementation Foo/afterSplit@12()
 {
 
   anon3_Else:

@@ -38,7 +38,7 @@ class SplitAttributeHandler {
     var blockStartToSplit = GetMapFromBlockStartToSplit(partToSplit.Blocks, splitsPerBlock);
 
     var beforeSplitsVc = GetImplementationPartAfterSplit(CreateVc, partToSplit, blockStartToSplit,
-      entryPoint, splits, null);
+      entryPoint, splits, null, new UntilFirstSplitOrigin(partToSplit.Token));
     if (beforeSplitsVc != null)
     {
       vcs.Add(beforeSplitsVc);
@@ -52,7 +52,7 @@ class SplitAttributeHandler {
       foreach (var split in splitsForBlock)
       {
         var splitVc = GetImplementationPartAfterSplit(CreateVc, partToSplit, 
-          blockStartToSplit, block, splits, split);
+          blockStartToSplit, block, splits, split, new AfterSplitOrigin(partToSplit.Token, split.tok));
         if (splitVc != null)
         {
           vcs.Add(splitVc);
@@ -112,7 +112,7 @@ class SplitAttributeHandler {
   private static ManualSplit? GetImplementationPartAfterSplit(Func<IImplementationPartOrigin, List<Block>, ManualSplit> createVc, 
     ManualSplit partToSplit, 
     Dictionary<Block, Cmd?> blockStartToSplit, Block blockWithSplit, 
-    HashSet<Cmd> splits, Cmd? split) 
+    HashSet<Cmd> splits, Cmd? split, IImplementationPartOrigin origin) 
   {
     var assertionCount = 0;
     
@@ -132,7 +132,7 @@ class SplitAttributeHandler {
       return null;
     }
 
-    return createVc(split == null ? partToSplit.Token : new SplitOrigin(partToSplit.Token, split.tok), newBlocks);
+    return createVc(origin, newBlocks);
 
     List<Cmd> GetCommandsForBlockImmediatelyDominatedBySplit(Block currentBlock)
     {
@@ -208,15 +208,24 @@ class SplitAttributeHandler {
   }
 }
 
-class SplitOrigin : TokenWrapper, IImplementationPartOrigin {
+public class UntilFirstSplitOrigin : TokenWrapper, IImplementationPartOrigin {
+  public new IImplementationPartOrigin Inner { get; }
+
+  public UntilFirstSplitOrigin(IImplementationPartOrigin inner) : base(inner) {
+    Inner = inner;
+  }
+
+  public string ShortName => $"{Inner.ShortName}/untilFirstSplit";
+}
+
+public class AfterSplitOrigin : TokenWrapper, IImplementationPartOrigin {
   public new IImplementationPartOrigin Inner { get; }
   public IToken Tok { get; }
 
-  public SplitOrigin(IImplementationPartOrigin inner, IToken tok) : base(tok) {
+  public AfterSplitOrigin(IImplementationPartOrigin inner, IToken tok) : base(tok) {
     Inner = inner;
     Tok = tok;
   }
 
-  public string ShortName => $"{Inner.ShortName}/split@{line}";
-  public string KindName => "split";
+  public string ShortName => $"{Inner.ShortName}/afterSplit@{line}";
 }
