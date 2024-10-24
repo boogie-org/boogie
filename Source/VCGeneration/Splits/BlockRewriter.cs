@@ -74,7 +74,7 @@ public class BlockRewriter {
               newBlock.TransferCmd = new ReturnCmd(origin);
             }
           });
-        result.Add(CreateSplit(new PathOrigin(origin, choices.OrderBy(b => b.pos).ToList(), "paths"), newBlocks));
+        result.Add(CreateSplit(new PathOrigin(origin, choices.OrderBy(b => b.pos).ToList()), newBlocks));
       } else {
         var splitGoto = splitCommands[gotoIndex];
         if (!blocksToIncludeForChoices.Contains(splitGoto.Block))

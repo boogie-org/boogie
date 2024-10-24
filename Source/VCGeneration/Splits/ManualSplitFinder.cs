@@ -45,5 +45,4 @@ public static class ManualSplitFinder {
 
 public interface IImplementationPartOrigin : IToken {
   string ShortName { get; }
-  string KindName { get; }
 }
