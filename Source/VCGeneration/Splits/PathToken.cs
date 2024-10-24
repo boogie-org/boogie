@@ -9,15 +9,17 @@ using Microsoft.Boogie.GraphUtil;
 namespace VCGeneration;
 
 public class PathOrigin : TokenWrapper, IImplementationPartOrigin {
+  private readonly string kindName;
 
-  public PathOrigin(IImplementationPartOrigin inner, List<Block> branches) : base(inner) {
+  public PathOrigin(IImplementationPartOrigin inner, List<IToken> branchTokens, string kindName) : base(inner) {
+    this.kindName = kindName;
     Inner = inner;
-    Branches = branches;
+    BranchTokens = branchTokens;
   }
 
   public new IImplementationPartOrigin Inner { get; }
-  public List<Block> Branches { get; }
-  public string ShortName => $"{Inner.ShortName}[{string.Join(",", Branches.Select(b => b.tok.line))}]";
+  public List<IToken> BranchTokens { get; }
+  public string ShortName => $"{Inner.ShortName}/{kindName}[{string.Join(",", BranchTokens.Select(b => b.line))}]";
   public string KindName => "path";
 }
 

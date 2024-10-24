@@ -23,10 +23,10 @@ procedure IsolateReturnPaths(x: int, y: int) returns (r: int)
   ensures r > 4;
 {
   r := 0;
-  if {:allow_split} (x > 0) {
+  if {:allow_path_isolation} (x > 0) {
     r := r + 1;
   } 
-  else if {:allow_split} (x > 1) {
+  else if {:allow_path_isolation} (x > 1) {
     r := r + 2;
   } 
   else {
@@ -39,7 +39,7 @@ procedure IsolateReturnPaths(x: int, y: int) returns (r: int)
     r := 0;
   }
   
-  if {:allow_split} (y > 0) {
+  if {:allow_path_isolation} (y > 0) {
     r := r + 3;
     return {:isolate "paths"};
   }

@@ -10,8 +10,8 @@ using VC;
 namespace VCGeneration.Splits;
 
 public class BlockRewriter {
-  private const string AllowSplit = "allow_split";
-  public static readonly QKeyValue AllowSplitQ = new(Token.NoToken, AllowSplit);
+  private const string AllowPathIsolation = "allow_path_isolation";
+  public static readonly QKeyValue AllowSplitQ = new(Token.NoToken, AllowPathIsolation);
   
   private readonly Dictionary<AssertCmd, Cmd> assumedAssertions = new();
   private readonly IReadOnlyList<Block> reversedBlocks;
@@ -40,8 +40,7 @@ public class BlockRewriter {
 
 
   /// <summary>
-  /// Each focus block creates two options.
-  /// We recurse twice for each focus, leading to potentially 2^N splits
+  /// Each {:allow_isolate_paths} goto creates a new VC for each jump target
   /// </summary>
   public IEnumerable<ManualSplit> GetSplitsForIsolatedPaths(Block lastBlock, IReadOnlySet<Block> blocksToInclude, IImplementationPartOrigin origin) 
   {
@@ -54,10 +53,10 @@ public class BlockRewriter {
     
     var result = new List<ManualSplit>();
 
-    AddSplitsFromIndex(ImmutableStack<Block>.Empty, 0, blocksToInclude);
+    AddSplitsFromIndex(ImmutableStack<IToken>.Empty, 0, blocksToInclude);
     return result;
 
-    void AddSplitsFromIndex(ImmutableStack<Block> choices, int gotoIndex, IReadOnlySet<Block> blocksToIncludeForChoices) {
+    void AddSplitsFromIndex(ImmutableStack<IToken> choices, int gotoIndex, IReadOnlySet<Block> blocksToIncludeForChoices) {
       
       if (!blocksToIncludeForChoices.Any()) {
         return;
@@ -75,7 +74,7 @@ public class BlockRewriter {
               newBlock.TransferCmd = new ReturnCmd(origin);
             }
           });
-        result.Add(CreateSplit(new PathOrigin(origin, choices.OrderBy(b => b.tok.pos).ToList()), newBlocks));
+        result.Add(CreateSplit(new PathOrigin(origin, choices.OrderBy(b => b.pos).ToList(), "paths"), newBlocks));
       } else {
         var splitGoto = splitCommands[gotoIndex];
         if (!blocksToIncludeForChoices.Contains(splitGoto.Block))
@@ -95,7 +94,7 @@ public class BlockRewriter {
           
             // Recursive call that does focus the block
             // Contains all the ancestors, the focus block, and the descendants.
-            var newChoices = addChoice ? choices.Push(targetBlock) : choices;
+            var newChoices = addChoice ? choices.Push(targetBlock.tok) : choices;
             AddSplitsFromIndex(newChoices, gotoIndex + 1, 
                 ancestors.Union(descendants).Intersect(blocksToIncludeForChoices).ToHashSet()); 
           }
@@ -127,7 +126,7 @@ public class BlockRewriter {
   
   private static List<(Block Block, GotoCmd Goto)> GetSplitCommands(IEnumerable<Block> blocks) {
     return blocks.
-      Where(t => t.TransferCmd is GotoCmd gotoCmd && gotoCmd.Attributes.FindBoolAttribute(AllowSplit)).
+      Where(t => t.TransferCmd is GotoCmd gotoCmd && gotoCmd.Attributes.FindBoolAttribute(AllowPathIsolation)).
       Select(block => (block, (GotoCmd)block.TransferCmd)).ToList();
   }
 
