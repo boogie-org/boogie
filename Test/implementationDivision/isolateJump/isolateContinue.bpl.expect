@@ -1,4 +1,4 @@
-implementation IsolateContinue(x: int) returns (r: int)
+implementation IsolateContinue/remainingAssertions(x: int) returns (r: int)
 {
 
   anon0:

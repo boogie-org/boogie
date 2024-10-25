@@ -1,4 +1,4 @@
-implementation Foo() returns (y: int)
+implementation Foo/untilFirstSplit() returns (y: int)
 {
 
   anon0:
@@ -13,7 +13,7 @@ implementation Foo() returns (y: int)
 }
 
 
-implementation Foo/split@15() returns (y: int)
+implementation Foo/afterSplit@15() returns (y: int)
 {
 
   anon0:
@@ -32,7 +32,7 @@ implementation Foo/split@15() returns (y: int)
 }
 
 
-implementation Foo/split@22() returns (y: int)
+implementation Foo/afterSplit@22() returns (y: int)
 {
 
   anon0:
@@ -51,7 +51,7 @@ implementation Foo/split@22() returns (y: int)
 }
 
 
-implementation Foo/split@25() returns (y: int)
+implementation Foo/afterSplit@25() returns (y: int)
 {
 
   anon0:
@@ -86,7 +86,7 @@ implementation Foo/split@25() returns (y: int)
 }
 
 
-implementation Foo/split@19() returns (y: int)
+implementation Foo/afterSplit@19() returns (y: int)
 {
 
   anon0:
