@@ -48,16 +48,17 @@ public class FocusAttributeHandler {
     AddSplitsFromIndex(ImmutableStack<IToken>.Empty, 0, implementation.Blocks.ToHashSet(), ImmutableHashSet<Block>.Empty);
     return result;
 
-    void AddSplitsFromIndex(ImmutableStack<IToken> path, int focusIndex, IReadOnlySet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
+    void AddSplitsFromIndex(ImmutableStack<IToken> focusedBlocks, int focusIndex, IReadOnlySet<Block> blocksToInclude, ISet<Block> freeAssumeBlocks) {
       var allFocusBlocksHaveBeenProcessed = focusIndex == focusBlocks.Count;
       if (allFocusBlocksHaveBeenProcessed) {
         
         // freeBlocks consist of the predecessors of the relevant foci.
         // Their assertions turn into assumes and any splits inside them are disabled.
         var newBlocks = rewriter.ComputeNewBlocks(blocksToInclude, freeAssumeBlocks);
-        IImplementationPartOrigin token = path.Any() 
-          ? new PathOrigin(new ImplementationRootOrigin(run.Implementation), 
-            path.OrderBy(t => t.pos).ToList(), "focus") 
+        var focussedSet = focusedBlocks.ToHashSet();
+        IImplementationPartOrigin token = focusedBlocks.Any() 
+          ? new FocusOrigin(new ImplementationRootOrigin(run.Implementation), 
+            focusBlocks.Select(b => (b.Token, focussedSet.Contains(b.Token))).ToList()) 
           : new ImplementationRootOrigin(run.Implementation); 
         result.Add(rewriter.CreateSplit(token, newBlocks));
       } else {
@@ -65,21 +66,21 @@ public class FocusAttributeHandler {
         if (!blocksToInclude.Contains(focusBlock) || freeAssumeBlocks.Contains(focusBlock))
         {
           // This focus block can not be reached in our current path, so we ignore it by continuing
-          AddSplitsFromIndex(path, focusIndex + 1, blocksToInclude, freeAssumeBlocks);
+          AddSplitsFromIndex(focusedBlocks, focusIndex + 1, blocksToInclude, freeAssumeBlocks);
         }
         else
         {
           var dominatedBlocks = BlockRewriter.DominatedBlocks(rewriter.OrderedBlocks, focusBlock, blocksToInclude);
           // Recursive call that does NOT focus the block
           // Contains all blocks except the ones dominated by the focus block
-          AddSplitsFromIndex(path, focusIndex + 1, 
+          AddSplitsFromIndex(focusedBlocks, focusIndex + 1, 
             blocksToInclude.Where(blk => !dominatedBlocks.Contains(blk)).ToHashSet(), freeAssumeBlocks);
           var ancestors = ancestorsPerBlock[focusBlock];
           var descendants = descendantsPerBlock[focusBlock];
           
           // Recursive call that does focus the block
           // Contains all the ancestors, the focus block, and the descendants.
-          AddSplitsFromIndex(path.Push(nextToken), focusIndex + 1, 
+          AddSplitsFromIndex(focusedBlocks.Push(nextToken), focusIndex + 1, 
             ancestors.Union(descendants).Intersect(blocksToInclude).ToHashSet(), 
             ancestors.Union(freeAssumeBlocks).ToHashSet());
         } 
