@@ -699,8 +699,6 @@ namespace Microsoft.Boogie
     {
       return cce.NonNull(Name);
     }
-    
-    public virtual bool MayRename => true;
   }
 
   public class TypeCtorDecl : NamedDeclaration
@@ -1971,8 +1969,6 @@ namespace Microsoft.Boogie
       : base(func.tok, func.Name, func.TypeParameters, func.InParams, func.OutParams[0], func.Comment, func.Attributes)
     {
     }
-
-    public override bool MayRename => false;
   }
 
   public class Function : DeclWithFormals
