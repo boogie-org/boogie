@@ -18,8 +18,8 @@ namespace Microsoft.Boogie
 
     protected class UnrollDepthTracker
     {
-      protected Dictionary <string, int> procUnrollDepth = new ();
-      protected Dictionary <string, CallCmd> procUnrollSrc = new ();
+      protected Dictionary <string, int> procUnrollDepth = new();
+      protected Dictionary <string, CallCmd> procUnrollSrc = new();
 
       private string getName (Implementation impl) {
         string procName = impl.Name;
@@ -222,7 +222,7 @@ namespace Microsoft.Boogie
 
       // we need to resolve the new code
       ResolveImpl(impl);
-
+      Console.WriteLine("printing here for " + impl.Name + " num blocks after inlining = " + impl.Blocks.Count());
       if (options.PrintInlined)
       {
         EmitImpl(impl);
@@ -281,7 +281,7 @@ namespace Microsoft.Boogie
       impl.Proc = null; // to force Resolve() redo the operation
       impl.Resolve(rc);
       Debug.Assert(rc.ErrorCount == 0);
-      
+
       TypecheckingContext tc = new TypecheckingContext(new DummyErrorSink(), options);
       impl.Typecheck(tc);
       Debug.Assert(tc.ErrorCount == 0);
@@ -512,6 +512,8 @@ namespace Microsoft.Boogie
           {
             newCmds.Add(codeCopier.CopyCmd(cmd));
           }
+
+
         }
 
         Block newBlock = new Block(block.tok, lblCount == 0 ? block.Label : block.Label + "$" + lblCount,
