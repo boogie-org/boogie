@@ -222,7 +222,6 @@ namespace Microsoft.Boogie
 
       // we need to resolve the new code
       ResolveImpl(impl);
-      Console.WriteLine("printing here for " + impl.Name + " num blocks after inlining = " + impl.Blocks.Count());
       if (options.PrintInlined)
       {
         EmitImpl(impl);
@@ -318,7 +317,6 @@ namespace Microsoft.Boogie
         impl.Proc.CheckIntAttribute("inline", ref depth);
       }
       if (depth >= 0) {
-        Console.WriteLine("assinging " + impl.Proc.Name + " depth = " + depth);
         depthTracker.setDepth (callCmd, impl, depth);
       }
       return depth;
