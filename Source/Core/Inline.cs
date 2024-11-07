@@ -18,8 +18,8 @@ namespace Microsoft.Boogie
 
     protected class UnrollDepthTracker
     {
-      protected Dictionary <string, int> procUnrollDepth = new();
-      protected Dictionary <string, CallCmd> procUnrollSrc = new();
+      protected Dictionary<string, int> procUnrollDepth = new();
+      protected Dictionary<string, CallCmd> procUnrollSrc = new();
 
       private string getName (Implementation impl) {
         string procName = impl.Name;
