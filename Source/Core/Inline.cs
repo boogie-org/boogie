@@ -29,8 +29,7 @@ namespace Microsoft.Boogie
 
       public int getDepth(Implementation impl) {
         var procName = getName(impl);
-        var c = -1;
-        if (procUnrollDepth.TryGetValue(procName, out c)) {
+        if (procUnrollDepth.TryGetValue(procName, out var c)) {
           return c;
         }
         return -1;
@@ -305,12 +304,12 @@ namespace Microsoft.Boogie
         return depth;
       }
 
-      int countCall (CallCmd cmd) {
+      int callInlineDepth (CallCmd cmd) {
         return QKeyValue.FindIntAttribute(cmd.Attributes, "inline", -1);
       }
 
       // first check the inline depth on the call command.
-      depth = countCall(callCmd);
+      depth = callInlineDepth(callCmd);
       if (depth < 0) {
         // if call cmd doesn't define the depth, then check the procedure.
         impl.CheckIntAttribute("inline", ref depth);
