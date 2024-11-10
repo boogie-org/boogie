@@ -223,6 +223,11 @@ namespace Microsoft.Boogie
       "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
     };
 
+    public static bool IsPrimitive(DeclWithFormals decl)
+    {
+      return LinearPrimitives.Contains(Monomorphizer.GetOriginalDecl(decl).Name);
+    }
+
     public static IdentifierExpr ExtractRootFromAccessPathExpr(Expr expr)
     {
       if (expr is IdentifierExpr identifierExpr)

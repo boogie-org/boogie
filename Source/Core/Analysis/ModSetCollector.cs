@@ -194,6 +194,15 @@ public class ModSetCollector : ReadOnlyVisitor
       }
     }
 
+    if (CivlPrimitives.IsPrimitive(callCmd.Proc))
+    {
+      var modifiedArgument = CivlPrimitives.ModifiedArgument(callCmd)?.Decl;
+      if (modifiedArgument != null)
+      {
+        ProcessVariable(modifiedArgument);
+      }
+    }
+
     return ret;
   }
 

@@ -191,7 +191,7 @@ namespace Microsoft.Boogie
         }
         else if (cmd is CallCmd callCmd)
         {
-          var isPrimitive = LinearRewriter.IsPrimitive(callCmd.Proc);
+          var isPrimitive = CivlPrimitives.IsPrimitive(callCmd.Proc);
           if (!isPrimitive)
           {
             linearGlobalVariables.Except(start).ForEach(g =>
@@ -338,7 +338,7 @@ namespace Microsoft.Boogie
 
     public override Implementation VisitImplementation(Implementation node)
     {
-      if (LinearRewriter.IsPrimitive(node))
+      if (CivlPrimitives.IsPrimitive(node))
       {
         return node;
       }
@@ -538,7 +538,7 @@ namespace Microsoft.Boogie
     
     public override Cmd VisitCallCmd(CallCmd node)
     {
-      var isPrimitive = LinearRewriter.IsPrimitive(node.Proc);
+      var isPrimitive = CivlPrimitives.IsPrimitive(node.Proc);
       var inVars = new HashSet<Variable>();
       var globalInVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
@@ -752,7 +752,7 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitParCallCmd(ParCallCmd node)
     {
-      if (node.CallCmds.Any(callCmd => LinearRewriter.IsPrimitive(callCmd.Proc)))
+      if (node.CallCmds.Any(callCmd => CivlPrimitives.IsPrimitive(callCmd.Proc)))
       {
         Error(node, "linear primitives may not be invoked in a parallel call");
         return node;
@@ -831,7 +831,7 @@ namespace Microsoft.Boogie
     private void CheckLinearStoreAccessInGuards()
     {
       program.Implementations.ForEach(impl => {
-        if (LinearRewriter.IsPrimitive(impl))
+        if (CivlPrimitives.IsPrimitive(impl))
         {
           return;
         }
