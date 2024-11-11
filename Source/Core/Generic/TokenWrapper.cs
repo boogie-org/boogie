@@ -14,7 +14,7 @@ public class TokenWrapper : IToken {
     return Inner.CompareTo(other);
   }
 
-  public bool SourceToken => false;
+  public bool IsSourceToken => false;
 
   public int kind {
     get => Inner.kind;

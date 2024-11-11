@@ -12,7 +12,7 @@ namespace Microsoft.Boogie
     /// <summary>
     /// True if this token was created during parsing
     /// </summary>
-    bool SourceToken { get; }
+    bool IsSourceToken { get; }
     int kind { get; set; } // token kind
     string filename { get; set; } // token file
     int pos { get; set; } // token position in the source text (starting at 0)
@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
       this._val = "anything so that it is nonnull";
     }
 
-    public bool SourceToken => true;
+    public bool IsSourceToken => true;
 
     public int kind
     {

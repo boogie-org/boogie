@@ -33,7 +33,7 @@ class IsolateAttributeOnJumpsHandler {
 
       var gotoFromReturn = gotoCmd.tok as GotoFromReturn;
       var isolateAttribute = QKeyValue.FindAttribute(gotoCmd.Attributes, p => p.Key == "isolate");
-      var isTypeOfAssert = gotoFromReturn != null && gotoFromReturn.Origin.tok.SourceToken;
+      var isTypeOfAssert = gotoFromReturn != null && gotoFromReturn.Origin.tok.IsSourceToken;
       var isolate = BlockRewriter.ShouldIsolate(isTypeOfAssert && splitOnEveryAssert, isolateAttribute);
       if (!isolate) {
         continue;
