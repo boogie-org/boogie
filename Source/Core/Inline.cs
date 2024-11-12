@@ -21,42 +21,42 @@ namespace Microsoft.Boogie
       protected Dictionary<string, int> procUnrollDepth = new();
       protected Dictionary<string, CallCmd> procUnrollSrc = new();
 
-      private string getName (Implementation impl) {
+      private string GetName (Implementation impl) {
         string procName = impl.Name;
         Contract.Assert(procName != null);
         return procName;
       }
 
-      public int getDepth(Implementation impl) {
-        var procName = getName(impl);
+      public int GetDepth(Implementation impl) {
+        var procName = GetName(impl);
         if (procUnrollDepth.TryGetValue(procName, out var c)) {
           return c;
         }
         return -1;
       }
 
-      public void setDepth (CallCmd cmd, Implementation impl, int depth) {
-        var procName = getName(impl);
+      public void SetDepth (CallCmd cmd, Implementation impl, int depth) {
+        var procName = GetName(impl);
         procUnrollSrc[procName] = cmd;
         procUnrollDepth[procName] = depth;
       }
 
-      public void increment(Implementation impl) {
-        var procName = getName(impl);
+      public void Increment(Implementation impl) {
+        var procName = GetName(impl);
         Debug.Assert (procUnrollSrc.ContainsKey(procName));
         Debug.Assert (procUnrollDepth.ContainsKey(procName));
         procUnrollDepth[procName] = procUnrollDepth[procName] + 1;
       }
 
-      public void decrement(Implementation impl) {
-        var procName = getName(impl);
+      public void Decrement(Implementation impl) {
+        var procName = GetName(impl);
         Debug.Assert (procUnrollSrc.ContainsKey(procName));
         Debug.Assert (procUnrollDepth.ContainsKey(procName));
         procUnrollDepth[procName] = procUnrollDepth[procName] - 1;
       }
 
-      public void popCmd(CallCmd cmd, Implementation impl) {
-        var procName = getName(impl);
+      public void PopCmd(CallCmd cmd, Implementation impl) {
+        var procName = GetName(impl);
         if (procUnrollSrc.ContainsKey(procName) && procUnrollSrc[procName] == cmd) {
           Debug.Assert (procUnrollDepth.ContainsKey(procName));
           procUnrollSrc.Remove(procName);
@@ -298,7 +298,7 @@ namespace Microsoft.Boogie
       Contract.Requires(impl.Proc != null);
 
       // getDepth returns -1 when depth for this impl is not defined
-      var depth = depthTracker.getDepth(impl);
+      var depth = depthTracker.GetDepth(impl);
       if (depth >= 0)
       {
         return depth;
@@ -316,7 +316,7 @@ namespace Microsoft.Boogie
         impl.Proc.CheckIntAttribute("inline", ref depth);
       }
       if (depth >= 0) {
-        depthTracker.setDepth (callCmd, impl, depth);
+        depthTracker.SetDepth (callCmd, impl, depth);
       }
       return depth;
     }
@@ -377,7 +377,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        depthTracker.decrement(impl);
+        depthTracker.Decrement(impl);
       }
 
       bool inlinedSomething = true;
@@ -389,7 +389,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        depthTracker.increment(impl);
+        depthTracker.Increment(impl);
       }
 
       Block /*!*/
@@ -464,7 +464,7 @@ namespace Microsoft.Boogie
             {
               newCmds.Add(codeCopier.CopyCmd(callCmd));
             }
-            depthTracker.popCmd(callCmd, impl);
+            depthTracker.PopCmd(callCmd, impl);
           }
           else if (cmd is PredicateCmd)
           {
