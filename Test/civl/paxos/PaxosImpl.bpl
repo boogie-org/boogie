@@ -290,9 +290,8 @@ ensures MaxRound(r, MapOr(ns1, ns2), voteInfo) ==
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 1} A_JoinUpdate(r: Round, n: Node)
-returns (join:bool, lastVoteRound: Round, lastVoteValue: Value)
-modifies acceptorState;
+yield procedure {:layer 0} JoinUpdate(r: Round, n: Node) returns (join:bool, lastVoteRound: Round, lastVoteValue: Value);
+refines atomic action {:layer 1} _
 {
   var lastJoinRound: Round;
   lastJoinRound := acceptorState[n]->lastJoinRound;
@@ -306,9 +305,8 @@ modifies acceptorState;
   }
 }
 
-atomic action {:layer 1} A_VoteUpdate(r: Round, n: Node, v: Value)
-returns (vote:bool)
-modifies acceptorState;
+yield procedure {:layer 0} VoteUpdate(r: Round, n: Node, v: Value) returns (vote:bool);
+refines atomic action {:layer 1} _
 {
   var lastJoinRound: Round;
   lastJoinRound := acceptorState[n]->lastJoinRound;
@@ -320,57 +318,33 @@ modifies acceptorState;
   }
 }
 
-yield procedure {:layer 0} JoinUpdate(r: Round, n: Node) returns (join:bool, lastVoteRound: Round, lastVoteValue: Value);
-refines A_JoinUpdate;
-
-yield procedure {:layer 0} VoteUpdate(r: Round, n: Node, v: Value) returns (vote:bool);
-refines A_VoteUpdate;
-
 //// Channel send/receive actions
 
-left action {:layer 1} A_SendJoinResponse(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value)
-modifies joinChannel;
+yield procedure {:layer 0} SendJoinResponse(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value);
+refines left action {:layer 1} _
 {
   joinChannel[round][JoinResponse(from, lastVoteRound, lastVoteValue)] := joinChannel[round][JoinResponse(from, lastVoteRound, lastVoteValue)] + 1;
 }
 
-right action {:layer 1} A_ReceiveJoinResponse(round: Round)
-returns (joinResponse: JoinResponse)
-modifies joinChannel;
+yield procedure {:layer 0} ReceiveJoinResponse(round: Round) returns (joinResponse: JoinResponse);
+refines right action {:layer 1} _
 {
   assume joinChannel[round][joinResponse] > 0;
   joinChannel[round][joinResponse] := joinChannel[round][joinResponse] - 1;
 }
 
-left action {:layer 1} A_SendVoteResponse(round: Round, from: Node)
-modifies voteChannel;
+yield procedure {:layer 0} SendVoteResponse(round: Round, from: Node);
+refines left action {:layer 1} _
 {
   voteChannel[round][VoteResponse(from)] := voteChannel[round][VoteResponse(from)] + 1;
 }
 
-right action {:layer 1} A_ReceiveVoteResponse(round: Round)
-returns (voteResponse: VoteResponse)
-modifies voteChannel;
+yield procedure {:layer 0} ReceiveVoteResponse(round: Round) returns (voteResponse: VoteResponse);
+refines right action {:layer 1} _
 {
   assume voteChannel[round][voteResponse] > 0;
   voteChannel[round][voteResponse] := voteChannel[round][voteResponse] - 1;
 }
-
-yield procedure {:layer 0}
-SendJoinResponse(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value);
-refines A_SendJoinResponse;
-
-yield procedure {:layer 0}
-ReceiveJoinResponse(round: Round) returns (joinResponse: JoinResponse);
-refines A_ReceiveJoinResponse;
-
-yield procedure {:layer 0}
-SendVoteResponse(round: Round, from: Node);
-refines A_SendVoteResponse;
-
-yield procedure {:layer 0}
-ReceiveVoteResponse(round: Round) returns (voteResponse: VoteResponse);
-refines A_ReceiveVoteResponse;
 
 //// Introduction procedures to make send/receive more abstract
 

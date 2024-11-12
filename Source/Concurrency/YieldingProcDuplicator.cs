@@ -259,7 +259,7 @@ namespace Microsoft.Boogie
             InjectGate(pureAction, newCall);
             newCmdSeq.Add(newCall);
           }
-          else if (LinearRewriter.IsPrimitive(newCall.Proc))
+          else if (CivlPrimitives.IsPrimitive(newCall.Proc))
           {
             newCmdSeq.AddRange(linearRewriter.RewriteCallCmd(newCall));
           }

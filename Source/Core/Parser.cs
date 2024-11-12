@@ -1219,7 +1219,7 @@ private class BvBounds : Expr {
 	}
 
 	void SpecRefinedActionForYieldProcedure(ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs) {
-		IToken tok, unused; QKeyValue kv = null, akv = null; MoverType moverType = MoverType.None; List<Variable> locals; StmtList stmtList; 
+		IToken tok, m; QKeyValue kv = null, akv = null; MoverType moverType = MoverType.None; List<Variable> locals; StmtList stmtList; 
 		Expect(41);
 		while (la.kind == 26) {
 			Attribute(ref kv);
@@ -1231,9 +1231,11 @@ private class BvBounds : Expr {
 			while (la.kind == 26) {
 				Attribute(ref akv);
 			}
-			Ident(out unused);
+			Ident(out m);
 			ImplBody(out locals, out stmtList);
-			if (refinedAction == null) {
+			if (m.val != "_") {
+			 this.SemErr("expected _ for name of anoonymous action");
+			} else if (refinedAction == null) {
 			 var actionDecl = new ActionDecl(tok, null, moverType, Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
 			                               false, new List<ActionDeclRef>(), null, null,
 			                               new List<Requires>(), new List<CallCmd>(), new List<AssertCmd>(), new List<IdentifierExpr>(), null, akv);
