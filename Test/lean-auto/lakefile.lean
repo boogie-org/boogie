@@ -6,7 +6,7 @@ package «test» {
 }
 
 require auto from git
-  "https://github.com/leanprover-community/lean-auto"@"0831a6eff8cbb456e90c616bd2f4db51aefea3d0"
+  "https://github.com/leanprover-community/lean-auto"@"60e546ca7a9d40d508e58847a9d0630406835178"
 
 @[default_target]
 lean_lib «ToBuild» {
