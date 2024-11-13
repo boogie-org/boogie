@@ -18,7 +18,8 @@ namespace VC
     List<AssertCmd> Asserts,
     IEnumerable<TrackedNodeComponent> CoveredElements,
     int ResourceCount,
-    SolverKind? SolverUsed
+    SolverKind? SolverUsed,
+    IReadOnlyList<Declaration> DeclarationsAfterPruning
   ) {
     public void ComputePerAssertOutcomes(out Dictionary<AssertCmd, SolverOutcome> perAssertOutcome,
       out Dictionary<AssertCmd, Counterexample> perAssertCounterExamples) {
@@ -27,17 +28,9 @@ namespace VC
       if (Outcome == SolverOutcome.Valid) {
         perAssertOutcome = Asserts.ToDictionary(cmd => cmd, _ => SolverOutcome.Valid);
       } else {
-        foreach (var counterExample in CounterExamples) {
-          AssertCmd underlyingAssert;
-          if (counterExample is AssertCounterexample assertCounterexample) {
-            underlyingAssert = assertCounterexample.FailingAssert;
-          } else if (counterExample is CallCounterexample callCounterexample) {
-            underlyingAssert = callCounterexample.FailingAssert;
-          } else if (counterExample is ReturnCounterexample returnCounterexample) {
-            underlyingAssert = returnCounterexample.FailingAssert;
-          } else {
-            continue;
-          }
+        foreach (var counterExample in CounterExamples)
+        {
+          var underlyingAssert = counterExample.FailingAssert;
 
           // We ensure that the underlyingAssert is among the original asserts
           if (!Asserts.Contains(underlyingAssert)) {

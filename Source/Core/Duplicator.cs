@@ -122,13 +122,13 @@ namespace Microsoft.Boogie
         if (g != null)
         {
           List<Block> targets = new List<Block>();
-          foreach (Block t in cce.NonNull(g.labelTargets))
+          foreach (Block t in cce.NonNull(g.LabelTargets))
           {
             Block nt = subst[t];
             targets.Add(nt);
           }
 
-          g.labelTargets = targets;
+          g.LabelTargets = targets;
         }
       }
 
@@ -142,7 +142,7 @@ namespace Microsoft.Boogie
       return base.VisitBlockSeq(new List<Block>(blockSeq));
     }
 
-    public override List<Block /*!*/> /*!*/ VisitBlockList(List<Block /*!*/> /*!*/ blocks)
+    public override IList<Block> /*!*/ VisitBlockList(IList<Block> blocks /*!*/ /*!*/)
     {
       //Contract.Requires(cce.NonNullElements(blocks));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
@@ -378,15 +378,15 @@ namespace Microsoft.Boogie
       {
         var newLabelTargets = new List<Block>();
         var newLabelNames = new List<string>();
-        for (int index = 0; index < gotoCmd.labelTargets.Count; ++index)
+        for (int index = 0; index < gotoCmd.LabelTargets.Count; ++index)
         {
-          var newBlock = blockDuplicationMapping[gotoCmd.labelTargets[index]];
+          var newBlock = blockDuplicationMapping[gotoCmd.LabelTargets[index]];
           newLabelTargets.Add(newBlock);
           newLabelNames.Add(newBlock.Label);
         }
 
-        gotoCmd.labelTargets = newLabelTargets;
-        gotoCmd.labelNames = newLabelNames;
+        gotoCmd.LabelTargets = newLabelTargets;
+        gotoCmd.LabelNames = newLabelNames;
       }
 
       if (impl.Proc is YieldProcedureDecl yieldProcedureDecl)

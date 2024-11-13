@@ -247,71 +247,6 @@ namespace Microsoft.Boogie
     #endregion
   }
 
-  public interface ICarriesAttributes
-  {
-    QKeyValue Attributes { get; set; }
-
-    public void ResolveAttributes(ResolutionContext rc)
-    {
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        kv.Resolve(rc);
-      }
-    }
-
-    public void TypecheckAttributes(TypecheckingContext tc)
-    {
-      var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
-      tc.GlobalAccessOnlyInOld = false;
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        kv.Typecheck(tc);
-      }
-      tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
-    }
-
-    public List<int> FindLayers()
-    {
-      List<int> layers = new List<int>();
-      for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
-      {
-        if (kv.Key == CivlAttributes.LAYER)
-        {
-          layers.AddRange(kv.Params.Select(o => ((LiteralExpr)o).asBigNum.ToIntSafe));
-        }
-      }
-      return layers.Distinct().OrderBy(l => l).ToList();
-    }
-
-    // Look for {:name string} in list of attributes.
-    public string FindStringAttribute(string name)
-    {
-      return QKeyValue.FindStringAttribute(Attributes, name);
-    }
-
-    public void AddStringAttribute(IToken tok, string name, string parameter)
-    {
-      Attributes = new QKeyValue(tok, name, new List<object>() {parameter}, Attributes);
-    }
-
-    public void CopyIdFrom(IToken tok, ICarriesAttributes src)
-    {
-      var id = src.FindStringAttribute("id");
-      if (id is not null) {
-        AddStringAttribute(tok, "id", id);
-      }
-    }
-
-    public void CopyIdWithModificationsFrom(IToken tok, ICarriesAttributes src, Func<string,TrackedNodeComponent> modifier)
-    {
-      var id = src.FindStringAttribute("id");
-      if (id is not null) {
-        AddStringAttribute(tok, "id", modifier(id).SolverLabel);
-      }
-    }
-
-  }
-
   [ContractClassFor(typeof(Absy))]
   public abstract class AbsyContracts : Absy
   {
@@ -764,8 +699,6 @@ namespace Microsoft.Boogie
     {
       return cce.NonNull(Name);
     }
-    
-    public virtual bool MayRename => true;
   }
 
   public class TypeCtorDecl : NamedDeclaration
@@ -1365,7 +1298,7 @@ namespace Microsoft.Boogie
 
     public void ResolveWhere(ResolutionContext rc)
     {
-      if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && this.TypedIdent.WhereExpr != null)
+      if (Attributes.FindBoolAttribute("assumption") && this.TypedIdent.WhereExpr != null)
       {
         rc.Error(tok, "assumption variable may not be declared with a where clause");
       }
@@ -1380,7 +1313,7 @@ namespace Microsoft.Boogie
     {
       (this as ICarriesAttributes).TypecheckAttributes(tc);
       this.TypedIdent.Typecheck(tc);
-      if (QKeyValue.FindBoolAttribute(Attributes, "assumption") && !this.TypedIdent.Type.IsBool)
+      if (Attributes.FindBoolAttribute("assumption") && !this.TypedIdent.Type.IsBool)
       {
         tc.Error(tok, "assumption variable must be of type 'bool'");
       }
@@ -2036,12 +1969,11 @@ namespace Microsoft.Boogie
       : base(func.tok, func.Name, func.TypeParameters, func.InParams, func.OutParams[0], func.Comment, func.Attributes)
     {
     }
-
-    public override bool MayRename => false;
   }
 
   public class Function : DeclWithFormals
   {
+    public bool AlwaysRevealed;
     public string Comment;
 
     public Expr Body; // Only set if the function is declared with {:inline}
@@ -2121,9 +2053,9 @@ namespace Microsoft.Boogie
         stream.WriteLine(this, level, "// " + Comment);
       }
 
-      stream.Write(this, level, "function ");
+      stream.Write(this, level, (AlwaysRevealed ? "revealed " : "") + "function ");
       EmitAttributes(stream);
-      if (Body != null && !QKeyValue.FindBoolAttribute(Attributes, "inline"))
+      if (Body != null && !Attributes.FindBoolAttribute("inline"))
       {
         Contract.Assert(DefinitionBody == null);
         // Boogie inlines any function whose .Body field is non-null.  The parser populates the .Body field
@@ -2133,7 +2065,7 @@ namespace Microsoft.Boogie
         stream.Write("{:inline} ");
       }
 
-      if (DefinitionBody != null && !QKeyValue.FindBoolAttribute(Attributes, "define"))
+      if (DefinitionBody != null && !Attributes.FindBoolAttribute("define"))
       {
         // Boogie defines any function whose .DefinitionBody field is non-null.  The parser populates the .DefinitionBody field
         // if the :define attribute is present, but if someone creates the Boogie file directly as an AST, then
@@ -2414,7 +2346,7 @@ namespace Microsoft.Boogie
 
     public bool CanAlwaysAssume()
     {
-      return Free && QKeyValue.FindBoolAttribute(Attributes, "always_assume");
+      return Free && Attributes.FindBoolAttribute("always_assume");
     }
 
 
@@ -2554,7 +2486,7 @@ namespace Microsoft.Boogie
 
     public bool CanAlwaysAssume ()
     {
-      return Free && QKeyValue.FindBoolAttribute(this.Attributes, "always_assume");
+      return Free && Attributes.FindBoolAttribute("always_assume");
     }
 
     public Ensures(IToken token, bool free, Expr condition, string comment, QKeyValue kv)
@@ -2931,6 +2863,7 @@ namespace Microsoft.Boogie
     public List<CallCmd> YieldRequires;
     public List<AssertCmd> Asserts;
     public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
+    public bool IsAnonymous;
 
     public Implementation Impl; // set when the implementation of this action is resolved
     public LayerRange LayerRange; // set during registration
@@ -2950,6 +2883,11 @@ namespace Microsoft.Boogie
       this.YieldRequires = yieldRequires;
       this.Asserts = asserts;
       this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
+      this.IsAnonymous = name == null;
+      if (IsAnonymous)
+      {
+        this.Name = $"AnonymousAction_{this.UniqueId}";
+      }
     }
 
     public override void Register(ResolutionContext rc)
@@ -3013,6 +2951,12 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
+      if (IsAnonymous)
+      {
+        var modSetCollector = new ModSetCollector(tc.Options);
+        modSetCollector.DoModSetAnalysis(this.Impl);
+      }
+
       var oldProc = tc.Proc;
       tc.Proc = this;
       base.Typecheck(tc);
@@ -3823,10 +3767,9 @@ namespace Microsoft.Boogie
     {
     }
 
-    public override void AddAssignedVariables(List<Variable> vars)
+    public override void AddAssignedIdentifiers(List<IdentifierExpr> vars)
     {
-      //Contract.Requires(vars != null);
-      throw new NotImplementedException();
+      throw new NotSupportedException();
     }
   }
 
@@ -4038,15 +3981,15 @@ namespace Microsoft.Boogie
         GotoCmd /*!*/
           g = (GotoCmd) tc;
         Contract.Assert(g != null);
-        Contract.Assume(g.labelTargets != null);
-        if (g.labelTargets.Count == 1)
+        Contract.Assume(g.LabelTargets != null);
+        if (g.LabelTargets.Count == 1)
         {
-          return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.labelTargets[0])));
+          return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.LabelTargets[0])));
         }
         else
         {
           List<RE> rs = new List<RE>();
-          foreach (Block /*!*/ target in g.labelTargets)
+          foreach (Block /*!*/ target in g.LabelTargets)
           {
             Contract.Assert(target != null);
             RE r = Transform(target);

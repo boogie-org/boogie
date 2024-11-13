@@ -491,7 +491,7 @@ namespace Microsoft.Boogie.Houdini
           }
 
           var session = new HoudiniSession(this, vcgen, proverInterface, program, 
-            new ImplementationRun(impl, traceWriter), stats, taskID: GetTaskID());
+            new ImplementationRun(impl, traceWriter), stats, taskId: GetTaskID());
           houdiniSessions.Add(impl, session);
         }
         catch (VCGenException)
@@ -1451,38 +1451,42 @@ namespace Microsoft.Boogie.Houdini
     private RefutedAnnotation ExtractRefutedAnnotation(Counterexample error)
     {
       Variable houdiniConstant;
-      CallCounterexample callCounterexample = error as CallCounterexample;
-      if (callCounterexample != null)
+      switch (error)
       {
-        Procedure failingProcedure = callCounterexample.FailingCall.Proc;
-        Requires failingRequires = callCounterexample.FailingRequires;
-        if (MatchCandidate(failingRequires.Condition, out houdiniConstant))
+        case CallCounterexample callCounterexample:
         {
-          Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedRequires(houdiniConstant, failingProcedure,
-            currentHoudiniState.Implementation);
-        }
-      }
+          var failingProcedure = callCounterexample.FailingCall.Proc;
+          var failingRequires = callCounterexample.FailingRequires;
+          if (MatchCandidate(failingRequires.Condition, out houdiniConstant))
+          {
+            Contract.Assert(houdiniConstant != null);
+            return RefutedAnnotation.BuildRefutedRequires(houdiniConstant, failingProcedure,
+              currentHoudiniState.Implementation);
+          }
 
-      ReturnCounterexample returnCounterexample = error as ReturnCounterexample;
-      if (returnCounterexample != null)
-      {
-        Ensures failingEnsures = returnCounterexample.FailingEnsures;
-        if (MatchCandidate(failingEnsures.Condition, out houdiniConstant))
-        {
-          Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedEnsures(houdiniConstant, currentHoudiniState.Implementation);
+          break;
         }
-      }
-
-      AssertCounterexample assertCounterexample = error as AssertCounterexample;
-      if (assertCounterexample != null)
-      {
-        AssertCmd failingAssert = assertCounterexample.FailingAssert;
-        if (MatchCandidate(failingAssert.OrigExpr, out houdiniConstant))
+        case ReturnCounterexample returnCounterexample:
         {
-          Contract.Assert(houdiniConstant != null);
-          return RefutedAnnotation.BuildRefutedAssert(houdiniConstant, currentHoudiniState.Implementation);
+          var failingEnsures = returnCounterexample.FailingEnsures;
+          if (MatchCandidate(failingEnsures.Condition, out houdiniConstant))
+          {
+            Contract.Assert(houdiniConstant != null);
+            return RefutedAnnotation.BuildRefutedEnsures(houdiniConstant, currentHoudiniState.Implementation);
+          }
+
+          break;
+        }
+        case AssertCounterexample assertCounterexample:
+        {
+          var failingAssert = assertCounterexample.FailingAssert;
+          if (MatchCandidate(failingAssert.OrigExpr, out houdiniConstant))
+          {
+            Contract.Assert(houdiniConstant != null);
+            return RefutedAnnotation.BuildRefutedAssert(houdiniConstant, currentHoudiniState.Implementation);
+          }
+
+          break;
         }
       }
 
@@ -1613,7 +1617,7 @@ namespace Microsoft.Boogie.Houdini
     public static void ApplyAssignment(Program prog, HoudiniOutcome outcome)
     {
       var Candidates = prog.TopLevelDeclarations.OfType<Constant>().Where(
-        Item => QKeyValue.FindBoolAttribute(Item.Attributes, "existential")).Select(Item => Item.Name);
+        Item => Item.Attributes.FindBoolAttribute("existential")).Select(Item => Item.Name);
 
       // Treat all assertions
       // TODO: do we need to also consider assumptions?

@@ -10,10 +10,11 @@ namespace Microsoft.Boogie;
 public class Implementation : DeclWithFormals {
   public List<Variable> LocVars;
 
-  [Rep] public StmtList StructuredStmts;
+  [Rep] 
+  public StmtList StructuredStmts { get; set; }
 
-  [field: Rep]
-  public List<Block> Blocks {
+  [Rep]
+  public IList<Block> Blocks {
     get; 
     set;
   }
@@ -21,7 +22,7 @@ public class Implementation : DeclWithFormals {
 
   // Blocks before applying passification etc.
   // Both are used only when /inline is set.
-  public List<Block> OriginalBlocks;
+  public IList<Block> OriginalBlocks;
   public List<Variable> OriginalLocVars;
     
   // Map filled in during passification to allow augmented error trace reporting
@@ -151,7 +152,7 @@ public class Implementation : DeclWithFormals {
     }
 
     if (options.StratifiedInlining > 0) {
-      return !QKeyValue.FindBoolAttribute(Attributes, "entrypoint");
+      return !Attributes.FindBoolAttribute("entrypoint");
     }
 
     return false;
@@ -462,19 +463,19 @@ public class Implementation : DeclWithFormals {
   }
 
   public void EmitImplementation(TokenTextWriter stream, int level, IEnumerable<Block> blocks,
-    bool showLocals) {
+    bool showLocals, string nameSuffix = "") {
     EmitImplementation(stream, level, writer => {
       foreach (var block in blocks) {
         block.Emit(writer, level + 1);
       }
-    }, showLocals);
+    }, showLocals, nameSuffix);
   }
 
-  public void EmitImplementation(TokenTextWriter stream, int level, Action<TokenTextWriter> printBlocks, bool showLocals)
+  private void EmitImplementation(TokenTextWriter stream, int level, Action<TokenTextWriter> printBlocks, bool showLocals, string nameSuffix = "")
   {
     stream.Write(this, level, "implementation ");
     EmitAttributes(stream);
-    stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(this.Name));
+    stream.Write(this, level, "{0}", TokenTextWriter.SanitizeIdentifier(Name) + nameSuffix);
     EmitSignature(stream, false);
     stream.WriteLine();
 
@@ -922,9 +923,9 @@ public class Implementation : DeclWithFormals {
     if (gotoCmd != null)
     {
       // If it is a gotoCmd
-      Contract.Assert(gotoCmd.labelTargets != null);
+      Contract.Assert(gotoCmd.LabelTargets != null);
 
-      return gotoCmd.labelTargets;
+      return gotoCmd.LabelTargets;
     }
     else
     {
@@ -965,15 +966,15 @@ public class Implementation : DeclWithFormals {
     this.BlockPredecessorsComputed = true;
   }
 
-  public static void ComputePredecessorsForBlocks(List<Block> blocks)
+  public static void ComputePredecessorsForBlocks(IList<Block> blocks)
   {
     foreach (var block in blocks) {
       if (block.TransferCmd is not GotoCmd gtc) {
         continue;
       }
 
-      Contract.Assert(gtc.labelTargets != null);
-      foreach (var /*!*/ dest in gtc.labelTargets)
+      Contract.Assert(gtc.LabelTargets != null);
+      foreach (var /*!*/ dest in gtc.LabelTargets)
       {
         Contract.Assert(dest != null);
         dest.Predecessors.Add(block);
@@ -1010,7 +1011,7 @@ public class Implementation : DeclWithFormals {
         }
 
         // it seems that the goto statement at the end may be reached
-        foreach (var next in gotoCmd.labelTargets) {
+        foreach (var next in gotoCmd.LabelTargets) {
           Contract.Assume(next != null);
           toVisit.Push(next);
         }

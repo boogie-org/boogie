@@ -69,7 +69,7 @@ namespace Microsoft.Boogie.SMTLib
       }
       catch (System.ComponentModel.Win32Exception e)
       {
-        throw new ProverException(string.Format("Unable to start the process {0}: {1}", psi.FileName, e.Message));
+        throw new ProverException($"Unable to start the process {psi.FileName}: {e.Message}");
       }
     }
 

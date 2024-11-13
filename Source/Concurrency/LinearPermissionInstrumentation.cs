@@ -61,10 +61,10 @@ namespace Microsoft.Boogie
     public void AddDisjointnessAndWellFormedAssumptions(Implementation impl)
     {
       // calls and parallel calls
-      foreach (var b in impl.Blocks)
+      foreach (var block in impl.Blocks)
       {
         var newCmds = new List<Cmd>();
-        foreach (var cmd in b.Cmds)
+        foreach (var cmd in block.Cmds)
         {
           newCmds.Add(cmd);
           if (cmd is ParCallCmd)
@@ -72,7 +72,7 @@ namespace Microsoft.Boogie
             newCmds.AddRange(DisjointnessAndWellFormedAssumeCmds(cmd, true));
           }
         }
-        b.Cmds = newCmds;
+        block.Cmds = newCmds;
       }
 
       // loop headers

@@ -32,7 +32,7 @@ namespace Microsoft.Boogie
         else if (block.TransferCmd is GotoCmd gotoCmd)
         {
           liveVarsBefore[block] =
-            Propagate(block.Cmds, gotoCmd.labelTargets.SelectMany(x => liveVarsBefore[x]).ToHashSet());
+            Propagate(block.Cmds, gotoCmd.LabelTargets.SelectMany(x => liveVarsBefore[x]).ToHashSet());
         }
         else
         {
@@ -307,14 +307,16 @@ namespace Microsoft.Boogie
 
   public static class BlockHelper
   {
+    public static readonly IToken /*!*/ ReportedNoToken = new Token();
+    
     public static Block Block(string label, List<Cmd> cmds)
     {
-      return new Block(Token.NoToken, label, cmds, CmdHelper.ReturnCmd);
+      return new Block(ReportedNoToken, label, cmds, CmdHelper.ReturnCmd);
     }
 
     public static Block Block(string label, List<Cmd> cmds, List<Block> gotoTargets)
     {
-      return new Block(Token.NoToken, label, cmds, new GotoCmd(Token.NoToken, gotoTargets));
+      return new Block(ReportedNoToken, label, cmds, new GotoCmd(Token.NoToken, gotoTargets));
     }
   }
 

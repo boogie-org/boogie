@@ -459,7 +459,10 @@ Function<.out List<Declaration>/*!*/ ds.>
      Expr definition = null;
      Expr/*!*/ tmp;
      Axiom ax;
+     bool revealed = false;
   .)
+  [ "revealed"                         (. revealed = true; .) 
+  ]
   "function" { Attribute<ref kv> } Ident<out z>
   [ TypeParams<out typeParamTok, out typeParams> ]
   "("
@@ -483,6 +486,7 @@ Function<.out List<Declaration>/*!*/ ds.>
     }
     Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
                                       new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
+    func.AlwaysRevealed = revealed;
     foreach(var axiom in axioms) {
         ds.Add(axiom);
         func.OtherDefinitionAxioms.Add(axiom);
@@ -525,11 +529,11 @@ Function<.out List<Declaration>/*!*/ ds.>
     }
     if (definition != null) {
       // generate either an axiom or a function body
-      if (QKeyValue.FindBoolAttribute(kv, "inline")) {
-        if (QKeyValue.FindBoolAttribute(kv, "define"))
+      if (kv.FindBoolAttribute("inline")) {
+        if (kv.FindBoolAttribute("define"))
           SemErr("function cannot have both :inline and :define attributes");
         func.Body = definition;
-      } else if (QKeyValue.FindBoolAttribute(kv, "define")) {
+      } else if (kv.FindBoolAttribute("define")) {
         if (func.TypeParameters.Count > 0)
           SemErr("function with :define attribute has to be monomorphic");
         func.DefinitionBody = func.CreateFunctionDefinition(definition);
@@ -697,7 +701,7 @@ ActionDecl<bool isPure, out ActionDecl actionDecl, out Implementation impl, out 
     ImplBody<out locals, out stmtList>
     (.
        impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
-                                      locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
+                                      locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone());
     .)
   )
   (.
@@ -738,25 +742,65 @@ SpecCreates<.List<ActionDeclRef> creates.>
   ";"
   .
 
-SpecRefinedAction<ref ActionDeclRef refinedAction>
+SpecRefinedActionForAtomicAction<ref ActionDeclRef refinedAction>
 =
   (. IToken m; QKeyValue kv = null; .) 
   "refines"
-  { Attribute<ref kv> } 
+  { Attribute<ref kv> }
   Ident<out m>
   (.
      if (refinedAction == null) {
-       refinedAction = new ActionDeclRef(m, m.val, kv);
+        refinedAction = new ActionDeclRef(m, m.val, kv);
      } else {
-       this.SemErr("a refines specification already exists");
+        this.SemErr("a refines specification already exists");
      }
   .)
+  .
+
+SpecRefinedActionForYieldProcedure<.ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs.>
+=
+  (. IToken tok, m; QKeyValue kv = null, akv = null; MoverType moverType = MoverType.None; List<Variable> locals; StmtList stmtList; .)
+  "refines"
+  { Attribute<ref kv> }
+  (
+    MoverQualifier<ref moverType>
+    "action" (. tok = t; .)
+    { Attribute<ref akv> }
+    Ident<out m>
+    ImplBody<out locals, out stmtList>
+    (.
+      if (m.val != "_") {
+        this.SemErr("expected _ for name of anoonymous action");
+      } else if (refinedAction == null) {
+        var actionDecl = new ActionDecl(tok, null, moverType, Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+                                      false, new List<ActionDeclRef>(), null, null,
+                                      new List<Requires>(), new List<CallCmd>(), new List<AssertCmd>(), new List<IdentifierExpr>(), null, akv);
+        Pgm.AddTopLevelDeclaration(actionDecl);
+        var impl = new Implementation(tok, actionDecl.Name, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+                                      locals, stmtList, akv == null ? null : (QKeyValue)akv.Clone());
+        Pgm.AddTopLevelDeclaration(impl);
+        refinedAction = new ActionDeclRef(tok, actionDecl.Name);
+      } else {
+        this.SemErr("a refines specification already exists");
+      }
+    .)
+  |
+    Ident<out tok>
+    (.
+     if (refinedAction == null) {
+        refinedAction = new ActionDeclRef(tok, tok.val, kv);
+     } else {
+        this.SemErr("a refines specification already exists");
+     }
+    .)
+    ";"
+  )
   .
 
 SpecAction<.ref ActionDeclRef refinedAction, ref ActionDeclRef invariantAction, List<IdentifierExpr> mods, List<ActionDeclRef> creates, List<Requires> requires, List<CallCmd> yieldRequires, List<AssertCmd> asserts.>
 =
   (
-    SpecRefinedAction<ref refinedAction>
+    SpecRefinedActionForAtomicAction<ref refinedAction>
     (. IToken m; .)
     ["using" Ident<out m> (. invariantAction = new ActionDeclRef(m, m.val); .)]
     ";"
@@ -799,8 +843,8 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
     ProcFormals<true, true, out ins>
       [ "returns" ProcFormals<false, true, out outs> ]
     ( ";"
-      { SpecYieldPrePost<ref refinedAction, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
-    | { SpecYieldPrePost<ref refinedAction, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
+      { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
+    | { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
       ImplBody<out locals, out stmtList>
       (.
          impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
@@ -851,11 +895,10 @@ SpecYieldPreserves<. List<CallCmd> yieldPreserves .>
   ";"
   .
 
-SpecYieldPrePost<. ref ActionDeclRef refinedAction, List<Requires> pre, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves, List<IdentifierExpr> mods.>
+SpecYieldPrePost<. ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs, List<Requires> pre, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves, List<IdentifierExpr> mods.>
 =
   (  
-    SpecRefinedAction<ref refinedAction>
-    ";"
+    SpecRefinedActionForYieldProcedure<ref refinedAction, name, ins, outs>
   | SpecYieldRequires<pre, yieldRequires>
   | SpecYieldEnsures<post, yieldEnsures>
   | SpecYieldPreserves<yieldPreserves>
@@ -1028,14 +1071,20 @@ TransferCmd<out TransferCmd/*!*/ tc>
 = (. Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
      Token y;  List<IToken>/*!*/ xs;
      List<String> ss = new List<String>();
+     QKeyValue kv = null;
   .)
   ( "goto"             (. y = t; .)
+    { Attribute<ref kv> }
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
                             Contract.Assert(s != null);
                             ss.Add(s.val); }
-                          tc = new GotoCmd(y, ss);
+                          tc = new GotoCmd(y, ss) {
+                            Attributes = kv
+                          };
                        .)
-  | "return"           (. tc = new ReturnCmd(t); .)
+  | "return"
+    { Attribute<ref kv> }         
+    (. tc = new ReturnCmd(t) { Attributes = kv }; .)
   ) ";"
   .
 
@@ -1055,8 +1104,10 @@ IfCmd<out IfCmd/*!*/ ifcmd>
      StmtList/*!*/ thn;
      IfCmd/*!*/ elseIf;  IfCmd elseIfOption = null;
      StmtList/*!*/ els;  StmtList elseOption = null;
+     QKeyValue kv = null;
   .)
   "if"                       (. x = t; .)
+  { Attribute<ref kv> }
   Guard<out guard>
   "{" StmtList<out thn>
   [ "else"
@@ -1065,7 +1116,7 @@ IfCmd<out IfCmd/*!*/ ifcmd>
       StmtList<out els>      (. elseOption = els; .)
     )
   ]
-  (. ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption); .)
+  (. ifcmd = new IfCmd(x, guard, thn, elseIfOption, elseOption, kv); .)
   .
 
 WhileCmd<out WhileCmd wcmd>
@@ -1684,6 +1735,7 @@ SpecBlock<out Block/*!*/ b>
      List<IToken>/*!*/ xs;
      List<String> ss = new List<String>();
      b = dummyBlock;
+     QKeyValue kv = null;
      Expr/*!*/ e;
   .)
   Ident<out x> ":"
@@ -1697,13 +1749,21 @@ SpecBlock<out Block/*!*/ b>
                        .)
   }
   ( "goto"             (. y = t; .)
+    { Attribute<ref kv> }
     Idents<out xs>     (. foreach(IToken/*!*/ s in xs){
                             Contract.Assert(s != null);
                             ss.Add(s.val); }
-                          b = new Block(x,x.val,cs,new GotoCmd(y,ss));
+                          b = new Block(x,x.val,cs,new GotoCmd(y,ss) {
+                            Attributes = kv
+                          });
                        .)
-  | "return" Expression<out e>
-                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(t,e)); .)
+  | "return" 
+    { Attribute<ref kv> }
+    Expression<out e>
+                       (. b = new Block(x,x.val,cs,new ReturnExprCmd(t,e) {
+                            Attributes = kv
+                          }); 
+                       .)
   )
   ";"
   .

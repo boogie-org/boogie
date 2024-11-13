@@ -230,7 +230,7 @@ namespace Microsoft.Boogie.SMTLib
         }
         else
         {
-          return SmtLibNameUtils.QuoteId("T@" + s);
+          return SMTLibNameUtils.QuoteId("T@" + s);
         }
       }
     }
@@ -465,7 +465,7 @@ namespace Microsoft.Boogie.SMTLib
           wr.Write("\n");
           if (info.qid != null && LibOptions.EmitDebugInformation)
           {
-            wr.Write(" :qid {0}\n", SmtLibNameUtils.QuoteId(info.qid));
+            wr.Write(" :qid {0}\n", SMTLibNameUtils.QuoteId(info.qid));
           }
 
           if (weight != 1)
@@ -775,8 +775,7 @@ namespace Microsoft.Boogie.SMTLib
         var op = (VCExprFieldAccessOp)node.Op;
         var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
         Variable v = constructor.InParams[op.FieldIndex];
-        var name = v.Name + "#" + constructor.Name;
-        name = ExprLineariser.Namer.GetQuotedName(v, name);
+        var name = ExprLineariser.Namer.GetQuotedName(v, v.Name);
         WriteApplication(name, node, options);
         return true;
       }
@@ -785,8 +784,8 @@ namespace Microsoft.Boogie.SMTLib
       {
         var op = (VCExprIsConstructorOp)node.Op;
         var constructor = op.DatatypeTypeCtorDecl.Constructors[op.ConstructorIndex];
-        var name = "is-" + constructor.Name;
-        name = ExprLineariser.Namer.GetQuotedName(name, name);
+        var constructorName = ExprLineariser.Namer.GetName(constructor, constructor.Name);
+        var name = SMTLibNameUtils.AddQuotes($"is-{constructorName}");
         WriteApplication(name, node, options);
         return true;
       }

@@ -66,7 +66,7 @@ namespace VC
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullDictionaryAndValues(incarnationOriginMap));
+      Contract.Invariant(cce.NonNullDictionaryAndValues(IncarnationOriginMap));
       Contract.Invariant(program != null);
     }
 
@@ -81,11 +81,11 @@ namespace VC
     public List<Variable> CurrentLocalVariables { get; set; } = null;
 
     // shared across each implementation; created anew for each implementation
-    protected Dictionary<Variable, int> variable2SequenceNumber;
+    public Dictionary<Variable, int> Variable2SequenceNumber;
 
-    public Dictionary<Incarnation, Absy> incarnationOriginMap = new Dictionary<Incarnation, Absy>();
+    public Dictionary<Incarnation, Absy> IncarnationOriginMap = new();
 
-    public Program program;
+    public readonly Program program;
     public CheckerPool CheckerPool { get; }
 
     public ConditionGeneration(Program program, CheckerPool checkerPool)
@@ -117,11 +117,11 @@ namespace VC
       VcOutcome vcOutcome = await VerifyImplementation(run, collector, cancellationToken);
       var /*?*/ errors = new List<Counterexample>();
       if (vcOutcome is VcOutcome.Errors or VcOutcome.TimedOut or VcOutcome.OutOfMemory or VcOutcome.OutOfResource) {
-        errors = collector.examples.ToList();
+        errors = collector.Examples.ToList();
       }
 
       Helpers.ExtraTraceInformation(Options, "Finished implementation verification");
-      return (vcOutcome, errors, collector.vcResults.ToList());
+      return (vcOutcome, errors, collector.VcResults.ToList());
     }
 
     private VCGenOptions Options => CheckerPool.Options;
@@ -222,7 +222,7 @@ namespace VC
 
       Block origStartBlock = impl.Blocks[0];
       Block insertionPoint = new Block(
-        new Token(-17, -4), blockLabel, startCmds,
+        Token.NoToken, blockLabel, startCmds,
         new GotoCmd(impl.tok, new List<String> {origStartBlock.Label}, new List<Block> {origStartBlock}));
 
       impl.Blocks.Insert(0, insertionPoint); // make insertionPoint the start block
@@ -257,74 +257,6 @@ namespace VC
         debugWriter.WriteLine();
       }
     }
-
-    /// <summary>
-    /// Modifies an implementation by inserting all postconditions
-    /// as assert statements at the end of the implementation
-    /// Returns the possibly-new unified exit block of the implementation
-    /// </summary>
-    /// <param name="impl"></param>
-    /// <param name="unifiedExitblock">The unified exit block that has
-    /// already been constructed for the implementation (and so
-    /// is already an element of impl.Blocks)
-    /// </param>
-    protected static void InjectPostConditions(VCGenOptions options, ImplementationRun run, Block unifiedExitBlock,
-      Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
-    {
-      var impl = run.Implementation;
-      Contract.Requires(impl != null);
-      Contract.Requires(unifiedExitBlock != null);
-      Contract.Requires(gotoCmdOrigins != null);
-      Contract.Requires(impl.Proc != null);
-      Contract.Requires(unifiedExitBlock.TransferCmd is ReturnCmd);
-
-      TokenTextWriter debugWriter = null;
-      if (options.PrintWithUniqueASTIds)
-      {
-        debugWriter = new TokenTextWriter("<console>", run.OutputWriter, /*setTokens=*/ false, /*pretty=*/ false, options);
-        debugWriter.WriteLine("Effective postcondition:");
-      }
-
-      Substitution formalProcImplSubst = Substituter.SubstitutionFromDictionary(impl.GetImplFormalMap(options));
-
-      // (free and checked) ensures clauses
-      foreach (Ensures ens in impl.Proc.Ensures)
-      {
-        Contract.Assert(ens != null);
-
-        if (!ens.Free)
-        {
-          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          Ensures ensCopy = (Ensures) cce.NonNull(ens.Clone());
-          ensCopy.Condition = e;
-          AssertEnsuresCmd c = new AssertEnsuresCmd(ensCopy);
-          c.ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
-          // Copy any {:id ...} from the postcondition to the assumption, so
-          // we can track it while analyzing verification coverage.
-          (c as ICarriesAttributes).CopyIdFrom(ens.tok, ens);
-          unifiedExitBlock.Cmds.Add(c);
-          if (debugWriter != null)
-          {
-            c.Emit(debugWriter, 1);
-          }
-        }
-        else if (ens.CanAlwaysAssume())
-        {
-          Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
-          unifiedExitBlock.Cmds.Add(new AssumeCmd(ens.tok, e));
-        }
-        else
-        {
-          // skip free ensures if it doesn't have the :always_assume attr
-        }
-      }
-
-      if (debugWriter != null)
-      {
-        debugWriter.WriteLine();
-      }
-    }
-
 
     /// <summary>
     /// Get the pre-condition of an implementation, including the where clauses from the in-parameters.
@@ -518,63 +450,7 @@ namespace VC
       options.PrintDesugarings = oldPrintDesugaringSetting;
     }
 
-
-    protected Block GenerateUnifiedExit(Implementation impl, Dictionary<TransferCmd, ReturnCmd> gotoCmdOrigins)
-    {
-      Contract.Requires(impl != null);
-      Contract.Requires(gotoCmdOrigins != null);
-      Contract.Ensures(Contract.Result<Block>() != null);
-
-      Contract.Ensures(Contract.Result<Block>().TransferCmd is ReturnCmd);
-      Block /*?*/
-        exitBlock = null;
-
-      #region Create a unified exit block, if there's more than one
-
-      {
-        int returnBlocks = 0;
-        foreach (Block b in impl.Blocks)
-        {
-          if (b.TransferCmd is ReturnCmd)
-          {
-            exitBlock = b;
-            returnBlocks++;
-          }
-        }
-
-        if (returnBlocks > 1)
-        {
-          string unifiedExitLabel = "GeneratedUnifiedExit";
-          var unifiedExit = new Block(new Token(-17, -4), unifiedExitLabel, new List<Cmd>(),
-            new ReturnCmd(impl.StructuredStmts != null ? impl.StructuredStmts.EndCurly : Token.NoToken));
-          Contract.Assert(unifiedExit != null);
-          foreach (Block b in impl.Blocks)
-          {
-            if (b.TransferCmd is ReturnCmd returnCmd)
-            {
-              List<String> labels = new List<String>();
-              labels.Add(unifiedExitLabel);
-              List<Block> bs = new List<Block>();
-              bs.Add(unifiedExit);
-              GotoCmd go = new GotoCmd(returnCmd.tok, labels, bs);
-              gotoCmdOrigins[go] = returnCmd;
-              b.TransferCmd = go;
-              unifiedExit.Predecessors.Add(b);
-            }
-          }
-
-          exitBlock = unifiedExit;
-          impl.Blocks.Add(unifiedExit);
-        }
-
-        Contract.Assert(exitBlock != null);
-      }
-      return exitBlock;
-
-      #endregion
-    }
-
-    public static void ResetPredecessors(List<Block> blocks)
+    public static void ResetPredecessors(IList<Block> blocks)
     {
       Contract.Requires(blocks != null);
       foreach (Block b in blocks)
@@ -596,7 +472,7 @@ namespace VC
 
     protected Variable CreateIncarnation(Variable x, Absy a)
     {
-      Contract.Requires(this.variable2SequenceNumber != null);
+      Contract.Requires(this.Variable2SequenceNumber != null);
       Contract.Requires(this.CurrentLocalVariables != null);
       Contract.Requires(a is Block || a is AssignCmd || a is HavocCmd);
 
@@ -604,13 +480,13 @@ namespace VC
       Contract.Ensures(Contract.Result<Variable>() != null);
 
       int currentIncarnationNumber =
-        variable2SequenceNumber.ContainsKey(x)
-          ? variable2SequenceNumber[x]
+        Variable2SequenceNumber.ContainsKey(x)
+          ? Variable2SequenceNumber[x]
           : -1;
       Variable v = new Incarnation(x, currentIncarnationNumber + 1);
-      variable2SequenceNumber[x] = currentIncarnationNumber + 1;
+      Variable2SequenceNumber[x] = currentIncarnationNumber + 1;
       CurrentLocalVariables.Add(v);
-      incarnationOriginMap.Add((Incarnation) v, a);
+      IncarnationOriginMap.Add((Incarnation) v, a);
       return v;
     }
 
@@ -810,7 +686,7 @@ namespace VC
 
       var start = DateTime.UtcNow;
 
-      Dictionary<Variable, Expr> r = ConvertBlocks2PassiveCmd(run.OutputWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo, implementation.debugInfos);
+      var r = ConvertBlocks2PassiveCmd(run.OutputWriter, implementation.Blocks, implementation.Proc.Modifies, mvInfo, implementation.debugInfos);
 
       var end = DateTime.UtcNow;
 
@@ -846,7 +722,7 @@ namespace VC
       return r;
     }
 
-    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(TextWriter traceWriter, List<Block> blocks, List<IdentifierExpr> modifies,
+    protected Dictionary<Variable, Expr> ConvertBlocks2PassiveCmd(TextWriter traceWriter, IList<Block> blocks, List<IdentifierExpr> modifies,
       ModelViewInfo mvInfo, Dictionary<Cmd, List<object>> debugInfos)
     {
       Contract.Requires(blocks != null);
@@ -888,7 +764,7 @@ namespace VC
         Dictionary<Variable, Expr> incarnationMap = ComputeIncarnationMap(b, block2Incarnation);
 
         // b.liveVarsBefore has served its purpose in the just-finished call to ComputeIncarnationMap; null it out.
-        b.liveVarsBefore = null;
+        b.LiveVarsBefore = null;
 
         // Decrement the succCount field in each predecessor. Once the field reaches zero in any block,
         // all its successors have been passified.  Consequently, its entry in block2Incarnation can be removed.
@@ -897,7 +773,7 @@ namespace VC
         variableCollectors[b] = mvc;
         foreach (Block p in b.Predecessors)
         {
-          p.succCount--;
+          p.SuccCount--;
           if (p.Checksum != null)
           {
             // Compute the checksum based on the checksums of the predecessor. The order should not matter.
@@ -905,7 +781,7 @@ namespace VC
           }
 
           mvc.AddUsedVariables(variableCollectors[p].UsedVariables);
-          if (p.succCount == 0)
+          if (p.SuccCount == 0)
           {
             block2Incarnation.Remove(p);
           }
@@ -916,12 +792,12 @@ namespace VC
         GotoCmd gotoCmd = b.TransferCmd as GotoCmd;
         if (gotoCmd == null)
         {
-          b.succCount = 0;
+          b.SuccCount = 0;
         }
         else
         {
           // incarnationMap needs to be added only if there is some successor of b
-          b.succCount = gotoCmd.labelNames.Count;
+          b.SuccCount = gotoCmd.LabelNames.Count;
           block2Incarnation.Add(b, incarnationMap);
         }
 
@@ -1003,16 +879,8 @@ namespace VC
           {
             foreach (var param in current.Params)
             {
-              if (param is IdentifierExpr identifierExpr)
-              {
-                if (incarnationMap.ContainsKey(identifierExpr.Decl))
-                {
-                  debugExprs.Add(incarnationMap[identifierExpr.Decl]);
-                }
-                else
-                {
-                  debugExprs.Add(identifierExpr);
-                }
+              if (param is IdentifierExpr identifierExpr) {
+                debugExprs.Add(incarnationMap.GetValueOrDefault(identifierExpr.Decl, identifierExpr));
               }
               else
               {
@@ -1169,7 +1037,7 @@ namespace VC
           }
         }
         else if (pc is AssumeCmd
-                 && QKeyValue.FindBoolAttribute(pc.Attributes, "precondition_previous_snapshot")
+                 && pc.Attributes.FindBoolAttribute("precondition_previous_snapshot")
                  && pc.SugaredCmdChecksum != null)
         {
           if (!relevantDoomedAssumpVars.Any()
@@ -1194,7 +1062,7 @@ namespace VC
             dropCmd = true;
           }
         }
-        else if (pc is AssumeCmd && QKeyValue.FindBoolAttribute(pc.Attributes, "assumption_variable_initialization"))
+        else if (pc is AssumeCmd && pc.Attributes.FindBoolAttribute("assumption_variable_initialization"))
         {
           var identExpr = pc.Expr as IdentifierExpr;
           if (identExpr != null && identExpr.Decl != null && !incarnationMap.ContainsKey(identExpr.Decl))
@@ -1342,7 +1210,7 @@ namespace VC
         {
           var identExpr = assign.Lhss[0].AsExpr as IdentifierExpr;
           if (identExpr != null && identExpr.Decl != null &&
-              QKeyValue.FindBoolAttribute(identExpr.Decl.Attributes, "assumption") &&
+              identExpr.Decl.Attributes.FindBoolAttribute("assumption") &&
               incarnationMap.TryGetValue(identExpr.Decl, out var incarnation))
           {
             TraceCachingAction(traceWriter, assign, CachingAction.AssumeNegationOfAssumptionVariable);
@@ -1370,7 +1238,7 @@ namespace VC
         // invariant) in the previous snapshot and, consequently, the corresponding assumption did not affect the
         // anything after the loop. We can achieve this by simply not updating/adding it in the incarnation map.
         List<IdentifierExpr> havocVars = hc.Vars.Where(v =>
-            !(QKeyValue.FindBoolAttribute(v.Decl.Attributes, "assumption") && v.Decl.Name.StartsWith("a##cached##")))
+            !(v.Decl.Attributes.FindBoolAttribute("assumption") && v.Decl.Name.StartsWith("a##cached##")))
           .ToList();
         // First, compute the new incarnations
         foreach (IdentifierExpr ie in havocVars)
@@ -1405,7 +1273,7 @@ namespace VC
         // assume v_post ==> v_pre;
         foreach (IdentifierExpr ie in havocVars)
         {
-          if (QKeyValue.FindBoolAttribute(ie.Decl.Attributes, "assumption"))
+          if (ie.Decl.Attributes.FindBoolAttribute("assumption"))
           {
             var preInc = (Expr) (preHavocIncarnationMap[ie.Decl].Clone());
             var postInc = (Expr) (incarnationMap[ie.Decl].Clone());
@@ -1504,7 +1372,7 @@ namespace VC
     /// Creates a new block to add to impl.Blocks, where impl is the implementation that contains
     /// succ.  Caller must do the add to impl.Blocks.
     /// </summary>
-    protected Block CreateBlockBetween(int predIndex, Block succ)
+    public Block CreateBlockBetween(int predIndex, Block succ)
     {
       Contract.Requires(0 <= predIndex && predIndex < succ.Predecessors.Count);
 
@@ -1523,7 +1391,7 @@ namespace VC
       bs.Add(succ);
 
       Block newBlock = new Block(
-        new Token(-17, -4),
+        Token.NoToken,
         newBlockLabel,
         new List<Cmd>(),
         new GotoCmd(Token.NoToken, ls, bs)
@@ -1539,14 +1407,14 @@ namespace VC
       #region Change the edge "pred->succ" to "pred->newBlock"
 
       GotoCmd gtc = (GotoCmd) cce.NonNull(pred.TransferCmd);
-      Contract.Assume(gtc.labelTargets != null);
-      Contract.Assume(gtc.labelNames != null);
-      for (int i = 0, n = gtc.labelTargets.Count; i < n; i++)
+      Contract.Assume(gtc.LabelTargets != null);
+      Contract.Assume(gtc.LabelNames != null);
+      for (int i = 0, n = gtc.LabelTargets.Count; i < n; i++)
       {
-        if (gtc.labelTargets[i] == succ)
+        if (gtc.LabelTargets[i] == succ)
         {
-          gtc.labelTargets[i] = newBlock;
-          gtc.labelNames[i] = newBlockLabel;
+          gtc.LabelTargets[i] = newBlock;
+          gtc.LabelNames[i] = newBlockLabel;
           break;
         }
       }
@@ -1559,7 +1427,7 @@ namespace VC
       return newBlock;
     }
 
-    protected void AddBlocksBetween(List<Block> blocks)
+    protected void AddBlocksBetween(IList<Block> blocks)
     {
       Contract.Requires(blocks != null);
 
@@ -1575,7 +1443,7 @@ namespace VC
           for (int i = 0; i < nPreds; i++)
           {
             GotoCmd gotocmd = (GotoCmd) (cce.NonNull(b.Predecessors[i]).TransferCmd);
-            if (gotocmd.labelNames != null && gotocmd.labelNames.Count > 1)
+            if (gotocmd.LabelNames != null && gotocmd.LabelNames.Count > 1)
             {
               tweens.Add(CreateBlockBetween(i, b));
             }
@@ -1583,7 +1451,9 @@ namespace VC
         }
       }
 
-      blocks.AddRange(tweens); // must wait until iteration is done before changing the list
+      foreach (var tween in tweens) {
+        blocks.Add(tween); // must wait until iteration is done before changing the list
+      }
 
       #endregion
     }

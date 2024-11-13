@@ -10,6 +10,8 @@ namespace Microsoft.Boogie
   public interface CoreOptions : PrintOptions {
     public TextWriter OutputWriter { get; }
 
+    bool UseBaseNameForFileName { get; }
+    
     public enum TypeEncoding
     {
       Predicates,

@@ -191,7 +191,7 @@ namespace Microsoft.Boogie
         }
         else if (cmd is CallCmd callCmd)
         {
-          var isPrimitive = LinearRewriter.IsPrimitive(callCmd.Proc);
+          var isPrimitive = CivlPrimitives.IsPrimitive(callCmd.Proc);
           if (!isPrimitive)
           {
             linearGlobalVariables.Except(start).ForEach(g =>
@@ -338,7 +338,7 @@ namespace Microsoft.Boogie
 
     public override Implementation VisitImplementation(Implementation node)
     {
-      if (LinearRewriter.IsPrimitive(node))
+      if (CivlPrimitives.IsPrimitive(node))
       {
         return node;
       }
@@ -380,7 +380,7 @@ namespace Microsoft.Boogie
         HashSet<Variable> end = PropagateAvailableLinearVarsAcrossBlock(b);
         if (b.TransferCmd is GotoCmd gotoCmd)
         {
-          foreach (Block target in gotoCmd.labelTargets)
+          foreach (Block target in gotoCmd.LabelTargets)
           {
             if (!availableLinearVars.ContainsKey(target))
             {
@@ -462,6 +462,10 @@ namespace Microsoft.Boogie
           {
             Error(rhs, $"linear variable {rhs.Decl.Name} can occur at most once as the source of an assignment");
           }
+          else if (InvalidAssignmentWithKeyCollection(lhs.DeepAssignedVariable, rhs.Decl))
+          {
+            Error(rhs, $"Mismatch in key collection between source and target");
+          }
           else
           {
             rhsVars.Add(rhs.Decl);
@@ -486,6 +490,10 @@ namespace Microsoft.Boogie
             {
               Error(arg, $"linear variable {ie.Decl.Name} can occur at most once as the source of an assignment");
             }
+            else if (InvalidAssignmentWithKeyCollection(field, ie.Decl))
+            {
+              Error(arg, $"Mismatch in key collection between source and target");
+            }
             else
             {
               rhsVars.Add(ie.Decl);
@@ -507,9 +515,14 @@ namespace Microsoft.Boogie
           continue;
         }
         isLinearUnpack = true;
-        if (FindLinearKind(node.Constructor.InParams[j]) == LinearKind.ORDINARY)
+        var field = node.Constructor.InParams[j];
+        if (FindLinearKind(field) == LinearKind.ORDINARY)
         {
-          Error(unpackedLhs[j], $"source of unpack must be linear field: {node.Constructor.InParams[j]}");
+          Error(unpackedLhs[j], $"source of unpack must be linear field: {field}");
+        }
+        else if (InvalidAssignmentWithKeyCollection(unpackedLhs[j].Decl, field))
+        {
+          Error(unpackedLhs[j], $"Mismatch in key collection between source and target");
         }
       }
       if (isLinearUnpack)
@@ -525,7 +538,7 @@ namespace Microsoft.Boogie
     
     public override Cmd VisitCallCmd(CallCmd node)
     {
-      var isPrimitive = LinearRewriter.IsPrimitive(node.Proc);
+      var isPrimitive = CivlPrimitives.IsPrimitive(node.Proc);
       var inVars = new HashSet<Variable>();
       var globalInVars = new HashSet<Variable>();
       for (int i = 0; i < node.Proc.InParams.Count; i++)
@@ -568,6 +581,11 @@ namespace Microsoft.Boogie
           Error(node, $"linear variable {actual.Decl.Name} can occur only once as an input parameter");
           continue;
         }
+        if (!isPrimitive && InvalidAssignmentWithKeyCollection(formal, actual.Decl))
+        {
+          Error(node, $"Mismatch in key collection between source and target");
+          continue;
+        }
         inVars.Add(actual.Decl);
         if (actual.Decl is GlobalVariable && actualKind == LinearKind.LINEAR_IN)
         {
@@ -590,6 +608,11 @@ namespace Microsoft.Boogie
           Error(node, $"only linear parameter can be assigned to a linear variable: {formal}");
           continue;
         }
+        if (!isPrimitive && InvalidAssignmentWithKeyCollection(actual.Decl, formal))
+        {
+          Error(node, $"Mismatch in key collection between source and target");
+          continue;
+        }
       }
 
       var globalOutVars = node.Outs.Select(ie => ie.Decl).ToHashSet();
@@ -597,6 +620,8 @@ namespace Microsoft.Boogie
       {
         Error(node, $"global variable passed as input to pure call but not received as output: {v}");
       });
+
+      var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(node.Proc);
 
       if (isPrimitive)
       {
@@ -612,17 +637,52 @@ namespace Microsoft.Boogie
             Error(node, $"primitive assigns to input variable that is also an output variable: {modifiedArgument}");
           }
           else if (modifiedArgument is GlobalVariable &&
-                   enclosingProc is not YieldProcedureDecl &&
-                   enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
+                    enclosingProc is not YieldProcedureDecl &&
+                    enclosingProc.Modifies.All(v => v.Decl != modifiedArgument))
           {
             var str = enclosingProc is ActionDecl ? "action's" : "procedure's";
             Error(node,
               $"primitive assigns to a global variable that is not in the enclosing {str} modifies clause: {modifiedArgument}");
           }
+
+          if (originalProc.Name == "Map_Split")
+          {
+            if (InvalidAssignmentWithKeyCollection(node.Outs[0].Decl, modifiedArgument))
+            {
+              Error(node.Outs[0], $"Mismatch in key collection between source and target");
+            }
+          }
+          else if (originalProc.Name == "Map_Join")
+          {
+            if (node.Ins[1] is IdentifierExpr ie && InvalidAssignmentWithKeyCollection(modifiedArgument, ie.Decl))
+            {
+              Error(node.Ins[1], $"Mismatch in key collection between source and target");
+            }
+          }
+          else if (originalProc.Name == "Map_Get" || originalProc.Name == "Map_Put")
+          {
+            if (!AreKeysCollected(modifiedArgument))
+            {
+              Error(node, $"Keys must be collected");
+            }
+          }
+          else if (originalProc.Name == "Map_GetValue" || originalProc.Name == "Map_PutValue")
+          {
+            if (AreKeysCollected(modifiedArgument))
+            {
+              Error(node, $"Keys must not be collected");
+            }
+          }
+        }
+        else if (originalProc.Name == "Map_Unpack")
+        {
+          if (node.Ins[0] is IdentifierExpr ie && !AreKeysCollected(ie.Decl))
+          {
+            Error(node.Ins[0], $"Mismatch in key collection between source and target");
+          }
         }
       }
 
-      var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(node.Proc);
       if (originalProc.Name == "create_multi_asyncs" || originalProc.Name == "create_asyncs")
       {
         var actionDecl = GetActionDeclFromCreateAsyncs(node);
@@ -692,7 +752,7 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitParCallCmd(ParCallCmd node)
     {
-      if (node.CallCmds.Any(callCmd => LinearRewriter.IsPrimitive(callCmd.Proc)))
+      if (node.CallCmds.Any(callCmd => CivlPrimitives.IsPrimitive(callCmd.Proc)))
       {
         Error(node, "linear primitives may not be invoked in a parallel call");
         return node;
@@ -749,10 +809,29 @@ namespace Microsoft.Boogie
       return node;
     }
 
+    private bool AreKeysCollected(Variable v)
+    {
+      var attr = QKeyValue.FindAttribute(v.Attributes, x => x.Key == "linear");
+      var attrParams = attr == null ? new List<object>() : attr.Params;
+      foreach (var param in attrParams)
+      {
+        if (param is string s && s == "no_collect_keys")
+        {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    private bool InvalidAssignmentWithKeyCollection(Variable target, Variable source)
+    {
+      return AreKeysCollected(target) && !AreKeysCollected(source);
+    }
+
     private void CheckLinearStoreAccessInGuards()
     {
       program.Implementations.ForEach(impl => {
-        if (LinearRewriter.IsPrimitive(impl))
+        if (CivlPrimitives.IsPrimitive(impl))
         {
           return;
         }
@@ -773,14 +852,14 @@ namespace Microsoft.Boogie
                   {
                     checkingContext.Error(ifCmd.tok, "access to linear store not allowed");
                   }
-                  stmtLists.Push(ifCmd.thn);
-                  if (ifCmd.elseIf != null)
+                  stmtLists.Push(ifCmd.Thn);
+                  if (ifCmd.ElseIf != null)
                   {
-                    ProcessIfCmd(ifCmd.elseIf);
+                    ProcessIfCmd(ifCmd.ElseIf);
                   }
-                  else if (ifCmd.elseBlock != null)
+                  else if (ifCmd.ElseBlock != null)
                   {
-                    stmtLists.Push(ifCmd.elseBlock);
+                    stmtLists.Push(ifCmd.ElseBlock);
                   }
                 }
                 ProcessIfCmd(ifCmd);
@@ -871,7 +950,7 @@ namespace Microsoft.Boogie
       {
         var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
         var typeName = originalTypeCtorDecl.Name;
-        if (typeName == "Map" || typeName == "Set" || typeName == "Cell" | typeName == "One")
+        if (typeName == "Map" || typeName == "Set" || typeName == "One")
         {
           var actualTypeParams = program.monomorphizer.GetTypeInstantiation(datatypeTypeCtorDecl);
           return actualTypeParams[0];
@@ -975,6 +1054,7 @@ namespace Microsoft.Boogie
     {
       return scope.Where(v => 
         FindLinearKind(v) != LinearKind.ORDINARY &&
+        AreKeysCollected(v) &&
         collectors.ContainsKey(v.TypedIdent.Type) &&
         collectors[v.TypedIdent.Type].ContainsKey(domain.permissionType));
     }
@@ -1077,7 +1157,7 @@ namespace Microsoft.Boogie
         return;
       }
       var typeCtorDeclName = Monomorphizer.GetOriginalDecl(ctorType.Decl).Name;
-      if (typeCtorDeclName == "Map" || typeCtorDeclName == "Cell")
+      if (typeCtorDeclName == "Map")
       {
         hasLinearStoreAccess = true;
       }

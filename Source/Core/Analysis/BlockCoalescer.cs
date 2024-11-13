@@ -43,12 +43,12 @@ public class BlockCoalescer : ReadOnlyVisitor
 
       Contract.Assert(block.TransferCmd is GotoCmd);
       var gotoCmd = (GotoCmd) block.TransferCmd;
-      if (gotoCmd.labelTargets == null)
+      if (gotoCmd.LabelTargets == null)
       {
         continue;
       }
 
-      foreach (var /*!*/ succ in gotoCmd.labelTargets)
+      foreach (var /*!*/ succ in gotoCmd.LabelTargets)
       {
         Contract.Assert(succ != null);
         dfsStack.Push(succ);
@@ -70,16 +70,22 @@ public class BlockCoalescer : ReadOnlyVisitor
       }
 
       var gotoCmd = (GotoCmd)block.TransferCmd;
-      gotoCmd.labelNames = new List<string>();
-      foreach (var successor in gotoCmd.labelTargets)
+      gotoCmd.LabelNames = new List<string>();
+      foreach (var successor in gotoCmd.LabelTargets)
       {
-        gotoCmd.labelNames.Add(successor.Label);
+        gotoCmd.LabelNames.Add(successor.Label);
       }
     }
     return impl;
   }
 
-  public static List<Block> CoalesceFromRootBlock(List<Block> blocks)
+  public static void CoalesceInPlace(IList<Block> blocks) {
+    var coalesced = CoalesceFromRootBlock(blocks);
+    blocks.Clear();
+    blocks.AddRange(coalesced);
+  }
+  
+  public static IList<Block> CoalesceFromRootBlock(IList<Block> blocks)
   {
     if (!blocks.Any())
     {
@@ -112,14 +118,14 @@ public class BlockCoalescer : ReadOnlyVisitor
 
       Contract.Assert(block.TransferCmd is GotoCmd);
       var gotoCmd = (GotoCmd) block.TransferCmd;
-      if (gotoCmd.labelTargets == null)
+      if (gotoCmd.LabelTargets == null)
       {
         continue;
       }
 
-      if (gotoCmd.labelTargets.Count != 1)
+      if (gotoCmd.LabelTargets.Count != 1)
       {
-        foreach (var aSuccessor in gotoCmd.labelTargets)
+        foreach (var aSuccessor in gotoCmd.LabelTargets)
         {
           Contract.Assert(aSuccessor != null);
           toVisit.Push(aSuccessor);
@@ -127,15 +133,24 @@ public class BlockCoalescer : ReadOnlyVisitor
         continue;
       }
 
-      var successor = cce.NonNull(gotoCmd.labelTargets[0]);
+      var successor = cce.NonNull(gotoCmd.LabelTargets[0]);
       if (multiPredecessorBlocks.Contains(successor))
       {
         toVisit.Push(successor);
         continue;
       }
 
-      block.Cmds.AddRange(successor.Cmds);
+      // Previously this was block.Cmds.AddRange,
+      // command lists are reused between blocks
+      // so that was buggy. Maybe Block.Cmds should be made immutable
+      block.Cmds = block.Cmds.Concat(successor.Cmds).ToList();
+      var originalTransferToken = block.TransferCmd.tok;
       block.TransferCmd = successor.TransferCmd;
+      if (!block.TransferCmd.tok.IsValid) {
+        block.TransferCmd = (TransferCmd)block.TransferCmd.Clone();
+        block.TransferCmd.tok = originalTransferToken;
+      }
+      
       if (!block.tok.IsValid && successor.tok.IsValid)
       {
         block.tok = successor.tok;

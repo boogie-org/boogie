@@ -649,7 +649,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          var newAxiom = new Axiom(axiom.tok, expr);
+          var newAxiom = new Axiom(axiom.tok, expr, axiom.Comment, axiom.Attributes);
           if (monomorphizationVisitor.originalAxiomToSplitAxioms.ContainsKey(axiom)) {
             monomorphizationVisitor.originalAxiomToSplitAxioms[axiom].Add(newAxiom);
           }
@@ -1723,8 +1723,8 @@ namespace Microsoft.Boogie
         {
           if (block.TransferCmd is GotoCmd gotoCmd)
           {
-            gotoCmd.labelTargets = gotoCmd.labelTargets.Select(target => blockMapping[target]).ToList();
-            gotoCmd.labelNames = new List<string>(gotoCmd.labelNames);
+            gotoCmd.LabelTargets = gotoCmd.LabelTargets.Select(target => blockMapping[target]).ToList();
+            gotoCmd.LabelNames = new List<string>(gotoCmd.LabelNames);
           }
         });
         var instantiatedImpl = new Implementation(impl.tok, MkInstanceName(impl.Name, actualTypeParams),

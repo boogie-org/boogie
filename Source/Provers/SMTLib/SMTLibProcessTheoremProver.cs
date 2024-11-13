@@ -453,7 +453,7 @@ namespace Microsoft.Boogie.SMTLib
     protected void SendVCId(string descriptiveName)
     {
       if (this.libOptions.EmitDebugInformation) {
-        SendThisVC("(set-info :boogie-vc-id " + SmtLibNameUtils.QuoteId(descriptiveName) + ")");
+        SendThisVC("(set-info :boogie-vc-id " + SMTLibNameUtils.QuoteId(descriptiveName) + ")");
       }
     }
 

@@ -1,0 +1,187 @@
+implementation IsolateReturn/remainingAssertions(x: int, y: int) returns (r: int)
+{
+
+  anon0:
+    goto anon6_Then, anon6_Else;
+
+  anon6_Then:
+    assume {:partition} x > 0;
+    assume r#AT#0 == 0 + 1;
+    assume r#AT#2 == r#AT#0;
+    goto anon7_Else;
+
+  anon6_Else:
+    assume {:partition} 0 >= x;
+    assume r#AT#1 == 0 + 2;
+    assume r#AT#2 == r#AT#1;
+    goto anon7_Else;
+
+  anon7_Else:
+    assume {:partition} 0 >= y;
+    assume r#AT#4 == r#AT#2 + 4;
+    assume r#AT#5 == r#AT#4;
+    assert r#AT#5 > 4;
+    return;
+}
+
+
+implementation IsolateReturn/return@16(x: int, y: int) returns (r: int)
+{
+
+  anon0:
+    goto anon6_Then, anon6_Else;
+
+  anon6_Then:
+    assume {:partition} x > 0;
+    assume r#AT#0 == 0 + 1;
+    assume r#AT#2 == r#AT#0;
+    goto anon7_Then;
+
+  anon6_Else:
+    assume {:partition} 0 >= x;
+    assume r#AT#1 == 0 + 2;
+    assume r#AT#2 == r#AT#1;
+    goto anon7_Then;
+
+  anon7_Then:
+    assume {:partition} y > 0;
+    assume r#AT#3 == r#AT#2 + 3;
+    assume r#AT#5 == r#AT#3;
+    assert r#AT#5 > 4;
+    return;
+}
+
+
+isolateJump.bpl(16,21): Error: a postcondition could not be proved on this return path
+isolateJump.bpl(5,3): Related location: this is the postcondition that could not be proved
+implementation IsolateReturnPaths/remainingAssertions(x: int, y: int) returns (r: int)
+{
+
+  anon0:
+    goto anon10_Then, anon10_Else;
+
+  anon10_Then:
+    assume {:partition} x > 0;
+    assume r#AT#0 == 0 + 1;
+    goto anon12_Then, anon12_Else;
+
+  anon10_Else:
+    assume {:partition} 0 >= x;
+    goto anon11_Then, anon11_Else;
+
+  anon11_Then:
+    assume {:partition} x > 1;
+    assume r#AT#1 == 0 + 2;
+    goto anon12_Then, anon12_Else;
+
+  anon11_Else:
+    assume {:partition} 1 >= x;
+    assume r#AT#2 == 0 + 3;
+    goto anon12_Then, anon12_Else;
+
+  anon12_Then:
+    assume {:partition} x + y > 0;
+    assume r#AT#3 == 0;
+    goto anon7;
+
+  anon12_Else:
+    assume {:partition} 0 >= x + y;
+    assume r#AT#3 == 0;
+    goto anon7;
+
+  anon7:
+    assume {:partition} 0 >= y;
+    assume r#AT#5 == r#AT#3 + 6;
+    assume r#AT#6 == r#AT#5;
+    assert r#AT#6 > 4;
+    return;
+}
+
+
+implementation IsolateReturnPaths/return@44/path[27](x: int, y: int) returns (r: int)
+{
+
+  anon0:
+    assume {:partition} x > 0;
+    assume r#AT#0 == 0 + 1;
+    goto anon12_Then, anon12_Else;
+
+  anon12_Then:
+    assume {:partition} x + y > 0;
+    assume r#AT#3 == 0;
+    goto anon7;
+
+  anon12_Else:
+    assume {:partition} 0 >= x + y;
+    assume r#AT#3 == 0;
+    goto anon7;
+
+  anon7:
+    assume {:partition} y > 0;
+    assume r#AT#4 == r#AT#3 + 3;
+    assume r#AT#6 == r#AT#4;
+    assert r#AT#6 > 4;
+    return;
+}
+
+
+implementation IsolateReturnPaths/return@44/path[29,30](x: int, y: int) returns (r: int)
+{
+
+  anon0:
+    assume {:partition} 0 >= x;
+    assume {:partition} x > 1;
+    assume r#AT#1 == 0 + 2;
+    goto anon12_Then, anon12_Else;
+
+  anon12_Then:
+    assume {:partition} x + y > 0;
+    assume r#AT#3 == 0;
+    goto anon7;
+
+  anon12_Else:
+    assume {:partition} 0 >= x + y;
+    assume r#AT#3 == 0;
+    goto anon7;
+
+  anon7:
+    assume {:partition} y > 0;
+    assume r#AT#4 == r#AT#3 + 3;
+    assume r#AT#6 == r#AT#4;
+    assert r#AT#6 > 4;
+    return;
+}
+
+
+implementation IsolateReturnPaths/return@44/path[29,33](x: int, y: int) returns (r: int)
+{
+
+  anon0:
+    assume {:partition} 0 >= x;
+    assume {:partition} 1 >= x;
+    assume r#AT#2 == 0 + 3;
+    goto anon12_Then, anon12_Else;
+
+  anon12_Then:
+    assume {:partition} x + y > 0;
+    assume r#AT#3 == 0;
+    goto anon7;
+
+  anon12_Else:
+    assume {:partition} 0 >= x + y;
+    assume r#AT#3 == 0;
+    goto anon7;
+
+  anon7:
+    assume {:partition} y > 0;
+    assume r#AT#4 == r#AT#3 + 3;
+    assume r#AT#6 == r#AT#4;
+    assert r#AT#6 > 4;
+    return;
+}
+
+
+isolateJump.bpl(44,29): Error: a postcondition could not be proved on this return path
+isolateJump.bpl(23,3): Related location: this is the postcondition that could not be proved
+
+Boogie program verifier finished with 0 verified, 3 errors

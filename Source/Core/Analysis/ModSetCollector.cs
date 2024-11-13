@@ -25,6 +25,17 @@ public class ModSetCollector : ReadOnlyVisitor
 
   private bool moreProcessingRequired;
 
+  public void DoModSetAnalysis(Implementation impl)
+  {
+    this.VisitImplementation(impl);
+    var proc = impl.Proc;
+    proc.Modifies = new List<IdentifierExpr>();
+    foreach (Variable v in modSets[proc])
+    {
+      proc.Modifies.Add(new IdentifierExpr(v.tok, v));
+    }
+  }
+
   public void DoModSetAnalysis(Program program)
   {
     Contract.Requires(program != null);
@@ -180,6 +191,15 @@ public class ModSetCollector : ReadOnlyVisitor
       foreach (Variable var in modSets[callee])
       {
         ProcessVariable(var);
+      }
+    }
+
+    if (CivlPrimitives.IsPrimitive(callCmd.Proc))
+    {
+      var modifiedArgument = CivlPrimitives.ModifiedArgument(callCmd)?.Decl;
+      if (modifiedArgument != null)
+      {
+        ProcessVariable(modifiedArgument);
       }
     }
 

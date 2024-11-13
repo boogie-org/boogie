@@ -217,7 +217,7 @@ namespace Microsoft.Boogie
       graph.TopologicalSort().ForEach(block =>
       {
         var modifiedGlobals = block.TransferCmd is GotoCmd gotoCmd &&
-                              gotoCmd.labelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
+                              gotoCmd.LabelTargets.Any(x => blocksLeadingToModifiedGlobals.Contains(x));
         for (int i = block.Cmds.Count - 1; 0 <= i; i--)
         {
           var cmd = block.Cmds[i];
@@ -229,8 +229,7 @@ namespace Microsoft.Boogie
               Error(callCmd, "unable to eliminate pending async since a global is modified subsequently");
             }
           }
-          var assignedVariables = new List<Variable>();
-          cmd.AddAssignedVariables(assignedVariables);
+          var assignedVariables = cmd.GetAssignedVariables().ToList();
           if (assignedVariables.OfType<GlobalVariable>().Any())
           {
             modifiedGlobals = true;
@@ -299,8 +298,8 @@ namespace Microsoft.Boogie
     {
       var primitiveImpls = program.TopLevelDeclarations.OfType<Implementation>().Where(impl =>
       {
-        var originalDecl = impl.Proc.OriginalDeclWithFormals;
-        return originalDecl != null && CivlPrimitives.LinearPrimitives.Contains(originalDecl.Name);
+        var originalDecl = Monomorphizer.GetOriginalDecl(impl);
+        return CivlPrimitives.LinearPrimitives.Contains(originalDecl.Name);
       });
       primitiveImpls.ForEach(impl => {
         impl.OriginalBlocks = impl.Blocks;

@@ -116,8 +116,8 @@ public class ImplementationControlFlowGraph
       {
         GotoCmd gc = b.TransferCmd as GotoCmd;
         Contract.Assert(gc != null);
-        Contract.Assert(gc.labelTargets != null);
-        foreach (Block /*!*/ t in gc.labelTargets)
+        Contract.Assert(gc.LabelTargets != null);
+        foreach (Block /*!*/ t in gc.LabelTargets)
         {
           Contract.Assert(t != null);
           addEdge(b, t);

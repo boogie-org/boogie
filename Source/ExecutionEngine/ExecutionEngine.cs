@@ -45,14 +45,14 @@ namespace Microsoft.Boogie
       return -1;
     }
 
-    public readonly VerificationResultCache Cache;
+    public readonly IVerificationResultCache Cache;
 
     static readonly CacheItemPolicy policy = new CacheItemPolicy
       { SlidingExpiration = new TimeSpan(0, 10, 0), Priority = CacheItemPriority.Default };
 
     public const int StackSize = 16 * 1024 * 1024;
 
-    public ExecutionEngine(ExecutionEngineOptions options, VerificationResultCache cache, TaskScheduler scheduler, bool disposeScheduler = false) {
+    public ExecutionEngine(ExecutionEngineOptions options, IVerificationResultCache cache, TaskScheduler scheduler, bool disposeScheduler = false) {
       Options = options;
       Cache = cache;
       CheckerPool = new CheckerPool(options);
@@ -436,7 +436,7 @@ namespace Microsoft.Boogie
         Options.OutputWriter.WriteLine("Datatypes only supported with monomorphic encoding");
         return PipelineOutcome.FatalError;
       }
-      else if (program.TopLevelDeclarations.OfType<Function>().Any(f => QKeyValue.FindBoolAttribute(f.Attributes, "define")))
+      else if (program.TopLevelDeclarations.OfType<Function>().Any(f => f.Attributes.FindBoolAttribute("define")))
       {
         Options.OutputWriter.WriteLine("Functions with :define attribute only supported with monomorphic encoding");
         return PipelineOutcome.FatalError;
@@ -736,16 +736,15 @@ namespace Microsoft.Boogie
       {
         var writer = TextWriter.Null;
         var vcGenerator = new VerificationConditionGenerator(processedProgram.Program, CheckerPool);
-
         
         var run = new ImplementationRun(implementation, writer);
         var collector = new VerificationResultCollector(Options);
         vcGenerator.PrepareImplementation(run, collector, out _,
-          out var gotoCmdOrigins,
           out var modelViewInfo);
 
         ConditionGeneration.ResetPredecessors(run.Implementation.Blocks);
-        var splits = ManualSplitFinder.FocusAndSplit(program, Options, run, gotoCmdOrigins, vcGenerator).ToList();
+        var splits = ManualSplitFinder.GetParts(Options, run,  
+          (token, blocks) => new ManualSplit(Options, () => blocks, vcGenerator, run, token)).ToList();
         for (var index = 0; index < splits.Count; index++) {
           var split = splits[index];
           split.SplitIndex = index;
@@ -1310,6 +1309,8 @@ namespace Microsoft.Boogie
         return;
       }
 
+      // When an assertion fails on multiple paths, only show an error for one of them.
+      errors = errors.DistinctBy(e => e.FailingAssert).ToList();
       errors.Sort(new CounterexampleComparer());
       foreach (Counterexample error in errors)
       {

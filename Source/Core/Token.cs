@@ -9,6 +9,10 @@ namespace Microsoft.Boogie
   [Immutable]
   public interface IToken : IComparable<IToken>
   {
+    /// <summary>
+    /// True if this token was created during parsing
+    /// </summary>
+    bool IsSourceToken { get; }
     int kind { get; set; } // token kind
     string filename { get; set; } // token file
     int pos { get; set; } // token position in the source text (starting at 0)
@@ -33,8 +37,7 @@ namespace Microsoft.Boogie
 
     public Token next; // ML 2005-03-11 Tokens are kept in linked list
 
-    public static readonly IToken /*!*/
-      NoToken = new Token();
+    public static readonly IToken /*!*/ NoToken = new Token();
 
     public Token()
     {
@@ -48,6 +51,8 @@ namespace Microsoft.Boogie
       this._col = colnum;
       this._val = "anything so that it is nonnull";
     }
+
+    public bool IsSourceToken => true;
 
     public int kind
     {

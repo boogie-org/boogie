@@ -17,7 +17,7 @@ public class RandomSeedTest
   axiom N <= 3;
 
   procedure nEquals3()
-  ensures true;
+  ensures 1 == 1;
   {
   }";
 
@@ -74,6 +74,6 @@ public class RandomSeedTest
     options.RandomSeed = randomSeed;
     options.NormalizeNames = false;
     var randomOptionsLogs = await GetProverLogs.GetProverLogForProgram(options, program);
-    Assert.IsTrue(randomOptionsLogs.Contains("random2084218992"));
+    Assert.IsTrue(randomOptionsLogs.Contains("random506996257"));
   }
 }

@@ -1,0 +1,49 @@
+implementation IsolateContinue/remainingAssertions(x: int) returns (r: int)
+{
+
+  anon0:
+    assume x >= 10;
+    assert 0 >= 10 - x;
+    assume r#AT#0 >= 10 - i#AT#0;
+    goto anon4_LoopDone, anon4_LoopBody;
+
+  anon4_LoopDone:
+    assume {:partition} 0 >= i#AT#0;
+    assume r#AT#4 == r#AT#0;
+    assert r#AT#4 >= 10;
+    return;
+
+  anon4_LoopBody:
+    assume {:partition} i#AT#0 > 0;
+    assume i#AT#1 == i#AT#0 - 1;
+    assume {:partition} i#AT#1 != 3;
+    assume r#AT#2 == r#AT#0 + 1;
+    assume r#AT#3 == r#AT#2;
+    assert r#AT#3 >= 10 - i#AT#1;
+    assume false;
+    assume r#AT#4 == r#AT#3;
+    return;
+}
+
+
+implementation IsolateContinue/goto@17(x: int) returns (r: int)
+{
+
+  anon0:
+    assume x >= 10;
+    assume 0 >= 10 - x;
+    assume r#AT#0 >= 10 - i#AT#0;
+    assume {:partition} i#AT#0 > 0;
+    assume i#AT#1 == i#AT#0 - 1;
+    assume {:partition} i#AT#1 == 3;
+    assume r#AT#1 == r#AT#0 + 2;
+    assume r#AT#3 == r#AT#1;
+    assert r#AT#3 >= 10 - i#AT#1;
+    assume false;
+    assume r#AT#4 == r#AT#3;
+    return;
+}
+
+
+
+Boogie program verifier finished with 1 verified, 0 errors

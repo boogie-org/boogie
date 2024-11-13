@@ -16,18 +16,18 @@ public class VerificationResultCollector : VerifierCallback
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(examples));
-    Contract.Invariant(cce.NonNullElements(vcResults));
+    Contract.Invariant(cce.NonNullElements(Examples));
+    Contract.Invariant(cce.NonNullElements(VcResults));
   }
 
-  public readonly ConcurrentQueue<Counterexample> examples = new();
-  public readonly ConcurrentQueue<VerificationRunResult> vcResults = new();
+  public readonly ConcurrentQueue<Counterexample> Examples = new();
+  public readonly ConcurrentQueue<VerificationRunResult> VcResults = new();
 
   public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
   {
     //Contract.Requires(ce != null);
     ce.InitializeModelStates();
-    examples.Enqueue(ce);
+    Examples.Enqueue(ce);
   }
 
   public override void OnUnreachableCode(ImplementationRun run)
@@ -40,6 +40,6 @@ public class VerificationResultCollector : VerifierCallback
 
   public override void OnVCResult(VerificationRunResult result)
   {
-    vcResults.Enqueue(result);
+    VcResults.Enqueue(result);
   }
 }
