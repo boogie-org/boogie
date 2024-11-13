@@ -1,3 +1,4 @@
+// RUN: %parallel-boogie "%s" > "%t"
 procedure P(x: int, y: int) {
     var z: int;
     var w: int;
