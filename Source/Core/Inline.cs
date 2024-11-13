@@ -16,8 +16,56 @@ namespace Microsoft.Boogie
 
     protected Program program;
 
-    protected Dictionary<string /*!*/, int> /*!*/ /* Procedure.Name -> int */
-      recursiveProcUnrollMap;
+    protected class UnrollDepthTracker
+    {
+      protected Dictionary<string, int> procUnrollDepth = new();
+      protected Dictionary<string, CallCmd> procUnrollSrc = new();
+
+      private string GetName (Implementation impl) {
+        string procName = impl.Name;
+        Contract.Assert(procName != null);
+        return procName;
+      }
+
+      public int GetDepth(Implementation impl) {
+        var procName = GetName(impl);
+        if (procUnrollDepth.TryGetValue(procName, out var c)) {
+          return c;
+        }
+        return -1;
+      }
+
+      public void SetDepth (CallCmd cmd, Implementation impl, int depth) {
+        var procName = GetName(impl);
+        procUnrollSrc[procName] = cmd;
+        procUnrollDepth[procName] = depth;
+      }
+
+      public void Increment(Implementation impl) {
+        var procName = GetName(impl);
+        Debug.Assert (procUnrollSrc.ContainsKey(procName));
+        Debug.Assert (procUnrollDepth.ContainsKey(procName));
+        procUnrollDepth[procName] = procUnrollDepth[procName] + 1;
+      }
+
+      public void Decrement(Implementation impl) {
+        var procName = GetName(impl);
+        Debug.Assert (procUnrollSrc.ContainsKey(procName));
+        Debug.Assert (procUnrollDepth.ContainsKey(procName));
+        procUnrollDepth[procName] = procUnrollDepth[procName] - 1;
+      }
+
+      public void PopCmd(CallCmd cmd, Implementation impl) {
+        var procName = GetName(impl);
+        if (procUnrollSrc.ContainsKey(procName) && procUnrollSrc[procName] == cmd) {
+          Debug.Assert (procUnrollDepth.ContainsKey(procName));
+          procUnrollSrc.Remove(procName);
+          procUnrollDepth.Remove(procName);
+        }
+      }
+    }
+
+    protected UnrollDepthTracker depthTracker;
 
     protected Dictionary<string /*!*/, int> /*!*/ /* Procedure.Name -> int */
       inlinedProcLblMap;
@@ -28,7 +76,7 @@ namespace Microsoft.Boogie
       newLocalVars;
 
     protected string prefix;
-    
+
     private InlineCallback inlineCallback;
 
     private CodeCopier codeCopier;
@@ -39,7 +87,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(program != null);
       Contract.Invariant(newLocalVars != null);
       Contract.Invariant(codeCopier != null);
-      Contract.Invariant(recursiveProcUnrollMap != null);
+      Contract.Invariant(depthTracker != null);
       Contract.Invariant(inlinedProcLblMap != null);
     }
 
@@ -84,7 +132,7 @@ namespace Microsoft.Boogie
     {
       this.program = program;
       this.inlinedProcLblMap = new Dictionary<string /*!*/, int>();
-      this.recursiveProcUnrollMap = new Dictionary<string /*!*/, int>();
+      this.depthTracker = new UnrollDepthTracker();
       this.inlineDepth = inlineDepth;
       this.options = options;
       this.codeCopier = new CodeCopier();
@@ -93,7 +141,7 @@ namespace Microsoft.Boogie
       this.prefix = null;
     }
 
-    // This method calculates a prefix (storing it in the prefix field) so that prepending it to any string 
+    // This method calculates a prefix (storing it in the prefix field) so that prepending it to any string
     // is guaranteed not to create a conflict with the names of variables and blocks in scope inside impl.
     protected void ComputePrefix(Program program, Implementation impl)
     {
@@ -173,7 +221,6 @@ namespace Microsoft.Boogie
 
       // we need to resolve the new code
       ResolveImpl(impl);
-
       if (options.PrintInlined)
       {
         EmitImpl(impl);
@@ -213,7 +260,7 @@ namespace Microsoft.Boogie
       {
         //Contract.Requires(msg != null);
         //Contract.Requires(tok != null);
-        // FIXME 
+        // FIXME
         // noop.
         // This is required because during the resolution, some resolution errors happen
         // (such as the ones caused addion of loop invariants J_(block.Label) by the AI package
@@ -232,7 +279,7 @@ namespace Microsoft.Boogie
       impl.Proc = null; // to force Resolve() redo the operation
       impl.Resolve(rc);
       Debug.Assert(rc.ErrorCount == 0);
-      
+
       TypecheckingContext tc = new TypecheckingContext(new DummyErrorSink(), options);
       impl.Typecheck(tc);
       Debug.Assert(tc.ErrorCount == 0);
@@ -242,31 +289,36 @@ namespace Microsoft.Boogie
     // override this and implement their own inlining policy
     protected virtual int GetInlineCount(CallCmd callCmd, Implementation impl)
     {
-      return GetInlineCount(impl);
+      return TryDefineCount(callCmd, impl);
     }
 
-    // returns true if it is ok to further unroll the procedure
-    // otherwise, the procedure is not inlined at the call site
-    protected int GetInlineCount(Implementation impl)
+    protected int TryDefineCount(CallCmd callCmd, Implementation impl)
     {
       Contract.Requires(impl != null);
       Contract.Requires(impl.Proc != null);
 
-      string /*!*/
-        procName = impl.Name;
-      Contract.Assert(procName != null);
-      if (recursiveProcUnrollMap.TryGetValue(procName, out var c))
+      // getDepth returns -1 when depth for this impl is not defined
+      var depth = depthTracker.GetDepth(impl);
+      if (depth >= 0)
       {
-        return c;
+        return depth;
       }
 
-      c = -1; // TryGetValue above always overwrites c
-      impl.CheckIntAttribute("inline", ref c);
-      // procedure attribute overrides implementation
-      impl.Proc.CheckIntAttribute("inline", ref c);
+      int callInlineDepth (CallCmd cmd) {
+        return QKeyValue.FindIntAttribute(cmd.Attributes, "inline", -1);
+      }
 
-      recursiveProcUnrollMap[procName] = c;
-      return c;
+      // first check the inline depth on the call command.
+      depth = callInlineDepth(callCmd);
+      if (depth < 0) {
+        // if call cmd doesn't define the depth, then check the procedure.
+        impl.CheckIntAttribute("inline", ref depth);
+        impl.Proc.CheckIntAttribute("inline", ref depth);
+      }
+      if (depth >= 0) {
+        depthTracker.SetDepth (callCmd, impl, depth);
+      }
+      return depth;
     }
 
     void CheckRecursion(Implementation impl, Stack<Procedure /*!*/> /*!*/ callStack)
@@ -325,7 +377,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] - 1;
+        depthTracker.Decrement(impl);
       }
 
       bool inlinedSomething = true;
@@ -337,7 +389,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        recursiveProcUnrollMap[impl.Name] = recursiveProcUnrollMap[impl.Name] + 1;
+        depthTracker.Increment(impl);
       }
 
       Block /*!*/
@@ -354,7 +406,7 @@ namespace Microsoft.Boogie
       return nextlblCount;
     }
 
-    public virtual List<Block /*!*/> /*!*/ DoInlineBlocks(IList<Block /*!*/> /*!*/ blocks, ref bool inlinedSomething)
+    public  virtual List<Block /*!*/> /*!*/ DoInlineBlocks(IList<Block /*!*/> /*!*/ blocks, ref bool inlinedSomething)
     {
       Contract.Requires(cce.NonNullElements(blocks));
       Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
@@ -412,6 +464,7 @@ namespace Microsoft.Boogie
             {
               newCmds.Add(codeCopier.CopyCmd(callCmd));
             }
+            depthTracker.PopCmd(callCmd, impl);
           }
           else if (cmd is PredicateCmd)
           {
@@ -456,6 +509,8 @@ namespace Microsoft.Boogie
           {
             newCmds.Add(codeCopier.CopyCmd(cmd));
           }
+
+
         }
 
         Block newBlock = new Block(block.tok, lblCount == 0 ? block.Label : block.Label + "$" + lblCount,
@@ -801,22 +856,22 @@ namespace Microsoft.Boogie
       {
         return substMap[v];
       }
-      
+
       public Expr OldSubst(Variable v)
       {
         return oldSubstMap[v];
       }
-      
+
       public Expr PartialSubst(Variable v)
       {
         return substMap.ContainsKey(v) ? substMap[v] : null;
       }
-      
+
       public Expr PartialOldSubst(Variable v)
       {
         return oldSubstMap.ContainsKey(v) ? oldSubstMap[v] : null;
       }
-      
+
       public List<Cmd> CopyCmdSeq(List<Cmd> cmds)
       {
         Contract.Requires(cmds != null);

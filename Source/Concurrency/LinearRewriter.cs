@@ -17,14 +17,9 @@ public class LinearRewriter
     this.civlTypeChecker = civlTypeChecker;
   }
 
-  public static bool IsPrimitive(DeclWithFormals decl)
-  {
-    return CivlPrimitives.LinearPrimitives.Contains(Monomorphizer.GetOriginalDecl(decl).Name);
-  }
-
   public static void Rewrite(CivlTypeChecker civlTypeChecker, Implementation impl)
   {
-    if (IsPrimitive(impl)) {
+    if (CivlPrimitives.IsPrimitive(impl)) {
       return;
     }
     var linearRewriter = new LinearRewriter(civlTypeChecker);
@@ -38,7 +33,7 @@ public class LinearRewriter
     {
       if (cmd is CallCmd callCmd)
       {
-        if (IsPrimitive(callCmd.Proc))
+        if (CivlPrimitives.IsPrimitive(callCmd.Proc))
         {
           newCmdSeq.AddRange(RewriteCallCmd(callCmd));
         }
