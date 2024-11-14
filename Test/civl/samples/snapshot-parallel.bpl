@@ -49,36 +49,45 @@ refines atomic action {:layer 3} _ {
     while (true)
     invariant {:yields} true;
     {
-        i := 1;
-        while (i <= n)
-        invariant {:yields} {:layer 1} true;
-        invariant {:layer 2} (forall j:int :: 1 <= j && j < i ==> r1[j]->ts <= mem[j]->ts);
-        invariant {:layer 2} (forall j:int :: 1 <= j && j < i ==> (r1[j]->ts == mem[j]->ts ==> r1[j]->value == mem[j]->value));
-        {
-            call out := read_f(i);
-            r1[i] := out;
-            i := i + 1; 
-        }
-
-        i := 1;
-        while (i <= n)
-        invariant {:yields} {:layer 1} true;
-        invariant {:layer 2} (forall j:int :: 1 <= j && j < i ==> mem[j]->ts <= r2[j]->ts);
-        invariant {:layer 2} (forall j:int :: 1 <= j && j < i ==> (r2[j]->ts == mem[j]->ts ==> r2[j]->value == mem[j]->value));
-        {
-            call out := read_s(i);
-            r2[i] := out;
-            i := i + 1; 
-        }
-   
+        call r1 := scan_f(n);
+        call r2 := scan_s(n);
         assert {:layer 2} (forall j:int :: 1 <= j && j <= n ==> (r1[j] == r2[j] ==> r1[j] == mem[j]));
-    
         if (r1 == r2) {
             assert {:layer 2} (forall j:int :: 1 <= j && j <= n ==> r1[j] == mem[j]);
             snapshot := r1;
             break;
         }
     }
+}
+
+yield right procedure {:layer 2} scan_f(i: int) returns (snapshot: [int]StampedValue)
+requires {:layer 2} 0 <= i && i <= n;
+ensures {:layer 2} (forall j:int :: 1 <= j && j <= i ==>
+                        snapshot[j]->ts <= mem[j]->ts &&
+                        (snapshot[j]->ts == mem[j]->ts ==> snapshot[j]->value == mem[j]->value));
+{
+    var out: StampedValue;
+
+    if (i == 0) {
+        return;
+    }
+    par snapshot := scan_f(i-1) | out := read_f(i);
+    snapshot[i] := out;
+}
+
+yield left procedure {:layer 2} scan_s(i: int) returns (snapshot: [int]StampedValue)
+requires {:layer 2} 0 <= i && i <= n;
+ensures {:layer 2} (forall j:int :: 1 <= j && j <= i ==>
+                        mem[j]->ts <= snapshot[j]->ts &&
+                        (snapshot[j]->ts == mem[j]->ts ==> snapshot[j]->value == mem[j]->value));
+{
+    var out: StampedValue;
+
+    if (i == 0) {
+        return;
+    }
+    par snapshot := scan_s(i-1) | out := read_s(i);
+    snapshot[i] := out;
 }
 
 right action {:layer 2} action_read_f (i: int) returns (out: StampedValue)
