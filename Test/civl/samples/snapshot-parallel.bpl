@@ -14,13 +14,31 @@ var {:layer 0,3} mem: [int]StampedValue;
 const n: int;
 axiom n >= 1;
 
-atomic action {:layer 3} scan'() returns (snapshot: [int]StampedValue)
+yield procedure {:layer 3} main()
 {
-    assume (forall j:int :: 1 <= j && j <= n  ==> snapshot[j] == mem[j]);
+    var snapshot: [int]StampedValue;
+    var i: int;
+    var v: Value;
+
+    while (*)
+    invariant {:yields} {:layer 3} true;
+    {
+        if (*)
+        {
+            havoc i, v;
+            call write(i, v);
+        }
+        else
+        {
+            call snapshot := scan();
+        }
+    }
 }
 
 yield procedure {:layer 2} scan() returns (snapshot: [int]StampedValue)
-refines scan';
+refines atomic action {:layer 3} _ {
+    assume (forall j:int :: 1 <= j && j <= n  ==> snapshot[j] == mem[j]);
+}
 {
     var i: int;
     var b: bool;
@@ -74,8 +92,9 @@ ensures {:layer 2} (forall j:int :: 1 <= j && j <= i ==>
 
 right action {:layer 2} action_read_f (i: int) returns (out: StampedValue)
 {
-    var {:pool "K"} k:int;
-    var {:pool "V"} v:Value;
+    var {:pool "K"} k: int;
+    var {:pool "V"} v: Value;
+    
     if (*) {
         assume {:add_to_pool "K", mem[i]->ts, k} {:add_to_pool "V", mem[i]->value, v} true;
         assume k < mem[i]->ts;
@@ -93,8 +112,8 @@ refines action_read_f;
 
 left action {:layer 2} action_read_s(i: int) returns (out: StampedValue)
 {
-    var {:pool "K"} k:int;
-    var {:pool "V"} v:Value;
+    var {:pool "K"} k: int;
+    var {:pool "V"} v: Value;
 
     if (*) {
         assume {:add_to_pool "K", mem[i]->ts, k} {:add_to_pool "V", mem[i]->value, v} true;
@@ -111,18 +130,12 @@ refines action_read_s;
     call out := read(i);
 }
 
-atomic action {:layer 1,3} action_write (v:Value, i: int)
-modifies mem;
-{
-    var x: StampedValue;
-    x := mem[i];
-    mem[i] := StampedValue(x->ts + 1, v);
-}
-
-action {:layer 1,3} action_read (i: int) returns (v: StampedValue)
-{
-    v := mem[i];
+yield procedure {:layer 0} write(i: int, v: Value);
+refines atomic action {:layer 1,3} _ {
+    mem[i] := StampedValue(mem[i]->ts + 1, v);
 }
 
 yield procedure {:layer 0} read (i: int) returns (v: StampedValue);
-refines action_read;
+refines atomic action {:layer 1,3} _ {
+    v := mem[i];
+}

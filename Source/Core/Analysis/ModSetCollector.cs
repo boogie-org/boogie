@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
+using System.Linq;
 
 namespace Microsoft.Boogie;
 
@@ -29,10 +30,13 @@ public class ModSetCollector : ReadOnlyVisitor
   {
     this.VisitImplementation(impl);
     var proc = impl.Proc;
-    proc.Modifies = new List<IdentifierExpr>();
-    foreach (Variable v in modSets[proc])
+    if (modSets.ContainsKey(proc))
     {
-      proc.Modifies.Add(new IdentifierExpr(v.tok, v));
+      proc.Modifies = new List<IdentifierExpr>(modSets[proc].Select(v => new IdentifierExpr(v.tok, v)));
+    }
+    else
+    {
+      proc.Modifies = new List<IdentifierExpr>();
     }
   }
 
