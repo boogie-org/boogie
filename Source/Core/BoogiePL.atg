@@ -759,11 +759,11 @@ SpecRefinedActionForAtomicAction<ref ActionDeclRef refinedAction>
 
 SpecRefinedActionForYieldProcedure<.ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs.>
 =
-  (. IToken tok, m; QKeyValue kv = null, akv = null; MoverType moverType = MoverType.None; List<Variable> locals; StmtList stmtList; .)
+  (. IToken tok, m; QKeyValue kv = null, akv = null; MoverType moverType = MoverType.Atomic; List<Variable> locals; StmtList stmtList; .)
   "refines"
   { Attribute<ref kv> }
   (
-    MoverQualifier<ref moverType>
+    [ MoverQualifier<ref moverType> ]
     "action" (. tok = t; .)
     { Attribute<ref akv> }
     Ident<out m>
