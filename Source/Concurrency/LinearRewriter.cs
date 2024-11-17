@@ -530,10 +530,7 @@ public class LinearRewriter
       return;
     }
     var tc = new TypecheckingContext(null, options);
-    var oldCheckModifies = tc.CheckModifies;
-    tc.CheckModifies = false;
     absys.ForEach(absy => absy.Typecheck(tc));
-    tc.CheckModifies = oldCheckModifies;
   }
 
   private List<Cmd> CreateAccessAsserts(Expr expr, IToken tok, string msg)
