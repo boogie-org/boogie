@@ -17,7 +17,7 @@ refines both action {:layer 2} _ {
 }
 
 yield procedure {:layer 0} C(i: int) returns (j: int);
-refines both action {:layer 1} _ {
+refines both action {:layer 1} AC {
     call Incr();
 }
 
