@@ -1235,10 +1235,9 @@ private class BvBounds : Expr {
 			}
 			Ident(out m);
 			ImplBody(out locals, out stmtList);
-			if (m.val != "_") {
-			 this.SemErr("expected _ for name of anoonymous action");
-			} else if (refinedAction == null) {
-			 var actionDecl = new ActionDecl(tok, null, moverType, Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+			if (refinedAction == null) {
+			 var actionName = m.val == "_" ? null : m.val;
+			 var actionDecl = new ActionDecl(tok, actionName, moverType, Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
 			                               false, new List<ActionDeclRef>(), null, null,
 			                               new List<Requires>(), new List<CallCmd>(), new List<AssertCmd>(), new List<IdentifierExpr>(), null, akv);
 			 Pgm.AddTopLevelDeclaration(actionDecl);

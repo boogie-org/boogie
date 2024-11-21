@@ -339,6 +339,7 @@ namespace Microsoft.Boogie
         if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
         {
           Options.Libraries.Add("base");
+          Options.DoModSetAnalysis = true;
         }
 
         foreach (var libraryName in Options.Libraries)

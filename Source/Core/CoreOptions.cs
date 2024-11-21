@@ -55,7 +55,7 @@ namespace Microsoft.Boogie
     bool OverlookBoogieTypeErrors { get; }
     uint TimeLimit { get; }
     uint ResourceLimit { get; }
-    bool DoModSetAnalysis { get; }
+    bool DoModSetAnalysis { get; set; }
     bool DebugStagedHoudini { get; }
     int LoopUnrollCount { get; }
     bool DeterministicExtractLoops { get; }

@@ -26,39 +26,10 @@ public class ModSetCollector : ReadOnlyVisitor
 
   private bool moreProcessingRequired;
 
-  public void DoModSetAnalysis(Implementation impl)
-  {
-    this.VisitImplementation(impl);
-    var proc = impl.Proc;
-    if (modSets.ContainsKey(proc))
-    {
-      proc.Modifies = new List<IdentifierExpr>(modSets[proc].Select(v => new IdentifierExpr(v.tok, v)));
-    }
-    else
-    {
-      proc.Modifies = new List<IdentifierExpr>();
-    }
-  }
-
   public void DoModSetAnalysis(Program program)
   {
     Contract.Requires(program != null);
-
-    if (options.Trace)
-    {
-//          Console.WriteLine();
-//          Console.WriteLine("Running modset analysis ...");
-//          int procCount = 0;
-//          foreach (Declaration/*!*/ decl in program.TopLevelDeclarations)
-//          {
-//              Contract.Assert(decl != null);
-//              if (decl is Procedure)
-//                  procCount++;
-//          }
-//          Console.WriteLine("Number of procedures = {0}", procCount);*/
-    }
-
-    HashSet<Procedure /*!*/> implementedProcs = new HashSet<Procedure /*!*/>();
+    var implementedProcs = new HashSet<Procedure>();
     foreach (var impl in program.Implementations)
     {
       if (impl.Proc != null)
@@ -67,7 +38,7 @@ public class ModSetCollector : ReadOnlyVisitor
       }
     }
 
-    foreach (var proc in program.Procedures)
+    foreach (var proc in program.Procedures.Where(x => x is not YieldProcedureDecl))
     {
       if (!implementedProcs.Contains(proc))
       {
@@ -104,30 +75,33 @@ public class ModSetCollector : ReadOnlyVisitor
 
 #if DEBUG_PRINT
       options.OutputWriter.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
-      foreach (Procedure/*!*/ x in modSets.Keys) {
+      foreach (Procedure x in modSets.Keys)
+      {
         Contract.Assert(x != null);
         options.OutputWriter.Write("{0} : ", x.Name);
         bool first = true;
-        foreach (Variable/*!*/ y in modSets[x]) {
-          Contract.Assert(y != null);
+        foreach (var y in modSets[x])
+        {
           if (first)
+          {
             first = false;
+          }
           else
+          {
             options.OutputWriter.Write(", ");
+          }
           options.OutputWriter.Write("{0}", y.Name);
         }
         options.OutputWriter.WriteLine("");
-      options.OutputWriter
+      }
 #endif
   }
 
   public override Implementation VisitImplementation(Implementation node)
   {
-    //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<Implementation>() != null);
     enclosingProc = node.Proc;
-    Implementation /*!*/
-      ret = base.VisitImplementation(node);
+    Implementation ret = base.VisitImplementation(node);
     Contract.Assert(ret != null);
     enclosingProc = null;
 
@@ -173,9 +147,14 @@ public class ModSetCollector : ReadOnlyVisitor
 
   public override Cmd VisitCallCmd(CallCmd callCmd)
   {
-    //Contract.Requires(callCmd != null);
     Contract.Ensures(Contract.Result<Cmd>() != null);
     Cmd ret = base.VisitCallCmd(callCmd);
+
+    if (callCmd.IsAsync)
+    {
+      return ret;
+    }
+
     foreach (IdentifierExpr ie in callCmd.Outs)
     {
       if (ie != null)
@@ -219,7 +198,7 @@ public class ModSetCollector : ReadOnlyVisitor
       return;
     }
 
-    if (!(var is GlobalVariable))
+    if (var is not GlobalVariable)
     {
       return;
     }

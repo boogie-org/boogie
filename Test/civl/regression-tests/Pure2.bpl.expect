@@ -1,2 +1,0 @@
-Pure2.bpl(9,6): Error: command assigns to a global variable that is not in the enclosing action's modifies clause: g
-1 type checking errors detected in Pure2.bpl
