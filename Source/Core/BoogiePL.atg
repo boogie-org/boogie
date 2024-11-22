@@ -1133,15 +1133,19 @@ WhileCmd<out WhileCmd wcmd>
     "invariant"
     { Attribute<ref kv> }
     (
-      Expression<out e> (. if (isFree) {
-                             invariants.Add(new AssumeCmd(z, e, kv));
-                           } else {
-                             invariants.Add(new AssertCmd(z, e, kv));
-                           }
-						   kv = null;
+      Expression<out e> (.
+                          if (isFree) {
+                            invariants.Add(new AssumeCmd(z, e, kv));
+                          } else {
+                            invariants.Add(new AssertCmd(z, e, kv));
+                          }
+						              kv = null;
                         .)
       |
-      CallCmd<out cmd>  (. yields.Add((CallCmd)cmd); .)
+      CallCmd<out cmd>  (.
+                          yields.Add((CallCmd)cmd);
+                          kv = null;
+                        .)
     )
     ";"
   }

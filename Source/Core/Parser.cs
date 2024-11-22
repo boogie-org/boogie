@@ -1667,7 +1667,9 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				
 			} else if (la.kind == 38 || la.kind == 53 || la.kind == 71) {
 				CallCmd(out cmd);
-				yields.Add((CallCmd)cmd); 
+				yields.Add((CallCmd)cmd);
+				kv = null;
+				
 			} else SynErr(151);
 			Expect(10);
 		}
