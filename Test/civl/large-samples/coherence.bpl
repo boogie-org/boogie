@@ -194,6 +194,7 @@ refines atomic action {:layer 2} _ {
     assume line->state == Invalid();
     assume Set_Contains(cachePermissions, CachePermission(i, ca));
     call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    cache[i][ca]->ma := ma;
     result := Ok();
   }
 }
@@ -219,6 +220,7 @@ refines atomic action {:layer 2} _ {
     assume line->state == Invalid() || (line->ma == ma && line->state == Shared());
     assume Set_Contains(cachePermissions, CachePermission(i, ca));
     call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    cache[i][ca]->ma := ma;
     result := Ok();
   }
 }
@@ -272,7 +274,8 @@ refines left action {:layer 2} _ {
   ca := Hash(ma);
   assert Set_Contains(drp, CachePermission(i, ca));
   line := cache[i][ca];
-  assert line->state == Invalid() || (line->state == Shared() && line->ma == ma);
+  assert line->state == Invalid() || line->state == Shared();
+  assert line->ma == ma;
   assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
   if (line->state == Invalid()) {
     cache[i][ca] := CacheLine(ma, v, s);
@@ -386,6 +389,9 @@ modifies cache;
   line := cache[i][ca];
   if (line->state == Invalid()) {
     call result := acquire_cache_lock(i, ca);
+    if (result == Ok()) {
+      cache[i][ca]->ma := ma;
+    }
   } else {
     result := Fail();
   }
@@ -405,6 +411,9 @@ action {:layer 1} primitive_cache_read_exc_req(i: CacheId, ma: MemAddr) returns 
   line := cache[i][ca];
   if (line->state == Invalid() || (line->ma == ma && line->state == Shared())) {
     call result := acquire_cache_lock(i, ca);
+    if (result == Ok()) {
+      cache[i][ca]->ma := ma;
+    }
   } else {
     result := Fail();
   }
@@ -525,7 +534,7 @@ requires call YieldEvict(i, ma, value, drp);
 
 yield invariant {:layer 2} YieldRead(i: CacheId, ma: MemAddr, {:linear} drp: Set CachePermission);
 invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
-invariant (var line := cache[i][Hash(ma)]; line->state == Invalid() || (line->state == Shared() && line->ma == ma));
+invariant (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->state == Shared()) && line->ma == ma);
 
 yield procedure {:layer 2} dir_read_shd_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: Set CachePermission)
 preserves call YieldInv#1();
