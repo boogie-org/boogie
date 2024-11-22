@@ -27,12 +27,17 @@ namespace VC
 
       readonly List<Block> bigBlocks = new();
       public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.Cmds.OfType<AssertCmd>()).ToList();
-      public IReadOnlyList<Declaration> prunedDeclarations;
+      private IReadOnlyList<Declaration> prunedDeclarations;
+      public ISet<Function> HiddenFunctions;
       
       public IReadOnlyList<Declaration> PrunedDeclarations {
         get {
-          if (prunedDeclarations == null) {
-            prunedDeclarations = Pruner.GetLiveDeclarations(parent.Options, parent.program, Blocks).ToList();
+          if (prunedDeclarations == null)
+          {
+            var (liveDeclarations, hiddenFunctions) =
+              Pruner.GetLiveDeclarations(parent.Options, parent.program, Blocks);
+            HiddenFunctions = hiddenFunctions;
+            prunedDeclarations = liveDeclarations.ToList();
           }
 
           return prunedDeclarations;
