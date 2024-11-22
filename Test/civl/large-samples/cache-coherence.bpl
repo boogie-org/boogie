@@ -64,7 +64,7 @@ var {:layer 0,2} cache: [CacheId]Cache;
 var {:layer 0,1} cacheBusy: [CacheId][CacheAddr]bool;
 var {:linear} {:layer 1,2} cachePermissions: Set CachePermission;
 var {:linear} {:layer 1,2} dirPermissions: Set DirPermission;
-var {:layer 1, 3} absMem: [MemAddr]Value;
+var {:layer 1,3} absMem: [MemAddr]Value;
 
 /// Yield invariants
 yield invariant {:layer 1} YieldInv#1();
@@ -76,7 +76,9 @@ function {:inline} Owns(cache: [CacheId]Cache, i: CacheId, ca: CacheAddr): bool 
 
 yield invariant {:layer 2} YieldInv#2();
 invariant (forall i: CacheId, ca: CacheAddr:: Hash(cache[i][ca]->ma) == ca);
-invariant (forall i: CacheId, ca: CacheAddr:: (var line := cache[i][ca]; line->state == Invalid() || line->value == absMem[line->ma]));
+invariant (forall i: CacheId, ca: CacheAddr::
+            (var line := cache[i][ca]; (var state := dir[line->ma]->state;
+              line->state == Invalid() || (line->value == absMem[line->ma] && if line->state == Shared() then state is Sharers else state is Owner))));
 invariant (forall ma: MemAddr:: {dir[ma]} (var state := dir[ma]->state; state is Owner ==> Owns(cache, state->i, Hash(ma)) && cache[state->i][Hash(ma)]->ma == ma));
 invariant (forall ma: MemAddr:: {dir[ma]} (var state := dir[ma]->state; state is Owner ==>
             (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> state->i == i || cache[i][Hash(ma)]->state == Invalid())));
@@ -85,7 +87,7 @@ invariant (forall ma: MemAddr:: {dir[ma]} (var state := dir[ma]->state; state is
 invariant (forall ma: MemAddr:: {dir[ma]} (var state := dir[ma]->state; state is Sharers ==>
             (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> Set_Contains(state->iset, i) || cache[i][Hash(ma)]->state == Invalid())));
 invariant (forall ma: MemAddr:: {dir[ma]} dir[ma]->state is Sharers ==> mem[ma] == absMem[ma]);
-invariant (forall ma: MemAddr:: dir[ma]->currRequest == NoDirRequest() ==> Set_IsSubset(WholeDirPermission(ma), dirPermissions));
+invariant (forall ma: MemAddr:: {dir[ma]} dir[ma]->currRequest == NoDirRequest() ==> Set_IsSubset(WholeDirPermission(ma), dirPermissions));
 
 yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: Set CachePermission);
 invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
@@ -96,6 +98,34 @@ invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
 invariant (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->state == Shared()) && line->ma == ma);
 
 /// Cache
+yield procedure {:layer 2} cache_read(i: CacheId, ma: MemAddr) returns (result: Option Value)
+preserves call YieldInv#2();
+refines atomic action {:layer 3} _ {
+  if (*) {
+    result := None();
+  } else {
+    result := Some(absMem[ma]);
+  }
+}
+{
+  call result := cache_read#1(i, ma);
+}
+
+yield procedure {:layer 2} cache_write(i: CacheId, ma: MemAddr, v: Value) returns (result: Result)
+preserves call YieldInv#1();
+preserves call YieldInv#2();
+refines atomic action {:layer 3} _ {
+  if (*) {
+    result := Fail();
+  } else {
+    result := Ok();
+    absMem[ma] := v;
+  }
+}
+{
+  call result := cache_write#1(i, ma, v);
+}
+
 yield procedure {:layer 2} cache_evict_req(i: CacheId, ca: CacheAddr) returns (result: Result)
 preserves call YieldInv#1();
 preserves call YieldInv#2();
@@ -150,14 +180,21 @@ refines atomic action {:layer 2} _ {
 }
 
 yield procedure {:layer 1} cache_write#1(i: CacheId, ma: MemAddr, v: Value) returns (result: Result)
+preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
+  var ca: CacheAddr;
+  var line: CacheLine;
+
   if (*) {
     result := Fail();
   } else {
-    call result := primitive_cache_write(i, ma, v);
-    if (result == Ok()) {
-      absMem[ma] := v;
-    }
+    result := Ok();
+    ca := Hash(ma);
+    line := cache[i][ca];
+    assume line->state != Invalid() && line->state != Shared() && line->ma == ma && Set_Contains(cachePermissions, CachePermission(i, ca));
+    cache[i][ca]->value := v;
+    cache[i][ca]->state := Modified();
+    absMem[ma] := v;
   }
 }
 {
@@ -191,32 +228,6 @@ refines atomic action {:layer 2} _ {
   }
 }
 
-yield procedure {:layer 1} cache_read_shd_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set CachePermission)
-preserves call YieldInv#1();
-refines atomic action {:layer 2} _ {
-  var ca: CacheAddr;
-  var line: CacheLine;
-
-  result := Fail();
-  ca := Hash(ma);
-  line := cache[i][ca];
-  call drp := Set_MakeEmpty();
-  if (*) {
-    assume line->state == Invalid();
-    assume Set_Contains(cachePermissions, CachePermission(i, ca));
-    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
-    cache[i][ca]->ma := ma;
-    result := Ok();
-  }
-}
-{
-  call result := cache_read_shd_req#0(i, ma);
-  call {:layer 1} drp := Set_MakeEmpty();
-  if (result == Ok()) {
-    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
-  }
-}
-
 yield procedure {:layer 1} cache_read_exc_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set CachePermission)
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
@@ -237,6 +248,32 @@ refines atomic action {:layer 2} _ {
 }
 {
   call result := cache_read_exc_req#0(i, ma);
+  call {:layer 1} drp := Set_MakeEmpty();
+  if (result == Ok()) {
+    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
+  }
+}
+
+yield procedure {:layer 1} cache_read_shd_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set CachePermission)
+preserves call YieldInv#1();
+refines atomic action {:layer 2} _ {
+  var ca: CacheAddr;
+  var line: CacheLine;
+
+  result := Fail();
+  ca := Hash(ma);
+  line := cache[i][ca];
+  call drp := Set_MakeEmpty();
+  if (*) {
+    assume line->state == Invalid();
+    assume Set_Contains(cachePermissions, CachePermission(i, ca));
+    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    cache[i][ca]->ma := ma;
+    result := Ok();
+  }
+}
+{
+  call result := cache_read_shd_req#0(i, ma);
   call {:layer 1} drp := Set_MakeEmpty();
   if (result == Ok()) {
     call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
@@ -349,7 +386,7 @@ refines atomic action {:layer 1} _ {
   call result := primitive_cache_write(i, ma, v);
 }
 
-action {:layer 1,2} primitive_cache_write(i: CacheId, ma: MemAddr, v: Value) returns (result: Result)
+action {:layer 1} primitive_cache_write(i: CacheId, ma: MemAddr, v: Value) returns (result: Result)
 modifies cache;
 {
   var ca: CacheAddr;
@@ -358,7 +395,7 @@ modifies cache;
   ca := Hash(ma);
   line := cache[i][ca];
   result := Fail();
-  if (line->state != Invalid() && line->state != Shared() && line->ma == ma) {
+  if (line->state != Invalid() && line->state != Shared() && line->ma == ma && !cacheBusy[i][ca]) {
     cache[i][ca]->value := v;
     cache[i][ca]->state := Modified();
     result := Ok();
