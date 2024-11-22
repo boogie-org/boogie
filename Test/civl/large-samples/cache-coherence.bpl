@@ -140,18 +140,6 @@ preserves call YieldInv#2();
   }
 }
 
-yield procedure {:layer 2} cache_read_exc_req(i: CacheId, ma: MemAddr) returns (result: Result)
-preserves call YieldInv#1();
-preserves call YieldInv#2();
-{
-  var {:linear} {:layer 1,2} drp: Set CachePermission;
-
-  call result, drp := cache_read_exc_req#1(i, ma);
-  if (result == Ok()) {
-    async call dir_read_exc_req(i, ma, drp);
-  }
-}
-
 yield procedure {:layer 2} cache_read_shd_req(i: CacheId, ma: MemAddr) returns (result: Result)
 preserves call YieldInv#1();
 preserves call YieldInv#2();
@@ -162,6 +150,18 @@ preserves call YieldInv#2();
   call result, drp := cache_read_shd_req#1(i, ma);
   if (result == Ok()) {
     async call dir_read_shd_req(i, ma, drp);
+  }
+}
+
+yield procedure {:layer 2} cache_read_exc_req(i: CacheId, ma: MemAddr) returns (result: Result)
+preserves call YieldInv#1();
+preserves call YieldInv#2();
+{
+  var {:linear} {:layer 1,2} drp: Set CachePermission;
+
+  call result, drp := cache_read_exc_req#1(i, ma);
+  if (result == Ok()) {
+    async call dir_read_exc_req(i, ma, drp);
   }
 }
 
@@ -228,32 +228,6 @@ refines atomic action {:layer 2} _ {
   }
 }
 
-yield procedure {:layer 1} cache_read_exc_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set CachePermission)
-preserves call YieldInv#1();
-refines atomic action {:layer 2} _ {
-  var ca: CacheAddr;
-  var line: CacheLine;
-
-  result := Fail();
-  ca := Hash(ma);
-  line := cache[i][ca];
-  call drp := Set_MakeEmpty();
-  if (*) {
-    assume line->state == Invalid() || (line->ma == ma && line->state == Shared());
-    assume Set_Contains(cachePermissions, CachePermission(i, ca));
-    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
-    cache[i][ca]->ma := ma;
-    result := Ok();
-  }
-}
-{
-  call result := cache_read_exc_req#0(i, ma);
-  call {:layer 1} drp := Set_MakeEmpty();
-  if (result == Ok()) {
-    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
-  }
-}
-
 yield procedure {:layer 1} cache_read_shd_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set CachePermission)
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
@@ -274,6 +248,32 @@ refines atomic action {:layer 2} _ {
 }
 {
   call result := cache_read_shd_req#0(i, ma);
+  call {:layer 1} drp := Set_MakeEmpty();
+  if (result == Ok()) {
+    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
+  }
+}
+
+yield procedure {:layer 1} cache_read_exc_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set CachePermission)
+preserves call YieldInv#1();
+refines atomic action {:layer 2} _ {
+  var ca: CacheAddr;
+  var line: CacheLine;
+
+  result := Fail();
+  ca := Hash(ma);
+  line := cache[i][ca];
+  call drp := Set_MakeEmpty();
+  if (*) {
+    assume line->state == Invalid() || (line->ma == ma && line->state == Shared());
+    assume Set_Contains(cachePermissions, CachePermission(i, ca));
+    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    cache[i][ca]->ma := ma;
+    result := Ok();
+  }
+}
+{
+  call result := cache_read_exc_req#0(i, ma);
   call {:layer 1} drp := Set_MakeEmpty();
   if (result == Ok()) {
     call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
@@ -337,16 +337,6 @@ refines left action {:layer 2} _ {
   call {:layer 1} Set_Put(cachePermissions, drp);
 }
 
-yield procedure {:layer 1} cache_snoop_req_exc#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set DirPermission) returns (value: Value)
-refines atomic action {:layer 2} _ {
-  assert dp == WholeDirPermission(ma);
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
-  call value := primitive_cache_snoop_req_exc(i, ma, s);
-}
-{
-  call value := cache_snoop_req_exc#0(i, ma, s);
-}
-
 yield procedure {:layer 1} cache_snoop_req_shd#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set DirPermission)
 refines left action {:layer 2} _ {
   var ca: CacheAddr;
@@ -360,6 +350,16 @@ refines left action {:layer 2} _ {
 }
 {
   call cache_snoop_req_shd#0(i, ma, s);
+}
+
+yield procedure {:layer 1} cache_snoop_req_exc#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set DirPermission) returns (value: Value)
+refines atomic action {:layer 2} _ {
+  assert dp == WholeDirPermission(ma);
+  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
+  call value := primitive_cache_snoop_req_exc(i, ma, s);
+}
+{
+  call value := cache_snoop_req_exc#0(i, ma, s);
 }
 
 // Cache primitives
@@ -513,6 +513,24 @@ action {:layer 1} primitive_cache_read_resp(i: CacheId, ma: MemAddr, v: Value, s
   cacheBusy[i][ca] := false;
 }
 
+yield procedure {:layer 0} cache_snoop_req_shd#0(i: CacheId, ma: MemAddr, s: State);
+refines atomic action {:layer 1} _ {
+  call primitive_cache_snoop_req_shd(i, ma, s);
+}
+
+action {:layer 1,2} primitive_cache_snoop_req_shd(i: CacheId, ma: MemAddr, s: State)
+{
+  var ca: CacheAddr;
+  var line: CacheLine;
+
+  assert s == Invalid();
+  ca := Hash(ma);
+  line := cache[i][ca];
+  assert line->state == Shared();
+  assert line->ma == ma;
+  cache[i][ca]->state := s;
+}
+
 yield procedure {:layer 0} cache_snoop_req_exc#0(i: CacheId, ma: MemAddr, s: State) returns (value: Value);
 refines atomic action {:layer 1} _ {
   call value := primitive_cache_snoop_req_exc(i, ma, s);
@@ -529,24 +547,6 @@ action {:layer 1,2} primitive_cache_snoop_req_exc(i: CacheId, ma: MemAddr, s: St
   assert line->state == Exclusive() || line->state == Modified();
   assert line->ma == ma;
   value := line->value;
-  cache[i][ca]->state := s;
-}
-
-yield procedure {:layer 0} cache_snoop_req_shd#0(i: CacheId, ma: MemAddr, s: State);
-refines atomic action {:layer 1} _ {
-  call primitive_cache_snoop_req_shd(i, ma, s);
-}
-
-action {:layer 1,2} primitive_cache_snoop_req_shd(i: CacheId, ma: MemAddr, s: State)
-{
-  var ca: CacheAddr;
-  var line: CacheLine;
-
-  assert s == Invalid();
-  ca := Hash(ma);
-  line := cache[i][ca];
-  assert line->state == Shared();
-  assert line->ma == ma;
   cache[i][ca]->state := s;
 }
 
@@ -678,6 +678,19 @@ refines right action {:layer 2} _ {
   call {:layer 1} dp := Set_Get(dirPermissions, WholeDirPermission(ma)->val);
 }
 
+yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: Set DirPermission)
+refines left action {:layer 2} _ {
+  assert dp == WholeDirPermission(ma);
+  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
+  call primitive_dir_req_end(ma, dirState);
+  call Set_Put(dirPermissions, dp);
+}
+{
+  call dir_req_end#0(ma, dirState);
+  call {:layer 1} Set_Put(dirPermissions, dp);
+}
+
+// Directory primitives
 yield procedure {:layer 0} dir_req_begin#0(ma: MemAddr, dirRequest: DirRequest) returns (dirInfo: DirInfo);
 refines atomic action {:layer 1} _ {
   call dirInfo := primitive_dir_req_begin(ma, dirRequest);
@@ -690,18 +703,6 @@ modifies dir;
   assume dir[ma]->currRequest == NoDirRequest();
   dir[ma]->currRequest := dirRequest;
   dirInfo := dir[ma];
-}
-
-yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: Set DirPermission)
-refines left action {:layer 2} _ {
-  assert dp == WholeDirPermission(ma);
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
-  call primitive_dir_req_end(ma, dirState);
-  call Set_Put(dirPermissions, dp);
-}
-{
-  call dir_req_end#0(ma, dirState);
-  call {:layer 1} Set_Put(dirPermissions, dp);
 }
 
 yield procedure {:layer 0} dir_req_end#0(ma: MemAddr, dirState: DirState);
@@ -728,11 +729,6 @@ refines both action {:layer 2} _ {
   call value := read_mem#0(ma);
 }
 
-yield procedure {:layer 0} read_mem#0(ma: MemAddr) returns (value: Value);
-refines atomic action {:layer 1} _ {
-  value := mem[ma];
-}
-
 yield procedure {:layer 1} write_mem(ma: MemAddr, value: Value, {:linear} {:layer 1} dp: Set DirPermission)
 refines both action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
@@ -741,6 +737,12 @@ refines both action {:layer 2} _ {
 }
 {
   call write_mem#0(ma, value);
+}
+
+// Memory primitives
+yield procedure {:layer 0} read_mem#0(ma: MemAddr) returns (value: Value);
+refines atomic action {:layer 1} _ {
+  value := mem[ma];
 }
 
 yield procedure {:layer 0} write_mem#0(ma: MemAddr, value: Value);
