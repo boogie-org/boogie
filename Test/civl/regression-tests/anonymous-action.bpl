@@ -15,3 +15,14 @@ refines both action {:layer 2} _ {
 {
     call j := A(i);
 }
+
+yield procedure {:layer 0} C(i: int) returns (j: int);
+refines both action {:layer 1} AC {
+    call Incr();
+}
+
+action {:layer 1} Incr()
+modifies x;
+{
+    x := x + 1;
+}

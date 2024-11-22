@@ -8,7 +8,6 @@ var {:layer 0,2} x:int;
 atomic action {:layer 1} SUM (n: int)
 refines MAIN' using INV;
 creates ADD;
-modifies x;
 {
   assert n >= 0;
 

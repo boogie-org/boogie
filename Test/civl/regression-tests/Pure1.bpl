@@ -18,3 +18,13 @@ pure action F()
 creates A;
 {
 }
+
+pure action G(d: int)
+{
+    x := d;
+}
+
+pure action H() returns (d: int)
+{
+    d := x;
+}
