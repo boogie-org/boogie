@@ -11,19 +11,6 @@ record RevealedState(HideRevealCmd.Modes Mode, IImmutableSet<Function> Offset) {
   public bool IsRevealed(Function function) {
     return Mode == HideRevealCmd.Modes.Hide == Offset.Contains(function) || function.AlwaysRevealed;
   }
-
-  public (IImmutableSet<Function> Hidden, IImmutableSet<Function> Revealed) Diff(RevealedState previousState, IImmutableSet<Function> all)
-  {
-    var previousRevealed = previousState.Mode == HideRevealCmd.Modes.Reveal
-      ? previousState.Offset
-      : all.Except(previousState.Offset);
-    
-    var currentRevealed = previousState.Mode == HideRevealCmd.Modes.Reveal
-      ? previousState.Offset
-      : all.Except(previousState.Offset);
-
-    return (previousRevealed.Except(currentRevealed), currentRevealed.Except(previousRevealed));
-  }
   
   public static readonly RevealedState AllRevealed = new(HideRevealCmd.Modes.Reveal, ImmutableHashSet<Function>.Empty);
   public static readonly RevealedState AllHidden = new(HideRevealCmd.Modes.Hide, ImmutableHashSet<Function>.Empty);
