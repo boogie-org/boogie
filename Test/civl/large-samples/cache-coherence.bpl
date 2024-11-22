@@ -1,3 +1,6 @@
+// RUN: %parallel-boogie -vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
 type MemAddr;
 
 type Value;
