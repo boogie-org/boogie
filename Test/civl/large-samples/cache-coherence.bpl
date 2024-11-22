@@ -87,6 +87,14 @@ invariant (forall ma: MemAddr:: {dir[ma]} (var state := dir[ma]->state; state is
 invariant (forall ma: MemAddr:: {dir[ma]} dir[ma]->state is Sharers ==> mem[ma] == absMem[ma]);
 invariant (forall ma: MemAddr:: dir[ma]->currRequest == NoDirRequest() ==> Set_IsSubset(WholeDirPermission(ma), dirPermissions));
 
+yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: Set CachePermission);
+invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
+invariant value == cache[i][Hash(ma)]->value;
+
+yield invariant {:layer 2} YieldRead(i: CacheId, ma: MemAddr, {:linear} drp: Set CachePermission);
+invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
+invariant (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->state == Shared()) && line->ma == ma);
+
 /// Cache
 yield procedure {:layer 2} cache_evict_req(i: CacheId, ca: CacheAddr) returns (result: Result)
 preserves call YieldInv#1();
@@ -506,10 +514,6 @@ action {:layer 1,2} primitive_cache_snoop_req_shd(i: CacheId, ma: MemAddr, s: St
 }
 
 /// Directory
-yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: Set CachePermission);
-invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
-invariant value == cache[i][Hash(ma)]->value;
-
 yield procedure {:layer 2} dir_evict_req(i: CacheId, ma: MemAddr, value: Value, {:layer 1,2} {:linear_in} drp: Set CachePermission)
 preserves call YieldInv#1();
 preserves call YieldInv#2();
@@ -534,10 +538,6 @@ requires call YieldEvict(i, ma, value, drp);
   }
   par dir_req_end(ma, dirState, dp) | YieldInv#1();
 }
-
-yield invariant {:layer 2} YieldRead(i: CacheId, ma: MemAddr, {:linear} drp: Set CachePermission);
-invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
-invariant (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->state == Shared()) && line->ma == ma);
 
 yield procedure {:layer 2} dir_read_shd_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: Set CachePermission)
 preserves call YieldInv#1();
