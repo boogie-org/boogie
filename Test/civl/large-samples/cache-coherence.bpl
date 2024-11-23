@@ -155,12 +155,18 @@ preserves call YieldInv#2();
 
 yield procedure {:layer 1} cache_read#1(i: CacheId, ma: MemAddr) returns (result: Option Value)
 refines atomic action {:layer 2} _ {
+  var ca: CacheAddr;
+  var line: CacheLine;
+
   if (*) {
-    result := None();
-  } else if (*) {
     result := Some(absMem[ma]);
+  } else if (*) {
+    result := None();
   } else {
-    call result := primitive_cache_read(i, ma);
+    ca := Hash(ma);
+    line := cache[i][ca];
+    assume line->state != Invalid() && line->ma == ma;
+    result := Some(line->value);
   }
 }
 {
@@ -353,11 +359,6 @@ refines atomic action {:layer 2} _ {
 // Cache primitives
 yield procedure {:layer 0} cache_read#0(i: CacheId, ma: MemAddr) returns (result: Option Value);
 refines atomic action {:layer 1} _ {
-  call result := primitive_cache_read(i, ma);
-}
-
-action {:layer 1,2} primitive_cache_read(i: CacheId, ma: MemAddr) returns (result: Option Value)
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
