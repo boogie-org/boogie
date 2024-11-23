@@ -27,8 +27,6 @@ datatype CacheLine {
   CacheLine(ma: MemAddr, value: Value, state: State)
 }
 
-type Cache = [CacheAddr]CacheLine;
-
 type CacheId;
 const i0: CacheId;
 
@@ -54,7 +52,7 @@ function {:inline} WholeDirPermission(ma: MemAddr): Set DirPermission {
 var {:layer 0,2} mem: [MemAddr]Value;
 var {:layer 0,2} dir: [MemAddr]DirState;
 var {:layer 0,2} dirBusy: [MemAddr]bool;
-var {:layer 0,2} cache: [CacheId]Cache;
+var {:layer 0,2} cache: [CacheId][CacheAddr]CacheLine;
 var {:layer 0,1} cacheBusy: [CacheId][CacheAddr]bool;
 var {:linear} {:layer 1,2} cachePermissions: Set CachePermission;
 var {:linear} {:layer 1,2} dirPermissions: Set DirPermission;
@@ -358,7 +356,7 @@ refines atomic action {:layer 1} _ {
   call result := primitive_cache_read(i, ma);
 }
 
-action {:layer 1, 2} primitive_cache_read(i: CacheId, ma: MemAddr) returns (result: Option Value)
+action {:layer 1,2} primitive_cache_read(i: CacheId, ma: MemAddr) returns (result: Option Value)
 {
   var ca: CacheAddr;
   var line: CacheLine;
@@ -373,12 +371,6 @@ action {:layer 1, 2} primitive_cache_read(i: CacheId, ma: MemAddr) returns (resu
 
 yield procedure {:layer 0} cache_write#0(i: CacheId, ma: MemAddr, v: Value) returns (result: Result);
 refines atomic action {:layer 1} _ {
-  call result := primitive_cache_write(i, ma, v);
-}
-
-action {:layer 1} primitive_cache_write(i: CacheId, ma: MemAddr, v: Value) returns (result: Result)
-modifies cache;
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
@@ -394,12 +386,6 @@ modifies cache;
 
 yield procedure {:layer 0} cache_evict_req#0(i: CacheId, ca: CacheAddr) returns (result: Result, ma: MemAddr, value: Value);
 refines atomic action {:layer 1} _ {
-  call result, ma, value := primitive_cache_evict_req(i, ca);
-}
-
-action {:layer 1} primitive_cache_evict_req(i: CacheId, ca: CacheAddr) returns (result: Result, ma: MemAddr, value: Value)
-modifies cache;
-{
   var line: CacheLine;
 
   line := cache[i][ca];
@@ -409,17 +395,11 @@ modifies cache;
     call result := acquire_cache_lock(i, ca);
   } else {
     result := Fail();
-  } 
+  }
 }
 
 yield procedure {:layer 0} cache_read_shd_req#0(i: CacheId, ma: MemAddr) returns (result: Result);
 refines atomic action {:layer 1} _ {
-  call result := primitive_cache_read_shd_req(i, ma);
-}
-
-action {:layer 1} primitive_cache_read_shd_req(i: CacheId, ma: MemAddr) returns (result: Result)
-modifies cache;
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
@@ -437,11 +417,6 @@ modifies cache;
 
 yield procedure {:layer 0} cache_read_exc_req#0(i: CacheId, ma: MemAddr) returns (result: Result);
 refines atomic action {:layer 1} _ {
-  call result := primitive_cache_read_exc_req(i, ma);
-}
-
-action {:layer 1} primitive_cache_read_exc_req(i: CacheId, ma: MemAddr) returns (result: Result)
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
@@ -470,11 +445,6 @@ modifies cache;
 
 yield procedure {:layer 0} cache_evict_resp#0(i: CacheId, ma: MemAddr);
 refines atomic action {:layer 1} _ {
-  call primitive_cache_evict_resp(i, ma);
-}
-
-action {:layer 1} primitive_cache_evict_resp(i: CacheId, ma: MemAddr)
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
@@ -487,18 +457,14 @@ action {:layer 1} primitive_cache_evict_resp(i: CacheId, ma: MemAddr)
 
 yield procedure {:layer 0} cache_read_resp#0(i: CacheId, ma: MemAddr, v: Value, s: State);
 refines atomic action {:layer 1} _ {
-  call primitive_cache_read_resp(i, ma, v, s);
-}
-
-action {:layer 1} primitive_cache_read_resp(i: CacheId, ma: MemAddr, v: Value, s: State)
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
   assert s == Shared() || s == Exclusive();
   ca := Hash(ma);
   line := cache[i][ca];
-  assert line->state == Invalid() || (line->state == Shared() && line->ma == ma);
+  assert line->state == Invalid() || line->state == Shared();
+  assert line->ma == ma;
   cache[i][ca] := CacheLine(ma, if line->state == Invalid() then v else line->value, s);
   cacheBusy[i][ca] := false;
 }
@@ -597,7 +563,7 @@ requires call YieldRead(i, ma, drp);
   var {:linear} {:layer 1,2} dpOne: Set DirPermission;
   var victims: Set CacheId;
   var victim: CacheId;
-  var {:layer 2} cache_s: [CacheId]Cache;
+  var {:layer 2} cache_s: [CacheId][CacheAddr]CacheLine;
 
   par dirState, dp := dir_req_begin(ma) | YieldInv#1();
   if (dirState is Owner) {
