@@ -51,7 +51,7 @@ function {:inline} WholeDirPermission(ma: MemAddr): Set DirPermission {
 
 var {:layer 0,2} mem: [MemAddr]Value;
 var {:layer 0,2} dir: [MemAddr]DirState;
-var {:layer 0,2} dirBusy: [MemAddr]bool;
+var {:layer 0,1} dirBusy: [MemAddr]bool;
 var {:layer 0,2} cache: [CacheId][CacheAddr]CacheLine;
 var {:layer 0,1} cacheBusy: [CacheId][CacheAddr]bool;
 var {:linear} {:layer 1,2} cachePermissions: Set CachePermission;
@@ -61,6 +61,7 @@ var {:layer 1,3} absMem: [MemAddr]Value;
 /// Yield invariants
 yield invariant {:layer 1} YieldInv#1();
 invariant (forall i: CacheId, ca: CacheAddr:: Set_Contains(cachePermissions, CachePermission(i, ca)) || cacheBusy[i][ca]);
+invariant (forall ma: MemAddr:: Set_IsSubset(WholeDirPermission(ma), dirPermissions) || dirBusy[ma]);
 
 yield invariant {:layer 2} YieldInv#2();
 invariant (forall i: CacheId, ca: CacheAddr:: Hash(cache[i][ca]->ma) == ca);
@@ -75,7 +76,6 @@ invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
 invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
             (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> Set_Contains(dir[ma]->iset, i) || cache[i][Hash(ma)]->state == Invalid()));
 invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==> mem[ma] == absMem[ma]);
-invariant (forall ma: MemAddr:: Set_IsSubset(WholeDirPermission(ma), dirPermissions) || dirBusy[ma]);
 
 yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: Set CachePermission);
 invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
@@ -618,9 +618,10 @@ refines both action {:layer 2} _ {
 }
 
 yield procedure {:layer 1} dir_req_begin(ma: MemAddr) returns (dirState: DirState, {:linear} {:layer 1} dp: Set DirPermission)
+requires call YieldInv#1();
 refines right action {:layer 2} _ {
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
-  call dirState := primitive_dir_req_begin(ma);
+  assume Set_IsSubset(WholeDirPermission(ma), dirPermissions);
+  dirState := dir[ma];
   call dp := Set_Get(dirPermissions, WholeDirPermission(ma)->val);
 }
 {
@@ -629,10 +630,11 @@ refines right action {:layer 2} _ {
 }
 
 yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: Set DirPermission)
+requires call YieldInv#1();
 refines left action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
   assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
-  call primitive_dir_req_end(ma, dirState);
+  dir[ma] := dirState;
   call Set_Put(dirPermissions, dp);
 }
 {
@@ -643,12 +645,6 @@ refines left action {:layer 2} _ {
 // Directory primitives
 yield procedure {:layer 0} dir_req_begin#0(ma: MemAddr) returns (dirState: DirState);
 refines atomic action {:layer 1} _ {
-  call dirState := primitive_dir_req_begin(ma);
-}
-
-action {:layer 1,2} primitive_dir_req_begin(ma: MemAddr) returns (dirState: DirState)
-modifies dir;
-{
   assume !dirBusy[ma];
   dirBusy[ma] := true;
   dirState := dir[ma];
@@ -656,13 +652,6 @@ modifies dir;
 
 yield procedure {:layer 0} dir_req_end#0(ma: MemAddr, dirState: DirState);
 refines atomic action {:layer 1} _ {
-  call primitive_dir_req_end(ma, dirState);
-}
-
-action {:layer 1,2} primitive_dir_req_end(ma: MemAddr, dirState: DirState)
-modifies dir;
-{
-  assert dirBusy[ma];
   dir[ma] := dirState;
   dirBusy[ma] := false;
 }
