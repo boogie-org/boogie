@@ -2,8 +2,11 @@
 // RUN: %diff "%s.expect" "%t"
 
 type MemAddr;
-
+type CacheAddr;
+function Hash(MemAddr): CacheAddr;
 type Value;
+type CacheId;
+const i0: CacheId; // used for pool-based quantifier instantiation
 
 datatype State {
   Modified(),
@@ -16,8 +19,6 @@ function {:inline} Owned(state: State): bool {
   state == Exclusive() || state == Modified()
 }
 
-type CacheAddr;
-
 datatype Result {
   Ok(),
   Fail()
@@ -26,11 +27,6 @@ datatype Result {
 datatype CacheLine {
   CacheLine(ma: MemAddr, value: Value, state: State)
 }
-
-type CacheId;
-const i0: CacheId;
-
-function Hash(MemAddr): CacheAddr;
 
 datatype DirState {
   Owner(i: CacheId),
@@ -49,14 +45,38 @@ function {:inline} WholeDirPermission(ma: MemAddr): Set DirPermission {
   Set((lambda {:pool "DirPermission"} x: DirPermission :: x->ma == ma))
 }
 
+// Implementation state
 var {:layer 0,2} mem: [MemAddr]Value;
 var {:layer 0,2} dir: [MemAddr]DirState;
 var {:layer 0,1} dirBusy: [MemAddr]bool;
 var {:layer 0,2} cache: [CacheId][CacheAddr]CacheLine;
 var {:layer 0,1} cacheBusy: [CacheId][CacheAddr]bool;
+
+// Auxiliary state to replace dirBusy and cacheBusy
 var {:linear} {:layer 1,2} cachePermissions: Set CachePermission;
 var {:linear} {:layer 1,2} dirPermissions: Set DirPermission;
+
+// Specification state
 var {:layer 1,3} absMem: [MemAddr]Value;
+
+/// Proof intuition
+/*
+The proof is done in two layers.
+
+At layer 1, cachePermissions and dirPermissions are introduced allowing dirBusy and cacheBusy
+to be hidden. At this layer, absMem is also introduced. The main purpose of this layer is to
+create atomic actions with suitable mover types. Specifically, we want the following:
+- Memory operations (read and write) to be both movers.
+- Shared snoop request at cache to be left mover.
+- Response to read request at cache to be left mover.
+- Initiation and conclusion of cache and directory operations to be right and left movers, respectively.
+
+At layer 2, we do an invariance proof to hide the directory and all the caches so that the read
+and write operations at cache are described as atomic operations over absMem. This specfication
+method naturally captures the cache coherence property. To achieve this specfication, the variables
+mem, dir, cache, cachePermissions, and dirPermissions are hidden. The yield invariant at this level
+is a global invariant connecting directory and cache states.
+*/
 
 /// Yield invariants
 yield invariant {:layer 1} YieldInv#1();
@@ -304,6 +324,19 @@ refines atomic action {:layer 2} _ {
   call cache_evict_resp#0(i, ma);
   call {:layer 1} Set_Put(cachePermissions, drp);
 }
+
+/*
+The left mover types of the actions cache_read_resp#1 and cache_snoop_req_shd#1 are critical
+to achieve the correct atomicity for the directory operations.
+If the two invocations are hitting different caches, the argument is straightforward.
+Otherwise, they are hitting the same cache and their i arguments are the same.
+In this case, the conflict between their dp arguments implies that their ma arguments are different.
+Call these arguments ma1 and ma2; let ca1 == Hash(ma1) and ca2 == Hash(ma2).
+If ca1 and ca2 are different, there is no conflict.
+Otherwise ca1 and ca2 are different.
+We get a contradiction because both invocations are referring to the same cache line
+but asserting that ma field of this cache line are equal to ma1 and ma2, respectively.
+*/
 
 yield procedure {:layer 1} cache_read_resp#1(i: CacheId, ma: MemAddr, v: Value, s: State, {:linear_in} {:layer 1} drp: Set CachePermission, {:linear} {:layer 1} dp: Set DirPermission)
 preserves call YieldInv#1();
