@@ -1,6 +1,15 @@
 // RUN: %parallel-boogie -vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+/*
+This example constructs a directory-based MESI cache coherence protocol.
+Many important details of a realistic protocol are modeled.
+- Individual steps taken by the cache and directory controllers are fine-grained.
+- Operations on the cache controller are non-blocking.
+- Multiple memory addresses may map to the same cache address.
+- A cache line may be evicted nondeterministically.
+*/
+
 type MemAddr;
 type CacheAddr;
 function Hash(MemAddr): CacheAddr;
