@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using Microsoft.Boogie.GraphUtil;
 using VCGeneration.Prune;
 
@@ -57,11 +58,11 @@ namespace Microsoft.Boogie
      * See Checker.Setup for more information.
      * Data type constructor declarations are not pruned and they do affect VC generation.
      */
-    public static IEnumerable<Declaration> GetLiveDeclarations(VCGenOptions options, Program program, IList<Block>? blocks)
+    public static (IEnumerable<Declaration> LiveDeclarations, ISet<Function> HiddenFunctions) GetLiveDeclarations(VCGenOptions options, Program program, IList<Block>? blocks)
     {
       if (program.DeclarationDependencies == null || blocks == null || !options.Prune)
       {
-        return program.TopLevelDeclarations;
+        return (program.TopLevelDeclarations, ImmutableHashSet<Function>.Empty);
       }
 
       var revealedState = GetRevealedState(blocks);
@@ -71,15 +72,28 @@ namespace Microsoft.Boogie
         blocksVisitor.Visit(block);
       }
 
+      var hiddenFunctions = new HashSet<Function>();
       var keepRoots = program.TopLevelDeclarations.Where(d => d.Attributes.FindBoolAttribute("keep"));
       var reachableDeclarations = GraphAlgorithms.FindReachableNodesInGraphWithMergeNodes(program.DeclarationDependencies, 
         blocksVisitor.Outgoing.Concat(keepRoots).ToHashSet(), TraverseDeclaration).ToHashSet();
-      return program.TopLevelDeclarations.Where(d => 
+      var liveDeclarations = program.TopLevelDeclarations.Where(d => 
         d is not Constant && d is not Axiom && d is not Function || reachableDeclarations.Contains(d));
+      return (liveDeclarations, hiddenFunctions);
 
-      bool TraverseDeclaration(object parent, object child) {
-        return parent is not Function function || child is not Axiom axiom || revealedState.IsRevealed(function)
-               || !axiom.CanHide;
+      bool TraverseDeclaration(object parent, object child)
+      {
+        if (parent is not Function function || child is not Axiom axiom || !axiom.CanHide)
+        {
+          return true;
+        }
+
+        if (revealedState.IsRevealed(function))
+        {
+          return true;
+        }
+
+        hiddenFunctions.Add(function);
+        return false;
       }
     }
 
@@ -93,7 +107,7 @@ namespace Microsoft.Boogie
       revealedAnalysis.Run();
 
       var assertions = controlFlowGraph.Nodes.OfType<AssertCmd>();
-      return assertions.Select(assertCmd => revealedAnalysis.States[assertCmd].Peek()).
+      return assertions.Select(assertCmd => revealedAnalysis.OutStates[assertCmd].Peek()).
         Aggregate(RevealedState.AllHidden, RevealedAnalysis.MergeStates);
     }
 

@@ -27,16 +27,33 @@ namespace VC
 
       readonly List<Block> bigBlocks = new();
       public List<AssertCmd> Asserts => Blocks.SelectMany(block => block.Cmds.OfType<AssertCmd>()).ToList();
-      public IReadOnlyList<Declaration> prunedDeclarations;
-      
+      private IReadOnlyList<Declaration> prunedDeclarations;
+
+      public ISet<Function> HiddenFunctions {
+        get {
+          if (hiddenFunctions == null) {
+            ComputePrunedDeclsAndHiddenFunctions();
+          }
+          return hiddenFunctions;
+        }
+      }
+
       public IReadOnlyList<Declaration> PrunedDeclarations {
         get {
           if (prunedDeclarations == null) {
-            prunedDeclarations = Pruner.GetLiveDeclarations(parent.Options, parent.program, Blocks).ToList();
+            ComputePrunedDeclsAndHiddenFunctions();
           }
 
           return prunedDeclarations;
         }
+      }
+
+      private void ComputePrunedDeclsAndHiddenFunctions()
+      {
+        var (liveDeclarations, hiddenFunctions) =
+          Pruner.GetLiveDeclarations(parent.Options, parent.program, Blocks);
+        this.hiddenFunctions = hiddenFunctions;
+        prunedDeclarations = liveDeclarations.ToList();
       }
 
       readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
@@ -199,6 +216,7 @@ namespace VC
 
       int bsid;
       private readonly Func<IList<Block>> getBlocks;
+      private ISet<Function> hiddenFunctions;
 
       BlockStats GetBlockStats(Block b)
       {

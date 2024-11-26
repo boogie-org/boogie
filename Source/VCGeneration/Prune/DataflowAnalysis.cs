@@ -22,7 +22,9 @@ abstract class DataflowAnalysis<TNode, TState> {
     this.roots = roots;
   }
 
-  public IReadOnlyDictionary<TNode, TState> States => outStates;
+  public IReadOnlyDictionary<TNode, TState> OutStates => outStates;
+  public IReadOnlyDictionary<TNode, TState> InStates => inStates;
+
   
   protected abstract TState Empty { get; }
 
