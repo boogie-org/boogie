@@ -1,9 +1,21 @@
 // RUN: %parallel-boogie -vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type MemAddr;
+/*
+This example constructs a directory-based MESI cache coherence protocol.
+Many important details of a realistic protocol are modeled.
+- Individual steps taken by the cache and directory controllers are fine-grained.
+- Operations on the cache controller are non-blocking.
+- Multiple memory addresses may map to the same cache address.
+- A cache line may be evicted nondeterministically.
+*/
 
+type MemAddr;
+type CacheAddr;
+function Hash(MemAddr): CacheAddr;
 type Value;
+type CacheId;
+const i0: CacheId; // used for pool-based quantifier instantiation
 
 datatype State {
   Modified(),
@@ -12,7 +24,9 @@ datatype State {
   Invalid()
 }
 
-type CacheAddr;
+function {:inline} Owned(state: State): bool {
+  state == Exclusive() || state == Modified()
+}
 
 datatype Result {
   Ok(),
@@ -23,27 +37,9 @@ datatype CacheLine {
   CacheLine(ma: MemAddr, value: Value, state: State)
 }
 
-type Cache = [CacheAddr]CacheLine;
-
-type CacheId;
-const i0: CacheId;
-
-function Hash(MemAddr): CacheAddr;
-
 datatype DirState {
   Owner(i: CacheId),
   Sharers(iset: Set CacheId)
-}
-
-datatype DirRequest {
-  EvictAtDir(i: CacheId),
-  ReadShdAtDir(i: CacheId),
-  ReadExcAtDir(i: CacheId),
-  NoDirRequest()
-}
-
-datatype DirInfo {
-  DirInfo(state: DirState, currRequest: DirRequest)
 }
 
 datatype CachePermission {
@@ -58,36 +54,57 @@ function {:inline} WholeDirPermission(ma: MemAddr): Set DirPermission {
   Set((lambda {:pool "DirPermission"} x: DirPermission :: x->ma == ma))
 }
 
+// Implementation state
 var {:layer 0,2} mem: [MemAddr]Value;
-var {:layer 0,2} dir: [MemAddr]DirInfo;
-var {:layer 0,2} cache: [CacheId]Cache;
+var {:layer 0,2} dir: [MemAddr]DirState;
+var {:layer 0,1} dirBusy: [MemAddr]bool;
+var {:layer 0,2} cache: [CacheId][CacheAddr]CacheLine;
 var {:layer 0,1} cacheBusy: [CacheId][CacheAddr]bool;
+
+// Auxiliary state to replace dirBusy and cacheBusy
 var {:linear} {:layer 1,2} cachePermissions: Set CachePermission;
 var {:linear} {:layer 1,2} dirPermissions: Set DirPermission;
+
+// Specification state
 var {:layer 1,3} absMem: [MemAddr]Value;
+
+/// Proof intuition
+/*
+The proof is done in two layers.
+
+At layer 1, cachePermissions and dirPermissions are introduced allowing dirBusy and cacheBusy
+to be hidden. At this layer, absMem is also introduced. The main purpose of this layer is to
+create atomic actions with suitable mover types. Specifically, we want the following:
+- Memory operations (read and write) to be both movers.
+- Shared snoop request at cache to be left mover.
+- Response to read request at cache to be left mover.
+- Initiation and conclusion of cache and directory operations to be right and left movers, respectively.
+
+At layer 2, we do an invariance proof to hide the directory and all the caches so that the read
+and write operations at cache are described as atomic operations over absMem. This specfication
+method naturally captures the cache coherence property. To achieve this specfication, the variables
+mem, dir, cache, cachePermissions, and dirPermissions are hidden. The yield invariant at this level
+is a global invariant connecting directory and cache states.
+*/
 
 /// Yield invariants
 yield invariant {:layer 1} YieldInv#1();
 invariant (forall i: CacheId, ca: CacheAddr:: Set_Contains(cachePermissions, CachePermission(i, ca)) || cacheBusy[i][ca]);
-
-function {:inline} Owns(cache: [CacheId]Cache, i: CacheId, ca: CacheAddr): bool {
-  cache[i][ca]->state == Exclusive() || cache[i][ca]->state == Modified()
-}
+invariant (forall ma: MemAddr:: Set_IsSubset(WholeDirPermission(ma), dirPermissions) || dirBusy[ma]);
 
 yield invariant {:layer 2} YieldInv#2();
 invariant (forall i: CacheId, ca: CacheAddr:: Hash(cache[i][ca]->ma) == ca);
-invariant (forall i: CacheId, ca: CacheAddr::
-            (var line := cache[i][ca]; (var state := dir[line->ma]->state;
-              line->state == Invalid() || (line->value == absMem[line->ma] && if line->state == Shared() then state is Sharers else state is Owner))));
-invariant (forall ma: MemAddr:: {dir[ma]} (var state := dir[ma]->state; state is Owner ==> Owns(cache, state->i, Hash(ma)) && cache[state->i][Hash(ma)]->ma == ma));
-invariant (forall ma: MemAddr:: {dir[ma]} (var state := dir[ma]->state; state is Owner ==>
-            (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> state->i == i || cache[i][Hash(ma)]->state == Invalid())));
-invariant (forall ma: MemAddr:: {dir[ma]} (var state := dir[ma]->state; state is Sharers ==>
-            (forall i: CacheId:: Set_Contains(state->iset, i) ==> cache[i][Hash(ma)]->state == Shared() && cache[i][Hash(ma)]->ma == ma)));
-invariant (forall ma: MemAddr:: {dir[ma]} (var state := dir[ma]->state; state is Sharers ==>
-            (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> Set_Contains(state->iset, i) || cache[i][Hash(ma)]->state == Invalid())));
-invariant (forall ma: MemAddr:: {dir[ma]} dir[ma]->state is Sharers ==> mem[ma] == absMem[ma]);
-invariant (forall ma: MemAddr:: {dir[ma]} dir[ma]->currRequest == NoDirRequest() ==> Set_IsSubset(WholeDirPermission(ma), dirPermissions));
+invariant (forall i: CacheId, ca: CacheAddr:: (var line := cache[i][ca];
+              line->state == Invalid() ||
+              (line->value == absMem[line->ma] && if line->state == Shared() then dir[line->ma] is Sharers else dir[line->ma] is Owner)));
+invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Owner ==> Owned(cache[dir[ma]->i][Hash(ma)]->state) && cache[dir[ma]->i][Hash(ma)]->ma == ma);
+invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Owner ==>
+            (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> dir[ma]->i == i || cache[i][Hash(ma)]->state == Invalid()));
+invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
+            (forall i: CacheId:: Set_Contains(dir[ma]->iset, i) ==> cache[i][Hash(ma)]->state == Shared() && cache[i][Hash(ma)]->ma == ma));
+invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
+            (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> Set_Contains(dir[ma]->iset, i) || cache[i][Hash(ma)]->state == Invalid()));
+invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==> mem[ma] == absMem[ma]);
 
 yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: Set CachePermission);
 invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
@@ -167,12 +184,18 @@ preserves call YieldInv#2();
 
 yield procedure {:layer 1} cache_read#1(i: CacheId, ma: MemAddr) returns (result: Option Value)
 refines atomic action {:layer 2} _ {
+  var ca: CacheAddr;
+  var line: CacheLine;
+
   if (*) {
-    result := None();
-  } else if (*) {
     result := Some(absMem[ma]);
+  } else if (*) {
+    result := None();
   } else {
-    call result := primitive_cache_read(i, ma);
+    ca := Hash(ma);
+    line := cache[i][ca];
+    assume line->state != Invalid() && line->ma == ma;
+    result := Some(line->value);
   }
 }
 {
@@ -311,6 +334,19 @@ refines atomic action {:layer 2} _ {
   call {:layer 1} Set_Put(cachePermissions, drp);
 }
 
+/*
+The left mover types of the actions cache_read_resp#1 and cache_snoop_req_shd#1 are critical
+to achieve the correct atomicity for the directory operations.
+If the two invocations are hitting different caches, the argument is straightforward.
+Otherwise, they are hitting the same cache and their i arguments are the same.
+In this case, the conflict between their dp arguments implies that their ma arguments are different.
+Call these arguments ma1 and ma2; let ca1 == Hash(ma1) and ca2 == Hash(ma2).
+If ca1 and ca2 are different, there is no conflict.
+Otherwise ca1 and ca2 are different.
+We get a contradiction because both invocations are referring to the same cache line
+but asserting that ma field of this cache line are equal to ma1 and ma2, respectively.
+*/
+
 yield procedure {:layer 1} cache_read_resp#1(i: CacheId, ma: MemAddr, v: Value, s: State, {:linear_in} {:layer 1} drp: Set CachePermission, {:linear} {:layer 1} dp: Set DirPermission)
 preserves call YieldInv#1();
 refines left action {:layer 2} _ {
@@ -365,11 +401,6 @@ refines atomic action {:layer 2} _ {
 // Cache primitives
 yield procedure {:layer 0} cache_read#0(i: CacheId, ma: MemAddr) returns (result: Option Value);
 refines atomic action {:layer 1} _ {
-  call result := primitive_cache_read(i, ma);
-}
-
-action {:layer 1, 2} primitive_cache_read(i: CacheId, ma: MemAddr) returns (result: Option Value)
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
@@ -383,12 +414,6 @@ action {:layer 1, 2} primitive_cache_read(i: CacheId, ma: MemAddr) returns (resu
 
 yield procedure {:layer 0} cache_write#0(i: CacheId, ma: MemAddr, v: Value) returns (result: Result);
 refines atomic action {:layer 1} _ {
-  call result := primitive_cache_write(i, ma, v);
-}
-
-action {:layer 1} primitive_cache_write(i: CacheId, ma: MemAddr, v: Value) returns (result: Result)
-modifies cache;
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
@@ -404,12 +429,6 @@ modifies cache;
 
 yield procedure {:layer 0} cache_evict_req#0(i: CacheId, ca: CacheAddr) returns (result: Result, ma: MemAddr, value: Value);
 refines atomic action {:layer 1} _ {
-  call result, ma, value := primitive_cache_evict_req(i, ca);
-}
-
-action {:layer 1} primitive_cache_evict_req(i: CacheId, ca: CacheAddr) returns (result: Result, ma: MemAddr, value: Value)
-modifies cache;
-{
   var line: CacheLine;
 
   line := cache[i][ca];
@@ -419,17 +438,11 @@ modifies cache;
     call result := acquire_cache_lock(i, ca);
   } else {
     result := Fail();
-  } 
+  }
 }
 
 yield procedure {:layer 0} cache_read_shd_req#0(i: CacheId, ma: MemAddr) returns (result: Result);
 refines atomic action {:layer 1} _ {
-  call result := primitive_cache_read_shd_req(i, ma);
-}
-
-action {:layer 1} primitive_cache_read_shd_req(i: CacheId, ma: MemAddr) returns (result: Result)
-modifies cache;
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
@@ -447,11 +460,6 @@ modifies cache;
 
 yield procedure {:layer 0} cache_read_exc_req#0(i: CacheId, ma: MemAddr) returns (result: Result);
 refines atomic action {:layer 1} _ {
-  call result := primitive_cache_read_exc_req(i, ma);
-}
-
-action {:layer 1} primitive_cache_read_exc_req(i: CacheId, ma: MemAddr) returns (result: Result)
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
@@ -480,11 +488,6 @@ modifies cache;
 
 yield procedure {:layer 0} cache_evict_resp#0(i: CacheId, ma: MemAddr);
 refines atomic action {:layer 1} _ {
-  call primitive_cache_evict_resp(i, ma);
-}
-
-action {:layer 1} primitive_cache_evict_resp(i: CacheId, ma: MemAddr)
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
@@ -497,18 +500,14 @@ action {:layer 1} primitive_cache_evict_resp(i: CacheId, ma: MemAddr)
 
 yield procedure {:layer 0} cache_read_resp#0(i: CacheId, ma: MemAddr, v: Value, s: State);
 refines atomic action {:layer 1} _ {
-  call primitive_cache_read_resp(i, ma, v, s);
-}
-
-action {:layer 1} primitive_cache_read_resp(i: CacheId, ma: MemAddr, v: Value, s: State)
-{
   var ca: CacheAddr;
   var line: CacheLine;
 
   assert s == Shared() || s == Exclusive();
   ca := Hash(ma);
   line := cache[i][ca];
-  assert line->state == Invalid() || (line->state == Shared() && line->ma == ma);
+  assert line->state == Invalid() || line->state == Shared();
+  assert line->ma == ma;
   cache[i][ca] := CacheLine(ma, if line->state == Invalid() then v else line->value, s);
   cacheBusy[i][ca] := false;
 }
@@ -556,12 +555,10 @@ preserves call YieldInv#1();
 preserves call YieldInv#2();
 requires call YieldEvict(i, ma, value, drp);
 {
-  var dirInfo: DirInfo;
   var dirState: DirState;
   var {:linear} {:layer 1,2} dp: Set DirPermission;
 
-  par dirInfo, dp := dir_req_begin(ma, EvictAtDir(i)) | YieldInv#1();
-  dirState := dirInfo->state;
+  par dirState, dp := dir_req_begin(ma) | YieldInv#1();
   // do not change dirState in case this is a stale evict request due to a race condition with a snoop
   if (dirState == Owner(i)) {
     par write_mem(ma, value, dp) | YieldInv#1();
@@ -581,13 +578,11 @@ preserves call YieldInv#1();
 preserves call YieldInv#2();
 requires call YieldRead(i, ma, drp);
 {
-  var dirInfo: DirInfo;
   var dirState: DirState;
   var {:linear} {:layer 1,2} dp: Set DirPermission;
   var value: Value;
 
-  par dirInfo, dp := dir_req_begin(ma, ReadShdAtDir(i)) | YieldInv#1();
-  dirState := dirInfo->state;
+  par dirState, dp := dir_req_begin(ma) | YieldInv#1();
   if (dirState is Owner) {
     par value := cache_snoop_req_exc#1(dirState->i, ma, Shared(), dp) | YieldInv#1();
     par write_mem(ma, value, dp) | YieldInv#1();
@@ -605,17 +600,15 @@ preserves call YieldInv#1();
 preserves call YieldInv#2();
 requires call YieldRead(i, ma, drp);
 {
-  var dirInfo: DirInfo;
   var dirState: DirState;
   var value: Value;
   var {:linear} {:layer 1,2} dp: Set DirPermission;
   var {:linear} {:layer 1,2} dpOne: Set DirPermission;
   var victims: Set CacheId;
   var victim: CacheId;
-  var {:layer 2} cache_s: [CacheId]Cache;
+  var {:layer 2} cache_s: [CacheId][CacheAddr]CacheLine;
 
-  par dirInfo, dp := dir_req_begin(ma, ReadExcAtDir(i)) | YieldInv#1();
-  dirState := dirInfo->state;
+  par dirState, dp := dir_req_begin(ma) | YieldInv#1();
   if (dirState is Owner) {
     par value := cache_snoop_req_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
     par write_mem(ma, value, dp) | YieldInv#1();
@@ -667,22 +660,24 @@ refines both action {:layer 2} _ {
   call {:layer 1} Set_Put(dp', dpOne);
 }
 
-yield procedure {:layer 1} dir_req_begin(ma: MemAddr, dirRequest: DirRequest) returns (dirInfo: DirInfo, {:linear} {:layer 1} dp: Set DirPermission)
+yield procedure {:layer 1} dir_req_begin(ma: MemAddr) returns (dirState: DirState, {:linear} {:layer 1} dp: Set DirPermission)
+requires call YieldInv#1();
 refines right action {:layer 2} _ {
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
-  call dirInfo := primitive_dir_req_begin(ma, dirRequest);
+  assume Set_IsSubset(WholeDirPermission(ma), dirPermissions);
+  dirState := dir[ma];
   call dp := Set_Get(dirPermissions, WholeDirPermission(ma)->val);
 }
 {
-  call dirInfo := dir_req_begin#0(ma, dirRequest);
+  call dirState := dir_req_begin#0(ma);
   call {:layer 1} dp := Set_Get(dirPermissions, WholeDirPermission(ma)->val);
 }
 
 yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: Set DirPermission)
+requires call YieldInv#1();
 refines left action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
   assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
-  call primitive_dir_req_end(ma, dirState);
+  dir[ma] := dirState;
   call Set_Put(dirPermissions, dp);
 }
 {
@@ -691,31 +686,17 @@ refines left action {:layer 2} _ {
 }
 
 // Directory primitives
-yield procedure {:layer 0} dir_req_begin#0(ma: MemAddr, dirRequest: DirRequest) returns (dirInfo: DirInfo);
+yield procedure {:layer 0} dir_req_begin#0(ma: MemAddr) returns (dirState: DirState);
 refines atomic action {:layer 1} _ {
-  call dirInfo := primitive_dir_req_begin(ma, dirRequest);
-}
-
-action {:layer 1,2} primitive_dir_req_begin(ma: MemAddr, dirRequest: DirRequest) returns (dirInfo: DirInfo)
-modifies dir;
-{
-  assert !(dirRequest is NoDirRequest);
-  assume dir[ma]->currRequest == NoDirRequest();
-  dir[ma]->currRequest := dirRequest;
-  dirInfo := dir[ma];
+  assume !dirBusy[ma];
+  dirBusy[ma] := true;
+  dirState := dir[ma];
 }
 
 yield procedure {:layer 0} dir_req_end#0(ma: MemAddr, dirState: DirState);
 refines atomic action {:layer 1} _ {
-  call primitive_dir_req_end(ma, dirState);
-}
-
-action {:layer 1,2} primitive_dir_req_end(ma: MemAddr, dirState: DirState)
-modifies dir;
-{
-  assert !(dir[ma]->currRequest is NoDirRequest);
-  dir[ma]->state := dirState;
-  dir[ma]->currRequest := NoDirRequest();
+  dir[ma] := dirState;
+  dirBusy[ma] := false;
 }
 
 /// Memory
