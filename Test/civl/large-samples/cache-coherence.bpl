@@ -76,7 +76,7 @@ At layer 1, cachePermissions and dirPermissions are introduced allowing dirBusy 
 to be hidden. At this layer, absMem is also introduced. The main purpose of this layer is to
 create atomic actions with suitable mover types. Specifically, we want the following:
 - Memory operations (read and write) to be both movers.
-- Shared snoop request at cache to be left mover.
+- Shared invalidate request at cache to be left mover.
 - Response to read request at cache to be left mover.
 - Initiation and conclusion of cache and directory operations to be right and left movers, respectively.
 
@@ -115,6 +115,24 @@ invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
 invariant (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->state == Shared()) && line->ma == ma);
 
 /// Cache
+/*
+There are 5 top-level operations on the cache.
+cache_read and cache_write read and write a cache entry, respectively;
+they may nondeterministically choose not to do the operation.
+cache_evict_req initiates eviction of a cache line.
+cache_read_shd_req and cache_read_exc_req initiate bringing a memory address into the cache
+in Shared and Exclusive mode, respectively.
+The last three operations make asynchronous calls to corresponding operations on the directory
+to achieve their goals.
+
+To specify the protocol, we introduce absMem, a global variable capturing the logical view of
+memory at layer 1.
+The verification demonstrates that cache_read and cache_read do the appropriate operation
+on absMem.
+At layer 3, all operations other than cache_read and cache_write disappear by becoming "skip"
+since all the concrete state is hidden by layer 2.
+*/
+
 yield procedure {:layer 2} cache_read(i: CacheId, ma: MemAddr) returns (result: Option Value)
 preserves call YieldInv#2();
 refines atomic action {:layer 3} _ {
@@ -188,6 +206,7 @@ refines atomic action {:layer 2} _ {
   var line: CacheLine;
 
   if (*) {
+    // this relaxation allows cache_invalidate_shd#1 to commute to the left of cache_read#1
     result := Some(absMem[ma]);
   } else if (*) {
     result := None();
@@ -335,7 +354,7 @@ refines atomic action {:layer 2} _ {
 }
 
 /*
-The left mover types of the actions cache_read_resp#1 and cache_snoop_req_shd#1 are critical
+The left mover types of the actions cache_read_resp#1 and cache_invalidate_shd#1 are critical
 to achieve the correct atomicity for the directory operations.
 If the two invocations are hitting different caches, the argument is straightforward.
 Otherwise, they are hitting the same cache and their i arguments are the same.
@@ -373,7 +392,7 @@ refines left action {:layer 2} _ {
   call {:layer 1} Set_Put(cachePermissions, drp);
 }
 
-yield procedure {:layer 1} cache_snoop_req_shd#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set DirPermission)
+yield procedure {:layer 1} cache_invalidate_shd#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set DirPermission)
 refines left action {:layer 2} _ {
   var ca: CacheAddr;
 
@@ -381,21 +400,22 @@ refines left action {:layer 2} _ {
   assume {:add_to_pool "DirPermission", DirPermission(i, ma)} true;
   ca := Hash(ma);
   assert (forall j: CacheId :: (var line := cache[j][ca]; line->ma == ma ==> line->state == Invalid() || line->state == Shared()));
+  // this assertion accompanies the relaxation in cache_read#1 to allow cache_invalidate_shd#1 to commute to the left of cache_read#1
   assert cache[i][ca]->value == absMem[ma];
-  call primitive_cache_snoop_req_shd(i, ma, s);
+  call primitive_cache_invalidate_shd(i, ma, s);
 }
 {
-  call cache_snoop_req_shd#0(i, ma, s);
+  call cache_invalidate_shd#0(i, ma, s);
 }
 
-yield procedure {:layer 1} cache_snoop_req_exc#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set DirPermission) returns (value: Value)
+yield procedure {:layer 1} cache_invalidate_exc#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set DirPermission) returns (value: Value)
 refines atomic action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
   assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
-  call value := primitive_cache_snoop_req_exc(i, ma, s);
+  call value := primitive_cache_invalidate_exc(i, ma, s);
 }
 {
-  call value := cache_snoop_req_exc#0(i, ma, s);
+  call value := cache_invalidate_exc#0(i, ma, s);
 }
 
 // Cache primitives
@@ -512,12 +532,12 @@ refines atomic action {:layer 1} _ {
   cacheBusy[i][ca] := false;
 }
 
-yield procedure {:layer 0} cache_snoop_req_shd#0(i: CacheId, ma: MemAddr, s: State);
+yield procedure {:layer 0} cache_invalidate_shd#0(i: CacheId, ma: MemAddr, s: State);
 refines atomic action {:layer 1} _ {
-  call primitive_cache_snoop_req_shd(i, ma, s);
+  call primitive_cache_invalidate_shd(i, ma, s);
 }
 
-action {:layer 1,2} primitive_cache_snoop_req_shd(i: CacheId, ma: MemAddr, s: State)
+action {:layer 1,2} primitive_cache_invalidate_shd(i: CacheId, ma: MemAddr, s: State)
 {
   var ca: CacheAddr;
   var line: CacheLine;
@@ -530,12 +550,12 @@ action {:layer 1,2} primitive_cache_snoop_req_shd(i: CacheId, ma: MemAddr, s: St
   cache[i][ca]->state := s;
 }
 
-yield procedure {:layer 0} cache_snoop_req_exc#0(i: CacheId, ma: MemAddr, s: State) returns (value: Value);
+yield procedure {:layer 0} cache_invalidate_exc#0(i: CacheId, ma: MemAddr, s: State) returns (value: Value);
 refines atomic action {:layer 1} _ {
-  call value := primitive_cache_snoop_req_exc(i, ma, s);
+  call value := primitive_cache_invalidate_exc(i, ma, s);
 }
 
-action {:layer 1,2} primitive_cache_snoop_req_exc(i: CacheId, ma: MemAddr, s: State) returns (value: Value)
+action {:layer 1,2} primitive_cache_invalidate_exc(i: CacheId, ma: MemAddr, s: State) returns (value: Value)
 {
   var ca: CacheAddr;
   var line: CacheLine;
@@ -559,7 +579,7 @@ requires call YieldEvict(i, ma, value, drp);
   var {:linear} {:layer 1,2} dp: Set DirPermission;
 
   par dirState, dp := dir_req_begin(ma) | YieldInv#1();
-  // do not change dirState in case this is a stale evict request due to a race condition with a snoop
+  // do not change dirState in case this is a stale evict request due to a race condition with an invalidate
   if (dirState == Owner(i)) {
     par write_mem(ma, value, dp) | YieldInv#1();
     dirState := Sharers(Set_Empty());
@@ -584,7 +604,7 @@ requires call YieldRead(i, ma, drp);
 
   par dirState, dp := dir_req_begin(ma) | YieldInv#1();
   if (dirState is Owner) {
-    par value := cache_snoop_req_exc#1(dirState->i, ma, Shared(), dp) | YieldInv#1();
+    par value := cache_invalidate_exc#1(dirState->i, ma, Shared(), dp) | YieldInv#1();
     par write_mem(ma, value, dp) | YieldInv#1();
     call cache_read_resp#1(i, ma, value, Shared(), drp, dp);
     par dir_req_end(ma, Sharers(Set_Add(Set_Add(Set_Empty(), dirState->i), i)), dp) | YieldInv#1();
@@ -610,7 +630,7 @@ requires call YieldRead(i, ma, drp);
 
   par dirState, dp := dir_req_begin(ma) | YieldInv#1();
   if (dirState is Owner) {
-    par value := cache_snoop_req_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
+    par value := cache_invalidate_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
     par write_mem(ma, value, dp) | YieldInv#1();
   } else {
     call {:layer 2} cache_s := Copy(cache);
@@ -629,7 +649,7 @@ requires call YieldRead(i, ma, drp);
       victim := Choice(victims->val);
       victims := Set_Remove(victims, victim);
       par dpOne, dp := get_victim(victim, ma, dp) | YieldInv#1();
-      par cache_snoop_req_shd#1(victim, ma, Invalid(), dpOne) | YieldInv#1();
+      par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | YieldInv#1();
       par dp := put_victim(dpOne, dp) | YieldInv#1();
     }
     par value := read_mem(ma, dp) | YieldInv#1();
