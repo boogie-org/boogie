@@ -38,6 +38,7 @@ modifies IntArrayPool;
 }
 yield procedure {:layer 2} IntArray_Alloc(v: Vec int) returns (loc_iv: Loc)
 refines Atomic_IntArray_Alloc;
+ensures call Yield(loc_iv);
 preserves call IntArrayDom();
 {
   var {:linear} one_loc_mutex: One Loc;
@@ -56,7 +57,7 @@ preserves call IntArrayDom();
   call {:layer 2} OldMutexPool := Copy(MutexPool);
   i := 0;
   while (i < Vec_Len(v))
-  invariant {:layer 2} 0 <= i;
+  invariant {:layer 2} 0 <= i && i <= Vec_Len(v);
   invariant {:layer 2} mutexes->dom == values->dom;
   invariant {:layer 2} mutexes->dom->val == (lambda j: int :: 0 <= j && j < i);
   invariant {:layer 2} (forall j: int:: 0 <= j && j < i ==> Map_Contains(MutexPool, Map_At(mutexes, j)->val));

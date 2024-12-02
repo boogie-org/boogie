@@ -70,6 +70,8 @@ modifies TreiberPool;
 }
 yield procedure {:layer 4} Alloc() returns (loc_t: Loc)
 refines AtomicAlloc;
+ensures call TopInStack(loc_t);
+ensures call ReachInStack(loc_t);
 preserves call StackDom();
 {
   var top: Option LocTreiberNode;
