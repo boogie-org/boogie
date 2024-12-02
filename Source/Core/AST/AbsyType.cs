@@ -1679,7 +1679,7 @@ namespace Microsoft.Boogie
 
       // otherwise: this name is not declared anywhere
       rc.Error(this, "undeclared type: {0}", Name);
-      return this;
+      return Type.Bool; // resolve to "bool" type so that type resolution can continue safely
     }
 
     private List<Type> ResolveArguments(ResolutionContext rc)
