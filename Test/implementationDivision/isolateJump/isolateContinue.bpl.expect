@@ -1,4 +1,4 @@
-implementation IsolateContinue/remainingAssertions(x: int) returns (r: int)
+implementation IsolateContinue-0/remainingAssertions(x: int) returns (r: int)
 {
 
   anon0:
@@ -26,7 +26,7 @@ implementation IsolateContinue/remainingAssertions(x: int) returns (r: int)
 }
 
 
-implementation IsolateContinue/goto@17(x: int) returns (r: int)
+implementation IsolateContinue-1/goto@17(x: int) returns (r: int)
 {
 
   anon0:

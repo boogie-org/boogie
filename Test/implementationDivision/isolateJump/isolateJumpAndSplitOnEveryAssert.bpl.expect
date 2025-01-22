@@ -1,4 +1,4 @@
-implementation {:vcs_split_on_every_assert} MergeAtEnd/assert@5(x: int) returns (r: int)
+implementation {:vcs_split_on_every_assert} MergeAtEnd--1/assert@5(x: int) returns (r: int)
 {
 
   anon0:
@@ -22,7 +22,7 @@ implementation {:vcs_split_on_every_assert} MergeAtEnd/assert@5(x: int) returns 
 
 isolateJumpAndSplitOnEveryAssert.bpl(9,3): Error: a postcondition could not be proved on this return path
 isolateJumpAndSplitOnEveryAssert.bpl(5,3): Related location: this is the postcondition that could not be proved
-implementation {:vcs_split_on_every_assert} MultipleEnsures/return@25/assert@16(x: int) returns (r: int)
+implementation {:vcs_split_on_every_assert} MultipleEnsures-0/return@25/assert@16(x: int) returns (r: int)
 {
 
   anon0:
@@ -33,7 +33,7 @@ implementation {:vcs_split_on_every_assert} MultipleEnsures/return@25/assert@16(
 }
 
 
-implementation {:vcs_split_on_every_assert} MultipleEnsures/return@25/assert@17(x: int) returns (r: int)
+implementation {:vcs_split_on_every_assert} MultipleEnsures-1/return@25/assert@17(x: int) returns (r: int)
 {
 
   anon0:
@@ -45,7 +45,7 @@ implementation {:vcs_split_on_every_assert} MultipleEnsures/return@25/assert@17(
 }
 
 
-implementation {:vcs_split_on_every_assert} MultipleEnsures/return@21/assert@16(x: int) returns (r: int)
+implementation {:vcs_split_on_every_assert} MultipleEnsures-2/return@21/assert@16(x: int) returns (r: int)
 {
 
   anon0:
@@ -56,7 +56,7 @@ implementation {:vcs_split_on_every_assert} MultipleEnsures/return@21/assert@16(
 }
 
 
-implementation {:vcs_split_on_every_assert} MultipleEnsures/return@21/assert@17(x: int) returns (r: int)
+implementation {:vcs_split_on_every_assert} MultipleEnsures-3/return@21/assert@17(x: int) returns (r: int)
 {
 
   anon0:
