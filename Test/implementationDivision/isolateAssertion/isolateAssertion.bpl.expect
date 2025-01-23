@@ -1,4 +1,4 @@
-implementation IsolateAssertion/assert@20(x: int, y: int)
+implementation IsolateAssertion-0/assert@20(x: int, y: int)
 {
 
   anon0:
@@ -38,7 +38,7 @@ implementation IsolateAssertion/assert@20(x: int, y: int)
 }
 
 
-implementation IsolateAssertion(x: int, y: int)
+implementation IsolateAssertion-1(x: int, y: int)
 {
 
   anon0:
