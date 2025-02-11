@@ -25,8 +25,8 @@ public class VariableCollector : ReadOnlyVisitor
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(_usedVars));
-    Contract.Invariant(cce.NonNullElements(_oldVarsUsed));
+    Contract.Invariant(Cce.NonNullElements(_usedVars));
+    Contract.Invariant(Cce.NonNullElements(_oldVarsUsed));
   }
 
   int insideOldExpr;

@@ -37,7 +37,7 @@ public class StmtList
   {
     get
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<string /*!*/> /*!*/>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<string /*!*/> /*!*/>()));
       return this.labels.AsEnumerable<string>();
     }
   }
@@ -46,14 +46,14 @@ public class StmtList
   void ObjectInvariant()
   {
     Contract.Invariant(EndCurly != null);
-    Contract.Invariant(cce.NonNullElements(this.bigBlocks));
-    Contract.Invariant(cce.NonNullElements(this.labels));
+    Contract.Invariant(Cce.NonNullElements(this.bigBlocks));
+    Contract.Invariant(Cce.NonNullElements(this.labels));
   }
 
   public StmtList(IList<BigBlock /*!*/> /*!*/ bigblocks, IToken endCurly)
   {
     Contract.Requires(endCurly != null);
-    Contract.Requires(cce.NonNullElements(bigblocks));
+    Contract.Requires(Cce.NonNullElements(bigblocks));
     Contract.Requires(bigblocks.Count > 0);
     this.bigBlocks = new List<BigBlock>(bigblocks);
     this.EndCurly = endCurly;
@@ -67,7 +67,7 @@ public class StmtList
     foreach (BigBlock b in BigBlocks)
     {
       Contract.Assert(b != null);
-      Contract.Assume(cce.IsPeerConsistent(b));
+      Contract.Assume(Cce.IsPeerConsistent(b));
       if (needSeperator)
       {
         stream.WriteLine();
@@ -94,7 +94,7 @@ public class StmtList
     Contract.Requires(suggestedLabel != null);
     Contract.Requires(prefixCmds != null);
     Contract.Ensures(Contract.Result<bool>() ||
-                     cce.Owner.None(prefixCmds)); // "prefixCmds" is captured only on success
+                     Cce.Owner.None(prefixCmds)); // "prefixCmds" is captured only on success
     Contract.Assume(PrefixCommands == null); // prefix has not been used
 
     BigBlock bb0 = BigBlocks[0];

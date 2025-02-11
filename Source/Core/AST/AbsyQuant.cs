@@ -691,7 +691,7 @@ namespace Microsoft.Boogie
         //Contract.Requires(node != null);
         Contract.Ensures(Contract.Result<Expr>() != null);
         FunctionCall fn = node.Fun as FunctionCall;
-        if (fn != null && cce.NonNull(fn.Func).NeverTrigger)
+        if (fn != null && Cce.NonNull(fn.Func).NeverTrigger)
         {
           parent.Triggers = new Trigger(fn.Func.tok, false, new List<Expr> {node}, parent.Triggers);
         }

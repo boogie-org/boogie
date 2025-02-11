@@ -36,7 +36,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
     Debug.Assert(labels.Count == blocks.Count);
     for (int i = 0; i < labels.Count; i++)
     {
-      Debug.Assert(Equals(labels[i], cce.NonNull(blocks[i]).Label));
+      Debug.Assert(Equals(labels[i], Cce.NonNull(blocks[i]).Label));
     }
 
     this.LabelNames = labels;
@@ -77,7 +77,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
   public void AddTargets(IEnumerable<Block> blocks)
   {
     Contract.Requires(blocks != null);
-    Contract.Requires(cce.NonNullElements(blocks));
+    Contract.Requires(Cce.NonNullElements(blocks));
     Contract.Requires(this.LabelTargets != null);
     Contract.Requires(this.LabelNames != null);
     foreach (var block in blocks)

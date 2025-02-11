@@ -17,13 +17,13 @@ public class WhileCmd : StructuredCmd
   void ObjectInvariant()
   {
     Contract.Invariant(Body != null);
-    Contract.Invariant(cce.NonNullElements(Invariants));
+    Contract.Invariant(Cce.NonNullElements(Invariants));
   }
 
   public WhileCmd(IToken tok, [Captured] Expr guard, List<PredicateCmd> invariants, List<CallCmd> yields, StmtList body)
     : base(tok)
   {
-    Contract.Requires(cce.NonNullElements(invariants));
+    Contract.Requires(Cce.NonNullElements(invariants));
     Contract.Requires(body != null);
     Contract.Requires(tok != null);
     this.Guard = guard;

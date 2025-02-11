@@ -227,7 +227,7 @@ namespace Microsoft.Boogie
 
       foreach (Expr e in indexes)
       {
-        indexesList.Add(cce.NonNull(e));
+        indexesList.Add(Cce.NonNull(e));
       }
 
       lhss.Add(new MapAssignLhs(map.tok,
@@ -258,13 +258,13 @@ namespace Microsoft.Boogie
 
       for (int i = 0; i < args.Length - 1; ++i)
       {
-        indexesList.Add(cce.NonNull(args[i]));
+        indexesList.Add(Cce.NonNull(args[i]));
       }
 
       lhss.Add(new MapAssignLhs(map.tok,
         new SimpleAssignLhs(map.tok, map),
         indexesList));
-      rhss.Add(cce.NonNull(args[args.Length - 1]));
+      rhss.Add(Cce.NonNull(args[args.Length - 1]));
 
       return new AssignCmd(tok, lhss, rhss);
     }
@@ -364,13 +364,13 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<AssignLhs>>()));
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<IList<AssignLhs>>()));
         Contract.Ensures(Contract.Result<IList<AssignLhs>>().IsReadOnly);
         return this._lhss.AsReadOnly();
       }
       set
       {
-        Contract.Requires(cce.NonNullElements(value));
+        Contract.Requires(Cce.NonNullElements(value));
         this._lhss = new List<AssignLhs>(value);
       }
     }
@@ -389,13 +389,13 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IList<Expr>>()));
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<IList<Expr>>()));
         Contract.Ensures(Contract.Result<IList<Expr>>().IsReadOnly);
         return this._rhss.AsReadOnly();
       }
       set
       {
-        Contract.Requires(cce.NonNullElements(value));
+        Contract.Requires(Cce.NonNullElements(value));
         this._rhss = new List<Expr>(value);
       }
     }
@@ -411,16 +411,16 @@ namespace Microsoft.Boogie
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullElements(this._lhss));
-      Contract.Invariant(cce.NonNullElements(this._rhss));
+      Contract.Invariant(Cce.NonNullElements(this._lhss));
+      Contract.Invariant(Cce.NonNullElements(this._rhss));
     }
 
     public AssignCmd(IToken tok, IList<AssignLhs> lhss, IList<Expr> rhss, QKeyValue kv)
       : base(tok)
     {
       Contract.Requires(tok != null);
-      Contract.Requires(cce.NonNullElements(rhss));
-      Contract.Requires(cce.NonNullElements(lhss));
+      Contract.Requires(Cce.NonNullElements(rhss));
+      Contract.Requires(Cce.NonNullElements(lhss));
       this._lhss = new List<AssignLhs>(lhss);
       this._rhss = new List<Expr>(rhss);
       this.Attributes = kv;
@@ -430,8 +430,8 @@ namespace Microsoft.Boogie
       : base(tok)
     {
       Contract.Requires(tok != null);
-      Contract.Requires(cce.NonNullElements(rhss));
-      Contract.Requires(cce.NonNullElements(lhss));
+      Contract.Requires(Cce.NonNullElements(rhss));
+      Contract.Requires(Cce.NonNullElements(lhss));
       this._lhss = new List<AssignLhs>(lhss);
       this._rhss = new List<Expr>(rhss);
     }
@@ -491,7 +491,7 @@ namespace Microsoft.Boogie
       {
         for (int j = i + 1; j < Lhss.Count; ++j)
         {
-          if (cce.NonNull(Lhss[i].DeepAssignedVariable).Equals(
+          if (Cce.NonNull(Lhss[i].DeepAssignedVariable).Equals(
             Lhss[j].DeepAssignedVariable))
           {
             rc.Error(Lhss[j],
@@ -779,7 +779,7 @@ namespace Microsoft.Boogie
     void ObjectInvariant()
     {
       Contract.Invariant(Map != null);
-      Contract.Invariant(cce.NonNullElements(Indexes));
+      Contract.Invariant(Cce.NonNullElements(Indexes));
     }
 
 
@@ -822,7 +822,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(map != null);
       Contract.Requires(tok != null);
-      Contract.Requires(cce.NonNullElements(indexes));
+      Contract.Requires(Cce.NonNullElements(indexes));
 
       Map = map;
       Indexes = indexes;
@@ -857,7 +857,7 @@ namespace Microsoft.Boogie
       }
 
       TypeAttr =
-        MapSelect.Typecheck(cce.NonNull(Map.Type), Map,
+        MapSelect.Typecheck(Cce.NonNull(Map.Type), Map,
           selectArgs, out var tpInsts, tc, tok, "map assignment");
       TypeParameters = tpInsts;
     }
@@ -1443,7 +1443,7 @@ namespace Microsoft.Boogie
         default:
         {
           Contract.Assert(false);
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         } // unexpected kind
       }
 
@@ -1772,12 +1772,12 @@ namespace Microsoft.Boogie
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Expr>>()));
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<Expr>>()));
         return this.exprList.AsReadOnly();
       }
       set
       {
-        Contract.Requires(cce.NonNullElements(value));
+        Contract.Requires(Cce.NonNullElements(value));
         this.exprList = new List<Expr>(value);
       }
     }
@@ -1787,13 +1787,13 @@ namespace Microsoft.Boogie
     void ObjectInvariant()
     {
       Contract.Invariant(this._reason != null);
-      Contract.Invariant(cce.NonNullElements(this.exprList));
+      Contract.Invariant(Cce.NonNullElements(this.exprList));
     }
 
     public EEDTemplate(string reason, List<Expr /*!*/> /*!*/ exprList)
     {
       Contract.Requires(reason != null);
-      Contract.Requires(cce.NonNullElements(exprList));
+      Contract.Requires(Cce.NonNullElements(exprList));
       this._reason = reason;
       this.exprList = exprList;
     }

@@ -60,7 +60,7 @@ public class VerifierCallback
         break;
       default:
         Contract.Assume(false);
-        throw new cce.UnreachableException(); // unexpected case
+        throw new Cce.UnreachableException(); // unexpected case
     }
   }
 
