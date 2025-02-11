@@ -19,7 +19,7 @@ public class StmtListBuilder
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(bigBlocks));
+    Contract.Invariant(Cce.NonNullElements(bigBlocks));
   }
 
   void Dump(IToken token, StructuredCmd scmd, TransferCmd tcmd)

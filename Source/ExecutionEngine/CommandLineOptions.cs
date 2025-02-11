@@ -370,7 +370,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= Ai.StepsBeforeWidening && Ai.StepsBeforeWidening <= 9);
       Contract.Invariant(-1 <= this.bracketIdsInVC && this.bracketIdsInVC <= 1);
-      Contract.Invariant(cce.NonNullElements(this.ProverOptions));
+      Contract.Invariant(Cce.NonNullElements(this.ProverOptions));
     }
 
     public int LoopUnrollCount { get; set; } = -1; // -1 means don't unroll loops
@@ -566,8 +566,8 @@ namespace Microsoft.Boogie
     [ContractInvariantMethod]
     void ObjectInvariant5()
     {
-      Contract.Invariant(cce.NonNullElements(this.ProcsToCheck, true));
-      Contract.Invariant(cce.NonNullElements(this.ProcsToIgnore, true));
+      Contract.Invariant(Cce.NonNullElements(this.ProcsToCheck, true));
+      Contract.Invariant(Cce.NonNullElements(this.ProcsToIgnore, true));
       Contract.Invariant(Ai != null);
     }
 
@@ -617,7 +617,7 @@ namespace Microsoft.Boogie
           if (ps.ConfirmArgumentCount(1))
           {
             UseAbstractInterpretation = true;
-            foreach (char c in cce.NonNull(args[ps.i]))
+            foreach (char c in Cce.NonNull(args[ps.i]))
             {
               switch (c)
               {
@@ -668,7 +668,7 @@ namespace Microsoft.Boogie
         case "lib":
           if (ps.ConfirmArgumentCount(1))
           {
-            this.Libraries.Add(cce.NonNull(args[ps.i]));
+            this.Libraries.Add(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -676,7 +676,7 @@ namespace Microsoft.Boogie
         case "proc":
           if (ps.ConfirmArgumentCount(1))
           {
-            this.ProcsToCheck.Add(cce.NonNull(args[ps.i]));
+            this.ProcsToCheck.Add(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -684,7 +684,7 @@ namespace Microsoft.Boogie
         case "noProc":
           if (ps.ConfirmArgumentCount(1))
           {
-            this.ProcsToIgnore.Add(cce.NonNull(args[ps.i]));
+            this.ProcsToIgnore.Add(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -790,7 +790,7 @@ namespace Microsoft.Boogie
         case "logPrefix":
           if (ps.ConfirmArgumentCount(1))
           {
-            string s = cce.NonNull(args[ps.i]);
+            string s = Cce.NonNull(args[ps.i]);
             LogPrefix += s.Replace('/', '-').Replace('\\', '-');
           }
 
@@ -819,7 +819,7 @@ namespace Microsoft.Boogie
               default:
               {
                 Contract.Assert(false);
-                throw new cce.UnreachableException();
+                throw new Cce.UnreachableException();
               } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
@@ -846,7 +846,7 @@ namespace Microsoft.Boogie
               default:
               {
                 Contract.Assert(false);
-                throw new cce.UnreachableException();
+                throw new Cce.UnreachableException();
               } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
@@ -939,7 +939,7 @@ namespace Microsoft.Boogie
               default:
               {
                 Contract.Assert(false);
-                throw new cce.UnreachableException();
+                throw new Cce.UnreachableException();
               } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
@@ -1058,7 +1058,7 @@ namespace Microsoft.Boogie
         case "proverDll":
           if (ps.ConfirmArgumentCount(1))
           {
-            ProverDllName = cce.NonNull(args[ps.i]);
+            ProverDllName = Cce.NonNull(args[ps.i]);
             TheProverFactory = ProverFactory.Load(ProverDllName);
           }
 
@@ -1068,7 +1068,7 @@ namespace Microsoft.Boogie
         case "proverOpt":
           if (ps.ConfirmArgumentCount(1))
           {
-            ProverOptions.Add(cce.NonNull(args[ps.i]));
+            ProverOptions.Add(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1117,7 +1117,7 @@ namespace Microsoft.Boogie
         case "enableUnSatCoreExtraction":
           if (ps.ConfirmArgumentCount(1))
           {
-            EnableUnSatCoreExtract = Int32.Parse(cce.NonNull(args[ps.i]));
+            EnableUnSatCoreExtract = Int32.Parse(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1475,7 +1475,7 @@ namespace Microsoft.Boogie
       int i = 0;
       for (int n = argList.Length; i < n;)
       {
-        cce.LoopInvariant(0 <= i);
+        Cce.LoopInvariant(0 <= i);
         int separatorIndex = this.GetArgumentSeparatorIndex(argList, i);
         if (separatorIndex > i)
         {

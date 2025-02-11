@@ -12,8 +12,8 @@ public class Program : Absy
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(this.topLevelDeclarations));
-    Contract.Invariant(cce.NonNullElements(this.globalVariablesCache, true));
+    Contract.Invariant(Cce.NonNullElements(this.topLevelDeclarations));
+    Contract.Invariant(Cce.NonNullElements(this.globalVariablesCache, true));
   }
 
   public Dictionary<object, List<object>> DeclarationDependencies { get; set; }
@@ -178,7 +178,7 @@ public class Program : Absy
   {
     get
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Declaration>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<Declaration>>()));
       return topLevelDeclarations.AsReadOnly();
     }
 
@@ -209,7 +209,7 @@ public class Program : Absy
   public void AddTopLevelDeclarations(IEnumerable<Declaration> decls)
   {
     Contract.Requires(!TopLevelDeclarationsAreFrozen);
-    Contract.Requires(cce.NonNullElements(decls));
+    Contract.Requires(Cce.NonNullElements(decls));
 
     topLevelDeclarations.AddRange(decls);
     this.globalVariablesCache = null;
@@ -390,7 +390,7 @@ public class Program : Absy
   {
     get
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
 
       if (globalVariablesCache == null)
       {
@@ -434,15 +434,15 @@ public class Program : Absy
     {
       if (impl.Blocks != null && impl.Blocks.Count > 0)
       {
-        cce.BeginExpose(impl);
+        Cce.BeginExpose(impl);
         {
           Block start = impl.Blocks[0];
           Contract.Assume(start != null);
-          Contract.Assume(cce.IsConsistent(start));
+          Contract.Assume(Cce.IsConsistent(start));
           impl.Blocks = LoopUnroll.UnrollLoops(start, n, uc);
           impl.FreshenCaptureStates();
         }
-        cce.EndExpose();
+        Cce.EndExpose();
       }
     }
   }
@@ -536,7 +536,7 @@ public class Program : Absy
   public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl, bool forward = true)
   {
     Contract.Requires(impl != null);
-    Contract.Ensures(cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
+    Contract.Ensures(Cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
     Contract.Ensures(Contract.Result<Graph<Block>>() != null);
 
     return GraphFromBlocks(impl.Blocks, forward);

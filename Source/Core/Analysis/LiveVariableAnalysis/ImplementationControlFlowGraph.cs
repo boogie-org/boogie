@@ -55,18 +55,18 @@ public class ImplementationControlFlowGraph
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(graph.Nodes));
-    Contract.Invariant(cce.NonNullDictionaryAndValues(procsCalled));
-    Contract.Invariant(cce.NonNullElements(nodes));
-    Contract.Invariant(cce.NonNullDictionaryAndValues(succEdges));
-    Contract.Invariant(cce.NonNullDictionaryAndValues(predEdges));
+    Contract.Invariant(Cce.NonNullElements(graph.Nodes));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(procsCalled));
+    Contract.Invariant(Cce.NonNullElements(nodes));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(succEdges));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(predEdges));
     Contract.Invariant(priority != null);
-    Contract.Invariant(cce.NonNullElements(srcNodes));
-    Contract.Invariant(cce.NonNullElements(exitNodes));
-    Contract.Invariant(cce.NonNullDictionaryAndValues(weightBefore));
-    Contract.Invariant(cce.NonNullDictionaryAndValues(weightAfter));
-    Contract.Invariant(cce.NonNullDictionaryAndValues(liveVarsAfter));
-    Contract.Invariant(cce.NonNullDictionaryAndValues(liveVarsBefore));
+    Contract.Invariant(Cce.NonNullElements(srcNodes));
+    Contract.Invariant(Cce.NonNullElements(exitNodes));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(weightBefore));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(weightAfter));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(liveVarsAfter));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(liveVarsBefore));
     Contract.Invariant(summary != null);
     Contract.Invariant(impl != null);
   }
@@ -134,7 +134,7 @@ public class ImplementationControlFlowGraph
         if (c is CallCmd)
         {
           CallCmd /*!*/
-            cc = cce.NonNull((CallCmd /*!*/) c);
+            cc = Cce.NonNull((CallCmd /*!*/) c);
           Contract.Assert(cc.Proc != null);
           string /*!*/
             procName = cc.Proc.Name;

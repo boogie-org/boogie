@@ -16,8 +16,8 @@ public class VerificationResultCollector : VerifierCallback
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(Examples));
-    Contract.Invariant(cce.NonNullElements(VcResults));
+    Contract.Invariant(Cce.NonNullElements(Examples));
+    Contract.Invariant(Cce.NonNullElements(VcResults));
   }
 
   public readonly ConcurrentQueue<Counterexample> Examples = new();

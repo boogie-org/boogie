@@ -72,11 +72,11 @@ public class LiveVariableAnalysis
         if (cmds[i] is CallCmd)
         {
           Procedure /*!*/
-            proc = cce.NonNull(cce.NonNull((CallCmd /*!*/) cmds[i]).Proc);
+            proc = Cce.NonNull(Cce.NonNull((CallCmd /*!*/) cmds[i]).Proc);
           if (InterProcGenKill.HasSummary(proc.Name))
           {
             liveVarsAfter =
-              InterProcGenKill.PropagateLiveVarsAcrossCall(options, cce.NonNull((CallCmd /*!*/) cmds[i]), liveVarsAfter);
+              InterProcGenKill.PropagateLiveVarsAcrossCall(options, Cce.NonNull((CallCmd /*!*/) cmds[i]), liveVarsAfter);
             continue;
           }
         }
@@ -92,11 +92,11 @@ public class LiveVariableAnalysis
   public void Propagate(Cmd cmd, HashSet<Variable /*!*/> /*!*/ liveSet)
   {
     Contract.Requires(cmd != null);
-    Contract.Requires(cce.NonNullElements(liveSet));
+    Contract.Requires(Cce.NonNullElements(liveSet));
     if (cmd is AssignCmd)
     {
       AssignCmd /*!*/
-        assignCmd = (AssignCmd) cce.NonNull(cmd);
+        assignCmd = (AssignCmd) Cce.NonNull(cmd);
       // I must first iterate over all the targets and remove the live ones.
       // After the removals are done, I must add the variables referred on 
       // the right side of the removed targets
@@ -152,7 +152,7 @@ public class LiveVariableAnalysis
     {
       Contract.Assert((cmd is AssertCmd || cmd is AssumeCmd));
       PredicateCmd /*!*/
-        predicateCmd = (PredicateCmd) cce.NonNull(cmd);
+        predicateCmd = (PredicateCmd) Cce.NonNull(cmd);
       if (predicateCmd.Expr is LiteralExpr)
       {
         LiteralExpr le = (LiteralExpr) predicateCmd.Expr;
@@ -181,15 +181,15 @@ public class LiveVariableAnalysis
     else if (cmd is SugaredCmd)
     {
       SugaredCmd /*!*/
-        sugCmd = (SugaredCmd) cce.NonNull(cmd);
+        sugCmd = (SugaredCmd) Cce.NonNull(cmd);
       Propagate(sugCmd.GetDesugaring(options), liveSet);
     }
     else if (cmd is StateCmd)
     {
       StateCmd /*!*/
-        stCmd = (StateCmd) cce.NonNull(cmd);
+        stCmd = (StateCmd) Cce.NonNull(cmd);
       List<Cmd> /*!*/
-        cmds = cce.NonNull(stCmd.Cmds);
+        cmds = Cce.NonNull(stCmd.Cmds);
       int len = cmds.Count;
       for (int i = len - 1; i >= 0; i--)
       {
@@ -206,7 +206,7 @@ public class LiveVariableAnalysis
     {
       {
         Contract.Assert(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
     }
   }

@@ -16,7 +16,7 @@ public class BlockCoalescer : ReadOnlyVisitor
 
   private static HashSet<Block> ComputeMultiPredecessorBlocks(Block rootBlock)
   {
-    Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Block>>()));
+    Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Block>>()));
     var visitedBlocks = new HashSet<Block /*!*/>();
     var result = new HashSet<Block>();
     var dfsStack = new Stack<Block>();
@@ -92,7 +92,7 @@ public class BlockCoalescer : ReadOnlyVisitor
       return blocks;
     }
     var multiPredecessorBlocks = ComputeMultiPredecessorBlocks(blocks[0]);
-    Contract.Assert(cce.NonNullElements(multiPredecessorBlocks));
+    Contract.Assert(Cce.NonNullElements(multiPredecessorBlocks));
     var visitedBlocks = new HashSet<Block>();
     var removedBlocks = new HashSet<Block>();
     var toVisit = new Stack<Block>();
@@ -133,7 +133,7 @@ public class BlockCoalescer : ReadOnlyVisitor
         continue;
       }
 
-      var successor = cce.NonNull(gotoCmd.LabelTargets[0]);
+      var successor = Cce.NonNull(gotoCmd.LabelTargets[0]);
       if (multiPredecessorBlocks.Contains(successor))
       {
         toVisit.Push(successor);

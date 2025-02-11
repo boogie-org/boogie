@@ -66,7 +66,7 @@ namespace VC
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullDictionaryAndValues(IncarnationOriginMap));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(IncarnationOriginMap));
       Contract.Invariant(program != null);
     }
 
@@ -329,7 +329,7 @@ namespace VC
         {
           Expr e = Substituter.Apply(formalProcImplSubst, ens.Condition);
           Contract.Assert(e != null);
-          Ensures ensCopy = cce.NonNull((Ensures) ens.Clone());
+          Ensures ensCopy = Cce.NonNull((Ensures) ens.Clone());
           ensCopy.Condition = e;
           Cmd c = new AssertEnsuresCmd(ensCopy);
           ((AssertEnsuresCmd) c).ErrorDataEnhanced = ensCopy.ErrorDataEnhanced;
@@ -393,14 +393,14 @@ namespace VC
       Contract.Assert(impl.OutParams.Count == impl.Proc.OutParams.Count);
       for (int i = 0; i < impl.OutParams.Count; i++)
       {
-        Variable f = cce.NonNull(impl.Proc.OutParams[i]);
+        Variable f = Cce.NonNull(impl.Proc.OutParams[i]);
         if (f.TypedIdent.WhereExpr != null)
         {
           Expr e = Substituter.Apply(formalProcImplSubst, f.TypedIdent.WhereExpr);
           Cmd c = new AssumeCmd(f.tok, e);
           whereClauses.Add(c);
 
-          Variable fi = cce.NonNull(impl.OutParams[i]);
+          Variable fi = Cce.NonNull(impl.OutParams[i]);
           Contract.Assume(fi.TypedIdent.WhereExpr == null);
           fi.TypedIdent.WhereExpr = e;
 
@@ -596,7 +596,7 @@ namespace VC
 
           #region Create an identifier expression for the last incarnation in pred
 
-          Dictionary<Variable, Expr> predMap = (Dictionary<Variable, Expr>) cce.NonNull(block2Incarnation[pred]);
+          Dictionary<Variable, Expr> predMap = (Dictionary<Variable, Expr>) Cce.NonNull(block2Incarnation[pred]);
 
           Expr pred_incarnation_exp;
           Expr o = predMap.ContainsKey(v) ? predMap[v] : null;
@@ -828,7 +828,7 @@ namespace VC
       foreach (IdentifierExpr ie in modifies)
       {
         Contract.Assert(ie != null);
-        if (!oldFrameMap.ContainsKey(cce.NonNull(ie.Decl)))
+        if (!oldFrameMap.ContainsKey(Cce.NonNull(ie.Decl)))
         {
           oldFrameMap.Add(ie.Decl, ie);
         }
@@ -983,7 +983,7 @@ namespace VC
           var ac = (AssertCmd) pc;
           ac.OrigExpr = ac.Expr;
           Contract.Assert(ac.IncarnationMap == null);
-          ac.IncarnationMap = (Dictionary<Variable, Expr>) cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
+          ac.IncarnationMap = (Dictionary<Variable, Expr>) Cce.NonNull(new Dictionary<Variable, Expr>(incarnationMap));
 
           var subsumption = Wlp.Subsumption(Options, ac);
           if (relevantDoomedAssumpVars.Any())
@@ -1109,8 +1109,8 @@ namespace VC
         for (int i = 0; i < assign.Lhss.Count; ++i)
         {
           IdentifierExpr lhsIdExpr =
-            cce.NonNull((SimpleAssignLhs) assign.Lhss[i]).AssignedVariable;
-          Variable lhs = cce.NonNull(lhsIdExpr.Decl);
+            Cce.NonNull((SimpleAssignLhs) assign.Lhss[i]).AssignedVariable;
+          Variable lhs = Cce.NonNull(lhsIdExpr.Decl);
           Contract.Assert(lhs != null);
           Expr rhs = assign.Rhss[i];
           Contract.Assert(rhs != null);
@@ -1123,9 +1123,9 @@ namespace VC
           else if (rhs is IdentifierExpr)
           {
             IdentifierExpr ie = (IdentifierExpr) rhs;
-            if (incarnationMap.ContainsKey(cce.NonNull(ie.Decl)))
+            if (incarnationMap.ContainsKey(Cce.NonNull(ie.Decl)))
             {
-              newIncarnationMappings[lhs] = cce.NonNull((Expr) incarnationMap[ie.Decl]);
+              newIncarnationMappings[lhs] = Cce.NonNull((Expr) incarnationMap[ie.Decl]);
             }
             else
             {
@@ -1246,7 +1246,7 @@ namespace VC
           Contract.Assert(ie != null);
           if (!(ie.Decl is Incarnation))
           {
-            Variable x = cce.NonNull(ie.Decl);
+            Variable x = Cce.NonNull(ie.Decl);
             Variable x_prime = CreateIncarnation(x, c);
             incarnationMap[x] = new IdentifierExpr(x_prime.tok, x_prime);
           }
@@ -1259,7 +1259,7 @@ namespace VC
           Contract.Assert(ie != null);
           if (!(ie.Decl is Incarnation))
           {
-            Variable x = cce.NonNull(ie.Decl);
+            Variable x = Cce.NonNull(ie.Decl);
             Expr w = x.TypedIdent.WhereExpr;
             if (w != null)
             {
@@ -1380,7 +1380,7 @@ namespace VC
       Contract.Requires(succ != null);
       Contract.Ensures(Contract.Result<Block>() != null);
 
-      Block pred = cce.NonNull(succ.Predecessors[predIndex]);
+      Block pred = Cce.NonNull(succ.Predecessors[predIndex]);
 
       string newBlockLabel = pred.Label + "_@2_" + succ.Label;
 
@@ -1406,7 +1406,7 @@ namespace VC
 
       #region Change the edge "pred->succ" to "pred->newBlock"
 
-      GotoCmd gtc = (GotoCmd) cce.NonNull(pred.TransferCmd);
+      GotoCmd gtc = (GotoCmd) Cce.NonNull(pred.TransferCmd);
       Contract.Assume(gtc.LabelTargets != null);
       Contract.Assume(gtc.LabelNames != null);
       for (int i = 0, n = gtc.LabelTargets.Count; i < n; i++)
@@ -1442,7 +1442,7 @@ namespace VC
           // b is a join point (i.e., it has more than one predecessor)
           for (int i = 0; i < nPreds; i++)
           {
-            GotoCmd gotocmd = (GotoCmd) (cce.NonNull(b.Predecessors[i]).TransferCmd);
+            GotoCmd gotocmd = (GotoCmd) (Cce.NonNull(b.Predecessors[i]).TransferCmd);
             if (gotocmd.LabelNames != null && gotocmd.LabelNames.Count > 1)
             {
               tweens.Add(CreateBlockBetween(i, b));

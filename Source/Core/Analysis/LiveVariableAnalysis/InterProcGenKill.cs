@@ -47,18 +47,18 @@ namespace Microsoft.Boogie
       Contract.Invariant(workList != null);
       Contract.Invariant(mainImpl != null);
       Contract.Invariant(program != null);
-      Contract.Invariant(cce.NonNullDictionaryAndValues(procICFG));
-      Contract.Invariant(cce.NonNullDictionaryAndValues(name2Proc));
-      Contract.Invariant(cce.NonNullDictionaryAndValues(callers) &&
-                         Contract.ForAll(callers.Values, v => cce.NonNullElements(v)));
-      Contract.Invariant(cce.NonNullElements(callGraph.Nodes));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(procICFG));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(name2Proc));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(callers) &&
+                         Contract.ForAll(callers.Values, v => Cce.NonNullElements(v)));
+      Contract.Invariant(Cce.NonNullElements(callGraph.Nodes));
       Contract.Invariant(procPriority != null);
-      Contract.Invariant(cce.NonNullDictionaryAndValues(varsLiveAtEntry));
-      Contract.Invariant(cce.NonNullDictionaryAndValues(varsLiveAtExit) &&
-                         Contract.ForAll(varsLiveAtExit.Values, v => cce.NonNullElements(v)));
-      Contract.Invariant(cce.NonNullDictionaryAndValues(varsLiveSummary));
-      Contract.Invariant(cce.NonNullDictionaryAndValues(weightCacheAfterCall));
-      Contract.Invariant(cce.NonNullDictionaryAndValues(weightCacheBeforeCall));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(varsLiveAtEntry));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(varsLiveAtExit) &&
+                         Contract.ForAll(varsLiveAtExit.Values, v => Cce.NonNullElements(v)));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(varsLiveSummary));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(weightCacheAfterCall));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(weightCacheBeforeCall));
     }
 
 
@@ -90,13 +90,13 @@ namespace Microsoft.Boogie
         if (decl is Implementation)
         {
           Implementation /*!*/
-            imp = (Implementation /*!*/) cce.NonNull(decl);
+            imp = (Implementation /*!*/) Cce.NonNull(decl);
           name2Impl[imp.Name] = imp;
         }
         else if (decl is Procedure)
         {
           Procedure /*!*/
-            proc = cce.NonNull(decl as Procedure);
+            proc = Cce.NonNull(decl as Procedure);
           name2Proc[proc.Name] = proc;
         }
       }
@@ -179,7 +179,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(prog != null);
       Contract.Requires(impl != null);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
       if (varsLiveAtExit.ContainsKey(impl.Name))
       {
         return varsLiveAtExit[impl.Name];
@@ -207,7 +207,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(prog != null);
       Contract.Requires(impl != null);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
       if (varsLiveAtEntry.ContainsKey(impl.Name))
       {
         return varsLiveAtEntry[impl.Name];
@@ -241,10 +241,10 @@ namespace Microsoft.Boogie
       PropagateLiveVarsAcrossCall(CoreOptions options, CallCmd cmd, HashSet<Variable /*!*/> /*!*/ lvAfter)
     {
       Contract.Requires(cmd != null);
-      Contract.Requires(cce.NonNullElements(lvAfter));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+      Contract.Requires(Cce.NonNullElements(lvAfter));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
       Procedure /*!*/
-        proc = cce.NonNull(cmd.Proc);
+        proc = Cce.NonNull(cmd.Proc);
       if (varsLiveSummary.ContainsKey(proc.Name))
       {
         GenKillWeight /*!*/
@@ -322,7 +322,7 @@ namespace Microsoft.Boogie
       public override bool Equals(object other)
       {
         WorkItem /*!*/
-          wi = (WorkItem /*!*/) cce.NonNull(other);
+          wi = (WorkItem /*!*/) Cce.NonNull(other);
         return (wi.cfg == cfg && wi.block == block);
       }
 
@@ -373,9 +373,9 @@ namespace Microsoft.Boogie
       void ObjectInvariant()
       {
         Contract.Invariant(priorities != null);
-        Contract.Invariant(cce.NonNullElements(labels));
-        Contract.Invariant(cce.NonNullDictionaryAndValues(workList) &&
-                           Contract.ForAll(workList.Values, v => cce.NonNullElements(v)));
+        Contract.Invariant(Cce.NonNullElements(labels));
+        Contract.Invariant(Cce.NonNullDictionaryAndValues(workList) &&
+                           Contract.ForAll(workList.Values, v => Cce.NonNullElements(v)));
       }
 
 
@@ -417,7 +417,7 @@ namespace Microsoft.Boogie
       {
         Contract.Ensures(Contract.Result<WorkItem>() != null);
         // Get minimum priority
-        int p = cce.NonNull(priorities.Keys)[0];
+        int p = Cce.NonNull(priorities.Keys)[0];
         priorities[p] = priorities[p] - 1;
         if (priorities[p] == 0)
         {
@@ -459,7 +459,7 @@ namespace Microsoft.Boogie
 
       {
         Contract.Assert(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
     }
 
@@ -567,7 +567,7 @@ namespace Microsoft.Boogie
       Contract.Assert(block != null);
       HashSet<Variable /*!*/> /*!*/
         lv = cfg.liveVarsAfter[block];
-      Contract.Assert(cce.NonNullElements(lv));
+      Contract.Assert(Cce.NonNullElements(lv));
       // Propagate backwards in the block
       HashSet<Variable /*!*/> /*!*/
         prop = new HashSet<Variable /*!*/>();
@@ -580,7 +580,7 @@ namespace Microsoft.Boogie
         if (cmd is CallCmd)
         {
           string /*!*/
-            procName = cce.NonNull(cce.NonNull((CallCmd) cmd).Proc).Name;
+            procName = Cce.NonNull(Cce.NonNull((CallCmd) cmd).Proc).Name;
           Contract.Assert(procName != null);
           if (procICFG.ContainsKey(procName))
           {
@@ -616,7 +616,7 @@ namespace Microsoft.Boogie
 
             // Continue with intra propagation
             GenKillWeight /*!*/
-              summary = GetWeightCall(cce.NonNull((CallCmd /*!*/) cmd));
+              summary = GetWeightCall(Cce.NonNull((CallCmd /*!*/) cmd));
             prop = summary.getLiveVars(prop);
           }
           else
@@ -637,11 +637,11 @@ namespace Microsoft.Boogie
         Contract.Assert(b != null);
         HashSet<Variable /*!*/> /*!*/
           prev = cfg.liveVarsAfter[b];
-        Contract.Assert(cce.NonNullElements(prev));
+        Contract.Assert(Cce.NonNullElements(prev));
         HashSet<Variable /*!*/> /*!*/
           curr = new HashSet<Variable>(prev);
         curr.UnionWith(cfg.liveVarsBefore[block]);
-        Contract.Assert(cce.NonNullElements(curr));
+        Contract.Assert(Cce.NonNullElements(curr));
         if (curr.Count != prev.Count)
         {
           cfg.liveVarsAfter[b] = curr;
@@ -662,9 +662,9 @@ namespace Microsoft.Boogie
         Cmd /*!*/
           c = wi.block.Cmds[i];
         Contract.Assert(c != null);
-        if (c is CallCmd && procICFG.ContainsKey(cce.NonNull(cce.NonNull((CallCmd) c).Proc).Name))
+        if (c is CallCmd && procICFG.ContainsKey(Cce.NonNull(Cce.NonNull((CallCmd) c).Proc).Name))
         {
-          w = GenKillWeight.extend(GetWeightCall(cce.NonNull((CallCmd) c)), w);
+          w = GenKillWeight.extend(GetWeightCall(Cce.NonNull((CallCmd) c)), w);
         }
         else
         {
@@ -813,7 +813,7 @@ namespace Microsoft.Boogie
       else if (cmd is HavocCmd)
       {
         HavocCmd /*!*/
-          havocCmd = (HavocCmd) cce.NonNull(cmd);
+          havocCmd = (HavocCmd) Cce.NonNull(cmd);
         foreach (IdentifierExpr /*!*/ expr in havocCmd.Vars)
         {
           Contract.Assert(expr != null);
@@ -829,14 +829,14 @@ namespace Microsoft.Boogie
       {
         Contract.Assert((cmd is AssertCmd || cmd is AssumeCmd));
         PredicateCmd /*!*/
-          predicateCmd = (PredicateCmd) cce.NonNull(cmd);
+          predicateCmd = (PredicateCmd) Cce.NonNull(cmd);
         if (predicateCmd.Expr is LiteralExpr && prog != null && impl != null)
         {
           LiteralExpr le = (LiteralExpr) predicateCmd.Expr;
           if (le.IsFalse)
           {
             var globals = prog.GlobalVariables;
-            Contract.Assert(cce.NonNullElements(globals));
+            Contract.Assert(Cce.NonNullElements(globals));
             foreach (Variable /*!*/ v in globals)
             {
               Contract.Assert(v != null);
@@ -908,7 +908,7 @@ namespace Microsoft.Boogie
       {
         {
           Contract.Assert(false);
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         }
       }
 
@@ -939,7 +939,7 @@ namespace Microsoft.Boogie
 
       Contract.Assert(cmd is CallCmd);
       CallCmd /*!*/
-        ccmd = cce.NonNull((CallCmd) cmd);
+        ccmd = Cce.NonNull((CallCmd) cmd);
 
       foreach (IdentifierExpr /*!*/ ie in ccmd.Outs)
       {
@@ -951,7 +951,7 @@ namespace Microsoft.Boogie
       }
 
       // Variables in ensures are considered as "read"
-      foreach (Ensures /*!*/ re in cce.NonNull(ccmd.Proc).Ensures)
+      foreach (Ensures /*!*/ re in Cce.NonNull(ccmd.Proc).Ensures)
       {
         Contract.Assert(re != null);
         VariableCollector /*!*/
@@ -989,7 +989,7 @@ namespace Microsoft.Boogie
       HashSet<Variable /*!*/> /*!*/
         kill = new HashSet<Variable /*!*/>();
       CallCmd /*!*/
-        ccmd = cce.NonNull((CallCmd /*!*/) cmd);
+        ccmd = Cce.NonNull((CallCmd /*!*/) cmd);
 
       foreach (Expr /*!*/ expr in ccmd.Ins)
       {

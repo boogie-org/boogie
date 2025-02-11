@@ -84,7 +84,7 @@ public static class DesugarReturns {
 
       if (!ens.Free)
       {
-        var ensuresCopy = (Ensures) cce.NonNull(ens.Clone());
+        var ensuresCopy = (Ensures) Cce.NonNull(ens.Clone());
         ensuresCopy.Condition = Substituter.Apply(formalProcImplSubst, ens.Condition);
         AssertEnsuresCmd assert = new AssertEnsuresCmd(ensuresCopy) {
           ErrorDataEnhanced = ensuresCopy.ErrorDataEnhanced
