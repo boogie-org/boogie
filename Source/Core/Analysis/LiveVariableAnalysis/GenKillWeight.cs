@@ -28,8 +28,8 @@ public class GenKillWeight
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(gen));
-    Contract.Invariant(cce.NonNullElements(kill));
+    Contract.Invariant(Cce.NonNullElements(gen));
+    Contract.Invariant(Cce.NonNullElements(kill));
     Contract.Invariant(oneWeight != null);
     Contract.Invariant(zeroWeight != null);
   }
@@ -52,8 +52,8 @@ public class GenKillWeight
 
   public GenKillWeight(HashSet<Variable /*!*/> gen, HashSet<Variable /*!*/> kill)
   {
-    Contract.Requires(cce.NonNullElements(gen));
-    Contract.Requires(cce.NonNullElements(kill));
+    Contract.Requires(Cce.NonNullElements(gen));
+    Contract.Requires(Cce.NonNullElements(kill));
     Contract.Assert(gen != null);
     Contract.Assert(kill != null);
     this.gen = gen;
@@ -173,14 +173,14 @@ public class GenKillWeight
 
   public HashSet<Variable /*!*/> /*!*/ getLiveVars()
   {
-    Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+    Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
     return gen;
   }
 
   public HashSet<Variable /*!*/> /*!*/ getLiveVars(HashSet<Variable /*!*/> /*!*/ lv)
   {
-    Contract.Requires(cce.NonNullElements(lv));
-    Contract.Ensures(cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
+    Contract.Requires(Cce.NonNullElements(lv));
+    Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
     HashSet<Variable> temp = new HashSet<Variable>(lv);
     temp.ExceptWith(kill);
     temp.UnionWith(gen);

@@ -98,11 +98,11 @@ public class RemoveBackEdges {
 
     #region Cut the backedges, push assert/assume statements from loop header into predecessors, change them all into assume statements at top of loop, introduce havoc statements
 
-    foreach (Block header in cce.NonNull(g.Headers))
+    foreach (Block header in Cce.NonNull(g.Headers))
     {
       Contract.Assert(header != null);
       IDictionary<Block, object> backEdgeNodes = new Dictionary<Block, object>();
-      foreach (Block b in cce.NonNull(g.BackEdgeNodes(header)))
+      foreach (Block b in Cce.NonNull(g.BackEdgeNodes(header)))
       {
         Contract.Assert(b != null);
         backEdgeNodes.Add(b, null);
@@ -184,10 +184,10 @@ public class RemoveBackEdges {
 
       for (int predIndex = 0, n = header.Predecessors.Count; predIndex < n; predIndex++)
       {
-        Block pred = cce.NonNull(header.Predecessors[predIndex]);
+        Block pred = Cce.NonNull(header.Predecessors[predIndex]);
 
         // Create a block between header and pred for the predicate commands if pred has more than one successor
-        GotoCmd gotocmd = cce.NonNull((GotoCmd)pred.TransferCmd);
+        GotoCmd gotocmd = Cce.NonNull((GotoCmd)pred.TransferCmd);
         Contract.Assert(gotocmd.LabelNames !=
                         null); // if "pred" is really a predecessor, it may be a GotoCmd with at least one label
         if (gotocmd.LabelNames.Count > 1)
@@ -213,7 +213,7 @@ public class RemoveBackEdges {
 
       #region Cut the back edge
 
-      foreach (Block backEdgeNode in cce.NonNull(backEdgeNodes.Keys))
+      foreach (Block backEdgeNode in Cce.NonNull(backEdgeNodes.Keys))
       {
         Contract.Assert(backEdgeNode != null);
         Debug.Assert(backEdgeNode.TransferCmd is GotoCmd,
@@ -336,7 +336,7 @@ public class RemoveBackEdges {
 
       #endregion
 
-      foreach (Block header in cce.NonNull(g.Headers))
+      foreach (Block header in Cce.NonNull(g.Headers))
       {
         Contract.Assert(header != null);
 
@@ -405,7 +405,7 @@ public class RemoveBackEdges {
         #region redirect into the new loop copies and remove the original loop (but don't redirect back-edges)
 
         IDictionary<Block, object> backEdgeNodes = new Dictionary<Block, object>();
-        foreach (Block b in cce.NonNull(g.BackEdgeNodes(header)))
+        foreach (Block b in Cce.NonNull(g.BackEdgeNodes(header)))
         {
           Contract.Assert(b != null);
           backEdgeNodes.Add(b, null);
@@ -413,7 +413,7 @@ public class RemoveBackEdges {
 
         for (int predIndex = 0, n = header.Predecessors.Count; predIndex < n; predIndex++)
         {
-          Block pred = cce.NonNull(header.Predecessors[predIndex]);
+          Block pred = Cce.NonNull(header.Predecessors[predIndex]);
           if (!backEdgeNodes.ContainsKey(pred))
           {
             GotoCmd gc = pred.TransferCmd as GotoCmd;
@@ -450,7 +450,7 @@ public class RemoveBackEdges {
   private static List<Variable> VarsAssignedInLoop(Graph<Block> g, Block header)
   {
     List<Variable> varsToHavoc = new List<Variable>();
-    foreach (var backEdgeNode in cce.NonNull(g.BackEdgeNodes(header)))
+    foreach (var backEdgeNode in Cce.NonNull(g.BackEdgeNodes(header)))
     {
       Contract.Assert(backEdgeNode != null);
       foreach (Block b in g.NaturalLoops(header, backEdgeNode))
@@ -470,7 +470,7 @@ public class RemoveBackEdges {
   public static IEnumerable<Variable> VarsReferencedInLoop(Graph<Block> g, Block header)
   {
     HashSet<Variable> referencedVars = new HashSet<Variable>();
-    foreach (Block backEdgeNode in cce.NonNull(g.BackEdgeNodes(header)))
+    foreach (Block backEdgeNode in Cce.NonNull(g.BackEdgeNodes(header)))
     {
       Contract.Assert(backEdgeNode != null);
       foreach (Block b in g.NaturalLoops(header, backEdgeNode))
@@ -501,7 +501,7 @@ public class RemoveBackEdges {
 
     #region create copies of all blocks in the loop
 
-    foreach (Block backEdgeNode in cce.NonNull(g.BackEdgeNodes(header)))
+    foreach (Block backEdgeNode in Cce.NonNull(g.BackEdgeNodes(header)))
     {
       Contract.Assert(backEdgeNode != null);
       foreach (Block b in g.NaturalLoops(header, backEdgeNode))

@@ -30,9 +30,9 @@ class BigBlocksResolutionContext
   void ObjectInvariant()
   {
     Contract.Invariant(stmtList != null);
-    Contract.Invariant(cce.NonNullElements(blocks, true));
+    Contract.Invariant(Cce.NonNullElements(blocks, true));
     Contract.Invariant(prefix != null);
-    Contract.Invariant(cce.NonNullElements(allLabels, true));
+    Contract.Invariant(Cce.NonNullElements(allLabels, true));
     Contract.Invariant(errorHandler != null);
   }
 
@@ -91,7 +91,7 @@ class BigBlocksResolutionContext
   {
     get
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<Block>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
       if (blocks == null)
       {
         blocks = new List<Block /*!*/>();
@@ -192,7 +192,7 @@ class BigBlocksResolutionContext
       if (bigBlock.tc is GotoCmd)
       {
         GotoCmd g = (GotoCmd) bigBlock.tc;
-        foreach (string /*!*/ lbl in cce.NonNull(g.LabelNames))
+        foreach (string /*!*/ lbl in Cce.NonNull(g.LabelNames))
         {
           Contract.Assert(lbl != null);
           /*
@@ -222,7 +222,7 @@ class BigBlocksResolutionContext
         bool found = false;
         for (StmtList sl = stmtList; sl.ParentBigBlock != null; sl = sl.ParentContext)
         {
-          cce.LoopInvariant(sl != null);
+          Cce.LoopInvariant(sl != null);
           BigBlock bb = sl.ParentBigBlock;
 
           if (bcmd.Label == null)

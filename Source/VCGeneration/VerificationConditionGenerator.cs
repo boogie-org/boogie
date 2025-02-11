@@ -68,7 +68,7 @@ namespace VC
           break;
         default:
           Contract.Assert(false);
-          throw new cce.UnreachableException(); // unexpected case
+          throw new Cce.UnreachableException(); // unexpected case
       }
 
       var assume = new AssumeCmd(assrt.tok, expr);
@@ -170,9 +170,9 @@ namespace VC
 
       VCExpr vc;
       int assertionCount;
-      if (cce.NonNull(CheckerPool.Options.TheProverFactory).SupportsDags)
+      if (Cce.NonNull(CheckerPool.Options.TheProverFactory).SupportsDags)
       {
-        vc = DagVC(cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, absyIds,
+        vc = DagVC(Cce.NonNull(impl.Blocks[0]), controlFlowVariableExpr, absyIds,
           new Dictionary<Block, VCExpr>(), proverContext, out assertionCount);
       }
       else
@@ -488,7 +488,7 @@ namespace VC
       void ObjectInvariant()
       {
         Contract.Invariant(absyIds != null);
-        Contract.Invariant(cce.NonNullElements(blocks));
+        Contract.Invariant(Cce.NonNullElements(blocks));
         Contract.Invariant(callback != null);
         Contract.Invariant(context != null);
         Contract.Invariant(program != null);
@@ -514,7 +514,7 @@ namespace VC
         Program /*!*/ program, ProofRun split) : base(options)
       {
         Contract.Requires(absyIds != null);
-        Contract.Requires(cce.NonNullElements(blocks));
+        Contract.Requires(Cce.NonNullElements(blocks));
         Contract.Requires(callback != null);
         Contract.Requires(context != null);
         Contract.Requires(program != null);
@@ -556,7 +556,7 @@ namespace VC
         }
 
         List<Block> trace = new List<Block>();
-        Block entryBlock = cce.NonNull(this.blocks[0]);
+        Block entryBlock = Cce.NonNull(this.blocks[0]);
         Contract.Assert(traceNodes.Contains(entryBlock));
         trace.Add(entryBlock);
 
@@ -594,7 +594,7 @@ namespace VC
         Contract.Ensures(Contract.Result<Absy>() != null);
 
         int id = int.Parse(label);
-        return cce.NonNull(absyIds.GetValue(id));
+        return Cce.NonNull(absyIds.GetValue(id));
       }
 
       public override void OnResourceExceeded(string msg, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null)
@@ -1256,7 +1256,7 @@ namespace VC
       Contract.Requires(traceNodes != null);
       Contract.Requires(trace != null);
       Contract.Requires(context != null);
-      Contract.Requires(cce.NonNullDictionaryAndValues(calleeCounterexamples));
+      Contract.Requires(Cce.NonNullDictionaryAndValues(calleeCounterexamples));
       // After translation, all potential errors come from asserts.
 
       List<object> augmentedTrace = new List<object>();
@@ -1264,10 +1264,10 @@ namespace VC
       {
         List<Cmd> cmds = b.Cmds;
         Contract.Assert(cmds != null);
-        TransferCmd transferCmd = cce.NonNull(b.TransferCmd);
+        TransferCmd transferCmd = Cce.NonNull(b.TransferCmd);
         for (int i = 0; i < cmds.Count; i++)
         {
-          Cmd cmd = cce.NonNull(cmds[i]);
+          Cmd cmd = Cce.NonNull(cmds[i]);
 
           // update augmentedTrace
           if (errModel != null && debugInfos != null && debugInfos.ContainsKey(cmd))
@@ -1294,7 +1294,7 @@ namespace VC
         }
 
         Block foundBlock = null;
-        foreach (Block bb in cce.NonNull(gotoCmd.LabelTargets))
+        foreach (Block bb in Cce.NonNull(gotoCmd.LabelTargets))
         {
           Contract.Assert(bb != null);
           if (traceNodes.Contains(bb))
@@ -1588,7 +1588,7 @@ namespace VC
       GotoCmd gotocmd = block.TransferCmd as GotoCmd;
       if (gotocmd != null)
       {
-        foreach (Block successor in cce.NonNull(gotocmd.LabelTargets))
+        foreach (Block successor in Cce.NonNull(gotocmd.LabelTargets))
         {
           Contract.Assert(successor != null);
           VCExpr c = DagVC(successor, controlFlowVariableExpr, absyIds, blockEquations, proverCtxt, out var ac);

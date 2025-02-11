@@ -14,8 +14,8 @@ public class ModSetCollector : ReadOnlyVisitor
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullDictionaryAndValues(modSets));
-    Contract.Invariant(Contract.ForAll(modSets.Values, v => cce.NonNullElements(v)));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(modSets));
+    Contract.Invariant(Contract.ForAll(modSets.Values, v => Cce.NonNullElements(v)));
   }
 
   public ModSetCollector(CoreOptions options)
@@ -192,7 +192,7 @@ public class ModSetCollector : ReadOnlyVisitor
   private void ProcessVariable(Variable var)
   {
     Procedure /*!*/
-      localProc = cce.NonNull(enclosingProc);
+      localProc = Cce.NonNull(enclosingProc);
     if (var == null)
     {
       return;
