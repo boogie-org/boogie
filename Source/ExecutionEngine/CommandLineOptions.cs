@@ -416,9 +416,9 @@ namespace Microsoft.Boogie
 
     public bool ExpandLambdas { get; set; } = true; // not useful from command line, only to be set to false programatically
 
-    public bool DoModSetAnalysis {
-      get => doModSetAnalysis;
-      set => doModSetAnalysis = value;
+    public bool InferModifies {
+      get => inferModifies;
+      set => inferModifies = value;
     }
 
     public bool UseAbstractInterpretation { get; set; }
@@ -576,7 +576,7 @@ namespace Microsoft.Boogie
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;
     private bool useArrayAxioms = false;
-    private bool doModSetAnalysis = false;
+    private bool inferModifies = false;
     private bool runDiagnosticsOnTimeout = false;
     private bool traceDiagnosticsOnTimeout = false;
     private bool siBoolControlVc = false;
@@ -1362,7 +1362,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("reflectAdd", x => ReflectAdd = x) ||
               ps.CheckBooleanFlag("useArrayAxioms", x => useArrayAxioms = x) ||
               ps.CheckBooleanFlag("relaxFocus", x => RelaxFocus = x) ||
-              ps.CheckBooleanFlag("doModSetAnalysis", x => doModSetAnalysis = x) ||
+              ps.CheckBooleanFlag("inferModifies", x => inferModifies = x) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", x => runDiagnosticsOnTimeout = x) ||
               ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", x => traceDiagnosticsOnTimeout = x) ||
               ps.CheckBooleanFlag("boolControlVC", x => siBoolControlVc = x, true) ||
@@ -1809,7 +1809,7 @@ namespace Microsoft.Boogie
                 inline irreducible loops using the bound supplied by /loopUnroll:<n>
   /soundLoopUnrolling
                 sound loop unrolling
-  /doModSetAnalysis
+  /inferModifies
                 automatically infer modifies clauses
   /printModel:<n>
                 0 (default) - do not print Z3's error model

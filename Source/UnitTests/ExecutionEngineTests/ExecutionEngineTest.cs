@@ -516,7 +516,7 @@ procedure easy() ensures 1 + 1 == 0; {
 
     engine.ResolveAndTypecheck(program, bplFileName, out _);
     engine.EliminateDeadVariables(program);
-    engine.CollectModSets(program);
+    engine.CollectModifies(program);
     engine.CoalesceBlocks(program);
     engine.Inline(program);
     return program;

@@ -1,0 +1,2 @@
+modifies-bug.bpl(7,4): Error: modified variable does not appear in modifies clause of mover procedure: g
+1 type checking errors detected in modifies-bug.bpl
