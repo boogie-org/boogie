@@ -72,19 +72,22 @@ var {:layer 1,3} absMem: [MemAddr]Value;
 /*
 The proof is done in two layers.
 
-At layer 1, cachePermissions and dirPermissions are introduced allowing dirBusy and cacheBusy
-to be hidden. At this layer, absMem is also introduced. The main purpose of this layer is to
-create atomic actions with suitable mover types. Specifically, we want the following:
+Layer 1 to layer 2:
+absMem is introduced to enable specification of the cache coherence property.
+cachePermissions and dirPermissions are introduced allowing dirBusy and cacheBusy to be hidden.
+The main purpose of this proof is to create atomic actions with suitable mover types.
+Specifically, we want the following:
 - Memory operations (read and write) to be both movers.
 - Shared invalidate request at cache to be left mover.
 - Response to read request at cache to be left mover.
 - Initiation and conclusion of cache and directory operations to be right and left movers, respectively.
 
-At layer 2, we do an invariance proof to hide the directory and all the caches so that the read
-and write operations at cache are described as atomic operations over absMem. This specfication
-method naturally captures the cache coherence property. To achieve this specfication, the variables
-mem, dir, cache, cachePermissions, and dirPermissions are hidden. The yield invariant at this level
-is a global invariant connecting directory and cache states.
+Layer 2 to layer 3:
+We do an invariance proof to hide the directory and all the caches so that the read
+and write operations at cache are described as atomic operations over absMem.
+This specfication method naturally captures the cache coherence property.
+To achieve this specfication, the variables mem, dir, cache, cachePermissions, and dirPermissions are hidden.
+The yield invariant at this level is a global invariant connecting directory and cache states.
 */
 
 /// Yield invariants
@@ -116,21 +119,20 @@ invariant (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->st
 
 /// Cache
 /*
-There are 5 top-level operations on the cache.
-cache_read and cache_write read and write a cache entry, respectively;
-they may nondeterministically choose not to do the operation.
-cache_evict_req initiates eviction of a cache line.
-cache_read_shd_req and cache_read_exc_req initiate bringing a memory address into the cache
-in Shared and Exclusive mode, respectively.
+There are 5 top-level operations on the cache:
+- cache_read and cache_write read and write a cache entry, respectively.
+- cache_evict_req initiates eviction of a cache line.
+- cache_read_shd_req and cache_read_exc_req initiate bringing a memory address into the cache
+  in Shared and Exclusive mode, respectively.
 The last three operations make asynchronous calls to corresponding operations on the directory
 to achieve their goals.
 
-To specify the protocol, we introduce absMem, a global variable capturing the logical view of
-memory at layer 1.
-The verification demonstrates that cache_read and cache_read do the appropriate operation
-on absMem.
-At layer 3, all operations other than cache_read and cache_write disappear by becoming "skip"
-since all the concrete state is hidden by layer 2.
+We introduce at layer 1 a global variable absMem to capture the logical view of memory.
+The presence of absMem allows us to specify the cache coherence property in a natural way.
+The verification demonstrates that at layer 3:
+- cache_read is abstracted by an atomic action that reads from absMem.
+- cache_write is abstracted by an atomic action that writes to absMem.
+- all other operations are abstracted by "skip".
 */
 
 yield procedure {:layer 2} cache_read(i: CacheId, ma: MemAddr) returns (result: Option Value)

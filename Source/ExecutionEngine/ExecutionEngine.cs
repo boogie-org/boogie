@@ -229,11 +229,11 @@ namespace Microsoft.Boogie
     }
 
 
-    public void CollectModSets(Program program)
+    public void CollectModifies(Program program)
     {
-      if (Options.DoModSetAnalysis)
+      if (Options.InferModifies)
       {
-        new ModSetCollector(Options).DoModSetAnalysis(program);
+        new ModSetCollector(Options).CollectModifies(program);
       }
     }
 
@@ -339,7 +339,7 @@ namespace Microsoft.Boogie
         if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
         {
           Options.Libraries.Add("base");
-          Options.DoModSetAnalysis = true;
+          Options.InferModifies = true;
         }
 
         foreach (var libraryName in Options.Libraries)
@@ -403,6 +403,8 @@ namespace Microsoft.Boogie
         return PipelineOutcome.TypeCheckingError;
       }
       
+      CollectModifies(program);
+
       errorCount = program.Typecheck(Options);
       if (errorCount != 0)
       {
@@ -442,8 +444,6 @@ namespace Microsoft.Boogie
         Options.OutputWriter.WriteLine("Functions with :define attribute only supported with monomorphic encoding");
         return PipelineOutcome.FatalError;
       }
-
-      CollectModSets(program);
 
       civlTypeChecker = new CivlTypeChecker(Options, program);
       civlTypeChecker.TypeCheck();
@@ -728,7 +728,7 @@ namespace Microsoft.Boogie
       }
 
       EliminateDeadVariables(program);
-      CollectModSets(program);
+      CollectModifies(program);
       CoalesceBlocks(program);
       Inline(program);
 

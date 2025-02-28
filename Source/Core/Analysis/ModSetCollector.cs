@@ -26,7 +26,7 @@ public class ModSetCollector : ReadOnlyVisitor
 
   private bool moreProcessingRequired;
 
-  public void DoModSetAnalysis(Program program)
+  public void CollectModifies(Program program)
   {
     Contract.Requires(program != null);
     var implementedProcs = new HashSet<Procedure>();
@@ -66,8 +66,11 @@ public class ModSetCollector : ReadOnlyVisitor
 
     foreach (Procedure x in modSets.Keys)
     {
-      x.Modifies = new List<IdentifierExpr>();
-      foreach (Variable v in modSets[x])
+      if (x.Modifies == null)
+      {
+        x.Modifies = new List<IdentifierExpr>();
+      }
+      foreach (Variable v in modSets[x].Except(x.Modifies.Select(y => y.Decl)))
       {
         x.Modifies.Add(new IdentifierExpr(v.tok, v));
       }
