@@ -35,21 +35,11 @@ namespace Microsoft.Boogie
     protected Action targetAction;
     protected HashSet<Action> eliminatedActions;
 
-    public InductiveSequentializationRule rule;
-
     protected Sequentialization(CivlTypeChecker civlTypeChecker, Action targetAction)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.targetAction = targetAction;
       this.eliminatedActions = new HashSet<Action>(EliminatedActionDecls.Select(x => civlTypeChecker.Action(x)));
-      if (targetAction.ActionDecl.RefinedAction.HasAttribute(CivlAttributes.IS_RIGHT))
-      {
-        rule = InductiveSequentializationRule.ISR;
-      }
-      else
-      {
-        rule = InductiveSequentializationRule.ISL;
-      }
     }
 
     public IEnumerable<ActionDecl> EliminatedActionDecls => targetAction.ActionDecl.EliminatedActionDecls();
@@ -60,20 +50,7 @@ namespace Microsoft.Boogie
     public Action TargetAction => targetAction;
     protected virtual List<Declaration> GenerateCheckers()
     {
-      var decls = new List<Declaration>();
-      if (rule == InductiveSequentializationRule.ISR)
-      {
-        decls.AddRange(GeneratePartitionChecker(targetAction));
-        foreach (var elim in eliminatedActions)
-        {
-          if (elim == targetAction)
-          {
-            continue;
-          }
-          decls.AddRange(GeneratePartitionChecker(elim));
-        }
-      }
-      return decls;
+      return new List<Declaration>();
     }
 
     public virtual IEnumerable<Expr> GenerateLeftMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
@@ -371,7 +348,7 @@ namespace Microsoft.Boogie
 
       var subst = targetAction.GetSubstitution(invariantAction);
       var cmds = targetAction.GetGateAsserts(subst,
-        $"Gate of {targetAction.Name} fails in {rule} base check against invariant {invariantAction.Name}").ToList<Cmd>();
+        $"Gate of {targetAction.Name} fails in base check against invariant {invariantAction.Name}").ToList<Cmd>();
 
       // Construct call to targetAction
       var pendingAsyncTypeToOutputParamIndex = invariantAction.PendingAsyncs.Select(x => x.PendingAsyncType)
@@ -396,9 +373,9 @@ namespace Microsoft.Boogie
 
       var frame = new HashSet<Variable>(invariantAction.ModifiedGlobalVars);
       cmds.Add(GetCheck(targetAction.tok, invariantAction.GetTransitionRelation(civlTypeChecker, frame),
-        $"{rule} base of {targetAction.Name} failed"));
+        $"base of {targetAction.Name} failed"));
 
-      return GetCheckerTuple($"{rule}_base_{targetAction.Name}", requires, invariantAction.Impl.InParams,
+      return GetCheckerTuple($"Base_{targetAction.Name}", requires, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams, new List<Variable>(), cmds);
     }
 
@@ -413,15 +390,15 @@ namespace Microsoft.Boogie
         .ToList();
 
       var cmds = invariantAction.GetGateAsserts(null,
-        $"Gate of {invariantAction.Name} fails in {rule} conclusion check against {refinedAction.Name}").ToList<Cmd>();
+        $"Gate of {invariantAction.Name} fails in conclusion check against {refinedAction.Name}").ToList<Cmd>();
       cmds.Add(CmdHelper.CallCmd(invariantAction.Impl.Proc, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams));
       cmds.Add(CmdHelper.AssumeCmd(NoPendingAsyncs));
       var frame = new HashSet<Variable>(civlTypeChecker.GlobalVariablesAtLayer(targetAction.LayerRange.UpperLayer));
       cmds.Add(GetCheck(targetAction.tok, Substituter.Apply(subst, refinedAction.GetTransitionRelation(civlTypeChecker, frame)),
-        $"{rule} conclusion of {targetAction.Name} failed"));
+        $"conclusion of {targetAction.Name} failed"));
 
-      return GetCheckerTuple($"{rule}_conclusion_{targetAction.Name}", requires, invariantAction.Impl.InParams,
+      return GetCheckerTuple($"Conclusion_{targetAction.Name}", requires, invariantAction.Impl.InParams,
         invariantAction.Impl.OutParams, new List<Variable>(), cmds);
     }
 
@@ -453,7 +430,7 @@ namespace Microsoft.Boogie
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputExprs);
       cmds.AddRange(pendingAsync.GetGateAsserts(
         Substituter.SubstitutionFromDictionary(pendingAsync.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
-        $"Gate of {pendingAsync.Name} fails in {rule} induction step for invariant {invariantAction.Name}"));
+        $"Gate of {pendingAsync.Name} fails in induction step for invariant {invariantAction.Name}"));
       cmds.AddRange(Preconditions(pendingAsync,
         Substituter.SubstitutionFromDictionary(pendingAsync.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
 
@@ -479,274 +456,10 @@ namespace Microsoft.Boogie
 
       var frame = new HashSet<Variable>(invariantAction.ModifiedGlobalVars);
       cmds.Add(GetCheck(invariantAction.tok, invariantAction.GetTransitionRelation(civlTypeChecker, frame),
-        $"{rule} step of {invariantAction.Name} with {pendingAsync.Name} failed"));
+        $"step of {invariantAction.Name} with {pendingAsync.Name} failed"));
 
-      return GetCheckerTuple($"{rule}_step_{invariantAction.Name}_{pendingAsync.Name}", requires,
+      return GetCheckerTuple($"Step_{invariantAction.Name}_{pendingAsync.Name}", requires,
         invariantAction.ImplWithChoice.InParams, invariantAction.ImplWithChoice.OutParams, locals, cmds);
-    }
-
-    protected List<Declaration> GenerateSideConditionChecker(Action action)
-    {
-      var ltc = civlTypeChecker.linearTypeChecker;
-      if (ltc.LinearDomains.Count() == 0)
-      {
-        return new List<Declaration>();
-      }
-      var inputs = action.Impl.InParams;
-      var outputs = action.Impl.OutParams;
-    
-      var inputDisjointnessExpr = ltc.DisjointnessExprForEachDomain(
-        inputs.Union(action.ModifiedGlobalVars)
-        .Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x))));
-
-      List<Requires> requires = action.Gate.Select(a => new Requires(false, a.Expr))
-          .Concat(inputDisjointnessExpr.Select(expr => new Requires(false, expr)))
-          .ToList();
-
-      List<LinearityCheck> linearityChecks = new List<LinearityCheck>();
-      foreach (var domain in ltc.LinearDomains)
-      {
-       var existingExpr = Expr.True;
-       var inVars = new List<Variable>().Union(action.ModifiedGlobalVars)
-        .Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x))).Select(Expr.Ident).ToList();
-       var outVars = new List<Variable>().Union(action.ModifiedGlobalVars)
-        .Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x))).Select(Expr.Ident).ToList();
-       var inPermissionSet = ExprHelper.Old(ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, inVars)));
-       var outPermissionSet = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, outVars));
-       var outSubsetInExpr = ltc.SubsetExprForPermissions(domain, inPermissionSet, outPermissionSet);
-       linearityChecks.Add(new LinearityCheck(
-          domain,
-          existingExpr,
-          outSubsetInExpr,
-          $"Only put permissions of type {domain.permissionType}",
-          $"only_put_perm_{action.Name}"));
-      }   
-      
-      List<Block> checkerBlocks = new List<Block>(linearityChecks.Count);
-      foreach (var lc in linearityChecks)
-      {
-        List<Cmd> cmds = new List<Cmd>(2);
-        if (lc.assume != null)
-        {
-          cmds.Add(CmdHelper.AssumeCmd(lc.assume));
-        }
-        cmds.Add(CmdHelper.AssertCmd(action.tok, lc.assert, lc.message));
-        var block = BlockHelper.Block($"{lc.domain.permissionType}_{lc.checkName}", cmds);
-        checkerBlocks.Add(block);
-      }
-
-      var blocks = new List<Block>(linearityChecks.Count + 1)
-      {
-        BlockHelper.Block(
-          "init",
-          new List<Cmd>() { CmdHelper.AssumeCmd(Expr.Not(GetExitCondition(action))), CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs) },
-          checkerBlocks)
-      };
-      blocks.AddRange(checkerBlocks);
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, blocks, ResolutionContext.State.Two);
-
-      // Create the whole check procedure
-      string checkerName = civlTypeChecker.AddNamePrefix($"{rule}_SideCondition_{action.Name}");
-      Procedure linCheckerProc = DeclHelper.Procedure(checkerName,
-        inputs, outputs, requires, action.Impl.Proc.Modifies, new List<Ensures>());
-      Implementation linCheckImpl = DeclHelper.Implementation(linCheckerProc,
-        inputs, outputs,  new List<Variable>(), blocks);
-      return new List<Declaration>(new Declaration[] { linCheckerProc, linCheckImpl });
-    }
-
-    private List<Declaration> GenerateInconsistencyChecker(Action E1, Action E2)
-    {
-      var gateE1 = Expr.And(E1.Gate.Select(x => x.Expr));
-      var gateE2 = Expr.And(E2.Gate.Select(x => x.Expr));
-      var gateM = Expr.And(targetAction.Gate.Select(x => x.Expr));
-
-      var locals = new List<Variable>();
-      var localE1 = civlTypeChecker.LocalVariable($"E1_{E1.Name}", E1.ActionDecl.PendingAsyncType);
-      var localE2 = civlTypeChecker.LocalVariable($"E2_{E2.Name}", E2.ActionDecl.PendingAsyncType);
-
-      var localsForGlobals = new List<Variable>();
-      var localsForInM = new List<Variable>();
-      foreach(var g in civlTypeChecker.GlobalVariables)
-      {
-        localsForGlobals.Add(civlTypeChecker.LocalVariable($"tempg_{g.Name}", g.TypedIdent.Type));
-      }
-      foreach(var l in targetAction.Impl.InParams)
-      {
-        localsForInM.Add(civlTypeChecker.LocalVariable($"templ_{l.Name}", l.TypedIdent.Type));
-      }
-
-      locals.Add(localE1);
-      locals.Add(localE2);
-      locals.AddRange(localsForGlobals);
-      locals.AddRange(localsForInM);
-
-      var inputExprsM = new List<Expr>();
-      var inputExprsE1 = new List<Expr>();
-      var inputExprsE2 = new List<Expr>();
-      var globalExprs  = new List<Expr>();
-     
-      foreach(var l in localsForInM)
-      {
-        inputExprsM.Add(Expr.Ident(l));
-      }
-      for (int i = 0; i < E1.Impl.InParams.Count; i++)
-      {
-        inputExprsE1.Add(ExprHelper.FieldAccess(Expr.Ident(localE1), E1.ActionDecl.PendingAsyncCtor.InParams[i].Name));
-      }
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputExprsE1);
-      for (int i = 0; i < E2.Impl.InParams.Count; i++)
-      {
-        inputExprsE2.Add(ExprHelper.FieldAccess(Expr.Ident(localE2), E2.ActionDecl.PendingAsyncCtor.InParams[i].Name));
-      }
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, inputExprsE2);
-      foreach(var g in localsForGlobals)
-      {
-        globalExprs.Add(Expr.Ident(g));
-      }
-
-      var substM = Substituter.SubstitutionFromDictionary(
-        targetAction.Impl.InParams.Zip(inputExprsM).ToDictionary(x => x.Item1, x => x.Item2));
-      var substE1 = Substituter.SubstitutionFromDictionary(
-        E1.Impl.InParams.Zip(inputExprsE1).ToDictionary(x => x.Item1, x => x.Item2));
-      var substE2 = Substituter.SubstitutionFromDictionary(
-        E2.Impl.InParams.Zip(inputExprsE2).ToDictionary(x => x.Item1, x => x.Item2));
-      var substG0 = Substituter.SubstitutionFromDictionary(
-        civlTypeChecker.GlobalVariables.Zip(globalExprs).ToDictionary(x => x.Item1, x => x.Item2));
-
-      var ltc = civlTypeChecker.linearTypeChecker;
-      var disjointnessExpr = new Dictionary<LinearDomain, Expr>();
-      var subsetExpr = new Dictionary<LinearDomain, Expr>();
-   
-      foreach(var domain in ltc.LinearDomains)
-      {
-        //Constructing expressions for collection of permissions in globals and local/input params of M, E1, and E2
-        var collectG = ltc.UnionExprForPermissions(domain,
-          ltc.PermissionExprs(domain, civlTypeChecker.GlobalVariables.Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))));
-       
-        var pendingAsyncLinearParamsM = targetAction.Impl.InParams
-          .Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
-          .Select(v => substM(v)).ToList<Expr>();
-        // No need to resolve since inputExprsM have already been resolved above
-        var collectInM = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, pendingAsyncLinearParamsM));
-
-        var pendingAsyncLinearParamsE1 = E1.ActionDecl.InParams
-          .Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
-          .Select(v => ExprHelper.FieldAccess(Expr.Ident(localE1), v.Name)).ToList<Expr>();
-        CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParamsE1);
-        var collectInE1 = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, pendingAsyncLinearParamsE1));
-
-        var pendingAsyncLinearParamsE2 = E2.ActionDecl.InParams
-          .Where(v => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(v)))
-          .Select(v => ExprHelper.FieldAccess(Expr.Ident(localE2), v.Name)).ToList<Expr>();
-        CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, pendingAsyncLinearParamsE2);
-        var collectInE2 = ltc.UnionExprForPermissions(domain, ltc.PermissionExprs(domain, pendingAsyncLinearParamsE2));
-
-        // Checks for disjointness of permissions in the same state
-        var noDuplicationExpr1 = Expr.Eq(
-          ExprHelper.FunctionCall(domain.mapAnd, collectG, collectInE1),
-          ExprHelper.FunctionCall(domain.mapConstBool, Expr.False));
-        var noDuplicationExpr2 =  Expr.Eq(
-          ExprHelper.FunctionCall(domain.mapAnd, collectG, collectInE2),
-          ExprHelper.FunctionCall(domain.mapConstBool, Expr.False));
-        var noDuplicationExpr3 =  Expr.Eq(
-          ExprHelper.FunctionCall(domain.mapAnd, collectInE1, collectInE2),
-          ExprHelper.FunctionCall(domain.mapConstBool, Expr.False));
-
-        disjointnessExpr[domain] = Expr.And(Expr.And(noDuplicationExpr1, noDuplicationExpr2), noDuplicationExpr3);
-
-        // If E1 and E2 are descendants of M, then the subset property below should hold
-        subsetExpr[domain] = Expr.And(ltc.SubsetExprForPermissions(domain, collectInE1 , collectInM), ltc.SubsetExprForPermissions(domain, collectInE2, collectInM));
-      }
-      
-      var cmds = new List<Cmd>();
-      var successM = Substituter.Apply(substG0,Substituter.Apply(substM, Expr.And(gateM, GetNonBlockExpression(targetAction))));
-      cmds.Add(CmdHelper.AssumeCmd(successM));
-
-      var disjointnessExprTotal = Expr.And(disjointnessExpr.Values);
-      cmds.Add(CmdHelper.AssumeCmd(disjointnessExprTotal));
-
-      var subsetExprTotal = Expr.And(subsetExpr.Values);
-      cmds.Add(CmdHelper.AssumeCmd(subsetExprTotal));
-     
-      cmds.Add(CmdHelper.AssertCmd(
-        targetAction.tok,
-        Expr.Not(Expr.And(Substituter.Apply(substE1, gateE1), Substituter.Apply(substE2, Expr.And(GetExitCondition(E2), gateE2)))) ,
-        $"Inconsistency check failed for {targetAction.Name}, {E1.Name}, {E2.Name}"));
-      
-      return GetCheckerTuple($"{rule}_InconsistencyChecker_{targetAction.Name}_{E1.Name}_{E2.Name}", new List<Requires>(),
-        new List<Variable>(), new List<Variable>(), locals,  cmds);
-    }
-    
-    private Expr GetNonBlockExpression(Action action)
-    {
-      HashSet<Variable> frame = new HashSet<Variable>();
-      frame.UnionWith(action.UsedGlobalVarsInGate);
-      frame.UnionWith(action.UsedGlobalVarsInAction);
-      return TransitionRelationComputation.Cooperation(civlTypeChecker, action, frame);
-    }
-
-    private Expr GetExitCondition(Action action)
-    {
-      var subst = Substituter.SubstitutionFromDictionary(
-        action.ActionDecl.InParams.Zip(action.Impl.InParams.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-      var exitCondition = action.ExitCondition;
-      return exitCondition == null ? Expr.False : Substituter.Apply(subst, exitCondition);
-    }
-
-    protected List<Declaration> GenerateAllPendingAsyncsNotInElimChecker(Action action)
-    {
-      var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
-      var elimExprs = new List<Expr>();
-      var notElimExprs = new List<Expr>();
-      foreach (var pendingAsync in action.PendingAsyncs)
-      {
-        var pendingAsyncExpr = Expr.Ident(action.PAs(pendingAsync.PendingAsyncType));
-        var emptyExpr = ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0));
-        if (eliminatedActionDecls.Contains(pendingAsync))
-        {
-          elimExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
-        }
-        else
-        {
-          notElimExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
-        }
-      }
-      var cmds = new List<Cmd>() {
-        CmdHelper.AssumeCmd(GetExitCondition(action)),
-        CmdHelper.CallCmd(action.Impl.Proc, action.Impl.InParams, action.Impl.OutParams),
-        GetCheck(action.tok, Expr.And(elimExprs), "Exit condition is true and there is a pending async to an eliminated action."),
-      };
-
-      return GetCheckerTuple($"{rule}_AllPendingAsyncsNotInElim_{action.Name}", new List<Requires>(),
-        action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
-    }
-
-    protected List<Declaration> GenerateAllPendingAsyncsInElimChecker(Action action)
-    {
-      var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
-      var elimExprs = new List<Expr>();
-      var notElimExprs = new List<Expr>();
-      foreach (var pendingAsync in action.PendingAsyncs)
-      {
-        var pendingAsyncExpr = Expr.Ident(action.PAs(pendingAsync.PendingAsyncType));
-        var emptyExpr = ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0));
-        if (eliminatedActionDecls.Contains(pendingAsync))
-        {
-          elimExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
-        }
-        else
-        {
-          notElimExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
-        }
-      }
-      var cmds = new List<Cmd>() {
-        CmdHelper.AssumeCmd(Expr.Not(GetExitCondition(action))),
-        CmdHelper.CallCmd(action.Impl.Proc, action.Impl.InParams, action.Impl.OutParams),
-        GetCheck(action.tok, Expr.And(notElimExprs), "Exit condition is false and there is a pending async to an action not in eliminated actions."),
-      };
-      
-      return GetCheckerTuple($"{rule}_AllPendingAsyncsInElim_{action.Name}", new List<Requires>(),
-        action.Impl.InParams, action.Impl.OutParams, new List<Variable>(),  cmds);
     }
 
     public override IEnumerable<Expr> GenerateRightMoverCheckAssumptions(Action rightMover, List<Variable> rightMoverArgs)
@@ -928,34 +641,6 @@ namespace Microsoft.Boogie
       foreach (var elim in eliminatedActions)
       {
         decls.AddRange(GenerateStepChecker(elim));
-      }
-      if (rule == InductiveSequentializationRule.ISR)
-      {
-        decls.AddRange(GenerateSideConditionChecker(targetAction));
-        foreach (var elim in eliminatedActions)
-        {
-          decls.AddRange(GenerateAllPendingAsyncsInElimChecker(elim));
-          decls.AddRange(GenerateAllPendingAsyncsNotInElimChecker(elim));
-          if (elim == targetAction)
-          {
-            continue;
-          }
-          decls.AddRange(GenerateSideConditionChecker(elim));
-        }
-
-        foreach (var action1 in eliminatedActions)
-        {
-          decls.AddRange(GenerateInconsistencyChecker(action1, action1));
-        }
-        foreach (var action1 in eliminatedActions)
-        {
-          foreach (var action2 in eliminatedActions)
-          {
-            if (action1 != action2) {
-              decls.AddRange(GenerateInconsistencyChecker(action1, action2));
-            }
-          }
-        }
       }
       return decls;
     }
