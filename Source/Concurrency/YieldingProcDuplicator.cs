@@ -297,15 +297,7 @@ namespace Microsoft.Boogie
           }
           else if (IsRefinementLayer)
           {
-            if (newCall.HasAttribute(CivlAttributes.SKIP))
-            {
-              var calleeRefinedAction = PrepareNewCall(newCall, yieldingProc);
-              InjectGate(calleeRefinedAction, newCall);
-            }
-            else
-            {
-              AddPendingAsync(newCall, yieldingProc);
-            }
+            AddPendingAsync(newCall, yieldingProc);
           }
         }
         else

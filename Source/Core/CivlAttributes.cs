@@ -86,7 +86,6 @@ namespace Microsoft.Boogie
     public const string HIDE = "hide";
     public const string PENDING_ASYNC = "pending_async";
     public const string SYNC = "sync";
-    public const string SKIP = "skip";
     public const string IS_RIGHT = "IS_right";
     public const string IS_LEFT = "IS_left";
 

@@ -301,7 +301,6 @@ public class CallCmd : CallCommonality
     if (Proc is YieldProcedureDecl calleeDecl)
     {
       var isSynchronized = this.HasAttribute(CivlAttributes.SYNC);
-      var isSkipped = this.HasAttribute(CivlAttributes.SKIP);
       if (calleeDecl.Layer > callerDecl.Layer)
       {
         tc.Error(this, "layer of callee must not be more than layer of caller");
@@ -320,12 +319,12 @@ public class CallCmd : CallCommonality
             else
             {
               CheckModifies(highestRefinedActionDecl.ModifiedVars);
+              if (callerDecl.HasMoverType && highestRefinedActionDecl.Creates.Any())
+              {
+                tc.Error(this, "caller must not be a mover procedure");
+              }
               if (!IsAsync)
               {
-                if (highestRefinedActionDecl.Creates.Any() && callerDecl.HasMoverType)
-                {
-                  tc.Error(this, "caller must not be a mover procedure");
-                }
                 // check there is no application of IS_RIGHT in the entire chain of refined actions
                 var calleeRefinedAction = calleeDecl.RefinedAction;
                 while (calleeRefinedAction != null)
@@ -363,16 +362,9 @@ public class CallCmd : CallCommonality
                   calleeRefinedAction = calleeActionDecl.RefinedAction;
                 }
               }
-              else if (isSkipped)
+              else if (callerDecl.HasMoverType)
               {
-                if (highestRefinedActionDecl.LayerRange.UpperLayer != callerDecl.Layer)
-                {
-                  tc.Error(this, $"upper layer of action {highestRefinedActionDecl.Name} must be same as layer of caller");
-                }
-                else if (!highestRefinedActionDecl.IsSkippable())
-                {
-                  tc.Error(this, $"action {highestRefinedActionDecl.Name} must be skippable");
-                }
+                tc.Error(this, "async call must be synchronized");
               }
             }
           }
