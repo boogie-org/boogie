@@ -81,7 +81,7 @@ namespace Microsoft.Boogie
        * obviates the need to generate it.
        */
 
-      foreach (var sequentialization in civlTypeChecker.Sequentializations.Where(x => x.rule == InductiveSequentializationRule.ISL))
+      foreach (var sequentialization in civlTypeChecker.Sequentializations)
       {
         foreach (var leftMover in sequentialization.EliminatedActions)
         {
@@ -111,28 +111,6 @@ namespace Microsoft.Boogie
               extraAssumptions = sequentialization.Preconditions(leftMover, subst).Select(assertCmd => assertCmd.Expr)
             };
             moverChecking.CreateCooperationChecker(leftMover, moverCheckContext);
-          }
-        }
-      }
-
-      foreach (var sequentialization in civlTypeChecker.Sequentializations.Where(x => x.rule == InductiveSequentializationRule.ISR))
-      {
-        foreach (var rightMover in sequentialization.EliminatedActions.Append(sequentialization.TargetAction))
-        {
-          foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
-          {
-            var moverCheckContext1 = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateRightMoverCheckAssumptions(rightMover, rightMover.FirstImpl.InParams)
-            };
-            var moverCheckContext2 = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateRightMoverCheckAssumptions(rightMover, rightMover.SecondImpl.InParams)
-            };
-            moverChecking.CreateCommutativityChecker(rightMover, action, moverCheckContext1);
-            moverChecking.CreateGatePreservationChecker(action, rightMover, moverCheckContext2);
           }
         }
       }

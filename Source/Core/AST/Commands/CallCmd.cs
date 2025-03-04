@@ -323,48 +323,32 @@ public class CallCmd : CallCommonality
               {
                 tc.Error(this, "caller must not be a mover procedure");
               }
-              if (!IsAsync)
+              if (IsAsync)
               {
-                // check there is no application of IS_RIGHT in the entire chain of refined actions
-                var calleeRefinedAction = calleeDecl.RefinedAction;
-                while (calleeRefinedAction != null)
+                if (isSynchronized)
                 {
-                  if (calleeRefinedAction.HasAttribute(CivlAttributes.IS_RIGHT))
+                  // check that entire chain of refined actions all the way to highestRefinedAction is comprised of left movers
+                  var calleeRefinedAction = calleeDecl.RefinedAction;
+                  while (calleeRefinedAction != null)
                   {
-                    tc.Error(this, "this must be an async call");
-                    break;
+                    var calleeActionDecl = calleeRefinedAction.ActionDecl;
+                    if (!calleeActionDecl.IsLeftMover)
+                    {
+                      tc.Error(this,
+                        $"callee abstraction in synchronized call must be a left mover: {calleeActionDecl.Name}");
+                      break;
+                    }
+                    if (calleeActionDecl == highestRefinedActionDecl)
+                    {
+                      break;
+                    }
+                    calleeRefinedAction = calleeActionDecl.RefinedAction;
                   }
-                  var calleeActionDecl = calleeRefinedAction.ActionDecl;
-                  if (calleeActionDecl == highestRefinedActionDecl)
-                  {
-                    break;
-                  }
-                  calleeRefinedAction = calleeActionDecl.RefinedAction;
                 }
-              }
-              else if (isSynchronized)
-              {
-                // check that entire chain of refined actions all the way to highestRefinedAction is comprised of left movers
-                var calleeRefinedAction = calleeDecl.RefinedAction;
-                while (calleeRefinedAction != null)
+                else if (callerDecl.HasMoverType)
                 {
-                  var calleeActionDecl = calleeRefinedAction.ActionDecl;
-                  if (!calleeActionDecl.IsLeftMover)
-                  {
-                    tc.Error(this,
-                      $"callee abstraction in synchronized call must be a left mover: {calleeActionDecl.Name}");
-                    break;
-                  }
-                  if (calleeActionDecl == highestRefinedActionDecl)
-                  {
-                    break;
-                  }
-                  calleeRefinedAction = calleeActionDecl.RefinedAction;
+                  tc.Error(this, "async call must be synchronized in mover procedure");
                 }
-              }
-              else if (callerDecl.HasMoverType)
-              {
-                tc.Error(this, "async call must be synchronized");
               }
             }
           }
