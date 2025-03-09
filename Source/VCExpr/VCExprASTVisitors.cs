@@ -1112,29 +1112,6 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(gen != null);
     }
 
-    // when descending across a binder, we have to check that no collisions
-    // or variable capture can occur. if this might happen, we replace the
-    // term and type variables bound by the binder with fresh variables
-    private bool CollisionPossible(IEnumerable<TypeVariable /*!*/> /*!*/ typeParams,
-      IEnumerable<VCExprVar /*!*/> /*!*/ boundVars, VCExprSubstitution /*!*/ substitution)
-    {
-      Contract.Requires(Cce.NonNullElements(typeParams));
-      Contract.Requires(Cce.NonNullElements(boundVars));
-      Contract.Requires(substitution != null);
-      // variables can be shadowed by a binder
-      if (typeParams.Any(var => substitution.ContainsKey(var)) ||
-          boundVars.Any(var => substitution.ContainsKey(var)))
-      {
-        return true;
-      }
-      // compute the codomain of the substitution
-      FreeVariableCollector coll = substitution.Codomains;
-      Contract.Assert(coll != null);
-      // variables could be captured when applying the substitution
-      return typeParams.Any(var => coll.FreeTypeVars.Contains(var)) ||
-             boundVars.Any(var => coll.FreeTermVars.Contains(var));
-    }
-
     // can be overwritten if names of bound variables are to be changed
     protected virtual string ChooseNewVariableName(string oldName)
     {
@@ -1202,9 +1179,7 @@ namespace Microsoft.Boogie.VCExprAST
         List<TypeVariable /*!*/> /*!*/
           typeParams = node.TypeParameters;
         Contract.Assert(Cce.NonNullElements(typeParams));
-        bool refreshAllVariables = refreshBoundVariables ||
-                                   CollisionPossible(node.TypeParameters, node.BoundVars, substitution);
-        if (refreshAllVariables)
+        if (refreshBoundVariables)
         {
           // we introduce fresh type variables to ensure that none gets captured
           typeParams = new List<TypeVariable /*!*/>();
@@ -1224,7 +1199,7 @@ namespace Microsoft.Boogie.VCExprAST
         List<VCExprVar /*!*/> /*!*/
           boundVars = node.BoundVars;
         Contract.Assert(Cce.NonNullElements(boundVars));
-        if (refreshAllVariables || !substitution.TypeSubstIsEmpty)
+        if (refreshBoundVariables || !substitution.TypeSubstIsEmpty)
         {
           // collisions are possible, or we also substitute type variables. in this case
           // the bound term variables have to be replaced with fresh variables with the
@@ -1301,10 +1276,7 @@ namespace Microsoft.Boogie.VCExprAST
       substitution.PushScope();
       try
       {
-        bool refreshAllVariables =
-          refreshBoundVariables ||
-          !substitution.TypeSubstIsEmpty ||
-          CollisionPossible(new List<TypeVariable /*!*/>(), node.BoundVars, substitution);
+        bool refreshAllVariables = refreshBoundVariables || !substitution.TypeSubstIsEmpty;
 
         List<VCExprVar /*!*/> /*!*/
           newBoundVars = node.BoundVars;
