@@ -373,7 +373,7 @@ namespace Microsoft.Boogie.VCExprAST
   {
     public override string ToString()
     {
-      return $"${Op}(${String.Join(", ", Arguments)})";
+      return $"{Op}({String.Join(", ", Arguments)})";
     }
 
     [Pure]
@@ -1764,6 +1764,11 @@ namespace Microsoft.Boogie.VCExprAST
       //Contract.Requires(visitor != null);
       //Contract.Requires(expr != null);
       return visitor.VisitBoogieFunctionOp(expr, arg);
+    }
+
+    public override string ToString()
+    {
+      return Func.Name;
     }
   }
 
