@@ -352,7 +352,7 @@ namespace Microsoft.Boogie
       List<Requires> requires = 
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams).Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
-      var wpreAssertCmds = Action.HoistAsserts(second.SecondImpl, first.FirstGate, Options);
+      var wpreAssertCmds = Wlp.HoistAsserts(second.SecondImpl, first.FirstGate, Options);
       requires.AddRange(wpreAssertCmds.Select(assertCmd => RequiresHelper.Requires(assertCmd.Expr, assertCmd.Attributes)));
       requires.AddRange(second.SecondGate.Select(assertCmd => RequiresHelper.Requires(assertCmd.Expr, assertCmd.Attributes)));
       
