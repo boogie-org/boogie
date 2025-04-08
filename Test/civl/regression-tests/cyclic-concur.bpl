@@ -5,8 +5,10 @@ var {:layer 0,2} x : int;
 atomic action {:layer 2} MAIN ()
 modifies x;
 {
-  havoc x;
-  assume x > old(x) && (x - old(x)) mod 6 == 0;
+  var next_x: int;
+
+  assume next_x > x && (next_x - x) mod 6 == 0;
+  x := next_x;
 }
 
 

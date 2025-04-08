@@ -1,22 +1,18 @@
-chris2.bpl(23,3): Error: Gate of atomic_p_gt2 not preserved by atomic_p_gt1_lower
+chris2.bpl(23,3): Error: Gate of atomic_p_gt2 @ chris2.bpl(22,28) not preserved by atomic_p_gt1_lower @ chris2.bpl(5,28)
 Execution trace:
     chris2.bpl(5,28): inline$atomic_p_gt1_lower$0$Entry
     chris2.bpl(7,5): inline$atomic_p_gt1_lower$0$anon0
     chris2.bpl(5,28): inline$atomic_p_gt1_lower$0$Return
-chris2.bpl(23,3): Error: Gate of atomic_p_gt2 not preserved by atomic_p_gt1
+chris2.bpl(23,3): Error: Gate of atomic_p_gt2 @ chris2.bpl(22,28) not preserved by atomic_p_gt1 @ chris2.bpl(12,28)
 Execution trace:
     chris2.bpl(12,28): inline$atomic_p_gt1$0$Entry
     chris2.bpl(14,5): inline$atomic_p_gt1$0$anon0
     chris2.bpl(12,28): inline$atomic_p_gt1$0$Return
-chris2.bpl(22,28): Error: Gate failure of atomic_p_gt2 not preserved by atomic_p_gt1_lower
+chris2.bpl(23,3): Error: Gate failure of atomic_p_gt2 @ chris2.bpl(22,28) not preserved by atomic_p_gt1_lower @ chris2.bpl(5,28)
 Execution trace:
-    chris2.bpl(5,28): inline$atomic_p_gt1_lower$0$Entry
-    chris2.bpl(7,5): inline$atomic_p_gt1_lower$0$anon0
-    chris2.bpl(5,28): inline$atomic_p_gt1_lower$0$Return
-chris2.bpl(22,28): Error: Gate failure of atomic_p_gt2 not preserved by atomic_p_gt1
+    (0,0): init
+chris2.bpl(23,3): Error: Gate failure of atomic_p_gt2 @ chris2.bpl(22,28) not preserved by atomic_p_gt1 @ chris2.bpl(12,28)
 Execution trace:
-    chris2.bpl(12,28): inline$atomic_p_gt1$0$Entry
-    chris2.bpl(14,5): inline$atomic_p_gt1$0$anon0
-    chris2.bpl(12,28): inline$atomic_p_gt1$0$Return
+    (0,0): init
 
 Boogie program verifier finished with 1 verified, 4 errors

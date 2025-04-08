@@ -89,7 +89,7 @@ refines atomic_server;
 left action {:layer 3} atomic_server2({:linear} i: One int)
 modifies status;
 {
-    assert status[i->val] == DEFAULT;
+    assert {:add_to_pool "A", i->val} status[i->val] == DEFAULT;
     status[i->val] := CREATED;
 }
 yield procedure {:layer 2} server2({:linear} i: One int);
@@ -119,8 +119,8 @@ refines atomic_master;
 atomic action {:layer 3} atomic_master2()
 modifies status;
 {
-    assert (forall i: int :: 0 <= i && i < n ==> status[i] == PROCESSED);
-    status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
+    assert (forall {:pool "A"} i: int :: {:add_to_pool "A", i} 0 <= i && i < n ==> status[i] == PROCESSED);
+    status := (lambda {:pool "A"} j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
 yield procedure {:layer 2} master2();
 refines atomic_master2;
