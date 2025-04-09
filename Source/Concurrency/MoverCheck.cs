@@ -199,10 +199,7 @@ namespace Microsoft.Boogie
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
             .Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
-      foreach (AssertCmd assertCmd in first.FirstGate.Union(second.SecondGate))
-      {
-        requires.Add(RequiresHelper.Requires(assertCmd.Expr, assertCmd.Attributes));
-      }
+      requires.AddRange(first.FirstGate.Union(second.SecondGate).Select(assertCmd => RequiresHelper.Requires(assertCmd.Expr, assertCmd.Attributes)));
       if (moverCheckContext != null)
       {
         checkerName = $"CommutativityChecker_{first.Name}_{second.Name}_{moverCheckContext.layer}";
@@ -218,11 +215,10 @@ namespace Microsoft.Boogie
       IEnumerable<Expr> linearityAssumes = linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(secondInParamsFiltered)
         .Union(frame)).Union(linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams)
           .Union(frame)));
-      // TODO: add further disjointness expressions?
-      AssertCmd commutativityCheck = CmdHelper.AssertCmd(
+      var commutativityCheck = CmdHelper.AssertCmd(
         first.tok,
         Expr.Imp(Expr.And(linearityAssumes), transitionRelation),
-        $"Commutativity check between {first.Name} and {second.Name} failed");
+        $"Commutativity check between {first.Name} @ {Location(first.ActionDecl.tok)} and {second.Name} @ {Location(second.ActionDecl.tok)} failed");
 
       List<Cmd> cmds = new List<Cmd>
       {
@@ -276,10 +272,7 @@ namespace Microsoft.Boogie
         DisjointnessAndWellFormedRequires(
           first.FirstImpl.InParams.Union(second.SecondImpl.InParams)
             .Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT), frame).ToList();
-      foreach (AssertCmd assertCmd in first.FirstGate.Union(second.SecondGate))
-      {
-        requires.Add(RequiresHelper.Requires(assertCmd.Expr, assertCmd.Attributes));
-      }
+      requires.AddRange(first.FirstGate.Union(second.SecondGate).Select(assertCmd => RequiresHelper.Requires(assertCmd.Expr, assertCmd.Attributes)));
       if (moverCheckContext != null)
       {
         checkerName = $"GatePreservationChecker_{first.Name}_{second.Name}_{moverCheckContext.layer}";
@@ -296,20 +289,9 @@ namespace Microsoft.Boogie
       IEnumerable<Expr> linearityAssumes =
         linearTypeChecker.DisjointnessExprForEachDomain(first.FirstImpl.InParams.Union(second.SecondImpl.OutParams)
           .Union(frame));
-      foreach (AssertCmd assertCmd in first.FirstGate)
-      {
-        var firstTok = first.ActionDecl.tok;
-        var firstLoc = string.Format("{0}({1},{2})", firstTok.filename, firstTok.line, firstTok.col);
-        var secondTok = second.ActionDecl.tok;
-        var secondLoc = string.Format("{0}({1},{2})", secondTok.filename, secondTok.line, secondTok.col);
-        cmds.Add(
-          CmdHelper.AssertCmd(
-            assertCmd.tok,
-            Expr.Imp(Expr.And(linearityAssumes), assertCmd.Expr),
-            $"Gate of {first.Name} @ {firstLoc} not preserved by {second.Name} @ {secondLoc}"
-          )
-        );
-      }
+      cmds.AddRange(first.FirstGate.Select(assertCmd =>
+        CmdHelper.AssertCmd(assertCmd.tok, Expr.Imp(Expr.And(linearityAssumes), assertCmd.Expr),
+            $"Gate of {first.Name} @ {Location(first.ActionDecl.tok)} not preserved by {second.Name} @ {Location(second.ActionDecl.tok)}")));
 
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
@@ -371,14 +353,10 @@ namespace Microsoft.Boogie
 
       List<Variable> inputs = first.FirstImpl.InParams.Union(second.SecondImpl.InParams).ToList();
       List<Variable> outputs = first.FirstImpl.OutParams.Union(second.SecondImpl.OutParams).ToList();
-      cmds.AddRange(first.FirstGate.Select(
-        assertCmd => {
-          var firstTok = first.ActionDecl.tok;
-          var firstLoc = string.Format("{0}({1},{2})", firstTok.filename, firstTok.line, firstTok.col);
-          var secondTok = second.ActionDecl.tok;
-          var secondLoc = string.Format("{0}({1},{2})", secondTok.filename, secondTok.line, secondTok.col);
-          return CmdHelper.AssertCmd(assertCmd.tok, assertCmd.Expr, $"Gate failure of {first.Name} @ {firstLoc} not preserved by {second.Name} @ {secondLoc}");
-      }));
+      cmds.AddRange(first.FirstGate.Select(assertCmd =>
+          CmdHelper.AssertCmd(assertCmd.tok, assertCmd.Expr,
+            $"Gate failure of {first.Name} @ {Location(first.ActionDecl.tok)} not preserved by {second.Name} @ {Location(second.ActionDecl.tok)}")
+      ));
 
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
@@ -435,5 +413,7 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(impl.OutParams),
         new List<Variable>(), requires, new List<Cmd> { cooperationCheck });
     }
+
+    private static string Location(IToken tok) => string.Format("{0}({1},{2})", tok.filename, tok.line, tok.col);
   }
 }
