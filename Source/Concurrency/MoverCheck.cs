@@ -18,12 +18,12 @@ namespace Microsoft.Boogie
     HashSet<Tuple<Action, Action>> commutativityCheckerCache;
     HashSet<Tuple<Action, Action>> gatePreservationCheckerCache;
     HashSet<Tuple<Action, Action>> failurePreservationCheckerCache;
-    HashSet<Action> cooperationCheckerCache;
+    HashSet<Action> nonblockingCheckerCache;
 
     Dictionary<int, HashSet<Tuple<Action, Action>>> perLayerCommutativityCheckerCache;
     Dictionary<int, HashSet<Tuple<Action, Action>>> perLayerGatePreservationCheckerCache;
     Dictionary<int, HashSet<Tuple<Action, Action>>> perLayerFailurePreservationCheckerCache;
-    Dictionary<int, HashSet<Action>> perLayerCooperationCheckerCache;
+    Dictionary<int, HashSet<Action>> perLayerNonblockingCheckerCache;
 
     private MoverCheck(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
@@ -32,11 +32,11 @@ namespace Microsoft.Boogie
       this.commutativityCheckerCache = new HashSet<Tuple<Action, Action>>();
       this.gatePreservationCheckerCache = new HashSet<Tuple<Action, Action>>();
       this.failurePreservationCheckerCache = new HashSet<Tuple<Action, Action>>();
-      this.cooperationCheckerCache = new HashSet<Action>();
+      this.nonblockingCheckerCache = new HashSet<Action>();
       this.perLayerCommutativityCheckerCache = new Dictionary<int, HashSet<Tuple<Action, Action>>>();
       this.perLayerGatePreservationCheckerCache = new Dictionary<int, HashSet<Tuple<Action, Action>>>();
       this.perLayerFailurePreservationCheckerCache = new Dictionary<int, HashSet<Tuple<Action, Action>>>();
-      this.perLayerCooperationCheckerCache = new Dictionary<int, HashSet<Action>>();
+      this.perLayerNonblockingCheckerCache = new Dictionary<int, HashSet<Action>>();
     }
 
     private ConcurrencyOptions Options => civlTypeChecker.Options;
@@ -67,7 +67,7 @@ namespace Microsoft.Boogie
 
       foreach (var action in civlTypeChecker.MoverActions.Where(a => a.IsLeftMover))
       {
-        moverChecking.CreateCooperationChecker(action);
+        moverChecking.CreateNonblockingChecker(action);
       }
 
       /*
@@ -108,7 +108,7 @@ namespace Microsoft.Boogie
               layer = sequentialization.Layer,
               extraAssumptions = sequentialization.Preconditions(leftMover, subst).Select(assertCmd => assertCmd.Expr)
             };
-            moverChecking.CreateCooperationChecker(leftMover, moverCheckContext);
+            moverChecking.CreateNonblockingChecker(leftMover, moverCheckContext);
           }
         }
       }
@@ -353,16 +353,16 @@ namespace Microsoft.Boogie
       AddChecker(checkerName, inputs, outputs, new List<Variable>(), requires, cmds);
     }
 
-    private void CreateCooperationChecker(Action action) => CreateCooperationChecker(action, null);
+    private void CreateNonblockingChecker(Action action) => CreateNonblockingChecker(action, null);
 
-    private void CreateCooperationChecker(Action action, MoverCheckContext moverCheckContext)
+    private void CreateNonblockingChecker(Action action, MoverCheckContext moverCheckContext)
     {
       if (!action.HasAssumeCmd)
       {
         return;
       }
 
-      if (!cooperationCheckerCache.Add(action))
+      if (!nonblockingCheckerCache.Add(action))
       {
         return;
       }
@@ -370,17 +370,17 @@ namespace Microsoft.Boogie
       if (moverCheckContext != null)
       {
         var layer = moverCheckContext.layer;
-        if (!perLayerCooperationCheckerCache.ContainsKey(layer))
+        if (!perLayerNonblockingCheckerCache.ContainsKey(layer))
         {
-          perLayerCooperationCheckerCache[layer] = new HashSet<Action>();
+          perLayerNonblockingCheckerCache[layer] = new HashSet<Action>();
         }
-        if (!perLayerCooperationCheckerCache[layer].Add(action))
+        if (!perLayerNonblockingCheckerCache[layer].Add(action))
         {
           return;
         }
       }
 
-      string checkerName = $"CooperationChecker_{action.Name}";
+      string checkerName = $"NonblockingChecker_{action.Name}";
 
       Implementation impl = action.Impl;
       HashSet<Variable> frame = new HashSet<Variable>();
@@ -393,17 +393,17 @@ namespace Microsoft.Boogie
       requires.AddRange(action.Gate.Select(assertCmd => RequiresHelper.Requires(assertCmd.Expr, assertCmd.Attributes)));
       if (moverCheckContext != null)
       {
-        checkerName = $"CooperationChecker_{action.Name}_{moverCheckContext.layer}";
+        checkerName = $"NonblockingChecker_{action.Name}_{moverCheckContext.layer}";
         requires.AddRange(moverCheckContext.extraAssumptions.Select(expr => RequiresHelper.Requires(expr)));
       }
 
-      AssertCmd cooperationCheck = CmdHelper.AssertCmd(
+      AssertCmd nonblockingCheck = CmdHelper.AssertCmd(
         action.tok,
-        TransitionRelationComputation.Cooperation(civlTypeChecker, action, frame),
-        $"Cooperation check for {action.Name} failed");
+        TransitionRelationComputation.Nonblocking(civlTypeChecker, action, frame),
+        $"Nonblocking check for {action.Name} failed");
 
       AddChecker(checkerName, new List<Variable>(impl.InParams), new List<Variable>(impl.OutParams),
-        new List<Variable>(), requires, new List<Cmd> { cooperationCheck });
+        new List<Variable>(), requires, new List<Cmd> { nonblockingCheck });
     }
 
     private static string Location(IToken tok) => string.Format("{0}({1},{2})", tok.filename, tok.line, tok.col);
