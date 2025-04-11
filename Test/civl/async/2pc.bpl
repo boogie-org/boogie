@@ -1,444 +1,208 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-// ###########################################################################
-// Type declarations
+/*
+2pc protocol: 
+A transaction needs to be executed at every replica. Every replica executes each step of the transaction
+but does not mark the transaction as complete until the coordinator runs the 2pc protocol to collectively
+decide whether to commit or abort the transaction.
 
-// Transaction and Machine IDs
-type Xid = int;
-type Mid = int;
+There are two phases in the protocol. In the first phase, the coordinator sends vote requests to all replicas.
+The replicas then send a reply (yes/no) to the coordinator. If all replies are yes, then the coordinator sends
+a commit decision to all replicas, otherwise it sends an abort decision. After receiving the decision from the
+coordinator, the transaction is marked as complete at each replica if it was a commit decision, or cancelled
+if it was an abort decision.
 
-const CoordinatorMid : Mid;
-axiom CoordinatorMid == 0;
-function coordinatorMid (mid : Mid) : bool { mid == CoordinatorMid }
+Model proved below:
+Let's say there are multiple transactions at each replica that are marked as incomplete. Then multiple instances
+of the coordinator may be running concurrently, each executing the 2pc protocol one transaction.
+The goal is to ensure that we don't ever commit conflicting transactions; this condition is used to
+abstractly model consistency of committed transactions.
+We model the conflict relation between transactions using a 2-d array Conflict with axioms.
 
-const numParticipants : int;
-axiom 0 < numParticipants;
-function participantMid (mid : Mid) : bool { 1 <= mid && mid <= numParticipants }
+Proof obligation:
+We have a ghost variable, committed_transactions, which keeps track of all transactions that have been committed so far.
+Before adding a transaction to this set, we assert that the transaction being added does not conflict with any previously
+committed transactions. If this assertion is shown to hold in all executions of the protocol, it should imply that
+we never commit conflicting transactions.
+*/
 
-datatype Pair { Pair(xid: Xid, mid: Mid) }
+type TransactionId;
+type ReplicaId = int;
 
-function {:inline} pair (xid: Xid, mid: Mid, p: Pair) : bool
-{ p == Pair(xid, mid) && participantMid(p->mid) }
+datatype Vote { YES(), NO(), NONE() }
+datatype VoteRequest { VoteRequest(xid: TransactionId, rid: ReplicaId) }
+datatype VoteRequestToken { VoteRequestToken(xid: TransactionId, rid: ReplicaId) }
+datatype Decision { COMMIT(), ABORT() }
 
-function {:inline} perm (xid: Xid) : Set Pair
-{ Set((lambda p: Pair :: pair(xid, p->mid, p))) }
+const Conflict: [TransactionId][TransactionId]bool;
+const n: int;
+axiom 0 < n;
+axiom (forall xid1: TransactionId, xid2: TransactionId :: Conflict[xid1][xid2] == Conflict[xid2][xid1]);
+axiom (forall xid0: TransactionId :: Conflict[xid0][xid0] == true);
 
-// Transaction State
-type MState = int;
-function {:inline} ABORTED   () : int { 0 }
-function {:inline} UNDECIDED () : int { 1 }
-function {:inline} COMMITTED () : int { 2 }
-function {:inline} Aborted   (i:MState) : bool { i == ABORTED() }
-function {:inline} Undecided (i:MState) : bool { i == UNDECIDED() }
-function {:inline} Committed (i:MState) : bool { i == COMMITTED() }
-function {:inline} UndecidedOrAborted   (i:MState) : bool { Undecided(i) || Aborted(i) }
-function {:inline} UndecidedOrCommitted (i:MState) : bool { Undecided(i) || Committed(i) }
+var {:layer 0,1} locked_transactions: [ReplicaId](Set TransactionId);
+var {:layer 0,1} committed_transactions: Set TransactionId;
 
-type XState = [Mid]MState;
-type GState = [Xid]XState;
-
-// ###########################################################################
-// Global shared variables
-
-var {:layer 0,11} state : GState;
-var {:layer 7,8} votes : [Xid]int;
-
-var {:linear} {:layer 7,9} B: Set Pair;
-var {:linear} {:layer 7,10} UnallocatedXids: Set Pair;
-
-// ###########################################################################
-// Consistency Predicates
-
-// Transaction (indicated by prefix x)
-
-function {:inline} xUndecided (state: XState) : bool
+function noConflicts(xids: (Set TransactionId), xid: TransactionId) : bool
 {
-  Undecided(state[CoordinatorMid]) &&
-  (forall i : Mid :: participantMid(i) ==> Undecided(state[i]))
+    !(exists x: TransactionId :: Set_Contains(xids, x) && Conflict[x][xid])
 }
 
-function {:inline} xUndecidedOrCommitted (state: XState) : bool
+function allVoteRequests(xid: TransactionId) : Set VoteRequest
 {
-  UndecidedOrCommitted(state[CoordinatorMid]) &&
-  (forall i : Mid :: participantMid(i) ==> UndecidedOrCommitted(state[i]))
+    Set((lambda vr:VoteRequest :: vr->xid == xid &&  1 <= vr->rid && vr->rid < n+1))
 }
 
-function {:inline} xUndecidedOrAborted (state: XState) : bool
+function remainingVoteRequests(xid: TransactionId, i:int) : Set VoteRequest
 {
-  UndecidedOrAborted(state[CoordinatorMid]) &&
-  (forall i : Mid :: participantMid(i) ==> UndecidedOrAborted(state[i]))
+    Set((lambda vr:VoteRequest :: vr->xid == xid &&  i <= vr->rid && vr->rid < n+1))
 }
 
-function {:inline} xConsistent (state: XState) : bool
+yield procedure {:layer 1} TPC({:linear} xid: One TransactionId, {:linear_in} vrs: (Set VoteRequest))
+requires {:layer 1} vrs == allVoteRequests(xid->val);
+requires call LockedNoConflicts();
+requires call CommittedSubsetLocked();
+requires call XidNotInCommitted(xid);
 {
-  xUndecidedOrCommitted(state) || xUndecidedOrAborted(state)
-}
+    var d: Decision;
+    var votes: [ReplicaId]Vote;
+    var {:linear} vrs': Set VoteRequest;
+    var i: int;
 
-function {:inline} xNoUndoneDecision (oldState: XState, newState: XState) : bool
-{
-  (newState[CoordinatorMid] == oldState[CoordinatorMid] || Undecided(oldState[CoordinatorMid])) &&
-  (forall i : Mid :: participantMid(i) ==> (newState[i] == oldState[i] || Undecided(oldState[i])))
-}
+    d := COMMIT();
+    vrs' := vrs;
 
-function {:inline} xConsistentExtension (oldState: XState, newState: XState) : bool
-{
-  xConsistent(newState) &&
-  xNoUndoneDecision(oldState, newState)
-}
-
-function {:inline} xAllParticipantsInB (xid: Xid, B: Set Pair) : bool
-{
-  (forall mid: Mid :: participantMid(mid) ==> Set_Contains(B, Pair(xid, mid)))
-}
-
-// Globally across transactions (indicated by prefix g)
-
-function {:inline} gUndecided (state: GState) : bool
-{
-  (forall j: Xid :: xUndecided(state[j]))
-}
-
-function {:inline} gConsistent (state: GState) : bool
-{
-  (forall j: Xid :: xConsistent(state[j]))
-}
-
-// Helper predicates
-
-function {:inline} ExistsMonotoneExtension (snapshot: GState, state: GState, xid: Xid) : bool
-{
-  (exists newState: XState ::
-    state == snapshot[xid := newState] && xNoUndoneDecision(snapshot[xid],newState))
-}
-
-function {:inline} VotesEqCoordinatorState (votes: [Xid]int, state: GState, xid: Xid) : bool
-{
-     ( (votes[xid] == -1)                                == Aborted  (state[xid][CoordinatorMid]) )
-  && ( (0 <= votes[xid] && votes[xid] < numParticipants) == Undecided(state[xid][CoordinatorMid]) )
-  && ( (votes[xid] == numParticipants)                   == Committed(state[xid][CoordinatorMid]) )
-}
-
-// ###########################################################################
-// Yield assertions
-
-function {:inline} SetInv (B: [Pair]bool) : bool
-{
-  (forall xid: Xid, mid: Mid :: B[Pair(xid,mid)] ==> participantMid(mid))
-}
-
-function {:inline} Inv_8 (state: GState, B: Set Pair, votes: [Xid]int) : bool
-{
-     gConsistent(state)
-  && SetInv(B->val)
-  && (forall xid: Xid :: VotesEqCoordinatorState(votes, state, xid))
-  && (forall xid: Xid :: votes[xid] == -1 || votes[xid] == card(B->val, xid))
-  && (forall p: Pair :: Set_Contains(B, p) && votes[p->xid] != -1 ==> UndecidedOrCommitted(state[p->xid][p->mid]))
-}
-
-function {:inline} Inv_9 (state: GState, B: Set Pair, xid: Xid) : bool
-{
-     gConsistent(state)
-  && (xAllParticipantsInB(xid, B) || xUndecidedOrAborted(state[xid]))
-}
-
-yield invariant {:layer 8} YieldInv_8 ();
-invariant Inv_8(state, B, votes);
-
-yield invariant {:layer 8} YieldUndecidedOrCommitted_8 (xid: Xid, mid: Mid, {:linear} pair: One Pair);
-invariant pair(xid, mid, pair->val) && (votes[xid] == -1 || UndecidedOrCommitted(state[xid][mid]));
-
-yield invariant {:layer 8} YieldAborted_8 (xid: Xid, mid: Mid, {:linear} pair: One Pair);
-invariant pair(xid, mid, pair->val) && Aborted(state[xid][mid]);
-
-yield invariant {:layer 9} YieldInv_9 (xid: Xid);
-invariant Inv_9(state, B, xid);
-
-yield invariant {:layer 9} YieldConsistent_9 ();
-invariant gConsistent(state);
-
-yield invariant {:layer 10} YieldConsistent_10 ();
-invariant gConsistent(state);
-
-// ###########################################################################
-// Main
-
-yield procedure {:layer 11}
-main ()
-requires call YieldInv_8();
-requires call YieldConsistent_9();
-requires call YieldConsistent_10();
-{
-  var xid: Xid;
-  while (*)
-  invariant {:yields} true;
-  invariant call YieldInv_8();
-  invariant call YieldConsistent_9();
-  invariant call YieldConsistent_10();
-  {
-    call xid := Coordinator_TransactionReq();
-  }
-}
-
-// ###########################################################################
-// Event Handlers
-
-atomic action {:layer 11} atomic_Coordinator_TransactionReq () returns (xid: Xid)
-modifies state;
-{
-  var {:pool "A"} x: XState;
-  state[xid] := x;
-  assume xConsistent(state[xid]);
-}
-
-yield procedure {:layer 10}
-Coordinator_TransactionReq () returns (xid: Xid)
-refines atomic_Coordinator_TransactionReq;
-preserves call YieldInv_8();
-preserves call YieldConsistent_9();
-preserves call YieldConsistent_10();
-{
-  var {:linear} pair: One Pair;
-  var {:linear} pairs: Set Pair;
-  var {:layer 10} snapshot: GState;
-  var i : Mid;
-
-  call xid, pairs := AllocateXid();
-  call {:layer 10} snapshot := Copy(state);
-  i := 1;
-  while (i <= numParticipants)
-  invariant {:layer 8} Inv_8(state, B, votes);
-  invariant {:layer 8,9,10} pairs == Set((lambda p: Pair :: pair(xid, p->mid, p) && i <= p->mid));
-  invariant {:layer 8} votes[xid] == -1 || (forall p: Pair :: Set_Contains(pairs, p) ==> UndecidedOrCommitted(state[xid][p->mid]));
-  invariant {:layer 9} Inv_9(state, B, xid);
-  invariant {:layer 10} gConsistent(state);
-  invariant {:layer 10} ExistsMonotoneExtension(snapshot, state, xid);
-  invariant {:layer 8,9,10} 1 <= i && i <= numParticipants + 1;
-  {
-    call pair := One_Get(pairs, Pair(xid, i));
-    async call {:sync} Participant_VoteReq(xid, i, pair);
-    i := i + 1;
-  }
-
-  assert {:layer 10} {:add_to_pool "A", state[xid]} true;
-}
-
-// ---------------------------------------------------------------------------
-
-left action {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
-modifies state;
-{
-  var {:pool "A"} next_state_xid: XState;
-  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
-  assert pair(xid, mid, pair->val);
-  assert {:add_to_pool "A", state[xid]} xConsistent(state[xid]);
-  assume {:add_to_pool "A", next_state_xid} xConsistentExtension(state[xid], next_state_xid);
-  state[xid] := next_state_xid;
-}
-
-yield procedure {:layer 9}
-Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
-refines atomic_Participant_VoteReq;
-requires call YieldInv_8();
-requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
-requires call YieldInv_9(xid);
-{
-  if (*) {
-    async call {:sync} Coordinator_VoteYes(xid, mid, pair);
-  } else {
-    call SetParticipantAborted(xid, mid, pair);
-    async call {:sync} Coordinator_VoteNo(xid, mid, pair);
-  }
-
-  assume {:add_to_pool "A", state[xid]} true;
-}
-
-// ---------------------------------------------------------------------------
-
-left action {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
-modifies state, B;
-{
-  var {:pool "A"} next_state_xid: XState;
-  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
-  assert pair(xid, mid, pair->val);
-  assert xConsistent(state[xid]);
-  call One_Put(B, pair);
-  if (*) {
-    assume {:add_to_pool "A", next_state_xid} xConsistentExtension(state[xid], next_state_xid);
-    state[xid] := next_state_xid;
-    assume xAllParticipantsInB(xid, B);
-  }
-}
-
-yield procedure {:layer 8}
-Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
-refines atomic_Coordinator_VoteYes;
-requires call YieldInv_8();
-requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
-{
-  var commit : bool;
-  var i : Mid;
-  var {:layer 8} snapshot: GState;
-
-  call {:layer 8} snapshot := Copy(state);
-  call {:layer 8} Lemma_add_to_set(B->val, pair->val);
-  call {:layer 8} Lemma_all_in_set(B->val, xid);
-  call commit := StateUpdateOnVoteYes(xid, mid, pair);
-  call {:layer 8} Lemma_all_in_set(B->val, xid);
-
-  if (commit)
-  {
-    assert {:layer 8} xUndecidedOrCommitted(snapshot[xid]);
-    assert {:layer 8} xUndecidedOrCommitted(state[xid]);
+    call votes, vrs' := voting_loop_yield_procedure(xid->val, vrs', n);
+    
     i := 1;
-    while (i <= numParticipants)
-    invariant {:layer 8} 1 <= i && i <= numParticipants + 1;
-    invariant {:layer 8} Inv_8(state, B, votes);
-    invariant {:layer 8} ExistsMonotoneExtension(snapshot, state, xid);
+    while (i <= n)
+    invariant {:layer 1} (forall {:pool "J"} j:int :: {:add_to_pool "J", j} 1 <= j && j < i ==> (d == COMMIT() ==> (votes[j] == YES())));
     {
-      async call {:sync} Participant_Commit(xid, i);
-      i := i + 1;
+        if (votes[i] == NO())
+        {
+            d := ABORT();
+        }
+        i := i+1;
     }
-  }
 
-  assert {:layer 8} {:add_to_pool "A", state[xid]} true;
+    call finalize_loop_yield_procedure(d, xid, vrs');
+
+    if (d == COMMIT())
+    {
+        par LockedNoConflicts() | CommittedSubsetLocked() |  XidNotInCommitted(xid) | XidInLocked(xid);
+
+        assume {:add_to_pool "J", 1} true;
+
+        call add_to_committed_transactions_procedure(xid);
+    }
 }
 
-left action {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
-modifies state;
+yield right procedure {:layer 1} voting_loop_yield_procedure(xid: TransactionId, {:linear_in} vrs: Set VoteRequest, i: int) returns (votes: [ReplicaId]Vote, {:linear} vrs': Set VoteRequest)
+requires {:layer 1} vrs == Set((lambda vr:VoteRequest :: vr->xid == xid && 1 <= vr->rid && vr->rid < i+1));
+ensures {:layer 1} (forall j:int :: 1 <= j && j < i+1 && votes[j] == YES() ==> Set_Contains(locked_transactions[j], xid));
+ensures {:layer 1} vrs' ==Set((lambda vr:VoteRequest :: vr->xid == xid && 1 <= vr->rid && vr->rid < i+1));
+preserves call LockedNoConflicts();
+preserves call CommittedSubsetLocked();
+ensures {:layer 1} (forall j:int :: 1 <= j && j < n+1 ==> IsSubset(old(locked_transactions)[j]->val, locked_transactions[j]->val));
+ensures {:layer 1} (forall j:int :: 1 <= j && j < i+1 ==> votes[j] != NONE());
+modifies locked_transactions;
 {
-  var {:pool "A"} next_state_xid: XState;
-  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
-  assert pair(xid, mid, pair->val);
-  assert {:add_to_pool "A", state[xid]} xUndecidedOrAborted(state[xid]);
-  assume {:add_to_pool "A", next_state_xid} xConsistentExtension(state[xid], next_state_xid);
-  state[xid] := next_state_xid;
-  assume xUndecidedOrAborted(state[xid]);
+    var {:linear} vr: One VoteRequest;
+    var out: Vote;
+
+    vrs' := vrs;
+    if (1 <= i)
+    {
+        call vr := One_Get(vrs', VoteRequest(xid, i));
+        par votes, vrs' := voting_loop_yield_procedure(xid, vrs', i-1) |  out := voting_procedure(vr);
+        votes[i] := out;
+        call One_Put(vrs', vr);
+    }
 }
 
-yield procedure {:layer 8}
-Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
-refines atomic_Coordinator_VoteNo;
-requires call YieldAborted_8(xid, mid, pair);
+yield left procedure {:layer 1} finalize_loop_yield_procedure(d: Decision, {:linear} xid: One TransactionId, {:linear_in} vrs: Set VoteRequest)
+requires {:layer 1} vrs == allVoteRequests(xid->val);
+requires {:layer 1}  (forall j:int :: {:add_to_pool "J", j} d == COMMIT() &&  1 <= j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
+ensures {:layer 1}  (forall j:int :: d == COMMIT() && 1 <=j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
+preserves call LockedNoConflicts();
+preserves call CommittedSubsetLocked();
+requires {:layer 1} !Set_Contains(committed_transactions, xid->val);
+ensures {:layer 1} (forall j:int, xid0 : TransactionId :: 1 <= j && j < n+1 && xid0 != xid->val && Set_Contains(old(locked_transactions)[j], xid0) ==> Set_Contains(locked_transactions[j], xid0));
+modifies locked_transactions;
 {
-  var abort : bool;
-  var i : int;
-  var {:layer 8} snapshot: GState;
+    var i: int;
+    var {:linear} vr: One VoteRequest;
+    var {:linear} vrs': Set VoteRequest;
 
-  call {:layer 8} snapshot := Copy(state);
-  call abort := StateUpdateOnVoteNo(xid, mid);
-
-  if (abort)
-  {
+    vrs' := vrs;
     i := 1;
-    while (i <= numParticipants)
-    invariant {:layer 8} 1 <= i && i <= numParticipants + 1;
-    invariant {:layer 8} Aborted(state[xid][CoordinatorMid]);
-    invariant {:layer 8} xUndecidedOrAborted(state[xid]);
-    invariant {:layer 8} ExistsMonotoneExtension(snapshot, state, xid);
+
+    while (i <= n)
+    invariant {:layer 1} (forall j:int :: d == COMMIT() && 1 <= j && j < i ==> Set_Contains(locked_transactions[j], xid->val));
+    invariant {:layer 1} (forall j:int :: d == COMMIT() && (i <= j) && (j < n+1)  ==> Set_Contains(locked_transactions[j], xid->val));
+    invariant {:layer 1} vrs' == remainingVoteRequests(xid->val, i);
+    invariant {:layer 1} (forall  j:int,  xid1: TransactionId, xid2: TransactionId :: (1 <= j && j < n+1 && xid1 != xid2 && Set_Contains(locked_transactions[j], xid1) && Set_Contains(locked_transactions[j], xid2)) ==> !Conflict[xid1][xid2]);
+    invariant {:layer 1} (forall j:int, xid0: TransactionId ::  1 <= j && j < n+1 && Set_Contains(committed_transactions, xid0) ==> Set_Contains(locked_transactions[j], xid0));
+    invariant {:layer 1} !Set_Contains(committed_transactions, xid->val);
+    invariant {:layer 1} (forall j:int, xid0 : TransactionId :: 1 <= j && j < n+1 && xid0 != xid->val && Set_Contains(old(locked_transactions)[j], xid0) ==> Set_Contains(locked_transactions[j], xid0));
     {
-      async call {:sync} Participant_Abort(xid, i);
-      i := i + 1;
+        call vr := One_Get(vrs', VoteRequest(xid->val, i));
+        async call {:sync} finalize_procedure(d, vr);
+        i := i + 1;
     }
-  }
-
-  assert {:layer 8} {:add_to_pool "A", state[xid]} true;
 }
 
-// ---------------------------------------------------------------------------
-
-yield procedure {:layer 7} SetParticipantAborted (xid: Xid, mid: Mid, {:linear} pair: One Pair);
-refines atomic_SetParticipantAborted;
-
-yield procedure {:layer 7} StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in} pair: One Pair) returns (commit : bool);
-refines atomic_StateUpdateOnVoteYes;
-
-yield procedure {:layer 7} StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool);
-refines atomic_StateUpdateOnVoteNo;
-
-yield procedure {:layer 7} Participant_Commit (xid : Xid, mid : Mid);
-refines atomic_Participant_Commit;
-
-yield procedure {:layer 7} Participant_Abort (xid : Xid, mid : Mid);
-refines atomic_Participant_Abort;
-
-atomic action {:layer 8,9} atomic_SetParticipantAborted (xid: Xid, mid: Mid, {:linear} pair: One Pair)
-modifies state;
+right action {:layer 1, 1} voting_action ( {:linear} vr: One VoteRequest) returns (result : Vote)
 {
-  assert pair(xid, mid, pair->val);
-  assert xUndecidedOrAborted(state[xid]);
-  state[xid][mid] := ABORTED();
+    if (*)
+    {
+        result := NO();
+    }
+    else
+    {
+        if (noConflicts(locked_transactions[vr->val->rid], vr->val->xid))
+        {
+            locked_transactions[vr->val->rid] := Set_Add(locked_transactions[vr->val->rid], vr->val->xid);
+            result := YES();
+        }
+        else
+        {
+            result := NO();
+        }
+    }
 }
+yield procedure {:layer 0} voting_procedure ({:linear} vr: One VoteRequest) returns (result : Vote);
+refines voting_action;
 
-atomic action {:layer 8} atomic_StateUpdateOnVoteYes (xid: Xid, mid: Mid, {:linear_in} pair: One Pair) returns (commit : bool)
-modifies votes, state, B;
+left action {:layer 1, 1} finalize_action (d: Decision, {:linear} vr: One VoteRequest)
 {
-  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
-  assert VotesEqCoordinatorState(votes, state, xid);
-  call One_Put(B, pair);
-  if (votes[xid] == -1) {
-    commit := false;
-  } else {
-    votes[xid] := votes[xid] + 1;
-    commit := (votes[xid] == numParticipants);
-    state[xid][CoordinatorMid] := (if commit then COMMITTED() else state[xid][CoordinatorMid]);
-  }
+    if (d != COMMIT())
+    {
+        locked_transactions[vr->val->rid] := Set_Remove(locked_transactions[vr->val->rid], vr->val->xid);
+    }
 }
+yield procedure {:layer 0} finalize_procedure (d: Decision, {:linear} vr: One VoteRequest);
+refines finalize_action;
 
-atomic action {:layer 8} atomic_StateUpdateOnVoteNo (xid: Xid, mid: Mid) returns (abort : bool)
-modifies votes, state;
+
+atomic action {:layer 1, 1} add_to_committed_transactions({:linear} xid: One TransactionId)
 {
-  assert Set_IsDisjoint(perm(xid), UnallocatedXids);
-  assert !Committed(state[xid][CoordinatorMid]);
-  abort := (votes[xid] != -1);
-  votes[xid] := -1;
-  state[xid][CoordinatorMid] := (if abort then ABORTED() else state[xid][CoordinatorMid]);
+    assert (forall xid0: TransactionId :: Set_Contains(committed_transactions, xid0) ==> !Conflict[xid0][xid->val]);
+    committed_transactions := Set_Add(committed_transactions, xid->val);
 }
+yield procedure {:layer 0} add_to_committed_transactions_procedure ({:linear} xid: One TransactionId);
+refines add_to_committed_transactions;
 
-// ---------------------------------------------------------------------------
+yield invariant {:layer 1} LockedNoConflicts();
+invariant {:layer 1} (forall  {:pool "J"} j:int, xid1: TransactionId, xid2: TransactionId :: {:add_to_pool "J", j} (1 <= j && j < n+1 && xid1 != xid2 && Set_Contains(locked_transactions[j], xid1) && Set_Contains(locked_transactions[j], xid2)) ==> !Conflict[xid1][xid2]);
 
-left action {:layer 8} atomic_Participant_Commit (xid : Xid, mid : Mid)
-modifies state;
-{
-  assert participantMid(mid);
-  assert xUndecidedOrCommitted(state[xid]);
-  assert Committed(state[xid][CoordinatorMid]);
-  state[xid][mid] := COMMITTED();
-}
+yield invariant {:layer 1} CommittedSubsetLocked();
+invariant {:layer 1} (forall {:pool "J"} j:int, xid0: TransactionId :: {:add_to_pool "J", j} 1 <= j && j < n+1 && Set_Contains(committed_transactions, xid0) ==> Set_Contains(locked_transactions[j], xid0));
 
-left action {:layer 8} atomic_Participant_Abort (xid : Xid, mid : Mid)
-modifies state;
-{
-  assert participantMid(mid);
-  assert xUndecidedOrAborted(state[xid]);
-  assert Aborted(state[xid][CoordinatorMid]);
-  state[xid][mid] := ABORTED();
-}
+yield invariant {:layer 1} XidInLocked({:linear} xid: One TransactionId);
+invariant (forall {:pool "J"} j:int :: {:add_to_pool "J", j} 1 <= j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
 
-// ###########################################################################
-// Linear variable allocation
-
-atomic action {:layer 8,10} atomic_AllocateXid () returns (xid: Xid, {:linear} pairs: Set Pair)
-modifies UnallocatedXids;
-{
-  assume state[xid] == (lambda j: Mid :: UNDECIDED());
-  pairs := perm(xid);
-  assume Set_IsSubset(pairs, UnallocatedXids);
-  call Set_Split(UnallocatedXids, pairs);
-}
-yield procedure {:layer 7} AllocateXid () returns (xid: Xid, {:linear} pairs: Set Pair);
-refines atomic_AllocateXid;
-
-// ############################################################################
-// Lemmas about cardinality
-
-function card(pairs: [Pair]bool, xid: Xid) : int;
-
-pure procedure Lemma_add_to_set (set: [Pair]bool, pair: Pair);
-requires participantMid(pair->mid);
-requires !set[pair];
-ensures (forall xid: Xid :: card(set[pair := true], xid) == (if xid == pair->xid then card(set, xid) + 1 else card(set, xid)));
-
-pure procedure Lemma_all_in_set (set: [Pair]bool, xid: Xid);
-requires SetInv(set);
-ensures card(set, xid) >= numParticipants ==> (forall mid: Mid :: participantMid(mid) ==> set[Pair(xid, mid)]);
+yield invariant {:layer 1} XidNotInCommitted({:linear} xid: One TransactionId);
+invariant !Set_Contains(committed_transactions, xid->val);
+ 
