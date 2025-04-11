@@ -556,9 +556,11 @@ preserves call Yield_Lock();
 atomic action {:layer 100} AtomicCanMarkStop({:linear} tid:Tid) returns (canStop: bool)
 modifies Color;
 {
+    var old_Color: [int]int;
     assert tid == GcTid;
+    old_Color := Color;
     havoc Color;
-    assume (forall u: int :: if memAddr(u) && White(old(Color)[u]) && (exists k: int :: rootAddr(k) && root[k] == u) then Color[u] == GRAY() else Color[u] == old(Color)[u]);
+    assume (forall u: int :: if memAddr(u) && White(old_Color[u]) && (exists k: int :: rootAddr(k) && root[k] == u) then Color[u] == GRAY() else Color[u] == old_Color[u]);
     canStop := (forall v: int :: memAddr(v) ==> !Gray(Color[v]));
 }
 

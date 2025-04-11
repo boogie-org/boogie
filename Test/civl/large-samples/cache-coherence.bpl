@@ -235,7 +235,7 @@ refines atomic action {:layer 2} _ {
     result := Ok();
     ca := Hash(ma);
     line := cache[i][ca];
-    assume line->state != Invalid() && line->state != Shared() && line->ma == ma && Set_Contains(cachePermissions, CachePermission(i, ca));
+    assume {:add_to_pool "X", i} line->state != Invalid() && line->state != Shared() && line->ma == ma && Set_Contains(cachePermissions, CachePermission(i, ca));
     cache[i][ca]->value := v;
     cache[i][ca]->state := Modified();
     absMem[ma] := v;
@@ -401,7 +401,7 @@ refines left action {:layer 2} _ {
   assert Set_Contains(dp, DirPermission(i, ma));
   assume {:add_to_pool "DirPermission", DirPermission(i, ma)} true;
   ca := Hash(ma);
-  assert (forall j: CacheId :: (var line := cache[j][ca]; line->ma == ma ==> line->state == Invalid() || line->state == Shared()));
+  assert (forall {:pool "X"} j: CacheId :: {:add_to_pool "X", j} (var line := cache[j][ca]; line->ma == ma ==> line->state == Invalid() || line->state == Shared()));
   // this assertion accompanies the relaxation in cache_read#1 to allow cache_invalidate_shd#1 to commute to the left of cache_read#1
   assert cache[i][ca]->value == absMem[ma];
   call primitive_cache_invalidate_shd(i, ma, s);

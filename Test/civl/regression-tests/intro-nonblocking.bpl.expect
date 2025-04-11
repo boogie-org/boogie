@@ -1,4 +1,4 @@
-intro-nonblocking.bpl(4,13): Error: Cooperation check for intro failed
+intro-nonblocking.bpl(4,13): Error: Nonblocking check for intro failed
 Execution trace:
     (0,0): init
 

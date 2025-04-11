@@ -99,13 +99,13 @@ namespace Microsoft.Boogie
         $"Transition relation of {impl.Name}");
     }
 
-    public static Expr Cooperation(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
+    public static Expr Nonblocking(CivlTypeChecker civlTypeChecker, Action action, HashSet<Variable> frame)
     {
       return ComputeTransitionRelation(
         civlTypeChecker,
         action.Impl, null,
         frame, null, true,
-        $"Cooperation expression of {action.Name}");
+        $"Nonblocking expression of {action.Name}");
     }
 
     private void EnumeratePaths()

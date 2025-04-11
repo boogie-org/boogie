@@ -552,13 +552,23 @@ public class Implementation : DeclWithFormals {
       (this as ICarriesAttributes).ResolveAttributes(rc);
         
       rc.Proc = Proc;
-      rc.StateMode = Proc.IsPure ? ResolutionContext.State.StateLess : ResolutionContext.State.Two;
+      if (Proc.IsPure)
+      {
+        rc.StateMode = ResolutionContext.State.StateLess;
+      }
+      else if (Proc is not ActionDecl)
+      {
+        rc.StateMode = ResolutionContext.State.Two;
+      }
       foreach (Block b in Blocks)
       {
         b.Resolve(rc);
       }
       rc.Proc = null;
-      rc.StateMode = ResolutionContext.State.Single;
+      if (Proc.IsPure || Proc is not ActionDecl)
+      {
+        rc.StateMode = ResolutionContext.State.Single;
+      }
 
       rc.PopProcedureContext();
       rc.PopVarContext();

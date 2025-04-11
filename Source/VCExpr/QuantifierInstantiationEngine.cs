@@ -275,7 +275,7 @@ namespace Microsoft.Boogie.VCExprAST
            * quantifierBinding may be modified in each iteration of the following loop.
            * Therefore, take a snapshot of quantifierBinding.Keys to start the loop.
            */
-          foreach (var v in quantifierBinding.Keys)
+          foreach (var v in quantifierBinding.Keys.ToList())
           {
             if (visitedQuantifierBindings.Contains(v))
             {

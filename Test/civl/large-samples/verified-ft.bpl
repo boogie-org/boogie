@@ -391,10 +391,10 @@ modifies shadow.VC;
     assert VCRepOk(shadow.VC[v2]);
     assert VCRepOk(shadow.VC[v1]);
     if (*) {
+        assume VCRepOk(vc);
+        assume VCArrayLen(vc) == max(VCArrayLen(shadow.VC[v1]),VCArrayLen(shadow.VC[v2]));
+        assume (forall j: int :: 0 <= j ==> VCArrayGet(vc, j) == VCArrayGet(shadow.VC[v2], j));
         shadow.VC[v1] := vc;
-        assume VCRepOk(shadow.VC[v1]);
-        assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
-        assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == VCArrayGet(old(shadow.VC)[v2], j));
     } else {
         shadow.VC[v1] := shadow.VC[v2];
     }
@@ -451,10 +451,10 @@ modifies shadow.VC;
     assert !(v1 is ShadowableVar);
     assert !(v2 is ShadowableVar);
     assert VCRepOk(shadow.VC[v2]);
+    assume VCRepOk(vc);
+    assume VCArrayLen(vc) == max(VCArrayLen(shadow.VC[v1]),VCArrayLen(shadow.VC[v2]));
+    assume (forall j: int :: 0 <= j ==> VCArrayGet(vc, j) == EpochMax(VCArrayGet(shadow.VC[v1], j), VCArrayGet(shadow.VC[v2], j)));
     shadow.VC[v1] := vc;
-    assume VCRepOk(shadow.VC[v1]);
-    assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
-    assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == EpochMax(VCArrayGet(old(shadow.VC)[v1], j), VCArrayGet(old(shadow.VC)[v2], j)));
 }
 
 yield procedure {:layer 10}
@@ -557,17 +557,17 @@ modifies shadow.VC;
     v1 := ShadowableTid(uid);
     v2 := ShadowableTid(tid->val);
 
+    assume VCArrayLen(vc1) == max(VCArrayLen(shadow.VC[v1]),VCArrayLen(shadow.VC[v2]));
+    assume VCRepOk(vc1);
+    assume (forall j: int :: 0 <= j ==> VCArrayGet(vc1, j) == EpochMax(VCArrayGet(shadow.VC[v1], j), VCArrayGet(shadow.VC[v2], j)));
+
+    assume VCRepOk(vc2);
+    assume VCArrayLen(vc2) == max(VCArrayLen(vc2), tid->val + 1);
+    assume (forall j: int :: 0 <= j && j != tid->val ==> VCArrayGet(vc2, j) == VCArrayGet(shadow.VC[v2], j));
+    assume VCArrayGet(vc2, tid->val) == EpochInc(VCArrayGet(shadow.VC[v2], tid->val));
+
     shadow.VC[v1] := vc1;
     shadow.VC[v2] := vc2;
-
-    assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
-    assume VCRepOk(shadow.VC[v1]);
-    assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == EpochMax(VCArrayGet(old(shadow.VC)[v1], j), VCArrayGet(old(shadow.VC)[v2], j)));
-
-    assume VCRepOk(shadow.VC[v2]);
-    assume VCArrayLen(shadow.VC[v2]) == max(VCArrayLen(shadow.VC[v2]), tid->val + 1);
-    assume (forall j: int :: 0 <= j && j != tid->val ==> VCArrayGet(shadow.VC[v2], j) == VCArrayGet(old(shadow.VC)[v2], j));
-    assume VCArrayGet(shadow.VC[v2], tid->val) == EpochInc(VCArrayGet(old(shadow.VC)[v2], tid->val));
 }
 
 yield procedure {:layer 20} Fork({:linear} tid: One Tid, uid : Tid)
@@ -599,12 +599,12 @@ modifies shadow.VC;
     v1 := ShadowableTid(uid);
     v2 := ShadowableTid(tid->val);
 
-    shadow.VC[v2] := vc;
-    assume VCArrayLen(shadow.VC[v2]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
-    assume VCRepOk(shadow.VC[v2]);
+    assume VCArrayLen(vc) == max(VCArrayLen(shadow.VC[v1]),VCArrayLen(shadow.VC[v2]));
+    assume VCRepOk(vc);
     assume (forall j: int :: 0 <= j ==>
-        VCArrayGet(shadow.VC[v2], j) ==
-        EpochMax(VCArrayGet(old(shadow.VC)[v2], j), VCArrayGet(old(shadow.VC)[v1], j)));
+        VCArrayGet(vc, j) ==
+        EpochMax(VCArrayGet(shadow.VC[v2], j), VCArrayGet(shadow.VC[v1], j)));
+    shadow.VC[v2] := vc;
 }
 
 yield procedure {:layer 20}
@@ -633,12 +633,12 @@ modifies shadow.VC;
 
     v1 := ShadowableTid(tid->val);
     v2 := ShadowableLock(l);
-    shadow.VC[v1] := vc;
-    assume VCRepOk(shadow.VC[v1]);
-    assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
+    assume VCRepOk(vc);
+    assume VCArrayLen(vc) == max(VCArrayLen(shadow.VC[v1]),VCArrayLen(shadow.VC[v2]));
     assume (forall j: int :: 0 <= j ==>
-        VCArrayGet(shadow.VC[v1], j) ==
-        EpochMax(VCArrayGet(old(shadow.VC)[v1], j), VCArrayGet(old(shadow.VC)[v2], j)));
+        VCArrayGet(vc, j) ==
+        EpochMax(VCArrayGet(shadow.VC[v1], j), VCArrayGet(shadow.VC[v2], j)));
+    shadow.VC[v1] := vc;
 }
 
 yield procedure {:layer 20} Acquire({:linear} tid: One Tid, l: Lock)
@@ -666,22 +666,22 @@ modifies shadow.VC;
     v1 := ShadowableLock(l);
     v2 := ShadowableTid(tid->val);
 
-    shadow.VC[v1] := vc1;
-    shadow.VC[v2] := vc2;
-
     // Use the same strategy as in Copy's atomic spec.
     if (*) {
-        assume VCRepOk(shadow.VC[v1]);
-        assume VCArrayLen(shadow.VC[v1]) == max(VCArrayLen(old(shadow.VC)[v1]),VCArrayLen(old(shadow.VC)[v2]));
-        assume (forall j: int :: 0 <= j ==> VCArrayGet(shadow.VC[v1], j) == VCArrayGet(old(shadow.VC)[v2], j));
+        assume VCRepOk(vc1);
+        assume VCArrayLen(vc1) == max(VCArrayLen(shadow.VC[v1]),VCArrayLen(shadow.VC[v2]));
+        assume (forall j: int :: 0 <= j ==> VCArrayGet(vc1, j) == VCArrayGet(shadow.VC[v2], j));
     } else {
-        assume shadow.VC[v1] == old(shadow.VC)[v2];
+        assume vc1 == shadow.VC[v2];
     }
 
-    assume VCRepOk(shadow.VC[v2]);
-    assume VCArrayLen(shadow.VC[v2]) == max(VCArrayLen(shadow.VC[v2]), tid->val + 1);
-    assume (forall j: int :: 0 <= j && j != tid->val ==> VCArrayGet(shadow.VC[v2], j) == VCArrayGet(old(shadow.VC)[v2], j));
-    assume VCArrayGet(shadow.VC[v2], tid->val) == EpochInc(VCArrayGet(old(shadow.VC)[v2], tid->val));
+    assume VCRepOk(vc2);
+    assume VCArrayLen(vc2) == max(VCArrayLen(vc2), tid->val + 1);
+    assume (forall j: int :: 0 <= j && j != tid->val ==> VCArrayGet(vc2, j) == VCArrayGet(shadow.VC[v2], j));
+    assume VCArrayGet(vc2, tid->val) == EpochInc(VCArrayGet(shadow.VC[v2], tid->val));
+
+    shadow.VC[v1] := vc1;
+    shadow.VC[v2] := vc2;
 }
 
 yield procedure {:layer 20} Release({:linear} tid: One Tid, l: Lock)

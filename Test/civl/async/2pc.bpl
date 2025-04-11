@@ -228,12 +228,12 @@ preserves call YieldConsistent_10();
 left action {:layer 10} atomic_Participant_VoteReq (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
 modifies state;
 {
-  var {:pool "A"} x: XState;
+  var {:pool "A"} next_state_xid: XState;
   assert Set_IsDisjoint(perm(xid), UnallocatedXids);
   assert pair(xid, mid, pair->val);
-  assert xConsistent(state[xid]);
-  state[xid] := x;
-  assume xConsistentExtension(old(state)[xid], state[xid]);
+  assert {:add_to_pool "A", state[xid]} xConsistent(state[xid]);
+  assume {:add_to_pool "A", next_state_xid} xConsistentExtension(state[xid], next_state_xid);
+  state[xid] := next_state_xid;
 }
 
 yield procedure {:layer 9}
@@ -258,15 +258,15 @@ requires call YieldInv_9(xid);
 left action {:layer 9} atomic_Coordinator_VoteYes (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
 modifies state, B;
 {
-  var {:pool "A"} x: XState;
+  var {:pool "A"} next_state_xid: XState;
   assert Set_IsDisjoint(perm(xid), UnallocatedXids);
   assert pair(xid, mid, pair->val);
   assert xConsistent(state[xid]);
   call One_Put(B, pair);
   if (*) {
-    state[xid] := x;
+    assume {:add_to_pool "A", next_state_xid} xConsistentExtension(state[xid], next_state_xid);
+    state[xid] := next_state_xid;
     assume xAllParticipantsInB(xid, B);
-    assume xConsistentExtension(old(state)[xid], state[xid]);
   }
 }
 
@@ -307,13 +307,13 @@ requires call YieldUndecidedOrCommitted_8(xid, mid, pair);
 left action {:layer 9} atomic_Coordinator_VoteNo (xid: Xid, mid: Mid, {:linear_in} pair: One Pair)
 modifies state;
 {
-  var {:pool "A"} x: XState;
+  var {:pool "A"} next_state_xid: XState;
   assert Set_IsDisjoint(perm(xid), UnallocatedXids);
   assert pair(xid, mid, pair->val);
-  assert xUndecidedOrAborted(state[xid]);
-  state[xid] := x;
+  assert {:add_to_pool "A", state[xid]} xUndecidedOrAborted(state[xid]);
+  assume {:add_to_pool "A", next_state_xid} xConsistentExtension(state[xid], next_state_xid);
+  state[xid] := next_state_xid;
   assume xUndecidedOrAborted(state[xid]);
-  assume xConsistentExtension(old(state)[xid], state[xid]);
 }
 
 yield procedure {:layer 8}
