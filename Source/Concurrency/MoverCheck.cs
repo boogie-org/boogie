@@ -45,8 +45,6 @@ namespace Microsoft.Boogie
     {
       MoverCheck moverChecking = new MoverCheck(civlTypeChecker, decls);
 
-      // TODO: make enumeration of mover checks more efficient / elegant
-
       var regularMoverChecks =
         from first in civlTypeChecker.MoverActions
         from second in civlTypeChecker.MoverActions
@@ -121,7 +119,7 @@ namespace Microsoft.Boogie
       var availableVars = paramVars.Union(frame);
       return civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(availableVars)
         .Union(civlTypeChecker.linearTypeChecker.MapWellFormedExpressions(availableVars))
-        .Select(expr => new Requires(false, expr));
+        .Select(expr => RequiresHelper.Requires(expr));
     }
 
     private void AddChecker(string checkerName, List<Variable> inputs, List<Variable> outputs, List<Variable> locals,
@@ -203,9 +201,7 @@ namespace Microsoft.Boogie
       if (moverCheckContext != null)
       {
         checkerName = $"CommutativityChecker_{first.Name}_{second.Name}_{moverCheckContext.layer}";
-        moverCheckContext.extraAssumptions.ForEach(extraAssumption => {
-          requires.Add(new Requires(false, extraAssumption));
-        });
+        requires.AddRange(moverCheckContext.extraAssumptions.Select(expr => RequiresHelper.Requires(expr)));
       }
 
       var transitionRelation = TransitionRelationComputation.Commutativity(civlTypeChecker, second, first, frame);
@@ -276,9 +272,7 @@ namespace Microsoft.Boogie
       if (moverCheckContext != null)
       {
         checkerName = $"GatePreservationChecker_{first.Name}_{second.Name}_{moverCheckContext.layer}";
-        moverCheckContext.extraAssumptions.ForEach(extraAssumption => {
-          requires.Add(new Requires(false, extraAssumption));
-        });
+        requires.AddRange(moverCheckContext.extraAssumptions.Select(expr => RequiresHelper.Requires(expr)));
       }
 
       List<Variable> inputs = first.FirstImpl.InParams.Union(second.SecondImpl.InParams).ToList();
@@ -341,9 +335,7 @@ namespace Microsoft.Boogie
       if (moverCheckContext != null)
       {
         checkerName = $"FailurePreservationChecker_{first.Name}_{second.Name}_{moverCheckContext.layer}";
-        moverCheckContext.extraAssumptions.ForEach(extraAssumption => {
-          requires.Add(new Requires(false, extraAssumption));
-        });
+        requires.AddRange(moverCheckContext.extraAssumptions.Select(expr => RequiresHelper.Requires(expr)));
       }
 
       var cmds = new List<Cmd>();
@@ -398,11 +390,11 @@ namespace Microsoft.Boogie
       List<Requires> requires =
         DisjointnessAndWellFormedRequires(impl.InParams.Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),
           frame).ToList();
-      requires.AddRange(action.Gate.Select(assertCmd => new Requires(Token.NoToken, false, assertCmd.Expr, null, assertCmd.Attributes)));
+      requires.AddRange(action.Gate.Select(assertCmd => RequiresHelper.Requires(assertCmd.Expr, assertCmd.Attributes)));
       if (moverCheckContext != null)
       {
         checkerName = $"CooperationChecker_{action.Name}_{moverCheckContext.layer}";
-        requires.AddRange(moverCheckContext.extraAssumptions.Select(expr => new Requires(false, expr)));
+        requires.AddRange(moverCheckContext.extraAssumptions.Select(expr => RequiresHelper.Requires(expr)));
       }
 
       AssertCmd cooperationCheck = CmdHelper.AssertCmd(

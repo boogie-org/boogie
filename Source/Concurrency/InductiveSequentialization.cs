@@ -5,30 +5,6 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie
 {
-  public class LinearityCheck
-  {
-    public LinearDomain domain;
-    public Expr assume;
-    public Expr assert;
-    public string message;
-    public string checkName;
-
-    public LinearityCheck(LinearDomain domain, Expr assume, Expr assert, string message, string checkName)
-    {
-      this.domain = domain;
-      this.assume = assume;
-      this.assert = assert;
-      this.message = message;
-      this.checkName = checkName;
-    }
-  }
-
-  public enum InductiveSequentializationRule
-  {
-    ISL,
-    ISR
-  }
-
   public abstract class Sequentialization
   {
     protected CivlTypeChecker civlTypeChecker;
@@ -47,7 +23,7 @@ namespace Microsoft.Boogie
     public IEnumerable<Action> EliminatedActions => eliminatedActions;
 
     public int Layer => targetAction.LayerRange.UpperLayer;
-    public Action TargetAction => targetAction;
+
     protected virtual List<Declaration> GenerateCheckers()
     {
       return new List<Declaration>();
@@ -99,98 +75,6 @@ namespace Microsoft.Boogie
     {
       expr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
       return CmdHelper.AssertCmd(tok, expr, msg);
-    }
-
-    protected List<Declaration> GeneratePartitionChecker(Action action)
-    {
-      var inputDisjointnessExpr = civlTypeChecker.linearTypeChecker.DisjointnessExprForEachDomain(
-        action.Impl.InParams.Union(action.ModifiedGlobalVars)
-        .Where(x => LinearTypeChecker.InKinds.Contains(LinearTypeChecker.FindLinearKind(x))));
-
-      var requires = action.Gate.Select(a => new Requires(false, a.Expr))
-          .Concat(inputDisjointnessExpr.Select(expr => new Requires(false, expr)))
-          .ToList();
-
-      var eliminatedActionDecls = EliminatedActionDecls.ToHashSet();
-      var lhsExprs = new List<Expr>();
-      var rhsExprs = new List<Expr>();
-      foreach (var pendingAsync in action.PendingAsyncs)
-      {
-        var pendingAsyncExpr = Expr.Ident(action.PAs(pendingAsync.PendingAsyncType));
-        var emptyExpr = ExprHelper.FunctionCall(pendingAsync.PendingAsyncConst, Expr.Literal(0));
-        if (eliminatedActionDecls.Contains(pendingAsync))
-        {
-          lhsExprs.Add(Expr.Neq(pendingAsyncExpr, emptyExpr));
-        }
-        else
-        {
-          rhsExprs.Add(Expr.Eq(pendingAsyncExpr, emptyExpr));
-        }
-      }
-      var cmds = new List<Cmd>() {
-        CmdHelper.CallCmd(action.Impl.Proc, action.Impl.InParams, action.Impl.OutParams),
-        GetCheck(action.tok, Expr.Imp(Expr.Or(lhsExprs), Expr.And(rhsExprs)), "Partition checker failed")
-      };
-
-      List<Block> checkerBlocks = new List<Block>();
-      var locals = new List<Variable>();
-      foreach (var pendingAsync in action.PendingAsyncs.Intersect(eliminatedActionDecls))
-      {
-        var pendingAsyncType = pendingAsync.PendingAsyncType;
-        var pendingAsyncCtor = pendingAsync.PendingAsyncCtor;
-        var pendingAsyncVar = action.PAs(pendingAsyncType);
-        var pendingAsyncExpr = Expr.Ident(pendingAsyncVar);
-        var pendingAsyncAction = civlTypeChecker.Action(pendingAsync);
-
-        var paLocal = civlTypeChecker.LocalVariable($"local_{pendingAsyncVar.Name}", pendingAsyncType);
-        locals.Add(paLocal);
-
-        List<Cmd> blockCmds = new List<Cmd>
-        {
-          CmdHelper.AssumeCmd(Expr.Ge(Expr.Select(pendingAsyncExpr, Expr.Ident(paLocal)), Expr.Literal(1)))
-        };
-
-        var substMap = new Dictionary<Variable, Expr>();
-        for (int i = 0; i < pendingAsyncAction.Impl.InParams.Count; i++)
-        {
-          substMap[pendingAsyncAction.Impl.InParams[i]] = ExprHelper.FieldAccess(Expr.Ident(paLocal), pendingAsyncCtor.InParams[i].Name);
-        }
-        blockCmds.AddRange(pendingAsyncAction.GetGateAsserts(
-          Substituter.SubstitutionFromDictionary(substMap),
-          $"Gate of {pendingAsyncAction.Name} in partition checker failed"));
-
-        var block = BlockHelper.Block($"label_{pendingAsyncVar.Name}", blockCmds);
-        checkerBlocks.Add(block);
-      }
-
-      string checkerName = civlTypeChecker.AddNamePrefix($"PartitionChecker_{action.Name}");
-      var blocks = new List<Block>(checkerBlocks.Count + 1);
-      if (checkerBlocks.Count != 0)
-      {
-        blocks.Add(BlockHelper.Block(checkerName, cmds, checkerBlocks));
-        blocks.AddRange(checkerBlocks);
-      }
-      else
-      {
-        blocks.Add(BlockHelper.Block(checkerName, cmds));
-      }
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, blocks, ResolutionContext.State.Two);
-      
-      Procedure proc = DeclHelper.Procedure(
-        checkerName,
-        action.Impl.InParams,
-        action.Impl.OutParams,
-        requires,
-        action.ModifiedGlobalVars.Select(Expr.Ident).ToList(),
-        new List<Ensures>());
-      Implementation impl = DeclHelper.Implementation(
-        proc,
-        proc.InParams,
-        proc.OutParams,
-        locals,
-        blocks);
-
-      return new List<Declaration>(new Declaration[] { proc, impl });
     }
   }
 
