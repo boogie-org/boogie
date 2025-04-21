@@ -14,6 +14,7 @@ namespace Microsoft.Boogie
     bool ImmediatelyAcceptCommands { get; }
     bool RunningBoogieFromCommandLine { get; }
     bool TrackVerificationCoverage { get; }
+    bool WarnVacuousProofs { get; }
     string ProverPreamble { get; }
     bool TraceDiagnosticsOnTimeout { get; }
     uint TimeLimitPerAssertionInPercent { get; }

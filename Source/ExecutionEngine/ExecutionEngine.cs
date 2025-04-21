@@ -611,6 +611,9 @@ namespace Microsoft.Boogie
         }
 
         var processedProgram = Options.ExtractLoops ? ExtractLoops(program) : new ProcessedProgram(program);
+        if (Options.WarnVacuousProofs) {
+          processedProgram = AddVacuityChecking(processedProgram);
+        }
 
         if (Options.PrintInstrumented)
         {
@@ -633,6 +636,55 @@ namespace Microsoft.Boogie
           }
         }
       });
+    }
+
+    private ProcessedProgram AddVacuityChecking(ProcessedProgram processedProgram)
+    {
+      Program program = processedProgram.Program;
+      CoverageAnnotator annotator = new CoverageAnnotator();
+      foreach (var impl in program.Implementations) {
+        annotator.VisitImplementation(impl);
+      }
+      return new ProcessedProgram(program, (vcgen, impl, result) =>
+        {
+          CheckVacuity(annotator, impl, result);
+          processedProgram.PostProcessResult(vcgen, impl, result);
+        }
+      );
+    }
+
+    private void CheckVacuity(CoverageAnnotator annotator, Implementation impl, ImplementationRunResult verificationResult)
+    {
+      var covered = verificationResult
+        .RunResults
+        .SelectMany(r => r.CoveredElements)
+        .ToHashSet();
+      foreach (var goalId in annotator.GetImplementationGoalIds(impl.Name)) {
+        if (!CoveredId(goalId, covered)) {
+          var node = annotator.GetIdNode(goalId);
+          Options.Printer.AdvisoryWriteLine(Options.OutputWriter,
+            $"{node.tok.filename}({node.tok.line},{node.tok.col - 1}): Warning: Proved vacuously");
+        }
+      }
+    }
+
+    private static bool CoveredId(string goalId, HashSet<TrackedNodeComponent> covered)
+    {
+      foreach (var component in covered) {
+        if (component is LabeledNodeComponent { id: var id } && id == goalId) {
+          return true;
+        }
+
+        if (component is TrackedInvariantEstablished { invariantId: var eid } && eid == goalId) {
+          return true;
+        }
+
+        if (component is TrackedInvariantMaintained { invariantId: var mid } && mid == goalId) {
+          return true;
+        }
+      }
+
+      return false;
     }
 
     private Implementation[] GetPrioritizedImplementations(Program program)
@@ -963,7 +1015,6 @@ namespace Microsoft.Boogie
 
       return resultTask;
     }
-
 
     #region Houdini
 

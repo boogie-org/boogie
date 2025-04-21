@@ -1,0 +1,129 @@
+Parsing verificationCoverage.bpl
+Coalescing blocks...
+Inlining...
+
+Verifying testRequiresAssign ...
+[TRACE] Using prover: z3
+Proof dependencies:
+  a0
+  id0
+  id1
+  id2
+
+Verifying sum ...
+Proof dependencies:
+  id10
+  id7
+  id8
+  id9
+  invariant id4 assumed in body
+  invariant id4 established
+  invariant id4 maintained
+  invariant id5 assumed in body
+  invariant id5 established
+  invariant id5 maintained
+  invariant id6 established
+  invariant id6 maintained
+
+Verifying contradictoryAssume ...
+Proof dependencies:
+  id11
+  id12
+verificationCoverage.bpl(143,4): Warning: Proved vacuously
+
+Verifying falseRequires ...
+Proof dependencies:
+  id16
+verificationCoverage.bpl(150,4): Warning: Proved vacuously
+
+Verifying contradictoryRequires ...
+Proof dependencies:
+  id19
+  id20
+verificationCoverage.bpl(158,4): Warning: Proved vacuously
+
+Verifying assumeFalse ...
+Proof dependencies:
+  id21
+verificationCoverage.bpl(163,2): Warning: Proved vacuously
+
+Verifying testEnsuresCallee ...
+Proof dependencies:
+  id23
+  id24
+  id25
+
+Verifying testEnsuresCaller ...
+Proof dependencies:
+  ensures clause id23 from call id26
+  ensures clause id23 from call id27
+  ensures clause id24 from call id27
+  id28
+  id29
+  id30
+  requires clause id25 proved for call id26
+  requires clause id25 proved for call id27
+  xy_sum
+
+Verifying obviouslyUnconstrainedCode ...
+Proof dependencies:
+  constrained
+  id31
+  id32
+
+Verifying callContradictoryFunction ...
+Proof dependencies:
+  ensures clause cont_ens_abs from call id34
+  id36
+  requires clause xpos_abs proved for call id34
+verificationCoverage.bpl(203,2): Warning: Proved vacuously
+
+Verifying usesSomeInteger ...
+Proof dependencies:
+  id37
+  someInteger_value_axiom
+Proof dependencies of whole program:
+  a0
+  constrained
+  ensures clause cont_ens_abs from call id34
+  ensures clause id23 from call id26
+  ensures clause id23 from call id27
+  ensures clause id24 from call id27
+  id0
+  id1
+  id10
+  id11
+  id12
+  id16
+  id19
+  id2
+  id20
+  id21
+  id23
+  id24
+  id25
+  id28
+  id29
+  id30
+  id31
+  id32
+  id36
+  id37
+  id7
+  id8
+  id9
+  invariant id4 assumed in body
+  invariant id4 established
+  invariant id4 maintained
+  invariant id5 assumed in body
+  invariant id5 established
+  invariant id5 maintained
+  invariant id6 established
+  invariant id6 maintained
+  requires clause id25 proved for call id26
+  requires clause id25 proved for call id27
+  requires clause xpos_abs proved for call id34
+  someInteger_value_axiom
+  xy_sum
+
+Boogie program verifier finished with 11 verified, 0 errors
