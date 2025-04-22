@@ -17,9 +17,8 @@ public class CoverageAnnotator : StandardVisitor
   private Dictionary<string, ISet<string>> implementationGoalIds = new();
   private Dictionary<string, Absy> idMap = new();
 
-  private void addImplementationGoalId(string id)
+  private void AddImplementationGoalId(string id)
   {
-    implementationGoalIds.TryAdd(currentImplementation, new HashSet<string>());
     implementationGoalIds[currentImplementation].Add(id);
   }
   
@@ -30,7 +29,7 @@ public class CoverageAnnotator : StandardVisitor
     Absy absy = node as Absy;
     idMap.Add(idStr, absy);
     if (isGoal) {
-      addImplementationGoalId(idStr);
+      AddImplementationGoalId(idStr);
     }
     node.AddStringAttribute(absy.tok, "id", idStr);
   }
@@ -53,11 +52,16 @@ public class CoverageAnnotator : StandardVisitor
   public override Implementation VisitImplementation(Implementation node)
   {
     currentImplementation = node.Name;
+    implementationGoalIds.TryAdd(currentImplementation, new HashSet<string>());
     return base.VisitImplementation(node);
   }
   
   public override Cmd VisitAssertCmd(AssertCmd node)
   {
+    if (node.Expr is LiteralExpr {IsTrue: true}) {
+      return node;
+    }
+
     AddId(node, true);
     return base.VisitAssertCmd(node);
   }
@@ -82,6 +86,10 @@ public class CoverageAnnotator : StandardVisitor
   
   public override Ensures VisitEnsures(Ensures ensures)
   {
+    if (ensures.Free) {
+      return ensures;
+    }
+
     AddId(ensures, true);
     return base.VisitEnsures(ensures);
   }
