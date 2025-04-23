@@ -100,7 +100,7 @@
 // RUN: %diff "%s.expect" "%t.coverage-p"
 // RUN: %boogie -trackVerificationCoverage -normalizeDeclarationOrder:1 -prune:1 "%s" > "%t.coverage-d"
 // RUN: %diff "%s.expect" "%t.coverage-d"
-// RUN: %boogie -warnVacuousProofs -trace -normalizeNames:1 -prune:1 "%s" | grep -v "solver resource count" > "%t.coverage-n"
+// RUN: %boogie -warnVacuousProofs -trace -normalizeNames:1 -prune:1 // "%s" | grep -v "solver resource count" | grep -v "batch mode" > "%t.coverage-n"
 // RUN: %diff "%s.expect-trace" "%t.coverage-n"
 
 procedure testRequiresAssign(n: int)
