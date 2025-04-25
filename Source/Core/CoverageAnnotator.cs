@@ -22,16 +22,35 @@ public class CoverageAnnotator : StandardVisitor
     implementationGoalIds[currentImplementation].Add(id);
   }
   
-  private void AddId(ICarriesAttributes node, bool isGoal)
+  private void AddIdIfMissing(ICarriesAttributes node, bool isGoal)
   {
-    var idStr = "id" + idCount;
-    idCount++;
     Absy absy = node as Absy;
+    if (absy == null) {
+      return;
+    }
+    var idStr = node.FindStringAttribute("id");
+    if (idStr == null) {
+      idCount++;
+      idStr = $"id_l{absy.tok.line}_c{absy.tok.col}_{NodeType(node)}_{idCount}";
+    }
     idMap.Add(idStr, absy);
     if (isGoal) {
       AddImplementationGoalId(idStr);
     }
     node.AddStringAttribute(absy.tok, "id", idStr);
+  }
+
+  private string NodeType(ICarriesAttributes node)
+  {
+    return node switch
+    {
+      Requires _ => "requires",
+      Ensures _ => "ensures",
+      AssertCmd _ => "assert",
+      AssumeCmd _ => "assume",
+      CallCmd _ => "call",
+      _ => "other"
+    };
   }
   
   /// <summary>
@@ -62,25 +81,25 @@ public class CoverageAnnotator : StandardVisitor
       return node;
     }
 
-    AddId(node, true);
+    AddIdIfMissing(node, true);
     return base.VisitAssertCmd(node);
   }
   
   public override Cmd VisitAssumeCmd(AssumeCmd node)
   {
-    AddId(node, false);
+    AddIdIfMissing(node, false);
     return base.VisitAssumeCmd(node);
   }
   
   public override Cmd VisitCallCmd(CallCmd node)
   {
-    AddId(node, false);
+    AddIdIfMissing(node, false);
     return base.VisitCallCmd(node);
   }
   
   public override Requires VisitRequires(Requires requires)
   {
-    AddId(requires, false);
+    AddIdIfMissing(requires, false);
     return base.VisitRequires(requires);
   }
   
@@ -90,7 +109,7 @@ public class CoverageAnnotator : StandardVisitor
       return ensures;
     }
 
-    AddId(ensures, true);
+    AddIdIfMissing(ensures, true);
     return base.VisitEnsures(ensures);
   }
 }
