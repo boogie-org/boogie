@@ -6,124 +6,124 @@ Verifying testRequiresAssign ...
 [TRACE] Using prover: z3
 Proof dependencies:
   a0
-  id0
-  id1
-  id2
+  assert_a0
+  assert_r0
+  r0
 
 Verifying sum ...
 Proof dependencies:
-  id10
-  id7
-  id8
-  id9
-  invariant id4 assumed in body
-  invariant id4 established
-  invariant id4 maintained
-  invariant id5 assumed in body
-  invariant id5 established
-  invariant id5 maintained
-  invariant id6 established
-  invariant id6 maintained
+  id_l127_c3_assume_1
+  id_l127_c3_assume_2
+  invariant sinv_not_1 established
+  invariant sinv_not_1 maintained
+  invariant sinv1 assumed in body
+  invariant sinv1 established
+  invariant sinv1 maintained
+  invariant sinv2 assumed in body
+  invariant sinv2 established
+  invariant sinv2 maintained
+  spost
+  spre1
 
 Verifying contradictoryAssume ...
 Proof dependencies:
-  id11
-  id12
+  cont_assume_1
+  cont_assume_2
 verificationCoverage.bpl(143,4): Warning: Proved vacuously
 
 Verifying falseRequires ...
 Proof dependencies:
-  id16
+  false_req
 verificationCoverage.bpl(150,4): Warning: Proved vacuously
 
 Verifying contradictoryRequires ...
 Proof dependencies:
-  id19
-  id20
+  cont_req_1
+  cont_req_2
 verificationCoverage.bpl(158,4): Warning: Proved vacuously
 
 Verifying assumeFalse ...
 Proof dependencies:
-  id21
+  assumeFalse
 verificationCoverage.bpl(163,2): Warning: Proved vacuously
 
 Verifying testEnsuresCallee ...
 Proof dependencies:
-  id23
-  id24
-  id25
+  tee0
+  tee1
+  ter0
 
 Verifying testEnsuresCaller ...
 Proof dependencies:
-  ensures clause id23 from call id26
-  ensures clause id23 from call id27
-  ensures clause id24 from call id27
-  id28
-  id29
-  id30
-  requires clause id25 proved for call id26
-  requires clause id25 proved for call id27
+  call2_tee1
+  ensures clause tee0 from call call1
+  ensures clause tee0 from call call2
+  ensures clause tee1 from call call2
+  requires clause ter0 proved for call call1
+  requires clause ter0 proved for call call2
+  tee_not_1
+  ter1
   xy_sum
 
 Verifying obviouslyUnconstrainedCode ...
 Proof dependencies:
+  a_gt_10
   constrained
-  id31
-  id32
+  x_gt_10
 
 Verifying callContradictoryFunction ...
 Proof dependencies:
-  ensures clause cont_ens_abs from call id34
-  id36
-  requires clause xpos_abs proved for call id34
+  ensures clause cont_ens_abs from call call_cont
+  requires clause xpos_abs proved for call call_cont
+  xpos_caller
 verificationCoverage.bpl(203,2): Warning: Proved vacuously
 
 Verifying usesSomeInteger ...
 Proof dependencies:
-  id37
+  id_l216_c3_ensures_3
   someInteger_value_axiom
 Proof dependencies of whole program:
+  a_gt_10
   a0
+  assert_a0
+  assert_r0
+  assumeFalse
+  call2_tee1
   constrained
-  ensures clause cont_ens_abs from call id34
-  ensures clause id23 from call id26
-  ensures clause id23 from call id27
-  ensures clause id24 from call id27
-  id0
-  id1
-  id10
-  id11
-  id12
-  id16
-  id19
-  id2
-  id20
-  id21
-  id23
-  id24
-  id25
-  id28
-  id29
-  id30
-  id31
-  id32
-  id36
-  id37
-  id7
-  id8
-  id9
-  invariant id4 assumed in body
-  invariant id4 established
-  invariant id4 maintained
-  invariant id5 assumed in body
-  invariant id5 established
-  invariant id5 maintained
-  invariant id6 established
-  invariant id6 maintained
-  requires clause id25 proved for call id26
-  requires clause id25 proved for call id27
-  requires clause xpos_abs proved for call id34
+  cont_assume_1
+  cont_assume_2
+  cont_req_1
+  cont_req_2
+  ensures clause cont_ens_abs from call call_cont
+  ensures clause tee0 from call call1
+  ensures clause tee0 from call call2
+  ensures clause tee1 from call call2
+  false_req
+  id_l127_c3_assume_1
+  id_l127_c3_assume_2
+  id_l216_c3_ensures_3
+  invariant sinv_not_1 established
+  invariant sinv_not_1 maintained
+  invariant sinv1 assumed in body
+  invariant sinv1 established
+  invariant sinv1 maintained
+  invariant sinv2 assumed in body
+  invariant sinv2 established
+  invariant sinv2 maintained
+  r0
+  requires clause ter0 proved for call call1
+  requires clause ter0 proved for call call2
+  requires clause xpos_abs proved for call call_cont
   someInteger_value_axiom
+  spost
+  spre1
+  tee_not_1
+  tee0
+  tee1
+  ter0
+  ter1
+  x_gt_10
+  xpos_caller
   xy_sum
 
 Boogie program verifier finished with 11 verified, 0 errors
