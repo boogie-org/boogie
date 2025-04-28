@@ -12,8 +12,8 @@ Proof dependencies:
 
 Verifying sum ...
 Proof dependencies:
+  id_l127_c3_assume_0
   id_l127_c3_assume_1
-  id_l127_c3_assume_2
   invariant sinv_not_1 established
   invariant sinv_not_1 maintained
   invariant sinv1 assumed in body
@@ -80,7 +80,7 @@ verificationCoverage.bpl(203,2): Warning: Proved vacuously
 
 Verifying usesSomeInteger ...
 Proof dependencies:
-  id_l216_c3_ensures_3
+  id_l216_c3_ensures_2
   someInteger_value_axiom
 Proof dependencies of whole program:
   a_gt_10
@@ -99,9 +99,9 @@ Proof dependencies of whole program:
   ensures clause tee0 from call call2
   ensures clause tee1 from call call2
   false_req
+  id_l127_c3_assume_0
   id_l127_c3_assume_1
-  id_l127_c3_assume_2
-  id_l216_c3_ensures_3
+  id_l216_c3_ensures_2
   invariant sinv_not_1 established
   invariant sinv_not_1 maintained
   invariant sinv1 assumed in body
