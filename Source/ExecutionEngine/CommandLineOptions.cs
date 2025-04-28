@@ -317,19 +317,13 @@ namespace Microsoft.Boogie
 
     public bool PrintAssignment  { get; set; }
 
-    public bool TrackVerificationCoverage {
-      get => trackVerificationCoverage;
+    public bool TrackVerificationCoverage
+    {
+      get => trackVerificationCoverage || WarnVacuousProofs;
       set => trackVerificationCoverage = value;
     }
 
-    public bool WarnVacuousProofs
-    {
-      get => warnVacuousProofs;
-      set {
-        warnVacuousProofs = value;
-        if (warnVacuousProofs) { trackVerificationCoverage = true; }
-      }
-    }
+    public bool WarnVacuousProofs { get; set; }
 
     public int InlineDepth  { get; set; } = -1;
 
@@ -614,7 +608,6 @@ namespace Microsoft.Boogie
     private bool normalizeNames;
     private bool normalizeDeclarationOrder = true;
     private bool keepQuantifier = false;
-    private bool warnVacuousProofs;
 
     public List<CoreOptions.ConcurrentHoudiniOptions> Cho { get; set; } = new();
 
@@ -2017,8 +2010,8 @@ namespace Microsoft.Boogie
                 report. This generalizes and replaces the previous
                 (undocumented) `/printNecessaryAssertions` option.
   /warnVacuousProofs
-                Automatically add `{:id ...}` attributes to assumptions, assertions,
-                requires clauses, ensures clauses, and calls; enable the
+                Automatically add missing `{:id ...}` attributes to assumptions,
+                assertions, requires clauses, ensures clauses, and calls; enable the
                 `/trackVerificationCoverage` option; and warn when proof goals are
                 not covered by a proof.
   /keepQuantifier

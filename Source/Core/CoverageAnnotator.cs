@@ -30,8 +30,8 @@ public class CoverageAnnotator : StandardVisitor
     }
     var idStr = node.FindStringAttribute("id");
     if (idStr == null) {
-      idCount++;
       idStr = $"id_l{absy.tok.line}_c{absy.tok.col}_{NodeType(node)}_{idCount}";
+      idCount++;
     }
     idMap.Add(idStr, absy);
     if (isGoal) {
