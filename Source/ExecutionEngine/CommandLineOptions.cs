@@ -317,10 +317,13 @@ namespace Microsoft.Boogie
 
     public bool PrintAssignment  { get; set; }
 
-    public bool TrackVerificationCoverage {
-      get => trackVerificationCoverage;
+    public bool TrackVerificationCoverage
+    {
+      get => trackVerificationCoverage || WarnVacuousProofs;
       set => trackVerificationCoverage = value;
     }
+
+    public bool WarnVacuousProofs { get; set; }
 
     public int InlineDepth  { get; set; } = -1;
 
@@ -1373,6 +1376,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", x => useUnsatCoreForContractInfer = x) ||
               ps.CheckBooleanFlag("printAssignment", x => PrintAssignment = x) ||
               ps.CheckBooleanFlag("trackVerificationCoverage", x => trackVerificationCoverage = x) ||
+              ps.CheckBooleanFlag("warnVacuousProofs", x => WarnVacuousProofs = x) ||
               ps.CheckBooleanFlag("useProverEvaluate", x => useProverEvaluate = x) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", x => DeterministicExtractLoops = x) ||
               ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||
@@ -2005,7 +2009,11 @@ namespace Microsoft.Boogie
                 assignments, and calls can be labeled for inclusion in this
                 report. This generalizes and replaces the previous
                 (undocumented) `/printNecessaryAssertions` option.
-
+  /warnVacuousProofs
+                Automatically add missing `{:id ...}` attributes to assumptions,
+                assertions, requires clauses, ensures clauses, and calls; enable the
+                `/trackVerificationCoverage` option; and warn when proof goals are
+                not covered by a proof.
   /keepQuantifier
                 If pool-based quantifier instantiation creates instances of a quantifier
                 then keep the quantifier along with the instances. By default, the quantifier
