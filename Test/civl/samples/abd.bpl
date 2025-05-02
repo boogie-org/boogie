@@ -41,7 +41,7 @@
 
 // ############## Why is this linearizable? #################
 
-// Given any concurrent execution, we construct a linearization order (<L) of ReadClient and WriteClient operations that is a correct sequential specification of an atomic register and is consistent with the happens before order (op1 <HB op2 if End of op1 finishes before Begin of op2 starts).
+// Given any concurrent execution, we construct a linearization order (<L) of ReadClient and WriteClient operations that is a correct sequential specification of an atomic register and is consistent with the happens before order (op1 <HB op2 if End of op1 executes before Begin of op2 starts).
 
 // We associate WriteClient and ReadClient with the ts that is calculated in their Write and Read actions, respectively. From this point on, we'll refer to WriteClient and ReadClient operations simply as write and read, and write.ts and read.ts to refer to their associated timestamp.
 
@@ -54,13 +54,19 @@
 
 // Irreflexive: not(op <L op)
 // op.ts < op.ts is not possible
-// op can't be both a read and write 
+// op can't be both a read and a write 
 // op <HB op is not possible (since <HB is a strict partial order)
 
-// Asymmetry: if op1 <L op2 then not(op2 <L op1)
-// op1.ts < op2.ts => not(op2.ts < op1.ts) and not(op2.ts == op1.ts), therefore we have not(op2 <L op1)
+// Asymmetry: if op1 <L op2,  then not(op2 <L op1)
+// Case 1: op1.ts < op2.ts => not(op2.ts < op1.ts) and not(op2.ts == op1.ts), therefore we have not(op2 <L op1)
+// Case 2: op1.ts == op2.ts
+//         Case 2.1: op1 is a write and op2 is a read
+//                   therefore we have not(op2 <L op1)
+//         Case 2.2: op1 is a read and op2 is a read
+//                   since op1 <L op2, we must have op1 <HB op2, which implies not(op2 <HB op1) (since <HB is a strict partial order)
+//                   therefore we have not(op2 <L op1)
 
-// Transitivity: if op1 <L op2 and op2 <L op3 then op1 <L op3
+// Transitivity: if op1 <L op2 and op2 <L op3,  then op1 <L op3
 // op1.ts <= op2.ts and op2.ts <= op3.ts ==> op1.ts <= op3.ts (transitive property of inequality)
 // Case 1: op1.ts < op3.ts then op1 <L op3 (from C1)
 // Case 2: op1.ts == op3.ts
@@ -69,8 +75,7 @@
 //                     op1.ts == op3.ts and op1 is a write and op3 is a read ==> op1 <L op3 (from C2)
 //           Case 2.2: op1 is a read and op2 is a read and op3 is a read
 //                     we have op1 <HB op2 <HB op3 => op1 <HB op3 (<HB is a strict partial order)
-//                     since op1.ts == op3.ts and op1 <HB < op3, we have op1 <L op3 (from C3)
-                     
+//                     since op1.ts == op3.ts and op1 <HB < op3, we have op1 <L op3 (from C3)                
 
 // ########## Show that the reads return values consistent with an atomic register: in <L every read returns the value written by the last preceding write. ###############
 
@@ -82,29 +87,29 @@
 // From the above two points, we can conclude that there exists a subset of <L that forms a total order over all writes and any given read r, as follows: 
 // w_0 < ... < w_i < r < w_(i+1) < ... < w_n, where w_i.ts == r.ts
 
-// Since any total order of <L will respect this order among writes and a read, we can conclude that it returns the value written by the last preceding write.
+// Since any total order of <L will respect this order among writes and a read, we can conclude that the read returns the value written by the last preceding write.
 
-// ########## Show that <L is consistent with happens before order: op1 <HB op2 ==> op1 <L op2 #############s
+// ############  HB_Lemma: if op1 <HB op2, then op1.ts <= op2.ts #############
+//
+//   Case 1: op2 is a write
+//           From the specification "assume old_ts < ts" for writes, we have op1.ts < op2.ts
+//   Case 2: op2 is a read
+//           From the specification "assume old_ts <= ts" for reads, we have op1.ts <= op2.ts
 
-// Case1: op1 is read and op2 is write
-// From the specification "assume old_ts < ts" for writes, we have op1.ts < op2.ts, which implies op1 <L op2 (from C1)
+// ########## Show that <L is consistent with happens before order: op1 <HB op2 ==> op1 <L op2 #############
 
-// Case2: op1 is read and op2 is read
-// From the specification "assume old_ts <= ts" for reads, we have op1.ts <= op2.ts
-//     Case 2.1: op1.ts < op2.ts 
-//               then we have op1 <L op2 (from C1)
-//     Case 2.2: op1.ts == op2.ts 
-//               and we also have op1 <HB op2, which implies op1 <L op2 (from C3)
+// we have op1.ts <= op2.ts (from HB_Lemma)
 
-// Case3: op1 is write and op2 is read
-// From the specification "assume old_ts <= ts" for reads, we have op1.ts <= op2.ts
-//     Case 3.1: op1.ts < op2.ts, 
-//               then we have op1 <L op2 (from C1)
-//     Case 3.2: op1.ts == op2.ts, 
-//               and we have op1 is a write and op2 is a read, which implies op1 <L op2 (from C2)
+// Case 1: op1.ts < op2.ts, then we have op1 <L op2 (from C1)
+// Case 2: op1.ts == op2.ts
+//      Case 2.1: op1 is a read and op2 is a write
+//                But from the specification "assume old_ts < ts" for writes, we must have op1.ts < op2.ts. Therefore, this case is not possible.
+//      Case 2.2: op1 is a read and op2 is  aread
+//                and we also have op1 <HB op2, which implies op1 <L op2 (from C3)
+//      Case 2.3: op1 is a write and op2 is a read
+//                we have op1 <L op2 (from C2)
 
-// Case4: op1 is write and op2 is write 
-// From the specification, "assume old_ts < ts" for writes, we have op1.ts < op2.ts, which implies op1 <L op2 (from C1)
+// Therefore, any total ordering of <L will also be consistent with <HB.
 
 //////////////////////////////////////////////////////////////////////////
 // Types and Constants
