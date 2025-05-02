@@ -41,7 +41,20 @@
 
 // ############## Why is this linearizable? #################
 
-// Given any concurrent execution, we construct a linearization order (<L) of ReadClient and WriteClient operations that is a correct sequential specification of an atomic register and is consistent with the happens before order (op1 <HB op2 if End of op1 executes before Begin of op2 starts).
+// Given any concurrent execution, we define a happens-before order (<HB) as follows: op1 <HB op2 iff End of op1 executes before Begin of op2. We have the following two lemmas about <HB.
+
+// ############  HB_Lemma 1: <HB is a strict partial order ###############
+// The proof follows from the totally-ordered nature of a concurrent execution.
+
+// ############  HB_Lemma 2: if op1 <HB op2, then op1.ts <= op2.ts #############
+//
+//   Case 1: op2 is a write
+//           From the specification "assume old_ts < ts" for writes, we have op1.ts < op2.ts
+//   Case 2: op2 is a read
+//           From the specification "assume old_ts <= ts" for reads, we have op1.ts <= op2.ts
+
+
+// Given any concurrent execution, we construct a linearization order (<L) of ReadClient and WriteClient operations that is a correct sequential specification of an atomic register and is consistent with <HB.
 
 // We associate WriteClient and ReadClient with the ts that is calculated in their Write and Read actions, respectively. From this point on, we'll refer to WriteClient and ReadClient operations simply as write and read, and write.ts and read.ts to refer to their associated timestamp.
 
@@ -89,16 +102,9 @@
 
 // Since any total order of <L will respect this order among writes and a read, we can conclude that the read returns the value written by the last preceding write.
 
-// ############  HB_Lemma: if op1 <HB op2, then op1.ts <= op2.ts #############
-//
-//   Case 1: op2 is a write
-//           From the specification "assume old_ts < ts" for writes, we have op1.ts < op2.ts
-//   Case 2: op2 is a read
-//           From the specification "assume old_ts <= ts" for reads, we have op1.ts <= op2.ts
-
 // ########## Show that <L is consistent with happens before order: op1 <HB op2 ==> op1 <L op2 #############
 
-// we have op1.ts <= op2.ts (from HB_Lemma)
+// we have op1.ts <= op2.ts (from HB_Lemma 2)
 
 // Case 1: op1.ts < op2.ts, then we have op1 <L op2 (from C1)
 // Case 2: op1.ts == op2.ts
