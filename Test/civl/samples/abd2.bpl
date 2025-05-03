@@ -156,6 +156,7 @@ yield procedure {:layer 2} Begin#2({:linear} pid: One ProcessId) returns (ts: Ti
 refines action {:layer 3} _ {
     ts := TS;
     assume IsQuorum(w);
+    assume (forall x: ReplicaId :: w[x] ==> le(ts, replica_ts[x]));
 }
 {
     call ts := Begin#0(pid);
