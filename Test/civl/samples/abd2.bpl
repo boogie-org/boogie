@@ -47,8 +47,9 @@ function {:inline} le(ts1: TimeStamp, ts2: TimeStamp) : bool {
 //////////////////////////////////////////////////////////////////////////
 // Global variables
 
-var {:layer 1, 4} replica_ts: [ReplicaId]TimeStamp;
 var {:layer 1, 4} value_store: Map TimeStamp Value;
+var {:layer 1, 3} replica_ts: [ReplicaId]TimeStamp;
+var {:layer 1, 1} last_write: [ProcessId]int;
 var {:layer 0, 4} TS: TimeStamp;
 var {:layer 0, 1} replica_store: [ReplicaId]StampedValue;
 
@@ -84,35 +85,45 @@ yield procedure {:layer 4} WriteClient({:linear} pid: One ProcessId, value: Valu
 }
 
 yield procedure {:layer 3} Begin({:linear} pid: One ProcessId) returns (ts: TimeStamp, {:layer 2, 3} w: ReplicaSet)
-refines action {:layer 4} _ { }
+refines action {:layer 4} _ {
+    ts := TS;
+ }
 {
     call ts, w := Begin#2(pid);
 }
 
 yield procedure {:layer 3} Read({:linear} pid: One ProcessId, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (ts: TimeStamp, value: Value)
-refines action {:layer 4} _ { }
+refines action {:layer 4} _ { 
+    assume le(old_ts, ts);
+    assume Map_Contains(value_store, ts);
+    value := Map_At(value_store, ts);
+}
 {
-    call ts, value := QueryPhase(old_ts, w);
-    assert {:layer 3} le(old_ts, ts);
+    var q: ReplicaSet;
+
+    call ts, value, q := QueryPhase(old_ts, w);
     call UpdatePhase(ts, value);
 }
 
 yield procedure {:layer 3} Write({:linear} pid: One ProcessId, value: Value, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (ts: TimeStamp)
-refines action {:layer 4} _ { }
+refines action {:layer 4} _ {
+    assume lt(old_ts, ts);
+    assume !Map_Contains(value_store, ts);
+    value_store := Map_Update(value_store, ts, value);
+}
 {
+    var _q: ReplicaSet;
     var _value: Value;
 
-    call ts, _value := QueryPhase(old_ts, w);
+    call ts, _value, _q := QueryPhase(old_ts, w);
     ts := TimeStamp(ts->t + 1, pid->val);
-    assert {:layer 3} lt(old_ts, ts);
+    call {:layer 1} last_write := Copy(last_write[ts->pid := ts->t]);
     call AddToValueStore(ts, value);
     call UpdatePhase(ts, value);
 }
 
-yield right procedure {:layer 3} QueryPhase({:layer 2, 3} old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value)
+yield right procedure {:layer 3} QueryPhase({:layer 2, 3} old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value, q: ReplicaSet)
 {
-    var q: ReplicaSet;
-
     assume IsQuorum(q);
     call max_ts, max_value := QueryPhaseHelper(0, q, old_ts, w);
 }
@@ -155,17 +166,17 @@ yield left procedure {:layer 3} UpdatePhaseHelper(i: int, ts: TimeStamp, value: 
 yield procedure {:layer 2} Begin#2({:linear} pid: One ProcessId) returns (ts: TimeStamp, {:layer 2} w: ReplicaSet)
 refines action {:layer 3} _ {
     ts := TS;
-    assume IsQuorum(w);
-    assume (forall x: ReplicaId :: w[x] ==> le(ts, replica_ts[x]));
+    assume (forall rid: ReplicaId :: w[rid] ==> le(ts, replica_ts[rid]));
 }
 {
     call ts := Begin#0(pid);
-    call {:layer 2} w := CalculateQuorum(replica_ts, TS);
+    call {:layer 2} w := CalculateQuorum(replica_ts, ts);
 }
 
-pure procedure CalculateQuorum(replica_ts: [ReplicaId]TimeStamp, ts: TimeStamp) returns (w: ReplicaSet)
+pure procedure {:inline 1} CalculateQuorum(replica_ts: [ReplicaId]TimeStamp, ts: TimeStamp) returns (w: ReplicaSet)
 {
     // calculate the set of all replica ids whose timestamp is at least ts
+    w := (lambda rid: ReplicaId:: IsReplica(rid) && le(ts, replica_ts[rid]));
 }
 
 yield procedure {:layer 2} Query#2(rid: ReplicaId, q: ReplicaSet, {:layer 2} old_ts: TimeStamp, {:layer 2} w: ReplicaSet) returns (ts: TimeStamp, value: Value)
@@ -174,12 +185,13 @@ refines right action {:layer 3} _ {
     {
         if (w[rid])
         {
-            assume le(old_ts, ts) && le(ts, replica_ts[rid]) && Map_Contains(value_store, ts);
+            assume le(old_ts, ts) && le(ts, replica_ts[rid]);
         }
         else
         {
-            assume le(LeastTimeStamp(), ts) && le(ts, replica_ts[rid]) && Map_Contains(value_store, ts);
+            assume le(LeastTimeStamp(), ts) && le(ts, replica_ts[rid]);
         }
+        assume Map_Contains(value_store, ts);
         value := Map_At(value_store, ts);
     }
     else
@@ -217,6 +229,7 @@ refines left action {:layer 3} _ {
 yield procedure {:layer 1} Query#1(rid: ReplicaId) returns (ts: TimeStamp, value: Value)
 refines action {:layer 2} _ {
     ts := replica_ts[rid];
+    assume Map_Contains(value_store, ts);
     value := Map_At(value_store, ts);
 }
 {
@@ -240,7 +253,7 @@ refines action {:layer 2} _ {
 }
 {
     call Update#0(rid, ts, value);
-    call {:layer 1} replica_ts := Copy(replica_ts[rid := ts]);
+    call {:layer 1} replica_ts := Copy(replica_ts[rid := replica_store[rid]->ts]);
 }
 
 yield procedure {:layer 0} Begin#0({:linear} pid: One ProcessId) returns (ts: TimeStamp);

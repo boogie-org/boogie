@@ -20,17 +20,15 @@
 //         End(one_pid, ts);
 // }
 
-// Begin(one_pid) returns old_ts
+// Begin(one_pid) returns (ts)
 //     ts = TS;
 
 // Read(one_pid, old_ts) returns (ts, val)
-//     var ts
 //     assume old_ts <= ts
 //     assume ts in store
 //     val := store[ts]
 
-// Write(one_pid, val)
-//     var ts
+// Write(one_pid, val) returns (ts)
 //     assume old_ts < ts
 //     assume ts not in store
 //     store[ts] := val
