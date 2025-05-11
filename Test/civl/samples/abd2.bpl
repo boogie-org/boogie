@@ -94,7 +94,7 @@ requires call ValueStoreInv(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
 {
     var old_ts: TimeStamp;
-    var {:layer 2, 4} w: ReplicaSet;
+    var {:layer 2, 3} w: ReplicaSet;
     var ts: TimeStamp;
 
     par old_ts, w := Begin(one_pid) | ValueStoreInv(LeastTimeStamp(), InitValue);
@@ -111,16 +111,16 @@ requires call LastWriteInv(one_pid, TimeStamp(last_write[one_pid->val], one_pid-
 ensures call LastWriteInv(one_pid, ts);
 {
     var old_ts: TimeStamp;
-    var {:layer 2, 4} w: ReplicaSet;
+    var {:layer 2, 3} w: ReplicaSet;
 
     call old_ts, w := Begin(one_pid);
     call Yield#4();
-    call ts, out := Write(one_pid, value, old_ts, in, w);
+    call out, ts := Write(one_pid, value, in, old_ts, w);
     call Yield#4();
     call End(one_pid, ts);
 }
 
-yield procedure {:layer 3} Begin({:linear} one_pid: One ProcessId) returns (ts: TimeStamp, {:layer 2, 3} w: ReplicaSet)
+yield procedure {:layer 3} Begin({:linear} one_pid: One ProcessId) returns (ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet)
 refines action {:layer 4} _ {
     ts := TS;
 }
@@ -129,7 +129,7 @@ preserves call ReplicaInv();
     call ts, w := Begin#2(one_pid);
 }
 
-yield procedure {:layer 3} Read({:linear} one_pid: One ProcessId, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (ts: TimeStamp, value: Value)
+yield procedure {:layer 3} Read({:linear} one_pid: One ProcessId, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet) returns (ts: TimeStamp, value: Value)
 refines action {:layer 4} _ { 
     assume le(old_ts, ts);
     assume Map_Contains(value_store, ts);
@@ -146,7 +146,7 @@ preserves call ReplicaInv();
     call q := UpdatePhase(ts, value);
 }
 
-yield procedure {:layer 3} Write({:linear} one_pid: One ProcessId, value: Value, old_ts: TimeStamp, in: ReplicaSet, {:layer 2, 3} w: ReplicaSet) returns (ts: TimeStamp, out: ReplicaSet)
+yield procedure {:layer 3} Write({:linear} one_pid: One ProcessId, value: Value, in: ReplicaSet, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet) returns ( out: ReplicaSet, ts: TimeStamp)
 refines action {:layer 4} _ {
     assume lt(old_ts, ts);
     assume !Map_Contains(value_store, ts);
@@ -168,7 +168,7 @@ ensures call LastWriteInv(one_pid, ts);
     par out := UpdatePhase(ts, value) | LastWriteInv(one_pid, ts);
 }
 
-yield right procedure {:layer 3} QueryPhase({:layer 1} old_replica_store: [ReplicaId]StampedValue, {:layer 2, 3} old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value, q: ReplicaSet)
+yield right procedure {:layer 3} QueryPhase({:layer 1} old_replica_store: [ReplicaId]StampedValue, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value, q: ReplicaSet)
 requires call ValueStoreInv(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
 preserves call MonotonicAll(old_replica_store);
@@ -179,7 +179,7 @@ ensures {:layer 1} IsQuorum(q) && (forall rid: ReplicaId:: q[rid] ==> le(old_rep
     call max_ts, max_value := QueryPhaseHelper(0, q, old_replica_store, old_ts, w);
 }
 
-yield right procedure {:layer 3} QueryPhaseHelper(i: int, q: ReplicaSet, {:layer 1} old_replica_store: [ReplicaId]StampedValue, {:layer 2, 3} old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value)
+yield right procedure {:layer 3} QueryPhaseHelper(i: int, q: ReplicaSet, {:layer 1} old_replica_store: [ReplicaId]StampedValue, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value)
 requires {:layer 1} IsReplica(i) || i == numReplicas;
 preserves call ValueStoreInv(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
@@ -245,7 +245,7 @@ pure procedure {:inline 1} CalculateQuorum(replica_ts: [ReplicaId]TimeStamp, ts:
     w := (lambda rid: ReplicaId:: IsReplica(rid) && le(ts, replica_ts[rid]));
 }
 
-yield procedure {:layer 2} Query#2(rid: ReplicaId, q: ReplicaSet, {:hide}{:layer 1} old_replica_ts: TimeStamp, {:layer 2} old_ts: TimeStamp, {:layer 2} w: ReplicaSet) returns (ts: TimeStamp, value: Value)
+yield procedure {:layer 2} Query#2(rid: ReplicaId, q: ReplicaSet, {:hide} {:layer 1} old_replica_ts: TimeStamp, old_ts: TimeStamp, {:layer 2} w: ReplicaSet) returns (ts: TimeStamp, value: Value)
 refines right action {:layer 3} _ {
     if (q[rid])
     {
