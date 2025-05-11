@@ -771,11 +771,15 @@ SpecRefinedActionForYieldProcedure<.ref ActionDeclRef refinedAction, IToken name
     (.
       if (refinedAction == null) {
         var actionName = m.val == "_" ? null : m.val;
-        var actionDecl = new ActionDecl(tok, actionName, moverType, Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+        var inParams = new List<Variable>(ins);
+        inParams.RemoveAll(x => x.HasAttribute(CivlAttributes.HIDE));
+        var outParams = new List<Variable>(outs);
+        outParams.RemoveAll(x => x.HasAttribute(CivlAttributes.HIDE));
+        var actionDecl = new ActionDecl(tok, actionName, moverType, Formal.StripWhereClauses(inParams), Formal.StripWhereClauses(outParams),
                                       false, new List<ActionDeclRef>(), null, null,
                                       new List<Requires>(), new List<CallCmd>(), new List<AssertCmd>(), new List<IdentifierExpr>(), null, akv);
         Pgm.AddTopLevelDeclaration(actionDecl);
-        var impl = new Implementation(tok, actionDecl.Name, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+        var impl = new Implementation(tok, actionDecl.Name, new List<TypeVariable>(), Formal.StripWhereClauses(inParams), Formal.StripWhereClauses(outParams),
                                       locals, stmtList, akv == null ? null : (QKeyValue)akv.Clone());
         Pgm.AddTopLevelDeclaration(impl);
         refinedAction = new ActionDeclRef(tok, actionDecl.Name);
