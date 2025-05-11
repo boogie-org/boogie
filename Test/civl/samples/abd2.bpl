@@ -1,3 +1,12 @@
+// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %diff "%s.expect" "%t"
+
+/*
+Hagit Attiya, Amotz Bar-Noy, and Danny Dolev.
+Sharing Memory Robustly in Message-passing Systems.
+J. ACM 42, 1 (1995), 124–142.
+*/
+
 //////////////////////////////////////////////////////////////////////////
 // Types and Constants
 const numReplicas: int;
