@@ -1,5 +1,5 @@
 // RUN: %boogie /warnVacuousProofs /trace "%s" > "%t"
-// RUN: %OutputCheck "%s" --file-to-check="%t.coverage"
+// RUN: %OutputCheck "%s" --file-to-check="%t"
 // CHECK:Proof dependencies:
 // CHECK:  id_l12_c5_assert_0
 // CHECK:  id_l12_c5_assert_1
