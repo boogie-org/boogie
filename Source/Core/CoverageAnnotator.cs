@@ -29,9 +29,11 @@ public class CoverageAnnotator : StandardVisitor
       return;
     }
     var idStr = node.FindStringAttribute("id");
-    if (idStr == null) {
-      idStr = $"id_l{absy.tok.line}_c{absy.tok.col}_{NodeType(node)}_{idCount}";
-      idCount++;
+    if (idStr == null || idMap.ContainsKey(idStr)) {
+      do {
+        idStr = $"id_l{absy.tok.line}_c{absy.tok.col}_{NodeType(node)}_{idCount}";
+        idCount++;
+      } while(idMap.ContainsKey(idStr));
     }
     idMap.Add(idStr, absy);
     if (isGoal) {
