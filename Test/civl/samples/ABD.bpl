@@ -254,7 +254,8 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
     par End(one_pid, ts);
 }
 
-yield procedure {:layer 4} WriteClient({:linear} one_pid: One ProcessId, value: Value, in: ReplicaSet) returns (ts: TimeStamp, out: ReplicaSet)
+yield procedure {:layer 4} WriteClient({:linear} one_pid: One ProcessId, value: Value, {:hide} {:layer 1, 2} in: ReplicaSet)
+    returns (ts: TimeStamp, {:hide} {:layer 1, 2} out: ReplicaSet)
 requires call MonotonicInduction#1(in, TimeStamp(last_write[one_pid->val], one_pid->val), 0);
 ensures call MonotonicInduction#1(out, ts, 0);
 requires call LastWriteInv(one_pid, TimeStamp(last_write[one_pid->val], one_pid->val));
@@ -287,7 +288,7 @@ ensures {:layer 3} IsQuorum(w);
 }
 
 yield procedure {:layer 3} Read({:linear} one_pid: One ProcessId, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet)
-    returns ({:hide} {:layer 2} q: ReplicaSet, ts: TimeStamp, value: Value)
+    returns ({:hide} {:layer 2} out: ReplicaSet, ts: TimeStamp, value: Value)
 refines action {:layer 4} _ { 
     assume le(old_ts, ts);
     assume Map_Contains(value_store, ts);
@@ -298,20 +299,21 @@ preserves call ReplicaInv();
 preserves call AtLeastGlobalTimeStamp(w, old_ts);
 preserves call ValidTimeStamp();
 preserves call TimeStampQuorum();
-ensures call AtLeastGlobalTimeStamp(q, ts);
-ensures {:layer 2} IsQuorum(q);
+ensures call AtLeastGlobalTimeStamp(out, ts);
+ensures {:layer 2} IsQuorum(out);
 requires {:layer 3} IsQuorum(w);
 preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 {
     var {:layer 1} old_replica_store: [ReplicaId]StampedValue;
 
     call {:layer 1} old_replica_store := Copy(replica_store);
-    call ts, value, q := QueryPhase(old_replica_store, old_ts, w);
-    par q := UpdatePhase(ts, value) | AtLeastGlobalTimeStamp(w, old_ts) | ValidTimeStamp() | ValueStoreInv#1(LeastTimeStamp(), InitValue);
+    call ts, value, out := QueryPhase(old_replica_store, old_ts, w);
+    par out := UpdatePhase(ts, value) | AtLeastGlobalTimeStamp(w, old_ts) | ValidTimeStamp() | ValueStoreInv#1(LeastTimeStamp(), InitValue);
 }
 
-yield procedure {:layer 3} Write({:linear} one_pid: One ProcessId, value: Value, in: ReplicaSet, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet)
-    returns (out: ReplicaSet, ts: TimeStamp)
+yield procedure {:layer 3}
+Write({:linear} one_pid: One ProcessId, value: Value, {:hide} {:layer 1, 2} in: ReplicaSet, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet)
+    returns ({:hide} {:layer 1, 2} out: ReplicaSet, ts: TimeStamp)
 refines action {:layer 4} _ {
     assume lt(old_ts, ts);
     assume !Map_Contains(value_store, ts);
