@@ -242,7 +242,7 @@ requires call ValidTimeStamp();
 preserves call TimeStampQuorum();
 preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 {
-    var q: ReplicaSet;
+    var {:layer 2} q: ReplicaSet;
     var old_ts: TimeStamp;
     var {:layer 2, 3} w: ReplicaSet;
     var ts: TimeStamp;
@@ -286,7 +286,8 @@ ensures {:layer 3} IsQuorum(w);
     call ts, w := Begin#2(one_pid);
 }
 
-yield procedure {:layer 3} Read({:linear} one_pid: One ProcessId, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet) returns (q: ReplicaSet, ts: TimeStamp, value: Value)
+yield procedure {:layer 3} Read({:linear} one_pid: One ProcessId, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet)
+    returns ({:hide} {:layer 2} q: ReplicaSet, ts: TimeStamp, value: Value)
 refines action {:layer 4} _ { 
     assume le(old_ts, ts);
     assume Map_Contains(value_store, ts);
@@ -309,7 +310,8 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
     par q := UpdatePhase(ts, value) | AtLeastGlobalTimeStamp(w, old_ts) | ValidTimeStamp() | ValueStoreInv#1(LeastTimeStamp(), InitValue);
 }
 
-yield procedure {:layer 3} Write({:linear} one_pid: One ProcessId, value: Value, in: ReplicaSet, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet) returns ( out: ReplicaSet, ts: TimeStamp)
+yield procedure {:layer 3} Write({:linear} one_pid: One ProcessId, value: Value, in: ReplicaSet, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet)
+    returns (out: ReplicaSet, ts: TimeStamp)
 refines action {:layer 4} _ {
     assume lt(old_ts, ts);
     assume !Map_Contains(value_store, ts);
@@ -327,7 +329,7 @@ ensures {:layer 2} IsQuorum(out);
 requires {:layer 3} IsQuorum(w);
 preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 {
-    var q: ReplicaSet;
+    var {:layer 2} q: ReplicaSet;
     var _value: Value;
     var {:layer 1} old_replica_store: [ReplicaId]StampedValue;
 
@@ -338,7 +340,8 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
     par out := UpdatePhase(ts, value) | LastWriteInv(one_pid, ts) | AtLeastGlobalTimeStamp(w, old_ts) | ValidTimeStamp();
 }
 
-yield right procedure {:layer 3} QueryPhase({:layer 1} old_replica_store: [ReplicaId]StampedValue, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value, q: ReplicaSet)
+yield right procedure {:layer 3} QueryPhase({:layer 1} old_replica_store: [ReplicaId]StampedValue, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet)
+    returns (max_ts: TimeStamp, max_value: Value, q: ReplicaSet)
 preserves call ValueStoreInv#1(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
 preserves call MonotonicAll(old_replica_store);
@@ -356,7 +359,9 @@ ensures {:layer 3} Map_Contains(value_store, max_ts) && Map_At(value_store, max_
     call max_ts, max_value := QueryPhaseHelper(0, q, old_replica_store, old_ts, w);
 }
 
-yield right procedure {:layer 3} QueryPhaseHelper(i: int, q: ReplicaSet, {:layer 1} old_replica_store: [ReplicaId]StampedValue, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value)
+yield right procedure {:layer 3}
+QueryPhaseHelper(i: int, q: ReplicaSet, {:layer 1} old_replica_store: [ReplicaId]StampedValue, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet)
+    returns (max_ts: TimeStamp, max_value: Value)
 requires {:layer 1} IsReplica(i) || i == numReplicas;
 preserves call ValueStoreInv#1(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
@@ -437,7 +442,8 @@ pure procedure {:inline 1} CalculateQuorum(replica_ts: [ReplicaId]TimeStamp, ts:
     w := (lambda rid: ReplicaId:: IsReplica(rid) && le(ts, replica_ts[rid]));
 }
 
-yield procedure {:layer 2} Query#2(rid: ReplicaId, q: ReplicaSet, {:hide} {:layer 1} old_replica_ts: TimeStamp, old_ts: TimeStamp, {:layer 2} w: ReplicaSet) returns (ts: TimeStamp, value: Value)
+yield procedure {:layer 2} Query#2(rid: ReplicaId, q: ReplicaSet, {:hide} {:layer 1} old_replica_ts: TimeStamp, old_ts: TimeStamp, {:layer 2} w: ReplicaSet)
+    returns (ts: TimeStamp, value: Value)
 refines right action {:layer 3} _ {
     if (q[rid])
     {
