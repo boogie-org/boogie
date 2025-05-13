@@ -186,13 +186,13 @@ var {:layer 0, 1} replica_store: [ReplicaId]StampedValue;
 //////////////////////////////////////////////////////////////////////////
 // Yield invariants
 
-yield invariant {:layer 1} Monotonic(cond: bool, ts: TimeStamp, rid: ReplicaId);
+yield invariant {:layer 1} Monotonic#1(cond: bool, ts: TimeStamp, rid: ReplicaId);
 invariant cond ==> le(ts, replica_store[rid]->ts);
 
 yield invariant {:layer 1} MonotonicAll(old_replica_store: [ReplicaId]StampedValue);
 invariant (forall rid: ReplicaId:: IsReplica(rid) ==> le(old_replica_store[rid]->ts, replica_store[rid]->ts));
 
-yield invariant {:layer 1} MonotonicInduction(q: ReplicaSet, ts: TimeStamp, i: int);
+yield invariant {:layer 1} MonotonicInduction#1(q: ReplicaSet, ts: TimeStamp, i: int);
 invariant (forall rid: ReplicaId:: q[rid] && i <= rid && rid < numReplicas ==> le(ts, replica_store[rid]->ts));
 
 yield invariant {:layer 1} ReplicaInv();
@@ -205,7 +205,7 @@ yield invariant {:layer 1} LastWriteInv({:linear} one_pid: One ProcessId, pid_la
 invariant lt(TimeStamp(last_write[one_pid->val], one_pid->val), pid_last_ts);
 invariant (forall ts: TimeStamp:: Map_Contains(value_store, ts) && ts->pid == one_pid->val ==> le(ts, pid_last_ts));
 
-yield invariant {:layer 1} ValueStoreInv(ts: TimeStamp, value: Value);
+yield invariant {:layer 1} ValueStoreInv#1(ts: TimeStamp, value: Value);
 invariant Map_Contains(value_store, ts) && Map_At(value_store, ts) == value;
 
 yield invariant {:layer 1} AddToValueStoreInv({:linear} one_pid: One ProcessId, ts: TimeStamp);
@@ -213,7 +213,7 @@ invariant one_pid->val == ts->pid;
 invariant !Map_Contains(value_store, ts);
 
 yield invariant {:layer 2} TimeStampQuorum();
-invariant (exists {:pool "Q"} q: ReplicaSet:: {:add_to_pool "Q", q} IsQuorum(q) && (forall rid: ReplicaId:: q[rid] ==> le(TS, replica_ts[rid])));
+invariant (exists q: ReplicaSet:: IsQuorum(q) && (forall rid: ReplicaId:: q[rid] ==> le(TS, replica_ts[rid])));
 
 yield invariant {:layer 2} Monotonic#2(cond: bool, ts: TimeStamp, rid: ReplicaId);
 invariant cond ==> le(ts, replica_ts[rid]);
@@ -236,7 +236,7 @@ yield invariant {:layer 4} Yield#4();
 // Procedures and actions
 
 yield procedure {:layer 4} ReadClient({:linear} one_pid: One ProcessId) returns (value: Value)
-preserves call ValueStoreInv(LeastTimeStamp(), InitValue);
+preserves call ValueStoreInv#1(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
 requires call ValidTimeStamp();
 preserves call TimeStampQuorum();
@@ -247,17 +247,16 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
     var {:layer 2, 3} w: ReplicaSet;
     var ts: TimeStamp;
 
-    par old_ts, w := Begin(one_pid) | ValueStoreInv(LeastTimeStamp(), InitValue) | ValidTimeStamp() | ValueStoreInv#3(LeastTimeStamp(), InitValue);
+    par old_ts, w := Begin(one_pid) | ValueStoreInv#1(LeastTimeStamp(), InitValue) | ValidTimeStamp() | ValueStoreInv#3(LeastTimeStamp(), InitValue);
     call Yield#4();
     call q, ts, value := Read(one_pid, old_ts, w);
-    assume {:add_to_pool "Q", q} true;
     call Yield#4();
     par End(one_pid, ts);
 }
 
 yield procedure {:layer 4} WriteClient({:linear} one_pid: One ProcessId, value: Value, in: ReplicaSet) returns (ts: TimeStamp, out: ReplicaSet)
-requires call MonotonicInduction(in, TimeStamp(last_write[one_pid->val], one_pid->val), 0);
-ensures call MonotonicInduction(out, ts, 0);
+requires call MonotonicInduction#1(in, TimeStamp(last_write[one_pid->val], one_pid->val), 0);
+ensures call MonotonicInduction#1(out, ts, 0);
 requires call LastWriteInv(one_pid, TimeStamp(last_write[one_pid->val], one_pid->val));
 ensures call LastWriteInv(one_pid, ts);
 requires call ValidTimeStamp();
@@ -270,7 +269,6 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
     par old_ts, w := Begin(one_pid) | ValidTimeStamp() | ValueStoreInv#3(LeastTimeStamp(), InitValue);
     call Yield#4();
     call out, ts := Write(one_pid, value, in, old_ts, w); 
-    assume {:add_to_pool "Q", out} true;
     call Yield#4();
     call End(one_pid, ts);
 }
@@ -294,21 +292,21 @@ refines action {:layer 4} _ {
     assume Map_Contains(value_store, ts);
     value := Map_At(value_store, ts);
 }
-preserves call ValueStoreInv(LeastTimeStamp(), InitValue);
+preserves call ValueStoreInv#1(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
 preserves call AtLeastGlobalTimeStamp(w, old_ts);
 preserves call ValidTimeStamp();
 preserves call TimeStampQuorum();
-requires {:layer 3} IsQuorum(w);
-preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 ensures call AtLeastGlobalTimeStamp(q, ts);
 ensures {:layer 2} IsQuorum(q);
+requires {:layer 3} IsQuorum(w);
+preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 {
     var {:layer 1} old_replica_store: [ReplicaId]StampedValue;
 
     call {:layer 1} old_replica_store := Copy(replica_store);
     call ts, value, q := QueryPhase(old_replica_store, old_ts, w);
-    par q := UpdatePhase(ts, value) | AtLeastGlobalTimeStamp(w, old_ts) | ValidTimeStamp() | ValueStoreInv(LeastTimeStamp(), InitValue);
+    par q := UpdatePhase(ts, value) | AtLeastGlobalTimeStamp(w, old_ts) | ValidTimeStamp() | ValueStoreInv#1(LeastTimeStamp(), InitValue);
 }
 
 yield procedure {:layer 3} Write({:linear} one_pid: One ProcessId, value: Value, in: ReplicaSet, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet) returns ( out: ReplicaSet, ts: TimeStamp)
@@ -317,17 +315,17 @@ refines action {:layer 4} _ {
     assume !Map_Contains(value_store, ts);
     value_store := Map_Update(value_store, ts, value);
 }
-requires call MonotonicInduction(in, TimeStamp(last_write[one_pid->val], one_pid->val), 0);
-ensures call MonotonicInduction(out, ts, 0);
+requires call MonotonicInduction#1(in, TimeStamp(last_write[one_pid->val], one_pid->val), 0);
+ensures call MonotonicInduction#1(out, ts, 0);
 requires call LastWriteInv(one_pid, TimeStamp(last_write[one_pid->val], one_pid->val));
 ensures call LastWriteInv(one_pid, ts);
 preserves call AtLeastGlobalTimeStamp(w, old_ts);
 preserves call ValidTimeStamp();
 preserves call TimeStampQuorum();
-requires {:layer 3} IsQuorum(w);
-preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 ensures call AtLeastGlobalTimeStamp(out, ts);
 ensures {:layer 2} IsQuorum(out);
+requires {:layer 3} IsQuorum(w);
+preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 {
     var q: ReplicaSet;
     var _value: Value;
@@ -341,13 +339,13 @@ ensures {:layer 2} IsQuorum(out);
 }
 
 yield right procedure {:layer 3} QueryPhase({:layer 1} old_replica_store: [ReplicaId]StampedValue, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value, q: ReplicaSet)
-preserves call ValueStoreInv(LeastTimeStamp(), InitValue);
+preserves call ValueStoreInv#1(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
 preserves call MonotonicAll(old_replica_store);
+ensures call ValueStoreInv#1(max_ts, max_value);
+ensures {:layer 1} IsQuorum(q) && (forall rid: ReplicaId:: q[rid] ==> le(old_replica_store[rid]->ts, max_ts));
 preserves call AtLeastGlobalTimeStamp(w, old_ts);
 preserves call ValidTimeStamp();
-ensures call ValueStoreInv(max_ts, max_value);
-ensures {:layer 1} IsQuorum(q) && (forall rid: ReplicaId:: q[rid] ==> le(old_replica_store[rid]->ts, max_ts));
 preserves call TimeStampQuorum();
 requires {:layer 3} IsQuorum(w);
 preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
@@ -360,13 +358,13 @@ ensures {:layer 3} Map_Contains(value_store, max_ts) && Map_At(value_store, max_
 
 yield right procedure {:layer 3} QueryPhaseHelper(i: int, q: ReplicaSet, {:layer 1} old_replica_store: [ReplicaId]StampedValue, old_ts: TimeStamp, {:layer 2, 3} w: ReplicaSet) returns (max_ts: TimeStamp, max_value: Value)
 requires {:layer 1} IsReplica(i) || i == numReplicas;
-preserves call ValueStoreInv(LeastTimeStamp(), InitValue);
+preserves call ValueStoreInv#1(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
 preserves call MonotonicAll(old_replica_store);
+ensures call ValueStoreInv#1(max_ts, max_value);
+ensures {:layer 1} (forall rid: ReplicaId:: q[rid] && i <= rid && rid < numReplicas ==> le(old_replica_store[rid]->ts, max_ts));
 preserves call AtLeastGlobalTimeStamp(w, old_ts);
 preserves call ValidTimeStamp();
-ensures call ValueStoreInv(max_ts, max_value);
-ensures {:layer 1} (forall rid: ReplicaId:: q[rid] && i <= rid && rid < numReplicas ==> le(old_replica_store[rid]->ts, max_ts));
 preserves call TimeStampQuorum();
 preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 ensures {:layer 3} (exists rid: ReplicaId:: i <= rid && rid < numReplicas && q[rid] && w[rid]) ==> le(old_ts, max_ts);
@@ -392,8 +390,8 @@ ensures {:layer 3} Map_Contains(value_store, max_ts) && Map_At(value_store, max_
 
 yield left procedure {:layer 3} UpdatePhase(ts: TimeStamp, value: Value) returns (q: ReplicaSet)
 preserves call ReplicaInv();
-preserves call ValueStoreInv(ts, value);
-ensures call MonotonicInduction(q, ts, 0);
+preserves call ValueStoreInv#1(ts, value);
+ensures call MonotonicInduction#1(q, ts, 0);
 preserves call TimeStampQuorum();
 ensures call AtLeastGlobalTimeStamp(q, ts);
 ensures {:layer 2} IsQuorum(q);
@@ -406,8 +404,8 @@ yield left procedure {:layer 3} UpdatePhaseHelper(i: int, ts: TimeStamp, value: 
 requires {:layer 1} IsReplica(i) || i == numReplicas;
 requires {:layer 1} IsQuorum(q);
 preserves call ReplicaInv();
-preserves call ValueStoreInv(ts, value);
-ensures call MonotonicInduction(q, ts, i);
+preserves call ValueStoreInv#1(ts, value);
+ensures call MonotonicInduction#1(q, ts, i);
 preserves call TimeStampQuorum();
 ensures call MonotonicInduction#2(q, ts, i);
 {
@@ -430,7 +428,7 @@ preserves call TimeStampQuorum();
 {
     call ts := Begin#0(one_pid);
     call {:layer 2} w := CalculateQuorum(replica_ts, ts);
-    assert {:layer 2} (exists {:pool "Q"} q: ReplicaSet:: IsQuorum(q) && IsSubset(q, w));
+    assert {:layer 2} (exists q: ReplicaSet:: IsQuorum(q) && IsSubset(q, w));
 }
 
 pure procedure {:inline 1} CalculateQuorum(replica_ts: [ReplicaId]TimeStamp, ts: TimeStamp) returns (w: ReplicaSet)
@@ -460,14 +458,14 @@ refines right action {:layer 3} _ {
         value := InitValue;
     }
 }
-requires call ValueStoreInv(LeastTimeStamp(), InitValue);
+requires call ValueStoreInv#1(LeastTimeStamp(), InitValue);
 requires {:layer 1} IsReplica(rid);
-requires call Monotonic(true, old_replica_ts, rid);
+requires call Monotonic#1(true, old_replica_ts, rid);
+preserves call ReplicaInv();
+ensures call ValueStoreInv#1(ts, value);
+ensures {:layer 1} q[rid] ==> le(old_replica_ts, ts);
 preserves call AtLeastGlobalTimeStamp(w, old_ts);
 preserves call ValidTimeStamp();
-preserves call ReplicaInv();
-ensures call ValueStoreInv(ts, value);
-ensures {:layer 1} q[rid] ==> le(old_replica_ts, ts);
 preserves call TimeStampQuorum();
 {
     if (q[rid])
@@ -492,8 +490,8 @@ refines left action {:layer 3} _ {
 }
 requires {:layer 1} IsReplica(rid);
 preserves call ReplicaInv();
-preserves call ValueStoreInv(ts, value);
-ensures call Monotonic(q[rid], ts, rid);
+preserves call ValueStoreInv#1(ts, value);
+ensures call Monotonic#1(q[rid], ts, rid);
 ensures call Monotonic#2(q[rid], ts, rid);
 preserves call TimeStampQuorum();
 {
@@ -511,9 +509,9 @@ refines action {:layer 2} _ {
 }
 requires {:layer 1} IsReplica(rid);
 preserves call ReplicaInv();
-requires call Monotonic(true, old_replica_ts, rid);
+requires call Monotonic#1(true, old_replica_ts, rid);
 ensures {:layer 1} le(old_replica_ts, ts);
-ensures call ValueStoreInv(ts, value);
+ensures call ValueStoreInv#1(ts, value);
 {
     call ts, value := Query#0(rid);
 }
@@ -539,8 +537,8 @@ refines action {:layer 2} _ {
 }
 requires {:layer 1} IsReplica(rid);
 preserves call ReplicaInv();
-preserves call ValueStoreInv(ts, value);
-ensures call Monotonic(true, ts, rid);
+preserves call ValueStoreInv#1(ts, value);
+ensures call Monotonic#1(true, ts, rid);
 {
     call Update#0(rid, ts, value);
     call {:layer 1} replica_ts := Copy(replica_ts[rid := replica_store[rid]->ts]);
