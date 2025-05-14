@@ -183,6 +183,17 @@ var {:layer 1, 1} last_write: [ProcessId]int;
 var {:layer 0, 4} TS: TimeStamp;
 var {:layer 0, 1} replica_store: [ReplicaId]StampedValue;
 
+/*
+The proof at layer 1 splits replica_store into replica_ts and value_store.
+
+The proof at layer 2 abstracts Query and Begin operations so that Query becomes
+a right mover and Update becomes a left mover. As a result, the bodies of Read
+and Write become atomic blocks at layer 3.
+
+The proof at layer 3 converts Read and Write into appropriate atomic actions to
+enable the informal proof of linearizability of ReadClient and WriteClient.
+*/
+
 //////////////////////////////////////////////////////////////////////////
 // Yield invariants
 
