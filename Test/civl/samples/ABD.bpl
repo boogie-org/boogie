@@ -238,7 +238,7 @@ yield invariant {:layer 4} Yield#4();
 yield procedure {:layer 4} ReadClient({:linear} one_pid: One ProcessId) returns (value: Value)
 preserves call ValueStoreInv#1(LeastTimeStamp(), InitValue);
 preserves call ReplicaInv();
-requires call ValidTimeStamp();
+preserves call ValidTimeStamp();
 preserves call TimeStampQuorum();
 preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 {
@@ -260,7 +260,7 @@ requires call MonotonicInduction#1(in, TimeStamp(last_write[one_pid->val], one_p
 ensures call MonotonicInduction#1(out, ts, 0);
 requires call LastWriteInv(one_pid, TimeStamp(last_write[one_pid->val], one_pid->val));
 ensures call LastWriteInv(one_pid, ts);
-requires call ValidTimeStamp();
+preserves call ValidTimeStamp();
 preserves call TimeStampQuorum();
 preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 {
@@ -279,7 +279,7 @@ refines action {:layer 4} _ {
     ts := TS;
 }
 preserves call ReplicaInv();
-requires call ValidTimeStamp();
+preserves call ValidTimeStamp();
 ensures call AtLeastGlobalTimeStamp(w, ts);
 preserves call TimeStampQuorum();
 ensures {:layer 3} IsQuorum(w);
@@ -429,7 +429,7 @@ refines action {:layer 3} _ {
     assume IsQuorum(w) && (forall rid: ReplicaId :: w[rid] ==> le(ts, replica_ts[rid]));
 }
 preserves call ReplicaInv();
-requires call ValidTimeStamp();
+preserves call ValidTimeStamp();
 ensures call AtLeastGlobalTimeStamp(w, ts);
 preserves call TimeStampQuorum();
 {
