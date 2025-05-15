@@ -204,8 +204,8 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
     par End(one_pid, ts);
 }
 
-yield procedure {:layer 4} WriteClient({:linear} one_pid: One ProcessId, value: Value, {:hide} {:layer 1, 2} in: ReplicaSet)
-    returns (ts: TimeStamp, {:hide} {:layer 1, 2} out: ReplicaSet)
+yield procedure {:layer 4} WriteClient({:linear} one_pid: One ProcessId, value: Value, {:hide} {:layer 1} in: ReplicaSet)
+    returns (ts: TimeStamp, {:hide} {:layer 1} out: ReplicaSet)
 requires call MonotonicInduction#1(in, TimeStamp(last_write[one_pid->val], one_pid->val), 0);
 ensures call MonotonicInduction#1(out, ts, 0);
 requires call LastWriteInv(one_pid, TimeStamp(last_write[one_pid->val], one_pid->val));
@@ -262,7 +262,7 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 }
 
 yield procedure {:layer 3}
-Write({:linear} one_pid: One ProcessId, value: Value, {:hide} {:layer 1, 2} in: ReplicaSet, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet)
+Write({:linear} one_pid: One ProcessId, value: Value, {:hide} {:layer 1} in: ReplicaSet, old_ts: TimeStamp, {:hide} {:layer 2, 3} w: ReplicaSet)
     returns ({:hide} {:layer 1, 2} out: ReplicaSet, ts: TimeStamp)
 refines action {:layer 4} _ {
     assume lt(old_ts, ts);
