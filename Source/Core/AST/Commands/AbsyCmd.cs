@@ -1495,6 +1495,11 @@ namespace Microsoft.Boogie
         callCmd.Resolve(rc);
       }
 
+      if (rc.ErrorCount > 0)
+      {
+        return;
+      }
+
       HashSet<Variable> parallelCallLhss = new HashSet<Variable>();
       Dictionary<Variable, List<CallCmd>> inputVariables = new Dictionary<Variable, List<CallCmd>>();
       CallCmds.ForEach(c =>
