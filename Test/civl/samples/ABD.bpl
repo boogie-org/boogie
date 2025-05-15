@@ -262,25 +262,25 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 
 yield procedure {:layer 3}
 Write({:linear} one_pid: One ProcessId, value: Value, {:hide} {:layer 1} lwq: ReplicaSet, old_ts: TimeStamp, {:hide} {:layer 2, 3} tsq: ReplicaSet)
-    returns ({:hide} {:layer 1, 2} out: ReplicaSet, ts: TimeStamp)
+    returns ({:hide} {:layer 1} lwq': ReplicaSet, {:hide} {:layer 2} tsq': ReplicaSet, ts: TimeStamp)
 refines action {:layer 4} _ {
     assume lt(old_ts, ts);
     assume !Map_Contains(value_store, ts);
     value_store := Map_Update(value_store, ts, value);
 }
 requires call MonotonicInduction#1(lwq, TimeStamp(last_write[one_pid->val], one_pid->val), 0);
-ensures call MonotonicInduction#1(out, ts, 0);
+ensures call MonotonicInduction#1(lwq', ts, 0);
 requires call LastWriteInv(one_pid, TimeStamp(last_write[one_pid->val], one_pid->val));
 ensures call LastWriteInv(one_pid, ts);
 preserves call MonotonicInduction#2(tsq, old_ts, 0);
 preserves call ValidTimeStamp();
 preserves call TimeStampQuorum();
-ensures call MonotonicInduction#2(out, ts, 0);
-ensures {:layer 2} IsQuorum(out);
+ensures call MonotonicInduction#2(tsq', ts, 0);
+ensures {:layer 2} IsQuorum(tsq');
 requires {:layer 3} IsQuorum(tsq);
 preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
 {
-    var {:layer 2} q: ReplicaSet;
+    var q: ReplicaSet;
     var _value: Value;
     var {:layer 1} old_replica_store: [ReplicaId]StampedValue;
 
@@ -288,7 +288,9 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
     par ts, _value, q := QueryPhase(old_replica_store, old_ts, tsq) | LastWriteInv(one_pid, TimeStamp(last_write[one_pid->val], one_pid->val));
     ts := TimeStamp(ts->t + 1, one_pid->val);
     call AddToValueStore(one_pid, ts, value);
-    par out := UpdatePhase(ts, value) | LastWriteInv(one_pid, ts) | MonotonicInduction#2(tsq, old_ts, 0) | ValidTimeStamp();
+    par q := UpdatePhase(ts, value) | LastWriteInv(one_pid, ts) | MonotonicInduction#2(tsq, old_ts, 0) | ValidTimeStamp();
+    lwq' := q;
+    tsq' := q;
 }
 
 yield right procedure {:layer 3} QueryPhase({:layer 1} old_replica_store: [ReplicaId]StampedValue, old_ts: TimeStamp, {:layer 2, 3} tsq: ReplicaSet)
