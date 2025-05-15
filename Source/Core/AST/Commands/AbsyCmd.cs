@@ -1489,13 +1489,13 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
+      var errorCount = rc.ErrorCount;
       (this as ICarriesAttributes).ResolveAttributes(rc);
       foreach (CallCmd callCmd in CallCmds)
       {
         callCmd.Resolve(rc);
       }
-
-      if (rc.ErrorCount > 0)
+      if (errorCount > rc.ErrorCount)
       {
         return;
       }
