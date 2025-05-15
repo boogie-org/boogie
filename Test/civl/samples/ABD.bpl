@@ -215,10 +215,11 @@ preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
     var old_ts: TimeStamp;
     // tsq is the quorum witnessing the global timestamp TS
     var {:layer 2, 3} tsq: ReplicaSet;
+    var {:layer 2} tsq': ReplicaSet;
 
     par old_ts, tsq := Begin(one_pid) | ValidTimeStamp() | ValueStoreInv#3(LeastTimeStamp(), InitValue);
     call Yield#4();
-    call lwq', ts := Write(one_pid, value, lwq, old_ts, tsq); 
+    call lwq', tsq', ts := Write(one_pid, value, lwq, old_ts, tsq);
     call Yield#4();
     call End(one_pid, ts);
 }
