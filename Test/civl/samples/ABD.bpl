@@ -2,26 +2,78 @@
 // RUN: %diff "%s.expect" "%t"
 
 /*
-This file contains a proof of fault-tolerant register protocol from the following paper:
+This file contains a proof of the protocol from the following paper:
 
 Hagit Attiya, Amotz Bar-Noy, and Danny Dolev.
 Sharing Memory Robustly in Message-passing Systems.
 J. ACM 42, 1 (1995), 124–142.
+
+This protocol implements two operations Read and Write on a single register
+that is replicated for fault-tolerance and shared across a collection of clients.
+These operations are expected to provide a linearizable interface.
+
+The Civl proof imposes the following abstraction on a detailed protocol specification.
+This abstraction is proved linearizable informallyn but precisely towards
+the end of this file.  
+
+type TimeStamp  // a set with a total order
+TS: TimeStamp   // global timestamp used to order operations
+value_store: Map TimeStamp Value // store for timestamped values
+
+// ReadClient is a wrapper procedure around the Read atomic operation.
+// WriteClient is a wrapper procedure around the Write atomic operation.
+// Begin and End are atomic operations used to mark the start and end of ReadClient and WriteClient.
+// These markers are useful in specifying the linearizability of ReadClient and WriteClient.
+
+ReadClient(one_pid) {
+    old_ts := Begin(one_pid)
+    <yield>
+    ts, val := Read(one_pid, old_ts)
+    <yield>
+    End(one_pid, ts);
+}
+
+WriteClient(one_pid) {
+    old_ts := Begin(one_pid)
+    <yield>
+    ts := Write(one_pid, old_ts)
+    <yield>
+    End(one_pid, ts);
+}
+
+Begin(one_pid) returns (ts) {
+    ts = TS;
+}
+
+Read(one_pid, old_ts) returns (ts, val) {
+    assume old_ts <= ts
+    assume ts in value_store
+    val := value_store[ts]
+}
+
+Write(one_pid, val) returns (ts) {
+    assume old_ts < ts
+    assume ts not in value_store
+    value_store[ts] := val
+}
+
+End(one_pid, ts) {
+    TS := max(TS, ts)
+}
 */
 
 //////////////////////////////////////////////////////////////////////////
 // Types and Constants
-const numReplicas: int;
+
+const numReplicas: int; // number of replicas of the register
 axiom numReplicas > 0;
 
 type ReplicaId = int;
+type ReplicaSet = [ReplicaId]bool;
 type ProcessId = int;
 type Value;
 
-const InitValue: Value;
-
-type ReplicaSet = [ReplicaId]bool;
-function {:inline} IsReplica(x: int): bool { 0 <= x && x < numReplicas }
+const InitValue: Value; // initial value of the register
 
 datatype TimeStamp {
     TimeStamp(t: int, pid: ProcessId)
@@ -34,8 +86,10 @@ datatype StampedValue {
 }
 
 //////////////////////////////////////////////////////////////////////////
-// Functions
+// Functions and axiomns
+
 function {:inline} NoReplicas(): ReplicaSet { MapConst(false) }
+function {:inline} IsReplica(x: int): bool { 0 <= x && x < numReplicas }
 
 function Cardinality(q: ReplicaSet): int;
 axiom Cardinality(NoReplicas()) == 0;
@@ -62,11 +116,11 @@ function {:inline} le(ts1: TimeStamp, ts2: TimeStamp) : bool {
 //////////////////////////////////////////////////////////////////////////
 // Global variables
 
-var {:layer 1, 4} value_store: Map TimeStamp Value;
-var {:layer 1, 3} replica_ts: [ReplicaId]TimeStamp;
-var {:layer 1, 1} last_write: [ProcessId]int;
-var {:layer 0, 4} TS: TimeStamp;
-var {:layer 0, 1} replica_store: [ReplicaId]StampedValue;
+var {:layer 1, 4} value_store: Map TimeStamp Value; // unified store of timestamped values shared across all replicas
+var {:layer 1, 3} replica_ts: [ReplicaId]TimeStamp; // projection of replica_store to only the timestamps
+var {:layer 1, 1} last_write: [ProcessId]int;   // last_write[pid] is the version number of the last write by process pid
+var {:layer 0, 4} TS: TimeStamp;    // global timestamp used in the linearizability proof of the abstract protocol
+var {:layer 0, 1} replica_store: [ReplicaId]StampedValue;   // state for concrete protocol
 
 /*
 The proof at layer 1 splits replica_store into replica_ts and value_store.
@@ -77,7 +131,6 @@ and Write become atomic blocks at layer 3.
 
 The proof at layer 3 converts Read and Write into appropriate atomic actions to
 enable the informal proof of linearizability of ReadClient and WriteClient.
-This informal proof is noted at the end of this file.
 */
 
 //////////////////////////////////////////////////////////////////////////
@@ -481,43 +534,6 @@ refines action {:layer 1, 4} _ {
 
 /*
 We prove that the last layer shown below is linearizable.
-
-// Last layer specification
-type TimeStamp  // a set with a total order
-TS: TimeStamp   // global timestamp used to order operations
-value_store: Map TimeStamp Value // store for values
-
-ReadClient(one_pid) {
-        old_ts := Begin(one_pid)
-        <yield>
-        ts, val := Read(one_pid, old_ts)
-        <yield>
-        End(one_pid, ts);
-}
-
-WriteClient(one_pid) {
-        old_ts := Begin(one_pid)
-        <yield>
-        ts := Write(one_pid, old_ts)
-        <yield>
-        End(one_pid, ts);
-}
-
-Begin(one_pid) returns (ts)
-    ts = TS;
-
-Read(one_pid, old_ts) returns (ts, val)
-    assume old_ts <= ts
-    assume ts in value_store
-    val := value_store[ts]
-
-Write(one_pid, val) returns (ts)
-    assume old_ts < ts
-    assume ts not in value_store
-    value_store[ts] := val
-
-End(one_pid, ts)
-    TS := max(TS, ts)
 
 // Definition of <HB
 Given any concurrent execution, we define a happens-before order (<HB) as follows:
