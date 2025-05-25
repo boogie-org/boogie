@@ -6,10 +6,10 @@ namespace Microsoft.Boogie;
 
 public class QKeyValue : Absy
 {
-  public readonly string /*!*/
+  public readonly string
     Key;
 
-  private readonly List<object /*!*/> /*!*/
+  private readonly List<object>
     _params; // each element is either a string or an Expr
 
   public void AddParam(object p)
@@ -48,7 +48,7 @@ public class QKeyValue : Absy
     Contract.Invariant(Cce.NonNullElements(this._params));
   }
 
-  public QKeyValue(IToken tok, string key, IList<object /*!*/> /*!*/ parameters = null, QKeyValue next = null)
+  public QKeyValue(IToken tok, string key, IList<object> parameters = null, QKeyValue next = null)
     : base(tok)
   {
     Contract.Requires(key != null);
@@ -86,7 +86,6 @@ public class QKeyValue : Absy
 
   public override void Resolve(ResolutionContext rc)
   {
-    //Contract.Requires(rc != null);
 
     if ((Key == "minimize" || Key == "maximize") && Params.Count != 1)
     {
@@ -142,7 +141,6 @@ public class QKeyValue : Absy
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    //Contract.Requires(tc != null);
     foreach (object p in Params)
     {
       var expr = p as Expr;

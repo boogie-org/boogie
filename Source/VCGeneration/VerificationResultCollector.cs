@@ -25,14 +25,12 @@ public class VerificationResultCollector : VerifierCallback
 
   public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
   {
-    //Contract.Requires(ce != null);
     ce.InitializeModelStates();
     Examples.Enqueue(ce);
   }
 
   public override void OnUnreachableCode(ImplementationRun run)
   {
-    //Contract.Requires(impl != null);
     run.OutputWriter.WriteLine("found unreachable code:");
     ConditionGeneration.EmitImpl(options, run, false);
     // TODO report error about next to last in seq

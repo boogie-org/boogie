@@ -6,10 +6,10 @@ namespace Boogie.Util
 {
   public class TeeWriter : TextWriter
   {
-    readonly TextWriter /*!*/
+    readonly TextWriter
       a;
 
-    readonly TextWriter /*!*/
+    readonly TextWriter
       b;
 
     [ContractInvariantMethod]
@@ -71,7 +71,7 @@ namespace Boogie.Util
   /// </summary>
   public class LineReader : TextReader
   {
-    [Rep] readonly TextReader /*!*/ reader;
+    [Rep] readonly TextReader reader;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -173,8 +173,8 @@ namespace Boogie.Util
 
   public class IfdefReader : LineReader
   {
-    [Rep] readonly List<string /*!*/> /*!*/ defines;
-    [Rep] readonly List<bool> /*!*/ readState = new List<bool>();
+    [Rep] readonly List<string> defines;
+    [Rep] readonly List<bool> readState = new List<bool>();
     int ignoreCutoff = 0; // 0 means we're not ignoring
 
     [ContractInvariantMethod]
@@ -186,7 +186,7 @@ namespace Boogie.Util
     }
 
 
-    public IfdefReader([Captured] TextReader reader, [Captured] List<string /*!*/> /*!*/ defines)
+    public IfdefReader([Captured] TextReader reader, [Captured] List<string> defines)
       : base(reader)
     {
       Contract.Requires(reader != null);

@@ -282,7 +282,7 @@ namespace Microsoft.Boogie
       Contract.Requires(filename != null);
       Contract.Requires(descriptiveName != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      var /*!*/ sb = new System.Text.StringBuilder(descriptiveName.Length);
+      var sb = new System.Text.StringBuilder(descriptiveName.Length);
       // quote the name, characters like ^ cause trouble in CMD
       // while $ could cause trouble in SH
       foreach (char c in descriptiveName)

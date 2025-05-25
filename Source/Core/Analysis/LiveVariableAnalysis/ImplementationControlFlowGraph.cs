@@ -7,49 +7,49 @@ namespace Microsoft.Boogie;
 
 public class ImplementationControlFlowGraph
 {
-  public Graph<Block /*!*/> /*!*/
+  public Graph<Block>
     graph;
 
   // Map from procedure to the list of blocks that call that procedure
-  public Dictionary<string /*!*/, List<Block /*!*/> /*!*/> /*!*/
+  public Dictionary<string, List<Block>>
     procsCalled;
 
-  public HashSet<Block /*!*/> /*!*/
+  public HashSet<Block>
     nodes;
 
-  public Dictionary<Block /*!*/, HashSet<Block /*!*/> /*!*/> /*!*/
+  public Dictionary<Block, HashSet<Block>>
     succEdges;
 
-  public Dictionary<Block /*!*/, HashSet<Block /*!*/> /*!*/> /*!*/
+  public Dictionary<Block, HashSet<Block>>
     predEdges;
 
-  private Dictionary<Block /*!*/, int> /*!*/
+  private Dictionary<Block, int>
     priority;
 
-  public HashSet<Block /*!*/> /*!*/
+  public HashSet<Block>
     srcNodes;
 
-  public HashSet<Block /*!*/> /*!*/
+  public HashSet<Block>
     exitNodes;
 
-  public Dictionary<Block /*!*/, GenKillWeight /*!*/> /*!*/
+  public Dictionary<Block, GenKillWeight>
     weightBefore;
 
-  public Dictionary<Block /*!*/, GenKillWeight /*!*/> /*!*/
+  public Dictionary<Block, GenKillWeight>
     weightAfter;
 
-  public Dictionary<Block /*!*/, HashSet<Variable /*!*/> /*!*/> /*!*/
+  public Dictionary<Block, HashSet<Variable>>
     liveVarsAfter;
 
-  public Dictionary<Block /*!*/, HashSet<Variable /*!*/> /*!*/> /*!*/
+  public Dictionary<Block, HashSet<Variable>>
     liveVarsBefore;
 
-  public GenKillWeight /*!*/
+  public GenKillWeight
     summary;
 
   private readonly CoreOptions options;
 
-  public Implementation /*!*/
+  public Implementation
     impl;
 
   [ContractInvariantMethod]
@@ -76,21 +76,21 @@ public class ImplementationControlFlowGraph
   public ImplementationControlFlowGraph(CoreOptions options, Implementation impl)
   {
     Contract.Requires(impl != null);
-    this.graph = new Graph<Block /*!*/>();
-    this.procsCalled = new Dictionary<string /*!*/, List<Block /*!*/> /*!*/>();
-    this.nodes = new HashSet<Block /*!*/>();
-    this.succEdges = new Dictionary<Block /*!*/, HashSet<Block /*!*/> /*!*/>();
-    this.predEdges = new Dictionary<Block /*!*/, HashSet<Block /*!*/> /*!*/>();
+    this.graph = new Graph<Block>();
+    this.procsCalled = new Dictionary<string, List<Block>>();
+    this.nodes = new HashSet<Block>();
+    this.succEdges = new Dictionary<Block, HashSet<Block>>();
+    this.predEdges = new Dictionary<Block, HashSet<Block>>();
 
-    this.priority = new Dictionary<Block /*!*/, int>();
+    this.priority = new Dictionary<Block, int>();
 
-    this.srcNodes = new HashSet<Block /*!*/>();
-    this.exitNodes = new HashSet<Block /*!*/>();
+    this.srcNodes = new HashSet<Block>();
+    this.exitNodes = new HashSet<Block>();
 
-    this.weightBefore = new Dictionary<Block /*!*/, GenKillWeight /*!*/>();
-    this.weightAfter = new Dictionary<Block /*!*/, GenKillWeight /*!*/>();
-    this.liveVarsAfter = new Dictionary<Block /*!*/, HashSet<Variable /*!*/> /*!*/>();
-    this.liveVarsBefore = new Dictionary<Block /*!*/, HashSet<Variable /*!*/> /*!*/>();
+    this.weightBefore = new Dictionary<Block, GenKillWeight>();
+    this.weightAfter = new Dictionary<Block, GenKillWeight>();
+    this.liveVarsAfter = new Dictionary<Block, HashSet<Variable>>();
+    this.liveVarsBefore = new Dictionary<Block, HashSet<Variable>>();
 
     summary = GenKillWeight.zero();
     this.options = options;
@@ -105,7 +105,7 @@ public class ImplementationControlFlowGraph
     addSource(impl.Blocks[0]);
     graph.AddSource(impl.Blocks[0]);
 
-    foreach (Block /*!*/ b in impl.Blocks)
+    foreach (Block b in impl.Blocks)
     {
       Contract.Assert(b != null);
       if (b.TransferCmd is ReturnCmd)
@@ -117,7 +117,7 @@ public class ImplementationControlFlowGraph
         GotoCmd gc = b.TransferCmd as GotoCmd;
         Contract.Assert(gc != null);
         Contract.Assert(gc.LabelTargets != null);
-        foreach (Block /*!*/ t in gc.LabelTargets)
+        foreach (Block t in gc.LabelTargets)
         {
           Contract.Assert(t != null);
           addEdge(b, t);
@@ -128,20 +128,20 @@ public class ImplementationControlFlowGraph
       weightBefore[b] = GenKillWeight.zero();
       weightAfter[b] = GenKillWeight.zero();
 
-      foreach (Cmd /*!*/ c in b.Cmds)
+      foreach (Cmd c in b.Cmds)
       {
         Contract.Assert(c != null);
         if (c is CallCmd)
         {
-          CallCmd /*!*/
-            cc = Cce.NonNull((CallCmd /*!*/) c);
+          CallCmd
+            cc = Cce.NonNull((CallCmd) c);
           Contract.Assert(cc.Proc != null);
-          string /*!*/
+          string
             procName = cc.Proc.Name;
           Contract.Assert(procName != null);
           if (!procsCalled.ContainsKey(procName))
           {
-            procsCalled.Add(procName, new List<Block /*!*/>());
+            procsCalled.Add(procName, new List<Block>());
           }
 
           procsCalled[procName].Add(b);
@@ -157,7 +157,7 @@ public class ImplementationControlFlowGraph
     }
 
     int num = sortedNodes.Count;
-    foreach (Block /*!*/ b in sortedNodes)
+    foreach (Block b in sortedNodes)
     {
       Contract.Assert(b != null);
       priority.Add(b, num);
@@ -195,12 +195,12 @@ public class ImplementationControlFlowGraph
     Contract.Requires(b != null);
     if (!succEdges.ContainsKey(b))
     {
-      succEdges.Add(b, new HashSet<Block /*!*/>());
+      succEdges.Add(b, new HashSet<Block>());
     }
 
     if (!predEdges.ContainsKey(b))
     {
-      predEdges.Add(b, new HashSet<Block /*!*/>());
+      predEdges.Add(b, new HashSet<Block>());
     }
 
     nodes.Add(b);

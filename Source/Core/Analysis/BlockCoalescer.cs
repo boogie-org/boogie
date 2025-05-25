@@ -17,13 +17,13 @@ public class BlockCoalescer : ReadOnlyVisitor
   private static HashSet<Block> ComputeMultiPredecessorBlocks(Block rootBlock)
   {
     Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Block>>()));
-    var visitedBlocks = new HashSet<Block /*!*/>();
+    var visitedBlocks = new HashSet<Block>();
     var result = new HashSet<Block>();
     var dfsStack = new Stack<Block>();
     dfsStack.Push(rootBlock);
     while (dfsStack.Count > 0)
     {
-      var /*!*/ block = dfsStack.Pop();
+      var block = dfsStack.Pop();
       Contract.Assert(block != null);
       if (!visitedBlocks.Add(block))
       {
@@ -48,7 +48,7 @@ public class BlockCoalescer : ReadOnlyVisitor
         continue;
       }
 
-      foreach (var /*!*/ succ in gotoCmd.LabelTargets)
+      foreach (var succ in gotoCmd.LabelTargets)
       {
         Contract.Assert(succ != null);
         dfsStack.Push(succ);

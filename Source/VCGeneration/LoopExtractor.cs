@@ -17,7 +17,7 @@ public class LoopExtractor {
     ExtractLoops(CoreOptions options, Program program)
   {
     var hasIrreducibleLoops = new HashSet<Implementation>();
-    List<Implementation /*!*/> /*!*/ loopImpls = new List<Implementation /*!*/>();
+    List<Implementation> loopImpls = new List<Implementation>();
     Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
     foreach (var impl in program.Implementations)
     {
@@ -74,7 +74,7 @@ public class LoopExtractor {
       }
     }
 
-    foreach (Implementation /*!*/ loopImpl in loopImpls)
+    foreach (Implementation loopImpl in loopImpls)
     {
       Contract.Assert(loopImpl != null);
       program.AddTopLevelDeclaration(loopImpl);
@@ -84,8 +84,8 @@ public class LoopExtractor {
     return (fullMap, hasIrreducibleLoops);
   }
 
-  static void CreateProceduresForLoops(CoreOptions options, Implementation impl, Graph<Block /*!*/> /*!*/ g,
-    List<Implementation /*!*/> /*!*/ loopImpls,
+  static void CreateProceduresForLoops(CoreOptions options, Implementation impl, Graph<Block> g,
+    List<Implementation> loopImpls,
     Dictionary<string, Dictionary<string, Block>> fullMap)
   {
     Contract.Requires(impl != null);
@@ -113,20 +113,20 @@ public class LoopExtractor {
 
     bool detLoopExtract = options.DeterministicExtractLoops;
 
-    Dictionary<Block /*!*/, List<Variable> /*!*/> /*!*/
-      loopHeaderToInputs = new Dictionary<Block /*!*/, List<Variable> /*!*/>();
-    Dictionary<Block /*!*/, List<Variable> /*!*/> /*!*/
-      loopHeaderToOutputs = new Dictionary<Block /*!*/, List<Variable> /*!*/>();
-    Dictionary<Block /*!*/, Dictionary<Variable, Expr> /*!*/> /*!*/
-      loopHeaderToSubstMap = new Dictionary<Block /*!*/, Dictionary<Variable, Expr> /*!*/>();
-    Dictionary<Block /*!*/, LoopProcedure /*!*/> /*!*/
-      loopHeaderToLoopProc = new Dictionary<Block /*!*/, LoopProcedure /*!*/>();
-    Dictionary<Block /*!*/, CallCmd /*!*/> /*!*/
-      loopHeaderToCallCmd1 = new Dictionary<Block /*!*/, CallCmd /*!*/>();
+    Dictionary<Block, List<Variable>>
+      loopHeaderToInputs = new Dictionary<Block, List<Variable>>();
+    Dictionary<Block, List<Variable>>
+      loopHeaderToOutputs = new Dictionary<Block, List<Variable>>();
+    Dictionary<Block, Dictionary<Variable, Expr>>
+      loopHeaderToSubstMap = new Dictionary<Block, Dictionary<Variable, Expr>>();
+    Dictionary<Block, LoopProcedure>
+      loopHeaderToLoopProc = new Dictionary<Block, LoopProcedure>();
+    Dictionary<Block, CallCmd>
+      loopHeaderToCallCmd1 = new Dictionary<Block, CallCmd>();
     Dictionary<Block, CallCmd> loopHeaderToCallCmd2 = new Dictionary<Block, CallCmd>();
     Dictionary<Block, AssignCmd> loopHeaderToAssignCmd = new Dictionary<Block, AssignCmd>();
 
-    foreach (Block /*!*/ header in g.Headers)
+    foreach (Block header in g.Headers)
     {
       Contract.Assert(header != null);
       Contract.Assert(header != null);
@@ -140,11 +140,11 @@ public class LoopExtractor {
       List<Expr> rhss = new List<Expr>();
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>(); // Variable -> IdentifierExpr
 
-      List<Variable> /*!*/
+      List<Variable>
         targets = new List<Variable>();
       HashSet<Variable> footprint = new HashSet<Variable>();
 
-      foreach (Block /*!*/ b in g.BackEdgeNodes(header))
+      foreach (Block b in g.BackEdgeNodes(header))
       {
         Contract.Assert(b != null);
         HashSet<Block> immSuccBlks = new HashSet<Block>();
@@ -154,10 +154,10 @@ public class LoopExtractor {
           immSuccBlks = GetBreakBlocksOfLoop(options, header, b, g);
         }
 
-        foreach (Block /*!*/ block in g.NaturalLoops(header, b).Union(immSuccBlks))
+        foreach (Block block in g.NaturalLoops(header, b).Union(immSuccBlks))
         {
           Contract.Assert(block != null);
-          foreach (Cmd /*!*/ cmd in block.Cmds)
+          foreach (Cmd cmd in block.Cmds)
           {
             Contract.Assert(cmd != null);
             targets.AddRange(cmd.GetAssignedVariables());
@@ -169,10 +169,10 @@ public class LoopExtractor {
         }
       }
 
-      List<IdentifierExpr> /*!*/
+      List<IdentifierExpr>
         globalMods = new List<IdentifierExpr>();
       Set targetSet = new Set();
-      foreach (Variable /*!*/ v in targets)
+      foreach (Variable v in targets)
       {
         Contract.Assert(v != null);
         if (targetSet.Contains(v))
@@ -291,7 +291,7 @@ public class LoopExtractor {
     bool headRecursion = false; // testing an option to put recursive call before loop body
 
     IEnumerable<Block> sortedHeaders = g.SortHeadersByDominance();
-    foreach (Block /*!*/ header in sortedHeaders)
+    foreach (Block header in sortedHeaders)
     {
       Contract.Assert(header != null);
       LoopProcedure loopProc = loopHeaderToLoopProc[header];
@@ -302,10 +302,10 @@ public class LoopExtractor {
       List<Variable> inputs = loopHeaderToInputs[header];
       List<Variable> outputs = loopHeaderToOutputs[header];
       int si_unique_loc = 1; // Added by AL: to distinguish the back edges
-      foreach (Block /*!*/ source in g.BackEdgeNodes(header))
+      foreach (Block source in g.BackEdgeNodes(header))
       {
         Contract.Assert(source != null);
-        foreach (Block /*!*/ block in g.NaturalLoops(header, source))
+        foreach (Block block in g.NaturalLoops(header, source))
         {
           Contract.Assert(block != null);
           if (blockMap.ContainsKey(block))
@@ -362,7 +362,7 @@ public class LoopExtractor {
               }
 
               List<AssignLhs> lhsg = new List<AssignLhs>();
-              List<IdentifierExpr> /*!*/
+              List<IdentifierExpr>
                 globalsMods = loopHeaderToLoopProc[header].Modifies;
               foreach (IdentifierExpr gl in globalsMods)
               {
@@ -399,10 +399,10 @@ public class LoopExtractor {
           cmdSeq = new List<Cmd> {callCmd};
         }
 
-        Block /*!*/
+        Block
           block1 = new Block(Token.NoToken, source.Label + "_dummy",
             new List<Cmd> {new AssumeCmd(Token.NoToken, Expr.False)}, new ReturnCmd(Token.NoToken));
-        Block /*!*/
+        Block
           block2 = new Block(Token.NoToken, block1.Label,
             cmdSeq, new ReturnCmd(Token.NoToken));
         impl.Blocks.Add(block1);
@@ -411,9 +411,9 @@ public class LoopExtractor {
         GotoCmd gotoCmd = source.TransferCmd as GotoCmd;
         Contract.Assert(gotoCmd != null && gotoCmd.LabelNames != null && gotoCmd.LabelTargets != null &&
                         gotoCmd.LabelTargets.Count >= 1);
-        List<String> /*!*/
+        List<String>
           newLabels = new List<String>();
-        List<Block> /*!*/
+        List<Block>
           newTargets = new List<Block>();
         for (int i = 0; i < gotoCmd.LabelTargets.Count; i++)
         {
@@ -433,8 +433,8 @@ public class LoopExtractor {
         blockMap[block1] = block2;
       }
 
-      List<Block /*!*/> /*!*/
-        blocks = new List<Block /*!*/>();
+      List<Block>
+        blocks = new List<Block>();
       Block exit = new Block(Token.NoToken, "exit", new List<Cmd>(), new ReturnCmd(Token.NoToken));
       GotoCmd cmd = new GotoCmd(Token.NoToken,
         new List<String> {Cce.NonNull(blockMap[header]).Label, exit.Label},
@@ -458,10 +458,10 @@ public class LoopExtractor {
       entry = new Block(Token.NoToken, "entry", initCmds, cmd);
       blocks.Add(entry);
 
-      foreach (Block /*!*/ block in blockMap.Keys)
+      foreach (Block block in blockMap.Keys)
       {
         Contract.Assert(block != null);
-        Block /*!*/
+        Block
           newBlock = Cce.NonNull(blockMap[block]);
         GotoCmd gotoCmd = block.TransferCmd as GotoCmd;
         if (gotoCmd == null)
@@ -568,12 +568,12 @@ public class LoopExtractor {
     fullMap[procName][blockName] = block;
   }
 
-  private static HashSet<Block> GetBlocksInAllNaturalLoops(CoreOptions options, Block header, Graph<Block /*!*/> /*!*/ g)
+  private static HashSet<Block> GetBlocksInAllNaturalLoops(CoreOptions options, Block header, Graph<Block> g)
   {
     Contract.Assert(options.DeterministicExtractLoops,
       "Can only be called with /deterministicExtractLoops option");
     var allBlocksInNaturalLoops = new HashSet<Block>();
-    foreach (Block /*!*/ source in g.BackEdgeNodes(header))
+    foreach (Block source in g.BackEdgeNodes(header))
     {
       Contract.Assert(source != null);
       g.NaturalLoops(header, source).ForEach(b => allBlocksInNaturalLoops.Add(b));
@@ -589,13 +589,13 @@ public class LoopExtractor {
   /// <param name="header"></param>
   /// <param name="backEdgeNode"></param>
   /// <returns></returns>
-  private static HashSet<Block> GetBreakBlocksOfLoop(CoreOptions options, Block header, Block backEdgeNode, Graph<Block /*!*/> /*!*/ g)
+  private static HashSet<Block> GetBreakBlocksOfLoop(CoreOptions options, Block header, Block backEdgeNode, Graph<Block> g)
   {
     Contract.Assert(options.DeterministicExtractLoops,
       "Can only be called with /deterministicExtractLoops option");
     var immSuccBlks = new HashSet<Block>();
     var loopBlocks = g.NaturalLoops(header, backEdgeNode);
-    foreach (Block /*!*/ block in loopBlocks)
+    foreach (Block block in loopBlocks)
     {
       Contract.Assert(block != null);
       var auxCmd = block.TransferCmd as GotoCmd;

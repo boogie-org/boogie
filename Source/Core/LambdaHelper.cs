@@ -245,7 +245,7 @@ namespace Microsoft.Boogie
         var axCallArgs = new List<Expr>();
         var dummies = new List<Variable>();
         var freeTypeVars = new List<TypeVariable>();
-        var fnTypeVarActuals = new List<Type /*!*/>();
+        var fnTypeVarActuals = new List<Type>();
         var freshTypeVars = new List<TypeVariable>(); // these are only used in the lambda@n function's definition
 
         // compute the free variables of the lambda expression, but with lambdaBody instead of lambda.Body

@@ -336,7 +336,7 @@ namespace Microsoft.Boogie
     public int KInductionDepth { get; set; } = -1;
     public int EnableUnSatCoreExtract { get; set; }
 
-    private string /*!*/ _logPrefix = "";
+    private string _logPrefix = "";
 
     public string LogPrefix
     {
@@ -564,7 +564,7 @@ namespace Microsoft.Boogie
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
     // is empty it means that all procedures should be checked.
     public List<string> ProcsToCheck { get; set; } = new();
-    public List<string /*!*/> ProcsToIgnore { get; set; } = new();
+    public List<string> ProcsToIgnore { get; set; } = new();
 
     [ContractInvariantMethod]
     void ObjectInvariant5()
@@ -574,7 +574,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(Ai != null);
     }
 
-    public CoreOptions.AiFlags /*!*/ Ai  { get; private set; } = new();
+    public CoreOptions.AiFlags Ai  { get; private set; } = new();
 
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;

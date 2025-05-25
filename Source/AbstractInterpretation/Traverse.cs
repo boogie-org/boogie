@@ -118,8 +118,8 @@ namespace Microsoft.Boogie
       Contract.Assert(rootBlock == null);
       rootBlock = block;
 
-      List<Block /*!*/> blocksInLoop = new List<Block /*!*/>(); // We use a list just because .net does not define a set
-      List<Block /*!*/> visitingPath = new List<Block /*!*/>(); // The order is important, as we want paths
+      List<Block> blocksInLoop = new List<Block>(); // We use a list just because .net does not define a set
+      List<Block> visitingPath = new List<Block>(); // The order is important, as we want paths
 
       blocksInLoop.Add(block);
 

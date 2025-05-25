@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Microsoft.Boogie
 {
-  public delegate void InlineCallback(Implementation /*!*/ impl);
+  public delegate void InlineCallback(Implementation impl);
 
   public class Inliner : Duplicator
   {
@@ -67,12 +67,12 @@ namespace Microsoft.Boogie
 
     protected UnrollDepthTracker depthTracker;
 
-    protected Dictionary<string /*!*/, int> /*!*/ /* Procedure.Name -> int */
+    protected Dictionary<string, int> /* Procedure.Name -> int */
       inlinedProcLblMap;
 
     protected int inlineDepth;
 
-    protected List<Variable> /*!*/
+    protected List<Variable>
       newLocalVars;
 
     protected string prefix;
@@ -131,7 +131,7 @@ namespace Microsoft.Boogie
     public Inliner(Program program, InlineCallback cb, int inlineDepth, CoreOptions options)
     {
       this.program = program;
-      this.inlinedProcLblMap = new Dictionary<string /*!*/, int>();
+      this.inlinedProcLblMap = new Dictionary<string, int>();
       this.depthTracker = new UnrollDepthTracker();
       this.inlineDepth = inlineDepth;
       this.options = options;
@@ -258,8 +258,6 @@ namespace Microsoft.Boogie
     {
       public void Error(IToken tok, string msg)
       {
-        //Contract.Requires(msg != null);
-        //Contract.Requires(tok != null);
         // FIXME
         // noop.
         // This is required because during the resolution, some resolution errors happen
@@ -321,17 +319,17 @@ namespace Microsoft.Boogie
       return depth;
     }
 
-    void CheckRecursion(Implementation impl, Stack<Procedure /*!*/> /*!*/ callStack)
+    void CheckRecursion(Implementation impl, Stack<Procedure> callStack)
     {
       Contract.Requires(impl != null);
       Contract.Requires(Cce.NonNullElements(callStack));
-      foreach (Procedure /*!*/ p in callStack)
+      foreach (Procedure p in callStack)
       {
         Contract.Assert(p != null);
         if (p == impl.Proc)
         {
           string msg = "";
-          foreach (Procedure /*!*/ q in callStack)
+          foreach (Procedure q in callStack)
           {
             Contract.Assert(q != null);
             msg = q.Name + " -> " + msg;
@@ -364,7 +362,7 @@ namespace Microsoft.Boogie
 
       BeginInline(impl);
 
-      List<Block /*!*/> /*!*/
+      List<Block>
         inlinedBlocks = CreateInlinedBlocks(callCmd, impl, nextBlockLabel);
       Contract.Assert(Cce.NonNullElements(inlinedBlocks));
 
@@ -392,7 +390,7 @@ namespace Microsoft.Boogie
         depthTracker.Increment(impl);
       }
 
-      Block /*!*/
+      Block
         startBlock = inlinedBlocks[0];
       Contract.Assert(startBlock != null);
 
@@ -406,16 +404,16 @@ namespace Microsoft.Boogie
       return nextlblCount;
     }
 
-    public  virtual List<Block /*!*/> /*!*/ DoInlineBlocks(IList<Block /*!*/> /*!*/ blocks, ref bool inlinedSomething)
+    public  virtual List<Block> DoInlineBlocks(IList<Block> blocks, ref bool inlinedSomething)
     {
       Contract.Requires(Cce.NonNullElements(blocks));
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
-      List<Block /*!*/> /*!*/
-        newBlocks = new List<Block /*!*/>();
+      List<Block>
+        newBlocks = new List<Block>();
 
       foreach (Block block in blocks)
       {
-        TransferCmd /*!*/
+        TransferCmd
           transferCmd = Cce.NonNull(block.TransferCmd);
         List<Cmd> cmds = block.Cmds;
         List<Cmd> newCmds = new List<Cmd>();
@@ -530,7 +528,7 @@ namespace Microsoft.Boogie
       Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
       Procedure proc = impl.Proc;
 
-      foreach (Variable /*!*/ locVar in Cce.NonNull(impl.OriginalLocVars))
+      foreach (Variable locVar in Cce.NonNull(impl.OriginalLocVars))
       {
         Contract.Assert(locVar != null);
         LocalVariable localVar = new LocalVariable(Token.NoToken,
@@ -616,8 +614,8 @@ namespace Microsoft.Boogie
 
     private Cmd InlinedRequires(CallCmd callCmd, Requires req)
     {
-      Requires /*!*/
-        reqCopy = (Requires /*!*/) Cce.NonNull(req.Clone());
+      Requires
+        reqCopy = (Requires) Cce.NonNull(req.Clone());
       if (req.Free)
       {
         reqCopy.Condition = Expr.True;
@@ -627,7 +625,7 @@ namespace Microsoft.Boogie
         reqCopy.Condition = codeCopier.CopyExpr(req.Condition);
       }
 
-      AssertCmd /*!*/
+      AssertCmd
         a = new AssertRequiresCmd(callCmd, reqCopy);
       a.ErrorDataEnhanced = reqCopy.ErrorDataEnhanced;
       return a;
@@ -645,8 +643,8 @@ namespace Microsoft.Boogie
       }
       else
       {
-        Ensures /*!*/
-          ensCopy = (Ensures /*!*/) Cce.NonNull(ens.Clone());
+        Ensures
+          ensCopy = (Ensures) Cce.NonNull(ens.Clone());
         ensCopy.Condition = codeCopier.CopyExpr(ens.Condition);
         return new AssertEnsuresCmd(ensCopy);
       }
@@ -670,7 +668,7 @@ namespace Microsoft.Boogie
     }
 
     // result[0] is the entry block
-    protected List<Block /*!*/> /*!*/ CreateInlinedBlocks(CallCmd callCmd, Implementation impl, string nextBlockLabel)
+    protected List<Block> CreateInlinedBlocks(CallCmd callCmd, Implementation impl, string nextBlockLabel)
     {
       Contract.Requires(nextBlockLabel != null);
       Contract.Requires(impl != null);
@@ -680,14 +678,14 @@ namespace Microsoft.Boogie
       Contract.Requires(codeCopier.oldSubstMap != null);
 
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
-      var /*!*/ implBlocks = Cce.NonNull(impl.OriginalBlocks);
+      var implBlocks = Cce.NonNull(impl.OriginalBlocks);
       Contract.Assert(implBlocks.Count > 0);
 
       Procedure proc = impl.Proc;
       string startLabel = implBlocks[0].Label;
 
-      List<Block /*!*/> /*!*/
-        inlinedBlocks = new List<Block /*!*/>();
+      List<Block>
+        inlinedBlocks = new List<Block>();
 
       // create in block
       List<Cmd> inCmds = new List<Cmd>();
@@ -704,7 +702,7 @@ namespace Microsoft.Boogie
       // inject requires
       for (int i = 0; i < proc.Requires.Count; i++)
       {
-        Requires /*!*/
+        Requires
           req = Cce.NonNull(proc.Requires[i]);
         inCmds.Add(InlinedRequires(callCmd, req));
       }
@@ -729,10 +727,10 @@ namespace Microsoft.Boogie
       }
 
       // assign modifies old values
-      foreach (IdentifierExpr /*!*/ mie in proc.Modifies)
+      foreach (IdentifierExpr mie in proc.Modifies)
       {
         Contract.Assert(mie != null);
-        Variable /*!*/
+        Variable
           mvar = Cce.NonNull(mie.Decl);
         AssignCmd assign = Cmd.SimpleAssign(impl.tok, (IdentifierExpr) Cce.NonNull(codeCopier.OldSubst(mvar)), mie);
         inCmds.Add(assign);
@@ -765,7 +763,7 @@ namespace Microsoft.Boogie
       // inject ensures
       for (int i = 0; i < proc.Ensures.Count; i++)
       {
-        Ensures /*!*/
+        Ensures
           ens = Cce.NonNull(proc.Ensures[i]);
         outCmds.Add(InlinedEnsures(callCmd, ens));
       }
@@ -773,7 +771,7 @@ namespace Microsoft.Boogie
       // assign out params
       for (int i = 0; i < impl.OutParams.Count; ++i)
       {
-        Expr /*!*/
+        Expr
           cout_exp = (IdentifierExpr) Cce.NonNull(codeCopier.Subst(Cce.NonNull(impl.OutParams[i])));
         Cmd cmd = Cmd.SimpleAssign(impl.tok, Cce.NonNull(callCmd.Outs[i]), cout_exp);
         outCmds.Add(cmd);
@@ -798,7 +796,7 @@ namespace Microsoft.Boogie
       {
         List<String> gotoSeq = gotoCmd.LabelNames;
         List<String> newGotoSeq = new List<String>();
-        foreach (string /*!*/ blockLabel in Cce.NonNull(gotoSeq))
+        foreach (string blockLabel in Cce.NonNull(gotoSeq))
         {
           Contract.Assert(blockLabel != null);
           newGotoSeq.Add(procLabel + "$" + blockLabel);
@@ -877,7 +875,7 @@ namespace Microsoft.Boogie
         Contract.Requires(cmds != null);
         Contract.Ensures(Contract.Result<List<Cmd>>() != null);
         List<Cmd> newCmds = new List<Cmd>();
-        foreach (Cmd /*!*/ cmd in cmds)
+        foreach (Cmd cmd in cmds)
         {
           Contract.Assert(cmd != null);
           newCmds.Add(CopyCmd(cmd));

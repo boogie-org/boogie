@@ -7,9 +7,9 @@ public class IfCmd : StructuredCmd
   public QKeyValue Attributes;
   public Expr Guard;
 
-  private StmtList /*!*/ thn;
+  private StmtList thn;
 
-  public StmtList /*!*/ Thn
+  public StmtList Thn
   {
     get
     {
@@ -54,7 +54,7 @@ public class IfCmd : StructuredCmd
     Contract.Invariant(this.elseIf == null || this.elseBlock == null);
   }
 
-  public IfCmd(IToken /*!*/ tok, Expr guard, StmtList /*!*/ thn, IfCmd elseIf, StmtList elseBlock, 
+  public IfCmd(IToken tok, Expr guard, StmtList thn, IfCmd elseIf, StmtList elseBlock, 
     QKeyValue attributes = null)
     : base(tok)
   {
@@ -71,7 +71,7 @@ public class IfCmd : StructuredCmd
   public override void Emit(TokenTextWriter stream, int level)
   {
     stream.Write(level, "if (");
-    var /*!*/ ifcmd = this;
+    var ifcmd = this;
     while (true)
     {
       if (ifcmd.Guard == null)

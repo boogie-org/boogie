@@ -105,8 +105,8 @@ public class Program : Absy
     }
 
     // collect type synonym declarations
-    List<TypeSynonymDecl /*!*/> /*!*/
-      synonymDecls = new List<TypeSynonymDecl /*!*/>();
+    List<TypeSynonymDecl>
+      synonymDecls = new List<TypeSynonymDecl>();
     foreach (var d in TopLevelDeclarations.OfType<TypeSynonymDecl>())
     {
       Contract.Assert(d != null);
@@ -143,7 +143,6 @@ public class Program : Absy
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    //Contract.Requires(tc != null);
     Helpers.ExtraTraceInformation(tc.Options, "Starting typechecking");
 
     int oldErrorCount = tc.ErrorCount;
@@ -155,7 +154,7 @@ public class Program : Absy
     if (oldErrorCount == tc.ErrorCount)
     {
       // check whether any type proxies have remained uninstantiated
-      TypeAmbiguitySeeker /*!*/
+      TypeAmbiguitySeeker
         seeker = new TypeAmbiguitySeeker(tc);
       foreach (var d in TopLevelDeclarations)
       {
@@ -172,7 +171,7 @@ public class Program : Absy
     return cloned;
   }
 
-  [Rep] private List<Declaration /*!*/> /*!*/ topLevelDeclarations;
+  [Rep] private List<Declaration> topLevelDeclarations;
 
   public IReadOnlyList<Declaration> TopLevelDeclarations
   {
@@ -384,9 +383,9 @@ public class Program : Absy
     get { return TopLevelDeclarations.OfType<Constant>(); }
   }
 
-  private IEnumerable<GlobalVariable /*!*/> globalVariablesCache = null;
+  private IEnumerable<GlobalVariable> globalVariablesCache = null;
 
-  public List<GlobalVariable /*!*/> /*!*/ GlobalVariables
+  public List<GlobalVariable> GlobalVariables
   {
     get
     {
@@ -533,7 +532,7 @@ public class Program : Absy
     return GraphFromBlocksSubset(blocks, null, forward);
   }
 
-  public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl, bool forward = true)
+  public static Graph<Block> GraphFromImpl(Implementation impl, bool forward = true)
   {
     Contract.Requires(impl != null);
     Contract.Ensures(Cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
@@ -562,7 +561,6 @@ public class Program : Absy
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    //Contract.Requires(visitor != null);
     Contract.Ensures(Contract.Result<Absy>() != null);
     return visitor.VisitProgram(this);
   }

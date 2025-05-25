@@ -55,7 +55,7 @@ namespace Microsoft.Boogie.VCExprAST
     ////////////////////////////////////////////////////////////////////////////
 
     // list in which axioms are incrementally collected
-    private readonly List<VCExpr /*!*/> /*!*/
+    private readonly List<VCExpr>
       IncAxioms;
 
     [ContractInvariantMethod]
@@ -64,7 +64,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Invariant(Cce.NonNullElements(IncAxioms));
     }
 
-    private void AddAxiom(VCExpr /*!*/ axiom)
+    private void AddAxiom(VCExpr axiom)
     {
       Contract.Requires(axiom != null);
       IncAxioms.Add(axiom);
@@ -85,7 +85,7 @@ namespace Microsoft.Boogie.VCExprAST
     // All named integer literals known to the visitor, in ascending
     // order. Such literals are always positive, and the distance
     // between two literals is always more than ConstantDistance.
-    private readonly List<KeyValuePair<BigNum, VCExprVar /*!*/>> /*!*/
+    private readonly List<KeyValuePair<BigNum, VCExprVar>>
       Literals;
 
     [ContractInvariantMethod]
@@ -96,13 +96,11 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
 
-    private class EntryComparerC : IComparer<KeyValuePair<BigNum, VCExprVar /*!*/>>
+    private class EntryComparerC : IComparer<KeyValuePair<BigNum, VCExprVar>>
     {
-      public int Compare(KeyValuePair<BigNum, VCExprVar /*!*/> a,
-        KeyValuePair<BigNum, VCExprVar /*!*/> b)
+      public int Compare(KeyValuePair<BigNum, VCExprVar> a,
+        KeyValuePair<BigNum, VCExprVar> b)
       {
-        //Contract.Requires(a.Value!=null);
-        //Contract.Requires(b.Value!=null);
         return a.Key.CompareTo(b.Key);
       }
     }
@@ -110,7 +108,7 @@ namespace Microsoft.Boogie.VCExprAST
     private static readonly EntryComparerC EntryComparer = new EntryComparerC();
 
     // variable used when searching for entries in the literal list
-    private readonly VCExprVar /*!*/
+    private readonly VCExprVar
       DummyVar;
 
     [ContractInvariantMethod]
@@ -221,8 +219,8 @@ namespace Microsoft.Boogie.VCExprAST
       return res;
     }
 
-    private void DefineRelationship(VCExpr /*!*/ aExpr, BigNum aValue,
-      VCExpr /*!*/ bExpr, BigNum bValue)
+    private void DefineRelationship(VCExpr aExpr, BigNum aValue,
+      VCExpr bExpr, BigNum bValue)
     {
       Contract.Requires(aValue < bValue);
       Contract.Requires(aExpr != null);

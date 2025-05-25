@@ -6,9 +6,9 @@ namespace Microsoft.Boogie;
 
 public class StmtList
 {
-  [Rep] private readonly List<BigBlock /*!*/> /*!*/ bigBlocks;
+  [Rep] private readonly List<BigBlock> bigBlocks;
 
-  public IList<BigBlock /*!*/> /*!*/ BigBlocks
+  public IList<BigBlock> BigBlocks
   {
     get
     {
@@ -20,24 +20,24 @@ public class StmtList
 
   public List<Cmd> PrefixCommands;
 
-  public readonly IToken /*!*/ EndCurly;
+  public readonly IToken EndCurly;
 
   public StmtList ParentContext;
   public BigBlock ParentBigBlock;
 
-  private readonly HashSet<string /*!*/> /*!*/
-    labels = new HashSet<string /*!*/>();
+  private readonly HashSet<string>
+    labels = new HashSet<string>();
 
   public void AddLabel(string label)
   {
     labels.Add(label);
   }
 
-  public IEnumerable<string /*!*/> /*!*/ Labels
+  public IEnumerable<string> Labels
   {
     get
     {
-      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<string /*!*/> /*!*/>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<string>>()));
       return this.labels.AsEnumerable<string>();
     }
   }
@@ -50,7 +50,7 @@ public class StmtList
     Contract.Invariant(Cce.NonNullElements(this.labels));
   }
 
-  public StmtList(IList<BigBlock /*!*/> /*!*/ bigblocks, IToken endCurly)
+  public StmtList(IList<BigBlock> bigblocks, IToken endCurly)
   {
     Contract.Requires(endCurly != null);
     Contract.Requires(Cce.NonNullElements(bigblocks));

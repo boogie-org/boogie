@@ -15,7 +15,7 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="a">The Absy node to be visited.</param>
     /// <returns> Returns null if node is null. Otherwise returns an updated node (possibly a different object).</returns>
-    public abstract Absy /*!*/ Visit(Absy /*!*/ node);
+    public abstract Absy Visit(Absy node);
 
     /// <summary>
     /// Transfers the state from one visitor to another. This enables separate visitor instances to cooperative process a single IR.
@@ -103,7 +103,7 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Lhss.Count; ++i)
       {
         node.SetLhs(i, Cce.NonNull((AssignLhs) this.Visit(node.Lhss[i])));
-        node.SetRhs(i, Cce.NonNull((Expr /*!*/) this.VisitExpr(node.Rhss[i])));
+        node.SetRhs(i, Cce.NonNull((Expr) this.VisitExpr(node.Rhss[i])));
       }
       VisitAttributes(node);
       return node;
@@ -219,7 +219,7 @@ namespace Microsoft.Boogie
       return blockSeq;
     }
 
-    public virtual IList<Block> /*!*/ VisitBlockList(IList<Block> blocks /*!*/ /*!*/)
+    public virtual IList<Block> VisitBlockList(IList<Block> blocks)
     {
       Contract.Requires(blocks != null);
       Contract.Ensures(Contract.Result<List<Block>>() != null);
@@ -341,7 +341,7 @@ namespace Microsoft.Boogie
       {
         for (int i = 0; i < node.Arguments.Count; ++i)
         {
-          node.Arguments[i] = Cce.NonNull((Type /*!*/) this.Visit(node.Arguments[i]));
+          node.Arguments[i] = Cce.NonNull((Type) this.Visit(node.Arguments[i]));
         }
       }
 
@@ -355,13 +355,13 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public virtual List<Declaration /*!*/> /*!*/ VisitDeclarationList(List<Declaration /*!*/> /*!*/ declarationList)
+    public virtual List<Declaration> VisitDeclarationList(List<Declaration> declarationList)
     {
       Contract.Requires(declarationList != null);
       Contract.Ensures(Contract.Result<List<Declaration>>() != null);
       for (int i = 0, n = declarationList.Count; i < n; i++)
       {
-        declarationList[i] = Cce.NonNull((Declaration /*!*/) this.Visit(declarationList[i]));
+        declarationList[i] = Cce.NonNull((Declaration) this.Visit(declarationList[i]));
       }
 
       return declarationList;
@@ -402,7 +402,6 @@ namespace Microsoft.Boogie
 
     public override IList<Expr> VisitExprSeq(IList<Expr> exprSeq)
     {
-      //Contract.Requires(exprSeq != null);
       Contract.Ensures(Contract.Result<IList<Expr>>() != null);
       for (int i = 0, n = exprSeq.Count; i < n; i++)
       {
@@ -614,11 +613,11 @@ namespace Microsoft.Boogie
       {
         for (int i = 0; i < node.Arguments.Count; ++i)
         {
-          node.Arguments[i] = Cce.NonNull((Type /*!*/) this.Visit(node.Arguments[i]));
+          node.Arguments[i] = Cce.NonNull((Type) this.Visit(node.Arguments[i]));
         }
       }
 
-      node.Result = Cce.NonNull((Type /*!*/) this.Visit(node.Result));
+      node.Result = Cce.NonNull((Type) this.Visit(node.Result));
       return node;
     }
 
@@ -894,12 +893,12 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      node.ExpandedType = Cce.NonNull((Type /*!*/) this.Visit(node.ExpandedType));
+      node.ExpandedType = Cce.NonNull((Type) this.Visit(node.ExpandedType));
       lock (node.Arguments)
       {
         for (int i = 0; i < node.Arguments.Count; ++i)
         {
-          node.Arguments[i] = Cce.NonNull((Type /*!*/) this.Visit(node.Arguments[i]));
+          node.Arguments[i] = Cce.NonNull((Type) this.Visit(node.Arguments[i]));
         }
       }
 
@@ -928,7 +927,7 @@ namespace Microsoft.Boogie
       // specific type, we visit the instantiation
       if (node.ProxyFor != null)
       {
-        return Cce.NonNull((Type /*!*/) this.Visit(node.ProxyFor));
+        return Cce.NonNull((Type) this.Visit(node.ProxyFor));
       }
 
       return this.VisitType(node);
@@ -1150,7 +1149,7 @@ namespace Microsoft.Boogie
       return blockSeq;
     }
 
-    public override IList<Block> /*!*/ VisitBlockList(IList<Block> blocks /*!*/ /*!*/)
+    public override IList<Block> VisitBlockList(IList<Block> blocks)
     {
       Contract.Ensures(Contract.Result<List<Block>>() == blocks);
       foreach (var block in blocks) {
@@ -1249,7 +1248,7 @@ namespace Microsoft.Boogie
       return node;
     }
 
-    public override List<Declaration /*!*/> /*!*/ VisitDeclarationList(List<Declaration /*!*/> /*!*/ declarationList)
+    public override List<Declaration> VisitDeclarationList(List<Declaration> declarationList)
     {
       Contract.Ensures(Contract.Result<List<Declaration>>() == declarationList);
       for (int i = 0, n = declarationList.Count; i < n; i++)
@@ -1650,7 +1649,7 @@ namespace Microsoft.Boogie
     public override Type VisitTypeSynonymAnnotation(TypeSynonymAnnotation node)
     {
       Contract.Ensures(Contract.Result<Type>() == node);
-      node.ExpandedType = Cce.NonNull((Type /*!*/) this.Visit(node.ExpandedType));
+      node.ExpandedType = Cce.NonNull((Type) this.Visit(node.ExpandedType));
       for (int i = 0; i < node.Arguments.Count; ++i)
       {
         this.Visit(node.Arguments[i]);

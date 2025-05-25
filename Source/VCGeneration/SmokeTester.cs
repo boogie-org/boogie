@@ -483,7 +483,6 @@ public class SmokeTester
 
     public override Absy Label2Absy(string label)
     {
-      //Contract.Requires(label != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
 
       int id = int.Parse(label);
@@ -492,7 +491,6 @@ public class SmokeTester
 
     public override void OnProverWarning(string msg)
     {
-      //Contract.Requires(msg != null);
       callback.OnWarning(options, msg);
     }
   }

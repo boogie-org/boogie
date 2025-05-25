@@ -8,12 +8,12 @@ namespace Microsoft.Boogie;
 
 class BigBlocksResolutionContext
 {
-  StmtList /*!*/
+  StmtList
     stmtList;
 
-  [Peer] List<Block /*!*/> blocks;
+  [Peer] List<Block> blocks;
 
-  string /*!*/ prefix = "anon";
+  string prefix = "anon";
 
   int anon = 0;
 
@@ -22,9 +22,9 @@ class BigBlocksResolutionContext
     return prefix + anon++;
   }
 
-  private readonly HashSet<string /*!*/> allLabels = new();
+  private readonly HashSet<string> allLabels = new();
 
-  private readonly Errors /*!*/ errorHandler;
+  private readonly Errors errorHandler;
 
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -87,14 +87,14 @@ class BigBlocksResolutionContext
     ComputeAllLabels(stmtList);
   }
 
-  public List<Block /*!*/> /*!*/ Blocks
+  public List<Block> Blocks
   {
     get
     {
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
       if (blocks == null)
       {
-        blocks = new List<Block /*!*/>();
+        blocks = new List<Block>();
 
         int startErrorCount = this.errorHandler.count;
         // Check that all goto statements go to a label in allLabels, and no break statement to a non-enclosing loop.
@@ -192,7 +192,7 @@ class BigBlocksResolutionContext
       if (bigBlock.tc is GotoCmd)
       {
         GotoCmd g = (GotoCmd) bigBlock.tc;
-        foreach (string /*!*/ lbl in Cce.NonNull(g.LabelNames))
+        foreach (string lbl in Cce.NonNull(g.LabelNames))
         {
           Contract.Assert(lbl != null);
           /*

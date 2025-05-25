@@ -7,7 +7,7 @@ namespace Microsoft.Boogie.TypeErasure;
 
 public class TypeEraserPremisses : TypeEraser
 {
-  private readonly TypeAxiomBuilderPremisses /*!*/ AxBuilderPremisses;
+  private readonly TypeAxiomBuilderPremisses AxBuilderPremisses;
 
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -18,7 +18,7 @@ public class TypeEraserPremisses : TypeEraser
 
   private OpTypeEraser OpEraserAttr = null;
 
-  protected override OpTypeEraser /*!*/ OpEraser
+  protected override OpTypeEraser OpEraser
   {
     get
     {
@@ -61,7 +61,7 @@ public class TypeEraserPremisses : TypeEraser
     {
       if (trigger.Pos)
       {
-        foreach (VCExpr /*!*/ e in trigger.Exprs)
+        foreach (VCExpr e in trigger.Exprs)
         {
           Contract.Assert(e != null);
 
@@ -70,7 +70,7 @@ public class TypeEraserPremisses : TypeEraser
       }
     }
 
-    List<VCExprVar /*!*/> occurringVars = new List<VCExprVar /*!*/>(node.BoundVars.Count);
+    List<VCExprVar> occurringVars = new List<VCExprVar>(node.BoundVars.Count);
     foreach (VCExprVar var in node.BoundVars)
     {
       if (coll.FreeTermVars.Contains(var))
@@ -83,11 +83,11 @@ public class TypeEraserPremisses : TypeEraser
 
     // bound term variables are replaced with bound term variables typed in
     // a simpler way
-    List<VCExprVar /*!*/> /*!*/
+    List<VCExprVar>
       newBoundVars =
         BoundVarsAfterErasure(occurringVars, bindings);
     Contract.Assert(Cce.NonNullElements(newBoundVars));
-    VCExpr /*!*/
+    VCExpr
       newNode = HandleQuantifier(node, occurringVars,
         newBoundVars, bindings);
     Contract.Assert(newNode != null);
@@ -107,12 +107,12 @@ public class TypeEraserPremisses : TypeEraser
       newBoundVars, bindings2);
   }
 
-  private VCExpr /*!*/ GenTypePremisses(List<VCExprVar /*!*/> /*!*/ oldBoundVars,
-    List<VCExprVar /*!*/> /*!*/ newBoundVars,
-    IDictionary<TypeVariable /*!*/, VCExpr /*!*/> /*!*/
+  private VCExpr GenTypePremisses(List<VCExprVar> oldBoundVars,
+    List<VCExprVar> newBoundVars,
+    IDictionary<TypeVariable, VCExpr>
       typeVarTranslation,
-    List<VCExprLetBinding /*!*/> /*!*/ typeVarBindings,
-    out List<VCTrigger /*!*/> /*!*/ triggers)
+    List<VCExprLetBinding> typeVarBindings,
+    out List<VCTrigger> triggers)
   {
     Contract.Requires(Cce.NonNullElements(oldBoundVars));
     Contract.Requires(Cce.NonNullElements(newBoundVars));
@@ -123,32 +123,32 @@ public class TypeEraserPremisses : TypeEraser
 
     // build a substitution of the type variables that it can be checked
     // whether type premisses are trivial
-    VCExprSubstitution /*!*/
+    VCExprSubstitution
       typeParamSubstitution = new VCExprSubstitution();
-    foreach (VCExprLetBinding /*!*/ binding in typeVarBindings)
+    foreach (VCExprLetBinding binding in typeVarBindings)
     {
       Contract.Assert(binding != null);
       typeParamSubstitution[binding.V] = binding.E;
     }
 
-    SubstitutingVCExprVisitor /*!*/
+    SubstitutingVCExprVisitor
       substituter = new SubstitutingVCExprVisitor(Gen);
     Contract.Assert(substituter != null);
 
-    List<VCExpr /*!*/> /*!*/
-      typePremisses = new List<VCExpr /*!*/>(newBoundVars.Count);
-    triggers = new List<VCTrigger /*!*/>(newBoundVars.Count);
+    List<VCExpr>
+      typePremisses = new List<VCExpr>(newBoundVars.Count);
+    triggers = new List<VCTrigger>(newBoundVars.Count);
 
     for (int i = 0; i < newBoundVars.Count; ++i)
     {
-      VCExprVar /*!*/
+      VCExprVar
         oldVar = oldBoundVars[i];
       Contract.Assert(oldVar != null);
-      VCExprVar /*!*/
+      VCExprVar
         newVar = newBoundVars[i];
       Contract.Assert(newVar != null);
 
-      VCExpr /*!*/
+      VCExpr
         typePremiss =
           AxBuilderPremisses.GenVarTypeAxiom(newVar, oldVar.Type,
             typeVarTranslation);
@@ -182,7 +182,7 @@ public class TypeEraserPremisses : TypeEraser
 
     if (expr is VCExprNAry)
     {
-      VCExprNAry /*!*/
+      VCExprNAry
         naryExpr = (VCExprNAry) expr;
       Contract.Assert(naryExpr != null);
       if (naryExpr.Op.Equals(VCExpressionGenerator.EqOp) &&
@@ -195,15 +195,15 @@ public class TypeEraserPremisses : TypeEraser
     return false;
   }
 
-  private VCExpr HandleQuantifier(VCExprQuantifier node, List<VCExprVar /*!*/> /*!*/ occurringVars /*!*/,
-    List<VCExprVar /*!*/> /*!*/ newBoundVars, VariableBindings bindings)
+  private VCExpr HandleQuantifier(VCExprQuantifier node, List<VCExprVar> occurringVars,
+    List<VCExprVar> newBoundVars, VariableBindings bindings)
   {
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
-    Contract.Requires(Cce.NonNullElements(occurringVars /*!*/));
+    Contract.Requires(Cce.NonNullElements(occurringVars));
     Contract.Requires(Cce.NonNullElements(newBoundVars));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    List<VCExprLetBinding /*!*/> /*!*/
+    List<VCExprLetBinding>
       typeVarBindings =
         AxBuilderPremisses.GenTypeParamBindings(node.TypeParameters, occurringVars, bindings, true);
     Contract.Assert(typeVarBindings != null);
@@ -212,7 +212,7 @@ public class TypeEraserPremisses : TypeEraser
     // quantify explicitly over these variables
     if (typeVarBindings.Count < node.TypeParameters.Count)
     {
-      foreach (TypeVariable /*!*/ var in node.TypeParameters)
+      foreach (TypeVariable var in node.TypeParameters)
       {
         Contract.Assert(var != null);
         if (typeVarBindings.All(b => !b.V.Equals(bindings.TypeVariableBindings[var])))
@@ -224,15 +224,15 @@ public class TypeEraserPremisses : TypeEraser
 
     // the lists of old and new bound variables for which type
     // antecedents are to be generated
-    List<VCExprVar /*!*/> /*!*/
-      varsWithTypeSpecs = new List<VCExprVar /*!*/>();
-    List<VCExprVar /*!*/> /*!*/
-      newVarsWithTypeSpecs = new List<VCExprVar /*!*/>();
+    List<VCExprVar>
+      varsWithTypeSpecs = new List<VCExprVar>();
+    List<VCExprVar>
+      newVarsWithTypeSpecs = new List<VCExprVar>();
     if (!IsUniversalQuantifier(node) ||
         AxBuilderPremisses.Options.TypeEncodingMethod
         == CoreOptions.TypeEncoding.Predicates)
     {
-      foreach (VCExprVar /*!*/ oldVar in occurringVars)
+      foreach (VCExprVar oldVar in occurringVars)
       {
         Contract.Assert(oldVar != null);
         varsWithTypeSpecs.Add(oldVar);
@@ -240,7 +240,7 @@ public class TypeEraserPremisses : TypeEraser
       }
     } // else, no type antecedents are created for any variables
 
-    VCExpr /*!*/
+    VCExpr
       typePremisses =
         GenTypePremisses(varsWithTypeSpecs, newVarsWithTypeSpecs,
           bindings.TypeVariableBindings,
@@ -248,19 +248,19 @@ public class TypeEraserPremisses : TypeEraser
 
     Contract.Assert(Cce.NonNullElements(furtherTriggers));
     Contract.Assert(typePremisses != null);
-    List<VCTrigger /*!*/> /*!*/
+    List<VCTrigger>
       newTriggers = new List<VCTrigger>(MutateTriggers(node.Triggers, bindings));
     Contract.Assert(Cce.NonNullElements(newTriggers));
     newTriggers.AddRange(furtherTriggers);
     newTriggers = AddLets2Triggers(newTriggers, typeVarBindings);
 
-    VCExpr /*!*/
+    VCExpr
       newBody = Mutate(node.Body, bindings);
     Contract.Assert(newBody != null);
 
     // assemble the new quantified formula
 
-    VCExpr /*!*/
+    VCExpr
       bodyWithPremisses =
         AxBuilderPremisses.AddTypePremisses(typeVarBindings, typePremisses,
           node.Quan == Quantifier.ALL,
@@ -271,7 +271,7 @@ public class TypeEraserPremisses : TypeEraser
       return bodyWithPremisses;
     }
 
-    foreach (VCExprVar /*!*/ v in newBoundVars)
+    foreach (VCExprVar v in newBoundVars)
     {
       Contract.Assert(v != null);
       if (v.Type == AxBuilderPremisses.U)
@@ -281,30 +281,30 @@ public class TypeEraserPremisses : TypeEraser
       }
     }
 
-    return Gen.Quantify(node.Quan, new List<TypeVariable /*!*/>(), newBoundVars,
+    return Gen.Quantify(node.Quan, new List<TypeVariable>(), newBoundVars,
       newTriggers, node.Info, bodyWithPremisses);
   }
 
   // check whether we need to add let-binders for any of the type
   // parameters to the triggers (otherwise, the triggers will
   // contain unbound/dangling variables for such parameters)
-  private List<VCTrigger /*!*/> /*!*/ AddLets2Triggers(List<VCTrigger /*!*/> /*!*/ triggers /*!*/,
-    List<VCExprLetBinding /*!*/> /*!*/ typeVarBindings)
+  private List<VCTrigger> AddLets2Triggers(List<VCTrigger> triggers,
+    List<VCExprLetBinding> typeVarBindings)
   {
-    Contract.Requires(Cce.NonNullElements(triggers /*!*/));
+    Contract.Requires(Cce.NonNullElements(triggers));
     Contract.Requires(Cce.NonNullElements(typeVarBindings));
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCTrigger>>()));
-    List<VCTrigger /*!*/> /*!*/
-      triggersWithLets = new List<VCTrigger /*!*/>(triggers.Count);
+    List<VCTrigger>
+      triggersWithLets = new List<VCTrigger>(triggers.Count);
 
-    foreach (VCTrigger /*!*/ t in triggers)
+    foreach (VCTrigger t in triggers)
     {
       Contract.Assert(t != null);
-      List<VCExpr /*!*/> /*!*/
-        exprsWithLets = new List<VCExpr /*!*/>(t.Exprs.Count);
+      List<VCExpr>
+        exprsWithLets = new List<VCExpr>(t.Exprs.Count);
 
       bool changed = false;
-      foreach (VCExpr /*!*/ e in t.Exprs)
+      foreach (VCExpr e in t.Exprs)
       {
         Contract.Assert(e != null);
         HashSet<VCExprVar> freeVars = FreeVariableCollector.FreeTermVariables(e);

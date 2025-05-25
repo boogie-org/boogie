@@ -8,7 +8,7 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(IErrorSinkContracts))]
   public interface IErrorSink
   {
-    void Error(IToken /*!*/ tok, string /*!*/ msg);
+    void Error(IToken tok, string msg);
   }
 
   [ContractClassFor(typeof(IErrorSink))]
@@ -218,8 +218,8 @@ namespace Microsoft.Boogie
       return type as TypeSynonymDecl;
     }
 
-    List<TypeVariable /*!*/> /*!*/
-      typeBinders = new List<TypeVariable /*!*/>(5);
+    List<TypeVariable>
+      typeBinders = new List<TypeVariable>(5);
 
     public void AddTypeBinder(TypeVariable td)
     {
@@ -338,7 +338,7 @@ namespace Microsoft.Boogie
     }
 
     // symbolic constants, global variables, local variables, formals, expression-bound variables
-    VarContextNode /*!*/
+    VarContextNode
       varContext = new VarContextNode(null, false);
 
     /// <summary>
@@ -576,7 +576,7 @@ namespace Microsoft.Boogie
       }
 
       // prepend :ignore attribute
-      ignore.Attributes = new QKeyValue(ignore.tok, "ignore", new List<object /*!*/>(), ignore.Attributes);
+      ignore.Attributes = new QKeyValue(ignore.tok, "ignore", new List<object>(), ignore.Attributes);
       return keep;
     }
 

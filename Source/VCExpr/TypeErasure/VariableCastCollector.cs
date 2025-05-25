@@ -17,25 +17,25 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
   /// the bound variables of "oldNode" correspond to the first bound
   /// variables of "newNode".
   /// </summary>
-  public static List<VCExprVar /*!*/> /*!*/ FindCastVariables(VCExprQuantifier oldNode, VCExprQuantifier newNode,
+  public static List<VCExprVar> FindCastVariables(VCExprQuantifier oldNode, VCExprQuantifier newNode,
     TypeAxiomBuilderIntBoolU axBuilder)
   {
     Contract.Requires((axBuilder != null));
     Contract.Requires((newNode != null));
     Contract.Requires((oldNode != null));
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
-    VariableCastCollector /*!*/
+    VariableCastCollector
       collector = new VariableCastCollector(axBuilder);
     Contract.Assert(collector != null);
     if (newNode.Triggers.Any(trigger => trigger.Pos))
     {
       // look in the given triggers
-      foreach (VCTrigger /*!*/ trigger in newNode.Triggers)
+      foreach (VCTrigger trigger in newNode.Triggers)
       {
         Contract.Assert(trigger != null);
         if (trigger.Pos)
         {
-          foreach (VCExpr /*!*/ expr in trigger.Exprs)
+          foreach (VCExpr expr in trigger.Exprs)
           {
             Contract.Assert(expr != null);
             collector.Traverse(expr, true);
@@ -49,9 +49,9 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
       collector.Traverse(newNode.Body, true);
     }
 
-    List<VCExprVar /*!*/> /*!*/
-      castVariables = new List<VCExprVar /*!*/>(collector.varsInCasts.Count);
-    foreach (VCExprVar /*!*/ castVar in collector.varsInCasts)
+    List<VCExprVar>
+      castVariables = new List<VCExprVar>(collector.varsInCasts.Count);
+    foreach (VCExprVar castVar in collector.varsInCasts)
     {
       Contract.Assert(castVar != null);
       int i = newNode.BoundVars.IndexOf(castVar);
@@ -70,11 +70,11 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
     this.AxBuilder = axBuilder;
   }
 
-  readonly List<VCExprVar /*!*/> /*!*/
-    varsInCasts = new List<VCExprVar /*!*/>();
+  readonly List<VCExprVar>
+    varsInCasts = new List<VCExprVar>();
 
-  readonly Dictionary<VCExprVar /*!*/, object> /*!*/
-    varsOutsideCasts = new Dictionary<VCExprVar /*!*/, object>();
+  readonly Dictionary<VCExprVar, object>
+    varsOutsideCasts = new Dictionary<VCExprVar, object>();
 
   [ContractInvariantMethod]
   void ObjectInvariant()
@@ -85,12 +85,11 @@ internal class VariableCastCollector : TraversingVCExprVisitor<bool, bool>
   }
 
 
-  readonly TypeAxiomBuilderIntBoolU /*!*/
+  readonly TypeAxiomBuilderIntBoolU
     AxBuilder;
 
   protected override bool StandardResult(VCExpr node, bool arg)
   {
-    //Contract.Requires(node != null);
     return true; // not used
   }
 

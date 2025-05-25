@@ -11,7 +11,7 @@ namespace Microsoft.Boogie;
 /// </summary>
 public class StmtListBuilder
 {
-  readonly List<BigBlock /*!*/> /*!*/ bigBlocks = new();
+  readonly List<BigBlock> bigBlocks = new();
 
   string label;
   List<Cmd> simpleCmds;

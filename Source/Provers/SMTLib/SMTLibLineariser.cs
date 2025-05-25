@@ -25,7 +25,7 @@ namespace Microsoft.Boogie.SMTLib
   ////////////////////////////////////////////////////////////////////////////////////////
 
   // Lineariser for expressions. The result (bool) is currently not used for anything
-  public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions /*!*/>
+  public class SMTLibExprLineariser : IVCExprVisitor<bool, LineariserOptions>
   {
     public SMTLibOptions LibOptions { get; }
 
@@ -406,7 +406,7 @@ namespace Microsoft.Boogie.SMTLib
         return true;
       }
 
-      return node.Accept<bool, LineariserOptions /*!*/>(OpLineariser, options);
+      return node.Accept<bool, LineariserOptions>(OpLineariser, options);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -599,7 +599,7 @@ namespace Microsoft.Boogie.SMTLib
     /////////////////////////////////////////////////////////////////////////////////////
 
     // Lineariser for operator terms. The result (bool) is currently not used for anything
-    internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions /*!*/>
+    internal class SMTLibOpLineariser : IVCExprOpVisitor<bool, LineariserOptions>
     {
       private readonly SMTLibExprLineariser ExprLineariser;
       private readonly TextWriter wr;
@@ -675,8 +675,6 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitNeqOp(VCExprNAry node, LineariserOptions options)
       {
-        //Contract.Requires(node != null);
-        //Contract.Requires(options != null);
         wr.Write("(not ");
         PrintEq(node, options);
         wr.Write(")");
@@ -724,8 +722,6 @@ namespace Microsoft.Boogie.SMTLib
 
       public bool VisitDistinctOp(VCExprNAry node, LineariserOptions options)
       {
-        //Contract.Requires(node != null);
-        //Contract.Requires(options != null);
 
         if (node.Length < 2)
         {

@@ -33,7 +33,7 @@ namespace Microsoft.Boogie
       { Type.Int, Type.Real, Type.Bool, Type.RMode, Type.String, Type.RegEx };
 
 
-    private string /*!*/
+    private string
       stringRepr = "";
 
     public ProverOptions(SMTLibOptions libOptions)
@@ -98,12 +98,12 @@ The generic options may or may not be used by the prover plugin.
       }
     }
 
-    public virtual void Parse(IEnumerable<string /*!*/> /*!*/ opts)
+    public virtual void Parse(IEnumerable<string> opts)
     {
       Contract.Requires(Cce.NonNullElements(opts));
       StringBuilder sb = new StringBuilder(stringRepr);
       Contract.Assert(sb != null);
-      foreach (string /*!*/ opt in opts)
+      foreach (string opt in opts)
       {
         Contract.Assert(opt != null);
         if (!Parse(opt))
@@ -295,7 +295,7 @@ The generic options may or may not be used by the prover plugin.
     public abstract ProverInterface SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt);
 
     // Really returns ProverContext
-    public abstract ProverContext /*!*/ NewProverContext(ProverOptions /*!*/ options);
+    public abstract ProverContext NewProverContext(ProverOptions options);
 
     public virtual ProverOptions BlankProverOptions(SMTLibOptions libOptions)
     {
@@ -318,7 +318,7 @@ The generic options may or may not be used by the prover plugin.
       Contract.Requires(proverName != null);
       Contract.Ensures(Contract.Result<ProverFactory>() != null);
       Contract.Ensures(Cce.IsNew(Contract.Result<ProverFactory>()) && Cce.Owner.New(Contract.Result<ProverFactory>()));
-      string /*!*/
+      string
         path;
       if (proverName.IndexOf("/") >= 0 || proverName.IndexOf("\\") >= 0)
       {
@@ -335,7 +335,7 @@ The generic options may or may not be used by the prover plugin.
       string name = Cce.NonNull(asm.GetName().Name);
       System.Type factoryType =
         Cce.NonNull(asm.GetType("Microsoft.Boogie." + name.Replace("Boogie.Provers.", "") + ".Factory"));
-      return Cce.NonNull((ProverFactory /*!*/) Activator.CreateInstance(factoryType));
+      return Cce.NonNull((ProverFactory) Activator.CreateInstance(factoryType));
     }
   }
 

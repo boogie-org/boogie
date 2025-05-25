@@ -7,7 +7,7 @@ namespace Microsoft.Boogie
 {
   public class XmlSink
   {
-    string /*!*/ filename;
+    string filename;
     private CoreOptions options;
 
     [ContractInvariantMethod]

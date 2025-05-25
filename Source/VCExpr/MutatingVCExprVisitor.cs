@@ -5,9 +5,9 @@ using System.Diagnostics.Contracts;
 namespace Microsoft.Boogie.VCExprAST;
 
 public abstract class MutatingVCExprVisitor<Arg>
-  : IVCExprVisitor<VCExpr /*!*/, Arg>
+  : IVCExprVisitor<VCExpr, Arg>
 {
-  protected readonly VCExpressionGenerator /*!*/
+  protected readonly VCExpressionGenerator
     Gen;
 
   [ContractInvariantMethod]
@@ -29,13 +29,13 @@ public abstract class MutatingVCExprVisitor<Arg>
     return expr.Accept(this, arg);
   }
 
-  public List<VCExpr /*!*/> /*!*/ MutateSeq(IEnumerable<VCExpr /*!*/> /*!*/ exprs, Arg arg)
+  public List<VCExpr> MutateSeq(IEnumerable<VCExpr> exprs, Arg arg)
   {
     Contract.Requires(Cce.NonNullElements(exprs));
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
-    List<VCExpr /*!*/> /*!*/
-      res = new List<VCExpr /*!*/>();
-    foreach (VCExpr /*!*/ expr in exprs)
+    List<VCExpr>
+      res = new List<VCExpr>();
+    foreach (VCExpr expr in exprs)
     {
       Contract.Assert(expr != null);
       res.Add(expr.Accept(this, arg));
@@ -44,17 +44,17 @@ public abstract class MutatingVCExprVisitor<Arg>
     return res;
   }
 
-  private List<VCExpr /*!*/> /*!*/ MutateList(List<VCExpr /*!*/> /*!*/ exprs, Arg arg)
+  private List<VCExpr> MutateList(List<VCExpr> exprs, Arg arg)
   {
     Contract.Requires(Cce.NonNullElements(exprs));
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
     bool changed = false;
-    List<VCExpr /*!*/> /*!*/
-      res = new List<VCExpr /*!*/>();
-    foreach (VCExpr /*!*/ expr in exprs)
+    List<VCExpr>
+      res = new List<VCExpr>();
+    foreach (VCExpr expr in exprs)
     {
       Contract.Assert(expr != null);
-      VCExpr /*!*/
+      VCExpr
         newExpr = expr.Accept(this, arg);
       if (!Object.ReferenceEquals(expr, newExpr))
       {
@@ -74,7 +74,6 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprLiteral node, Arg arg)
   {
-    //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return node;
   }
@@ -83,7 +82,7 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   // Special element used to mark the positions in the todo-stack where
   // results have to be popped from the result-stack.
-  private static readonly VCExpr /*!*/
+  private static readonly VCExpr
     CombineResultsMarker = new VCExprLiteral(Type.Bool);
 
   // The todo-stack contains records of the shape
@@ -95,11 +94,11 @@ public abstract class MutatingVCExprVisitor<Arg>
   //     CombineResultsMarker
   //     f(arg0, arg1, arg2, ...)               (the original expression)
 
-  private readonly Stack<VCExpr /*!*/> /*!*/
-    NAryExprTodoStack = new Stack<VCExpr /*!*/>();
+  private readonly Stack<VCExpr>
+    NAryExprTodoStack = new Stack<VCExpr>();
 
-  private readonly Stack<VCExpr /*!*/> /*!*/
-    NAryExprResultStack = new Stack<VCExpr /*!*/>();
+  private readonly Stack<VCExpr>
+    NAryExprResultStack = new Stack<VCExpr>();
 
   [ContractInvariantMethod]
   void ObjectInvarianta()
@@ -127,7 +126,6 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprNAry node, Arg arg)
   {
-    //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     int initialStackSize = NAryExprTodoStack.Count;
     int initialResultStackSize = NAryExprResultStack.Count;
@@ -136,25 +134,25 @@ public abstract class MutatingVCExprVisitor<Arg>
 
     while (NAryExprTodoStack.Count > initialStackSize)
     {
-      VCExpr /*!*/
+      VCExpr
         subExpr = NAryExprTodoStack.Pop();
       Contract.Assert(subExpr != null);
 
       if (Object.ReferenceEquals(subExpr, CombineResultsMarker))
       {
         // assemble a result
-        VCExprNAry /*!*/
+        VCExprNAry
           originalExpr = (VCExprNAry) NAryExprTodoStack.Pop();
         Contract.Assert(originalExpr != null);
-        VCExprOp /*!*/
+        VCExprOp
           op = originalExpr.Op;
         bool changed = false;
-        List<VCExpr /*!*/> /*!*/
-          newSubExprs = new List<VCExpr /*!*/>();
+        List<VCExpr>
+          newSubExprs = new List<VCExpr>();
 
         for (int i = op.Arity - 1; i >= 0; --i)
         {
-          VCExpr /*!*/
+          VCExpr
             nextSubExpr = NAryExprResultStack.Pop();
           Contract.Assert(nextSubExpr != null);
           if (!Object.ReferenceEquals(nextSubExpr, originalExpr[i]))
@@ -193,8 +191,8 @@ public abstract class MutatingVCExprVisitor<Arg>
     return NAryExprResultStack.Pop();
   }
 
-  protected virtual VCExpr /*!*/ UpdateModifiedNode(VCExprNAry /*!*/ originalNode,
-    List<VCExpr /*!*/> /*!*/ newSubExprs, // has any of the subexpressions changed? 
+  protected virtual VCExpr UpdateModifiedNode(VCExprNAry originalNode,
+    List<VCExpr> newSubExprs, // has any of the subexpressions changed? 
     bool changed,
     Arg arg)
   {
@@ -216,24 +214,23 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprVar node, Arg arg)
   {
-    //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     return node;
   }
 
-  protected List<VCTrigger /*!*/> /*!*/ MutateTriggers(List<VCTrigger /*!*/> /*!*/ triggers, Arg arg)
+  protected List<VCTrigger> MutateTriggers(List<VCTrigger> triggers, Arg arg)
   {
     Contract.Requires(Cce.NonNullElements(triggers));
     Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCTrigger>>()));
-    List<VCTrigger /*!*/> /*!*/
-      newTriggers = new List<VCTrigger /*!*/>();
+    List<VCTrigger>
+      newTriggers = new List<VCTrigger>();
     bool changed = false;
-    foreach (VCTrigger /*!*/ trigger in triggers)
+    foreach (VCTrigger trigger in triggers)
     {
       Contract.Assert(trigger != null);
-      List<VCExpr /*!*/> /*!*/
+      List<VCExpr>
         exprs = trigger.Exprs;
-      List<VCExpr /*!*/> /*!*/
+      List<VCExpr>
         newExprs = MutateList(exprs, arg);
 
       if (Object.ReferenceEquals(exprs, newExprs))
@@ -257,14 +254,13 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprQuantifier node, Arg arg)
   {
-    //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     bool changed = false;
 
-    VCExpr /*!*/
+    VCExpr
       body = node.Body;
     Contract.Assert(body != null);
-    VCExpr /*!*/
+    VCExpr
       newbody = body.Accept(this, arg);
     Contract.Assert(newbody != null);
     if (!Object.ReferenceEquals(body, newbody))
@@ -273,10 +269,10 @@ public abstract class MutatingVCExprVisitor<Arg>
     }
 
     // visit the trigger expressions as well
-    List<VCTrigger /*!*/> /*!*/
+    List<VCTrigger>
       triggers = node.Triggers;
     Contract.Assert(Cce.NonNullElements(triggers));
-    List<VCTrigger /*!*/> /*!*/
+    List<VCTrigger>
       newTriggers = MutateTriggers(triggers, arg);
     Contract.Assert(Cce.NonNullElements(newTriggers));
     if (!Object.ReferenceEquals(triggers, newTriggers))
@@ -295,29 +291,28 @@ public abstract class MutatingVCExprVisitor<Arg>
 
   public virtual VCExpr Visit(VCExprLet node, Arg arg)
   {
-    //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     bool changed = false;
 
-    VCExpr /*!*/
+    VCExpr
       body = node.Body;
-    VCExpr /*!*/
+    VCExpr
       newbody = body.Accept(this, arg);
     if (!Object.ReferenceEquals(body, newbody))
     {
       changed = true;
     }
 
-    List<VCExprLetBinding /*!*/> /*!*/
-      newbindings = new List<VCExprLetBinding /*!*/>();
+    List<VCExprLetBinding>
+      newbindings = new List<VCExprLetBinding>();
     for (int i = 0; i < node.Length; ++i)
     {
-      VCExprLetBinding /*!*/
+      VCExprLetBinding
         binding = node[i];
       Contract.Assert(binding != null);
-      VCExpr /*!*/
+      VCExpr
         e = binding.E;
-      VCExpr /*!*/
+      VCExpr
         newE = e.Accept(this, arg);
       if (Object.ReferenceEquals(e, newE))
       {

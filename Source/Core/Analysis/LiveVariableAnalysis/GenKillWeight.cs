@@ -19,10 +19,10 @@ abstract public class Weight {
 public class GenKillWeight
 {
   // lambda S. (S - kill) union gen
-  HashSet<Variable /*!*/> /*!*/
+  HashSet<Variable>
     gen;
 
-  HashSet<Variable /*!*/> /*!*/
+  HashSet<Variable>
     kill;
 
   [ContractInvariantMethod]
@@ -36,21 +36,21 @@ public class GenKillWeight
 
   bool isZero;
 
-  public static GenKillWeight /*!*/
-    oneWeight = new GenKillWeight(new HashSet<Variable /*!*/>(), new HashSet<Variable /*!*/>());
+  public static GenKillWeight
+    oneWeight = new GenKillWeight(new HashSet<Variable>(), new HashSet<Variable>());
 
-  public static GenKillWeight /*!*/
+  public static GenKillWeight
     zeroWeight = new GenKillWeight();
 
   // initializes to zero
   public GenKillWeight()
   {
     this.isZero = true;
-    this.gen = new HashSet<Variable /*!*/>();
-    this.kill = new HashSet<Variable /*!*/>();
+    this.gen = new HashSet<Variable>();
+    this.kill = new HashSet<Variable>();
   }
 
-  public GenKillWeight(HashSet<Variable /*!*/> gen, HashSet<Variable /*!*/> kill)
+  public GenKillWeight(HashSet<Variable> gen, HashSet<Variable> kill)
   {
     Contract.Requires(Cce.NonNullElements(gen));
     Contract.Requires(Cce.NonNullElements(kill));
@@ -120,7 +120,7 @@ public class GenKillWeight
   {
     Contract.Requires(w != null);
     Contract.Ensures(Contract.Result<GenKillWeight>() != null);
-    HashSet<Variable /*!*/> gen = new HashSet<Variable>();
+    HashSet<Variable> gen = new HashSet<Variable>();
     foreach (Variable v in w.gen)
     {
       if (isGlobal(v))
@@ -129,7 +129,7 @@ public class GenKillWeight
       }
     }
 
-    HashSet<Variable /*!*/> kill = new HashSet<Variable>();
+    HashSet<Variable> kill = new HashSet<Variable>();
     foreach (Variable v in w.kill)
     {
       if (isGlobal(v))
@@ -171,13 +171,13 @@ public class GenKillWeight
     return string.Format("({0},{1})", gen.ToString(), kill.ToString());
   }
 
-  public HashSet<Variable /*!*/> /*!*/ getLiveVars()
+  public HashSet<Variable> getLiveVars()
   {
     Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));
     return gen;
   }
 
-  public HashSet<Variable /*!*/> /*!*/ getLiveVars(HashSet<Variable /*!*/> /*!*/ lv)
+  public HashSet<Variable> getLiveVars(HashSet<Variable> lv)
   {
     Contract.Requires(Cce.NonNullElements(lv));
     Contract.Ensures(Cce.NonNullElements(Contract.Result<HashSet<Variable>>()));

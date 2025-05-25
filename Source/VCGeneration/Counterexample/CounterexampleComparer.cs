@@ -34,8 +34,6 @@ public class CounterexampleComparer : IComparer<Counterexample>, IEqualityCompar
 
   public int Compare(Counterexample c1, Counterexample c2)
   {
-    //Contract.Requires(c1 != null);
-    //Contract.Requires(c2 != null);
     if (c1.GetLocation() == c2.GetLocation())
     {
       var c = Compare(c1.Trace, c2.Trace);

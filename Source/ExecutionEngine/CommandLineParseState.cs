@@ -8,7 +8,7 @@ public class CommandLineParseState
   public string s;
   public bool hasColonArgument;
 
-  public readonly string[] /*!*/
+  public readonly string[]
     args;
 
   public int i;

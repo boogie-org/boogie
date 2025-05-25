@@ -41,10 +41,10 @@ namespace Microsoft.Boogie
   {
     public override int ContentHash => Util.GetHashCode(2099615205, Kind, TypeParameters.Count, Dummies.Count, Body.ContentHash);
 
-    public List<TypeVariable> /*!*/
+    public List<TypeVariable>
       TypeParameters;
 
-    public List<Variable> /*!*/
+    public List<Variable>
       Dummies;
 
     public QKeyValue Attributes { get; set; }
@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
     // FIXME: Protect the above Fields
     public Expr _Body;
 
-    public Expr /*!*/ Body
+    public Expr Body
     {
       get => _Body;
       set
@@ -74,8 +74,8 @@ namespace Microsoft.Boogie
       Contract.Invariant(Body != null);
     }
 
-    public BinderExpr(IToken /*!*/ tok, List<TypeVariable> /*!*/ typeParameters,
-      List<Variable> /*!*/ dummies, QKeyValue kv, Expr /*!*/ body, bool immutable)
+    public BinderExpr(IToken tok, List<TypeVariable> typeParameters,
+      List<Variable> dummies, QKeyValue kv, Expr body, bool immutable)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -189,7 +189,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
       stream.push();
       stream.Write(this, "({0}", Kind.ToString().ToLower());
       this.EmitTypeHint(stream);
@@ -219,7 +218,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       if (rc.TriggerMode)
       {
         rc.Error(this, "quantifiers are not allowed in triggers");
@@ -228,14 +226,14 @@ namespace Microsoft.Boogie
       int previousTypeBinderState = rc.TypeBinderState;
       try
       {
-        foreach (TypeVariable /*!*/ v in TypeParameters)
+        foreach (TypeVariable v in TypeParameters)
         {
           Contract.Assert(v != null);
           rc.AddTypeBinder(v);
         }
 
         rc.PushVarContext();
-        foreach (Variable /*!*/ v in Dummies)
+        foreach (Variable v in Dummies)
         {
           Contract.Assert(v != null);
           v.Register(rc);
@@ -263,7 +261,6 @@ namespace Microsoft.Boogie
 
     public override void ComputeFreeVariables(Set freeVars)
     {
-      //Contract.Requires(freeVars != null);
       ComputeBinderFreeVariables(TypeParameters, Dummies, Body, null, Attributes, freeVars);
     }
 
@@ -312,12 +309,12 @@ namespace Microsoft.Boogie
     protected List<TypeVariable> GetUnmentionedTypeParameters()
     {
       Contract.Ensures(Contract.Result<List<TypeVariable>>() != null);
-      List<TypeVariable> /*!*/
+      List<TypeVariable>
         dummyParameters = Type.FreeVariablesIn(Dummies.Select(Item => Item.TypedIdent.Type).ToList());
       Contract.Assert(dummyParameters != null);
-      List<TypeVariable> /*!*/
+      List<TypeVariable>
         unmentionedParameters = new List<TypeVariable>();
-      foreach (TypeVariable /*!*/ var in TypeParameters)
+      foreach (TypeVariable var in TypeParameters)
       {
         Contract.Assert(var != null);
         if (!dummyParameters.Contains(var))
@@ -333,9 +330,9 @@ namespace Microsoft.Boogie
   public class Trigger : Absy
   {
     public readonly bool Pos;
-    [Rep] private List<Expr> /*!*/ tr;
+    [Rep] private List<Expr> tr;
 
-    public IList<Expr> /*!*/ Tr
+    public IList<Expr> Tr
     {
       get
       {
@@ -363,7 +360,7 @@ namespace Microsoft.Boogie
 
     public Trigger Next;
 
-    public Trigger(IToken /*!*/ tok, bool pos, IEnumerable<Expr> /*!*/ tr, Trigger next = null)
+    public Trigger(IToken tok, bool pos, IEnumerable<Expr> tr, Trigger next = null)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -380,9 +377,9 @@ namespace Microsoft.Boogie
       Contract.Requires(stream != null);
       stream.SetToken(this);
       Contract.Assert(this.Tr.Count >= 1);
-      string /*!*/
+      string
         sep = Pos ? "{ " : "{:nopats ";
-      foreach (Expr /*!*/ e in this.Tr)
+      foreach (Expr e in this.Tr)
       {
         Contract.Assert(e != null);
         stream.Write(sep);
@@ -395,9 +392,8 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.TriggerMode = true;
-      foreach (Expr /*!*/ e in this.Tr)
+      foreach (Expr e in this.Tr)
       {
         Contract.Assert(e != null);
         e.Resolve(rc);
@@ -421,7 +417,7 @@ namespace Microsoft.Boogie
     public void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
       Contract.Requires(freeVars != null);
-      foreach (Expr /*!*/ e in this.Tr)
+      foreach (Expr e in this.Tr)
       {
         Contract.Assert(e != null);
         e.ComputeFreeVariables(freeVars);
@@ -430,8 +426,7 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      foreach (Expr /*!*/ e in this.Tr)
+      foreach (Expr e in this.Tr)
       {
         Contract.Assert(e != null);
         e.Typecheck(tc);
@@ -451,7 +446,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitTrigger(this);
     }
@@ -486,8 +480,8 @@ namespace Microsoft.Boogie
 
   public class ForallExpr : QuantifierExpr
   {
-    public ForallExpr(IToken /*!*/ tok, List<TypeVariable> /*!*/ typeParams,
-      List<Variable> /*!*/ dummies, QKeyValue kv, Trigger triggers, Expr /*!*/ body, bool immutable = false)
+    public ForallExpr(IToken tok, List<TypeVariable> typeParams,
+      List<Variable> dummies, QKeyValue kv, Trigger triggers, Expr body, bool immutable = false)
       : base(tok, typeParams, dummies, kv, triggers, body, immutable)
     {
       Contract.Requires(tok != null);
@@ -528,7 +522,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitForallExpr(this);
     }
@@ -541,8 +534,8 @@ namespace Microsoft.Boogie
 
   public class ExistsExpr : QuantifierExpr
   {
-    public ExistsExpr(IToken /*!*/ tok, List<TypeVariable> /*!*/ typeParams, List<Variable> /*!*/ dummies,
-      QKeyValue kv, Trigger triggers, Expr /*!*/ body, bool immutable = false)
+    public ExistsExpr(IToken tok, List<TypeVariable> typeParams, List<Variable> dummies,
+      QKeyValue kv, Trigger triggers, Expr body, bool immutable = false)
       : base(tok, typeParams, dummies, kv, triggers, body, immutable)
     {
       Contract.Requires(tok != null);
@@ -572,7 +565,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitExistsExpr(this);
     }
@@ -596,8 +588,8 @@ namespace Microsoft.Boogie
 
     public readonly int SkolemId;
 
-    public QuantifierExpr(IToken /*!*/ tok, List<TypeVariable> /*!*/ typeParameters,
-      List<Variable> /*!*/ dummies, QKeyValue kv, Trigger triggers, Expr /*!*/ body, bool immutable)
+    public QuantifierExpr(IToken tok, List<TypeVariable> typeParameters,
+      List<Variable> dummies, QKeyValue kv, Trigger triggers, Expr body, bool immutable)
       : base(tok, typeParameters, dummies, kv, body, immutable)
     {
       Contract.Requires(tok != null);
@@ -614,7 +606,6 @@ namespace Microsoft.Boogie
 
     protected override void EmitTriggers(TokenTextWriter stream)
     {
-      //Contract.Requires(stream != null);
       stream.push();
       for (Trigger tr = this.Triggers; tr != null; tr = tr.Next)
       {
@@ -671,7 +662,7 @@ namespace Microsoft.Boogie
 
     private class NeverTriggerCollector : ReadOnlyVisitor
     {
-      QuantifierExpr /*!*/
+      QuantifierExpr
         parent;
 
       [ContractInvariantMethod]
@@ -688,7 +679,6 @@ namespace Microsoft.Boogie
 
       public override Expr VisitNAryExpr(NAryExpr node)
       {
-        //Contract.Requires(node != null);
         Contract.Ensures(Contract.Result<Expr>() != null);
         FunctionCall fn = node.Fun as FunctionCall;
         if (fn != null && Cce.NonNull(fn.Func).NeverTrigger)
@@ -740,7 +730,6 @@ namespace Microsoft.Boogie
 
     protected override void ResolveTriggers(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       for (Trigger tr = this.Triggers; tr != null; tr = tr.Next)
       {
         int prevErrorCount = rc.ErrorCount;
@@ -753,7 +742,7 @@ namespace Microsoft.Boogie
             Set /*Variable*/
               freeVars = new Set /*Variable*/();
             tr.ComputeFreeVariables(freeVars);
-            foreach (Variable /*!*/ v in Dummies)
+            foreach (Variable v in Dummies)
             {
               Contract.Assert(v != null);
               if (!freeVars[v])
@@ -768,7 +757,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       int oldErrorCount = rc.ErrorCount;
 
       this.MergeAdjacentQuantifier();
@@ -783,13 +771,11 @@ namespace Microsoft.Boogie
 
     public override void ComputeFreeVariables(Set freeVars)
     {
-      //Contract.Requires(freeVars != null);
       ComputeBinderFreeVariables(TypeParameters, Dummies, Body, Triggers, Attributes, freeVars);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
       {
         kv.Typecheck(tc);
@@ -812,7 +798,7 @@ namespace Microsoft.Boogie
       // Check that type parameters occur in the types of the
       // dummies, or otherwise in the triggers. This can only be
       // done after typechecking
-      List<TypeVariable> /*!*/
+      List<TypeVariable>
         unmentionedParameters = GetUnmentionedTypeParameters();
       Contract.Assert(unmentionedParameters != null);
 
@@ -829,7 +815,7 @@ namespace Microsoft.Boogie
             Set /*Variable*/
               freeVars = new Set /*Variable*/();
             tr.ComputeFreeVariables(freeVars);
-            foreach (TypeVariable /*!*/ v in unmentionedParameters)
+            foreach (TypeVariable v in unmentionedParameters)
             {
               Contract.Assert(v != null);
               if (!freeVars[v])
@@ -844,7 +830,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public override Type /*!*/ ShallowType
+    public override Type ShallowType
     {
       get
       {
@@ -877,8 +863,8 @@ namespace Microsoft.Boogie
 
   public class LambdaExpr : BinderExpr
   {
-    public LambdaExpr(IToken /*!*/ tok, List<TypeVariable> /*!*/ typeParameters,
-      List<Variable> /*!*/ dummies, QKeyValue kv, Expr /*!*/ body, bool immutable = false)
+    public LambdaExpr(IToken tok, List<TypeVariable> typeParameters,
+      List<Variable> dummies, QKeyValue kv, Expr body, bool immutable = false)
       : base(tok, typeParameters, dummies, kv, body, immutable)
     {
       Contract.Requires(tok != null);
@@ -895,13 +881,11 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       base.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       for (QKeyValue kv = this.Attributes; kv != null; kv = kv.Next)
       {
         kv.Typecheck(tc);
@@ -910,9 +894,9 @@ namespace Microsoft.Boogie
       Body.Typecheck(tc);
       Contract.Assert(Body.Type != null); // follows from postcondition of Expr.Typecheck
 
-      List<Type> /*!*/
+      List<Type>
         argTypes = new List<Type>();
-      foreach (Variable /*!*/ v in Dummies)
+      foreach (Variable v in Dummies)
       {
         Contract.Assert(v != null);
         argTypes.Add(v.TypedIdent.Type);
@@ -923,7 +907,7 @@ namespace Microsoft.Boogie
       // Check that type parameters occur in the types of the
       // dummies, or otherwise in the triggers. This can only be
       // done after typechecking
-      List<TypeVariable> /*!*/
+      List<TypeVariable>
         unmentionedParameters = GetUnmentionedTypeParameters();
       Contract.Assert(unmentionedParameters != null);
 
@@ -936,7 +920,7 @@ namespace Microsoft.Boogie
 
     private Type mapType;
 
-    public override Type /*!*/ ShallowType
+    public override Type ShallowType
     {
       get
       {
@@ -944,9 +928,9 @@ namespace Microsoft.Boogie
 
         if (mapType == null)
         {
-          List<Type> /*!*/
+          List<Type>
             argTypes = new List<Type>();
-          foreach (Variable /*!*/ v in Dummies)
+          foreach (Variable v in Dummies)
           {
             Contract.Assert(v != null);
             argTypes.Add(v.TypedIdent.Type);
@@ -961,7 +945,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitLambdaExpr(this);
     }
@@ -969,7 +952,7 @@ namespace Microsoft.Boogie
 
   public class LetExpr : Expr, ICarriesAttributes
   {
-    public LetExpr(IToken /*!*/ tok, List<Variable> /*!*/ dummies, List<Expr> rhss, QKeyValue kv, Expr /*!*/ body)
+    public LetExpr(IToken tok, List<Variable> dummies, List<Expr> rhss, QKeyValue kv, Expr body)
       : base(tok, false)
     {
       Contract.Requires(tok != null);
@@ -986,8 +969,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
-
       if (Dummies.Count != Rhss.Count)
       {
         rc.Error(this.tok, "number of left-hand sides does not match number of right-hand sides");
@@ -1017,7 +998,6 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       foreach (var e in Rhss)
       {
         e.Typecheck(tc);
@@ -1041,7 +1021,7 @@ namespace Microsoft.Boogie
       this.Type = Body.Type;
     }
 
-    public override Type /*!*/ ShallowType
+    public override Type ShallowType
     {
       get
       {
@@ -1055,10 +1035,10 @@ namespace Microsoft.Boogie
       return visitor.VisitLetExpr(this);
     }
 
-    public List<Variable> /*!*/
+    public List<Variable>
       Dummies;
 
-    public IList<Expr> /*!*/
+    public IList<Expr>
       Rhss;
 
     public QKeyValue Attributes { get; set; }
@@ -1119,7 +1099,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
       stream.push();
       stream.Write(this, "(var ");
 
@@ -1154,8 +1133,6 @@ namespace Microsoft.Boogie
 
     public override void ComputeFreeVariables(Set freeVars)
     {
-      //Contract.Requires(freeVars != null);
-
       foreach (var e in Rhss)
       {
         e.ComputeFreeVariables(freeVars);

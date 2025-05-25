@@ -18,7 +18,7 @@ namespace Microsoft.Boogie
     int pos { get; set; } // token position in the source text (starting at 0)
     int col { get; set; } // token column (starting at 0)
     int line { get; set; } // token line (starting at 1)
-    string /*!*/ val { get; set; } // token value
+    string val { get; set; } // token value
 
     bool IsValid { get; }
   }
@@ -32,12 +32,12 @@ namespace Microsoft.Boogie
     public int _col; // token column (starting at 1)
     public int _line; // token line (starting at 1)
 
-    public string /*!*/
+    public string
       _val; // token value
 
     public Token next; // ML 2005-03-11 Tokens are kept in linked list
 
-    public static readonly IToken /*!*/ NoToken = new Token();
+    public static readonly IToken NoToken = new Token();
 
     public Token()
     {
@@ -84,7 +84,7 @@ namespace Microsoft.Boogie
       set { this._line = value; }
     }
 
-    public string /*!*/ val
+    public string val
     {
       get { return this._val; }
       set { this._val = value; }

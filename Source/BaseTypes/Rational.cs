@@ -129,7 +129,7 @@ namespace Microsoft.BaseTypes
       get { return denominator == BigNum.ZERO ? BigNum.ONE : denominator; }
     }
 
-    public override string /*!*/ ToString()
+    public override string ToString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
       return String.Format("{0}/{1}", Numerator, Denominator);
