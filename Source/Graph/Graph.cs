@@ -8,13 +8,13 @@ namespace Microsoft.Boogie.GraphUtil
 {
   internal static class Util
   {
-    private static string /*!*/ ListToString<T>(IEnumerable<T> xs)
+    private static string ListToString<T>(IEnumerable<T> xs)
     {
       Contract.Ensures(Contract.Result<string>() != null);
       StringBuilder sb = new StringBuilder();
       sb.Append("[");
       bool first = true;
-      foreach (T /*!*/ x in xs)
+      foreach (T x in xs)
       {
         Contract.Assert(x != null);
         if (!first)
@@ -30,7 +30,7 @@ namespace Microsoft.Boogie.GraphUtil
       return sb.ToString();
     }
 
-    public static string /*!*/ MapToString<Node>(Dictionary<Node, List<Node>> d)
+    public static string MapToString<Node>(Dictionary<Node, List<Node>> d)
     {
       Contract.Ensures(Contract.Result<string>() != null);
       StringBuilder sb = new StringBuilder();
@@ -187,7 +187,7 @@ namespace Microsoft.Boogie.GraphUtil
     {
       Console.Write("[");
       int i = 0;
-      foreach (T /*!*/ x in xs)
+      foreach (T x in xs)
       {
         Contract.Assert(x != null);
         if (0 < i)
@@ -202,13 +202,13 @@ namespace Microsoft.Boogie.GraphUtil
       Console.WriteLine("]");
     }
 
-    public string /*!*/ ListToString<T>(IEnumerable<T> xs)
+    public string ListToString<T>(IEnumerable<T> xs)
     {
       Contract.Ensures(Contract.Result<string>() != null);
       StringBuilder sb = new StringBuilder();
       sb.Append("[");
       bool first = true;
-      foreach (T /*!*/ x in xs)
+      foreach (T x in xs)
       {
         Contract.Assert(x != null);
         if (!first)
@@ -343,7 +343,7 @@ namespace Microsoft.Boogie.GraphUtil
       return finger1;
     }
 
-    private void PostOrderVisit(Node /*!*/ n, HashSet<Node> visited, ref int currentNumber)
+    private void PostOrderVisit(Node n, HashSet<Node> visited, ref int currentNumber)
     {
       Contract.Requires(n != null);
       if (!visited.Add(n))
@@ -351,7 +351,7 @@ namespace Microsoft.Boogie.GraphUtil
         return;
       }
 
-      foreach (Node /*!*/ child in graph.Successors(n))
+      foreach (Node child in graph.Successors(n))
       {
         Contract.Assert(child != null);
         PostOrderVisit(child, visited, ref currentNumber);
@@ -394,7 +394,7 @@ namespace Microsoft.Boogie.GraphUtil
         {
           grey.Add(curr);
           stack.Push(curr);
-          foreach (Node /*!*/ child in graph.Successors(curr))
+          foreach (Node child in graph.Successors(curr))
           {
             Contract.Assert(child != null);
             if (!visited.Contains(child))
@@ -447,13 +447,13 @@ namespace Microsoft.Boogie.GraphUtil
 
   public class Graph<Node>
   {
-    private HashSet<Tuple<Node /*!*/, Node /*!*/>> edges;
+    private HashSet<Tuple<Node, Node>> edges;
     private HashSet<Node> nodes;
     public Node Source { get; set; }
     private bool reducible;
     private HashSet<Node> headers;
     private Dictionary<Node, HashSet<Node>> backEdgeNodes;
-    private Dictionary<Tuple<Node /*!*/, Node /*!*/>, HashSet<Node>> naturalLoops;
+    private Dictionary<Tuple<Node, Node>, HashSet<Node>> naturalLoops;
     private HashSet<Node> splitCandidates;
 
     private DomRelation<Node> dominatorMap = null;
@@ -471,7 +471,7 @@ namespace Microsoft.Boogie.GraphUtil
 
     private class PreHeader
     {
-      Node /*!*/
+      Node
         myHeader;
 
       [ContractInvariantMethod]
@@ -480,21 +480,21 @@ namespace Microsoft.Boogie.GraphUtil
         Contract.Invariant(myHeader != null);
       }
 
-      internal PreHeader(Node /*!*/ h)
+      internal PreHeader(Node h)
       {
         Contract.Requires(h != null);
         myHeader = h;
       }
 
       [Pure]
-      public override string /*!*/ ToString()
+      public override string ToString()
       {
         Contract.Ensures(Contract.Result<string>() != null);
         return "#" + myHeader.ToString();
       }
     }
 
-    public Graph(HashSet<Tuple<Node /*!*/, Node /*!*/>> edges)
+    public Graph(HashSet<Tuple<Node, Node>> edges)
     {
       Contract.Requires(Cce.NonNullElements(edges) && Contract.ForAll(edges, p => p.Item1 != null && p.Item2 != null));
       this.edges = edges;
@@ -507,7 +507,7 @@ namespace Microsoft.Boogie.GraphUtil
 
       // 
       HashSet<Node> temp = new HashSet<Node>();
-      foreach (Tuple<Node /*!*/, Node /*!*/> p in edges)
+      foreach (Tuple<Node, Node> p in edges)
       {
         Contract.Assert(p.Item1 != null);
         temp.Add(p.Item1);
@@ -520,18 +520,18 @@ namespace Microsoft.Boogie.GraphUtil
 
     public Graph()
     {
-      edges = new HashSet<Tuple<Node /*!*/, Node /*!*/>>();
+      edges = new HashSet<Tuple<Node, Node>>();
       nodes = new HashSet<Node>();
     }
 
     // BUGBUG: Set<T>.ToString() should return a non-null string
     [Pure]
-    public override string /*!*/ ToString()
+    public override string ToString()
     {
       return "" + edges.ToString();
     }
 
-    public void AddSource(Node /*!*/ x)
+    public void AddSource(Node x)
     {
       Contract.Requires(x != null);
       // BUGBUG: This generates bad code in the compiler
@@ -540,13 +540,13 @@ namespace Microsoft.Boogie.GraphUtil
       Source = x;
     }
 
-    public void AddEdge(Node /*!*/ source, Node /*!*/ dest)
+    public void AddEdge(Node source, Node dest)
     {
       Contract.Requires(source != null);
       Contract.Requires(dest != null);
       //es += Set<Edge>{<source,dest>};
       //ns += Set<Node>{source, dest};
-      edges.Add(new Tuple<Node /*!*/, Node /*!*/>(source, dest));
+      edges.Add(new Tuple<Node, Node>(source, dest));
       nodes.Add(source);
       nodes.Add(dest);
       predComputed = false;
@@ -557,7 +557,7 @@ namespace Microsoft.Boogie.GraphUtil
       get { return nodes; }
     }
 
-    public IEnumerable<Tuple<Node /*!*/, Node /*!*/>> Edges
+    public IEnumerable<Tuple<Node, Node>> Edges
     {
       get
       {
@@ -568,13 +568,13 @@ namespace Microsoft.Boogie.GraphUtil
       }
     }
 
-    public bool Edge(Node /*!*/ x, Node /*!*/ y)
+    public bool Edge(Node x, Node y)
     {
       Contract.Requires(x != null);
       Contract.Requires(y != null);
       // original A#
       // return <x,y> in es;
-      return edges.Contains(new Tuple<Node /*!*/, Node /*!*/>(x, y));
+      return edges.Contains(new Tuple<Node, Node>(x, y));
     }
 
     private void ComputePredSuccCaches()
@@ -594,7 +594,7 @@ namespace Microsoft.Boogie.GraphUtil
         succCache[n] = new HashSet<Node>();
       }
 
-      foreach (Tuple<Node /*!*/, Node /*!*/> p in Edges)
+      foreach (Tuple<Node, Node> p in Edges)
       {
         Contract.Assert(p.Item1 != null);
         Contract.Assert(p.Item2 != null);
@@ -728,7 +728,7 @@ namespace Microsoft.Boogie.GraphUtil
       }
     }
 
-    public List<Node> ImmediatelyDominatedBy(Node /*!*/ n)
+    public List<Node> ImmediatelyDominatedBy(Node n)
     {
       Contract.Requires(n != null);
       ImmediateDominatorMap.TryGetValue(n, out var dominees);
@@ -765,11 +765,11 @@ namespace Microsoft.Boogie.GraphUtil
         counter++;
       }
 
-      foreach (Tuple<Node /*!*/, Node /*!*/> e in Edges)
+      foreach (Tuple<Node, Node> e in Edges)
       {
         Contract.Assert(e.Item1 != null);
         Contract.Assert(e.Item2 != null);
-        Node /*!*/
+        Node
           target = e.Item2;
         incomingEdges[nodeToNumber[target]]++;
       }
@@ -838,7 +838,7 @@ namespace Microsoft.Boogie.GraphUtil
       List<Node> S = new List<Node>();
       HashSet<Node> V = Nodes;
       HashSet<Node> X = new HashSet<Node>();
-      foreach (Node /*!*/ n in V)
+      foreach (Node n in V)
       {
         Contract.Assert(n != null);
         X.Add(n);
@@ -851,12 +851,12 @@ namespace Microsoft.Boogie.GraphUtil
         change = false;
         if (X.Count > 0)
         {
-          foreach (Node /*!*/ n in X)
+          foreach (Node n in X)
           {
             Contract.Assert(n != null);
             // see if n has any incoming edges from any other node in X
             bool inDegreeZero = true;
-            foreach (Node /*!*/ u in X)
+            foreach (Node u in X)
             {
               Contract.Assert(u != null);
               if (Edge(u, n))
@@ -893,12 +893,12 @@ namespace Microsoft.Boogie.GraphUtil
     }
 
     // [Dragon, Fig. 10.15, p. 604. Algorithm for constructing the natural loop.]
-    static HashSet<Node> NaturalLoop(Graph<Node> g, Tuple<Node /*!*/, Node /*!*/> backEdge)
+    static HashSet<Node> NaturalLoop(Graph<Node> g, Tuple<Node, Node> backEdge)
     {
       Contract.Requires(backEdge.Item1 != null && backEdge.Item2 != null);
-      Node /*!*/
+      Node
         n = backEdge.Item1;
-      Node /*!*/
+      Node
         d = backEdge.Item2;
       Stack<Node> stack = new Stack<Node>();
       HashSet<Node> loop = new HashSet<Node>();
@@ -913,7 +913,7 @@ namespace Microsoft.Boogie.GraphUtil
       {
         Node m = stack.Peek();
         stack.Pop(); // pop stack
-        foreach (Node /*!*/ p in g.Predecessors(m))
+        foreach (Node p in g.Predecessors(m))
         {
           Contract.Assert(p != null);
           if (!(loop.Contains(p)))
@@ -932,7 +932,7 @@ namespace Microsoft.Boogie.GraphUtil
       internal bool reducible;
       internal HashSet<Node> headers;
       internal Dictionary<Node, HashSet<Node>> backEdgeNodes;
-      internal Dictionary<Tuple<Node /*!*/, Node /*!*/>, HashSet<Node>> naturalLoops;
+      internal Dictionary<Tuple<Node, Node>, HashSet<Node>> naturalLoops;
       internal HashSet<Node> splitCandidates;
 
       [ContractInvariantMethod]
@@ -942,7 +942,7 @@ namespace Microsoft.Boogie.GraphUtil
       }
 
       internal ReducibleResult(bool b, HashSet<Node> headers, Dictionary<Node, HashSet<Node>> backEdgeNodes,
-        Dictionary<Tuple<Node /*!*/, Node /*!*/>, HashSet<Node>> naturalLoops, HashSet<Node> splitCandidates)
+        Dictionary<Tuple<Node, Node>, HashSet<Node>> naturalLoops, HashSet<Node> splitCandidates)
       {
         Contract.Requires(naturalLoops == null ||
                           Contract.ForAll(naturalLoops.Keys, Key => Key.Item1 != null && Key.Item2 != null));
@@ -1014,16 +1014,16 @@ namespace Microsoft.Boogie.GraphUtil
     // [Dragon, p. 606]
     static ReducibleResult ComputeReducible(Graph<Node> g,
       Node source,
-      DomRelation<Node> /*!*/ DomRelation)
+      DomRelation<Node> DomRelation)
     {
       Contract.Requires(DomRelation != null);
 
       //Console.WriteLine("[" + DateTime.Now +"]: begin ComputeReducible");
-      IEnumerable<Tuple<Node /*!*/, Node /*!*/>> edges = g.Edges;
+      IEnumerable<Tuple<Node, Node>> edges = g.Edges;
       Contract.Assert(Contract.ForAll(edges, n => n.Item1 != null && n.Item2 != null));
-      HashSet<Tuple<Node /*!*/, Node /*!*/>> backEdges = new HashSet<Tuple<Node /*!*/, Node /*!*/>>();
-      HashSet<Tuple<Node /*!*/, Node /*!*/>> nonBackEdges = new HashSet<Tuple<Node /*!*/, Node /*!*/>>();
-      foreach (Tuple<Node /*!*/, Node /*!*/> e in edges)
+      HashSet<Tuple<Node, Node>> backEdges = new HashSet<Tuple<Node, Node>>();
+      HashSet<Tuple<Node, Node>> nonBackEdges = new HashSet<Tuple<Node, Node>>();
+      foreach (Tuple<Node, Node> e in edges)
       {
         Contract.Assert(e.Item1 != null);
         Contract.Assert(e.Item2 != null);
@@ -1046,7 +1046,7 @@ namespace Microsoft.Boogie.GraphUtil
         return new ReducibleResult(false,
           new HashSet<Node>(),
           new Dictionary<Node, HashSet<Node>>(),
-          new Dictionary<Tuple<Node /*!*/, Node /*!*/>, HashSet<Node>>(),
+          new Dictionary<Tuple<Node, Node>, HashSet<Node>>(),
           FindCycle(withoutBackEdges, source));
       }
       else
@@ -1054,7 +1054,7 @@ namespace Microsoft.Boogie.GraphUtil
         // original A#:
         //Set<Node> headers = Set{ d : <n,d> in backEdges };
         HashSet<Node> headers = new HashSet<Node>();
-        foreach (Tuple<Node /*!*/, Node /*!*/> e in backEdges)
+        foreach (Tuple<Node, Node> e in backEdges)
         {
           Contract.Assert(e.Item1 != null);
           Contract.Assert(e.Item2 != null);
@@ -1064,7 +1064,7 @@ namespace Microsoft.Boogie.GraphUtil
         // original A#:
         //Map<Node,Set<Node>> backEdgeNodes = Map{ h -> bs  : h in headers, bs = Set<Node>{ b : <b,x> in backEdges, x == h } };
         Dictionary<Node, HashSet<Node>> backEdgeNodes = new Dictionary<Node, HashSet<Node>>();
-        foreach (Node /*!*/ h in headers)
+        foreach (Node h in headers)
         {
           Contract.Assert(h != null);
           HashSet<Node> bs = new HashSet<Node>();
@@ -1083,9 +1083,9 @@ namespace Microsoft.Boogie.GraphUtil
 
         // original A#:
         //Map<Tuple<Node,Node>,Set<Node>> naturalLoops = Map{ e -> NaturalLoop(g,e) : e in backEdges };
-        Dictionary<Tuple<Node /*!*/, Node /*!*/>, HashSet<Node>> naturalLoops =
-          new Dictionary<Tuple<Node /*!*/, Node /*!*/>, HashSet<Node>>();
-        foreach (Tuple<Node /*!*/, Node /*!*/> e in backEdges)
+        Dictionary<Tuple<Node, Node>, HashSet<Node>> naturalLoops =
+          new Dictionary<Tuple<Node, Node>, HashSet<Node>>();
+        foreach (Tuple<Node, Node> e in backEdges)
         {
           Contract.Assert(e.Item1 != null && e.Item2 != null);
           naturalLoops.Add(e, NaturalLoop(g, e));
@@ -1106,7 +1106,7 @@ namespace Microsoft.Boogie.GraphUtil
       get { return headers; }
     }
 
-    public IEnumerable<Node> BackEdgeNodes(Node /*!*/ h)
+    public IEnumerable<Node> BackEdgeNodes(Node h)
     {
       Contract.Requires(h != null);
       // original A#:
@@ -1114,11 +1114,11 @@ namespace Microsoft.Boogie.GraphUtil
       return (backEdgeNodes.ContainsKey(h) ? backEdgeNodes[h] : (IEnumerable<Node>) new List<Node>());
     }
 
-    public IEnumerable<Node> NaturalLoops(Node /*!*/ header, Node /*!*/ backEdgeNode)
+    public IEnumerable<Node> NaturalLoops(Node header, Node backEdgeNode)
     {
       Contract.Requires(header != null);
       Contract.Requires(backEdgeNode != null);
-      Tuple<Node /*!*/, Node /*!*/> e = new Tuple<Node /*!*/, Node /*!*/>(backEdgeNode, header);
+      Tuple<Node, Node> e = new Tuple<Node, Node>(backEdgeNode, header);
       return naturalLoops.ContainsKey(e) ? naturalLoops[e] : (IEnumerable<Node>) new List<Node>();
     }
 
@@ -1481,7 +1481,7 @@ namespace Microsoft.Boogie.GraphUtil
     }
   }
 
-  public delegate System.Collections.IEnumerable /*<Node!>*/ /*!*/ Adjacency<T>(T /*!*/ node);
+  public delegate System.Collections.IEnumerable /*<Node!>*/ Adjacency<T>(T node);
 
 
   // An SCC is a set of nodes
@@ -1493,10 +1493,10 @@ namespace Microsoft.Boogie.GraphUtil
       Contract.Invariant(nodesMap != null);
     }
 
-    private IDictionary<Node, object> /*!*/
+    private IDictionary<Node, object>
       nodesMap = new Dictionary<Node, object>();
 
-    private ICollection<Node> /*!*/ nodes
+    private ICollection<Node> nodes
     {
       get { return Cce.NonNull(nodesMap.Keys); }
     }
@@ -1504,7 +1504,7 @@ namespace Microsoft.Boogie.GraphUtil
     [Pure]
     [GlobalAccess(false)]
     [Escapes(true, false)]
-    System.Collections.IEnumerator /*!*/ System.Collections.IEnumerable.GetEnumerator()
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
     {
       Contract.Ensures(Contract.Result<System.Collections.IEnumerator>() != null);
 
@@ -1514,7 +1514,7 @@ namespace Microsoft.Boogie.GraphUtil
     [Pure]
     [GlobalAccess(false)]
     [Escapes(true, false)]
-    IEnumerator<Node> /*!*/ IEnumerable<Node>.GetEnumerator()
+    IEnumerator<Node> IEnumerable<Node>.GetEnumerator()
     {
       Contract.Ensures(Contract.Result<IEnumerator<Node>>() != null);
 
@@ -1549,7 +1549,6 @@ namespace Microsoft.Boogie.GraphUtil
 
     public void CopyTo(Node[] array, int arrayIndex)
     {
-      //Contract.Requires(array != null);
       nodes.CopyTo(array, arrayIndex);
     }
 
@@ -1559,9 +1558,9 @@ namespace Microsoft.Boogie.GraphUtil
     }
   }
 
-  public sealed class StronglyConnectedComponents<Node> : IEnumerable<SCC<Node> /*!*/> where Node : class
+  public sealed class StronglyConnectedComponents<Node> : IEnumerable<SCC<Node>> where Node : class
   {
-    private readonly IDictionary<Node /*!*/, object> /*!*/
+    private readonly IDictionary<Node, object>
       graph;
 
     [ContractInvariantMethod]
@@ -1572,10 +1571,10 @@ namespace Microsoft.Boogie.GraphUtil
       Contract.Invariant(succs != null);
     }
 
-    private readonly Adjacency<Node> /*!*/
+    private readonly Adjacency<Node>
       preds;
 
-    private readonly Adjacency<Node> /*!*/
+    private readonly Adjacency<Node>
       succs;
 
     private bool computed = false;
@@ -1594,9 +1593,9 @@ namespace Microsoft.Boogie.GraphUtil
       Contract.Requires(preds != null);
       Contract.Requires(graph != null);
       Contract.Ensures(!Computed);
-      IDictionary<Node /*!*/, object> /*!*/
-        dict = new Dictionary<Node /*!*/, object>();
-      foreach (Node /*!*/ n in graph)
+      IDictionary<Node, object>
+        dict = new Dictionary<Node, object>();
+      foreach (Node n in graph)
       {
         Contract.Assert(n != null);
         dict.Add(n, null);
@@ -1610,7 +1609,7 @@ namespace Microsoft.Boogie.GraphUtil
     [Pure]
     [GlobalAccess(false)]
     [Escapes(true, false)]
-    System.Collections.IEnumerator /*!*/ System.Collections.IEnumerable.GetEnumerator()
+    System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
     {
       Contract.Ensures(Contract.Result<System.Collections.IEnumerator>() != null);
 
@@ -1620,17 +1619,17 @@ namespace Microsoft.Boogie.GraphUtil
     [Pure]
     [GlobalAccess(false)]
     [Escapes(true, false)]
-    IEnumerator<SCC<Node> /*!*/> /*!*/ IEnumerable<SCC<Node> /*!*/>.GetEnumerator()
+    IEnumerator<SCC<Node>> IEnumerable<SCC<Node>>.GetEnumerator()
     {
       Contract.Ensures(Contract.Result<IEnumerator<SCC<Node>>>() != null);
 
       Contract.Assume(Computed);
-      Contract.Assert(Cce.NonNullElements((IEnumerable<SCC<Node> /*!*/>) sccs)); //REVIEW
-      return ((IEnumerable<SCC<Node> /*!*/>) sccs).GetEnumerator();
+      Contract.Assert(Cce.NonNullElements((IEnumerable<SCC<Node>>) sccs)); //REVIEW
+      return ((IEnumerable<SCC<Node>>) sccs).GetEnumerator();
     }
 
-    private readonly IList<SCC<Node> /*!*/> /*!*/
-      sccs = new List<SCC<Node> /*!*/>();
+    private readonly IList<SCC<Node>>
+      sccs = new List<SCC<Node>>();
 
     [ContractInvariantMethod]
     void sccsInvariant()
@@ -1645,7 +1644,7 @@ namespace Microsoft.Boogie.GraphUtil
       Contract.Ensures(Computed);
       // Compute post times on graph with edges reversed
       dfsNext = preds;
-      foreach (Node /*!*/ n in Cce.NonNull(graph.Keys))
+      foreach (Node n in Cce.NonNull(graph.Keys))
       {
         Contract.Assert(n != null);
         if (!seen.ContainsKey(n))
@@ -1661,13 +1660,13 @@ namespace Microsoft.Boogie.GraphUtil
       dfsNext = succs;
       while (postOrder.Count > 0)
       {
-        Node /*!*/
+        Node
           n = postOrder.Pop();
         Contract.Assert(n != null);
 
         if (!seen.ContainsKey(n))
         {
-          SCC<Node> /*!*/
+          SCC<Node>
             curr = new SCC<Node>();
           FindSCCs(n, curr);
           sccs.Add(curr);
@@ -1683,11 +1682,11 @@ namespace Microsoft.Boogie.GraphUtil
     private Adjacency<Node> /*?*/
       dfsNext = null;
 
-    private readonly IDictionary<Node /*!*/, object> /*!*/
-      seen = new Dictionary<Node /*!*/, object>();
+    private readonly IDictionary<Node, object>
+      seen = new Dictionary<Node, object>();
 
-    private readonly Stack<Node /*!*/> /*!*/
-      postOrder = new Stack<Node /*!*/>();
+    private readonly Stack<Node>
+      postOrder = new Stack<Node>();
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -1704,10 +1703,10 @@ namespace Microsoft.Boogie.GraphUtil
       seen.Add(node, null);
 
       Contract.Assert(dfsNext != null);
-      System.Collections.IEnumerable /*!*/
+      System.Collections.IEnumerable
         nexts = dfsNext(node);
       Contract.Assert(nexts != null);
-      foreach (Node /*!*/ n in nexts)
+      foreach (Node n in nexts)
       {
         Contract.Assert(n != null);
         if (graph.ContainsKey(n) && !seen.ContainsKey(n))
@@ -1729,10 +1728,10 @@ namespace Microsoft.Boogie.GraphUtil
       currSCC.Add(node);
 
       Contract.Assert(dfsNext != null);
-      System.Collections.IEnumerable /*!*/
+      System.Collections.IEnumerable
         nexts = dfsNext(node);
       Contract.Assert(nexts != null);
-      foreach (Node /*!*/ n in nexts)
+      foreach (Node n in nexts)
       {
         Contract.Assert(n != null);
         if (graph.ContainsKey(n) && !seen.ContainsKey(n))
@@ -1751,7 +1750,7 @@ namespace Microsoft.Boogie.GraphUtil
 
       foreach (ICollection<Node> component in this)
       {
-        string /*!*/
+        string
           tmp = String.Format("\nComponent #{0} = ", i++);
         Contract.Assert(tmp != null);
         outStr += tmp;
@@ -1760,7 +1759,7 @@ namespace Microsoft.Boogie.GraphUtil
 
         foreach (Node b in component)
         {
-          string /*!*/
+          string
             tmpComponent = String.Format("{0}{1}", firstInRow ? "" : ", ", b);
           Contract.Assert(tmpComponent != null);
           outStr += tmpComponent;
@@ -1774,12 +1773,12 @@ namespace Microsoft.Boogie.GraphUtil
 
   public class GraphProgram
   {
-    static void TestGraph<T>(T /*!*/ source, params Tuple<T /*!*/, T /*!*/>[] edges)
+    static void TestGraph<T>(T source, params Tuple<T, T>[] edges)
     {
       Contract.Requires(source != null);
       Contract.Requires(Contract.ForAll(edges, pair => pair.Item1 != null && pair.Item2 != null));
-      HashSet<Tuple<T /*!*/, T /*!*/>> es = new HashSet<Tuple<T /*!*/, T /*!*/>>();
-      foreach (Tuple<T /*!*/, T /*!*/> e in edges)
+      HashSet<Tuple<T, T>> es = new HashSet<Tuple<T, T>>();
+      foreach (Tuple<T, T> e in edges)
       {
         Contract.Assert(e.Item1 != null && e.Item2 != null);
         es.Add(e);

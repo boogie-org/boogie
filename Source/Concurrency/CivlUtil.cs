@@ -306,7 +306,7 @@ namespace Microsoft.Boogie
 
   public static class BlockHelper
   {
-    public static readonly IToken /*!*/ ReportedNoToken = new Token();
+    public static readonly IToken ReportedNoToken = new Token();
     
     public static Block Block(string label, List<Cmd> cmds)
     {

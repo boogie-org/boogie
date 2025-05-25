@@ -194,7 +194,7 @@ public class ModSetCollector : ReadOnlyVisitor
 
   private void ProcessVariable(Variable var)
   {
-    Procedure /*!*/
+    Procedure
       localProc = Cce.NonNull(enclosingProc);
     if (var == null)
     {
@@ -208,7 +208,7 @@ public class ModSetCollector : ReadOnlyVisitor
 
     if (!modSets.ContainsKey(localProc))
     {
-      modSets[localProc] = new HashSet<Variable /*!*/>();
+      modSets[localProc] = new HashSet<Variable>();
     }
 
     if (modSets[localProc].Contains(var))

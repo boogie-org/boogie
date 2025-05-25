@@ -19,7 +19,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
   }
 
   [NotDelayed]
-  public GotoCmd(IToken /*!*/ tok, List<string> /*!*/ labels)
+  public GotoCmd(IToken tok, List<string> labels)
     : base(tok)
   {
     Contract.Requires(tok != null);
@@ -27,7 +27,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
     this.LabelNames = labels;
   }
 
-  public GotoCmd(IToken /*!*/ tok, List<string> /*!*/ labels, List<Block> /*!*/ blocks)
+  public GotoCmd(IToken tok, List<string> labels, List<Block> blocks)
     : base(tok)
   {
     Contract.Requires(tok != null);
@@ -43,7 +43,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
     this.LabelTargets = blocks;
   }
 
-  public GotoCmd(IToken /*!*/ tok, List<Block> /*!*/ blocks)
+  public GotoCmd(IToken tok, List<Block> blocks)
     : base(tok)
   {
     //requires (blockSeq[i] != null ==> blockSeq[i].Label != null);
@@ -88,7 +88,6 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
 
   public override void Emit(TokenTextWriter stream, int level)
   {
-    //Contract.Requires(stream != null);
     Contract.Assume(this.LabelNames != null);
     stream.Write(this, level, "goto ");
     Attributes?.Emit(stream);
@@ -106,7 +105,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
       else
       {
         string sep = "";
-        foreach (Block /*!*/ b in LabelTargets)
+        foreach (Block b in LabelTargets)
         {
           Contract.Assert(b != null);
           stream.Write("{0}h{1}^^{2}", sep, b.GetHashCode(), b.Label);
@@ -124,7 +123,6 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
 
   public override void Resolve(ResolutionContext rc)
   {
-    //Contract.Requires(rc != null);
     Contract.Ensures(LabelTargets != null);
     if (LabelTargets != null)
     {
@@ -134,7 +132,7 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
 
     Contract.Assume(this.LabelNames != null);
     LabelTargets = new List<Block>();
-    foreach (string /*!*/ lbl in LabelNames)
+    foreach (string lbl in LabelNames)
     {
       Contract.Assert(lbl != null);
       Block b = rc.LookUpBlock(lbl);
@@ -153,7 +151,6 @@ public class GotoCmd : TransferCmd, ICarriesAttributes
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    //Contract.Requires(visitor != null);
     Contract.Ensures(Contract.Result<Absy>() != null);
     return visitor.VisitGotoCmd(this);
   }

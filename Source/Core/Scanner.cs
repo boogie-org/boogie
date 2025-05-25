@@ -32,12 +32,12 @@ public class Buffer {
 	public const int EOF = 65535 + 1; // char.MaxValue + 1;
 	const int MIN_BUFFER_LENGTH = 1024; // 1KB
 	const int MAX_BUFFER_LENGTH = MIN_BUFFER_LENGTH * 64; // 64KB
-	byte[]/*!*/ buf;         // input buffer
+	byte[] buf;         // input buffer
 	int bufStart;       // position of first byte in buffer relative to input stream
 	int bufLen;         // length of buffer
 	int fileLen;        // length of input stream (may change if the stream is no file)
 	int bufPos;         // current position in buffer
-	Stream/*!*/ stream;      // input stream (seekable)
+	Stream stream;      // input stream (seekable)
 	bool isUserStream;  // was the stream opened by the user?
 
 	[ContractInvariantMethod]
@@ -47,7 +47,7 @@ public class Buffer {
 	}
 
 //  [NotDelayed]
-	public Buffer (Stream/*!*/ s, bool isUserStream) : base() {
+	public Buffer (Stream s, bool isUserStream) : base() {
 	  Contract.Requires(s != null);
 		stream = s; this.isUserStream = isUserStream;
 
@@ -68,7 +68,7 @@ public class Buffer {
 		if (bufLen == fileLen && s.CanSeek) Close();
 	}
 
-	protected Buffer(Buffer/*!*/ b) { // called in UTF8Buffer constructor
+	protected Buffer(Buffer b) { // called in UTF8Buffer constructor
 	  Contract.Requires(b != null);
 		buf = b.buf;
 		bufStart = b.bufStart;
@@ -112,7 +112,7 @@ public class Buffer {
 		return ch;
 	}
 
-	public string/*!*/ GetString (int beg, int end) {
+	public string GetString (int beg, int end) {
 	  Contract.Ensures(Contract.Result<string>() != null);
 		int len = 0;
 		char[] buf = new char[end - beg];
@@ -180,7 +180,7 @@ public class Buffer {
 // UTF8Buffer
 //-----------------------------------------------------------------------------------
 public class UTF8Buffer: Buffer {
-	public UTF8Buffer(Buffer/*!*/ b): base(b) {Contract.Requires(b != null);}
+	public UTF8Buffer(Buffer b): base(b) {Contract.Requires(b != null);}
 
 	public override int Read() {
 		int ch;
@@ -236,9 +236,9 @@ public class Scanner {
 		Contract.Invariant(errorHandler != null);
 	}
 
-	private Buffer/*!*/ _buffer; // scanner buffer
+	private Buffer _buffer; // scanner buffer
 
-	public Buffer/*!*/ buffer {
+	public Buffer buffer {
 		get {
 			Contract.Ensures(Contract.Result<Buffer>() != null);
 			return this._buffer;
@@ -249,23 +249,23 @@ public class Scanner {
 		}
 	}
 
-	Token/*!*/ t;          // current token
+	Token t;          // current token
 	int ch;           // current input character
 	int pos;          // byte position of current character
 	int charPos;
 	int col;          // column number of current character
 	int line;         // line number of current character
 	int oldEols;      // EOLs that appeared in a comment;
-	static readonly Dictionary<int, int>/*!*/ start; // maps first token character to start state
+	static readonly Dictionary<int, int> start; // maps first token character to start state
 
-	Token/*!*/ tokens;     // list of tokens already peeked (first token is a dummy)
-	Token/*!*/ pt;         // current peek token
+	Token tokens;     // list of tokens already peeked (first token is a dummy)
+	Token pt;         // current peek token
 
-	char[]/*!*/ tval = new char[128]; // text of current token
+	char[] tval = new char[128]; // text of current token
 	int tlen;         // length of current token
 
-	private string/*!*/ Filename;
-	private Errors/*!*/ errorHandler;
+	private string Filename;
+	private Errors errorHandler;
 
 	static Scanner() {
 		start = new Dictionary<int, int>(128);
@@ -317,7 +317,7 @@ public class Scanner {
 	}
 
 //	[NotDelayed]
-	public Scanner (string/*!*/ fileName, Errors/*!*/ errorHandler, bool useBaseName = false) : base() {
+	public Scanner (string fileName, Errors errorHandler, bool useBaseName = false) : base() {
 	  Contract.Requires(fileName != null);
 	  Contract.Requires(errorHandler != null);
 		this.errorHandler = errorHandler;
@@ -334,7 +334,7 @@ public class Scanner {
 	}
 
 //	[NotDelayed]
-	public Scanner (Stream/*!*/ s, Errors/*!*/ errorHandler, string/*!*/ fileName, bool useBaseName = false) : base() {
+	public Scanner (Stream s, Errors errorHandler, string fileName, bool useBaseName = false) : base() {
 	  Contract.Requires(s != null);
 	  Contract.Requires(errorHandler != null);
 	  Contract.Requires(fileName != null);
@@ -366,7 +366,7 @@ public class Scanner {
 		pt = tokens = new Token();  // first token is a dummy
 	}
 
-	string/*!*/ ReadToEOL(){
+	string ReadToEOL(){
 	Contract.Ensures(Contract.Result<string>() != null);
 	  int p = buffer.Pos;
 	  int ch = buffer.Read();
@@ -379,7 +379,7 @@ public class Scanner {
 		// eol handling uniform across Windows, Unix and Mac
 		if (ch == '\r' && buffer.Peek() != '\n') ch = EOL;
 	  }
-	  string/*!*/ s = buffer.GetString(p, buffer.Pos);
+	  string s = buffer.GetString(p, buffer.Pos);
 	  Contract.Assert(s!=null);
 	  return s;
 	}
@@ -406,7 +406,7 @@ public class Scanner {
 				  int prLine = line;
 				  int prColumn = 0;
 
-				  string/*!*/ hashLine = ReadToEOL();
+				  string hashLine = ReadToEOL();
 				  Contract.Assert(hashLine!=null);
 				  col = 0;
 				  line++;
@@ -587,7 +587,7 @@ public class Scanner {
 		}
 	}
 
-	Token/*!*/ NextToken() {
+	Token NextToken() {
 	  Contract.Ensures(Contract.Result<Token>() != null);
 		while (ch == ' ' ||
 			ch >= 9 && ch <= 10 || ch == 13
@@ -991,7 +991,7 @@ public class Scanner {
 	}
 
 	// get the next token (possibly a token already seen during peeking)
-	public Token/*!*/ Scan () {
+	public Token Scan () {
 	 Contract.Ensures(Contract.Result<Token>() != null);
 		if (tokens.next == null) {
 			return NextToken();
@@ -1002,7 +1002,7 @@ public class Scanner {
 	}
 
 	// peek for the next token, ignore pragmas
-	public Token/*!*/ Peek () {
+	public Token Peek () {
 	  Contract.Ensures(Contract.Result<Token>() != null);
 		do {
 			if (pt.next == null) {

@@ -212,12 +212,11 @@ namespace VC
     }
 
     // Finds labels and changes them to a globally unique label:
-    protected override VCExpr /*!*/ UpdateModifiedNode(VCExprNAry /*!*/ originalNode,
-      List<VCExpr /*!*/> /*!*/ newSubExprs,
+    protected override VCExpr UpdateModifiedNode(VCExprNAry originalNode,
+      List<VCExpr> newSubExprs,
       bool changed,
       bool arg)
     {
-      //Contract.Ensures(Contract.Result<VCExpr>() != null);
 
       VCExpr ret;
       if (changed)

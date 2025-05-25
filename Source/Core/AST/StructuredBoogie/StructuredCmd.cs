@@ -5,10 +5,10 @@ namespace Microsoft.Boogie;
 [ContractClass(typeof(StructuredCmdContracts))]
 public abstract class StructuredCmd
 {
-  private IToken /*!*/
+  private IToken
     _tok;
 
-  public IToken /*!*/ tok
+  public IToken tok
   {
     get
     {
@@ -34,5 +34,5 @@ public abstract class StructuredCmd
     this._tok = tok;
   }
 
-  public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
+  public abstract void Emit(TokenTextWriter stream, int level);
 }

@@ -56,16 +56,16 @@ namespace VC
         prunedDeclarations = liveDeclarations.ToList();
       }
 
-      readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
-        stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
+      readonly Dictionary<Block, BlockStats>
+        stats = new Dictionary<Block, BlockStats>();
 
       static int currentId = -1;
 
       Block splitBlock;
       bool assertToAssume;
 
-      List<Block /*!*/> /*!*/
-        assumizedBranches = new List<Block /*!*/>();
+      List<Block>
+        assumizedBranches = new List<Block>();
 
       double score;
       bool scoreComputed;
@@ -73,25 +73,25 @@ namespace VC
       int assertionCount;
       double assertionCost; // without multiplication by paths
 
-      public readonly VerificationConditionGenerator /*!*/ parent;
+      public readonly VerificationConditionGenerator parent;
 
-      public Implementation /*!*/ Implementation => Run.Implementation;
+      public Implementation Implementation => Run.Implementation;
 
-      Dictionary<Block /*!*/, Block /*!*/> /*!*/ copies = new();
+      Dictionary<Block, Block> copies = new();
 
       bool doingSlice;
       double sliceInitialLimit;
       double sliceLimit;
       bool slicePos;
-      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new();
-      HashSet<Block /*!*/> /*!*/ keepAtAll = new();
+      HashSet<Block> protectedFromAssertToAssume = new();
+      HashSet<Block> keepAtAll = new();
 
       // async interface
       public int SplitIndex { get; set; }
       public VerificationConditionGenerator.ErrorReporter reporter;
 
-      public Split(VCGenOptions options, Func<IList<Block /*!*/>> /*!*/ getBlocks,
-        VerificationConditionGenerator /*!*/ parent, ImplementationRun run, int? randomSeed = null)
+      public Split(VCGenOptions options, Func<IList<Block>> getBlocks,
+        VerificationConditionGenerator parent, ImplementationRun run, int? randomSeed = null)
       {
         Contract.Requires(parent != null);
         this.getBlocks = getBlocks;
@@ -287,20 +287,20 @@ namespace VC
         }
       }
 
-      HashSet<Block /*!*/> /*!*/ ComputeReachableNodes(Block /*!*/ b)
+      HashSet<Block> ComputeReachableNodes(Block b)
       {
         Contract.Requires(b != null);
-        Contract.Ensures(Cce.NonNull(Contract.Result<HashSet<Block /*!*/>>()));
+        Contract.Ensures(Cce.NonNull(Contract.Result<HashSet<Block>>()));
         BlockStats s = GetBlockStats(b);
         if (s.reachableBlocks != null)
         {
           return s.reachableBlocks;
         }
 
-        HashSet<Block /*!*/> blocks = new HashSet<Block /*!*/>();
+        HashSet<Block> blocks = new HashSet<Block>();
         s.reachableBlocks = blocks;
         blocks.Add(b);
-        foreach (Block /*!*/ succ in b.Exits())
+        foreach (Block succ in b.Exits())
         {
           Contract.Assert(succ != null);
           foreach (Block r in ComputeReachableNodes(succ))
@@ -766,7 +766,7 @@ namespace VC
         throw new Cce.UnreachableException();
       }
 
-      public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double splitThreshold, int maxSplits)
+      public static List<Split> DoSplit(Split initial, double splitThreshold, int maxSplits)
       {
         Contract.Requires(initial != null);
         Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Split>>()));
@@ -998,8 +998,8 @@ namespace VC
         }
       }
 
-      private void SoundnessCheck(HashSet<List<Block> /*!*/> /*!*/ cache, Block /*!*/ orig,
-        List<Block /*!*/> /*!*/ copies)
+      private void SoundnessCheck(HashSet<List<Block>> cache, Block orig,
+        List<Block> copies)
       {
         Contract.Requires(Cce.NonNull(cache));
         Contract.Requires(orig != null);

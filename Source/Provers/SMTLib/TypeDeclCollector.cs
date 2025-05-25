@@ -14,7 +14,7 @@ namespace Microsoft.Boogie.SMTLib
     private readonly SMTLibOptions options;
     private UniqueNamer Namer;
 
-    private HashSet<Function /*!*/> /*!*/
+    private HashSet<Function>
       RegisteredRelations = new();
 
     [ContractInvariantMethod]
@@ -39,7 +39,6 @@ namespace Microsoft.Boogie.SMTLib
     // not used
     protected override bool StandardResult(VCExpr node, bool arg)
     {
-      //Contract.Requires(node != null);
       return true;
     }
 
@@ -49,38 +48,38 @@ namespace Microsoft.Boogie.SMTLib
     // In order to support push/pop interface of the theorem prover, the "known" declarations
     // must be kept in a stack
 
-    private HashSet<Function /*!*/> /*!*/ KnownFunctions
+    private HashSet<Function> KnownFunctions
     {
       get { return _KnownFunctions.Peek(); }
     }
 
-    private HashSet<VCExprVar /*!*/> /*!*/ KnownVariables
+    private HashSet<VCExprVar> KnownVariables
     {
       get { return _KnownVariables.Peek(); }
     }
 
-    private HashSet<Type /*!*/> /*!*/ KnownTypes
+    private HashSet<Type> KnownTypes
     {
       get { return _KnownTypes.Peek(); }
     }
 
-    private HashSet<string /*!*/> /*!*/ KnownStoreFunctions
+    private HashSet<string> KnownStoreFunctions
     {
       get { return _KnownStoreFunctions.Peek(); }
     }
 
-    private HashSet<string /*!*/> /*!*/ KnownSelectFunctions
+    private HashSet<string> KnownSelectFunctions
     {
       get { return _KnownSelectFunctions.Peek(); }
     }
 
     // ------
-    private readonly Stack<HashSet<Function /*!*/> /*!*/> _KnownFunctions = new();
-    private readonly Stack<HashSet<VCExprVar /*!*/> /*!*/> _KnownVariables = new();
+    private readonly Stack<HashSet<Function>> _KnownFunctions = new();
+    private readonly Stack<HashSet<VCExprVar>> _KnownVariables = new();
 
-    private readonly Stack<HashSet<Type /*!*/> /*!*/> _KnownTypes = new();
-    private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownStoreFunctions = new();
-    private readonly Stack<HashSet<string /*!*/> /*!*/> _KnownSelectFunctions = new();
+    private readonly Stack<HashSet<Type>> _KnownTypes = new();
+    private readonly Stack<HashSet<string>> _KnownStoreFunctions = new();
+    private readonly Stack<HashSet<string>> _KnownSelectFunctions = new();
 
     private void InitializeKnownDecls()
     {
@@ -130,7 +129,7 @@ namespace Microsoft.Boogie.SMTLib
         Contract.Ensures(Cce.NonNullElements(Contract.Result<List<string>>()));
 
         List<string> /*!>!*/
-          res = new List<string /*!*/>();
+          res = new List<string>();
         res.AddRange(AllDecls);
         return res;
       }
@@ -140,7 +139,7 @@ namespace Microsoft.Boogie.SMTLib
     {
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<string>>()));
       List<string> /*!>!*/
-        res = new List<string /*!*/>();
+        res = new List<string>();
       res.AddRange(IncDecls);
       IncDecls.Clear();
       return res;

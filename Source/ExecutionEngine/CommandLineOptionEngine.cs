@@ -21,7 +21,7 @@ public class CommandLineOptionEngine
     Contract.Invariant(this._fileTimestamp != null);
   }
 
-  private string /*!*/ _environment = "";
+  private string _environment = "";
 
   public string Environment
   {
@@ -37,9 +37,9 @@ public class CommandLineOptionEngine
     }
   }
 
-  private readonly List<string /*!*/> /*!*/ _files = new List<string /*!*/>();
+  private readonly List<string> _files = new List<string>();
 
-  public IList<string /*!*/> /*!*/ Files
+  public IList<string> Files
   {
     get
     {
@@ -62,7 +62,7 @@ public class CommandLineOptionEngine
     OutputWriter = outputWriter;
   }
 
-  public virtual string /*!*/ VersionNumber
+  public virtual string VersionNumber
   {
     get
     {
@@ -73,7 +73,7 @@ public class CommandLineOptionEngine
     }
   }
 
-  public virtual string /*!*/ VersionSuffix
+  public virtual string VersionSuffix
   {
     get
     {
@@ -82,7 +82,7 @@ public class CommandLineOptionEngine
     }
   }
 
-  public virtual string /*!*/ Version
+  public virtual string Version
   {
     get
     {
@@ -91,7 +91,7 @@ public class CommandLineOptionEngine
     }
   }
 
-  private string /*!*/
+  private string
     _fileTimestamp = Cce.NonNull(DateTime.Now.ToString("o")).Replace(':', '.');
 
   public string FileTimestamp
@@ -186,7 +186,7 @@ public class CommandLineOptionEngine
   /// Parses the command-line arguments "args" into the global flag variables.  Returns true
   /// if there were no errors.
   /// </summary>
-  public virtual bool Parse(string[] /*!*/ args)
+  public virtual bool Parse(string[] args)
   {
     Contract.Requires(Cce.NonNullElements(args));
 

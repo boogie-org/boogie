@@ -147,7 +147,7 @@ namespace VC
       }
     }
 
-    public VCExpr GenerateVC(Implementation /*!*/ impl, VCExpr controlFlowVariableExpr,
+    public VCExpr GenerateVC(Implementation impl, VCExpr controlFlowVariableExpr,
       ControlFlowIdMap<Absy> absyIds, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
@@ -158,8 +158,8 @@ namespace VC
       return GenerateVCAux(impl, controlFlowVariableExpr, absyIds, proverContext);
     }
 
-    public VCExpr GenerateVCAux(Implementation /*!*/ impl, VCExpr controlFlowVariableExpr,
-      ControlFlowIdMap<Absy> /*!*/ absyIds, ProverContext proverContext)
+    public VCExpr GenerateVCAux(Implementation impl, VCExpr controlFlowVariableExpr,
+      ControlFlowIdMap<Absy> absyIds, ProverContext proverContext)
     {
       Contract.Requires(impl != null);
       Contract.Requires(proverContext != null);
@@ -505,13 +505,13 @@ namespace VC
       }
 
       public ErrorReporter(VCGenOptions options,
-        ControlFlowIdMap<Absy> /*!*/ absyIds,
-        IList<Block /*!*/> /*!*/ blocks,
+        ControlFlowIdMap<Absy> absyIds,
+        IList<Block> blocks,
         Dictionary<Cmd, List<object>> debugInfos,
-        VerifierCallback /*!*/ callback,
+        VerifierCallback callback,
         ModelViewInfo mvInfo,
-        ProverContext /*!*/ context,
-        Program /*!*/ program, ProofRun split) : base(options)
+        ProverContext context,
+        Program program, ProofRun split) : base(options)
       {
         Contract.Requires(absyIds != null);
         Contract.Requires(Cce.NonNullElements(blocks));
@@ -530,7 +530,7 @@ namespace VC
         this.options = options;
       }
 
-      public override void OnModel(IList<string> labels /*!*/ /*!*/, Model model,
+      public override void OnModel(IList<string> labels, Model model,
         SolverOutcome proverOutcome)
       {
         // no counter examples reported.
@@ -590,7 +590,6 @@ namespace VC
 
       public override Absy Label2Absy(string label)
       {
-        //Contract.Requires(label != null);
         Contract.Ensures(Contract.Result<Absy>() != null);
 
         int id = int.Parse(label);
@@ -599,7 +598,6 @@ namespace VC
 
       public override void OnResourceExceeded(string msg, IEnumerable<Tuple<AssertCmd, TransferCmd>> assertCmds = null)
       {
-        //Contract.Requires(msg != null);
         resourceExceededMessage = msg;
         if (assertCmds != null)
         {
@@ -616,7 +614,6 @@ namespace VC
 
       public override void OnProverWarning(string msg)
       {
-        //Contract.Requires(msg != null);
         callback.OnWarning(options, msg);
       }
     }

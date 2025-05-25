@@ -17,7 +17,7 @@ public class LiveVariableAnalysis
   public static void ClearLiveVariables(Implementation impl)
   {
     Contract.Requires(impl != null);
-    foreach (Block /*!*/ block in impl.Blocks)
+    foreach (Block block in impl.Blocks)
     {
       Contract.Assert(block != null);
       block.LiveVarsBefore = null;
@@ -39,11 +39,11 @@ public class LiveVariableAnalysis
       sortedNodes = dag.TopologicalSort();
     }
 
-    foreach (Block /*!*/ block in sortedNodes)
+    foreach (Block block in sortedNodes)
     {
       Contract.Assert(block != null);
-      HashSet<Variable /*!*/> /*!*/
-        liveVarsAfter = new HashSet<Variable /*!*/>();
+      HashSet<Variable>
+        liveVarsAfter = new HashSet<Variable>();
 
       // The injected assumption variables should always be considered to be live.
       foreach (var v in impl.InjectedAssumptionVariables.Concat(impl.DoomedInjectedAssumptionVariables))
@@ -56,7 +56,7 @@ public class LiveVariableAnalysis
         GotoCmd gotoCmd = (GotoCmd) block.TransferCmd;
         if (gotoCmd.LabelTargets != null)
         {
-          foreach (Block /*!*/ succ in gotoCmd.LabelTargets)
+          foreach (Block succ in gotoCmd.LabelTargets)
           {
             Contract.Assert(succ != null);
             Contract.Assert(succ.LiveVarsBefore != null);
@@ -71,12 +71,12 @@ public class LiveVariableAnalysis
       {
         if (cmds[i] is CallCmd)
         {
-          Procedure /*!*/
-            proc = Cce.NonNull(Cce.NonNull((CallCmd /*!*/) cmds[i]).Proc);
+          Procedure
+            proc = Cce.NonNull(Cce.NonNull((CallCmd) cmds[i]).Proc);
           if (InterProcGenKill.HasSummary(proc.Name))
           {
             liveVarsAfter =
-              InterProcGenKill.PropagateLiveVarsAcrossCall(options, Cce.NonNull((CallCmd /*!*/) cmds[i]), liveVarsAfter);
+              InterProcGenKill.PropagateLiveVarsAcrossCall(options, Cce.NonNull((CallCmd) cmds[i]), liveVarsAfter);
             continue;
           }
         }
@@ -89,13 +89,13 @@ public class LiveVariableAnalysis
   }
 
   // perform in place update of liveSet
-  public void Propagate(Cmd cmd, HashSet<Variable /*!*/> /*!*/ liveSet)
+  public void Propagate(Cmd cmd, HashSet<Variable> liveSet)
   {
     Contract.Requires(cmd != null);
     Contract.Requires(Cce.NonNullElements(liveSet));
     if (cmd is AssignCmd)
     {
-      AssignCmd /*!*/
+      AssignCmd
         assignCmd = (AssignCmd) Cce.NonNull(cmd);
       // I must first iterate over all the targets and remove the live ones.
       // After the removals are done, I must add the variables referred on 
@@ -104,7 +104,7 @@ public class LiveVariableAnalysis
       AssignCmd simpleAssignCmd = assignCmd.AsSimpleAssignCmd;
       HashSet<int> indexSet = new HashSet<int>();
       int index = 0;
-      foreach (AssignLhs /*!*/ lhs in simpleAssignCmd.Lhss)
+      foreach (AssignLhs lhs in simpleAssignCmd.Lhss)
       {
         Contract.Assert(lhs != null);
         SimpleAssignLhs salhs = lhs as SimpleAssignLhs;
@@ -120,12 +120,12 @@ public class LiveVariableAnalysis
       }
 
       index = 0;
-      foreach (Expr /*!*/ expr in simpleAssignCmd.Rhss)
+      foreach (Expr expr in simpleAssignCmd.Rhss)
       {
         Contract.Assert(expr != null);
         if (indexSet.Contains(index))
         {
-          VariableCollector /*!*/
+          VariableCollector
             collector = new VariableCollector();
           collector.Visit(expr);
           liveSet.UnionWith(collector.usedVars);
@@ -136,9 +136,9 @@ public class LiveVariableAnalysis
     }
     else if (cmd is HavocCmd)
     {
-      HavocCmd /*!*/
+      HavocCmd
         havocCmd = (HavocCmd) cmd;
-      foreach (IdentifierExpr /*!*/ expr in havocCmd.Vars)
+      foreach (IdentifierExpr expr in havocCmd.Vars)
       {
         Contract.Assert(expr != null);
         if (expr.Decl != null && !(expr.Decl.Attributes.FindBoolAttribute("assumption") &&
@@ -151,7 +151,7 @@ public class LiveVariableAnalysis
     else if (cmd is PredicateCmd)
     {
       Contract.Assert((cmd is AssertCmd || cmd is AssumeCmd));
-      PredicateCmd /*!*/
+      PredicateCmd
         predicateCmd = (PredicateCmd) Cce.NonNull(cmd);
       if (predicateCmd.Expr is LiteralExpr)
       {
@@ -163,7 +163,7 @@ public class LiveVariableAnalysis
       }
       else
       {
-        VariableCollector /*!*/
+        VariableCollector
           collector = new VariableCollector();
         collector.Visit(predicateCmd.Expr);
         liveSet.UnionWith(collector.usedVars);
@@ -180,15 +180,15 @@ public class LiveVariableAnalysis
     }
     else if (cmd is SugaredCmd)
     {
-      SugaredCmd /*!*/
+      SugaredCmd
         sugCmd = (SugaredCmd) Cce.NonNull(cmd);
       Propagate(sugCmd.GetDesugaring(options), liveSet);
     }
     else if (cmd is StateCmd)
     {
-      StateCmd /*!*/
+      StateCmd
         stCmd = (StateCmd) Cce.NonNull(cmd);
-      List<Cmd> /*!*/
+      List<Cmd>
         cmds = Cce.NonNull(stCmd.Cmds);
       int len = cmds.Count;
       for (int i = len - 1; i >= 0; i--)
@@ -196,7 +196,7 @@ public class LiveVariableAnalysis
         Propagate(cmds[i], liveSet);
       }
 
-      foreach (Variable /*!*/ v in stCmd.Locals)
+      foreach (Variable v in stCmd.Locals)
       {
         Contract.Assert(v != null);
         liveSet.Remove(v);

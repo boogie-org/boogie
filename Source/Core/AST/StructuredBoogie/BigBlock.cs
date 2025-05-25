@@ -15,7 +15,7 @@ public class BigBlock
     Contract.Invariant(this._simpleCmds != null);
   }
 
-  public readonly IToken /*!*/
+  public readonly IToken
     tok;
 
   public readonly bool Anonymous;
@@ -36,12 +36,12 @@ public class BigBlock
     }
   }
 
-  [Rep] private List<Cmd> /*!*/ _simpleCmds;
+  [Rep] private List<Cmd> _simpleCmds;
 
   /// <summary>
   /// These come before the structured command
   /// </summary>
-  public List<Cmd> /*!*/ simpleCmds
+  public List<Cmd> simpleCmds
   {
     get
     {
@@ -105,7 +105,7 @@ public class BigBlock
           : this.LabelName);
     }
 
-    foreach (Cmd /*!*/ c in this.simpleCmds)
+    foreach (Cmd c in this.simpleCmds)
     {
       Contract.Assert(c != null);
       c.Emit(stream, level + 1);

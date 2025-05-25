@@ -10,10 +10,10 @@ namespace Microsoft.Boogie
 {
   public class TypeAmbiguitySeeker : ReadOnlyVisitor
   {
-    private readonly InTypeSeeker /*!*/
+    private readonly InTypeSeeker
       inTypeSeeker = new InTypeSeeker();
 
-    private readonly TypecheckingContext /*!*/
+    private readonly TypecheckingContext
       TC;
 
     [ContractInvariantMethod]
@@ -34,10 +34,10 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(insts != null);
       Contract.Requires(node != null);
-      foreach (TypeVariable /*!*/ var in insts.FormalTypeParams)
+      foreach (TypeVariable var in insts.FormalTypeParams)
       {
         Contract.Assert(var != null);
-        Type /*!*/
+        Type
           inst = insts[var];
         Contract.Assert(inst != null);
 
@@ -54,7 +54,6 @@ namespace Microsoft.Boogie
 
     public override Expr VisitNAryExpr(NAryExpr node)
     {
-      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Expr>() != null);
       CheckTypeParams(node, Cce.NonNull(node.TypeParameters));
       return base.VisitNAryExpr(node);
@@ -62,7 +61,6 @@ namespace Microsoft.Boogie
 
     public override AssignLhs VisitMapAssignLhs(MapAssignLhs node)
     {
-      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<AssignLhs>() != null);
       CheckTypeParams(node, Cce.NonNull(node.TypeParameters));
       return base.VisitMapAssignLhs(node);
@@ -87,7 +85,6 @@ namespace Microsoft.Boogie
 
     public override Type VisitTypeProxy(TypeProxy node)
     {
-      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (node.ProxyFor != null)
       {
@@ -99,32 +96,31 @@ namespace Microsoft.Boogie
 
     public override Type VisitMapTypeProxy(MapTypeProxy node)
     {
-      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (node.ProxyFor != null)
       {
         return base.VisitMapTypeProxy(node);
       }
 
-      List<TypeVariable> /*!*/
+      List<TypeVariable>
         typeParams = new List<TypeVariable>();
-      List<Type> /*!*/
+      List<Type>
         arguments = new List<Type>();
       for (int i = 0; i < node.Arity; ++i)
       {
-        TypeVariable /*!*/
+        TypeVariable
           param = new TypeVariable(Token.NoToken, "arg" + i);
         Contract.Assert(param != null);
         typeParams.Add(param);
         arguments.Add(param);
       }
 
-      TypeVariable /*!*/
+      TypeVariable
         result = new TypeVariable(Token.NoToken, "res");
       Contract.Assert(result != null);
       typeParams.Add(result);
 
-      Type /*!*/
+      Type
         instantiation = new MapType(Token.NoToken, typeParams, arguments, result);
       Contract.Assert(instantiation != null);
 
@@ -133,7 +129,6 @@ namespace Microsoft.Boogie
 
     public override Type VisitBvTypeProxy(BvTypeProxy node)
     {
-      //Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (node.ProxyFor != null)
       {

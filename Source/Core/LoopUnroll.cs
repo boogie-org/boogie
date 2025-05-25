@@ -7,33 +7,33 @@ namespace Microsoft.Boogie
 {
   public class LoopUnroll
   {
-    public static List<Block /*!*/> /*!*/ UnrollLoops(Block start, int unrollMaxDepth, bool soundLoopUnrolling)
+    public static List<Block> UnrollLoops(Block start, int unrollMaxDepth, bool soundLoopUnrolling)
     {
       Contract.Requires(start != null);
 
       Contract.Requires(0 <= unrollMaxDepth);
       Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Block>>()));
-      Dictionary<Block, GraphNode /*!*/> gd = new Dictionary<Block, GraphNode /*!*/>();
+      Dictionary<Block, GraphNode> gd = new Dictionary<Block, GraphNode>();
       HashSet<Block> beingVisited = new HashSet<Block>();
       GraphNode gStart = GraphNode.ComputeGraphInfo(null, start, gd, beingVisited);
 
       // Compute SCCs
-      StronglyConnectedComponents<GraphNode /*!*/> sccs =
-        new StronglyConnectedComponents<GraphNode /*!*/>(gd.Values, Preds, Succs);
+      StronglyConnectedComponents<GraphNode> sccs =
+        new StronglyConnectedComponents<GraphNode>(gd.Values, Preds, Succs);
       Contract.Assert(sccs != null);
       sccs.Compute();
-      Dictionary<GraphNode /*!*/, SCC<GraphNode /*!*/>> containingSCC =
-        new Dictionary<GraphNode /*!*/, SCC<GraphNode /*!*/>>();
-      foreach (SCC<GraphNode /*!*/> scc in sccs)
+      Dictionary<GraphNode, SCC<GraphNode>> containingSCC =
+        new Dictionary<GraphNode, SCC<GraphNode>>();
+      foreach (SCC<GraphNode> scc in sccs)
       {
-        foreach (GraphNode /*!*/ n in scc)
+        foreach (GraphNode n in scc)
         {
           Contract.Assert(n != null);
           containingSCC[n] = scc;
         }
       }
 
-      LoopUnroll lu = new LoopUnroll(unrollMaxDepth, soundLoopUnrolling, containingSCC, new List<Block /*!*/>());
+      LoopUnroll lu = new LoopUnroll(unrollMaxDepth, soundLoopUnrolling, containingSCC, new List<Block>());
       lu.Visit(gStart);
       lu.newBlockSeqGlobal.Reverse();
       return lu.newBlockSeqGlobal;
@@ -55,19 +55,19 @@ namespace Microsoft.Boogie
       return lab.Substring(0, pos);
     }
 
-    private static System.Collections.IEnumerable /*<GraphNode/*!>/*!*/ Succs(GraphNode n)
+    private static System.Collections.IEnumerable Succs(GraphNode n)
     {
       Contract.Requires(n != null);
       Contract.Ensures(Contract.Result<System.Collections.IEnumerable>() != null);
 
-      List<GraphNode /*!*/> /*!*/
-        AllEdges = new List<GraphNode /*!*/>();
+      List<GraphNode>
+        AllEdges = new List<GraphNode>();
       AllEdges.AddRange(n.ForwardEdges);
       AllEdges.AddRange(n.BackEdges);
       return AllEdges;
     }
 
-    private static System.Collections.IEnumerable /*<GraphNode!>*/ /*!*/ Preds(GraphNode n)
+    private static System.Collections.IEnumerable Preds(GraphNode n)
     {
       Contract.Requires(n != null);
       Contract.Ensures(Contract.Result<System.Collections.IEnumerable>() != null);
@@ -77,10 +77,10 @@ namespace Microsoft.Boogie
 
     class GraphNode
     {
-      public readonly Block /*!*/
+      public readonly Block
         Block;
 
-      public readonly List<Cmd> /*!*/
+      public readonly List<Cmd>
         Body;
 
       [ContractInvariantMethod]
@@ -101,9 +101,9 @@ namespace Microsoft.Boogie
         get { return isCutPoint; }
       }
 
-      [Rep] public readonly List<GraphNode /*!*/> /*!*/ ForwardEdges = new List<GraphNode /*!*/>();
-      [Rep] public readonly List<GraphNode /*!*/> /*!*/ BackEdges = new List<GraphNode /*!*/>();
-      [Rep] public readonly List<GraphNode /*!*/> /*!*/ Predecessors = new List<GraphNode /*!*/>();
+      [Rep] public readonly List<GraphNode> ForwardEdges = new List<GraphNode>();
+      [Rep] public readonly List<GraphNode> BackEdges = new List<GraphNode>();
+      [Rep] public readonly List<GraphNode> Predecessors = new List<GraphNode>();
 
       GraphNode(Block b, List<Cmd> body)
       {
@@ -139,7 +139,7 @@ namespace Microsoft.Boogie
       }
 
       public static GraphNode ComputeGraphInfo(GraphNode from, Block b,
-        Dictionary<Block /*!*/, GraphNode /*!*/> /*!*/ gd, HashSet<Block> beingVisited)
+        Dictionary<Block, GraphNode> gd, HashSet<Block> beingVisited)
       {
         Contract.Requires(beingVisited != null);
         Contract.Requires(b != null);
@@ -185,7 +185,7 @@ namespace Microsoft.Boogie
             if (gcmd != null)
             {
               Contract.Assume(gcmd.LabelTargets != null);
-              foreach (Block /*!*/ succ in gcmd.LabelTargets)
+              foreach (Block succ in gcmd.LabelTargets)
               {
                 Contract.Assert(succ != null);
                 ComputeGraphInfo(g, succ, gd, beingVisited);
@@ -200,21 +200,21 @@ namespace Microsoft.Boogie
       }
     }
 
-    readonly List<Block /*!*/> /*!*/
+    readonly List<Block>
       newBlockSeqGlobal;
 
-    readonly Dictionary<GraphNode /*!*/, SCC<GraphNode /*!*/>> /*!*/
+    readonly Dictionary<GraphNode, SCC<GraphNode>>
       containingSCC;
 
     readonly int c;
     readonly bool soundLoopUnrolling;
     readonly LoopUnroll next;
 
-    readonly LoopUnroll /*!*/
+    readonly LoopUnroll
       head;
 
-    Dictionary<Block, Block /*!*/> /*!*/
-      newBlocks = new Dictionary<Block, Block /*!*/>();
+    Dictionary<Block, Block>
+      newBlocks = new Dictionary<Block, Block>();
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -227,7 +227,7 @@ namespace Microsoft.Boogie
 
     [NotDelayed]
     private LoopUnroll(int unrollMaxDepth, bool soundLoopUnrolling,
-      Dictionary<GraphNode /*!*/, SCC<GraphNode /*!*/>> /*!*/ scc, List<Block /*!*/> /*!*/ newBlockSeqGlobal)
+      Dictionary<GraphNode, SCC<GraphNode>> scc, List<Block> newBlockSeqGlobal)
       : base()
     {
       Contract.Requires(Cce.NonNullElements(newBlockSeqGlobal));
@@ -245,7 +245,7 @@ namespace Microsoft.Boogie
     }
 
     private LoopUnroll(int unrollMaxDepth, bool soundLoopUnrolling,
-      Dictionary<GraphNode /*!*/, SCC<GraphNode /*!*/>> scc, List<Block /*!*/> /*!*/ newBlockSeqGlobal, LoopUnroll head)
+      Dictionary<GraphNode, SCC<GraphNode>> scc, List<Block> newBlockSeqGlobal, LoopUnroll head)
     {
       Contract.Requires(head != null);
       Contract.Requires(Cce.NonNullDictionaryAndValues(scc));
@@ -281,7 +281,7 @@ namespace Microsoft.Boogie
         {
           // as the body, use the assert/assume commands that make up the loop invariant
           body = new List<Cmd>();
-          foreach (Cmd /*!*/ c in node.Body)
+          foreach (Cmd c in node.Body)
           {
             Contract.Assert(c != null);
             if (c is PredicateCmd || c is CommentCmd)
