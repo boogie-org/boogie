@@ -42,6 +42,8 @@ namespace Microsoft.Boogie
       Neither
     }
 
+    public static Type ErrorType = new TypeProxy(Token.NoToken, "type_checking_error");
+
     public static Position NegatePosition(Position p)
     {
       return p == Position.Neither ? Position.Neither : (p == Position.Neg ? Position.Pos : Position.Neg);
@@ -1327,7 +1329,7 @@ namespace Microsoft.Boogie
       if (this.Decl != null)
       {
         // sanity check
-        if (Type != null && !Type.Equals(Decl.TypedIdent.Type))
+        if (Type != null && !Type.Equals(ErrorType) && !Type.Equals(Decl.TypedIdent.Type))
         {
           tc.Error(this, "internal error, shallow-type assignment was done incorrectly, {0}:{1} != {2}",
             Name, Type, Decl.TypedIdent.Type);
@@ -4117,7 +4119,7 @@ namespace Microsoft.Boogie
 
       if (Type == null)
       {
-        Type = new TypeProxy(this.tok, "type_checking_error");
+        Type = Expr.ErrorType;
       }
     }
 
@@ -4287,7 +4289,7 @@ namespace Microsoft.Boogie
 
       if (Type == null)
       {
-        Type = new TypeProxy(this.tok, "type_checking_error");
+        Type = Expr.ErrorType;
       }
     }
 
