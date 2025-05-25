@@ -213,8 +213,7 @@ public class NAryExpr : Expr
 
     if (Type == null)
     {
-      // set Type to some non-null value
-      Type = new TypeProxy(this.tok, "type_checking_error");
+      Type = Expr.ErrorType;
     }
   }
 
