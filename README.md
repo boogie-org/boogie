@@ -20,21 +20,18 @@ input, optionally infers some invariants in the given Boogie program, and then
 generates verification conditions that are passed to an SMT solver. The default
 SMT solver is [Z3](https://github.com/Z3Prover/z3).
 
+A tutorial for Boogie is available in this [paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/12/krml178.pdf).
+The documentation in this paper, even though slightly out-of-date, still captures the essence of the Boogie language and tool.
+
 Boogie has long been used for modeling and verifying sequential programs.
 Recently, through its [Civl](https://civl-verifier.github.io/) extension, Boogie 
 has become capable of modeling concurrent and distributed systems.
 
-## Documentation
-
-Here are some resources to learn more about Boogie. Be aware that some
-information might be incomplete or outdated.
-
-* [Documentation](https://boogie-docs.readthedocs.org/en/latest/)
-* [Language reference](https://boogie-docs.readthedocs.org/en/latest/LangRef.html).
-
-## Getting help and contribute
+## Getting help
 
 You can ask questions and report issues on our [issue tracker](https://github.com/boogie-org/boogie/issues).
+
+## Contribute
 
 We are happy to receive contributions via [pull requests](https://github.com/boogie-org/boogie/pulls).
 
