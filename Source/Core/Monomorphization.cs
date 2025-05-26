@@ -600,7 +600,7 @@ namespace Microsoft.Boogie
     /*
      * This visitor finalizes the monomorphization of polymorphic maps and binders once
      * all instantiations have been discovered. It accomplishes the following substitutions:
-     * - ach access to a polymorphic map with an access to corresponding datatype
+     * - each access to a polymorphic map with an access to corresponding datatype
      * - each occurrence of a polymorphic map type with the corresponding datatype
      * - each polymorphic lambda with a constructor call of the corresponding datatype
      * - each polymorphic forall quantifier with a conjunction

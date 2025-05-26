@@ -240,7 +240,7 @@ namespace Microsoft.Boogie
       else
       {
         var res = Binary(BinaryOperator.Opcode.And, e1, e2);
-        res.Type = Microsoft.Boogie.Type.Bool;
+        res.Type = Type.Bool;
         res.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
         return res;
       }
@@ -265,7 +265,10 @@ namespace Microsoft.Boogie
       }
       else
       {
-        return Binary(BinaryOperator.Opcode.Or, e1, e2);
+        var res = Binary(BinaryOperator.Opcode.Or, e1, e2);
+        res.Type = Type.Bool;
+        res.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+        return res;
       }
     }
 
