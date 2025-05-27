@@ -2,7 +2,7 @@ import Auto
 import Auto.Tactic
 import Auto.MathlibEmulator.Basic -- For `Real`
 import Auto.Translation.SMTAttributes
-open Lean Std Auto Auto.SMT.Attribute
+open Lean Std Auto Auto.SMT.Attribute Classical
 
 set_option linter.unusedVariables false
 set_option auto.smt true
