@@ -27,6 +27,17 @@ function {:inline} Domain(ts: Map LocTreiberStack (Treiber X), loc_t: LocTreiber
   ts->val[loc_t]->nodes->dom
 }
 
+/*
+Layer 1: Simplify LoadNode and convert its mover type to right mover
+Layer 2: Create abstraction of ReadTopOfStack
+- right mover ReadTopOfStack#Push
+- atomic ReadTopOfStack#Pop
+Layer 3:
+- Convert PopIntermediate to atomic action using right mover LoadNode
+- Convert CreateNewTopOfStack to atomic action using right mover ReadTopOfStack#Push
+Layer 4: Introduce TreiberPool and abstract TreiberPoolLow to TreiberPool
+*/
+
 yield invariant {:layer 1} Yield();
 
 yield invariant {:layer 2} TopInStack(loc_t: LocTreiberStack);
@@ -122,7 +133,7 @@ preserves call StackDom();
   var {:layer 4} old_treiber: Treiber X;
 
   call {:layer 4} old_treiber := Copy(TreiberPoolLow->val[loc_t]);
-  call loc_n, new_loc_n, right_loc_piece := AllocNode#3(loc_t, x);
+  call loc_n, new_loc_n, right_loc_piece := CreateNewTopOfStack(loc_t, x);
   call {:layer 4} FrameLemma(old_treiber, TreiberPoolLow->val[loc_t]);
   par ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, Node(loc_n, x), new_loc_n, right_loc_piece);
   call success := WriteTopOfStack#0(loc_t, loc_n, Some(new_loc_n));
@@ -190,7 +201,7 @@ asserts Map_Contains(TreiberPoolLow, loc_t);
   treiber := Treiber(top, stack);
   call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
-yield procedure {:layer 3} AllocNode#3(loc_t: LocTreiberStack, x: X)
+yield procedure {:layer 3} CreateNewTopOfStack(loc_t: LocTreiberStack, x: X)
   returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One LocTreiberNode)
 preserves call TopInStack(loc_t);
 ensures call LocInStackOrNone(loc_t, Some(new_loc_n));
