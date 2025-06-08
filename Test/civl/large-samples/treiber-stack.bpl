@@ -21,15 +21,10 @@ type X; // module type parameter
 var {:layer 4, 5} TreiberPool: Map LocTreiberStack (Vec X);
 var {:layer 0, 4} {:linear} TreiberPoolLow: Map LocTreiberStack (Treiber X);
 
-/// Yield invariants
-
-function {:inline} Domain(ts: Map LocTreiberStack (Treiber X), loc_t: LocTreiberStack): Set LocTreiberNode {
-  ts->val[loc_t]->nodes->dom
-}
-
+/// Proof outline
 /*
 Layer 1: Simplify LoadNode and convert its mover type to right mover
-Layer 2: Create abstraction of ReadTopOfStack
+Layer 2: Create abstractions of ReadTopOfStack for Push and Pop separately
 - right mover ReadTopOfStack#Push
 - atomic ReadTopOfStack#Pop
 Layer 3:
@@ -37,6 +32,12 @@ Layer 3:
 - Convert CreateNewTopOfStack to atomic action using right mover ReadTopOfStack#Push
 Layer 4: Introduce TreiberPool and abstract TreiberPoolLow to TreiberPool
 */
+
+/// Yield invariants
+
+function {:inline} Domain(ts: Map LocTreiberStack (Treiber X), loc_t: LocTreiberStack): Set LocTreiberNode {
+  ts->val[loc_t]->nodes->dom
+}
 
 yield invariant {:layer 1} Yield();
 
@@ -75,7 +76,6 @@ invariant (var t := TreiberPoolLow->val[loc_t]; Map_At(t->nodes, new_loc_n) == n
 /// Layered implementation
 
 atomic action {:layer 5} AtomicAlloc() returns ({:linear} one_loc_t: One LocTreiberStack)
-modifies TreiberPool;
 {
   var loc: Loc;
   var {:linear} loc_pieces: Set LocTreiberNode;
@@ -112,7 +112,6 @@ preserves call StackDom();
 }
 
 atomic action {:layer 5} AtomicPush(loc_t: LocTreiberStack, x: X) returns (success: bool)
-modifies TreiberPool;
 {
   if (*) {
     TreiberPool := Map_Update(TreiberPool, loc_t, Vec_Append(Map_At(TreiberPool, loc_t), x));
@@ -145,7 +144,6 @@ preserves call StackDom();
 }
 
 atomic action {:layer 5} AtomicPop(loc_t: LocTreiberStack) returns (success: bool, x_opt: Option X)
-modifies TreiberPool;
 {
   var stack: Vec X;
 
@@ -177,9 +175,8 @@ preserves call StackDom();
   }
 }
 
-atomic action {:layer 4} AtomicAllocNode#3(loc_t: LocTreiberStack, x: X)
+atomic action {:layer 4} AtomicCreateNewTopOfStack(loc_t: LocTreiberStack, x: X)
   returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One LocTreiberNode)
-modifies TreiberPoolLow;
 asserts Map_Contains(TreiberPoolLow, loc_t);
 {
   var {:linear} one_loc_t: One LocTreiberStack;
@@ -205,7 +202,7 @@ yield procedure {:layer 3} CreateNewTopOfStack(loc_t: LocTreiberStack, x: X)
   returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One LocTreiberNode)
 preserves call TopInStack(loc_t);
 ensures call LocInStackOrNone(loc_t, Some(new_loc_n));
-refines AtomicAllocNode#3;
+refines AtomicCreateNewTopOfStack;
 {
   var loc: Loc;
   var {:linear} loc_pieces: Set LocTreiberNode;
@@ -220,7 +217,6 @@ refines AtomicAllocNode#3;
 }
 
 atomic action {:layer 4} AtomicPopIntermediate(loc_t: LocTreiberStack) returns (success: bool, x_opt: Option X)
-modifies TreiberPoolLow;
 {
   var {:linear} one_loc_t: One LocTreiberStack;
   var loc_n: Option LocTreiberNode;
@@ -275,28 +271,25 @@ preserves call TopInStack(loc_t);
   }
 }
 
-right action {:layer 3} AtomicReadTopOfStack#Push(loc_t: LocTreiberStack) returns (loc_n: Option LocTreiberNode)
-{
-  assert Map_Contains(TreiberPoolLow, loc_t);
-  assume loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t);
-}
 yield procedure {:layer 2} ReadTopOfStack#Push(loc_t: LocTreiberStack) returns (loc_n: Option LocTreiberNode)
 preserves call TopInStack(loc_t);
 ensures call LocInStackOrNone(loc_t, loc_n);
-refines AtomicReadTopOfStack#Push;
+refines right action {:layer 3} _ {
+  assert Map_Contains(TreiberPoolLow, loc_t);
+  assume loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t);
+}
 {
   call loc_n := ReadTopOfStack#0(loc_t);
 }
 
-atomic action {:layer 3} AtomicReadTopOfStack#Pop(loc_t: LocTreiberStack) returns (loc_n: Option LocTreiberNode)
+yield procedure {:layer 2} ReadTopOfStack#Pop(loc_t: LocTreiberStack) returns (loc_n: Option LocTreiberNode)
+preserves call TopInStack(loc_t);
+ensures call LocInStackOrNone(loc_t, loc_n);
+refines atomic action {:layer 3} _
 {
   assert Map_Contains(TreiberPoolLow, loc_t);
   assume if loc_n is None then Map_At(TreiberPoolLow, loc_t)->top is None else Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t);
 }
-yield procedure {:layer 2} ReadTopOfStack#Pop(loc_t: LocTreiberStack) returns (loc_n: Option LocTreiberNode)
-preserves call TopInStack(loc_t);
-ensures call LocInStackOrNone(loc_t, loc_n);
-refines AtomicReadTopOfStack#Pop;
 {
   call loc_n := ReadTopOfStack#0(loc_t);
 }
@@ -311,7 +304,6 @@ right action {:layer 2,3} AtomicLoadNode#1(loc_t: LocTreiberStack, loc_n: LocTre
 /// Primitives
 
 atomic action {:layer 1} AtomicLoadNode#0(loc_t: LocTreiberStack, loc_n: LocTreiberNode) returns (node: StackElem X)
-modifies TreiberPoolLow;
 refines AtomicLoadNode#1;
 {
   var {:linear} one_loc_t: One LocTreiberStack;
