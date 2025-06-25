@@ -101,5 +101,10 @@ namespace Microsoft.Boogie
       }
       return col.CompareTo(other.col);
     }
+
+    public override string ToString()
+    {
+      return $"({line}, {col})";
+    }
   }
 }

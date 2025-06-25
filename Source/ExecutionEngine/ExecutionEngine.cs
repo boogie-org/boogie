@@ -769,7 +769,7 @@ namespace Microsoft.Boogie
       var sink = new CollectingErrorSink();
       var resolutionErrors = program.Resolve(Options, sink);
       
-      string GetErrorsString() => string.Join("\n", sink.Errors.Select(t => $"({t.Token.line},{t.Token.col}): {t.Message}"));
+      string GetErrorsString() => string.Join("\n", sink.Errors.Select(t => $"{t.Token}: {t.Message}"));
       if (resolutionErrors > 0)
       {
         throw new ArgumentException($"Boogie program had {resolutionErrors} resolution errors:\n{GetErrorsString()}");
