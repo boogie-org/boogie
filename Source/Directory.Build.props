@@ -2,7 +2,7 @@
 
   <!-- Target framework and package configuration -->
   <PropertyGroup>
-    <Version>3.5.3</Version>
+    <Version>3.5.4</Version>
     <TargetFramework>net8.0</TargetFramework>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>Boogie</Authors>
