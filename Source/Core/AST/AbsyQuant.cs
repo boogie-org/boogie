@@ -245,8 +245,8 @@ namespace Microsoft.Boogie
           kv.Resolve(rc);
         }
 
-        this.ResolveTriggers(rc);
         Body.Resolve(rc);
+        this.ResolveTriggers(rc);
         rc.PopVarContext();
 
         // establish a canonical order of the type parameters
@@ -730,27 +730,37 @@ namespace Microsoft.Boogie
 
     protected override void ResolveTriggers(ResolutionContext rc)
     {
-      for (Trigger tr = this.Triggers; tr != null; tr = tr.Next)
+      var freeBodyVars = new Set();
+      Body.ComputeFreeVariables(freeBodyVars);
+      
+      // No idea why this copy is necessary. Why would dummies be shared?
+      Dummies = Dummies.ToList();
+      
+      for (var tr = this.Triggers; tr != null; tr = tr.Next)
       {
         int prevErrorCount = rc.ErrorCount;
         tr.Resolve(rc);
-        if (prevErrorCount == rc.ErrorCount)
-        {
-          // for positive triggers, make sure all bound variables are mentioned
-          if (tr.Pos)
-          {
-            Set /*Variable*/
-              freeVars = new Set /*Variable*/();
-            tr.ComputeFreeVariables(freeVars);
-            foreach (Variable v in Dummies)
-            {
-              Contract.Assert(v != null);
-              if (!freeVars[v])
-              {
-                rc.Error(tr, "trigger must mention all quantified variables, but does not mention: {0}", v);
-              }
-            }
+        if (prevErrorCount != rc.ErrorCount) {
+          continue;
+        }
+
+        // for positive triggers, make sure all bound variables are mentioned
+        if (!tr.Pos) {
+          continue;
+        }
+
+        var freeVars = new Set();
+        tr.ComputeFreeVariables(freeVars);
+        for (var index = 0; index < Dummies.Count; index++) {
+          var variable = Dummies[index];
+          Contract.Assert(variable != null);
+          if (freeVars[variable] || freeBodyVars.Contains(variable)) {
+            continue;
           }
+
+          Dummies.RemoveAt(index);
+          index--;
+          //rc.Error(tr, "trigger must mention all quantified variables, but does not mention: {0}", v);
         }
       }
     }
