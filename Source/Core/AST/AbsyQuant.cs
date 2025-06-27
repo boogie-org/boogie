@@ -749,18 +749,22 @@ namespace Microsoft.Boogie
           continue;
         }
 
-        var freeVars = new Set();
-        tr.ComputeFreeVariables(freeVars);
+        var freeVarsTrigger = new Set();
+        tr.ComputeFreeVariables(freeVarsTrigger);
         for (var index = 0; index < Dummies.Count; index++) {
           var variable = Dummies[index];
           Contract.Assert(variable != null);
-          if (freeVars[variable] || freeBodyVars.Contains(variable)) {
+          if (freeVarsTrigger[variable]) {
             continue;
           }
 
-          Dummies.RemoveAt(index);
-          index--;
-          //rc.Error(tr, "trigger must mention all quantified variables, but does not mention: {0}", v);
+          if (freeBodyVars.Contains(variable)) {
+            rc.Error(tr, "trigger must mention all quantified variables, but does not mention: {0}", variable);
+          } else {
+            Dummies.RemoveAt(index);
+            index--;
+          }
+
         }
       }
     }
