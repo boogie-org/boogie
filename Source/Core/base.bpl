@@ -338,10 +338,10 @@ pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One
 
 datatype KeyedLoc<K> { KeyedLoc(l: Loc, k: K) }
 
-pure procedure {:inline 1} KeyedLocSet_New<K>(ks: Set K) returns ({:pool "Loc_New"} l: Loc, {:linear} keyed_locs: Set (KeyedLoc K))
+pure procedure {:inline 1} KeyedLocSet_New<K>(ks: Set K) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} keyed_locs: Set (KeyedLoc K))
 {
   assume {:add_to_pool "Loc_New", l} true;
-  keyed_locs := Set((lambda x: KeyedLoc K :: x->l == l && Set_Contains(ks, x->k)));
+  keyed_locs := Set((lambda x: KeyedLoc K :: x->l == l->val && Set_Contains(ks, x->k)));
 }
 
 procedure create_async<T>(PA: T);

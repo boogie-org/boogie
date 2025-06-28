@@ -1,25 +1,21 @@
 // RUN: %parallel-boogie -lib:base -lib:node -timeLimit:0 -vcsSplitOnEveryAssert "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype LocPiece { Left(), Right() }
+datatype LocPiece { Right() }
 function {:inline} AllLocPieces(): Set LocPiece {
-  Set_Add(Set_Add(Set_Empty(), Left()), Right())
+  Set_Add(Set_Empty(), Right())
 }
 
-type LocTreiberStack = KeyedLoc LocPiece;
-type LocTreiberNode = KeyedLoc LocPiece;
+type LocTreiberStack = Loc;
+type LocTreiberNode = Loc;
 type StackElem T = Node LocTreiberNode T;
 type StackMap T = Map LocTreiberNode (StackElem T);
 datatype Treiber<T> { Treiber(top: Option LocTreiberNode, {:linear} nodes: StackMap T) }
 
-function {:inline} LeftLocPiece(loc_piece: KeyedLoc LocPiece): KeyedLoc LocPiece {
-  KeyedLoc(loc_piece->l, Left())
-}
-
 type X; // module type parameter
 
-var {:layer 4, 5} TreiberPool: Map LocTreiberStack (Vec X);
-var {:layer 0, 4} {:linear} TreiberPoolLow: Map LocTreiberStack (Treiber X);
+var {:layer 4, 5} TreiberPool: Map Loc (Vec X);
+var {:layer 0, 4} {:linear} TreiberPoolLow: Map Loc (Treiber X);
 
 /// Proof outline
 /*
@@ -60,42 +56,37 @@ invariant Map_Contains(TreiberPoolLow, loc_t);
 invariant (var t := TreiberPoolLow->val[loc_t]; Between(t->nodes->val, t->top, t->top, None()));
 invariant (var t := TreiberPoolLow->val[loc_t]; IsSubset(BetweenSet(t->nodes->val, t->top, None()), Domain(TreiberPoolLow, loc_t)->val));
 invariant (var loc_n := Map_At(TreiberPoolLow, loc_t)->top; loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t));
-invariant (forall {:pool "A"} loc_n: LocTreiberNode :: {:add_to_pool "A", loc_n} Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n) ==> loc_n == KeyedLoc(loc_n->l, Left()));
 invariant Map_At(TreiberPool, loc_t) == Abs(Map_At(TreiberPoolLow, loc_t));
 
 yield invariant {:layer 4} StackDom();
 invariant TreiberPool->dom == TreiberPoolLow->dom;
 
-yield invariant {:layer 4} PushLocInStack(loc_t: LocTreiberStack, node: StackElem X, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One LocTreiberNode);
+yield invariant {:layer 4} PushLocInStack(loc_t: LocTreiberStack, node: StackElem X, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One (KeyedLoc LocPiece));
 invariant Map_Contains(TreiberPoolLow, loc_t);
 invariant Set_Contains(Domain(TreiberPoolLow, loc_t), new_loc_n);
-invariant new_loc_n == KeyedLoc(new_loc_n->l, Left());
-invariant right_loc_piece->val == KeyedLoc(new_loc_n->l, Right());
+invariant right_loc_piece->val == KeyedLoc(new_loc_n, Right());
 invariant (var t := TreiberPoolLow->val[loc_t]; Map_At(t->nodes, new_loc_n) == node && !BetweenSet(t->nodes->val, t->top, None())[new_loc_n]);
 
 /// Layered implementation
 
-atomic action {:layer 5} AtomicAlloc() returns ({:linear} one_loc_t: One LocTreiberStack)
+atomic action {:layer 5} AtomicAlloc() returns ({:linear} right_loc_piece: One (KeyedLoc LocPiece))
 {
-  var loc: Loc;
-  var {:linear} loc_pieces: Set LocTreiberNode;
-  var {:linear} left_loc_piece: One LocTreiberNode;
+  var {:linear} one_loc_t: One LocTreiberStack;
+  var {:linear} loc_pieces: Set (KeyedLoc LocPiece);
 
-  call loc, loc_pieces := KeyedLocSet_New(AllLocPieces());
-  call one_loc_t := One_Get(loc_pieces, KeyedLoc(loc, Right()));
-  call left_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Left()));
-  assume !Map_Contains(TreiberPool, left_loc_piece->val);
-  TreiberPool := Map_Update(TreiberPool, left_loc_piece->val, Vec_Empty());
+  call one_loc_t, loc_pieces := KeyedLocSet_New(AllLocPieces());
+  call right_loc_piece := One_Get(loc_pieces, KeyedLoc(one_loc_t->val, Right()));
+  assume !Map_Contains(TreiberPool, one_loc_t->val);
+  TreiberPool := Map_Update(TreiberPool, one_loc_t->val, Vec_Empty());
 }
-yield procedure {:layer 4} Alloc() returns ({:linear} one_loc_t: One LocTreiberStack)
+yield procedure {:layer 4} Alloc() returns ({:linear} right_loc_piece: One (KeyedLoc LocPiece))
 refines AtomicAlloc;
-ensures call TopInStack(LeftLocPiece(one_loc_t->val));
-ensures call ReachInStack(LeftLocPiece(one_loc_t->val));
+ensures call TopInStack(right_loc_piece->val->l);
+ensures call ReachInStack(right_loc_piece->val->l);
 preserves call StackDom();
 {
-  var loc: Loc;
-  var {:linear} loc_pieces: Set LocTreiberNode;
-  var {:linear} left_loc_piece: One LocTreiberNode;
+  var {:linear} one_loc_t: One LocTreiberStack;
+  var {:linear} loc_pieces: Set (KeyedLoc LocPiece);
   var top: Option LocTreiberNode;
   var {:linear} stack: StackMap X;
   var {:linear} treiber: Treiber X;
@@ -103,11 +94,10 @@ preserves call StackDom();
   top := None();
   call stack := Map_MakeEmpty();
   treiber := Treiber(top, stack);
-  call loc, loc_pieces := KeyedLocSet_New(AllLocPieces());
-  call one_loc_t := One_Get(loc_pieces, KeyedLoc(loc, Right()));
-  call left_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Left()));
-  call AllocTreiber#0(left_loc_piece, treiber);
-  call {:layer 4} TreiberPool := Copy(Map_Update(TreiberPool, left_loc_piece->val, Vec_Empty()));
+  call one_loc_t, loc_pieces := KeyedLocSet_New(AllLocPieces());
+  call right_loc_piece := One_Get(loc_pieces, KeyedLoc(one_loc_t->val, Right()));
+  call AllocTreiber#0(one_loc_t, treiber);
+  call {:layer 4} TreiberPool := Copy(Map_Update(TreiberPool, one_loc_t->val, Vec_Empty()));
   call {:layer 4} AbsLemma(treiber);
 }
 
@@ -128,7 +118,7 @@ preserves call StackDom();
 {
   var loc_n: Option LocTreiberNode;
   var new_loc_n: LocTreiberNode;
-  var {:linear} right_loc_piece: One LocTreiberNode;
+  var {:linear} right_loc_piece: One (KeyedLoc LocPiece);
   var {:layer 4} old_treiber: Treiber X;
 
   call {:layer 4} old_treiber := Copy(TreiberPoolLow->val[loc_t]);
@@ -176,44 +166,40 @@ preserves call StackDom();
 }
 
 atomic action {:layer 4} AtomicCreateNewTopOfStack(loc_t: LocTreiberStack, x: X)
-  returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One LocTreiberNode)
+  returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One (KeyedLoc LocPiece))
 asserts Map_Contains(TreiberPoolLow, loc_t);
 {
   var {:linear} one_loc_t: One LocTreiberStack;
   var {:linear} treiber: Treiber X;
   var top: Option LocTreiberNode;
   var {:linear} stack: StackMap X;
-  var loc: Loc;
-  var {:linear} loc_pieces: Set LocTreiberNode;
-  var {:linear} left_loc_piece: One LocTreiberNode;
+  var {:linear} one_loc_n: One LocTreiberNode;
+  var {:linear} loc_pieces: Set (KeyedLoc LocPiece);
   
   call one_loc_t, treiber := Map_Get(TreiberPoolLow, loc_t);
   Treiber(top, stack) := treiber;
   assume loc_n is None || Map_Contains(stack, loc_n->t);
-  call loc, loc_pieces := KeyedLocSet_New(AllLocPieces());
-  call left_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Left()));
-  new_loc_n := left_loc_piece->val;
-  call right_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Right()));
-  call Map_Put(stack, left_loc_piece, Node(loc_n, x));
+  call one_loc_n, loc_pieces := KeyedLocSet_New(AllLocPieces());
+  new_loc_n := one_loc_n->val;
+  call right_loc_piece := One_Get(loc_pieces, KeyedLoc(new_loc_n, Right()));
+  call Map_Put(stack, one_loc_n, Node(loc_n, x));
   treiber := Treiber(top, stack);
   call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 yield procedure {:layer 3} CreateNewTopOfStack(loc_t: LocTreiberStack, x: X)
-  returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One LocTreiberNode)
+  returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One (KeyedLoc LocPiece))
 preserves call TopInStack(loc_t);
 ensures call LocInStackOrNone(loc_t, Some(new_loc_n));
 refines AtomicCreateNewTopOfStack;
 {
-  var loc: Loc;
-  var {:linear} loc_pieces: Set LocTreiberNode;
-  var {:linear} left_loc_piece: One LocTreiberNode;
+  var {:linear} one_loc_n: One LocTreiberNode;
+  var {:linear} loc_pieces: Set (KeyedLoc LocPiece);
 
   call loc_n := ReadTopOfStack#Push(loc_t);
-  call loc, loc_pieces := KeyedLocSet_New(AllLocPieces());
-  call left_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Left()));
-  new_loc_n := left_loc_piece->val;
-  call right_loc_piece := One_Get(loc_pieces, KeyedLoc(loc, Right()));
-  call AllocNode#0(loc_t, left_loc_piece, Node(loc_n, x));
+  call one_loc_n, loc_pieces := KeyedLocSet_New(AllLocPieces());
+  new_loc_n := one_loc_n->val;
+  call right_loc_piece := One_Get(loc_pieces, KeyedLoc(new_loc_n, Right()));
+  call AllocNode#0(loc_t, one_loc_n, Node(loc_n, x));
 }
 
 atomic action {:layer 4} AtomicPopIntermediate(loc_t: LocTreiberStack) returns (success: bool, x_opt: Option X)
@@ -350,14 +336,14 @@ refines atomic action {:layer 1,4} _
   call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 
-yield procedure {:layer 0} AllocNode#0(loc_t: LocTreiberStack, {:linear_in} loc_piece: One LocTreiberNode, node: StackElem X);
+yield procedure {:layer 0} AllocNode#0(loc_t: LocTreiberStack, {:linear_in} one_loc_n: One LocTreiberNode, node: StackElem X);
 refines atomic action {:layer 1,3} _
 {
   var {:linear} one_loc_t: One LocTreiberStack;
   var {:linear} treiber: Treiber X;
 
   call one_loc_t, treiber := Map_Get(TreiberPoolLow, loc_t);
-  call Map_Put(treiber->nodes, loc_piece, node);
+  call Map_Put(treiber->nodes, one_loc_n, node);
   call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 
