@@ -145,7 +145,7 @@ public class LinearRewriter
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "Loc_New":
-      case "KeyedLocSet_New":
+      case "TaggedLocSet_New":
       case "Set_MakeEmpty":
       case "Map_MakeEmpty":
       case "Map_Pack":
