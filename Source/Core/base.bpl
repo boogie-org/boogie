@@ -359,3 +359,8 @@ ensures b;
 
 pure procedure Move<T>({:linear_in} v: T, {:linear_out} v': T);
 requires v == v';
+
+datatype Unit { Unit() }
+function {:inline} UnitSet(): Set Unit {
+  Set_Add(Set_Empty(), Unit())
+}
