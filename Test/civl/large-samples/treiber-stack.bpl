@@ -56,32 +56,32 @@ invariant Map_At(TreiberPool, loc_t) == Abs(Map_At(TreiberPoolLow, loc_t));
 yield invariant {:layer 4} StackDom();
 invariant TreiberPool->dom == TreiberPoolLow->dom;
 
-yield invariant {:layer 4} PushLocInStack(loc_t: LocTreiberStack, node: StackElem X, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One (TaggedLoc Unit));
+yield invariant {:layer 4} PushLocInStack(loc_t: LocTreiberStack, node: StackElem X, new_loc_n: LocTreiberNode, {:linear} tagged_loc: One (TaggedLoc Unit));
 invariant Map_Contains(TreiberPoolLow, loc_t);
 invariant Set_Contains(Domain(TreiberPoolLow, loc_t), new_loc_n);
-invariant right_loc_piece->val == TaggedLoc(new_loc_n, Unit());
+invariant tagged_loc->val == TaggedLoc(new_loc_n, Unit());
 invariant (var t := TreiberPoolLow->val[loc_t]; Map_At(t->nodes, new_loc_n) == node && !BetweenSet(t->nodes->val, t->top, None())[new_loc_n]);
 
 /// Layered implementation
 
-atomic action {:layer 5} AtomicAlloc() returns ({:linear} right_loc_piece: One (TaggedLoc Unit))
+atomic action {:layer 5} AtomicAlloc() returns ({:linear} tagged_loc: One (TaggedLoc Unit))
 {
   var {:linear} one_loc_t: One LocTreiberStack;
-  var {:linear} loc_pieces: Set (TaggedLoc Unit);
+  var {:linear} tagged_locs: Set (TaggedLoc Unit);
 
-  call one_loc_t, loc_pieces := TaggedLocSet_New(UnitSet());
-  call right_loc_piece := One_Get(loc_pieces, TaggedLoc(one_loc_t->val, Unit()));
+  call one_loc_t, tagged_locs := TaggedLocSet_New(UnitSet());
+  call tagged_loc := One_Get(tagged_locs, TaggedLoc(one_loc_t->val, Unit()));
   assume !Map_Contains(TreiberPool, one_loc_t->val);
   TreiberPool := Map_Update(TreiberPool, one_loc_t->val, Vec_Empty());
 }
-yield procedure {:layer 4} Alloc() returns ({:linear} right_loc_piece: One (TaggedLoc Unit))
+yield procedure {:layer 4} Alloc() returns ({:linear} tagged_loc: One (TaggedLoc Unit))
 refines AtomicAlloc;
-ensures call TopInStack(right_loc_piece->val->loc);
-ensures call ReachInStack(right_loc_piece->val->loc);
+ensures call TopInStack(tagged_loc->val->loc);
+ensures call ReachInStack(tagged_loc->val->loc);
 preserves call StackDom();
 {
   var {:linear} one_loc_t: One LocTreiberStack;
-  var {:linear} loc_pieces: Set (TaggedLoc Unit);
+  var {:linear} tagged_locs: Set (TaggedLoc Unit);
   var top: Option LocTreiberNode;
   var {:linear} stack: StackMap X;
   var {:linear} treiber: Treiber X;
@@ -89,8 +89,8 @@ preserves call StackDom();
   top := None();
   call stack := Map_MakeEmpty();
   treiber := Treiber(top, stack);
-  call one_loc_t, loc_pieces := TaggedLocSet_New(UnitSet());
-  call right_loc_piece := One_Get(loc_pieces, TaggedLoc(one_loc_t->val, Unit()));
+  call one_loc_t, tagged_locs := TaggedLocSet_New(UnitSet());
+  call tagged_loc := One_Get(tagged_locs, TaggedLoc(one_loc_t->val, Unit()));
   call AllocTreiber#0(one_loc_t, treiber);
   call {:layer 4} TreiberPool := Copy(Map_Update(TreiberPool, one_loc_t->val, Vec_Empty()));
   call {:layer 4} AbsLemma(treiber);
@@ -113,13 +113,13 @@ preserves call StackDom();
 {
   var loc_n: Option LocTreiberNode;
   var new_loc_n: LocTreiberNode;
-  var {:linear} right_loc_piece: One (TaggedLoc Unit);
+  var {:linear} tagged_loc: One (TaggedLoc Unit);
   var {:layer 4} old_treiber: Treiber X;
 
   call {:layer 4} old_treiber := Copy(TreiberPoolLow->val[loc_t]);
-  call loc_n, new_loc_n, right_loc_piece := CreateNewTopOfStack(loc_t, x);
+  call loc_n, new_loc_n, tagged_loc := CreateNewTopOfStack(loc_t, x);
   call {:layer 4} FrameLemma(old_treiber, TreiberPoolLow->val[loc_t]);
-  par ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, Node(loc_n, x), new_loc_n, right_loc_piece);
+  par ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, Node(loc_n, x), new_loc_n, tagged_loc);
   call success := WriteTopOfStack#0(loc_t, loc_n, Some(new_loc_n));
   if (success) {
     call {:layer 4} TreiberPool := Copy(Map_Update(TreiberPool, loc_t, Vec_Append(Map_At(TreiberPool, loc_t), x)));
@@ -161,7 +161,7 @@ preserves call StackDom();
 }
 
 atomic action {:layer 4} AtomicCreateNewTopOfStack(loc_t: LocTreiberStack, x: X)
-  returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One (TaggedLoc Unit))
+  returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} tagged_loc: One (TaggedLoc Unit))
 asserts Map_Contains(TreiberPoolLow, loc_t);
 {
   var {:linear} one_loc_t: One LocTreiberStack;
@@ -169,31 +169,31 @@ asserts Map_Contains(TreiberPoolLow, loc_t);
   var top: Option LocTreiberNode;
   var {:linear} stack: StackMap X;
   var {:linear} one_loc_n: One LocTreiberNode;
-  var {:linear} loc_pieces: Set (TaggedLoc Unit);
+  var {:linear} tagged_locs: Set (TaggedLoc Unit);
   
   call one_loc_t, treiber := Map_Get(TreiberPoolLow, loc_t);
   Treiber(top, stack) := treiber;
   assume loc_n is None || Map_Contains(stack, loc_n->t);
-  call one_loc_n, loc_pieces := TaggedLocSet_New(UnitSet());
+  call one_loc_n, tagged_locs := TaggedLocSet_New(UnitSet());
   new_loc_n := one_loc_n->val;
-  call right_loc_piece := One_Get(loc_pieces, TaggedLoc(new_loc_n, Unit()));
+  call tagged_loc := One_Get(tagged_locs, TaggedLoc(new_loc_n, Unit()));
   call Map_Put(stack, one_loc_n, Node(loc_n, x));
   treiber := Treiber(top, stack);
   call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 yield procedure {:layer 3} CreateNewTopOfStack(loc_t: LocTreiberStack, x: X)
-  returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} right_loc_piece: One (TaggedLoc Unit))
+  returns (loc_n: Option LocTreiberNode, new_loc_n: LocTreiberNode, {:linear} tagged_loc: One (TaggedLoc Unit))
 preserves call TopInStack(loc_t);
 ensures call LocInStackOrNone(loc_t, Some(new_loc_n));
 refines AtomicCreateNewTopOfStack;
 {
   var {:linear} one_loc_n: One LocTreiberNode;
-  var {:linear} loc_pieces: Set (TaggedLoc Unit);
+  var {:linear} tagged_locs: Set (TaggedLoc Unit);
 
   call loc_n := ReadTopOfStack#Push(loc_t);
-  call one_loc_n, loc_pieces := TaggedLocSet_New(UnitSet());
+  call one_loc_n, tagged_locs := TaggedLocSet_New(UnitSet());
   new_loc_n := one_loc_n->val;
-  call right_loc_piece := One_Get(loc_pieces, TaggedLoc(new_loc_n, Unit()));
+  call tagged_loc := One_Get(tagged_locs, TaggedLoc(new_loc_n, Unit()));
   call AllocNode#0(loc_t, one_loc_n, Node(loc_n, x));
 }
 
