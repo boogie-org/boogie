@@ -336,12 +336,12 @@ pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One
   assume {:add_to_pool "Loc_New", l} true;
 }
 
-datatype KeyedLoc<K> { KeyedLoc(l: Loc, k: K) }
+datatype TaggedLoc<K> { TaggedLoc(loc: Loc, tag: K) }
 
-pure procedure {:inline 1} KeyedLocSet_New<K>(ks: Set K) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} keyed_locs: Set (KeyedLoc K))
+pure procedure {:inline 1} TaggedLocSet_New<K>(ks: Set K) returns ({:linear} {:pool "Loc_New"} l: One Loc, {:linear} tagged_locs: Set (TaggedLoc K))
 {
   assume {:add_to_pool "Loc_New", l} true;
-  keyed_locs := Set((lambda x: KeyedLoc K :: x->l == l->val && Set_Contains(ks, x->k)));
+  tagged_locs := Set((lambda x: TaggedLoc K :: x->loc == l->val && Set_Contains(ks, x->tag)));
 }
 
 procedure create_async<T>(PA: T);
