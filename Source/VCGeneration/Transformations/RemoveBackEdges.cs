@@ -73,6 +73,147 @@ public class RemoveBackEdges {
 
     #endregion
   }
+  private void SubstituteBlocks(Block b, Dictionary<Block, Block> subst)
+  {
+    TransferCmd transferCmd = b.TransferCmd;
+    if (transferCmd is not GotoCmd)
+    {
+      return;
+    }
+    foreach (var (oldBlock, newBlock) in subst)
+    {
+      GotoCmd gotoCmd = (GotoCmd)transferCmd;
+      if (gotoCmd.LabelTargets.Contains(oldBlock))
+      {
+        gotoCmd.RemoveTarget(oldBlock);
+        gotoCmd.AddTarget(newBlock);
+      }
+    }
+  }
+
+  private Block duplicateBlock(Block b)
+  {
+    List<Cmd> dupCmds = new List<Cmd>();
+    b.Cmds.ForEach(dupCmds.Add);
+
+    TransferCmd splitTransferCmd = b.TransferCmd;
+    TransferCmd dupTransferCmd;
+
+    if (splitTransferCmd is not GotoCmd)
+    {
+      dupTransferCmd = new ReturnCmd(Token.NoToken);
+    }
+    else
+    {
+      List<string> dupLabelNames = [.. ((GotoCmd)splitTransferCmd).LabelNames];
+      List<Block> dupLabelTargets = new List<Block>();
+      ((GotoCmd)splitTransferCmd).LabelTargets.ForEach(dupLabelTargets.Add);
+
+      dupTransferCmd = new GotoCmd(Token.NoToken, dupLabelNames, dupLabelTargets);
+    }
+
+    Block dupBlock = new Block(Token.NoToken, b.Label + "_dup_" + b.UpdateDuplicates(), dupCmds, dupTransferCmd);
+    return dupBlock;
+  }
+  private Graph<Block> ConvertToReducible(Implementation impl)
+  {
+    Graph<Block> g = Program.GraphFromImpl(impl);
+    impl.ComputePredecessorsForBlocks();
+    g.ComputeLoops(); // this is the call that does all of the processing
+    while (!g.Reducible)
+    {
+      // throw new VCGenException("Irreducible flow graphs are unsupported.");
+
+      // We will be looking for a block that can be split, and for a looply connected block that has an invariant
+
+      Block splitBlock = null;
+      foreach (Block b in g.SplitCandidates)
+      {
+        if (b.Predecessors.Count > 1 && !b.HasInvariant())
+        {
+          splitBlock = b;
+          break;
+        }
+      }
+
+      if (splitBlock == null)
+      {
+        // If all of the loop blocks have invariants, then choose any of them
+        foreach (Block b in g.SplitCandidates)
+        {
+          if (b.Predecessors.Count > 1)
+          {
+            splitBlock = b;
+            break;
+          }
+        }
+      }
+
+      // splitBlock should be a perfectly good split candidate now.
+      // We have to find the nodes that are dominated by it, to duplicate them too
+      List<Block> region = new List<Block>();
+      foreach (Block b in impl.Blocks)
+      {
+        if (g.DominatorMap.DominatedBy(b, splitBlock))
+        {
+          region.Add(b);
+        }
+      }
+      for (int idx = 0; idx < splitBlock.Predecessors.Count; idx++)
+      {
+        Block pred = splitBlock.Predecessors[idx];
+        if (g.DominatorMap.DominatedBy(pred, splitBlock))
+        {
+          continue;
+        }
+
+        // duplicate the splitBlock
+        Block dupBlock = duplicateBlock(splitBlock);
+
+        // Remove edge of the previous block
+        GotoCmd predGoto = (GotoCmd)pred.TransferCmd;
+        predGoto.RemoveTarget(splitBlock);
+
+        // Update the edge for the duplicate
+        predGoto.AddTarget(dupBlock);
+
+        // Add the duplicate block to the implementation
+        impl.Blocks.Add(dupBlock);
+
+        // duplicate the whole region
+        Dictionary<Block, Block> duplicatesDict = new Dictionary<Block, Block>();
+        List<Block> duplicates = new List<Block>
+        {
+          dupBlock
+        };
+        duplicatesDict.Add(splitBlock, dupBlock);
+
+        // Replace the blocks in the region with their duplicates
+        foreach (Block currentBlock in region)
+        {
+          if (currentBlock != splitBlock)
+          {
+            Block newBlock = duplicateBlock(currentBlock);
+            impl.Blocks.Add(newBlock);
+            duplicatesDict[currentBlock] = newBlock;
+            duplicates.Add(newBlock);
+          }
+        }
+
+        foreach (Block currentBlock in duplicates)
+        {
+          SubstituteBlocks(currentBlock, duplicatesDict);
+        }
+      }
+
+      impl.PruneUnreachableBlocks(generator.Options);
+      impl.ComputePredecessorsForBlocks();
+      g = Program.GraphFromImpl(impl);
+      g.ComputeLoops();
+    }
+
+    return g;
+  }
 
   private void ConvertCfg2DagStandard(Implementation impl, Dictionary<Block, List<Block>> edgesCut, int taskID)
   {
@@ -82,17 +223,12 @@ public class RemoveBackEdges {
 
     #region Create the graph by adding the source node and each edge
 
-    Graph<Block> g = Program.GraphFromImpl(impl);
+    // Graph<Block> g = Program.GraphFromImpl(impl);
+    Graph<Block> g = ConvertToReducible(impl);
 
     #endregion
 
     //Graph<Block> g = program.ProcessLoops(impl);
-
-    g.ComputeLoops(); // this is the call that does all of the processing
-    if (!g.Reducible)
-    {
-      throw new VCGenException("Irreducible flow graphs are unsupported.");
-    }
 
     #endregion
 
@@ -112,9 +248,12 @@ public class RemoveBackEdges {
 
       List<Cmd> prefixOfPredicateCmdsInit = new List<Cmd>();
       List<Cmd> prefixOfPredicateCmdsMaintained = new List<Cmd>();
-      for (int i = 0, n = header.Cmds.Count; i < n; i++) {
-        if (header.Cmds[i] is not PredicateCmd predicateCmd) {
-          if (header.Cmds[i] is CommentCmd) {
+      for (int i = 0, n = header.Cmds.Count; i < n; i++)
+      {
+        if (header.Cmds[i] is not PredicateCmd predicateCmd)
+        {
+          if (header.Cmds[i] is CommentCmd)
+          {
             // ignore
             continue;
           }
@@ -122,15 +261,19 @@ public class RemoveBackEdges {
           break; // stop when an assignment statement (or any other non-predicate cmd) is encountered
         }
 
-        if (predicateCmd is AssertCmd assertCmd) {
+        if (predicateCmd is AssertCmd assertCmd)
+        {
           AssertCmd initAssertCmd;
 
-          if (generator.Options.ConcurrentHoudini) {
+          if (generator.Options.ConcurrentHoudini)
+          {
             Contract.Assert(taskID >= 0);
             initAssertCmd = generator.Options.Cho[taskID].DisableLoopInvEntryAssert
               ? new LoopInitAssertCmd(assertCmd.tok, Expr.True, assertCmd)
               : new LoopInitAssertCmd(assertCmd.tok, assertCmd.Expr, assertCmd);
-          } else {
+          }
+          else
+          {
             initAssertCmd = new LoopInitAssertCmd(assertCmd.tok, assertCmd.Expr, assertCmd);
           }
 
@@ -143,12 +286,15 @@ public class RemoveBackEdges {
           prefixOfPredicateCmdsInit.Add(initAssertCmd);
 
           LoopInvMaintainedAssertCmd maintainedAssertCmd;
-          if (generator.Options.ConcurrentHoudini) {
+          if (generator.Options.ConcurrentHoudini)
+          {
             Contract.Assert(taskID >= 0);
             maintainedAssertCmd = generator.Options.Cho[taskID].DisableLoopInvMaintainedAssert
               ? new LoopInvMaintainedAssertCmd(assertCmd.tok, Expr.True, assertCmd)
               : new LoopInvMaintainedAssertCmd(assertCmd.tok, assertCmd.Expr, assertCmd);
-          } else {
+          }
+          else
+          {
             maintainedAssertCmd = new LoopInvMaintainedAssertCmd(assertCmd.tok, assertCmd.Expr, assertCmd);
           }
 
@@ -166,9 +312,12 @@ public class RemoveBackEdges {
             id => new TrackedInvariantAssumed(id));
 
           header.Cmds[i] = assume;
-        } else {
+        }
+        else
+        {
           Contract.Assert(predicateCmd is AssumeCmd);
-          if (generator.Options.AlwaysAssumeFreeLoopInvariants) {
+          if (generator.Options.AlwaysAssumeFreeLoopInvariants)
+          {
             // Usually, "free" stuff, like free loop invariants (and the assume statements
             // that stand for such loop invariants) are ignored on the checking side.  This
             // command-line option changes that behavior to always assume the conditions.
@@ -324,15 +473,9 @@ public class RemoveBackEdges {
 
       #region Create the graph by adding the source node and each edge
 
-      Graph<Block> g = Program.GraphFromImpl(impl);
+      Graph<Block> g = ConvertToReducible(impl);
 
       #endregion
-
-      g.ComputeLoops(); // this is the call that does all of the processing
-      if (!g.Reducible)
-      {
-        throw new VCGenException("Irreducible flow graphs are unsupported.");
-      }
 
       #endregion
 
