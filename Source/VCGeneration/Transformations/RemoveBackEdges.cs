@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.Linq;
 using Microsoft.Boogie;
 using Microsoft.Boogie.GraphUtil;
 using VC;
@@ -73,25 +74,26 @@ public class RemoveBackEdges {
 
     #endregion
   }
-  private void SubstituteBlocks(Block b, Dictionary<Block, Block> subst)
+  private static void SubstituteBranchTargets(Block b, Dictionary<Block, Block> subst)
   {
     TransferCmd transferCmd = b.TransferCmd;
     if (transferCmd is not GotoCmd)
     {
       return;
     }
-    foreach (var (oldBlock, newBlock) in subst)
+
+    GotoCmd gotoCmd = (GotoCmd)transferCmd;
+    foreach (Block currentBlock in gotoCmd.LabelTargets.ToList())
     {
-      GotoCmd gotoCmd = (GotoCmd)transferCmd;
-      if (gotoCmd.LabelTargets.Contains(oldBlock))
+      if (subst.TryGetValue(currentBlock, out Block dupBlock))
       {
-        gotoCmd.RemoveTarget(oldBlock);
-        gotoCmd.AddTarget(newBlock);
-      }
+        gotoCmd.RemoveTarget(currentBlock);
+        gotoCmd.AddTarget(dupBlock);
+      }      
     }
   }
 
-  private Block duplicateBlock(Block b)
+  private static Block DuplicateBlock(Block b, Dictionary<Block, int> nextLabels)
   {
     List<Cmd> dupCmds = new List<Cmd>();
     b.Cmds.ForEach(dupCmds.Add);
@@ -112,63 +114,36 @@ public class RemoveBackEdges {
       dupTransferCmd = new GotoCmd(Token.NoToken, dupLabelNames, dupLabelTargets);
     }
 
-    Block dupBlock = new Block(Token.NoToken, b.Label + "_dup_" + b.UpdateDuplicates(), dupCmds, dupTransferCmd);
+    Block dupBlock = new Block(Token.NoToken, b.Label + "_dup_" + nextLabels[b], dupCmds, dupTransferCmd);
+    nextLabels[b]++;
+    nextLabels.Add(dupBlock, 0);
     return dupBlock;
   }
   private Graph<Block> ConvertToReducible(Implementation impl)
   {
+    Dictionary<Block, int> nextLabels = impl.Blocks.ToDictionary(b => b, _ => 0);
     Graph<Block> g = Program.GraphFromImpl(impl);
     impl.ComputePredecessorsForBlocks();
     g.ComputeLoops(); // this is the call that does all of the processing
     while (!g.Reducible)
     {
-      // throw new VCGenException("Irreducible flow graphs are unsupported.");
-
       // We will be looking for a block that can be split, and for a looply connected block that has an invariant
-
-      Block splitBlock = null;
-      foreach (Block b in g.SplitCandidates)
-      {
-        if (b.Predecessors.Count > 1 && !b.HasInvariant())
-        {
-          splitBlock = b;
-          break;
-        }
-      }
-
-      if (splitBlock == null)
-      {
-        // If all of the loop blocks have invariants, then choose any of them
-        foreach (Block b in g.SplitCandidates)
-        {
-          if (b.Predecessors.Count > 1)
-          {
-            splitBlock = b;
-            break;
-          }
-        }
-      }
+      Block splitBlock = g.SplitCandidates
+        .FirstOrDefault(b => b.Predecessors.Count > 1 && !b.HasInvariant())
+        ?? g.SplitCandidates.FirstOrDefault(b => b.Predecessors.Count > 1);
 
       // splitBlock should be a perfectly good split candidate now.
       // We have to find the nodes that are dominated by it, to duplicate them too
-      List<Block> region = new List<Block>();
-      foreach (Block b in impl.Blocks)
+      List<Block> region = [.. impl.Blocks.Where(b => g.DominatorMap.DominatedBy(b, splitBlock))];
+      foreach (Block pred in splitBlock.Predecessors)
       {
-        if (g.DominatorMap.DominatedBy(b, splitBlock))
-        {
-          region.Add(b);
-        }
-      }
-      for (int idx = 0; idx < splitBlock.Predecessors.Count; idx++)
-      {
-        Block pred = splitBlock.Predecessors[idx];
         if (g.DominatorMap.DominatedBy(pred, splitBlock))
         {
           continue;
         }
 
         // duplicate the splitBlock
-        Block dupBlock = duplicateBlock(splitBlock);
+        Block dupBlock = DuplicateBlock(splitBlock, nextLabels);
 
         // Remove edge of the previous block
         GotoCmd predGoto = (GotoCmd)pred.TransferCmd;
@@ -181,29 +156,23 @@ public class RemoveBackEdges {
         impl.Blocks.Add(dupBlock);
 
         // duplicate the whole region
-        Dictionary<Block, Block> duplicatesDict = new Dictionary<Block, Block>();
-        List<Block> duplicates = new List<Block>
+        Dictionary<Block, Block> duplicatesDict = new Dictionary<Block, Block>
         {
-          dupBlock
+          { splitBlock, dupBlock }
         };
-        duplicatesDict.Add(splitBlock, dupBlock);
 
-        // Replace the blocks in the region with their duplicates
         foreach (Block currentBlock in region)
         {
           if (currentBlock != splitBlock)
           {
-            Block newBlock = duplicateBlock(currentBlock);
+            Block newBlock = DuplicateBlock(currentBlock, nextLabels);
             impl.Blocks.Add(newBlock);
             duplicatesDict[currentBlock] = newBlock;
-            duplicates.Add(newBlock);
           }
         }
 
-        foreach (Block currentBlock in duplicates)
-        {
-          SubstituteBlocks(currentBlock, duplicatesDict);
-        }
+        // Replace the blocks in the region with their duplicates
+        duplicatesDict.Values.ForEach(b => SubstituteBranchTargets(b, duplicatesDict));
       }
 
       impl.PruneUnreachableBlocks(generator.Options);

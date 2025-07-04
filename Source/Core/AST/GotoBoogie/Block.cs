@@ -49,8 +49,6 @@ public sealed class Block : Absy
   public int SuccCount;
 
   private HashSet<Variable> liveVarsBefore;
-
-  private int nrDuplicates = 0;
   public IEnumerable<Variable> LiveVarsBefore
   {
     get
@@ -202,11 +200,5 @@ public sealed class Block : Absy
   public bool HasInvariant()
   {
     return Cmds.Count >= 1 && Cmds[0] is AssertCmd;
-  }
-
-  public int UpdateDuplicates()
-  {
-    ++nrDuplicates;
-    return nrDuplicates;
   }
 }
