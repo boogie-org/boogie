@@ -450,7 +450,7 @@ namespace Microsoft.Boogie
               else if (options.ProcedureInlining == CoreOptions.Inlining.Assume)
               {
                 // add assume
-                newCmds.Add(new AssumeCmd(callCmd.tok, Expr.False));
+                newCmds.Add(new AssumeCmd(callCmd.tok, Expr.True));
               }
               else
               {
