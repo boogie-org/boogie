@@ -1,5 +1,0 @@
-CanonicalAssertAssume.bpl(20,9): Error: this loop invariant could not be proved on entry
-Execution trace:
-    CanonicalAssertAssume.bpl(8,7): anon0
-
-Boogie program verifier finished with 0 verified, 1 error
