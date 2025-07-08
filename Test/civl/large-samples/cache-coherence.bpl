@@ -642,7 +642,7 @@ yield left procedure {:layer 2} invalidate_sharers(ma: MemAddr, victims: Set Cac
   returns ({:linear} {:layer 1,2} dp': Set DirPermission)
 modifies cache;
 preserves call YieldInv#1();
-requires {:layer 2} dp == WholeDirPermission(ma);
+requires {:layer 2} Set_IsSubset(Set((lambda x: DirPermission :: Set_Contains(victims, x->i) && x->ma == ma)), dp);
 requires {:layer 2} (forall i: CacheId, ca: CacheAddr:: (var line := cache[i][ca];
                       line->state == Invalid() ||
                       (line->value == absMem[line->ma] && if line->state == Shared() then dir[line->ma] is Sharers else dir[line->ma] is Owner)));
@@ -664,9 +664,8 @@ ensures {:layer 2} dp == dp';
   victim := Choice(victims->val);
   victims' := Set_Remove(victims, victim);
   par dpOne, dp' := get_victim(victim, ma, dp') | YieldInv#1();
-  par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | YieldInv#1();
+  par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | dp' := invalidate_sharers(ma, victims', dp') | YieldInv#1();
   par dp' := put_victim(dpOne, dp') | YieldInv#1();
-  call dp' := invalidate_sharers(ma, victims', dp');
 }
 
 yield procedure {:layer 1} get_victim(victim: CacheId, ma: MemAddr, {:layer 1} {:linear_in} dp: Set DirPermission)
