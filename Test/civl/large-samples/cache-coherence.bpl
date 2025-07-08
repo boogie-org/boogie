@@ -623,41 +623,50 @@ preserves call YieldInv#2();
 requires call YieldRead(i, ma, drp);
 {
   var dirState: DirState;
-  var value: Value;
   var {:linear} {:layer 1,2} dp: Set DirPermission;
-  var {:linear} {:layer 1,2} dpOne: Set DirPermission;
-  var victims: Set CacheId;
-  var victim: CacheId;
-  var {:layer 2} cache_s: [CacheId][CacheAddr]CacheLine;
+  var value: Value;
 
   par dirState, dp := dir_req_begin(ma) | YieldInv#1();
   if (dirState is Owner) {
     par value := cache_invalidate_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
     par write_mem(ma, value, dp) | YieldInv#1();
   } else {
-    call {:layer 2} cache_s := Copy(cache);
-    victims := dirState->iset;
-    while (victims != Set_Empty())
-    invariant {:yields} {:layer 1} true;
-    invariant {:layer 1} call YieldInv#1();
-    invariant {:layer 2} dp == WholeDirPermission(ma);
-    invariant {:layer 2} Set_IsSubset(victims, dirState->iset);
-    invariant {:layer 2} (forall i: CacheId:: Set_Contains(dirState->iset, i) || cache[i] == cache_s[i]);
-    invariant {:layer 2} (forall i: CacheId:: Set_Contains(dirState->iset, i) ==> 
-                            if Set_Contains(victims, i)
-                            then cache[i] == cache_s[i]
-                            else cache[i] == cache_s[i][Hash(ma) := CacheLine(ma, cache_s[i][Hash(ma)]->value, Invalid())]);
-    {
-      victim := Choice(victims->val);
-      victims := Set_Remove(victims, victim);
-      par dpOne, dp := get_victim(victim, ma, dp) | YieldInv#1();
-      par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | YieldInv#1();
-      par dp := put_victim(dpOne, dp) | YieldInv#1();
-    }
+    call dp := invalidate_sharers(ma, dirState->iset, dp);
     par value := read_mem(ma, dp) | YieldInv#1();
   }
   call cache_read_resp#1(i, ma, value, Exclusive(), drp, dp);
   par dir_req_end(ma, Owner(i), dp) | YieldInv#1();
+}
+
+yield left procedure {:layer 2} invalidate_sharers(ma: MemAddr, victims: Set CacheId, {:linear_in} {:layer 1,2} dp: Set DirPermission)
+  returns ({:linear} {:layer 1,2} dp': Set DirPermission)
+modifies cache;
+preserves call YieldInv#1();
+requires {:layer 2} dp == WholeDirPermission(ma);
+requires {:layer 2} (forall i: CacheId, ca: CacheAddr:: (var line := cache[i][ca];
+                      line->state == Invalid() ||
+                      (line->value == absMem[line->ma] && if line->state == Shared() then dir[line->ma] is Sharers else dir[line->ma] is Owner)));
+requires {:layer 2} (forall i: CacheId:: Set_Contains(victims, i) ==> cache[i][Hash(ma)]->state == Shared() && cache[i][Hash(ma)]->ma == ma);
+ensures {:layer 2} (forall i: CacheId:: Set_Contains(victims, i) ==> 
+                        cache[i] == old(cache)[i][Hash(ma) := CacheLine(ma, old(cache)[i][Hash(ma)]->value, Invalid())]);
+ensures {:layer 2} (forall i: CacheId:: Set_Contains(victims, i) || cache[i] == old(cache)[i]);
+ensures {:layer 2} dp == dp';
+{
+  var victim: CacheId;
+  var victims': Set CacheId;
+  var {:linear} {:layer 1,2} dpOne: Set DirPermission;
+
+  dp' := dp;
+  if (victims == Set_Empty())
+  {
+    return;
+  }
+  victim := Choice(victims->val);
+  victims' := Set_Remove(victims, victim);
+  par dpOne, dp' := get_victim(victim, ma, dp') | YieldInv#1();
+  par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | YieldInv#1();
+  par dp' := put_victim(dpOne, dp') | YieldInv#1();
+  call dp' := invalidate_sharers(ma, victims', dp');
 }
 
 yield procedure {:layer 1} get_victim(victim: CacheId, ma: MemAddr, {:layer 1} {:linear_in} dp: Set DirPermission)
