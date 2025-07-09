@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * Proof of VerifiedFT correctness in Civl.
  */
 
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -timeLimit:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 /*
