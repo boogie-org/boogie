@@ -7,7 +7,7 @@ namespace Microsoft.Boogie;
 
 public sealed class Block : Absy
 {
-  
+
   public string Label { get; set; } // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
 
   [Rep]
@@ -49,7 +49,6 @@ public sealed class Block : Absy
   public int SuccCount;
 
   private HashSet<Variable> liveVarsBefore;
-
   public IEnumerable<Variable> LiveVarsBefore
   {
     get
@@ -97,10 +96,11 @@ public sealed class Block : Absy
     return LiveVarsBefore.Contains(v);
   }
 
-  public static Block ShallowClone(Block block) {
+  public static Block ShallowClone(Block block)
+  {
     return new Block(block.tok, block.Label, block.Cmds, block.TransferCmd);
   }
-  
+
   public Block(IToken tok, TransferCmd cmd)
     : this(tok, "", new List<Cmd>(), new ReturnCmd(tok))
   {
@@ -195,5 +195,10 @@ public sealed class Block : Absy
   {
     Contract.Ensures(Contract.Result<Absy>() != null);
     return visitor.VisitBlock(this);
+  }
+
+  public bool HasInvariant()
+  {
+    return Cmds.Count >= 1 && Cmds[0] is AssertCmd;
   }
 }
