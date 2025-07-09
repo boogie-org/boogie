@@ -1813,6 +1813,9 @@ namespace Microsoft.Boogie
                 inline irreducible loops using the bound supplied by /loopUnroll:<n>
   /soundLoopUnrolling
                 sound loop unrolling
+  /kInductionDepth:<k>
+                uses combined-case k-induction to soundly eliminate loops,
+                by unwinding proportional to the supplied parameter
   /inferModifies
                 automatically infer modifies clauses
   /printModel:<n>
