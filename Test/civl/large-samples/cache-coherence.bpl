@@ -631,7 +631,7 @@ requires call YieldRead(i, ma, drp);
     par value := cache_invalidate_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
     par write_mem(ma, value, dp) | YieldInv#1();
   } else {
-    call dp := invalidate_sharers(ma, dirState->iset, dp);
+    par dp := invalidate_sharers(ma, dirState->iset, dp) | YieldInv#1();
     par value := read_mem(ma, dp) | YieldInv#1();
   }
   call cache_read_resp#1(i, ma, value, Exclusive(), drp, dp);
@@ -641,7 +641,6 @@ requires call YieldRead(i, ma, drp);
 yield left procedure {:layer 2} invalidate_sharers(ma: MemAddr, victims: Set CacheId, {:linear_in} {:layer 1,2} dp: Set DirPermission)
   returns ({:linear} {:layer 1,2} dp': Set DirPermission)
 modifies cache;
-preserves call YieldInv#1();
 requires {:layer 2} Set_IsSubset(Set((lambda x: DirPermission :: Set_Contains(victims, x->i) && x->ma == ma)), dp);
 requires {:layer 2} (forall i: CacheId, ca: CacheAddr:: (var line := cache[i][ca];
                       line->state == Invalid() ||
@@ -663,9 +662,9 @@ ensures {:layer 2} dp == dp';
   }
   victim := Choice(victims->val);
   victims' := Set_Remove(victims, victim);
-  par dpOne, dp' := get_victim(victim, ma, dp') | YieldInv#1();
-  par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | dp' := invalidate_sharers(ma, victims', dp') | YieldInv#1();
-  par dp' := put_victim(dpOne, dp') | YieldInv#1();
+  par dpOne, dp' := get_victim(victim, ma, dp');
+  par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | dp' := invalidate_sharers(ma, victims', dp');
+  par dp' := put_victim(dpOne, dp');
 }
 
 yield procedure {:layer 1} get_victim(victim: CacheId, ma: MemAddr, {:layer 1} {:linear_in} dp: Set DirPermission)
