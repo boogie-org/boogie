@@ -601,7 +601,7 @@ namespace Microsoft.Boogie.SMTLib
         String specialValue = resp.Arguments[0].ToString();
         int expSize = int.Parse(resp.Arguments[1].ToString());
         int sigSize = int.Parse(resp.Arguments[2].ToString());
-        return new BaseTypes.BigFloat(specialValue, sigSize, expSize);
+        return BaseTypes.BigFloat.CreateSpecialFromString(specialValue, sigSize, expSize);
       }
 
       var ary = ParseArrayFromProverResponse(resp);

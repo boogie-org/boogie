@@ -1977,11 +1977,9 @@ Float<out BigFloat n>
   (
     float   (. s = t.val; .)
   )
-  (. try {
-       n = BigFloat.FromString(s);
-     } catch (FormatException e) {
-       this.SemErr("incorrectly formatted floating point, " + e.Message);
-       n = BigFloat.ZERO;
+  (. if (!BigFloat.TryParseExact(s, out n)) {
+       this.SemErr("incorrectly formatted floating point");
+       n = BigFloat.CreateZero(false, 24, 8);
      }
   .)
   .

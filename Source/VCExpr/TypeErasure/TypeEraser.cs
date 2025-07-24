@@ -48,7 +48,8 @@ public abstract class TypeEraser : MutatingVCExprVisitor<VariableBindings>
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     Contract.Assume(node.Type == Type.Bool || node.Type == Type.Int || node.Type == Type.Real ||
-                    node.Type == Type.RMode || node.Type == Type.String || node.Type == Type.RegEx);
+                    node.Type == Type.RMode || node.Type == Type.String || node.Type == Type.RegEx ||
+                    node.Type.IsFloat);
     return node;
   }
 

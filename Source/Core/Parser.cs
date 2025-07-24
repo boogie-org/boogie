@@ -2473,11 +2473,9 @@ out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		string s = ""; 
 		Expect(7);
 		s = t.val; 
-		try {
-		 n = BigFloat.FromString(s);
-		} catch (FormatException e) {
-		 this.SemErr("incorrectly formatted floating point, " + e.Message);
-		 n = BigFloat.ZERO;
+		if (!BigFloat.TryParseExact(s, out n)) {
+		 this.SemErr("incorrectly formatted floating point");
+		 n = BigFloat.CreateZero(false, 24, 8);
 		}
 		
 	}
