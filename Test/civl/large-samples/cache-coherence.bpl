@@ -363,7 +363,7 @@ Otherwise, they are hitting the same cache and their i arguments are the same.
 In this case, the conflict between their dp arguments implies that their ma arguments are different.
 Call these arguments ma1 and ma2; let ca1 == Hash(ma1) and ca2 == Hash(ma2).
 If ca1 and ca2 are different, there is no conflict.
-Otherwise ca1 and ca2 are different.
+Otherwise ca1 and ca2 are same.
 We get a contradiction because both invocations are referring to the same cache line
 but asserting that ma field of this cache line are equal to ma1 and ma2, respectively.
 */
@@ -580,7 +580,7 @@ requires call YieldEvict(i, ma, value, drp);
   var dirState: DirState;
   var {:linear} {:layer 1,2} dp: Set DirPermission;
 
-  par dirState, dp := dir_req_begin(ma) | YieldInv#1();
+  call dirState, dp := dir_req_begin(ma);
   // do not change dirState in case this is a stale evict request due to a race condition with an invalidate
   if (dirState == Owner(i)) {
     par write_mem(ma, value, dp) | YieldInv#1();
@@ -592,7 +592,7 @@ requires call YieldEvict(i, ma, value, drp);
   } else {
     call cache_nop_resp#1(i, ma, drp, dp);
   }
-  par dir_req_end(ma, dirState, dp) | YieldInv#1();
+  call dir_req_end(ma, dirState, dp);
 }
 
 yield procedure {:layer 2} dir_read_shd_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: Set CachePermission)
@@ -604,16 +604,16 @@ requires call YieldRead(i, ma, drp);
   var {:linear} {:layer 1,2} dp: Set DirPermission;
   var value: Value;
 
-  par dirState, dp := dir_req_begin(ma) | YieldInv#1();
+  call dirState, dp := dir_req_begin(ma);
   if (dirState is Owner) {
     par value := cache_invalidate_exc#1(dirState->i, ma, Shared(), dp) | YieldInv#1();
     par write_mem(ma, value, dp) | YieldInv#1();
     call cache_read_resp#1(i, ma, value, Shared(), drp, dp);
-    par dir_req_end(ma, Sharers(Set_Add(Set_Add(Set_Empty(), dirState->i), i)), dp) | YieldInv#1();
+    call dir_req_end(ma, Sharers(Set_Add(Set_Add(Set_Empty(), dirState->i), i)), dp);
   } else {
     par value := read_mem(ma, dp) | YieldInv#1();
     call cache_read_resp#1(i, ma, value, if dirState->iset == Set_Empty() then Exclusive() else Shared(), drp, dp);
-    par dir_req_end(ma, if dirState->iset == Set_Empty() then Owner(i) else Sharers(Set_Add(dirState->iset, i)), dp) | YieldInv#1();
+    call dir_req_end(ma, if dirState->iset == Set_Empty() then Owner(i) else Sharers(Set_Add(dirState->iset, i)), dp);
   }
 }
 
@@ -626,7 +626,7 @@ requires call YieldRead(i, ma, drp);
   var {:linear} {:layer 1,2} dp: Set DirPermission;
   var value: Value;
 
-  par dirState, dp := dir_req_begin(ma) | YieldInv#1();
+  call dirState, dp := dir_req_begin(ma);
   if (dirState is Owner) {
     par value := cache_invalidate_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
     par write_mem(ma, value, dp) | YieldInv#1();
@@ -635,7 +635,7 @@ requires call YieldRead(i, ma, drp);
     par value := read_mem(ma, dp) | YieldInv#1();
   }
   call cache_read_resp#1(i, ma, value, Exclusive(), drp, dp);
-  par dir_req_end(ma, Owner(i), dp) | YieldInv#1();
+  call dir_req_end(ma, Owner(i), dp);
 }
 
 yield left procedure {:layer 2} invalidate_sharers(ma: MemAddr, victims: Set CacheId, {:linear_in} {:layer 1,2} dp: Set DirPermission)
@@ -662,9 +662,9 @@ ensures {:layer 2} dp == dp';
   }
   victim := Choice(victims->val);
   victims' := Set_Remove(victims, victim);
-  par dpOne, dp' := get_victim(victim, ma, dp');
+  call dpOne, dp' := get_victim(victim, ma, dp');
   par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | dp' := invalidate_sharers(ma, victims', dp');
-  par dp' := put_victim(dpOne, dp');
+  call dp' := put_victim(dpOne, dp');
 }
 
 yield procedure {:layer 1} get_victim(victim: CacheId, ma: MemAddr, {:layer 1} {:linear_in} dp: Set DirPermission)
@@ -690,7 +690,7 @@ refines both action {:layer 2} _ {
 }
 
 yield procedure {:layer 1} dir_req_begin(ma: MemAddr) returns (dirState: DirState, {:linear} {:layer 1} dp: Set DirPermission)
-requires call YieldInv#1();
+preserves call YieldInv#1();
 refines right action {:layer 2} _ {
   assume Set_IsSubset(WholeDirPermission(ma), dirPermissions);
   dirState := dir[ma];
@@ -702,7 +702,7 @@ refines right action {:layer 2} _ {
 }
 
 yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: Set DirPermission)
-requires call YieldInv#1();
+preserves call YieldInv#1();
 refines left action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
   assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;

@@ -389,7 +389,7 @@ namespace Microsoft.Boogie
     }
 
     public string PrintCFGPrefix { get; set; }
-    public bool ForceBplErrors { get; set; } = false; // if true, boogie error is shown even if "msg" attribute is present
+    public bool ForceBplErrors { get; set; } = false;
 
     public bool UseArrayTheory => !useArrayAxioms && TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic;
 
@@ -1343,6 +1343,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("silent", x => Verbosity = CoreOptions.VerbosityLevel.Silent) ||
               ps.CheckBooleanFlag("traceTimes", x => TraceTimes = x) ||
               ps.CheckBooleanFlag("tracePOs", x => TraceProofObligations = x) ||
+              ps.CheckBooleanFlag("forceBplErrors", x => ForceBplErrors = x) ||
               ps.CheckBooleanFlag("noResolve", x => NoResolve = x) ||
               ps.CheckBooleanFlag("noTypecheck", x => NoTypecheck = x) ||
               ps.CheckBooleanFlag("overlookTypeErrors", x => OverlookBoogieTypeErrors = x) ||
@@ -1771,40 +1772,41 @@ namespace Microsoft.Boogie
   Multiple .bpl files supplied on the command line are concatenated into one
   Boogie program.
 
-  /lib:<name>    : Include definitions in library <name>. The file <name>.bpl
-                   must be an included resource in Core.dll. Currently, the
-                   following libraries are supported---base, node.
-  /proc:<p>      : Only check procedures matched by pattern <p>. This option
-                   may be specified multiple times to match multiple patterns.
-                   The pattern <p> matches the whole procedure name and may
-                   contain * wildcards which match any character zero or more
-                   times.
-  /noProc:<p>    : Do not check procedures matched by pattern <p>. Exclusions
-                   with /noProc are applied after inclusions with /proc.
-  /noResolve     : parse only
-  /noTypecheck   : parse and resolve only
-
-  /print:<file>  : print Boogie program after parsing it
-                   (use - as <file> to print to console)
-  /pretty:<n>
-                0 - print each Boogie statement on one line (faster).
+  /lib:<name>   Include definitions in library <name>. The file <name>.bpl
+                must be an included resource in Core.dll. Currently, the
+                following libraries are supported---base, node.
+  /proc:<p>     Only check procedures matched by pattern <p>. This option
+                may be specified multiple times to match multiple patterns.
+                The pattern <p> matches the whole procedure name and may
+                contain * wildcards which match any character zero or more
+                times.
+  /noProc:<p>   Do not check procedures matched by pattern <p>. Exclusions
+                with /noProc are applied after inclusions with /proc.
+  /noResolve    parse only
+  /noTypecheck  parse and resolve only
+  /print:<file>
+                print Boogie program after parsing it
+                (use - as <file> to print to console)
+  /pretty:<n>   0 - print each Boogie statement on one line (faster).
                 1 (default) - pretty-print with some line breaks.
-  /printWithUniqueIds : print augmented information that uniquely
-                   identifies variables
-  /printUnstructured : with /print option, desugars all structured statements
-  /printPassive :  with /print option, prints passive version of program
-  /printDesugared : with /print option, desugars calls
-  /printLambdaLifting : with /print option, desugars lambda lifting
-
-  /freeVarLambdaLifting : Boogie's lambda lifting transforms the bodies of lambda
-                         expressions into templates with holes. By default, holes
-                         are maximally large subexpressions that do not contain
-                         bound variables. This option performs a form of lambda
-                         lifting in which holes are the lambda's free variables.
-
-  /overlookTypeErrors : skip any implementation with resolution or type
-                        checking errors
-
+  /printWithUniqueIds
+                print augmented information that uniquely identifies variables
+  /printUnstructured
+                with /print option, desugars all structured statements
+  /printPassive
+                with /print option, prints passive version of program
+  /printDesugared
+                with /print option, desugars calls
+  /printLambdaLifting
+                with /print option, desugars lambda lifting
+  /freeVarLambdaLifting
+                Boogie's lambda lifting transforms the bodies of lambda
+                expressions into templates with holes. By default, holes
+                are maximally large subexpressions that do not contain
+                bound variables. This option performs a form of lambda
+                lifting in which holes are the lambda's free variables.
+  /overlookTypeErrors
+                skip any implementation with resolution or type checking errors
   /loopUnroll:<n>
                 unroll loops, following up to n back edges (and then some)
                 default is -1, which means loops are not unrolled
@@ -1828,24 +1830,19 @@ namespace Microsoft.Boogie
   /enhancedErrorMessages:<n>
                 0 (default) - no enhanced error messages
                 1 - Z3 error model enhanced error messages
-
   /printCFG:<prefix> : print control flow graph of each implementation in
                        Graphviz format to files named:
                          <prefix>.<procedure name>.dot
-
   /useBaseNameForFileName : When parsing use basename of file for tokens instead
                             of the path supplied on the command line
-
   /emitDebugInformation:<n>
                 0 - do not emit debug information
                 1 (default) - emit the debug information :qid, :skolemid and set-info :boogie-vc-id
-
   /normalizeNames:<n>
                 0 (default) - Keep Boogie program names when generating SMT commands
                 1 - Normalize Boogie program names when generating SMT commands. 
                   This keeps SMT solver input, and thus output, 
                   constant when renaming declarations in the input program.
-
   /normalizeDeclarationOrder:<n>
                 0 - Keep order of top-level declarations when generating SMT commands.
                 1 (default) - Normalize order of top-level declarations when generating SMT commands.
@@ -1884,6 +1881,8 @@ namespace Microsoft.Boogie
   /traceTimes   output timing information at certain points in the pipeline
   /tracePOs     output information about the number of proof obligations
                 (also included in the /trace output)
+  /forceBplErrors
+                show boogie errors even if {:msg ...} attribute is present
   /break        launch and break into debugger
 
   ---- Civl options ----------------------------------------------------------
