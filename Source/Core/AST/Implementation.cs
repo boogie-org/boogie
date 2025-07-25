@@ -659,12 +659,14 @@ public class Implementation : DeclWithFormals
           graph.ComputeLoops();
           if (!graph.Reducible)
           {
-            tc.Error(this, "irreducible control flow graph not allowed");
+            this.ConvertToReducible(null); // TODO: should change the null
+            tc.Impl = this;
+            graph = Program.GraphFromImpl(this);           
           }
-          else
-          {
-            TypecheckLoopAnnotations(tc, graph);
-          }
+
+          // the graph was either reducible from the begining or was converted to a reducible one
+          Contract.Assert(graph.Reducible);
+          TypecheckLoopAnnotations(tc, graph);
         }
       }
     }
@@ -1130,7 +1132,7 @@ public class Implementation : DeclWithFormals
 
     return result;
   }
-  public Graph<Block> ConvertToReducible(CoreOptions options)
+  public Graph<Block> ConvertToReducible(CoreOptions /*?*/ options)
   {
     Dictionary<Block, int> nextLabels = this.Blocks.ToDictionary(b => b, _ => 0);
     Graph<Block> g = Program.GraphFromImpl(this);
@@ -1186,7 +1188,10 @@ public class Implementation : DeclWithFormals
         duplicatesDict.Values.ForEach(b => b.SubstituteBranchTargets(duplicatesDict));
       }
 
-      PruneUnreachableBlocks(options);
+      if (options != null)
+      {
+        PruneUnreachableBlocks(options);
+      }
       ComputePredecessorsForBlocks();
       g = Program.GraphFromImpl(this);
       g.ComputeLoops();
