@@ -318,6 +318,10 @@ namespace Microsoft.BaseTypes
       return FromRational(numerator, denominator, significandSize, exponentSize, out result);
     }
 
+    #endregion
+
+    #region Validation and Parameter Checking
+
     /// <summary>
     /// Validates that significand and exponent sizes meet minimum requirements (must be > 1)
     /// </summary>
@@ -359,6 +363,10 @@ namespace Microsoft.BaseTypes
     /// Gets the actual (unbiased) exponent, handling subnormal numbers correctly
     /// </summary>
     private int GetActualExponent() => exponent == 0 ? 1 : (int)exponent;
+
+    #endregion
+
+    #region Arithmetic Helpers
 
     private static (BigInteger significand, int exponent) PrepareOperand(BigFloat operand, BigInteger hiddenBit)
     {
@@ -782,6 +790,11 @@ namespace Microsoft.BaseTypes
     /// </summary>
     /// <param name="floor">Floor (rounded towards negative infinity)</param>
     /// <param name="ceiling">Ceiling (rounded towards positive infinity)</param>
+
+    #endregion
+
+    #region Mathematical Operations
+
     public void FloorCeiling(out BigInteger floor, out BigInteger ceiling)
     {
       // Handle special cases
@@ -913,10 +926,6 @@ namespace Microsoft.BaseTypes
     #region String Representation
 
     [Pure]
-    /// <summary>
-    /// Converts the BigFloat to a decimal string representation.
-    /// </summary>
-    /// <returns>A decimal string representation of the value</returns>
     public string ToDecimalString()
     {
       // Handle special values per IEEE 754-2019 Section 5.12.1
@@ -956,41 +965,69 @@ namespace Microsoft.BaseTypes
     public override string ToString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
+
+      // Handle special values
       if (exponent == maxExponent) {
         return $"0{(significand == 0 ? $"{(signBit ? "-" : "+")}oo" : "NaN")}{SignificandSize}e{ExponentSize}";
       }
 
-      // Format as hex string
+      // Handle zero
       if (IsZero) {
         return $"{(signBit ? "-" : "")}0x0.0e0f{SignificandSize}e{ExponentSize}";
       }
 
-      // Get mantissa with hidden bit and actual exponent
-      var mantissa = exponent == 0 ? significand : significand | hiddenBit;
-      var binaryExp = GetActualExponent() - (int)bias - (SignificandSize - 1);
+      // Get mantissa and binary exponent
+      var mantissa = IsSubnormal ? significand : (significand | hiddenBit);
+      var binaryExp = IsSubnormal ? (1 - (int)bias) : ((int)exponent - (int)bias);
+      binaryExp -= (SignificandSize - 1); // Adjust for mantissa bit position
 
-      // Calculate hex alignment
-      var mantissaHex = mantissa.ToString("X");
-      var totalShift = binaryExp + 4 * (mantissaHex.Length - 1);
-      var hexExp = Math.DivRem(totalShift, 4, out var remainder);
+      // Convert to hex representation
+      // We want: mantissa * 2^binaryExp = hexMantissa * 16^hexExp
+      // Since 16 = 2^4: mantissa * 2^binaryExp = hexMantissa * 2^(4*hexExp)
 
-      // Realign if needed
-      if (remainder != 0) {
-        mantissa <<= remainder > 0 ? remainder : 4 + remainder;
-        hexExp -= remainder < 0 ? 1 : 0;
-        mantissaHex = mantissa.ToString("X");
+      // Start with the mantissa in hex
+      var hexStr = mantissa.ToString("X");
+
+      // Calculate initial hex exponent (divide by 4, handle remainder with bit shifts)
+      var hexExp = binaryExp / 4;
+      var bitRemainder = binaryExp % 4;
+
+      // Adjust mantissa for the bit remainder
+      if (bitRemainder != 0) {
+        if (bitRemainder > 0) {
+          mantissa <<= bitRemainder;
+        } else {
+          // For negative remainder, shift left by (4 + remainder) and decrement hex exponent
+          mantissa <<= (4 + bitRemainder);
+          hexExp--;
+        }
+        hexStr = mantissa.ToString("X");
       }
 
-      // Format as x.y
-      var hex = mantissaHex.TrimStart('0');
-      if (string.IsNullOrEmpty(hex)) {
-        hex = "0";
+      // Handle case where mantissa became zero (shouldn't happen for valid inputs)
+      if (hexStr == "0" || string.IsNullOrEmpty(hexStr)) {
+        return $"{(signBit ? "-" : "")}0x0.0e0f{SignificandSize}e{ExponentSize}";
       }
 
-      var frac = hex.Length > 1 ? hex[1..].TrimEnd('0') : "";
-      var formatted = $"{hex[0]}.{(string.IsNullOrEmpty(frac) ? "0" : frac)}";
+      // Format as H.HHH (decimal point after first hex digit)
+      string formattedHex;
+      if (hexStr.Length == 1) {
+        formattedHex = $"{hexStr}.0";
+      } else {
+        var intPart = hexStr[..1];
+        var fracPart = hexStr[1..].TrimEnd('0');
+        if (fracPart.Length == 0) {
+          fracPart = "0";
+        }
 
-      return $"{(signBit ? "-" : "")}0x{formatted}e{hexExp}f{SignificandSize}e{ExponentSize}";
+        formattedHex = $"{intPart}.{fracPart}";
+
+        // Adjust hex exponent for decimal point placement
+        // Moving decimal point left by (length-1) positions = multiplying by 16^(length-1)
+        hexExp += hexStr.Length - 1;
+      }
+
+      return $"{(signBit ? "-" : "")}0x{formattedHex}e{hexExp}f{SignificandSize}e{ExponentSize}";
     }
 
     /// <summary>
@@ -1003,6 +1040,11 @@ namespace Microsoft.BaseTypes
     /// when false, follows IEEE 754 standard behavior</param>
     /// <param name="result">The parsed BigFloat value if successful; default(BigFloat) otherwise</param>
     /// <returns>True if the parse was successful; false otherwise</returns>
+
+    #endregion
+
+    #region String Parsing
+
     private static bool TryParseHexFormat(string s, int sigSize, int expSize, bool strict, out BigFloat result)
     {
       result = default;
@@ -1084,7 +1126,10 @@ namespace Microsoft.BaseTypes
 
       // Calculate shift for subnormal representation
       var msbPos = (int)sig.GetBitLength() - 1;
-      var shiftAmount = (1 - (int)bias) - actualExp + msbPos;
+      // Bit position 0 in subnormal represents 2^(1-bias-(sigSize-1))
+      // We need to shift from msbPos to the correct position for actualExp
+      var subnormalBase = 1 - (int)bias - (sigSize - 1);
+      var shiftAmount = msbPos - (actualExp - subnormalBase);
 
       // Apply shift and check result
       var subnormalSig = shiftAmount > 0 ? sig >> shiftAmount : sig << (-shiftAmount);

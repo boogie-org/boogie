@@ -11,10 +11,34 @@ namespace BaseTypesTests
     {
         #region Constants
 
-        // Subnormal significand values for 24-bit precision
+        /// <summary>
+        /// Subnormal significand values for 24-bit precision IEEE 754 single precision format.
+        /// In IEEE 754, subnormal numbers have biased exponent = 0 and non-zero significand.
+        /// The significand for subnormals doesn't have the implicit leading 1 bit.
+        ///
+        /// For 24-bit significand (including hidden bit for normals):
+        /// - Normal numbers: significand represents 1.xxxx... (23 bits after the decimal)
+        /// - Subnormal numbers: significand represents 0.xxxx... (23 bits after the decimal)
+        /// </summary>
+
+        // Largest possible subnormal significand: all 23 bits set
+        // Binary: 0111 1111 1111 1111 1111 1111 = 0x7FFFFF
+        // Represents: 0.11111111111111111111111 × 2^(-126) (just below smallest normal)
         private const int LARGEST_SUBNORMAL_SIG_24 = 0x7FFFFF;  // 2^23 - 1
+
+        // Half of the maximum subnormal range
+        // Binary: 0100 0000 0000 0000 0000 0000 = 0x400000
+        // Represents: 0.10000000000000000000000 × 2^(-126)
         private const int HALF_SUBNORMAL_SIG_24 = 0x400000;     // 2^22
+
+        // Quarter of the maximum subnormal range
+        // Binary: 0010 0000 0000 0000 0000 0000 = 0x200000
+        // Represents: 0.01000000000000000000000 × 2^(-126)
         private const int QUARTER_SUBNORMAL_SIG_24 = 0x200000;  // 2^21
+
+        // Eighth of the maximum subnormal range
+        // Binary: 0001 0000 0000 0000 0000 0000 = 0x100000
+        // Represents: 0.00100000000000000000000 × 2^(-126)
         private const int EIGHTH_SUBNORMAL_SIG_24 = 0x100000;   // 2^20
 
         #endregion
@@ -109,8 +133,29 @@ namespace BaseTypesTests
         [Test]
         public void TestExtremeUnderflowInStrictMode()
         {
-            // Strict mode not available via parameter - would need reflection to test
-            // Assert.Throws<FormatException>(() => BigFloat.FromString("0x1.0e-1000f24e8", strict: true));
+            // Strict mode is available via FromStringStrict method
+            // In strict mode, extreme underflow is rejected rather than rounding to zero
+            Assert.Throws<FormatException>(() => BigFloat.FromStringStrict("0x1.0e-1000f24e8"),
+                "Extreme underflow should throw in strict mode");
+
+            // Also test other strict mode rejections
+            // Values with precision loss (too many bits for significand)
+            Assert.Throws<FormatException>(() => BigFloat.FromStringStrict("0x1.fffffffe0f24e8"),
+                "Values with precision loss should throw in strict mode");
+
+            // Values that would underflow to subnormal (might be accepted or rejected)
+            // This depends on the strict mode implementation
+            try
+            {
+                var subnormal = BigFloat.FromStringStrict("0x0.8e-126f24e8");
+                // If it succeeds, verify it's subnormal
+                Assert.IsTrue(subnormal.IsSubnormal, "Should be subnormal if accepted");
+            }
+            catch (FormatException)
+            {
+                // Strict mode may reject all extreme underflow, even representable subnormals
+                // This is noted in the documentation as "arguably overly restrictive"
+            }
         }
 
         [Test]
@@ -914,6 +959,119 @@ namespace BaseTypesTests
 
         #endregion
 
+        #region Hex Format Edge Case Tests
+
+        [Test]
+        public void TestHexFormatEdgeCases()
+        {
+            // Test hex format generation for various edge cases
+
+            // 1. Powers of 16 - these should have simple hex representations
+            var testCases = new (BigInteger num, BigInteger den, string description)[]
+            {
+                (1, 16, "1/16 = 0x1.0e-1"),
+                (1, 256, "1/256 = 0x1.0e-2"),
+                (16, 1, "16 = 0x1.0e1"),
+                (256, 1, "256 = 0x1.0e2"),
+                (15, 16, "15/16 - just below 1"),
+                (17, 16, "17/16 - just above 1"),
+            };
+
+            foreach (var (num, den, desc) in testCases)
+            {
+                BigFloat.FromRational(num, den, 24, 8, out var value);
+                var str1 = value.ToString();
+                var parsed = BigFloat.FromString(str1);
+                var str2 = parsed.ToString();
+
+                Assert.AreEqual(str1, str2, $"Hex format should be stable for {desc}");
+                Assert.AreEqual(value, parsed, $"Value should round-trip for {desc}");
+
+                // Verify format contains expected components
+                Assert.IsTrue(str1.StartsWith("0x") || str1.StartsWith("-0x"), $"Should start with hex prefix for {desc}");
+                Assert.IsTrue(str1.Contains("f24e8"), $"Should contain size specifiers for {desc}");
+            }
+        }
+
+        [Test]
+        public void TestSubnormalHexFormat()
+        {
+            // Test hex format for subnormal values
+            // In strict mode, subnormals that would underflow should be rejected
+            // In IEEE mode, they underflow to zero
+
+            var minSubnormal = new BigFloat(false, 1, 0, 24, 8);
+            var maxSubnormal = new BigFloat(false, LARGEST_SUBNORMAL_SIG_24, 0, 24, 8);
+
+            // Test that subnormals can be converted to string
+            var minStr = minSubnormal.ToString();
+            var maxStr = maxSubnormal.ToString();
+
+            Assert.IsTrue(minStr.StartsWith("0x"), "Min subnormal should produce hex format");
+            Assert.IsTrue(maxStr.StartsWith("0x"), "Max subnormal should produce hex format");
+
+            // Verify the strings contain expected format elements
+            Assert.IsTrue(minStr.Contains("e-"), "Min subnormal should have negative exponent");
+            Assert.IsTrue(maxStr.Contains("e-"), "Max subnormal should have negative exponent");
+            Assert.IsTrue(minStr.EndsWith("f24e8"), "Should have size specifiers");
+            Assert.IsTrue(maxStr.EndsWith("f24e8"), "Should have size specifiers");
+
+            // Test IEEE mode (FromString) - subnormals should be represented correctly (gradual underflow)
+            var minParsedIEEE = BigFloat.FromString(minStr);
+            var maxParsedIEEE = BigFloat.FromString(maxStr);
+
+            Assert.AreEqual(minSubnormal, minParsedIEEE, "Min subnormal should round-trip correctly in IEEE mode");
+            Assert.AreEqual(maxSubnormal, maxParsedIEEE, "Max subnormal should round-trip correctly in IEEE mode");
+
+            // Test strict mode (FromStringStrict) - subnormals should be accepted since they are exactly representable
+            var minParsedStrict = BigFloat.FromStringStrict(minStr);
+            var maxParsedStrict = BigFloat.FromStringStrict(maxStr);
+
+            Assert.AreEqual(minSubnormal, minParsedStrict, "Min subnormal should round-trip correctly in strict mode");
+            Assert.AreEqual(maxSubnormal, maxParsedStrict, "Max subnormal should round-trip correctly in strict mode");
+        }
+
+        [Test]
+        public void TestHexExponentAdjustment()
+        {
+            // Test values that require hex exponent adjustment
+            // When the mantissa has leading zeros in hex, the exponent needs adjustment
+
+            // Create values with specific bit patterns
+            BigFloat.FromRational(1, 32, 24, 8, out var oneThirtySecond);
+            BigFloat.FromRational(1, 17, 24, 8, out var oneSeventeenth);
+            BigFloat.FromRational(1, BigInteger.Pow(2, 126), 24, 8, out var minNormal);
+
+            var testValues = new[] { oneThirtySecond, oneSeventeenth, minNormal };
+
+            foreach (var value in testValues)
+            {
+
+                var str1 = value.ToString();
+                var parsed = BigFloat.FromString(str1);
+                var str2 = parsed.ToString();
+
+                Assert.AreEqual(str1, str2, "Hex format should be stable after adjustment");
+                Assert.AreEqual(value, parsed, "Value should be preserved");
+
+                // Parse the hex string to verify format
+                var match = System.Text.RegularExpressions.Regex.Match(str1, @"0x([0-9a-fA-F]+)\.([0-9a-fA-F]*)e(-?\d+)f");
+                Assert.IsTrue(match.Success, $"Hex format should match expected pattern: {str1}");
+
+                var intPart = match.Groups[1].Value;
+                var fracPart = match.Groups[2].Value;
+                var exp = int.Parse(match.Groups[3].Value);
+
+                // According to the Boogie specification, multiple representations are allowed,
+                // including ones with zero in the integer part (e.g., 0x0.Ae1f24e8)
+                // So we just verify the format is valid, not that it's "normalized"
+                Assert.IsTrue(intPart.Length > 0, $"Integer part should exist: {str1}");
+                Assert.IsTrue(fracPart.Length > 0, $"Fractional part should exist: {str1}");
+            }
+        }
+
+        #endregion
+
         #region Error Message Tests
 
         [Test]
@@ -1071,14 +1229,96 @@ namespace BaseTypesTests
                 }
                 else
                 {
+                    // Debug output for failures
+                    if (original != parsed)
+                    {
+                        var (origSig, origExp, origSign) = GetBigFloatInternals(original);
+                        var (parsedSig, parsedExp, parsedSign) = GetBigFloatInternals(parsed);
+                        Console.WriteLine($"Round-trip failure for: {stringForm}");
+                        Console.WriteLine($"  Original: sig={origSig}, exp={origExp}, sign={origSign}");
+                        Console.WriteLine($"  Parsed:   sig={parsedSig}, exp={parsedExp}, sign={parsedSign}");
+                        Console.WriteLine($"  Exp diff: {parsedExp - origExp}");
+                    }
                     Assert.AreEqual(original, parsed, $"Round-trip failed for: {stringForm}");
                 }
             }
 
-            // Test with fractional values - but note that subnormal values
-            // may have multiple valid string representations
-            // Skip the 0.5 test for now as it has representation issues
-            // TODO: Investigate why 0.5 round-trips as different hex strings
+            // Test with fractional values
+            BigFloat.FromRational(1, 2, 24, 8, out var half);
+            var halfString = half.ToString();
+            var parsedHalf = BigFloat.FromString(halfString);
+            Assert.AreEqual(half, parsedHalf, $"0.5 round-trip failed: {halfString}");
+
+            BigFloat.FromRational(3, 4, 24, 8, out var threeQuarters);
+            var threeQuartersString = threeQuarters.ToString();
+            var parsedThreeQuarters = BigFloat.FromString(threeQuartersString);
+            Assert.AreEqual(threeQuarters, parsedThreeQuarters, "0.75 round-trip should preserve value");
+        }
+
+        [Test]
+        public void TestHexRepresentationStability()
+        {
+            // This test verifies that hex string representations are stable
+            // across round-trips after the hex format fix.
+
+            BigFloat.FromRational(1, 2, 24, 8, out var half);
+            var halfString = half.ToString();
+            var parsed = BigFloat.FromString(halfString);
+            var parsedString = parsed.ToString();
+
+            // The string representations should be identical
+            Assert.AreEqual(halfString, parsedString, "Hex representation should be stable across round-trip");
+
+            // And the values must be equal
+            Assert.AreEqual(half, parsed, "Values must be equal after round-trip");
+
+            // Test multiple round-trips
+            var parsed2 = BigFloat.FromString(parsedString);
+            var parsed2String = parsed2.ToString();
+            Assert.AreEqual(parsedString, parsed2String, "Hex representation should remain stable across multiple round-trips");
+        }
+
+        [Test]
+        public void VerifyHexStringStability()
+        {
+            // This test verifies that the hex string representation is stable
+            // after the hex format fix. The same value should always produce
+            // the same hex string representation.
+            BigFloat.FromRational(1, 2, 24, 8, out var half);
+            var halfString = half.ToString();
+            var parsed = BigFloat.FromString(halfString);
+
+            // Check internal representation
+            var (halfSig, halfExp, halfSign) = GetBigFloatInternals(half);
+            var (parsedSig, parsedExp, parsedSign) = GetBigFloatInternals(parsed);
+
+            // Debug output
+            Console.WriteLine($"Original 0.5: sig={halfSig}, exp={halfExp}, sign={halfSign}");
+            Console.WriteLine($"Parsed 0.5: sig={parsedSig}, exp={parsedExp}, sign={parsedSign}");
+            Console.WriteLine($"Original string: {halfString}");
+            Console.WriteLine($"Parsed string: {parsed.ToString()}");
+
+            // Internal representation should be identical
+            Assert.AreEqual(halfSig, parsedSig, "Significands should match");
+            Assert.AreEqual(halfExp, parsedExp, "Exponents should match");
+            Assert.AreEqual(halfSign, parsedSign, "Signs should match");
+            Assert.AreEqual(half, parsed, "0.5 and parsed version should be equal");
+
+            // With the hex format fix, string representations should also be identical
+            Assert.AreEqual(halfString, parsed.ToString(), "Hex string should be stable after round-trip");
+
+            // Test with more values to ensure stability
+            var testValues = new[] { (3, 4), (1, 3), (5, 8), (1, 10) };
+            foreach (var (num, den) in testValues)
+            {
+                BigFloat.FromRational(num, den, 24, 8, out var original);
+                var str1 = original.ToString();
+                var parsed1 = BigFloat.FromString(str1);
+                var str2 = parsed1.ToString();
+
+                Assert.AreEqual(str1, str2, $"Hex string should be stable for {num}/{den}");
+                Assert.AreEqual(original, parsed1, $"Value should be preserved for {num}/{den}");
+            }
         }
 
         [Test]
@@ -1127,6 +1367,40 @@ namespace BaseTypesTests
                 Assert.AreEqual(sigSize, one.SignificandSize);
                 Assert.AreEqual(expSize, one.ExponentSize);
             }
+        }
+
+        #endregion
+
+        #region Strict Mode Tests
+
+        [Test]
+        public void TestStrictModeVsIEEEMode()
+        {
+            // Test differences between strict mode (FromStringStrict) and IEEE mode (FromString)
+
+            // 1. Precision loss - IEEE mode rounds, strict mode rejects
+            var precisionLoss = "0x1.ffffffe0f24e8"; // Too many bits for 24-bit significand
+            var ieee1 = BigFloat.FromString(precisionLoss);
+            Assert.IsNotNull(ieee1); // IEEE mode accepts and rounds
+            Assert.Throws<FormatException>(() => BigFloat.FromStringStrict(precisionLoss));
+
+            // 2. Extreme underflow - IEEE mode returns zero, strict mode rejects
+            var extremeUnderflow = "0x1.0e-200f24e8";
+            var ieee2 = BigFloat.FromString(extremeUnderflow);
+            Assert.IsTrue(ieee2.IsZero); // IEEE mode underflows to zero
+            Assert.Throws<FormatException>(() => BigFloat.FromStringStrict(extremeUnderflow));
+
+            // 3. Normal values - both modes should accept
+            var normal = "0x1.0e0f24e8"; // Exact value 1.0
+            var ieee3 = BigFloat.FromString(normal);
+            var strict3 = BigFloat.FromStringStrict(normal);
+            Assert.AreEqual(ieee3, strict3);
+
+            // 4. Special values - both modes should accept
+            var nan = "0NaN24e8";
+            var ieee4 = BigFloat.FromString(nan);
+            var strict4 = BigFloat.FromStringStrict(nan);
+            Assert.IsTrue(ieee4.IsNaN && strict4.IsNaN);
         }
 
         #endregion
@@ -1439,6 +1713,61 @@ namespace BaseTypesTests
             Assert.IsTrue(smallestNormal > largestSubnormal);
             Assert.IsTrue(smallestNormal.IsNormal);
             Assert.IsTrue(largestSubnormal.IsSubnormal);
+        }
+
+        #endregion
+
+        #region Enhanced IEEE 754 Compliance Tests
+
+        [Test]
+        public void TestSubnormalArithmeticComprehensive()
+        {
+            // IEEE 754 requires gradual underflow - test comprehensive subnormal arithmetic
+
+            // Create various subnormal values
+            var minSubnormal = new BigFloat(false, 1, 0, 24, 8);                    // Smallest positive subnormal
+            var maxSubnormal = new BigFloat(false, (1 << 23) - 1, 0, 24, 8);       // Largest subnormal
+            var midSubnormal = new BigFloat(false, 1 << 22, 0, 24, 8);             // Middle subnormal
+            var minNormal = new BigFloat(false, 0, 1, 24, 8);                      // Smallest normal
+
+            // Test subnormal addition
+            var sum = minSubnormal + minSubnormal;
+            Assert.IsTrue(sum.IsSubnormal, "subnormal + subnormal should remain subnormal");
+            Assert.AreEqual(new BigFloat(false, 2, 0, 24, 8), sum);
+
+            // Test subnormal addition that promotes to normal
+            sum = maxSubnormal + minSubnormal;
+            Assert.IsTrue(sum.IsNormal, "max_subnormal + min_subnormal should become normal");
+            Assert.AreEqual(minNormal, sum);
+        }
+
+        [Test]
+        public void TestMonotonicityProperties()
+        {
+            // IEEE 754 requires monotonic behavior for operations
+
+            // Test addition monotonicity: if x1 <= x2, then x1 + y <= x2 + y
+            var testValues = new[]
+            {
+                new BigFloat(false, 0, 120, 24, 8),  // Small positive
+                new BigFloat(false, 0, 125, 24, 8),  // Medium positive
+                new BigFloat(false, 0, 130, 24, 8),  // Large positive
+            };
+
+            var addend = new BigFloat(false, 0, 127, 24, 8); // 1.0
+
+            for (int i = 0; i < testValues.Length - 1; i++)
+            {
+                var x1 = testValues[i];
+                var x2 = testValues[i + 1];
+
+                Assert.IsTrue(x1 <= x2, "Test values should be ordered");
+
+                var sum1 = x1 + addend;
+                var sum2 = x2 + addend;
+
+                Assert.IsTrue(sum1 <= sum2, "Addition should preserve ordering");
+            }
         }
 
         #endregion

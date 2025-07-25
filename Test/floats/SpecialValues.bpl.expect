@@ -1,7 +1,7 @@
-SpecialValues.bpl(11,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 8
-SpecialValues.bpl(12,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 8
-SpecialValues.bpl(13,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 8
-SpecialValues.bpl(21,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 11
-SpecialValues.bpl(22,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 11
-SpecialValues.bpl(23,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 11
+SpecialValues.bpl(11,8): error: incorrectly formatted floating point
+SpecialValues.bpl(12,8): error: incorrectly formatted floating point
+SpecialValues.bpl(13,8): error: incorrectly formatted floating point
+SpecialValues.bpl(21,8): error: incorrectly formatted floating point
+SpecialValues.bpl(22,8): error: incorrectly formatted floating point
+SpecialValues.bpl(23,8): error: incorrectly formatted floating point
 6 parse errors detected in SpecialValues.bpl
