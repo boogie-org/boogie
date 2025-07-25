@@ -13,10 +13,8 @@ public class LoopExtractor {
     /// <summary>
     /// Used by Corral and Dafny.
     /// </summary>
-  public static (Dictionary<string, Dictionary<string, Block>> loops, HashSet<Implementation> procsWithIrreducibleLoops)
-    ExtractLoops(CoreOptions options, Program program)
+  public static Dictionary<string, Dictionary<string, Block>> ExtractLoops(CoreOptions options, Program program)
   {
-    var hasIrreducibleLoops = new HashSet<Implementation>();
     List<Implementation> loopImpls = new List<Implementation>();
     Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
     foreach (var impl in program.Implementations)
@@ -35,7 +33,7 @@ public class LoopExtractor {
       program.AddTopLevelDeclaration(loopImpl.Proc);
     }
 
-    return (fullMap, hasIrreducibleLoops);
+    return fullMap;
   }
 
   static void CreateProceduresForLoops(CoreOptions options, Implementation impl, Graph<Block> g,
