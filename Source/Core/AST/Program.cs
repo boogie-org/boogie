@@ -552,6 +552,8 @@ public class Program : Absy
       impl.ConvertToReducible(options);
       g = GraphFromImpl(impl);
     }
+
+    g.ComputeLoops();
     Contract.Assert(g.Reducible);
     return g;
   }
