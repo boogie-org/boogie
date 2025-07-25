@@ -1812,7 +1812,7 @@ namespace Microsoft.Boogie
                 default is -1, which means loops are not unrolled
   /extractLoops
                 convert all irreducible loops to reducible forms by node splitting
-                and extract reducible loops into recursive procedures and
+                and extract all loops into recursive procedures
   /soundLoopUnrolling
                 sound loop unrolling
   /kInductionDepth:<k>

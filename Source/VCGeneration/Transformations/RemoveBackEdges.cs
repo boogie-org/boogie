@@ -83,13 +83,9 @@ public class RemoveBackEdges {
 
     #region Create the graph by adding the source node and each edge
 
-    // Graph<Block> g = Program.GraphFromImpl(impl);
     Graph<Block> g = impl.ConvertToReducible(generator.Options);
 
     #endregion
-
-    //Graph<Block> g = program.ProcessLoops(impl);
-
     #endregion
 
     #region Cut the backedges, push assert/assume statements from loop header into predecessors, change them all into assume statements at top of loop, introduce havoc statements

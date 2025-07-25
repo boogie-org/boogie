@@ -660,7 +660,6 @@ public class Implementation : DeclWithFormals
           if (!graph.Reducible)
           {
             this.ConvertToReducible(null);
-            tc.Impl = this;
             graph = Program.GraphFromImpl(this);           
           }
 
