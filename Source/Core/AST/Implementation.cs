@@ -659,7 +659,7 @@ public class Implementation : DeclWithFormals
           graph.ComputeLoops();
           if (!graph.Reducible)
           {
-            this.ConvertToReducible(null); // TODO: should change the null
+            this.ConvertToReducible(null);
             tc.Impl = this;
             graph = Program.GraphFromImpl(this);           
           }
