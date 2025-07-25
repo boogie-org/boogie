@@ -74,115 +74,6 @@ public class RemoveBackEdges {
 
     #endregion
   }
-  private static void SubstituteBranchTargets(Block b, Dictionary<Block, Block> subst)
-  {
-    TransferCmd transferCmd = b.TransferCmd;
-    if (transferCmd is not GotoCmd)
-    {
-      return;
-    }
-
-    GotoCmd gotoCmd = (GotoCmd)transferCmd;
-    foreach (Block currentBlock in gotoCmd.LabelTargets.ToList())
-    {
-      if (subst.TryGetValue(currentBlock, out Block dupBlock))
-      {
-        gotoCmd.RemoveTarget(currentBlock);
-        gotoCmd.AddTarget(dupBlock);
-      }      
-    }
-  }
-
-  private static Block DuplicateBlock(Block b, Dictionary<Block, int> nextLabels)
-  {
-    List<Cmd> dupCmds = new List<Cmd>();
-    b.Cmds.ForEach(dupCmds.Add);
-
-    TransferCmd splitTransferCmd = b.TransferCmd;
-    TransferCmd dupTransferCmd;
-
-    if (splitTransferCmd is not GotoCmd)
-    {
-      dupTransferCmd = new ReturnCmd(Token.NoToken);
-    }
-    else
-    {
-      List<string> dupLabelNames = [.. ((GotoCmd)splitTransferCmd).LabelNames];
-      List<Block> dupLabelTargets = new List<Block>();
-      ((GotoCmd)splitTransferCmd).LabelTargets.ForEach(dupLabelTargets.Add);
-
-      dupTransferCmd = new GotoCmd(Token.NoToken, dupLabelNames, dupLabelTargets);
-    }
-
-    Block dupBlock = new Block(Token.NoToken, b.Label + "_dup_" + nextLabels[b], dupCmds, dupTransferCmd);
-    nextLabels[b]++;
-    nextLabels.Add(dupBlock, 0);
-    return dupBlock;
-  }
-  private Graph<Block> ConvertToReducible(Implementation impl)
-  {
-    Dictionary<Block, int> nextLabels = impl.Blocks.ToDictionary(b => b, _ => 0);
-    Graph<Block> g = Program.GraphFromImpl(impl);
-    impl.ComputePredecessorsForBlocks();
-    g.ComputeLoops(); // this is the call that does all of the processing
-    while (!g.Reducible)
-    {
-      // We will be looking for a block that can be split, and for a looply connected block that has an invariant
-      Block splitBlock = g.SplitCandidates
-        .FirstOrDefault(b => b.Predecessors.Count > 1 && !b.HasInvariant())
-        ?? g.SplitCandidates.FirstOrDefault(b => b.Predecessors.Count > 1);
-
-      // splitBlock should be a perfectly good split candidate now.
-      // We have to find the nodes that are dominated by it, to duplicate them too
-      List<Block> region = [.. impl.Blocks.Where(b => g.DominatorMap.DominatedBy(b, splitBlock))];
-      foreach (Block pred in splitBlock.Predecessors)
-      {
-        if (g.DominatorMap.DominatedBy(pred, splitBlock))
-        {
-          continue;
-        }
-
-        // duplicate the splitBlock
-        Block dupBlock = DuplicateBlock(splitBlock, nextLabels);
-
-        // Remove edge of the previous block
-        GotoCmd predGoto = (GotoCmd)pred.TransferCmd;
-        predGoto.RemoveTarget(splitBlock);
-
-        // Update the edge for the duplicate
-        predGoto.AddTarget(dupBlock);
-
-        // Add the duplicate block to the implementation
-        impl.Blocks.Add(dupBlock);
-
-        // duplicate the whole region
-        Dictionary<Block, Block> duplicatesDict = new Dictionary<Block, Block>
-        {
-          { splitBlock, dupBlock }
-        };
-
-        foreach (Block currentBlock in region)
-        {
-          if (currentBlock != splitBlock)
-          {
-            Block newBlock = DuplicateBlock(currentBlock, nextLabels);
-            impl.Blocks.Add(newBlock);
-            duplicatesDict[currentBlock] = newBlock;
-          }
-        }
-
-        // Replace the blocks in the region with their duplicates
-        duplicatesDict.Values.ForEach(b => SubstituteBranchTargets(b, duplicatesDict));
-      }
-
-      impl.PruneUnreachableBlocks(generator.Options);
-      impl.ComputePredecessorsForBlocks();
-      g = Program.GraphFromImpl(impl);
-      g.ComputeLoops();
-    }
-
-    return g;
-  }
 
   private void ConvertCfg2DagStandard(Implementation impl, Dictionary<Block, List<Block>> edgesCut, int taskID)
   {
@@ -193,7 +84,7 @@ public class RemoveBackEdges {
     #region Create the graph by adding the source node and each edge
 
     // Graph<Block> g = Program.GraphFromImpl(impl);
-    Graph<Block> g = ConvertToReducible(impl);
+    Graph<Block> g = impl.ConvertToReducible(generator.Options);
 
     #endregion
 
@@ -442,7 +333,7 @@ public class RemoveBackEdges {
 
       #region Create the graph by adding the source node and each edge
 
-      Graph<Block> g = ConvertToReducible(impl);
+      Graph<Block> g = impl.ConvertToReducible(generator.Options);
 
       #endregion
 

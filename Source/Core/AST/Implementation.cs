@@ -7,15 +7,17 @@ using Microsoft.Boogie.GraphUtil;
 
 namespace Microsoft.Boogie;
 
-public class Implementation : DeclWithFormals {
+public class Implementation : DeclWithFormals
+{
   public List<Variable> LocVars;
 
-  [Rep] 
+  [Rep]
   public StmtList StructuredStmts { get; set; }
 
   [Rep]
-  public IList<Block> Blocks {
-    get; 
+  public IList<Block> Blocks
+  {
+    get;
     set;
   }
   public Procedure Proc;
@@ -24,7 +26,7 @@ public class Implementation : DeclWithFormals {
   // Both are used only when /inline is set.
   public IList<Block> OriginalBlocks;
   public List<Variable> OriginalLocVars;
-    
+
   // Map filled in during passification to allow augmented error trace reporting
   public Dictionary<Cmd, List<object>> debugInfos = new();
 
@@ -135,23 +137,28 @@ public class Implementation : DeclWithFormals {
     bool verify = true;
     Cce.NonNull(this.Proc).CheckBooleanAttribute("verify", ref verify);
     this.CheckBooleanAttribute("verify", ref verify);
-    if (!verify) {
+    if (!verify)
+    {
       return true;
     }
 
     if (options.ProcedureInlining == CoreOptions.Inlining.Assert ||
-        options.ProcedureInlining == CoreOptions.Inlining.Assume) {
+        options.ProcedureInlining == CoreOptions.Inlining.Assume)
+    {
       Expr inl = this.FindExprAttribute("inline");
-      if (inl == null) {
+      if (inl == null)
+      {
         inl = this.Proc.FindExprAttribute("inline");
       }
 
-      if (inl != null) {
+      if (inl != null)
+      {
         return true;
       }
     }
 
-    if (options.StratifiedInlining > 0) {
+    if (options.StratifiedInlining > 0)
+    {
       return !Attributes.FindBoolAttribute("entrypoint");
     }
 
@@ -190,11 +197,14 @@ public class Implementation : DeclWithFormals {
   public Dictionary<string, string> GetExtraSMTOptions()
   {
     Dictionary<string, string> extraSMTOpts = new();
-    for (var a = Attributes; a != null; a = a.Next) {
+    for (var a = Attributes; a != null; a = a.Next)
+    {
       var n = a.Params.Count;
       var k = a.Key;
-      if (k.Equals("smt_option")) {
-        if (n == 2 && a.Params[0] is string s) {
+      if (k.Equals("smt_option"))
+      {
+        if (n == 2 && a.Params[0] is string s)
+        {
           extraSMTOpts.Add(s, a.Params[1].ToString());
         }
       }
@@ -432,28 +442,37 @@ public class Implementation : DeclWithFormals {
     Attributes = kv;
   }
 
-  public override void Emit(TokenTextWriter stream, int level) {
-    void BlocksWriters(TokenTextWriter stream) {
-      if (this.StructuredStmts != null && !stream.Options.PrintInstrumented && !stream.Options.PrintInlined) {
-        if (this.LocVars.Count > 0) {
+  public override void Emit(TokenTextWriter stream, int level)
+  {
+    void BlocksWriters(TokenTextWriter stream)
+    {
+      if (this.StructuredStmts != null && !stream.Options.PrintInstrumented && !stream.Options.PrintInlined)
+      {
+        if (this.LocVars.Count > 0)
+        {
           stream.WriteLine();
         }
 
-        if (stream.Options.PrintUnstructured < 2) {
-          if (stream.Options.PrintUnstructured == 1) {
+        if (stream.Options.PrintUnstructured < 2)
+        {
+          if (stream.Options.PrintUnstructured == 1)
+          {
             stream.WriteLine(this, level + 1, "/*** structured program:");
           }
 
           this.StructuredStmts.Emit(stream, level + 1);
-          if (stream.Options.PrintUnstructured == 1) {
+          if (stream.Options.PrintUnstructured == 1)
+          {
             stream.WriteLine(level + 1, "**** end structured program */");
           }
         }
       }
 
       if (StructuredStmts == null || 1 <= stream.Options.PrintUnstructured ||
-          stream.Options.PrintInstrumented || stream.Options.PrintInlined) {
-        foreach (Block b in Blocks) {
+          stream.Options.PrintInstrumented || stream.Options.PrintInlined)
+      {
+        foreach (Block b in Blocks)
+        {
           b.Emit(stream, level + 1);
         }
       }
@@ -463,9 +482,12 @@ public class Implementation : DeclWithFormals {
   }
 
   public void EmitImplementation(TokenTextWriter stream, int level, IEnumerable<Block> blocks,
-    bool showLocals, string nameSuffix = "") {
-    EmitImplementation(stream, level, writer => {
-      foreach (var block in blocks) {
+    bool showLocals, string nameSuffix = "")
+  {
+    EmitImplementation(stream, level, writer =>
+    {
+      foreach (var block in blocks)
+      {
         block.Emit(writer, level + 1);
       }
     }, showLocals, nameSuffix);
@@ -481,7 +503,8 @@ public class Implementation : DeclWithFormals {
 
     stream.WriteLine(level, "{0}", '{');
 
-    if (showLocals) {
+    if (showLocals)
+    {
       foreach (Variable v in this.LocVars)
       {
         Contract.Assert(v != null);
@@ -550,7 +573,7 @@ public class Implementation : DeclWithFormals {
       }
 
       (this as ICarriesAttributes).ResolveAttributes(rc);
-        
+
       rc.Proc = Proc;
       if (Proc.IsPure)
       {
@@ -706,7 +729,7 @@ public class Implementation : DeclWithFormals {
             "invariant may not access a global variable since one of its layers is a yielding layer of its loop");
         }
       }
-        
+
       yieldingProc.YieldingLoops[header] = new YieldingLoop(yieldingLayer, yieldInvariants);
     }
   }
@@ -751,15 +774,15 @@ public class Implementation : DeclWithFormals {
         // the names of the formals are allowed to change from the proc to the impl
 
         // but types must be identical
-        Type t = Cce.NonNull((Variable) implFormals[i]).TypedIdent.Type.Substitute(subst2);
-        Type u = Cce.NonNull((Variable) procFormals[i]).TypedIdent.Type.Substitute(subst1);
+        Type t = Cce.NonNull((Variable)implFormals[i]).TypedIdent.Type.Substitute(subst2);
+        Type u = Cce.NonNull((Variable)procFormals[i]).TypedIdent.Type.Substitute(subst1);
         if (!t.Equals(u))
         {
           string
-            a = Cce.NonNull((Variable) implFormals[i]).Name;
+            a = Cce.NonNull((Variable)implFormals[i]).Name;
           Contract.Assert(a != null);
           string
-            b = Cce.NonNull((Variable) procFormals[i]).Name;
+            b = Cce.NonNull((Variable)procFormals[i]).Name;
           Contract.Assert(b != null);
           string
             c;
@@ -833,9 +856,9 @@ public class Implementation : DeclWithFormals {
         foreach (var e in map)
         {
           options.OutputWriter.Write("  ");
-          Cce.NonNull((Variable) e.Key).Emit(stream, 0);
+          Cce.NonNull((Variable)e.Key).Emit(stream, 0);
           options.OutputWriter.Write("  --> ");
-          Cce.NonNull((Expr) e.Value).Emit(stream);
+          Cce.NonNull((Expr)e.Value).Emit(stream);
           options.OutputWriter.WriteLine();
         }
       }
@@ -977,8 +1000,10 @@ public class Implementation : DeclWithFormals {
 
   public static void ComputePredecessorsForBlocks(IList<Block> blocks)
   {
-    foreach (var block in blocks) {
-      if (block.TransferCmd is not GotoCmd gtc) {
+    foreach (var block in blocks)
+    {
+      if (block.TransferCmd is not GotoCmd gtc)
+      {
         continue;
       }
 
@@ -1001,16 +1026,21 @@ public class Implementation : DeclWithFormals {
     while (toVisit.Count != 0)
     {
       var block = toVisit.Pop();
-      if (!reachable.Add(block)) {
+      if (!reachable.Add(block))
+      {
         continue;
       }
 
       reachableBlocks.Add(block);
-      if (block.TransferCmd is GotoCmd gotoCmd) {
-        if (options.PruneInfeasibleEdges) {
-          foreach (var command in block.Cmds) {
+      if (block.TransferCmd is GotoCmd gotoCmd)
+      {
+        if (options.PruneInfeasibleEdges)
+        {
+          foreach (var command in block.Cmds)
+          {
             Contract.Assert(command != null);
-            if (command is PredicateCmd { Expr: LiteralExpr { IsFalse: true } }) {
+            if (command is PredicateCmd { Expr: LiteralExpr { IsFalse: true } })
+            {
               // This statement sequence will never reach the end, because of this "assume false" or "assert false".
               // Hence, it does not reach its successors.
               block.TransferCmd = new ReturnCmd(block.TransferCmd.tok);
@@ -1020,13 +1050,14 @@ public class Implementation : DeclWithFormals {
         }
 
         // it seems that the goto statement at the end may be reached
-        foreach (var next in gotoCmd.LabelTargets) {
+        foreach (var next in gotoCmd.LabelTargets)
+        {
           Contract.Assume(next != null);
           toVisit.Push(next);
         }
       }
 
-      NEXT_BLOCK:
+    NEXT_BLOCK:
       {
       }
     }
@@ -1087,7 +1118,7 @@ public class Implementation : DeclWithFormals {
     {
       if (Attributes.Key.Equals("captureState"))
       {
-        result = new QKeyValue(Token.NoToken, Attributes.Key, new List<object>() {FreshValue}, result);
+        result = new QKeyValue(Token.NoToken, Attributes.Key, new List<object>() { FreshValue }, result);
       }
       else
       {
@@ -1098,5 +1129,69 @@ public class Implementation : DeclWithFormals {
     }
 
     return result;
+  }
+  public Graph<Block> ConvertToReducible(CoreOptions options)
+  {
+    Dictionary<Block, int> nextLabels = this.Blocks.ToDictionary(b => b, _ => 0);
+    Graph<Block> g = Program.GraphFromImpl(this);
+    ComputePredecessorsForBlocks();
+    g.ComputeLoops(); // this is the call that does all of the processing
+    while (!g.Reducible)
+    {
+      // We will be looking for a block that can be split, and for a looply connected block that has an invariant
+      Block splitBlock = g.SplitCandidates
+        .FirstOrDefault(b => b.Predecessors.Count > 1 && !b.HasInvariant())
+        ?? g.SplitCandidates.FirstOrDefault(b => b.Predecessors.Count > 1);
+
+      // splitBlock should be a perfectly good split candidate now.
+      // We have to find the nodes that are dominated by it, to duplicate them too
+      List<Block> region = [.. Blocks.Where(b => g.DominatorMap.DominatedBy(b, splitBlock))];
+      foreach (Block pred in splitBlock.Predecessors)
+      {
+        if (g.DominatorMap.DominatedBy(pred, splitBlock))
+        {
+          continue;
+        }
+
+        // duplicate the splitBlock
+        Block dupBlock = splitBlock.DuplicateBlock(nextLabels);
+
+        // Remove edge of the previous block
+        GotoCmd predGoto = (GotoCmd)pred.TransferCmd;
+        predGoto.RemoveTarget(splitBlock);
+
+        // Update the edge for the duplicate
+        predGoto.AddTarget(dupBlock);
+
+        // Add the duplicate block to the implementation
+        Blocks.Add(dupBlock);
+
+        // duplicate the whole region
+        Dictionary<Block, Block> duplicatesDict = new Dictionary<Block, Block>
+        {
+          { splitBlock, dupBlock }
+        };
+
+        foreach (Block currentBlock in region)
+        {
+          if (currentBlock != splitBlock)
+          {
+            Block newBlock = currentBlock.DuplicateBlock(nextLabels);
+            this.Blocks.Add(newBlock);
+            duplicatesDict[currentBlock] = newBlock;
+          }
+        }
+
+        // Replace the blocks in the region with their duplicates
+        duplicatesDict.Values.ForEach(b => b.SubstituteBranchTargets(duplicatesDict));
+      }
+
+      PruneUnreachableBlocks(options);
+      ComputePredecessorsForBlocks();
+      g = Program.GraphFromImpl(this);
+      g.ComputeLoops();
+    }
+
+    return g;
   }
 }

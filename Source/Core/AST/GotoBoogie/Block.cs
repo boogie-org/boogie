@@ -201,4 +201,50 @@ public sealed class Block : Absy
   {
     return Cmds.Count >= 1 && Cmds[0] is AssertCmd;
   }
+  
+  public void SubstituteBranchTargets(Dictionary<Block, Block> subst)
+  {
+    TransferCmd transferCmd = this.TransferCmd;
+    if (transferCmd is not GotoCmd)
+    {
+      return;
+    }
+
+    GotoCmd gotoCmd = (GotoCmd)transferCmd;
+    foreach (Block currentBlock in gotoCmd.LabelTargets.ToList())
+    {
+      if (subst.TryGetValue(currentBlock, out Block dupBlock))
+      {
+        gotoCmd.RemoveTarget(currentBlock);
+        gotoCmd.AddTarget(dupBlock);
+      }
+    }
+  }
+
+  public Block DuplicateBlock(Dictionary<Block, int> nextLabels)
+  {
+    List<Cmd> dupCmds = new List<Cmd>();
+    this.Cmds.ForEach(dupCmds.Add);
+
+    TransferCmd splitTransferCmd = this.TransferCmd;
+    TransferCmd dupTransferCmd;
+
+    if (splitTransferCmd is not GotoCmd)
+    {
+      dupTransferCmd = new ReturnCmd(Token.NoToken);
+    }
+    else
+    {
+      List<string> dupLabelNames = [.. ((GotoCmd)splitTransferCmd).LabelNames];
+      List<Block> dupLabelTargets = new List<Block>();
+      ((GotoCmd)splitTransferCmd).LabelTargets.ForEach(dupLabelTargets.Add);
+
+      dupTransferCmd = new GotoCmd(Token.NoToken, dupLabelNames, dupLabelTargets);
+    }
+
+    Block dupBlock = new Block(Token.NoToken, this.Label + "_dup_" + nextLabels[this], dupCmds, dupTransferCmd);
+    nextLabels[this]++;
+    nextLabels.Add(dupBlock, 0);
+    return dupBlock;
+  }
 }
