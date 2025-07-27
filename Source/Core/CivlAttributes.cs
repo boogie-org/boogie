@@ -86,11 +86,8 @@ namespace Microsoft.Boogie
     public const string HIDE = "hide";
     public const string PENDING_ASYNC = "pending_async";
     public const string SYNC = "sync";
-    public const string SKIP = "skip";
-    public const string IS_RIGHT = "IS_right";
-    public const string IS_LEFT = "IS_left";
 
-    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, MARK, HIDE, PENDING_ASYNC, SYNC, IS_LEFT, IS_RIGHT };
+    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, MARK, HIDE, PENDING_ASYNC, SYNC };
 
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
@@ -217,7 +214,7 @@ namespace Microsoft.Boogie
   {
     public static HashSet<string> LinearPrimitives = new()
     {
-      "Loc_New", "KeyedLocSet_New",
+      "Loc_New", "TaggedLocSet_New",
       "Map_MakeEmpty", "Map_Pack", "Map_Unpack", "Map_Split", "Map_Join",
       "Map_Get", "Map_Put", "Map_GetValue", "Map_PutValue",
       "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
@@ -249,7 +246,7 @@ namespace Microsoft.Boogie
       switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
         case "Loc_New":
-        case "KeyedLocSet_New":
+        case "TaggedLocSet_New":
         case "Set_MakeEmpty":
         case "Map_MakeEmpty":
         case "Map_Pack":

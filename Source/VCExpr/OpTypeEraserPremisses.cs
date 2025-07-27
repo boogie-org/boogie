@@ -6,7 +6,7 @@ namespace Microsoft.Boogie.TypeErasure;
 
 public class OpTypeEraserPremisses : OpTypeEraser
 {
-  private TypeAxiomBuilderPremisses /*!*/
+  private TypeAxiomBuilderPremisses
     AxBuilderPremisses;
 
   [ContractInvariantMethod]
@@ -26,34 +26,34 @@ public class OpTypeEraserPremisses : OpTypeEraser
     this.AxBuilderPremisses = axBuilder;
   }
 
-  private VCExpr HandleFunctionOp(Function newFun, List<Type /*!*/> /*!*/ typeArgs /*!*/,
-    IEnumerable<VCExpr /*!*/> /*!*/ oldArgs, VariableBindings bindings)
+  private VCExpr HandleFunctionOp(Function newFun, List<Type> typeArgs,
+    IEnumerable<VCExpr> oldArgs, VariableBindings bindings)
   {
     Contract.Requires(bindings != null);
     Contract.Requires(newFun != null);
-    Contract.Requires(cce.NonNullElements(typeArgs /*!*/));
-    Contract.Requires(cce.NonNullElements(oldArgs));
+    Contract.Requires(Cce.NonNullElements(typeArgs));
+    Contract.Requires(Cce.NonNullElements(oldArgs));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     // UGLY: the code for tracking polarities should be factored out
     int oldPolarity = Eraser.Polarity;
     Eraser.Polarity = 0;
 
-    List<VCExpr /*!*/> /*!*/
-      newArgs = new List<VCExpr /*!*/>(typeArgs.Count);
+    List<VCExpr>
+      newArgs = new List<VCExpr>(typeArgs.Count);
 
     // translate the explicit type arguments
-    foreach (Type /*!*/ t in typeArgs)
+    foreach (Type t in typeArgs)
     {
       Contract.Assert(t != null);
       newArgs.Add(AxBuilder.Type2Term(t, bindings.TypeVariableBindings));
     }
 
     // recursively translate the value arguments
-    foreach (VCExpr /*!*/ arg in oldArgs)
+    foreach (VCExpr arg in oldArgs)
     {
       Contract.Assert(arg != null);
-      Type /*!*/
-        newType = cce.NonNull(newFun.InParams[newArgs.Count]).TypedIdent.Type;
+      Type
+        newType = Cce.NonNull(newFun.InParams[newArgs.Count]).TypedIdent.Type;
       newArgs.Add(AxBuilder.Cast(Eraser.Mutate(arg, bindings), newType));
     }
 
@@ -61,29 +61,29 @@ public class OpTypeEraserPremisses : OpTypeEraser
     return Gen.Function(newFun, newArgs);
   }
 
-  public override VCExpr /*!*/ VisitSelectOp(VCExprNAry /*!*/ node,
-    VariableBindings /*!*/ bindings)
+  public override VCExpr VisitSelectOp(VCExprNAry node,
+    VariableBindings bindings)
   {
     Contract.Requires(node != null);
     Contract.Requires(bindings != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-    MapType /*!*/
+    MapType
       mapType = node[0].Type.AsMap;
     Contract.Assert(mapType != null);
-    Function /*!*/
+    Function
       select =
         AxBuilder.MapTypeAbstracter.Select(mapType, out var instantiations);
     Contract.Assert(select != null);
 
-    List<int> /*!*/
+    List<int>
       explicitTypeParams =
         AxBuilderPremisses.MapTypeAbstracterPremisses
           .ExplicitSelectTypeParams(mapType);
     Contract.Assert(select.InParams.Count == explicitTypeParams.Count + node.Arity);
 
-    List<Type /*!*/> /*!*/
-      typeArgs = new List<Type /*!*/>(explicitTypeParams.Count);
+    List<Type>
+      typeArgs = new List<Type>(explicitTypeParams.Count);
     foreach (int i in explicitTypeParams)
     {
       typeArgs.Add(node.TypeArguments[i]);
@@ -97,14 +97,14 @@ public class OpTypeEraserPremisses : OpTypeEraser
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    Function /*!*/
+    Function
       store =
         AxBuilder.MapTypeAbstracter.Store(node[0].Type.AsMap, out var instantiations);
     Contract.Assert(store != null);
     return HandleFunctionOp(store,
       // the store function never has explicit
       // type parameters
-      new List<Type /*!*/>(),
+      new List<Type>(),
       node.Arguments, bindings);
   }
 
@@ -113,30 +113,30 @@ public class OpTypeEraserPremisses : OpTypeEraser
     Contract.Requires(bindings != null);
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    Function /*!*/
+    Function
       oriFun = ((VCExprBoogieFunctionOp) node.Op).Func;
     Contract.Assert(oriFun != null);
     UntypedFunction untypedFun = AxBuilderPremisses.Typed2Untyped(oriFun);
     Contract.Assert(untypedFun.Fun.InParams.Count ==
                     untypedFun.ExplicitTypeParams.Count + node.Arity);
 
-    List<Type /*!*/> /*!*/
+    List<Type>
       typeArgs =
         ExtractTypeArgs(node,
           oriFun.TypeParameters, untypedFun.ExplicitTypeParams);
     return HandleFunctionOp(untypedFun.Fun, typeArgs, node.Arguments, bindings);
   }
 
-  private List<Type /*!*/> /*!*/ ExtractTypeArgs(VCExprNAry node, List<TypeVariable> allTypeParams,
-    List<TypeVariable /*!*/> /*!*/ explicitTypeParams)
+  private List<Type> ExtractTypeArgs(VCExprNAry node, List<TypeVariable> allTypeParams,
+    List<TypeVariable> explicitTypeParams)
   {
     Contract.Requires(allTypeParams != null);
     Contract.Requires(node != null);
-    Contract.Requires(cce.NonNullElements(explicitTypeParams));
-    Contract.Ensures(cce.NonNullElements(Contract.Result<List<Type>>()));
-    List<Type /*!*/> /*!*/
-      res = new List<Type /*!*/>(explicitTypeParams.Count);
-    foreach (TypeVariable /*!*/ var in explicitTypeParams)
+    Contract.Requires(Cce.NonNullElements(explicitTypeParams));
+    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
+    List<Type>
+      res = new List<Type>(explicitTypeParams.Count);
+    foreach (TypeVariable var in explicitTypeParams)
     {
       Contract.Assert(var != null);
       // this lookup could be optimised

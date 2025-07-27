@@ -25,7 +25,7 @@ namespace Microsoft.Boogie.VCExprAST
         {
           if (ib.MoveNext())
           {
-            if (!cce.NonNull(ia.Current).Equals(ib.Current))
+            if (!Cce.NonNull(ia.Current).Equals(ib.Current))
             {
               return false;
             }
@@ -48,7 +48,7 @@ namespace Microsoft.Boogie.VCExprAST
       int res = init;
       foreach (object x in a)
       {
-        res = res * factor + (cce.NonNull(x)).GetHashCode();
+        res = res * factor + (Cce.NonNull(x)).GetHashCode();
       }
 
       return res;
@@ -58,7 +58,7 @@ namespace Microsoft.Boogie.VCExprAST
     {
       Contract.Requires(l != null);
       Contract.Ensures(Contract.Result<List<T>>() != null);
-      List<T> /*!*/
+      List<T>
         res = new List<T>();
       foreach (T x in l)
       {
@@ -73,24 +73,24 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(exprs != null);
       Contract.Requires((Contract.ForAll(0, exprs.Length, i => exprs[i] != null)));
       Contract.Ensures(Contract.Result<List<Type>>() != null);
-      List<Type> /*!*/
+      List<Type>
         res = new List<Type>();
       for (int i = startIndex; i < exprs.Length; ++i)
       {
-        res.Add(cce.NonNull(exprs[i]).Type);
+        res.Add(Cce.NonNull(exprs[i]).Type);
       }
 
       return res;
     }
 
-    public static List<T /*!*/> /*!*/ ToNonNullList<T>(params T[] args) where T : class
+    public static List<T> ToNonNullList<T>(params T[] args) where T : class
     {
       Contract.Requires(args != null);
-      List<T /*!*/> /*!*/
+      List<T>
         res = new List<T>(args.Length);
       foreach (T t in args)
       {
-        res.Add(cce.NonNull(t));
+        res.Add(Cce.NonNull(t));
       }
 
       return res;
@@ -143,7 +143,7 @@ namespace Microsoft.Boogie.VCExprAST
       StringWriter sw = new StringWriter();
       VCExprPrinter printer = new VCExprPrinter(PrintOptions.Default);
       printer.Print(this, sw);
-      return cce.NonNull(sw.ToString());
+      return Cce.NonNull(sw.ToString());
     }
   }
 
@@ -173,7 +173,6 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this, arg);
     }
   }
@@ -373,7 +372,7 @@ namespace Microsoft.Boogie.VCExprAST
   {
     public override string ToString()
     {
-      return $"${Op}(${String.Join(", ", Arguments)})";
+      return $"{Op}({String.Join(", ", Arguments)})";
     }
 
     [Pure]
@@ -396,8 +395,8 @@ namespace Microsoft.Boogie.VCExprAST
     void ObjectInvariant()
     {
       Contract.Invariant(Op != null);
-      Contract.Invariant(cce.NonNullElements(EMPTY_TYPE_LIST));
-      Contract.Invariant(cce.NonNullElements(EMPTY_VCEXPR_LIST));
+      Contract.Invariant(Cce.NonNullElements(EMPTY_TYPE_LIST));
+      Contract.Invariant(Cce.NonNullElements(EMPTY_VCEXPR_LIST));
     }
 
     public int Arity
@@ -416,10 +415,10 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     // the sub-expressions of the expression
-    public abstract VCExpr /*!*/ this[int index] { get; }
+    public abstract VCExpr this[int index] { get; }
 
     // the type arguments
-    public abstract List<Type /*!*/> /*!*/ TypeArguments { get; }
+    public abstract List<Type> TypeArguments { get; }
 
     [Pure]
     [Reads(ReadsAttribute.Reads.Nothing)]
@@ -469,7 +468,7 @@ namespace Microsoft.Boogie.VCExprAST
           }
           else
           {
-            if (!cce.NonNull(enum0.Current).Equals(enum1.Current))
+            if (!Cce.NonNull(enum0.Current).Equals(enum1.Current))
             {
               return false;
             }
@@ -494,7 +493,6 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this, arg);
     }
 
@@ -504,11 +502,11 @@ namespace Microsoft.Boogie.VCExprAST
       return Op.Accept(this, visitor, arg);
     }
 
-    internal static readonly List<Type /*!*/> /*!*/
-      EMPTY_TYPE_LIST = new List<Type /*!*/>();
+    internal static readonly List<Type>
+      EMPTY_TYPE_LIST = new List<Type>();
 
-    internal static readonly List<VCExpr /*!*/> /*!*/
-      EMPTY_VCEXPR_LIST = new List<VCExpr /*!*/>();
+    internal static readonly List<VCExpr>
+      EMPTY_VCEXPR_LIST = new List<VCExpr>();
 
     public IEnumerable<VCExpr> UniformArguments
     {
@@ -555,16 +553,16 @@ namespace Microsoft.Boogie.VCExprAST
         Contract.Ensures(Contract.Result<VCExpr>() != null);
 
         Contract.Assert(false);
-        throw new cce.UnreachableException(); // no arguments
+        throw new Cce.UnreachableException(); // no arguments
       }
     }
 
     // the type arguments
-    public override List<Type /*!*/> /*!*/ TypeArguments
+    public override List<Type> TypeArguments
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<List<Type>>()));
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
         return EMPTY_TYPE_LIST;
       }
     }
@@ -587,13 +585,13 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Invariant(ExprType != null);
     }
 
-    private readonly VCExpr /*!*/
+    private readonly VCExpr
       Argument;
 
-    private readonly Type /*!*/
+    private readonly Type
       ExprType;
 
-    public override Type /*!*/ Type
+    public override Type Type
     {
       get
       {
@@ -602,7 +600,7 @@ namespace Microsoft.Boogie.VCExprAST
       }
     }
 
-    public override VCExpr /*!*/ this[int index]
+    public override VCExpr this[int index]
     {
       get
       {
@@ -614,11 +612,11 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     // the type arguments
-    public override List<Type /*!*/> /*!*/ TypeArguments
+    public override List<Type> TypeArguments
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<List<Type>>()));
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
         return EMPTY_TYPE_LIST;
       }
     }
@@ -627,7 +625,7 @@ namespace Microsoft.Boogie.VCExprAST
       : base(op)
     {
       Contract.Requires(op != null);
-      Contract.Requires(cce.NonNullElements(arguments));
+      Contract.Requires(Cce.NonNullElements(arguments));
       Contract.Requires(op.Arity == 1 && op.TypeParamArity == 0 && arguments.Count == 1);
 
       this.Argument = arguments[0];
@@ -688,18 +686,18 @@ namespace Microsoft.Boogie.VCExprAST
           default:
           {
             Contract.Assert(false);
-            throw new cce.UnreachableException();
+            throw new Cce.UnreachableException();
           }
         }
       }
     }
 
     // the type arguments
-    public override List<Type /*!*/> /*!*/ TypeArguments
+    public override List<Type> TypeArguments
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<List<Type>>()));
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
         return EMPTY_TYPE_LIST;
       }
     }
@@ -708,7 +706,7 @@ namespace Microsoft.Boogie.VCExprAST
       : base(op)
     {
       Contract.Requires(op != null);
-      Contract.Requires(cce.NonNullElements(arguments));
+      Contract.Requires(Cce.NonNullElements(arguments));
       Contract.Requires(op.Arity == 2 && op.TypeParamArity == 0 && arguments.Count == 2);
 
       this.Argument0 = arguments[0];
@@ -735,24 +733,24 @@ namespace Microsoft.Boogie.VCExprAST
 
   internal class VCExprMultiAry : VCExprNAry
   {
-    private readonly List<VCExpr /*!*/> /*!*/ arguments;
+    private readonly List<VCExpr> arguments;
 
-    private readonly List<Type /*!*/> /*!*/
+    private readonly List<Type>
       TypeArgumentsAttr;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullElements(arguments));
-      Contract.Invariant(cce.NonNullElements(TypeArgumentsAttr));
+      Contract.Invariant(Cce.NonNullElements(arguments));
+      Contract.Invariant(Cce.NonNullElements(TypeArgumentsAttr));
       Contract.Invariant(ExprType != null);
     }
 
 
-    private readonly Type /*!*/
+    private readonly Type
       ExprType;
 
-    public override Type /*!*/ Type
+    public override Type Type
     {
       get
       {
@@ -761,23 +759,23 @@ namespace Microsoft.Boogie.VCExprAST
       }
     }
 
-    public override VCExpr /*!*/ this[int index]
+    public override VCExpr this[int index]
     {
       get
       {
         Contract.Ensures(Contract.Result<VCExpr>() != null);
 
         Contract.Assume(index >= 0 && index < Arity);
-        return cce.NonNull(arguments)[index];
+        return Cce.NonNull(arguments)[index];
       }
     }
 
     // the type arguments
-    public override List<Type /*!*/> /*!*/ TypeArguments
+    public override List<Type> TypeArguments
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<List<Type>>()));
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Type>>()));
         return TypeArgumentsAttr;
       }
     }
@@ -786,18 +784,18 @@ namespace Microsoft.Boogie.VCExprAST
       : base(op)
     {
       Contract.Requires(op != null);
-      Contract.Requires(cce.NonNullElements(arguments));
+      Contract.Requires(Cce.NonNullElements(arguments));
       this.arguments = arguments;
       this.TypeArgumentsAttr = EMPTY_TYPE_LIST;
       this.ExprType = op.InferType(arguments, TypeArgumentsAttr);
     }
 
-    internal VCExprMultiAry(VCExprOp op, List<VCExpr> arguments, List<Type /*!*/> /*!*/ typeArguments)
+    internal VCExprMultiAry(VCExprOp op, List<VCExpr> arguments, List<Type> typeArguments)
       : base(op)
     {
       Contract.Requires(op != null);
-      Contract.Requires(cce.NonNullElements(typeArguments));
-      Contract.Requires(cce.NonNullElements(arguments));
+      Contract.Requires(Cce.NonNullElements(typeArguments));
+      Contract.Requires(Cce.NonNullElements(arguments));
       Contract.Requires(arguments.Count > 2 || typeArguments.Count > 0);
       Contract.Requires(op.Arity == arguments.Count);
       Contract.Requires(op.TypeParamArity == typeArguments.Count);
@@ -818,7 +816,7 @@ namespace Microsoft.Boogie.VCExprAST
     // the number of type parameters
     public abstract int TypeParamArity { get; }
 
-    public abstract Type /*!*/ InferType(List<VCExpr /*!*/> /*!*/ args, List<Type /*!*/> /*!*/ typeArgs);
+    public abstract Type InferType(List<VCExpr> args, List<Type> typeArgs);
 
     public virtual Result Accept<Result, Arg>(VCExprNAry expr, IVCExprOpVisitor<Result, Arg> visitor, Arg arg)
     {
@@ -874,13 +872,13 @@ namespace Microsoft.Boogie.VCExprAST
             return visitor.VisitToRealOp(expr, arg);
           default:
             Contract.Assert(false);
-            throw new cce.UnreachableException();
+            throw new Cce.UnreachableException();
         }
       }
       else
       {
         Contract.Assert(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
     }
   }
@@ -890,8 +888,8 @@ namespace Microsoft.Boogie.VCExprAST
   {
     public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      Contract.Requires(cce.NonNullElements(args));
-      Contract.Requires(cce.NonNullElements(typeArgs));
+      Contract.Requires(Cce.NonNullElements(args));
+      Contract.Requires(Cce.NonNullElements(typeArgs));
       Contract.Ensures(Contract.Result<Type>() != null);
 
       throw new NotImplementedException();
@@ -919,10 +917,8 @@ namespace Microsoft.Boogie.VCExprAST
       get { return 0; }
     }
 
-    public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return OpType;
     }
@@ -970,8 +966,6 @@ namespace Microsoft.Boogie.VCExprAST
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
       return visitor.VisitDistinctOp(expr, arg);
     }
   }
@@ -1095,16 +1089,14 @@ namespace Microsoft.Boogie.VCExprAST
       get { return MapTypeParamArity; }
     }
 
-    public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
-      MapType /*!*/
+      MapType
         mapType = args[0].Type.AsMap;
       Contract.Assert(TypeParamArity == mapType.TypeParameters.Count);
-      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
-        subst = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
+      IDictionary<TypeVariable, Type>
+        subst = new Dictionary<TypeVariable, Type>();
       for (int i = 0; i < TypeParamArity; ++i)
       {
         subst.Add(mapType.TypeParameters[i], typeArgs[i]);
@@ -1149,8 +1141,6 @@ namespace Microsoft.Boogie.VCExprAST
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
       return visitor.VisitSelectOp(expr, arg);
     }
   }
@@ -1172,10 +1162,8 @@ namespace Microsoft.Boogie.VCExprAST
       get { return MapTypeParamArity; }
     }
 
-    public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return args[0].Type;
     }
@@ -1215,8 +1203,6 @@ namespace Microsoft.Boogie.VCExprAST
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
       return visitor.VisitStoreOp(expr, arg);
     }
   }
@@ -1233,10 +1219,8 @@ namespace Microsoft.Boogie.VCExprAST
       get { return 0; }
     }
 
-    public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return args[1].Type;
     }
@@ -1273,8 +1257,6 @@ namespace Microsoft.Boogie.VCExprAST
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
       return visitor.VisitIfThenElseOp(expr, arg);
     }
   }
@@ -1291,12 +1273,12 @@ namespace Microsoft.Boogie.VCExprAST
 
   public class VCExprCustomOp : VCExprOp
   {
-    public readonly string /*!*/
+    public readonly string
       Name;
 
     int arity;
 
-    public readonly Type /*!*/
+    public readonly Type
       Type;
 
     [ContractInvariantMethod]
@@ -1306,7 +1288,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Invariant(Type != null);
     }
 
-    public VCExprCustomOp(string /*!*/ name, int arity, Type /*!*/ type)
+    public VCExprCustomOp(string name, int arity, Type type)
     {
       Contract.Requires(name != null);
       Contract.Requires(type != null);
@@ -1353,21 +1335,17 @@ namespace Microsoft.Boogie.VCExprAST
       get { return 0; }
     }
 
-    public override Type /*!*/ InferType(List<VCExpr /*!*/> /*!*/ args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires((cce.NonNullElements(args)));
-      //Contract.Requires((cce.NonNullElements(typeArgs)));
       Contract.Ensures(Contract.Result<Type>() != null);
       return Type;
     }
 
     public override Result Accept<Result, Arg>(
-      VCExprNAry /*!*/ expr,
-      IVCExprOpVisitor<Result, Arg> /*!*/ visitor,
+      VCExprNAry expr,
+      IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(expr != null);
-      //Contract.Requires(visitor != null);
       return visitor.VisitCustomOp(expr, arg);
     }
   }
@@ -1391,10 +1369,8 @@ namespace Microsoft.Boogie.VCExprAST
       get { return 2; }
     }
 
-    public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (op)
       {
@@ -1412,7 +1388,7 @@ namespace Microsoft.Boogie.VCExprAST
           return Type.Bool;
         default:
           Contract.Assert(false);
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
       }
     }
 
@@ -1452,8 +1428,6 @@ namespace Microsoft.Boogie.VCExprAST
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
       switch (op)
       {
         case ("+"):
@@ -1478,7 +1452,7 @@ namespace Microsoft.Boogie.VCExprAST
           return visitor.VisitNeqOp(expr, arg);
         default:
           Contract.Assert(false);
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
       }
     }
   }
@@ -1500,10 +1474,8 @@ namespace Microsoft.Boogie.VCExprAST
       get { return 0; }
     }
 
-    public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return Type.GetBvType(Bits);
     }
@@ -1541,8 +1513,6 @@ namespace Microsoft.Boogie.VCExprAST
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
       return visitor.VisitBvOp(expr, arg);
     }
   }
@@ -1563,10 +1533,8 @@ namespace Microsoft.Boogie.VCExprAST
       get { return 0; }
     }
 
-    public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return Type.GetBvType(End - Start);
     }
@@ -1582,7 +1550,7 @@ namespace Microsoft.Boogie.VCExprAST
 
       if (that is VCExprBvExtractOp)
       {
-        VCExprBvExtractOp /*!*/
+        VCExprBvExtractOp
           thatExtract = (VCExprBvExtractOp) that;
         return this.Start == thatExtract.Start && this.End == thatExtract.End && this.Total == thatExtract.Total;
       }
@@ -1609,8 +1577,6 @@ namespace Microsoft.Boogie.VCExprAST
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
       return visitor.VisitBvExtractOp(expr, arg);
     }
   }
@@ -1630,10 +1596,8 @@ namespace Microsoft.Boogie.VCExprAST
       get { return 0; }
     }
 
-    public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       return Type.GetBvType(args[0].Type.BvBits + args[1].Type.BvBits);
     }
@@ -1674,8 +1638,6 @@ namespace Microsoft.Boogie.VCExprAST
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
       return visitor.VisitBvConcatOp(expr, arg);
     }
   }
@@ -1704,25 +1666,23 @@ namespace Microsoft.Boogie.VCExprAST
       get { return Func.TypeParameters.Count; }
     }
 
-    public override Type InferType(List<VCExpr> args, List<Type /*!*/> /*!*/ typeArgs)
+    public override Type InferType(List<VCExpr> args, List<Type> typeArgs)
     {
-      //Contract.Requires(cce.NonNullElements(typeArgs));
-      //Contract.Requires(cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<Type>() != null);
       Contract.Assert(TypeParamArity == Func.TypeParameters.Count);
       if (TypeParamArity == 0)
       {
-        return cce.NonNull(Func.OutParams[0]).TypedIdent.Type;
+        return Cce.NonNull(Func.OutParams[0]).TypedIdent.Type;
       }
 
-      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
-        subst = new Dictionary<TypeVariable /*!*/, Type /*!*/>(TypeParamArity);
+      IDictionary<TypeVariable, Type>
+        subst = new Dictionary<TypeVariable, Type>(TypeParamArity);
       for (int i = 0; i < TypeParamArity; ++i)
       {
         subst.Add(Func.TypeParameters[i], typeArgs[i]);
       }
 
-      return cce.NonNull(Func.OutParams[0]).TypedIdent.Type.Substitute(subst);
+      return Cce.NonNull(Func.OutParams[0]).TypedIdent.Type.Substitute(subst);
     }
 
     [Pure]
@@ -1761,9 +1721,12 @@ namespace Microsoft.Boogie.VCExprAST
       IVCExprOpVisitor<Result, Arg> visitor,
       Arg arg)
     {
-      //Contract.Requires(visitor != null);
-      //Contract.Requires(expr != null);
       return visitor.VisitBoogieFunctionOp(expr, arg);
+    }
+
+    public override string ToString()
+    {
+      return Func.Name;
     }
   }
 
@@ -1791,15 +1754,15 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Invariant(VarType != null);
     }
 
-    public readonly string /*!*/
+    public readonly string
       Name;
 
-    private readonly Type /*!*/
+    private readonly Type
       VarType;
 
     public VCExprVarKind VarKind { get; }
 
-    public override Type /*!*/ Type
+    public override Type Type
     {
       get
       {
@@ -1826,13 +1789,12 @@ namespace Microsoft.Boogie.VCExprAST
         VCExprVarKind.Soft => "soft$$",
         VCExprVarKind.Try => "try$$",
         VCExprVarKind.Normal => "",
-        _ => throw new cce.UnreachableException()
+        _ => throw new Cce.UnreachableException()
       };
     }
 
     public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this, arg);
     }
     
@@ -1853,25 +1815,25 @@ namespace Microsoft.Boogie.VCExprAST
 
   public abstract class VCExprBinder : VCExpr
   {
-    public readonly VCExpr /*!*/
+    public readonly VCExpr
       Body;
 
-    public readonly List<TypeVariable /*!*/> /*!*/
+    public readonly List<TypeVariable>
       TypeParameters;
 
-    public readonly List<VCExprVar /*!*/> /*!*/
+    public readonly List<VCExprVar>
       BoundVars;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
       Contract.Invariant(Body != null);
-      Contract.Invariant(cce.NonNullElements(TypeParameters));
-      Contract.Invariant(cce.NonNullElements(BoundVars));
+      Contract.Invariant(Cce.NonNullElements(TypeParameters));
+      Contract.Invariant(Cce.NonNullElements(BoundVars));
     }
 
 
-    public override Type /*!*/ Type
+    public override Type Type
     {
       get
       {
@@ -1881,11 +1843,11 @@ namespace Microsoft.Boogie.VCExprAST
       }
     }
 
-    internal VCExprBinder(List<TypeVariable /*!*/> /*!*/ typeParams, List<VCExprVar /*!*/> /*!*/ boundVars, VCExpr body)
+    internal VCExprBinder(List<TypeVariable> typeParams, List<VCExprVar> boundVars, VCExpr body)
     {
       Contract.Requires(body != null);
-      Contract.Requires(cce.NonNullElements(boundVars));
-      Contract.Requires(cce.NonNullElements(typeParams));
+      Contract.Requires(Cce.NonNullElements(boundVars));
+      Contract.Requires(Cce.NonNullElements(typeParams));
       Contract.Requires(boundVars.Count + typeParams.Count > 0); // only nontrivial binders ...
       this.TypeParameters = typeParams;
       this.BoundVars = boundVars;
@@ -1897,7 +1859,7 @@ namespace Microsoft.Boogie.VCExprAST
   {
     public readonly bool Pos;
 
-    public readonly List<VCExpr /*!*/> /*!*/
+    public readonly List<VCExpr>
       Exprs;
 
     [ContractInvariantMethod]
@@ -1918,7 +1880,7 @@ namespace Microsoft.Boogie.VCExprAST
 
       if (that is VCTrigger)
       {
-        VCTrigger /*!*/
+        VCTrigger
           thatTrigger = (VCTrigger) that;
         return this.Pos == thatTrigger.Pos &&
                HelperFuns.SameElements(this.Exprs, thatTrigger.Exprs);
@@ -1936,7 +1898,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public VCTrigger(bool pos, List<VCExpr> exprs)
     {
-      Contract.Requires(cce.NonNullElements(exprs));
+      Contract.Requires(Cce.NonNullElements(exprs));
       this.Pos = pos;
       this.Exprs = exprs;
     }
@@ -2002,10 +1964,10 @@ namespace Microsoft.Boogie.VCExprAST
     void ObjectInvariant()
     {
       Contract.Invariant(Info != null);
-      Contract.Invariant(cce.NonNullElements(Triggers));
+      Contract.Invariant(Cce.NonNullElements(Triggers));
     }
 
-    public readonly List<VCTrigger /*!*/> /*!*/
+    public readonly List<VCTrigger>
       Triggers;
 
     public readonly VCQuantifierInfo Info;
@@ -2022,7 +1984,7 @@ namespace Microsoft.Boogie.VCExprAST
 
       if (that is VCExprQuantifier)
       {
-        VCExprQuantifier /*!*/
+        VCExprQuantifier
           thatQuan = (VCExprQuantifier) that;
         return this.Quan == thatQuan.Quan &&
                HelperFuns.SameElements(this.Triggers, thatQuan.Triggers) &&
@@ -2043,15 +2005,15 @@ namespace Microsoft.Boogie.VCExprAST
              HelperFuns.PolyHash(123, 11, Triggers);
     }
 
-    internal VCExprQuantifier(Quantifier kind, List<TypeVariable /*!*/> /*!*/ typeParams,
-      List<VCExprVar /*!*/> /*!*/ boundVars, List<VCTrigger /*!*/> /*!*/ triggers, VCQuantifierInfo info, VCExpr body)
+    internal VCExprQuantifier(Quantifier kind, List<TypeVariable> typeParams,
+      List<VCExprVar> boundVars, List<VCTrigger> triggers, VCQuantifierInfo info, VCExpr body)
       : base(typeParams, boundVars, body)
     {
       Contract.Requires(body != null);
       Contract.Requires(info != null);
-      Contract.Requires(cce.NonNullElements(triggers));
-      Contract.Requires(cce.NonNullElements(boundVars));
-      Contract.Requires(cce.NonNullElements(typeParams));
+      Contract.Requires(Cce.NonNullElements(triggers));
+      Contract.Requires(Cce.NonNullElements(boundVars));
+      Contract.Requires(Cce.NonNullElements(typeParams));
 
       this.Quan = kind;
       this.Triggers = triggers;
@@ -2060,7 +2022,6 @@ namespace Microsoft.Boogie.VCExprAST
 
     public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this, arg);
     }
   }
@@ -2092,7 +2053,7 @@ namespace Microsoft.Boogie.VCExprAST
 
       if (that is VCExprLetBinding)
       {
-        VCExprLetBinding /*!*/
+        VCExprLetBinding
           thatB = (VCExprLetBinding) that;
         return this.V.Equals(thatB.V) && this.E.Equals(thatB.E);
       }
@@ -2116,15 +2077,15 @@ namespace Microsoft.Boogie.VCExprAST
     }
   }
 
-  public class VCExprLet : VCExprBinder, IEnumerable<VCExprLetBinding /*!*/>
+  public class VCExprLet : VCExprBinder, IEnumerable<VCExprLetBinding>
   {
-    private readonly List<VCExprLetBinding /*!*/> /*!*/
+    private readonly List<VCExprLetBinding>
       Bindings;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
-      Contract.Invariant(cce.NonNullElements(Bindings));
+      Contract.Invariant(Cce.NonNullElements(Bindings));
     }
 
 
@@ -2153,7 +2114,7 @@ namespace Microsoft.Boogie.VCExprAST
 
       if (that is VCExprLet)
       {
-        VCExprLet /*!*/
+        VCExprLet
           thatLet = (VCExprLet) that;
         return this.Body.Equals(thatLet.Body) &&
                HelperFuns.SameElements(this, (VCExprLet) that);
@@ -2171,9 +2132,9 @@ namespace Microsoft.Boogie.VCExprAST
     [Pure]
     [GlobalAccess(false)]
     [Escapes(true, false)]
-    public IEnumerator<VCExprLetBinding /*!*/> /*!*/ GetEnumerator()
+    public IEnumerator<VCExprLetBinding> GetEnumerator()
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerator<VCExprLetBinding>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerator<VCExprLetBinding>>()));
       return Bindings.GetEnumerator();
     }
 
@@ -2186,12 +2147,12 @@ namespace Microsoft.Boogie.VCExprAST
       return Bindings.GetEnumerator();
     }
 
-    private static List<VCExprVar /*!*/> /*!*/ toSeq(List<VCExprLetBinding /*!*/> /*!*/ bindings)
+    private static List<VCExprVar> toSeq(List<VCExprLetBinding> bindings)
     {
-      Contract.Requires(cce.NonNullElements(bindings));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+      Contract.Requires(Cce.NonNullElements(bindings));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
       List<VCExprVar> res = new List<VCExprVar>();
-      foreach (VCExprLetBinding /*!*/ b in bindings)
+      foreach (VCExprLetBinding b in bindings)
       {
         res.Add(b.V);
       }
@@ -2199,17 +2160,16 @@ namespace Microsoft.Boogie.VCExprAST
       return res;
     }
 
-    internal VCExprLet(List<VCExprLetBinding /*!*/> /*!*/ bindings, VCExpr /*!*/ body)
-      : base(new List<TypeVariable /*!*/>(), toSeq(bindings), body)
+    internal VCExprLet(List<VCExprLetBinding> bindings, VCExpr body)
+      : base(new List<TypeVariable>(), toSeq(bindings), body)
     {
-      Contract.Requires(cce.NonNullElements(bindings));
+      Contract.Requires(Cce.NonNullElements(bindings));
       Contract.Requires(body != null);
       this.Bindings = bindings;
     }
 
     public override Result Accept<Result, Arg>(IVCExprVisitor<Result, Arg> visitor, Arg arg)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this, arg);
     }
   }

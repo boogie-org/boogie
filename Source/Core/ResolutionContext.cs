@@ -8,7 +8,7 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(IErrorSinkContracts))]
   public interface IErrorSink
   {
-    void Error(IToken /*!*/ tok, string /*!*/ msg);
+    void Error(IToken tok, string msg);
   }
 
   [ContractClassFor(typeof(IErrorSink))]
@@ -133,7 +133,7 @@ namespace Microsoft.Boogie
     void ObjectInvariant()
     {
       Contract.Invariant(types != null);
-      Contract.Invariant(cce.NonNullElements(typeBinders));
+      Contract.Invariant(Cce.NonNullElements(typeBinders));
       Contract.Invariant(varContext != null);
       Contract.Invariant(functions != null);
       Contract.Invariant(procedures != null);
@@ -218,8 +218,8 @@ namespace Microsoft.Boogie
       return type as TypeSynonymDecl;
     }
 
-    List<TypeVariable /*!*/> /*!*/
-      typeBinders = new List<TypeVariable /*!*/>(5);
+    List<TypeVariable>
+      typeBinders = new List<TypeVariable>(5);
 
     public void AddTypeBinder(TypeVariable td)
     {
@@ -338,7 +338,7 @@ namespace Microsoft.Boogie
     }
 
     // symbolic constants, global variables, local variables, formals, expression-bound variables
-    VarContextNode /*!*/
+    VarContextNode
       varContext = new VarContextNode(null, false);
 
     /// <summary>
@@ -382,7 +382,7 @@ namespace Microsoft.Boogie
     public void AddVariable(Variable var)
     {
       Contract.Requires(var != null);
-      var previous = FindVariable(cce.NonNull(var.Name), true);
+      var previous = FindVariable(Cce.NonNull(var.Name), true);
       if (previous == null)
       {
         varContext.VarSymbols.Add(var.Name, var);
@@ -576,7 +576,7 @@ namespace Microsoft.Boogie
       }
 
       // prepend :ignore attribute
-      ignore.Attributes = new QKeyValue(ignore.tok, "ignore", new List<object /*!*/>(), ignore.Attributes);
+      ignore.Attributes = new QKeyValue(ignore.tok, "ignore", new List<object>(), ignore.Attributes);
       return keep;
     }
 
@@ -711,11 +711,11 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(value != stateMode);
         Contract.Assert(stateMode == State.Single || value == State.Single);
-        cce.BeginExpose(this);
+        Cce.BeginExpose(this);
         {
           stateMode = value;
         }
-        cce.EndExpose();
+        Cce.EndExpose();
       }
     }
 
@@ -732,11 +732,11 @@ namespace Microsoft.Boogie
       set
       {
         Contract.Assert(triggerMode != value);
-        cce.BeginExpose(this);
+        Cce.BeginExpose(this);
         {
           triggerMode = value;
         }
-        cce.EndExpose();
+        Cce.EndExpose();
       }
     }
 
@@ -751,7 +751,7 @@ namespace Microsoft.Boogie
     public LayerRange ExpectedLayerRange;
     public bool GlobalAccessOnlyInOld;
     public int InsideOld;
-    public bool CheckModifies => Proc != null && (!Options?.DoModSetAnalysis ?? true);
+    public bool CheckModifies => Proc != null && (!Options?.InferModifies ?? true);
 
     public TypecheckingContext(IErrorSink errorSink, CoreOptions options)
       : base(errorSink)

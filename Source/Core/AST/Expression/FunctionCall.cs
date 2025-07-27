@@ -9,7 +9,7 @@ public class FunctionCall : IAppliable
 {
   public int ContentHash => 1;
 
-  private IdentifierExpr /*!*/ name;
+  private IdentifierExpr name;
 
   public Function Func;
 
@@ -30,7 +30,7 @@ public class FunctionCall : IAppliable
     this.name.Type = f.OutParams[0].TypedIdent.Type;
   }
 
-  public string /*!*/ FunctionName
+  public string FunctionName
   {
     get
     {
@@ -74,8 +74,6 @@ public class FunctionCall : IAppliable
 
   public virtual void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
   {
-    //Contract.Requires(stream != null);
-    //Contract.Requires(args != null);
 
     if (stream.UseForComputingChecksums && Func.OriginalLambdaExprAsString != null)
     {
@@ -102,8 +100,6 @@ public class FunctionCall : IAppliable
 
   public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
   {
-    //Contract.Requires(subjectForErrorReporting != null);
-    //Contract.Requires(rc != null);
     if (Func != null)
     {
       // already resolved
@@ -136,8 +132,6 @@ public class FunctionCall : IAppliable
   public virtual Type Typecheck(IList<Expr> actuals, out TypeParamInstantiation tpInstantiation,
     TypecheckingContext tc)
   {
-    //Contract.Requires(tc != null);
-    //Contract.Requires(actuals != null);
     Contract.Ensures(Contract.ValueAtReturn(out actuals) != null);
     Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
     Contract.Assume(this.Func != null);
@@ -153,7 +147,7 @@ public class FunctionCall : IAppliable
         null,
         // we need some token to report a possibly wrong number of
         // arguments
-        actuals.Count > 0 ? cce.NonNull(actuals[0]).tok : Token.NoToken,
+        actuals.Count > 0 ? Cce.NonNull(actuals[0]).tok : Token.NoToken,
         "application of " + name.Name,
         tc);
 
@@ -173,7 +167,6 @@ public class FunctionCall : IAppliable
 
   public Type ShallowType(IList<Expr> args)
   {
-    //Contract.Requires(args != null);
     Contract.Ensures(Contract.Result<Type>() != null);
     Contract.Assume(name.Type != null);
     return name.Type;
@@ -181,7 +174,6 @@ public class FunctionCall : IAppliable
 
   public virtual T Dispatch<T>(IAppliableVisitor<T> visitor)
   {
-    //Contract.Requires(visitor != null);
     return visitor.Visit(this);
   }
 }

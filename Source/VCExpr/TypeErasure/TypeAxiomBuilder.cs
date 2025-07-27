@@ -9,7 +9,7 @@ namespace Microsoft.Boogie.TypeErasure;
 [ContractClass(typeof(TypeAxiomBuilderContracts))]
 public abstract class TypeAxiomBuilder : ICloneable
 {
-  protected readonly VCExpressionGenerator /*!*/
+  protected readonly VCExpressionGenerator
     Gen;
 
   [ContractInvariantMethod]
@@ -20,29 +20,29 @@ public abstract class TypeAxiomBuilder : ICloneable
   }
 
 
-  internal abstract MapTypeAbstractionBuilder /*!*/ MapTypeAbstracter { get; }
+  internal abstract MapTypeAbstractionBuilder MapTypeAbstracter { get; }
 
   ///////////////////////////////////////////////////////////////////////////
   // Type Axioms
 
   // list in which all typed axioms are collected
-  private readonly List<VCExpr /*!*/> /*!*/
+  private readonly List<VCExpr>
     AllTypeAxioms;
 
   [ContractInvariantMethod]
   void AllTypeAxiomsInvariantMethod()
   {
-    Contract.Invariant(cce.NonNullElements(AllTypeAxioms));
+    Contract.Invariant(Cce.NonNullElements(AllTypeAxioms));
   }
 
   // list in which type axioms are incrementally collected
-  private readonly List<VCExpr /*!*/> /*!*/
+  private readonly List<VCExpr>
     IncTypeAxioms;
 
   [ContractInvariantMethod]
   void IncTypeAxiomsInvariantMethod()
   {
-    Contract.Invariant(cce.NonNullElements(IncTypeAxioms));
+    Contract.Invariant(Cce.NonNullElements(IncTypeAxioms));
   }
 
   internal void AddTypeAxiom(VCExpr axiom)
@@ -57,14 +57,14 @@ public abstract class TypeAxiomBuilder : ICloneable
   public VCExpr GetNewAxioms()
   {
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    VCExpr /*!*/
+    VCExpr
       res = Gen.NAry(VCExpressionGenerator.AndOp, IncTypeAxioms);
     IncTypeAxioms.Clear();
     return res;
   }
 
   // mapping from a type to its constructor number/index
-  private readonly Function /*!*/
+  private readonly Function
     Ctor;
 
   private BigNum CurrentCtorNum;
@@ -85,9 +85,9 @@ public abstract class TypeAxiomBuilder : ICloneable
     Contract.Requires(typeRepr != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-    List<VCExprVar /*!*/> /*!*/
+    List<VCExprVar>
       quantifiedVars = HelperFuns.GenVarsForInParams(typeRepr, Gen);
-    VCExpr /*!*/
+    VCExpr
       eq =
         GenCtorAssignment(Gen.Function(typeRepr,
           HelperFuns.ToVCExprList(quantifiedVars)));
@@ -97,7 +97,7 @@ public abstract class TypeAxiomBuilder : ICloneable
       return eq;
     }
 
-    return Gen.Forall(quantifiedVars, new List<VCTrigger /*!*/>(),
+    return Gen.Forall(quantifiedVars, new List<VCTrigger>(),
       "ctor:" + typeRepr.Name, 1, eq);
   }
 
@@ -107,22 +107,22 @@ public abstract class TypeAxiomBuilder : ICloneable
     Contract.Requires(invFun != null);
     Contract.Requires(fun != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    List<VCExprVar /*!*/> /*!*/
+    List<VCExprVar>
       quantifiedVars = HelperFuns.GenVarsForInParams(fun, Gen);
-    Contract.Assert(cce.NonNullElements(quantifiedVars));
+    Contract.Assert(Cce.NonNullElements(quantifiedVars));
 
-    VCExpr /*!*/
+    VCExpr
       funApp = Gen.Function(fun, HelperFuns.ToVCExprList(quantifiedVars));
-    VCExpr /*!*/
+    VCExpr
       lhs = Gen.Function(invFun, funApp);
-    VCExpr /*!*/
+    VCExpr
       rhs = quantifiedVars[dtorNum];
-    VCExpr /*!*/
+    VCExpr
       eq = Gen.Eq(lhs, rhs);
 
-    List<VCTrigger /*!*/> /*!*/
+    List<VCTrigger>
       triggers = HelperFuns.ToList(Gen.Trigger(true, HelperFuns.ToList(funApp)));
-    Contract.Assert(cce.NonNullElements(triggers));
+    Contract.Assert(Cce.NonNullElements(triggers));
     return Gen.Forall(quantifiedVars, triggers, "typeInv:" + invFun.Name, 1, eq);
   }
 
@@ -138,34 +138,34 @@ public abstract class TypeAxiomBuilder : ICloneable
     Contract.Invariant(T != null);
   }
 
-  private readonly TypeCtorDecl /*!*/
+  private readonly TypeCtorDecl
     UDecl;
 
-  public readonly Type /*!*/
+  public readonly Type
     U;
 
   // the type of types
-  private readonly TypeCtorDecl /*!*/
+  private readonly TypeCtorDecl
     TDecl;
 
-  public readonly Type /*!*/
+  public readonly Type
     T;
 
-  public abstract Type /*!*/ TypeAfterErasure(Type /*!*/ type);
+  public abstract Type TypeAfterErasure(Type type);
 
   [Pure]
-  public abstract bool UnchangedType(Type /*!*/ type);
+  public abstract bool UnchangedType(Type type);
 
   ///////////////////////////////////////////////////////////////////////////
   // Symbols for representing types
 
-  private readonly IDictionary<Type /*!*/, VCExpr /*!*/> /*!*/
+  private readonly IDictionary<Type, VCExpr>
     BasicTypeReprs;
 
   [ContractInvariantMethod]
   void BasicTypeReprsInvariantMethod()
   {
-    Contract.Invariant(cce.NonNullDictionaryAndValues(BasicTypeReprs));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(BasicTypeReprs));
   }
 
   private VCExpr GetBasicTypeRepr(Type type)
@@ -180,10 +180,10 @@ public abstract class TypeAxiomBuilder : ICloneable
       BasicTypeReprs.Add(type, res);
     }
 
-    return cce.NonNull(res);
+    return Cce.NonNull(res);
   }
 
-  private readonly IDictionary<TypeCtorDecl /*!*/, TypeCtorRepr /*!*/> /*!*/
+  private readonly IDictionary<TypeCtorDecl, TypeCtorRepr>
     TypeCtorReprs;
 
   [ContractInvariantMethod]
@@ -197,16 +197,16 @@ public abstract class TypeAxiomBuilder : ICloneable
     Contract.Requires(decl != null);
     if (!TypeCtorReprs.TryGetValue(decl, out var reprSet))
     {
-      Function /*!*/
+      Function
         ctor = HelperFuns.UniformBoogieFunction(decl.Name + "Type", decl.Arity, T);
       Contract.Assert(ctor != null);
       AddTypeAxiom(GenCtorAssignment(ctor));
 
-      List<Function /*!*/> /*!*/
-        dtors = new List<Function /*!*/>(decl.Arity);
+      List<Function>
+        dtors = new List<Function>(decl.Arity);
       for (int i = 0; i < decl.Arity; ++i)
       {
-        Function /*!*/
+        Function
           dtor = HelperFuns.UniformBoogieFunction(decl.Name + "TypeInv" + i, 1, T);
         dtors.Add(dtor);
         AddTypeAxiom(GenLeftInverseAxiom(ctor, dtor, i));
@@ -234,13 +234,13 @@ public abstract class TypeAxiomBuilder : ICloneable
   }
 
   // mapping from free type variables to VCExpr variables
-  private readonly IDictionary<TypeVariable /*!*/, VCExprVar /*!*/> /*!*/
+  private readonly IDictionary<TypeVariable, VCExprVar>
     TypeVariableMapping;
 
   [ContractInvariantMethod]
   void TypeVariableMappingInvariantMethod()
   {
-    Contract.Invariant(cce.NonNullDictionaryAndValues(TypeVariableMapping));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(TypeVariableMapping));
   }
 
   public VCExprVar Typed2Untyped(TypeVariable var)
@@ -253,7 +253,7 @@ public abstract class TypeAxiomBuilder : ICloneable
       TypeVariableMapping.Add(var, res);
     }
 
-    return cce.NonNull(res);
+    return Cce.NonNull(res);
   }
 
 
@@ -261,13 +261,13 @@ public abstract class TypeAxiomBuilder : ICloneable
   // Symbols for representing variables and constants
 
   // Globally defined variables
-  private readonly IDictionary<VCExprVar /*!*/, VCExprVar /*!*/> /*!*/
+  private readonly IDictionary<VCExprVar, VCExprVar>
     Typed2UntypedVariables;
 
   [ContractInvariantMethod]
   void Typed2UntypedVariablesInvariantMethod()
   {
-    Contract.Invariant(cce.NonNullDictionaryAndValues(Typed2UntypedVariables));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(Typed2UntypedVariables));
   }
 
   // This method must only be used for free (unbound) variables
@@ -283,7 +283,7 @@ public abstract class TypeAxiomBuilder : ICloneable
       AddVarTypeAxiom(res, var.Type);
     }
 
-    return cce.NonNull(res);
+    return Cce.NonNull(res);
   }
 
   /// <summary>
@@ -306,15 +306,15 @@ public abstract class TypeAxiomBuilder : ICloneable
     }
   }
 
-  protected abstract void AddVarTypeAxiom(VCExprVar /*!*/ var, Type /*!*/ originalType);
+  protected abstract void AddVarTypeAxiom(VCExprVar var, Type originalType);
 
   ///////////////////////////////////////////////////////////////////////////
   // Translation function from types to their term representation
 
-  public VCExpr Type2Term(Type type, IDictionary<TypeVariable /*!*/, VCExpr /*!*/> /*!*/ varMapping)
+  public VCExpr Type2Term(Type type, IDictionary<TypeVariable, VCExpr> varMapping)
   {
     Contract.Requires(type != null);
-    Contract.Requires(cce.NonNullDictionaryAndValues(varMapping));
+    Contract.Requires(Cce.NonNullDictionaryAndValues(varMapping));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     //
     if (type.IsBasic || type.IsBv || type.IsFloat)
@@ -327,11 +327,11 @@ public abstract class TypeAxiomBuilder : ICloneable
     {
       //
       CtorType ctype = type.AsCtor;
-      Function /*!*/
+      Function
         repr = GetTypeCtorRepr(ctype.Decl);
-      List<VCExpr /*!*/> /*!*/
-        args = new List<VCExpr /*!*/>(ctype.Arguments.Count);
-      foreach (Type /*!*/ t in ctype.Arguments.ToArray())
+      List<VCExpr>
+        args = new List<VCExpr>(ctype.Arguments.Count);
+      foreach (Type t in ctype.Arguments.ToArray())
       {
         Contract.Assert(t != null);
         args.Add(Type2Term(t, varMapping));
@@ -350,7 +350,7 @@ public abstract class TypeAxiomBuilder : ICloneable
         res = Typed2Untyped(type.AsVariable);
       }
 
-      return cce.NonNull(res);
+      return Cce.NonNull(res);
       //
     }
     else if (type.IsMap)
@@ -363,7 +363,7 @@ public abstract class TypeAxiomBuilder : ICloneable
     {
       System.Diagnostics.Debug.Fail("Don't know how to handle this type: " + type);
       Contract.Assert(false);
-      throw new cce.UnreachableException(); // please the compiler
+      throw new Cce.UnreachableException(); // please the compiler
     }
   }
 
@@ -373,25 +373,25 @@ public abstract class TypeAxiomBuilder : ICloneable
   {
     Contract.Requires(gen != null);
     this.Gen = gen;
-    AllTypeAxioms = new List<VCExpr /*!*/>();
-    IncTypeAxioms = new List<VCExpr /*!*/>();
-    BasicTypeReprs = new Dictionary<Type /*!*/, VCExpr /*!*/>();
+    AllTypeAxioms = new List<VCExpr>();
+    IncTypeAxioms = new List<VCExpr>();
+    BasicTypeReprs = new Dictionary<Type, VCExpr>();
     CurrentCtorNum = BigNum.ZERO;
-    TypeCtorReprs = new Dictionary<TypeCtorDecl /*!*/, TypeCtorRepr>();
-    TypeVariableMapping = new Dictionary<TypeVariable /*!*/, VCExprVar /*!*/>();
-    Typed2UntypedVariables = new Dictionary<VCExprVar /*!*/, VCExprVar /*!*/>();
+    TypeCtorReprs = new Dictionary<TypeCtorDecl, TypeCtorRepr>();
+    TypeVariableMapping = new Dictionary<TypeVariable, VCExprVar>();
+    Typed2UntypedVariables = new Dictionary<VCExprVar, VCExprVar>();
 
-    TypeCtorDecl /*!*/
+    TypeCtorDecl
       uDecl = new TypeCtorDecl(Token.NoToken, "U", 0);
     UDecl = uDecl;
-    Type /*!*/
+    Type
       u = new CtorType(Token.NoToken, uDecl, new List<Type>());
     U = u;
 
-    TypeCtorDecl /*!*/
+    TypeCtorDecl
       tDecl = new TypeCtorDecl(Token.NoToken, "T", 0);
     TDecl = tDecl;
-    Type /*!*/
+    Type
       t = new CtorType(Token.NoToken, tDecl, new List<Type>());
     T = t;
 
@@ -410,8 +410,8 @@ public abstract class TypeAxiomBuilder : ICloneable
   {
     Contract.Requires(builder != null);
     Gen = builder.Gen;
-    AllTypeAxioms = new List<VCExpr /*!*/>(builder.AllTypeAxioms);
-    IncTypeAxioms = new List<VCExpr /*!*/>(builder.IncTypeAxioms);
+    AllTypeAxioms = new List<VCExpr>(builder.AllTypeAxioms);
+    IncTypeAxioms = new List<VCExpr>(builder.IncTypeAxioms);
 
     UDecl = builder.UDecl;
     U = builder.U;
@@ -422,16 +422,16 @@ public abstract class TypeAxiomBuilder : ICloneable
     Ctor = builder.Ctor;
     CurrentCtorNum = builder.CurrentCtorNum;
 
-    BasicTypeReprs = new Dictionary<Type /*!*/, VCExpr /*!*/>(builder.BasicTypeReprs);
-    TypeCtorReprs = new Dictionary<TypeCtorDecl /*!*/, TypeCtorRepr>(builder.TypeCtorReprs);
+    BasicTypeReprs = new Dictionary<Type, VCExpr>(builder.BasicTypeReprs);
+    TypeCtorReprs = new Dictionary<TypeCtorDecl, TypeCtorRepr>(builder.TypeCtorReprs);
 
     TypeVariableMapping =
-      new Dictionary<TypeVariable /*!*/, VCExprVar /*!*/>(builder.TypeVariableMapping);
+      new Dictionary<TypeVariable, VCExprVar>(builder.TypeVariableMapping);
     Typed2UntypedVariables =
-      new Dictionary<VCExprVar /*!*/, VCExprVar /*!*/>(builder.Typed2UntypedVariables);
+      new Dictionary<VCExprVar, VCExprVar>(builder.Typed2UntypedVariables);
   }
 
-  public abstract Object /*!*/ Clone();
+  public abstract Object Clone();
     
   public abstract VCExpr Cast(VCExpr expr, Type toType);
 }

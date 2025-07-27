@@ -30,7 +30,7 @@ namespace Microsoft.Boogie
       //:base();
     }
 
-    private GSet(Dictionary<T, int> /*!*/ ht, List<T> arr)
+    private GSet(Dictionary<T, int> ht, List<T> arr)
     {
       Contract.Requires(ht != null);
       Contract.Requires(arr != null);
@@ -47,7 +47,7 @@ namespace Microsoft.Boogie
     }
 
 
-    public readonly static GSet<T> /*!*/
+    public readonly static GSet<T>
       Empty = new GSet<T>();
 
     public void Clear()
@@ -146,7 +146,7 @@ namespace Microsoft.Boogie
       return r;
     }
 
-    public void Intersect(GSet<T> /*!*/ s)
+    public void Intersect(GSet<T> s)
     {
       Contract.Requires(s != null);
       if (s == this)
@@ -222,7 +222,7 @@ namespace Microsoft.Boogie
       return true;
     }
 
-    public object /*!*/ Clone()
+    public object Clone()
     {
       Contract.Ensures(Contract.Result<object>() != null);
       return new GSet<T>(new Dictionary<T, int>(ht), new List<T>(arr));
@@ -234,11 +234,11 @@ namespace Microsoft.Boogie
     }
 
     [Pure]
-    public override string /*!*/ ToString()
+    public override string ToString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
       string s = null;
-      foreach (object /*!*/ key in ht.Keys)
+      foreach (object key in ht.Keys)
       {
         Contract.Assert(key != null);
         if (s == null)
@@ -266,34 +266,33 @@ namespace Microsoft.Boogie
     //----------------------------- Static Methods ---------------------------------
 
     // Functional Intersect
-    public static GSet<T> /*!*/ Intersect(GSet<T> /*!*/ a, GSet<T> /*!*/ b)
+    public static GSet<T> Intersect(GSet<T> a, GSet<T> b)
     {
       Contract.Requires(b != null);
       Contract.Requires(a != null);
       Contract.Ensures(Contract.Result<GSet<T>>() != null);
-      //Contract.Ensures(Contract.ForAll(result, x => a[x] && b[x] ));
-      GSet<T> /*!*/
-        res = (GSet<T> /*!*/) cce.NonNull(a.Clone());
+      GSet<T>
+        res = (GSet<T>) Cce.NonNull(a.Clone());
       res.Intersect(b);
       return res;
     }
 
     // Functional Union
-    public static GSet<T> /*!*/ Union(GSet<T> /*!*/ a, GSet<T> /*!*/ b)
+    public static GSet<T> Union(GSet<T> a, GSet<T> b)
     {
       Contract.Requires(a != null);
       Contract.Requires(b != null);
       Contract.Ensures(Contract.Result<GSet<T>>() != null);
       //  Contract.Ensures(Contract.ForAll(result, x => a[x] || b[x] ));
-      GSet<T> /*!*/
-        res = (GSet<T> /*!*/) cce.NonNull(a.Clone());
+      GSet<T>
+        res = (GSet<T>) Cce.NonNull(a.Clone());
       res.AddRange(b);
       return res;
     }
 
-    public delegate bool SetFilter(object /*!*/ obj);
+    public delegate bool SetFilter(object obj);
 
-    public static GSet<T> /*!*/ Filter(GSet<T> /*!*/ a, Func<T, bool> filter)
+    public static GSet<T> Filter(GSet<T> a, Func<T, bool> filter)
     {
       Contract.Requires(filter != null);
       Contract.Requires(a != null);

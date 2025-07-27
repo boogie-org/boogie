@@ -11,11 +11,11 @@ namespace Microsoft.Boogie.VCExprAST
   [ContractClass(typeof(IVCExprVisitorContracts<,>))]
   public interface IVCExprVisitor<Result, Arg>
   {
-    Result Visit(VCExprLiteral /*!*/ node, Arg arg);
-    Result Visit(VCExprNAry /*!*/ node, Arg arg);
-    Result Visit(VCExprVar /*!*/ node, Arg arg);
-    Result Visit(VCExprQuantifier /*!*/ node, Arg arg);
-    Result Visit(VCExprLet /*!*/ node, Arg arg);
+    Result Visit(VCExprLiteral node, Arg arg);
+    Result Visit(VCExprNAry node, Arg arg);
+    Result Visit(VCExprVar node, Arg arg);
+    Result Visit(VCExprQuantifier node, Arg arg);
+    Result Visit(VCExprLet node, Arg arg);
   }
 
   [ContractClassFor(typeof(IVCExprVisitor<,>))]
@@ -383,7 +383,7 @@ namespace Microsoft.Boogie.VCExprAST
   public abstract class TraversingVCExprVisitor<Result, Arg>
     : IVCExprVisitor<Result, Arg>
   {
-    protected abstract Result StandardResult(VCExpr /*!*/ node, Arg arg);
+    protected abstract Result StandardResult(VCExpr node, Arg arg);
 
     public Result Traverse(VCExpr node, Arg arg)
     {
@@ -393,13 +393,11 @@ namespace Microsoft.Boogie.VCExprAST
 
     public virtual Result Visit(VCExprLiteral node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result Visit(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       Result res = StandardResult(node, arg);
       
       if (node.TypeParamArity == 0 &&
@@ -416,7 +414,7 @@ namespace Microsoft.Boogie.VCExprAST
         IEnumerator enumerator = new VCExprNAryMultiUniformOpEnumerator(node, ops);
         while (enumerator.MoveNext())
         {
-          VCExpr expr = cce.NonNull((VCExpr) enumerator.Current);
+          VCExpr expr = Cce.NonNull((VCExpr) enumerator.Current);
           VCExprNAry naryExpr = expr as VCExprNAry;
           if (naryExpr == null || !ops.Contains(naryExpr.Op))
           {
@@ -442,18 +440,16 @@ namespace Microsoft.Boogie.VCExprAST
 
     public virtual Result Visit(VCExprVar node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result Visit(VCExprQuantifier node, Arg arg)
     {
-      //Contract.Requires(node != null);
       Result res = StandardResult(node, arg);
-      foreach (VCTrigger /*!*/ trigger in node.Triggers)
+      foreach (VCTrigger trigger in node.Triggers)
       {
         Contract.Assert(trigger != null);
-        foreach (VCExpr /*!*/ expr in trigger.Exprs)
+        foreach (VCExpr expr in trigger.Exprs)
         {
           Contract.Assert(expr != null);
           expr.Accept(this, arg);
@@ -466,10 +462,9 @@ namespace Microsoft.Boogie.VCExprAST
 
     public virtual Result Visit(VCExprLet node, Arg arg)
     {
-      //Contract.Requires(node != null);
       Result res = StandardResult(node, arg);
       // visit the bound expressions first
-      foreach (VCExprLetBinding /*!*/ binding in node)
+      foreach (VCExprLetBinding binding in node)
       {
         Contract.Assert(binding != null);
         binding.E.Accept(this, arg);
@@ -496,27 +491,27 @@ namespace Microsoft.Boogie.VCExprAST
 
   public class VCExprNAryEnumerator : IEnumerator
   {
-    private readonly VCExprNAry /*!*/
+    private readonly VCExprNAry
       CompleteExpr;
 
     private VCExpr CurrentExpr = null;
 
-    private readonly Stack<VCExpr /*!*/> /*!*/
-      ExprTodo = new Stack<VCExpr /*!*/>();
+    private readonly Stack<VCExpr>
+      ExprTodo = new Stack<VCExpr>();
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
       Contract.Invariant(CompleteExpr != null);
-      Contract.Invariant(cce.NonNullElements(ExprTodo));
+      Contract.Invariant(Cce.NonNullElements(ExprTodo));
     }
 
     public VCExprNAryEnumerator(VCExprNAry completeExpr)
     {
       Contract.Requires(completeExpr != null);
       this.CompleteExpr = completeExpr;
-      Stack<VCExpr /*!*/> /*!*/
-        exprTodo = new Stack<VCExpr /*!*/>();
+      Stack<VCExpr>
+        exprTodo = new Stack<VCExpr>();
       exprTodo.Push(completeExpr);
       ExprTodo = exprTodo;
     }
@@ -554,7 +549,7 @@ namespace Microsoft.Boogie.VCExprAST
 
     public object Current
     {
-      get { return cce.NonNull(CurrentExpr); }
+      get { return Cce.NonNull(CurrentExpr); }
     }
 
     public void Reset()
@@ -570,7 +565,7 @@ namespace Microsoft.Boogie.VCExprAST
 
   public class VCExprNAryUniformOpEnumerator : VCExprNAryEnumerator
   {
-    private readonly VCExprOp /*!*/
+    private readonly VCExprOp
       Op;
 
     [ContractInvariantMethod]
@@ -589,7 +584,6 @@ namespace Microsoft.Boogie.VCExprAST
 
     protected override bool Descend(VCExprNAry expr)
     {
-      //Contract.Requires(expr != null);
       return expr.Op.Equals(Op) &&
              // we never skip nodes with type parameters
              // (those are too interesting ...)
@@ -721,7 +715,7 @@ namespace Microsoft.Boogie.VCExprAST
     public static int ComputeSize(VCExpr expr)
     {
       Contract.Requires(expr != null);
-      SizeComputingVisitor /*!*/
+      SizeComputingVisitor
         visitor = new SizeComputingVisitor();
       visitor.Traverse(expr, true);
       return visitor.Size;
@@ -729,7 +723,6 @@ namespace Microsoft.Boogie.VCExprAST
 
     protected override bool StandardResult(VCExpr node, bool arg)
     {
-      //Contract.Requires(node != null);
       Size = Size + 1;
       return true;
     }
@@ -752,14 +745,13 @@ namespace Microsoft.Boogie.VCExprAST
     void ObjectInvariant()
     {
       Contract.Invariant(FreeTermVars != null && Contract.ForAll(FreeTermVars, entry => entry != null));
-      Contract.Invariant(cce.NonNullElements(FreeTypeVars));
+      Contract.Invariant(Cce.NonNullElements(FreeTypeVars));
     }
 
 
     // not used
     protected override bool StandardResult(VCExpr node, bool arg)
     {
-      //Contract.Requires(node != null);
       return true;
     }
 
@@ -776,7 +768,7 @@ namespace Microsoft.Boogie.VCExprAST
     public static List<TypeVariable> FreeTypeVariables(VCExpr node)
     {
       Contract.Requires(node != null);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<TypeVariable>>()));
       FreeVariableCollector collector = new FreeVariableCollector();
       collector.Traverse(node, true);
       return collector.FreeTypeVars;
@@ -802,20 +794,20 @@ namespace Microsoft.Boogie.VCExprAST
 
     /////////////////////////////////////////////////////////////////////////
 
-    private void CollectTypeVariables(IEnumerable<VCExprVar /*!*/> /*!*/ boundVars)
+    private void CollectTypeVariables(IEnumerable<VCExprVar> boundVars)
     {
-      Contract.Requires(cce.NonNullElements(boundVars));
-      foreach (VCExprVar /*!*/ var in boundVars)
+      Contract.Requires(Cce.NonNullElements(boundVars));
+      foreach (VCExprVar var in boundVars)
       {
         Contract.Assert(var != null);
         Collect(var.Type);
       }
     }
 
-    private void AddTypeVariables(IEnumerable<TypeVariable /*!*/> /*!*/ typeVars)
+    private void AddTypeVariables(IEnumerable<TypeVariable> typeVars)
     {
-      Contract.Requires(cce.NonNullElements(typeVars));
-      foreach (TypeVariable /*!*/ tvar in typeVars)
+      Contract.Requires(Cce.NonNullElements(typeVars));
+      foreach (TypeVariable tvar in typeVars)
       {
         Contract.Assert(tvar != null);
         if (!BoundTypeVars.Contains(tvar) && !FreeTypeVars.Contains(tvar))
@@ -840,7 +832,7 @@ namespace Microsoft.Boogie.VCExprAST
     public override bool Visit(VCExprNAry node, bool arg)
     {
       Contract.Requires(node != null);
-      foreach (Type /*!*/ t in node.TypeArguments)
+      foreach (Type t in node.TypeArguments)
       {
         Contract.Assert(t != null);
         Collect(t);
@@ -851,14 +843,12 @@ namespace Microsoft.Boogie.VCExprAST
 
     protected override bool VisitAfterBinding(VCExprQuantifier node, bool arg)
     {
-      //Contract.Requires(node != null);
       CollectTypeVariables(node.BoundVars);
       return base.VisitAfterBinding(node, arg);
     }
 
     protected override bool VisitAfterBinding(VCExprLet node, bool arg)
     {
-      //Contract.Requires(node != null);
       CollectTypeVariables(node.BoundVars);
       return base.VisitAfterBinding(node, arg);
     }
@@ -879,50 +869,50 @@ namespace Microsoft.Boogie.VCExprAST
 
   public class VCExprSubstitution
   {
-    private readonly List<IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/> /*!*/
+    private readonly List<IDictionary<VCExprVar, VCExpr>>
       TermSubsts;
 
     [ContractInvariantMethod]
     void TermSubstsInvariantMethod()
     {
-      Contract.Invariant(TermSubsts != null && Contract.ForAll(TermSubsts, i => cce.NonNullDictionaryAndValues(i)));
+      Contract.Invariant(TermSubsts != null && Contract.ForAll(TermSubsts, i => Cce.NonNullDictionaryAndValues(i)));
     }
 
-    private readonly List<IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/> /*!*/
+    private readonly List<IDictionary<TypeVariable, Type>>
       TypeSubsts;
 
     [ContractInvariantMethod]
     void TypeSubstsInvariantMethod()
     {
-      Contract.Invariant(TermSubsts != null && Contract.ForAll(TypeSubsts, i => cce.NonNullDictionaryAndValues(i)));
+      Contract.Invariant(TermSubsts != null && Contract.ForAll(TypeSubsts, i => Cce.NonNullDictionaryAndValues(i)));
     }
 
-    public VCExprSubstitution(IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/ termSubst,
-      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ typeSubst)
+    public VCExprSubstitution(IDictionary<VCExprVar, VCExpr> termSubst,
+      IDictionary<TypeVariable, Type> typeSubst)
     {
-      Contract.Requires(cce.NonNullDictionaryAndValues(termSubst));
-      Contract.Requires(cce.NonNullDictionaryAndValues(typeSubst));
-      List<IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/> /*!*/
+      Contract.Requires(Cce.NonNullDictionaryAndValues(termSubst));
+      Contract.Requires(Cce.NonNullDictionaryAndValues(typeSubst));
+      List<IDictionary<VCExprVar, VCExpr>>
         termSubsts =
-          new List<IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/>();
+          new List<IDictionary<VCExprVar, VCExpr>>();
       termSubsts.Add(termSubst);
-      List<IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/> /*!*/
+      List<IDictionary<TypeVariable, Type>>
         typeSubsts =
-          new List<IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/>();
+          new List<IDictionary<TypeVariable, Type>>();
       typeSubsts.Add(typeSubst);
       this.TermSubsts = termSubsts;
       this.TypeSubsts = typeSubsts;
     }
 
     public VCExprSubstitution()
-      : this(new Dictionary<VCExprVar /*!*/, VCExpr /*!*/>(), new Dictionary<TypeVariable /*!*/, Type /*!*/>())
+      : this(new Dictionary<VCExprVar, VCExpr>(), new Dictionary<TypeVariable, Type>())
     {
     }
 
     public void PushScope()
     {
-      TermSubsts.Add(new Dictionary<VCExprVar /*!*/, VCExpr /*!*/>());
-      TypeSubsts.Add(new Dictionary<TypeVariable /*!*/, Type /*!*/>());
+      TermSubsts.Add(new Dictionary<VCExprVar, VCExpr>());
+      TypeSubsts.Add(new Dictionary<TypeVariable, Type>());
     }
 
     public void PopScope()
@@ -931,7 +921,7 @@ namespace Microsoft.Boogie.VCExprAST
       TypeSubsts.RemoveAt(TypeSubsts.Count - 1);
     }
 
-    public VCExpr this[VCExprVar /*!*/ var]
+    public VCExpr this[VCExprVar var]
     {
       get
       {
@@ -946,10 +936,10 @@ namespace Microsoft.Boogie.VCExprAST
 
         return null;
       }
-      set { TermSubsts[TermSubsts.Count - 1][var] = cce.NonNull(value); }
+      set { TermSubsts[TermSubsts.Count - 1][var] = Cce.NonNull(value); }
     }
 
-    public Type this[TypeVariable /*!*/ var]
+    public Type this[TypeVariable var]
     {
       get
       {
@@ -964,7 +954,7 @@ namespace Microsoft.Boogie.VCExprAST
 
         return null;
       }
-      set { TypeSubsts[TypeSubsts.Count - 1][var] = cce.NonNull(value); }
+      set { TypeSubsts[TypeSubsts.Count - 1][var] = Cce.NonNull(value); }
     }
 
     public bool ContainsKey(VCExprVar var)
@@ -989,18 +979,18 @@ namespace Microsoft.Boogie.VCExprAST
       get { return TypeSubsts.All(dict => !dict.Any()); }
     }
 
-    public IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ ToTypeSubst
+    public IDictionary<TypeVariable, Type> ToTypeSubst
     {
       get
       {
-        Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
-        IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
-          res = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
-        foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts)
+        Contract.Ensures(Cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
+        IDictionary<TypeVariable, Type>
+          res = new Dictionary<TypeVariable, Type>();
+        foreach (IDictionary<TypeVariable, Type> dict in TypeSubsts)
         {
-          foreach (KeyValuePair<TypeVariable /*!*/, Type /*!*/> pair in dict)
+          foreach (KeyValuePair<TypeVariable, Type> pair in dict)
           {
-            Contract.Assert(cce.NonNullElements(pair));
+            Contract.Assert(Cce.NonNullElements(pair));
             // later ones overwrite earlier ones
             res[pair.Key] = pair.Value;
           }
@@ -1011,17 +1001,17 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     // the variables that are not mapped to themselves
-    public IEnumerable<VCExprVar /*!*/> /*!*/ TermDomain
+    public IEnumerable<VCExprVar> TermDomain
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<VCExprVar>>()));
-        HashSet<VCExprVar /*!*/> /*!*/
-          domain = new HashSet<VCExprVar /*!*/>();
-        foreach (IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/ dict in TermSubsts)
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<VCExprVar>>()));
+        HashSet<VCExprVar>
+          domain = new HashSet<VCExprVar>();
+        foreach (IDictionary<VCExprVar, VCExpr> dict in TermSubsts)
         {
           Contract.Assert(dict != null);
-          foreach (VCExprVar /*!*/ var in dict.Keys)
+          foreach (VCExprVar var in dict.Keys)
           {
             Contract.Assert(var != null);
             if (!var.Equals(this[var]))
@@ -1036,17 +1026,17 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     // the variables that are not mapped to themselves
-    public IEnumerable<TypeVariable /*!*/> /*!*/ TypeDomain
+    public IEnumerable<TypeVariable> TypeDomain
     {
       get
       {
-        Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<TypeVariable>>()));
-        HashSet<TypeVariable /*!*/> /*!*/
-          domain = new HashSet<TypeVariable /*!*/>();
-        foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts)
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<TypeVariable>>()));
+        HashSet<TypeVariable>
+          domain = new HashSet<TypeVariable>();
+        foreach (IDictionary<TypeVariable, Type> dict in TypeSubsts)
         {
           Contract.Assert(dict != null);
-          foreach (TypeVariable /*!*/ var in dict.Keys)
+          foreach (TypeVariable var in dict.Keys)
           {
             Contract.Assert(var != null);
             if (!var.Equals(this[var]))
@@ -1060,22 +1050,22 @@ namespace Microsoft.Boogie.VCExprAST
       }
     }
 
-    public FreeVariableCollector /*!*/ Codomains
+    public FreeVariableCollector Codomains
     {
       get
       {
         Contract.Ensures(Contract.Result<FreeVariableCollector>() != null);
 
-        FreeVariableCollector /*!*/
+        FreeVariableCollector
           coll = new FreeVariableCollector();
-        foreach (VCExprVar /*!*/ var in TermDomain)
+        foreach (VCExprVar var in TermDomain)
         {
-          coll.Collect(cce.NonNull(this)[var]);
+          coll.Collect(Cce.NonNull(this)[var]);
         }
 
-        foreach (TypeVariable /*!*/ var in TypeDomain)
+        foreach (TypeVariable var in TypeDomain)
         {
-          coll.Collect(cce.NonNull(this)[var]);
+          coll.Collect(Cce.NonNull(this)[var]);
         }
 
         return coll;
@@ -1085,14 +1075,14 @@ namespace Microsoft.Boogie.VCExprAST
     public VCExprSubstitution Clone()
     {
       Contract.Ensures(Contract.Result<VCExprSubstitution>() != null);
-      VCExprSubstitution /*!*/
+      VCExprSubstitution
         res = new VCExprSubstitution();
-      foreach (IDictionary<VCExprVar /*!*/, VCExpr /*!*/> /*!*/ dict in TermSubsts)
+      foreach (IDictionary<VCExprVar, VCExpr> dict in TermSubsts)
       {
         res.TermSubsts.Add(HelperFuns.Clone(dict));
       }
 
-      foreach (IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ dict in TypeSubsts)
+      foreach (IDictionary<TypeVariable, Type> dict in TypeSubsts)
       {
         res.TypeSubsts.Add(HelperFuns.Clone(dict));
       }
@@ -1104,35 +1094,12 @@ namespace Microsoft.Boogie.VCExprAST
   /////////////////////////////////////////////////////////////////////////////////
 
   public class SubstitutingVCExprVisitor
-    : MutatingVCExprVisitor<VCExprSubstitution /*!*/>
+    : MutatingVCExprVisitor<VCExprSubstitution>
   {
     public SubstitutingVCExprVisitor(VCExpressionGenerator gen)
       : base(gen)
     {
       Contract.Requires(gen != null);
-    }
-
-    // when descending across a binder, we have to check that no collisions
-    // or variable capture can occur. if this might happen, we replace the
-    // term and type variables bound by the binder with fresh variables
-    private bool CollisionPossible(IEnumerable<TypeVariable /*!*/> /*!*/ typeParams,
-      IEnumerable<VCExprVar /*!*/> /*!*/ boundVars, VCExprSubstitution /*!*/ substitution)
-    {
-      Contract.Requires(cce.NonNullElements(typeParams));
-      Contract.Requires(cce.NonNullElements(boundVars));
-      Contract.Requires(substitution != null);
-      // variables can be shadowed by a binder
-      if (typeParams.Any(var => substitution.ContainsKey(var)) ||
-          boundVars.Any(var => substitution.ContainsKey(var)))
-      {
-        return true;
-      }
-      // compute the codomain of the substitution
-      FreeVariableCollector coll = substitution.Codomains;
-      Contract.Assert(coll != null);
-      // variables could be captured when applying the substitution
-      return typeParams.Any(var => coll.FreeTypeVars.Contains(var)) ||
-             boundVars.Any(var => coll.FreeTermVars.Contains(var));
     }
 
     // can be overwritten if names of bound variables are to be changed
@@ -1144,20 +1111,17 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     // handle type parameters in VCExprNAry
-    protected override VCExpr /*!*/ UpdateModifiedNode(VCExprNAry /*!*/ originalNode,
-      List<VCExpr /*!*/> /*!*/ newSubExprs, bool changed, VCExprSubstitution /*!*/ substitution)
+    protected override VCExpr UpdateModifiedNode(VCExprNAry originalNode,
+      List<VCExpr> newSubExprs, bool changed, VCExprSubstitution substitution)
     {
-      //Contract.Requires(originalNode != null);
-      //Contract.Requires(cce.NonNullElements(newSubExprs));
-      //Contract.Requires(substitution != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-      List<Type /*!*/> /*!*/
-        typeParams = new List<Type /*!*/>();
-      foreach (Type /*!*/ t in originalNode.TypeArguments)
+      List<Type>
+        typeParams = new List<Type>();
+      foreach (Type t in originalNode.TypeArguments)
       {
         Contract.Assert(t != null);
-        Type /*!*/
+        Type
           newType = t.Substitute(substitution.ToTypeSubst);
         Contract.Assert(newType != null);
         if (!ReferenceEquals(t, newType))
@@ -1178,19 +1142,7 @@ namespace Microsoft.Boogie.VCExprAST
       }
     }
 
-    public override VCExpr /*!*/ Visit(VCExprQuantifier /*!*/ node, VCExprSubstitution /*!*/ substitution)
-    {
-      Contract.Requires(node != null);
-      Contract.Requires(substitution != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
-
-      // the default is to refresh bound variables only if necessary
-      // because of collisions
-      return Visit(node, substitution, false);
-    }
-
-    public VCExpr /*!*/ Visit(VCExprQuantifier /*!*/ node, VCExprSubstitution /*!*/ substitution,
-      bool refreshBoundVariables)
+    public override VCExpr Visit(VCExprQuantifier node, VCExprSubstitution substitution)
     {
       Contract.Requires(node != null);
       Contract.Requires(substitution != null);
@@ -1199,63 +1151,41 @@ namespace Microsoft.Boogie.VCExprAST
       substitution.PushScope();
       try
       {
-        List<TypeVariable /*!*/> /*!*/
+        List<TypeVariable>
           typeParams = node.TypeParameters;
-        Contract.Assert(cce.NonNullElements(typeParams));
-        bool refreshAllVariables = refreshBoundVariables ||
-                                   CollisionPossible(node.TypeParameters, node.BoundVars, substitution);
-        if (refreshAllVariables)
-        {
-          // we introduce fresh type variables to ensure that none gets captured
-          typeParams = new List<TypeVariable /*!*/>();
-          foreach (TypeVariable /*!*/ var in node.TypeParameters)
-          {
-            Contract.Assert(var != null);
-            TypeVariable /*!*/
-              freshVar =
-                new TypeVariable(Token.NoToken, ChooseNewVariableName(var.Name));
-            Contract.Assert(freshVar != null);
-            typeParams.Add(freshVar);
-            substitution[var] = freshVar;
-            // this might overwrite other elements of the substitution, deliberately
-          }
-        }
-
-        List<VCExprVar /*!*/> /*!*/
+        Contract.Assert(Cce.NonNullElements(typeParams));
+        List<VCExprVar>
           boundVars = node.BoundVars;
-        Contract.Assert(cce.NonNullElements(boundVars));
-        if (refreshAllVariables || !substitution.TypeSubstIsEmpty)
+        Contract.Assert(Cce.NonNullElements(boundVars));
+        if (!substitution.TypeSubstIsEmpty)
         {
-          // collisions are possible, or we also substitute type variables. in this case
-          // the bound term variables have to be replaced with fresh variables with the
-          // right types
-          boundVars = new List<VCExprVar /*!*/>();
-          IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+          // replace each bound term variable with a fresh variable of correct type
+          boundVars = new List<VCExprVar>();
+          IDictionary<TypeVariable, Type>
             typeSubst = substitution.ToTypeSubst;
-          Contract.Assert(cce.NonNullDictionaryAndValues(typeSubst));
-          foreach (VCExprVar /*!*/ var in node.BoundVars)
+          Contract.Assert(Cce.NonNullDictionaryAndValues(typeSubst));
+          foreach (VCExprVar var in node.BoundVars)
           {
             Contract.Assert(var != null);
-            VCExprVar /*!*/
+            VCExprVar
               freshVar =
                 Gen.Variable(ChooseNewVariableName(var.Name),
                   var.Type.Substitute(typeSubst));
             Contract.Assert(freshVar != null);
             boundVars.Add(freshVar);
             substitution[var] = freshVar;
-            // this might overwrite other elements of the substitution, deliberately
           }
         }
 
-        List<VCTrigger /*!*/> /*!*/
-          newTriggers = new List<VCTrigger /*!*/>();
-        foreach (VCTrigger /*!*/ trigger in node.Triggers)
+        List<VCTrigger>
+          newTriggers = new List<VCTrigger>();
+        foreach (VCTrigger trigger in node.Triggers)
         {
           Contract.Assert(trigger != null);
           newTriggers.Add(Gen.Trigger(trigger.Pos, MutateSeq(trigger.Exprs, substitution)));
         }
 
-        VCExpr /*!*/
+        VCExpr
           newBody = Mutate(node.Body, substitution);
         Contract.Assert(newBody != null);
 
@@ -1287,62 +1217,44 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(substitution != null);
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      // the default is to refresh bound variables only if necessary
-      // because of collisions
-      return Visit(node, substitution, false);
-    }
-
-    public VCExpr Visit(VCExprLet node, VCExprSubstitution substitution, bool refreshBoundVariables)
-    {
-      Contract.Requires(substitution != null);
-      Contract.Requires(node != null);
-      Contract.Ensures(Contract.Result<VCExpr>() != null);
       // let-expressions do not have type parameters (fortunately ...)
       substitution.PushScope();
       try
       {
-        bool refreshAllVariables =
-          refreshBoundVariables ||
-          !substitution.TypeSubstIsEmpty ||
-          CollisionPossible(new List<TypeVariable /*!*/>(), node.BoundVars, substitution);
-
-        List<VCExprVar /*!*/> /*!*/
+        List<VCExprVar>
           newBoundVars = node.BoundVars;
-        Contract.Assert(cce.NonNullElements(newBoundVars));
-        if (refreshAllVariables)
+        Contract.Assert(Cce.NonNullElements(newBoundVars));
+        if (!substitution.TypeSubstIsEmpty)
         {
-          // collisions are possible, or we also substitute type variables. in this case
-          // the bound term variables have to be replaced with fresh variables with the
-          // right types
-          newBoundVars = new List<VCExprVar /*!*/>();
-          IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+          // replace each bound term variable with a fresh variable of correct type
+          newBoundVars = new List<VCExprVar>();
+          IDictionary<TypeVariable, Type>
             typeSubst = substitution.ToTypeSubst;
-          Contract.Assert(cce.NonNullDictionaryAndValues(typeSubst));
-          foreach (VCExprVar /*!*/ var in node.BoundVars)
+          Contract.Assert(Cce.NonNullDictionaryAndValues(typeSubst));
+          foreach (VCExprVar var in node.BoundVars)
           {
             Contract.Assert(var != null);
-            VCExprVar /*!*/
+            VCExprVar
               freshVar =
                 Gen.Variable(ChooseNewVariableName(var.Name),
                   var.Type.Substitute(typeSubst));
             Contract.Assert(freshVar != null);
             newBoundVars.Add(freshVar);
             substitution[var] = freshVar;
-            // this might overwrite other elements of the substitution, deliberately
           }
         }
 
-        List<VCExprLetBinding /*!*/> /*!*/
-          newbindings = new List<VCExprLetBinding /*!*/>();
+        List<VCExprLetBinding>
+          newbindings = new List<VCExprLetBinding>();
         for (int i = 0; i < node.Length; ++i)
         {
-          VCExprLetBinding /*!*/
+          VCExprLetBinding
             binding = node[i];
           Contract.Assert(binding != null);
           newbindings.Add(Gen.LetBinding(newBoundVars[i], Mutate(binding.E, substitution)));
         }
 
-        VCExpr /*!*/
+        VCExpr
           newBody = Mutate(node.Body, substitution);
         Contract.Assert(newBody != null);
         return Gen.Let(newbindings, newBody);
@@ -1370,263 +1282,220 @@ namespace Microsoft.Boogie.VCExprAST
   public abstract class StandardVCExprOpVisitor<Result, Arg>
     : IVCExprOpVisitor<Result, Arg>
   {
-    protected abstract Result StandardResult(VCExprNAry /*!*/ node, Arg arg);
+    protected abstract Result StandardResult(VCExprNAry node, Arg arg);
 
     public virtual Result VisitNotOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitEqOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitNeqOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitAndOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitOrOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitImpliesOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitDistinctOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFieldAccessOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
     
     public virtual Result VisitIsConstructorOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
     
     public virtual Result VisitSelectOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitStoreOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatAddOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatSubOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatMulOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatDivOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatLeqOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatLtOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatGeqOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatGtOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatEqOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitFloatNeqOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitBvOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitBvExtractOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitBvConcatOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitIfThenElseOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitCustomOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitAddOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitSubOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitMulOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitDivOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitModOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitRealDivOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitPowOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitLtOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitLeOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitGtOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitGeOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitSubtypeOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitSubtype3Op(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitToIntOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitToRealOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitToFloatOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
 
     public virtual Result VisitBoogieFunctionOp(VCExprNAry node, Arg arg)
     {
-      //Contract.Requires(node != null);
       return StandardResult(node, arg);
     }
   }

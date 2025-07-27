@@ -60,7 +60,6 @@ namespace Microsoft.Boogie
       Contract.Requires(name != null);
       Contract.Requires(args != null);
       // We don't want to evaluate args twice!
-      // Contract.Requires(Contract.ForAll(args, x => x != null));
       Name = name;
       arguments = args.ToArray();
     }

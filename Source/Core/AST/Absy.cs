@@ -12,7 +12,7 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(AbsyContracts))]
   public abstract class Absy
   {
-    private IToken /*!*/
+    private IToken
       _tok;
 
     [ContractInvariantMethod]
@@ -68,14 +68,14 @@ namespace Microsoft.Boogie
     }
     
     [NeedsContracts]
-    public abstract void Resolve(ResolutionContext /*!*/ rc);
+    public abstract void Resolve(ResolutionContext rc);
 
     /// <summary>
     /// Requires the object to have been successfully resolved.
     /// </summary>
     /// <param name="tc"></param>
     [NeedsContracts]
-    public abstract void Typecheck(TypecheckingContext /*!*/ tc);
+    public abstract void Typecheck(TypecheckingContext tc);
 
     /// <summary>
     /// Introduced so the uniqueId is not the same on a cloned object.
@@ -84,8 +84,8 @@ namespace Microsoft.Boogie
     public virtual Absy Clone()
     {
       Contract.Ensures(Contract.Result<Absy>() != null);
-      Absy /*!*/
-        result = cce.NonNull((Absy /*!*/) this.MemberwiseClone());
+      Absy
+        result = Cce.NonNull((Absy) this.MemberwiseClone());
       result.UniqueId = System.Threading.Interlocked.Increment(ref CurrentAbsyNodeId); // BUGBUG??
 
       if (InternalNumberedMetadata != null)
@@ -429,7 +429,7 @@ namespace Microsoft.Boogie
 
       if (kv == null)
       {
-        Attributes = new QKeyValue(tok, name, new List<object /*!*/>(vals), Attributes);
+        Attributes = new QKeyValue(tok, name, new List<object>(vals), Attributes);
       }
     }
 
@@ -467,8 +467,8 @@ namespace Microsoft.Boogie
       return 0;
     }
 
-    public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
-    public abstract void Register(ResolutionContext /*!*/ rc);
+    public abstract void Emit(TokenTextWriter stream, int level);
+    public abstract void Register(ResolutionContext rc);
 
     /// <summary>
     /// Compute the strongly connected components of the declaration.
@@ -517,7 +517,7 @@ namespace Microsoft.Boogie
       return "Axiom: " + expression.ToString();
     }
 
-    private Expr /*!*/  expression;
+    private Expr  expression;
 
     public Expr Expr
     {
@@ -548,7 +548,7 @@ namespace Microsoft.Boogie
       Contract.Requires(tok != null);
     }
 
-    public Axiom(IToken /*!*/ tok, Expr /*!*/ expr, string comment, bool canHide = false)
+    public Axiom(IToken tok, Expr expr, string comment, bool canHide = false)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -591,7 +591,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       if (Comment != null)
       {
         stream.WriteLine(this, level, "// " + Comment);
@@ -605,13 +604,11 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddAxiom(this);
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       (this as ICarriesAttributes).ResolveAttributes(rc);
       rc.StateMode = ResolutionContext.State.StateLess;
       Expr.Resolve(rc);
@@ -620,7 +617,6 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       (this as ICarriesAttributes).TypecheckAttributes(tc);
       Expr.Typecheck(tc);
       Contract.Assert(Expr.Type != null); // follows from postcondition of Expr.Typecheck
@@ -632,7 +628,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitAxiom(this);
     }
@@ -697,7 +692,7 @@ namespace Microsoft.Boogie
     [Pure]
     public override string ToString()
     {
-      return cce.NonNull(Name);
+      return Cce.NonNull(Name);
     }
   }
 
@@ -709,7 +704,7 @@ namespace Microsoft.Boogie
 
     public readonly int Arity;
 
-    public TypeCtorDecl(IToken /*!*/ tok, string /*!*/ name, int Arity)
+    public TypeCtorDecl(IToken tok, string name, int Arity)
       : base(tok, name)
     {
       Contract.Requires(tok != null);
@@ -717,7 +712,7 @@ namespace Microsoft.Boogie
       this.Arity = Arity;
     }
 
-    public TypeCtorDecl(IToken /*!*/ tok, string /*!*/ name, int Arity, QKeyValue kv)
+    public TypeCtorDecl(IToken tok, string name, int Arity, QKeyValue kv)
       : base(tok, name)
     {
       Contract.Requires(tok != null);
@@ -728,7 +723,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, level, "type ");
       EmitAttributes(stream);
       stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(Name));
@@ -742,25 +736,21 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddType(this);
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       (this as ICarriesAttributes).ResolveAttributes(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       (this as ICarriesAttributes).TypecheckAttributes(tc);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitTypeCtorDecl(this);
     }
@@ -942,7 +932,7 @@ namespace Microsoft.Boogie
 
   public class TypeSynonymDecl : NamedDeclaration
   {
-    private List<TypeVariable> /*!*/
+    private List<TypeVariable>
       typeParameters;
 
     public List<TypeVariable> TypeParameters
@@ -959,7 +949,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private Type /*!*/
+    private Type
       body;
 
     public Type Body
@@ -983,8 +973,8 @@ namespace Microsoft.Boogie
       Contract.Invariant(this.typeParameters != null);
     }
 
-    public TypeSynonymDecl(IToken /*!*/ tok, string /*!*/ name,
-      List<TypeVariable> /*!*/ typeParams, Type /*!*/ body)
+    public TypeSynonymDecl(IToken tok, string name,
+      List<TypeVariable> typeParams, Type body)
       : base(tok, name)
     {
       Contract.Requires(tok != null);
@@ -995,8 +985,8 @@ namespace Microsoft.Boogie
       this.body = body;
     }
 
-    public TypeSynonymDecl(IToken /*!*/ tok, string /*!*/ name,
-      List<TypeVariable> /*!*/ typeParams, Type /*!*/ body, QKeyValue kv)
+    public TypeSynonymDecl(IToken tok, string name,
+      List<TypeVariable> typeParams, Type body, QKeyValue kv)
       : base(tok, name)
     {
       Contract.Requires(tok != null);
@@ -1010,7 +1000,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, level, "type ");
       EmitAttributes(stream);
       stream.Write("{0}", TokenTextWriter.SanitizeIdentifier(Name));
@@ -1027,19 +1016,17 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddType(this);
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       (this as ICarriesAttributes).ResolveAttributes(rc);
 
       int previousState = rc.TypeBinderState;
       try
       {
-        foreach (TypeVariable /*!*/ v in TypeParameters)
+        foreach (TypeVariable v in TypeParameters)
         {
           Contract.Assert(v != null);
           rc.AddTypeBinder(v);
@@ -1055,34 +1042,33 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       (this as ICarriesAttributes).TypecheckAttributes(tc);
     }
 
-    public static void ResolveTypeSynonyms(List<TypeSynonymDecl /*!*/> /*!*/ synonymDecls, ResolutionContext /*!*/ rc)
+    public static void ResolveTypeSynonyms(List<TypeSynonymDecl> synonymDecls, ResolutionContext rc)
     {
-      Contract.Requires(cce.NonNullElements(synonymDecls));
+      Contract.Requires(Cce.NonNullElements(synonymDecls));
       Contract.Requires(rc != null);
       // then discover all dependencies between type synonyms
-      IDictionary<TypeSynonymDecl /*!*/, List<TypeSynonymDecl /*!*/> /*!*/> /*!*/
+      IDictionary<TypeSynonymDecl, List<TypeSynonymDecl>>
         deps =
-          new Dictionary<TypeSynonymDecl /*!*/, List<TypeSynonymDecl /*!*/> /*!*/>();
-      foreach (TypeSynonymDecl /*!*/ decl in synonymDecls)
+          new Dictionary<TypeSynonymDecl, List<TypeSynonymDecl>>();
+      foreach (TypeSynonymDecl decl in synonymDecls)
       {
         Contract.Assert(decl != null);
-        List<TypeSynonymDecl /*!*/> /*!*/
-          declDeps = new List<TypeSynonymDecl /*!*/>();
+        List<TypeSynonymDecl>
+          declDeps = new List<TypeSynonymDecl>();
         FindDependencies(decl.Body, declDeps, rc);
         deps.Add(decl, declDeps);
       }
 
-      List<TypeSynonymDecl /*!*/> /*!*/
-        resolved = new List<TypeSynonymDecl /*!*/>();
+      List<TypeSynonymDecl>
+        resolved = new List<TypeSynonymDecl>();
 
       int unresolved = synonymDecls.Count - resolved.Count;
       while (unresolved > 0)
       {
-        foreach (TypeSynonymDecl /*!*/ decl in synonymDecls)
+        foreach (TypeSynonymDecl decl in synonymDecls)
         {
           Contract.Assert(decl != null);
           if (!resolved.Contains(decl) &&
@@ -1102,7 +1088,7 @@ namespace Microsoft.Boogie
         else
         {
           // there have to be cycles in the definitions
-          foreach (TypeSynonymDecl /*!*/ decl in synonymDecls)
+          foreach (TypeSynonymDecl decl in synonymDecls)
           {
             Contract.Assert(decl != null);
             if (!resolved.Contains(decl))
@@ -1125,11 +1111,11 @@ namespace Microsoft.Boogie
     }
 
     // determine a list of all type synonyms that occur in "type"
-    private static void FindDependencies(Type /*!*/ type, List<TypeSynonymDecl /*!*/> /*!*/ deps,
-      ResolutionContext /*!*/ rc)
+    private static void FindDependencies(Type type, List<TypeSynonymDecl> deps,
+      ResolutionContext rc)
     {
       Contract.Requires(type != null);
-      Contract.Requires(cce.NonNullElements(deps));
+      Contract.Requires(Cce.NonNullElements(deps));
       Contract.Requires(rc != null);
       if (type.IsVariable || type.IsBasic)
       {
@@ -1137,7 +1123,7 @@ namespace Microsoft.Boogie
       }
       else if (type.IsUnresolved)
       {
-        UnresolvedTypeIdentifier /*!*/
+        UnresolvedTypeIdentifier
           unresType = type.AsUnresolved;
         Contract.Assert(unresType != null);
         TypeSynonymDecl dep = rc.LookUpTypeSynonym(unresType.Name);
@@ -1146,7 +1132,7 @@ namespace Microsoft.Boogie
           deps.Add(dep);
         }
 
-        foreach (Type /*!*/ subtype in unresType.Arguments)
+        foreach (Type subtype in unresType.Arguments)
         {
           Contract.Assert(subtype != null);
           FindDependencies(subtype, deps, rc);
@@ -1154,10 +1140,10 @@ namespace Microsoft.Boogie
       }
       else if (type.IsMap)
       {
-        MapType /*!*/
+        MapType
           mapType = type.AsMap;
         Contract.Assert(mapType != null);
-        foreach (Type /*!*/ subtype in mapType.Arguments)
+        foreach (Type subtype in mapType.Arguments)
         {
           Contract.Assert(subtype != null);
           FindDependencies(subtype, deps, rc);
@@ -1168,10 +1154,10 @@ namespace Microsoft.Boogie
       else if (type.IsCtor)
       {
         // this can happen because we allow types to be resolved multiple times
-        CtorType /*!*/
+        CtorType
           ctorType = type.AsCtor;
         Contract.Assert(ctorType != null);
-        foreach (Type /*!*/ subtype in ctorType.Arguments)
+        foreach (Type subtype in ctorType.Arguments)
         {
           Contract.Assert(subtype != null);
           FindDependencies(subtype, deps, rc);
@@ -1187,7 +1173,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitTypeSynonymDecl(this);
     }
@@ -1331,14 +1316,14 @@ namespace Microsoft.Boogie
         throw new ArgumentException("VariableComparer works only on objects of type Variable");
       }
 
-      return cce.NonNull(A.Name).CompareTo(B.Name);
+      return Cce.NonNull(A.Name).CompareTo(B.Name);
     }
   }
 
   // class to specify the <:-parents of the values of constants
   public class ConstantParent
   {
-    public readonly IdentifierExpr /*!*/
+    public readonly IdentifierExpr
       Parent;
 
     [ContractInvariantMethod]
@@ -1367,17 +1352,17 @@ namespace Microsoft.Boogie
 
     public IList<Axiom> DefinitionAxioms { get; set; }
 
-    public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent)
+    public Constant(IToken tok, TypedIdent typedIdent)
       : this(tok, typedIdent, true)
     {
     }
 
-    public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent, bool unique)
+    public Constant(IToken tok, TypedIdent typedIdent, bool unique)
       : this(tok, typedIdent, unique, null, new List<Axiom>())
     {
     }
 
-    public Constant(IToken /*!*/ tok, TypedIdent /*!*/ typedIdent,
+    public Constant(IToken tok, TypedIdent typedIdent,
       bool unique,
       QKeyValue kv = null,
       IList<Axiom> definitionAxioms = null)
@@ -1395,7 +1380,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, level, "const ");
       EmitAttributes(stream);
       if (this.Unique)
@@ -1420,13 +1404,11 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddVariable(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitConstant(this);
     }
@@ -1490,7 +1472,6 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddVariable(this);
     }
 
@@ -1503,7 +1484,7 @@ namespace Microsoft.Boogie
       Contract.Requires(w != null);
       Contract.Ensures(Contract.Result<List<Variable>>() != null);
       List<Variable> s = new List<Variable>();
-      foreach (Variable /*!*/ v in w)
+      foreach (Variable v in w)
       {
         Contract.Assert(v != null);
         Formal f = (Formal) v;
@@ -1516,7 +1497,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitFormal(this);
     }
@@ -1545,13 +1525,11 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddVariable(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitLocalVariable(this);
     }
@@ -1562,7 +1540,7 @@ namespace Microsoft.Boogie
     public int incarnationNumber;
     public readonly Variable OriginalVariable;
 
-    public Incarnation(Variable /*!*/ var, int i) :
+    public Incarnation(Variable var, int i) :
       base(
         var.tok,
         new TypedIdent(var.TypedIdent.tok, var.TypedIdent.Name + "@" + i, var.TypedIdent.Type)
@@ -1599,13 +1577,11 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddVariable(this);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitBoundVariable(this);
     }
@@ -1617,13 +1593,13 @@ namespace Microsoft.Boogie
     // points to the original from which this declaration was instantiated.
     public DeclWithFormals OriginalDeclWithFormals;
 
-    public List<TypeVariable> /*!*/
+    public List<TypeVariable>
       TypeParameters;
 
-    private /*readonly--except in StandardVisitor*/ List<Variable> /*!*/
+    private /*readonly--except in StandardVisitor*/ List<Variable>
       inParams, outParams;
 
-    public List<Variable> /*!*/ InParams
+    public List<Variable> InParams
     {
       get
       {
@@ -1637,7 +1613,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public List<Variable> /*!*/ OutParams
+    public List<Variable> OutParams
     {
       get
       {
@@ -1674,12 +1650,12 @@ namespace Microsoft.Boogie
     }
 
     protected DeclWithFormals(DeclWithFormals that)
-      : base(that.tok, cce.NonNull(that.Name))
+      : base(that.tok, Cce.NonNull(that.Name))
     {
       Contract.Requires(that != null);
       this.TypeParameters = that.TypeParameters;
-      this.inParams = cce.NonNull(that.InParams);
-      this.outParams = cce.NonNull(that.OutParams);
+      this.inParams = Cce.NonNull(that.InParams);
+      this.outParams = Cce.NonNull(that.OutParams);
     }
 
     public byte[] MD5Checksum_;
@@ -1871,7 +1847,7 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(OutParams.Count == 1);
         stream.Write(" : ");
-        cce.NonNull(OutParams[0]).TypedIdent.Type.Emit(stream);
+        Cce.NonNull(OutParams[0]).TypedIdent.Type.Emit(stream);
       }
       else if (OutParams.Count > 0)
       {
@@ -1887,7 +1863,7 @@ namespace Microsoft.Boogie
     protected void RegisterTypeParameters(ResolutionContext rc)
     {
       Contract.Requires(rc != null);
-      foreach (TypeVariable /*!*/ v in TypeParameters)
+      foreach (TypeVariable v in TypeParameters)
       {
         Contract.Assert(v != null);
         rc.AddTypeBinder(v);
@@ -1896,7 +1872,7 @@ namespace Microsoft.Boogie
 
     protected void SortTypeParams()
     {
-      List<Type> /*!*/
+      List<Type>
         allTypes = InParams.Select(Item => Item.TypedIdent.Type).ToList();
       Contract.Assert(allTypes != null);
       allTypes.AddRange(OutParams.Select(Item => Item.TypedIdent.Type));
@@ -1915,7 +1891,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(rc != null);
       Contract.Requires(formals != null);
-      foreach (Formal /*!*/ f in formals)
+      foreach (Formal f in formals)
       {
         Contract.Assert(f != null);
         if (f.Name != TypedIdent.NoName)
@@ -1935,7 +1911,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(rc != null);
       Contract.Requires(formals != null);
-      foreach (Formal /*!*/ f in formals)
+      foreach (Formal f in formals)
       {
         Contract.Assert(f != null);
         f.ResolveWhere(rc);
@@ -1944,15 +1920,14 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       (this as ICarriesAttributes).TypecheckAttributes(tc);
-      foreach (Formal /*!*/ p in InParams)
+      foreach (Formal p in InParams)
       {
         Contract.Assert(p != null);
         p.Typecheck(tc);
       }
 
-      foreach (Formal /*!*/ p in OutParams)
+      foreach (Formal p in OutParams)
       {
         Contract.Assert(p != null);
         p.Typecheck(tc);
@@ -2020,7 +1995,7 @@ namespace Microsoft.Boogie
       //:this(tok, name, new List<TypeVariable>(), args, result, comment);
     }
 
-    public Function(IToken tok, string name, List<TypeVariable> typeParams, List<Variable> args, Variable /*!*/ result,
+    public Function(IToken tok, string name, List<TypeVariable> typeParams, List<Variable> args, Variable result,
       string comment)
       : base(tok, name, typeParams, args, new List<Variable> {result})
     {
@@ -2047,7 +2022,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       if (Comment != null)
       {
         stream.WriteLine(this, level, "// " + Comment);
@@ -2118,13 +2092,11 @@ namespace Microsoft.Boogie
 
     public override void Register(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       rc.AddFunction(this);
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       int previousTypeBinderState = rc.TypeBinderState;
       try
       {
@@ -2164,7 +2136,6 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       // PR: why was the base call left out previously?
       base.Typecheck(tc);
       // TypecheckAttributes(tc);
@@ -2172,11 +2143,11 @@ namespace Microsoft.Boogie
       {
         Contract.Assert(DefinitionBody == null);
         Body.Typecheck(tc);
-        if (!cce.NonNull(Body.Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
+        if (!Cce.NonNull(Body.Type).Unify(Cce.NonNull(OutParams[0]).TypedIdent.Type))
         {
           tc.Error(Body,
             "function body with invalid type: {0} (expected: {1})",
-            Body.Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
+            Body.Type, Cce.NonNull(OutParams[0]).TypedIdent.Type);
         }
       }
       else if (DefinitionBody != null)
@@ -2185,11 +2156,11 @@ namespace Microsoft.Boogie
 
         // We are matching the type of the function body with output param, and not the type
         // of DefinitionBody, which is always going to be bool (since it is of the form func_call == func_body)
-        if (!cce.NonNull(DefinitionBody.Args[1].Type).Unify(cce.NonNull(OutParams[0]).TypedIdent.Type))
+        if (!Cce.NonNull(DefinitionBody.Args[1].Type).Unify(Cce.NonNull(OutParams[0]).TypedIdent.Type))
         {
           tc.Error(DefinitionBody.Args[1],
             "function body with invalid type: {0} (expected: {1})",
-            DefinitionBody.Args[1].Type, cce.NonNull(OutParams[0]).TypedIdent.Type);
+            DefinitionBody.Args[1].Type, Cce.NonNull(OutParams[0]).TypedIdent.Type);
         }
       }
     }
@@ -2210,7 +2181,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitFunction(this);
     }
@@ -2222,7 +2192,7 @@ namespace Microsoft.Boogie
       List<Variable> dummies = new List<Variable>();
       List<Expr> callArgs = new List<Expr>();
       int i = 0;
-      foreach (Formal /*!*/ f in InParams)
+      foreach (Formal f in InParams)
       {
         Contract.Assert(f != null);
         string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
@@ -2231,9 +2201,9 @@ namespace Microsoft.Boogie
         i++;
       }
 
-      List<TypeVariable> /*!*/
+      List<TypeVariable>
         quantifiedTypeVars = new List<TypeVariable>();
-      foreach (TypeVariable /*!*/ t in TypeParameters)
+      foreach (TypeVariable t in TypeParameters)
       {
         Contract.Assert(t != null);
         quantifiedTypeVars.Add(new TypeVariable(tok, t.Name));
@@ -2272,7 +2242,7 @@ namespace Microsoft.Boogie
 
       List<Expr> callArgs = new List<Expr>();
       int i = 0;
-      foreach (Formal /*!*/ f in InParams)
+      foreach (Formal f in InParams)
       {
         Contract.Assert(f != null);
         string nm = f.TypedIdent.HasName ? f.TypedIdent.Name : "_" + i;
@@ -3468,10 +3438,10 @@ namespace Microsoft.Boogie
   {
     public const string NoName = "";
 
-    private string /*!*/
+    private string
       _name;
 
-    public string /*!*/ Name
+    public string Name
     {
       get
       {
@@ -3485,10 +3455,10 @@ namespace Microsoft.Boogie
       }
     }
 
-    private Type /*!*/
+    private Type
       _type;
 
-    public Type /*!*/ Type
+    public Type Type
     {
       get
       {
@@ -3512,7 +3482,7 @@ namespace Microsoft.Boogie
     public Expr WhereExpr;
 
     // [NotDelayed]
-    public TypedIdent(IToken /*!*/ tok, string /*!*/ name, Type /*!*/ type)
+    public TypedIdent(IToken tok, string name, Type type)
       : this(tok, name, type, null)
     {
       Contract.Requires(tok != null);
@@ -3523,7 +3493,7 @@ namespace Microsoft.Boogie
     }
 
     // [NotDelayed]
-    public TypedIdent(IToken /*!*/ tok, string /*!*/ name, Type /*!*/ type, Expr whereExpr)
+    public TypedIdent(IToken tok, string name, Type type, Expr whereExpr)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -3574,14 +3544,12 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       // NOTE: WhereExpr needs to be resolved by the caller, because the caller must provide a modified ResolutionContext
       this.Type = this.Type.ResolveType(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       //   type variables can occur when working with polymorphic functions/procedures
       //      if (!this.Type.IsClosed)
       //        tc.Error(this, "free variables in type of an identifier: {0}",
@@ -3599,7 +3567,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitTypedIdent(this);
     }
@@ -3614,7 +3581,7 @@ namespace Microsoft.Boogie
       Contract.Requires(s1 != null);
       for (int i = 0; i < s1.Count; i++)
       {
-        TypeVariable /*!*/
+        TypeVariable
           next = s1[i];
         Contract.Assert(next != null);
         if (!tvs.Contains(next))
@@ -3627,10 +3594,10 @@ namespace Microsoft.Boogie
 
   public static class Emitter
   {
-    public static void Emit(this List<Declaration /*!*/> /*!*/ decls, TokenTextWriter stream)
+    public static void Emit(this List<Declaration> decls, TokenTextWriter stream)
     {
       Contract.Requires(stream != null);
-      Contract.Requires(cce.NonNullElements(decls));
+      Contract.Requires(Cce.NonNullElements(decls));
       bool first = true;
       foreach (Declaration d in decls)
       {
@@ -3656,7 +3623,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(stream != null);
       string sep = "";
-      foreach (string /*!*/ s in ss)
+      foreach (string s in ss)
       {
         Contract.Assert(s != null);
         stream.Write(sep);
@@ -3670,7 +3637,7 @@ namespace Microsoft.Boogie
       Contract.Requires(stream != null);
       string sep = "";
       stream.push();
-      foreach (Expr /*!*/ e in ts)
+      foreach (Expr e in ts)
       {
         Contract.Assert(e != null);
         stream.Write(sep);
@@ -3686,7 +3653,7 @@ namespace Microsoft.Boogie
     {
       Contract.Requires(stream != null);
       string sep = "";
-      foreach (IdentifierExpr /*!*/ e in ids)
+      foreach (IdentifierExpr e in ids)
       {
         Contract.Assert(e != null);
         stream.Write(sep);
@@ -3707,7 +3674,7 @@ namespace Microsoft.Boogie
       Contract.Requires(stream != null);
       string sep = "";
       stream.push();
-      foreach (Variable /*!*/ v in vs)
+      foreach (Variable v in vs)
       {
         Contract.Assert(v != null);
         stream.Write(sep);
@@ -3724,7 +3691,7 @@ namespace Microsoft.Boogie
       Contract.Requires(separator != null);
       Contract.Requires(stream != null);
       string sep = "";
-      foreach (Type /*!*/ v in tys)
+      foreach (Type v in tys)
       {
         Contract.Assert(v != null);
         stream.Write(sep);
@@ -3738,7 +3705,7 @@ namespace Microsoft.Boogie
       Contract.Requires(separator != null);
       Contract.Requires(stream != null);
       string sep = "";
-      foreach (TypeVariable /*!*/ v in tvs)
+      foreach (TypeVariable v in tvs)
       {
         Contract.Assert(v != null);
         stream.Write(sep);
@@ -3769,7 +3736,7 @@ namespace Microsoft.Boogie
 
   public class AtomicRE : RE
   {
-    private Block /*!*/
+    private Block
       _b;
 
     public Block b
@@ -3800,25 +3767,21 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       b.Resolve(rc);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       b.Typecheck(tc);
     }
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       b.Emit(stream, level);
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitAtomicRE(this);
     }
@@ -3828,23 +3791,21 @@ namespace Microsoft.Boogie
   {
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       return;
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       return;
     }
   }
 
   public class Sequential : CompoundRE
   {
-    private RE /*!*/
+    private RE
       _first;
 
-    public RE /*!*/ first
+    public RE first
     {
       get
       {
@@ -3858,10 +3819,10 @@ namespace Microsoft.Boogie
       }
     }
 
-    private RE /*!*/
+    private RE
       _second;
 
-    public RE /*!*/ second
+    public RE second
     {
       get
       {
@@ -3892,7 +3853,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.WriteLine();
       stream.WriteLine("{0};", Indent(stream.UseForComputingChecksums ? 0 : level));
       first.Emit(stream, level + 1);
@@ -3901,7 +3861,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitSequential(this);
     }
@@ -3915,10 +3874,10 @@ namespace Microsoft.Boogie
       Contract.Invariant(this._rs != null);
     }
 
-    private List<RE> /*!*/
+    private List<RE>
       _rs;
 
-    public List<RE> /*!*/ rs
+    public List<RE> rs
     {
       //Rename this (and _rs) if possible
       get
@@ -3941,10 +3900,9 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int level)
     {
-      //Contract.Requires(stream != null);
       stream.WriteLine();
       stream.WriteLine("{0}[]", Indent(stream.UseForComputingChecksums ? 0 : level));
-      foreach (RE /*!*/ r in rs)
+      foreach (RE r in rs)
       {
         Contract.Assert(r != null);
         r.Emit(stream, level + 1);
@@ -3953,7 +3911,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitChoice(this);
     }
@@ -3972,18 +3929,18 @@ namespace Microsoft.Boogie
       }
       else if (tc is GotoCmd)
       {
-        GotoCmd /*!*/
+        GotoCmd
           g = (GotoCmd) tc;
         Contract.Assert(g != null);
         Contract.Assume(g.LabelTargets != null);
         if (g.LabelTargets.Count == 1)
         {
-          return new Sequential(new AtomicRE(b), Transform(cce.NonNull(g.LabelTargets[0])));
+          return new Sequential(new AtomicRE(b), Transform(Cce.NonNull(g.LabelTargets[0])));
         }
         else
         {
           List<RE> rs = new List<RE>();
-          foreach (Block /*!*/ target in g.LabelTargets)
+          foreach (Block target in g.LabelTargets)
           {
             Contract.Assert(target != null);
             RE r = Transform(target);
@@ -3997,7 +3954,7 @@ namespace Microsoft.Boogie
       else
       {
         Contract.Assume(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
     }
   }

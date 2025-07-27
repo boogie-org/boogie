@@ -9,9 +9,9 @@ namespace Microsoft.Boogie
   public class TokenTextWriter : IDisposable
   {
     public PrintOptions Options { get; }
-    string /*!*/ filename;
+    string filename;
 
-    TextWriter /*!*/ writer;
+    TextWriter writer;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
 
 
     // Keywords, this array *must* be sorted
-    public static readonly string[] /*!*/
+    public static readonly string[]
       BplKeywords =
       {
         "assert",
@@ -195,7 +195,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private IToken /*!*/ CurrentToken
+    private IToken CurrentToken
     {
       get
       {

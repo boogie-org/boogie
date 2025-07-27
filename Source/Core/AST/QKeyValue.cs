@@ -6,10 +6,10 @@ namespace Microsoft.Boogie;
 
 public class QKeyValue : Absy
 {
-  public readonly string /*!*/
+  public readonly string
     Key;
 
-  private readonly List<object /*!*/> /*!*/
+  private readonly List<object>
     _params; // each element is either a string or an Expr
 
   public void AddParam(object p)
@@ -20,7 +20,7 @@ public class QKeyValue : Absy
 
   public void AddParams(IEnumerable<object> ps)
   {
-    Contract.Requires(cce.NonNullElements(ps));
+    Contract.Requires(Cce.NonNullElements(ps));
     this._params.AddRange(ps);
   }
 
@@ -33,7 +33,7 @@ public class QKeyValue : Absy
   {
     get
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IList<object>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<IList<object>>()));
       Contract.Ensures(Contract.Result<IList<object>>().IsReadOnly);
       return this._params.AsReadOnly();
     }
@@ -45,15 +45,15 @@ public class QKeyValue : Absy
   void ObjectInvariant()
   {
     Contract.Invariant(Key != null);
-    Contract.Invariant(cce.NonNullElements(this._params));
+    Contract.Invariant(Cce.NonNullElements(this._params));
   }
 
-  public QKeyValue(IToken tok, string key, IList<object /*!*/> /*!*/ parameters = null, QKeyValue next = null)
+  public QKeyValue(IToken tok, string key, IList<object> parameters = null, QKeyValue next = null)
     : base(tok)
   {
     Contract.Requires(key != null);
     Contract.Requires(tok != null);
-    Contract.Requires(cce.NonNullElements(parameters));
+    Contract.Requires(Cce.NonNullElements(parameters));
     Key = key;
     this._params = parameters == null ? new List<object>() : new List<object>(parameters);
     Next = next;
@@ -86,7 +86,6 @@ public class QKeyValue : Absy
 
   public override void Resolve(ResolutionContext rc)
   {
-    //Contract.Requires(rc != null);
 
     if ((Key == "minimize" || Key == "maximize") && Params.Count != 1)
     {
@@ -142,7 +141,6 @@ public class QKeyValue : Absy
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    //Contract.Requires(tc != null);
     foreach (object p in Params)
     {
       var expr = p as Expr;

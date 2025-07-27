@@ -136,8 +136,8 @@ namespace Microsoft.Boogie
       Contract.Invariant(gen != null);
       Contract.Invariant(genOptions != null);
       Contract.Invariant(translator != null);
-      Contract.Invariant(cce.NonNullElements(distincts));
-      Contract.Invariant(cce.NonNullElements(axiomConjuncts));
+      Contract.Invariant(Cce.NonNullElements(distincts));
+      Contract.Invariant(Cce.NonNullElements(axiomConjuncts));
     }
 
     public VCExprTranslator /*?*/
@@ -191,7 +191,7 @@ namespace Microsoft.Boogie
       }
       else
       {
-        exprTranslator = (VCExprTranslator) cce.NonNull(ctxt.exprTranslator.Clone());
+        exprTranslator = (VCExprTranslator) Cce.NonNull(ctxt.exprTranslator.Clone());
       }
     }
 
@@ -204,13 +204,11 @@ namespace Microsoft.Boogie
 
     public override void DeclareFunction(Function f, string attributes)
     {
-      //Contract.Requires(f != null);
       base.ProcessDeclaration(f);
     }
 
     public override void DeclareConstant(Constant c, bool uniq, string attributes)
     {
-      //Contract.Requires(c != null);
       base.DeclareConstant(c, uniq, attributes);
 
       // TODO: make separate distinct lists for names coming from different types
@@ -223,7 +221,6 @@ namespace Microsoft.Boogie
 
     public override void AddAxiom(Axiom ax, string attributes)
     {
-      //Contract.Requires(ax != null);
       base.AddAxiom(ax, attributes);
 
       var expr = translator.Translate(ax.Expr);
@@ -239,7 +236,6 @@ namespace Microsoft.Boogie
 
     public override void AddAxiom(VCExpr vc)
     {
-      //Contract.Requires(vc != null);
       axiomConjuncts.Add(vc);
     }
 

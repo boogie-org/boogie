@@ -12,8 +12,8 @@ public class Program : Absy
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(this.topLevelDeclarations));
-    Contract.Invariant(cce.NonNullElements(this.globalVariablesCache, true));
+    Contract.Invariant(Cce.NonNullElements(this.topLevelDeclarations));
+    Contract.Invariant(Cce.NonNullElements(this.globalVariablesCache, true));
   }
 
   public Dictionary<object, List<object>> DeclarationDependencies { get; set; }
@@ -105,8 +105,8 @@ public class Program : Absy
     }
 
     // collect type synonym declarations
-    List<TypeSynonymDecl /*!*/> /*!*/
-      synonymDecls = new List<TypeSynonymDecl /*!*/>();
+    List<TypeSynonymDecl>
+      synonymDecls = new List<TypeSynonymDecl>();
     foreach (var d in TopLevelDeclarations.OfType<TypeSynonymDecl>())
     {
       Contract.Assert(d != null);
@@ -143,7 +143,6 @@ public class Program : Absy
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    //Contract.Requires(tc != null);
     Helpers.ExtraTraceInformation(tc.Options, "Starting typechecking");
 
     int oldErrorCount = tc.ErrorCount;
@@ -155,7 +154,7 @@ public class Program : Absy
     if (oldErrorCount == tc.ErrorCount)
     {
       // check whether any type proxies have remained uninstantiated
-      TypeAmbiguitySeeker /*!*/
+      TypeAmbiguitySeeker
         seeker = new TypeAmbiguitySeeker(tc);
       foreach (var d in TopLevelDeclarations)
       {
@@ -172,13 +171,13 @@ public class Program : Absy
     return cloned;
   }
 
-  [Rep] private List<Declaration /*!*/> /*!*/ topLevelDeclarations;
+  [Rep] private List<Declaration> topLevelDeclarations;
 
   public IReadOnlyList<Declaration> TopLevelDeclarations
   {
     get
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Declaration>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<Declaration>>()));
       return topLevelDeclarations.AsReadOnly();
     }
 
@@ -209,7 +208,7 @@ public class Program : Absy
   public void AddTopLevelDeclarations(IEnumerable<Declaration> decls)
   {
     Contract.Requires(!TopLevelDeclarationsAreFrozen);
-    Contract.Requires(cce.NonNullElements(decls));
+    Contract.Requires(Cce.NonNullElements(decls));
 
     topLevelDeclarations.AddRange(decls);
     this.globalVariablesCache = null;
@@ -384,13 +383,13 @@ public class Program : Absy
     get { return TopLevelDeclarations.OfType<Constant>(); }
   }
 
-  private IEnumerable<GlobalVariable /*!*/> globalVariablesCache = null;
+  private IEnumerable<GlobalVariable> globalVariablesCache = null;
 
-  public List<GlobalVariable /*!*/> /*!*/ GlobalVariables
+  public List<GlobalVariable> GlobalVariables
   {
     get
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<GlobalVariable>>()));
 
       if (globalVariablesCache == null)
       {
@@ -434,15 +433,15 @@ public class Program : Absy
     {
       if (impl.Blocks != null && impl.Blocks.Count > 0)
       {
-        cce.BeginExpose(impl);
+        Cce.BeginExpose(impl);
         {
           Block start = impl.Blocks[0];
           Contract.Assume(start != null);
-          Contract.Assume(cce.IsConsistent(start));
+          Contract.Assume(Cce.IsConsistent(start));
           impl.Blocks = LoopUnroll.UnrollLoops(start, n, uc);
           impl.FreshenCaptureStates();
         }
-        cce.EndExpose();
+        Cce.EndExpose();
       }
     }
   }
@@ -533,10 +532,10 @@ public class Program : Absy
     return GraphFromBlocksSubset(blocks, null, forward);
   }
 
-  public static Graph<Block /*!*/> /*!*/ GraphFromImpl(Implementation impl, bool forward = true)
+  public static Graph<Block> GraphFromImpl(Implementation impl, bool forward = true)
   {
     Contract.Requires(impl != null);
-    Contract.Ensures(cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
+    Contract.Ensures(Cce.NonNullElements(Contract.Result<Graph<Block>>().Nodes));
     Contract.Ensures(Contract.Result<Graph<Block>>() != null);
 
     return GraphFromBlocks(impl.Blocks, forward);
@@ -562,7 +561,6 @@ public class Program : Absy
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    //Contract.Requires(visitor != null);
     Contract.Ensures(Contract.Result<Absy>() != null);
     return visitor.VisitProgram(this);
   }

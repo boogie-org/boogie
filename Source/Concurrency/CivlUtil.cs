@@ -36,7 +36,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         }
       }
     }
@@ -108,7 +108,7 @@ namespace Microsoft.Boogie
         liveVars.ExceptWith(stateCmd.Locals);
         return liveVars;
       }
-      throw new cce.UnreachableException();
+      throw new Cce.UnreachableException();
     }
   }
 
@@ -306,7 +306,7 @@ namespace Microsoft.Boogie
 
   public static class BlockHelper
   {
-    public static readonly IToken /*!*/ ReportedNoToken = new Token();
+    public static readonly IToken ReportedNoToken = new Token();
     
     public static Block Block(string label, List<Cmd> cmds)
     {
@@ -344,9 +344,9 @@ namespace Microsoft.Boogie
       return new LocalVariable(Token.NoToken, new TypedIdent(Token.NoToken, name, type));
     }
 
-    public static BoundVariable BoundVariable(string name, Type type)
+    public static BoundVariable BoundVariable(string name, Type type, QKeyValue kv = null)
     {
-      return new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, name, type));
+      return new BoundVariable(Token.NoToken, new TypedIdent(Token.NoToken, name, type), kv);
     }
 
     public static Formal Formal(string name, Type type, bool incoming)
@@ -427,6 +427,14 @@ namespace Microsoft.Boogie
     {
       var subst = FromVariableMap(map);
       return Apply(subst, cmds);
+    }
+  }
+
+  public static class RequiresHelper
+  {
+    public static Requires Requires(Expr expr, QKeyValue kv = null)
+    {
+      return new Requires(Token.NoToken, false, expr, null, kv);
     }
   }
 

@@ -75,7 +75,7 @@ modifies CH, decision;
   CH := (lambda v:val :: value_card(v, value, 1, n));
   assume card(CH) == n;
   assume MultisetSubsetEq(MultisetEmpty, CH);
-  decision := (lambda i:pid :: if pid(i) then max(CH) else old(decision)[i]);
+  decision := (lambda i:pid :: if pid(i) then max(CH) else decision[i]);
 }
 
 action {:layer 3}

@@ -5,15 +5,15 @@ using Microsoft.Boogie.VCExprAST;
 
 namespace Microsoft.Boogie.TypeErasure;
 
-public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, VariableBindings /*!*/>
+public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr, VariableBindings>
 {
-  protected readonly TypeAxiomBuilderIntBoolU /*!*/
+  protected readonly TypeAxiomBuilderIntBoolU
     AxBuilder;
 
-  protected readonly TypeEraser /*!*/
+  protected readonly TypeEraser
     Eraser;
 
-  protected readonly VCExpressionGenerator /*!*/
+  protected readonly VCExpressionGenerator
     Gen;
 
   [ContractInvariantMethod]
@@ -25,8 +25,8 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
   }
 
 
-  public OpTypeEraser(TypeEraser /*!*/ eraser, TypeAxiomBuilderIntBoolU /*!*/ axBuilder,
-    VCExpressionGenerator /*!*/ gen)
+  public OpTypeEraser(TypeEraser eraser, TypeAxiomBuilderIntBoolU axBuilder,
+    VCExpressionGenerator gen)
   {
     Contract.Requires(eraser != null);
     Contract.Requires(axBuilder != null);
@@ -38,22 +38,20 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
 
   protected override VCExpr StandardResult(VCExprNAry node, VariableBindings bindings)
   {
-    //Contract.Requires(bindings != null);
-    //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     System.Diagnostics.Debug.Fail("Don't know how to erase types in this expression: " + node);
     Contract.Assert(false);
-    throw new cce.UnreachableException(); // to please the compiler
+    throw new Cce.UnreachableException(); // to please the compiler
   }
 
-  private List<VCExpr /*!*/> /*!*/ MutateSeq(VCExprNAry node, VariableBindings bindings, int newPolarity)
+  private List<VCExpr> MutateSeq(VCExprNAry node, VariableBindings bindings, int newPolarity)
   {
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
-    Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+    Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
     int oldPolarity = Eraser.Polarity;
     Eraser.Polarity = newPolarity;
-    List<VCExpr /*!*/> /*!*/
+    List<VCExpr>
       newArgs = Eraser.MutateSeq(node.Arguments, bindings);
     Eraser.Polarity = oldPolarity;
     return newArgs;
@@ -79,9 +77,9 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
     Contract.Requires((node.Arity > 0));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-    List<VCExpr /*!*/> /*!*/
+    List<VCExpr>
       newArgs = MutateSeq(node, bindings, newPolarity);
-    Type /*!*/
+    Type
       oldType = node[0].Type;
     if (AxBuilder.UnchangedType(oldType) &&
         node.Arguments.Skip(1).All(e => e.Type.Equals(oldType)))
@@ -126,8 +124,8 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
     // UGLY: the code for tracking polarities should be factored out
-    List<VCExpr /*!*/> /*!*/
-      newArgs = new List<VCExpr /*!*/>(2);
+    List<VCExpr>
+      newArgs = new List<VCExpr>(2);
     Eraser.Polarity = -Eraser.Polarity;
     newArgs.Add(Eraser.Mutate(node[0], bindings));
     Eraser.Polarity = -Eraser.Polarity;
@@ -148,7 +146,7 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    List<VCExpr /*!*/> /*!*/
+    List<VCExpr>
       newArgs = MutateSeq(node, bindings, 0);
     newArgs[0] = AxBuilder.Cast(newArgs[0], Type.Bool);
     Type t = node.Type;
@@ -162,13 +160,13 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
     return Gen.Function(node.Op, newArgs);
   }
 
-  public override VCExpr /*!*/ VisitCustomOp(VCExprNAry /*!*/ node, VariableBindings /*!*/ bindings)
+  public override VCExpr VisitCustomOp(VCExprNAry node, VariableBindings bindings)
   {
     Contract.Requires(node != null);
     Contract.Requires(bindings != null);
     Contract.Ensures(Contract.Result<VCExpr>() != null);
 
-    List<VCExpr /*!*/> /*!*/
+    List<VCExpr>
       newArgs = MutateSeq(node, bindings, 0);
     return Gen.Function(node.Op, newArgs);
   }
@@ -393,15 +391,15 @@ public abstract class OpTypeEraser : StandardVCExprOpVisitor<VCExpr /*!*/, Varia
     Contract.Requires((bindings != null));
     Contract.Requires((node != null));
     Contract.Ensures(Contract.Result<VCExpr>() != null);
-    List<VCExpr /*!*/> /*!*/
+    List<VCExpr>
       newArgs = MutateSeq(node, bindings, 0);
 
     // each argument is cast to its old type
     Contract.Assert(newArgs.Count == node.Arity && newArgs.Count == 2);
-    VCExpr /*!*/
+    VCExpr
       arg0 = AxBuilder.Cast(newArgs[0], node[0].Type);
     Contract.Assert(arg0 != null);
-    VCExpr /*!*/
+    VCExpr
       arg1 = AxBuilder.Cast(newArgs[1], node[1].Type);
     Contract.Assert(arg1 != null);
     return Gen.Function(node.Op, arg0, arg1);

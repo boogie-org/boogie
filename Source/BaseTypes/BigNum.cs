@@ -145,10 +145,10 @@ namespace Microsoft.BaseTypes
     }
 
     [Pure]
-    public override string /*!*/ ToString()
+    public override string ToString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
-      return cce.NonNull(val.ToString());
+      return Cce.NonNull(val.ToString());
     }
 
     //////////////////////////////////////////////////////////////////////////////
@@ -158,7 +158,7 @@ namespace Microsoft.BaseTypes
     // int32.ToString(format) does) 
 
     [Pure]
-    public string /*!*/ ToString(string /*!*/ format)
+    public string ToString(string format)
     {
       Contract.Requires(format != null);
       Contract.Ensures(Contract.Result<string>() != null);
@@ -185,7 +185,7 @@ namespace Microsoft.BaseTypes
     private static readonly System.Numerics.BigInteger BI_2_TO_24 = new BIM(0x1000000);
 
     [Pure]
-    private string /*!*/ toHex(string /*!*/ format)
+    private string toHex(string format)
     {
       Contract.Requires(format != null);
       Contract.Ensures(Contract.Result<string>() != null);
@@ -202,7 +202,7 @@ namespace Microsoft.BaseTypes
     }
 
     [Pure]
-    private int extractPrecision(string /*!*/ format)
+    private int extractPrecision(string format)
     {
       Contract.Requires(format != null);
       if (format.Length > 1)
@@ -216,7 +216,7 @@ namespace Microsoft.BaseTypes
     }
 
     [Pure]
-    private string /*!*/ addMinus(int signum, string /*!*/ suffix)
+    private string addMinus(int signum, string suffix)
     {
       Contract.Requires(suffix != null);
       Contract.Ensures(Contract.Result<string>() != null);
@@ -229,7 +229,7 @@ namespace Microsoft.BaseTypes
     }
 
     [Pure]
-    private string /*!*/ prefixWithZeros(int minLength, string /*!*/ suffix)
+    private string prefixWithZeros(int minLength, string suffix)
     {
       Contract.Requires(suffix != null);
       Contract.Ensures(Contract.Result<string>() != null);

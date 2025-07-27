@@ -12,7 +12,7 @@ public class NAryExpr : Expr
     
   [Additive] [Peer] private IAppliable _Fun;
 
-  public IAppliable /*!*/ Fun
+  public IAppliable Fun
   {
     get => _Fun;
     set
@@ -65,7 +65,7 @@ public class NAryExpr : Expr
   public TypeParamInstantiation TypeParameters = null;
 
   [Captured]
-  public NAryExpr(IToken /*!*/ tok, IAppliable /*!*/ fun, IList<Expr> /*!*/ args, bool immutable = false)
+  public NAryExpr(IToken tok, IAppliable fun, IList<Expr> args, bool immutable = false)
     : base(tok, immutable)
   {
     Contract.Requires(tok != null);
@@ -144,16 +144,14 @@ public class NAryExpr : Expr
 
   public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
   {
-    //Contract.Requires(stream != null);
     stream.SetToken(this);
     Fun.Emit(Args, stream, contextBindingStrength, fragileContext);
   }
 
   public override void Resolve(ResolutionContext rc)
   {
-    //Contract.Requires(rc != null);
     Fun.Resolve(rc, this);
-    foreach (Expr /*!*/ e in Args)
+    foreach (Expr e in Args)
     {
       Contract.Assert(e != null);
       e.Resolve(rc);
@@ -162,8 +160,7 @@ public class NAryExpr : Expr
 
   public override void ComputeFreeVariables(GSet<object> /*Variable*/ freeVars)
   {
-    //Contract.Requires(freeVars != null);
-    foreach (Expr /*!*/ e in Args)
+    foreach (Expr e in Args)
     {
       Contract.Assert(e != null);
       e.ComputeFreeVariables(freeVars);
@@ -172,10 +169,10 @@ public class NAryExpr : Expr
     // also add the free type variables
     if (TypeParameters != null)
     {
-      foreach (TypeVariable /*!*/ var in TypeParameters.FormalTypeParams)
+      foreach (TypeVariable var in TypeParameters.FormalTypeParams)
       {
         Contract.Assert(var != null);
-        foreach (TypeVariable /*!*/ w in TypeParameters[var].FreeVariables)
+        foreach (TypeVariable w in TypeParameters[var].FreeVariables)
         {
           Contract.Assert(w != null);
           freeVars.Add(w);
@@ -186,9 +183,8 @@ public class NAryExpr : Expr
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    //Contract.Requires(tc != null);
     int prevErrorCount = tc.ErrorCount;
-    foreach (Expr /*!*/ e in Args)
+    foreach (Expr e in Args)
     {
       Contract.Assert(e != null);
       e.Typecheck(tc);
@@ -217,12 +213,11 @@ public class NAryExpr : Expr
 
     if (Type == null)
     {
-      // set Type to some non-null value
-      Type = new TypeProxy(this.tok, "type_checking_error");
+      Type = Expr.ErrorType;
     }
   }
 
-  public override Type /*!*/ ShallowType
+  public override Type ShallowType
   {
     get
     {
@@ -234,7 +229,6 @@ public class NAryExpr : Expr
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    //Contract.Requires(visitor != null);
     Contract.Ensures(Contract.Result<Absy>() != null);
     return visitor.VisitNAryExpr(this);
   }

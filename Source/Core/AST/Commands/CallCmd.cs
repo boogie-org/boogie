@@ -8,16 +8,16 @@ namespace Microsoft.Boogie;
 
 public class CallCmd : CallCommonality
 {
-  public string /*!*/ callee { get; set; }
+  public string callee { get; set; }
   public Procedure Proc;
   public LocalVariable AssignedAssumptionVariable;
 
   // Element of the following lists can be null, which means that
   // the call happens with * as these parameters
-  public List<Expr> /*!*/
+  public List<Expr>
     Ins;
 
-  public List<IdentifierExpr> /*!*/
+  public List<IdentifierExpr>
     Outs;
 
   [ContractInvariantMethod]
@@ -301,7 +301,6 @@ public class CallCmd : CallCommonality
     if (Proc is YieldProcedureDecl calleeDecl)
     {
       var isSynchronized = this.HasAttribute(CivlAttributes.SYNC);
-      var isSkipped = this.HasAttribute(CivlAttributes.SKIP);
       if (calleeDecl.Layer > callerDecl.Layer)
       {
         tc.Error(this, "layer of callee must not be more than layer of caller");
@@ -320,58 +319,35 @@ public class CallCmd : CallCommonality
             else
             {
               CheckModifies(highestRefinedActionDecl.ModifiedVars);
-              if (!IsAsync)
+              if (callerDecl.HasMoverType && highestRefinedActionDecl.Creates.Any())
               {
-                if (highestRefinedActionDecl.Creates.Any() && callerDecl.HasMoverType)
-                {
-                  tc.Error(this, "caller must not be a mover procedure");
-                }
-                // check there is no application of IS_RIGHT in the entire chain of refined actions
-                var calleeRefinedAction = calleeDecl.RefinedAction;
-                while (calleeRefinedAction != null)
-                {
-                  if (calleeRefinedAction.HasAttribute(CivlAttributes.IS_RIGHT))
-                  {
-                    tc.Error(this, "this must be an async call");
-                    break;
-                  }
-                  var calleeActionDecl = calleeRefinedAction.ActionDecl;
-                  if (calleeActionDecl == highestRefinedActionDecl)
-                  {
-                    break;
-                  }
-                  calleeRefinedAction = calleeActionDecl.RefinedAction;
-                }
+                tc.Error(this, "caller must not be a mover procedure");
               }
-              else if (isSynchronized)
+              if (IsAsync)
               {
-                // check that entire chain of refined actions all the way to highestRefinedAction is comprised of left movers
-                var calleeRefinedAction = calleeDecl.RefinedAction;
-                while (calleeRefinedAction != null)
+                if (isSynchronized)
                 {
-                  var calleeActionDecl = calleeRefinedAction.ActionDecl;
-                  if (!calleeActionDecl.IsLeftMover)
+                  // check that entire chain of refined actions all the way to highestRefinedAction is comprised of left movers
+                  var calleeRefinedAction = calleeDecl.RefinedAction;
+                  while (calleeRefinedAction != null)
                   {
-                    tc.Error(this,
-                      $"callee abstraction in synchronized call must be a left mover: {calleeActionDecl.Name}");
-                    break;
+                    var calleeActionDecl = calleeRefinedAction.ActionDecl;
+                    if (!calleeActionDecl.IsLeftMover)
+                    {
+                      tc.Error(this,
+                        $"callee abstraction in synchronized call must be a left mover: {calleeActionDecl.Name}");
+                      break;
+                    }
+                    if (calleeActionDecl == highestRefinedActionDecl)
+                    {
+                      break;
+                    }
+                    calleeRefinedAction = calleeActionDecl.RefinedAction;
                   }
-                  if (calleeActionDecl == highestRefinedActionDecl)
-                  {
-                    break;
-                  }
-                  calleeRefinedAction = calleeActionDecl.RefinedAction;
                 }
-              }
-              else if (isSkipped)
-              {
-                if (highestRefinedActionDecl.LayerRange.UpperLayer != callerDecl.Layer)
+                else if (callerDecl.HasMoverType)
                 {
-                  tc.Error(this, $"upper layer of action {highestRefinedActionDecl.Name} must be same as layer of caller");
-                }
-                else if (!highestRefinedActionDecl.IsSkippable())
-                {
-                  tc.Error(this, $"action {highestRefinedActionDecl.Name} must be skippable");
+                  tc.Error(this, "async call must be synchronized in mover procedure");
                 }
               }
             }
@@ -556,7 +532,7 @@ public class CallCmd : CallCommonality
     }
 
     Contract.Assume(this.Proc != null);
-    foreach (IdentifierExpr /*!*/ e in this.Proc.Modifies)
+    foreach (IdentifierExpr e in this.Proc.Modifies)
     {
       Contract.Assert(e != null);
       vars.Add(e);
@@ -650,19 +626,19 @@ public class CallCmd : CallCommonality
 
     this.CheckAssignments(tc);
 
-    List<Type> /*!*/
+    List<Type>
       formalInTypes = new List<Type>();
-    List<Type> /*!*/
+    List<Type>
       formalOutTypes = new List<Type>();
-    List<Expr> /*!*/
+    List<Expr>
       actualIns = new List<Expr>();
-    List<IdentifierExpr> /*!*/
+    List<IdentifierExpr>
       actualOuts = new List<IdentifierExpr>();
     for (int i = 0; i < Ins.Count; ++i)
     {
       if (Ins[i] != null)
       {
-        formalInTypes.Add(cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
+        formalInTypes.Add(Cce.NonNull(Proc.InParams[i]).TypedIdent.Type);
         actualIns.Add(Ins[i]);
       }
     }
@@ -671,7 +647,7 @@ public class CallCmd : CallCommonality
     {
       if (Outs[i] != null)
       {
-        formalOutTypes.Add(cce.NonNull(Proc.OutParams[i]).TypedIdent.Type);
+        formalOutTypes.Add(Cce.NonNull(Proc.OutParams[i]).TypedIdent.Type);
         actualOuts.Add(Outs[i]);
       }
     }
@@ -684,7 +660,7 @@ public class CallCmd : CallCommonality
       this.tok,
       "call to " + callee,
       tc);
-    Contract.Assert(cce.NonNullElements(actualTypeParams));
+    Contract.Assert(Cce.NonNullElements(actualTypeParams));
     TypeParameters = SimpleTypeParamInstantiation.From(Proc.TypeParameters,
       actualTypeParams);
 
@@ -726,13 +702,13 @@ public class CallCmd : CallCommonality
     return formalLayerRange;
   }
 
-  private IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/ TypeParamSubstitution()
+  private IDictionary<TypeVariable, Type> TypeParamSubstitution()
   {
-    Contract.Ensures(cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
+    Contract.Ensures(Cce.NonNullDictionaryAndValues(Contract.Result<IDictionary<TypeVariable, Type>>()));
     Contract.Assume(TypeParameters != null);
-    IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
-      res = new Dictionary<TypeVariable /*!*/, Type /*!*/>();
-    foreach (TypeVariable /*!*/ v in TypeParameters.FormalTypeParams)
+    IDictionary<TypeVariable, Type>
+      res = new Dictionary<TypeVariable, Type>();
+    foreach (TypeVariable v in TypeParameters.FormalTypeParams)
     {
       Contract.Assert(v != null);
       res.Add(v, TypeParameters[v]);
@@ -750,7 +726,7 @@ public class CallCmd : CallCommonality
     Dictionary<Variable, Expr> substMap = new Dictionary<Variable, Expr>();
     Dictionary<Variable, Expr> substMapOld = new Dictionary<Variable, Expr>();
     Dictionary<Variable, Expr> substMapBound = new Dictionary<Variable, Expr>();
-    List<Variable> /*!*/
+    List<Variable>
       tempVars = new List<Variable>();
     string callId = (this as ICarriesAttributes).FindStringAttribute("id");
 
@@ -773,17 +749,17 @@ public class CallCmd : CallCommonality
 
     #region Create cins; each one is an incarnation of the corresponding in parameter
 
-    List<Variable> /*!*/
+    List<Variable>
       cins = new List<Variable>();
     List<Variable> wildcardVars = new List<Variable>();
     Contract.Assume(this.Proc != null);
     for (int i = 0; i < this.Proc.InParams.Count; ++i)
     {
-      Variable /*!*/
-        param = cce.NonNull(this.Proc.InParams[i]);
+      Variable
+        param = Cce.NonNull(this.Proc.InParams[i]);
       bool isWildcard = this.Ins[i] == null;
 
-      Type /*!*/
+      Type
         actualType;
       if (isWildcard)
       {
@@ -793,7 +769,7 @@ public class CallCmd : CallCommonality
       {
         // during type checking, we have ensured that the type of the actual
         // parameter Ins[i] is correct, so we can use it here
-        actualType = cce.NonNull(cce.NonNull(Ins[i]).Type);
+        actualType = Cce.NonNull(Cce.NonNull(Ins[i]).Type);
       }
 
       Variable cin = CreateTemporaryVariable(tempVars, param, actualType,
@@ -820,17 +796,17 @@ public class CallCmd : CallCommonality
 
     for (int i = 0, n = this.Ins.Count; i < n; i++)
     {
-      IdentifierExpr /*!*/
-        cin_exp = new IdentifierExpr(cce.NonNull(cins[i]).tok, cce.NonNull(cins[i]));
+      IdentifierExpr
+        cin_exp = new IdentifierExpr(Cce.NonNull(cins[i]).tok, Cce.NonNull(cins[i]));
       Contract.Assert(cin_exp != null);
       if (this.Ins[i] != null)
       {
-        AssignCmd assign = Cmd.SimpleAssign(Token.NoToken, cin_exp, cce.NonNull(this.Ins[i]));
+        AssignCmd assign = Cmd.SimpleAssign(Token.NoToken, cin_exp, Cce.NonNull(this.Ins[i]));
         newBlockBody.Add(assign);
       }
       else
       {
-        List<IdentifierExpr> /*!*/
+        List<IdentifierExpr>
           ies = new List<IdentifierExpr>();
         ies.Add(cin_exp);
         HavocCmd havoc = new HavocCmd(Token.NoToken, ies);
@@ -847,8 +823,8 @@ public class CallCmd : CallCommonality
     Expr preConjunction = null;
     for (int i = 0; i < this.Proc.Requires.Count; i++)
     {
-      Requires /*!*/
-        req = cce.NonNull(this.Proc.Requires[i]);
+      Requires
+        req = Cce.NonNull(this.Proc.Requires[i]);
       if (!req.Free && !IsFree)
       {
         if (hasWildcard)
@@ -865,17 +841,17 @@ public class CallCmd : CallCommonality
         }
         else
         {
-          Requires /*!*/
-            reqCopy = (Requires /*!*/) cce.NonNull(req.Clone());
+          Requires
+            reqCopy = (Requires) Cce.NonNull(req.Clone());
           reqCopy.Condition = Substituter.Apply(s, req.Condition);
-          AssertCmd /*!*/
+          AssertCmd
             a = new AssertRequiresCmd(this, reqCopy);
           Contract.Assert(a != null);
 
           if (Attributes != null)
           {
             // Inherit attributes of call.
-            var attrCopy = (QKeyValue) cce.NonNull(Attributes.Clone());
+            var attrCopy = (QKeyValue) Cce.NonNull(Attributes.Clone());
             attrCopy = Substituter.Apply(s, attrCopy);
             a.Attributes = attrCopy;
           }
@@ -894,7 +870,7 @@ public class CallCmd : CallCommonality
                || options.StratifiedInlining > 0)
       {
         // inject free requires as assume statements at the call site
-        AssumeCmd /*!*/
+        AssumeCmd
           a = new AssumeCmd(req.tok, Substituter.Apply(s, req.Condition));
         Contract.Assert(a != null);
         // These probably won't have IDs, but copy if they do.
@@ -914,16 +890,16 @@ public class CallCmd : CallCommonality
         preConjunction = Expr.True;
       }
 
-      Expr /*!*/
+      Expr
         expr = new ExistsExpr(tok, wildcardVars, preConjunction);
       Contract.Assert(expr != null);
-      AssertCmd /*!*/
+      AssertCmd
         a = new AssertCmd(tok, expr);
       Contract.Assert(a != null);
       if (Attributes != null)
       {
         // Inherit attributes of call.
-        var attrCopy = (QKeyValue) cce.NonNull(Attributes.Clone());
+        var attrCopy = (QKeyValue) Cce.NonNull(Attributes.Clone());
         attrCopy = Substituter.Apply(s, attrCopy);
         a.Attributes = attrCopy;
       }
@@ -941,14 +917,14 @@ public class CallCmd : CallCommonality
       s = Substituter.SubstitutionFromDictionary(substMap);
       for (int i = 0; i < this.Proc.Requires.Count; i++)
       {
-        Requires /*!*/
-          req = cce.NonNull(this.Proc.Requires[i]);
+        Requires
+          req = Cce.NonNull(this.Proc.Requires[i]);
         if (!req.Free)
         {
-          Requires /*!*/
-            reqCopy = (Requires /*!*/) cce.NonNull(req.Clone());
+          Requires
+            reqCopy = (Requires) Cce.NonNull(req.Clone());
           reqCopy.Condition = Substituter.Apply(s, req.Condition);
-          AssumeCmd /*!*/
+          AssumeCmd
             a = new AssumeCmd(tok, reqCopy.Condition);
           Contract.Assert(a != null);
           newBlockBody.Add(a);
@@ -962,7 +938,7 @@ public class CallCmd : CallCommonality
 
     List<IdentifierExpr> havocVarExprs = new List<IdentifierExpr>();
 
-    foreach (IdentifierExpr /*!*/ f in this.Proc.Modifies)
+    foreach (IdentifierExpr f in this.Proc.Modifies)
     {
       Contract.Assert(f != null);
       Contract.Assume(f.Decl != null);
@@ -984,15 +960,15 @@ public class CallCmd : CallCommonality
 
     #region Create couts
 
-    List<Variable> /*!*/
+    List<Variable>
       couts = new List<Variable>();
     for (int i = 0; i < this.Proc.OutParams.Count; ++i)
     {
-      Variable /*!*/
-        param = cce.NonNull(this.Proc.OutParams[i]);
+      Variable
+        param = Cce.NonNull(this.Proc.OutParams[i]);
       bool isWildcard = this.Outs[i] == null;
 
-      Type /*!*/
+      Type
         actualType;
       if (isWildcard)
       {
@@ -1002,7 +978,7 @@ public class CallCmd : CallCommonality
       {
         // during type checking, we have ensured that the type of the actual
         // out parameter Outs[i] is correct, so we can use it here
-        actualType = cce.NonNull(cce.NonNull(Outs[i]).Type);
+        actualType = Cce.NonNull(Cce.NonNull(Outs[i]).Type);
       }
 
       Variable cout = CreateTemporaryVariable(tempVars, param, actualType,
@@ -1018,13 +994,13 @@ public class CallCmd : CallCommonality
     }
 
     // add the where clauses, now that we have the entire substitution map
-    foreach (Variable /*!*/ param in this.Proc.OutParams)
+    foreach (Variable param in this.Proc.OutParams)
     {
       Contract.Assert(param != null);
       Expr w = param.TypedIdent.WhereExpr;
       if (w != null)
       {
-        IdentifierExpr ie = (IdentifierExpr /*!*/) cce.NonNull(substMap[param]);
+        IdentifierExpr ie = (IdentifierExpr) Cce.NonNull(substMap[param]);
         Contract.Assert(ie.Decl != null);
         ie.Decl.TypedIdent.WhereExpr = Substituter.Apply(Substituter.SubstitutionFromDictionary(substMap), w);
       }
@@ -1044,7 +1020,7 @@ public class CallCmd : CallCommonality
 
     calleeSubstitution = Substituter.SubstitutionFromDictionary(substMap, true, Proc);
     calleeSubstitutionOld = Substituter.SubstitutionFromDictionary(substMapOld, true, Proc);
-    foreach (Ensures /*!*/ e in this.Proc.Ensures)
+    foreach (Ensures e in this.Proc.Ensures)
     {
       Contract.Assert(e != null);
       Expr copy = Substituter.ApplyReplacingOldExprs(calleeSubstitution, calleeSubstitutionOld, e.Condition);
@@ -1081,12 +1057,12 @@ public class CallCmd : CallCommonality
     {
       if (this.Outs[i] != null)
       {
-        Variable /*!*/
-          param_i = cce.NonNull(this.Proc.OutParams[i]);
-        Expr /*!*/
-          cout_exp = new IdentifierExpr(cce.NonNull(couts[i]).tok, cce.NonNull(couts[i]));
+        Variable
+          param_i = Cce.NonNull(this.Proc.OutParams[i]);
+        Expr
+          cout_exp = new IdentifierExpr(Cce.NonNull(couts[i]).tok, Cce.NonNull(couts[i]));
         Contract.Assert(cout_exp != null);
-        AssignCmd assign = Cmd.SimpleAssign(param_i.tok, cce.NonNull(this.Outs[i]), cout_exp);
+        AssignCmd assign = Cmd.SimpleAssign(param_i.tok, Cce.NonNull(this.Outs[i]), cout_exp);
         if (callId is not null) {
           Attributes = new QKeyValue(param_i.tok, "id", new List<object>(){ $"{callId}$out{i}" }, Attributes);
         }
@@ -1176,7 +1152,6 @@ public class CallCmd : CallCommonality
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    //Contract.Requires(visitor != null);
     Contract.Ensures(Contract.Result<Absy>() != null);
     return visitor.VisitCallCmd(this);
   }

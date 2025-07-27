@@ -56,16 +56,16 @@ namespace VC
         prunedDeclarations = liveDeclarations.ToList();
       }
 
-      readonly Dictionary<Block /*!*/, BlockStats /*!*/> /*!*/
-        stats = new Dictionary<Block /*!*/, BlockStats /*!*/>();
+      readonly Dictionary<Block, BlockStats>
+        stats = new Dictionary<Block, BlockStats>();
 
       static int currentId = -1;
 
       Block splitBlock;
       bool assertToAssume;
 
-      List<Block /*!*/> /*!*/
-        assumizedBranches = new List<Block /*!*/>();
+      List<Block>
+        assumizedBranches = new List<Block>();
 
       double score;
       bool scoreComputed;
@@ -73,25 +73,25 @@ namespace VC
       int assertionCount;
       double assertionCost; // without multiplication by paths
 
-      public readonly VerificationConditionGenerator /*!*/ parent;
+      public readonly VerificationConditionGenerator parent;
 
-      public Implementation /*!*/ Implementation => Run.Implementation;
+      public Implementation Implementation => Run.Implementation;
 
-      Dictionary<Block /*!*/, Block /*!*/> /*!*/ copies = new();
+      Dictionary<Block, Block> copies = new();
 
       bool doingSlice;
       double sliceInitialLimit;
       double sliceLimit;
       bool slicePos;
-      HashSet<Block /*!*/> /*!*/ protectedFromAssertToAssume = new();
-      HashSet<Block /*!*/> /*!*/ keepAtAll = new();
+      HashSet<Block> protectedFromAssertToAssume = new();
+      HashSet<Block> keepAtAll = new();
 
       // async interface
       public int SplitIndex { get; set; }
       public VerificationConditionGenerator.ErrorReporter reporter;
 
-      public Split(VCGenOptions options, Func<IList<Block /*!*/>> /*!*/ getBlocks,
-        VerificationConditionGenerator /*!*/ parent, ImplementationRun run, int? randomSeed = null)
+      public Split(VCGenOptions options, Func<IList<Block>> getBlocks,
+        VerificationConditionGenerator parent, ImplementationRun run, int? randomSeed = null)
       {
         Contract.Requires(parent != null);
         this.getBlocks = getBlocks;
@@ -114,7 +114,7 @@ namespace VC
           Thread.Sleep(100);
         }
 
-        var prefix = this is ManualSplit manualSplit ? manualSplit.Token.ShortName : "";
+        var prefix = this is ManualSplit manualSplit ? "-" + manualSplit.SplitIndex + manualSplit.Token.ShortName : "";
         var name = Implementation.Name + prefix; 
         using var writer = printToConsole
           ? new TokenTextWriter("<console>", Options.OutputWriter, false, Options.PrettyPrint, Options) 
@@ -229,7 +229,7 @@ namespace VC
           stats[b] = s;
         }
 
-        return cce.NonNull(s);
+        return Cce.NonNull(s);
       }
 
       double AssertionCost(PredicateCmd c)
@@ -287,20 +287,20 @@ namespace VC
         }
       }
 
-      HashSet<Block /*!*/> /*!*/ ComputeReachableNodes(Block /*!*/ b)
+      HashSet<Block> ComputeReachableNodes(Block b)
       {
         Contract.Requires(b != null);
-        Contract.Ensures(cce.NonNull(Contract.Result<HashSet<Block /*!*/>>()));
+        Contract.Ensures(Cce.NonNull(Contract.Result<HashSet<Block>>()));
         BlockStats s = GetBlockStats(b);
         if (s.reachableBlocks != null)
         {
           return s.reachableBlocks;
         }
 
-        HashSet<Block /*!*/> blocks = new HashSet<Block /*!*/>();
+        HashSet<Block> blocks = new HashSet<Block>();
         s.reachableBlocks = blocks;
         blocks.Add(b);
-        foreach (Block /*!*/ succ in b.Exits())
+        foreach (Block succ in b.Exits())
         {
           Contract.Assert(succ != null);
           foreach (Block r in ComputeReachableNodes(succ))
@@ -351,7 +351,7 @@ namespace VC
                 Options.OutputWriter.WriteLine("non-big {0} accessed from {1}", ch, b);
                 DumpDot(-1);
                 Contract.Assert(false);
-                throw new cce.UnreachableException();
+                throw new Cce.UnreachableException();
               }
 
               chs.virtualPredecessors.Add(b);
@@ -375,7 +375,7 @@ namespace VC
             continue;
           }
 
-          List<Block> targ = cce.NonNull(gt.LabelTargets);
+          List<Block> targ = Cce.NonNull(gt.LabelTargets);
           if (targ.Count < 2)
           {
             continue;
@@ -386,14 +386,14 @@ namespace VC
           splitBlock = b;
 
           assumizedBranches.Clear();
-          assumizedBranches.Add(cce.NonNull(targ[0]));
+          assumizedBranches.Add(Cce.NonNull(targ[0]));
           left0 = DoComputeScore(true);
           right0 = DoComputeScore(false);
 
           assumizedBranches.Clear();
           for (int idx = 1; idx < targ.Count; idx++)
           {
-            assumizedBranches.Add(cce.NonNull(targ[idx]));
+            assumizedBranches.Add(Cce.NonNull(targ[idx]));
           }
 
           left1 = DoComputeScore(true);
@@ -406,7 +406,7 @@ namespace VC
           {
             currentScore = otherScore;
             assumizedBranches.Clear();
-            assumizedBranches.Add(cce.NonNull(targ[0]));
+            assumizedBranches.Add(Cce.NonNull(targ[0]));
           }
 
           if (currentScore < score)
@@ -511,7 +511,7 @@ namespace VC
           foreach (var block in allowSmall ? Blocks : bigBlocks)
           {
             Contract.Assert(block != null);
-            if (ComputeReachableNodes(block).Contains(cce.NonNull(splitBlock)))
+            if (ComputeReachableNodes(block).Contains(Cce.NonNull(splitBlock)))
             {
               keepAtAll.Add(block);
             }
@@ -617,7 +617,7 @@ namespace VC
             else
             {
               Contract.Assert(false);
-              throw new cce.UnreachableException();
+              throw new Cce.UnreachableException();
             }
 
             if (swap)
@@ -639,7 +639,7 @@ namespace VC
 
         if (copies.TryGetValue(b, out var res))
         {
-          return cce.NonNull(res);
+          return Cce.NonNull(res);
         }
 
         res = new Block(b.tok, b.Label, SliceCmds(b), b.TransferCmd);
@@ -650,7 +650,7 @@ namespace VC
           GotoCmd newGoto = new GotoCmd(gt.tok, new List<String>(), new List<Block>());
           res.TransferCmd = newGoto;
           int pos = 0;
-          foreach (Block ch in cce.NonNull(gt.LabelTargets))
+          foreach (Block ch in Cce.NonNull(gt.LabelTargets))
           {
             Contract.Assert(ch != null);
             Contract.Assert(doingSlice ||
@@ -684,7 +684,7 @@ namespace VC
             continue;
           }
 
-          newBlocks.Add(cce.NonNull(tmp));
+          newBlocks.Add(Cce.NonNull(tmp));
 
           foreach (var predecessor in block.Predecessors)
           {
@@ -755,7 +755,7 @@ namespace VC
             if (command is AssertCmd assertCmd)
             {
               var counterexample = VerificationConditionGenerator.AssertCmdToCounterexample(Options, assertCmd,
-                cce.NonNull(block.TransferCmd), trace, null, null, null, context, this);
+                Cce.NonNull(block.TransferCmd), trace, null, null, null, context, this);
               Counterexamples.Add(counterexample);
               return counterexample;
             }
@@ -763,13 +763,13 @@ namespace VC
         }
 
         Contract.Assume(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
 
-      public static List<Split /*!*/> /*!*/ DoSplit(Split initial, double splitThreshold, int maxSplits)
+      public static List<Split> DoSplit(Split initial, double splitThreshold, int maxSplits)
       {
         Contract.Requires(initial != null);
-        Contract.Ensures(cce.NonNullElements(Contract.Result<List<Split>>()));
+        Contract.Ensures(Cce.NonNullElements(Contract.Result<List<Split>>()));
 
         var run = initial.Run;
         var result = new List<Split> { initial };
@@ -812,7 +812,7 @@ namespace VC
               if (g != null)
               {
                 run.OutputWriter.Write("    exits: ");
-                foreach (Block b in cce.NonNull(g.LabelTargets))
+                foreach (Block b in Cce.NonNull(g.LabelTargets))
                 {
                   Contract.Assert(b != null);
                   run.OutputWriter.Write("{0} ", b.Label);
@@ -861,7 +861,7 @@ namespace VC
               s0.DumpDot(-2);
               s1.DumpDot(-3);
               Contract.Assert(false);
-              throw new cce.UnreachableException();
+              throw new Cce.UnreachableException();
             }
           }
 
@@ -888,7 +888,7 @@ namespace VC
       public VerificationRunResult ReadOutcome(int iteration, Checker checker, VerifierCallback callback)
       {
         Contract.EnsuresOnThrow<UnexpectedProverOutputException>(true);
-        SolverOutcome outcome = cce.NonNull(checker).ReadOutcome();
+        SolverOutcome outcome = Cce.NonNull(checker).ReadOutcome();
 
         if (Options.Trace && SplitIndex >= 0)
         {
@@ -988,7 +988,7 @@ namespace VC
       {
         get
         {
-          string description = cce.NonNull(Implementation.Name);
+          string description = Cce.NonNull(Implementation.Name);
           if (SplitIndex >= 0)
           {
             description += "_split" + SplitIndex;
@@ -998,10 +998,10 @@ namespace VC
         }
       }
 
-      private void SoundnessCheck(HashSet<List<Block> /*!*/> /*!*/ cache, Block /*!*/ orig,
-        List<Block /*!*/> /*!*/ copies)
+      private void SoundnessCheck(HashSet<List<Block>> cache, Block orig,
+        List<Block> copies)
       {
-        Contract.Requires(cce.NonNull(cache));
+        Contract.Requires(Cce.NonNull(cache));
         Contract.Requires(orig != null);
         Contract.Requires(copies != null);
         {

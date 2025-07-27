@@ -245,7 +245,7 @@ namespace Microsoft.Boogie
         var axCallArgs = new List<Expr>();
         var dummies = new List<Variable>();
         var freeTypeVars = new List<TypeVariable>();
-        var fnTypeVarActuals = new List<Type /*!*/>();
+        var fnTypeVarActuals = new List<Type>();
         var freshTypeVars = new List<TypeVariable>(); // these are only used in the lambda@n function's definition
 
         // compute the free variables of the lambda expression, but with lambdaBody instead of lambda.Body
@@ -294,7 +294,7 @@ namespace Microsoft.Boogie
         string lam_str = sw.ToString();
 
         IToken tok = lambda.tok;
-        Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, cce.NonNull(lambda.Type)), false);
+        Formal res = new Formal(tok, new TypedIdent(tok, TypedIdent.NoName, Cce.NonNull(lambda.Type)), false);
 
         if (liftedLambdas.TryGetValue(lambda, out var fcall))
         {

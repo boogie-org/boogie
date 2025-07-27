@@ -12,12 +12,12 @@ public class CalleeCounterexampleInfo
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(Args));
+    Contract.Invariant(Cce.NonNullElements(Args));
   }
 
   public CalleeCounterexampleInfo(Counterexample cex, List<object /*!>!*/> x)
   {
-    Contract.Requires(cce.NonNullElements(x));
+    Contract.Requires(Cce.NonNullElements(x));
     Counterexample = cex;
     Args = x;
   }

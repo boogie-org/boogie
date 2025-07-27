@@ -85,7 +85,7 @@ namespace Microsoft.Boogie
 
     public async Task<bool> ProcessFiles(TextWriter output, IList<string> fileNames, bool lookForSnapshots = true,
       string programId = null, CancellationToken cancellationToken = default) {
-      Contract.Requires(cce.NonNullElements(fileNames));
+      Contract.Requires(Cce.NonNullElements(fileNames));
 
       if (Options.VerifySeparately && 1 < fileNames.Count) {
         var success = true;
@@ -229,11 +229,11 @@ namespace Microsoft.Boogie
     }
 
 
-    public void CollectModSets(Program program)
+    public void CollectModifies(Program program)
     {
-      if (Options.DoModSetAnalysis)
+      if (Options.InferModifies)
       {
-        new ModSetCollector(Options).DoModSetAnalysis(program);
+        new ModSetCollector(Options).CollectModifies(program);
       }
     }
 
@@ -286,7 +286,7 @@ namespace Microsoft.Boogie
     /// </summary>
     public Program ParseBoogieProgram(IList<string> fileNames, bool suppressTraceOutput)
     {
-      Contract.Requires(cce.NonNullElements(fileNames));
+      Contract.Requires(Cce.NonNullElements(fileNames));
 
       Program program = new Program();
       bool okay = true;
@@ -339,7 +339,7 @@ namespace Microsoft.Boogie
         if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
         {
           Options.Libraries.Add("base");
-          Options.DoModSetAnalysis = true;
+          Options.InferModifies = true;
         }
 
         foreach (var libraryName in Options.Libraries)
@@ -403,6 +403,8 @@ namespace Microsoft.Boogie
         return PipelineOutcome.TypeCheckingError;
       }
       
+      CollectModifies(program);
+
       errorCount = program.Typecheck(Options);
       if (errorCount != 0)
       {
@@ -443,8 +445,6 @@ namespace Microsoft.Boogie
         return PipelineOutcome.FatalError;
       }
 
-      CollectModSets(program);
-
       civlTypeChecker = new CivlTypeChecker(Options, program);
       civlTypeChecker.TypeCheck();
       if (civlTypeChecker.checkingContext.ErrorCount != 0)
@@ -474,7 +474,7 @@ namespace Microsoft.Boogie
       }
 
       // Inline
-      var TopLevelDeclarations = cce.NonNull(program.TopLevelDeclarations);
+      var TopLevelDeclarations = Cce.NonNull(program.TopLevelDeclarations);
 
       if (Options.ProcedureInlining != CoreOptions.Inlining.None)
       {
@@ -611,6 +611,9 @@ namespace Microsoft.Boogie
         }
 
         var processedProgram = Options.ExtractLoops ? ExtractLoops(program) : new ProcessedProgram(program);
+        if (Options.WarnVacuousProofs) {
+          processedProgram = AddVacuityChecking(processedProgram);
+        }
 
         if (Options.PrintInstrumented)
         {
@@ -635,10 +638,59 @@ namespace Microsoft.Boogie
       });
     }
 
+    private ProcessedProgram AddVacuityChecking(ProcessedProgram processedProgram)
+    {
+      Program program = processedProgram.Program;
+      CoverageAnnotator annotator = new CoverageAnnotator();
+      foreach (var impl in program.Implementations) {
+        annotator.VisitImplementation(impl);
+      }
+      return new ProcessedProgram(program, (vcgen, impl, result) =>
+        {
+          CheckVacuity(annotator, impl, result);
+          processedProgram.PostProcessResult(vcgen, impl, result);
+        }
+      );
+    }
+
+    private void CheckVacuity(CoverageAnnotator annotator, Implementation impl, ImplementationRunResult verificationResult)
+    {
+      var covered = verificationResult
+        .RunResults
+        .SelectMany(r => r.CoveredElements)
+        .ToHashSet();
+      foreach (var goalId in annotator.GetImplementationGoalIds(impl.Name)) {
+        if (!CoveredId(goalId, covered)) {
+          var node = annotator.GetIdNode(goalId);
+          Options.Printer.AdvisoryWriteLine(Options.OutputWriter,
+            $"{node.tok.filename}({node.tok.line},{node.tok.col - 1}): Warning: Proved vacuously");
+        }
+      }
+    }
+
+    private static bool CoveredId(string goalId, HashSet<TrackedNodeComponent> covered)
+    {
+      foreach (var component in covered) {
+        if (component is LabeledNodeComponent { id: var id } && id == goalId) {
+          return true;
+        }
+
+        if (component is TrackedInvariantEstablished { invariantId: var eid } && eid == goalId) {
+          return true;
+        }
+
+        if (component is TrackedInvariantMaintained { invariantId: var mid } && mid == goalId) {
+          return true;
+        }
+      }
+
+      return false;
+    }
+
     private Implementation[] GetPrioritizedImplementations(Program program)
     {
       var impls = program.Implementations.Where(
-        impl => impl != null && Options.UserWantsToCheckRoutine(cce.NonNull(impl.VerboseName)) &&
+        impl => impl != null && Options.UserWantsToCheckRoutine(Cce.NonNull(impl.VerboseName)) &&
                 !impl.IsSkipVerification(Options)).ToArray();
 
       // operate on a stable copy, in case it gets updated while we're running
@@ -696,7 +748,7 @@ namespace Microsoft.Boogie
               .OrderBy(s => s)));
       }
 
-      cce.NonNull(Options.TheProverFactory).Close();
+      Cce.NonNull(Options.TheProverFactory).Close();
 
       return outcome;
 
@@ -716,6 +768,7 @@ namespace Microsoft.Boogie
     {
       var sink = new CollectingErrorSink();
       var resolutionErrors = program.Resolve(Options, sink);
+      
       string GetErrorsString() => string.Join("\n", sink.Errors.Select(t => $"{t.Token}: {t.Message}"));
       if (resolutionErrors > 0)
       {
@@ -728,7 +781,7 @@ namespace Microsoft.Boogie
       }
 
       EliminateDeadVariables(program);
-      CollectModSets(program);
+      CollectModifies(program);
       CoalesceBlocks(program);
       Inline(program);
 
@@ -963,7 +1016,6 @@ namespace Microsoft.Boogie
 
       return resultTask;
     }
-
 
     #region Houdini
 
@@ -1202,7 +1254,7 @@ namespace Microsoft.Boogie
       {
         default:
           Contract.Assert(false); // unexpected outcome
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         case VcOutcome.Correct:
           traceOutput = "verified";
           break;
@@ -1239,7 +1291,7 @@ namespace Microsoft.Boogie
       {
         default:
           Contract.Assert(false); // unexpected outcome
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         case VcOutcome.Correct:
           Interlocked.Increment(ref stats.VerifiedCount);
           break;
@@ -1272,7 +1324,7 @@ namespace Microsoft.Boogie
       {
         default:
           Contract.Assert(false); // unexpected outcome
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         case VcOutcome.Correct:
           Interlocked.Increment(ref stats.CachedVerifiedCount);
           break;

@@ -153,7 +153,7 @@ namespace Microsoft.BaseTypes
     }
 
     [Pure]
-    public override string /*!*/ ToString()
+    public override string ToString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
       return String.Format("{0}e{1}", this.mantissa.ToString(), this.exponent.ToString());

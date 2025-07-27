@@ -17,11 +17,11 @@ public class CommandLineOptionEngine
     Contract.Invariant(ToolName != null);
     Contract.Invariant(DescriptiveToolName != null);
     Contract.Invariant(this._environment != null);
-    Contract.Invariant(cce.NonNullElements(this._files));
+    Contract.Invariant(Cce.NonNullElements(this._files));
     Contract.Invariant(this._fileTimestamp != null);
   }
 
-  private string /*!*/ _environment = "";
+  private string _environment = "";
 
   public string Environment
   {
@@ -37,13 +37,13 @@ public class CommandLineOptionEngine
     }
   }
 
-  private readonly List<string /*!*/> /*!*/ _files = new List<string /*!*/>();
+  private readonly List<string> _files = new List<string>();
 
-  public IList<string /*!*/> /*!*/ Files
+  public IList<string> Files
   {
     get
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IList<string>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<IList<string>>()));
       Contract.Ensures(Contract.Result<IList<string>>().IsReadOnly);
       return this._files.AsReadOnly();
     }
@@ -62,18 +62,18 @@ public class CommandLineOptionEngine
     OutputWriter = outputWriter;
   }
 
-  public virtual string /*!*/ VersionNumber
+  public virtual string VersionNumber
   {
     get
     {
       Contract.Ensures(Contract.Result<string>() != null);
-      return cce.NonNull(cce
+      return Cce.NonNull(Cce
         .NonNull(System.Diagnostics.FileVersionInfo.GetVersionInfo(System.Reflection.Assembly.GetExecutingAssembly()
           .Location)).FileVersion);
     }
   }
 
-  public virtual string /*!*/ VersionSuffix
+  public virtual string VersionSuffix
   {
     get
     {
@@ -82,7 +82,7 @@ public class CommandLineOptionEngine
     }
   }
 
-  public virtual string /*!*/ Version
+  public virtual string Version
   {
     get
     {
@@ -91,8 +91,8 @@ public class CommandLineOptionEngine
     }
   }
 
-  private string /*!*/
-    _fileTimestamp = cce.NonNull(DateTime.Now.ToString("o")).Replace(':', '.');
+  private string
+    _fileTimestamp = Cce.NonNull(DateTime.Now.ToString("o")).Replace(':', '.');
 
   public string FileTimestamp
   {
@@ -186,18 +186,18 @@ public class CommandLineOptionEngine
   /// Parses the command-line arguments "args" into the global flag variables.  Returns true
   /// if there were no errors.
   /// </summary>
-  public virtual bool Parse(string[] /*!*/ args)
+  public virtual bool Parse(string[] args)
   {
-    Contract.Requires(cce.NonNullElements(args));
+    Contract.Requires(Cce.NonNullElements(args));
 
     // save the command line options for the log files
     Environment += "Command Line Options: " + string.Join(" ", args);
-    args = cce.NonNull((string[]) args.Clone()); // the operations performed may mutate the array, so make a copy
+    args = Cce.NonNull((string[]) args.Clone()); // the operations performed may mutate the array, so make a copy
     var ps = InitializeCommandLineParseState(args);
 
     while (ps.i < args.Length)
     {
-      cce.LoopInvariant(ps.args == args);
+      Cce.LoopInvariant(ps.args == args);
       string arg = args[ps.i];
       Contract.Assert(arg != null);
       ps.s = arg.Trim();

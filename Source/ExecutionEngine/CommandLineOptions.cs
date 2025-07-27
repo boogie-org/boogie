@@ -317,10 +317,13 @@ namespace Microsoft.Boogie
 
     public bool PrintAssignment  { get; set; }
 
-    public bool TrackVerificationCoverage {
-      get => trackVerificationCoverage;
+    public bool TrackVerificationCoverage
+    {
+      get => trackVerificationCoverage || WarnVacuousProofs;
       set => trackVerificationCoverage = value;
     }
+
+    public bool WarnVacuousProofs { get; set; }
 
     public int InlineDepth  { get; set; } = -1;
 
@@ -333,7 +336,7 @@ namespace Microsoft.Boogie
     public int KInductionDepth { get; set; } = -1;
     public int EnableUnSatCoreExtract { get; set; }
 
-    private string /*!*/ _logPrefix = "";
+    private string _logPrefix = "";
 
     public string LogPrefix
     {
@@ -370,7 +373,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(0 <= EnhancedErrorMessages && EnhancedErrorMessages < 2);
       Contract.Invariant(0 <= Ai.StepsBeforeWidening && Ai.StepsBeforeWidening <= 9);
       Contract.Invariant(-1 <= this.bracketIdsInVC && this.bracketIdsInVC <= 1);
-      Contract.Invariant(cce.NonNullElements(this.ProverOptions));
+      Contract.Invariant(Cce.NonNullElements(this.ProverOptions));
     }
 
     public int LoopUnrollCount { get; set; } = -1; // -1 means don't unroll loops
@@ -386,7 +389,7 @@ namespace Microsoft.Boogie
     }
 
     public string PrintCFGPrefix { get; set; }
-    public bool ForceBplErrors { get; set; } = false; // if true, boogie error is shown even if "msg" attribute is present
+    public bool ForceBplErrors { get; set; } = false;
 
     public bool UseArrayTheory => !useArrayAxioms && TypeEncodingMethod == CoreOptions.TypeEncoding.Monomorphic;
 
@@ -416,9 +419,9 @@ namespace Microsoft.Boogie
 
     public bool ExpandLambdas { get; set; } = true; // not useful from command line, only to be set to false programatically
 
-    public bool DoModSetAnalysis {
-      get => doModSetAnalysis;
-      set => doModSetAnalysis = value;
+    public bool InferModifies {
+      get => inferModifies;
+      set => inferModifies = value;
     }
 
     public bool UseAbstractInterpretation { get; set; }
@@ -561,22 +564,22 @@ namespace Microsoft.Boogie
     // (and similarly procsToIgnore for /noProc:<p>). Thus, if procsToCheck
     // is empty it means that all procedures should be checked.
     public List<string> ProcsToCheck { get; set; } = new();
-    public List<string /*!*/> ProcsToIgnore { get; set; } = new();
+    public List<string> ProcsToIgnore { get; set; } = new();
 
     [ContractInvariantMethod]
     void ObjectInvariant5()
     {
-      Contract.Invariant(cce.NonNullElements(this.ProcsToCheck, true));
-      Contract.Invariant(cce.NonNullElements(this.ProcsToIgnore, true));
+      Contract.Invariant(Cce.NonNullElements(this.ProcsToCheck, true));
+      Contract.Invariant(Cce.NonNullElements(this.ProcsToIgnore, true));
       Contract.Invariant(Ai != null);
     }
 
-    public CoreOptions.AiFlags /*!*/ Ai  { get; private set; } = new();
+    public CoreOptions.AiFlags Ai  { get; private set; } = new();
 
     private bool proverHelpRequested = false;
     private bool restartProverPerVc = false;
     private bool useArrayAxioms = false;
-    private bool doModSetAnalysis = false;
+    private bool inferModifies = false;
     private bool runDiagnosticsOnTimeout = false;
     private bool traceDiagnosticsOnTimeout = false;
     private bool siBoolControlVc = false;
@@ -617,7 +620,7 @@ namespace Microsoft.Boogie
           if (ps.ConfirmArgumentCount(1))
           {
             UseAbstractInterpretation = true;
-            foreach (char c in cce.NonNull(args[ps.i]))
+            foreach (char c in Cce.NonNull(args[ps.i]))
             {
               switch (c)
               {
@@ -668,7 +671,7 @@ namespace Microsoft.Boogie
         case "lib":
           if (ps.ConfirmArgumentCount(1))
           {
-            this.Libraries.Add(cce.NonNull(args[ps.i]));
+            this.Libraries.Add(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -676,7 +679,7 @@ namespace Microsoft.Boogie
         case "proc":
           if (ps.ConfirmArgumentCount(1))
           {
-            this.ProcsToCheck.Add(cce.NonNull(args[ps.i]));
+            this.ProcsToCheck.Add(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -684,7 +687,7 @@ namespace Microsoft.Boogie
         case "noProc":
           if (ps.ConfirmArgumentCount(1))
           {
-            this.ProcsToIgnore.Add(cce.NonNull(args[ps.i]));
+            this.ProcsToIgnore.Add(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -790,7 +793,7 @@ namespace Microsoft.Boogie
         case "logPrefix":
           if (ps.ConfirmArgumentCount(1))
           {
-            string s = cce.NonNull(args[ps.i]);
+            string s = Cce.NonNull(args[ps.i]);
             LogPrefix += s.Replace('/', '-').Replace('\\', '-');
           }
 
@@ -819,7 +822,7 @@ namespace Microsoft.Boogie
               default:
               {
                 Contract.Assert(false);
-                throw new cce.UnreachableException();
+                throw new Cce.UnreachableException();
               } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
@@ -846,7 +849,7 @@ namespace Microsoft.Boogie
               default:
               {
                 Contract.Assert(false);
-                throw new cce.UnreachableException();
+                throw new Cce.UnreachableException();
               } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
@@ -939,7 +942,7 @@ namespace Microsoft.Boogie
               default:
               {
                 Contract.Assert(false);
-                throw new cce.UnreachableException();
+                throw new Cce.UnreachableException();
               } // postcondition of GetIntArgument guarantees that we don't get here
             }
           }
@@ -1058,7 +1061,7 @@ namespace Microsoft.Boogie
         case "proverDll":
           if (ps.ConfirmArgumentCount(1))
           {
-            ProverDllName = cce.NonNull(args[ps.i]);
+            ProverDllName = Cce.NonNull(args[ps.i]);
             TheProverFactory = ProverFactory.Load(ProverDllName);
           }
 
@@ -1068,7 +1071,7 @@ namespace Microsoft.Boogie
         case "proverOpt":
           if (ps.ConfirmArgumentCount(1))
           {
-            ProverOptions.Add(cce.NonNull(args[ps.i]));
+            ProverOptions.Add(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1117,7 +1120,7 @@ namespace Microsoft.Boogie
         case "enableUnSatCoreExtraction":
           if (ps.ConfirmArgumentCount(1))
           {
-            EnableUnSatCoreExtract = Int32.Parse(cce.NonNull(args[ps.i]));
+            EnableUnSatCoreExtract = Int32.Parse(Cce.NonNull(args[ps.i]));
           }
 
           return true;
@@ -1340,6 +1343,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("silent", x => Verbosity = CoreOptions.VerbosityLevel.Silent) ||
               ps.CheckBooleanFlag("traceTimes", x => TraceTimes = x) ||
               ps.CheckBooleanFlag("tracePOs", x => TraceProofObligations = x) ||
+              ps.CheckBooleanFlag("forceBplErrors", x => ForceBplErrors = x) ||
               ps.CheckBooleanFlag("noResolve", x => NoResolve = x) ||
               ps.CheckBooleanFlag("noTypecheck", x => NoTypecheck = x) ||
               ps.CheckBooleanFlag("overlookTypeErrors", x => OverlookBoogieTypeErrors = x) ||
@@ -1362,7 +1366,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("reflectAdd", x => ReflectAdd = x) ||
               ps.CheckBooleanFlag("useArrayAxioms", x => useArrayAxioms = x) ||
               ps.CheckBooleanFlag("relaxFocus", x => RelaxFocus = x) ||
-              ps.CheckBooleanFlag("doModSetAnalysis", x => doModSetAnalysis = x) ||
+              ps.CheckBooleanFlag("inferModifies", x => inferModifies = x) ||
               ps.CheckBooleanFlag("runDiagnosticsOnTimeout", x => runDiagnosticsOnTimeout = x) ||
               ps.CheckBooleanFlag("traceDiagnosticsOnTimeout", x => traceDiagnosticsOnTimeout = x) ||
               ps.CheckBooleanFlag("boolControlVC", x => siBoolControlVc = x, true) ||
@@ -1373,6 +1377,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("useUnsatCoreForContractInfer", x => useUnsatCoreForContractInfer = x) ||
               ps.CheckBooleanFlag("printAssignment", x => PrintAssignment = x) ||
               ps.CheckBooleanFlag("trackVerificationCoverage", x => trackVerificationCoverage = x) ||
+              ps.CheckBooleanFlag("warnVacuousProofs", x => WarnVacuousProofs = x) ||
               ps.CheckBooleanFlag("useProverEvaluate", x => useProverEvaluate = x) ||
               ps.CheckBooleanFlag("deterministicExtractLoops", x => DeterministicExtractLoops = x) ||
               ps.CheckBooleanFlag("verifySeparately", x => VerifySeparately = x) ||
@@ -1475,7 +1480,7 @@ namespace Microsoft.Boogie
       int i = 0;
       for (int n = argList.Length; i < n;)
       {
-        cce.LoopInvariant(0 <= i);
+        Cce.LoopInvariant(0 <= i);
         int separatorIndex = this.GetArgumentSeparatorIndex(argList, i);
         if (separatorIndex > i)
         {
@@ -1767,40 +1772,41 @@ namespace Microsoft.Boogie
   Multiple .bpl files supplied on the command line are concatenated into one
   Boogie program.
 
-  /lib:<name>    : Include definitions in library <name>. The file <name>.bpl
-                   must be an included resource in Core.dll. Currently, the
-                   following libraries are supported---base, node.
-  /proc:<p>      : Only check procedures matched by pattern <p>. This option
-                   may be specified multiple times to match multiple patterns.
-                   The pattern <p> matches the whole procedure name and may
-                   contain * wildcards which match any character zero or more
-                   times.
-  /noProc:<p>    : Do not check procedures matched by pattern <p>. Exclusions
-                   with /noProc are applied after inclusions with /proc.
-  /noResolve     : parse only
-  /noTypecheck   : parse and resolve only
-
-  /print:<file>  : print Boogie program after parsing it
-                   (use - as <file> to print to console)
-  /pretty:<n>
-                0 - print each Boogie statement on one line (faster).
+  /lib:<name>   Include definitions in library <name>. The file <name>.bpl
+                must be an included resource in Core.dll. Currently, the
+                following libraries are supported---base, node.
+  /proc:<p>     Only check procedures matched by pattern <p>. This option
+                may be specified multiple times to match multiple patterns.
+                The pattern <p> matches the whole procedure name and may
+                contain * wildcards which match any character zero or more
+                times.
+  /noProc:<p>   Do not check procedures matched by pattern <p>. Exclusions
+                with /noProc are applied after inclusions with /proc.
+  /noResolve    parse only
+  /noTypecheck  parse and resolve only
+  /print:<file>
+                print Boogie program after parsing it
+                (use - as <file> to print to console)
+  /pretty:<n>   0 - print each Boogie statement on one line (faster).
                 1 (default) - pretty-print with some line breaks.
-  /printWithUniqueIds : print augmented information that uniquely
-                   identifies variables
-  /printUnstructured : with /print option, desugars all structured statements
-  /printPassive :  with /print option, prints passive version of program
-  /printDesugared : with /print option, desugars calls
-  /printLambdaLifting : with /print option, desugars lambda lifting
-
-  /freeVarLambdaLifting : Boogie's lambda lifting transforms the bodies of lambda
-                         expressions into templates with holes. By default, holes
-                         are maximally large subexpressions that do not contain
-                         bound variables. This option performs a form of lambda
-                         lifting in which holes are the lambda's free variables.
-
-  /overlookTypeErrors : skip any implementation with resolution or type
-                        checking errors
-
+  /printWithUniqueIds
+                print augmented information that uniquely identifies variables
+  /printUnstructured
+                with /print option, desugars all structured statements
+  /printPassive
+                with /print option, prints passive version of program
+  /printDesugared
+                with /print option, desugars calls
+  /printLambdaLifting
+                with /print option, desugars lambda lifting
+  /freeVarLambdaLifting
+                Boogie's lambda lifting transforms the bodies of lambda
+                expressions into templates with holes. By default, holes
+                are maximally large subexpressions that do not contain
+                bound variables. This option performs a form of lambda
+                lifting in which holes are the lambda's free variables.
+  /overlookTypeErrors
+                skip any implementation with resolution or type checking errors
   /loopUnroll:<n>
                 unroll loops, following up to n back edges (and then some)
                 default is -1, which means loops are not unrolled
@@ -1809,7 +1815,10 @@ namespace Microsoft.Boogie
                 inline irreducible loops using the bound supplied by /loopUnroll:<n>
   /soundLoopUnrolling
                 sound loop unrolling
-  /doModSetAnalysis
+  /kInductionDepth:<k>
+                uses combined-case k-induction to soundly eliminate loops,
+                by unwinding proportional to the supplied parameter
+  /inferModifies
                 automatically infer modifies clauses
   /printModel:<n>
                 0 (default) - do not print Z3's error model
@@ -1821,24 +1830,19 @@ namespace Microsoft.Boogie
   /enhancedErrorMessages:<n>
                 0 (default) - no enhanced error messages
                 1 - Z3 error model enhanced error messages
-
   /printCFG:<prefix> : print control flow graph of each implementation in
                        Graphviz format to files named:
                          <prefix>.<procedure name>.dot
-
   /useBaseNameForFileName : When parsing use basename of file for tokens instead
                             of the path supplied on the command line
-
   /emitDebugInformation:<n>
                 0 - do not emit debug information
                 1 (default) - emit the debug information :qid, :skolemid and set-info :boogie-vc-id
-
   /normalizeNames:<n>
                 0 (default) - Keep Boogie program names when generating SMT commands
                 1 - Normalize Boogie program names when generating SMT commands. 
                   This keeps SMT solver input, and thus output, 
                   constant when renaming declarations in the input program.
-
   /normalizeDeclarationOrder:<n>
                 0 - Keep order of top-level declarations when generating SMT commands.
                 1 (default) - Normalize order of top-level declarations when generating SMT commands.
@@ -1877,6 +1881,8 @@ namespace Microsoft.Boogie
   /traceTimes   output timing information at certain points in the pipeline
   /tracePOs     output information about the number of proof obligations
                 (also included in the /trace output)
+  /forceBplErrors
+                show boogie errors even if {:msg ...} attribute is present
   /break        launch and break into debugger
 
   ---- Civl options ----------------------------------------------------------
@@ -2005,7 +2011,11 @@ namespace Microsoft.Boogie
                 assignments, and calls can be labeled for inclusion in this
                 report. This generalizes and replaces the previous
                 (undocumented) `/printNecessaryAssertions` option.
-
+  /warnVacuousProofs
+                Automatically add missing `{:id ...}` attributes to assumptions,
+                assertions, requires clauses, ensures clauses, and calls; enable the
+                `/trackVerificationCoverage` option; and warn when proof goals are
+                not covered by a proof.
   /keepQuantifier
                 If pool-based quantifier instantiation creates instances of a quantifier
                 then keep the quantifier along with the instances. By default, the quantifier

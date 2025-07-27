@@ -18,15 +18,15 @@ namespace Microsoft.Boogie.VCExprAST
     }
       
     public string Spacer = "@@";
-    protected IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalNames;
+    protected IDictionary<Object, string> GlobalNames;
 
-    protected List<IDictionary<Object /*!*/, string /*!*/> /*!*/> /*!*/ LocalNames;
+    protected List<IDictionary<Object, string>> LocalNames;
 
-    protected HashSet<string /*!*/> /*!*/ UsedNames;
+    protected HashSet<string> UsedNames;
 
-    protected IDictionary<string /*!*/, int /*!*/> /*!*/ CurrentCounters;
+    protected IDictionary<string, int> CurrentCounters;
 
-    protected IDictionary<Object /*!*/, string /*!*/> /*!*/ GlobalPlusLocalNames;
+    protected IDictionary<Object, string> GlobalPlusLocalNames;
     protected Dictionary<string, string> globalNewToOldName = new ();
 
     protected ScopedNamer()
@@ -46,9 +46,9 @@ namespace Microsoft.Boogie.VCExprAST
       GlobalNames = new Dictionary<Object, string>(namer.GlobalNames);
       LocalNames = new List<IDictionary<Object, string>>();
 
-      foreach (IDictionary<Object /*!*/, string /*!*/> /*!*/ d in namer.LocalNames)
+      foreach (IDictionary<Object, string> d in namer.LocalNames)
       {
-        LocalNames.Add(new Dictionary<Object /*!*/, string /*!*/>(d));
+        LocalNames.Add(new Dictionary<Object, string>(d));
       }
 
       UsedNames = new HashSet<string>(namer.UsedNames);
@@ -60,19 +60,19 @@ namespace Microsoft.Boogie.VCExprAST
     [ContractInvariantMethod]
     private void GlobalNamesInvariantMethod()
     {
-      Contract.Invariant(cce.NonNullDictionaryAndValues(GlobalNames));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(GlobalNames));
     }
 
     [ContractInvariantMethod]
     private void LocalNamesInvariantMethod()
     {
-      Contract.Invariant(Contract.ForAll(LocalNames, i => i != null && cce.NonNullDictionaryAndValues(i)));
+      Contract.Invariant(Contract.ForAll(LocalNames, i => i != null && Cce.NonNullDictionaryAndValues(i)));
     }
 
     [ContractInvariantMethod]
     private void UsedNamesInvariantMethod()
     {
-      Contract.Invariant(cce.NonNull(UsedNames));
+      Contract.Invariant(Cce.NonNull(UsedNames));
     }
 
     [ContractInvariantMethod]
@@ -84,12 +84,12 @@ namespace Microsoft.Boogie.VCExprAST
     [ContractInvariantMethod]
     private void GlobalPlusLocalNamesInvariantMethod()
     {
-      Contract.Invariant(cce.NonNullDictionaryAndValues(GlobalPlusLocalNames));
+      Contract.Invariant(Cce.NonNullDictionaryAndValues(GlobalPlusLocalNames));
     }
 
     public void PushScope()
     {
-      LocalNames.Add(new Dictionary<Object /*!*/, string /*!*/>());
+      LocalNames.Add(new Dictionary<Object, string>());
     }
 
     public abstract UniqueNamer Clone();
@@ -104,7 +104,7 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Requires(baseName != null);
       Contract.Requires(thing != null);
       Contract.Ensures(Contract.Result<string>() != null);
-      string /*!*/ candidate;
+      string candidate;
 
       if (CurrentCounters.TryGetValue(baseName, out var counter))
       {
@@ -130,7 +130,7 @@ namespace Microsoft.Boogie.VCExprAST
     }
 
     [Pure]
-    public string this[Object /*!*/ thingie]
+    public string this[Object thingie]
     {
       get
       {

@@ -16,8 +16,8 @@ public class VerificationResultCollector : VerifierCallback
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(Examples));
-    Contract.Invariant(cce.NonNullElements(VcResults));
+    Contract.Invariant(Cce.NonNullElements(Examples));
+    Contract.Invariant(Cce.NonNullElements(VcResults));
   }
 
   public readonly ConcurrentQueue<Counterexample> Examples = new();
@@ -25,14 +25,12 @@ public class VerificationResultCollector : VerifierCallback
 
   public override void OnCounterexample(Counterexample ce, string /*?*/ reason)
   {
-    //Contract.Requires(ce != null);
     ce.InitializeModelStates();
     Examples.Enqueue(ce);
   }
 
   public override void OnUnreachableCode(ImplementationRun run)
   {
-    //Contract.Requires(impl != null);
     run.OutputWriter.WriteLine("found unreachable code:");
     ConditionGeneration.EmitImpl(options, run, false);
     // TODO report error about next to last in seq

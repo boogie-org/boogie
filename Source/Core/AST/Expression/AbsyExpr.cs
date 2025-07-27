@@ -22,7 +22,7 @@ namespace Microsoft.Boogie
   {
     public abstract int ContentHash { get; }
     
-    public Expr(IToken /*!*/ tok, bool immutable)
+    public Expr(IToken tok, bool immutable)
       : base(tok)
     {
       Contract.Requires(tok != null);
@@ -41,6 +41,8 @@ namespace Microsoft.Boogie
       Neg,
       Neither
     }
+
+    public static Type ErrorType = new TypeProxy(Token.NoToken, "type_checking_error");
 
     public static Position NegatePosition(Position p)
     {
@@ -73,7 +75,7 @@ namespace Microsoft.Boogie
 
     protected int CachedHashCode = 0;
 
-    public abstract void Emit(TokenTextWriter /*!*/ wr, int contextBindingStrength, bool fragileContext);
+    public abstract void Emit(TokenTextWriter wr, int contextBindingStrength, bool fragileContext);
 
     [Pure]
     public override string ToString()
@@ -90,7 +92,7 @@ namespace Microsoft.Boogie
     /// <summary>
     /// Add to "freeVars" the free variables in the expression.
     /// </summary>
-    public abstract void ComputeFreeVariables(Set /*Variable*/ /*!*/ freeVars);
+    public abstract void ComputeFreeVariables(Set /*Variable*/ freeVars);
 
     /// <summary>
     /// Filled in by the Typecheck method.  A value of "null" means a succeeding
@@ -129,20 +131,19 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       Contract.Ensures(Type != null);
       // This body is added only because C# insists on it.  It should really be left out, as if TypeCheck still were abstract.
       // The reason for mentioning the method here at all is to give TypeCheck a postcondition for all expressions.
       {
         Contract.Assert(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
     }
 
     /// <summary>
     /// Returns the type of the expression, supposing that all its subexpressions are well typed.
     /// </summary>
-    public abstract Type /*!*/ ShallowType { get; }
+    public abstract Type ShallowType { get; }
 
     // Handy syntactic sugar follows:
 
@@ -239,7 +240,7 @@ namespace Microsoft.Boogie
       else
       {
         var res = Binary(BinaryOperator.Opcode.And, e1, e2);
-        res.Type = Microsoft.Boogie.Type.Bool;
+        res.Type = Type.Bool;
         res.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
         return res;
       }
@@ -264,7 +265,10 @@ namespace Microsoft.Boogie
       }
       else
       {
-        return Binary(BinaryOperator.Opcode.Or, e1, e2);
+        var res = Binary(BinaryOperator.Opcode.Or, e1, e2);
+        res.Type = Type.Bool;
+        res.TypeParameters = SimpleTypeParamInstantiation.EMPTY;
+        return res;
       }
     }
 
@@ -289,14 +293,14 @@ namespace Microsoft.Boogie
           UnaryOperator op = (UnaryOperator) nary.Fun;
           if (op.Op == UnaryOperator.Opcode.Not)
           {
-            return cce.NonNull(nary.Args[0]);
+            return Cce.NonNull(nary.Args[0]);
           }
         }
         else if (nary.Fun is BinaryOperator)
         {
           BinaryOperator op = (BinaryOperator) nary.Fun;
-          Expr arg0 = cce.NonNull(nary.Args[0]);
-          Expr arg1 = cce.NonNull(nary.Args[1]);
+          Expr arg0 = Cce.NonNull(nary.Args[0]);
+          Expr arg1 = Cce.NonNull(nary.Args[1]);
           if (op.Op == BinaryOperator.Opcode.Eq)
           {
             return Neq(arg0, arg1);
@@ -472,10 +476,10 @@ namespace Microsoft.Boogie
       return new LiteralExpr(Token.NoToken, value);
     }
 
-    private static LiteralExpr /*!*/
+    private static LiteralExpr
       true_ = Literal(true);
 
-    public static LiteralExpr /*!*/ True
+    public static LiteralExpr True
     {
       get
       {
@@ -484,10 +488,10 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static LiteralExpr /*!*/
+    private static LiteralExpr
       false_ = Literal(false);
 
-    public static LiteralExpr /*!*/ False
+    public static LiteralExpr False
     {
       get
       {
@@ -505,10 +509,10 @@ namespace Microsoft.Boogie
       return SelectTok(Token.NoToken, map, args);
     }
 
-    public static NAryExpr Select(Expr map, List<Expr /*!*/> /*!*/ args)
+    public static NAryExpr Select(Expr map, List<Expr> args)
     {
       Contract.Requires(map != null);
-      Contract.Requires(cce.NonNullElements(args));
+      Contract.Requires(Cce.NonNullElements(args));
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
       return Select(map, args.ToArray());
     }
@@ -521,10 +525,10 @@ namespace Microsoft.Boogie
       Contract.Requires(map != null);
       Contract.Requires(x != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      List<Expr> /*!*/
+      List<Expr>
         allArgs = new List<Expr>();
       allArgs.Add(map);
-      foreach (Expr /*!*/ a in args)
+      foreach (Expr a in args)
       {
         Contract.Assert(a != null);
         allArgs.Add(a);
@@ -541,13 +545,13 @@ namespace Microsoft.Boogie
       return StoreTok(Token.NoToken, map, args);
     }
 
-    public static NAryExpr Store(Expr map, List<Expr /*!*/> /*!*/ indexes, Expr rhs)
+    public static NAryExpr Store(Expr map, List<Expr> indexes, Expr rhs)
     {
       Contract.Requires(rhs != null);
       Contract.Requires(map != null);
-      Contract.Requires(cce.NonNullElements(indexes));
+      Contract.Requires(Cce.NonNullElements(indexes));
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      Expr[] /*!*/
+      Expr[]
         allArgs = new Expr[indexes.Count + 1];
       for (int i = 0; i < indexes.Count; ++i)
       {
@@ -560,7 +564,7 @@ namespace Microsoft.Boogie
 
     // use a different name for this variant of the method
     // (-> some bug prevents overloading in this case)
-    public static NAryExpr /*!*/ StoreTok(IToken x, Expr map, params Expr[] args)
+    public static NAryExpr StoreTok(IToken x, Expr map, params Expr[] args)
     {
       Contract.Requires(args != null);
       Contract.Requires(map != null);
@@ -568,10 +572,10 @@ namespace Microsoft.Boogie
       Contract.Requires(args.Length > 0); // zero or more indices, plus the value
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
 
-      List<Expr> /*!*/
+      List<Expr>
         allArgs = new List<Expr>();
       allArgs.Add(map);
-      foreach (Expr /*!*/ a in args)
+      foreach (Expr a in args)
       {
         Contract.Assert(a != null);
         allArgs.Add(a);
@@ -586,7 +590,7 @@ namespace Microsoft.Boogie
       Contract.Requires(subexpr != null);
       Contract.Requires(x != null);
       Contract.Ensures(Contract.Result<NAryExpr>() != null);
-      List<Expr> /*!*/
+      List<Expr>
         args = new List<Expr>();
       args.Add(subexpr);
       return new NAryExpr(x, new TypeCoercion(x, type), args);
@@ -712,7 +716,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public readonly object /*!*/
+    public readonly object
       Val; // false, true, a BigNum, a BigDec, a BigFloat, a BvConst, or a RoundingMode
 
     [ContractInvariantMethod]
@@ -726,7 +730,7 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="b"></param>
-    public LiteralExpr(IToken /*!*/ tok, bool b, bool immutable = false)
+    public LiteralExpr(IToken tok, bool b, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -743,7 +747,7 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="v"></param>
-    public LiteralExpr(IToken /*!*/ tok, BigNum v, bool immutable = false)
+    public LiteralExpr(IToken tok, BigNum v, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -760,7 +764,7 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="v"></param>
-    public LiteralExpr(IToken /*!*/ tok, BigDec v, bool immutable = false)
+    public LiteralExpr(IToken tok, BigDec v, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -777,7 +781,7 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="v"></param>
-    public LiteralExpr(IToken /*!*/ tok, BigFloat v, bool immutable = false)
+    public LiteralExpr(IToken tok, BigFloat v, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -792,7 +796,7 @@ namespace Microsoft.Boogie
     /// <summary>
     /// Creates a literal expression for the bitvector value "v".
     /// </summary>
-    public LiteralExpr(IToken /*!*/ tok, BigNum v, int b, bool immutable = false)
+    public LiteralExpr(IToken tok, BigNum v, int b, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -810,7 +814,7 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="v"></param>
-    public LiteralExpr(IToken /*!*/ tok, RoundingMode v, bool immutable = false)
+    public LiteralExpr(IToken tok, RoundingMode v, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -827,7 +831,7 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="v"></param>
-    public LiteralExpr(IToken /*!*/ tok, String v, bool immutable = false)
+    public LiteralExpr(IToken tok, String v, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -878,7 +882,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
       stream.SetToken(this);
       if (this.Val is bool)
       {
@@ -886,33 +889,30 @@ namespace Microsoft.Boogie
       }
       else if (Type.IsString)
       {
-        stream.Write("\"" + cce.NonNull(this.Val.ToString()) + "\"");
+        stream.Write("\"" + Cce.NonNull(this.Val.ToString()) + "\"");
       }
       else
       {
-        stream.Write(cce.NonNull(this.Val.ToString()));
+        stream.Write(Cce.NonNull(this.Val.ToString()));
       }
     }
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       // nothing to resolve
     }
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      //Contract.Requires(freeVars != null);
       // no free variables to add
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       this.Type = ShallowType;
     }
 
-    public override Type /*!*/ ShallowType
+    public override Type ShallowType
     {
       get
       {
@@ -951,7 +951,7 @@ namespace Microsoft.Boogie
         {
           {
             Contract.Assert(false);
-            throw new cce.UnreachableException();
+            throw new Cce.UnreachableException();
           } // like, where did this value come from?!
         }
       }
@@ -983,7 +983,7 @@ namespace Microsoft.Boogie
       get
       {
         Contract.Assert(isBigNum);
-        return (BigNum) cce.NonNull(Val);
+        return (BigNum) Cce.NonNull(Val);
       }
     }
 
@@ -1002,7 +1002,7 @@ namespace Microsoft.Boogie
       get
       {
         Contract.Assert(isBigDec);
-        return (BigDec) cce.NonNull(Val);
+        return (BigDec) Cce.NonNull(Val);
       }
     }
 
@@ -1011,7 +1011,7 @@ namespace Microsoft.Boogie
       get
       {
         Contract.Assert(isBigFloat);
-        return (BigFloat) cce.NonNull(Val);
+        return (BigFloat) Cce.NonNull(Val);
       }
     }
 
@@ -1025,7 +1025,7 @@ namespace Microsoft.Boogie
       get
       {
         Contract.Assert(isBool);
-        return (bool) cce.NonNull(Val);
+        return (bool) Cce.NonNull(Val);
       }
     }
 
@@ -1039,7 +1039,7 @@ namespace Microsoft.Boogie
       get
       {
         Contract.Assert(isBvConst);
-        return (BvConst) cce.NonNull(Val);
+        return (BvConst) Cce.NonNull(Val);
       }
     }
 
@@ -1053,7 +1053,7 @@ namespace Microsoft.Boogie
       get
       {
         Contract.Assert(isRoundingMode);
-        return (RoundingMode) cce.NonNull(Val);
+        return (RoundingMode) Cce.NonNull(Val);
       }
     }
 
@@ -1067,13 +1067,12 @@ namespace Microsoft.Boogie
       get
       {
         Contract.Assert(isString);
-        return (String) cce.NonNull(Val);
+        return (String) Cce.NonNull(Val);
       }
     }
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitLiteralExpr(this);
     }
@@ -1104,7 +1103,7 @@ namespace Microsoft.Boogie
       Contract.Ensures(Contract.Result<string>() != null);
       if (Value > BigNum.FromInt(10000))
       {
-        string val = cce.NonNull(Value.ToString("x"));
+        string val = Cce.NonNull(Value.ToString("x"));
         int pos = val.Length % 4;
         string res = "0x" + val.Substring(0, pos);
         Contract.Assert(res != null);
@@ -1191,7 +1190,7 @@ namespace Microsoft.Boogie
     /// <summary>
     /// Creates an unresolved identifier expression.
     /// </summary>
-    public IdentifierExpr(IToken /*!*/ tok, string /*!*/ name, bool immutable = false)
+    public IdentifierExpr(IToken tok, string name, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -1209,7 +1208,7 @@ namespace Microsoft.Boogie
     /// <param name="tok"></param>
     /// <param name="name"></param>
     /// <param name="type"></param>
-    public IdentifierExpr(IToken /*!*/ tok, string /*!*/ name, Type /*!*/ type, bool immutable = false)
+    public IdentifierExpr(IToken tok, string name, Type type, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -1228,12 +1227,12 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="tok"></param>
     /// <param name="d"></param>
-    public IdentifierExpr(IToken /*!*/ tok, Variable /*!*/ d, bool immutable = false)
+    public IdentifierExpr(IToken tok, Variable d, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
       Contract.Requires(d != null);
-      _Name = cce.NonNull(d.Name);
+      _Name = Cce.NonNull(d.Name);
       _Decl = d;
       Type = d.TypedIdent.Type;
       if (immutable)
@@ -1285,7 +1284,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
       if (stream.Options.PrintWithUniqueASTIds && !stream.UseForComputingChecksums)
       {
         stream.Write("{0}^^", this.Decl == null ? "NoDecl" : "h" + this.Decl.GetHashCode());
@@ -1334,13 +1332,13 @@ namespace Microsoft.Boogie
       if (this.Decl != null)
       {
         // sanity check
-        if (Type != null && !Type.Equals(Decl.TypedIdent.Type))
+        if (Type != null && !Type.Equals(ErrorType) && !Type.Equals(Decl.TypedIdent.Type))
         {
           tc.Error(this, "internal error, shallow-type assignment was done incorrectly, {0}:{1} != {2}",
             Name, Type, Decl.TypedIdent.Type);
           {
             Contract.Assert(false);
-            throw new cce.UnreachableException();
+            throw new Cce.UnreachableException();
           }
         }
 
@@ -1410,7 +1408,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    public override Type /*!*/ ShallowType
+    public override Type ShallowType
     {
       get
       {
@@ -1423,7 +1421,7 @@ namespace Microsoft.Boogie
 
     public sealed class ConstantFunApp
     {
-      private IdentifierExpr /*!*/
+      private IdentifierExpr
         identifierExpr;
 
       [ContractInvariantMethod]
@@ -1433,7 +1431,7 @@ namespace Microsoft.Boogie
         Contract.Invariant(emptyArgs != null);
       }
 
-      public IdentifierExpr /*!*/ IdentifierExpr
+      public IdentifierExpr IdentifierExpr
       {
         get
         {
@@ -1442,10 +1440,10 @@ namespace Microsoft.Boogie
         }
       }
 
-      private static IList /*!*/
-        emptyArgs = ArrayList.ReadOnly(cce.NonNull((IList /*!*/) new ArrayList()));
+      private static IList
+        emptyArgs = ArrayList.ReadOnly(Cce.NonNull((IList) new ArrayList()));
 
-      public IList /*!*/ Arguments
+      public IList Arguments
       {
         get
         {
@@ -1464,7 +1462,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitIdentifierExpr(this);
     }
@@ -1476,7 +1473,7 @@ namespace Microsoft.Boogie
 
     public override int ContentHash => Util.GetHashCode(262567431, Expr.ContentHash);
 
-    public Expr /*!*/ Expr
+    public Expr Expr
     {
       get
       {
@@ -1499,7 +1496,7 @@ namespace Microsoft.Boogie
       Contract.Invariant(Expr != null);
     }
 
-    public OldExpr(IToken /*!*/ tok, Expr /*!*/ expr, bool immutable = false)
+    public OldExpr(IToken tok, Expr expr, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -1550,7 +1547,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
       stream.Write(this, "old(");
       this.Expr.Emit(stream);
       stream.Write(")");
@@ -1558,7 +1554,6 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       if (rc.StateMode != ResolutionContext.State.Two)
       {
         rc.Error(this, "old expressions allowed only in two-state contexts");
@@ -1569,7 +1564,6 @@ namespace Microsoft.Boogie
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      //Contract.Requires(freeVars != null);
       Expr.ComputeFreeVariables(freeVars);
     }
 
@@ -1581,7 +1575,7 @@ namespace Microsoft.Boogie
       Type = Expr.Type;
     }
 
-    public override Type /*!*/ ShallowType
+    public override Type ShallowType
     {
       get
       {
@@ -1593,7 +1587,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitOldExpr(this);
     }
@@ -1693,7 +1686,7 @@ namespace Microsoft.Boogie
   {
     public virtual int ContentHash => FunctionName.GetDeterministicHashCode();
     
-    string /*!*/ FunctionName { get; }
+    string FunctionName { get; }
 
     /// <summary>
     /// Emits to "stream" the operator applied to the given arguments.
@@ -1704,9 +1697,9 @@ namespace Microsoft.Boogie
     /// <param name="stream"></param>
     /// <param name="contextBindingStrength"></param>
     /// <param name="fragileContext"></param>
-    void Emit(IList<Expr> /*!*/ args, TokenTextWriter /*!*/ stream, int contextBindingStrength, bool fragileContext);
+    void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext);
 
-    void Resolve(ResolutionContext /*!*/ rc, Expr /*!*/ subjectForErrorReporting);
+    void Resolve(ResolutionContext rc, Expr subjectForErrorReporting);
 
     /// <summary>
     /// Requires the object to have been properly resolved.
@@ -1725,17 +1718,16 @@ namespace Microsoft.Boogie
     /// </summary>
     /// <param name="args"></param>
     /// <param name="tc"></param>
-    Type Typecheck(IList<Expr> /*!*/ args, out TypeParamInstantiation /*!*/ tpInstantiation,
-      TypecheckingContext /*!*/ tc);
+    Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation,
+      TypecheckingContext tc);
 
-    // Contract.Requires( Microsoft.SpecSharp.Collections.Reductions.Forall{Expr! arg in args; arg.Type != null});
 
     /// <summary>
     /// Returns the result type of the IAppliable, supposing the argument are of the correct types.
     /// </summary>
-    Type /*!*/ ShallowType(IList<Expr> /*!*/ args);
+    Type ShallowType(IList<Expr> args);
 
-    T Dispatch<T>(IAppliableVisitor<T> /*!*/ visitor);
+    T Dispatch<T>(IAppliableVisitor<T> visitor);
   }
 
   [ContractClassFor(typeof(IAppliable))]
@@ -1802,7 +1794,7 @@ namespace Microsoft.Boogie
   [ContractClass(typeof(IOverloadedAppliableContracts))]
   public interface IOverloadedAppliable
   {
-    void ResolveOverloading(NAryExpr /*!*/ expr);
+    void ResolveOverloading(NAryExpr expr);
     bool DoNotResolveOverloading { get; set; }
   }
 
@@ -1828,7 +1820,7 @@ namespace Microsoft.Boogie
 
   public class UnaryOperator : IAppliable
   {
-    private IToken /*!*/
+    private IToken
       tok;
 
     [ContractInvariantMethod]
@@ -1881,7 +1873,7 @@ namespace Microsoft.Boogie
       return (int) this.op;
     }
 
-    public string /*!*/ FunctionName
+    public string FunctionName
     {
       get
       {
@@ -1902,8 +1894,6 @@ namespace Microsoft.Boogie
 
     public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
-      //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
       Contract.Assert(args.Count == 1);
       // determine if parens are needed
@@ -1917,7 +1907,7 @@ namespace Microsoft.Boogie
       }
 
       stream.Write(FunctionName);
-      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
+      Cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
       if (parensNeeded)
       {
         stream.Write(")");
@@ -1926,8 +1916,6 @@ namespace Microsoft.Boogie
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
     {
-      //Contract.Requires(subjectForErrorReporting != null);
-      //Contract.Requires(rc != null);
       if (rc.TriggerMode && this.op == Opcode.Not)
       {
         rc.Error(subjectForErrorReporting, "boolean operators are not allowed in triggers");
@@ -1941,14 +1929,12 @@ namespace Microsoft.Boogie
 
     public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Ensures(Contract.ValueAtReturn(out args) != null);
 
       Contract.Assume(args.Count == 1);
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
-      Type arg0type = cce.NonNull(cce.NonNull(args[0]).Type);
+      Type arg0type = Cce.NonNull(Cce.NonNull(args[0]).Type);
       switch (this.op)
       {
         case Opcode.Neg:
@@ -1978,7 +1964,7 @@ namespace Microsoft.Boogie
       System.Diagnostics.Debug.Fail("unknown unary operator: " + op.ToString());
       {
         Contract.Assert(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
       BAD_TYPE:
       tc.Error(this.tok, "invalid argument type ({1}) to unary operator {0}",
@@ -1988,18 +1974,17 @@ namespace Microsoft.Boogie
 
     public Type ShallowType(IList<Expr> args)
     {
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (this.op)
       {
         case Opcode.Neg:
-          return cce.NonNull(cce.NonNull(args[0]).Type);
+          return Cce.NonNull(Cce.NonNull(args[0]).Type);
         case Opcode.Not:
           return Type.Bool;
         default:
         {
           Contract.Assert(false);
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         } // unexpected unary operator
       }
     }
@@ -2044,14 +2029,13 @@ namespace Microsoft.Boogie
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this);
     }
   }
 
   public class BinaryOperator : IAppliable, IOverloadedAppliable
   {
-    private IToken /*!*/
+    private IToken
       tok;
 
     [ContractInvariantMethod]
@@ -2122,7 +2106,7 @@ namespace Microsoft.Boogie
       return (int) this.op << 1;
     }
 
-    public string /*!*/ FunctionName
+    public string FunctionName
     {
       get
       {
@@ -2173,8 +2157,6 @@ namespace Microsoft.Boogie
 
     public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
-      //Contract.Requires(args != null);
       stream.SetToken(ref this.tok);
       Contract.Assert(args.Count == 2);
       // determine if parens are needed
@@ -2249,10 +2231,10 @@ namespace Microsoft.Boogie
         stream.Write("(");
       }
 
-      cce.NonNull(args[0]).Emit(stream, opBindingStrength, fragileLeftContext);
+      Cce.NonNull(args[0]).Emit(stream, opBindingStrength, fragileLeftContext);
       stream.sep();
       stream.Write(" {0} ", FunctionName);
-      cce.NonNull(args[1]).Emit(stream, opBindingStrength, fragileRightContext);
+      Cce.NonNull(args[1]).Emit(stream, opBindingStrength, fragileRightContext);
       if (parensNeeded)
       {
         stream.Write(")");
@@ -2263,8 +2245,6 @@ namespace Microsoft.Boogie
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
     {
-      //Contract.Requires(subjectForErrorReporting != null);
-      //Contract.Requires(rc != null);
       if (rc.TriggerMode)
       {
         switch (this.op)
@@ -2311,18 +2291,16 @@ namespace Microsoft.Boogie
 
     public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Ensures(args != null);
       Contract.Assert(args.Count == 2);
       // the default; the only binary operator with a type parameter is equality, but right
       // we don't store this parameter because it does not appear necessary
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
-      Expr arg0 = cce.NonNull(args[0]);
-      Expr arg1 = cce.NonNull(args[1]);
-      Type arg0type = cce.NonNull(arg0.Type);
-      Type arg1type = cce.NonNull(arg1.Type);
+      Expr arg0 = Cce.NonNull(args[0]);
+      Expr arg1 = Cce.NonNull(args[1]);
+      Type arg0type = Cce.NonNull(arg0.Type);
+      Type arg1type = Cce.NonNull(arg1.Type);
       switch (this.op)
       {
         case Opcode.Add:
@@ -2393,12 +2371,12 @@ namespace Microsoft.Boogie
             return Type.Bool;
           }
 
-          List<TypeVariable> /*!*/
+          List<TypeVariable>
             unifiable = new List<TypeVariable>();
           unifiable.AddRange(arg0type.FreeVariables);
           unifiable.AddRange(arg1type.FreeVariables);
 
-          if (arg0type.Unify(arg1type, unifiable, new Dictionary<TypeVariable /*!*/, Type /*!*/>()))
+          if (arg0type.Unify(arg1type, unifiable, new Dictionary<TypeVariable, Type>()))
           {
             return Type.Bool;
           }
@@ -2443,7 +2421,7 @@ namespace Microsoft.Boogie
       System.Diagnostics.Debug.Fail("unknown binary operator: " + op.ToString());
       {
         Contract.Assert(false);
-        throw new cce.UnreachableException();
+        throw new Cce.UnreachableException();
       }
       BAD_TYPE:
       tc.Error(this.tok, "invalid argument types ({1} and {2}) to binary operator {0}", this.FunctionName, arg0type,
@@ -2453,14 +2431,13 @@ namespace Microsoft.Boogie
 
     public Type ShallowType(IList<Expr> args)
     {
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       switch (this.op)
       {
         case Opcode.Add:
         case Opcode.Sub:
         case Opcode.Mul:
-          return cce.NonNull(args[0]).ShallowType;
+          return Cce.NonNull(args[0]).ShallowType;
 
         case Opcode.Div:
         case Opcode.Mod:
@@ -2485,14 +2462,13 @@ namespace Microsoft.Boogie
         default:
         {
           Contract.Assert(false);
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
         } // unexpected binary operator
       }
     }
 
     public void ResolveOverloading(NAryExpr expr)
     {
-      //Contract.Requires(expr != null);
 
       // immutable Expr must not be modified
       if (DoNotResolveOverloading || expr.Immutable)
@@ -2500,8 +2476,8 @@ namespace Microsoft.Boogie
         return;
       }
 
-      Expr arg0 = cce.NonNull(expr.Args[0]);
-      Expr arg1 = cce.NonNull(expr.Args[1]);
+      Expr arg0 = Cce.NonNull(expr.Args[0]);
+      Expr arg1 = Cce.NonNull(expr.Args[1]);
       switch (op)
       {
         case Opcode.Eq:
@@ -2722,17 +2698,16 @@ namespace Microsoft.Boogie
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this);
     }
   }
 
   public class TypeCoercion : IAppliable
   {
-    private IToken /*!*/
+    private IToken
       tok;
 
-    public Type /*!*/
+    public Type
       Type;
 
     [ContractInvariantMethod]
@@ -2768,7 +2743,7 @@ namespace Microsoft.Boogie
     }
 
     public
-      string /*!*/ FunctionName
+      string FunctionName
     {
       get
       {
@@ -2778,11 +2753,9 @@ namespace Microsoft.Boogie
       }
     }
 
-    public void Emit(IList<Expr> /*!*/ args, TokenTextWriter /*!*/ stream,
+    public void Emit(IList<Expr> args, TokenTextWriter stream,
       int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(args != null);
-      //Contract.Requires(stream != null);
       stream.SetToken(ref this.tok);
       Contract.Assert(args.Count == 1);
       // determine if parens are needed
@@ -2795,7 +2768,7 @@ namespace Microsoft.Boogie
         stream.Write("(");
       }
 
-      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
+      Cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
       stream.Write("{0} ", FunctionName);
       Type.Emit(stream, 0);
 
@@ -2807,8 +2780,6 @@ namespace Microsoft.Boogie
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
     {
-      //Contract.Requires(subjectForErrorReporting != null);
-      //Contract.Requires(rc != null);
       this.Type = this.Type.ResolveType(rc);
     }
 
@@ -2817,12 +2788,10 @@ namespace Microsoft.Boogie
       get { return 1; }
     }
 
-    public Type Typecheck(IList<Expr> /*!*/ args,
-      out TypeParamInstantiation /*!*/ tpInstantiation,
-      TypecheckingContext /*!*/ tc)
+    public Type Typecheck(IList<Expr> args,
+      out TypeParamInstantiation tpInstantiation,
+      TypecheckingContext tc)
     {
-      //Contract.Requires(args != null);
-      //Contract.Requires(tc != null);
       Contract.Ensures(args != null);
 
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
@@ -2830,10 +2799,10 @@ namespace Microsoft.Boogie
       Contract.Assume(args.Count == 1);
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
 
-      if (!this.Type.Unify(cce.NonNull(cce.NonNull(args[0]).Type)))
+      if (!this.Type.Unify(Cce.NonNull(Cce.NonNull(args[0]).Type)))
       {
         tc.Error(this.tok, "{0} cannot be coerced to {1}",
-          cce.NonNull(args[0]).Type, this.Type);
+          Cce.NonNull(args[0]).Type, this.Type);
       }
 
       return this.Type;
@@ -2841,14 +2810,12 @@ namespace Microsoft.Boogie
 
     public Type ShallowType(IList<Expr> args)
     {
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return this.Type;
     }
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this);
     }
   }
@@ -2861,7 +2828,7 @@ namespace Microsoft.Boogie
       ToReal
     }
 
-    private IToken /*!*/
+    private IToken
       tok;
 
     public readonly CoercionType Coercion;
@@ -2916,7 +2883,7 @@ namespace Microsoft.Boogie
       return this.hashCode;
     }
 
-    public string /*!*/ FunctionName
+    public string FunctionName
     {
       get { return this.name; }
     }
@@ -2928,8 +2895,6 @@ namespace Microsoft.Boogie
 
     virtual public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
-      //Contract.Requires(args != null);
       stream.Write(this.name);
       stream.Write("(");
       args.Emit(stream);
@@ -2938,14 +2903,10 @@ namespace Microsoft.Boogie
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
     {
-      //Contract.Requires(subjectForErrorReporting != null);
-      //Contract.Requires(rc != null);
     }
 
     public virtual Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      //Contract.Requires(args != null);
       Contract.Ensures(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
 
@@ -2953,9 +2914,9 @@ namespace Microsoft.Boogie
 
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
 
-      if (!cce.NonNull(cce.NonNull(args[0]).Type).Unify(argType))
+      if (!Cce.NonNull(Cce.NonNull(args[0]).Type).Unify(argType))
       {
-        tc.Error(this.tok, "argument type {0} does not match expected type {1}", cce.NonNull(args[0]).Type,
+        tc.Error(this.tok, "argument type {0} does not match expected type {1}", Cce.NonNull(args[0]).Type,
           this.argType);
       }
 
@@ -2964,14 +2925,12 @@ namespace Microsoft.Boogie
 
     public Type ShallowType(IList<Expr> args)
     {
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       return this.type;
     }
 
     public virtual T Dispatch<T>(IAppliableVisitor<T> visitor)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this);
     }
   }
@@ -2980,7 +2939,7 @@ namespace Microsoft.Boogie
   {
     public readonly int Arity;
 
-    private readonly IToken /*!*/
+    private readonly IToken
       tok;
 
     [ContractInvariantMethod]
@@ -2997,7 +2956,7 @@ namespace Microsoft.Boogie
       this.Arity = arity;
     }
 
-    public string /*!*/ FunctionName
+    public string FunctionName
     {
       get
       {
@@ -3026,16 +2985,14 @@ namespace Microsoft.Boogie
       return Arity.GetHashCode() * 2823;
     }
 
-    public void Emit(IList<Expr> /*!*/ args, TokenTextWriter /*!*/ stream,
+    public void Emit(IList<Expr> args, TokenTextWriter stream,
       int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(args != null);
-      //Contract.Requires(stream != null);
       Contract.Assume(args.Count == Arity + 1);
       Emit(args, stream, contextBindingStrength, fragileContext, false);
     }
 
-    public static void Emit(IList<Expr> /*!*/ args, TokenTextWriter /*!*/ stream,
+    public static void Emit(IList<Expr> args, TokenTextWriter stream,
       int contextBindingStrength, bool fragileContext,
       bool withRhs)
     {
@@ -3050,7 +3007,7 @@ namespace Microsoft.Boogie
         stream.Write("(");
       }
 
-      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
+      Cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
       stream.Write("[");
 
       string sep = "";
@@ -3059,13 +3016,13 @@ namespace Microsoft.Boogie
       {
         stream.Write(sep);
         sep = ", ";
-        cce.NonNull(args[i]).Emit(stream);
+        Cce.NonNull(args[i]).Emit(stream);
       }
 
       if (withRhs)
       {
         stream.Write(" := ");
-        cce.NonNull(args.Last()).Emit(stream);
+        Cce.NonNull(args.Last()).Emit(stream);
       }
 
       stream.Write("]");
@@ -3077,8 +3034,6 @@ namespace Microsoft.Boogie
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
     {
-      //Contract.Requires(subjectForErrorReporting != null);
-      //Contract.Requires(rc != null);
       // PR: nothing?
     }
 
@@ -3088,21 +3043,21 @@ namespace Microsoft.Boogie
     }
 
     // it is assumed that each of the arguments has already been typechecked
-    public static Type Typecheck(Type /*!*/ mapType,
+    public static Type Typecheck(Type mapType,
       // we just pass an Absy, because in
       // the AssignCmd maps can also be
       // represented by non-expressions
-      Absy /*!*/ map,
-      List<Expr> /*!*/ indexes,
+      Absy map,
+      List<Expr> indexes,
       // the type parameters, in this context, are the parameters of the
       // potentially polymorphic map type. Because it might happen that
       // the whole map type is unknown and represented using a MapTypeProxy,
       // the instantiations given in the following out-parameter are subject
       // to change if further unifications are done.
-      out TypeParamInstantiation /*!*/ tpInstantiation,
-      TypecheckingContext /*!*/ tc,
-      IToken /*!*/ typeCheckingSubject,
-      string /*!*/ opName)
+      out TypeParamInstantiation tpInstantiation,
+      TypecheckingContext tc,
+      IToken typeCheckingSubject,
+      string opName)
     {
       Contract.Requires(mapType != null);
       Contract.Requires(map != null);
@@ -3145,8 +3100,6 @@ namespace Microsoft.Boogie
 
     public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assume(args.Count == Arity + 1);
 
@@ -3157,7 +3110,7 @@ namespace Microsoft.Boogie
         actualArgs.Add(args[i]);
       }
 
-      return Typecheck(cce.NonNull(cce.NonNull(args[0]).Type), cce.NonNull(args[0]),
+      return Typecheck(Cce.NonNull(Cce.NonNull(args[0]).Type), Cce.NonNull(args[0]),
         actualArgs, out tpInstantiation, tc, this.tok, "map select");
     }
 
@@ -3166,9 +3119,8 @@ namespace Microsoft.Boogie
     /// </summary>
     public Type ShallowType(IList<Expr> args)
     {
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      Expr a0 = cce.NonNull(args[0]);
+      Expr a0 = Cce.NonNull(args[0]);
       Type a0Type = a0.ShallowType;
       if (a0Type == null || !a0Type.IsMap)
       {
@@ -3180,7 +3132,7 @@ namespace Microsoft.Boogie
       List<Type> actualArgTypes = new List<Type>();
       for (int i = 1; i < args.Count; ++i)
       {
-        actualArgTypes.Add(cce.NonNull(args[i]).ShallowType);
+        actualArgTypes.Add(Cce.NonNull(args[i]).ShallowType);
       }
 
       return Type.InferValueType(mapType.TypeParameters, mapType.Arguments, mapType.Result, actualArgTypes);
@@ -3188,7 +3140,6 @@ namespace Microsoft.Boogie
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this);
     }
   }
@@ -3197,7 +3148,7 @@ namespace Microsoft.Boogie
   {
     public readonly int Arity;
 
-    public readonly IToken /*!*/
+    public readonly IToken
       tok;
 
     [ContractInvariantMethod]
@@ -3214,7 +3165,7 @@ namespace Microsoft.Boogie
       this.Arity = arity;
     }
 
-    public string /*!*/ FunctionName
+    public string FunctionName
     {
       get
       {
@@ -3243,19 +3194,15 @@ namespace Microsoft.Boogie
       return Arity.GetHashCode() * 28231;
     }
 
-    public void Emit(IList<Expr> /*!*/ args, TokenTextWriter /*!*/ stream,
+    public void Emit(IList<Expr> args, TokenTextWriter stream,
       int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(args != null);
-      //Contract.Requires(stream != null);
       Contract.Assert(args.Count == Arity + 2);
       MapSelect.Emit(args, stream, contextBindingStrength, fragileContext, true);
     }
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
     {
-      //Contract.Requires(subjectForErrorReporting != null);
-      //Contract.Requires(rc != null);
       // PR: nothing?
     }
 
@@ -3265,10 +3212,10 @@ namespace Microsoft.Boogie
     }
 
     // it is assumed that each of the arguments has already been typechecked
-    public static Type Typecheck(IList<Expr> /*!*/ args, out TypeParamInstantiation /*!*/ tpInstantiation,
-      TypecheckingContext /*!*/ tc,
-      IToken /*!*/ typeCheckingSubject,
-      string /*!*/ opName)
+    public static Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation,
+      TypecheckingContext tc,
+      IToken typeCheckingSubject,
+      string opName)
     {
       Contract.Requires(args != null);
       Contract.Requires(tc != null);
@@ -3284,7 +3231,7 @@ namespace Microsoft.Boogie
       }
 
       Type resultType =
-        MapSelect.Typecheck(cce.NonNull(cce.NonNull(args[0]).Type), cce.NonNull(args[0]),
+        MapSelect.Typecheck(Cce.NonNull(Cce.NonNull(args[0]).Type), Cce.NonNull(args[0]),
           selectArgs, out tpInstantiation, tc, typeCheckingSubject, opName);
 
       // check the the rhs has the right type
@@ -3294,24 +3241,22 @@ namespace Microsoft.Boogie
         return null;
       }
 
-      Type rhsType = cce.NonNull(cce.NonNull(args.Last()).Type);
+      Type rhsType = Cce.NonNull(Cce.NonNull(args.Last()).Type);
       if (!resultType.Unify(rhsType))
       {
-        tc.Error(cce.NonNull(args.Last()).tok,
+        tc.Error(Cce.NonNull(args.Last()).tok,
           "right-hand side in {0} with wrong type: {1} (expected: {2})",
           opName, rhsType, resultType);
         return null;
       }
 
-      return cce.NonNull(args[0]).Type;
+      return Cce.NonNull(args[0]).Type;
     }
 
-    public Type Typecheck(IList<Expr> /*!*/ args,
-      out TypeParamInstantiation /*!*/ tpInstantiation,
-      TypecheckingContext /*!*/ tc)
+    public Type Typecheck(IList<Expr> args,
+      out TypeParamInstantiation tpInstantiation,
+      TypecheckingContext tc)
     {
-      //Contract.Requires(args != null);
-      //Contract.Requires(tc != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Ensures(Contract.ValueAtReturn(out args) != null);
       Contract.Assert(args.Count == Arity + 2);
@@ -3323,14 +3268,12 @@ namespace Microsoft.Boogie
     /// </summary>
     public Type ShallowType(IList<Expr> args)
     {
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      return cce.NonNull(args[0]).ShallowType;
+      return Cce.NonNull(args[0]).ShallowType;
     }
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this);
     }
   }
@@ -3338,10 +3281,10 @@ namespace Microsoft.Boogie
 
   public class IfThenElse : IAppliable
   {
-    private IToken /*!*/
+    private IToken
       _tok;
 
-    public IToken /*!*/ tok
+    public IToken tok
     {
       get
       {
@@ -3367,7 +3310,7 @@ namespace Microsoft.Boogie
       this._tok = tok;
     }
 
-    public string /*!*/ FunctionName
+    public string FunctionName
     {
       get
       {
@@ -3397,27 +3340,23 @@ namespace Microsoft.Boogie
 
     public void Emit(IList<Expr> args, TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
-      //Contract.Requires(args != null);
       stream.SetToken(this);
       Contract.Assert(args.Count == 3);
       stream.push();
       stream.Write("(if ");
-      cce.NonNull(args[0]).Emit(stream, 0x00, false);
+      Cce.NonNull(args[0]).Emit(stream, 0x00, false);
       stream.sep();
       stream.Write(" then ");
-      cce.NonNull(args[1]).Emit(stream, 0x00, false);
+      Cce.NonNull(args[1]).Emit(stream, 0x00, false);
       stream.sep();
       stream.Write(" else ");
-      cce.NonNull(args[2]).Emit(stream, 0x00, false);
+      Cce.NonNull(args[2]).Emit(stream, 0x00, false);
       stream.Write(")");
       stream.pop();
     }
 
     public void Resolve(ResolutionContext rc, Expr subjectForErrorReporting)
     {
-      //Contract.Requires(subjectForErrorReporting != null);
-      //Contract.Requires(rc != null);
       // PR: nothing?
     }
 
@@ -3428,23 +3367,21 @@ namespace Microsoft.Boogie
 
     public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      //Contract.Requires(args != null);
       Contract.Ensures(args != null);
       Contract.Ensures(Contract.ValueAtReturn(out tpInstantiation) != null);
       Contract.Assert(args.Count == 3);
       // the default; the only binary operator with a type parameter is equality, but right
       // we don't store this parameter because it does not appear necessary
       tpInstantiation = SimpleTypeParamInstantiation.EMPTY;
-      Expr arg0 = cce.NonNull(args[0]);
-      Expr arg1 = cce.NonNull(args[1]);
-      Expr arg2 = cce.NonNull(args[2]);
+      Expr arg0 = Cce.NonNull(args[0]);
+      Expr arg1 = Cce.NonNull(args[1]);
+      Expr arg2 = Cce.NonNull(args[2]);
 
-      if (!cce.NonNull(arg0.Type).Unify(Type.Bool))
+      if (!Cce.NonNull(arg0.Type).Unify(Type.Bool))
       {
         tc.Error(this.tok, "the first argument to if-then-else should be bool, not {0}", arg0.Type);
       }
-      else if (!cce.NonNull(arg1.Type).Unify(cce.NonNull(arg2.Type)))
+      else if (!Cce.NonNull(arg1.Type).Unify(Cce.NonNull(arg2.Type)))
       {
         tc.Error(this.tok, "branches of if-then-else have incompatible types {0} and {1}", arg1.Type, arg2.Type);
       }
@@ -3461,14 +3398,12 @@ namespace Microsoft.Boogie
     /// </summary>
     public Type ShallowType(IList<Expr> args)
     {
-      //Contract.Requires(args != null);
       Contract.Ensures(Contract.Result<Type>() != null);
-      return cce.NonNull(args[1]).ShallowType;
+      return Cce.NonNull(args[1]).ShallowType;
     }
 
     public T Dispatch<T>(IAppliableVisitor<T> visitor)
     {
-      //Contract.Requires(visitor != null);
       return visitor.Visit(this);
     }
   }
@@ -3544,7 +3479,7 @@ namespace Microsoft.Boogie
       {
         stream.Write("(");
       }
-      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
+      Cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
       stream.Write("->{0}", FieldName);
       if (parensNeeded)
       {
@@ -3563,7 +3498,7 @@ namespace Microsoft.Boogie
     public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
       Contract.Assert(args.Count == 1);
-      return Typecheck(cce.NonNull(args[0]).Type, tc, out tpInstantiation);
+      return Typecheck(Cce.NonNull(args[0]).Type, tc, out tpInstantiation);
     }
     
     public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
@@ -3714,9 +3649,9 @@ namespace Microsoft.Boogie
       {
         stream.Write("(");
       }
-      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
+      Cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
       stream.Write("->({0} := ", fieldAccess.FieldName);
-      cce.NonNull(args[1]).Emit(stream, opBindingStrength, false);
+      Cce.NonNull(args[1]).Emit(stream, opBindingStrength, false);
       stream.Write(")");
       if (parensNeeded)
       {
@@ -3735,7 +3670,7 @@ namespace Microsoft.Boogie
     public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
       Contract.Assert(args.Count == 2);
-      return Typecheck(cce.NonNull(args[0]).Type, cce.NonNull(args[1]).Type, tc, out tpInstantiation);
+      return Typecheck(Cce.NonNull(args[0]).Type, Cce.NonNull(args[1]).Type, tc, out tpInstantiation);
     }
     
     public Type Typecheck(Type datatype, Type fieldType, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
@@ -3826,7 +3761,7 @@ namespace Microsoft.Boogie
       {
         stream.Write("(");
       }
-      cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
+      Cce.NonNull(args[0]).Emit(stream, opBindingStrength, false);
       stream.Write(" is {0}", ConstructorName);
       if (parensNeeded)
       {
@@ -3845,7 +3780,7 @@ namespace Microsoft.Boogie
     public Type Typecheck(IList<Expr> args, out TypeParamInstantiation tpInstantiation, TypecheckingContext tc)
     {
       Contract.Assert(args.Count == 1);
-      return Typecheck(cce.NonNull(args[0]).Type, tc, out tpInstantiation);
+      return Typecheck(Cce.NonNull(args[0]).Type, tc, out tpInstantiation);
     }
     
     public Type Typecheck(Type type, TypecheckingContext tc, out TypeParamInstantiation tpInstantiation)
@@ -3887,23 +3822,23 @@ namespace Microsoft.Boogie
 
   public class CodeExpr : Expr
   {
-    public List<Variable> /*!*/
+    public List<Variable>
       LocVars;
 
-    [Rep] public IList<Block /*!*/> /*!*/ Blocks;
+    [Rep] public IList<Block> Blocks;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
       Contract.Invariant(LocVars != null);
-      Contract.Invariant(cce.NonNullElements(Blocks));
+      Contract.Invariant(Cce.NonNullElements(Blocks));
     }
 
-    public CodeExpr(List<Variable> /*!*/ localVariables, List<Block /*!*/> /*!*/ blocks, bool immutable = false)
+    public CodeExpr(List<Variable> localVariables, List<Block> blocks, bool immutable = false)
       : base(Token.NoToken, immutable)
     {
       Contract.Requires(localVariables != null);
-      Contract.Requires(cce.NonNullElements(blocks));
+      Contract.Requires(Cce.NonNullElements(blocks));
       Contract.Requires(0 < blocks.Count);
       LocVars = localVariables;
       Blocks = blocks;
@@ -3944,13 +3879,11 @@ namespace Microsoft.Boogie
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      //Contract.Requires(freeVars != null);
       // Treat a BlockEexpr as if it has no free variables at all
     }
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
       //level++;
       int level = 0;
       stream.WriteLine(level, "|{");
@@ -3962,7 +3895,7 @@ namespace Microsoft.Boogie
         stream.WriteLine(";");
       }
 
-      foreach (Block /*!*/ b in this.Blocks)
+      foreach (Block b in this.Blocks)
       {
         Contract.Assert(b != null);
         b.Emit(stream, level + 1);
@@ -3977,30 +3910,29 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
 
       rc.PushVarContext();
-      foreach (Variable /*!*/ v in LocVars)
+      foreach (Variable v in LocVars)
       {
         Contract.Assert(v != null);
         v.Register(rc);
         v.Resolve(rc);
       }
 
-      foreach (Variable /*!*/ v in LocVars)
+      foreach (Variable v in LocVars)
       {
         Contract.Assert(v != null);
         v.ResolveWhere(rc);
       }
 
       rc.PushProcedureContext();
-      foreach (Block /*!*/ b in Blocks)
+      foreach (Block b in Blocks)
       {
         Contract.Assert(b != null);
         b.Register(rc);
       }
 
-      foreach (Block /*!*/ b in Blocks)
+      foreach (Block b in Blocks)
       {
         Contract.Assert(b != null);
         b.Resolve(rc);
@@ -4012,14 +3944,13 @@ namespace Microsoft.Boogie
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
-      foreach (Variable /*!*/ v in LocVars)
+      foreach (Variable v in LocVars)
       {
         Contract.Assert(v != null);
         v.Typecheck(tc);
       }
 
-      foreach (Block /*!*/ b in Blocks)
+      foreach (Block b in Blocks)
       {
         Contract.Assert(b != null);
         b.Typecheck(tc);
@@ -4028,7 +3959,7 @@ namespace Microsoft.Boogie
       this.Type = Type.Bool;
     }
 
-    public override Type /*!*/ ShallowType
+    public override Type ShallowType
     {
       get
       {
@@ -4040,7 +3971,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitCodeExpr(this);
     }
@@ -4050,7 +3980,7 @@ namespace Microsoft.Boogie
   {
     public override int ContentHash => Util.GetHashCode(1947706825, Start, End, Bitvector.ContentHash);
 
-    private /*readonly--except in StandardVisitor*/ Expr /*!*/
+    private /*readonly--except in StandardVisitor*/ Expr
       _Bitvector;
 
     public Expr Bitvector
@@ -4075,7 +4005,7 @@ namespace Microsoft.Boogie
 
     public readonly int Start, End;
 
-    public BvExtractExpr(IToken /*!*/ tok, Expr /*!*/ bv, int end, int start, bool immutable = false)
+    public BvExtractExpr(IToken tok, Expr bv, int end, int start, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -4131,7 +4061,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
       stream.SetToken(this);
       int opBindingStrength = 0x90;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
@@ -4152,19 +4081,16 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       Bitvector.Resolve(rc);
     }
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      //Contract.Requires(freeVars != null);
       Bitvector.ComputeFreeVariables(freeVars);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       Bitvector.Typecheck(tc);
       Contract.Assert(Bitvector.Type != null); // follows from postcondition of Expr.Typecheck
 
@@ -4196,11 +4122,11 @@ namespace Microsoft.Boogie
 
       if (Type == null)
       {
-        Type = new TypeProxy(this.tok, "type_checking_error");
+        Type = Expr.ErrorType;
       }
     }
 
-    public override Type /*!*/ ShallowType
+    public override Type ShallowType
     {
       get
       {
@@ -4212,7 +4138,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitBvExtractExpr(this);
     }
@@ -4222,7 +4147,7 @@ namespace Microsoft.Boogie
   {
     public override int ContentHash => Util.GetHashCode(1653318336, E0.ContentHash, E1.ContentHash);
     
-    private /*readonly--except in StandardVisitor*/ Expr /*!*/
+    private /*readonly--except in StandardVisitor*/ Expr
       _E0, _E1;
 
     public Expr E0
@@ -4261,7 +4186,7 @@ namespace Microsoft.Boogie
     }
 
 
-    public BvConcatExpr(IToken /*!*/ tok, Expr /*!*/ e0, Expr /*!*/ e1, bool immutable = false)
+    public BvConcatExpr(IToken tok, Expr e0, Expr e1, bool immutable = false)
       : base(tok, immutable)
     {
       Contract.Requires(tok != null);
@@ -4315,7 +4240,6 @@ namespace Microsoft.Boogie
 
     public override void Emit(TokenTextWriter stream, int contextBindingStrength, bool fragileContext)
     {
-      //Contract.Requires(stream != null);
       stream.SetToken(this);
       int opBindingStrength = 0x32;
       bool parensNeeded = opBindingStrength < contextBindingStrength ||
@@ -4339,21 +4263,18 @@ namespace Microsoft.Boogie
 
     public override void Resolve(ResolutionContext rc)
     {
-      //Contract.Requires(rc != null);
       E0.Resolve(rc);
       E1.Resolve(rc);
     }
 
     public override void ComputeFreeVariables(Set /*Variable*/ freeVars)
     {
-      //Contract.Requires(freeVars != null);
       E0.ComputeFreeVariables(freeVars);
       E1.ComputeFreeVariables(freeVars);
     }
 
     public override void Typecheck(TypecheckingContext tc)
     {
-      //Contract.Requires(tc != null);
       E0.Typecheck(tc);
       Contract.Assert(E0.Type != null); // follows from postcondition of Expr.Typecheck
       E1.Typecheck(tc);
@@ -4371,11 +4292,11 @@ namespace Microsoft.Boogie
 
       if (Type == null)
       {
-        Type = new TypeProxy(this.tok, "type_checking_error");
+        Type = Expr.ErrorType;
       }
     }
 
-    public override Type /*!*/ ShallowType
+    public override Type ShallowType
     {
       get
       {
@@ -4391,7 +4312,6 @@ namespace Microsoft.Boogie
 
     public override Absy StdDispatch(StandardVisitor visitor)
     {
-      //Contract.Requires(visitor != null);
       Contract.Ensures(Contract.Result<Absy>() != null);
       return visitor.VisitBvConcatExpr(this);
     }

@@ -11,7 +11,7 @@ namespace Microsoft.Boogie;
 /// </summary>
 public class StmtListBuilder
 {
-  readonly List<BigBlock /*!*/> /*!*/ bigBlocks = new();
+  readonly List<BigBlock> bigBlocks = new();
 
   string label;
   List<Cmd> simpleCmds;
@@ -19,7 +19,7 @@ public class StmtListBuilder
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullElements(bigBlocks));
+    Contract.Invariant(Cce.NonNullElements(bigBlocks));
   }
 
   void Dump(IToken token, StructuredCmd scmd, TransferCmd tcmd)

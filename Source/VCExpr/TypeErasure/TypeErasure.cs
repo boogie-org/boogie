@@ -18,25 +18,25 @@ namespace Microsoft.Boogie.TypeErasure
   {
     // function that represents the application of the type constructor
     // to smaller types
-    public readonly Function /*!*/
+    public readonly Function
       Ctor;
 
     // left-inverse functions that extract the subtypes of a compound type
-    public readonly List<Function /*!*/> /*!*/
+    public readonly List<Function>
       Dtors;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
       Contract.Invariant(Ctor != null);
-      Contract.Invariant(cce.NonNullElements(Dtors));
+      Contract.Invariant(Cce.NonNullElements(Dtors));
     }
 
 
-    public TypeCtorRepr(Function ctor, List<Function /*!*/> /*!*/ dtors)
+    public TypeCtorRepr(Function ctor, List<Function> dtors)
     {
       Contract.Requires(ctor != null);
-      Contract.Requires(cce.NonNullElements(dtors));
+      Contract.Requires(Cce.NonNullElements(dtors));
       Contract.Requires(ctor.InParams.Count == dtors.Count);
       this.Ctor = ctor;
       this.Dtors = dtors;
@@ -117,7 +117,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       Contract.Requires(gen != null);
 
-      TypeCasts = new Dictionary<Type /*!*/, TypeCastSet>();
+      TypeCasts = new Dictionary<Type, TypeCastSet>();
     }
 
     // constructor to allow cloning
@@ -126,7 +126,7 @@ namespace Microsoft.Boogie.TypeErasure
     {
       Contract.Requires(builder != null);
 
-      TypeCasts = new Dictionary<Type /*!*/, TypeCastSet>(builder.TypeCasts);
+      TypeCasts = new Dictionary<Type, TypeCastSet>(builder.TypeCasts);
     }
 
     public override void Setup(List<Type> usedTypes)
@@ -139,14 +139,14 @@ namespace Microsoft.Boogie.TypeErasure
     }
 
     // generate inverse axioms for casts (castToU(castFromU(x)) = x, under certain premisses)
-    protected abstract VCExpr /*!*/ GenReverseCastAxiom(Function /*!*/ castToU, Function /*!*/ castFromU);
+    protected abstract VCExpr GenReverseCastAxiom(Function castToU, Function castFromU);
 
     protected VCExpr GenReverseCastEq(Function castToU, Function castFromU, out VCExprVar var,
-      out List<VCTrigger /*!*/> /*!*/ triggers)
+      out List<VCTrigger> triggers)
     {
       Contract.Requires((castFromU != null));
       Contract.Requires((castToU != null));
-      Contract.Ensures((cce.NonNullElements(Contract.ValueAtReturn(out triggers))));
+      Contract.Ensures((Cce.NonNullElements(Contract.ValueAtReturn(out triggers))));
       Contract.Ensures(Contract.ValueAtReturn(out var) != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
       var = Gen.Variable("x", U);
@@ -158,13 +158,13 @@ namespace Microsoft.Boogie.TypeErasure
       return Gen.Eq(lhs, var);
     }
 
-    protected abstract VCExpr /*!*/ GenCastTypeAxioms(Function /*!*/ castToU, Function /*!*/ castFromU);
+    protected abstract VCExpr GenCastTypeAxioms(Function castToU, Function castFromU);
 
     ///////////////////////////////////////////////////////////////////////////
     // storage of type casts for types that are supposed to be left over in the
     // VCs (like int, bool, bitvectors)
 
-    private readonly IDictionary<Type /*!*/, TypeCastSet /*!*/> /*!*/
+    private readonly IDictionary<Type, TypeCastSet>
       TypeCasts;
 
     [ContractInvariantMethod]
@@ -178,9 +178,9 @@ namespace Microsoft.Boogie.TypeErasure
       Contract.Requires(type != null);
       if (!TypeCasts.TryGetValue(type, out var res))
       {
-        Function /*!*/
+        Function
           castToU = HelperFuns.BoogieFunction(type.ToString() + "_2_U", type, U);
-        Function /*!*/
+        Function
           castFromU = HelperFuns.BoogieFunction("U_2_" + type.ToString(), U, type);
 
         AddTypeAxiom(GenLeftInverseAxiom(castToU, castFromU, 0));
@@ -213,10 +213,10 @@ namespace Microsoft.Boogie.TypeErasure
 
     private struct TypeCastSet
     {
-      public readonly Function /*!*/
+      public readonly Function
         CastToU;
 
-      public readonly Function /*!*/
+      public readonly Function
         CastFromU;
 
       [ContractInvariantMethod]
@@ -244,12 +244,12 @@ namespace Microsoft.Boogie.TypeErasure
         return false;
       }
 
-      Type /*!*/
-        inType = cce.NonNull(fun.InParams[0]).TypedIdent.Type;
+      Type
+        inType = Cce.NonNull(fun.InParams[0]).TypedIdent.Type;
       if (inType.Equals(U))
       {
-        Type /*!*/
-          outType = cce.NonNull(fun.OutParams[0]).TypedIdent.Type;
+        Type
+          outType = Cce.NonNull(fun.OutParams[0]).TypedIdent.Type;
         if (!TypeCasts.ContainsKey(outType))
         {
           return false;
@@ -264,8 +264,8 @@ namespace Microsoft.Boogie.TypeErasure
           return false;
         }
 
-        Type /*!*/
-          outType = cce.NonNull(fun.OutParams[0]).TypedIdent.Type;
+        Type
+          outType = Cce.NonNull(fun.OutParams[0]).TypedIdent.Type;
         if (!outType.Equals(U))
         {
           return false;
@@ -282,7 +282,6 @@ namespace Microsoft.Boogie.TypeErasure
 
     public override Type TypeAfterErasure(Type type)
     {
-      //Contract.Requires(type != null);
       Contract.Ensures(Contract.Result<Type>() != null);
       if (UnchangedType(type))
       {
@@ -299,7 +298,6 @@ namespace Microsoft.Boogie.TypeErasure
     [Pure]
     public override bool UnchangedType(Type type)
     {
-      //Contract.Requires(type != null);
       return type.IsInt || type.IsReal || type.IsBool || type.IsBv || type.IsFloat || type.IsRMode || type.IsString ||
              type.IsRegEx;
     }
@@ -327,14 +325,14 @@ namespace Microsoft.Boogie.TypeErasure
       }
     }
 
-    public List<VCExpr /*!*/> /*!*/ CastSeq(List<VCExpr /*!*/> /*!*/ exprs, Type toType)
+    public List<VCExpr> CastSeq(List<VCExpr> exprs, Type toType)
     {
       Contract.Requires(toType != null);
-      Contract.Requires(cce.NonNullElements(exprs));
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExpr>>()));
-      List<VCExpr /*!*/> /*!*/
-        res = new List<VCExpr /*!*/>(exprs.Count);
-      foreach (VCExpr /*!*/ expr in exprs)
+      Contract.Requires(Cce.NonNullElements(exprs));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExpr>>()));
+      List<VCExpr>
+        res = new List<VCExpr>(exprs.Count);
+      foreach (VCExpr expr in exprs)
       {
         Contract.Assert(expr != null);
         res.Add(Cast(expr, toType));

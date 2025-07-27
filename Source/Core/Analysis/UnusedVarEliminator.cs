@@ -19,16 +19,15 @@ public class UnusedVarEliminator : VariableCollector
 
   public override Implementation VisitImplementation(Implementation node)
   {
-    //Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<Implementation>() != null);
     //Console.WriteLine("Procedure {0}", node.Name);
-    Implementation /*!*/
+    Implementation
       impl = base.VisitImplementation(node);
     Contract.Assert(impl != null);
     //Console.WriteLine("Old number of local variables = {0}", impl.LocVars.Length);
-    List<Variable> /*!*/
+    List<Variable>
       vars = new List<Variable>();
-    foreach (Variable /*!*/ var in impl.LocVars)
+    foreach (Variable var in impl.LocVars)
     {
       Contract.Assert(var != null);
       if (_usedVars.Contains(var))

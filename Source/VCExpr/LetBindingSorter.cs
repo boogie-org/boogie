@@ -16,17 +16,17 @@ namespace Microsoft.Boogie.VCExprAST
       Contract.Invariant(FreeVarCollector != null);
     }
 
-    private readonly FreeVariableCollector /*!*/
+    private readonly FreeVariableCollector
       FreeVarCollector =
         new FreeVariableCollector();
 
-    private List<VCExprVar /*!*/> /*!*/ FreeVarsIn(VCExpr expr)
+    private List<VCExprVar> FreeVarsIn(VCExpr expr)
     {
       Contract.Requires(expr != null);
-      Contract.Ensures(cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<List<VCExprVar>>()));
       FreeVarCollector.Collect(expr);
-      List<VCExprVar /*!*/> /*!*/
-        freeVars = new List<VCExprVar /*!*/>(FreeVarCollector.FreeTermVars);
+      List<VCExprVar>
+        freeVars = new List<VCExprVar>(FreeVarCollector.FreeTermVars);
       FreeVarCollector.Reset();
       return freeVars;
     }
@@ -40,58 +40,58 @@ namespace Microsoft.Boogie.VCExprAST
     {
       Contract.Requires(node != null);
       Contract.Ensures(Contract.Result<VCExpr>() != null);
-      IDictionary<VCExprVar /*!*/, Binding /*!*/> boundVars =
-        new Dictionary<VCExprVar /*!*/, Binding /*!*/>();
+      IDictionary<VCExprVar, Binding> boundVars =
+        new Dictionary<VCExprVar, Binding>();
 
       // recurse and collect the free variables in bound terms and formulae
-      foreach (VCExprLetBinding /*!*/ binding in node)
+      foreach (VCExprLetBinding binding in node)
       {
         Contract.Assert(binding != null);
-        VCExpr /*!*/
+        VCExpr
           newE = Mutate(binding.E, arg);
-        Binding /*!*/
+        Binding
           b = new Binding(binding.V, newE, FreeVarsIn(newE));
         boundVars.Add(b.V, b);
       }
 
       // generate the occurrence edges
-      foreach (KeyValuePair<VCExprVar /*!*/, Binding /*!*/> pair in boundVars)
+      foreach (KeyValuePair<VCExprVar, Binding> pair in boundVars)
       {
-        Contract.Assert(cce.NonNullElements(pair));
-        Binding /*!*/
+        Contract.Assert(Cce.NonNullElements(pair));
+        Binding
           b = pair.Value;
         Contract.Assert(b != null);
-        foreach (VCExprVar /*!*/ v in b.FreeVars)
+        foreach (VCExprVar v in b.FreeVars)
         {
           Contract.Assert(v != null);
           if (boundVars.TryGetValue(v, out var b2))
           {
-            cce.NonNull(b2).Occurrences.Add(b);
+            Cce.NonNull(b2).Occurrences.Add(b);
             b.InvOccurrencesNum = b.InvOccurrencesNum + 1;
           }
         }
       }
 
       // topological sort
-      Stack<Binding /*!*/> rootBindings = new Stack<Binding /*!*/>();
-      foreach (KeyValuePair<VCExprVar /*!*/, Binding /*!*/> pair in boundVars)
+      Stack<Binding> rootBindings = new Stack<Binding>();
+      foreach (KeyValuePair<VCExprVar, Binding> pair in boundVars)
       {
-        Contract.Assert(cce.NonNullElements(pair));
+        Contract.Assert(Cce.NonNullElements(pair));
         if (pair.Value.InvOccurrencesNum == 0)
         {
           rootBindings.Push(pair.Value);
         }
       }
 
-      List<Binding /*!*/> /*!*/
-        sortedBindings = new List<Binding /*!*/>();
+      List<Binding>
+        sortedBindings = new List<Binding>();
       while (rootBindings.Count > 0)
       {
-        Binding /*!*/
+        Binding
           b = rootBindings.Pop();
         Contract.Assert(b != null);
         sortedBindings.Add(b);
-        foreach (Binding /*!*/ b2 in b.Occurrences)
+        foreach (Binding b2 in b.Occurrences)
         {
           Contract.Assert(b2 != null);
           b2.InvOccurrencesNum = b2.InvOccurrencesNum - 1;
@@ -113,10 +113,10 @@ namespace Microsoft.Boogie.VCExprAST
       VCExpr newBody = Mutate(node.Body, arg);
       Contract.Assert(newBody != null);
 
-      IDictionary<VCExprVar /*!*/, VCExprVar /*!*/> /*!*/
+      IDictionary<VCExprVar, VCExprVar>
         usedVars =
-          new Dictionary<VCExprVar /*!*/, VCExprVar /*!*/>();
-      foreach (VCExprVar /*!*/ v in FreeVarsIn(newBody))
+          new Dictionary<VCExprVar, VCExprVar>();
+      foreach (VCExprVar v in FreeVarsIn(newBody))
       {
         Contract.Assert(v != null);
         if (!usedVars.ContainsKey(v))
@@ -129,7 +129,7 @@ namespace Microsoft.Boogie.VCExprAST
       {
         if (usedVars.ContainsKey(sortedBindings[i].V))
         {
-          foreach (VCExprVar /*!*/ v in sortedBindings[i].FreeVars)
+          foreach (VCExprVar v in sortedBindings[i].FreeVars)
           {
             Contract.Assert(v != null);
             if (!usedVars.ContainsKey(v))
@@ -145,8 +145,8 @@ namespace Microsoft.Boogie.VCExprAST
       }
 
       // assemble the resulting let-expression
-      List<VCExprLetBinding /*!*/> /*!*/
-        newBindings = new List<VCExprLetBinding /*!*/>();
+      List<VCExprLetBinding>
+        newBindings = new List<VCExprLetBinding>();
       foreach (Binding b in sortedBindings)
       {
         newBindings.Add(Gen.LetBinding(b.V, b.E));
@@ -157,13 +157,13 @@ namespace Microsoft.Boogie.VCExprAST
 
     private class Binding
     {
-      public readonly VCExprVar /*!*/
+      public readonly VCExprVar
         V;
 
-      public readonly VCExpr /*!*/
+      public readonly VCExpr
         E;
 
-      public readonly List<VCExprVar /*!*/> /*!*/
+      public readonly List<VCExprVar>
         FreeVars;
 
       [ContractInvariantMethod]
@@ -171,14 +171,14 @@ namespace Microsoft.Boogie.VCExprAST
       {
         Contract.Invariant(V != null);
         Contract.Invariant(E != null);
-        Contract.Invariant(cce.NonNullElements(FreeVars));
+        Contract.Invariant(Cce.NonNullElements(FreeVars));
         Contract.Invariant(Occurrences != null);
       }
 
 
       // list of all bound expression in which the variable V occurs
       // (outgoing edges)
-      public readonly List<Binding> /*!*/
+      public readonly List<Binding>
         Occurrences;
 
       // number of variables that are bound in this let-expression
@@ -186,11 +186,11 @@ namespace Microsoft.Boogie.VCExprAST
       // (incoming edges)
       public int InvOccurrencesNum;
 
-      public Binding(VCExprVar v, VCExpr e, List<VCExprVar /*!*/> /*!*/ freeVars)
+      public Binding(VCExprVar v, VCExpr e, List<VCExprVar> freeVars)
       {
         Contract.Requires(e != null);
         Contract.Requires(v != null);
-        Contract.Requires(cce.NonNullElements(freeVars));
+        Contract.Requires(Cce.NonNullElements(freeVars));
         this.V = v;
         this.E = e;
         this.FreeVars = freeVars;

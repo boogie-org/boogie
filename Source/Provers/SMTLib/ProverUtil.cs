@@ -33,7 +33,7 @@ namespace Microsoft.Boogie
       { Type.Int, Type.Real, Type.Bool, Type.RMode, Type.String, Type.RegEx };
 
 
-    private string /*!*/
+    private string
       stringRepr = "";
 
     public ProverOptions(SMTLibOptions libOptions)
@@ -98,12 +98,12 @@ The generic options may or may not be used by the prover plugin.
       }
     }
 
-    public virtual void Parse(IEnumerable<string /*!*/> /*!*/ opts)
+    public virtual void Parse(IEnumerable<string> opts)
     {
-      Contract.Requires(cce.NonNullElements(opts));
+      Contract.Requires(Cce.NonNullElements(opts));
       StringBuilder sb = new StringBuilder(stringRepr);
       Contract.Assert(sb != null);
-      foreach (string /*!*/ opt in opts)
+      foreach (string opt in opts)
       {
         Contract.Assert(opt != null);
         if (!Parse(opt))
@@ -129,7 +129,7 @@ The generic options may or may not be used by the prover plugin.
     static string CodebaseString()
     {
       Contract.Ensures(Contract.Result<string>() != null);
-      return Path.GetDirectoryName(cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location));
+      return Path.GetDirectoryName(Cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location));
     }
 
     public string ExecutablePath()
@@ -205,7 +205,7 @@ The generic options may or may not be used by the prover plugin.
       string tmp = null;
       if (ParseString(opt, name, ref tmp))
       {
-        switch (cce.NonNull(tmp).ToLower())
+        switch (Cce.NonNull(tmp).ToLower())
         {
           case "1":
           case "true":
@@ -232,7 +232,7 @@ The generic options may or may not be used by the prover plugin.
       string tmp = null;
       if (ParseString(opt, name, ref tmp))
       {
-        if (int.TryParse(cce.NonNull(tmp), out var t2))
+        if (int.TryParse(Cce.NonNull(tmp), out var t2))
         {
           field = t2;
           return true;
@@ -253,7 +253,7 @@ The generic options may or may not be used by the prover plugin.
       string tmp = null;
       if (ParseString(opt, name, ref tmp))
       {
-        if (uint.TryParse(cce.NonNull(tmp), out var t2))
+        if (uint.TryParse(Cce.NonNull(tmp), out var t2))
         {
           field = t2;
           return true;
@@ -295,7 +295,7 @@ The generic options may or may not be used by the prover plugin.
     public abstract ProverInterface SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt);
 
     // Really returns ProverContext
-    public abstract ProverContext /*!*/ NewProverContext(ProverOptions /*!*/ options);
+    public abstract ProverContext NewProverContext(ProverOptions options);
 
     public virtual ProverOptions BlankProverOptions(SMTLibOptions libOptions)
     {
@@ -317,8 +317,8 @@ The generic options may or may not be used by the prover plugin.
     {
       Contract.Requires(proverName != null);
       Contract.Ensures(Contract.Result<ProverFactory>() != null);
-      Contract.Ensures(cce.IsNew(Contract.Result<ProverFactory>()) && cce.Owner.New(Contract.Result<ProverFactory>()));
-      string /*!*/
+      Contract.Ensures(Cce.IsNew(Contract.Result<ProverFactory>()) && Cce.Owner.New(Contract.Result<ProverFactory>()));
+      string
         path;
       if (proverName.IndexOf("/") >= 0 || proverName.IndexOf("\\") >= 0)
       {
@@ -326,16 +326,16 @@ The generic options may or may not be used by the prover plugin.
       }
       else
       {
-        string codebase = cce.NonNull(System.IO.Path.GetDirectoryName(
-          cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location)));
+        string codebase = Cce.NonNull(System.IO.Path.GetDirectoryName(
+          Cce.NonNull(System.Reflection.Assembly.GetExecutingAssembly().Location)));
         path = System.IO.Path.Combine(codebase, "Boogie.Provers." + proverName + ".dll");
       }
 
-      Assembly asm = cce.NonNull(Assembly.LoadFrom(path));
-      string name = cce.NonNull(asm.GetName().Name);
+      Assembly asm = Cce.NonNull(Assembly.LoadFrom(path));
+      string name = Cce.NonNull(asm.GetName().Name);
       System.Type factoryType =
-        cce.NonNull(asm.GetType("Microsoft.Boogie." + name.Replace("Boogie.Provers.", "") + ".Factory"));
-      return cce.NonNull((ProverFactory /*!*/) Activator.CreateInstance(factoryType));
+        Cce.NonNull(asm.GetType("Microsoft.Boogie." + name.Replace("Boogie.Provers.", "") + ".Factory"));
+      return Cce.NonNull((ProverFactory) Activator.CreateInstance(factoryType));
     }
   }
 

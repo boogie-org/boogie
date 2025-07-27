@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -timeLimit:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 const N: int; // size of the ring

@@ -112,15 +112,15 @@ public class Implementation : DeclWithFormals {
   public Cmd ExplicitAssumptionAboutCachedPrecondition { get; set; }
 
   // Strongly connected components
-  private StronglyConnectedComponents<Block /*!*/> scc;
+  private StronglyConnectedComponents<Block> scc;
 
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
     Contract.Invariant(LocVars != null);
-    Contract.Invariant(cce.NonNullElements(Blocks));
-    Contract.Invariant(cce.NonNullElements(OriginalBlocks, true));
-    Contract.Invariant(cce.NonNullElements(scc, true));
+    Contract.Invariant(Cce.NonNullElements(Blocks));
+    Contract.Invariant(Cce.NonNullElements(OriginalBlocks, true));
+    Contract.Invariant(Cce.NonNullElements(scc, true));
   }
 
   private bool BlockPredecessorsComputed;
@@ -133,7 +133,7 @@ public class Implementation : DeclWithFormals {
   public bool IsSkipVerification(CoreOptions options)
   {
     bool verify = true;
-    cce.NonNull(this.Proc).CheckBooleanAttribute("verify", ref verify);
+    Cce.NonNull(this.Proc).CheckBooleanAttribute("verify", ref verify);
     this.CheckBooleanAttribute("verify", ref verify);
     if (!verify) {
       return true;
@@ -368,15 +368,15 @@ public class Implementation : DeclWithFormals {
     //:this(tok, name, typeParams, inParams, outParams, localVariables, structuredStmts, null, errorHandler);
   }
 
-  public Implementation(IToken /*!*/ tok,
-    string /*!*/ name,
-    List<TypeVariable> /*!*/ typeParams,
-    List<Variable> /*!*/ inParams,
-    List<Variable> /*!*/ outParams,
-    List<Variable> /*!*/ localVariables,
-    [Captured] StmtList /*!*/ structuredStmts,
+  public Implementation(IToken tok,
+    string name,
+    List<TypeVariable> typeParams,
+    List<Variable> inParams,
+    List<Variable> outParams,
+    List<Variable> localVariables,
+    [Captured] StmtList structuredStmts,
     QKeyValue kv,
-    Errors /*!*/ errorHandler)
+    Errors errorHandler)
     : base(tok, name, typeParams, inParams, outParams)
   {
     Contract.Requires(tok != null);
@@ -397,10 +397,10 @@ public class Implementation : DeclWithFormals {
   }
 
   public Implementation(IToken tok, string name, List<TypeVariable> typeParams, List<Variable> inParams,
-    List<Variable> outParams, List<Variable> localVariables, [Captured] List<Block /*!*/> block)
+    List<Variable> outParams, List<Variable> localVariables, [Captured] List<Block> block)
     : this(tok, name, typeParams, inParams, outParams, localVariables, block, null)
   {
-    Contract.Requires(cce.NonNullElements(block));
+    Contract.Requires(Cce.NonNullElements(block));
     Contract.Requires(localVariables != null);
     Contract.Requires(outParams != null);
     Contract.Requires(inParams != null);
@@ -410,13 +410,13 @@ public class Implementation : DeclWithFormals {
     //:this(tok, name, typeParams, inParams, outParams, localVariables, block, null);
   }
 
-  public Implementation(IToken /*!*/ tok,
-    string /*!*/ name,
-    List<TypeVariable> /*!*/ typeParams,
-    List<Variable> /*!*/ inParams,
-    List<Variable> /*!*/ outParams,
-    List<Variable> /*!*/ localVariables,
-    [Captured] List<Block /*!*/> /*!*/ blocks,
+  public Implementation(IToken tok,
+    string name,
+    List<TypeVariable> typeParams,
+    List<Variable> inParams,
+    List<Variable> outParams,
+    List<Variable> localVariables,
+    [Captured] List<Block> blocks,
     QKeyValue kv)
     : base(tok, name, typeParams, inParams, outParams)
   {
@@ -424,7 +424,7 @@ public class Implementation : DeclWithFormals {
     Contract.Requires(inParams != null);
     Contract.Requires(outParams != null);
     Contract.Requires(localVariables != null);
-    Contract.Requires(cce.NonNullElements(blocks));
+    Contract.Requires(Cce.NonNullElements(blocks));
     LocVars = localVariables;
     Blocks = blocks;
     BlockPredecessorsComputed = false;
@@ -482,7 +482,7 @@ public class Implementation : DeclWithFormals {
     stream.WriteLine(level, "{0}", '{');
 
     if (showLocals) {
-      foreach (Variable /*!*/ v in this.LocVars)
+      foreach (Variable v in this.LocVars)
       {
         Contract.Assert(v != null);
         v.Emit(stream, level + 1);
@@ -510,7 +510,7 @@ public class Implementation : DeclWithFormals {
       return;
     }
 
-    Proc = rc.LookUpProcedure(cce.NonNull(this.Name));
+    Proc = rc.LookUpProcedure(Cce.NonNull(this.Name));
     if (Proc == null)
     {
       rc.Error(this, "implementation given for undeclared procedure: {0}", this.Name);
@@ -552,13 +552,23 @@ public class Implementation : DeclWithFormals {
       (this as ICarriesAttributes).ResolveAttributes(rc);
         
       rc.Proc = Proc;
-      rc.StateMode = Proc.IsPure ? ResolutionContext.State.StateLess : ResolutionContext.State.Two;
+      if (Proc.IsPure)
+      {
+        rc.StateMode = ResolutionContext.State.StateLess;
+      }
+      else if (Proc is not ActionDecl)
+      {
+        rc.StateMode = ResolutionContext.State.Two;
+      }
       foreach (Block b in Blocks)
       {
         b.Resolve(rc);
       }
       rc.Proc = null;
-      rc.StateMode = ResolutionContext.State.Single;
+      if (Proc.IsPure || Proc is not ActionDecl)
+      {
+        rc.StateMode = ResolutionContext.State.Single;
+      }
 
       rc.PopProcedureContext();
       rc.PopVarContext();
@@ -579,7 +589,6 @@ public class Implementation : DeclWithFormals {
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    //Contract.Requires(tc != null);
     base.Typecheck(tc);
 
     Contract.Assume(this.Proc != null);
@@ -600,7 +609,7 @@ public class Implementation : DeclWithFormals {
     var oldProc = tc.Proc;
     tc.Proc = Proc;
     tc.Impl = this;
-    foreach (Variable /*!*/ v in LocVars)
+    foreach (Variable v in LocVars)
     {
       Contract.Assert(v != null);
       v.Typecheck(tc);
@@ -702,8 +711,8 @@ public class Implementation : DeclWithFormals {
     }
   }
 
-  void MatchFormals(List<Variable> /*!*/ implFormals, List<Variable> /*!*/ procFormals, string /*!*/ inout,
-    TypecheckingContext /*!*/ tc)
+  void MatchFormals(List<Variable> implFormals, List<Variable> procFormals, string inout,
+    TypecheckingContext tc)
   {
     Contract.Requires(implFormals != null);
     Contract.Requires(procFormals != null);
@@ -720,16 +729,16 @@ public class Implementation : DeclWithFormals {
       Contract.Assert(Proc != null);
       Contract.Assert(this.TypeParameters.Count == Proc.TypeParameters.Count);
 
-      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+      IDictionary<TypeVariable, Type>
         subst1 =
-          new Dictionary<TypeVariable /*!*/, Type /*!*/>();
-      IDictionary<TypeVariable /*!*/, Type /*!*/> /*!*/
+          new Dictionary<TypeVariable, Type>();
+      IDictionary<TypeVariable, Type>
         subst2 =
-          new Dictionary<TypeVariable /*!*/, Type /*!*/>();
+          new Dictionary<TypeVariable, Type>();
 
       for (int i = 0; i < this.TypeParameters.Count; ++i)
       {
-        TypeVariable /*!*/
+        TypeVariable
           newVar =
             new TypeVariable(Token.NoToken, Proc.TypeParameters[i].Name);
         Contract.Assert(newVar != null);
@@ -742,17 +751,17 @@ public class Implementation : DeclWithFormals {
         // the names of the formals are allowed to change from the proc to the impl
 
         // but types must be identical
-        Type t = cce.NonNull((Variable) implFormals[i]).TypedIdent.Type.Substitute(subst2);
-        Type u = cce.NonNull((Variable) procFormals[i]).TypedIdent.Type.Substitute(subst1);
+        Type t = Cce.NonNull((Variable) implFormals[i]).TypedIdent.Type.Substitute(subst2);
+        Type u = Cce.NonNull((Variable) procFormals[i]).TypedIdent.Type.Substitute(subst1);
         if (!t.Equals(u))
         {
-          string /*!*/
-            a = cce.NonNull((Variable) implFormals[i]).Name;
+          string
+            a = Cce.NonNull((Variable) implFormals[i]).Name;
           Contract.Assert(a != null);
-          string /*!*/
-            b = cce.NonNull((Variable) procFormals[i]).Name;
+          string
+            b = Cce.NonNull((Variable) procFormals[i]).Name;
           Contract.Assert(b != null);
-          string /*!*/
+          string
             c;
           if (a == b)
           {
@@ -777,7 +786,7 @@ public class Implementation : DeclWithFormals {
     this.formalMap = null;
   }
 
-  public Dictionary<Variable, Expr> /*!*/ GetImplFormalMap(CoreOptions options)
+  public Dictionary<Variable, Expr> GetImplFormalMap(CoreOptions options)
   {
     Contract.Ensures(Contract.Result<Dictionary<Variable, Expr>>() != null);
 
@@ -787,18 +796,18 @@ public class Implementation : DeclWithFormals {
     }
     else
     {
-      Dictionary<Variable, Expr> /*!*/
+      Dictionary<Variable, Expr>
         map = new Dictionary<Variable, Expr>(InParams.Count + OutParams.Count);
 
       Contract.Assume(this.Proc != null);
       Contract.Assume(InParams.Count == Proc.InParams.Count);
       for (int i = 0; i < InParams.Count; i++)
       {
-        Variable /*!*/
+        Variable
           v = InParams[i];
         Contract.Assert(v != null);
         IdentifierExpr ie = new IdentifierExpr(v.tok, v);
-        Variable /*!*/
+        Variable
           pv = Proc.InParams[i];
         Contract.Assert(pv != null);
         map.Add(pv, ie);
@@ -807,10 +816,10 @@ public class Implementation : DeclWithFormals {
       System.Diagnostics.Debug.Assert(OutParams.Count == Proc.OutParams.Count);
       for (int i = 0; i < OutParams.Count; i++)
       {
-        Variable /*!*/
-          v = cce.NonNull(OutParams[i]);
+        Variable
+          v = Cce.NonNull(OutParams[i]);
         IdentifierExpr ie = new IdentifierExpr(v.tok, v);
-        Variable pv = cce.NonNull(Proc.OutParams[i]);
+        Variable pv = Cce.NonNull(Proc.OutParams[i]);
         map.Add(pv, ie);
       }
 
@@ -824,9 +833,9 @@ public class Implementation : DeclWithFormals {
         foreach (var e in map)
         {
           options.OutputWriter.Write("  ");
-          cce.NonNull((Variable /*!*/) e.Key).Emit(stream, 0);
+          Cce.NonNull((Variable) e.Key).Emit(stream, 0);
           options.OutputWriter.Write("  --> ");
-          cce.NonNull((Expr) e.Value).Emit(stream);
+          Cce.NonNull((Expr) e.Value).Emit(stream);
           options.OutputWriter.WriteLine();
         }
       }
@@ -839,10 +848,10 @@ public class Implementation : DeclWithFormals {
   /// Return a collection of blocks that are reachable from the block passed as a parameter.
   /// The block must be defined in the current implementation
   /// </summary>
-  public ICollection<Block /*!*/> GetConnectedComponents(Block startingBlock)
+  public ICollection<Block> GetConnectedComponents(Block startingBlock)
   {
     Contract.Requires(startingBlock != null);
-    Contract.Ensures(cce.NonNullElements(Contract.Result<ICollection<Block>>(), true));
+    Contract.Ensures(Cce.NonNullElements(Contract.Result<ICollection<Block>>(), true));
     Contract.Assert(this.Blocks.Contains(startingBlock));
 
     if (!this.BlockPredecessorsComputed)
@@ -854,9 +863,9 @@ public class Implementation : DeclWithFormals {
       System.Console.WriteLine("* Strongly connected components * \n{0} \n ** ", scc);
 #endif
 
-    foreach (ICollection<Block /*!*/> component in cce.NonNull(this.scc))
+    foreach (ICollection<Block> component in Cce.NonNull(this.scc))
     {
-      foreach (Block /*!*/ b in component)
+      foreach (Block b in component)
       {
         Contract.Assert(b != null);
         if (b == startingBlock) // We found the compontent that owns the startingblock
@@ -868,7 +877,7 @@ public class Implementation : DeclWithFormals {
 
     {
       Contract.Assert(false);
-      throw new cce.UnreachableException();
+      throw new Cce.UnreachableException();
     } // if we are here, it means that the block is not in one of the components. This is an error.
   }
 
@@ -883,14 +892,14 @@ public class Implementation : DeclWithFormals {
       ComputePredecessorsForBlocks();
     }
 
-    Adjacency<Block /*!*/> next = new Adjacency<Block /*!*/>(Successors);
-    Adjacency<Block /*!*/> prev = new Adjacency<Block /*!*/>(Predecessors);
+    Adjacency<Block> next = new Adjacency<Block>(Successors);
+    Adjacency<Block> prev = new Adjacency<Block>(Predecessors);
 
-    this.scc = new StronglyConnectedComponents<Block /*!*/>(this.Blocks, next, prev);
+    this.scc = new StronglyConnectedComponents<Block>(this.Blocks, next, prev);
     scc.Compute();
 
 
-    foreach (Block /*!*/ block in this.Blocks)
+    foreach (Block block in this.Blocks)
     {
       Contract.Assert(block != null);
       block.Predecessors = new List<Block>();
@@ -902,7 +911,7 @@ public class Implementation : DeclWithFormals {
   /// </summary>
   override public void ResetAbstractInterpretationState()
   {
-    foreach (Block /*!*/ b in this.Blocks)
+    foreach (Block b in this.Blocks)
     {
       Contract.Assert(b != null);
       b.ResetAbstractInterpretationState();
@@ -913,7 +922,7 @@ public class Implementation : DeclWithFormals {
   /// A private method used as delegate for the strongly connected components.
   /// It return, given a node, the set of its successors
   /// </summary>
-  private IEnumerable /*<Block!>*/ /*!*/ Successors(Block node)
+  private IEnumerable /*<Block!>*/ Successors(Block node)
   {
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<IEnumerable>() != null);
@@ -932,7 +941,7 @@ public class Implementation : DeclWithFormals {
       // otherwise must be a ReturnCmd
       Contract.Assert(node.TransferCmd is ReturnCmd);
 
-      return new List<Block /*!*/>();
+      return new List<Block>();
     }
   }
 
@@ -940,7 +949,7 @@ public class Implementation : DeclWithFormals {
   /// A private method used as delegate for the strongly connected components.
   /// It return, given a node, the set of its predecessors
   /// </summary>
-  private IEnumerable /*<Block!>*/ /*!*/ Predecessors(Block node)
+  private IEnumerable /*<Block!>*/ Predecessors(Block node)
   {
     Contract.Requires(node != null);
     Contract.Ensures(Contract.Result<IEnumerable>() != null);
@@ -974,7 +983,7 @@ public class Implementation : DeclWithFormals {
       }
 
       Contract.Assert(gtc.LabelTargets != null);
-      foreach (var /*!*/ dest in gtc.LabelTargets)
+      foreach (var dest in gtc.LabelTargets)
       {
         Contract.Assert(dest != null);
         dest.Predecessors.Add(block);
@@ -985,7 +994,7 @@ public class Implementation : DeclWithFormals {
   public void PruneUnreachableBlocks(CoreOptions options)
   {
     var toVisit = new Stack<Block>();
-    var reachableBlocks = new List<Block /*!*/>();
+    var reachableBlocks = new List<Block>();
     var reachable = new HashSet<Block>(); // the set of elements in "reachableBlocks"
 
     toVisit.Push(Blocks[0]);
@@ -1027,7 +1036,6 @@ public class Implementation : DeclWithFormals {
 
   public override Absy StdDispatch(StandardVisitor visitor)
   {
-    //Contract.Requires(visitor != null);
     Contract.Ensures(Contract.Result<Absy>() != null);
     return visitor.VisitImplementation(this);
   }

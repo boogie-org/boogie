@@ -18,7 +18,7 @@ public sealed class Block : Absy
   {
     if (TransferCmd is GotoCmd g)
     {
-      return cce.NonNull(g.LabelTargets);
+      return Cce.NonNull(g.LabelTargets);
     }
     return new List<Block>();
   }
@@ -43,18 +43,18 @@ public sealed class Block : Absy
   public int Iterations; // Count the number of time we visited the block during fixpoint computation. Used to decide if we widen or not
 
   // VC generation and SCC computation
-  public List<Block> /*!*/ Predecessors;
+  public List<Block> Predecessors;
 
   // This field is used during passification to null-out entries in block2Incarnation dictionary early
   public int SuccCount;
 
-  private HashSet<Variable /*!*/> liveVarsBefore;
+  private HashSet<Variable> liveVarsBefore;
 
-  public IEnumerable<Variable /*!*/> LiveVarsBefore
+  public IEnumerable<Variable> LiveVarsBefore
   {
     get
     {
-      Contract.Ensures(cce.NonNullElements(Contract.Result<IEnumerable<Variable /*!*/>>(), true));
+      Contract.Ensures(Cce.NonNullElements(Contract.Result<IEnumerable<Variable>>(), true));
       if (this.liveVarsBefore == null)
       {
         return null;
@@ -66,7 +66,7 @@ public sealed class Block : Absy
     }
     set
     {
-      Contract.Requires(cce.NonNullElements(value, true));
+      Contract.Requires(Cce.NonNullElements(value, true));
       if (value == null)
       {
         this.liveVarsBefore = null;
@@ -83,7 +83,7 @@ public sealed class Block : Absy
   {
     Contract.Invariant(this.Label != null);
     Contract.Invariant(this.Cmds != null);
-    Contract.Invariant(cce.NonNullElements(this.liveVarsBefore, true));
+    Contract.Invariant(Cce.NonNullElements(this.liveVarsBefore, true));
   }
 
   public bool IsLive(Variable v)
@@ -106,7 +106,7 @@ public sealed class Block : Absy
   {
   }
 
-  public Block(IToken tok, string /*!*/ label, List<Cmd> /*!*/ cmds, TransferCmd transferCmd)
+  public Block(IToken tok, string label, List<Cmd> cmds, TransferCmd transferCmd)
     : base(tok)
   {
     Contract.Requires(label != null);
@@ -134,7 +134,7 @@ public sealed class Block : Absy
         : this.Label,
       this.WidenBlock ? "  // cut point" : "");
 
-    foreach (Cmd /*!*/ c in this.Cmds)
+    foreach (Cmd c in this.Cmds)
     {
       Contract.Assert(c != null);
       c.Emit(stream, level + 1);
@@ -152,7 +152,7 @@ public sealed class Block : Absy
 
   public override void Resolve(ResolutionContext rc)
   {
-    foreach (Cmd /*!*/ c in Cmds)
+    foreach (Cmd c in Cmds)
     {
       Contract.Assert(c != null);
       c.Resolve(rc);
@@ -164,7 +164,7 @@ public sealed class Block : Absy
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    foreach (var /*!*/ cmd in Cmds)
+    foreach (var cmd in Cmds)
     {
       Contract.Assert(cmd != null);
       cmd.Typecheck(tc);

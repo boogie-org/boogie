@@ -42,22 +42,22 @@ public class Parser {
 	const bool _x = false;
 	const int minErrDist = 2;
 
-	public Scanner/*!*/ scanner;
-	public Errors/*!*/  errors;
+	public Scanner scanner;
+	public Errors  errors;
 
-	public Token/*!*/ t;    // last recognized token
-	public Token/*!*/ la;   // lookahead token
+	public Token t;    // last recognized token
+	public Token la;   // lookahead token
 	int errDist = minErrDist;
 
-readonly Program/*!*/ Pgm;
+readonly Program Pgm;
 
-readonly Expr/*!*/ dummyExpr;
-readonly Cmd/*!*/ dummyCmd;
-readonly Block/*!*/ dummyBlock;
-readonly Bpl.Type/*!*/ dummyType;
-readonly List<Expr>/*!*/ dummyExprSeq;
-readonly TransferCmd/*!*/ dummyTransferCmd;
-readonly StructuredCmd/*!*/ dummyStructuredCmd;
+readonly Expr dummyExpr;
+readonly Cmd dummyCmd;
+readonly Block dummyBlock;
+readonly Bpl.Type dummyType;
+readonly List<Expr> dummyExprSeq;
+readonly TransferCmd dummyTransferCmd;
+readonly StructuredCmd dummyStructuredCmd;
 
 public static Program ParseLibrary(string libraryName)
 {
@@ -73,9 +73,9 @@ public static Program ParseLibrary(string libraryName)
 ///Returns the number of parsing errors encountered.  If 0, "program" returns as
 ///the parsed program.
 ///</summary>
-public static int Parse(string/*!*/ filename, List<string/*!*/> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
+public static int Parse(string filename, List<string> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
   Contract.Requires(filename != null);
-  Contract.Requires(cce.NonNullElements(defines,true));
+  Contract.Requires(Cce.NonNullElements(defines,true));
 
   if (filename == "stdin.bpl") {
     return Parse(Console.In, filename, defines, out program, useBaseName);
@@ -86,17 +86,17 @@ public static int Parse(string/*!*/ filename, List<string/*!*/> defines, out /*m
   }
 }
 
-public static int Parse(TextReader stream, string/*!*/ filename, List<string> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */
+public static int Parse(TextReader stream, string filename, List<string> defines, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */
 {
   var preprocessedSource = ParserHelper.Fill(stream, defines);
   return Parse(preprocessedSource, filename, out program, useBaseName);
 }
 
-public static int Parse(string s, string/*!*/ filename, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
+public static int Parse(string s, string filename, out /*maybe null*/ Program program, bool useBaseName=false) /* throws System.IO.IOException */ {
   Contract.Requires(s != null);
   Contract.Requires(filename != null);
 
-  byte[]/*!*/ buffer = cce.NonNull(UTF8Encoding.Default.GetBytes(s));
+  byte[] buffer = Cce.NonNull(UTF8Encoding.Default.GetBytes(s));
   MemoryStream ms = new MemoryStream(buffer,false);
   Errors errors = new Errors();
   Scanner scanner = new Scanner(ms, errors, filename, useBaseName);
@@ -114,7 +114,7 @@ public static int Parse(string s, string/*!*/ filename, out /*maybe null*/ Progr
   return errors.count;
 }
 
-public Parser(Scanner/*!*/ scanner, Errors/*!*/ errors, bool disambiguation)
+public Parser(Scanner scanner, Errors errors, bool disambiguation)
  : this(scanner, errors)
 {
   // initialize readonly fields
@@ -134,22 +134,21 @@ public Parser(Scanner/*!*/ scanner, Errors/*!*/ errors, bool disambiguation)
 private class BvBounds : Expr {
   public BigNum Lower;
   public BigNum Upper;
-  public BvBounds(IToken/*!*/ tok, BigNum lower, BigNum upper)
+  public BvBounds(IToken tok, BigNum lower, BigNum upper)
     : base(tok, /*immutable=*/ false) {
     Contract.Requires(tok != null);
     this.Lower = lower;
     this.Upper = upper;
   }
-  public override Bpl.Type/*!*/ ShallowType { get {Contract.Ensures(Contract.Result<Bpl.Type>() != null); return Bpl.Type.Int; } }
-  public override void Resolve(ResolutionContext/*!*/ rc) {
-    // Contract.Requires(rc != null);
+  public override Bpl.Type ShallowType { get {Contract.Ensures(Contract.Result<Bpl.Type>() != null); return Bpl.Type.Int; } }
+  public override void Resolve(ResolutionContext rc) {
     rc.Error(this, "bitvector bounds in illegal position");
   }
-  public override void Emit(TokenTextWriter/*!*/ stream,
+  public override void Emit(TokenTextWriter stream,
                             int contextBindingStrength, bool fragileContext) {
-    Contract.Assert(false);throw new cce.UnreachableException();
+    Contract.Assert(false);throw new Cce.UnreachableException();
   }
-  public override void ComputeFreeVariables(GSet<object>/*!*/ freeVars) { Contract.Assert(false);throw new cce.UnreachableException(); }
+  public override void ComputeFreeVariables(GSet<object> freeVars) { Contract.Assert(false);throw new Cce.UnreachableException(); }
 
   public override int ContentHash => throw new NotSupportedException("Not supported since this type is translated away");
 
@@ -162,10 +161,10 @@ private class BvBounds : Expr {
 /*--------------------------------------------------------------------------*/
 
 
-	public Parser(Scanner/*!*/ scanner, Errors/*!*/ errors) {
+	public Parser(Scanner scanner, Errors errors) {
 		this.scanner = scanner;
 		this.errors = errors;
-		Token/*!*/ tok = new Token();
+		Token tok = new Token();
 		tok.val = "";
 		this.la = tok;
 		this.t = new Token(); // just to satisfy its non-null constraint
@@ -176,13 +175,13 @@ private class BvBounds : Expr {
 		errDist = 0;
 	}
 
-	public void SemErr (string/*!*/ msg) {
+	public void SemErr (string msg) {
 		Contract.Requires(msg != null);
 		if (errDist >= minErrDist) errors.SemErr(t, msg);
 		errDist = 0;
 	}
 
-	public void SemErr(IToken/*!*/ tok, string/*!*/ msg) {
+	public void SemErr(IToken tok, string msg) {
 	  Contract.Requires(tok != null);
 	  Contract.Requires(msg != null);
 	  errors.SemErr(tok, msg);
@@ -231,24 +230,24 @@ private class BvBounds : Expr {
 
 
 	void BoogiePL() {
-		List<Variable>/*!*/ vs;
-		List<Declaration>/*!*/ ds;
-		Axiom/*!*/ ax;
-		List<Declaration/*!*/>/*!*/ ts;
+		List<Variable> vs;
+		List<Declaration> ds;
+		Axiom ax;
+		List<Declaration> ts;
 		DatatypeTypeCtorDecl dt;
 		YieldInvariantDecl yi;
 		ActionDecl ac;
 		YieldProcedureDecl yp;
-		Procedure/*!*/ pr;
+		Procedure pr;
 		Implementation im;
-		Implementation/*!*/ nnim;
+		Implementation nnim;
 		bool isPure = false;
 		
 		while (StartOf(1)) {
 			switch (la.kind) {
 			case 23: {
 				Consts(out ds);
-				foreach(Bpl.Declaration/*!*/ v in ds){
+				foreach(Bpl.Declaration v in ds){
 				 Contract.Assert(v != null);
 				 Pgm.AddTopLevelDeclaration(v);
 				}
@@ -257,7 +256,7 @@ private class BvBounds : Expr {
 			}
 			case 28: case 29: {
 				Function(out ds);
-				foreach(Bpl.Declaration/*!*/ d in ds){
+				foreach(Bpl.Declaration d in ds){
 				 Contract.Assert(d != null);
 				 Pgm.AddTopLevelDeclaration(d);
 				}
@@ -271,7 +270,7 @@ private class BvBounds : Expr {
 			}
 			case 33: {
 				UserDefinedTypes(out ts);
-				foreach(Declaration/*!*/ td in ts){
+				foreach(Declaration td in ts){
 				 Contract.Assert(td != null);
 				 Pgm.AddTopLevelDeclaration(td);
 				}
@@ -285,7 +284,7 @@ private class BvBounds : Expr {
 			}
 			case 9: {
 				GlobalVars(out vs);
-				foreach(Bpl.Variable/*!*/ v in vs){
+				foreach(Bpl.Variable v in vs){
 				 Contract.Assert(v != null);
 				 Pgm.AddTopLevelDeclaration(v);
 				}
@@ -341,8 +340,8 @@ private class BvBounds : Expr {
 		Expect(0);
 	}
 
-	void Consts(out List<Declaration>/*!*/ ds) {
-		Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken/*!*/ y; List<TypedIdent>/*!*/ xs;
+	void Consts(out List<Declaration> ds) {
+		Contract.Ensures(Contract.ValueAtReturn(out ds) != null); IToken y; List<TypedIdent> xs;
 		ds = new List<Declaration>();
 		var axioms = new List<Axiom>();
 		Axiom axiom;
@@ -368,7 +367,7 @@ private class BvBounds : Expr {
 			}
 			Expect(27);
 		} else SynErr(128);
-		foreach(TypedIdent/*!*/ x in xs){
+		foreach(TypedIdent x in xs){
 		 Contract.Assert(x != null);
 		 var constant = new Constant(y, x, u, kv, axioms);
 		 ds.Add(constant);
@@ -376,20 +375,20 @@ private class BvBounds : Expr {
 		
 	}
 
-	void Function(out List<Declaration>/*!*/ ds) {
+	void Function(out List<Declaration> ds) {
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
-		ds = new List<Declaration>(); IToken/*!*/ z;
-		IToken/*!*/ typeParamTok;
+		ds = new List<Declaration>(); IToken z;
+		IToken typeParamTok;
 		var typeParams = new List<TypeVariable>();
 		var arguments = new List<Variable>();
 		var axioms = new List<Axiom>();
-		TypedIdent/*!*/ tyd;
+		TypedIdent tyd;
 		TypedIdent retTyd = null;
-		Bpl.Type/*!*/ retTy;
+		Bpl.Type retTy;
 		QKeyValue argKv = null;
 		QKeyValue kv = null;
 		Expr definition = null;
-		Expr/*!*/ tmp;
+		Expr tmp;
 		Axiom ax;
 		bool revealed = false;
 		
@@ -456,7 +455,7 @@ private class BvBounds : Expr {
 		 // construct a dummy type for the case of syntax error
 		 retTyd = new TypedIdent(t, TypedIdent.NoName, new BasicType(t, SimpleType.Int));
 		}
-		Function/*!*/ func = new Function(z, z.val, typeParams, arguments,
+		Function func = new Function(z, z.val, typeParams, arguments,
 		                                 new Formal(retTyd.tok, retTyd, false, argKv), null, kv);
 		func.AlwaysRevealed = revealed;
 		foreach(var axiom in axioms) {
@@ -467,7 +466,7 @@ private class BvBounds : Expr {
 		Contract.Assert(func != null);
 		ds.Add(func);
 		bool allUnnamed = true;
-		foreach(Formal/*!*/ f in arguments) {
+		foreach(Formal f in arguments) {
 		 Contract.Assert(f != null);
 		 if (f.TypedIdent.HasName) {
 		   allUnnamed = false;
@@ -477,7 +476,7 @@ private class BvBounds : Expr {
 		if (!allUnnamed) {
 		 Bpl.Type prevType = null;
 		 for (int i = arguments.Count; 0 <= --i; ) {
-		   TypedIdent/*!*/ curr = cce.NonNull(arguments[i]).TypedIdent;
+		   TypedIdent curr = Cce.NonNull(arguments[i]).TypedIdent;
 		   if (curr.HasName) {
 		     // the argument was given as both an identifier and a type
 		     prevType = curr.Type;
@@ -516,9 +515,9 @@ private class BvBounds : Expr {
 		
 	}
 
-	void Axiom(out Axiom/*!*/ m) {
+	void Axiom(out Axiom m) {
 		Contract.Ensures(Contract.ValueAtReturn(out m) != null); 
-		Expr/*!*/ e; 
+		Expr e; 
 		QKeyValue kv = null; 
 		bool canHide = false; 
 		if (la.kind == 31) {
@@ -529,14 +528,14 @@ private class BvBounds : Expr {
 		while (la.kind == 26) {
 			Attribute(ref kv);
 		}
-		IToken/*!*/ x = t; 
+		IToken x = t; 
 		Proposition(out e);
 		Expect(10);
 		m = new Axiom(x,e, null, kv, canHide); 
 	}
 
-	void UserDefinedTypes(out List<Declaration/*!*/>/*!*/ ts) {
-		Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out ts))); Declaration/*!*/ decl; QKeyValue kv = null; ts = new List<Declaration/*!*/> (); 
+	void UserDefinedTypes(out List<Declaration> ts) {
+		Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out ts))); Declaration decl; QKeyValue kv = null; ts = new List<Declaration> (); 
 		Expect(33);
 		while (la.kind == 26) {
 			Attribute(ref kv);
@@ -552,7 +551,7 @@ private class BvBounds : Expr {
 	}
 
 	void Datatype(out DatatypeTypeCtorDecl datatypeTypeCtorDecl) {
-		QKeyValue kv = null; IToken/*!*/ typeParamTok, name; List<TypeVariable> typeParams = new List<TypeVariable>(); 
+		QKeyValue kv = null; IToken typeParamTok, name; List<TypeVariable> typeParams = new List<TypeVariable>(); 
 		Expect(35);
 		while (la.kind == 26) {
 			Attribute(ref kv);
@@ -567,7 +566,7 @@ private class BvBounds : Expr {
 		Expect(27);
 	}
 
-	void GlobalVars(out List<Variable>/*!*/ ds) {
+	void GlobalVars(out List<Variable> ds) {
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
 		QKeyValue kv = null;
 		ds = new List<Variable>();
@@ -649,15 +648,15 @@ private class BvBounds : Expr {
 		}
 	}
 
-	void Procedure(bool isPure, out Procedure/*!*/ proc, out /*maybe null*/ Implementation impl) {
-		Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken/*!*/ x;
-		List<TypeVariable>/*!*/ typeParams;
-		List<Variable>/*!*/ ins, outs;
-		List<Requires>/*!*/ pre = new List<Requires>();
-		List<IdentifierExpr>/*!*/ mods = new List<IdentifierExpr>();
-		List<Ensures>/*!*/ post = new List<Ensures>();
-		List<Variable>/*!*/ locals = new List<Variable>();
-		StmtList/*!*/ stmtList;
+	void Procedure(bool isPure, out Procedure proc, out /*maybe null*/ Implementation impl) {
+		Contract.Ensures(Contract.ValueAtReturn(out proc) != null); IToken x;
+		List<TypeVariable> typeParams;
+		List<Variable> ins, outs;
+		List<Requires> pre = new List<Requires>();
+		List<IdentifierExpr> mods = new List<IdentifierExpr>();
+		List<Ensures> post = new List<Ensures>();
+		List<Variable> locals = new List<Variable>();
+		StmtList stmtList;
 		QKeyValue kv = null;
 		impl = null;
 		
@@ -759,12 +758,12 @@ private class BvBounds : Expr {
 		
 	}
 
-	void Implementation(out Implementation/*!*/ impl) {
-		Contract.Ensures(Contract.ValueAtReturn(out impl) != null); IToken/*!*/ x;
-		List<TypeVariable>/*!*/ typeParams;
-		List<Variable>/*!*/ ins, outs;
-		List<Variable>/*!*/ locals;
-		StmtList/*!*/ stmtList;
+	void Implementation(out Implementation impl) {
+		Contract.Ensures(Contract.ValueAtReturn(out impl) != null); IToken x;
+		List<TypeVariable> typeParams;
+		List<Variable> ins, outs;
+		List<Variable> locals;
+		StmtList stmtList;
 		QKeyValue kv;
 		
 		Expect(52);
@@ -787,7 +786,7 @@ private class BvBounds : Expr {
 		}
 	}
 
-	void LocalVars(List<Variable>/*!*/ ds) {
+	void LocalVars(List<Variable> ds) {
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
 		QKeyValue kv = null;
 		
@@ -799,7 +798,7 @@ private class BvBounds : Expr {
 		Expect(10);
 	}
 
-	void ProcFormals(bool incoming, bool allowWhereClauses, out List<Variable>/*!*/ ds) {
+	void ProcFormals(bool incoming, bool allowWhereClauses, out List<Variable> ds) {
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
 		ds = new List<Variable>();
 		var dsx = ds;
@@ -820,30 +819,30 @@ private class BvBounds : Expr {
 		}
 	}
 
-	void BoundVars(out List<Variable>/*!*/ ds) {
+	void BoundVars(out List<Variable> ds) {
 		Contract.Ensures(Contract.ValueAtReturn(out ds) != null);
-		List<TypedIdent>/*!*/ tyds = new List<TypedIdent>();
+		List<TypedIdent> tyds = new List<TypedIdent>();
 		ds = new List<Variable>();
 		var dsx = ds;
 		
 		AttributesIdsTypeWheres(false, "bound variables", delegate(TypedIdent tyd, QKeyValue kv) { dsx.Add(new BoundVariable(tyd.tok, tyd, kv)); } );
 	}
 
-	void IdsType(out List<TypedIdent>/*!*/ tyds) {
-		Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); List<IToken>/*!*/ ids;  Bpl.Type/*!*/ ty; 
+	void IdsType(out List<TypedIdent> tyds) {
+		Contract.Ensures(Contract.ValueAtReturn(out tyds) != null); List<IToken> ids;  Bpl.Type ty; 
 		Idents(out ids);
 		Expect(13);
 		Type(out ty);
 		tyds = new List<TypedIdent>();
-		foreach(Token/*!*/ id in ids){
+		foreach(Token id in ids){
 		 Contract.Assert(id != null);
 		 tyds.Add(new TypedIdent(id, id.val, ty, null));
 		}
 		
 	}
 
-	void Idents(out List<IToken>/*!*/ xs) {
-		Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new List<IToken>(); 
+	void Idents(out List<IToken> xs) {
+		Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken id; xs = new List<IToken>(); 
 		Ident(out id);
 		xs.Add(id); 
 		while (la.kind == 14) {
@@ -853,13 +852,13 @@ private class BvBounds : Expr {
 		}
 	}
 
-	void Type(out Bpl.Type/*!*/ ty) {
-		Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken/*!*/ tok; ty = dummyType; 
+	void Type(out Bpl.Type ty) {
+		Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken tok; ty = dummyType; 
 		if (StartOf(13)) {
 			TypeAtom(out ty);
 		} else if (StartOf(14)) {
 			Ident(out tok);
-			List<Bpl.Type>/*!*/ args = new List<Bpl.Type> (); 
+			List<Bpl.Type> args = new List<Bpl.Type> (); 
 			if (StartOf(15)) {
 				TypeArgs(args);
 			}
@@ -878,7 +877,7 @@ private class BvBounds : Expr {
 	}
 
 	void IdsTypeWhere(bool allowWhereClauses, string context, System.Action<TypedIdent> action ) {
-		List<IToken>/*!*/ ids;  Bpl.Type/*!*/ ty;  Expr wh = null;  Expr/*!*/ nne; 
+		List<IToken> ids;  Bpl.Type ty;  Expr wh = null;  Expr nne; 
 		Idents(out ids);
 		Expect(13);
 		Type(out ty);
@@ -892,15 +891,15 @@ private class BvBounds : Expr {
 			}
 			
 		}
-		foreach(Token/*!*/ id in ids){
+		foreach(Token id in ids){
 		 Contract.Assert(id != null);
 		 action(new TypedIdent(id, id.val, ty, wh));
 		}
 		
 	}
 
-	void Expression(out Expr/*!*/ e0) {
-		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
+	void Expression(out Expr e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken x; Expr e1; 
 		ImpliesExpression(false, out e0);
 		while (la.kind == 74 || la.kind == 75) {
 			EquivOp();
@@ -910,7 +909,7 @@ private class BvBounds : Expr {
 		}
 	}
 
-	void TypeAtom(out Bpl.Type/*!*/ ty) {
+	void TypeAtom(out Bpl.Type ty) {
 		Contract.Ensures(Contract.ValueAtReturn(out ty) != null); ty = dummyType; 
 		if (la.kind == 16) {
 			Get();
@@ -928,7 +927,7 @@ private class BvBounds : Expr {
 		} else SynErr(135);
 	}
 
-	void Ident(out IToken/*!*/ x) {
+	void Ident(out IToken x) {
 		Contract.Ensures(Contract.ValueAtReturn(out x) != null);
 		switch (la.kind) {
 		case 1: {
@@ -983,8 +982,8 @@ private class BvBounds : Expr {
 		
 	}
 
-	void TypeArgs(List<Bpl.Type>/*!*/ ts) {
-		Contract.Requires(ts != null); IToken/*!*/ tok; Bpl.Type/*!*/ ty; 
+	void TypeArgs(List<Bpl.Type> ts) {
+		Contract.Requires(ts != null); IToken tok; Bpl.Type ty; 
 		if (StartOf(13)) {
 			TypeAtom(out ty);
 			ts.Add(ty); 
@@ -993,7 +992,7 @@ private class BvBounds : Expr {
 			}
 		} else if (StartOf(14)) {
 			Ident(out tok);
-			List<Bpl.Type>/*!*/ args = new List<Bpl.Type> ();
+			List<Bpl.Type> args = new List<Bpl.Type> ();
 			ts.Add(new UnresolvedTypeIdentifier (tok, tok.val, args)); 
 			if (StartOf(15)) {
 				TypeArgs(ts);
@@ -1004,12 +1003,12 @@ private class BvBounds : Expr {
 		} else SynErr(137);
 	}
 
-	void MapType(out Bpl.Type/*!*/ ty) {
+	void MapType(out Bpl.Type ty) {
 		Contract.Ensures(Contract.ValueAtReturn(out ty) != null); IToken tok = null;
-		IToken/*!*/ nnTok;
-		List<Bpl.Type>/*!*/ arguments = new List<Bpl.Type>();
-		Bpl.Type/*!*/ result;
-		List<TypeVariable>/*!*/ typeParameters = new List<TypeVariable>();
+		IToken nnTok;
+		List<Bpl.Type> arguments = new List<Bpl.Type>();
+		Bpl.Type result;
+		List<TypeVariable> typeParameters = new List<TypeVariable>();
 		
 		if (la.kind == 21) {
 			TypeParams(out nnTok, out typeParameters);
@@ -1026,21 +1025,21 @@ private class BvBounds : Expr {
 		
 	}
 
-	void TypeParams(out IToken/*!*/ tok, out List<TypeVariable>/*!*/ typeParams) {
-		Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); List<IToken>/*!*/ typeParamToks; 
+	void TypeParams(out IToken tok, out List<TypeVariable> typeParams) {
+		Contract.Ensures(Contract.ValueAtReturn(out tok) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); List<IToken> typeParamToks; 
 		Expect(21);
 		tok = t;  
 		Idents(out typeParamToks);
 		Expect(22);
 		typeParams = new List<TypeVariable> ();
-		foreach(Token/*!*/ id in typeParamToks){
+		foreach(Token id in typeParamToks){
 		 Contract.Assert(id != null);
 		 typeParams.Add(new TypeVariable(id, id.val));}
 		
 	}
 
-	void Types(List<Bpl.Type>/*!*/ ts) {
-		Contract.Requires(ts != null); Bpl.Type/*!*/ ty; 
+	void Types(List<Bpl.Type> ts) {
+		Contract.Requires(ts != null); Bpl.Type ty; 
 		Type(out ty);
 		ts.Add(ty); 
 		while (la.kind == 14) {
@@ -1050,11 +1049,11 @@ private class BvBounds : Expr {
 		}
 	}
 
-	void VarOrType(out TypedIdent/*!*/ tyd, out QKeyValue kv) {
+	void VarOrType(out TypedIdent tyd, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out tyd) != null);
-		string/*!*/ varName = TypedIdent.NoName;
-		Bpl.Type/*!*/ ty;
-		IToken/*!*/ tok;
+		string varName = TypedIdent.NoName;
+		Bpl.Type ty;
+		IToken tok;
 		kv = null;
 		
 		while (la.kind == 26) {
@@ -1076,14 +1075,14 @@ private class BvBounds : Expr {
 		tyd = new TypedIdent(tok, varName, ty); 
 	}
 
-	void Proposition(out Expr/*!*/ e) {
+	void Proposition(out Expr e) {
 		Contract.Ensures(Contract.ValueAtReturn(out e) != null);
 		Expression(out e);
 	}
 
-	void UserDefinedType(out Declaration/*!*/ decl, QKeyValue kv) {
-		Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken/*!*/ id; List<IToken>/*!*/ paramTokens = new List<IToken> ();
-		Bpl.Type/*!*/ body = dummyType; bool synonym = false; 
+	void UserDefinedType(out Declaration decl, QKeyValue kv) {
+		Contract.Ensures(Contract.ValueAtReturn(out decl) != null); IToken id; List<IToken> paramTokens = new List<IToken> ();
+		Bpl.Type body = dummyType; bool synonym = false; 
 		Ident(out id);
 		if (StartOf(14)) {
 			WhiteSpaceIdents(out paramTokens);
@@ -1094,8 +1093,8 @@ private class BvBounds : Expr {
 			synonym = true; 
 		}
 		if (synonym) {
-		 List<TypeVariable>/*!*/ typeParams = new List<TypeVariable>();
-		 foreach(Token/*!*/ t in paramTokens){
+		 List<TypeVariable> typeParams = new List<TypeVariable>();
+		 foreach(Token t in paramTokens){
 		   Contract.Assert(t != null);
 		   typeParams.Add(new TypeVariable(t, t.val));}
 		 decl = new TypeSynonymDecl(id, id.val, typeParams, body, kv);
@@ -1105,8 +1104,8 @@ private class BvBounds : Expr {
 		
 	}
 
-	void WhiteSpaceIdents(out List<IToken>/*!*/ xs) {
-		Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken/*!*/ id; xs = new List<IToken>(); 
+	void WhiteSpaceIdents(out List<IToken> xs) {
+		Contract.Ensures(Contract.ValueAtReturn(out xs) != null); IToken id; xs = new List<IToken>(); 
 		Ident(out id);
 		xs.Add(id); 
 		while (StartOf(14)) {
@@ -1186,7 +1185,7 @@ private class BvBounds : Expr {
 		} else SynErr(139);
 	}
 
-	void ImplBody(out List<Variable>/*!*/ locals, out StmtList/*!*/ stmtList) {
+	void ImplBody(out List<Variable> locals, out StmtList stmtList) {
 		Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(Contract.ValueAtReturn(out stmtList) != null); locals = new List<Variable>(); 
 		Expect(26);
 		while (la.kind == 9) {
@@ -1237,11 +1236,15 @@ private class BvBounds : Expr {
 			ImplBody(out locals, out stmtList);
 			if (refinedAction == null) {
 			 var actionName = m.val == "_" ? null : m.val;
-			 var actionDecl = new ActionDecl(tok, actionName, moverType, Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+			 var inParams = new List<Variable>(ins);
+			 inParams.RemoveAll(x => x.HasAttribute(CivlAttributes.HIDE));
+			 var outParams = new List<Variable>(outs);
+			 outParams.RemoveAll(x => x.HasAttribute(CivlAttributes.HIDE));
+			 var actionDecl = new ActionDecl(tok, actionName, moverType, Formal.StripWhereClauses(inParams), Formal.StripWhereClauses(outParams),
 			                               false, new List<ActionDeclRef>(), null, null,
 			                               new List<Requires>(), new List<CallCmd>(), new List<AssertCmd>(), new List<IdentifierExpr>(), null, akv);
 			 Pgm.AddTopLevelDeclaration(actionDecl);
-			 var impl = new Implementation(tok, actionDecl.Name, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
+			 var impl = new Implementation(tok, actionDecl.Name, new List<TypeVariable>(), Formal.StripWhereClauses(inParams), Formal.StripWhereClauses(outParams),
 			                               locals, stmtList, akv == null ? null : (QKeyValue)akv.Clone());
 			 Pgm.AddTopLevelDeclaration(impl);
 			 refinedAction = new ActionDeclRef(tok, actionDecl.Name);
@@ -1361,10 +1364,10 @@ private class BvBounds : Expr {
 		Expect(10);
 	}
 
-	void ProcSignature(bool allowWhereClausesOnFormals, out IToken/*!*/ name, out List<TypeVariable>/*!*/ typeParams,
-out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
+	void ProcSignature(bool allowWhereClausesOnFormals, out IToken name, out List<TypeVariable> typeParams,
+out List<Variable> ins, out List<Variable> outs, out QKeyValue kv) {
 		Contract.Ensures(Contract.ValueAtReturn(out name) != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ins) != null); Contract.Ensures(Contract.ValueAtReturn(out outs) != null);
-		IToken/*!*/ typeParamTok; typeParams = new List<TypeVariable>();
+		IToken typeParamTok; typeParams = new List<TypeVariable>();
 		outs = new List<Variable>(); kv = null; 
 		while (la.kind == 26) {
 			Attribute(ref kv);
@@ -1391,8 +1394,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(144);
 	}
 
-	void SpecPrePost(bool free, List<Requires>/*!*/ pre, List<Ensures>/*!*/ post) {
-		Contract.Requires(pre != null); Contract.Requires(post != null); Expr/*!*/ e; Token tok = null; QKeyValue kv = null; 
+	void SpecPrePost(bool free, List<Requires> pre, List<Ensures> post) {
+		Contract.Requires(pre != null); Contract.Requires(post != null); Expr e; Token tok = null; QKeyValue kv = null; 
 		if (la.kind == 49) {
 			Get();
 			tok = t; 
@@ -1414,15 +1417,15 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(145);
 	}
 
-	void StmtList(out StmtList/*!*/ stmtList) {
-		Contract.Ensures(Contract.ValueAtReturn(out stmtList) != null); List<BigBlock/*!*/> bigblocks = new List<BigBlock/*!*/>();
+	void StmtList(out StmtList stmtList) {
+		Contract.Ensures(Contract.ValueAtReturn(out stmtList) != null); List<BigBlock> bigblocks = new List<BigBlock>();
 		/* built-up state for the current BigBlock: */
 		IToken startToken = null;  string currentLabel = null;
 		List<Cmd> cs = null;  /* invariant: startToken != null ==> cs != null */
 		/* temporary variables: */
 		IToken label;  Cmd c;  BigBlock b;
-		StructuredCmd ec = null;  StructuredCmd/*!*/ ecn;
-		TransferCmd tc = null;  TransferCmd/*!*/ tcn;
+		StructuredCmd ec = null;  StructuredCmd ecn;
+		TransferCmd tc = null;  TransferCmd tcn;
 		
 		while (StartOf(18)) {
 			if (StartOf(19)) {
@@ -1468,7 +1471,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			}
 		}
 		Expect(27);
-		IToken/*!*/ endCurly = t;
+		IToken endCurly = t;
 		if (startToken == null && bigblocks.Count == 0) {
 		 startToken = t;  cs = new List<Cmd>();
 		}
@@ -1483,11 +1486,11 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void LabelOrCmd(out Cmd c, out IToken label) {
-		IToken/*!*/ x; Expr/*!*/ e;
-		List<IToken>/*!*/ xs;
+		IToken x; Expr e;
+		List<IToken> xs;
 		List<IdentifierExpr> ids;
 		c = dummyCmd;  label = null;
-		Cmd/*!*/ cn;
+		Cmd cn;
 		QKeyValue kv = null;
 		HideRevealCmd.Modes mode;
 		IdentifierExpr hideRevealId = null;
@@ -1542,7 +1545,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			Idents(out xs);
 			Expect(10);
 			ids = new List<IdentifierExpr>();
-			foreach(IToken/*!*/ y in xs){
+			foreach(IToken y in xs){
 			 Contract.Assert(y != null);
 			 ids.Add(new IdentifierExpr(y, y.val));
 			}
@@ -1558,9 +1561,9 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(147);
 	}
 
-	void StructuredCmd(out StructuredCmd/*!*/ ec) {
-		Contract.Ensures(Contract.ValueAtReturn(out ec) != null); ec = dummyStructuredCmd;  Contract.Assume(cce.IsPeerConsistent(ec));
-		IfCmd/*!*/ ifcmd;  WhileCmd/*!*/ wcmd;  BreakCmd/*!*/ bcmd;
+	void StructuredCmd(out StructuredCmd ec) {
+		Contract.Ensures(Contract.ValueAtReturn(out ec) != null); ec = dummyStructuredCmd;  Contract.Assume(Cce.IsPeerConsistent(ec));
+		IfCmd ifcmd;  WhileCmd wcmd;  BreakCmd bcmd;
 		
 		if (la.kind == 57) {
 			IfCmd(out ifcmd);
@@ -1574,9 +1577,9 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(148);
 	}
 
-	void TransferCmd(out TransferCmd/*!*/ tc) {
+	void TransferCmd(out TransferCmd tc) {
 		Contract.Ensures(Contract.ValueAtReturn(out tc) != null); tc = dummyTransferCmd;
-		Token y;  List<IToken>/*!*/ xs;
+		Token y;  List<IToken> xs;
 		List<String> ss = new List<String>();
 		QKeyValue kv = null;
 		
@@ -1587,7 +1590,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				Attribute(ref kv);
 			}
 			Idents(out xs);
-			foreach(IToken/*!*/ s in xs){
+			foreach(IToken s in xs){
 			 Contract.Assert(s != null);
 			 ss.Add(s.val); }
 			tc = new GotoCmd(y, ss) {
@@ -1604,12 +1607,12 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Expect(10);
 	}
 
-	void IfCmd(out IfCmd/*!*/ ifcmd) {
-		Contract.Ensures(Contract.ValueAtReturn(out ifcmd) != null); IToken/*!*/ x;
+	void IfCmd(out IfCmd ifcmd) {
+		Contract.Ensures(Contract.ValueAtReturn(out ifcmd) != null); IToken x;
 		Expr guard;
-		StmtList/*!*/ thn;
-		IfCmd/*!*/ elseIf;  IfCmd elseIfOption = null;
-		StmtList/*!*/ els;  StmtList elseOption = null;
+		StmtList thn;
+		IfCmd elseIf;  IfCmd elseIfOption = null;
+		StmtList els;  StmtList elseOption = null;
 		QKeyValue kv = null;
 		
 		Expect(57);
@@ -1645,7 +1648,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		Expect(59);
 		x = t; 
 		Guard(out guard);
-		Contract.Assume(guard == null || cce.Owner.None(guard)); 
+		Contract.Assume(guard == null || Cce.Owner.None(guard)); 
 		while (la.kind == 36 || la.kind == 53) {
 			isFree = false; z = la/*lookahead token*/; 
 			if (la.kind == 53) {
@@ -1678,8 +1681,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		wcmd = new WhileCmd(x, guard, invariants, yields, body); 
 	}
 
-	void BreakCmd(out BreakCmd/*!*/ bcmd) {
-		Contract.Ensures(Contract.ValueAtReturn(out bcmd) != null); IToken/*!*/ x;  IToken/*!*/ y;
+	void BreakCmd(out BreakCmd bcmd) {
+		Contract.Ensures(Contract.ValueAtReturn(out bcmd) != null); IToken x;  IToken y;
 		string breakLabel = null;
 		
 		Expect(61);
@@ -1693,7 +1696,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void Guard(out Expr e) {
-		Expr/*!*/ ee;  e = null; 
+		Expr ee;  e = null; 
 		Expect(11);
 		if (la.kind == 60) {
 			Get();
@@ -1706,12 +1709,12 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 	}
 
 	void LabelOrAssign(out Cmd c, out IToken label) {
-		IToken/*!*/ id; IToken/*!*/ x, y; Expr/*!*/ e0; List<IToken> ids;
+		IToken id; IToken x, y; Expr e0; List<IToken> ids;
 		c = dummyCmd;  label = null;
-		AssignLhs/*!*/ lhs;
-		List<AssignLhs/*!*/>/*!*/ lhss;
-		List<Expr/*!*/>/*!*/ rhss;
-		List<Expr/*!*/>/*!*/ indexes;
+		AssignLhs lhs;
+		List<AssignLhs> lhss;
+		List<Expr> rhss;
+		List<Expr> indexes;
 		FieldAccess fieldAccess;
 		QKeyValue kv = null;
 		NAryExpr lhsExpr;
@@ -1737,7 +1740,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 			c = new UnpackCmd(x, lhsExpr, e0, kv);
 			
 		} else if (StartOf(21)) {
-			lhss = new List<AssignLhs/*!*/>(); 
+			lhss = new List<AssignLhs>(); 
 			lhs = new SimpleAssignLhs(id, new IdentifierExpr(id, id.val)); 
 			while (la.kind == 19 || la.kind == 70) {
 				if (la.kind == 19) {
@@ -1770,7 +1773,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 				Attribute(ref kv);
 			}
 			Expression(out e0);
-			rhss = new List<Expr/*!*/> ();
+			rhss = new List<Expr> ();
 			rhss.Add(e0); 
 			while (la.kind == 14) {
 				Get();
@@ -1801,9 +1804,9 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		d = new ParCallCmd(x, callCmds); 
 	}
 
-	void MapAssignIndex(out IToken/*!*/ x, out List<Expr/*!*/>/*!*/ indexes) {
-		Contract.Ensures(Contract.ValueAtReturn(out x) != null); Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out indexes))); indexes = new List<Expr/*!*/> ();
-		Expr/*!*/ e;
+	void MapAssignIndex(out IToken x, out List<Expr> indexes) {
+		Contract.Ensures(Contract.ValueAtReturn(out x) != null); Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out indexes))); indexes = new List<Expr> ();
+		Expr e;
 		
 		Expect(19);
 		x = t; 
@@ -1882,8 +1885,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(154);
 	}
 
-	void Expressions(out List<Expr>/*!*/ es) {
-		Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr/*!*/ e; es = new List<Expr>(); 
+	void Expressions(out List<Expr> es) {
+		Contract.Ensures(Contract.ValueAtReturn(out es) != null); Expr e; es = new List<Expr>(); 
 		Expression(out e);
 		es.Add(e); 
 		while (la.kind == 14) {
@@ -1893,8 +1896,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 	}
 
-	void ImpliesExpression(bool noExplies, out Expr/*!*/ e0) {
-		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
+	void ImpliesExpression(bool noExplies, out Expr e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken x; Expr e1; 
 		LogicalExpression(out e0);
 		if (StartOf(22)) {
 			if (la.kind == 76 || la.kind == 77) {
@@ -1927,8 +1930,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(155);
 	}
 
-	void LogicalExpression(out Expr/*!*/ e0) {
-		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
+	void LogicalExpression(out Expr e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken x; Expr e1; 
 		RelationalExpression(out e0);
 		if (StartOf(23)) {
 			if (la.kind == 80 || la.kind == 81) {
@@ -1973,8 +1976,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(157);
 	}
 
-	void RelationalExpression(out Expr/*!*/ e0) {
-		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
+	void RelationalExpression(out Expr e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken x; Expr e1; BinaryOperator.Opcode op; 
 		BvTerm(out e0);
 		if (StartOf(24)) {
 			RelOp(out x, out op);
@@ -1999,8 +2002,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(159);
 	}
 
-	void BvTerm(out Expr/*!*/ e0) {
-		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
+	void BvTerm(out Expr e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken x; Expr e1; 
 		Term(out e0);
 		while (la.kind == 91) {
 			Get();
@@ -2010,7 +2013,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 	}
 
-	void RelOp(out IToken/*!*/ x, out BinaryOperator.Opcode op) {
+	void RelOp(out IToken x, out BinaryOperator.Opcode op) {
 		Contract.Ensures(Contract.ValueAtReturn(out x) != null); x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; 
 		switch (la.kind) {
 		case 84: {
@@ -2062,8 +2065,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 	}
 
-	void Term(out Expr/*!*/ e0) {
-		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
+	void Term(out Expr e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken x; Expr e1; BinaryOperator.Opcode op; 
 		Factor(out e0);
 		while (la.kind == 92 || la.kind == 93) {
 			AddOp(out x, out op);
@@ -2072,8 +2075,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 	}
 
-	void Factor(out Expr/*!*/ e0) {
-		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; BinaryOperator.Opcode op; 
+	void Factor(out Expr e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken x; Expr e1; BinaryOperator.Opcode op; 
 		Power(out e0);
 		while (StartOf(25)) {
 			MulOp(out x, out op);
@@ -2082,7 +2085,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 	}
 
-	void AddOp(out IToken/*!*/ x, out BinaryOperator.Opcode op) {
+	void AddOp(out IToken x, out BinaryOperator.Opcode op) {
 		Contract.Ensures(Contract.ValueAtReturn(out x) != null); x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; 
 		if (la.kind == 92) {
 			Get();
@@ -2093,8 +2096,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(161);
 	}
 
-	void Power(out Expr/*!*/ e0) {
-		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x; Expr/*!*/ e1; 
+	void Power(out Expr e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken x; Expr e1; 
 		IsConstructor(out e0);
 		if (la.kind == 97) {
 			Get();
@@ -2104,7 +2107,7 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 	}
 
-	void MulOp(out IToken/*!*/ x, out BinaryOperator.Opcode op) {
+	void MulOp(out IToken x, out BinaryOperator.Opcode op) {
 		Contract.Ensures(Contract.ValueAtReturn(out x) != null); x = Token.NoToken; op=BinaryOperator.Opcode.Add/*(dummy)*/; 
 		if (la.kind == 60) {
 			Get();
@@ -2121,8 +2124,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(162);
 	}
 
-	void IsConstructor(out Expr/*!*/ e0) {
-		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken/*!*/ x, id; 
+	void IsConstructor(out Expr e0) {
+		Contract.Ensures(Contract.ValueAtReturn(out e0) != null); IToken x, id; 
 		UnaryExpression(out e0);
 		if (la.kind == 98) {
 			Get();
@@ -2134,8 +2137,8 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 	}
 
-	void UnaryExpression(out Expr/*!*/ e) {
-		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
+	void UnaryExpression(out Expr e) {
+		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken x;
 		e = dummyExpr;
 		
 		if (la.kind == 93) {
@@ -2161,9 +2164,9 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(164);
 	}
 
-	void CoercionExpression(out Expr/*!*/ e) {
-		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x;
-		Bpl.Type/*!*/ coercedTo;
+	void CoercionExpression(out Expr e) {
+		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken x;
+		Bpl.Type coercedTo;
 		BigNum bn;
 		
 		ArrayExpression(out e);
@@ -2186,12 +2189,12 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		}
 	}
 
-	void ArrayExpression(out Expr/*!*/ e) {
+	void ArrayExpression(out Expr e) {
 		Contract.Ensures(Contract.ValueAtReturn(out e) != null);
-		IToken/*!*/ x, id;
-		Expr/*!*/ index0 = dummyExpr; Expr/*!*/ e1;
+		IToken x, id;
+		Expr index0 = dummyExpr; Expr e1;
 		bool store; bool bvExtract;
-		List<Expr>/*!*/ allArgs = dummyExprSeq;
+		List<Expr> allArgs = dummyExprSeq;
 		
 		AtomExpression(out e);
 		while (la.kind == 19 || la.kind == 70) {
@@ -2270,15 +2273,15 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		
 	}
 
-	void AtomExpression(out Expr/*!*/ e) {
-		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken/*!*/ x; int n; BigNum bn; BigDec bd; BigFloat bf;
-		List<Expr>/*!*/ es;  List<Variable>/*!*/ ds;  Trigger trig;
-		List<TypeVariable>/*!*/ typeParams;
-		IdentifierExpr/*!*/ id;
+	void AtomExpression(out Expr e) {
+		Contract.Ensures(Contract.ValueAtReturn(out e) != null); IToken x; int n; BigNum bn; BigDec bd; BigFloat bf;
+		List<Expr> es;  List<Variable> ds;  Trigger trig;
+		List<TypeVariable> typeParams;
+		IdentifierExpr id;
 		QKeyValue kv;
 		e = dummyExpr;
-		List<Variable>/*!*/ locals;
-		List<Block/*!*/>/*!*/ blocks;
+		List<Variable> locals;
+		List<Block> blocks;
 		
 		switch (la.kind) {
 		case 101: {
@@ -2503,11 +2506,11 @@ out List<Variable>/*!*/ ins, out List<Variable>/*!*/ outs, out QKeyValue kv) {
 		} else SynErr(171);
 	}
 
-	void QuantifierBody(IToken/*!*/ q, out List<TypeVariable>/*!*/ typeParams, out List<Variable>/*!*/ ds,
-out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
+	void QuantifierBody(IToken q, out List<TypeVariable> typeParams, out List<Variable> ds,
+out QKeyValue kv, out Trigger trig, out Expr body) {
 		Contract.Requires(q != null); Contract.Ensures(Contract.ValueAtReturn(out typeParams) != null); Contract.Ensures(Contract.ValueAtReturn(out ds) != null); Contract.Ensures(Contract.ValueAtReturn(out body) != null);
 		trig = null; typeParams = new List<TypeVariable> ();
-		IToken/*!*/ tok;
+		IToken tok;
 		kv = null;
 		ds = new List<Variable> ();
 		
@@ -2542,7 +2545,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		} else SynErr(174);
 	}
 
-	void LetExpr(out Expr/*!*/ letexpr) {
+	void LetExpr(out Expr letexpr) {
 		IToken tok;
 		Variable v;
 		var ds = new List<Variable>();
@@ -2576,10 +2579,10 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		letexpr = new LetExpr(tok, ds, rhss, kv, body); 
 	}
 
-	void IfThenElseExpression(out Expr/*!*/ e) {
+	void IfThenElseExpression(out Expr e) {
 		Contract.Ensures(Contract.ValueAtReturn(out e) != null);
-		IToken/*!*/ tok;
-		Expr/*!*/ e0, e1, e2;
+		IToken tok;
+		Expr e0, e1, e2;
 		e = dummyExpr; 
 		Expect(57);
 		tok = t; 
@@ -2591,9 +2594,9 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		e = new NAryExpr(tok, new IfThenElse(tok), new List<Expr>{ e0, e1, e2 }); 
 	}
 
-	void CodeExpression(out List<Variable>/*!*/ locals, out List<Block/*!*/>/*!*/ blocks) {
-		Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(cce.NonNullElements(Contract.ValueAtReturn(out blocks))); locals = new List<Variable>(); Block/*!*/ b;
-		blocks = new List<Block/*!*/>();
+	void CodeExpression(out List<Variable> locals, out List<Block> blocks) {
+		Contract.Ensures(Contract.ValueAtReturn(out locals) != null); Contract.Ensures(Cce.NonNullElements(Contract.ValueAtReturn(out blocks))); locals = new List<Variable>(); Block b;
+		blocks = new List<Block>();
 		
 		Expect(114);
 		while (la.kind == 9) {
@@ -2608,15 +2611,15 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Expect(115);
 	}
 
-	void SpecBlock(out Block/*!*/ b) {
-		Contract.Ensures(Contract.ValueAtReturn(out b) != null); IToken/*!*/ x; IToken/*!*/ y;
+	void SpecBlock(out Block b) {
+		Contract.Ensures(Contract.ValueAtReturn(out b) != null); IToken x; IToken y;
 		Cmd c;  IToken label;
 		List<Cmd> cs = new List<Cmd>();
-		List<IToken>/*!*/ xs;
+		List<IToken> xs;
 		List<String> ss = new List<String>();
 		b = dummyBlock;
 		QKeyValue kv = null;
-		Expr/*!*/ e;
+		Expr e;
 		
 		Ident(out x);
 		Expect(13);
@@ -2637,7 +2640,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 				Attribute(ref kv);
 			}
 			Idents(out xs);
-			foreach(IToken/*!*/ s in xs){
+			foreach(IToken s in xs){
 			 Contract.Assert(s != null);
 			 ss.Add(s.val); }
 			b = new Block(x,x.val,cs,new GotoCmd(y,ss) {
@@ -2659,16 +2662,16 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 	}
 
 	void AttributeOrTrigger(ref QKeyValue kv, ref Trigger trig) {
-		IToken/*!*/ tok;  Expr/*!*/ e;  List<Expr>/*!*/ es;
+		IToken tok;  Expr e;  List<Expr> es;
 		IToken id;
-		List<object/*!*/> parameters;  object/*!*/ param;
+		List<object> parameters;  object param;
 		
 		Expect(26);
 		tok = t; 
 		if (la.kind == 13) {
 			Get();
 			Ident(out id);
-			parameters = new List<object/*!*/>(); 
+			parameters = new List<object>(); 
 			if (StartOf(20)) {
 				AttributeParameter(out param);
 				parameters.Add(param); 
@@ -2715,10 +2718,10 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Expect(27);
 	}
 
-	void AttributeParameter(out object/*!*/ o) {
+	void AttributeParameter(out object o) {
 		Contract.Ensures(Contract.ValueAtReturn(out o) != null);
 		o = "error";
-		Expr/*!*/ e;
+		Expr e;
 		
 		if (la.kind == 4) {
 			Get();
@@ -2737,7 +2740,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		} else SynErr(178);
 	}
 
-	void LetVar(out Variable/*!*/ v) {
+	void LetVar(out Variable v) {
 		QKeyValue kv = null;
 		IToken id;
 		
@@ -2762,7 +2765,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 		Expect(0);
 	}
 
-	static readonly bool[,]/*!*/ set = {
+	static readonly bool[,] set = {
 		{_T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _T,_T,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _x,_x,_x,_x, _T,_T,_x,_T, _T,_T,_x,_T, _x,_T,_T,_T, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_x, _T,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
 		{_x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_T, _T,_T,_T,_T, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x,_x, _x,_x,_x},
@@ -2798,7 +2801,7 @@ out QKeyValue kv, out Trigger trig, out Expr/*!*/ body) {
 
 public class Errors {
 	public int count = 0;                                    // number of errors detected
-	public System.IO.TextWriter/*!*/ errorStream = Console.Out;   // error messages go to this stream
+	public System.IO.TextWriter errorStream = Console.Out;   // error messages go to this stream
 	public string errMsgFormat = "{0}({1},{2}): error: {3}"; // 0=filename, 1=line, 2=column, 3=text
 	public string warningMsgFormat = "{0}({1},{2}): warning: {3}"; // 0=filename, 1=line, 2=column, 3=text
 
@@ -2806,7 +2809,7 @@ public class Errors {
 		SynErr(filename, line, col, GetSyntaxErrorString(n));
 	}
 
-	public virtual void SynErr(string filename, int line, int col, string/*!*/ msg) {
+	public virtual void SynErr(string filename, int line, int col, string msg) {
 		Contract.Requires(msg != null);
 		errorStream.WriteLine(errMsgFormat, filename, line, col, msg);
 		count++;
@@ -3000,19 +3003,19 @@ public class Errors {
 		return s;
 	}
 
-	public void SemErr(IToken/*!*/ tok, string/*!*/ msg) {  // semantic errors
+	public void SemErr(IToken tok, string msg) {  // semantic errors
 		Contract.Requires(tok != null);
 		Contract.Requires(msg != null);
 		SemErr(tok.filename, tok.line, tok.col, msg);
 	}
 
-	public virtual void SemErr(string filename, int line, int col, string/*!*/ msg) {
+	public virtual void SemErr(string filename, int line, int col, string msg) {
 		Contract.Requires(msg != null);
 		errorStream.WriteLine(errMsgFormat, filename, line, col, msg);
 		count++;
 	}
 
-	public void Warning(IToken/*!*/ tok, string/*!*/ msg) {  // warnings
+	public void Warning(IToken tok, string msg) {  // warnings
 		Contract.Requires(tok != null);
 		Contract.Requires(msg != null);
 		Warning(tok.filename, tok.line, tok.col, msg);

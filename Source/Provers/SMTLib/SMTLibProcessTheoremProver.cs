@@ -39,8 +39,8 @@ namespace Microsoft.Boogie.SMTLib
       Contract.Invariant(ctx != null);
       Contract.Invariant(Namer != null);
       Contract.Invariant(DeclCollector != null);
-      Contract.Invariant(cce.NonNullElements(Axioms));
-      Contract.Invariant(cce.NonNullElements(TypeDecls));
+      Contract.Invariant(Cce.NonNullElements(Axioms));
+      Contract.Invariant(Cce.NonNullElements(TypeDecls));
       Contract.Invariant(backgroundPredicates != null);
     }
 
@@ -1039,11 +1039,11 @@ namespace Microsoft.Boogie.SMTLib
 
     // the list of all known axioms, where have to be included in each
     // verification condition
-    protected readonly List<string /*!>!*/> Axioms = new List<string /*!*/>();
+    protected readonly List<string /*!>!*/> Axioms = new List<string>();
     protected bool AxiomsAreSetup = false;
 
     // similarly, a list of function/predicate declarations
-    protected readonly List<string /*!>!*/> TypeDecls = new List<string /*!*/>();
+    protected readonly List<string /*!>!*/> TypeDecls = new List<string>();
 
     protected void AddAxiom(string axiom)
     {
@@ -1627,23 +1627,20 @@ namespace Microsoft.Boogie.SMTLib
   {
     public override ProverInterface SpawnProver(SMTLibOptions libOptions, ProverOptions options, object ctxt)
     {
-      //Contract.Requires(ctxt != null);
-      //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);
 
       return this.SpawnProver(libOptions, options,
-        cce.NonNull((SMTLibProverContext) ctxt).ExprGen,
-        cce.NonNull((SMTLibProverContext) ctxt));
+        Cce.NonNull((SMTLibProverContext) ctxt).ExprGen,
+        Cce.NonNull((SMTLibProverContext) ctxt));
     }
 
     public override ProverContext NewProverContext(ProverOptions options)
     {
-      //Contract.Requires(options != null);
       Contract.Ensures(Contract.Result<object>() != null);
 
       VCExpressionGenerator gen = new VCExpressionGenerator();
       List<string> /*!>!*/
-        proverCommands = new List<string /*!*/>();
+        proverCommands = new List<string>();
       proverCommands.Add("smtlib");
       var opts = (SMTLibSolverOptions) options;
       if (opts.Solver == SolverKind.Z3)

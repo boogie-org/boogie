@@ -7,17 +7,16 @@ public abstract class TransferCmd : Absy
 {
   public ProofObligationDescription Description { get; set; } = new PostconditionDescription();
 
-  internal TransferCmd(IToken /*!*/ tok)
+  internal TransferCmd(IToken tok)
     : base(tok)
   {
     Contract.Requires(tok != null);
   }
 
-  public abstract void Emit(TokenTextWriter /*!*/ stream, int level);
+  public abstract void Emit(TokenTextWriter stream, int level);
 
   public override void Typecheck(TypecheckingContext tc)
   {
-    //Contract.Requires(tc != null);
     // nothing to typecheck
   }
 

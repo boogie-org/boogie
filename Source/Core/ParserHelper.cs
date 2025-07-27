@@ -20,10 +20,10 @@ namespace Microsoft.Boogie
     }
 
     // "arg" is assumed to be trimmed
-    private static bool IfdefConditionSaysToInclude(string arg, List<string /*!*/> /*!*/ defines)
+    private static bool IfdefConditionSaysToInclude(string arg, List<string> defines)
     {
       Contract.Requires(arg != null);
-      Contract.Requires(cce.NonNullElements(defines));
+      Contract.Requires(Cce.NonNullElements(defines));
       bool sense = true;
       while (arg.StartsWith("!"))
       {
@@ -34,23 +34,23 @@ namespace Microsoft.Boogie
       return defines.Contains(arg) == sense;
     }
 
-    public static string Fill(Stream stream, List<string /*!*/> /*!*/ defines)
+    public static string Fill(Stream stream, List<string> defines)
     {
       Contract.Requires(stream != null);
-      Contract.Requires(cce.NonNullElements(defines));
+      Contract.Requires(Cce.NonNullElements(defines));
       Contract.Ensures(Contract.Result<string>() != null);
-      StreamReader /*!*/
+      StreamReader
         reader = new StreamReader(stream);
       return Fill(reader, defines);
     }
 
-    public static string Fill(TextReader reader, List<string /*!*/> /*!*/ defines)
+    public static string Fill(TextReader reader, List<string> defines)
     {
       Contract.Requires(reader != null);
-      Contract.Requires(cce.NonNullElements(defines));
+      Contract.Requires(Cce.NonNullElements(defines));
       Contract.Ensures(Contract.Result<string>() != null);
       StringBuilder sb = new StringBuilder();
-      List<ReadState> /*!*/
+      List<ReadState>
         readState = new List<ReadState>(); // readState.Count is the current nesting level of #if's
       int ignoreCutoff =
         -1; // -1 means we're not ignoring; for 0<=n, n means we're ignoring because of something at nesting level n

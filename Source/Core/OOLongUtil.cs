@@ -6,10 +6,10 @@ namespace Boogie.Util
 {
   public class TeeWriter : TextWriter
   {
-    readonly TextWriter /*!*/
+    readonly TextWriter
       a;
 
-    readonly TextWriter /*!*/
+    readonly TextWriter
       b;
 
     [ContractInvariantMethod]
@@ -71,7 +71,7 @@ namespace Boogie.Util
   /// </summary>
   public class LineReader : TextReader
   {
-    [Rep] readonly TextReader /*!*/ reader;
+    [Rep] readonly TextReader reader;
 
     [ContractInvariantMethod]
     void ObjectInvariant()
@@ -92,16 +92,16 @@ namespace Boogie.Util
 
     public override void Close()
     {
-      cce.BeginExpose(this);
+      Cce.BeginExpose(this);
       {
         reader.Close();
       }
-      cce.EndExpose();
+      Cce.EndExpose();
     }
 
     public override int Read()
     {
-      cce.BeginExpose(this);
+      Cce.BeginExpose(this);
       try
       {
         while (readAhead == null)
@@ -129,7 +129,7 @@ namespace Boogie.Util
       }
       finally
       {
-        cce.EndExpose();
+        Cce.EndExpose();
       }
     }
 
@@ -155,12 +155,12 @@ namespace Boogie.Util
       string res;
       if (readAhead != null)
       {
-        cce.BeginExpose(this);
+        Cce.BeginExpose(this);
         {
           res = readAhead.Substring(readAheadConsumed);
           readAhead = null;
         }
-        cce.EndExpose();
+        Cce.EndExpose();
       }
       else
       {
@@ -173,24 +173,24 @@ namespace Boogie.Util
 
   public class IfdefReader : LineReader
   {
-    [Rep] readonly List<string /*!*/> /*!*/ defines;
-    [Rep] readonly List<bool> /*!*/ readState = new List<bool>();
+    [Rep] readonly List<string> defines;
+    [Rep] readonly List<bool> readState = new List<bool>();
     int ignoreCutoff = 0; // 0 means we're not ignoring
 
     [ContractInvariantMethod]
     void ObjectInvariant()
     {
       Contract.Invariant(readState != null);
-      Contract.Invariant(cce.NonNullElements(defines));
+      Contract.Invariant(Cce.NonNullElements(defines));
       Contract.Invariant(0 <= ignoreCutoff && ignoreCutoff <= readState.Count);
     }
 
 
-    public IfdefReader([Captured] TextReader reader, [Captured] List<string /*!*/> /*!*/ defines)
+    public IfdefReader([Captured] TextReader reader, [Captured] List<string> defines)
       : base(reader)
     {
       Contract.Requires(reader != null);
-      Contract.Requires(cce.NonNullElements(defines));
+      Contract.Requires(Cce.NonNullElements(defines));
       this.defines = defines;
     }
 

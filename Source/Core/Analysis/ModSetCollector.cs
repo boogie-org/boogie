@@ -14,8 +14,8 @@ public class ModSetCollector : ReadOnlyVisitor
   [ContractInvariantMethod]
   void ObjectInvariant()
   {
-    Contract.Invariant(cce.NonNullDictionaryAndValues(modSets));
-    Contract.Invariant(Contract.ForAll(modSets.Values, v => cce.NonNullElements(v)));
+    Contract.Invariant(Cce.NonNullDictionaryAndValues(modSets));
+    Contract.Invariant(Contract.ForAll(modSets.Values, v => Cce.NonNullElements(v)));
   }
 
   public ModSetCollector(CoreOptions options)
@@ -26,7 +26,7 @@ public class ModSetCollector : ReadOnlyVisitor
 
   private bool moreProcessingRequired;
 
-  public void DoModSetAnalysis(Program program)
+  public void CollectModifies(Program program)
   {
     Contract.Requires(program != null);
     var implementedProcs = new HashSet<Procedure>();
@@ -66,8 +66,11 @@ public class ModSetCollector : ReadOnlyVisitor
 
     foreach (Procedure x in modSets.Keys)
     {
-      x.Modifies = new List<IdentifierExpr>();
-      foreach (Variable v in modSets[x])
+      if (x.Modifies == null)
+      {
+        x.Modifies = new List<IdentifierExpr>();
+      }
+      foreach (Variable v in modSets[x].Except(x.Modifies.Select(y => y.Decl)))
       {
         x.Modifies.Add(new IdentifierExpr(v.tok, v));
       }
@@ -191,8 +194,8 @@ public class ModSetCollector : ReadOnlyVisitor
 
   private void ProcessVariable(Variable var)
   {
-    Procedure /*!*/
-      localProc = cce.NonNull(enclosingProc);
+    Procedure
+      localProc = Cce.NonNull(enclosingProc);
     if (var == null)
     {
       return;
@@ -205,7 +208,7 @@ public class ModSetCollector : ReadOnlyVisitor
 
     if (!modSets.ContainsKey(localProc))
     {
-      modSets[localProc] = new HashSet<Variable /*!*/>();
+      modSets[localProc] = new HashSet<Variable>();
     }
 
     if (modSets[localProc].Contains(var))

@@ -329,19 +329,19 @@ pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} l: One K, {:li
 pure procedure Map_GetValue<K,V>({:linear} path: Map K V, k: K) returns ({:linear} v: V);
 pure procedure Map_PutValue<K,V>({:linear} path: Map K V, k: K, {:linear_in} v: V);
 
-type Loc;
+type Loc _;
 
-pure procedure {:inline 1} Loc_New() returns ({:linear} {:pool "Loc_New"} l: One Loc)
+pure procedure {:inline 1} Loc_New<V>() returns ({:linear} {:pool "Loc_New"} l: One (Loc V))
 {
   assume {:add_to_pool "Loc_New", l} true;
 }
 
-datatype KeyedLoc<K> { KeyedLoc(l: Loc, k: K) }
+datatype TaggedLoc<V,T> { TaggedLoc(loc: Loc V, tag: T) }
 
-pure procedure {:inline 1} KeyedLocSet_New<K>(ks: Set K) returns ({:pool "Loc_New"} l: Loc, {:linear} keyed_locs: Set (KeyedLoc K))
+pure procedure {:inline 1} TaggedLocSet_New<V,T>(tags: Set T) returns ({:linear} {:pool "Loc_New"} l: One (Loc V), {:linear} tagged_locs: Set (TaggedLoc V T))
 {
   assume {:add_to_pool "Loc_New", l} true;
-  keyed_locs := Set((lambda x: KeyedLoc K :: x->l == l && Set_Contains(ks, x->k)));
+  tagged_locs := Set((lambda x: TaggedLoc V T :: x->loc == l->val && Set_Contains(tags, x->tag)));
 }
 
 procedure create_async<T>(PA: T);
@@ -359,3 +359,8 @@ ensures b;
 
 pure procedure Move<T>({:linear_in} v: T, {:linear_out} v': T);
 requires v == v';
+
+datatype Unit { Unit() }
+function {:inline} UnitSet(): Set Unit {
+  Set_Add(Set_Empty(), Unit())
+}

@@ -229,7 +229,7 @@ namespace VC
           return true;
         default:
           Contract.Assert(false);
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
       }
     }
 
@@ -271,7 +271,7 @@ namespace VC
           return currentVcOutcome;
         default:
           Contract.Assert(false);
-          throw new cce.UnreachableException();
+          throw new Cce.UnreachableException();
       }
     }
 
