@@ -131,7 +131,7 @@ to remove those files before using ``lit``.
 Writing tests
 -------------
 
-Tests are driven my special comments written in ``.bpl`` files (each file is an
+Tests are driven by special comments written in ``.bpl`` files (each file is an
 individual test). These special comments (RUN lines) contain shell commands to
 run. If any command exits with a non zero exit code the test is
 considered to fail.
@@ -143,7 +143,7 @@ The RUN lines may use several substitutions
 
 - ``%parallel-boogie`` expands to the absolute path of the Boogie executable with any set
   options and ``/vcsCores:2``. This does not need to be quoted.
-- 
+
 - ``%diff`` expands to the diff tool being used. This is ``diff`` on non
   Windows platforms and ``pydiff`` on Windows. Do not use the ``fc`` tool
   because it is buggy when tests are run concurrently. This does not need to be
