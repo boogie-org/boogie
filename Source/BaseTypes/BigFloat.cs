@@ -5,25 +5,28 @@ using System.Numerics;
 namespace Microsoft.BaseTypes
 {
   /// <summary>
-  /// A representation of a floating-point value using IEEE 754 format.
+  /// A representation of a floating-point value using IEEE 754-2019 format.
   /// Note that this value has a 1-bit sign, along with an exponent and significand whose sizes must be greater than 1.
-  /// Uses IEEE 754 representation internally with configurable significand and exponent sizes.
+  /// Uses IEEE 754-2019 representation internally with configurable significand and exponent sizes.
   /// </summary>
   public readonly struct BigFloat
   {
     #region Fields and Properties
 
     // IEEE 754 representation fields
-    private readonly BigInteger significand;    // Mantissa bits (without hidden bit for normal numbers)
+    private readonly BigInteger significand;    // Trailing significand field (without leading bit for normal numbers)
     private readonly BigInteger exponent;       // Biased exponent value
     private readonly bool signBit;              // Sign bit: true = negative, false = positive
 
     // Cached values for performance
     private readonly BigInteger bias;           // Exponent bias value
     private readonly BigInteger maxExponent;    // Maximum exponent value
-    private readonly BigInteger hiddenBit;      // Hidden bit power value
+    private readonly BigInteger leadingBit;      // Power value for the implicit leading significand bit
 
-    public int SignificandSize { get; }         // Total bits for significand (including hidden bit)
+    // SignificandSize represents the precision: trailing significand field width + 1 (for the implicit leading significand bit)
+    // For IEEE 754 double: SignificandSize = 53 (52-bit trailing significand field + 1 implicit leading significand bit)
+    // The trailing significand field always uses SignificandSize - 1 bits
+    public int SignificandSize { get; }
     public int ExponentSize { get; }            // Total bits for exponent
     public bool IsZero => significand == 0 && exponent == 0;
     public bool IsNaN => exponent == maxExponent && significand != 0;
@@ -47,9 +50,9 @@ namespace Microsoft.BaseTypes
     /// Primary constructor for IEEE 754 representation
     /// </summary>
     /// <param name="signBit">The sign bit: true for negative, false for positive</param>
-    /// <param name="significand">The significand bits (without hidden bit for normal numbers)</param>
+    /// <param name="significand">The trailing significand field (without implicit leading significand bit for normal numbers)</param>
     /// <param name="exponent">The biased exponent value</param>
-    /// <param name="significandSize">Total bits for significand (including hidden bit)</param>
+    /// <param name="significandSize">Total bits for significand (including implicit leading significand bit)</param>
     /// <param name="exponentSize">Total bits for exponent</param>
     public BigFloat(bool signBit, BigInteger significand, BigInteger exponent, int significandSize, int exponentSize)
       : this(signBit, significand, exponent, significandSize, exponentSize, false)
@@ -68,10 +71,14 @@ namespace Microsoft.BaseTypes
         if (significand < 0) {
           throw new ArgumentException("Significand must be non-negative (IEEE 754 significands are unsigned)", nameof(significand));
         }
+        if (exponent < 0) {
+          throw new ArgumentException("Exponent must be non-negative (biased representation)", nameof(exponent));
+        }
 
-        var sigBitLength = significand.GetBitLength();
-        if (sigBitLength > significandSize) {
-          throw new ArgumentException($"Significand requires {sigBitLength} bits but only {significandSize} declared. This creates inconsistent internal state.", nameof(significand));
+        // IEEE 754: The trailing significand field width is significandSize - 1 bits
+        // For normal numbers, the leading bit of the significand is implicitly encoded in the biased exponent
+        if (significand.GetBitLength() > significandSize - 1) {
+          throw new ArgumentException($"Trailing significand field requires {significand.GetBitLength()} bits but only {significandSize - 1} bits are available", nameof(significand));
         }
 
         if (exponent > GetMaxExponent(exponentSize)) {
@@ -87,8 +94,8 @@ namespace Microsoft.BaseTypes
 
       // Initialize cached values
       bias = GetBias(exponentSize);
-      this.maxExponent = GetMaxExponent(exponentSize);
-      hiddenBit = GetHiddenBitPower(significandSize);
+      maxExponent = GetMaxExponent(exponentSize);
+      leadingBit = GetLeadingBitPower(significandSize);
     }
 
     /// <summary>
@@ -178,11 +185,20 @@ namespace Microsoft.BaseTypes
         return false;
       }
 
-      s = s.Trim();
+      // Reject any leading or trailing whitespace
+      if (s != s.Trim()) {
+        return false;
+      }
 
       // Parse size specifiers: f[sigSize]e[expSize]
       var posLastE = s.LastIndexOf('e');
-      if (posLastE == -1 || !int.TryParse(s[(posLastE + 1)..], out var exponentSize)) {
+      if (posLastE == -1) {
+        return false;
+      }
+
+      var expSizeStr = s[(posLastE + 1)..];
+
+      if (!int.TryParse(expSizeStr, out var exponentSize)) {
         return false;
       }
 
@@ -190,9 +206,11 @@ namespace Microsoft.BaseTypes
       var posLastF = s.LastIndexOf('f');
       var sigSizeStart = posLastF == -1 ? 4 : posLastF + 1;  // Special values start at 4, normal after 'f'
 
+      var sigSizeStr = s[sigSizeStart..posLastE];
+
       if (sigSizeStart >= posLastE ||
-          !int.TryParse(s[sigSizeStart..posLastE], out var significandSize) ||
-          !TryValidateSizeParameters(significandSize, exponentSize)) {
+          !int.TryParse(sigSizeStr, out var significandSize) ||
+          !(significandSize > 1 && exponentSize > 1)) {
         return false;
       }
 
@@ -241,8 +259,11 @@ namespace Microsoft.BaseTypes
       denominator = BigInteger.Abs(denominator);
 
       // Scale numerator for precision
-      var scaleBits = Math.Max(0, significandSize + 3 + (int)denominator.GetBitLength() - (int)numerator.GetBitLength());
-      var quotient = BigInteger.DivRem(numerator << scaleBits, denominator, out var remainder);
+      // Use long to avoid overflow in bit length calculation
+      var scaleBitsLong = (long)significandSize + 3 + (denominator.GetBitLength() - numerator.GetBitLength());
+      var scaleBits = scaleBitsLong < 0 ? BigInteger.Zero : new BigInteger(scaleBitsLong);
+      var scaledNumerator = BigIntegerMath.LeftShift(numerator, scaleBits);
+      var quotient = BigInteger.DivRem(scaledNumerator, denominator, out var remainder);
 
       // Apply rounding if inexact
       var isExact = remainder.IsZero;
@@ -250,42 +271,49 @@ namespace Microsoft.BaseTypes
         quotient = ApplyRoundToNearestEven(quotient, remainder, denominator);
       }
 
-      // Calculate exponent
-      var quotientBits = (int)quotient.GetBitLength();
+      var quotientBits = quotient.GetBitLength();
       var biasedExp = GetBias(exponentSize) + quotientBits - scaleBits - 1;
-
-      // Handle overflow
-      if (biasedExp > ((1 << exponentSize) - 2)) {
+      if (biasedExp > GetMaxExponent(exponentSize) - 1) {
         result = CreateInfinity(isNegative, significandSize, exponentSize);
         return false;
       }
+      var targetBits = significandSize - 1;
+      var minBiasedExp = 2 - significandSize;
 
-      // Handle underflow/subnormal
       if (biasedExp <= 0) {
-        if (biasedExp > -significandSize) {
-          // Subnormal - shift right to fit
-          var (shifted, _) = ApplyShiftWithRounding(quotient, 1 - (int)biasedExp);
-          var excess = (int)shifted.GetBitLength() - significandSize;
-          if (excess > 0) {
-            shifted >>= excess;
+        if (biasedExp < minBiasedExp) {
+          isExact = false;
+
+          if (biasedExp == minBiasedExp - 1) {
+            if (quotient == BigIntegerMath.LeftShift(BigInteger.One, quotientBits - 1)) {
+              result = CreateZero(isNegative, significandSize, exponentSize);
+            } else {
+              var (boundaryShifted, _) = ApplyShiftWithRounding(quotient, BigInteger.One);
+              result = boundaryShifted > 0
+                ? new BigFloat(isNegative, 1, 0, significandSize, exponentSize)
+                : CreateZero(isNegative, significandSize, exponentSize);
+            }
+          } else {
+            result = CreateZero(isNegative, significandSize, exponentSize);
           }
-          result = new BigFloat(isNegative, shifted, 0, significandSize, exponentSize);
-          return isExact;
+        } else {
+          var shiftAmount = (quotientBits - targetBits) - biasedExp;
+          var (shifted, _) = ApplyShiftWithRounding(quotient, shiftAmount);
+
+          if (shifted >= BigInteger.One << targetBits) {
+            result = new BigFloat(isNegative, 0, 1, significandSize, exponentSize);
+          } else {
+            result = new BigFloat(isNegative, shifted, 0, significandSize, exponentSize);
+          }
         }
-        // Complete underflow
-        result = CreateZero(isNegative, significandSize, exponentSize);
-        return false;
-      }
-
-      // Normal number - normalize significand
-      var shift = quotientBits - significandSize;
-      if (shift > 0) {
-        var (shifted, wasExact) = ApplyShiftWithRounding(quotient, shift);
-        quotient = shifted;
+      } else {
+        var (normalShifted, wasExact) = ApplyShiftWithRounding(quotient, quotientBits - significandSize);
         isExact &= wasExact;
+
+        var leadingBitMask = GetLeadingBitPower(significandSize) - 1;
+        result = new BigFloat(isNegative, normalShifted & leadingBitMask, biasedExp, significandSize, exponentSize);
       }
 
-      result = new BigFloat(isNegative, quotient & (GetHiddenBitPower(significandSize) - 1), biasedExp, significandSize, exponentSize);
       return isExact;
     }
 
@@ -329,23 +357,12 @@ namespace Microsoft.BaseTypes
     /// <param name="exponentSize">The size of the exponent in bits</param>
     private static void ValidateSizeParameters(int significandSize, int exponentSize)
     {
-      if (!TryValidateSizeParameters(significandSize, exponentSize)) {
-        if (significandSize <= 1) {
-          throw new ArgumentException($"Significand size must be greater than 1, got {significandSize}", nameof(significandSize));
-        }
+      if (significandSize <= 1) {
+        throw new ArgumentException($"Significand size must be greater than 1, got {significandSize}", nameof(significandSize));
+      }
+      if (exponentSize <= 1) {
         throw new ArgumentException($"Exponent size must be greater than 1, got {exponentSize}", nameof(exponentSize));
       }
-    }
-
-    /// <summary>
-    /// Validates that significand and exponent sizes meet minimum requirements (must be > 1)
-    /// </summary>
-    /// <param name="significandSize">The size of the significand in bits</param>
-    /// <param name="exponentSize">The size of the exponent in bits</param>
-    /// <returns>True if the sizes are valid; false otherwise</returns>
-    private static bool TryValidateSizeParameters(int significandSize, int exponentSize)
-    {
-      return significandSize > 1 && exponentSize > 1;
     }
 
     private static void ValidateSizeCompatibility(BigFloat x, BigFloat y)
@@ -360,20 +377,21 @@ namespace Microsoft.BaseTypes
     }
 
     /// <summary>
-    /// Gets the actual (unbiased) exponent, handling subnormal numbers correctly
+    /// Gets the mathematical exponent value (E for use in E - bias), handling subnormal numbers correctly
+    /// For subnormal numbers, returns 1 as per IEEE 754 specification
     /// </summary>
-    private int GetActualExponent() => exponent == 0 ? 1 : (int)exponent;
+    private BigInteger GetActualExponent() => exponent == 0 ? BigInteger.One : exponent;
 
     #endregion
 
     #region Arithmetic Helpers
 
-    private static (BigInteger significand, int exponent) PrepareOperand(BigFloat operand, BigInteger hiddenBit)
+    private static (BigInteger significand, BigInteger exponent) PrepareOperand(BigFloat operand, BigInteger leadingBit)
     {
       var sig = operand.significand;
       var exp = operand.GetActualExponent();
       if (operand.exponent > 0) {
-        sig |= hiddenBit;
+        sig |= leadingBit;
       }
       return (sig, exp);
     }
@@ -381,12 +399,12 @@ namespace Microsoft.BaseTypes
     /// <summary>
     /// Prepares operands for multiplication/division operations (with combined sign calculation)
     /// </summary>
-    private static ((BigInteger sig, int exp) x, (BigInteger sig, int exp) y, bool resultSign) PrepareOperandsForMultDiv(BigFloat x, BigFloat y)
+    private static ((BigInteger sig, BigInteger exp) x, (BigInteger sig, BigInteger exp) y, bool resultSign) PrepareOperandsForMultDiv(BigFloat x, BigFloat y)
     {
-      var hiddenBit = x.hiddenBit;
+      var leadingBit = x.leadingBit;
       var resultSign = x.signBit ^ y.signBit;
-      var (xSig, xExp) = PrepareOperand(x, hiddenBit);
-      var (ySig, yExp) = PrepareOperand(y, hiddenBit);
+      var (xSig, xExp) = PrepareOperand(x, leadingBit);
+      var (ySig, yExp) = PrepareOperand(y, leadingBit);
 
       return ((xSig, xExp), (ySig, yExp), resultSign);
     }
@@ -401,28 +419,53 @@ namespace Microsoft.BaseTypes
       return quotient;
     }
 
-    private static BigInteger GetMask(int bits) => (BigInteger.One << bits) - 1;
+    private static BigInteger GetMask(BigInteger bits)
+    {
+      if (bits <= 0) {
+        return BigInteger.Zero;
+      }
+      return BigIntegerMath.LeftShift(BigInteger.One, bits) - 1;
+    }
 
-    private static (BigInteger result, bool isExact) ApplyShiftWithRounding(BigInteger value, int shift)
+    private static (BigInteger result, bool isExact) ApplyShiftWithRounding(BigInteger value, BigInteger shift)
     {
       // Handle left shifts (no rounding needed)
       if (shift <= 0) {
-        return (value << -shift, true);
+        return (BigIntegerMath.LeftShift(value, -shift), true);
       }
 
-      // Right shift with round-to-nearest-even
-      var mask = GetMask(shift);
-      var lostBits = value & mask;
-      var result = value >> shift;
+      // Handle shifts that would result in zero
+      if (value.GetBitLength() <= shift) {
+        return (BigInteger.Zero, !value.IsZero);
+      }
+
+      // For very large right shifts, perform in chunks
+      var remaining = shift;
+      var current = value;
+
+      // Shift by int.MaxValue chunks if needed
+      while (remaining > int.MaxValue) {
+        current >>= int.MaxValue;
+        remaining -= int.MaxValue;
+        if (current.IsZero) {
+          return (BigInteger.Zero, false);
+        }
+      }
+
+      // Perform final shift with IEEE 754 round-to-nearest-even
+      var intShift = (int)remaining;
+      var mask = (BigInteger.One << intShift) - 1;
+      var lostBits = current & mask;
+      var result = current >> intShift;
 
       // If no bits lost, result is exact
-      if (lostBits == 0) {
+      if (lostBits.IsZero) {
         return (result, true);
       }
 
-      // Round to nearest even - correct IEEE 754 behavior
-      var half = BigInteger.One << (shift - 1);
-      if (lostBits > half || (lostBits == half && !result.IsEven)) {
+      // Round to nearest even
+      var halfBit = BigInteger.One << (intShift - 1);
+      if (lostBits > halfBit || (lostBits == halfBit && !result.IsEven)) {
         result++;
       }
 
@@ -435,23 +478,7 @@ namespace Microsoft.BaseTypes
     public static BigFloat CreateInfinity(bool isNegative, int significandSize, int exponentSize) =>
       new (isNegative, 0, GetMaxExponent(exponentSize), significandSize, exponentSize);
     public static BigFloat CreateNaN(bool isNegative, int significandSize, int exponentSize) =>
-      new (isNegative, GetSignificandMask(significandSize), GetMaxExponent(exponentSize), significandSize, exponentSize);
-
-    /// <summary>
-    /// Creates special values from string representation for SMT-LIB integration.
-    /// Supports: "NaN", "+oo", "-oo" (case insensitive)
-    /// </summary>
-    /// <param name="specialValue">Special value string ("NaN", "+oo", "-oo")</param>
-    /// <param name="sigSize">Significand size in bits</param>
-    /// <param name="expSize">Exponent size in bits</param>
-    /// <returns>BigFloat representing the special value</returns>
-    /// <exception cref="ArgumentException">Thrown when specialValue is not supported</exception>
-    public static BigFloat CreateSpecialFromString(string specialValue, int sigSize, int expSize) {
-      if (TryCreateSpecialFromString(specialValue, sigSize, expSize, out var result)) {
-        return result;
-      }
-      throw new ArgumentException($"Unknown special value: '{specialValue}'", nameof(specialValue));
-    }
+      new (isNegative, GetSignificandMask(significandSize - 1), GetMaxExponent(exponentSize), significandSize, exponentSize);
 
     /// <summary>
     /// Tries to create special values from string representation for SMT-LIB integration.
@@ -462,7 +489,7 @@ namespace Microsoft.BaseTypes
     /// <param name="expSize">Exponent size in bits</param>
     /// <param name="result">The resulting BigFloat if successful; default(BigFloat) otherwise</param>
     /// <returns>True if the special value was recognized and created; false otherwise</returns>
-    private static bool TryCreateSpecialFromString(string specialValue, int sigSize, int expSize, out BigFloat result) {
+    public static bool TryCreateSpecialFromString(string specialValue, int sigSize, int expSize, out BigFloat result) {
       switch (specialValue.ToLowerInvariant()) {
         case "nan":
           result = CreateNaN(false, sigSize, expSize);
@@ -499,7 +526,7 @@ namespace Microsoft.BaseTypes
     // IEEE 754 helper methods
     public static BigInteger GetBias(int exponentSize) => (BigInteger.One << (exponentSize - 1)) - 1;
     public static BigInteger GetMaxExponent(int exponentSize) => (BigInteger.One << exponentSize) - 1;
-    public static BigInteger GetHiddenBitPower(int significandSize) => BigInteger.One << (significandSize - 1);
+    public static BigInteger GetLeadingBitPower(int significandSize) => BigInteger.One << (significandSize - 1);  // Returns power value for the implicit leading significand bit
     public static BigInteger GetSignificandMask(int significandSize) => (BigInteger.One << significandSize) - 1;
 
     #endregion
@@ -526,57 +553,62 @@ namespace Microsoft.BaseTypes
     {
       ValidateSizeCompatibility(x, y);
 
-      // Handle special values and zeros
+      // Handle special values
       var specialResult = HandleSpecialValues(x, y, ArithmeticOperation.Addition);
       if (specialResult.HasValue) {
         return specialResult.Value;
       }
 
+      // Handle zeros
+      if (x.IsZero && y.IsZero) {
+        // IEEE 754: opposite signs sum to +0
+        var zeroResult = x.signBit != y.signBit ? CreateZero(false, x.SignificandSize, x.ExponentSize) : x;
+        return zeroResult;
+      }
       if (x.IsZero) {
         return y;
       }
-
       if (y.IsZero) {
         return x;
       }
 
-      // Prepare operands with sign
-      var (xSig, xExp) = PrepareOperand(x, x.hiddenBit);
-      var (ySig, yExp) = PrepareOperand(y, y.hiddenBit);
-      if (x.signBit) {
-        xSig = -xSig;
-      }
+      // Prepare signed operands
+      var (xSig, xExp) = PrepareOperand(x, x.leadingBit);
+      var (ySig, yExp) = PrepareOperand(y, y.leadingBit);
 
-      if (y.signBit) {
-        ySig = -ySig;
-      }
+      var xSigned = x.signBit ? -xSig : xSig;
+      var ySigned = y.signBit ? -ySig : ySig;
 
-      // Return larger operand if difference is too large
-      // +3 accounts for possible carry bits and rounding during addition
       var expDiff = xExp - yExp;
-      if (Math.Abs(expDiff) > x.SignificandSize + 3) {
-        return expDiff > 0 ? x : y;
+
+      // If operands are far apart, the smaller cannot affect the larger
+      // For same sign: no cancellation possible
+      // For opposite signs: when difference > significandSize + 1, the smaller value
+      // shifts completely out of range and doesn't affect the result
+      if (BigInteger.Abs(expDiff) > x.SignificandSize + 1) {
+        var farApartResult = expDiff > 0 ? x : y;
+        return farApartResult;
       }
 
-      // Align and add
-      var sum = expDiff == 0 ? xSig + ySig :
-                expDiff > 0 ? xSig + (ySig >> expDiff) :
-                              (xSig >> -expDiff) + ySig;
-      var resultExp = Math.Max(xExp, yExp);
+      // Align significands and add
+      var sum = expDiff == 0 ? xSigned + ySigned :
+        expDiff > 0 ? xSigned + BigIntegerMath.RightShift(ySigned, expDiff) :
+        BigIntegerMath.RightShift(xSigned, -expDiff) + ySigned;
 
-      // Handle zero sum
       if (sum == 0) {
-        return CreateZero(x.signBit && y.signBit, x.SignificandSize, x.ExponentSize);
+        var zeroSumResult = CreateZero(x.signBit && y.signBit, x.SignificandSize, x.ExponentSize);
+        return zeroSumResult;
       }
 
-      // Normalize and create result
+      // Normalize result
       var isNegative = sum < 0;
-      if (isNegative) {
-        sum = -sum;
-      }
+      var absSum = isNegative ? -sum : sum;
 
-      var (normSig, normExp) = NormalizeAndRound(sum, resultExp, x.SignificandSize);
-      return HandleExponentBounds(normSig, normExp, isNegative, x.SignificandSize, x.ExponentSize);
+      var baseExp = xExp > yExp ? xExp : yExp;
+      var (normSig, normExp) = NormalizeAndRound(absSum, baseExp, x.SignificandSize);
+
+      var result = HandleExponentBounds(normSig, normExp, isNegative, x.SignificandSize, x.ExponentSize);
+      return result;
     }
 
     [Pure] public static BigFloat operator -(BigFloat x, BigFloat y) => x + -y;
@@ -607,11 +639,11 @@ namespace Microsoft.BaseTypes
       }
 
       // Normalize and round the product
-      var (normalizedProduct, normalShift) = NormalizeAndRound(product, 0, x.SignificandSize);
+      var (normalizedProduct, normalShift) = NormalizeAndRound(product, BigInteger.Zero, x.SignificandSize);
 
-      // Calculate the final exponent
+      // Calculate the final exponent - all values are already BigInteger
       var bias = x.bias;
-      var resultExp = xExp + yExp - (int)bias + normalShift - (x.SignificandSize - 1);
+      var resultExp = xExp + yExp - bias + normalShift - (x.SignificandSize - 1);
 
       // Handle overflow, underflow, and create final result
       return HandleExponentBounds(normalizedProduct, resultExp, resultSign, x.SignificandSize, x.ExponentSize);
@@ -622,7 +654,7 @@ namespace Microsoft.BaseTypes
     {
       ValidateSizeCompatibility(x, y);
 
-      // Handle all special cases (NaN, infinity, zero)
+      // Handle special cases
       var specialResult = HandleSpecialValues(x, y, ArithmeticOperation.Division);
       if (specialResult.HasValue) {
         return specialResult.Value;
@@ -631,35 +663,25 @@ namespace Microsoft.BaseTypes
       // Prepare operands and calculate result sign
       var ((xSig, xExp), (ySig, yExp), resultSign) = PrepareOperandsForMultDiv(x, y);
 
-      // For division, we need extra precision to ensure accurate rounding
-      // Shift dividend left by significandSize + 1 bits to maintain precision
-      var shiftedDividend = xSig << (x.SignificandSize + 1);
-      var quotient = shiftedDividend / ySig;
-      var remainder = shiftedDividend % ySig;
-
-      // Apply rounding if needed
+      // Shift dividend left for precision and divide with rounding
+      var shiftedDividend = BigIntegerMath.LeftShift(xSig, x.SignificandSize + 1);
+      var quotient = BigInteger.DivRem(shiftedDividend, ySig, out var remainder);
       quotient = ApplyRoundToNearestEven(quotient, remainder, ySig);
 
-      // Check for zero result
       if (quotient == 0) {
         return CreateZero(resultSign, x.SignificandSize, x.ExponentSize);
       }
 
-      // Normalize and round the quotient
-      var (normalizedQuotient, normalShift) = NormalizeAndRound(quotient, 0, x.SignificandSize);
+      // Normalize and calculate final exponent
+      var (normalizedQuotient, normalShift) = NormalizeAndRound(quotient, BigInteger.Zero, x.SignificandSize);
+      var resultExp = xExp - yExp + x.bias + normalShift - 2;
 
-      // Calculate the final exponent
-      // Division inherently gives us xExp - yExp, and we need to adjust for the shift we applied
-      var bias = x.bias;
-      var resultExp = xExp - yExp + (int)bias + normalShift - 2;
-
-      // Handle overflow, underflow, and create final result
       return HandleExponentBounds(normalizedQuotient, resultExp, resultSign, x.SignificandSize, x.ExponentSize);
     }
 
-    private static (BigInteger significand, int exponent) NormalizeAndRound(BigInteger value, int exponent, int targetBits)
+    private static (BigInteger significand, BigInteger exponent) NormalizeAndRound(BigInteger value, BigInteger exponent, int targetBits)
     {
-      var valueBits = (int)value.GetBitLength();
+      var valueBits = value.GetBitLength();
       var shift = valueBits - targetBits;
 
       // Use IEEE 754 compliant shift and round method
@@ -667,7 +689,7 @@ namespace Microsoft.BaseTypes
       var adjustedExponent = exponent + shift;
 
       // Handle potential overflow from rounding (only for right shifts)
-      if (shift > 0 && (int)shiftedValue.GetBitLength() > targetBits) {
+      if (shift > 0 && shiftedValue.GetBitLength() > targetBits) {
         shiftedValue >>= 1;
         adjustedExponent++;
       }
@@ -675,33 +697,37 @@ namespace Microsoft.BaseTypes
       return (shiftedValue, adjustedExponent);
     }
 
-    private static BigFloat HandleExponentBounds(BigInteger significand, int exponent, bool isNegative, int significandSize, int exponentSize)
+    private static BigFloat HandleExponentBounds(BigInteger significand, BigInteger exponent, bool isNegative, int significandSize, int exponentSize)
     {
-      // Check overflow
-      if (exponent > ((1 << exponentSize) - 2)) {
+      var maxExponent = GetMaxExponent(exponentSize);
+
+      // Handle overflow to infinity
+      if (exponent >= maxExponent) {
         return CreateInfinity(isNegative, significandSize, exponentSize);
       }
 
-      // Handle underflow/subnormal
-      if (exponent <= 0) {
-        // Too small even for subnormal
-        if (exponent <= -significandSize) {
-          return CreateZero(isNegative, significandSize, exponentSize);
-        }
-
-        // Create subnormal
-        var (shiftedSig, _) = ApplyShiftWithRounding(significand, 1 - exponent);
-
-        // Handle rounding overflow
-        if (shiftedSig.GetBitLength() > significandSize) {
-          shiftedSig >>= 1;
-        }
-
-        return new BigFloat(isNegative, shiftedSig, 0, significandSize, exponentSize);
+      // Handle normal numbers
+      if (exponent > 0) {
+        // Remove implicit leading bit for storage (it's encoded in the biased exponent)
+        var leadingBitMask = GetLeadingBitPower(significandSize) - 1;
+        return new BigFloat(isNegative, significand & leadingBitMask, exponent, significandSize, exponentSize);
       }
 
-      // Normal number - mask hidden bit
-      return new BigFloat(isNegative, significand & (GetHiddenBitPower(significandSize) - 1), exponent, significandSize, exponentSize);
+      // Handle complete underflow to zero
+      var bias = GetBias(exponentSize);
+      if (exponent < BigInteger.One - bias - (significandSize - 1)) {
+        return CreateZero(isNegative, significandSize, exponentSize);
+      }
+
+      // Handle subnormal numbers with gradual underflow
+      var (shiftedSig, _) = ApplyShiftWithRounding(significand, BigInteger.One - exponent);
+
+      // Check if rounding caused overflow back to smallest normal number
+      if (shiftedSig.GetBitLength() == significandSize) {
+        return new BigFloat(isNegative, 0, 1, significandSize, exponentSize);
+      }
+
+      return new BigFloat(isNegative, shiftedSig, 0, significandSize, exponentSize);
     }
 
     /// <summary>
@@ -784,17 +810,16 @@ namespace Microsoft.BaseTypes
       return null; // No special case applies
     }
 
+    #endregion
+
+    #region Mathematical Operations
+
     /// <summary>
     /// Computes the floor and ceiling of this BigFloat. Note the choice of rounding towards negative
     /// infinity rather than zero for floor is because SMT-LIBv2's to_int function floors this way.
     /// </summary>
     /// <param name="floor">Floor (rounded towards negative infinity)</param>
     /// <param name="ceiling">Ceiling (rounded towards positive infinity)</param>
-
-    #endregion
-
-    #region Mathematical Operations
-
     public void FloorCeiling(out BigInteger floor, out BigInteger ceiling)
     {
       // Handle special cases
@@ -808,21 +833,22 @@ namespace Microsoft.BaseTypes
       }
 
       // Convert to rational and compute integer part
-      var mantissaValue = IsNormal ? (significand | hiddenBit) : significand;
-      var shift = (IsNormal ? GetActualExponent() : 1) - (int)bias - (SignificandSize - 1);
+      var significandValue = IsNormal ? (significand | leadingBit) : significand;
+      var shift = (IsNormal ? GetActualExponent() : BigInteger.One) - bias - (SignificandSize - 1);
 
       BigInteger integerPart;
       bool hasRemainder;
 
       if (shift >= 0) {
-        integerPart = mantissaValue << shift;
+        integerPart = BigIntegerMath.LeftShift(significandValue, shift);
         hasRemainder = false;
       } else if (-shift >= SignificandSize) {
         integerPart = 0;
         hasRemainder = true;
       } else {
-        integerPart = mantissaValue >> -shift;
-        hasRemainder = (mantissaValue & ((BigInteger.One << -shift) - 1)) != 0;
+        var absShift = -shift;
+        integerPart = BigIntegerMath.RightShift(significandValue, absShift);
+        hasRemainder = (significandValue & GetMask(absShift)) != 0;
       }
 
       // Apply sign and compute floor/ceiling
@@ -861,6 +887,9 @@ namespace Microsoft.BaseTypes
     /// </returns>
     public int CompareTo(BigFloat that)
     {
+      // Validate size compatibility first
+      ValidateSizeCompatibility(this, that);
+
       // NaN handling - special ordering for collections
       if (IsNaN || that.IsNaN) {
         if (IsNaN && that.IsNaN) {
@@ -928,7 +957,7 @@ namespace Microsoft.BaseTypes
     [Pure]
     public string ToDecimalString()
     {
-      // Handle special values per IEEE 754-2019 Section 5.12.1
+      // Handle special values
       if (IsNaN) {
         return "NaN";
       }
@@ -939,27 +968,38 @@ namespace Microsoft.BaseTypes
         return signBit ? "-0" : "0";
       }
 
-      // Convert binary float to rational number
-      var mantissaValue = IsNormal ? (significand | hiddenBit) : significand;
-      var shift = (IsNormal ? GetActualExponent() : 1) - (int)bias - (SignificandSize - 1);
+      // Convert to rational number
+      var significandValue = IsNormal ? (significand | leadingBit) : significand;
+      var shift = (IsNormal ? GetActualExponent() : BigInteger.One) - bias - (SignificandSize - 1);
 
-      BigInteger numerator, denominator;
-      if (shift >= 0) {
-        numerator = signBit ? -(mantissaValue << shift) : mantissaValue << shift;
-        denominator = BigInteger.One;
-      } else {
-        numerator = signBit ? -mantissaValue : mantissaValue;
-        denominator = BigInteger.One << -shift;
+      // Calculate numerator and denominator
+      var (numerator, denominator) = shift >= 0
+        ? (BigIntegerMath.LeftShift(significandValue, shift), BigInteger.One)
+        : (significandValue, BigIntegerMath.LeftShift(BigInteger.One, -shift));
+
+      if (signBit) {
+        numerator = -numerator;
       }
 
-      // Convert to decimal string with appropriate scale
-      var scale = Math.Max(0, (int)(denominator.GetBitLength() * 0.31));
-      var scaled = BigInteger.Abs(numerator * BigInteger.Pow(10, scale) / denominator);
+      // Convert to decimal with appropriate scale
+      var desiredScale = denominator.GetBitLength() * 0.31; // Approximate decimal digits needed
+      if (desiredScale > int.MaxValue - 1) {
+        throw new OverflowException($"Cannot convert to decimal string: required scale {desiredScale:E} exceeds maximum supported scale {int.MaxValue}");
+      }
+      var scale = (int)desiredScale;
+      var scaled = BigInteger.Abs(numerator) * BigInteger.Pow(10, scale) / denominator;
       var str = scaled.ToString().PadLeft(scale + 1, '0');
 
       // Format with decimal point
-      var result = str[..^scale] + (scale > 0 ? "." + str[^scale..].TrimEnd('0') : "");
-      return numerator < 0 ? "-" + result.TrimEnd('.') : result.TrimEnd('.');
+      if (scale == 0) {
+        return signBit && !IsZero ? "-" + str : str;
+      }
+
+      var intPart = str[..^scale];
+      var fracPart = str[^scale..].TrimEnd('0');
+      var result = fracPart.Length > 0 ? $"{intPart}.{fracPart}" : intPart;
+
+      return signBit ? "-" + result : result;
     }
 
     public override string ToString()
@@ -976,59 +1016,40 @@ namespace Microsoft.BaseTypes
         return $"{(signBit ? "-" : "")}0x0.0e0f{SignificandSize}e{ExponentSize}";
       }
 
-      // Get mantissa and binary exponent
-      var mantissa = IsSubnormal ? significand : (significand | hiddenBit);
-      var binaryExp = IsSubnormal ? (1 - (int)bias) : ((int)exponent - (int)bias);
-      binaryExp -= (SignificandSize - 1); // Adjust for mantissa bit position
+      // Get significand and binary exponent
+      var significandBits = IsSubnormal ? significand : (significand | leadingBit);
+      var binaryExp = (IsSubnormal ? BigInteger.One - bias : exponent - bias) - (SignificandSize - 1);
 
-      // Convert to hex representation
-      // We want: mantissa * 2^binaryExp = hexMantissa * 16^hexExp
-      // Since 16 = 2^4: mantissa * 2^binaryExp = hexMantissa * 2^(4*hexExp)
-
-      // Start with the mantissa in hex
-      var hexStr = mantissa.ToString("X");
-
-      // Calculate initial hex exponent (divide by 4, handle remainder with bit shifts)
+      // Calculate hex exponent and adjust significand for bit remainder
       var hexExp = binaryExp / 4;
-      var bitRemainder = binaryExp % 4;
+      var bitRemainder = (int)(binaryExp % 4);
 
-      // Adjust mantissa for the bit remainder
-      if (bitRemainder != 0) {
-        if (bitRemainder > 0) {
-          mantissa <<= bitRemainder;
-        } else {
-          // For negative remainder, shift left by (4 + remainder) and decrement hex exponent
-          mantissa <<= (4 + bitRemainder);
-          hexExp--;
-        }
-        hexStr = mantissa.ToString("X");
+      if (bitRemainder < 0) {
+        significandBits <<= (4 + bitRemainder);
+        hexExp--;
+      } else if (bitRemainder > 0) {
+        significandBits <<= bitRemainder;
       }
 
-      // Handle case where mantissa became zero (shouldn't happen for valid inputs)
-      if (hexStr == "0" || string.IsNullOrEmpty(hexStr)) {
-        return $"{(signBit ? "-" : "")}0x0.0e0f{SignificandSize}e{ExponentSize}";
-      }
-
-      // Format as H.HHH (decimal point after first hex digit)
-      string formattedHex;
+      // Convert to hex and format as H.HHH
+      var hexStr = significandBits.ToString("X");
       if (hexStr.Length == 1) {
-        formattedHex = $"{hexStr}.0";
-      } else {
-        var intPart = hexStr[..1];
-        var fracPart = hexStr[1..].TrimEnd('0');
-        if (fracPart.Length == 0) {
-          fracPart = "0";
-        }
-
-        formattedHex = $"{intPart}.{fracPart}";
-
-        // Adjust hex exponent for decimal point placement
-        // Moving decimal point left by (length-1) positions = multiplying by 16^(length-1)
-        hexExp += hexStr.Length - 1;
+        return $"{(signBit ? "-" : "")}0x{hexStr}.0e{hexExp}f{SignificandSize}e{ExponentSize}";
       }
 
-      return $"{(signBit ? "-" : "")}0x{formattedHex}e{hexExp}f{SignificandSize}e{ExponentSize}";
+      // Format with decimal point after first digit
+      var fracPart = hexStr[1..].TrimEnd('0');
+      if (fracPart.Length == 0) {
+        fracPart = "0";
+      }
+      hexExp += hexStr.Length - 1;
+
+      return $"{(signBit ? "-" : "")}0x{hexStr[0]}.{fracPart}e{hexExp}f{SignificandSize}e{ExponentSize}";
     }
+
+    #endregion
+
+    #region String Parsing
 
     /// <summary>
     /// Tries to parse hex format BigFloat strings according to the specification
@@ -1040,83 +1061,118 @@ namespace Microsoft.BaseTypes
     /// when false, follows IEEE 754 standard behavior</param>
     /// <param name="result">The parsed BigFloat value if successful; default(BigFloat) otherwise</param>
     /// <returns>True if the parse was successful; false otherwise</returns>
-
-    #endregion
-
-    #region String Parsing
-
     private static bool TryParseHexFormat(string s, int sigSize, int expSize, bool strict, out BigFloat result)
     {
       result = default;
 
-      // Find key positions: [-]0x<hex>.<hex>e<dec>
-      var posX = s.IndexOf('x');
+      // Parse format: [-]0x<hex>.<hex>e<dec>
+      var posX = s.IndexOf("0x", StringComparison.Ordinal);
       var posE = s.LastIndexOf('e');
-      if (posX < 0 || posE <= posX) {
+      if (posX < 0 || posE <= posX + 2) {
         return false;
       }
 
-      // Extract hex parts
-      var hexPart = s[(posX + 1)..posE];
+      // Extract hex significand and find decimal point
+      var hexPart = s[(posX + 2)..posE];
       var dotPos = hexPart.IndexOf('.');
-      if (dotPos < 0) {
+      var exponentPart = s[(posE + 1)..];
+
+      // Check for spaces in the exponent part
+      if (exponentPart.Contains(' ')) {
         return false;
       }
 
-      // Parse components
-      if (!TryParseHex(hexPart[..dotPos], out var intPart) ||
+      if (dotPos < 0 ||
+          !TryParseHex(hexPart[..dotPos], out var intPart) ||
           !TryParseHex(hexPart[(dotPos + 1)..], out var fracPart) ||
-          !int.TryParse(s[(posE + 1)..], out var decExp)) {
+          !BigInteger.TryParse(exponentPart, out var decExp)) {
         return false;
       }
 
-      // Build significand
-      var fracBits = (hexPart.Length - dotPos - 1) * 4;
-      var sig = (intPart << fracBits) | fracPart;
+      // Build significand from hex parts
+      var fracBits = ((long)hexPart.Length - dotPos - 1) * 4;
+      var sig = BigIntegerMath.LeftShift(intPart, fracBits) | fracPart;
+      var isNegative = s.Length > 0 && s[0] == '-';
+
       if (sig == 0) {
-        result = CreateZero(s[0] == '-', sigSize, expSize);
+        result = CreateZero(isNegative, sigSize, expSize);
         return true;
       }
 
-      // Calculate exponent
-      var msbPos = (int)sig.GetBitLength() - 1;
-      var biasedExp = msbPos - fracBits + (decExp * 4) + (int)GetBias(expSize);
+      // Calculate biased exponent
+      var msbPos = sig.GetBitLength() - 1;
+      var biasedExp = new BigInteger(msbPos - fracBits) + (decExp * 4) + GetBias(expSize);
 
-      // Handle overflow
+      // Handle overflow/underflow/normal cases
       if (biasedExp >= GetMaxExponent(expSize)) {
-        return false;
+        if (strict) {
+          return false;
+        }
+        result = CreateInfinity(isNegative, sigSize, expSize);
+        return true;
       }
 
-      // Handle underflow/subnormal
       if (biasedExp <= 0) {
-        return HandleUnderflow(s[0] == '-', sig, biasedExp, sigSize, expSize, strict, out result);
+        return HandleUnderflow(isNegative, sig, biasedExp, sigSize, expSize, strict, out result);
       }
 
-      // Normal number
-      var shift = msbPos - (sigSize - 1);
-      if (strict && shift > 0 && (sig & GetMask(shift)) != 0) {
+      // Normal number - check precision loss and normalize
+      var shift = new BigInteger(msbPos) - (sigSize - 1);
+      if (strict && shift > 0 && shift < sig.GetBitLength() && (sig & GetMask(shift)) != 0) {
         return false;
       }
 
-      var normalizedSig = shift >= 0 ? sig >> shift : sig << (-shift);
-      result = new BigFloat(s[0] == '-', normalizedSig & (GetHiddenBitPower(sigSize) - 1), biasedExp, sigSize, expSize);
+      // Apply IEEE 754 rounding instead of truncation
+      BigInteger roundedSig;
+      BigInteger adjustedBiasedExp = biasedExp;
+
+      if (shift > 0) {
+        var (shifted, _) = ApplyShiftWithRounding(sig, shift);
+        roundedSig = shifted;
+
+        // Check if rounding caused overflow to next power of 2
+        if (roundedSig.GetBitLength() > sigSize) {
+          roundedSig >>= 1;
+          adjustedBiasedExp++;
+
+          // Check for exponent overflow
+          if (adjustedBiasedExp >= GetMaxExponent(expSize)) {
+            if (strict) {
+              return false;
+            }
+            result = CreateInfinity(isNegative, sigSize, expSize);
+            return true;
+          }
+        }
+
+        roundedSig &= (GetLeadingBitPower(sigSize) - 1);
+      } else {
+        roundedSig = BigIntegerMath.RightShift(sig, shift) & (GetLeadingBitPower(sigSize) - 1);
+      }
+
+      result = new BigFloat(isNegative, roundedSig, adjustedBiasedExp, sigSize, expSize);
       return true;
     }
 
     private static bool TryParseHex(string hex, out BigInteger value)
     {
       value = 0;
-      return hex.Length == 0 || BigInteger.TryParse("0" + hex, System.Globalization.NumberStyles.HexNumber, null, out value);
+      // Boogie spec requires at least one hex digit, so empty strings are invalid
+      if (hex.Length == 0) {
+        return false;
+      }
+      return BigInteger.TryParse("0" + hex, System.Globalization.NumberStyles.HexNumber, null, out value);
     }
 
-    private static bool HandleUnderflow(bool signBit, BigInteger sig, int biasedExp, int sigSize, int expSize, bool strict, out BigFloat result)
+    private static bool HandleUnderflow(bool signBit, BigInteger sig, BigInteger biasedExp, int sigSize, int expSize, bool strict, out BigFloat result)
     {
       result = default;
       var bias = GetBias(expSize);
-      var actualExp = biasedExp - (int)bias;
+      var minSubnormalExp = BigInteger.One - bias - (sigSize - 1);
+      var actualExp = biasedExp - bias;
 
-      // Check if value is too small to represent
-      if (actualExp < 1 - (int)bias - (sigSize - 1)) {
+      // Complete underflow to zero
+      if (actualExp < minSubnormalExp) {
         if (strict) {
           return false;
         }
@@ -1124,20 +1180,29 @@ namespace Microsoft.BaseTypes
         return true;
       }
 
-      // Calculate shift for subnormal representation
-      var msbPos = (int)sig.GetBitLength() - 1;
-      // Bit position 0 in subnormal represents 2^(1-bias-(sigSize-1))
-      // We need to shift from msbPos to the correct position for actualExp
-      var subnormalBase = 1 - (int)bias - (sigSize - 1);
-      var shiftAmount = msbPos - (actualExp - subnormalBase);
+      // Calculate required shift for subnormal representation
+      var currentMsb = sig.GetBitLength() - 1;
+      var targetPosition = actualExp - minSubnormalExp;
+      var shiftAmount = new BigInteger(currentMsb) - targetPosition;
 
-      // Apply shift and check result
-      var subnormalSig = shiftAmount > 0 ? sig >> shiftAmount : sig << (-shiftAmount);
-      if (subnormalSig == 0 || subnormalSig.GetBitLength() > sigSize - 1) {
+      // Apply shift with IEEE 754 rounding
+      var (subnormalSig, _) = ApplyShiftWithRounding(sig, shiftAmount);
+
+      if (subnormalSig.IsZero) {
         if (strict) {
           return false;
         }
         result = CreateZero(signBit, sigSize, expSize);
+        return true;
+      }
+
+      // Check if rounding caused overflow to normal range
+      if (subnormalSig.GetBitLength() > sigSize - 1) {
+        if (strict) {
+          return false;
+        }
+        // Overflow to smallest normal number
+        result = new BigFloat(signBit, 0, 1, sigSize, expSize);
         return true;
       }
 
@@ -1154,5 +1219,77 @@ namespace Microsoft.BaseTypes
         $"fp (_ bv{(signBit ? "1" : "0")} 1) (_ bv{exponent} {ExponentSize}) (_ bv{significand} {SignificandSize - 1})";
 
     #endregion
+  }
+
+  /// <summary>
+  /// Helper class for BigInteger arithmetic operations that require shift amounts larger than int.MaxValue
+  /// </summary>
+  internal static class BigIntegerMath
+  {
+    /// <summary>
+    /// Left shift operation that handles BigInteger shift amounts
+    /// </summary>
+    /// <param name="value">The value to shift</param>
+    /// <param name="shift">The number of bits to shift left (can be negative for right shift)</param>
+    /// <returns>The result of value << shift, handling shifts larger than int.MaxValue</returns>
+    public static BigInteger LeftShift(BigInteger value, BigInteger shift)
+    {
+      if (shift < 0) {
+        return RightShift(value, -shift);
+      }
+      if (shift == 0 || value == 0) {
+        return value;
+      }
+
+      // Perform shift in chunks of int.MaxValue
+      var result = value;
+      var remaining = shift;
+
+      while (remaining > 0) {
+        var currentShift = remaining > int.MaxValue ? int.MaxValue : (int)remaining;
+        result <<= currentShift;
+        remaining -= currentShift;
+      }
+
+      return result;
+    }
+
+    /// <summary>
+    /// Right shift operation that handles BigInteger shift amounts
+    /// </summary>
+    /// <param name="value">The value to shift</param>
+    /// <param name="shift">The number of bits to shift right (can be negative for left shift)</param>
+    /// <returns>The result of value >> shift, handling shifts larger than int.MaxValue</returns>
+    public static BigInteger RightShift(BigInteger value, BigInteger shift)
+    {
+      if (shift < 0) {
+        return LeftShift(value, -shift);
+      }
+      if (shift == 0) {
+        return value;
+      }
+
+      // Early exit if result would be zero
+      if (value.GetBitLength() <= shift) {
+        return BigInteger.Zero;
+      }
+
+      // Perform shift in chunks of int.MaxValue
+      var result = value;
+      var remaining = shift;
+
+      while (remaining > 0) {
+        var currentShift = remaining > int.MaxValue ? int.MaxValue : (int)remaining;
+        result >>= currentShift;
+        remaining -= currentShift;
+
+        // Early exit if we've shifted to zero
+        if (result.IsZero) {
+          return BigInteger.Zero;
+        }
+      }
+
+      return result;
+    }
   }
 }
