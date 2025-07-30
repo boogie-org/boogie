@@ -301,7 +301,7 @@ namespace Microsoft.Boogie.SMTLib
       else if (node is VCExprFloatLit)
       {
         BigFloat lit = ((VCExprFloatLit) node).Val;
-        wr.Write("(" + lit.ToBVString() + ")");
+        wr.Write("(" + lit.ToSMTLibString() + ")");
       }
       else if (node is VCExprRModeLit)
       {

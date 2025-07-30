@@ -29,6 +29,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie
 {
@@ -44,7 +45,8 @@ namespace Microsoft.Boogie
       Boolean,
       Uninterpreted,
       Array,
-      DataValue
+      DataValue,
+      Float
     }
 
     public abstract class Element
@@ -184,6 +186,26 @@ namespace Microsoft.Boogie
       public override string ToString()
       {
         return string.Format("{0}bv{1}", Numeral, Size);
+      }
+    }
+
+    public class Float : Element
+    {
+      internal Float(Model p, string n) : base(p)
+      {
+        Literal = n;
+      }
+
+      public readonly string Literal;
+
+      public override ElementKind Kind
+      {
+        get { return ElementKind.Float; }
+      }
+
+      public override string ToString()
+      {
+        return Literal;
       }
     }
 
@@ -716,7 +738,14 @@ namespace Microsoft.Boogie
         }
         else
         {
-          return null;
+          // Try parsing as BigFloat
+          try {
+            var _ = BigFloat.FromString(name);
+            return new Float(this, name);
+          } catch {
+            // Not a valid number at all
+            return null;
+          }
         }
       }
       else if (name[0] == '*' || name.StartsWith("val!") || name.Contains("!val!"))
