@@ -76,7 +76,7 @@ Boogie with `/proverHelp`.
 
 ### Z3
 
-The current test suite assumes version 4.8.8, but earlier and newer versions may
+The current test suite assumes version 4.11.2, but earlier and newer versions may
 also work.
 
 ### CVC5 (experimental)
