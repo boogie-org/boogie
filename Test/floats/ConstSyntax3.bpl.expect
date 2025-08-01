@@ -1,11 +1,11 @@
-ConstSyntax3.bpl(12,8): error: incorrectly formatted floating point, Exponent size must be greater than 1
-ConstSyntax3.bpl(13,8): error: incorrectly formatted floating point, Significand size must be greater than 1
-ConstSyntax3.bpl(16,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 8
-ConstSyntax3.bpl(18,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 8
-ConstSyntax3.bpl(21,8): error: incorrectly formatted floating point, The given significand cannot fit in the bit size 23
-ConstSyntax3.bpl(22,8): error: incorrectly formatted floating point, The given significand cannot fit in the bit size 23
-ConstSyntax3.bpl(25,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 11
-ConstSyntax3.bpl(27,8): error: incorrectly formatted floating point, The given exponent cannot fit in the bit size 11
-ConstSyntax3.bpl(30,8): error: incorrectly formatted floating point, The given significand cannot fit in the bit size 52
-ConstSyntax3.bpl(31,8): error: incorrectly formatted floating point, The given significand cannot fit in the bit size 52
+ConstSyntax3.bpl(12,8): error: incorrectly formatted floating point
+ConstSyntax3.bpl(13,8): error: incorrectly formatted floating point
+ConstSyntax3.bpl(16,8): error: incorrectly formatted floating point
+ConstSyntax3.bpl(18,8): error: incorrectly formatted floating point
+ConstSyntax3.bpl(21,8): error: incorrectly formatted floating point
+ConstSyntax3.bpl(22,8): error: incorrectly formatted floating point
+ConstSyntax3.bpl(25,8): error: incorrectly formatted floating point
+ConstSyntax3.bpl(27,8): error: incorrectly formatted floating point
+ConstSyntax3.bpl(30,8): error: incorrectly formatted floating point
+ConstSyntax3.bpl(31,8): error: incorrectly formatted floating point
 10 parse errors detected in ConstSyntax3.bpl

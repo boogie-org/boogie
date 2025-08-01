@@ -326,7 +326,7 @@ namespace Microsoft.Boogie.AbstractInterpretation
       }
       else if (ty.IsFloat)
       {
-        return Expr.Literal(BaseTypes.BigFloat.FromBigInt(n, ty.FloatExponent, ty.FloatSignificand));
+        return Expr.Literal(BaseTypes.BigFloat.FromBigInt(n, ty.FloatSignificand, ty.FloatExponent));
       }
       else
       {
@@ -958,9 +958,19 @@ namespace Microsoft.Boogie.AbstractInterpretation
         }
         else if (node.Val is BigFloat)
         {
-          ((BigFloat) node.Val).FloorCeiling(out var floor, out var ceiling);
-          Lo = floor;
-          Hi = ceiling;
+          var bf = (BigFloat) node.Val;
+          if (bf.IsNaN || bf.IsInfinity)
+          {
+            // NaN and infinity have no meaningful integer bounds
+            Lo = null;
+            Hi = null;
+          }
+          else
+          {
+            bf.FloorCeiling(out var floor, out var ceiling);
+            Lo = floor;
+            Hi = ceiling;
+          }
         }
         else if (node.Val is bool)
         {

@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BaseTypes\BaseTypes.csproj" />
     <ProjectReference Include="..\CodeContractsExtender\CodeContractsExtender.csproj" />
   </ItemGroup>
 
