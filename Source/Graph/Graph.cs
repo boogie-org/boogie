@@ -994,6 +994,10 @@ namespace Microsoft.Boogie.GraphUtil
             {
               return ret;
             }
+            else
+            {
+              ret.Add(x);
+            }
           }
         }
 

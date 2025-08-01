@@ -541,21 +541,21 @@ public class Program : Absy
     return GraphFromBlocks(impl.Blocks, forward);
   }
 
-  public class IrreducibleLoopException : Exception
-  {
-  }
-
   public Graph<Block> ProcessLoops(CoreOptions options, Implementation impl)
   {
     impl.PruneUnreachableBlocks(options);
     impl.ComputePredecessorsForBlocks();
     Graph<Block> g = GraphFromImpl(impl);
     g.ComputeLoops();
-    if (g.Reducible)
+    if (!g.Reducible)
     {
-      return g;
+      impl.ConvertToReducible(options);
+      g = GraphFromImpl(impl);
     }
-    throw new IrreducibleLoopException();
+
+    g.ComputeLoops();
+    Contract.Assert(g.Reducible);
+    return g;
   }
 
 
