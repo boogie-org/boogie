@@ -84,9 +84,8 @@ requires call YieldConsumer(x, receive_handle);
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 1} SEND (m: int, {:linear} send_handle: One ChannelHandle)
-modifies channels;
-{
+yield procedure {:layer 0} send (m: int, {:linear} send_handle: One ChannelHandle);
+refines atomic action {:layer 1} _ {
   var channel: Channel;
   var C: [int]int;
   var head, tail: int;
@@ -101,9 +100,8 @@ modifies channels;
   channels[send_handle->val->cid] := Channel(C, head, tail);
 }
 
-atomic action {:layer 1} RECEIVE ({:linear} receive_handle: One ChannelHandle) returns (m:int)
-modifies channels;
-{
+yield procedure {:layer 0} receive ({:linear} receive_handle: One ChannelHandle) returns (m: int);
+refines atomic action {:layer 1} _ {
   var channel: Channel;
   var C: [int]int;
   var head, tail: int;
@@ -118,10 +116,3 @@ modifies channels;
   head := head + 1;
   channels[receive_handle->val->cid] := Channel(C, head, tail);
 }
-
-yield procedure {:layer 0} send (m: int, {:linear} send_handle: One ChannelHandle);
-refines SEND;
-
-yield procedure {:layer 0} receive ({:linear} receive_handle: One ChannelHandle) returns (m: int);
-refines RECEIVE;
-

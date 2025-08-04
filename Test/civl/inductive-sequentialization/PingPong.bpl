@@ -16,7 +16,7 @@ type ChannelId;
 
 // The following global variables models all instances of a bidirectional channel indexed
 // the ChannelId type. A single instance of PingPong will only use a single channel id.
-var {:layer 0,1} channel: [ChannelId]ChannelPair;
+var {:layer 0,1} channels: [ChannelId]ChannelPair;
 
 // The id of a bidirectional channel can be split into two permissions---Left and Right.
 // Left permission is used to receive from the left channel and send to the right channel.
@@ -34,19 +34,19 @@ function {:inline} Singleton(x: int): [int]int { Empty()[x := 1] }
 
 yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set ChannelHandle);
 invariant handles == BothHandles(cid);
-invariant channel[cid] == ChannelPair(Empty(), Empty());
+invariant channels[cid] == ChannelPair(Empty(), Empty());
 
 yield invariant {:layer 1} YieldPing(x: int, {:linear} p: One ChannelHandle);
 invariant p->val is Left;
 invariant x > 0;
-invariant (var left_channel, right_channel := channel[p->val->cid]->left, channel[p->val->cid]->right;
+invariant (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
             (left_channel == Empty() && right_channel == Singleton(x) && x > 0) ||
             (left_channel == Singleton(x) && right_channel == Empty()));
 
 yield invariant {:layer 1} YieldPong(y: int, {:linear} p: One ChannelHandle);
 invariant p->val is Right;
 invariant y > 0;
-invariant (var left_channel, right_channel := channel[p->val->cid]->left, channel[p->val->cid]->right;
+invariant (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
             (left_channel == Empty() && (right_channel == Singleton(y) || right_channel == Singleton(0))) ||
             (left_channel == Singleton(y-1) && right_channel == Empty()));
 
@@ -105,14 +105,13 @@ requires call YieldPong(y, p);
 ////////////////////////////////////////////////////////////////////////////////
 // Bidirectional channels
 
-right action {:layer 1} RECEIVE (p: ChannelHandle) returns (m: int)
-modifies channel;
-{
+yield procedure {:layer 0} receive (p: ChannelHandle) returns (m: int);
+refines right action {:layer 1} _ {
   var left_channel: [int]int;
   var right_channel: [int]int;
 
-  left_channel := channel[p->cid]->left;
-  right_channel := channel[p->cid]->right;
+  left_channel := channels[p->cid]->left;
+  right_channel := channels[p->cid]->right;
   if (p is Left) {
     assume left_channel[m] > 0;
     left_channel[m] := left_channel[m] - 1;
@@ -120,28 +119,20 @@ modifies channel;
     assume right_channel[m] > 0;
     right_channel[m] := right_channel[m] - 1;
   }
-  channel[p->cid] := ChannelPair(left_channel, right_channel);
+  channels[p->cid] := ChannelPair(left_channel, right_channel);
 }
 
-left action {:layer 1} SEND (p: ChannelHandle, m: int)
-modifies channel;
-{
+yield procedure {:layer 0} send (p: ChannelHandle, m: int);
+refines left action {:layer 1} _ {
   var left_channel: [int]int;
   var right_channel: [int]int;
 
-  left_channel := channel[p->cid]->left;
-  right_channel := channel[p->cid]->right;
+  left_channel := channels[p->cid]->left;
+  right_channel := channels[p->cid]->right;
   if (p is Left) {
     right_channel[m] := right_channel[m] + 1;
   } else {
     left_channel[m] := left_channel[m] + 1;
   }
-  channel[p->cid] := ChannelPair(left_channel, right_channel);
+  channels[p->cid] := ChannelPair(left_channel, right_channel);
 }
-
-yield procedure {:layer 0} receive (p: ChannelHandle) returns (m: int);
-refines RECEIVE;
-
-yield procedure {:layer 0} send (p: ChannelHandle, m: int);
-refines SEND;
-
