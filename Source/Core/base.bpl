@@ -33,11 +33,6 @@ function {:inline} ToMultiset<T>(set: [T]bool): [T]int
   MapIte(set, MapConst(1), MapConst(0))
 }
 
-function {:inline} IsSet<T>(multiset: [T]int): bool
-{
-  MapOr(MapEq(multiset, MapConst(0)), MapEq(multiset, MapConst(1))) == MapConst(true)
-}
-
 function {:inline} IsSubset<T>(a: [T]bool, b: [T]bool) : bool
 {
   MapImp(a, b) == MapConst(true)

@@ -627,7 +627,7 @@ namespace Microsoft.Boogie
 
     private ProcessedProgram ExtractLoops(Program program)
     {
-      var (extractLoopMappingInfo, _) = LoopExtractor.ExtractLoops(Options, program);
+      var extractLoopMappingInfo = LoopExtractor.ExtractLoops(Options, program);
       return new ProcessedProgram(program, (vcgen, impl, result) =>
       {
         if (result.Errors != null) {

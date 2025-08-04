@@ -13,64 +13,16 @@ public class LoopExtractor {
     /// <summary>
     /// Used by Corral and Dafny.
     /// </summary>
-  public static (Dictionary<string, Dictionary<string, Block>> loops, HashSet<Implementation> procsWithIrreducibleLoops)
-    ExtractLoops(CoreOptions options, Program program)
+  public static Dictionary<string, Dictionary<string, Block>> ExtractLoops(CoreOptions options, Program program)
   {
-    var hasIrreducibleLoops = new HashSet<Implementation>();
     List<Implementation> loopImpls = new List<Implementation>();
     Dictionary<string, Dictionary<string, Block>> fullMap = new Dictionary<string, Dictionary<string, Block>>();
     foreach (var impl in program.Implementations)
     {
       if (impl.Blocks != null && impl.Blocks.Count > 0)
       {
-        try
-        {
-          Graph<Block> g = program.ProcessLoops(options, impl);
-          CreateProceduresForLoops(options, impl, g, loopImpls, fullMap);
-        }
-        catch (Program.IrreducibleLoopException)
-        {
-          System.Diagnostics.Debug.Assert(!fullMap.ContainsKey(impl.Name));
-          fullMap[impl.Name] = null;
-          hasIrreducibleLoops.Add(impl);
-
-          if (options.LoopUnrollCount == -1)
-          {
-            continue;
-          }
-
-          // statically unroll loops in this procedure
-
-          // First, build a map of the current blocks
-          var origBlocks = new Dictionary<string, Block>();
-          foreach (var blk in impl.Blocks)
-          {
-            origBlocks.Add(blk.Label, blk);
-          }
-
-          // unroll
-          Block start = impl.Blocks[0];
-          impl.Blocks = LoopUnroll.UnrollLoops(start, options.LoopUnrollCount, false);
-
-          // Now construct the "map back" information
-          // Resulting block label -> original block
-          var blockMap = new Dictionary<string, Block>();
-          foreach (var blk in impl.Blocks)
-          {
-            var sl = LoopUnroll.sanitizeLabel(blk.Label);
-            if (sl == blk.Label)
-            {
-              blockMap.Add(blk.Label, blk);
-            }
-            else
-            {
-              Contract.Assert(origBlocks.ContainsKey(sl));
-              blockMap.Add(blk.Label, origBlocks[sl]);
-            }
-          }
-
-          fullMap[impl.Name] = blockMap;
-        }
+        Graph<Block> g = program.ProcessLoops(options, impl);
+        CreateProceduresForLoops(options, impl, g, loopImpls, fullMap);
       }
     }
 
@@ -81,7 +33,7 @@ public class LoopExtractor {
       program.AddTopLevelDeclaration(loopImpl.Proc);
     }
 
-    return (fullMap, hasIrreducibleLoops);
+    return fullMap;
   }
 
   static void CreateProceduresForLoops(CoreOptions options, Implementation impl, Graph<Block> g,

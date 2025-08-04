@@ -1811,8 +1811,8 @@ namespace Microsoft.Boogie
                 unroll loops, following up to n back edges (and then some)
                 default is -1, which means loops are not unrolled
   /extractLoops
-                extract reducible loops into recursive procedures and
-                inline irreducible loops using the bound supplied by /loopUnroll:<n>
+                convert all irreducible loops to reducible forms by node splitting
+                and extract all loops into recursive procedures
   /soundLoopUnrolling
                 sound loop unrolling
   /kInductionDepth:<k>

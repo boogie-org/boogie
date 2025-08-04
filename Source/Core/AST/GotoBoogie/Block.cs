@@ -7,7 +7,7 @@ namespace Microsoft.Boogie;
 
 public sealed class Block : Absy
 {
-  
+
   public string Label { get; set; } // Note, Label is mostly readonly, but it can change to the name of a nearby block during block coalescing and empty-block removal
 
   [Rep]
@@ -49,7 +49,6 @@ public sealed class Block : Absy
   public int SuccCount;
 
   private HashSet<Variable> liveVarsBefore;
-
   public IEnumerable<Variable> LiveVarsBefore
   {
     get
@@ -97,10 +96,11 @@ public sealed class Block : Absy
     return LiveVarsBefore.Contains(v);
   }
 
-  public static Block ShallowClone(Block block) {
+  public static Block ShallowClone(Block block)
+  {
     return new Block(block.tok, block.Label, block.Cmds, block.TransferCmd);
   }
-  
+
   public Block(IToken tok, TransferCmd cmd)
     : this(tok, "", new List<Cmd>(), new ReturnCmd(tok))
   {
@@ -195,5 +195,56 @@ public sealed class Block : Absy
   {
     Contract.Ensures(Contract.Result<Absy>() != null);
     return visitor.VisitBlock(this);
+  }
+
+  public bool HasInvariant()
+  {
+    return Cmds.Count >= 1 && Cmds[0] is AssertCmd;
+  }
+  
+  public void SubstituteBranchTargets(Dictionary<Block, Block> subst)
+  {
+    TransferCmd transferCmd = this.TransferCmd;
+    if (transferCmd is not GotoCmd)
+    {
+      return;
+    }
+
+    GotoCmd gotoCmd = (GotoCmd)transferCmd;
+    foreach (Block currentBlock in gotoCmd.LabelTargets.ToList())
+    {
+      if (subst.TryGetValue(currentBlock, out Block dupBlock))
+      {
+        gotoCmd.RemoveTarget(currentBlock);
+        gotoCmd.AddTarget(dupBlock);
+      }
+    }
+  }
+
+  public Block DuplicateBlock(Dictionary<Block, int> nextLabels)
+  {
+    List<Cmd> dupCmds = new List<Cmd>();
+    this.Cmds.ForEach(dupCmds.Add);
+
+    TransferCmd splitTransferCmd = this.TransferCmd;
+    TransferCmd dupTransferCmd;
+
+    if (splitTransferCmd is not GotoCmd)
+    {
+      dupTransferCmd = new ReturnCmd(Token.NoToken);
+    }
+    else
+    {
+      List<string> dupLabelNames = [.. ((GotoCmd)splitTransferCmd).LabelNames];
+      List<Block> dupLabelTargets = new List<Block>();
+      ((GotoCmd)splitTransferCmd).LabelTargets.ForEach(dupLabelTargets.Add);
+
+      dupTransferCmd = new GotoCmd(Token.NoToken, dupLabelNames, dupLabelTargets);
+    }
+
+    Block dupBlock = new Block(Token.NoToken, this.Label + "_dup_" + nextLabels[this], dupCmds, dupTransferCmd);
+    nextLabels[this]++;
+    nextLabels.Add(dupBlock, 0);
+    return dupBlock;
   }
 }
