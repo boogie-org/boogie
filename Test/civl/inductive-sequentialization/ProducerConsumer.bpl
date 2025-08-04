@@ -10,153 +10,38 @@ type ChannelId;
 // permission for sending to or receiving from a channel
 datatype ChannelHandle { Send(cid: ChannelId), Receive(cid: ChannelId) }
 
-function {:inline} BothHandles(cid: ChannelId): Set ChannelHandle {
-  Set_Add(Set_Singleton(Send(cid)), Receive(cid))
-}
+function {:inline} BothHandles(cid: ChannelId): Set ChannelHandle
+{ Set_Add(Set_Singleton(Send(cid)), Receive(cid)) }
 
 // pool of FIFO channels
-var {:layer 0,3} channels: [ChannelId]Channel;
+var {:layer 0,1} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 2} MAIN (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
-refines MAIN' using INV;
-creates PRODUCER, CONSUMER;
-{
-  var {:linear} handles': Set ChannelHandle;
-  var {:linear} send: One ChannelHandle;
-  var {:linear} receive: One ChannelHandle;
+yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set ChannelHandle);
+invariant handles == BothHandles(cid);
+invariant channels[cid]->head == 0;
+invariant channels[cid]->tail == 0;
 
-  assert handles == BothHandles(cid);
-  assert channels[cid]->head == channels[cid]->tail;
-  handles' := handles;
-  call send := One_Get(handles', Send(cid));
-  call receive := One_Get(handles', Receive(cid));
-  async call PRODUCER(1, send);
-  async call CONSUMER(1, receive);
-}
+yield invariant {:layer 1} YieldProducer(x: int, {:linear} send_handle: One ChannelHandle);
+invariant send_handle->val is Send;
+invariant (var channel := channels[send_handle->val->cid]; x == channel->tail + 1);
+invariant (var channel := channels[send_handle->val->cid];
+          (var head, tail, C := channel->head, channel->tail, channel->C;
+          (forall i: int:: head <= i && i < tail ==> C[i] == i + 1)));
 
-atomic action {:layer 3} MAIN' (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
-modifies channels;
-{
-  var channel: Channel;
-
-  assert handles == BothHandles(cid);
-  assert channels[cid]->head == channels[cid]->tail;
-  assume channel->head == channel->tail;
-  channels[cid] := channel;
-}
-
-action {:layer 2}
-INV (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
-creates PRODUCER, CONSUMER;
-modifies channels;
-{
-  var {:linear} handles': Set ChannelHandle;
-  var {:linear} send: One ChannelHandle;
-  var {:linear} receive: One ChannelHandle;
-  var {:pool "INV1"} c: int;
-  var {:pool "INV2"} channel: Channel;
-  var C: [int]int;
-  var head, tail: int;
-
-  assert handles == BothHandles(cid);
-  assert channels[cid]->head == channels[cid]->tail;
-
-  C := channel->C;
-  head := channel->head;
-  tail := channel->tail;
-  assume {:add_to_pool "INV1", c, c+1} 0 < c;
-  handles' := handles;
-  call send := One_Get(handles', Send(cid));
-  call receive := One_Get(handles', Receive(cid));
-  if (*) {
-    assume head == tail;
-    async call PRODUCER(c, send);
-    async call CONSUMER(c, receive);
-    call set_choice(PRODUCER(c, send));
-  } else if (*) {
-    assume tail == head + 1 && C[head] == 0;
-    async call CONSUMER(c, receive);
-    call set_choice(CONSUMER(c, receive));
-  } else if (*) {
-    assume tail == head + 1 && C[head] == c;
-    async call PRODUCER(c+1, send);
-    async call CONSUMER(c, receive);
-    call set_choice(CONSUMER(c, receive));
-  } else {
-    assume head == tail;
-  }
-  channels[cid] := channel;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-async left action {:layer 2} PRODUCER (x: int, {:linear_in} send_handle: One ChannelHandle)
-creates PRODUCER;
-modifies channels;
-{
-  var channel: Channel;
-  var C: [int]int;
-  var head, tail: int;
-
-  assert send_handle->val is Send;
-  channel := channels[send_handle->val->cid];
-  C := channel->C;
-  head := channel->head;
-  tail := channel->tail;
-  if (*)
-  {
-    C[tail] := x;
-    tail := tail + 1;
-    async call PRODUCER(x+1, send_handle);
-  }
-  else
-  {
-    C[tail] := 0;
-    tail := tail + 1;
-  }
-  channels[send_handle->val->cid] := Channel(C, head, tail);
-  assume {:add_to_pool "INV2", channels[send_handle->val->cid]} true;
-}
-
-async atomic action {:layer 2} CONSUMER (x: int, {:linear_in} receive_handle: One ChannelHandle)
-creates CONSUMER;
-modifies channels;
-requires call YieldConsumer(receive_handle);
-{
-  var channel: Channel;
-  var C: [int]int;
-  var head, tail: int;
-  var x': int;
-
-  assert receive_handle->val is Receive;
-  channel := channels[receive_handle->val->cid];
-  C := channel->C;
-  head := channel->head;
-  tail := channel->tail;
-  assert head < tail ==> C[head] == x || C[head] == 0;  // assertion to discharge
-
-  assume head < tail;
-  x' := C[head];
-  head := head + 1;
-  if (x' != 0)
-  {
-    async call CONSUMER(x'+1, receive_handle);
-  }
-  channels[receive_handle->val->cid] := Channel(C, head, tail);
-  assume {:add_to_pool "INV2", channels[receive_handle->val->cid]} true;
-}
-
-yield invariant {:layer 2} YieldConsumer({:linear} receive_handle: One ChannelHandle);
+yield invariant {:layer 1} YieldConsumer(x: int, {:linear} receive_handle: One ChannelHandle);
 invariant receive_handle->val is Receive;
-invariant (var channel := channels[receive_handle->val->cid]; channel->head < channel->tail);
+invariant (var channel := channels[receive_handle->val->cid]; x == channel->head + 1);
+invariant (var channel := channels[receive_handle->val->cid];
+          (var head, tail, C := channel->head, channel->tail, channel->C;
+          (forall i: int:: head <= i && i < tail ==> C[i] == i + 1 || (i + 1 == tail && C[i] == 0))));
 
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
 main (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
-refines MAIN;
+requires call YieldMain(cid, handles);
 {
   var {:linear} handles': Set ChannelHandle;
   var {:linear} send_handle, receive_handle: One ChannelHandle;
@@ -169,8 +54,8 @@ refines MAIN;
 }
 
 yield procedure {:layer 1}
-producer (x:int, {:linear_in} send_handle: One ChannelHandle)
-refines PRODUCER;
+producer (x: int, {:linear_in} send_handle: One ChannelHandle)
+requires call YieldProducer(x, send_handle);
 {
   if (*)
   {
@@ -184,8 +69,8 @@ refines PRODUCER;
 }
 
 yield procedure {:layer 1}
-consumer (x:int, {:linear_in} receive_handle: One ChannelHandle)
-refines CONSUMER;
+consumer (x: int, {:linear_in} receive_handle: One ChannelHandle)
+requires call YieldConsumer(x, receive_handle);
 {
   var x': int;
 
