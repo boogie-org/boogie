@@ -3652,6 +3652,126 @@ namespace BaseTypesTests
             }
         }
 
+        [Test]
+        public void TestSubnormalMultiplicationRounding()
+        {
+            // Test case: (3 × smallest_subnormal) / 4 should round to smallest_subnormal
+            int sigSize = 24;
+            int expSize = 8;
+
+            // Create test values
+            var three = BigFloat.FromInt(3, sigSize, expSize);
+            var four = BigFloat.FromInt(4, sigSize, expSize);
+            var smallestSubnormal = new BigFloat(false, 1, 0, sigSize, expSize);
+
+            // Test multiplication of subnormal
+            var threeTimesSmallest = three * smallestSubnormal;
+            Assert.That(threeTimesSmallest.IsSubnormal, Is.True, "3 × smallest_subnormal should be subnormal");
+
+            // Test division that should produce 0.75 × smallest_subnormal
+            var result = threeTimesSmallest / four;
+
+            // The mathematical value is 0.75 × smallest_subnormal
+            // This is closer to smallest_subnormal (distance 0.25) than to 0 (distance 0.75)
+            // So it should round UP to smallest_subnormal
+            Assert.That(result.IsZero, Is.False, "0.75 × smallest_subnormal should not round to zero");
+            Assert.That(result.IsSubnormal, Is.True, "0.75 × smallest_subnormal should round to smallest subnormal");
+
+            // Verify it's the smallest subnormal by comparing with expected value
+            Assert.That(result.Equals(smallestSubnormal), Is.True, "Result should be the smallest subnormal");
+        }
+
+        [Test]
+        public void TestFromRationalVsDivisionConsistency()
+        {
+            int sigSize = 24;
+            int expSize = 8;
+
+            // Test that FromRational(3, 2^151) produces the same result as division
+            BigFloat.FromRational(3, BigInteger.Pow(2, 151), sigSize, expSize, out var fromRat);
+
+            // Create the same value via division: 3 × 2^(-151)
+            // We split 2^151 into 2^75 × 2^76 to avoid exponent overflow
+            var three = BigFloat.FromInt(3, sigSize, expSize);
+            var pow75 = new BigFloat(false, 0, 202, sigSize, expSize); // 2^75, exponent = 75 + 127 = 202
+            var pow76 = new BigFloat(false, 0, 203, sigSize, expSize); // 2^76
+
+            var intermediate = three / pow75;
+            var fromDiv = intermediate / pow76;
+
+            // Both should produce the same result (smallest subnormal)
+            Assert.That(fromRat.Equals(fromDiv), Is.True,
+                $"FromRational and division should produce the same result for 3/2^151\n" +
+                $"FromRational: {fromRat}\n" +
+                $"Division: {fromDiv}");
+        }
+
+        [Test]
+        public void TestTieCaseRounding()
+        {
+            int sigSize = 24;
+            int expSize = 8;
+
+            // Test 1/2^150 = 0.5 × smallest_subnormal (tie case, should round to even = 0)
+            BigFloat.FromRational(1, BigInteger.Pow(2, 150), sigSize, expSize, out var half);
+            Assert.That(half.IsZero, Is.True, "0.5 × smallest_subnormal should round to zero (even)");
+
+            // Test via division as well
+            var one = BigFloat.FromInt(1, sigSize, expSize);
+            var smallestSubnormal = new BigFloat(false, 1, 0, sigSize, expSize);
+            var two = BigFloat.FromInt(2, sigSize, expSize);
+            var halfViaDiv = smallestSubnormal / two;
+
+            Assert.That(halfViaDiv.IsZero, Is.True, "smallest_subnormal / 2 should round to zero");
+        }
+
+        [Test]
+        public void TestDivisionRoundingAtSubnormalBoundary()
+        {
+            // This test specifically verifies the fix for the bug where ApplyShiftWithRounding
+            // would return zero when all bits were shifted out, without checking for rounding.
+            // The bug caused (3 × smallest_subnormal) / 4 to incorrectly underflow to zero.
+
+            int sigSize = 24;
+            int expSize = 8;
+
+            // Test various values that should round to smallest subnormal when divided
+            var smallestSubnormal = new BigFloat(false, 1, 0, sigSize, expSize);
+
+            // Test 1: 3 × smallest_subnormal / 4 = 0.75 × smallest_subnormal
+            // Should round UP to smallest_subnormal (not zero)
+            var three = BigFloat.FromInt(3, sigSize, expSize);
+            var four = BigFloat.FromInt(4, sigSize, expSize);
+            var threeTimesSub = three * smallestSubnormal;
+            var result1 = threeTimesSub / four;
+            Assert.That(result1.Equals(smallestSubnormal), Is.True,
+                "3×smallest_subnormal/4 (0.75×smallest) should round up to smallest_subnormal");
+
+            // Test 2: 5 × smallest_subnormal / 8 = 0.625 × smallest_subnormal
+            // Should round UP to smallest_subnormal
+            var five = BigFloat.FromInt(5, sigSize, expSize);
+            var eight = BigFloat.FromInt(8, sigSize, expSize);
+            var fiveTimesSub = five * smallestSubnormal;
+            var result2 = fiveTimesSub / eight;
+            Assert.That(result2.Equals(smallestSubnormal), Is.True,
+                "5×smallest_subnormal/8 (0.625×smallest) should round up to smallest_subnormal");
+
+            // Test 3: 1 × smallest_subnormal / 2 = 0.5 × smallest_subnormal
+            // Tie case - should round to even (zero)
+            var one = BigFloat.FromInt(1, sigSize, expSize);
+            var two = BigFloat.FromInt(2, sigSize, expSize);
+            var oneTimesSub = one * smallestSubnormal;
+            var result3 = oneTimesSub / two;
+            Assert.That(result3.IsZero, Is.True,
+                "1×smallest_subnormal/2 (0.5×smallest) should round to even (zero)");
+
+            // Test 4: 1 × smallest_subnormal / 4 = 0.25 × smallest_subnormal
+            // Should round DOWN to zero
+            var result4 = oneTimesSub / four;
+            Assert.That(result4.IsZero, Is.True,
+                "1×smallest_subnormal/4 (0.25×smallest) should round down to zero");
+        }
+
 
 
 
