@@ -434,8 +434,14 @@ namespace Microsoft.BaseTypes
         return (BigIntegerMath.LeftShift(value, -shift), true);
       }
 
-      // Handle shifts that would result in zero
-      if (value.GetBitLength() <= shift) {
+      // Handle very large shifts - but still need to check for rounding
+      if (value.GetBitLength() < shift) {
+        // All bits shifted out, but check if we need to round up
+        // For round-to-nearest-even, we round up if value > 2^(shift-1)
+        var halfValue = BigIntegerMath.LeftShift(BigInteger.One, shift - 1);
+        if (value > halfValue) {
+          return (BigInteger.One, false);
+        }
         return (BigInteger.Zero, !value.IsZero);
       }
 
