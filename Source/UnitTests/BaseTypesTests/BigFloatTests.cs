@@ -3772,26 +3772,45 @@ namespace BaseTypesTests
                 "1×smallest_subnormal/4 (0.25×smallest) should round down to zero");
         }
 
+        [Test]
+        public void TestFromRationalRoundingOverflow()
+        {
+            // This test verifies the fix for a bug where rounding in FromRational could cause
+            // the significand to overflow from n bits to n+1 bits (e.g., 111...111 -> 1000...000).
+            // The bug occurred when converting "2.220446049250313e-16" which should round to 2^(-52)
+            // but was incorrectly rounding to 2^(-53).
 
+            // Test the specific case that revealed the bug
+            var numerator = BigInteger.Parse("2220446049250313");
+            var denominator = BigInteger.Pow(10, 31);
 
+            // This value is between 2^(-53) and 2^(-52), closer to 2^(-52)
+            var isExact = BigFloat.FromRational(numerator, denominator, 53, 11, out var result);
+            Assert.IsFalse(isExact, "FromRational should return false (inexact)");
 
+            // Verify it rounds to 2^(-52), not 2^(-53)
+            BigFloat.FromRational(1, BigInteger.Pow(2, 52), 53, 11, out var twoToMinus52);
+            Assert.That(result.Equals(twoToMinus52), Is.True,
+                "2.220446049250313e-16 should round to 2^(-52)");
 
+            // Also verify the decimal string representation
+            Assert.That(result.ToDecimalString(), Is.EqualTo("0.0000000000000002220446049250313"),
+                "Decimal representation should match");
 
+            // Test another case where rounding causes bit overflow: all 1s rounding up
+            // When we have 53 bits of all 1s and need to round up, we get 1 followed by 53 zeros
+            // This tests the general case of the bug
+            var allOnes = (BigInteger.One << 56) - 1;  // 56 bits of all 1s
 
+            // After shifting by 3, we get 53 bits of 1s with lost bits = 7 (binary 111)
+            // Since 7 > 4 (halfway), this rounds up to 2^53
+            // The fix ensures we then normalize to get a 53-bit significand
+            isExact = BigFloat.FromRational(allOnes, BigInteger.One << 108, 53, 11, out var rounded);
+            Assert.IsFalse(isExact, "FromRational should return false for all-ones case (inexact)");
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+            // The result should be properly normalized
+            Assert.That(rounded.IsNormal, Is.True, "Result should be a normal number");
+        }
 
         #endregion
 
