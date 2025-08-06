@@ -288,7 +288,7 @@ namespace Microsoft.BaseTypes
             if (quotient == BigIntegerMath.LeftShift(BigInteger.One, quotientBits - 1)) {
               result = CreateZero(isNegative, significandSize, exponentSize);
             } else {
-              var (boundaryShifted, _) = ApplyShiftWithRounding(quotient, BigInteger.One);
+              var (boundaryShifted, _, _) = ApplyShiftWithRounding(quotient, BigInteger.One);
               result = boundaryShifted > 0
                 ? new BigFloat(isNegative, 1, 0, significandSize, exponentSize)
                 : CreateZero(isNegative, significandSize, exponentSize);
@@ -298,7 +298,7 @@ namespace Microsoft.BaseTypes
           }
         } else {
           var shiftAmount = (quotientBits - targetBits) - biasedExp;
-          var (shifted, _) = ApplyShiftWithRounding(quotient, shiftAmount);
+          var (shifted, _, _) = ApplyShiftWithRounding(quotient, shiftAmount);
 
           if (shifted >= BigInteger.One << targetBits) {
             result = new BigFloat(isNegative, 0, 1, significandSize, exponentSize);
@@ -307,8 +307,13 @@ namespace Microsoft.BaseTypes
           }
         }
       } else {
-        var (normalShifted, wasExact) = ApplyShiftWithRounding(quotient, quotientBits - significandSize);
+        var (normalShifted, wasExact, overflow) = ApplyShiftWithRounding(quotient, quotientBits - significandSize);
         isExact &= wasExact;
+
+        if (overflow) {
+          normalShifted >>= 1;
+          biasedExp++;
+        }
 
         var leadingBitMask = GetLeadingBitPower(significandSize) - 1;
         result = new BigFloat(isNegative, normalShifted & leadingBitMask, biasedExp, significandSize, exponentSize);
@@ -427,11 +432,21 @@ namespace Microsoft.BaseTypes
       return BigIntegerMath.LeftShift(BigInteger.One, bits) - 1;
     }
 
-    private static (BigInteger result, bool isExact) ApplyShiftWithRounding(BigInteger value, BigInteger shift)
+    /// <summary>
+    /// Applies a shift with IEEE 754 round-to-nearest-even rounding.
+    /// </summary>
+    /// <param name="value">The value to shift</param>
+    /// <param name="shift">The shift amount (positive for right shift, negative for left shift)</param>
+    /// <returns>A tuple containing:
+    /// - result: The shifted and rounded value
+    /// - isExact: Whether the operation was exact (no bits were lost)
+    /// - overflow: Whether rounding caused the result to gain an extra bit (e.g., 111...111 -> 1000...000)
+    /// </returns>
+    private static (BigInteger result, bool isExact, bool overflow) ApplyShiftWithRounding(BigInteger value, BigInteger shift)
     {
-      // Handle left shifts (no rounding needed)
+      // Handle left shifts (no rounding needed, no overflow possible)
       if (shift <= 0) {
-        return (BigIntegerMath.LeftShift(value, -shift), true);
+        return (BigIntegerMath.LeftShift(value, -shift), true, false);
       }
 
       // Handle very large shifts - but still need to check for rounding
@@ -440,9 +455,9 @@ namespace Microsoft.BaseTypes
         // For round-to-nearest-even, we round up if value > 2^(shift-1)
         var halfValue = BigIntegerMath.LeftShift(BigInteger.One, shift - 1);
         if (value > halfValue) {
-          return (BigInteger.One, false);
+          return (BigInteger.One, false, false); // Result is 1, no overflow
         }
-        return (BigInteger.Zero, !value.IsZero);
+        return (BigInteger.Zero, !value.IsZero, false);
       }
 
       // For very large right shifts, perform in chunks
@@ -454,7 +469,7 @@ namespace Microsoft.BaseTypes
         current >>= int.MaxValue;
         remaining -= int.MaxValue;
         if (current.IsZero) {
-          return (BigInteger.Zero, false);
+          return (BigInteger.Zero, false, false);
         }
       }
 
@@ -464,18 +479,24 @@ namespace Microsoft.BaseTypes
       var lostBits = current & mask;
       var result = current >> intShift;
 
-      // If no bits lost, result is exact
+      // If no bits lost, result is exact, no overflow
       if (lostBits.IsZero) {
-        return (result, true);
+        return (result, true, false);
       }
 
       // Round to nearest even
       var halfBit = BigInteger.One << (intShift - 1);
-      if (lostBits > halfBit || (lostBits == halfBit && !result.IsEven)) {
+      var needsRounding = lostBits > halfBit || (lostBits == halfBit && !result.IsEven);
+
+      // Check for overflow: when rounding up causes bit length to increase
+      var overflow = false;
+      if (needsRounding) {
+        var originalBitLength = result.GetBitLength();
         result++;
+        overflow = result.GetBitLength() > originalBitLength;
       }
 
-      return (result, false);
+      return (result, false, overflow);
     }
 
     // Public convenience methods for special values
@@ -691,11 +712,11 @@ namespace Microsoft.BaseTypes
       var shift = valueBits - targetBits;
 
       // Use IEEE 754 compliant shift and round method
-      var (shiftedValue, _) = ApplyShiftWithRounding(value, shift);
+      var (shiftedValue, _, overflow) = ApplyShiftWithRounding(value, shift);
       var adjustedExponent = exponent + shift;
 
       // Handle potential overflow from rounding (only for right shifts)
-      if (shift > 0 && shiftedValue.GetBitLength() > targetBits) {
+      if (overflow) {
         shiftedValue >>= 1;
         adjustedExponent++;
       }
@@ -726,7 +747,7 @@ namespace Microsoft.BaseTypes
       }
 
       // Handle subnormal numbers with gradual underflow
-      var (shiftedSig, _) = ApplyShiftWithRounding(significand, BigInteger.One - exponent);
+      var (shiftedSig, _, _) = ApplyShiftWithRounding(significand, BigInteger.One - exponent);
 
       // Check if rounding caused overflow back to smallest normal number
       if (shiftedSig.GetBitLength() == significandSize) {
@@ -1133,11 +1154,11 @@ namespace Microsoft.BaseTypes
       BigInteger adjustedBiasedExp = biasedExp;
 
       if (shift > 0) {
-        var (shifted, _) = ApplyShiftWithRounding(sig, shift);
+        var (shifted, _, overflow) = ApplyShiftWithRounding(sig, shift);
         roundedSig = shifted;
 
         // Check if rounding caused overflow to next power of 2
-        if (roundedSig.GetBitLength() > sigSize) {
+        if (overflow) {
           roundedSig >>= 1;
           adjustedBiasedExp++;
 
@@ -1192,7 +1213,7 @@ namespace Microsoft.BaseTypes
       var shiftAmount = new BigInteger(currentMsb) - targetPosition;
 
       // Apply shift with IEEE 754 rounding
-      var (subnormalSig, _) = ApplyShiftWithRounding(sig, shiftAmount);
+      var (subnormalSig, _, _) = ApplyShiftWithRounding(sig, shiftAmount);
 
       if (subnormalSig.IsZero) {
         if (strict) {
