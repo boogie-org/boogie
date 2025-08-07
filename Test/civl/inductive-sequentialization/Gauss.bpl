@@ -1,48 +1,24 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-var {:layer 0,2} x:int;
+var {:layer 0,1} x:int;
 
-////////////////////////////////////////////////////////////////////////////////
-
-atomic action {:layer 1} SUM (n: int)
-refines MAIN' using INV;
-creates ADD;
-{
-  assert n >= 0;
-
-  assume {:add_to_pool "A", 0} true;
-  call create_asyncs((lambda pa: ADD :: 1 <= pa->i && pa->i <= n));
-}
-
-atomic action {:layer 2} MAIN' (n: int)
+yield left procedure {:layer 1} main (n: int)
+requires {:layer 1} n >= 0;
+ensures {:layer 1} x == old(x) + (n * (n+1)) div 2;
 modifies x;
 {
-  assert n >= 0;
-  x := x + (n * (n+1)) div 2;
+  var i: int;
+
+  i := 0;
+  while (i <= n)
+  invariant {:layer 1} x == old(x) + (i * (i+1)) div 2;
+  {
+    async call {:sync} add(i);
+  }
 }
 
-action {:layer 1} INV (n: int)
-creates ADD;
-modifies x;
-{
-  var {:pool "A"} i: int;
-
-  assert n >= 0;
-
-  assume
-    {:add_to_pool "A", i, i+1}
-    {:add_to_pool "B", ADD(n)}
-    0 <= i && i <= n;
-  x := x + (i * (i+1)) div 2;
-  call create_asyncs((lambda {:pool "B"} pa: ADD :: i < pa->i && pa->i <= n));
-  call set_choice(ADD(i+1));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-async left action {:layer 1} ADD (i: int)
-modifies x;
-{
+yield procedure {:layer 0} add (i: int);
+refines left action {:layer 1} _ {
   x := x + i;
 }
