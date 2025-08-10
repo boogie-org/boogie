@@ -141,27 +141,31 @@ requires call YieldInv();
   call {:layer 1} permJoinChannel := SendJoinResponseIntro(joinResponse, p, permJoinChannel);
 }
 
-yield right procedure {:layer 1} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, {:layer 1} ns: NodeSet)
+yield right procedure {:layer 1} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, count: int, {:layer 1} ns: NodeSet)
 modifies permJoinChannel, joinChannel;
 requires {:layer 1} Round(r);
 requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 ensures {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
 ensures {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
-ensures {:layer 1} IsSubset(ns, joinedNodes[r]) && IsQuorum(ns);
+ensures {:layer 1} count == Cardinality(ns);
+ensures {:layer 1} (forall x: Node :: ns[x] ==> Node(x));
+ensures {:layer 1} IsSubset(ns, joinedNodes[r]);
 ensures {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
 ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 {
-  var count: int;
+  var n: int;
   var joinResponse: JoinResponse;
   var {:layer 1}{:linear} receivedPermissions: Set Permission;
   var {:layer 1}{:linear} receivedPermission: One Permission;
 
   call {:layer 1} ns := Copy(NoNodes());
   call {:layer 1} receivedPermissions := InitializePermissions();
+  n := 0;
   count := 0;
   maxRound := 0;
-  while (true)
+  while (n < numNodes)
+  invariant {:layer 1} 0 <= n && n <= numNodes;
   invariant {:layer 1} count == Cardinality(ns);
   invariant {:layer 1} (forall x: Node :: ns[x] ==> Node(x) && receivedPermissions->val[JoinPerm(r, x)]);
   invariant {:layer 1} IsSubset(ns, joinedNodes[r]);
@@ -200,27 +204,29 @@ requires call YieldInvChannels();
   var {:layer 1} maxRound: Round;
   var maxValue: Value;
   var {:layer 1} ns: NodeSet;
-  var n: int;
+  var n, count: int;
   var {:layer 1}{:linear} ps': Set Permission;
   var {:layer 1}{:linear} p: One Permission;
   var {:layer 1}{:linear} cp: One Permission;
   var {:layer 1}{:pending_async} PAs:[A_Vote]int;
 
-  call maxRound, maxValue, ns := ProposeHelper(r);
-  assume {:add_to_pool "NodeSet", ns} {:add_to_pool "MaxValue", maxValue} true;
-  call {:layer 1} ps', cp := SplitConcludePermission(r, ps);
-  n := 1;
-  while (n <= numNodes)
-  invariant {:layer 1} 1 <= n && n <= numNodes+1;
-  invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps'->val[VotePerm(r, n')]);
-  invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Vote :: pa->r == r && 1 <= pa->n && pa->n < n && pa->v == maxValue && pa->p->val == VotePerm(pa->r, pa->n)));
-  {
-    call {:layer 1} ps', p := ExtractVotePermission(ps', r, n);
-    async call Vote(r, n, maxValue, p);
-    n := n + 1;
+  call maxRound, maxValue, count, ns := ProposeHelper(r);
+  if (2 * count > numNodes) {
+    assume {:add_to_pool "NodeSet", ns} {:add_to_pool "MaxValue", maxValue} true;
+    call {:layer 1} ps', cp := SplitConcludePermission(r, ps);
+    n := 1;
+    while (n <= numNodes)
+    invariant {:layer 1} 1 <= n && n <= numNodes+1;
+    invariant {:layer 1} (forall n': Node :: n <= n' && n' <= numNodes ==> ps'->val[VotePerm(r, n')]);
+    invariant {:layer 1} PAs == ToMultiset((lambda pa: A_Vote :: pa->r == r && 1 <= pa->n && pa->n < n && pa->v == maxValue && pa->p->val == VotePerm(pa->r, pa->n)));
+    {
+      call {:layer 1} ps', p := ExtractVotePermission(ps', r, n);
+      async call Vote(r, n, maxValue, p);
+      n := n + 1;
+    }
+    async call Conclude(r, maxValue, cp);
+    call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(maxValue, NoNodes()))]);
   }
-  async call Conclude(r, maxValue, cp);
-  call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(maxValue, NoNodes()))]);
 }
 
 yield procedure {:layer 1}
@@ -247,7 +253,7 @@ requires {:layer 1} Round(r) && p->val == ConcludePerm(r);
 requires call YieldInv();
 requires call YieldInvChannels();
 {
-  var count: int;
+  var n, count: int;
   var voteResponse: VoteResponse;
   var {:layer 1} q: NodeSet;
   var {:linear} {:layer 1} receivedPermissions: Set Permission;
@@ -255,8 +261,10 @@ requires call YieldInvChannels();
 
   call {:layer 1} q := Copy(NoNodes());
   call {:layer 1} receivedPermissions := InitializePermissions();
+  n := 0;
   count := 0;
-  while (true)
+  while (n < numNodes)
+  invariant {:layer 1} 0 <= n && n <= numNodes;
   invariant {:layer 1} count == Cardinality(q);
   invariant {:layer 1} (forall x: Node :: q[x] ==> Node(x) && receivedPermissions->val[VotePerm(r, x)]);
   invariant {:layer 1} IsSubset(q, voteInfo[r]->t->ns);
