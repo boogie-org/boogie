@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.BaseTypes;
-using Set = Microsoft.Boogie.GSet<object>; // not that the set used is not a set of Variable only, as it also contains TypeVariables
+using Set = Microsoft.Boogie.GSet<object>; // note that the set used is not a set of Variable only, as it also contains TypeVariables
 
 namespace Microsoft.Boogie
 {
