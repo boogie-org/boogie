@@ -4,14 +4,16 @@ function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acc
   (forall p: Permission :: permJoinChannel->dom->val[p] ==> p is JoinPerm &&
     (var r, n, joinResponse := p->r, p->n, permJoinChannel->val[p];
       Round(r) && Node(n) &&
-      (
-        var from, maxRound, maxValue := joinResponse->from, joinResponse->lastVoteRound, joinResponse->lastVoteValue;
-        n == from &&
-        joinedNodes[r][from] &&
-        0 <= maxRound && maxRound < r &&
-        (maxRound == 0 || (voteInfo[maxRound] is Some && voteInfo[maxRound]->t->ns[from] && voteInfo[maxRound]->t->value == maxValue)) &&
-        (forall r': Round :: maxRound < r' && r' < r && voteInfo[r'] is Some ==> !voteInfo[r']->t->ns[from]) &&
-        r <= acceptorState[from]->lastJoinRound
+      (joinResponse is JoinAccept ==>
+        (
+          var from, maxRound, maxValue := joinResponse->from, joinResponse->lastVoteRound, joinResponse->lastVoteValue;
+          n == from &&
+          joinedNodes[r][from] &&
+          0 <= maxRound && maxRound < r &&
+          (maxRound == 0 || (voteInfo[maxRound] is Some && voteInfo[maxRound]->t->ns[from] && voteInfo[maxRound]->t->value == maxValue)) &&
+          (forall r': Round :: maxRound < r' && r' < r && voteInfo[r'] is Some ==> !voteInfo[r']->t->ns[from]) &&
+          r <= acceptorState[from]->lastJoinRound
+        )
       )
     )
   )
@@ -19,11 +21,13 @@ function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acc
   (forall p: Permission :: permVoteChannel->dom->val[p] ==> p is VotePerm &&
     (var r, n, voteResponse := p->r, p->n, permVoteChannel->val[p];
       Round(r) && Node(n) &&
-      (
-        var from := voteResponse->from;
-        n == from &&
-        voteInfo[r] is Some &&
-        voteInfo[r]->t->ns[from]
+      (voteResponse is VoteAccept ==>
+        (
+          var from := voteResponse->from;
+          n == from &&
+          voteInfo[r] is Some &&
+          voteInfo[r]->t->ns[from]
+        )
       )
     )
   )
@@ -127,16 +131,14 @@ refines A_Join;
 requires {:layer 1} Round(r) && Node(n) && p->val == JoinPerm(r, n);
 requires call YieldInv();
 {
-  var doJoin: bool;
-  var lastVoteRound: Round;
-  var lastVoteValue: Value;
+  var joinResponse: JoinResponse;
 
-  call doJoin, lastVoteRound, lastVoteValue := JoinUpdate(r, n);
-  if (doJoin) {
-    call SendJoinResponse(r, n, lastVoteRound, lastVoteValue);
-    call {:layer 1} permJoinChannel := SendJoinResponseIntro(JoinResponse(n, lastVoteRound, lastVoteValue), p, permJoinChannel);
+  call joinResponse := JoinUpdate(r, n);
+  call SendJoinResponse(r, joinResponse);
+  if (joinResponse is JoinAccept) {
     call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
   }
+  call {:layer 1} permJoinChannel := SendJoinResponseIntro(joinResponse, p, permJoinChannel);
 }
 
 yield right procedure {:layer 1} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, {:layer 1} ns: NodeSet)
@@ -161,9 +163,8 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   maxRound := 0;
   while (true)
   invariant {:layer 1} count == Cardinality(ns);
-  invariant {:layer 1} (forall x: Node :: ns[x] ==> Node(x));
+  invariant {:layer 1} (forall x: Node :: ns[x] ==> Node(x) && receivedPermissions->val[JoinPerm(r, x)]);
   invariant {:layer 1} IsSubset(ns, joinedNodes[r]);
-  invariant {:layer 1} receivedPermissions->val == (lambda {:pool "Permission"} x: Permission :: x is JoinPerm && x->r == r && ns[x->n]);
   invariant {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
   invariant {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
@@ -171,17 +172,20 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   {
     call joinResponse := ReceiveJoinResponse(r);
     call {:layer 1} receivedPermission, permJoinChannel := ReceiveJoinResponseIntro(r, joinResponse, permJoinChannel);
-    assume {:add_to_pool "Permission", receivedPermission->val} true;
-    call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(receivedPermission->val->n));
-    call {:layer 1} ns := AddToQuorum(ns, receivedPermission->val->n);
+    assert {:layer 1} !ns[receivedPermission->val->n];
     call {:layer 1} receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
-    count := count + 1;
-    if (joinResponse->lastVoteRound > maxRound) {
-      maxRound := joinResponse->lastVoteRound;
-      maxValue := joinResponse->lastVoteValue;
-    }
-    if (2 * count > numNodes) {
-      break;
+    if (joinResponse is JoinAccept) {
+      assume {:add_to_pool "Permission", receivedPermission->val} true;
+      call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(receivedPermission->val->n));
+      call {:layer 1} ns := AddToQuorum(ns, receivedPermission->val->n);
+      count := count + 1;
+      if (joinResponse->lastVoteRound > maxRound) {
+        maxRound := joinResponse->lastVoteRound;
+        maxValue := joinResponse->lastVoteValue;
+      }
+      if (2 * count > numNodes) {
+        break;
+      }
     }
   }
 }
@@ -225,15 +229,15 @@ refines A_Vote;
 requires {:layer 1} Round(r) && Node(n) && p->val == VotePerm(r, n);
 requires call YieldInv();
 {
-  var doVote:bool;
+  var voteResponse: VoteResponse;
 
-  call doVote := VoteUpdate(r, n, v);
-  if (doVote) {
-    call SendVoteResponse(r, n);
-    call {:layer 1} permVoteChannel := SendVoteResponseIntro(VoteResponse(n), p, permVoteChannel);
+  call voteResponse := VoteUpdate(r, n, v);
+  call SendVoteResponse(r, voteResponse);
+  if (voteResponse is VoteAccept) {
     call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
     call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]))]);
   }
+  call {:layer 1} permVoteChannel := SendVoteResponseIntro(voteResponse, p, permVoteChannel);
 }
 
 yield procedure {:layer 1}
@@ -254,21 +258,22 @@ requires call YieldInvChannels();
   count := 0;
   while (true)
   invariant {:layer 1} count == Cardinality(q);
-  invariant {:layer 1} (forall x: Node :: q[x] ==> Node(x));
+  invariant {:layer 1} (forall x: Node :: q[x] ==> Node(x) && receivedPermissions->val[VotePerm(r, x)]);
   invariant {:layer 1} IsSubset(q, voteInfo[r]->t->ns);
-  invariant {:layer 1} receivedPermissions->val == (lambda x: Permission :: x is VotePerm && x->r == r && q[x->n]);
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
   invariant {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
   {
     call voteResponse := ReceiveVoteResponse(r);
     call {:layer 1} receivedPermission, permVoteChannel := ReceiveVoteResponseIntro(r, voteResponse, permVoteChannel);
-    call {:layer 1} q := AddToQuorum(q, receivedPermission->val->n);
     call {:layer 1} receivedPermissions := AddPermission(receivedPermissions, receivedPermission);
-    count := count + 1;
-    if (2 * count > numNodes) {
-      call {:layer 1} decision := Copy(decision[r := Some(v)]);
-      assume {:add_to_pool "NodeSet", q} true;
-      break;
+    if (voteResponse is VoteAccept) {
+      call {:layer 1} q := AddToQuorum(q, receivedPermission->val->n);
+      count := count + 1;
+      if (2 * count > numNodes) {
+        call {:layer 1} decision := Copy(decision[r := Some(v)]);
+        assume {:add_to_pool "NodeSet", q} true;
+        break;
+      }
     }
   }
 }
@@ -290,40 +295,44 @@ ensures MaxRound(r, MapOr(ns1, ns2), voteInfo) ==
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield procedure {:layer 0} JoinUpdate(r: Round, n: Node) returns (join:bool, lastVoteRound: Round, lastVoteValue: Value);
+yield procedure {:layer 0} JoinUpdate(r: Round, n: Node) returns (joinResponse: JoinResponse);
 refines atomic action {:layer 1} _
 {
   var lastJoinRound: Round;
+  var lastVoteRound: Round;
+  var lastVoteValue: Value;
+
   lastJoinRound := acceptorState[n]->lastJoinRound;
   if (r > lastJoinRound) {
     lastVoteRound := acceptorState[n]->lastVoteRound;
     lastVoteValue := acceptorState[n]->lastVoteValue;
     acceptorState[n] := AcceptorState(r, lastVoteRound, lastVoteValue);
-    join := true;
+    joinResponse := JoinAccept(n, lastVoteRound, lastVoteValue);
   } else {
-    join := false;
+    joinResponse := JoinReject(n);
   }
 }
 
-yield procedure {:layer 0} VoteUpdate(r: Round, n: Node, v: Value) returns (vote:bool);
+yield procedure {:layer 0} VoteUpdate(r: Round, n: Node, v: Value) returns (voteResponse: VoteResponse);
 refines atomic action {:layer 1} _
 {
   var lastJoinRound: Round;
+
   lastJoinRound := acceptorState[n]->lastJoinRound;
   if (r >= lastJoinRound) {
     acceptorState[n] := AcceptorState(r, r, v);
-    vote := true;
+    voteResponse := VoteAccept(n);
   } else {
-    vote := false;
+    voteResponse := VoteReject(n);
   }
 }
 
 //// Channel send/receive actions
 
-yield procedure {:layer 0} SendJoinResponse(round: Round, from: Node, lastVoteRound: Round, lastVoteValue: Value);
+yield procedure {:layer 0} SendJoinResponse(round: Round, joinResponse: JoinResponse);
 refines left action {:layer 1} _
 {
-  joinChannel[round][JoinResponse(from, lastVoteRound, lastVoteValue)] := joinChannel[round][JoinResponse(from, lastVoteRound, lastVoteValue)] + 1;
+  joinChannel[round][joinResponse] := joinChannel[round][joinResponse] + 1;
 }
 
 yield procedure {:layer 0} ReceiveJoinResponse(round: Round) returns (joinResponse: JoinResponse);
@@ -333,10 +342,10 @@ refines right action {:layer 1} _
   joinChannel[round][joinResponse] := joinChannel[round][joinResponse] - 1;
 }
 
-yield procedure {:layer 0} SendVoteResponse(round: Round, from: Node);
+yield procedure {:layer 0} SendVoteResponse(round: Round, voteResponse: VoteResponse);
 refines left action {:layer 1} _
 {
-  voteChannel[round][VoteResponse(from)] := voteChannel[round][VoteResponse(from)] + 1;
+  voteChannel[round][voteResponse] := voteChannel[round][voteResponse] + 1;
 }
 
 yield procedure {:layer 0} ReceiveVoteResponse(round: Round) returns (voteResponse: VoteResponse);

@@ -19,10 +19,16 @@ datatype VoteInfo { VoteInfo(value: Value, ns: NodeSet) }
 datatype AcceptorState { AcceptorState(lastJoinRound: Round, lastVoteRound: int, lastVoteValue: Value) }
 
 /* 0 <= lastVoteRound <= numRounds */
-datatype JoinResponse { JoinResponse(from: Node, lastVoteRound: int, lastVoteValue: Value) }
+datatype JoinResponse {
+  JoinAccept(from: Node, lastVoteRound: int, lastVoteValue: Value),
+  JoinReject(from: Node)
+}
 type JoinResponseChannel = Map Permission JoinResponse;
 
-datatype VoteResponse { VoteResponse(from: Node) }
+datatype VoteResponse {
+  VoteAccept(from: Node),
+  VoteReject(from: Node)
+}
 type VoteResponseChannel = Map Permission VoteResponse;
 
 datatype Permission {
