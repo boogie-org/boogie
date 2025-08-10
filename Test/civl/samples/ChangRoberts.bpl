@@ -34,6 +34,13 @@ modifies leader;
   var pos: int;
   var pid: int;
 
+  // Each iteration of the following loop represents the propagation of one
+  // process id forward in the chain of processes and ending at ExpectedLeader.
+  // Conceptually, all iterations of the loop run in parallel.
+  // But since each iteration is a left mover we can run them in any order.
+  // This loop represents a particular sequentialzation of the computation,
+  // where the loop iterations are executed from N-1 down to 0 in the alternative
+  // coordinate system.
   pos := N - 1;
   while (0 <= pos)
   invariant {:layer 1} pos < N;
