@@ -1,5 +1,6 @@
 function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acceptorState: [Node]AcceptorState,
-              permJoinChannel: JoinResponseChannel, permVoteChannel: VoteResponseChannel) : bool
+              joinChannel: [Round][JoinResponse]int, permJoinChannel: JoinResponseChannel,
+              voteChannel: [Round][VoteResponse]int, permVoteChannel: VoteResponseChannel) : bool
 {
   (forall p: Permission :: permJoinChannel->dom->val[p] ==> p is JoinPerm &&
     (var r, n, joinResponse := p->r, p->n, permJoinChannel->val[p];
@@ -42,21 +43,15 @@ function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acc
       (forall r: Round :: lastVoteRound < r && Round(r) && voteInfo[r] is Some ==> !voteInfo[r]->t->ns[n])
     )
   )
-}
-
-function InvChannels (joinChannel: [Round][JoinResponse]int, permJoinChannel: JoinResponseChannel,
-                      voteChannel: [Round][VoteResponse]int, permVoteChannel: VoteResponseChannel) : bool
-{
-  (forall r: Round, jr: JoinResponse :: 0 <= joinChannel[r][jr] && joinChannel[r][jr] <= 1) &&
-  (forall r: Round, vr: VoteResponse :: 0 <= voteChannel[r][vr] && voteChannel[r][vr] <= 1) &&
-  (forall r: Round, jr: JoinResponse ::
-    joinChannel[r][jr] > 0 ==>
-      permJoinChannel->dom->val[JoinPerm(r, jr->from)] &&
-      permJoinChannel->val[JoinPerm(r, jr->from)] == jr) &&
-  (forall r: Round, vr: VoteResponse ::
-    voteChannel[r][vr] > 0 ==>
-      permVoteChannel->dom->val[VotePerm(r, vr->from)] &&
-      permVoteChannel->val[VotePerm(r, vr->from)] == vr)
+  &&
+  (forall r: Round, jr: JoinResponse :: 0 <= joinChannel[r][jr] && joinChannel[r][jr] <= 1)
+  &&
+  (forall r: Round, vr: VoteResponse :: 0 <= voteChannel[r][vr] && voteChannel[r][vr] <= 1)
+  &&
+  (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] > 0 ==>
+      permJoinChannel->dom->val[JoinPerm(r, jr->from)] && permJoinChannel->val[JoinPerm(r, jr->from)] == jr) &&
+  (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] > 0 ==>
+      permVoteChannel->dom->val[VotePerm(r, vr->from)] && permVoteChannel->val[VotePerm(r, vr->from)] == vr)
 }
 
 yield invariant {:layer 1} YieldInit({:linear} ps: Set Permission);
@@ -64,10 +59,7 @@ invariant Init(ps, decision);
 invariant InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
 
 yield invariant {:layer 1} YieldInv();
-invariant Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-
-yield invariant {:layer 1} YieldInvChannels();
-invariant InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+invariant Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -102,7 +94,6 @@ StartRound(r: Round, {:layer 1}{:linear_in} r_lin: Set Permission)
 refines A_StartRound;
 requires {:layer 1} Round(r) && r_lin == AllPermissions(r);
 requires call YieldInv();
-requires call YieldInvChannels();
 {
   var n: int;
   var {:layer 1}{:linear} p: One Permission;
@@ -144,15 +135,13 @@ requires call YieldInv();
 yield right procedure {:layer 1} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, count: int, {:layer 1} ns: NodeSet)
 modifies permJoinChannel, joinChannel;
 requires {:layer 1} Round(r);
-requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-requires {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 ensures {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
 ensures {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
 ensures {:layer 1} count == Cardinality(ns);
 ensures {:layer 1} (forall x: Node :: ns[x] ==> Node(x));
 ensures {:layer 1} IsSubset(ns, joinedNodes[r]);
-ensures {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+ensures {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
 {
   var n: int;
   var joinResponse: JoinResponse;
@@ -169,8 +158,7 @@ ensures {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVo
   invariant {:layer 1} IsSubset(ns, joinedNodes[r]);
   invariant {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
   invariant {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
-  invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-  invariant {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+  invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
   {
     call joinResponse := ReceiveJoinResponse(r);
     call {:layer 1} receivedPermission, permJoinChannel := ReceiveJoinResponseIntro(r, joinResponse, permJoinChannel);
@@ -197,7 +185,6 @@ Propose(r: Round, {:layer 1}{:linear_in} ps: Set Permission)
 refines A_Propose;
 requires {:layer 1} Round(r) && ps == ProposePermissions(r);
 requires call YieldInv();
-requires call YieldInvChannels();
 {
   var {:layer 1} maxRound: Round;
   var maxValue: Value;
@@ -251,7 +238,6 @@ Conclude(r: Round, v: Value, {:layer 1}{:linear_in} p: One Permission)
 refines A_Conclude;
 requires {:layer 1} Round(r) && p->val == ConcludePerm(r);
 requires call YieldInv();
-requires call YieldInvChannels();
 {
   var n, count: int;
   var voteResponse: VoteResponse;
@@ -266,8 +252,7 @@ requires call YieldInvChannels();
   invariant {:layer 1} count == Cardinality(q);
   invariant {:layer 1} (forall x: Node :: q[x] ==> Node(x) && usedPermissions->val[VotePerm(r, x)]);
   invariant {:layer 1} IsSubset(q, voteInfo[r]->t->ns);
-  invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, permJoinChannel, permVoteChannel);
-  invariant {:layer 1} InvChannels(joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+  invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
   {
     call voteResponse := ReceiveVoteResponse(r);
     call {:layer 1} receivedPermission, permVoteChannel := ReceiveVoteResponseIntro(r, voteResponse, permVoteChannel);
