@@ -116,7 +116,7 @@ requires call YieldInv();
   if (joinResponse is JoinAccept) {
     call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
   }
-  call {:layer 1} joinChannelPermissions := SendJoinResponseIntro(p, joinChannelPermissions);
+  call {:layer 1} One_Put(joinChannelPermissions, p);
 }
 
 yield right procedure {:layer 1} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, count: int, {:layer 1} ns: NodeSet)
@@ -148,13 +148,11 @@ ensures {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinCh
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
   {
     call joinResponse := ReceiveJoinResponse(r);
-    call {:layer 1} receivedPermission, joinChannelPermissions := ReceiveJoinResponseIntro(r, joinResponse, joinChannelPermissions);
-    assert {:layer 1} !ns[receivedPermission->val->n];
-    call {:layer 1} usedPermissions := AddPermission(usedPermissions, receivedPermission);
+    call {:layer 1} joinChannelPermissions, usedPermissions := MovePermission(JoinPerm(r, joinResponse->from), joinChannelPermissions, usedPermissions);
     if (joinResponse is JoinAccept) {
-      assume {:add_to_pool "Permission", receivedPermission->val} true;
-      call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(receivedPermission->val->n));
-      call {:layer 1} ns := AddToQuorum(ns, receivedPermission->val->n);
+      //assume {:add_to_pool "Permission", JoinPerm(r, joinResponse->from)} true;
+      call {:layer 1} MaxRoundLemma(voteInfo, r, ns, SingletonNode(joinResponse->from));
+      call {:layer 1} ns := AddToQuorum(ns, joinResponse->from);
       count := count + 1;
       if (joinResponse->lastVoteRound > maxRound) {
         maxRound := joinResponse->lastVoteRound;
@@ -199,7 +197,7 @@ requires call YieldInv();
     async call Conclude(r, maxValue, cp);
     call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(maxValue, NoNodes()))]);
   } else {
-    call {:layer 1} usedPermissions := AddPermissions(usedPermissions, ps');
+    call {:layer 1} Set_Put(usedPermissions, ps');
   }
 }
 
@@ -217,7 +215,7 @@ requires call YieldInv();
     call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
     call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]))]);
   }
-  call {:layer 1} voteChannelPermissions := SendVoteResponseIntro(p, voteChannelPermissions);
+  call {:layer 1} One_Put(voteChannelPermissions, p);
 }
 
 yield procedure {:layer 1}
@@ -242,10 +240,9 @@ requires call YieldInv();
   invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
   {
     call voteResponse := ReceiveVoteResponse(r);
-    call {:layer 1} receivedPermission, voteChannelPermissions := ReceiveVoteResponseIntro(r, voteResponse, voteChannelPermissions);
-    call {:layer 1} usedPermissions := AddPermission(usedPermissions, receivedPermission);
+    call {:layer 1} voteChannelPermissions, usedPermissions := MovePermission(VotePerm(r, voteResponse->from), voteChannelPermissions, usedPermissions);
     if (voteResponse is VoteAccept) {
-      call {:layer 1} q := AddToQuorum(q, receivedPermission->val->n);
+      call {:layer 1} q := AddToQuorum(q, voteResponse->from);
       count := count + 1;
       if (2 * count > numNodes) {
         call {:layer 1} decision := Copy(decision[r := Some(v)]);
@@ -333,37 +330,18 @@ refines right action {:layer 1} _
   voteChannel[round][voteResponse] := voteChannel[round][voteResponse] - 1;
 }
 
-//// Introduction procedures to make send/receive more abstract
-
-pure action SendJoinResponseIntro({:linear_in} p: One Permission, {:linear_in} joinChannelPermissions: Set Permission)
-returns ({:linear} joinChannelPermissions': Set Permission)
-{
-  joinChannelPermissions' := joinChannelPermissions;
-  call One_Put(joinChannelPermissions', p);
-}
-
-pure action ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse, {:linear_in} joinChannelPermissions: Set Permission)
-returns ({:linear} receivedPermission: One Permission, {:linear} joinChannelPermissions': Set Permission)
-{
-  joinChannelPermissions' := joinChannelPermissions;
-  call receivedPermission := One_Get(joinChannelPermissions', JoinPerm(round, joinResponse->from));
-}
-
-pure action SendVoteResponseIntro({:linear_in} p: One Permission, {:linear_in} voteChannelPermissions: Set Permission)
-returns ({:linear} voteChannelPermissions': Set Permission)
-{
-  voteChannelPermissions' := voteChannelPermissions;
-  call One_Put(voteChannelPermissions', p);
-}
-
-pure action ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse, {:linear_in} voteChannelPermissions: Set Permission)
-returns ({:linear} receivedPermission: One Permission, {:linear} voteChannelPermissions': Set Permission)
-{
-  voteChannelPermissions' := voteChannelPermissions;
-  call receivedPermission := One_Get(voteChannelPermissions', VotePerm(round, voteResponse->from));
-}
-
 //// Permission accounting
+
+pure action MovePermission(p: Permission, {:linear_in} from: Set Permission, {:linear_in} to: Set Permission)
+returns ({:linear} from': Set Permission, {:linear} to': Set Permission)
+{
+  var {:linear} one_p: One Permission;
+
+  from' := from;
+  to' := to;
+  call one_p := One_Get(from', p);
+  call One_Put(to', one_p);
+}
 
 pure action ExtractRoundPermission({:linear_in} ps: Set Permission, r: Round)
 returns ({:linear} ps': Set Permission, {:linear} r_lin: Set Permission)
@@ -400,20 +378,6 @@ returns ({:linear} ps': Set Permission, {:linear} p: One Permission)
 {
   ps' := ps;
   call p := One_Get(ps', VotePerm(r, n));
-}
-
-pure action AddPermission({:linear_in} usedPermissions: Set Permission, {:linear_in} p: One Permission)
-returns ({:linear} usedPermissions': Set Permission)
-{
-  usedPermissions' := usedPermissions;
-  call One_Put(usedPermissions', p);
-}
-
-pure action AddPermissions({:linear_in} usedPermissions: Set Permission, {:linear_in} ps: Set Permission)
-returns ({:linear} usedPermissions': Set Permission)
-{
-  usedPermissions' := usedPermissions;
-  call Set_Put(usedPermissions', ps);
 }
 
 // Local Variables:
