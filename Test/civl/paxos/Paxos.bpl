@@ -113,6 +113,7 @@ var {:layer 0,1} voteChannel: [Round][VoteResponse]int;
 // Intermediate channel representation
 var {:layer 1,1} {:linear} permJoinChannel: JoinResponseChannel;
 var {:layer 1,1} {:linear} permVoteChannel: VoteResponseChannel;
+var {:layer 1,1} {:linear} usedPermissions: Set Permission;
 
 ////////////////////////////////////////////////////////////////////////////////
 

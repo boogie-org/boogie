@@ -378,7 +378,8 @@ namespace Microsoft.Boogie
         invariantFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
         Expr.And(new[]
         {
-          invariantTransitionRelationExpr, ActionExpr(action, actionArgs, invariantFormalSubst),
+          invariantTransitionRelationExpr,
+          ActionExpr(action, actionArgs, invariantFormalSubst),
           LeftMoverExpr(leftMover, leftMoverArgs, invariantFormalSubst)
         }))
       };
