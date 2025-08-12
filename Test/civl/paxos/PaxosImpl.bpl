@@ -1,12 +1,12 @@
 function {:inline} Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acceptorState: [Node]AcceptorState,
-              joinChannel: [Round][JoinResponse]int, permJoinChannel: JoinResponseChannel,
-              voteChannel: [Round][VoteResponse]int, permVoteChannel: VoteResponseChannel) : bool
+              joinChannel: [Round][JoinResponse]int, joinChannelPermissions: Set Permission,
+              voteChannel: [Round][VoteResponse]int, voteChannelPermissions: Set Permission) : bool
 {
   (forall r: Round, jr: JoinResponse :: 0 <= joinChannel[r][jr] && joinChannel[r][jr] <= 1)
   &&
   (forall r: Round, jr1: JoinResponse, jr2: JoinResponse :: jr1->from == jr2->from && joinChannel[r][jr1] > 0 && joinChannel[r][jr2] > 0 ==> jr1 == jr2)
   &&
-  (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] > 0 ==> Round(r) && Node(jr->from) && Map_Contains(permJoinChannel, JoinPerm(r, jr->from)) &&
+  (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] > 0 ==> Round(r) && Node(jr->from) && Set_Contains(joinChannelPermissions, JoinPerm(r, jr->from)) &&
     (jr is JoinAccept ==>
       (
         var from, maxRound, maxValue := jr->from, jr->lastVoteRound, jr->lastVoteValue;
@@ -18,9 +18,9 @@ function {:inline} Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option Vot
       )
     )
   )
-  
+
   &&
-  (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] > 0 ==> Round(r) && Node(vr->from) && Map_Contains(permVoteChannel, VotePerm(r, vr->from)) &&
+  (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] > 0 ==> Round(r) && Node(vr->from) && Set_Contains(voteChannelPermissions, VotePerm(r, vr->from)) &&
     (vr is VoteAccept ==> voteInfo[r] is Some && voteInfo[r]->t->ns[vr->from])
   )
   &&
@@ -43,10 +43,10 @@ function {:inline} Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option Vot
 
 yield invariant {:layer 1} YieldInit({:linear} ps: Set Permission);
 invariant Init(ps, decision);
-invariant InitLow(acceptorState, joinChannel, voteChannel, permJoinChannel, permVoteChannel);
+invariant InitLow(acceptorState, joinChannel, voteChannel, joinChannelPermissions, voteChannelPermissions);
 
 yield invariant {:layer 1} YieldInv();
-invariant Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+invariant Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -116,19 +116,19 @@ requires call YieldInv();
   if (joinResponse is JoinAccept) {
     call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
   }
-  call {:layer 1} permJoinChannel := SendJoinResponseIntro(joinResponse, p, permJoinChannel);
+  call {:layer 1} joinChannelPermissions := SendJoinResponseIntro(p, joinChannelPermissions);
 }
 
 yield right procedure {:layer 1} ProposeHelper(r: Round) returns (maxRound: Round, maxValue: Value, count: int, {:layer 1} ns: NodeSet)
-modifies permJoinChannel, joinChannel;
+modifies joinChannelPermissions, joinChannel;
 requires {:layer 1} Round(r);
-requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+requires {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
 ensures {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
 ensures {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
 ensures {:layer 1} count == Cardinality(ns);
 ensures {:layer 1} (forall x: Node :: ns[x] ==> Node(x));
 ensures {:layer 1} IsSubset(ns, joinedNodes[r]);
-ensures {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+ensures {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
 {
   var n: int;
   var joinResponse: JoinResponse;
@@ -145,10 +145,10 @@ ensures {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJo
   invariant {:layer 1} IsSubset(ns, joinedNodes[r]);
   invariant {:layer 1} maxRound == MaxRound(r, ns, voteInfo);
   invariant {:layer 1} Round(maxRound) ==> maxValue == voteInfo[maxRound]->t->value;
-  invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+  invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
   {
     call joinResponse := ReceiveJoinResponse(r);
-    call {:layer 1} receivedPermission, permJoinChannel := ReceiveJoinResponseIntro(r, joinResponse, permJoinChannel);
+    call {:layer 1} receivedPermission, joinChannelPermissions := ReceiveJoinResponseIntro(r, joinResponse, joinChannelPermissions);
     assert {:layer 1} !ns[receivedPermission->val->n];
     call {:layer 1} usedPermissions := AddPermission(usedPermissions, receivedPermission);
     if (joinResponse is JoinAccept) {
@@ -217,7 +217,7 @@ requires call YieldInv();
     call {:layer 1} joinedNodes := Copy(joinedNodes[r := joinedNodes[r][n := true]]);
     call {:layer 1} voteInfo := Copy(voteInfo[r := Some(VoteInfo(voteInfo[r]->t->value, voteInfo[r]->t->ns[n := true]))]);
   }
-  call {:layer 1} permVoteChannel := SendVoteResponseIntro(voteResponse, p, permVoteChannel);
+  call {:layer 1} voteChannelPermissions := SendVoteResponseIntro(p, voteChannelPermissions);
 }
 
 yield procedure {:layer 1}
@@ -239,10 +239,10 @@ requires call YieldInv();
   invariant {:layer 1} count == Cardinality(q);
   invariant {:layer 1} (forall x: Node :: q[x] ==> Node(x) && usedPermissions->val[VotePerm(r, x)]);
   invariant {:layer 1} IsSubset(q, voteInfo[r]->t->ns);
-  invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, permJoinChannel, voteChannel, permVoteChannel);
+  invariant {:layer 1} Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
   {
     call voteResponse := ReceiveVoteResponse(r);
-    call {:layer 1} receivedPermission, permVoteChannel := ReceiveVoteResponseIntro(r, voteResponse, permVoteChannel);
+    call {:layer 1} receivedPermission, voteChannelPermissions := ReceiveVoteResponseIntro(r, voteResponse, voteChannelPermissions);
     call {:layer 1} usedPermissions := AddPermission(usedPermissions, receivedPermission);
     if (voteResponse is VoteAccept) {
       call {:layer 1} q := AddToQuorum(q, receivedPermission->val->n);
@@ -335,36 +335,32 @@ refines right action {:layer 1} _
 
 //// Introduction procedures to make send/receive more abstract
 
-pure action SendJoinResponseIntro(joinResponse: JoinResponse, {:linear_in} p: One Permission, {:linear_in} permJoinChannel: JoinResponseChannel)
-returns ({:linear} permJoinChannel': JoinResponseChannel)
+pure action SendJoinResponseIntro({:linear_in} p: One Permission, {:linear_in} joinChannelPermissions: Set Permission)
+returns ({:linear} joinChannelPermissions': Set Permission)
 {
-  permJoinChannel' := permJoinChannel;
-  call Map_Put(permJoinChannel', p, joinResponse);
+  joinChannelPermissions' := joinChannelPermissions;
+  call One_Put(joinChannelPermissions', p);
 }
 
-pure action ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse, {:linear_in} permJoinChannel: JoinResponseChannel)
-returns ({:linear} receivedPermission: One Permission, {:linear} permJoinChannel': JoinResponseChannel)
+pure action ReceiveJoinResponseIntro(round: Round, joinResponse: JoinResponse, {:linear_in} joinChannelPermissions: Set Permission)
+returns ({:linear} receivedPermission: One Permission, {:linear} joinChannelPermissions': Set Permission)
 {
-  var _x: JoinResponse;
-
-  permJoinChannel' := permJoinChannel;
-  call receivedPermission, _x := Map_Get(permJoinChannel', JoinPerm(round, joinResponse->from));
+  joinChannelPermissions' := joinChannelPermissions;
+  call receivedPermission := One_Get(joinChannelPermissions', JoinPerm(round, joinResponse->from));
 }
 
-pure action SendVoteResponseIntro(voteResponse: VoteResponse, {:linear_in} p: One Permission, {:linear_in} permVoteChannel: VoteResponseChannel)
-returns ({:linear} permVoteChannel': VoteResponseChannel)
+pure action SendVoteResponseIntro({:linear_in} p: One Permission, {:linear_in} voteChannelPermissions: Set Permission)
+returns ({:linear} voteChannelPermissions': Set Permission)
 {
-  permVoteChannel' := permVoteChannel;
-  call Map_Put(permVoteChannel', p, voteResponse);
+  voteChannelPermissions' := voteChannelPermissions;
+  call One_Put(voteChannelPermissions', p);
 }
 
-pure action ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse, {:linear_in} permVoteChannel: VoteResponseChannel)
-returns ({:linear} receivedPermission: One Permission, {:linear} permVoteChannel': VoteResponseChannel)
+pure action ReceiveVoteResponseIntro(round: Round, voteResponse: VoteResponse, {:linear_in} voteChannelPermissions: Set Permission)
+returns ({:linear} receivedPermission: One Permission, {:linear} voteChannelPermissions': Set Permission)
 {
-  var _x: VoteResponse;
-
-  permVoteChannel' := permVoteChannel;
-  call receivedPermission, _x := Map_Get(permVoteChannel', VotePerm(round, voteResponse->from));
+  voteChannelPermissions' := voteChannelPermissions;
+  call receivedPermission := One_Get(voteChannelPermissions', VotePerm(round, voteResponse->from));
 }
 
 //// Permission accounting
