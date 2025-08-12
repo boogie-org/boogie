@@ -1,37 +1,33 @@
-function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acceptorState: [Node]AcceptorState,
+function {:inline} Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acceptorState: [Node]AcceptorState,
               joinChannel: [Round][JoinResponse]int, permJoinChannel: JoinResponseChannel,
               voteChannel: [Round][VoteResponse]int, permVoteChannel: VoteResponseChannel) : bool
 {
-  (forall p: Permission :: permJoinChannel->dom->val[p] ==> p is JoinPerm &&
-    (var r, n, joinResponse := p->r, p->n, permJoinChannel->val[p];
-      Round(r) && Node(n) &&
-      (joinResponse is JoinAccept ==>
-        (
-          var from, maxRound, maxValue := joinResponse->from, joinResponse->lastVoteRound, joinResponse->lastVoteValue;
-          n == from &&
-          joinedNodes[r][from] &&
-          0 <= maxRound && maxRound < r &&
-          (maxRound == 0 || (voteInfo[maxRound] is Some && voteInfo[maxRound]->t->ns[from] && voteInfo[maxRound]->t->value == maxValue)) &&
-          (forall r': Round :: maxRound < r' && r' < r && voteInfo[r'] is Some ==> !voteInfo[r']->t->ns[from]) &&
-          r <= acceptorState[from]->lastJoinRound
-        )
+  (forall r: Round, jr: JoinResponse :: 0 <= joinChannel[r][jr] && joinChannel[r][jr] <= 1)
+  &&
+  (forall r: Round, jr1: JoinResponse, jr2: JoinResponse :: jr1->from == jr2->from && joinChannel[r][jr1] > 0 && joinChannel[r][jr2] > 0 ==> jr1 == jr2)
+  &&
+  (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] > 0 ==> Round(r) && Node(jr->from) && Map_Contains(permJoinChannel, JoinPerm(r, jr->from)) &&
+    (jr is JoinAccept ==>
+      (
+        var from, maxRound, maxValue := jr->from, jr->lastVoteRound, jr->lastVoteValue;
+        joinedNodes[r][from] &&
+        0 <= maxRound && maxRound < r &&
+        (maxRound == 0 || (voteInfo[maxRound] is Some && voteInfo[maxRound]->t->ns[from] && voteInfo[maxRound]->t->value == maxValue)) &&
+        (forall r': Round :: maxRound < r' && r' < r && voteInfo[r'] is Some ==> !voteInfo[r']->t->ns[from]) &&
+        r <= acceptorState[from]->lastJoinRound
       )
     )
+  )
+  
+  &&
+  (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] > 0 ==> Round(r) && Node(vr->from) && Map_Contains(permVoteChannel, VotePerm(r, vr->from)) &&
+    (vr is VoteAccept ==> voteInfo[r] is Some && voteInfo[r]->t->ns[vr->from])
   )
   &&
-  (forall p: Permission :: permVoteChannel->dom->val[p] ==> p is VotePerm &&
-    (var r, n, voteResponse := p->r, p->n, permVoteChannel->val[p];
-      Round(r) && Node(n) &&
-      (voteResponse is VoteAccept ==>
-        (
-          var from := voteResponse->from;
-          n == from &&
-          voteInfo[r] is Some &&
-          voteInfo[r]->t->ns[from]
-        )
-      )
-    )
-  )
+  (forall r: Round, vr: VoteResponse :: 0 <= voteChannel[r][vr] && voteChannel[r][vr] <= 1)
+  &&
+  (forall r: Round, vr1: VoteResponse, vr2: VoteResponse :: vr1->from == vr2->from && voteChannel[r][vr1] > 0 && voteChannel[r][vr2] > 0 ==> vr1 == vr2)
+
   &&
   (forall n: Node :: Node(n) ==>
     (
@@ -43,15 +39,6 @@ function Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option VoteInfo, acc
       (forall r: Round :: lastVoteRound < r && Round(r) && voteInfo[r] is Some ==> !voteInfo[r]->t->ns[n])
     )
   )
-  &&
-  (forall r: Round, jr: JoinResponse :: 0 <= joinChannel[r][jr] && joinChannel[r][jr] <= 1)
-  &&
-  (forall r: Round, vr: VoteResponse :: 0 <= voteChannel[r][vr] && voteChannel[r][vr] <= 1)
-  &&
-  (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] > 0 ==>
-      permJoinChannel->dom->val[JoinPerm(r, jr->from)] && permJoinChannel->val[JoinPerm(r, jr->from)] == jr) &&
-  (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] > 0 ==>
-      permVoteChannel->dom->val[VotePerm(r, vr->from)] && permVoteChannel->val[VotePerm(r, vr->from)] == vr)
 }
 
 yield invariant {:layer 1} YieldInit({:linear} ps: Set Permission);
