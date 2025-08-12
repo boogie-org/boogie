@@ -19,11 +19,15 @@ datatype VoteInfo { VoteInfo(value: Value, ns: NodeSet) }
 datatype AcceptorState { AcceptorState(lastJoinRound: Round, lastVoteRound: int, lastVoteValue: Value) }
 
 /* 0 <= lastVoteRound <= numRounds */
-datatype JoinResponse { JoinResponse(from: Node, lastVoteRound: int, lastVoteValue: Value) }
-type JoinResponseChannel = Map Permission JoinResponse;
+datatype JoinResponse {
+  JoinAccept(from: Node, lastVoteRound: int, lastVoteValue: Value),
+  JoinReject(from: Node)
+}
 
-datatype VoteResponse { VoteResponse(from: Node) }
-type VoteResponseChannel = Map Permission VoteResponse;
+datatype VoteResponse {
+  VoteAccept(from: Node),
+  VoteReject(from: Node)
+}
 
 datatype Permission {
   JoinPerm(r:Round, n: Node),
@@ -105,8 +109,9 @@ var {:layer 0,1} joinChannel: [Round][JoinResponse]int;
 var {:layer 0,1} voteChannel: [Round][VoteResponse]int;
 
 // Intermediate channel representation
-var {:layer 1,1} {:linear} permJoinChannel: JoinResponseChannel;
-var {:layer 1,1} {:linear} permVoteChannel: VoteResponseChannel;
+var {:layer 1,1} {:linear} joinChannelPermissions: Set Permission;
+var {:layer 1,1} {:linear} voteChannelPermissions: Set Permission;
+var {:layer 1,1} {:linear} usedPermissions: Set Permission;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -121,12 +126,12 @@ function {:inline} InitLow (
   acceptorState: [Node]AcceptorState,
   joinChannel: [Round][JoinResponse]int,
   voteChannel: [Round][VoteResponse]int,
-  permJoinChannel: JoinResponseChannel,
-  permVoteChannel: VoteResponseChannel) : bool
+  joinChannelPermissions: Set Permission,
+  voteChannelPermissions: Set Permission) : bool
 {
   (forall n: Node :: acceptorState[n]->lastJoinRound == 0 && acceptorState[n]->lastVoteRound == 0) &&
   (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] == 0) &&
   (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] == 0) &&
-  permJoinChannel == Map_Empty() &&
-  permVoteChannel == Map_Empty()
+  joinChannelPermissions == Set_Empty() &&
+  voteChannelPermissions == Set_Empty()
 }

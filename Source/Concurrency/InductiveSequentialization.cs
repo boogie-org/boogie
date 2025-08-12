@@ -35,11 +35,6 @@ namespace Microsoft.Boogie
       return new List<Expr>();
     }
 
-    public virtual IEnumerable<Expr> GenerateRightMoverCheckAssumptions(Action rightMover, List<Variable> rightMoverArgs)
-    {
-      return new List<Expr>();
-    }
-
     public IEnumerable<AssertCmd> Preconditions(Action pendingAsync, Substitution subst)
     {
       var cmds = new List<AssertCmd>();
@@ -346,16 +341,6 @@ namespace Microsoft.Boogie
         invariantAction.ImplWithChoice.InParams, invariantAction.ImplWithChoice.OutParams, locals, cmds);
     }
 
-    public override IEnumerable<Expr> GenerateRightMoverCheckAssumptions(Action rightMover, List<Variable> rightMoverArgs)
-    {
-      var subst = Substituter.SubstitutionFromDictionary(
-        rightMover.ActionDecl.InParams.Zip(rightMoverArgs.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-      var exitCondition = rightMover.ExitCondition;
-      return new List<Expr> {
-        exitCondition == null ? Expr.True : Expr.Not(Substituter.Apply(subst, exitCondition))
-      };
-    }
-
     /*
      * This method generates the extra assumption for the left-mover check of the abstraction of an eliminated action.
      * The arguments leftMover and leftMoverArgs pertain to the action being moved left.
@@ -393,7 +378,8 @@ namespace Microsoft.Boogie
         invariantFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
         Expr.And(new[]
         {
-          invariantTransitionRelationExpr, ActionExpr(action, actionArgs, invariantFormalSubst),
+          invariantTransitionRelationExpr,
+          ActionExpr(action, actionArgs, invariantFormalSubst),
           LeftMoverExpr(leftMover, leftMoverArgs, invariantFormalSubst)
         }))
       };
