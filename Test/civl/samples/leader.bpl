@@ -59,7 +59,7 @@ modifies dec_dom, dec_val;
 }
 
 yield invariant {:layer 1} YieldAllDecided();
-invariant all_decided(init_val, dec_dom, dec_val);
+preserves all_decided(init_val, dec_dom, dec_val);
 
 yield procedure {:layer 1}
 main ({:linear_in} perms: Set Perm)

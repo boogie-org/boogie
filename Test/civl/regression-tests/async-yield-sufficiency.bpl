@@ -34,10 +34,10 @@ yield procedure {:layer 0} assertion();
 refines ASSERTION;
 
 yield invariant {:layer 1} Yield_P({:linear "tid"} tid1:int, {:linear "tid"} tid2:int);
-invariant tid1 == 1;
-invariant tid2 == 1;
-invariant x == 0;
+preserves tid1 == 1;
+preserves tid2 == 1;
+preserves x == 0;
 
 yield invariant {:layer 1} Yield_Q({:linear "tid"} tid1:int);
-invariant tid1 == 1;
-invariant x == 0; // This precondition is not valid at the end of procedure P
+preserves tid1 == 1;
+preserves x == 0; // This precondition is not valid at the end of procedure P

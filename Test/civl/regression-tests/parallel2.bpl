@@ -40,7 +40,7 @@ ensures call Yield_42(i, 42);
 }
 
 yield invariant {:layer 1} Yield({:linear} i: One int, old_a: [int]int);
-invariant old_a[i->val] == a[i->val];
+preserves old_a[i->val] == a[i->val];
 
 yield invariant {:layer 1} Yield_42({:linear} i: One int, v: int);
-invariant v == a[i->val];
+preserves v == a[i->val];

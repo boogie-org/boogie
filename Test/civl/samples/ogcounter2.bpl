@@ -83,7 +83,7 @@ ensures call YieldPost();
 }
 
 yield invariant {:layer 5} YieldPre({:linear} tid: One X);
-invariant tid->val == MainTid && x == 0;
+preserves tid->val == MainTid && x == 0;
 
 yield invariant {:layer 5} YieldPost();
-invariant x == 2;
+preserves x == 2;

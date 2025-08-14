@@ -42,11 +42,11 @@ function {:inline} Inv (joinedNodes: [Round]NodeSet, voteInfo: [Round]Option Vot
 }
 
 yield invariant {:layer 1} YieldInit({:linear} ps: Set Permission);
-invariant Init(ps, decision);
-invariant InitLow(acceptorState, joinChannel, voteChannel, joinChannelPermissions, voteChannelPermissions);
+preserves Init(ps, decision);
+preserves InitLow(acceptorState, joinChannel, voteChannel, joinChannelPermissions, voteChannelPermissions);
 
 yield invariant {:layer 1} YieldInv();
-invariant Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
+preserves Inv(joinedNodes, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
 
 ////////////////////////////////////////////////////////////////////////////////
 

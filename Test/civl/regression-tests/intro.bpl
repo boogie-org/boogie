@@ -46,4 +46,4 @@ refines atomic_write_x;
 }
 
 yield invariant {:layer 1} Yield_xy();
-invariant x == y;
+preserves x == y;

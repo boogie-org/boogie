@@ -25,13 +25,13 @@ function {:inline} Inv2 (tickets: [int]bool, ticket: int, lock: Option Tid): (bo
 // Yield invariants
 
 yield invariant {:layer 2} YieldSpec ({:linear} tid: One Tid);
-invariant cs is Some && cs->t == tid->val;
+preserves cs is Some && cs->t == tid->val;
 
 yield invariant {:layer 1} Yield1 ();
-invariant Inv1(T, t);
+preserves Inv1(T, t);
 
 yield invariant {:layer 2} Yield2 ();
-invariant Inv2(T, s, cs);
+preserves Inv2(T, s, cs);
 
 // ###########################################################################
 // Procedures and actions

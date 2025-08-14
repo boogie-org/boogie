@@ -191,14 +191,14 @@ requires call YieldCollect();
 }
 
 yield invariant {:layer 3} YieldCollect();
-invariant CH == (lambda v:val :: value_card(v, value, 1, n));
-invariant card(CH) == n;
-invariant MultisetSubsetEq(MultisetEmpty, CH);
+preserves CH == (lambda v:val :: value_card(v, value, 1, n));
+preserves card(CH) == n;
+preserves MultisetSubsetEq(MultisetEmpty, CH);
 
 ////////////////////////////////////////////////////////////////////////////////
 
 yield invariant {:layer 1} YieldInv();
-invariant Inv(CH_low, CH);
+preserves Inv(CH_low, CH);
 
 function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
 {
@@ -214,9 +214,9 @@ pure procedure {:inline 1} add_to_multiset (CH:[val]int, x: val) returns (CH':[v
 
 yield invariant {:layer 1}
 YieldInit({:linear} ps: Set perm);
-invariant ps->val == (lambda p:perm :: pid(p->i));
-invariant (forall ii:pid :: CH_low[ii] == MultisetEmpty);
-invariant CH == MultisetEmpty;
+preserves ps->val == (lambda p:perm :: pid(p->i));
+preserves (forall ii:pid :: CH_low[ii] == MultisetEmpty);
+preserves CH == MultisetEmpty;
 
 yield procedure {:layer 1}
 Main({:linear_in} ps: Set perm)

@@ -35,13 +35,13 @@ function {:inline} LockInv(StoreBufferPresent:[int][int]bool, StoreBufferVal:[in
 
 // Layer 1
 yield invariant {:layer 1} YieldLock();
-invariant {:expand} LockInv(StoreBufferPresent, StoreBufferVal, Mem, lock, collectorPhase, collectorPhaseDelayed);
+preserves {:expand} LockInv(StoreBufferPresent, StoreBufferVal, Mem, lock, collectorPhase, collectorPhaseDelayed);
 
 yield invariant {:layer 1} YieldStoreBufferLockAddrPresent({:linear} tid: One int);
-invariant StoreBufferPresent[tid->val][lockAddr];
+preserves StoreBufferPresent[tid->val][lockAddr];
 
 yield invariant {:layer 1} YieldStoreBufferLockAddrAbsent({:linear} tid: One int);
-invariant !StoreBufferPresent[tid->val][lockAddr];
+preserves !StoreBufferPresent[tid->val][lockAddr];
 
 right action {:layer 2} AtomicLockAcquire({:linear} tid: One int)
 modifies lock;

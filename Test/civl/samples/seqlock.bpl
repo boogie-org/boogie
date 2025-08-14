@@ -63,10 +63,10 @@ preserves call SeqLockInv();
 }
 
 yield invariant{:layer 2} SeqLockInv ();
-invariant lock == None() <==> isEven(seq);
+preserves lock == None() <==> isEven(seq);
 
 yield invariant{:layer 2} HoldLock ({:linear} tid: One Tid);
-invariant lock == Some(tid->val);
+preserves lock == Some(tid->val);
 
 // =============================================================================
 // Abstractions of atomic actions with stronger mover types

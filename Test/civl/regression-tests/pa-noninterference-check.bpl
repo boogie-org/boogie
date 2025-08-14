@@ -23,7 +23,7 @@ yield procedure {:layer 0} Incr();
 refines A_Incr;
 
 yield invariant {:layer 1} Inv();
-invariant x == 0;
+preserves x == 0;
 
 var {:layer 0,3} x: int;
 

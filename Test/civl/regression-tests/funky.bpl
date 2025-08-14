@@ -175,4 +175,4 @@ requires call YieldCounter();
 yield procedure {:layer 2} Yield();
 
 yield invariant {:layer 3} YieldCounter();
-invariant counter == 0;
+preserves counter == 0;
