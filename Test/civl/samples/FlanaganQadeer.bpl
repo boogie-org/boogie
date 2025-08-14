@@ -67,5 +67,5 @@ requires {:layer 1} tid->val != nil;
 }
 
 yield invariant {:layer 1} Yield({:linear} tid: One X, old_l: X, old_x: int);
-invariant tid->val != nil;
-invariant old_l == tid->val ==> old_l == l && old_x == x;
+preserves tid->val != nil;
+preserves old_l == tid->val ==> old_l == l && old_x == x;

@@ -18,7 +18,7 @@ function {:inline} Black(i:int)   returns(bool) { i >= 3 }
 function {:inline} WhiteOrLighter(i:int) returns(bool) { i <= 1 }
 
 yield invariant {:layer 2} YieldColorOnlyGetsDarker(old_Color: int);
-invariant Color >= old_Color;
+preserves Color >= old_Color;
 
 yield procedure {:layer 2} WriteBarrier({:linear} tid: One Tid)
 refines AtomicWriteBarrier;

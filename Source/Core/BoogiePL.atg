@@ -659,7 +659,7 @@ YieldInvariantDecl<out YieldInvariantDecl yieldInvariant>
 
 Invariant<.List<Requires> invariants.>
 = (. Expr e; IToken tok = null; QKeyValue kv = null; .)
-  ( "invariant"              (. tok = t; .)
+  ( "preserves"              (. tok = t; .)
     { Attribute<ref kv> }
     Proposition<out e> ";"  (. invariants.Add(new Requires(tok, false, e, null, kv)); .)
   )

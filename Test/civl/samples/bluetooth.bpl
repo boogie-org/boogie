@@ -21,11 +21,11 @@ var {:layer 0,1} pendingIo: int;
 var {:layer 0,1} stoppingEvent: bool;
 
 yield invariant {:layer 2} Inv2();
-invariant stopped ==> stoppingFlag;
+preserves stopped ==> stoppingFlag;
 
 yield invariant {:layer 1} Inv1();
-invariant stoppingEvent ==> stoppingFlag && usersInDriver->val == MapConst(false);
-invariant pendingIo == Set_Size(usersInDriver) + (if stoppingFlag then 0 else 1);
+preserves stoppingEvent ==> stoppingFlag && usersInDriver->val == MapConst(false);
+preserves pendingIo == Set_Size(usersInDriver) + (if stoppingFlag then 0 else 1);
 
 // user code
 

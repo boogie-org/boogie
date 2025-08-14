@@ -19,21 +19,21 @@ var {:layer 0,1} channels: [ChannelId]Channel;
 ////////////////////////////////////////////////////////////////////////////////
 
 yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set ChannelHandle);
-invariant handles == BothHandles(cid);
-invariant channels[cid]->head == 0;
-invariant channels[cid]->tail == 0;
+preserves handles == BothHandles(cid);
+preserves channels[cid]->head == 0;
+preserves channels[cid]->tail == 0;
 
 yield invariant {:layer 1} YieldProducer(x: int, {:linear} send_handle: One ChannelHandle);
-invariant send_handle->val is Send;
-invariant (var channel := channels[send_handle->val->cid]; x == channel->tail + 1);
-invariant (var channel := channels[send_handle->val->cid];
+preserves send_handle->val is Send;
+preserves (var channel := channels[send_handle->val->cid]; x == channel->tail + 1);
+preserves (var channel := channels[send_handle->val->cid];
           (var head, tail, C := channel->head, channel->tail, channel->C;
           (forall i: int:: head <= i && i < tail ==> C[i] == i + 1)));
 
 yield invariant {:layer 1} YieldConsumer(x: int, {:linear} receive_handle: One ChannelHandle);
-invariant receive_handle->val is Receive;
-invariant (var channel := channels[receive_handle->val->cid]; x == channel->head + 1);
-invariant (var channel := channels[receive_handle->val->cid];
+preserves receive_handle->val is Receive;
+preserves (var channel := channels[receive_handle->val->cid]; x == channel->head + 1);
+preserves (var channel := channels[receive_handle->val->cid];
           (var head, tail, C := channel->head, channel->tail, channel->C;
           (forall i: int:: head <= i && i < tail ==> C[i] == i + 1 || (i + 1 == tail && C[i] == 0))));
 

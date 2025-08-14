@@ -20,15 +20,15 @@ function {:inline} QueueElems(q: Queue int): [LocNode int]bool
 }
 
 yield invariant {:layer 1} PosInv();
-invariant Map_Contains(queues, pos->val->loc);
-invariant (var q := Map_At(queues, pos->val->loc); IsAcyclic(q) &&
+preserves Map_Contains(queues, pos->val->loc);
+preserves (var q := Map_At(queues, pos->val->loc); IsAcyclic(q) &&
             (forall loc_n: LocNode int:: QueueElems(q)[loc_n] ==>
                 Map_Contains(q->nodes, loc_n) &&
                 (loc_n == q->tail || (var node := Map_At(q->nodes, loc_n); node->val > 0))));
 
 yield invariant {:layer 1} NegInv();
-invariant Map_Contains(queues, neg->val->loc);
-invariant (var q := Map_At(queues, neg->val->loc); IsAcyclic(q) &&
+preserves Map_Contains(queues, neg->val->loc);
+preserves (var q := Map_At(queues, neg->val->loc); IsAcyclic(q) &&
             (forall loc_n: LocNode int:: QueueElems(q)[loc_n] ==>
                 Map_Contains(q->nodes, loc_n) &&
                 (loc_n == q->tail || (var node := Map_At(q->nodes, loc_n); node->val < 0))));

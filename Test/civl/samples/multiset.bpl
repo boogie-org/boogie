@@ -293,10 +293,10 @@ preserves call YieldLookUp2(old_valid, old_elt);
 }
 
 yield invariant {:layer 1} Yield1();
-invariant Inv(valid, elt, owner);
+preserves Inv(valid, elt, owner);
 
 yield invariant {:layer 2} Yield2();
-invariant Inv(valid, elt, owner);
+preserves Inv(valid, elt, owner);
 
 function {:inline} Inv(valid: [int]bool, elt: [int]int, owner: [int]X): (bool)
 {
@@ -304,10 +304,10 @@ function {:inline} Inv(valid: [int]bool, elt: [int]int, owner: [int]X): (bool)
 }
 
 yield invariant {:layer 1} YieldLookUp1(old_valid: [int]bool, old_elt: [int]int);
-invariant InvLookUp(old_valid, valid, old_elt, elt);
+preserves InvLookUp(old_valid, valid, old_elt, elt);
 
 yield invariant {:layer 2} YieldLookUp2(old_valid: [int]bool, old_elt: [int]int);
-invariant InvLookUp(old_valid, valid, old_elt, elt);
+preserves InvLookUp(old_valid, valid, old_elt, elt);
 
 function InvLookUp(old_valid: [int]bool, valid: [int]bool, old_elt: [int]int, elt: [int]int): (bool)
 {

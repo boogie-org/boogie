@@ -169,78 +169,78 @@ function {:inline} SweepInvInit(root:[idx]int, rootAbs:[idx]obj, mem:[int][fld]i
 //////////////////////////////////////////////////////////////////////////////
 
 yield invariant {:layer 100} Yield_WriteField({:linear} tid:Tid, x: idx, y: idx);
-invariant mutatorTidWhole(tid) && tidOwns(tid, x) && tidOwns(tid, y);
-invariant memAddr(root[y]) && MarkPhase(mutatorPhase[tid->i]) ==> Gray(Color[root[y]]) || Black(Color[root[y]]);
+preserves mutatorTidWhole(tid) && tidOwns(tid, x) && tidOwns(tid, y);
+preserves memAddr(root[y]) && MarkPhase(mutatorPhase[tid->i]) ==> Gray(Color[root[y]]) || Black(Color[root[y]]);
 
 yield invariant {:layer 100} Yield_Iso();
-invariant Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+preserves Iso(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
 
 yield invariant {:layer 100} Yield_GarbageCollect_100({:linear} tid:Tid);
-invariant tid == GcTid;
-invariant (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x])));
-invariant sweepPtr == memHi ==> (forall x: int :: memAddr(x) ==> !Black(Color[x]));
-invariant sweepPtr == memLo ==>
+preserves tid == GcTid;
+preserves (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x])));
+preserves sweepPtr == memHi ==> (forall x: int :: memAddr(x) ==> !Black(Color[x]));
+preserves sweepPtr == memLo ==>
             (forall x: int :: memAddr(x) ==> !Gray(Color[x])) &&
             (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]])) &&
             (forall x: int, f: fld :: memAddr(x) && Black(Color[x]) && fieldAddr(f) && memAddr(mem[x][f]) ==> Black(Color[mem[x][f]]));
 
 yield invariant {:layer 100} Yield_CollectorPhase_100({:linear} tid:Tid, tick_collectorPhase: int);
-invariant tid == GcTid;
-invariant tick_collectorPhase == collectorPhase;
+preserves tid == GcTid;
+preserves tick_collectorPhase == collectorPhase;
 
 yield invariant {:layer 100} Yield_SweepPtr_100({:linear} tid:Tid, tick_sweepPtr: int);
-invariant tid == GcTid;
-invariant tick_sweepPtr == sweepPtr;
+preserves tid == GcTid;
+preserves tick_sweepPtr == sweepPtr;
 
 yield invariant {:layer 100} Yield_MarkBegin({:linear} tid:Tid, tick_Color: [int]int);
-invariant tid == GcTid;
-invariant MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memHi;
-invariant (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x])));
-invariant (forall x: int :: memAddr(x) ==> !Black(Color[x]));
-invariant (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) ==> !Unalloc(Color[x]));
-invariant (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) && !White(tick_Color[x]) ==> !White(Color[x]));
+preserves tid == GcTid;
+preserves MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memHi;
+preserves (forall x: int :: memAddr(x) ==> (toAbs[x] == nil <==> Unalloc(Color[x])));
+preserves (forall x: int :: memAddr(x) ==> !Black(Color[x]));
+preserves (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) ==> !Unalloc(Color[x]));
+preserves (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) && !White(tick_Color[x]) ==> !White(Color[x]));
 
 yield invariant {:layer 100} Yield_Mark({:linear} tid:Tid, tick_Color: [int]int);
-invariant tid == GcTid;
-invariant MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
-invariant MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-invariant (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) ==> !Unalloc(Color[x]));
-invariant (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) && !White(tick_Color[x]) ==> !White(Color[x]));
+preserves tid == GcTid;
+preserves MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
+preserves MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+preserves (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) ==> !Unalloc(Color[x]));
+preserves (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) && !White(tick_Color[x]) ==> !White(Color[x]));
 
 yield invariant {:layer 100} Yield_MarkEnd({:linear} tid:Tid);
-invariant tid == GcTid;
-invariant MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
-invariant MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-invariant (forall x: int :: memAddr(x) ==> !Gray(Color[x]));
-invariant (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]]));
+preserves tid == GcTid;
+preserves MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
+preserves MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+preserves (forall x: int :: memAddr(x) ==> !Gray(Color[x]));
+preserves (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]]));
 
 yield invariant {:layer 100} Yield_MarkInnerLoopFieldIter({:linear} tid:Tid, fldIter: int, nodeProcessed: int);
-invariant tid == GcTid;
-invariant 0 <= fldIter && fldIter <= numFields;
-invariant MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
-invariant MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-invariant !Unalloc(Color[nodeProcessed]);
-invariant (forall x: int :: 0 <= x && x < fldIter && memAddr(mem[nodeProcessed][x]) ==> !Unalloc(Color[mem[nodeProcessed][x]]) && !White(Color[mem[nodeProcessed][x]]));
+preserves tid == GcTid;
+preserves 0 <= fldIter && fldIter <= numFields;
+preserves MarkPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase) && sweepPtr == memLo;
+preserves MarkInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+preserves !Unalloc(Color[nodeProcessed]);
+preserves (forall x: int :: 0 <= x && x < fldIter && memAddr(mem[nodeProcessed][x]) ==> !Unalloc(Color[mem[nodeProcessed][x]]) && !White(Color[mem[nodeProcessed][x]]));
 
 yield invariant {:layer 100} Yield_SweepBegin({:linear} tid:Tid, isInit: bool, tick_Color: [int]int);
-invariant tid == GcTid;
-invariant SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
-invariant sweepPtr == memLo;
-invariant !isInit ==> SweepInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-invariant isInit ==> SweepInvInit(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-invariant (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]]));
-invariant (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) ==> tick_Color[x] == Color[x]);
+preserves tid == GcTid;
+preserves SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
+preserves sweepPtr == memLo;
+preserves !isInit ==> SweepInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+preserves isInit ==> SweepInvInit(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+preserves (forall i: int :: rootAddr(i) && memAddr(root[i]) ==> Black(Color[root[i]]));
+preserves (forall x: int :: memAddr(x) && !Unalloc(tick_Color[x]) ==> tick_Color[x] == Color[x]);
 
 yield invariant {:layer 100} Yield_SweepEnd({:linear} tid:Tid);
-invariant tid == GcTid;
-invariant SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
-invariant sweepPtr == memHi;
-invariant SweepInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
-invariant (forall x: int :: memAddr(x) ==> !Black(Color[x]));
+preserves tid == GcTid;
+preserves SweepPhase(collectorPhase) && PhaseConsistent(collectorPhase, mutatorPhase);
+preserves sweepPtr == memHi;
+preserves SweepInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
+preserves (forall x: int :: memAddr(x) ==> !Black(Color[x]));
 
 yield invariant {:layer 100} Yield_Initialize_100({:linear} tid:Tid, {:linear} mutatorTids:Set Piece);
-invariant gcAndMutatorTids(tid, mutatorTids);
-invariant (forall x: idx :: rootAddr(x) ==> rootAbs[x] == Int(0));
+preserves gcAndMutatorTids(tid, mutatorTids);
+preserves (forall x: idx :: rootAddr(x) ==> rootAbs[x] == Int(0));
 
 yield procedure {:layer 100}
 Initialize({:layer 95, 100} {:linear_in} tid:Tid, {:layer 95, 100} {:linear} mutatorTids:Set Piece)
@@ -492,32 +492,32 @@ preserves call Yield_Lock();
 //////////////////////////////////////////////////////////////////////////////
 
 yield invariant {:layer 99} Yield_CollectorPhase_99({:linear} tid:Tid, tick_collectorPhase: int);
-invariant tid == GcTid;
-invariant tick_collectorPhase == collectorPhase;
+preserves tid == GcTid;
+preserves tick_collectorPhase == collectorPhase;
 
 yield invariant {:layer 99} Yield_SweepPtr_99({:linear} tid:Tid, tick_sweepPtr: int);
-invariant tid == GcTid;
-invariant tick_sweepPtr == sweepPtr;
+preserves tid == GcTid;
+preserves tick_sweepPtr == sweepPtr;
 
 yield invariant {:layer 99} Yield_RootScanBarrierInv();
-invariant RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
+preserves RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
 
 yield invariant {:layer 99} Yield_InitVars99({:linear} mutatorTids:Set Piece, tick_mutatorsInRootScanBarrier: Set Piece, tick_rootScanBarrier: int);
-invariant (forall i:int :: mutatorId(i) ==> Set_Contains(mutatorTids, Left(i)) && Set_Contains(mutatorTids, Right(i)));
-invariant mutatorsInRootScanBarrier == tick_mutatorsInRootScanBarrier;
-invariant rootScanBarrier == tick_rootScanBarrier;
+preserves (forall i:int :: mutatorId(i) ==> Set_Contains(mutatorTids, Left(i)) && Set_Contains(mutatorTids, Right(i)));
+preserves mutatorsInRootScanBarrier == tick_mutatorsInRootScanBarrier;
+preserves rootScanBarrier == tick_rootScanBarrier;
 
 yield invariant {:layer 99} Yield_RootScanOn({:linear} tid: Tid, tick_rootScanOn: bool);
-invariant tid == GcTid;
-invariant rootScanOn == tick_rootScanOn;
+preserves tid == GcTid;
+preserves rootScanOn == tick_rootScanOn;
 
 yield invariant {:layer 99} Yield_RootScanBarrierEnter({:linear} tid: Tid);
-invariant mutatorTidWhole(tid);
-invariant !Set_Contains(mutatorsInRootScanBarrier, Right(tid->i));
+preserves mutatorTidWhole(tid);
+preserves !Set_Contains(mutatorsInRootScanBarrier, Right(tid->i));
 
 yield invariant {:layer 99} Yield_RootScanBarrierWait({:linear} tid: Tid);
-invariant mutatorTidLeft(tid);
-invariant Set_Contains(mutatorsInRootScanBarrier, Right(tid->i));
+preserves mutatorTidLeft(tid);
+preserves Set_Contains(mutatorsInRootScanBarrier, Right(tid->i));
 
 yield procedure {:layer 99}
 InitVars99({:layer 95, 99} {:linear} tid:Tid, {:layer 95, 99} {:linear} mutatorTids:Set Piece)
@@ -724,26 +724,26 @@ preserves call Yield_Lock();
 //////////////////////////////////////////////////////////////////////////////
 
 yield invariant {:layer 98} Yield_MsWellFormed({:linear} tid:Tid, nodePeeked: int);
-invariant tid == GcTid;
-invariant MsWellFormed(MarkStack, MarkStackPtr, Color, nodePeeked);
+preserves tid == GcTid;
+preserves MsWellFormed(MarkStack, MarkStackPtr, Color, nodePeeked);
 
 yield invariant {:layer 98} Yield_CollectorPhase_98({:linear} tid:Tid, tick_collectorPhase: int);
-invariant tid == GcTid;
-invariant tick_collectorPhase == collectorPhase;
+preserves tid == GcTid;
+preserves tick_collectorPhase == collectorPhase;
 
 yield invariant {:layer 98} Yield_SweepPtr_98({:linear} tid:Tid, tick_sweepPtr: int);
-invariant tid == GcTid;
-invariant tick_sweepPtr == sweepPtr;
+preserves tid == GcTid;
+preserves tick_sweepPtr == sweepPtr;
 
 yield invariant {:layer 98} Yield_MarkPhase({:linear} tid:Tid, ptr: int);
-invariant mutatorTidWhole(tid);
-invariant MarkPhase(mutatorPhase[tid->i]);
+preserves mutatorTidWhole(tid);
+preserves MarkPhase(mutatorPhase[tid->i]);
 
 yield invariant {:layer 98} Yield_98();
 
 yield invariant {:layer 98} Yield_InitVars98({:linear} tid:Tid, {:linear} mutatorTids:Set Piece, tick_MarkStackPtr: int);
-invariant gcAndMutatorTids(tid, mutatorTids);
-invariant MarkStackPtr == tick_MarkStackPtr;
+preserves gcAndMutatorTids(tid, mutatorTids);
+preserves MarkStackPtr == tick_MarkStackPtr;
 
 yield procedure {:layer 98}
 InitVars98({:layer 95, 98} {:linear} tid:Tid, {:layer 95, 98} {:linear} mutatorTids:Set Piece)
@@ -917,9 +917,9 @@ preserves call Yield_Lock();
 yield invariant {:layer 97} Yield_97();
 
 yield invariant {:layer 97} Yield_WaitForMutators({:linear} tid:Tid, nextPhase: int, done: bool, i: int);
-invariant tid == GcTid;
-invariant nextPhase == collectorPhase;
-invariant done ==> (forall j:int:: 1 <= j && j < i ==> nextPhase == mutatorPhase[j]);
+preserves tid == GcTid;
+preserves nextPhase == collectorPhase;
+preserves done ==> (forall j:int:: 1 <= j && j < i ==> nextPhase == mutatorPhase[j]);
 
 atomic action {:layer 98,100} AtomicWaitForMutators({:linear} tid:Tid, nextPhase: int)
 {
@@ -1957,7 +1957,7 @@ preserves call Yield_Lock();
 }
 
 yield invariant {:layer 95} Yield_Lock();
-invariant lock <==> absLock != 0;
+preserves lock <==> absLock != 0;
 
 //////////////////////////////////////////////////////////////////////////////
 // ATOMIC PRIMITIVES

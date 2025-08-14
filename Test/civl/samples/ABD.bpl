@@ -137,45 +137,45 @@ enable the informal proof of linearizability of ReadClient and WriteClient.
 // Yield invariants
 
 yield invariant {:layer 1} Monotonic#1(cond: bool, ts: TimeStamp, rid: ReplicaId);
-invariant cond ==> le(ts, replica_store[rid]->ts);
+preserves cond ==> le(ts, replica_store[rid]->ts);
 
 yield invariant {:layer 1} MonotonicInduction#1(q: ReplicaSet, ts: TimeStamp, i: int);
-invariant (forall rid: ReplicaId:: q[rid] && i <= rid && rid < numReplicas ==> le(ts, replica_store[rid]->ts));
+preserves (forall rid: ReplicaId:: q[rid] && i <= rid && rid < numReplicas ==> le(ts, replica_store[rid]->ts));
 
 yield invariant {:layer 1} MonotonicAll(old_replica_store: [ReplicaId]StampedValue);
-invariant (forall rid: ReplicaId:: IsReplica(rid) ==> le(old_replica_store[rid]->ts, replica_store[rid]->ts));
+preserves (forall rid: ReplicaId:: IsReplica(rid) ==> le(old_replica_store[rid]->ts, replica_store[rid]->ts));
 
 yield invariant {:layer 1} ReplicaInv();
-invariant (forall rid: ReplicaId:: IsReplica(rid) ==>
+preserves (forall rid: ReplicaId:: IsReplica(rid) ==>
             replica_ts[rid] == replica_store[rid]->ts
             && Map_Contains(value_store, replica_ts[rid])
             && Map_At(value_store, replica_ts[rid]) == replica_store[rid]->value);
 
 yield invariant {:layer 1} LastWriteInv({:linear} one_pid: One ProcessId, pid_last_ts: TimeStamp);
-invariant lt(TimeStamp(last_write[one_pid->val], one_pid->val), pid_last_ts);
-invariant (forall ts: TimeStamp:: Map_Contains(value_store, ts) && ts->pid == one_pid->val ==> le(ts, pid_last_ts));
+preserves lt(TimeStamp(last_write[one_pid->val], one_pid->val), pid_last_ts);
+preserves (forall ts: TimeStamp:: Map_Contains(value_store, ts) && ts->pid == one_pid->val ==> le(ts, pid_last_ts));
 
 yield invariant {:layer 1} ValueStoreInv#1(ts: TimeStamp, value: Value);
-invariant Map_Contains(value_store, ts) && Map_At(value_store, ts) == value;
+preserves Map_Contains(value_store, ts) && Map_At(value_store, ts) == value;
 
 yield invariant {:layer 1} AddToValueStoreInv({:linear} one_pid: One ProcessId, ts: TimeStamp);
-invariant one_pid->val == ts->pid;
-invariant !Map_Contains(value_store, ts);
+preserves one_pid->val == ts->pid;
+preserves !Map_Contains(value_store, ts);
 
 yield invariant {:layer 2} Monotonic#2(cond: bool, ts: TimeStamp, rid: ReplicaId);
-invariant cond ==> le(ts, replica_ts[rid]);
+preserves cond ==> le(ts, replica_ts[rid]);
 
 yield invariant {:layer 2} MonotonicInduction#2(q: ReplicaSet, ts: TimeStamp, i: int);
-invariant (forall rid: ReplicaId:: q[rid] && i <= rid && rid < numReplicas ==> le(ts, replica_ts[rid]));
+preserves (forall rid: ReplicaId:: q[rid] && i <= rid && rid < numReplicas ==> le(ts, replica_ts[rid]));
 
 yield invariant {:layer 2} TimeStampQuorum();
-invariant (exists q: ReplicaSet:: IsQuorum(q) && (forall rid: ReplicaId:: q[rid] ==> le(TS, replica_ts[rid])));
+preserves (exists q: ReplicaSet:: IsQuorum(q) && (forall rid: ReplicaId:: q[rid] ==> le(TS, replica_ts[rid])));
 
 yield invariant {:layer 2} ValidTimeStamp();
-invariant (forall rid: ReplicaId :: le(LeastTimeStamp(), replica_ts[rid]));
+preserves (forall rid: ReplicaId :: le(LeastTimeStamp(), replica_ts[rid]));
 
 yield invariant {:layer 3} ValueStoreInv#3(ts: TimeStamp, value: Value);
-invariant Map_Contains(value_store, ts) && Map_At(value_store, ts) == value;
+preserves Map_Contains(value_store, ts) && Map_At(value_store, ts) == value;
 
 yield invariant {:layer 4} Yield#4();
 

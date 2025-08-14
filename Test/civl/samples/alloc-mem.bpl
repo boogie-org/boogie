@@ -144,11 +144,11 @@ pure action WriteLinear ({:layer 1} {:linear_in} l: Cell int int, i: int, o: int
 }
 
 yield invariant {:layer 1} Yield ();
-invariant PoolInv(unallocated, pool);
+preserves PoolInv(unallocated, pool);
 
 yield invariant {:layer 1} YieldMem ({:layer 1} {:linear} l: Cell int int, i: int);
-invariant PoolInv(unallocated, pool);
-invariant l->key == One(i) && l->val == mem[i];
+preserves PoolInv(unallocated, pool);
+preserves l->key == One(i) && l->val == mem[i];
 
 var {:layer 1, 2} {:linear} pool: Set int;
 var {:layer 0, 1} mem: [int]int;

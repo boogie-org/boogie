@@ -18,7 +18,7 @@ yield procedure {:layer 1} C() {
 }
 
 yield invariant {:layer 1} Foo();
-invariant g >= 0;
+preserves g >= 0;
 
 yield procedure {:layer 1} D() 
 requires call Foo();

@@ -114,13 +114,13 @@ preserves call BarrierInv();
 }
 
 yield invariant {:layer 1} BarrierInv();
-invariant Set_IsSubset(mutatorsInBarrier, Mutators);
-invariant Set_Size(mutatorsInBarrier) + barrierCounter == N;
+preserves Set_IsSubset(mutatorsInBarrier, Mutators);
+preserves Set_Size(mutatorsInBarrier) + barrierCounter == N;
 
 yield invariant {:layer 1} MutatorInv({:linear} tid: Tid);
-invariant Set_Contains(tid->ps, Right(tid->i));
-invariant Set_Contains(mutatorsInBarrier, Left(tid->i));
+preserves Set_Contains(tid->ps, Right(tid->i));
+preserves Set_Contains(mutatorsInBarrier, Left(tid->i));
 
 yield invariant {:layer 1} CollectorInv({:linear} tid: Tid, done: bool);
-invariant tid == All(0) && barrierOn;
-invariant done ==> mutatorsInBarrier == Mutators;
+preserves tid == All(0) && barrierOn;
+preserves done ==> mutatorsInBarrier == Mutators;

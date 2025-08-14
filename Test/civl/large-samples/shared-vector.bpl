@@ -16,11 +16,11 @@ datatype IntArray {
 var {:layer 0, 2} {:linear} IntArrayPoolLow: Map (Loc IntArray) IntArray;
 
 yield invariant {:layer 2} IntArrayDom();
-invariant IntArrayPool->dom == IntArrayPoolLow->dom;
+preserves IntArrayPool->dom == IntArrayPoolLow->dom;
 
 yield invariant {:layer 2} Yield(loc_iv: Loc IntArray);
-invariant Map_Contains(IntArrayPoolLow, loc_iv);
-invariant
+preserves Map_Contains(IntArrayPoolLow, loc_iv);
+preserves
   (var intvec_low, intvec_high := Map_At(IntArrayPoolLow, loc_iv), Map_At(IntArrayPool, loc_iv);
     intvec_low->mutexes->dom == intvec_low->values->dom &&
     intvec_low->mutexes->dom->val == (lambda i: int :: 0 <= i && i < Vec_Len(intvec_high)) &&

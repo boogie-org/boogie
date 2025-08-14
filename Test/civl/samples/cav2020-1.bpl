@@ -13,7 +13,7 @@ preserves call yield_x(_x);
 }
 
 yield invariant {:layer 1} yield_x(_x: int);
-invariant _x <= x;
+preserves _x <= x;
 
 yield procedure {:layer 1} incr_y(_y: int)
 preserves call yield_y(_y);
@@ -24,7 +24,7 @@ preserves call yield_y(_y);
 }
 
 yield invariant {:layer 1} yield_y(_y: int);
-invariant _y <= y;
+preserves _y <= y;
 
 yield procedure {:layer 1} incr_x_y()
 requires call yield_x(0);

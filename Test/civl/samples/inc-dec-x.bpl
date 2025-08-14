@@ -4,7 +4,7 @@
 var {:layer 0,1} x:int;
 
 yield invariant {:layer 1} Inv ();
-invariant x >= 0;
+preserves x >= 0;
 
 yield procedure {:layer 1} main ()
 requires call Inv();
