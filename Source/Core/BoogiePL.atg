@@ -212,9 +212,10 @@ BoogiePL
                                     Pgm.AddTopLevelDeclaration(v);
                                   }
                                .)
+  | InvariantDecl<out yi>   (. Pgm.AddTopLevelDeclaration(yi); .)
   | "yield" 
     (
-      YieldInvariantDecl<out yi> (. Pgm.AddTopLevelDeclaration(yi); .)
+      InvariantDecl<out yi> (. yi.IsGlobal = false; Pgm.AddTopLevelDeclaration(yi); .)
     | YieldProcedureDecl<out yp, out im>     
                                (. Pgm.AddTopLevelDeclaration(yp);
                                   if (im != null) {
@@ -647,7 +648,7 @@ Constructor<DatatypeTypeCtorDecl datatypeTypeCtorDecl>
   .
 
 /*------------------------------------------------------------------------*/
-YieldInvariantDecl<out YieldInvariantDecl yieldInvariant>
+InvariantDecl<out YieldInvariantDecl yieldInvariant>
 = (. List<Requires> invariants = new List<Requires>(); QKeyValue kv = null; IToken name = null; List<Variable> ins; .)
   "invariant"
   { Attribute<ref kv> }

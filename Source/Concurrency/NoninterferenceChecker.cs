@@ -15,18 +15,13 @@ namespace Microsoft.Boogie
       return $"linear_{domain.permissionType}_available";
     }
 
-    public static List<Declaration> CreateNoninterferenceCheckerDecls(
+    public static (Procedure, Implementation) CreateNoninterferenceCheckerDecls(
       CivlTypeChecker civlTypeChecker,
       int layerNum,
       AbsyMap absyMap,
       YieldInvariantDecl yieldInvariantDecl,
       List<Variable> declLocalVariables)
     {
-      if (!yieldInvariantDecl.Requires.Any())
-      {
-        return new List<Declaration>();
-      }
-
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       var domainToHoleVar = new Dictionary<LinearDomain, Variable>();
       Dictionary<Variable, Variable> localVarMap = new Dictionary<Variable, Variable>();
@@ -107,7 +102,7 @@ namespace Microsoft.Boogie
       // Create the yield checker implementation
       var noninterferenceCheckerImpl = DeclHelper.Implementation(noninterferenceCheckerProc,
         inputs, new List<Variable>(), locals, noninterferenceCheckerBlocks);
-      return new List<Declaration> { noninterferenceCheckerProc, noninterferenceCheckerImpl };
+      return (noninterferenceCheckerProc, noninterferenceCheckerImpl);
     }
 
     private static LocalVariable CopyLocal(Variable v)
