@@ -770,8 +770,8 @@ preserves call Yield_FTPreserved_20(tid, old(shadow.Lock), old(shadow.VC), old(s
       return;
     }
 
-  par Yield_FTRepOk_10() | Yield_FTPreserved_10(tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R));
-  par Yield_FTRepOk_20() | Yield_FTPreserved_20(tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R));
+  call Yield_FTRepOk_10() | Yield_FTPreserved_10(tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R));
+  call Yield_FTRepOk_20() | Yield_FTPreserved_20(tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R));
 
   call AcquireVarLock(tid, x);
   call w := VarStateGetW(tid, x);
@@ -890,8 +890,8 @@ preserves call Yield_FTPreserved_20(tid, old(shadow.Lock), old(shadow.VC), old(s
        }
      }
 
-  par Yield_FTRepOk_10() | Yield_FTPreserved_10(tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R));
-  par Yield_FTRepOk_20() | Yield_FTPreserved_20(tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R));
+  call Yield_FTRepOk_10() | Yield_FTPreserved_10(tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R));
+  call Yield_FTRepOk_20() | Yield_FTPreserved_20(tid, old(shadow.Lock), old(shadow.VC), old(sx.W), old(sx.R));
 
   call AcquireVarLock(tid, x);
   call w := VarStateGetW(tid, x);
@@ -979,13 +979,13 @@ requires call Yield_ThreadState_30(tid);
     } else if (*) {
       assert {:layer 10,20} shadow.Lock[ShadowableTid(tid->val)] == tid->val;
       call l := ChooseLockToAcquire(tid);
-      par Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
+      call Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
       call Acquire(tid, l);
     } else if (*) {
       call l := ChooseLockToRelease(tid);
-      par Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
+      call Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
       call Release(tid, l);
-      par Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
+      call Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
       call ReleaseChosenLock(tid, l);
     } else if (*) {
       call uid := AllocTid(tid);
@@ -995,17 +995,17 @@ requires call Yield_ThreadState_30(tid);
       assert {:layer 10,20,30} tid->val != uid;
       assert {:layer 10,20,30} ValidTid(tid->val);
       assert {:layer 10,20,30} ValidTid(uid);
-      par Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
+      call Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
       assert {:layer 10,20,30} ValidTid(tid->val);
       assert {:layer 10,20,30} ValidTid(uid);
       call Fork(tid, uid);
-      par Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
+      call Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
       call StartThread(tid, uid);
     } else {
       call uid := ChooseThreadToJoin(tid);
-      par Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
+      call Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
       call Join(tid, uid);
-      par Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
+      call Yield_ThreadState_30(tid) | Yield_Preserved_30(tid, shadow.Lock, thread.State);
       call ReleaseJoinLock(tid, uid);
     }
     assert {:layer 20} shadow.Lock[ShadowableTid(tid->val)] == tid->val;

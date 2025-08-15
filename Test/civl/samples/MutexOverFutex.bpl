@@ -37,13 +37,13 @@ preserves call YieldWait(tid);
       if (oldValue != 2) {
         call temp := CmpXchg(1, 2);
       }
-      par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
+      call YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
       if (oldValue == 2 || temp != 0) {
         call WaitEnter(tid->val, 2);
-        par YieldInv() | YieldSlowPath(tid);
+        call YieldInv() | YieldSlowPath(tid);
         call WaitExit(tid->val);
       }
-      par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
+      call YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
       call oldValue := CmpXchg(0, 2);
       if (oldValue == 0) {
         call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := false]);
@@ -71,10 +71,10 @@ preserves call YieldWait(tid);
     call {:layer 1} mutex := Copy(None());
   } else {
     call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := true]);
-    par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
+    call YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
     call Store(0);
     call {:layer 1} mutex := Copy(None());
-    par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
+    call YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
     call Wake();
     call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := false]);
   }

@@ -16,7 +16,7 @@ modifies x;
 yield procedure {:layer 1} IncrBy2()
 refines AtomicIncrBy2;
 {
-  par Incr() | Incr();
+  call Incr() | Incr();
 }
 
 left action {:layer 2} AtomicIncrBy2()

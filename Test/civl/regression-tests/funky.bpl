@@ -157,12 +157,12 @@ requires call YieldCounter();
             call cid := AllocTid();
             async call TA(cid);
         }
-        par Yield() | YieldCounter();
+        call Yield() | YieldCounter();
         if (*) {
             call cid := AllocTid();
             async call AbsTB(cid);
         }
-        par Yield() | YieldCounter();
+        call Yield() | YieldCounter();
         call LockA(tid);
         call AbsAssertA(tid);
         call LockB(tid);

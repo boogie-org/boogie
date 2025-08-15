@@ -41,6 +41,6 @@ yield procedure {:layer 1} Main()
   while (*)
   invariant {:yields} true;
   {
-    par PB() | PC() | PD();
+    call PB() | PC() | PD();
   }
 }

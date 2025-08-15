@@ -72,7 +72,7 @@ refines AtomicIncrBy2;
 
   call tid1 := AllocTid();
   call tid2 := AllocTid();
-  par Incr(tid1) | Incr(tid2);
+  call Incr(tid1) | Incr(tid2);
 }
 
 yield procedure {:layer 5} EqualTo2({:linear} tid: One X)

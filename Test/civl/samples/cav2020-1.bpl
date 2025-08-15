@@ -33,8 +33,8 @@ requires call yield_y(0);
     if (*) {
         async call incr_x_y();
     }
-    par incr_x(0) | yield_y(0);
-    par incr_y(0) | yield_x(0);
+    call incr_x(0) | yield_y(0);
+    call incr_y(0) | yield_x(0);
     assert {:layer 1} 0 <= x && 0 <= y;
 }
 

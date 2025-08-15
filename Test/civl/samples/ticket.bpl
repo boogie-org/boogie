@@ -46,7 +46,7 @@ requires call Yield2();
   invariant call Yield2();
   {
     call Enter(tid);
-    par Yield1() | Yield2() | YieldSpec(tid);
+    call Yield1() | Yield2() | YieldSpec(tid);
     call Leave(tid);
   }
 }

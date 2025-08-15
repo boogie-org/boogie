@@ -17,7 +17,7 @@ modifies x;
 yield procedure {:layer 1} Incr2()
 refines AtomicIncr2;
 {
-  par Incr() | Incr();
+  call Incr() | Incr();
 }
 
 yield invariant {:layer 1} Yield();
@@ -29,5 +29,5 @@ modifies x;
 yield procedure {:layer 2} Incr4()
 refines AtomicIncr4;
 {
-  par Incr2() | Incr2() | Yield();
+  call Incr2() | Incr2() | Yield();
 }

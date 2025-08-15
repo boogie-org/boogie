@@ -40,7 +40,7 @@ requires {:layer 1} xls->val == MapConst(true);
     invariant {:yields} true;
     invariant call Yield();
     {
-        par tid := Allocate() | Yield();
+        call tid := Allocate() | Yield();
         async call Thread(tid);
     }
 }

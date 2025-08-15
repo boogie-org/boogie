@@ -90,7 +90,7 @@ requires call XidNotInCommitted(xid);
 
     if (d == COMMIT())
     {
-        par LockedNoConflicts() | CommittedSubsetLocked() |  XidNotInCommitted(xid) | XidInLocked(xid);
+        call LockedNoConflicts() | CommittedSubsetLocked() |  XidNotInCommitted(xid) | XidInLocked(xid);
         assume {:add_to_pool "J", 1} true;
         call add_to_committed_transactions(xid);
     }
@@ -113,7 +113,7 @@ modifies locked_transactions;
     if (1 <= i)
     {
         call vr := One_Get(vrs', VoteRequest(xid, i));
-        par votes, vrs' := vote_all(xid, vrs', i-1) |  out := vote(vr);
+        call votes, vrs' := vote_all(xid, vrs', i-1) |  out := vote(vr);
         votes[i] := out;
         call One_Put(vrs', vr);
     }
