@@ -12,14 +12,14 @@ p2({:linear_in "lin"} b: int);
 yield procedure {:layer 1}
 P1({:linear "lin"} x: int, {:linear_in "lin"} y: int)
 {
-  par Q(x) | Q(x);
+  call Q(x) | Q(x);
 }
 
 yield procedure {:layer 1}
 P2({:linear "lin"} x: int, {:linear_in "lin"} y: int)
 {
-  par Q(x) | linear_yield_x(y) | linear_yield_x(y);
-  par Q(x) | linear_yield_x(x) | linear_yield_x(y);
+  call Q(x) | linear_yield_x(y) | linear_yield_x(y);
+  call Q(x) | linear_yield_x(x) | linear_yield_x(y);
 }
 
 yield procedure {:layer 1}

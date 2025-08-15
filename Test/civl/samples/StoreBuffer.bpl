@@ -76,7 +76,7 @@ preserves call YieldLock();
 preserves call YieldStoreBufferLockAddrAbsent(tid);
 {
     call LockZero(tid->val);
-    par YieldLock() | YieldStoreBufferLockAddrPresent(tid);
+    call YieldLock() | YieldStoreBufferLockAddrPresent(tid);
     call FlushStoreBufferEntryForLock(tid->val);
 }
 

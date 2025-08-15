@@ -22,8 +22,8 @@ preserves call LockInv();
     var t: int;
 
     call Acquire(tid);
-    par t := Read(tid) | LockInv();
-    par Write(tid, t+1) | LockInv();
+    call t := Read(tid) | LockInv();
+    call Write(tid, t+1) | LockInv();
     call Release(tid);
 }
 

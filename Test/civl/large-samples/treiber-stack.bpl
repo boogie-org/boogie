@@ -119,7 +119,7 @@ preserves call StackDom();
   call {:layer 4} old_treiber := Copy(TreiberPoolLow->val[loc_t]);
   call loc_n, new_loc_n, tagged_loc := CreateNewTopOfStack(loc_t, x);
   call {:layer 4} FrameLemma(old_treiber, TreiberPoolLow->val[loc_t]);
-  par ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, Node(loc_n, x), new_loc_n, tagged_loc);
+  call ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, Node(loc_n, x), new_loc_n, tagged_loc);
   call success := WriteTopOfStack#0(loc_t, loc_n, Some(new_loc_n));
   if (success) {
     call {:layer 4} TreiberPool := Copy(Map_Update(TreiberPool, loc_t, Vec_Append(Map_At(TreiberPool, loc_t), x)));
@@ -240,7 +240,7 @@ preserves call TopInStack(loc_t);
     success := true;
     return;
   }
-  par LocInStack(loc_t, loc_n->t) | LocInStackOrNone(loc_t, loc_n) | TopInStack(loc_t);
+  call LocInStack(loc_t, loc_n->t) | LocInStackOrNone(loc_t, loc_n) | TopInStack(loc_t);
   call node := LoadNode#0(loc_t, loc_n->t);
   call Yield();
   Node(new_loc_n, x) := node;

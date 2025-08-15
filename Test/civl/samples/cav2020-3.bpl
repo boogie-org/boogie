@@ -92,7 +92,7 @@ preserves call BarrierInv();
         i := tid->i;
         call BarrierInv();
         call tid' := EnterBarrier(tid);
-        par BarrierInv() | MutatorInv(tid');
+        call BarrierInv() | MutatorInv(tid');
         call tid' := WaitForBarrierRelease(tid');
         call Move(tid', tid);
     }
@@ -104,10 +104,10 @@ requires {:layer 1} tid == All(0);
 preserves call BarrierInv();
 {
     call SetBarrier(true);
-    par BarrierInv() | CollectorInv(tid, false);
+    call BarrierInv() | CollectorInv(tid, false);
     call WaitBarrier();
     call {:layer 1} Lemma_SubsetSize(mutatorsInBarrier, Mutators);
-    par BarrierInv() | CollectorInv(tid, true);
+    call BarrierInv() | CollectorInv(tid, true);
     // do root scan here
     assert {:layer 1} mutatorsInBarrier == Mutators;
     call SetBarrier(false);

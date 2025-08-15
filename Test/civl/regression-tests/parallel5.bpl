@@ -18,8 +18,8 @@ yield procedure {:layer 1} main()
     var {:linear} j: One int;
     call i := Allocate();
     call j := Allocate();
-    par i := t(i) | Yield(j, a);
-    par i := u(i) | j := u(j);
+    call i := t(i) | Yield(j, a);
+    call i := u(i) | j := u(j);
 }
 
 yield procedure {:layer 1} t({:linear_in} i': One int) returns ({:linear} i: One int)

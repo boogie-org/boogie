@@ -583,7 +583,7 @@ requires call YieldEvict(i, ma, value, drp);
   call dirState, dp := dir_req_begin(ma);
   // do not change dirState in case this is a stale evict request due to a race condition with an invalidate
   if (dirState == Owner(i)) {
-    par write_mem(ma, value, dp) | YieldInv#1();
+    call write_mem(ma, value, dp) | YieldInv#1();
     dirState := Sharers(Set_Empty());
     call cache_evict_resp#1(i, ma, drp, dp);
   } else if (dirState is Sharers && Set_Contains(dirState->iset, i)) {
@@ -606,12 +606,12 @@ requires call YieldRead(i, ma, drp);
 
   call dirState, dp := dir_req_begin(ma);
   if (dirState is Owner) {
-    par value := cache_invalidate_exc#1(dirState->i, ma, Shared(), dp) | YieldInv#1();
-    par write_mem(ma, value, dp) | YieldInv#1();
+    call value := cache_invalidate_exc#1(dirState->i, ma, Shared(), dp) | YieldInv#1();
+    call write_mem(ma, value, dp) | YieldInv#1();
     call cache_read_resp#1(i, ma, value, Shared(), drp, dp);
     call dir_req_end(ma, Sharers(Set_Add(Set_Add(Set_Empty(), dirState->i), i)), dp);
   } else {
-    par value := read_mem(ma, dp) | YieldInv#1();
+    call value := read_mem(ma, dp) | YieldInv#1();
     call cache_read_resp#1(i, ma, value, if dirState->iset == Set_Empty() then Exclusive() else Shared(), drp, dp);
     call dir_req_end(ma, if dirState->iset == Set_Empty() then Owner(i) else Sharers(Set_Add(dirState->iset, i)), dp);
   }
@@ -628,11 +628,11 @@ requires call YieldRead(i, ma, drp);
 
   call dirState, dp := dir_req_begin(ma);
   if (dirState is Owner) {
-    par value := cache_invalidate_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
-    par write_mem(ma, value, dp) | YieldInv#1();
+    call value := cache_invalidate_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
+    call write_mem(ma, value, dp) | YieldInv#1();
   } else {
-    par dp := invalidate_sharers(ma, dirState->iset, dp) | YieldInv#1();
-    par value := read_mem(ma, dp) | YieldInv#1();
+    call dp := invalidate_sharers(ma, dirState->iset, dp) | YieldInv#1();
+    call value := read_mem(ma, dp) | YieldInv#1();
   }
   call cache_read_resp#1(i, ma, value, Exclusive(), drp, dp);
   call dir_req_end(ma, Owner(i), dp);
@@ -663,7 +663,7 @@ ensures {:layer 2} dp == dp';
   victim := Choice(victims->val);
   victims' := Set_Remove(victims, victim);
   call dpOne, dp' := get_victim(victim, ma, dp');
-  par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | dp' := invalidate_sharers(ma, victims', dp');
+  call cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | dp' := invalidate_sharers(ma, victims', dp');
   call dp' := put_victim(dpOne, dp');
 }
 

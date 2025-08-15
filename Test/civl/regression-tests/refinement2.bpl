@@ -7,13 +7,13 @@ var {:layer 0,2} x: int;
 yield procedure {:layer 1} foo1()
 refines atomic_incr;
 {
-    par {:mark} incr() | nop() | nop();
+    call {:mark} incr() | nop() | nop();
 }
 
 yield procedure {:layer 1} foo2()
 refines atomic_incr;
 {
-    par incr() | {:mark} nop() | nop();
+    call incr() | {:mark} nop() | nop();
 }
 
 atomic action {:layer 1,2} atomic_incr()

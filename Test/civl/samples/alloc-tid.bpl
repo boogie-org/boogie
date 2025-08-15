@@ -35,7 +35,7 @@ ensures call Yield2(tid, old(a)[tid->val] + 1);
   var t:int;
 
   call t := Read(tid, i);
-  par Yield1() | Yield2(tid, t);
+  call Yield1() | Yield2(tid, t);
   call Write(tid, i, t + 1);
 }
 
