@@ -2728,10 +2728,13 @@ namespace Microsoft.Boogie
   {
     public int Layer; // set during registration
 
+    public bool IsGlobal;
+
     public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
       base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false, requires, new List<IdentifierExpr>(),
         requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
     {
+      IsGlobal = true;
     }
 
     public override void Register(ResolutionContext rc)
