@@ -1,47 +1,44 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
+const MultisetEmpty:[val]int;
+axiom MultisetEmpty == MapConst(0);
+
+function {:inline} MultisetSingleton(v:val) : [val]int
+{
+  MultisetEmpty[v := 1]
+}
+
+function {:inline} MultisetSubsetEq(a:[val]int, b:[val]int) : bool
+{
+  MapLe(a, b) == MapConst(true)
+}
+
+function {:inline} MultisetPlus(a:[val]int, b:[val]int) : [val]int
+{
+  MapAdd(a, b)
+}
+
 const n:int;
 axiom n >= 1;
 
 type val = int;
 type pid = int;
 
-datatype perm {
+datatype Permission {
   Broadcast(i: int),
   Collect(i: int)
 }
 
-function {:inline} pid(i:int) : bool { 1 <= i && i <= n }
-
-function {:inline} InitialBroadcastPAs (k:pid) : [BROADCAST]bool
-{
-  (lambda pa:BROADCAST :: pa->p->val == Broadcast(pa->i) && pid(pa->i) && pa->i < k)
-}
-
-function {:inline} InitialCollectPAs (k:pid) : [COLLECT]bool
-{
-  (lambda pa:COLLECT :: pa->p->val == Collect(pa->i) && pid(pa->i) && pa->i < k)
-}
-
-function {:inline} AllBroadcasts () : [BROADCAST]bool
-{ (lambda pa:BROADCAST :: pa->p->val == Broadcast(pa->i) && pid(pa->i)) }
-
-function {:inline} AllCollects () : [COLLECT]bool
-{ (lambda pa:COLLECT :: pa->p->val == Collect(pa->i) && pid(pa->i)) }
-
-function {:inline} RemainingBroadcasts (k:pid) : [BROADCAST]bool
-{ (lambda {:pool "Broadcast"} pa:BROADCAST :: pa->p->val == Broadcast(pa->i) && k < pa->i && pa->i <= n) }
-
-function {:inline} RemainingCollects (k:pid) : [COLLECT]bool
-{ (lambda {:pool "Collect"} pa:COLLECT :: pa->p->val == Collect(pa->i) && k < pa->i && pa->i <= n) }
+function {:inline} IsPid(i:int) : bool { 1 <= i && i <= n }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 var {:layer 0,1} CH_low:[pid][val]int;
-var {:layer 1,4} CH:[val]int;
-var {:layer 0,4} value:[pid]val;
-var {:layer 0,4} decision:[pid]val;
+var {:layer 1,2} CH:[val]int;
+var {:layer 0,2} {:linear} usedPermissions: Set Permission;
+var {:layer 0,2} value:[pid]val;
+var {:layer 0,2} decision:[pid]val;
 
 function max(CH:[val]int) : val;
 function card(CH:[val]int) : int;
@@ -53,149 +50,24 @@ axiom (forall m:[val]int, m':[val]int :: MultisetSubsetEq(m, m') && card(m) == c
 axiom (forall v:val :: max(MultisetSingleton(v)) == v);
 axiom (forall CH:[val]int, v:val, x:int :: x > 0 ==> max(CH[v := x]) == (if v > max(CH) then v else max(CH)));
 
-function value_card(v:val, value:[pid]val, i:pid, j:pid) : int
+function value_card(v:val, value:[pid]val, j:pid) : int
 {
-  if j < i then
+  if j < 1 then
     0
   else
     if value[j] == v then
-      value_card(v, value, i, j-1) + 1
+      value_card(v, value, j-1) + 1
     else
-      value_card(v, value, i, j-1)
+      value_card(v, value, j-1)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 4}
-MAIN''({:linear_in} ps: Set perm)
-modifies CH, decision;
-{
-  assert ps->val == (lambda p:perm :: pid(p->i));
-  assert CH == MultisetEmpty;
-  CH := (lambda v:val :: value_card(v, value, 1, n));
-  assume card(CH) == n;
-  assume MultisetSubsetEq(MultisetEmpty, CH);
-  decision := (lambda i:pid :: if pid(i) then max(CH) else decision[i]);
-}
-
-action {:layer 3}
-INV_COLLECT_ELIM({:linear_in} ps: Set perm)
-creates COLLECT;
-modifies CH, decision;
-asserts ps->val == (lambda p:perm :: pid(p->i));
-asserts CH == MultisetEmpty;
-{
-  var {:linear} ps': Set perm;
-  var {:linear} remainingCollects: Set perm;
-  var {:pool "INV_COLLECT"} k: int;
-
-  CH := (lambda v:val :: value_card(v, value, 1, n));
-  assume card(CH) == n;
-  assume MultisetSubsetEq(MultisetEmpty, CH);
-  assume
-    {:add_to_pool "INV_COLLECT", k, k+1}
-    {:add_to_pool "Collect", COLLECT(One(Collect(n)), n)}
-    0 <= k && k <= n;
-  decision := (lambda i:pid :: if 1 <= i && i <= k then max(CH) else decision[i]);
-  ps' := ps;
-  call remainingCollects := Set_Get(ps', (lambda p: perm :: p is Collect && k < p->i && p->i <= n));
-  call {:linear remainingCollects} create_asyncs(RemainingCollects(k));
-  call set_choice(COLLECT(One(Collect(k+1)), k+1));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-atomic action {:layer 3}
-MAIN'({:linear_in} ps: Set perm)
-refines MAIN'' using INV_COLLECT_ELIM;
-creates COLLECT;
-modifies CH;
-asserts ps->val == (lambda p:perm :: pid(p->i));
-asserts CH == MultisetEmpty;
-{
-  var {:linear} ps': Set perm;
-  var {:linear} allCollects: Set perm;
-
-  assume {:add_to_pool "INV_COLLECT", 0} true;
-  CH := (lambda v:val :: value_card(v, value, 1, n));
-  assume card(CH) == n;
-  assume MultisetSubsetEq(MultisetEmpty, CH);
-  ps' := ps;
-  call allCollects := Set_Get(ps', (lambda p: perm :: p is Collect && pid(p->i)));
-  call {:linear allCollects} create_asyncs(AllCollects());
-}
-
-atomic action {:layer 2}
-MAIN({:linear_in} ps: Set perm)
-refines MAIN' using INV_BROADCAST_ELIM;
-creates BROADCAST, COLLECT;
-asserts ps->val == (lambda p:perm :: pid(p->i));
-asserts CH == MultisetEmpty;
-{
-  var {:linear} ps': Set perm;
-  var {:linear} allBroadcasts: Set perm;
-  var {:linear} allCollects: Set perm;
-
-  assume {:add_to_pool "INV_BROADCAST", 0} true;
-  ps' := ps;
-  call allBroadcasts := Set_Get(ps', (lambda p: perm :: p is Broadcast && pid(p->i)));
-  call {:linear allBroadcasts} create_asyncs(AllBroadcasts());
-  call allCollects := Set_Get(ps', (lambda p: perm :: p is Collect && pid(p->i)));
-  call {:linear allCollects} create_asyncs(AllCollects());
-}
-
-action {:layer 2}
-INV_BROADCAST_ELIM({:linear_in} ps: Set perm)
-creates BROADCAST, COLLECT;
-modifies CH;
-asserts ps->val == (lambda p:perm :: pid(p->i));
-asserts CH == MultisetEmpty;
-{
-  var {:linear} ps': Set perm;
-  var {:linear} remainingBroadcasts: Set perm;
-  var {:linear} allCollects: Set perm;
-  var {:pool "INV_BROADCAST"} k: int;
-
-  assume
-    {:add_to_pool "INV_BROADCAST", k, k+1}
-    {:add_to_pool "Broadcast", BROADCAST(One(Broadcast(n)), n)}
-    0 <= k && k <= n;
-  CH := (lambda v:val :: value_card(v, value, 1, k));
-  assume card(CH) == k;
-  assume MultisetSubsetEq(MultisetEmpty, CH);
-  ps' := ps;
-  call remainingBroadcasts := Set_Get(ps', (lambda p: perm :: p is Broadcast && k < p->i && p->i <= n));
-  call {:linear remainingBroadcasts} create_asyncs(RemainingBroadcasts(k));
-  call allCollects := Set_Get(ps', (lambda p: perm :: p is Collect && pid(p->i)));
-  call {:linear allCollects} create_asyncs(AllCollects());
-  call set_choice(BROADCAST(One(Broadcast(k+1)), k+1));
-}
-
-async left action {:layer 2} BROADCAST({:linear_in} p: One perm, i:pid)
-modifies CH;
-{
-  assert pid(i) && p->val == Broadcast(i);
-  CH := CH[value[i] := CH[value[i]] + 1];
-}
-
-async atomic action {:layer 2,3} COLLECT({:linear_in} p: One perm, i:pid)
-modifies decision;
-requires call YieldCollect();
-{
-  var received_values:[val]int;
-  assert pid(i) && p->val == Collect(i);
-  assume card(received_values) == n;
-  assume MultisetSubsetEq(MultisetEmpty, received_values);
-  assume MultisetSubsetEq(received_values, CH);
-  decision[i] := max(received_values);
-}
-
-yield invariant {:layer 3} YieldCollect();
-preserves CH == (lambda v:val :: value_card(v, value, 1, n));
+invariant {:layer 2} YieldCollect();
+preserves CH == (lambda v:val :: value_card(v, value, n));
 preserves card(CH) == n;
 preserves MultisetSubsetEq(MultisetEmpty, CH);
-
-////////////////////////////////////////////////////////////////////////////////
+preserves (forall q: Permission:: q is Broadcast && IsPid(q->i) ==> Set_Contains(usedPermissions, q));
 
 yield invariant {:layer 1} YieldInv();
 preserves Inv(CH_low, CH);
@@ -205,52 +77,70 @@ function {:inline} Inv(CH_low:[pid][val]int, CH:[val]int) : bool
   (forall i:pid :: MultisetSubsetEq(MultisetEmpty, CH_low[i]) && MultisetSubsetEq(CH_low[i], CH))
 }
 
-pure procedure {:inline 1} add_to_multiset (CH:[val]int, x: val) returns (CH':[val]int)
-{
-  CH' := CH[x := CH[x] + 1];
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-yield invariant {:layer 1}
-YieldInit({:linear} ps: Set perm);
-preserves ps->val == (lambda p:perm :: pid(p->i));
+yield invariant {:layer 1} YieldInit#1({:linear} ps: Set Permission);
+preserves ps->val == (lambda {:pool "A"} p: Permission ::IsPid(p->i));
 preserves (forall ii:pid :: CH_low[ii] == MultisetEmpty);
 preserves CH == MultisetEmpty;
+preserves usedPermissions == Set_Empty();
 
-yield procedure {:layer 1}
-Main({:linear_in} ps: Set perm)
-refines MAIN;
-requires call YieldInit(ps);
+yield invariant {:layer 2} YieldInit#2({:linear} ps: Set Permission);
+preserves ps->val == (lambda {:pool "A"} p: Permission ::IsPid(p->i));
+preserves CH == MultisetEmpty;
+preserves usedPermissions == Set_Empty();
+
+yield left procedure {:layer 2} Main({:linear_in} ps: Set Permission)
+requires call YieldInit#1(ps);
+requires call YieldInit#2(ps);
+ensures {:layer 2} (forall j: pid:: 1 <= j && j <= n ==> decision[j] == max((lambda v: val:: value_card(v, value, n))));
+modifies CH, usedPermissions, decision;
 {
-  var {:pending_async}{:layer 1} Broadcast_PAs:[BROADCAST]int;
-  var {:pending_async}{:layer 1} Collect_PAs:[COLLECT]int;
-  var i:pid;
-  var {:linear} s: One perm;
-  var {:linear} r: One perm;
-  var {:linear} ps': Set perm;
+  var i: pid;
+  var {:linear} s: One Permission;
+  var {:linear} r: One Permission;
+  var {:linear} psb, psc: Set Permission;
 
-  ps' := ps;
+  assume {:add_to_pool "A", Broadcast(1)} true;
+  psc := ps;
+  call psb := Set_Get(psc, (lambda p: Permission:: p is Broadcast && IsPid(p->i)));
   i := 1;
   while (i <= n)
-  invariant {:layer 1} 1 <= i && i <= n + 1;
-  invariant {:layer 1} ps'->val == (lambda p:perm :: pid(p->i) && p->i >= i);
-  invariant {:layer 1} Broadcast_PAs == ToMultiset(InitialBroadcastPAs(i));
-  invariant {:layer 1} Collect_PAs == ToMultiset(InitialCollectPAs(i));
+  invariant {:layer 1,2} 1 <= i && i <= n + 1;
+  invariant {:layer 1,2} psb->val == (lambda p: Permission:: p is Broadcast && i <= p->i && p->i <= n);
+  invariant {:layer 2} MultisetSubsetEq(MultisetEmpty, CH) && CH == (lambda v: val:: value_card(v, value, i-1)) && card(CH) == i-1;
+  invariant {:layer 2} Set((lambda p: Permission:: p is Broadcast && IsPid(p->i))) == Set_Union(usedPermissions, psb);
   {
-    call s := One_Get(ps', Broadcast(i));
-    call r := One_Get(ps', Collect(i));
-    async call Broadcast(s, i);
-    async call Collect(r, i);
+    call s := One_Get(psb, Broadcast(i));
+    async call {:sync} Broadcast(s, i);
     i := i + 1;
   }
-  assert {:layer 1} Broadcast_PAs == ToMultiset(AllBroadcasts());
-  assert {:layer 1} Collect_PAs == ToMultiset(AllCollects());
+
+  assert {:layer 2} MultisetSubsetEq(MultisetEmpty, CH) && CH == (lambda v: val:: value_card(v, value, n)) && card(CH) == n;
+
+  i := 1;
+  while (i <= n)
+  invariant {:layer 1,2} 1 <= i && i <= n + 1;
+  invariant {:layer 1,2} psc->val == (lambda p: Permission:: p is Collect && i <= p->i && p->i <= n);
+  invariant {:layer 2} (forall q: Permission:: q is Broadcast && IsPid(q->i) ==> Set_Contains(usedPermissions, q));
+  invariant {:layer 2} (forall j: pid:: 1 <= j && j < i ==> decision[j] == max(CH));
+  {
+    call r := One_Get(psc, Collect(i));
+    async call {:sync} Collect(r, i);
+    i := i + 1;
+  }
 }
 
-yield procedure {:layer 1} Broadcast({:linear_in} p: One perm, i:pid)
+left action {:layer 2} BROADCAST({:linear_in} p: One Permission, i:pid)
+modifies CH;
+{
+  assert IsPid(i) && p->val == Broadcast(i);
+  assume {:add_to_pool "A", Broadcast(i)} true;
+  CH := CH[value[i] := CH[value[i]] + 1];
+  call One_Put(usedPermissions, p);
+}
+
+yield procedure {:layer 1} Broadcast({:linear_in} p: One Permission, i:pid)
 refines BROADCAST;
-requires {:layer 1} pid(i) && p->val == Broadcast(i);
+requires {:layer 1} IsPid(i) && p->val == Broadcast(i);
 {
   var j: pid;
   var v: val;
@@ -261,19 +151,32 @@ requires {:layer 1} pid(i) && p->val == Broadcast(i);
   j := 1;
   while (j <= n)
   invariant {:layer 1} 1 <= j && j <= n+1;
-  invariant {:layer 1} CH_low == (lambda jj: pid :: (if pid(jj) && jj < j then MultisetPlus(old_CH_low[jj], MultisetSingleton(value[p->val->i])) else old_CH_low[jj]));
+  invariant {:layer 1} CH_low == (lambda jj: pid :: (if IsPid(jj) && jj < j then MultisetPlus(old_CH_low[jj], MultisetSingleton(value[p->val->i])) else old_CH_low[jj]));
   {
     call send(v, j);
     j := j + 1;
   }
-  call {:layer 1} CH := add_to_multiset(CH, value[i]);
+  call {:layer 1} CH :=  Copy(CH[value[i] := CH[value[i]] + 1]);
+  call release_permission(p);
 }
 
-yield procedure {:layer 1}
-Collect({:linear_in} p: One perm, i:pid)
+left action {:layer 2} COLLECT({:linear_in} p: One Permission, i:pid)
+modifies decision;
+requires call YieldCollect();
+{
+  var received_values:[val]int;
+  assert IsPid(i) && p->val == Collect(i);
+  assume card(received_values) == n;
+  assume MultisetSubsetEq(MultisetEmpty, received_values);
+  assume MultisetSubsetEq(received_values, CH);
+  decision[i] := max(received_values);
+  call One_Put(usedPermissions, p);
+}
+
+yield procedure {:layer 1} Collect({:linear_in} p: One Permission, i:pid)
 refines COLLECT;
 requires call YieldInv();
-requires {:layer 1} pid(i) && p->val == Collect(i);
+requires {:layer 1} IsPid(i) && p->val == Collect(i);
 {
   var j: pid;
   var d: val;
@@ -308,11 +211,12 @@ both action {:layer 1} GET_VALUE(i:pid) returns (v:val)
   v := value[i];
 }
 
-both action {:layer 1} SET_DECISION({:linear_in} p: One perm, d:val)
-modifies decision;
+both action {:layer 1} SET_DECISION({:linear_in} p: One Permission, d:val)
+modifies decision, usedPermissions;
 {
   assert p->val is Collect;
   decision[p->val->i] := d;
+  call One_Put(usedPermissions, p);
 }
 
 left action {:layer 1} SEND(v:val, i:pid)
@@ -331,7 +235,7 @@ modifies CH_low;
 yield procedure {:layer 0} get_value(i:pid) returns (v:val);
 refines GET_VALUE;
 
-yield procedure {:layer 0} set_decision({:linear_in} p: One perm, d:val);
+yield procedure {:layer 0} set_decision({:linear_in} p: One Permission, d:val);
 refines SET_DECISION;
 
 yield procedure {:layer 0} send(v:val, i:pid);
@@ -340,27 +244,7 @@ refines SEND;
 yield procedure {:layer 0} receive(i:pid) returns (v:val);
 refines RECEIVE;
 
-////////////////////////////////////////////////////////////////////////////////
-
-const MultisetEmpty:[val]int;
-axiom MultisetEmpty == MapConst(0);
-
-function {:inline} MultisetSingleton(v:val) : [val]int
-{
-  MultisetEmpty[v := 1]
-}
-
-function {:inline} MultisetSubsetEq(a:[val]int, b:[val]int) : bool
-{
-  MapLe(a, b) == MapConst(true)
-}
-
-function {:inline} MultisetPlus(a:[val]int, b:[val]int) : [val]int
-{
-  MapAdd(a, b)
-}
-
-function {:inline} MultisetMinus(a:[val]int, b:[val]int) : [val]int
-{
-  MapSub(a, b)
+yield procedure {:layer 0} release_permission({:linear_in} p: One Permission);
+refines both action {:layer 1} _ {
+  call One_Put(usedPermissions, p);
 }

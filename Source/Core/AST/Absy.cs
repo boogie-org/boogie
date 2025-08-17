@@ -2926,11 +2926,38 @@ namespace Microsoft.Boogie
     {
       var oldProc = tc.Proc;
       tc.Proc = this;
+      // We want to allow global variables to be accessed by the body but not the preconditions.
+      // Set Requires to empty list temporarily to enable this enforcement.
+      var savedRequires = Requires;
+      Requires = new List<Requires>();
       base.Typecheck(tc);
+      Requires = savedRequires;
+      tc.GlobalAccessOnlyInOld = true;
+      Requires.ForEach(requires => requires.Typecheck(tc));
       YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
+      tc.GlobalAccessOnlyInOld = false;
       Asserts.ForEach(assertCmd => assertCmd.Typecheck(tc));
       Contract.Assert(tc.Proc == this);
       tc.Proc = oldProc;
+
+      if (HasPreconditions)
+      {
+        if (LayerRange.LowerLayer != LayerRange.UpperLayer)
+        {
+          tc.Error(this, $"action with preconditions must exist at a single layer");
+        }
+        else
+        {
+          foreach (var yieldRequires in YieldRequires)
+          {
+            var yieldInvariantDecl = (YieldInvariantDecl)yieldRequires.Proc;
+            if (!yieldInvariantDecl.IsGlobal)
+            {
+              tc.Error(yieldRequires, $"called yield invariant must be global");
+            }
+          }
+        }
+      }
 
       Creates.ForEach(actionDeclRef =>
       {
@@ -3077,14 +3104,7 @@ namespace Microsoft.Boogie
       return Creates.Append(RefinedAction).Append(InvariantAction);
     }
 
-    public bool IsSkippable()
-    {
-      return
-        Creates.Count == 0 &&
-        ModifiedVars.All(v => v.LayerRange.UpperLayer == LayerRange.UpperLayer) &&
-        Asserts.Count > 0 &&
-        !VariableCollector.Collect(Asserts).Any(v => v is GlobalVariable);
-    }
+    public bool HasPreconditions => Requires.Count > 0 || YieldRequires.Count > 0;
 
     public IEnumerable<ActionDecl> CreateActionDecls => Creates.Select(x => x.ActionDecl);
 

@@ -84,6 +84,10 @@ namespace Microsoft.Boogie
 
     public bool IsLeftMover => ActionDecl.MoverType == MoverType.Left || ActionDecl.MoverType == MoverType.Both;
 
+    public bool IsConditionalLeftMover => IsLeftMover && ActionDecl.HasPreconditions;
+
+    public bool IsUnconditionalLeftMover => IsLeftMover && !ActionDecl.HasPreconditions;
+
     public int PendingAsyncStartIndex => ActionDecl.OutParams.Count;
 
     public bool TriviallyCommutesWith(Action other)
@@ -142,6 +146,29 @@ namespace Microsoft.Boogie
         map[formal] = Expr.Ident(to.PAs(pendingAsyncType));
       }
       return Substituter.SubstitutionFromDictionary(map);
+    }
+
+    public IEnumerable<AssertCmd> Preconditions(int layerNum, Substitution subst)
+    {
+      var cmds = new List<AssertCmd>();
+      ActionDecl.Requires.Where(req => req.Layers.Contains(layerNum)).ForEach(req =>
+      {
+        cmds.Add(CmdHelper.AssertCmd(req.tok, Substituter.Apply(subst, req.Condition), ""));
+      });
+      foreach (var callCmd in ActionDecl.YieldRequires)
+      {
+        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
+        if (layerNum == yieldInvariant.Layer)
+        {
+          Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(yieldInvariant.InParams
+              .Zip(callCmd.Ins)
+              .ToDictionary(x => x.Item1, x => x.Item2));
+          yieldInvariant.Requires.ForEach(req =>
+            cmds.Add(CmdHelper.AssertCmd(req.tok,
+                  Substituter.Apply(subst, Substituter.Apply(callFormalsToActuals, req.Condition)), "")));
+        }
+      }
+      return cmds;
     }
 
     public static Implementation CreateDuplicateImplementation(Implementation impl, string name)
