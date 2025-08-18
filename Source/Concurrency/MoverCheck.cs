@@ -150,14 +150,7 @@ namespace Microsoft.Boogie
           }
           if (!leftMover.IsLeftMover)
           {
-            var subst = Substituter.SubstitutionFromDictionary(
-              leftMover.ActionDecl.InParams.Zip(leftMover.Impl.InParams.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-            var moverCheckContext = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = leftMover.Preconditions(sequentialization.Layer, subst).Select(assertCmd => assertCmd.Expr)
-            };
-            moverChecking.CreateNonblockingChecker(leftMover, moverCheckContext);
+            moverChecking.CreateNonblockingChecker(leftMover);
           }
         }
       }
