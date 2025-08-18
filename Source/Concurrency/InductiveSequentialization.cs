@@ -35,29 +35,6 @@ namespace Microsoft.Boogie
       return new List<Expr>();
     }
 
-    public IEnumerable<AssertCmd> Preconditions(Action pendingAsync, Substitution subst)
-    {
-      var cmds = new List<AssertCmd>();
-      pendingAsync.ActionDecl.Requires.Where(req => req.Layers.Contains(Layer)).ForEach(req =>
-      {
-        cmds.Add(CmdHelper.AssertCmd(req.tok, Substituter.Apply(subst, req.Condition), ""));
-      });
-      foreach (var callCmd in pendingAsync.ActionDecl.YieldRequires)
-      {
-        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-        if (Layer == yieldInvariant.Layer)
-        {
-          Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(yieldInvariant.InParams
-              .Zip(callCmd.Ins)
-              .ToDictionary(x => x.Item1, x => x.Item2));
-          yieldInvariant.Requires.ForEach(req =>
-            cmds.Add(CmdHelper.AssertCmd(req.tok,
-                  Substituter.Apply(subst, Substituter.Apply(callFormalsToActuals, req.Condition)), "")));
-        }
-      }
-      return cmds;
-    }
-
     public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       foreach (var x in civlTypeChecker.Sequentializations)
@@ -310,7 +287,7 @@ namespace Microsoft.Boogie
       cmds.AddRange(pendingAsync.GetGateAsserts(
         Substituter.SubstitutionFromDictionary(pendingAsync.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
         $"Gate of {pendingAsync.Name} fails in induction step for invariant {invariantAction.Name}"));
-      cmds.AddRange(Preconditions(pendingAsync,
+      cmds.AddRange(pendingAsync.Preconditions(Layer,
         Substituter.SubstitutionFromDictionary(pendingAsync.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
 
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
@@ -368,11 +345,7 @@ namespace Microsoft.Boogie
       var invariantTransitionRelationExpr = ExprHelper.FunctionCall(invariantAction.InputOutputRelationWithChoice,
         invariantAction.ImplWithChoice.InParams.Concat(invariantAction.ImplWithChoice.OutParams)
           .Select(v => invariantFormalMap[v]).ToList());
-
-      Substitution subst = Substituter.SubstitutionFromDictionary(
-        leftMover.ActionDecl.InParams.Zip(leftMoverArgs.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-
-      return new List<Expr>(Preconditions(leftMover, subst).Select(assertCmd => assertCmd.Expr))
+      return new List<Expr>
       {
         ExprHelper.ExistsExpr(
         invariantFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
