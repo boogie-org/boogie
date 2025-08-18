@@ -325,7 +325,7 @@ namespace Microsoft.Boogie
       {
         AddDuplicateCall(newCall, yieldingProc.Layer > layerNum);
       }
-      else if (!yieldingProc.HasMoverType)
+      else
       {
         if (yieldingProc.Layer < layerNum)
         {
@@ -340,12 +340,7 @@ namespace Microsoft.Boogie
 
           AddDuplicateCall(newCall, true);
         }
-
         Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count);
-      }
-      else
-      {
-        Debug.Assert(false);
       }
     }
 
