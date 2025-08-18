@@ -799,6 +799,7 @@ namespace Microsoft.Boogie
         var locals = oldGlobalMap.Values.Union(localPermissionCollectors.Values).ToList();
         var cmds = new List<Cmd>();
 
+        cmds.AddRange(linearPermissionInstrumentation.DisjointnessAndWellFormedAssumeCmds(action.Impl, true));
         cmds.AddRange(CreateUpdatesToOldGlobalVars());
         cmds.AddRange(CreateUpdatesToPermissionCollector(action.Impl));
         cmds.Add(CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs));
