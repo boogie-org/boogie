@@ -884,7 +884,7 @@ public class Implementation : DeclWithFormals
     }
 
 #if DEBUG_PRINT
-      System.Console.WriteLine("* Strongly connected components * \n{0} \n ** ", scc);
+    System.Console.WriteLine("* Strongly connected components * \n{0} \n ** ", scc);
 #endif
 
     foreach (ICollection<Block> component in Cce.NonNull(this.scc))

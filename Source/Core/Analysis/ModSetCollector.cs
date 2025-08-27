@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq;
 
 namespace Microsoft.Boogie;
@@ -46,6 +45,7 @@ public class ModSetCollector : ReadOnlyVisitor
       this.Visit(program);
     }
 
+    modSets = new Dictionary<Procedure, HashSet<Variable>>(modSets.Where(pair => pair.Value.Count > 0));
     foreach (Procedure x in modSets.Keys)
     {
       if (x.Modifies == null)
@@ -59,26 +59,25 @@ public class ModSetCollector : ReadOnlyVisitor
     }
 
 #if DEBUG_PRINT
-      options.OutputWriter.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
-      foreach (Procedure x in modSets.Keys)
+    options.OutputWriter.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
+    foreach (Procedure x in modSets.Keys)
+    {
+      options.OutputWriter.Write("{0} : ", x.Name);
+      bool first = true;
+      foreach (var y in modSets[x])
       {
-        Contract.Assert(x != null);
-        options.OutputWriter.Write("{0} : ", x.Name);
-        bool first = true;
-        foreach (var y in modSets[x])
+        if (first)
         {
-          if (first)
-          {
-            first = false;
-          }
-          else
-          {
-            options.OutputWriter.Write(", ");
-          }
-          options.OutputWriter.Write("{0}", y.Name);
+          first = false;
         }
-        options.OutputWriter.WriteLine("");
+        else
+        {
+          options.OutputWriter.Write(", ");
+        }
+        options.OutputWriter.Write("{0}", y.Name);
       }
+      options.OutputWriter.WriteLine("");
+    }
 #endif
   }
 
