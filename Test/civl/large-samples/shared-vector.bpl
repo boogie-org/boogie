@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -timeLimit:0 -vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %parallel-boogie -timeLimit:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,29 +150,44 @@ refines Atomic_IntArray_Swap;
 preserves call IntArrayDom();
 preserves call Yield(loc_iv);
 {
-  var loc_mutex_i: Loc int;
-  var loc_mutex_j: Loc int;
-  var loc_int_i: Loc int;
-  var loc_int_j: Loc int;
-  var ii: int;
-  var jj: int;
   var i': int;
   var j': int;
-  var {:linear} cell_int_i: Cell (Loc int) int;
-  var {:linear} cell_int_j: Cell (Loc int) int;
-
+  
   if (i == j) {
     return;
   }
 
   // deadlock avoidance
   if (i < j) {
-    ii := i;
-    jj := j;
+    i', j' := i, j;
   } else {
-    ii := j;
-    jj := i;
+    i', j' := j, i;
   }
+
+  call IntArray_Swap_Helper(tid, loc_iv, i', j');
+  call {:layer 2} IntArrayPool := Copy(Map_Update(IntArrayPool, loc_iv, Vec_Swap(Map_At(IntArrayPool, loc_iv), i', j')));
+}
+
+yield atomic procedure {:layer 2} IntArray_Swap_Helper({:linear} tid: One Tid, loc_iv: Loc IntArray, i: int, j: int)
+requires {:layer 2} i < j;
+requires {:layer 2} Map_Contains(IntArrayPoolLow, loc_iv);
+requires {:layer 2}
+  (var intArray := Map_At(IntArrayPoolLow, loc_iv);
+    (var mutexes, values := intArray->mutexes, intArray->values;
+      Map_Contains(mutexes, i) && Map_Contains(mutexes, j) && Map_Contains(values, i) && Map_Contains(values, j) && 
+      Map_Contains(MutexPool, Map_At(mutexes, i)->val) && Map_Contains(MutexPool, Map_At(mutexes, j)->val)));
+ensures {:layer 2}
+  (var intArray := Map_At(old(IntArrayPoolLow), loc_iv);
+    (var values := intArray->values; 
+      (var cell_int_i, cell_int_j := Map_At(values, i), Map_At(values, j);
+        (var values' := Map_Update(Map_Update(values, i, cell_int_j), j, cell_int_i);
+          IntArrayPoolLow == Map_Update(old(IntArrayPoolLow), loc_iv, IntArray(intArray->mutexes, values'))))));
+ensures {:layer 2} MutexPool == old(MutexPool);
+{
+  var loc_mutex_i: Loc int;
+  var loc_mutex_j: Loc int;
+  var {:linear} cell_int_i: Cell (Loc int) int;
+  var {:linear} cell_int_j: Cell (Loc int) int;
 
   call loc_mutex_i := GetLocMutex(loc_iv, i);
   call loc_mutex_j := GetLocMutex(loc_iv, j);
@@ -184,8 +199,7 @@ preserves call Yield(loc_iv);
   call Locked_PutOwnedLocInt(tid, loc_iv, j, cell_int_i);
   call Mutex_Release(tid, loc_mutex_j);
   call Mutex_Release(tid, loc_mutex_i);
-  call {:layer 2} IntArrayPool := Copy(Map_Update(IntArrayPool, loc_iv, Vec_Swap(Map_At(IntArrayPool, loc_iv), i, j)));
-}
+} 
 
 both action {:layer 2} Atomic_Locked_GetOwnedLocInt({:linear} tid: One Tid, loc_iv: Loc IntArray, i: int) returns ({:linear} cell_int: Cell (Loc int) int)
 modifies IntArrayPoolLow;

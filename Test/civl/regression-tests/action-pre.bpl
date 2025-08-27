@@ -15,4 +15,4 @@ yield procedure {:layer 1} Bar(x: int)
 requires {:layer 1} x == 1;
 {
     call Foo(x);
-} 
+}
