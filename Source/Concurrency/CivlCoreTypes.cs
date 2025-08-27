@@ -150,10 +150,11 @@ namespace Microsoft.Boogie
 
     public IEnumerable<AssertCmd> Preconditions(int layerNum, Substitution subst)
     {
+      var errorMessage = $"this precondition of {Name} could not be proved";
       var cmds = new List<AssertCmd>();
       ActionDecl.Requires.Where(req => req.Layers.Contains(layerNum)).ForEach(req =>
       {
-        cmds.Add(CmdHelper.AssertCmd(req.tok, Substituter.Apply(subst, req.Condition), ""));
+        cmds.Add(CmdHelper.AssertCmd(req.tok, Substituter.Apply(subst, req.Condition), errorMessage));
       });
       foreach (var callCmd in ActionDecl.YieldRequires)
       {
@@ -165,7 +166,7 @@ namespace Microsoft.Boogie
               .ToDictionary(x => x.Item1, x => x.Item2));
           yieldInvariant.Requires.ForEach(req =>
             cmds.Add(CmdHelper.AssertCmd(req.tok,
-                  Substituter.Apply(subst, Substituter.Apply(callFormalsToActuals, req.Condition)), "")));
+                  Substituter.Apply(subst, Substituter.Apply(callFormalsToActuals, req.Condition)), errorMessage)));
         }
       }
       return cmds;
