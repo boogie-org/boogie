@@ -283,20 +283,6 @@ public class CallCmd : CallCommonality
       return;
     }
 
-    var callerModifiedVars = new HashSet<Variable>(callerDecl.ModifiedVars);
-
-    void CheckModifies(IEnumerable<Variable> modifiedVars)
-    {
-      if (!callerDecl.HasMoverType)
-      {
-        return;
-      }
-      foreach (var v in modifiedVars.Where(v => !callerModifiedVars.Contains(v)))
-      {
-        tc.Error(this, $"modified variable does not appear in modifies clause of mover procedure: {v.Name}");
-      }
-    }
-
     // check layers
     if (Proc is YieldProcedureDecl calleeDecl)
     {
@@ -318,7 +304,6 @@ public class CallCmd : CallCommonality
             }
             else
             {
-              CheckModifies(highestRefinedActionDecl.ModifiedVars);
               if (callerDecl.HasMoverType && highestRefinedActionDecl.Creates.Any())
               {
                 tc.Error(this, "caller must not be a mover procedure");
@@ -388,7 +373,6 @@ public class CallCmd : CallCommonality
         }
         else
         {
-          CheckModifies(calleeDecl.ModifiedVars);
           if (IsAsync)
           {
             if (!isSynchronized)

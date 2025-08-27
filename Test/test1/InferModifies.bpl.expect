@@ -1,0 +1,5 @@
+InferModifies.bpl(10,5): Error: this assertion could not be proved
+Execution trace:
+    InferModifies.bpl(9,5): anon0
+
+Boogie program verifier finished with 2 verified, 1 error

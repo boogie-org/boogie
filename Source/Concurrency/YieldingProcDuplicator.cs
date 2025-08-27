@@ -457,10 +457,9 @@ namespace Microsoft.Boogie
         return;
       }
       Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
-      for (int i = 0; i < action.Impl.InParams.Count; i++)
+      for (int i = 0; i < action.ActionDecl.InParams.Count; i++)
       {
-        // Parameters come from the implementation that defines the action
-        map[action.Impl.InParams[i]] = callCmd.Ins[i];
+        map[action.ActionDecl.InParams[i]] = callCmd.Ins[i];
       }
       Substitution subst = Substituter.SubstitutionFromDictionary(map);
       newCmdSeq.AddRange(action.Preconditions(layerNum, subst));
