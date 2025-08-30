@@ -13,8 +13,6 @@ type NodeSet = [Node]bool;
 
 type Value;
 
-datatype VoteInfo { VoteInfo(value: Value, ns: NodeSet) }
-
 /* 0 <= lastVoteRound, lastJoinRound <= numRounds */
 datatype AcceptorState { AcceptorState(lastJoinRound: Round, lastVoteRound: int, lastVoteValue: Value) }
 
@@ -30,41 +28,23 @@ datatype VoteResponse {
 }
 
 datatype Permission {
-  JoinPerm(r:Round, n: Node),
-  VotePerm(r:Round, n: Node),
-  ConcludePerm(r: Round)
+  RoundPerm(r: Round),
+  JoinPerm(r: Round, n: Node),
+  VotePerm(r: Round, n: Node)
+}
+
+datatype RoundStatus {
+  Inactive(),
+  Proposed(value: Value),
+  Decided(value: Value)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Functions
 
+function {:inline} IsActive(rs: RoundStatus, v: Value): bool { rs == Proposed(v) || rs == Decided(v) }
 function {:inline} NoNodes(): NodeSet { MapConst(false) }
 function {:inline} SingletonNode(node: Node): NodeSet { NoNodes()[node := true] }
-
-function Cardinality(q: NodeSet): int;
-axiom Cardinality(NoNodes()) == 0;
-
-function IsQuorum(ns: NodeSet): bool {
-  2 * Cardinality(ns) > numNodes &&
-  (forall n: Node :: ns[n] ==> Node(n))
-}
-
-axiom (forall ns1: NodeSet, ns2: NodeSet ::
-  IsQuorum(ns1) && IsQuorum(ns2) ==> (exists n: Node :: Node(n) && ns1[n] && ns2[n])
-);
-
-// MaxRound(r, ns, voteInfo) returns the highest round less than r that some node in ns voted for.
-// If no node in ns has voted for a round less than r, then it returns 0.
-function MaxRound(r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo): int;
-axiom (forall r: Round, ns: NodeSet, voteInfo: [Round]Option VoteInfo ::
-  Round(r) ==>
-  (
-    var ret := MaxRound(r, ns, voteInfo);
-    0 <= ret && ret < r &&
-    (forall r': Round :: ret < r' && r' < r && voteInfo[r'] is Some ==> IsDisjoint(ns, voteInfo[r']->t->ns)) &&
-    (Round(ret) ==> voteInfo[ret] is Some && !IsDisjoint(ns, voteInfo[ret]->t->ns))
-  )
-);
 
 function {:inline} AllPermissions(r: Round) : Set Permission
 {
@@ -73,65 +53,161 @@ function {:inline} AllPermissions(r: Round) : Set Permission
 
 function {:inline} JoinPermissions(r: Round) : Set Permission
 {
-  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is JoinPerm && p->r == r))
+  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is JoinPerm && p->r == r && Node(p->n)))
 }
 
 function {:inline} VotePermissions(r: Round) : Set Permission
 {
-  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is VotePerm && p->r == r))
+  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is VotePerm && p->r == r && Node(p->n)))
 }
 
-function {:inline} ProposePermissions(r: Round) : Set Permission
+function {:inline} JoinPermissionsUpto(r: Round, n: Node) : Set Permission
 {
-  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} !(p is JoinPerm) && p->r == r))
+  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is JoinPerm && p->r == r && Node(p->n) && p->n < n))
 }
 
-function {:inline} JoinPAs(r: Round) : [A_Join]bool
+function {:inline} VotePermissionsUpto(r: Round, n: Node) : Set Permission
 {
-  (lambda pa: A_Join :: pa->r == r && Node(pa->n) && pa->p->val == JoinPerm(r, pa->n))
+  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is VotePerm && p->r == r && Node(p->n) && p->n < n))
 }
 
-function {:inline} VotePAs(r: Round, v: Value) : [A_Vote]bool
+function {:inline} ToVotePermissions(r: Round, ns: NodeSet): Set Permission
 {
-  (lambda pa: A_Vote :: pa->r == r && Node(pa->n) && pa->v == v && pa->p->val == VotePerm(r, pa->n))
+  Set((lambda p: Permission:: p is VotePerm && p->r == r && ns[p->n]))
+}
+
+function IsJoinQuorum(r: Round, ps: Set Permission): bool
+{
+  2 * Set_Size(ps) > numNodes && Set_IsSubset(ps, JoinPermissions(r))
+}
+
+function IsVoteQuorum(r: Round, ps: Set Permission): bool
+{
+  2 * Set_Size(ps) > numNodes && Set_IsSubset(ps, VotePermissions(r))
+}
+
+function {:inline} VoteQuorumLt(r: Round, status: [Round]RoundStatus, voteInfo: [Round]NodeSet): bool
+{
+  (forall r': Round:: Round(r') && r' < r && status[r'] is Decided ==> IsVoteQuorum(r', ToVotePermissions(r', voteInfo[r'])))
+}
+
+function {:inline} VoteQuorumLe(r: Round, status: [Round]RoundStatus, voteInfo: [Round]NodeSet): bool
+{
+  (forall r': Round:: Round(r') && r' <= r && status[r'] is Decided ==> IsVoteQuorum(r', ToVotePermissions(r', voteInfo[r'])))
+}
+
+function {:inline} SpecLt(r: Round, status: [Round]RoundStatus): bool
+{
+  (forall r1, r2: Round:: Round(r1) && r1 <= r2 && r2 < r && status[r1] is Decided ==> status[r2] is Inactive || status[r1]->value == status[r2]->value)
+}
+
+function {:inline} SpecLe(r: Round, status: [Round]RoundStatus): bool
+{
+  (forall r1, r2: Round:: Round(r1) && r1 <= r2 && r2 <= r && status[r1] is Decided ==> status[r2] is Inactive || status[r1]->value == status[r2]->value)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //// Global variables
-// Abstract
-var {:layer 1,2} joinedNodes: [Round]NodeSet;
-var {:layer 1,2} voteInfo: [Round]Option VoteInfo;
-var {:layer 1,3} decision: [Round]Option Value; // spec
 
-// Concrete
+var {:layer 1,2} status: [Round]RoundStatus;
+var {:layer 1,2} joinInfo: [Round]NodeSet;
+var {:layer 1,2} voteInfo: [Round]NodeSet;
+
+var {:layer 1,2} {:linear} joinChannelPermissions: Set Permission;
+var {:layer 1,2} {:linear} voteChannelPermissions: Set Permission;
+var {:layer 1,2} {:linear} usedPermissions: Set Permission;
+
 var {:layer 0,1} acceptorState: [Node]AcceptorState;
 var {:layer 0,1} joinChannel: [Round][JoinResponse]int;
 var {:layer 0,1} voteChannel: [Round][VoteResponse]int;
 
-// Intermediate channel representation
-var {:layer 1,1} {:linear} joinChannelPermissions: Set Permission;
-var {:layer 1,1} {:linear} voteChannelPermissions: Set Permission;
-var {:layer 1,1} {:linear} usedPermissions: Set Permission;
+////////////////////////////////////////////////////////////////////////////////
+//// Invariants
+
+// MaxRound(r, n, voteInfo) returns the highest round less than r that n voted for.
+// If n has not voted for a round less than r, then 0 is returned.
+function MaxRound(r: Round, n: Node, voteInfo: [Round]NodeSet): int;
+axiom (forall r: Round, n: Node, voteInfo: [Round]NodeSet :: {MaxRound(r, n, voteInfo)}
+  Round(r) ==> MaxRoundPredicate(r, n, voteInfo, MaxRound(r, n, voteInfo))
+);
+
+function {:inline} MaxRoundPredicate(r: Round, n: Node, voteInfo: [Round]NodeSet, maxRound: int): bool
+{
+  0 <= maxRound && maxRound < r &&
+  (forall r': Round :: maxRound < r' && r' < r ==> !voteInfo[r'][n]) &&
+  (maxRound == 0 || voteInfo[maxRound][n])
+}
+
+function {:inline} Inv(status: [Round]RoundStatus, joinInfo: [Round]NodeSet, voteInfo: [Round]NodeSet, acceptorState: [Node]AcceptorState,
+              joinChannel: [Round][JoinResponse]int, joinChannelPermissions: Set Permission,
+              voteChannel: [Round][VoteResponse]int, voteChannelPermissions: Set Permission) : bool
+{
+  (forall r: Round, jr: JoinResponse :: 0 <= joinChannel[r][jr] && joinChannel[r][jr] <= 1)
+  &&
+  (forall r: Round, jr1: JoinResponse, jr2: JoinResponse :: jr1->from == jr2->from && joinChannel[r][jr1] > 0 && joinChannel[r][jr2] > 0 ==> jr1 == jr2)
+  &&
+  (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] > 0 ==> 
+    Round(r) && Node(jr->from) && Set_Contains(joinChannelPermissions, JoinPerm(r, jr->from)) &&
+    (jr is JoinAccept ==> joinInfo[r][jr->from] &&
+                          MaxRoundPredicate(r, jr->from, voteInfo, jr->lastVoteRound) &&
+                          r <= acceptorState[jr->from]->lastJoinRound &&
+                          (jr->lastVoteRound == 0 || IsActive(status[jr->lastVoteRound], jr->lastVoteValue)))
+  )
+
+  &&
+  (forall r: Round, vr: VoteResponse :: 0 <= voteChannel[r][vr] && voteChannel[r][vr] <= 1)
+  &&
+  (forall r: Round, vr1: VoteResponse, vr2: VoteResponse :: vr1->from == vr2->from && voteChannel[r][vr1] > 0 && voteChannel[r][vr2] > 0 ==> vr1 == vr2)
+  &&
+  (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] > 0 ==> Round(r) && Node(vr->from) && Set_Contains(voteChannelPermissions, VotePerm(r, vr->from)) &&
+    (vr is VoteAccept <==> voteInfo[r][vr->from])
+  )
+
+  &&
+  (forall n: Node :: Node(n) ==>
+    (
+      var lastJoinRound, lastVoteRound, lastVoteValue := acceptorState[n]->lastJoinRound, acceptorState[n]->lastVoteRound, acceptorState[n]->lastVoteValue;
+      lastVoteRound <= lastJoinRound &&
+      (lastJoinRound == 0 || (Round(lastJoinRound) && joinInfo[lastJoinRound][n])) &&
+      (forall r: Round :: lastJoinRound < r && Round(r) ==> !joinInfo[r][n]) &&
+      (lastVoteRound == 0 || (Round(lastVoteRound) && voteInfo[lastVoteRound][n] && IsActive(status[lastVoteRound], lastVoteValue))) &&
+      (forall r: Round :: lastVoteRound < r && Round(r) ==> !voteInfo[r][n])
+    )
+  )
+}
+
+yield invariant {:layer 1} YieldInv();
+preserves Inv(status, joinInfo, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
 
 ////////////////////////////////////////////////////////////////////////////////
+//// Set_Size
 
-function {:inline} Init (
-  ps: Set Permission, decision: [Round]Option Value) : bool
-{
-  ps->val == (lambda p: Permission :: true) &&
-  decision == (lambda r: Round :: None())
-}
+function Set_Size<T>(a: Set T) : int;
 
-function {:inline} InitLow (
-  acceptorState: [Node]AcceptorState,
-  joinChannel: [Round][JoinResponse]int,
-  voteChannel: [Round][VoteResponse]int,
-  joinChannelPermissions: Set Permission,
-  voteChannelPermissions: Set Permission) : bool
-{
-  (forall n: Node :: acceptorState[n]->lastJoinRound == 0 && acceptorState[n]->lastVoteRound == 0) &&
-  (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] == 0) &&
-  (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] == 0) &&
-  joinChannelPermissions == Set_Empty() &&
-  voteChannelPermissions == Set_Empty()
-}
+axiom (forall<T> :: Set_Size(Set_Empty(): Set T) == 0);
+
+pure procedure Lemma_Set_Add<T>(a: Set T, t: T) returns (b: Set T);
+requires !Set_Contains(a, t);
+ensures b == Set_Add(a, t);
+ensures Set_Size(b) == Set_Size(a) + 1;
+
+pure procedure Lemma_Set_Remove<T>(a: Set T, t: T) returns (b: Set T);
+requires Set_Contains(a, t);
+ensures b == Set_Remove(a, t);
+ensures Set_Size(b) + 1 == Set_Size(a);
+
+////////////////////////////////////////////////////////////////////////////////
+//// Quorum
+
+pure procedure Lemma_Quorum_Intersection(r: Round, joinAcceptPerms: Set Permission, status: [Round]RoundStatus, voteInfo: [Round]NodeSet);
+requires Round(r);
+requires IsJoinQuorum(r, joinAcceptPerms);
+requires VoteQuorumLt(r, status, voteInfo);
+ensures  (forall r': Round:: Round(r') && r' < r && status[r'] is Decided ==>
+            (exists n: Node:: Node(n) && Set_Contains(joinAcceptPerms, JoinPerm(r, n)) && voteInfo[r'][n]));
+
+pure procedure Lemma_Quorum_Monotonic(r: Round, voteAcceptPerms: Set Permission, ns: NodeSet);
+requires Round(r);
+requires IsVoteQuorum(r, voteAcceptPerms);
+requires Set_IsSubset(voteAcceptPerms, ToVotePermissions(r, ns));
+ensures IsVoteQuorum(r, ToVotePermissions(r, ns));
