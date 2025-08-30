@@ -118,42 +118,6 @@ namespace Microsoft.Boogie
           moverChecking.CreateNonblockingChecker(leftMover, moverCheckContext);
         }
       }
-
-      /*
-       * All the global caches of various mover checks have been populated now.
-       * The global cache is checked before adding per-layer mover checks for sequentializations.
-       * Therefore, it is important that the sequentialization mover checks are generated last.
-       * Each sequentialization mover check is constrained by extra assumptions.
-       * Therefore, presence in global cache of the corresponding unconstrained check
-       * obviates the need to generate it.
-       */
-
-      foreach (var sequentialization in civlTypeChecker.Sequentializations)
-      {
-        foreach (var leftMover in sequentialization.EliminatedActions)
-        {
-          foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
-          {
-            var moverCheckContext1 = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateLeftMoverCheckAssumptions(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
-            };
-            var moverCheckContext2 = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateLeftMoverCheckAssumptions(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
-            };
-            moverChecking.CreateCommutativityChecker(action, leftMover, moverCheckContext1);
-            moverChecking.CreateGatePreservationChecker(leftMover, action, moverCheckContext2);
-            moverChecking.CreateFailurePreservationChecker(action, leftMover, moverCheckContext1);
-          }
-          if (!leftMover.IsLeftMover)
-          {
-            moverChecking.CreateNonblockingChecker(leftMover);
-          }
-        }
-      }
     }
 
     private IEnumerable<Requires> DisjointnessAndWellFormedRequires(IEnumerable<Variable> paramVars, HashSet<Variable> frame)

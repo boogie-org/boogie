@@ -2970,6 +2970,9 @@ namespace Microsoft.Boogie
 
       if (RefinedAction != null)
       {
+        EliminatedActionDecls().Where(actionDecl => !actionDecl.IsLeftMover).ForEach(actionDecl => {
+          tc.Error(actionDecl, $"eliminated action must be a left mover");
+        });
         var layer = LayerRange.UpperLayer;
         var refinedActionDecl = RefinedAction.ActionDecl;
         if (!refinedActionDecl.LayerRange.Contains(layer + 1))
