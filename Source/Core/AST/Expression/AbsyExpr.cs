@@ -2165,16 +2165,22 @@ namespace Microsoft.Boogie
       bool fragileRightContext = false; // false means "allow same binding power on right without parens"
       switch (this.op)
       {
-        case Opcode.Add:
+        case Opcode.Add: {
           opBindingStrength = 0x40;
+          var t1 = args[1].Type;
+          fragileRightContext = t1 == null || !(t1.IsInt || t1.IsReal || t1.IsBv);
           break;
+        }
         case Opcode.Sub:
           opBindingStrength = 0x40;
           fragileRightContext = true;
           break;
-        case Opcode.Mul:
+        case Opcode.Mul: {
           opBindingStrength = 0x50;
+          var t1 = args[1].Type;
+          fragileRightContext = t1 == null || !(t1.IsInt || t1.IsReal || t1.IsBv);
           break;
+        }
         case Opcode.Div:
           opBindingStrength = 0x50;
           fragileRightContext = true;
