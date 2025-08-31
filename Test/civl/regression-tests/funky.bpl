@@ -157,12 +157,12 @@ requires call YieldCounter();
             call cid := AllocTid();
             async call TA(cid);
         }
-        par Yield() | YieldCounter();
+        call Yield() | YieldCounter();
         if (*) {
             call cid := AllocTid();
             async call AbsTB(cid);
         }
-        par Yield() | YieldCounter();
+        call Yield() | YieldCounter();
         call LockA(tid);
         call AbsAssertA(tid);
         call LockB(tid);
@@ -175,4 +175,4 @@ requires call YieldCounter();
 yield procedure {:layer 2} Yield();
 
 yield invariant {:layer 3} YieldCounter();
-invariant counter == 0;
+preserves counter == 0;

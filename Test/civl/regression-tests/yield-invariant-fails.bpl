@@ -4,7 +4,7 @@
 var {:layer 0,1} g: int;
 
 yield invariant {:layer 1} Inv();
-invariant g > 0;
+preserves g > 0;
 
 yield procedure {:layer 1} foo()
 {

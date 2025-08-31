@@ -57,16 +57,16 @@ preserves call SeqLockInv();
   call locked_inc_seq(tid);
   call locked_write_x(tid, v);
   call locked_write_y(tid, w);
-  par SeqLockInv() | HoldLock(tid);
+  call SeqLockInv() | HoldLock(tid);
   call locked_inc_seq(tid);
   call release(tid);
 }
 
 yield invariant{:layer 2} SeqLockInv ();
-invariant lock == None() <==> isEven(seq);
+preserves lock == None() <==> isEven(seq);
 
 yield invariant{:layer 2} HoldLock ({:linear} tid: One Tid);
-invariant lock == Some(tid->val);
+preserves lock == Some(tid->val);
 
 // =============================================================================
 // Abstractions of atomic actions with stronger mover types

@@ -90,7 +90,7 @@ requires call XidNotInCommitted(xid);
 
     if (d == COMMIT())
     {
-        par LockedNoConflicts() | CommittedSubsetLocked() |  XidNotInCommitted(xid) | XidInLocked(xid);
+        call LockedNoConflicts() | CommittedSubsetLocked() |  XidNotInCommitted(xid) | XidInLocked(xid);
         assume {:add_to_pool "J", 1} true;
         call add_to_committed_transactions(xid);
     }
@@ -113,7 +113,7 @@ modifies locked_transactions;
     if (1 <= i)
     {
         call vr := One_Get(vrs', VoteRequest(xid, i));
-        par votes, vrs' := vote_all(xid, vrs', i-1) |  out := vote(vr);
+        call votes, vrs' := vote_all(xid, vrs', i-1) |  out := vote(vr);
         votes[i] := out;
         call One_Put(vrs', vr);
     }
@@ -186,14 +186,14 @@ refines atomic action {:layer 1, 1} _ {
 }
 
 yield invariant {:layer 1} LockedNoConflicts();
-invariant {:layer 1} (forall  {:pool "J"} j:int, xid1: TransactionId, xid2: TransactionId :: {:add_to_pool "J", j} (1 <= j && j < n+1 && xid1 != xid2 && Set_Contains(locked_transactions[j], xid1) && Set_Contains(locked_transactions[j], xid2)) ==> !Conflict[xid1][xid2]);
+preserves {:layer 1} (forall  {:pool "J"} j:int, xid1: TransactionId, xid2: TransactionId :: {:add_to_pool "J", j} (1 <= j && j < n+1 && xid1 != xid2 && Set_Contains(locked_transactions[j], xid1) && Set_Contains(locked_transactions[j], xid2)) ==> !Conflict[xid1][xid2]);
 
 yield invariant {:layer 1} CommittedSubsetLocked();
-invariant {:layer 1} (forall {:pool "J"} j:int, xid0: TransactionId :: {:add_to_pool "J", j} 1 <= j && j < n+1 && Set_Contains(committed_transactions, xid0) ==> Set_Contains(locked_transactions[j], xid0));
+preserves {:layer 1} (forall {:pool "J"} j:int, xid0: TransactionId :: {:add_to_pool "J", j} 1 <= j && j < n+1 && Set_Contains(committed_transactions, xid0) ==> Set_Contains(locked_transactions[j], xid0));
 
 yield invariant {:layer 1} XidInLocked({:linear} xid: One TransactionId);
-invariant (forall {:pool "J"} j:int :: {:add_to_pool "J", j} 1 <= j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
+preserves (forall {:pool "J"} j:int :: {:add_to_pool "J", j} 1 <= j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
 
 yield invariant {:layer 1} XidNotInCommitted({:linear} xid: One TransactionId);
-invariant !Set_Contains(committed_transactions, xid->val);
+preserves !Set_Contains(committed_transactions, xid->val);
  

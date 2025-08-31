@@ -92,30 +92,30 @@ The yield invariant at this level is a global invariant connecting directory and
 
 /// Yield invariants
 yield invariant {:layer 1} YieldInv#1();
-invariant (forall i: CacheId, ca: CacheAddr:: Set_Contains(cachePermissions, CachePermission(i, ca)) || cacheBusy[i][ca]);
-invariant (forall ma: MemAddr:: Set_IsSubset(WholeDirPermission(ma), dirPermissions) || dirBusy[ma]);
+preserves (forall i: CacheId, ca: CacheAddr:: Set_Contains(cachePermissions, CachePermission(i, ca)) || cacheBusy[i][ca]);
+preserves (forall ma: MemAddr:: Set_IsSubset(WholeDirPermission(ma), dirPermissions) || dirBusy[ma]);
 
 yield invariant {:layer 2} YieldInv#2();
-invariant (forall i: CacheId, ca: CacheAddr:: Hash(cache[i][ca]->ma) == ca);
-invariant (forall i: CacheId, ca: CacheAddr:: (var line := cache[i][ca];
+preserves (forall i: CacheId, ca: CacheAddr:: Hash(cache[i][ca]->ma) == ca);
+preserves (forall i: CacheId, ca: CacheAddr:: (var line := cache[i][ca];
               line->state == Invalid() ||
               (line->value == absMem[line->ma] && if line->state == Shared() then dir[line->ma] is Sharers else dir[line->ma] is Owner)));
-invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Owner ==> Owned(cache[dir[ma]->i][Hash(ma)]->state) && cache[dir[ma]->i][Hash(ma)]->ma == ma);
-invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Owner ==>
+preserves (forall ma: MemAddr:: {dir[ma]} dir[ma] is Owner ==> Owned(cache[dir[ma]->i][Hash(ma)]->state) && cache[dir[ma]->i][Hash(ma)]->ma == ma);
+preserves (forall ma: MemAddr:: {dir[ma]} dir[ma] is Owner ==>
             (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> dir[ma]->i == i || cache[i][Hash(ma)]->state == Invalid()));
-invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
+preserves (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
             (forall i: CacheId:: Set_Contains(dir[ma]->iset, i) ==> cache[i][Hash(ma)]->state == Shared() && cache[i][Hash(ma)]->ma == ma));
-invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
+preserves (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
             (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> Set_Contains(dir[ma]->iset, i) || cache[i][Hash(ma)]->state == Invalid()));
-invariant (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==> mem[ma] == absMem[ma]);
+preserves (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==> mem[ma] == absMem[ma]);
 
 yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: Set CachePermission);
-invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
-invariant value == cache[i][Hash(ma)]->value;
+preserves Set_Contains(drp, CachePermission(i, Hash(ma)));
+preserves value == cache[i][Hash(ma)]->value;
 
 yield invariant {:layer 2} YieldRead(i: CacheId, ma: MemAddr, {:linear} drp: Set CachePermission);
-invariant Set_Contains(drp, CachePermission(i, Hash(ma)));
-invariant (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->state == Shared()) && line->ma == ma);
+preserves Set_Contains(drp, CachePermission(i, Hash(ma)));
+preserves (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->state == Shared()) && line->ma == ma);
 
 /// Cache
 /*
@@ -583,7 +583,7 @@ requires call YieldEvict(i, ma, value, drp);
   call dirState, dp := dir_req_begin(ma);
   // do not change dirState in case this is a stale evict request due to a race condition with an invalidate
   if (dirState == Owner(i)) {
-    par write_mem(ma, value, dp) | YieldInv#1();
+    call write_mem(ma, value, dp) | YieldInv#1();
     dirState := Sharers(Set_Empty());
     call cache_evict_resp#1(i, ma, drp, dp);
   } else if (dirState is Sharers && Set_Contains(dirState->iset, i)) {
@@ -606,12 +606,12 @@ requires call YieldRead(i, ma, drp);
 
   call dirState, dp := dir_req_begin(ma);
   if (dirState is Owner) {
-    par value := cache_invalidate_exc#1(dirState->i, ma, Shared(), dp) | YieldInv#1();
-    par write_mem(ma, value, dp) | YieldInv#1();
+    call value := cache_invalidate_exc#1(dirState->i, ma, Shared(), dp) | YieldInv#1();
+    call write_mem(ma, value, dp) | YieldInv#1();
     call cache_read_resp#1(i, ma, value, Shared(), drp, dp);
     call dir_req_end(ma, Sharers(Set_Add(Set_Add(Set_Empty(), dirState->i), i)), dp);
   } else {
-    par value := read_mem(ma, dp) | YieldInv#1();
+    call value := read_mem(ma, dp) | YieldInv#1();
     call cache_read_resp#1(i, ma, value, if dirState->iset == Set_Empty() then Exclusive() else Shared(), drp, dp);
     call dir_req_end(ma, if dirState->iset == Set_Empty() then Owner(i) else Sharers(Set_Add(dirState->iset, i)), dp);
   }
@@ -628,11 +628,11 @@ requires call YieldRead(i, ma, drp);
 
   call dirState, dp := dir_req_begin(ma);
   if (dirState is Owner) {
-    par value := cache_invalidate_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
-    par write_mem(ma, value, dp) | YieldInv#1();
+    call value := cache_invalidate_exc#1(dirState->i, ma, Invalid(), dp) | YieldInv#1();
+    call write_mem(ma, value, dp) | YieldInv#1();
   } else {
-    par dp := invalidate_sharers(ma, dirState->iset, dp) | YieldInv#1();
-    par value := read_mem(ma, dp) | YieldInv#1();
+    call dp := invalidate_sharers(ma, dirState->iset, dp) | YieldInv#1();
+    call value := read_mem(ma, dp) | YieldInv#1();
   }
   call cache_read_resp#1(i, ma, value, Exclusive(), drp, dp);
   call dir_req_end(ma, Owner(i), dp);
@@ -663,7 +663,7 @@ ensures {:layer 2} dp == dp';
   victim := Choice(victims->val);
   victims' := Set_Remove(victims, victim);
   call dpOne, dp' := get_victim(victim, ma, dp');
-  par cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | dp' := invalidate_sharers(ma, victims', dp');
+  call cache_invalidate_shd#1(victim, ma, Invalid(), dpOne) | dp' := invalidate_sharers(ma, victims', dp');
   call dp' := put_victim(dpOne, dp');
 }
 

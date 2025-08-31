@@ -23,7 +23,7 @@ requires call Yield_9(p);
 }
 
 yield invariant {:layer 9} Yield_9({:linear} p : One int);
-invariant perm(p) && x == y;
+preserves perm(p) && x == y;
 
 // ###########################################################################
 // Event Handlers

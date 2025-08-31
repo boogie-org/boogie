@@ -92,7 +92,7 @@ preserves call BarrierInv();
         i := tid->i;
         call BarrierInv();
         call tid' := EnterBarrier(tid);
-        par BarrierInv() | MutatorInv(tid');
+        call BarrierInv() | MutatorInv(tid');
         call tid' := WaitForBarrierRelease(tid');
         call Move(tid', tid);
     }
@@ -104,23 +104,23 @@ requires {:layer 1} tid == All(0);
 preserves call BarrierInv();
 {
     call SetBarrier(true);
-    par BarrierInv() | CollectorInv(tid, false);
+    call BarrierInv() | CollectorInv(tid, false);
     call WaitBarrier();
     call {:layer 1} Lemma_SubsetSize(mutatorsInBarrier, Mutators);
-    par BarrierInv() | CollectorInv(tid, true);
+    call BarrierInv() | CollectorInv(tid, true);
     // do root scan here
     assert {:layer 1} mutatorsInBarrier == Mutators;
     call SetBarrier(false);
 }
 
 yield invariant {:layer 1} BarrierInv();
-invariant Set_IsSubset(mutatorsInBarrier, Mutators);
-invariant Set_Size(mutatorsInBarrier) + barrierCounter == N;
+preserves Set_IsSubset(mutatorsInBarrier, Mutators);
+preserves Set_Size(mutatorsInBarrier) + barrierCounter == N;
 
 yield invariant {:layer 1} MutatorInv({:linear} tid: Tid);
-invariant Set_Contains(tid->ps, Right(tid->i));
-invariant Set_Contains(mutatorsInBarrier, Left(tid->i));
+preserves Set_Contains(tid->ps, Right(tid->i));
+preserves Set_Contains(mutatorsInBarrier, Left(tid->i));
 
 yield invariant {:layer 1} CollectorInv({:linear} tid: Tid, done: bool);
-invariant tid == All(0) && barrierOn;
-invariant done ==> mutatorsInBarrier == Mutators;
+preserves tid == All(0) && barrierOn;
+preserves done ==> mutatorsInBarrier == Mutators;

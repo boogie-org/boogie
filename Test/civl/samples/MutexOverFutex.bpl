@@ -37,13 +37,13 @@ preserves call YieldWait(tid);
       if (oldValue != 2) {
         call temp := CmpXchg(1, 2);
       }
-      par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
+      call YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
       if (oldValue == 2 || temp != 0) {
         call WaitEnter(tid->val, 2);
-        par YieldInv() | YieldSlowPath(tid);
+        call YieldInv() | YieldSlowPath(tid);
         call WaitExit(tid->val);
       }
-      par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
+      call YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
       call oldValue := CmpXchg(0, 2);
       if (oldValue == 0) {
         call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := false]);
@@ -71,10 +71,10 @@ preserves call YieldWait(tid);
     call {:layer 1} mutex := Copy(None());
   } else {
     call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := true]);
-    par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
+    call YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
     call Store(0);
     call {:layer 1} mutex := Copy(None());
-    par YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
+    call YieldInv() | YieldWait(tid) | YieldSlowPath(tid);
     call Wake();
     call {:layer 1} inSlowPath := Copy(inSlowPath[tid->val := false]);
   }
@@ -87,16 +87,16 @@ function {:inline} IsValid(word: int): bool {
 }
 
 yield invariant {:layer 1} YieldInv();
-invariant IsValid(futex->word);
-invariant (forall i: Tid :: futex->waiters[i] ==> inSlowPath[i]);
-invariant futex->word == 2 || futex->waiters == MapConst(false) || (exists i: Tid :: !futex->waiters[i] && inSlowPath[i]);
-invariant mutex == None() <==> futex->word == 0;
+preserves IsValid(futex->word);
+preserves (forall i: Tid :: futex->waiters[i] ==> inSlowPath[i]);
+preserves futex->word == 2 || futex->waiters == MapConst(false) || (exists i: Tid :: !futex->waiters[i] && inSlowPath[i]);
+preserves mutex == None() <==> futex->word == 0;
 
 yield invariant {:layer 1} YieldWait({:linear} tid: One Tid);
-invariant !futex->waiters[tid->val];
+preserves !futex->waiters[tid->val];
 
 yield invariant {:layer 1} YieldSlowPath({:linear} tid: One Tid);
-invariant inSlowPath[tid->val];
+preserves inSlowPath[tid->val];
 
 /// Primitive atomic actions
 

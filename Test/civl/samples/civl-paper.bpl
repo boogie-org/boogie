@@ -13,10 +13,10 @@ var {:layer 0,1} b: bool;
 const p: int;
 
 yield invariant {:layer 1} InvLock();
-invariant lock != nil <==> b;
+preserves lock != nil <==> b;
 
 yield invariant {:layer 3} InvMem();
-invariant Map_Contains(g, p) && Map_Contains(g, p+4) && Map_At(g, p) == Map_At(g, p+4);
+preserves Map_Contains(g, p) && Map_Contains(g, p+4) && Map_At(g, p) == Map_At(g, p+4);
 
 yield procedure {:layer 3} P({:linear} tid: One X)
 requires {:layer 1,3} tid->val != nil;

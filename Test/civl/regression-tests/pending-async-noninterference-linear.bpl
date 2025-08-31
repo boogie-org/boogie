@@ -4,7 +4,7 @@
 var {:layer 0,1} x:[int]int;
 
 yield invariant {:layer 1} yield_x({:linear} tid: One int);
-invariant x[tid->val] == 0;
+preserves x[tid->val] == 0;
 
 async atomic action {:layer 1} A ({:linear} tid: One int)
 modifies x;

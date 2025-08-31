@@ -16,7 +16,7 @@ modifies x;
 yield procedure {:layer 1} IncrBy2()
 refines AtomicIncrBy2;
 {
-  par Incr() | Incr();
+  call Incr() | Incr();
 }
 
 left action {:layer 2} AtomicIncrBy2()
@@ -31,7 +31,7 @@ ensures call YieldPost();
 }
 
 yield invariant {:layer 2} YieldPre({:linear} tid: One X);
-invariant tid->val == MainTid && x == 0;
+preserves tid->val == MainTid && x == 0;
 
 yield invariant {:layer 2} YieldPost();
-invariant x == 2;
+preserves x == 2;

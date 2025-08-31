@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using Microsoft.BaseTypes;
-using Set = Microsoft.Boogie.GSet<object>; // not that the set used is not a set of Variable only, as it also contains TypeVariables
+using Set = Microsoft.Boogie.GSet<object>; // note that the set used is not a set of Variable only, as it also contains TypeVariables
 
 namespace Microsoft.Boogie
 {
@@ -1357,28 +1357,31 @@ namespace Microsoft.Boogie
             {
               tc.Error(this, $"global variable must be accessed inside old expression: {Decl.Name}");
             }
-            var globalVarLayerRange = Decl.LayerRange;
-            if (actionDecl.LayerRange.LowerLayer <= globalVarLayerRange.LowerLayer)
-            {
-              // a global variable introduced at layer n is visible to an action only at layers greater than n
-              tc.Error(this,
-                $"global variable must be introduced below the lower layer {actionDecl.LayerRange.LowerLayer} of action {actionDecl.Name}: {Decl.Name}");
-            }
             else
             {
-              if (tc.ExpectedLayerRange == null)
+              var globalVarLayerRange = Decl.LayerRange;
+              if (actionDecl.LayerRange.LowerLayer <= globalVarLayerRange.LowerLayer)
               {
-                if (!actionDecl.LayerRange.Subset(globalVarLayerRange))
-                {
-                  tc.Error(this,
-                    $"global variable must be available across all layers ({actionDecl.LayerRange}) of action {actionDecl.Name}: {Decl.Name}");
-                }
+                // a global variable introduced at layer n is visible to an action only at layers greater than n
+                tc.Error(this,
+                  $"global variable must be introduced below the lower layer {actionDecl.LayerRange.LowerLayer} of action {actionDecl.Name}: {Decl.Name}");
               }
               else
               {
-                if (!tc.ExpectedLayerRange.Subset(globalVarLayerRange))
+                if (tc.ExpectedLayerRange == null)
                 {
-                  tc.Error(this, $"global variable must be available across all layers in {tc.ExpectedLayerRange}: {Decl.Name}");
+                  if (!actionDecl.LayerRange.Subset(globalVarLayerRange))
+                  {
+                    tc.Error(this,
+                      $"global variable must be available across all layers ({actionDecl.LayerRange}) of action {actionDecl.Name}: {Decl.Name}");
+                  }
+                }
+                else
+                {
+                  if (!tc.ExpectedLayerRange.Subset(globalVarLayerRange))
+                  {
+                    tc.Error(this, $"global variable must be available across all layers in {tc.ExpectedLayerRange}: {Decl.Name}");
+                  }
                 }
               }
             }

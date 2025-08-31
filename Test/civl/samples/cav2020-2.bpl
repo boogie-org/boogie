@@ -8,7 +8,7 @@ var {:layer 0, 3} count: int;
 var {:layer 1, 2} l: Option Tid;
 
 yield invariant {:layer 1} LockInv();
-invariant b <==> (l != None());
+preserves b <==> (l != None());
 
 atomic action {:layer 3,3} IncrSpec()
 modifies count;
@@ -22,8 +22,8 @@ preserves call LockInv();
     var t: int;
 
     call Acquire(tid);
-    par t := Read(tid) | LockInv();
-    par Write(tid, t+1) | LockInv();
+    call t := Read(tid) | LockInv();
+    call Write(tid, t+1) | LockInv();
     call Release(tid);
 }
 

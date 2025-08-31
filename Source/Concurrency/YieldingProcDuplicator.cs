@@ -325,7 +325,7 @@ namespace Microsoft.Boogie
       {
         AddDuplicateCall(newCall, yieldingProc.Layer > layerNum);
       }
-      else if (!yieldingProc.HasMoverType)
+      else
       {
         if (yieldingProc.Layer < layerNum)
         {
@@ -340,12 +340,7 @@ namespace Microsoft.Boogie
 
           AddDuplicateCall(newCall, true);
         }
-
         Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count);
-      }
-      else
-      {
-        Debug.Assert(false);
       }
     }
 
@@ -444,6 +439,7 @@ namespace Microsoft.Boogie
     private void AddActionCall(CallCmd newCall, YieldProcedureDecl calleeActionProc)
     {
       var calleeRefinedAction = PrepareNewCall(newCall, calleeActionProc);
+      InjectPreconditions(calleeRefinedAction, newCall);
       InjectGate(calleeRefinedAction, newCall, !IsRefinementLayer);
       newCmdSeq.Add(newCall);
 
@@ -452,6 +448,21 @@ namespace Microsoft.Boogie
         Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count - calleeRefinedAction.PendingAsyncs.Count());
         CollectReturnedPendingAsyncs(newCall, calleeRefinedAction);
       }
+    }
+
+    private void InjectPreconditions(Action action, CallCmd callCmd)
+    {
+      if (!action.ActionDecl.HasPreconditions)
+      {
+        return;
+      }
+      Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+      for (int i = 0; i < action.ActionDecl.InParams.Count; i++)
+      {
+        map[action.ActionDecl.InParams[i]] = callCmd.Ins[i];
+      }
+      Substitution subst = Substituter.SubstitutionFromDictionary(map);
+      newCmdSeq.AddRange(action.Preconditions(layerNum, subst));
     }
 
     private void InjectGate(Action action, CallCmd callCmd, bool assume = false)

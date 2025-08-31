@@ -29,11 +29,36 @@ namespace Microsoft.Boogie
       yieldingProcInstrumentation.TransformImpls(implToPreconditions);
 
       List<Declaration> decls = new List<Declaration>();
-      decls.AddRange(yieldingProcInstrumentation.noninterferenceCheckerDecls);
+      decls.AddRange(yieldingProcInstrumentation.noninterferenceCheckerProcs.Values);
+      decls.AddRange(yieldingProcInstrumentation.noninterferenceCheckerImpls.Values);
       decls.AddRange(yieldingProcInstrumentation.parallelCallAggregators.Values);
-      decls.AddRange(yieldingProcInstrumentation.PendingAsyncNoninterferenceCheckers());
-      decls.Add(yieldingProcInstrumentation.wrapperNoninterferenceCheckerProc);
-      decls.Add(yieldingProcInstrumentation.WrapperNoninterferenceCheckerImpl());
+
+      decls.Add(yieldingProcInstrumentation.wrapperYieldToYieldNoninterferenceCheckerProc);
+      decls.Add(yieldingProcInstrumentation.wrapperGlobalNoninterferenceCheckerProc);
+
+      var yieldToYieldNoninterferenceCheckerProcs =
+        yieldingProcInstrumentation.noninterferenceCheckerProcs.Where(pair => !pair.Key.IsGlobal).Select(pair => pair.Value);
+      var globalNoninterferenceCheckerProcs =
+        yieldingProcInstrumentation.noninterferenceCheckerProcs.Where(pair => pair.Key.IsGlobal).Select(pair => pair.Value);
+      decls.Add(yieldingProcInstrumentation.WrapperNoninterferenceCheckerImpl(
+        yieldingProcInstrumentation.wrapperYieldToYieldNoninterferenceCheckerProc,
+        yieldToYieldNoninterferenceCheckerProcs));
+      decls.Add(yieldingProcInstrumentation.WrapperNoninterferenceCheckerImpl(
+        yieldingProcInstrumentation.wrapperGlobalNoninterferenceCheckerProc,
+        globalNoninterferenceCheckerProcs));
+      if (yieldToYieldNoninterferenceCheckerProcs.Count() > 0)
+      {
+        decls.AddRange(yieldingProcInstrumentation.ActionNoninterferenceCheckers(
+          civlTypeChecker.MoverActions.Where(a => a.LayerRange.Contains(layerNum) && a.ActionDecl.MaybePendingAsync),
+          false));
+      }
+      if (globalNoninterferenceCheckerProcs.Count() > 0)
+      {
+        decls.AddRange(yieldingProcInstrumentation.ActionNoninterferenceCheckers(
+          civlTypeChecker.MoverActions.Where(a => a.LayerRange.Contains(layerNum)),
+          true));
+      }
+
       return decls;
     }
 
@@ -42,8 +67,10 @@ namespace Microsoft.Boogie
     private AbsyMap absyMap;
 
     private Dictionary<string, Procedure> parallelCallAggregators;
-    private List<Declaration> noninterferenceCheckerDecls;
-    private Procedure wrapperNoninterferenceCheckerProc;
+    private Dictionary<YieldInvariantDecl, Procedure> noninterferenceCheckerProcs;
+    private Dictionary<YieldInvariantDecl, Implementation> noninterferenceCheckerImpls;
+    private Procedure wrapperYieldToYieldNoninterferenceCheckerProc;
+    private Procedure wrapperGlobalNoninterferenceCheckerProc;
     
     private RefinementInstrumentation refinementInstrumentation;
     private LinearPermissionInstrumentation linearPermissionInstrumentation;
@@ -67,7 +94,8 @@ namespace Microsoft.Boogie
       this.linearPermissionInstrumentation = linearPermissionInstrumentation;
       this.refinementBlocks = refinementBlocks;
       parallelCallAggregators = new Dictionary<string, Procedure>();
-      noninterferenceCheckerDecls = new List<Declaration>();
+      noninterferenceCheckerProcs = new Dictionary<YieldInvariantDecl, Procedure>();
+      noninterferenceCheckerImpls = new Dictionary<YieldInvariantDecl, Implementation>();
       localPermissionCollectors = new Dictionary<LinearDomain, Variable>();
       oldGlobalMap = new Dictionary<Variable, Variable>();
       wrapperNoninterferenceCheckerCallArgs = new List<Variable>();
@@ -92,11 +120,16 @@ namespace Microsoft.Boogie
         wrapperNoninterferenceCheckerCallArgs.Add(oldGlobalMap[g]);
       }
 
-      wrapperNoninterferenceCheckerProc = DeclHelper.Procedure(
-        civlTypeChecker.AddNamePrefix($"Wrapper_NoninterferenceChecker_{layerNum}"),
+      wrapperYieldToYieldNoninterferenceCheckerProc = DeclHelper.Procedure(
+        civlTypeChecker.AddNamePrefix($"Wrapper_YieldToYield_NoninterferenceChecker_{layerNum}"),
         wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
-      CivlUtil.AddInlineAttribute(wrapperNoninterferenceCheckerProc);
+      CivlUtil.AddInlineAttribute(wrapperYieldToYieldNoninterferenceCheckerProc);
       
+      wrapperGlobalNoninterferenceCheckerProc = DeclHelper.Procedure(
+        civlTypeChecker.AddNamePrefix($"Wrapper_Global_NoninterferenceChecker_{layerNum}"),
+        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+      CivlUtil.AddInlineAttribute(wrapperGlobalNoninterferenceCheckerProc);
+
       if (civlTypeChecker.Options.TrustNoninterference)
       {
         localPermissionCollectors.Clear();
@@ -134,7 +167,7 @@ namespace Microsoft.Boogie
       return cmds;
     }
     
-    private List<Cmd> CreateCallToNoninterferenceChecker()
+    private List<Cmd> CreateCallToNoninterferenceChecker(Procedure wrapperNoninterferenceCheckerProc)
     {
       var cmds = new List<Cmd>();
       if (!civlTypeChecker.Options.TrustNoninterference)
@@ -156,17 +189,18 @@ namespace Microsoft.Boogie
       return (YieldProcedureDecl)absyMap.Original(impl).Proc;
     }
 
-    private Implementation WrapperNoninterferenceCheckerImpl()
+    private Implementation WrapperNoninterferenceCheckerImpl(
+      Procedure wrapperNoninterferenceCheckerProc, IEnumerable<Procedure> noninterferenceCheckerProcs)
     {
       var inputs = wrapperNoninterferenceCheckerProc.InParams
         .Select(v => civlTypeChecker.Formal(v.Name, v.TypedIdent.Type, true)).ToList<Variable>();
       List<Block> blocks = new List<Block>();
       TransferCmd transferCmd = CmdHelper.ReturnCmd;
-      if (noninterferenceCheckerDecls.Count > 0)
+      if (noninterferenceCheckerProcs.Count() > 0)
       {
         List<Block> blockTargets = new List<Block>();
         int labelCount = 0;
-        foreach (Procedure proc in noninterferenceCheckerDecls.OfType<Procedure>())
+        foreach (Procedure proc in noninterferenceCheckerProcs)
         {
           List<Expr> exprSeq = new List<Expr>();
           foreach (Variable v in inputs)
@@ -198,13 +232,14 @@ namespace Microsoft.Boogie
         return;
       }
 
-      foreach (var yieldInvariant in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>().ToList())
+      foreach (var yieldInvariantDecl in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>().ToList())
       {
-        if (layerNum == yieldInvariant.Layer)
+        if (layerNum == yieldInvariantDecl.Layer && yieldInvariantDecl.Requires.Any())
         {
-          noninterferenceCheckerDecls.AddRange(
-            NoninterferenceChecker.CreateNoninterferenceCheckerDecls(civlTypeChecker,
-              layerNum, absyMap, yieldInvariant, new List<Variable>()));
+          var (proc, impl) = NoninterferenceChecker.CreateNoninterferenceCheckerDecls(civlTypeChecker,
+              layerNum, absyMap, yieldInvariantDecl, new List<Variable>());
+          noninterferenceCheckerProcs[yieldInvariantDecl] = proc;
+          noninterferenceCheckerImpls[yieldInvariantDecl] = impl;
         }
       }
     }
@@ -344,14 +379,17 @@ namespace Microsoft.Boogie
         // Disjointness assumptions after yields are added inside TransformImpl which is called for 
         // all implementations except for a mover procedure at its disappearing layer.
         // But this is fine because a mover procedure at its disappearing layer does not have a yield in it.
+        // For mover procedures, simply add disjointness assumptions at the beginning of the first block.
         linearPermissionInstrumentation.AddDisjointnessAndWellFormedAssumptions(impl);
         var yieldingProc = GetYieldingProc(impl);
         if (yieldingProc.HasMoverType && yieldingProc.Layer == layerNum)
         {
-          continue;
+          impl.Blocks[0].Cmds.InsertRange(0, linearPermissionInstrumentation.DisjointnessAndWellFormedAssumeCmds(impl, true));
         }
-
-        TransformImpl(impl, implToPreconditions[impl]);
+        else
+        {
+          TransformImpl(impl, implToPreconditions[impl]);
+        }
       }
     }
 
@@ -604,7 +642,7 @@ namespace Microsoft.Boogie
     private Block CreateNoninterferenceCheckerBlock()
     {
       var newCmds = new List<Cmd>();
-      newCmds.AddRange(CreateCallToNoninterferenceChecker());
+      newCmds.AddRange(CreateCallToNoninterferenceChecker(wrapperYieldToYieldNoninterferenceCheckerProc));
       newCmds.Add(CmdHelper.AssumeCmd(Expr.False));
       return BlockHelper.Block(civlTypeChecker.AddNamePrefix("NoninterferenceChecker"), newCmds);
     }
@@ -745,18 +783,16 @@ namespace Microsoft.Boogie
       }
     }
 
-    private IEnumerable<Declaration> PendingAsyncNoninterferenceCheckers()
+    private IEnumerable<Declaration> ActionNoninterferenceCheckers(IEnumerable<Action> actions, bool isGlobal)
     {
       if (civlTypeChecker.Options.TrustNoninterference)
       {
         yield break;
       }
 
-      var pendingAsyncsToCheck =
-        new HashSet<Action>(civlTypeChecker.MoverActions.Where(a =>
-          a.LayerRange.Contains(layerNum) && a.ActionDecl.MaybePendingAsync));
-
-      foreach (var action in pendingAsyncsToCheck)
+      var wrapperNoninterferenceCheckerProc = isGlobal ? wrapperGlobalNoninterferenceCheckerProc : wrapperYieldToYieldNoninterferenceCheckerProc;
+      var checkerNamePrefix = isGlobal ? "Global" : "YieldToYield";
+      foreach (var action in actions.Where(action => action.ModifiedGlobalVars.Count > 0))
       {
         var inputs = action.Impl.InParams;
         var outputs = action.Impl.OutParams;
@@ -766,13 +802,14 @@ namespace Microsoft.Boogie
         var locals = oldGlobalMap.Values.Union(localPermissionCollectors.Values).ToList();
         var cmds = new List<Cmd>();
 
+        cmds.AddRange(linearPermissionInstrumentation.DisjointnessAndWellFormedAssumeCmds(action.Impl, true));
         cmds.AddRange(CreateUpdatesToOldGlobalVars());
         cmds.AddRange(CreateUpdatesToPermissionCollector(action.Impl));
         cmds.Add(CmdHelper.CallCmd(action.Impl.Proc, inputs, outputs));
-        cmds.AddRange(CreateCallToNoninterferenceChecker());
+        cmds.AddRange(CreateCallToNoninterferenceChecker(wrapperNoninterferenceCheckerProc));
         var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
 
-        var name = civlTypeChecker.AddNamePrefix($"PendingAsyncNoninterferenceChecker_{action.Name}_{layerNum}");
+        var name = civlTypeChecker.AddNamePrefix($"{checkerNamePrefix}_NoninterferenceChecker_{action.Name}_{layerNum}");
         var proc = DeclHelper.Procedure(name, inputs, outputs, requires, modifies, ensures);
         var impl = DeclHelper.Implementation(proc, inputs, outputs, locals, blocks);
         yield return proc;

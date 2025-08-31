@@ -121,14 +121,6 @@ namespace Microsoft.Boogie
 
     private static AssertCmd Forall(IEnumerable<Variable> vars, AssertCmd assertCmd)
     {
-      var freeObjects = new GSet<object>();
-      assertCmd.Expr.ComputeFreeVariables(freeObjects);
-      var quantifiedVars = freeObjects.OfType<Variable>().Intersect(vars);
-      if (quantifiedVars.Count() == 0)
-      {
-        return assertCmd;
-      }
-
       bool KeepExpr(Expr expr)
       {
         var freeObjects = new GSet<object>();
@@ -136,30 +128,43 @@ namespace Microsoft.Boogie
         return freeObjects.OfType<Variable>().Intersect(vars).Count() == 0;
       }
 
-      QKeyValue Filter(QKeyValue kv)
+      QKeyValue FilterAttributes(QKeyValue kv)
       {
         if (kv == null)
         {
           return null;
         }
-        var newKv = Filter(kv.Next);
+        var newKv = FilterAttributes(kv.Next);
         if (kv.Key != "add_to_pool")
         {
           return new QKeyValue(kv.tok, kv.Key, kv.Params, newKv);
         }
-        return new QKeyValue(
-          kv.tok,
-          kv.Key,
-          kv.Params.Where(param => param is not Expr expr || KeepExpr(expr)).ToList(),
-          newKv);
+        var newParams = kv.Params.Where(param => param is not Expr expr || KeepExpr(expr)).ToList();
+        if (newParams.All(param => param is not Expr))
+        {
+          return newKv;
+        }
+        return new QKeyValue(kv.tok, kv.Key, newParams, newKv);
       }
 
-      var varMapping = quantifiedVars.ToDictionary(v => v,
-        v => (Variable) VarHelper.BoundVariable(v.Name, v.TypedIdent.Type, v.Attributes));
-      return new AssertCmd(
-        assertCmd.tok,
-        ExprHelper.ForallExpr(varMapping.Values.ToList(), SubstitutionHelper.Apply(varMapping, assertCmd.Expr)),
-        Filter(assertCmd.Attributes));
+      Expr ForallExpr(IEnumerable<Variable> vars, Expr expr)
+      {
+        var freeObjects = new GSet<object>();
+        expr.ComputeFreeVariables(freeObjects);
+        var quantifiedVars = freeObjects.OfType<Variable>().Intersect(vars);
+        if (quantifiedVars.Count() == 0)
+        {
+          return expr;
+        }
+        else
+        {
+          var varMapping = quantifiedVars.ToDictionary(v => v,
+            v => (Variable)VarHelper.BoundVariable(v.Name, v.TypedIdent.Type, v.Attributes));
+          return ExprHelper.ForallExpr(varMapping.Values.ToList(), SubstitutionHelper.Apply(varMapping, expr));
+        }
+      }
+
+      return new AssertCmd(assertCmd.tok, ForallExpr(vars, assertCmd.Expr), FilterAttributes(assertCmd.Attributes));
     }
   }
 }

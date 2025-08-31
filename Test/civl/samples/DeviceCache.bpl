@@ -16,13 +16,13 @@ function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 }
 
 yield invariant {:layer 1} Yield();
-invariant Inv(ghostLock, currsize, newsize);
+preserves Inv(ghostLock, currsize, newsize);
 
 yield invariant {:layer 1} YieldToReadCache({:linear} tid: One X, old_currsize: int);
-invariant tid->val != nil && old_currsize <= currsize;
+preserves tid->val != nil && old_currsize <= currsize;
 
 yield invariant {:layer 1} YieldToWriteCache({:linear} tid: One X, old_currsize: int, old_newsize: int);
-invariant tid->val != nil && ghostLock == tid->val && old_currsize == currsize && old_newsize == newsize;
+preserves tid->val != nil && ghostLock == tid->val && old_currsize == currsize && old_newsize == newsize;
 
 yield procedure {:layer 1} Allocate() returns ({:linear} xl: One X)
 ensures {:layer 1} xl->val != nil;
@@ -40,7 +40,7 @@ requires {:layer 1} xls->val == MapConst(true);
     invariant {:yields} true;
     invariant call Yield();
     {
-        par tid := Allocate() | Yield();
+        call tid := Allocate() | Yield();
         async call Thread(tid);
     }
 }

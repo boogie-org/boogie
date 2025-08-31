@@ -16,7 +16,7 @@ yield procedure {:layer 1} main()
   var {:linear "tid"} j: int;
   call i := Allocate();
   call j := Allocate();
-  par i := t(i) | j := t(j);
+  call i := t(i) | j := t(j);
 }
 
 yield procedure {:layer 1} t({:linear_in "tid"} i': int) returns ({:linear "tid"} i: int)

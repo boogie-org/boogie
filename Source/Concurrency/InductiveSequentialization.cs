@@ -29,40 +29,6 @@ namespace Microsoft.Boogie
       return new List<Declaration>();
     }
 
-    public virtual IEnumerable<Expr> GenerateLeftMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
-      List<Variable> leftMoverArgs)
-    {
-      return new List<Expr>();
-    }
-
-    public virtual IEnumerable<Expr> GenerateRightMoverCheckAssumptions(Action rightMover, List<Variable> rightMoverArgs)
-    {
-      return new List<Expr>();
-    }
-
-    public IEnumerable<AssertCmd> Preconditions(Action pendingAsync, Substitution subst)
-    {
-      var cmds = new List<AssertCmd>();
-      pendingAsync.ActionDecl.Requires.Where(req => req.Layers.Contains(Layer)).ForEach(req =>
-      {
-        cmds.Add(CmdHelper.AssertCmd(req.tok, Substituter.Apply(subst, req.Condition), ""));
-      });
-      foreach (var callCmd in pendingAsync.ActionDecl.YieldRequires)
-      {
-        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-        if (Layer == yieldInvariant.Layer)
-        {
-          Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(yieldInvariant.InParams
-              .Zip(callCmd.Ins)
-              .ToDictionary(x => x.Item1, x => x.Item2));
-          yieldInvariant.Requires.ForEach(req =>
-            cmds.Add(CmdHelper.AssertCmd(req.tok,
-                  Substituter.Apply(subst, Substituter.Apply(callFormalsToActuals, req.Condition)), "")));
-        }
-      }
-      return cmds;
-    }
-
     public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       foreach (var x in civlTypeChecker.Sequentializations)
@@ -315,7 +281,7 @@ namespace Microsoft.Boogie
       cmds.AddRange(pendingAsync.GetGateAsserts(
         Substituter.SubstitutionFromDictionary(pendingAsync.Impl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2)),
         $"Gate of {pendingAsync.Name} fails in induction step for invariant {invariantAction.Name}"));
-      cmds.AddRange(Preconditions(pendingAsync,
+      cmds.AddRange(pendingAsync.Preconditions(Layer,
         Substituter.SubstitutionFromDictionary(pendingAsync.ActionDecl.InParams.Zip(inputExprs).ToDictionary(x => x.Item1, x => x.Item2))));
 
       List<IdentifierExpr> outputExprs = new List<IdentifierExpr>();
@@ -344,120 +310,6 @@ namespace Microsoft.Boogie
 
       return GetCheckerTuple($"Step_{invariantAction.Name}_{pendingAsync.Name}", requires,
         invariantAction.ImplWithChoice.InParams, invariantAction.ImplWithChoice.OutParams, locals, cmds);
-    }
-
-    public override IEnumerable<Expr> GenerateRightMoverCheckAssumptions(Action rightMover, List<Variable> rightMoverArgs)
-    {
-      var subst = Substituter.SubstitutionFromDictionary(
-        rightMover.ActionDecl.InParams.Zip(rightMoverArgs.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-      var exitCondition = rightMover.ExitCondition;
-      return new List<Expr> {
-        exitCondition == null ? Expr.True : Expr.Not(Substituter.Apply(subst, exitCondition))
-      };
-    }
-
-    /*
-     * This method generates the extra assumption for the left-mover check of the abstraction of an eliminated action.
-     * The arguments leftMover and leftMoverArgs pertain to the action being moved left.
-     * The arguments action and actionArgs pertain to the action across which leftMover is being moved.
-     *
-     * A key concept used in the generation of this extra assumption is the input-output transition relation of an action.
-     * This relation is obtained by taking the conjunction of the gate and transition relation of the action and
-     * existentially quantifying globals in the pre and the post state.
-     *
-     * There are two parts to the assumption, one for leftMover and the other for action.
-     * Both parts are stated in the context of the input-output relation of the invariant action.
-     * - The invocation of leftMover is identical to the choice made by the invariant.
-     * - If action is being eliminated, then the invocation of action is such that either:
-     *   (1) the permissions in the invocation are disjoint from the permissions in the invariant invocation, or
-     *   (2) the permissions in the invocation is contained in the permissions of one of the pending asyncs created by the invariant invocation.
-     */
-    public override IEnumerable<Expr> GenerateLeftMoverCheckAssumptions(Action action, List<Variable> actionArgs, Action leftMover,
-      List<Variable> leftMoverArgs)
-    {
-      var invariantFormalMap =
-        invariantAction.ImplWithChoice.InParams.Concat(invariantAction.ImplWithChoice.OutParams).ToDictionary(v => v,
-          v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{invariantAction.Name}_{v.Name}",
-            v.TypedIdent.Type)));
-      var invariantFormalSubst = Substituter.SubstitutionFromDictionary(invariantFormalMap);
-      var invariantTransitionRelationExpr = ExprHelper.FunctionCall(invariantAction.InputOutputRelationWithChoice,
-        invariantAction.ImplWithChoice.InParams.Concat(invariantAction.ImplWithChoice.OutParams)
-          .Select(v => invariantFormalMap[v]).ToList());
-
-      Substitution subst = Substituter.SubstitutionFromDictionary(
-        leftMover.ActionDecl.InParams.Zip(leftMoverArgs.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-
-      return new List<Expr>(Preconditions(leftMover, subst).Select(assertCmd => assertCmd.Expr))
-      {
-        ExprHelper.ExistsExpr(
-        invariantFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
-        Expr.And(new[]
-        {
-          invariantTransitionRelationExpr, ActionExpr(action, actionArgs, invariantFormalSubst),
-          LeftMoverExpr(leftMover, leftMoverArgs, invariantFormalSubst)
-        }))
-      };
-    }
-
-    private Expr ActionExpr(Action action, List<Variable> actionArgs, Substitution invariantFormalSubst)
-    {
-      if (!eliminatedActions.Contains(action))
-      {
-        return Expr.True;
-      }
-      var linearTypeChecker = civlTypeChecker.linearTypeChecker;
-      var disjointnessExpr =
-        Expr.And(linearTypeChecker.LinearDomains.Select(
-          domain =>
-            linearTypeChecker.DisjointnessExprForPermissions(domain,
-              linearTypeChecker.PermissionExprs(domain, invariantAction.Impl.InParams).Concat(linearTypeChecker.PermissionExprs(domain, actionArgs)))
-        ).ToList());
-      var pendingAsyncExprs = invariantAction.PendingAsyncs.Select(pendingAsync =>
-      {
-        var pendingAsyncAction = civlTypeChecker.Action(pendingAsync);
-        var pendingAsyncActionParams = pendingAsyncAction.Impl.Proc.InParams
-          .Concat(pendingAsyncAction.Impl.Proc.OutParams).ToList();
-        var pendingAsyncFormalMap = pendingAsyncActionParams.ToDictionary(v => v,
-          v => (Expr)Expr.Ident(civlTypeChecker.BoundVariable($"{pendingAsync.Name}_{v.Name}", v.TypedIdent.Type)));
-        var subst = Substituter.SubstitutionFromDictionary(pendingAsyncFormalMap);
-        var conjuncts = linearTypeChecker.LinearDomains.Select(domain =>
-        {
-          var lhs = linearTypeChecker.UnionExprForPermissions(domain, linearTypeChecker.PermissionExprs(domain, actionArgs));
-          var rhs = linearTypeChecker.UnionExprForPermissions(domain,
-            linearTypeChecker.PermissionExprs(domain, pendingAsync.InParams).Select(expr => Substituter.Apply(subst, expr)));
-          return linearTypeChecker.SubsetExprForPermissions(domain, lhs, rhs);
-        });
-        var pendingAsyncTransitionRelationExpr = ExprHelper.FunctionCall(pendingAsyncAction.InputOutputRelation,
-          pendingAsyncActionParams.Select(v => pendingAsyncFormalMap[v]).ToList());
-        var membershipExpr =
-          Expr.Gt(
-            Expr.Select(PAs(pendingAsync.PendingAsyncType),
-              ExprHelper.FunctionCall(pendingAsync.PendingAsyncCtor,
-                pendingAsync.InParams.Select(v => pendingAsyncFormalMap[v]).ToList())), Expr.Literal(0));
-        return ExprHelper.ExistsExpr(
-          pendingAsyncFormalMap.Values.OfType<IdentifierExpr>().Select(ie => ie.Decl).ToList(),
-          Expr.And(conjuncts.Concat(new[] { membershipExpr, pendingAsyncTransitionRelationExpr })));
-      });
-      var actionExpr = Expr.Or(pendingAsyncExprs.Append(disjointnessExpr));
-      actionExpr = Substituter.Apply(invariantFormalSubst, actionExpr);
-      return actionExpr;
-    }
-
-    private Expr LeftMoverExpr(Action leftMover, List<Variable> leftMoverArgs, Substitution invariantFormalSubst)
-    {
-      var leftMoverPendingAsyncCtor = leftMover.ActionDecl.PendingAsyncCtor;
-      var leftMoverPA =
-        ExprHelper.FunctionCall(leftMoverPendingAsyncCtor, leftMoverArgs.Select(v => Expr.Ident(v)).ToArray());
-      var leftMoverExpr = Expr.And(new[]
-      {
-        ChoiceTest(leftMover.ActionDecl.PendingAsyncType),
-        Expr.Gt(
-          Expr.Select(PAs(leftMover.ActionDecl.PendingAsyncType),
-            Choice(leftMover.ActionDecl.PendingAsyncType)), Expr.Literal(0)),
-        Expr.Eq(Choice(leftMover.ActionDecl.PendingAsyncType), leftMoverPA)
-      });
-      leftMoverExpr = Substituter.Apply(invariantFormalSubst, leftMoverExpr);
-      return leftMoverExpr;
     }
 
     private List<Declaration> GetCheckerTuple(string checkerName, List<Requires> requires, List<Variable> inParams,

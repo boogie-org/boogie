@@ -1,4 +1,7 @@
 yield-pre-post.bpl(7,20): Error: global variable must be accessed inside old expression: g
 yield-pre-post.bpl(8,19): Error: global variable must be accessed inside old expression: g
-yield-pre-post.bpl(13,20): Error: global variable must be available across all layers in [2, 2]: g
-3 type checking errors detected in yield-pre-post.bpl
+yield-pre-post.bpl(12,20): Error: global variable must be accessed inside old expression: g
+yield-pre-post.bpl(13,20): Error: global variable must be accessed inside old expression: g
+yield-pre-post.bpl(11,27): Error: action with preconditions must exist at a single layer
+yield-pre-post.bpl(19,9): Error: called yield invariant must be global
+6 type checking errors detected in yield-pre-post.bpl

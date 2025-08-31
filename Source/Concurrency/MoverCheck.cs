@@ -10,6 +10,12 @@ namespace Microsoft.Boogie
     {
       public int layer;
       public IEnumerable<Expr> extraAssumptions;
+      public HashSet<Variable> UsedGlobalVars()
+      {
+        var usedGlobalVars = new HashSet<Variable>();
+        extraAssumptions.ForEach(expr => usedGlobalVars.UnionWith(VariableCollector.Collect(expr).Where(x => x is GlobalVariable)));
+        return usedGlobalVars;
+      }
     }
 
     CivlTypeChecker civlTypeChecker;
@@ -49,67 +55,67 @@ namespace Microsoft.Boogie
         from first in civlTypeChecker.MoverActions
         from second in civlTypeChecker.MoverActions
         where first.LayerRange.OverlapsWith(second.LayerRange)
-        where first.IsRightMover || second.IsLeftMover
+        where first.IsRightMover || second.IsUnconditionalLeftMover
         select new {first, second};
-
       foreach (var moverCheck in regularMoverChecks)
       {
         if (moverCheck.first.IsRightMover)
         {
           moverChecking.CreateRightMoverCheckers(moverCheck.first, moverCheck.second);
         }
-
-        if (moverCheck.second.IsLeftMover)
+        if (moverCheck.second.IsUnconditionalLeftMover)
         {
           moverChecking.CreateLeftMoverCheckers(moverCheck.first, moverCheck.second);
         }
       }
 
-      foreach (var action in civlTypeChecker.MoverActions.Where(a => a.IsLeftMover))
+      var conditionalMoverChecks =
+        from first in civlTypeChecker.MoverActions
+        from second in civlTypeChecker.MoverActions
+        where first.LayerRange.OverlapsWith(second.LayerRange)
+        where second.IsConditionalLeftMover
+        select new {first, second};
+      foreach (var moverCheck in conditionalMoverChecks)
       {
-        moverChecking.CreateNonblockingChecker(action);
+        var leftMover = moverCheck.second;
+        var layer = leftMover.ActionDecl.LayerRange.UpperLayer;
+        var action = moverCheck.first;
+        var subst1 = Substituter.SubstitutionFromDictionary(
+            leftMover.ActionDecl.InParams.Zip(leftMover.SecondImpl.InParams.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
+        var moverCheckContext1 = new MoverCheckContext
+        {
+          layer = layer,
+          extraAssumptions = leftMover.Preconditions(layer, subst1).Select(assertCmd => assertCmd.Expr),
+        };
+        var subst2 = Substituter.SubstitutionFromDictionary(
+            leftMover.ActionDecl.InParams.Zip(leftMover.FirstImpl.InParams.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
+        var moverCheckContext2 = new MoverCheckContext
+        {
+          layer = layer,
+          extraAssumptions = leftMover.Preconditions(layer, subst2).Select(assertCmd => assertCmd.Expr),
+        };
+        moverChecking.CreateCommutativityChecker(action, leftMover, moverCheckContext1);
+        moverChecking.CreateGatePreservationChecker(leftMover, action, moverCheckContext2);
+        moverChecking.CreateFailurePreservationChecker(action, leftMover, moverCheckContext1);
       }
 
-      /*
-       * All the global caches of various mover checks have been populated now.
-       * The global cache is checked before adding per-layer mover checks for sequentializations.
-       * Therefore, it is important that the sequentialization mover checks are generated last.
-       * Each sequentialization mover check is constrained by extra assumptions.
-       * Therefore, presence in global cache of the corresponding unconstrained check
-       * obviates the need to generate it.
-       */
-
-      foreach (var sequentialization in civlTypeChecker.Sequentializations)
+      foreach (var leftMover in civlTypeChecker.MoverActions.Where(a => a.IsLeftMover))
       {
-        foreach (var leftMover in sequentialization.EliminatedActions)
+        if (leftMover.IsUnconditionalLeftMover)
         {
-          foreach (var action in civlTypeChecker.MoverActions.Where(x => x.LayerRange.Contains(sequentialization.Layer)))
-          {
-            var moverCheckContext1 = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateLeftMoverCheckAssumptions(action, action.FirstImpl.InParams, leftMover, leftMover.SecondImpl.InParams)
-            };
-            var moverCheckContext2 = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.GenerateLeftMoverCheckAssumptions(action, action.SecondImpl.InParams, leftMover, leftMover.FirstImpl.InParams)
-            };
-            moverChecking.CreateCommutativityChecker(action, leftMover, moverCheckContext1);
-            moverChecking.CreateGatePreservationChecker(leftMover, action, moverCheckContext2);
-            moverChecking.CreateFailurePreservationChecker(action, leftMover, moverCheckContext1);
-          }
-          if (!leftMover.IsLeftMover)
-          {
-            var subst = Substituter.SubstitutionFromDictionary(
+          moverChecking.CreateNonblockingChecker(leftMover);
+        }
+        else
+        {
+          var layer = leftMover.ActionDecl.LayerRange.UpperLayer;
+          var subst = Substituter.SubstitutionFromDictionary(
               leftMover.ActionDecl.InParams.Zip(leftMover.Impl.InParams.Select(x => (Expr)Expr.Ident(x))).ToDictionary(x => x.Item1, x => x.Item2));
-            var moverCheckContext = new MoverCheckContext
-            {
-              layer = sequentialization.Layer,
-              extraAssumptions = sequentialization.Preconditions(leftMover, subst).Select(assertCmd => assertCmd.Expr)
-            };
-            moverChecking.CreateNonblockingChecker(leftMover, moverCheckContext);
-          }
+          var moverCheckContext = new MoverCheckContext
+          {
+            layer = layer,
+            extraAssumptions = leftMover.Preconditions(layer, subst).Select(assertCmd => assertCmd.Expr),
+          };
+          moverChecking.CreateNonblockingChecker(leftMover, moverCheckContext);
         }
       }
     }
@@ -191,6 +197,10 @@ namespace Microsoft.Boogie
       frame.UnionWith(first.UsedGlobalVarsInAction);
       frame.UnionWith(second.UsedGlobalVarsInGate);
       frame.UnionWith(second.UsedGlobalVarsInAction);
+      if (moverCheckContext != null)
+      {
+        frame.UnionWith(moverCheckContext.UsedGlobalVars());
+      }
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Requires> requires =
@@ -262,6 +272,10 @@ namespace Microsoft.Boogie
       frame.UnionWith(first.UsedGlobalVarsInGate);
       frame.UnionWith(second.UsedGlobalVarsInGate);
       frame.UnionWith(second.UsedGlobalVarsInAction);
+      if (moverCheckContext != null)
+      {
+        frame.UnionWith(moverCheckContext.UsedGlobalVars());
+      }
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Requires> requires = 
@@ -323,6 +337,10 @@ namespace Microsoft.Boogie
       frame.UnionWith(first.UsedGlobalVarsInGate);
       frame.UnionWith(second.UsedGlobalVarsInGate);
       frame.UnionWith(second.UsedGlobalVarsInAction);
+      if (moverCheckContext != null)
+      {
+        frame.UnionWith(moverCheckContext.UsedGlobalVars());
+      }
 
       var linearTypeChecker = civlTypeChecker.linearTypeChecker;
       List<Requires> requires = 
@@ -386,6 +404,10 @@ namespace Microsoft.Boogie
       HashSet<Variable> frame = new HashSet<Variable>();
       frame.UnionWith(action.UsedGlobalVarsInGate);
       frame.UnionWith(action.UsedGlobalVarsInAction);
+      if (moverCheckContext != null)
+      {
+        frame.UnionWith(moverCheckContext.UsedGlobalVars());
+      }
 
       List<Requires> requires =
         DisjointnessAndWellFormedRequires(impl.InParams.Where(v => LinearTypeChecker.FindLinearKind(v) != LinearKind.LINEAR_OUT),

@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie;
@@ -11,13 +11,6 @@ public class ModSetCollector : ReadOnlyVisitor
 
   private Dictionary<Procedure, HashSet<Variable>> modSets;
 
-  [ContractInvariantMethod]
-  void ObjectInvariant()
-  {
-    Contract.Invariant(Cce.NonNullDictionaryAndValues(modSets));
-    Contract.Invariant(Contract.ForAll(modSets.Values, v => Cce.NonNullElements(v)));
-  }
-
   public ModSetCollector(CoreOptions options)
   {
     this.options = options;
@@ -28,33 +21,21 @@ public class ModSetCollector : ReadOnlyVisitor
 
   public void CollectModifies(Program program)
   {
-    Contract.Requires(program != null);
-    var implementedProcs = new HashSet<Procedure>();
-    foreach (var impl in program.Implementations)
-    {
-      if (impl.Proc != null)
-      {
-        implementedProcs.Add(impl.Proc);
-      }
-    }
-
-    foreach (var proc in program.Procedures.Where(x => x is not YieldProcedureDecl))
-    {
-      if (!implementedProcs.Contains(proc))
-      {
-        enclosingProc = proc;
-        foreach (var expr in proc.Modifies)
-        {
-          Contract.Assert(expr != null);
-          ProcessVariable(expr.Decl);
-        }
-
-        enclosingProc = null;
-      }
-      else
+    var implementedProcs = new HashSet<Procedure>(program.Implementations.Where(impl => impl.Proc != null).Select(impl => impl.Proc));
+    program.Procedures.Where(proc =>
+      proc.GetType() == typeof(Procedure) || proc is ActionDecl || (proc is YieldProcedureDecl yieldProcedureDecl && yieldProcedureDecl.HasMoverType))
+      .ForEach(proc =>
       {
         modSets.Add(proc, new HashSet<Variable>());
+      });
+    foreach (var proc in modSets.Keys)
+    {
+      enclosingProc = proc;
+      foreach (var expr in proc.Modifies)
+      {
+        ProcessVariable(expr.Decl);
       }
+      enclosingProc = null;
     }
 
     moreProcessingRequired = true;
@@ -64,6 +45,7 @@ public class ModSetCollector : ReadOnlyVisitor
       this.Visit(program);
     }
 
+    modSets = new Dictionary<Procedure, HashSet<Variable>>(modSets.Where(pair => pair.Value.Count > 0));
     foreach (Procedure x in modSets.Keys)
     {
       if (x.Modifies == null)
@@ -77,56 +59,52 @@ public class ModSetCollector : ReadOnlyVisitor
     }
 
 #if DEBUG_PRINT
-      options.OutputWriter.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
-      foreach (Procedure x in modSets.Keys)
+    options.OutputWriter.WriteLine("Number of procedures with nonempty modsets = {0}", modSets.Keys.Count);
+    foreach (Procedure x in modSets.Keys)
+    {
+      options.OutputWriter.Write("{0} : ", x.Name);
+      bool first = true;
+      foreach (var y in modSets[x])
       {
-        Contract.Assert(x != null);
-        options.OutputWriter.Write("{0} : ", x.Name);
-        bool first = true;
-        foreach (var y in modSets[x])
+        if (first)
         {
-          if (first)
-          {
-            first = false;
-          }
-          else
-          {
-            options.OutputWriter.Write(", ");
-          }
-          options.OutputWriter.Write("{0}", y.Name);
+          first = false;
         }
-        options.OutputWriter.WriteLine("");
+        else
+        {
+          options.OutputWriter.Write(", ");
+        }
+        options.OutputWriter.Write("{0}", y.Name);
       }
+      options.OutputWriter.WriteLine("");
+    }
 #endif
   }
 
   public override Implementation VisitImplementation(Implementation node)
   {
-    Contract.Ensures(Contract.Result<Implementation>() != null);
+    if (!modSets.ContainsKey(node.Proc))
+    {
+      return node;
+    }
     enclosingProc = node.Proc;
     Implementation ret = base.VisitImplementation(node);
-    Contract.Assert(ret != null);
     enclosingProc = null;
-
     return ret;
   }
 
   public override Cmd VisitAssignCmd(AssignCmd assignCmd)
   {
-    Contract.Ensures(Contract.Result<Cmd>() != null);
     Cmd ret = base.VisitAssignCmd(assignCmd);
     foreach (AssignLhs lhs in assignCmd.Lhss)
     {
-      Contract.Assert(lhs != null);
       ProcessVariable(lhs.DeepAssignedVariable);
     }
-
     return ret;
   }
 
   public override Cmd VisitUnpackCmd(UnpackCmd unpackCmd)
   {
-    Contract.Ensures(Contract.Result<Cmd>() != null);
     Cmd ret = base.VisitUnpackCmd(unpackCmd);
     foreach (var expr in unpackCmd.Lhs.Args)
     {
@@ -137,41 +115,33 @@ public class ModSetCollector : ReadOnlyVisitor
     
   public override Cmd VisitHavocCmd(HavocCmd havocCmd)
   {
-    Contract.Ensures(Contract.Result<Cmd>() != null);
     Cmd ret = base.VisitHavocCmd(havocCmd);
     foreach (IdentifierExpr expr in havocCmd.Vars)
     {
-      Contract.Assert(expr != null);
       ProcessVariable(expr.Decl);
     }
-
     return ret;
   }
 
   public override Cmd VisitCallCmd(CallCmd callCmd)
   {
-    Contract.Ensures(Contract.Result<Cmd>() != null);
     Cmd ret = base.VisitCallCmd(callCmd);
-
-    if (callCmd.IsAsync)
+    if (callCmd.IsAsync && !callCmd.HasAttribute(CivlAttributes.SYNC))
     {
       return ret;
     }
-
     foreach (IdentifierExpr ie in callCmd.Outs)
     {
-      if (ie != null)
-      {
-        ProcessVariable(ie.Decl);
-      }
+      Debug.Assert(ie != null);
+      ProcessVariable(ie.Decl);
     }
-
     Procedure callee = callCmd.Proc;
-    if (callee == null)
+    Debug.Assert(callee != null);
+    if (enclosingProc is YieldProcedureDecl callerDecl &&
+        callee is YieldProcedureDecl calleeDecl && !calleeDecl.HasMoverType && calleeDecl.RefinedAction != null)
     {
-      return ret;
+      callee = calleeDecl.RefinedActionAtLayer(callerDecl.Layer);
     }
-
     if (modSets.ContainsKey(callee))
     {
       foreach (Variable var in modSets[callee])
@@ -179,8 +149,7 @@ public class ModSetCollector : ReadOnlyVisitor
         ProcessVariable(var);
       }
     }
-
-    if (CivlPrimitives.IsPrimitive(callCmd.Proc))
+    if (CivlPrimitives.IsPrimitive(callee))
     {
       var modifiedArgument = CivlPrimitives.ModifiedArgument(callCmd)?.Decl;
       if (modifiedArgument != null)
@@ -188,36 +157,16 @@ public class ModSetCollector : ReadOnlyVisitor
         ProcessVariable(modifiedArgument);
       }
     }
-
     return ret;
   }
 
   private void ProcessVariable(Variable var)
   {
-    Procedure
-      localProc = Cce.NonNull(enclosingProc);
-    if (var == null)
+    Debug.Assert(var != null);
+    if (var is GlobalVariable && modSets[enclosingProc].Add(var))
     {
-      return;
+      moreProcessingRequired = true;
     }
-
-    if (var is not GlobalVariable)
-    {
-      return;
-    }
-
-    if (!modSets.ContainsKey(localProc))
-    {
-      modSets[localProc] = new HashSet<Variable>();
-    }
-
-    if (modSets[localProc].Contains(var))
-    {
-      return;
-    }
-
-    moreProcessingRequired = true;
-    modSets[localProc].Add(var);
   }
 
   public override Expr VisitCodeExpr(CodeExpr node)

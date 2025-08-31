@@ -25,7 +25,7 @@ refines AtomicIncr2;
 
   call {:layer 1} a := ghost(1);
   assert {:layer 1} a == 2;
-  par Incr() | Incr();
+  call Incr() | Incr();
 }
 
 yield procedure {:layer 1} Incr2'()
@@ -35,7 +35,7 @@ refines AtomicIncr2;
   var {:layer 1} b: int;
 
   call {:layer 1} a := Copy(x);
-  par Incr() | Incr();
+  call Incr() | Incr();
   call {:layer 1} b := Copy(x);
   assert {:layer 1} b == a + 2;
 }

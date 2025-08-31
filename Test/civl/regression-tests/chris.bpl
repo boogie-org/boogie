@@ -23,4 +23,4 @@ preserves call Inv();
 }
 
 yield invariant {:layer 3} Inv();
-invariant x == 5;
+preserves x == 5;

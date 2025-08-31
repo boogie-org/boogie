@@ -14,7 +14,7 @@ ensures call yield_x(old(x) + 2);
 }
 
 yield invariant {:layer 1} yield_x(i: int);
-invariant i <= x;
+preserves i <= x;
 
 yield procedure {:layer 1} double_inc_y()
 requires call yield_y(old(y));
@@ -26,14 +26,14 @@ ensures call yield_y(old(y) + 2);
 }
 
 yield invariant {:layer 1} yield_y(i: int);
-invariant i <= y;
+preserves i <= y;
 
 yield procedure {:layer 1} double_inc_x_y()
 requires call yield_x(0);
 requires call yield_y(0);
 {
-    par double_inc_x() | yield_y(y);
-    par double_inc_y() | yield_x(x);
+    call double_inc_x() | yield_y(y);
+    call double_inc_y() | yield_x(x);
     assert {:layer 1} x >= 2 && y >= 2;
 }
 

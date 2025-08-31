@@ -33,20 +33,20 @@ function {:inline} Singleton(x: int): [int]int { Empty()[x := 1] }
 ////////////////////////////////////////////////////////////////////////////////
 
 yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set ChannelHandle);
-invariant handles == BothHandles(cid);
-invariant channels[cid] == ChannelPair(Empty(), Empty());
+preserves handles == BothHandles(cid);
+preserves channels[cid] == ChannelPair(Empty(), Empty());
 
 yield invariant {:layer 1} YieldPing(x: int, {:linear} p: One ChannelHandle);
-invariant p->val is Left;
-invariant x > 0;
-invariant (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
+preserves p->val is Left;
+preserves x > 0;
+preserves (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
             (left_channel == Empty() && right_channel == Singleton(x) && x > 0) ||
             (left_channel == Singleton(x) && right_channel == Empty()));
 
 yield invariant {:layer 1} YieldPong(y: int, {:linear} p: One ChannelHandle);
-invariant p->val is Right;
-invariant y > 0;
-invariant (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
+preserves p->val is Right;
+preserves y > 0;
+preserves (var left_channel, right_channel := channels[p->val->cid]->left, channels[p->val->cid]->right;
             (left_channel == Empty() && (right_channel == Singleton(y) || right_channel == Singleton(0))) ||
             (left_channel == Singleton(y-1) && right_channel == Empty()));
 

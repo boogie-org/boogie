@@ -186,7 +186,7 @@ procedure CheckInitInv(network:[msg]bool, nodes:[int]node, history:history)
 }
 
 yield invariant {:layer 2} YieldInv();
-invariant Inv(network, nodes, history);
+preserves Inv(network, nodes, history);
 
 yield invariant {:layer 2} YieldHeld({:linear} me: One int);
-invariant nodes[me->val]->held;
+preserves nodes[me->val]->held;

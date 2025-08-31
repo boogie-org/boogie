@@ -195,12 +195,12 @@ yield procedure {:layer 0} Unreachable();
 refines AtomicUnreachable;
 
 yield invariant {:layer 1} YieldInvariant#1();
-invariant (forall y: int :: Set_Contains(isFreeSet, y) <==> memAddr(y) && isFree[y]);
+preserves (forall y: int :: Set_Contains(isFreeSet, y) <==> memAddr(y) && isFree[y]);
 
 yield invariant {:layer 2} YieldInvariant#2({:linear} tid: One Tid, status: bool, i: int);
-invariant Map_Contains(allocMap->tidToPtr, tid->val) == status;
-invariant Set_IsSubset(allocMap->ptrToTid->dom, isFreeSet);
-invariant freeSpace == Set_Size(Set_Difference(isFreeSet, allocMap->ptrToTid->dom));
-invariant BijectionInvariant(allocMap);
-invariant (forall y: int :: Set_Contains(isFreeSet, y) ==> memAddr(y));
-invariant Map_Contains(allocMap->tidToPtr, tid->val) ==> i <= Map_At(allocMap->tidToPtr, tid->val);
+preserves Map_Contains(allocMap->tidToPtr, tid->val) == status;
+preserves Set_IsSubset(allocMap->ptrToTid->dom, isFreeSet);
+preserves freeSpace == Set_Size(Set_Difference(isFreeSet, allocMap->ptrToTid->dom));
+preserves BijectionInvariant(allocMap);
+preserves (forall y: int :: Set_Contains(isFreeSet, y) ==> memAddr(y));
+preserves Map_Contains(allocMap->tidToPtr, tid->val) ==> i <= Map_At(allocMap->tidToPtr, tid->val);

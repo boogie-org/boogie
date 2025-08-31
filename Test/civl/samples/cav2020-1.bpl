@@ -13,7 +13,7 @@ preserves call yield_x(_x);
 }
 
 yield invariant {:layer 1} yield_x(_x: int);
-invariant _x <= x;
+preserves _x <= x;
 
 yield procedure {:layer 1} incr_y(_y: int)
 preserves call yield_y(_y);
@@ -24,7 +24,7 @@ preserves call yield_y(_y);
 }
 
 yield invariant {:layer 1} yield_y(_y: int);
-invariant _y <= y;
+preserves _y <= y;
 
 yield procedure {:layer 1} incr_x_y()
 requires call yield_x(0);
@@ -33,8 +33,8 @@ requires call yield_y(0);
     if (*) {
         async call incr_x_y();
     }
-    par incr_x(0) | yield_y(0);
-    par incr_y(0) | yield_x(0);
+    call incr_x(0) | yield_y(0);
+    call incr_y(0) | yield_x(0);
     assert {:layer 1} 0 <= x && 0 <= y;
 }
 

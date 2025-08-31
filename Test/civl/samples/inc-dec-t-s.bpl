@@ -5,7 +5,7 @@ var {:layer 0,1} s:int;
 var {:layer 0,1} t:int;
 
 yield invariant {:layer 1} Inv ();
-invariant t == s;
+preserves t == s;
 
 yield procedure {:layer 1} main ()
 requires call Inv();

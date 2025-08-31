@@ -33,34 +33,34 @@ function {:inline} Domain(ts: Map (LocTreiber X) (Treiber X), loc_t: LocTreiber 
 yield invariant {:layer 1} Yield();
 
 yield invariant {:layer 2} TopInStack(loc_t: LocTreiber X);
-invariant Map_Contains(TreiberPoolLow, loc_t);
-invariant (var loc_n := Map_At(TreiberPoolLow, loc_t)->top; loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t));
-invariant (forall loc_n: LocNode X :: Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n) ==>
+preserves Map_Contains(TreiberPoolLow, loc_t);
+preserves (var loc_n := Map_At(TreiberPoolLow, loc_t)->top; loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t));
+preserves (forall loc_n: LocNode X :: Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n) ==>
               (var loc_n' := Map_At(Map_At(TreiberPoolLow, loc_t)->nodes, loc_n)->next; loc_n' is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n'->t)));
 
 yield invariant {:layer 2} LocInStackOrNone(loc_t: LocTreiber X, loc_n: Option (LocNode X));
-invariant Map_Contains(TreiberPoolLow, loc_t);
-invariant loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t);
+preserves Map_Contains(TreiberPoolLow, loc_t);
+preserves loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t);
 
 yield invariant {:layer 3} LocInStack(loc_t: LocTreiber X, loc_n: LocNode X);
-invariant Map_Contains(TreiberPoolLow, loc_t);
-invariant Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n);
+preserves Map_Contains(TreiberPoolLow, loc_t);
+preserves Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n);
 
 yield invariant {:layer 4} ReachInStack(loc_t: LocTreiber X);
-invariant Map_Contains(TreiberPoolLow, loc_t);
-invariant (var t := TreiberPoolLow->val[loc_t]; Between(t->nodes->val, t->top, t->top, None()));
-invariant (var t := TreiberPoolLow->val[loc_t]; IsSubset(BetweenSet(t->nodes->val, t->top, None()), Domain(TreiberPoolLow, loc_t)->val));
-invariant (var loc_n := Map_At(TreiberPoolLow, loc_t)->top; loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t));
-invariant Map_At(TreiberPool, loc_t) == Abs(Map_At(TreiberPoolLow, loc_t));
+preserves Map_Contains(TreiberPoolLow, loc_t);
+preserves (var t := TreiberPoolLow->val[loc_t]; Between(t->nodes->val, t->top, t->top, None()));
+preserves (var t := TreiberPoolLow->val[loc_t]; IsSubset(BetweenSet(t->nodes->val, t->top, None()), Domain(TreiberPoolLow, loc_t)->val));
+preserves (var loc_n := Map_At(TreiberPoolLow, loc_t)->top; loc_n is None || Set_Contains(Domain(TreiberPoolLow, loc_t), loc_n->t));
+preserves Map_At(TreiberPool, loc_t) == Abs(Map_At(TreiberPoolLow, loc_t));
 
 yield invariant {:layer 4} StackDom();
-invariant TreiberPool->dom == TreiberPoolLow->dom;
+preserves TreiberPool->dom == TreiberPoolLow->dom;
 
 yield invariant {:layer 4} PushLocInStack(loc_t: LocTreiber X, node: Node X, new_loc_n: LocNode X, {:linear} tagged_loc: One (TaggedLocNode X));
-invariant Map_Contains(TreiberPoolLow, loc_t);
-invariant Set_Contains(Domain(TreiberPoolLow, loc_t), new_loc_n);
-invariant tagged_loc->val == TaggedLoc(new_loc_n, Unit());
-invariant (var t := TreiberPoolLow->val[loc_t]; Map_At(t->nodes, new_loc_n) == node && !BetweenSet(t->nodes->val, t->top, None())[new_loc_n]);
+preserves Map_Contains(TreiberPoolLow, loc_t);
+preserves Set_Contains(Domain(TreiberPoolLow, loc_t), new_loc_n);
+preserves tagged_loc->val == TaggedLoc(new_loc_n, Unit());
+preserves (var t := TreiberPoolLow->val[loc_t]; Map_At(t->nodes, new_loc_n) == node && !BetweenSet(t->nodes->val, t->top, None())[new_loc_n]);
 
 /// Layered implementation
 
@@ -119,7 +119,7 @@ preserves call StackDom();
   call {:layer 4} old_treiber := Copy(TreiberPoolLow->val[loc_t]);
   call loc_n, new_loc_n, tagged_loc := CreateNewTopOfStack(loc_t, x);
   call {:layer 4} FrameLemma(old_treiber, TreiberPoolLow->val[loc_t]);
-  par ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, Node(loc_n, x), new_loc_n, tagged_loc);
+  call ReachInStack(loc_t) | StackDom() | PushLocInStack(loc_t, Node(loc_n, x), new_loc_n, tagged_loc);
   call success := WriteTopOfStack#0(loc_t, loc_n, Some(new_loc_n));
   if (success) {
     call {:layer 4} TreiberPool := Copy(Map_Update(TreiberPool, loc_t, Vec_Append(Map_At(TreiberPool, loc_t), x)));
@@ -240,7 +240,7 @@ preserves call TopInStack(loc_t);
     success := true;
     return;
   }
-  par LocInStack(loc_t, loc_n->t) | LocInStackOrNone(loc_t, loc_n) | TopInStack(loc_t);
+  call LocInStack(loc_t, loc_n->t) | LocInStackOrNone(loc_t, loc_n) | TopInStack(loc_t);
   call node := LoadNode#0(loc_t, loc_n->t);
   call Yield();
   Node(new_loc_n, x) := node;

@@ -71,12 +71,12 @@ yield procedure {:layer 1} J()
 
 yield procedure {:layer 1} P1({:linear_in} x: One int) returns({:linear} x': One int)
 {
-  par x' := I(x) | J();
+  call x' := I(x) | J();
   call x' := I(x');
 }
 
 yield procedure {:layer 1} P2({:linear_in} x: One int) returns({:linear} x': One int)
 {
   call x' := I(x);
-  par x' := I(x') | J();
+  call x' := I(x') | J();
 }

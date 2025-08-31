@@ -15,5 +15,5 @@ refines skip;
 
 yield procedure {:layer 95} P()
 {
-  par A() | H();
+  call A() | H();
 }

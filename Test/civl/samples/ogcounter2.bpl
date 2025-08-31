@@ -72,7 +72,7 @@ refines AtomicIncrBy2;
 
   call tid1 := AllocTid();
   call tid2 := AllocTid();
-  par Incr(tid1) | Incr(tid2);
+  call Incr(tid1) | Incr(tid2);
 }
 
 yield procedure {:layer 5} EqualTo2({:linear} tid: One X)
@@ -83,7 +83,7 @@ ensures call YieldPost();
 }
 
 yield invariant {:layer 5} YieldPre({:linear} tid: One X);
-invariant tid->val == MainTid && x == 0;
+preserves tid->val == MainTid && x == 0;
 
 yield invariant {:layer 5} YieldPost();
-invariant x == 2;
+preserves x == 2;

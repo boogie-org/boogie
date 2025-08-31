@@ -6,10 +6,10 @@ var {:layer 0,1} count: int;
 var {:layer 1,2} {:linear} unallocated: Set int;
 
 yield invariant {:layer 1} Yield1();
-invariant AllocInv(count, unallocated);
+preserves AllocInv(count, unallocated);
 
 yield invariant {:layer 2} Yield2({:linear} tid: One int, v: int);
-invariant a[tid->val] == v;
+preserves a[tid->val] == v;
 
 yield procedure {:layer 2} main()
 requires call Yield1();
@@ -35,7 +35,7 @@ ensures call Yield2(tid, old(a)[tid->val] + 1);
   var t:int;
 
   call t := Read(tid, i);
-  par Yield1() | Yield2(tid, t);
+  call Yield1() | Yield2(tid, t);
   call Write(tid, i, t + 1);
 }
 
