@@ -21,7 +21,6 @@ using Bpl = Microsoft.Boogie;
 
 using System;
 using System.Diagnostics.Contracts;
-using System.Reflection;
 
 namespace Microsoft.Boogie {
 
@@ -58,16 +57,6 @@ readonly Bpl.Type dummyType;
 readonly List<Expr> dummyExprSeq;
 readonly TransferCmd dummyTransferCmd;
 readonly StructuredCmd dummyStructuredCmd;
-
-public static Program ParseLibrary(string libraryName)
-{
-  string libraryFileName = $"{libraryName}.bpl";
-  Assembly asm = Assembly.GetExecutingAssembly();
-  var resourceName = $"Core.{libraryFileName}";
-  using Stream resourceStream = asm.GetManifestResourceStream(resourceName);
-  Parse(new StreamReader(resourceStream), libraryFileName, new List<string>(), out Program program);
-  return program;
-}
 
 ///<summary>
 ///Returns the number of parsing errors encountered.  If 0, "program" returns as
