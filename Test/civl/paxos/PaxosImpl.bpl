@@ -22,7 +22,7 @@ preserves call YieldInv();
   invariant {:layer 2} SpecLt(r, status);
   {
     call {:layer 1,2} allRoundPermissions := Set_Get(ps', AllPermissions(r)->val);
-    async call {:sync} StartRound(r, allRoundPermissions);
+    async call {:sync} ExecuteRound(r, allRoundPermissions);
     r := r + 1;
   }
 }
@@ -30,7 +30,7 @@ preserves call YieldInv();
 ////////////////////////////////////////////////////////////////////////////////
 //// Proposer procedures
 
-yield left procedure {:layer 2} StartRound(r: Round, {:layer 1,2}{:linear_in} allRoundPermissions: Set Permission)
+yield left procedure {:layer 2} ExecuteRound(r: Round, {:layer 1,2}{:linear_in} allRoundPermissions: Set Permission)
 requires {:layer 1,2} Round(r) && allRoundPermissions == AllPermissions(r);
 preserves call YieldInv();
 requires {:layer 2} status[r] == Inactive() && voteInfo[r] == MapConst(false);
