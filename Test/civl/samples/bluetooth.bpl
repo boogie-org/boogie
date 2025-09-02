@@ -95,7 +95,7 @@ preserves call Inv1();
 {
     call DeleteReference();
     call {:layer 1} usersInDriver := B(usersInDriver, l);
-    call {:layer 1} Lemma_SubsetSize(Set_Empty(), usersInDriver);
+    call {:layer 1} Lemma_SetSize_Subset(Set_Empty(), usersInDriver);
 }
 
 pure action B({:linear_in} usersInDriver: Set Perm, {:linear_out} l: Set Perm)
@@ -124,7 +124,7 @@ preserves call Inv1();
 {
     call SetStoppingFlag(i);
     call DeleteReference();
-    call {:layer 1} Lemma_SubsetSize(Set_Empty(), usersInDriver);
+    call {:layer 1} Lemma_SetSize_Subset(Set_Empty(), usersInDriver);
 }
 
 atomic action {:layer 2} AtomicWaitAndStop()

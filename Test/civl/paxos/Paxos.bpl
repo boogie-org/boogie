@@ -180,23 +180,6 @@ yield invariant {:layer 1} YieldInv();
 preserves Inv(status, joinInfo, voteInfo, acceptorState, joinChannel, joinChannelPermissions, voteChannel, voteChannelPermissions);
 
 ////////////////////////////////////////////////////////////////////////////////
-//// Set_Size
-
-function Set_Size<T>(a: Set T) : int;
-
-axiom (forall<T> :: Set_Size(Set_Empty(): Set T) == 0);
-
-pure procedure Lemma_Set_Add<T>(a: Set T, t: T) returns (b: Set T);
-requires !Set_Contains(a, t);
-ensures b == Set_Add(a, t);
-ensures Set_Size(b) == Set_Size(a) + 1;
-
-pure procedure Lemma_Set_Remove<T>(a: Set T, t: T) returns (b: Set T);
-requires Set_Contains(a, t);
-ensures b == Set_Remove(a, t);
-ensures Set_Size(b) + 1 == Set_Size(a);
-
-////////////////////////////////////////////////////////////////////////////////
 //// Quorum
 
 pure procedure Lemma_Quorum_Intersection(r: Round, joinAcceptPerms: Set Permission, status: [Round]RoundStatus, voteInfo: [Round]NodeSet);

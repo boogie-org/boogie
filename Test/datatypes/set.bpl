@@ -37,25 +37,22 @@ procedure Test3() {
   assert Set_Size(c) == 3;
 }
 
-procedure Test4(a: Set int, b: Set int) {
-  assert Set_Size(Set_Union(a, b)) + Set_Size(Set_Intersection(a, b)) == Set_Size(a) + Set_Size(b);
-}
-
-procedure Test5(a: Set int, b: Set int)
+procedure Test4(a: Set int, b: Set int)
 requires Set_IsSubset(a, b);
 {
+  call Lemma_SetSize_Subset(a, b);
   assert Set_Size(a) <= Set_Size(b);
   assert Set_Size(a) + Set_Size(Set_Difference(b, a)) == Set_Size(b);
   assert a == b || Set_Size(a) < Set_Size(b);
 }
 
-procedure Test6(a: Set int, b: Set int)
+procedure Test5(a: Set int, b: Set int)
 requires Set_IsDisjoint(a, b);
 {
   assert Set_Size(Set_Union(a, b)) == Set_Size(a) + Set_Size(b);
 }
 
-procedure Test7(a: Set int, t: int)
+procedure Test6(a: Set int, t: int)
 {
   assert Set_Size(Set_Add(a, t)) == Set_Size(Set_Remove(a, t)) + 1;
 }
