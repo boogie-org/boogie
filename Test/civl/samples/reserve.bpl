@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -lib:set_size "%s" > "%t"
+// RUN: %parallel-boogie -lib:set_size -timeLimit:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 /*

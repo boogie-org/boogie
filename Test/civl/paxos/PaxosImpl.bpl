@@ -22,7 +22,7 @@ preserves call YieldInv();
   invariant {:layer 2} SpecLt(r, status);
   {
     call {:layer 1,2} allRoundPermissions := Set_Get(ps', AllPermissions(r)->val);
-    async call {:sync} StartRound(r, allRoundPermissions);
+    async call {:sync} ExecuteRound(r, allRoundPermissions);
     r := r + 1;
   }
 }
@@ -30,7 +30,7 @@ preserves call YieldInv();
 ////////////////////////////////////////////////////////////////////////////////
 //// Proposer procedures
 
-yield left procedure {:layer 2} StartRound(r: Round, {:layer 1,2}{:linear_in} allRoundPermissions: Set Permission)
+yield left procedure {:layer 2} ExecuteRound(r: Round, {:layer 1,2}{:linear_in} allRoundPermissions: Set Permission)
 requires {:layer 1,2} Round(r) && allRoundPermissions == AllPermissions(r);
 preserves call YieldInv();
 requires {:layer 2} status[r] == Inactive() && voteInfo[r] == MapConst(false);
@@ -93,7 +93,7 @@ ensures {:layer 2} Set_Size(joinPerms) == numNodes;
     call {:layer 1,2} p := One_Get(joinPermissions', JoinPerm(r, n));
     assert {:layer 2} JoinLt(r, joinChannelPermissions, usedPermissions);
     async call {:sync} Join(r, n, p);
-    call {:layer 2} joinPerms := Lemma_Set_Add(joinPerms, p->val);
+    call {:layer 2} joinPerms := Lemma_SetSize_Add(joinPerms, p->val);
     n := n + 1;
   }
 }
@@ -151,9 +151,9 @@ ensures {:layer 2} (forall n: Node, r': Round:: Set_Contains(joinAcceptPerms, Jo
   invariant {:layer 2} (forall n: Node, r': Round:: Set_Contains(joinAcceptPerms, JoinPerm(r, n)) && maxRound < r' && r' < r ==> !voteInfo[r'][n]);
   {
     call joinResponse := ProcessJoinResponse(r, roundPermission, votePermissions);
-    call {:layer 2} joinPerms' := Lemma_Set_Remove(joinPerms', JoinPerm(r, joinResponse->from));
+    call {:layer 2} joinPerms' := Lemma_SetSize_Remove(joinPerms', JoinPerm(r, joinResponse->from));
     if (joinResponse is JoinAccept) {
-      call {:layer 2} joinAcceptPerms := Lemma_Set_Add(joinAcceptPerms, JoinPerm(r, joinResponse->from));
+      call {:layer 2} joinAcceptPerms := Lemma_SetSize_Add(joinAcceptPerms, JoinPerm(r, joinResponse->from));
       count := count + 1;
       if (joinResponse->lastVoteRound > maxRound) {
         maxRound := joinResponse->lastVoteRound;
@@ -225,7 +225,7 @@ ensures {:layer 2} SpecLe(r, status);
   {
     call {:layer 1,2} p := One_Get(ps', VotePerm(r, n));
     async call {:sync} Vote(r, n, v, p);
-    call {:layer 2} votePerms := Lemma_Set_Add(votePerms, p->val);
+    call {:layer 2} votePerms := Lemma_SetSize_Add(votePerms, p->val);
     n := n + 1;
   }
   call count, voteAcceptPerms := CollectVoteResponses(r, v, roundPermission, votePerms);
@@ -273,9 +273,9 @@ ensures {:layer 2} (forall p: Permission:: Set_Contains(voteAcceptPerms, p) ==> 
   invariant {:layer 2} Set_IsSubset(voteAcceptPerms, usedPermissions);
   {
     call voteResponse := ProcessVoteResponse(r, roundPermission);
-    call {:layer 2} votePerms' := Lemma_Set_Remove(votePerms', VotePerm(r, voteResponse->from));
+    call {:layer 2} votePerms' := Lemma_SetSize_Remove(votePerms', VotePerm(r, voteResponse->from));
     if (voteResponse is VoteAccept) {
-      call {:layer 2} voteAcceptPerms := Lemma_Set_Add(voteAcceptPerms, VotePerm(r, voteResponse->from));
+      call {:layer 2} voteAcceptPerms := Lemma_SetSize_Add(voteAcceptPerms, VotePerm(r, voteResponse->from));
       count := count + 1;
       if (2 * count > numNodes) {
         break;
