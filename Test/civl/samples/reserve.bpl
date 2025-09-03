@@ -1,4 +1,4 @@
-// RUN: %parallel-boogie -lib:set_size -timeLimit:0 "%s" > "%t"
+// RUN: %parallel-boogie -lib:set_size "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 /*
@@ -200,7 +200,7 @@ preserves (forall y: int :: Set_Contains(isFreeSet, y) <==> memAddr(y) && isFree
 yield invariant {:layer 2} YieldInvariant#2({:linear} tid: One Tid, status: bool, i: int);
 preserves Map_Contains(allocMap->tidToPtr, tid->val) == status;
 preserves Set_IsSubset(allocMap->ptrToTid->dom, isFreeSet);
-preserves freeSpace == Set_Size(Set_Difference(isFreeSet, allocMap->ptrToTid->dom));
+preserves freeSpace + Set_Size(allocMap->ptrToTid->dom) == Set_Size(isFreeSet);
 preserves BijectionInvariant(allocMap);
 preserves (forall y: int :: Set_Contains(isFreeSet, y) ==> memAddr(y));
 preserves Map_Contains(allocMap->tidToPtr, tid->val) ==> i <= Map_At(allocMap->tidToPtr, tid->val);
