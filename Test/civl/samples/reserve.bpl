@@ -40,7 +40,7 @@ var {:layer 1,2} isFreeSet: Set int;
 var {:layer 0,2} freeSpace: int;
 var {:layer 1,2} allocMap: Bijection;
 
-yield procedure {:layer 2} Malloc({:linear} tid: One Tid)
+yield procedure {:layer 2} {:vcs_split_on_every_assert} Malloc({:linear} tid: One Tid)
 preserves call YieldInvariant#1();
 preserves call YieldInvariant#2(tid, false, memLo);
 {
