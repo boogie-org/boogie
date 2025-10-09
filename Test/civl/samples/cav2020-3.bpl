@@ -106,7 +106,7 @@ preserves call BarrierInv();
     call SetBarrier(true);
     call BarrierInv() | CollectorInv(tid, false);
     call WaitBarrier();
-    call {:layer 1} Lemma_SubsetSize(mutatorsInBarrier, Mutators);
+    call {:layer 1} Lemma_SetSize_Subset(mutatorsInBarrier, Mutators);
     call BarrierInv() | CollectorInv(tid, true);
     // do root scan here
     assert {:layer 1} mutatorsInBarrier == Mutators;

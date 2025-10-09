@@ -10,6 +10,7 @@ using VC;
 using System.Runtime.Caching;
 using System.Diagnostics;
 using VCGeneration;
+using System.Reflection;
 
 namespace Microsoft.Boogie
 {
@@ -334,22 +335,43 @@ namespace Microsoft.Boogie
       {
         return null;
       }
-      else
+
+      if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
       {
-        if (program.TopLevelDeclarations.Any(d => d.HasCivlAttribute()))
-        {
-          Options.Libraries.Add("base");
-          Options.InferModifies = true;
-        }
-
-        foreach (var libraryName in Options.Libraries)
-        {
-          var library = Parser.ParseLibrary(libraryName);
-          program.AddTopLevelDeclarations(library.TopLevelDeclarations);
-        }
-
-        return program;
+        Options.Libraries.Add("base");
+        Options.InferModifies = true;
       }
+      foreach (var libraryName in Options.Libraries)
+      {
+        var library = ParseLibrary(libraryName);
+        if (library == null)
+        {
+          okay = false;
+          continue;
+        }
+        program.AddTopLevelDeclarations(library.TopLevelDeclarations);
+      }
+
+      if (!okay)
+      {
+        return null;
+      }
+      return program;
+    }
+
+    private Program ParseLibrary(string libraryName)
+    {
+      string libraryFileName = $"{libraryName}.bpl";
+      Assembly asm = Assembly.Load("Boogie.Core");
+      var resourceName = $"Core.{libraryFileName}";
+      using Stream resourceStream = asm.GetManifestResourceStream(resourceName);
+      if (resourceStream == null)
+      {
+        Options.Printer.ErrorWriteLine(Options.OutputWriter, $"Error locating library: {resourceName} not found");
+        return null;
+      }
+      Parser.Parse(new StreamReader(resourceStream), libraryFileName, new List<string>(), out Program library);
+      return library;
     }
 
     internal static string GetFileNameForConsole(ExecutionEngineOptions options, string filename)

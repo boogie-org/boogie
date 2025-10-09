@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.  All rights reserved.
 //
 
-// RUN: %parallel-boogie -lib:set_size -timeLimit:0 -vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %parallel-boogie -lib:set_size -timeLimit:0 "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
 // Tid(i, ps) represents a linear thread id for thread number i, where i > 0 and ps = {Left(i), Right(i)}.
@@ -268,7 +268,7 @@ modifies allocSet, rootAbs, memAbs;
     memAbs[o] := (lambda z: int :: if (fieldAddr(z)) then o else memAbs[o][z]);
 }
 
-yield procedure {:layer 100}
+yield procedure {:layer 100} {:vcs_split_on_every_assert}
 Alloc({:layer 95, 100} {:linear} tid:Tid, i: int, y:idx)
 refines AtomicAlloc;
 requires {:layer 95,96,99,100} mutatorTidWhole(tid);

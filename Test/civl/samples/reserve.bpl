@@ -40,7 +40,7 @@ var {:layer 1,2} isFreeSet: Set int;
 var {:layer 0,2} freeSpace: int;
 var {:layer 1,2} allocMap: Bijection;
 
-yield procedure {:layer 2} Malloc({:linear} tid: One Tid)
+yield procedure {:layer 2} {:vcs_split_on_every_assert} Malloc({:linear} tid: One Tid)
 preserves call YieldInvariant#1();
 preserves call YieldInvariant#2(tid, false, memLo);
 {
@@ -200,7 +200,7 @@ preserves (forall y: int :: Set_Contains(isFreeSet, y) <==> memAddr(y) && isFree
 yield invariant {:layer 2} YieldInvariant#2({:linear} tid: One Tid, status: bool, i: int);
 preserves Map_Contains(allocMap->tidToPtr, tid->val) == status;
 preserves Set_IsSubset(allocMap->ptrToTid->dom, isFreeSet);
-preserves freeSpace == Set_Size(Set_Difference(isFreeSet, allocMap->ptrToTid->dom));
+preserves freeSpace + Set_Size(allocMap->ptrToTid->dom) == Set_Size(isFreeSet);
 preserves BijectionInvariant(allocMap);
 preserves (forall y: int :: Set_Contains(isFreeSet, y) ==> memAddr(y));
 preserves Map_Contains(allocMap->tidToPtr, tid->val) ==> i <= Map_At(allocMap->tidToPtr, tid->val);
