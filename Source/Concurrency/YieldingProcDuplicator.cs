@@ -54,6 +54,7 @@ namespace Microsoft.Boogie
           VisitVariableSeq(node.OutParams),
           false,
           VisitRequiresSeq(node.Requires),
+          VisitRequiresSeq(node.Preserves),
           (node.HasMoverType && node.Layer == layerNum
             ? node.ModifiedVars.Select(g => Expr.Ident(g))
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
@@ -560,7 +561,7 @@ namespace Microsoft.Boogie
         asyncCallPreconditionCheckers[newCall.Proc.Name] = DeclHelper.Procedure(
           civlTypeChecker.AddNamePrefix($"AsyncCall_{newCall.Proc.Name}_{layerNum}"),
           newCall.Proc.InParams, newCall.Proc.OutParams,
-          procToDuplicate[newCall.Proc].Requires, new List<IdentifierExpr>(), new List<Ensures>());
+          procToDuplicate[newCall.Proc].Requires, new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
       }
 
       var asyncCallPreconditionChecker = asyncCallPreconditionCheckers[newCall.Proc.Name];

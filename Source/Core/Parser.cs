@@ -632,7 +632,7 @@ private class BvBounds : Expr {
 			                         locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(130);
-		ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, mods, post, yieldRequires, yieldEnsures, yieldPreserves, refinedAction, kv); 
+		ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, new List<Requires>(), mods, post, yieldRequires, yieldEnsures, yieldPreserves, refinedAction, kv); 
 	}
 
 	void Pure(ref bool isPure) {
@@ -670,7 +670,7 @@ private class BvBounds : Expr {
 			                         Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
 			
 		} else SynErr(131);
-		proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, mods, post, kv); 
+		proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), mods, post, kv); 
 	}
 
 	void ActionDecl(bool isPure, out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeCtorDecl datatypeTypeCtorDecl) {

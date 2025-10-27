@@ -2545,6 +2545,8 @@ namespace Microsoft.Boogie
 
     public List<Requires> Requires;
 
+    public List<Requires> Preserves;
+
     public List<IdentifierExpr> Modifies;
     
     public IEnumerable<Variable> ModifiedVars => Modifies.Select(ie => ie.Decl).Distinct();
@@ -2553,21 +2555,22 @@ namespace Microsoft.Boogie
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures)
-      : this(tok, name, typeParams, inParams, outParams, isPure, requires, modifies, ensures, null)
+      List<Requires> requires, List<Requires> preserves, List<IdentifierExpr> modifies, List<Ensures> ensures)
+      : this(tok, name, typeParams, inParams, outParams, isPure, requires, preserves, modifies, ensures, null)
     {
     }
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> @requires, List<IdentifierExpr> @modifies, List<Ensures> @ensures, QKeyValue kv
+      List<Requires> requires, List<Requires> preserves, List<IdentifierExpr> modifies, List<Ensures> ensures, QKeyValue kv
     )
       : base(tok, name, typeParams, inParams, outParams)
     {
       this.IsPure = isPure;
-      this.Requires = @requires;
-      this.Modifies = @modifies;
-      this.Ensures = @ensures;
+      this.Requires = requires;
+      this.Preserves = preserves;
+      this.Modifies = modifies;
+      this.Ensures = ensures;
       this.Attributes = kv;
     }
 
@@ -2579,6 +2582,12 @@ namespace Microsoft.Boogie
     protected virtual void EmitEnd(TokenTextWriter stream, int level)
     {
       foreach (Requires e in this.Requires)
+      {
+        Contract.Assert(e != null);
+        e.Emit(stream, level);
+      }
+
+      foreach (Requires e in this.Preserves)
       {
         Contract.Assert(e != null);
         e.Emit(stream, level);
@@ -2653,6 +2662,11 @@ namespace Microsoft.Boogie
           Contract.Assert(e != null);
           e.Resolve(rc);
         }
+        foreach (Requires e in Preserves)
+        {
+          Contract.Assert(e != null);
+          e.Resolve(rc);
+        }
 
         RegisterFormals(OutParams, rc);
         ResolveFormals(OutParams,
@@ -2711,6 +2725,12 @@ namespace Microsoft.Boogie
         e.Typecheck(tc);
       }
 
+      foreach (Requires e in Preserves)
+      {
+        Contract.Assert(e != null);
+        e.Typecheck(tc);
+      }
+
       foreach (Ensures e in Ensures)
       {
         Contract.Assert(e != null);
@@ -2730,9 +2750,9 @@ namespace Microsoft.Boogie
 
     public bool IsGlobal;
 
-    public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> requires, QKeyValue kv) :
-      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false, requires, new List<IdentifierExpr>(),
-        requires.Select(x => new Ensures(x.tok, false, x.Condition, null)).ToList(), kv)
+    public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> preserves, QKeyValue kv) :
+      base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false,
+            new List<Requires>(), preserves, new List<IdentifierExpr>(), new List<Ensures>(), kv)
     {
       IsGlobal = true;
     }
@@ -2847,7 +2867,7 @@ namespace Microsoft.Boogie
       List<Requires> requires, List<CallCmd> yieldRequires, List<AssertCmd> asserts,
       List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
-      isPure, requires, modifies, new List<Ensures>(), kv)
+      isPure, requires, new List<Requires>(), modifies, new List<Ensures>(), kv)
     {
       this.MoverType = moverType;
       this.Creates = creates;
@@ -3184,10 +3204,10 @@ namespace Microsoft.Boogie
 
     public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams,
       List<Variable> outParams,
-      List<Requires> requires, List<IdentifierExpr> modifies, List<Ensures> ensures,
+      List<Requires> requires, List<Requires> preserves, List<IdentifierExpr> modifies, List<Ensures> ensures,
       List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      false, requires, modifies, ensures, kv)
+      false, requires, preserves, modifies, ensures, kv)
     {
       this.MoverType = moverType;
       this.YieldRequires = yieldRequires;
@@ -3433,7 +3453,7 @@ namespace Microsoft.Boogie
       List<Variable> inputs, List<Variable> outputs, List<IdentifierExpr> globalMods)
       : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
         new List<TypeVariable>(), inputs, outputs, false,
-        new List<Requires>(), globalMods, new List<Ensures>())
+        new List<Requires>(), new List<Requires>(), globalMods, new List<Ensures>())
     {
       enclosingImpl = impl;
     }
