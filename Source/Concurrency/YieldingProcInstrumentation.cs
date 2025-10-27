@@ -122,12 +122,12 @@ namespace Microsoft.Boogie
 
       wrapperYieldToYieldNoninterferenceCheckerProc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix($"Wrapper_YieldToYield_NoninterferenceChecker_{layerNum}"),
-        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
       CivlUtil.AddInlineAttribute(wrapperYieldToYieldNoninterferenceCheckerProc);
       
       wrapperGlobalNoninterferenceCheckerProc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix($"Wrapper_Global_NoninterferenceChecker_{layerNum}"),
-        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
       CivlUtil.AddInlineAttribute(wrapperGlobalNoninterferenceCheckerProc);
 
       if (civlTypeChecker.Options.TrustNoninterference)
@@ -234,7 +234,7 @@ namespace Microsoft.Boogie
 
       foreach (var yieldInvariantDecl in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldInvariantDecl>().ToList())
       {
-        if (layerNum == yieldInvariantDecl.Layer && yieldInvariantDecl.Requires.Any())
+        if (layerNum == yieldInvariantDecl.Layer && yieldInvariantDecl.Preserves.Any())
         {
           var (proc, impl) = NoninterferenceChecker.CreateNoninterferenceCheckerDecls(civlTypeChecker,
               layerNum, absyMap, yieldInvariantDecl, new List<Variable>());
@@ -269,7 +269,7 @@ namespace Microsoft.Boogie
           Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
             .ToDictionary(x => x.Item1, x => x.Item2);
           Substitution subst = Substituter.SubstitutionFromDictionary(map);
-          foreach (Requires req in yieldInvariant.Requires)
+          foreach (Requires req in yieldInvariant.Preserves)
           {
             var newExpr = Substituter.Apply(subst, req.Condition);
             if (req.Free)
@@ -317,7 +317,7 @@ namespace Microsoft.Boogie
             Substitution callFormalsToActuals = Substituter.SubstitutionFromDictionary(yieldInvariant.InParams
               .Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => (Expr) ExprHelper.Old(x.Item2)));
-            yieldInvariant.Requires.ForEach(req => initCmds.Add(new AssumeCmd(req.tok,
+            yieldInvariant.Preserves.ForEach(req => initCmds.Add(new AssumeCmd(req.tok,
               Substituter.Apply(procToImplInParams,
                 Substituter.Apply(callFormalsToActuals, req.Condition)))));
           }
@@ -342,7 +342,7 @@ namespace Microsoft.Boogie
             Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => x.Item2);
             Substitution subst = Substituter.SubstitutionFromDictionary(map);
-            foreach (Requires req in yieldInvariant.Requires)
+            foreach (Requires req in yieldInvariant.Preserves)
             {
               impl.Proc.Requires.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
                 null,
@@ -359,7 +359,7 @@ namespace Microsoft.Boogie
             Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
               .ToDictionary(x => x.Item1, x => x.Item2);
             Substitution subst = Substituter.SubstitutionFromDictionary(map);
-            foreach (Requires req in yieldInvariant.Requires)
+            foreach (Requires req in yieldInvariant.Preserves)
             {
               impl.Proc.Ensures.Add(new Ensures(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
                 null,
@@ -727,6 +727,14 @@ namespace Microsoft.Boogie
               req.Attributes));
           }
 
+          foreach (Requires req in callCmd.Proc.Preserves)
+          {
+            requiresSeq.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null,
+              req.Attributes));
+            ensuresSeq.Add(new Ensures(req.tok, req.Free, Substituter.Apply(subst, req.Condition), null,
+              req.Attributes));
+          }
+
           foreach (Ensures ens in callCmd.Proc.Ensures)
           {
             ensuresSeq.Add(new Ensures(ens.tok, ens.Free, Substituter.Apply(subst, ens.Condition), null,
@@ -737,7 +745,7 @@ namespace Microsoft.Boogie
         }
 
         parallelCallAggregators[procName] = DeclHelper.Procedure(
-          procName, inParams, outParams, requiresSeq,
+          procName, inParams, outParams, requiresSeq, new List<Requires>(),
           civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList(), ensuresSeq);
       }
 
@@ -797,6 +805,7 @@ namespace Microsoft.Boogie
         var inputs = action.Impl.InParams;
         var outputs = action.Impl.OutParams;
         var requires = action.Gate.Select(a => new Requires(false, a.Expr)).ToList();
+        var preserves = new List<Requires>();
         var ensures = new List<Ensures>();
         var modifies = civlTypeChecker.GlobalVariables.Select(Expr.Ident).ToList();
         var locals = oldGlobalMap.Values.Union(localPermissionCollectors.Values).ToList();
@@ -810,7 +819,7 @@ namespace Microsoft.Boogie
         var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
 
         var name = civlTypeChecker.AddNamePrefix($"{checkerNamePrefix}_NoninterferenceChecker_{action.Name}_{layerNum}");
-        var proc = DeclHelper.Procedure(name, inputs, outputs, requires, modifies, ensures);
+        var proc = DeclHelper.Procedure(name, inputs, outputs, requires, preserves, modifies, ensures);
         var impl = DeclHelper.Implementation(proc, inputs, outputs, locals, blocks);
         yield return proc;
         yield return impl;

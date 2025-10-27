@@ -57,7 +57,7 @@ namespace Microsoft.Boogie
       var noninterferenceCheckerName = $"yield_{yieldInvariantDecl.Name}";
       var disjointnessCmds =
         linearPermissionInstrumentation.ProcDisjointnessAndWellFormedAssumeCmds(yieldInvariantDecl, true);
-      var invariantCmds = yieldInvariantDecl.Requires.Select(requires =>
+      var invariantCmds = yieldInvariantDecl.Preserves.Select(requires =>
         requires.Free
           ? (PredicateCmd)new AssumeCmd(requires.tok, requires.Condition)
           : (PredicateCmd)new AssertCmd(requires.tok, requires.Condition)).ToList();
@@ -96,7 +96,7 @@ namespace Microsoft.Boogie
       noninterferenceCheckerName =
         civlTypeChecker.AddNamePrefix($"NoninterferenceChecker_{noninterferenceCheckerName}");
       var noninterferenceCheckerProc = DeclHelper.Procedure(noninterferenceCheckerName,
-        inputs, new List<Variable>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+        inputs, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
       CivlUtil.AddInlineAttribute(noninterferenceCheckerProc);
 
       // Create the yield checker implementation

@@ -1395,6 +1395,11 @@ namespace Microsoft.Boogie
             {
               tc.Error(this, $"variable not available at layer {yieldInvariantDecl.Layer}: {Decl.Name}");
             }
+            else if (yieldInvariantDecl.IsGlobal && Decl.LayerRange.LowerLayer == yieldInvariantDecl.Layer)
+            {
+              tc.Error(this,
+                $"global invariant at layer {yieldInvariantDecl.Layer} cannot refer to a global variable introduced at the same layer: {Decl.Name}");
+            }
           }
         }
         else if (tc.Proc is YieldProcedureDecl)

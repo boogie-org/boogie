@@ -844,7 +844,7 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
                                    locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
       .)
     )
-    (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, mods, post, yieldRequires, yieldEnsures, yieldPreserves, refinedAction, kv); .)
+    (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, new List<Requires>(), mods, post, yieldRequires, yieldEnsures, yieldPreserves, refinedAction, kv); .)
   .
 
 SpecAsserts<. List<AssertCmd> asserts .>
@@ -923,7 +923,7 @@ Procedure<bool isPure, out Procedure proc, out /*maybe null*/ Implementation imp
                                 Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
     .)
   )
-  (. proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, mods, post, kv); .)
+  (. proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), mods, post, kv); .)
   .
 
 Implementation<out Implementation impl>
