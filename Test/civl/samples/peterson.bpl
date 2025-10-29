@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 
 /*
-variables flag:[bool]bool = [i \in {0, 1} |-> FALSE], turn = 0;
+variables flag: [bool]bool, turn: bool;
 
 process (self: bool) {
     while (true) {
@@ -15,9 +15,7 @@ process (self: bool) {
 }
 */
 
-datatype Label {
-    a1(), a2(), a3a(), a3b(), cs()
-}
+datatype Label { a1(), a2(), a3a(), a3b(), cs()}
 
 var {:layer 1,1} pc: [bool]Label;
 var {:layer 0,1} turn: bool;
