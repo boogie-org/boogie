@@ -27,8 +27,8 @@ yield invariant {:layer 1} yield_y(_y: int);
 preserves _y <= y;
 
 yield procedure {:layer 1} incr_x_y()
-requires call yield_x(0);
-requires call yield_y(0);
+preserves call yield_x(0);
+preserves call yield_y(0);
 {
     if (*) {
         async call incr_x_y();
@@ -36,20 +36,18 @@ requires call yield_y(0);
     call incr_x(0) | yield_y(0);
     call incr_y(0) | yield_x(0);
     assert {:layer 1} 0 <= x && 0 <= y;
+    if (*) {
+        call incr_x_y();
+    }
 }
 
-atomic action {:layer 1,1} atomic_incr_x()
-modifies x;
+yield procedure {:layer 0} _incr_x();
+refines atomic action {:layer 1,1} _
 {
     x := x + 1;
 }
-yield procedure {:layer 0} _incr_x();
-refines atomic_incr_x;
 
-atomic action {:layer 1,1} atomic_incr_y()
-modifies y;
-{
+yield procedure {:layer 0} _incr_y();
+refines atomic action {:layer 1,1} _ {
     y := y + 1;
 }
-yield procedure {:layer 0} _incr_y();
-refines atomic_incr_y;

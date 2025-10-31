@@ -15,7 +15,7 @@ process (self: bool) {
 }
 */
 
-datatype Label { a1(), a2(), a3a(), a3b(), cs()}
+datatype Label { a1(), a2(), a3a(), a3b(), cs() }
 
 var {:layer 1,1} pc: [bool]Label;
 var {:layer 0,1} turn: bool;
@@ -43,12 +43,14 @@ preserves call PetersonInv();
     var _turn: bool;
 
     id := self->val;
-
     call SetFlag(id, true);
-    call {:layer 1} pc := Copy(pc[id := a2()]);
+    call {:layer 1} pc := Copy(pc[id := a2()]); // pc[id] := a2()
+
     call ProgramCounterInv(self, a2()) | PetersonInv();
+
     call SetTurn(!id);
-    call {:layer 1} pc := Copy(pc[id := a3a()]);
+    call {:layer 1} pc := Copy(pc[id := a3a()]); // pc[id] := a3a()
+
     while (true)
     invariant {:layer 1} {:yields} true;
     invariant call ProgramCounterInv(self, a3a());
@@ -58,19 +60,23 @@ preserves call PetersonInv();
         if (!other_flag) {
             break;
         }
-        call {:layer 1} pc := Copy(pc[id := a3b()]);
+        call {:layer 1} pc := Copy(pc[id := a3b()]); // pc[id] := a3b()
+
         call ProgramCounterInv(self, a3b()) | PetersonInv();
+
         call _turn := GetTurn();
         if (_turn == id) {
             break;
         }
-        call {:layer 1} pc := Copy(pc[id := a3a()]);
+        call {:layer 1} pc := Copy(pc[id := a3a()]); // pc[id] := a3a()
     }
+
     /* critical section */
-    call {:layer 1} pc := Copy(pc[id := cs()]);
+    call {:layer 1} pc := Copy(pc[id := cs()]); // pc[id] := cs()
     call ProgramCounterInv(self, cs()) | PetersonInv();
+
     call SetFlag(id, false);
-    call {:layer 1} pc := Copy(pc[id := a1()]);
+    call {:layer 1} pc := Copy(pc[id := a1()]); // pc[id] := a1()
 }
 
 yield procedure {:layer 0} SetFlag(id: bool, v: bool);
