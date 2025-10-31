@@ -61,7 +61,7 @@ namespace Microsoft.Boogie
     private LinearTypeChecker linearTypeChecker;
     private Program program => linearTypeChecker.program;
     private Dictionary<Type, LinearDomain> permissionTypeToLinearDomain;
-    // types not in the domain of collectors are guarantees not to contain permissions
+    // types not in the domain of collectors are guaranteed not to contain permissions
     private Dictionary<Type, Dictionary<Type, Function>> collectors;
     private HashSet<Type> visitedTypes;
 
