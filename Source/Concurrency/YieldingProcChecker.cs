@@ -70,7 +70,6 @@ namespace Microsoft.Boogie
         }
         decls.AddRange(duplicator.Collect());
       }
-
     }
   }
 }

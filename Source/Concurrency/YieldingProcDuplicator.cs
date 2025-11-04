@@ -23,15 +23,13 @@ namespace Microsoft.Boogie
 
     private LinearRewriter linearRewriter;
 
-    private ConcurrencyOptions Options => civlTypeChecker.Options;
+    private bool doRefinementCheck;
 
-    private bool forRefinementCheck;
-
-    public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum, bool forRefinementCheck)
+    public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum, bool doRefinementCheck)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.layerNum = layerNum;
-      this.forRefinementCheck = forRefinementCheck;
+      this.doRefinementCheck = doRefinementCheck;
       this.procToDuplicate = new Dictionary<Procedure, Procedure>();
       this.absyMap = new AbsyMap();
       this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
@@ -46,7 +44,7 @@ namespace Microsoft.Boogie
       {
         Debug.Assert(layerNum <= node.Layer);
         var procName = civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}");
-        if (forRefinementCheck)
+        if (doRefinementCheck)
         {
           procName = civlTypeChecker.AddNamePrefix($"{node.Name}_Refine_{layerNum}");
         }
@@ -162,7 +160,7 @@ namespace Microsoft.Boogie
       
       newImpl.LocVars.AddRange(returnedPAs.Values);
 
-      if (!enclosingYieldingProc.HasMoverType && RefinedAction.HasPendingAsyncs && forRefinementCheck)
+      if (!enclosingYieldingProc.HasMoverType && RefinedAction.HasPendingAsyncs && doRefinementCheck)
       {
         var assumeExpr = EmptyPendingAsyncMultisetExpr(CollectedPAs, RefinedAction.PendingAsyncs);
         newImpl.LocVars.AddRange(civlTypeChecker.PendingAsyncCollectors(impl).Values.Except(impl.LocVars));
@@ -183,7 +181,7 @@ namespace Microsoft.Boogie
     public override Cmd VisitAssertCmd(AssertCmd node)
     {
       var assertCmd = (AssertCmd)base.VisitAssertCmd(node);
-      if (forRefinementCheck && node.Layers.Contains(layerNum))
+      if (doRefinementCheck && node.Layers.Contains(layerNum))
       {
         return new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes);
       }
@@ -286,7 +284,7 @@ namespace Microsoft.Boogie
             // synchronize the called atomic action
             AddActionCall(newCall, yieldingProc);
           }
-          else if (forRefinementCheck)
+          else if (doRefinementCheck)
           {
             AddPendingAsync(newCall, yieldingProc);
           }
@@ -298,7 +296,7 @@ namespace Microsoft.Boogie
             // synchronize the called mover procedure
             AddDuplicateCall(newCall, false);
           }
-          else if (forRefinementCheck)
+          else if (doRefinementCheck)
           {
             Debug.Assert(!yieldingProc.HasMoverType);
             AddPendingAsync(newCall, yieldingProc);
@@ -324,7 +322,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (forRefinementCheck && yieldingProc.RefinedAction.ActionDecl != civlTypeChecker.SkipActionDecl)
+          if (doRefinementCheck && yieldingProc.RefinedAction.ActionDecl != civlTypeChecker.SkipActionDecl)
           {
             var parCallCmdBefore = new ParCallCmd(newCall.tok, new List<CallCmd> { });
             absyMap[parCallCmdBefore] = absyMap[newCall];
@@ -361,7 +359,7 @@ namespace Microsoft.Boogie
           return;
         }
         var callCmd = callCmds.Find(cmd => cmd.Proc is YieldProcedureDecl yieldingProc && layerNum == yieldingProc.Layer);
-        if (forRefinementCheck && callCmd != null)
+        if (doRefinementCheck && callCmd != null)
         {
           callCmds.Remove(callCmd);
           AddParallelCall();
@@ -441,7 +439,7 @@ namespace Microsoft.Boogie
     {
       var calleeRefinedAction = PrepareNewCall(newCall, calleeActionProc);
       InjectPreconditions(calleeRefinedAction, newCall);
-      InjectGate(calleeRefinedAction, newCall, !forRefinementCheck);
+      InjectGate(calleeRefinedAction, newCall, !doRefinementCheck);
       newCmdSeq.Add(newCall);
 
       if (calleeRefinedAction.HasPendingAsyncs)
@@ -506,7 +504,7 @@ namespace Microsoft.Boogie
     {
       // Inject pending async collection
       newCall.Outs.AddRange(calleeRefinedAction.PendingAsyncs.Select(decl => Expr.Ident(ReturnedPAs(decl.PendingAsyncType))));
-      if (!forRefinementCheck)
+      if (!doRefinementCheck)
       {
         return;
       }
@@ -617,7 +615,7 @@ namespace Microsoft.Boogie
         civlTypeChecker,
         layerNum,
         absyMap,
-        forRefinementCheck));
+        doRefinementCheck));
       return decls;
     }
   }
