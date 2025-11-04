@@ -82,12 +82,11 @@ namespace Microsoft.Boogie
   {
     public const string LAYER = "layer";
     public const string YIELDS = "yields";
-    public const string MARK = "mark";
     public const string HIDE = "hide";
     public const string PENDING_ASYNC = "pending_async";
     public const string SYNC = "sync";
 
-    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, MARK, HIDE, PENDING_ASYNC, SYNC };
+    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, HIDE, PENDING_ASYNC, SYNC };
 
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
@@ -168,11 +167,6 @@ namespace Microsoft.Boogie
     public static void RemoveLinearAttributes(ICarriesAttributes obj)
     {
       RemoveAttributes(obj, LINEAR_ATTRIBUTES);
-    }
-
-    public static bool IsCallMarked(CallCmd callCmd)
-    {
-      return callCmd.HasAttribute(MARK);
     }
 
     public static QKeyValue ApplySubstitutionToPoolHints(Substitution incarnationSubst, QKeyValue attributes)
