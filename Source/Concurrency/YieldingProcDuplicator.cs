@@ -181,13 +181,14 @@ namespace Microsoft.Boogie
     public override Cmd VisitAssertCmd(AssertCmd node)
     {
       var assertCmd = (AssertCmd)base.VisitAssertCmd(node);
-      if (doRefinementCheck && node.Layers.Contains(layerNum))
-      {
-        return new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes);
-      }
       if (!node.Layers.Contains(layerNum))
       {
         assertCmd.Expr = Expr.True;
+        return assertCmd;
+      }
+      if (!doRefinementCheck)
+      {
+        return new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes);
       }
       return assertCmd;
     }
@@ -245,12 +246,17 @@ namespace Microsoft.Boogie
           {
             var pureAction = civlTypeChecker.Action(actionDecl);
             newCall.Proc = pureAction.Impl.Proc;
-            InjectGate(pureAction, newCall);
+            InjectGate(pureAction, newCall, !doRefinementCheck);
             newCmdSeq.Add(newCall);
           }
           else if (CivlPrimitives.IsPrimitive(newCall.Proc))
           {
-            newCmdSeq.AddRange(linearRewriter.RewriteCallCmd(newCall));
+            var cmds = linearRewriter.RewriteCallCmd(newCall).Select(cmd =>
+              cmd is AssertCmd assertCmd && !doRefinementCheck
+              ? new AssumeCmd(assertCmd.tok, assertCmd.Expr, assertCmd.Attributes)
+              : cmd
+            );
+            newCmdSeq.AddRange(cmds);
           }
           else
           {
@@ -464,7 +470,7 @@ namespace Microsoft.Boogie
       newCmdSeq.AddRange(action.Preconditions(layerNum, subst));
     }
 
-    private void InjectGate(Action action, CallCmd callCmd, bool assume = false)
+    private void InjectGate(Action action, CallCmd callCmd, bool assume)
     {
       if (action.Gate.Count == 0)
       {
