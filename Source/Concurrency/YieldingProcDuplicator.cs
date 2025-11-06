@@ -208,7 +208,6 @@ namespace Microsoft.Boogie
       {
         absyMap[newCall] = parCall;
       }
-
       return newParCall;
     }
 
@@ -328,15 +327,18 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (doRefinementCheck && yieldingProc.RefinedAction.ActionDecl != civlTypeChecker.SkipActionDecl)
+          if (doRefinementCheck)
           {
-            var parCallCmdBefore = new ParCallCmd(newCall.tok, new List<CallCmd> { });
+            var parCallCmdBefore = new ParCallCmd(newCall.tok, []);
             absyMap[parCallCmdBefore] = absyMap[newCall];
             newCmdSeq.Add(parCallCmdBefore);
-            AddActionCall(newCall, yieldingProc);
-            var parCallCmdAfter = new ParCallCmd(newCall.tok, new List<CallCmd> { });
-            absyMap[parCallCmdAfter] = absyMap[newCall];
-            newCmdSeq.Add(parCallCmdAfter);
+            if (yieldingProc.RefinedAction.ActionDecl != civlTypeChecker.SkipActionDecl)
+            {
+              AddActionCall(newCall, yieldingProc);
+              var parCallCmdAfter = new ParCallCmd(newCall.tok, []);
+              absyMap[parCallCmdAfter] = absyMap[newCall];
+              newCmdSeq.Add(parCallCmdAfter);
+            }
           }
           else
           {
