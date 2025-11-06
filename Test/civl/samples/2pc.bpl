@@ -100,8 +100,10 @@ yield right procedure {:layer 1} vote_all(xid: TransactionId, {:linear_in} vrs: 
 requires {:layer 1} vrs == Set((lambda vr:VoteRequest :: vr->xid == xid && 1 <= vr->rid && vr->rid < i+1));
 ensures {:layer 1} (forall j:int :: 1 <= j && j < i+1 && votes[j] == YES() ==> Set_Contains(locked_transactions[j], xid));
 ensures {:layer 1} vrs' ==Set((lambda vr:VoteRequest :: vr->xid == xid && 1 <= vr->rid && vr->rid < i+1));
-preserves call LockedNoConflicts();
-preserves call CommittedSubsetLocked();
+requires {:layer 1} (forall  {:pool "J"} j:int, xid1: TransactionId, xid2: TransactionId :: {:add_to_pool "J", j} (1 <= j && j < n+1 && xid1 != xid2 && Set_Contains(locked_transactions[j], xid1) && Set_Contains(locked_transactions[j], xid2)) ==> !Conflict[xid1][xid2]);
+ensures {:layer 1} (forall  {:pool "J"} j:int, xid1: TransactionId, xid2: TransactionId :: {:add_to_pool "J", j} (1 <= j && j < n+1 && xid1 != xid2 && Set_Contains(locked_transactions[j], xid1) && Set_Contains(locked_transactions[j], xid2)) ==> !Conflict[xid1][xid2]);
+requires {:layer 1} (forall {:pool "J"} j:int, xid0: TransactionId :: {:add_to_pool "J", j} 1 <= j && j < n+1 && Set_Contains(committed_transactions, xid0) ==> Set_Contains(locked_transactions[j], xid0));
+ensures {:layer 1} (forall {:pool "J"} j:int, xid0: TransactionId :: {:add_to_pool "J", j} 1 <= j && j < n+1 && Set_Contains(committed_transactions, xid0) ==> Set_Contains(locked_transactions[j], xid0));
 ensures {:layer 1} (forall j:int :: 1 <= j && j < n+1 ==> IsSubset(old(locked_transactions)[j]->val, locked_transactions[j]->val));
 ensures {:layer 1} (forall j:int :: 1 <= j && j < i+1 ==> votes[j] != NONE());
 modifies locked_transactions;
@@ -123,8 +125,10 @@ yield left procedure {:layer 1} finalize_all(d: Decision, {:linear} xid: One Tra
 requires {:layer 1} vrs == allVoteRequests(xid->val);
 requires {:layer 1}  (forall j:int :: {:add_to_pool "J", j} d == COMMIT() &&  1 <= j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
 ensures {:layer 1}  (forall j:int :: d == COMMIT() && 1 <=j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
-preserves call LockedNoConflicts();
-preserves call CommittedSubsetLocked();
+requires {:layer 1} (forall  {:pool "J"} j:int, xid1: TransactionId, xid2: TransactionId :: {:add_to_pool "J", j} (1 <= j && j < n+1 && xid1 != xid2 && Set_Contains(locked_transactions[j], xid1) && Set_Contains(locked_transactions[j], xid2)) ==> !Conflict[xid1][xid2]);
+ensures {:layer 1} (forall  {:pool "J"} j:int, xid1: TransactionId, xid2: TransactionId :: {:add_to_pool "J", j} (1 <= j && j < n+1 && xid1 != xid2 && Set_Contains(locked_transactions[j], xid1) && Set_Contains(locked_transactions[j], xid2)) ==> !Conflict[xid1][xid2]);
+requires {:layer 1} (forall {:pool "J"} j:int, xid0: TransactionId :: {:add_to_pool "J", j} 1 <= j && j < n+1 && Set_Contains(committed_transactions, xid0) ==> Set_Contains(locked_transactions[j], xid0));
+ensures {:layer 1} (forall {:pool "J"} j:int, xid0: TransactionId :: {:add_to_pool "J", j} 1 <= j && j < n+1 && Set_Contains(committed_transactions, xid0) ==> Set_Contains(locked_transactions[j], xid0));
 requires {:layer 1} !Set_Contains(committed_transactions, xid->val);
 ensures {:layer 1} (forall j:int, xid0 : TransactionId :: 1 <= j && j < n+1 && xid0 != xid->val && Set_Contains(old(locked_transactions)[j], xid0) ==> Set_Contains(locked_transactions[j], xid0));
 modifies locked_transactions;
