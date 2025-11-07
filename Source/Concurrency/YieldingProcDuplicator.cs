@@ -194,7 +194,6 @@ namespace Microsoft.Boogie
     public override Cmd VisitAssertCmd(AssertCmd node)
     {
       var assertCmd = (AssertCmd)base.VisitAssertCmd(node);
-      bool insideLoopInvariantOfYieldingLoop = enclosingYieldingProc.YieldingLoops.ContainsKey(enclosingBlock) && inPredicatePhase;
       if (!node.Layers.Contains(layerNum))
       {
         assertCmd.Expr = Expr.True;
@@ -204,6 +203,7 @@ namespace Microsoft.Boogie
       {
         return assertCmd;
       }
+      bool insideLoopInvariantOfYieldingLoop = enclosingYieldingProc.IsYieldingLoopHeaderAtProcedureLayer(enclosingBlock) && inPredicatePhase;
       if (insideLoopInvariantOfYieldingLoop)
       {
         return doRefinementCheck ? new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes) : assertCmd;

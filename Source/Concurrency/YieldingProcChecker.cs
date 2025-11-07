@@ -30,7 +30,8 @@ namespace Microsoft.Boogie
         foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl).ToList())
         {
           var yieldProcedureDecl = (YieldProcedureDecl)impl.Proc;
-          if (yieldProcedureDecl.Layer > layerNum || yieldProcedureDecl.Layer == layerNum && !yieldProcedureDecl.HasMoverType)
+          if (yieldProcedureDecl.Layer > layerNum ||
+              yieldProcedureDecl.Layer == layerNum && !yieldProcedureDecl.HasMoverType)
           {
             duplicator.VisitImplementation(impl);
           }
