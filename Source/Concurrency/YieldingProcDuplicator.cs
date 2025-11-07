@@ -48,6 +48,15 @@ namespace Microsoft.Boogie
         {
           procName = civlTypeChecker.AddNamePrefix($"{node.Name}_Refine_{layerNum}");
         }
+        var requires = VisitRequiresSeq(node.Requires);
+        var preserves = VisitRequiresSeq(node.Preserves);
+        var ensures = VisitEnsuresSeq(node.Ensures);
+        if (node.HasMoverType && layerNum == node.Layer && !doRefinementCheck)
+        {
+          requires = requires.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
+          preserves = preserves.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
+          ensures = ensures.Select(ens => new Ensures(ens.tok, true, ens.Condition, ens.Comment, ens.Attributes)).ToList();
+        }
         var proc = new Procedure(
           node.tok,
           procName,
@@ -55,12 +64,12 @@ namespace Microsoft.Boogie
           VisitVariableSeq(node.InParams),
           VisitVariableSeq(node.OutParams),
           false,
-          VisitRequiresSeq(node.Requires),
-          VisitRequiresSeq(node.Preserves),
+          requires,
+          preserves,
           (node.HasMoverType && node.Layer == layerNum
             ? node.ModifiedVars.Select(g => Expr.Ident(g))
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
-          VisitEnsuresSeq(node.Ensures));
+          ensures);
         procToDuplicate[node] = proc;
         absyMap[proc] = node;
       }
@@ -119,6 +128,8 @@ namespace Microsoft.Boogie
 
     private Implementation enclosingImpl;
     private YieldProcedureDecl enclosingYieldingProc;
+    private Block enclosingBlock;
+    private bool inPredicatePhase;
 
     private Action RefinedAction => civlTypeChecker.Action(enclosingYieldingProc.RefinedAction.ActionDecl);
 
@@ -173,7 +184,9 @@ namespace Microsoft.Boogie
 
     public override Block VisitBlock(Block node)
     {
+      enclosingBlock = node;
       var block = base.VisitBlock(node);
+      enclosingBlock = null;
       absyMap[block] = node;
       return block;
     }
@@ -181,16 +194,24 @@ namespace Microsoft.Boogie
     public override Cmd VisitAssertCmd(AssertCmd node)
     {
       var assertCmd = (AssertCmd)base.VisitAssertCmd(node);
+      bool insideLoopInvariantOfYieldingLoop = enclosingYieldingProc.YieldingLoops.ContainsKey(enclosingBlock) && inPredicatePhase;
       if (!node.Layers.Contains(layerNum))
       {
         assertCmd.Expr = Expr.True;
         return assertCmd;
       }
-      if (!doRefinementCheck)
+      if (layerNum != enclosingYieldingProc.Layer)
       {
-        return new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes);
+        return assertCmd;
       }
-      return assertCmd;
+      if (insideLoopInvariantOfYieldingLoop)
+      {
+        return doRefinementCheck ? new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes) : assertCmd;
+      }
+      else
+      {
+        return doRefinementCheck ? assertCmd : new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes);
+      }
     }
 
     public override Cmd VisitCallCmd(CallCmd call)
@@ -214,10 +235,10 @@ namespace Microsoft.Boogie
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
       newCmdSeq = new List<Cmd>();
+      inPredicatePhase = true;
       foreach (var cmd in cmdSeq)
       {
         Cmd newCmd = (Cmd) Visit(cmd);
-
         if (newCmd is CallCmd)
         {
           ProcessCallCmd((CallCmd) newCmd);
@@ -230,6 +251,7 @@ namespace Microsoft.Boogie
         {
           newCmdSeq.Add(newCmd);
         }
+        inPredicatePhase = inPredicatePhase && (cmd is PredicateCmd || cmd is CallCmd callCmd && callCmd.Proc is YieldInvariantDecl);
       }
       return newCmdSeq;
     }
@@ -241,17 +263,18 @@ namespace Microsoft.Boogie
         var callLayerRange = newCall.LayerRange;
         if (callLayerRange.Contains(layerNum))
         {
+          bool makeAssume = layerNum == enclosingYieldingProc.Layer && !doRefinementCheck;
           if (newCall.Proc is ActionDecl actionDecl)
           {
             var pureAction = civlTypeChecker.Action(actionDecl);
             newCall.Proc = pureAction.Impl.Proc;
-            InjectGate(pureAction, newCall, !doRefinementCheck);
+            InjectGate(pureAction, newCall, makeAssume);
             newCmdSeq.Add(newCall);
           }
           else if (CivlPrimitives.IsPrimitive(newCall.Proc))
           {
             var cmds = linearRewriter.RewriteCallCmd(newCall).Select(cmd =>
-              cmd is AssertCmd assertCmd && !doRefinementCheck
+              cmd is AssertCmd assertCmd && makeAssume
               ? new AssumeCmd(assertCmd.tok, assertCmd.Expr, assertCmd.Attributes)
               : cmd
             );
@@ -327,18 +350,15 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (doRefinementCheck)
+          if (doRefinementCheck && yieldingProc.RefinedAction.ActionDecl != civlTypeChecker.SkipActionDecl)
           {
             var parCallCmdBefore = new ParCallCmd(newCall.tok, []);
             absyMap[parCallCmdBefore] = absyMap[newCall];
             newCmdSeq.Add(parCallCmdBefore);
-            if (yieldingProc.RefinedAction.ActionDecl != civlTypeChecker.SkipActionDecl)
-            {
-              AddActionCall(newCall, yieldingProc);
-              var parCallCmdAfter = new ParCallCmd(newCall.tok, []);
-              absyMap[parCallCmdAfter] = absyMap[newCall];
-              newCmdSeq.Add(parCallCmdAfter);
-            }
+            AddActionCall(newCall, yieldingProc);
+            var parCallCmdAfter = new ParCallCmd(newCall.tok, []);
+            absyMap[parCallCmdAfter] = absyMap[newCall];
+            newCmdSeq.Add(parCallCmdAfter);
           }
           else
           {

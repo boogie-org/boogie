@@ -30,7 +30,7 @@ namespace Microsoft.Boogie
         foreach (Implementation impl in program.Implementations.Where(impl => impl.Proc is YieldProcedureDecl).ToList())
         {
           var yieldProcedureDecl = (YieldProcedureDecl)impl.Proc;
-          if (yieldProcedureDecl.Layer >= layerNum)
+          if (yieldProcedureDecl.Layer > layerNum || yieldProcedureDecl.Layer == layerNum && !yieldProcedureDecl.HasMoverType)
           {
             duplicator.VisitImplementation(impl);
           }
@@ -38,11 +38,11 @@ namespace Microsoft.Boogie
         decls.AddRange(duplicator.Collect());
       }
 
+      // Generate the refinement checks for every layer
       if (civlTypeChecker.Options.TrustRefinement)
       {
         return;
       }
-      // Generate the refinement checks for every layer
       foreach (int layerNum in civlTypeChecker.AllRefinementLayers)
       {
         if (civlTypeChecker.Options.TrustLayersDownto <= layerNum ||
