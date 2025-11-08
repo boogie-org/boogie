@@ -21,21 +21,18 @@ namespace Microsoft.Boogie
     private AbsyMap absyMap; /* Duplicate -> Original */
     private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
 
-    private Dictionary<CallCmd, CallCmd> refinementCallCmds; // rewritten -> original
-    private Dictionary<CallCmd, Block> refinementBlocks; // rewritten -> block
-
     private LinearRewriter linearRewriter;
 
-    private ConcurrencyOptions Options => civlTypeChecker.Options;
+    private bool doRefinementCheck;
 
-    public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum)
+    public YieldingProcDuplicator(CivlTypeChecker civlTypeChecker, int layerNum, bool doRefinementCheck)
     {
       this.civlTypeChecker = civlTypeChecker;
       this.layerNum = layerNum;
+      this.doRefinementCheck = doRefinementCheck;
       this.procToDuplicate = new Dictionary<Procedure, Procedure>();
       this.absyMap = new AbsyMap();
       this.asyncCallPreconditionCheckers = new Dictionary<string, Procedure>();
-      this.refinementBlocks = new Dictionary<CallCmd, Block>();
       this.linearRewriter = new LinearRewriter(civlTypeChecker);
     }
 
@@ -46,19 +43,33 @@ namespace Microsoft.Boogie
       if (!procToDuplicate.ContainsKey(node))
       {
         Debug.Assert(layerNum <= node.Layer);
+        var procName = civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}");
+        if (doRefinementCheck)
+        {
+          procName = civlTypeChecker.AddNamePrefix($"{node.Name}_Refine_{layerNum}");
+        }
+        var requires = VisitRequiresSeq(node.Requires);
+        var preserves = VisitRequiresSeq(node.Preserves);
+        var ensures = VisitEnsuresSeq(node.Ensures);
+        if (node.HasMoverType && layerNum == node.Layer && !doRefinementCheck)
+        {
+          requires = requires.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
+          preserves = preserves.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
+          ensures = ensures.Select(ens => new Ensures(ens.tok, true, ens.Condition, ens.Comment, ens.Attributes)).ToList();
+        }
         var proc = new Procedure(
           node.tok,
-          civlTypeChecker.AddNamePrefix($"{node.Name}_{layerNum}"),
+          procName,
           new List<TypeVariable>(),
           VisitVariableSeq(node.InParams),
           VisitVariableSeq(node.OutParams),
           false,
-          VisitRequiresSeq(node.Requires),
-          VisitRequiresSeq(node.Preserves),
+          requires,
+          preserves,
           (node.HasMoverType && node.Layer == layerNum
             ? node.ModifiedVars.Select(g => Expr.Ident(g))
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
-          VisitEnsuresSeq(node.Ensures));
+          ensures);
         procToDuplicate[node] = proc;
         absyMap[proc] = node;
       }
@@ -117,7 +128,8 @@ namespace Microsoft.Boogie
 
     private Implementation enclosingImpl;
     private YieldProcedureDecl enclosingYieldingProc;
-    private bool IsRefinementLayer => layerNum == enclosingYieldingProc.Layer;
+    private Block enclosingBlock;
+    private bool inPredicatePhase;
 
     private Action RefinedAction => civlTypeChecker.Action(enclosingYieldingProc.RefinedAction.ActionDecl);
 
@@ -154,29 +166,12 @@ namespace Microsoft.Boogie
 
       returnedPAs = new Dictionary<CtorType, Variable>();
 
-      refinementCallCmds = new Dictionary<CallCmd, CallCmd>();
       Implementation newImpl = base.VisitImplementation(impl);
       newImpl.Name = newImpl.Proc.Name;
-
-      foreach (var kv in refinementCallCmds)
-      {
-        var rewrittenCallCmd = kv.Key;
-        var originalCallCmd = kv.Value;
-        newCmdSeq = new List<Cmd>();
-        AddActionCall(originalCallCmd, (YieldProcedureDecl)originalCallCmd.Proc);
-        var block = BlockHelper.Block(
-          civlTypeChecker.AddNamePrefix($"call_refinement_{refinementBlocks.Count}"),
-          newCmdSeq,
-          new List<Block>());
-        refinementBlocks.Add(rewrittenCallCmd, block);
-        newCmdSeq = null;
-      }
-
-      refinementCallCmds = null;
       
       newImpl.LocVars.AddRange(returnedPAs.Values);
 
-      if (!enclosingYieldingProc.HasMoverType && RefinedAction.HasPendingAsyncs && IsRefinementLayer)
+      if (!enclosingYieldingProc.HasMoverType && RefinedAction.HasPendingAsyncs && doRefinementCheck)
       {
         var assumeExpr = EmptyPendingAsyncMultisetExpr(CollectedPAs, RefinedAction.PendingAsyncs);
         newImpl.LocVars.AddRange(civlTypeChecker.PendingAsyncCollectors(impl).Values.Except(impl.LocVars));
@@ -189,19 +184,34 @@ namespace Microsoft.Boogie
 
     public override Block VisitBlock(Block node)
     {
+      enclosingBlock = node;
       var block = base.VisitBlock(node);
+      enclosingBlock = null;
       absyMap[block] = node;
       return block;
     }
 
     public override Cmd VisitAssertCmd(AssertCmd node)
     {
-      var assertCmd = (AssertCmd) base.VisitAssertCmd(node);
+      var assertCmd = (AssertCmd)base.VisitAssertCmd(node);
       if (!node.Layers.Contains(layerNum))
       {
         assertCmd.Expr = Expr.True;
+        return assertCmd;
       }
-      return assertCmd;
+      if (layerNum != enclosingYieldingProc.Layer)
+      {
+        return assertCmd;
+      }
+      bool insideLoopInvariantOfYieldingLoop = enclosingYieldingProc.IsYieldingLoopHeaderAtProcedureLayer(enclosingBlock) && inPredicatePhase;
+      if (insideLoopInvariantOfYieldingLoop)
+      {
+        return doRefinementCheck ? new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes) : assertCmd;
+      }
+      else
+      {
+        return doRefinementCheck ? assertCmd : new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes);
+      }
     }
 
     public override Cmd VisitCallCmd(CallCmd call)
@@ -219,17 +229,16 @@ namespace Microsoft.Boogie
       {
         absyMap[newCall] = parCall;
       }
-
       return newParCall;
     }
 
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
       newCmdSeq = new List<Cmd>();
+      inPredicatePhase = true;
       foreach (var cmd in cmdSeq)
       {
         Cmd newCmd = (Cmd) Visit(cmd);
-
         if (newCmd is CallCmd)
         {
           ProcessCallCmd((CallCmd) newCmd);
@@ -242,6 +251,7 @@ namespace Microsoft.Boogie
         {
           newCmdSeq.Add(newCmd);
         }
+        inPredicatePhase = inPredicatePhase && (cmd is PredicateCmd || cmd is CallCmd callCmd && callCmd.Proc is YieldInvariantDecl);
       }
       return newCmdSeq;
     }
@@ -253,16 +263,22 @@ namespace Microsoft.Boogie
         var callLayerRange = newCall.LayerRange;
         if (callLayerRange.Contains(layerNum))
         {
+          bool makeAssume = layerNum == enclosingYieldingProc.Layer && !doRefinementCheck;
           if (newCall.Proc is ActionDecl actionDecl)
           {
             var pureAction = civlTypeChecker.Action(actionDecl);
             newCall.Proc = pureAction.Impl.Proc;
-            InjectGate(pureAction, newCall);
+            InjectGate(pureAction, newCall, makeAssume);
             newCmdSeq.Add(newCall);
           }
           else if (CivlPrimitives.IsPrimitive(newCall.Proc))
           {
-            newCmdSeq.AddRange(linearRewriter.RewriteCallCmd(newCall));
+            var cmds = linearRewriter.RewriteCallCmd(newCall).Select(cmd =>
+              cmd is AssertCmd assertCmd && makeAssume
+              ? new AssumeCmd(assertCmd.tok, assertCmd.Expr, assertCmd.Attributes)
+              : cmd
+            );
+            newCmdSeq.AddRange(cmds);
           }
           else
           {
@@ -296,7 +312,7 @@ namespace Microsoft.Boogie
             // synchronize the called atomic action
             AddActionCall(newCall, yieldingProc);
           }
-          else if (IsRefinementLayer)
+          else if (doRefinementCheck)
           {
             AddPendingAsync(newCall, yieldingProc);
           }
@@ -308,14 +324,14 @@ namespace Microsoft.Boogie
             // synchronize the called mover procedure
             AddDuplicateCall(newCall, false);
           }
+          else if (doRefinementCheck)
+          {
+            Debug.Assert(!yieldingProc.HasMoverType);
+            AddPendingAsync(newCall, yieldingProc);
+          }
           else
           {
             DesugarAsyncCall(newCall);
-            if (IsRefinementLayer)
-            {
-              Debug.Assert(!yieldingProc.HasMoverType);
-              AddPendingAsync(newCall, yieldingProc);
-            }
           }
         }
         return;
@@ -334,12 +350,20 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (IsRefinementLayer && layerNum == yieldingProc.Layer && yieldingProc.RefinedAction != null)
+          if (doRefinementCheck && yieldingProc.RefinedAction.ActionDecl != civlTypeChecker.SkipActionDecl)
           {
-            refinementCallCmds[newCall] = (CallCmd) VisitCallCmd(newCall);
+            var parCallCmdBefore = new ParCallCmd(newCall.tok, []);
+            absyMap[parCallCmdBefore] = absyMap[newCall];
+            newCmdSeq.Add(parCallCmdBefore);
+            AddActionCall(newCall, yieldingProc);
+            var parCallCmdAfter = new ParCallCmd(newCall.tok, []);
+            absyMap[parCallCmdAfter] = absyMap[newCall];
+            newCmdSeq.Add(parCallCmdAfter);
           }
-
-          AddDuplicateCall(newCall, true);
+          else
+          {
+            AddDuplicateCall(newCall, true);
+          }
         }
         Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count);
       }
@@ -348,38 +372,49 @@ namespace Microsoft.Boogie
     private void ProcessParCallCmd(ParCallCmd newParCall)
     {
       var callCmds = new List<CallCmd>();
+
+      void AddParallelCall()
+      {
+        var parCallCmd = new ParCallCmd(newParCall.tok, callCmds);
+        absyMap[parCallCmd] = absyMap[newParCall];
+        newCmdSeq.Add(parCallCmd);
+      }
+
+      void ProcessPendingCallCmds()
+      {
+        if (callCmds.Count == 0)
+        {
+          return;
+        }
+        var callCmd = callCmds.Find(cmd =>
+            cmd.Proc is YieldProcedureDecl yieldingProc &&
+            layerNum == yieldingProc.Layer &&
+            yieldingProc.RefinedAction.ActionDecl != civlTypeChecker.SkipActionDecl);
+        if (doRefinementCheck && callCmd != null)
+        {
+          callCmds.Remove(callCmd);
+          callCmds.ForEach(callCmd => Debug.Assert(callCmd.Proc is YieldInvariantDecl));
+          AddParallelCall();
+          AddActionCall(callCmd, (YieldProcedureDecl)callCmd.Proc);
+        }
+        AddParallelCall();
+        callCmds = [];
+      }
+
       foreach (var callCmd in newParCall.CallCmds)
       {
-        if (callCmd.Proc is YieldProcedureDecl)
+        if (callCmd.Proc is YieldProcedureDecl yieldingProc)
         {
-          var yieldingProc = (YieldProcedureDecl)callCmd.Proc;
-          if (layerNum > yieldingProc.Layer && !yieldingProc.HasMoverType ||
-              layerNum == yieldingProc.Layer && yieldingProc.HasMoverType)
+          Debug.Assert(layerNum <= yieldingProc.Layer || !yieldingProc.HasMoverType);
+          if (layerNum > yieldingProc.Layer || layerNum == yieldingProc.Layer && yieldingProc.HasMoverType)
           {
-            if (callCmds.Count > 0)
-            {
-              var parCallCmd = new ParCallCmd(newParCall.tok, callCmds);
-              absyMap[parCallCmd] = absyMap[newParCall];
-              newCmdSeq.Add(parCallCmd);
-              callCmds = new List<CallCmd>();
-            }
-
+            ProcessPendingCallCmds();
             ProcessCallCmd(callCmd);
             continue;
           }
         }
-
         if (procToDuplicate.ContainsKey(callCmd.Proc))
         {
-          var yieldingProc = (YieldProcedureDecl)callCmd.Proc;
-          if (!yieldingProc.HasMoverType)
-          {
-            if (IsRefinementLayer && layerNum == yieldingProc.Layer && yieldingProc.RefinedAction != null)
-            {
-              refinementCallCmds[callCmd] = (CallCmd) VisitCallCmd(callCmd);
-            }
-          }
-
           callCmd.Proc = procToDuplicate[callCmd.Proc];
           callCmd.callee = callCmd.Proc.Name;
           callCmds.Add(callCmd);
@@ -394,12 +429,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      if (callCmds.Count > 0)
-      {
-        var parCallCmd = new ParCallCmd(newParCall.tok, callCmds);
-        absyMap[parCallCmd] = absyMap[newParCall];
-        newCmdSeq.Add(parCallCmd);
-      }
+      ProcessPendingCallCmds();
     }
 
     private Action PrepareNewCall(CallCmd newCall, YieldProcedureDecl calleeActionProc)
@@ -441,7 +471,7 @@ namespace Microsoft.Boogie
     {
       var calleeRefinedAction = PrepareNewCall(newCall, calleeActionProc);
       InjectPreconditions(calleeRefinedAction, newCall);
-      InjectGate(calleeRefinedAction, newCall, !IsRefinementLayer);
+      InjectGate(calleeRefinedAction, newCall, !doRefinementCheck);
       newCmdSeq.Add(newCall);
 
       if (calleeRefinedAction.HasPendingAsyncs)
@@ -466,7 +496,7 @@ namespace Microsoft.Boogie
       newCmdSeq.AddRange(action.Preconditions(layerNum, subst));
     }
 
-    private void InjectGate(Action action, CallCmd callCmd, bool assume = false)
+    private void InjectGate(Action action, CallCmd callCmd, bool assume)
     {
       if (action.Gate.Count == 0)
       {
@@ -506,7 +536,7 @@ namespace Microsoft.Boogie
     {
       // Inject pending async collection
       newCall.Outs.AddRange(calleeRefinedAction.PendingAsyncs.Select(decl => Expr.Ident(ReturnedPAs(decl.PendingAsyncType))));
-      if (!IsRefinementLayer)
+      if (!doRefinementCheck)
       {
         return;
       }
@@ -617,7 +647,7 @@ namespace Microsoft.Boogie
         civlTypeChecker,
         layerNum,
         absyMap,
-        refinementBlocks));
+        doRefinementCheck));
       return decls;
     }
   }

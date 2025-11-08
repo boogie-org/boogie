@@ -91,6 +91,7 @@ modifies usersInDriver;
 yield procedure {:layer 1}
 Exit(i: int, {:layer 1} {:linear_out} l: Set Perm, {:layer 1} {:linear} r: Set Perm)
 refines AtomicExit;
+requires {:layer 1} l->val == MapOne(Left(i)) && r->val == MapOne(Right(i));
 preserves call Inv1();
 {
     call DeleteReference();

@@ -3432,7 +3432,7 @@ namespace Microsoft.Boogie
         return desugaredYieldEnsures;
       }
     }
-    
+
     public bool IsYieldingLoopHeader(Block block, int layerNum)
     {
       if (!YieldingLoops.ContainsKey(block))
@@ -3440,6 +3440,11 @@ namespace Microsoft.Boogie
         return false;
       }
       return layerNum <= YieldingLoops[block].Layer;
+    }
+
+    public bool IsYieldingLoopHeaderAtProcedureLayer(Block block)
+    {
+      return IsYieldingLoopHeader(block, Layer);
     }
   }
 

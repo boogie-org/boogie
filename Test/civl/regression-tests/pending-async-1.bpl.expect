@@ -13,4 +13,4 @@ Execution trace:
     pending-async-1.bpl(18,11): inline$C$0$anon2_Then
     pending-async-1.bpl(67,3): anon0$1
 
-Boogie program verifier finished with 4 verified, 2 errors
+Boogie program verifier finished with 9 verified, 2 errors

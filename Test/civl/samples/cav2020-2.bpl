@@ -43,7 +43,7 @@ preserves call LockInv();
     if (t) {
         call {:layer 1} l := Copy(Some(tid->val));
     } else {
-        call {:mark} Acquire(tid);
+        call Acquire(tid);
     }
 }
 

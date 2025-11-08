@@ -4,4 +4,4 @@ Execution trace:
     pending-async-noninterference-fail.bpl(12,5): inline$A$0$anon0
     pending-async-noninterference-fail.bpl(9,32): inline$A$0$Return
 
-Boogie program verifier finished with 1 verified, 1 error
+Boogie program verifier finished with 2 verified, 1 error

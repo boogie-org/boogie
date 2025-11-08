@@ -15,4 +15,4 @@ chris2.bpl(23,3): Error: Gate failure of atomic_p_gt2 @ chris2.bpl(22,28) not pr
 Execution trace:
     (0,0): init
 
-Boogie program verifier finished with 1 verified, 4 errors
+Boogie program verifier finished with 2 verified, 4 errors

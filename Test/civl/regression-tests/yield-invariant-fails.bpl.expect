@@ -4,4 +4,4 @@ Execution trace:
     yield-invariant-fails.bpl(19,7): inline$atomic_A$0$anon0
     (0,0): inline$Civl_NoninterferenceChecker_yield_Inv$0$L
 
-Boogie program verifier finished with 0 verified, 1 error
+Boogie program verifier finished with 1 verified, 1 error

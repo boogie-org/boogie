@@ -1554,25 +1554,24 @@ namespace Microsoft.Boogie
         callCmd.Typecheck(tc);
       }
 
-      var markedCallCount = CallCmds.Count(CivlAttributes.IsCallMarked);
-      if (markedCallCount > 0)
+      var callerDecl = (YieldProcedureDecl)tc.Proc;
+      var callCount = CallCmds.Count(callCmd =>
+          callCmd.Proc is YieldProcedureDecl calleeDecl &&
+          callerDecl.Layer == calleeDecl.Layer &&
+          calleeDecl.RefinedAction != null);
+      if (callCount > 1)
       {
-        if (markedCallCount > 1)
+        tc.Error(this, "callees in multiple arms at caller's layer refine an action");
+      }
+      if (callCount == 1)
+      {
+        var sameLayerCallCount = CallCmds.Count(callCmd =>
+            callCmd.Proc is YieldProcedureDecl calleeDecl &&
+            callerDecl.Layer == calleeDecl.Layer);
+        if (sameLayerCallCount > 1)
         {
-          tc.Error(this, "at most one arm of a parallel call may be annotated with :mark");
+          tc.Error(this, "callees in multiple arms at caller's layer");
         }
-        var callerDecl = (YieldProcedureDecl)tc.Proc;
-        CallCmds.ForEach(callCmd =>
-        {
-          if (!CivlAttributes.IsCallMarked(callCmd) && callCmd.Proc is YieldProcedureDecl calleeDecl &&
-              callerDecl.Layer == calleeDecl.Layer)
-          {
-            callCmd.Outs.Where(ie => callerDecl.VisibleFormals.Contains(ie.Decl)).ForEach(ie =>
-              {
-                tc.Error(ie, $"unmarked call modifies visible output variable of the caller: {ie.Decl}");
-              });
-          }
-        });
       }
     }
 

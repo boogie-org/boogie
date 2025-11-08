@@ -37,7 +37,7 @@ namespace Microsoft.Boogie
       return new List<Cmd>();
     }
 
-    public virtual List<Cmd> CreateUpdatesToRefinementVars(bool isMarkedCall)
+    public virtual List<Cmd> CreateUpdatesToRefinementVars()
     {
       return new List<Cmd>();
     }
@@ -83,13 +83,10 @@ namespace Microsoft.Boogie
       this.newLocalVars = new List<Variable>();
       pc = civlTypeChecker.LocalVariable("pc", Type.Bool);
       newLocalVars.Add(pc);
-      if (!civlTypeChecker.Options.TrustRefinement)
-      {
-        ok = civlTypeChecker.LocalVariable("ok", Type.Bool);
-        newLocalVars.Add(ok);
-        eval = civlTypeChecker.LocalVariable("eval", Type.Bool);
-        newLocalVars.Add(eval);
-      }
+      ok = civlTypeChecker.LocalVariable("ok", Type.Bool);
+      newLocalVars.Add(ok);
+      eval = civlTypeChecker.LocalVariable("eval", Type.Bool);
+      newLocalVars.Add(eval);
 
       this.transitionRelationCache = new Dictionary<Action, Expr>();
 
@@ -156,13 +153,8 @@ namespace Microsoft.Boogie
 
     public override List<Cmd> CreateInitCmds()
     {
-      var lhss = new List<IdentifierExpr> { Expr.Ident(pc) };
-      var rhss = new List<Expr> { Expr.False };
-      if (!civlTypeChecker.Options.TrustRefinement)
-      {
-        lhss.AddRange(new List<IdentifierExpr> { Expr.Ident(ok), Expr.Ident(eval) });
-        rhss.AddRange(new List<Expr> { Expr.False, Expr.False });
-      }
+      var lhss = new List<IdentifierExpr> { Expr.Ident(pc), Expr.Ident(ok), Expr.Ident(eval) };
+      var rhss = new List<Expr> { Expr.False, Expr.False, Expr.False };
       var cmds = new List<Cmd> { CmdHelper.AssignCmd(lhss, rhss) };
       cmds.AddRange(CreateUpdatesToOldOutputVars());
       // assume spec gate at procedure entry
@@ -181,10 +173,6 @@ namespace Microsoft.Boogie
     public override List<Cmd> CreateActionEvaluationCmds()
     {
       // eval := transitionRelation(i, g_old, o, g);
-      if (civlTypeChecker.Options.TrustRefinement)
-      {
-        return new List<Cmd>();
-      }
       return new List<Cmd> { CmdHelper.AssignCmd(eval, transitionRelation) };
     }
     
@@ -196,10 +184,6 @@ namespace Microsoft.Boogie
         Expr.Imp(Expr.Ident(pc), Expr.And(OldEqualityExprForGlobals(), OldEqualityExprForOutputs())),
         $"A yield-to-yield fragment modifies layer-{layerNum + 1} state subsequent to a yield-to-yield fragment that already modified layer-{layerNum + 1} state");
       CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, skipAssertCmd);
-      if (civlTypeChecker.Options.TrustRefinement)
-      {
-        return new List<Cmd> { skipAssertCmd };
-      }
 
       // assert pc || g_old == g || eval;
       var skipOrTransitionRelationAssertCmd = CmdHelper.AssertCmd(
@@ -212,10 +196,6 @@ namespace Microsoft.Boogie
 
     public override List<Cmd> CreateReturnAssertCmds()
     {
-      if (civlTypeChecker.Options.TrustRefinement)
-      {
-        return new List<Cmd>();
-      }
       AssertCmd assertCmd = CmdHelper.AssertCmd(
         tok,
         Expr.Ident(ok),
@@ -241,42 +221,17 @@ namespace Microsoft.Boogie
       return new List<Cmd> { globalsAssertCmd, outputsAssertCmd };
     }
 
-    public override List<Cmd> CreateUpdatesToRefinementVars(bool isMarkedCall)
+    public override List<Cmd> CreateUpdatesToRefinementVars()
     {
-      var cmds = new List<Cmd>();
-      var pcOkUpdateLHS = new List<IdentifierExpr> { Expr.Ident(pc) };
-      if (!civlTypeChecker.Options.TrustRefinement)
-      {
-        pcOkUpdateLHS.Add(Expr.Ident(ok));
-      }
-      if (isMarkedCall)
-      {
-        // assert !pc;
-        // pc, ok := true, true;
-        cmds.Add(CmdHelper.AssertCmd(tok, Expr.Not(Expr.Ident(pc)), $"Layer-{layerNum + 1} state modified before marked call"));
-        var pcOkUpdateRHS = new List<Expr> { Expr.True };
-        if (!civlTypeChecker.Options.TrustRefinement)
-        {
-          pcOkUpdateRHS.Add(Expr.True);
-        }
-        cmds.Add(CmdHelper.AssignCmd(pcOkUpdateLHS, pcOkUpdateRHS));
-      }
-      else
-      {
-        // pc, ok := g_old == g ==> pc, eval || (o_old == o && ok);
-        var pcOkUpdateRHS = new List<Expr> {
-          Expr.Imp(OldEqualityExprForGlobals(), Expr.Ident(pc))
-        };
-        if (!civlTypeChecker.Options.TrustRefinement)
-        {
-          pcOkUpdateRHS.Add(Expr.Or(Expr.Ident(eval), Expr.And(OldEqualityExprForOutputs(), Expr.Ident(ok))));
-        }
-        cmds.Add(CmdHelper.AssignCmd(pcOkUpdateLHS, pcOkUpdateRHS));
-      }
-
-      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, cmds);
-
-      return cmds;
+      // pc, ok := g_old == g ==> pc, eval || (o_old == o && ok);
+      var pcOkUpdateLHS = new List<IdentifierExpr> { Expr.Ident(pc), Expr.Ident(ok) };
+      var pcOkUpdateRHS = new List<Expr> {
+        Expr.Imp(OldEqualityExprForGlobals(), Expr.Ident(pc)),
+        Expr.Or(Expr.Ident(eval), Expr.And(OldEqualityExprForOutputs(), Expr.Ident(ok)))
+      };
+      var assignCmd = CmdHelper.AssignCmd(pcOkUpdateLHS, pcOkUpdateRHS);
+      CivlUtil.ResolveAndTypecheck(civlTypeChecker.Options, assignCmd);
+      return new List<Cmd> { assignCmd };
     }
 
     public override List<Cmd> CreateUpdatesToOldOutputVars()
