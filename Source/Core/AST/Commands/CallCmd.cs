@@ -393,6 +393,10 @@ public class CallCmd : CallCommonality
       {
         tc.Error(this, "layer of callee must not be more than layer of caller");
       }
+      else if (yieldInvariantDecl.Layer == callerDecl.Layer && callerDecl.HasMoverType)
+      {
+        tc.Error(this, "layer of callee must be less than layer of caller");
+      }
     }
     else
     {

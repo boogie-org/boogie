@@ -1,0 +1,4 @@
+yield-requires-ensures-errors-5.bpl(10,9): Error: layer of callee must be less than layer of caller
+yield-requires-ensures-errors-5.bpl(12,8): Error: layer of callee must be less than layer of caller
+yield-requires-ensures-errors-5.bpl(11,10): Error: layer of callee must be less than layer of caller
+3 type checking errors detected in yield-requires-ensures-errors-5.bpl
