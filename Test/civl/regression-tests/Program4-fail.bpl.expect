@@ -6,4 +6,4 @@ Execution trace:
     Program4-fail.bpl(35,5): inline$AtomicIncr$1$anon0
     Program4-fail.bpl(35,5): inline$AtomicIncr$2$anon0
 
-Boogie program verifier finished with 3 verified, 1 error
+Boogie program verifier finished with 6 verified, 1 error

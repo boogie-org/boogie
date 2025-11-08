@@ -4,4 +4,4 @@ Execution trace:
     global-invariant-fail.bpl(26,7): inline$AnonymousAction_64$0$anon0
     global-invariant-fail.bpl(24,14): inline$AnonymousAction_64$0$Return
 
-Boogie program verifier finished with 4 verified, 1 error
+Boogie program verifier finished with 5 verified, 1 error

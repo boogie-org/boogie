@@ -1,10 +1,10 @@
-permissions-fail.bpl(13,3): Error: a precondition for this call could not be proved
-permissions-fail.bpl(7,1): Related location: this is the precondition that could not be proved
+permissions-fail.bpl(16,3): Error: a precondition for this call could not be proved
+permissions-fail.bpl(10,1): Related location: this is the precondition that could not be proved
 Execution trace:
-    permissions-fail.bpl(13,3): anon0
-permissions-fail.bpl(20,3): Error: a precondition for this call could not be proved
-permissions-fail.bpl(7,1): Related location: this is the precondition that could not be proved
+    permissions-fail.bpl(16,3): anon0
+permissions-fail.bpl(23,3): Error: a precondition for this call could not be proved
+permissions-fail.bpl(10,1): Related location: this is the precondition that could not be proved
 Execution trace:
-    permissions-fail.bpl(20,3): anon0
+    permissions-fail.bpl(23,3): anon0
 
 Boogie program verifier finished with 0 verified, 2 errors

@@ -34,4 +34,4 @@ Execution trace:
     refinement.bpl(58,5): inline$INCR$1$anon0
     (0,0): Civl_UnchangedChecker
 
-Boogie program verifier finished with 3 verified, 5 errors
+Boogie program verifier finished with 8 verified, 5 errors
