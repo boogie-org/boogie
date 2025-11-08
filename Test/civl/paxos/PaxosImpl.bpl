@@ -176,6 +176,7 @@ refines left action {:layer 2} _ {
   status[r] := Proposed(v);
 } 
 {
+  assert {:layer 1} voteInfo[r] == MapConst(false);
   call {:layer 1} status := Copy(status[r := Proposed(v)]);
 }
 
@@ -292,6 +293,7 @@ refines left action {:layer 2} _ {
   status[r] := Decided(v);
 }
 {
+  assert {:layer 1} status[r] == Proposed(v);
   call {:layer 1} status := Copy(status[r := Decided(v)]);
 }
 
@@ -358,6 +360,8 @@ requires call YieldInv();
 {
   var voteResponse: VoteResponse;
 
+  assert {:layer 1} IsActive(status[r], v);
+  assert {:layer 1} !voteInfo[r][n];
   call voteResponse := VoteUpdate(r, n, v);
   call SendVoteResponse(r, voteResponse);
   if (voteResponse is VoteAccept) {
