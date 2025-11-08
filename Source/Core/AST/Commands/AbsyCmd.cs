@@ -1555,10 +1555,23 @@ namespace Microsoft.Boogie
       }
 
       var callerDecl = (YieldProcedureDecl)tc.Proc;
-      var sameLayerCallCount = CallCmds.Count(callCmd => callCmd.Proc is YieldProcedureDecl calleeDecl && callerDecl.Layer == calleeDecl.Layer);
-      if (sameLayerCallCount > 1)
+      var callCount = CallCmds.Count(callCmd =>
+          callCmd.Proc is YieldProcedureDecl calleeDecl &&
+          callerDecl.Layer == calleeDecl.Layer &&
+          calleeDecl.RefinedAction != null);
+      if (callCount > 1)
       {
-        tc.Error(this, "at most one arm may be to a yield procedure at the caller's layer");
+        tc.Error(this, "callees in multiple arms at caller's layer refine an action");
+      }
+      if (callCount == 1)
+      {
+        var sameLayerCallCount = CallCmds.Count(callCmd =>
+            callCmd.Proc is YieldProcedureDecl calleeDecl &&
+            callerDecl.Layer == calleeDecl.Layer);
+        if (sameLayerCallCount > 1)
+        {
+          tc.Error(this, "callees in multiple arms at caller's layer");
+        }
       }
     }
 

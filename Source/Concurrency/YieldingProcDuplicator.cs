@@ -386,10 +386,14 @@ namespace Microsoft.Boogie
         {
           return;
         }
-        var callCmd = callCmds.Find(cmd => cmd.Proc is YieldProcedureDecl yieldingProc && layerNum == yieldingProc.Layer);
+        var callCmd = callCmds.Find(cmd =>
+            cmd.Proc is YieldProcedureDecl yieldingProc &&
+            layerNum == yieldingProc.Layer &&
+            yieldingProc.RefinedAction.ActionDecl != civlTypeChecker.SkipActionDecl);
         if (doRefinementCheck && callCmd != null)
         {
           callCmds.Remove(callCmd);
+          callCmds.ForEach(callCmd => Debug.Assert(callCmd.Proc is YieldInvariantDecl));
           AddParallelCall();
           AddActionCall(callCmd, (YieldProcedureDecl)callCmd.Proc);
         }
