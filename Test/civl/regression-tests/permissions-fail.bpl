@@ -1,5 +1,8 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie /trustRefinement "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
+
+// flag /trustRefinement avoids duplicate error messages since the precondition of Lemma
+// is checked during both invariant checking and refinement checking at layer 1
 
 var {:linear} {:layer 0,1} A : Set int;
 
