@@ -122,7 +122,7 @@ namespace Microsoft.Boogie
       CreateAtomicActions(actionDecls);
       CreateSequentializations(actionDecls);
       AttributeEraser.Erase(this);
-      YieldSufficiencyTypeChecker.TypeCheck(this);
+      YieldSufficiencyChecker.TypeCheck(this);
     }
 
     private HashSet<ActionDecl> TypeCheckActions()
