@@ -3,6 +3,10 @@
 
 var {:layer 0,2} g: int;
 
+yield invariant {:layer 1} YieldInv#1();
+
+yield invariant {:layer 2} YieldInv#2();
+
 yield left procedure {:layer 2} A()
 requires {:layer 1} g > 0;
 preserves {:layer 1} g > 0;
@@ -13,4 +17,10 @@ ensures {:layer 1,2} g > 0;
 requires {:layer 2} g > 0;
 preserves {:layer 2} g > 0;
 ensures {:layer 2} g > 0;
+requires call YieldInv#1();
+ensures call YieldInv#1();
+preserves call YieldInv#1();
+requires call YieldInv#2();
+ensures call YieldInv#2();
+preserves call YieldInv#2();
 {}
