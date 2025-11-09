@@ -4,7 +4,6 @@ using System.Collections;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Security.Cryptography;
 using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie
@@ -2718,22 +2717,30 @@ namespace Microsoft.Boogie
       }
       tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
 
+      void TypecheckSpec(List<int> layers, Action<TypecheckingContext> f)
+      {
+        var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
+        if (this is YieldProcedureDecl yieldProcedureDecl &&
+            yieldProcedureDecl.HasMoverType &&
+            layers.Any(layer => layer < yieldProcedureDecl.Layer))
+        {
+          tc.GlobalAccessOnlyInOld = true;
+        }
+        f(tc);
+        tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
+      }
+
       foreach (Requires e in Requires)
       {
-        Contract.Assert(e != null);
-        e.Typecheck(tc);
+        TypecheckSpec(e.Layers, e.Typecheck);
       }
-
       foreach (Requires e in Preserves)
       {
-        Contract.Assert(e != null);
-        e.Typecheck(tc);
+        TypecheckSpec(e.Layers, e.Typecheck);
       }
-
       foreach (Ensures e in Ensures)
       {
-        Contract.Assert(e != null);
-        e.Typecheck(tc);
+        TypecheckSpec(e.Layers, e.Typecheck);
       }
     }
 
