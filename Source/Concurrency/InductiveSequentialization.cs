@@ -322,8 +322,8 @@ namespace Microsoft.Boogie
         outParams,
         requires,
         new List<Requires>(),
-        invariantAction.ModifiedGlobalVars.Select(Expr.Ident).ToList(),
-        new List<Ensures>());
+        new List<Ensures>(),
+        invariantAction.ModifiedGlobalVars.Select(Expr.Ident).ToList());
       var impl = DeclHelper.Implementation(
         proc,
         proc.InParams,

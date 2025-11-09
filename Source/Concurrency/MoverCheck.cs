@@ -134,7 +134,7 @@ namespace Microsoft.Boogie
       checkerName = civlTypeChecker.AddNamePrefix(checkerName);
       var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
       Procedure proc = DeclHelper.Procedure(checkerName, inputs, outputs, requires, new List<Requires>(),
-        civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList(), new List<Ensures>());
+        new List<Ensures>(), civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList());
       Implementation impl = DeclHelper.Implementation(proc, inputs, outputs, locals, blocks);
       this.decls.Add(impl);
       this.decls.Add(proc);

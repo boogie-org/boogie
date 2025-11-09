@@ -721,7 +721,7 @@ ActionDecl<bool isPure, out ActionDecl actionDecl, out Implementation impl, out 
          datatypeTypeCtorDecl.AddConstructor(name, name.val, fields);
        }
      }
-     actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, isPure, creates, refinedAction, invariantAction, requires, yieldRequires, asserts, mods, datatypeTypeCtorDecl, kv);
+     actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, isPure, creates, refinedAction, invariantAction, requires, mods, yieldRequires, asserts, datatypeTypeCtorDecl, kv);
   .)
   .
 
@@ -767,7 +767,7 @@ SpecRefinedActionForYieldProcedure<.ref ActionDeclRef refinedAction, IToken name
         outParams.RemoveAll(x => x.HasAttribute(CivlAttributes.HIDE));
         var actionDecl = new ActionDecl(tok, actionName, moverType, Formal.StripWhereClauses(inParams), Formal.StripWhereClauses(outParams),
                                       false, new List<ActionDeclRef>(), null, null,
-                                      new List<Requires>(), new List<CallCmd>(), new List<AssertCmd>(), new List<IdentifierExpr>(), null, akv);
+                                      new List<Requires>(), new List<IdentifierExpr>(), new List<CallCmd>(), new List<AssertCmd>(), null, akv);
         Pgm.AddTopLevelDeclaration(actionDecl);
         var impl = new Implementation(tok, actionDecl.Name, new List<TypeVariable>(), Formal.StripWhereClauses(inParams), Formal.StripWhereClauses(outParams),
                                       locals, stmtList, akv == null ? null : (QKeyValue)akv.Clone());
@@ -819,10 +819,11 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
      MoverType moverType = MoverType.None;
      ActionDeclRef refinedAction = null;
      List<Requires> pre = new List<Requires>();
+     List<Requires> preserves = new List<Requires>();
      List<Ensures> post = new List<Ensures>();
      List<CallCmd> yieldRequires = new List<CallCmd>();
-     List<CallCmd> yieldEnsures = new List<CallCmd>();
      List<CallCmd> yieldPreserves = new List<CallCmd>();
+     List<CallCmd> yieldEnsures = new List<CallCmd>();
      List<IdentifierExpr> mods = new List<IdentifierExpr>();
      List<Variable> locals = null;
      StmtList stmtList = null;
@@ -836,15 +837,15 @@ YieldProcedureDecl<out YieldProcedureDecl ypDecl, out Implementation impl>
     ProcFormals<true, true, out ins>
       [ "returns" ProcFormals<false, true, out outs> ]
     ( ";"
-      { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
-    | { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, post, yieldRequires, yieldEnsures, yieldPreserves, mods> }
+      { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, preserves, post, yieldRequires, yieldPreserves, yieldEnsures, mods> }
+    | { SpecYieldPrePost<ref refinedAction, name, ins, outs, pre, preserves, post, yieldRequires, yieldPreserves, yieldEnsures, mods> }
       ImplBody<out locals, out stmtList>
       (.
          impl = new Implementation(name, name.val, new List<TypeVariable>(), Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs),
                                    locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
       .)
     )
-    (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, new List<Requires>(), mods, post, yieldRequires, yieldEnsures, yieldPreserves, refinedAction, kv); .)
+    (. ypDecl = new YieldProcedureDecl(name, name.val, moverType, ins, outs, pre, preserves, post, mods, yieldRequires, yieldPreserves, yieldEnsures, refinedAction, kv); .)
   .
 
 SpecAsserts<. List<AssertCmd> asserts .>
@@ -869,6 +870,18 @@ SpecYieldRequires<. List<Requires> pre, List<CallCmd> yieldRequires .>
   ";"
   .
 
+SpecYieldPreserves<. List<Requires> preserves, List<CallCmd> yieldPreserves .>
+= (. Expr e; Cmd cmd; Token tok; QKeyValue kv = null; .)
+  "preserves"             (. tok = t; .)
+  (
+    { Attribute<ref kv> }
+    Proposition<out e>  (. preserves.Add(new Requires(tok, false, e, null, kv)); .)
+    |
+    CallCmd<true, out cmd>        (. yieldPreserves.Add((CallCmd)cmd); .)
+  )
+  ";"
+  .
+
 SpecYieldEnsures<. List<Ensures> post, List<CallCmd> yieldEnsures .>
 = (. Expr e; Cmd cmd; Token tok; QKeyValue kv = null; .)
   "ensures"               (. tok = t; .)
@@ -881,20 +894,13 @@ SpecYieldEnsures<. List<Ensures> post, List<CallCmd> yieldEnsures .>
   ";"
   .
 
-SpecYieldPreserves<. List<CallCmd> yieldPreserves .>
-= (. Cmd cmd; Token tok; .)
-  "preserves"             (. tok = t; .)
-  CallCmd<true, out cmd>        (. yieldPreserves.Add((CallCmd)cmd); .)
-  ";"
-  .
-
-SpecYieldPrePost<. ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs, List<Requires> pre, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves, List<IdentifierExpr> mods.>
+SpecYieldPrePost<. ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs, List<Requires> pre, List<Requires> preserves, List<Ensures> post, List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures, List<IdentifierExpr> mods.>
 =
   (  
     SpecRefinedActionForYieldProcedure<ref refinedAction, name, ins, outs>
   | SpecYieldRequires<pre, yieldRequires>
+  | SpecYieldPreserves<preserves, yieldPreserves>
   | SpecYieldEnsures<post, yieldEnsures>
-  | SpecYieldPreserves<yieldPreserves>
   | SpecModifies<mods>
   )
   .
@@ -923,7 +929,7 @@ Procedure<bool isPure, out Procedure proc, out /*maybe null*/ Implementation imp
                                 Formal.StripWhereClauses(ins), Formal.StripWhereClauses(outs), locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone(), this.errors);
     .)
   )
-  (. proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), mods, post, kv); .)
+  (. proc = new Procedure(x, x.val, typeParams, ins, outs, isPure, pre, new List<Requires>(), post, mods, kv); .)
   .
 
 Implementation<out Implementation impl>
