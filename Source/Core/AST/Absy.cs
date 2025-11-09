@@ -2721,8 +2721,7 @@ namespace Microsoft.Boogie
       {
         var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
         if (this is YieldProcedureDecl yieldProcedureDecl &&
-            yieldProcedureDecl.HasMoverType &&
-            layers.Any(layer => layer < yieldProcedureDecl.Layer))
+            (!yieldProcedureDecl.HasMoverType || layers.Any(layer => layer < yieldProcedureDecl.Layer)))
         {
           tc.GlobalAccessOnlyInOld = true;
         }
@@ -3317,12 +3316,13 @@ namespace Microsoft.Boogie
 
       var oldProc = tc.Proc;
       tc.Proc = this;
-      tc.GlobalAccessOnlyInOld = !HasMoverType;
       base.Typecheck(tc);
-      tc.GlobalAccessOnlyInOld = false;
+      Debug.Assert(!tc.GlobalAccessOnlyInOld);
       YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
-      YieldEnsures.ForEach(callCmd => callCmd.Typecheck(tc));
+      tc.GlobalAccessOnlyInOld = true;
       YieldPreserves.ForEach(callCmd => callCmd.Typecheck(tc));
+      YieldEnsures.ForEach(callCmd => callCmd.Typecheck(tc));
+      tc.GlobalAccessOnlyInOld = false;
       Contract.Assert(tc.Proc == this);
       tc.Proc = oldProc;
     }

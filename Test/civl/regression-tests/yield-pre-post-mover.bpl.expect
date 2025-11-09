@@ -5,6 +5,6 @@ yield-pre-post-mover.bpl(15,23): Error: global variable must be accessed inside 
 yield-pre-post-mover.bpl(13,19): Error: global variable must be accessed inside old expression: g
 yield-pre-post-mover.bpl(16,21): Error: global variable must be accessed inside old expression: g
 yield-pre-post-mover.bpl(23,9): Error: layer of callee must be less than layer of caller
-yield-pre-post-mover.bpl(24,8): Error: layer of callee must be less than layer of caller
 yield-pre-post-mover.bpl(25,10): Error: layer of callee must be less than layer of caller
+yield-pre-post-mover.bpl(24,8): Error: layer of callee must be less than layer of caller
 9 type checking errors detected in yield-pre-post-mover.bpl

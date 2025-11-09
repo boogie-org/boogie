@@ -1,4 +1,4 @@
 yield-requires-ensures-errors-2.bpl(10,24): Error: invalid type for argument 0 in call to yield_x: bool (expected: int)
-yield-requires-ensures-errors-2.bpl(11,23): Error: invalid type for argument 0 in call to yield_x: bool (expected: int)
-yield-requires-ensures-errors-2.bpl(12,25): Error: invalid type for argument 0 in call to yield_x: bool (expected: int)
+yield-requires-ensures-errors-2.bpl(11,25): Error: invalid type for argument 0 in call to yield_x: bool (expected: int)
+yield-requires-ensures-errors-2.bpl(12,23): Error: invalid type for argument 0 in call to yield_x: bool (expected: int)
 3 type checking errors detected in yield-requires-ensures-errors-2.bpl

@@ -590,19 +590,21 @@ public class CallCmd : CallCommonality
     }
 
     // typecheck in-parameters
+    var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
+    tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld || tc.Proc is YieldProcedureDecl && Proc is YieldProcedureDecl;
     for (int i = 0; i < Ins.Count; i++)
     {
       var e = Ins[i];
       if (e != null)
       {
-        tc.GlobalAccessOnlyInOld = tc.Proc is YieldProcedureDecl && Proc is YieldProcedureDecl;
         tc.ExpectedLayerRange = expectedLayerRanges?[i];
         e.Typecheck(tc);
-        tc.GlobalAccessOnlyInOld = false;
         tc.ExpectedLayerRange = null;
       }
     }
+    tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
 
+    // typecheck out-parameters
     for (int i = 0; i < Outs.Count; i++)
     {
       var e = Outs[i];
