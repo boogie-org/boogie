@@ -1,6 +1,6 @@
-// RUN: %parallel-boogie "%s" > "%t"
+// RUN: %parallel-boogie -lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear "1"} X = int;
+
 const {:existential true} b0: bool;
 const {:existential true} b1: bool;
 const {:existential true} b2: bool;
@@ -21,11 +21,11 @@ axiom(!b6);
 axiom(!b7);
 axiom(b8);
 
-procedure main({:linear_in "1"} x_in: [int]bool)
+procedure main({:linear_in} x_in: [int]bool)
   requires b0 ==> x_in == MapConst(true);
   requires b1 ==> x_in != MapConst(false);
 {
-   var {:linear "1"} x: [int] bool;
+   var {:linear} x: [int] bool;
    x := x_in;
 
    call foo(x);
@@ -35,11 +35,11 @@ procedure main({:linear_in "1"} x_in: [int]bool)
    assert b8 ==> x == MapConst(false);
 }
 
-procedure foo({:linear_in "1"} x_in: [int]bool)
+procedure foo({:linear_in} x_in: [int]bool)
   requires b2 ==> x_in == MapConst(true);
   requires b3 ==> x_in != MapConst(false);
 {
-   var {:linear "1"} x: [int] bool;
+   var {:linear} x: [int] bool;
    x := x_in;
 
    assert b4 ==> x == MapConst(true);

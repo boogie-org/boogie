@@ -1,5 +1,5 @@
-allocator.bpl(16,3): Error: this assertion could not be proved
+allocator.bpl(11,3): Error: this assertion could not be proved
 Execution trace:
-    allocator.bpl(14,5): anon0
+    allocator.bpl(9,5): anon0
 
 Boogie program verifier finished with 0 verified, 1 error

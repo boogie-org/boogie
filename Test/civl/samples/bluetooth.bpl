@@ -108,9 +108,8 @@ pure action B({:linear_in} usersInDriver: Set Perm, {:linear_out} l: Set Perm)
 }
 
 // stopper code
-type {:linear "stopper"} X = int;
 
-yield procedure {:layer 2} Stopper({:linear "stopper"} i: One int)
+yield procedure {:layer 2} Stopper({:linear} i: One int)
 refines AtomicSetStoppingFlag;
 preserves call Inv2();
 preserves call Inv1();
@@ -119,7 +118,7 @@ preserves call Inv1();
     call WaitAndStop();
 }
 
-yield procedure {:layer 1} Close({:linear "stopper"} i: One int)
+yield procedure {:layer 1} Close({:linear} i: One int)
 refines AtomicSetStoppingFlag;
 preserves call Inv1();
 {
@@ -160,7 +159,7 @@ atomic action {:layer 1} AtomicCheckAssert()
 yield procedure {:layer 0} CheckAssert();
 refines AtomicCheckAssert;
 
-right action {:layer 1,3} AtomicSetStoppingFlag({:linear "stopper"} i: One int)
+right action {:layer 1,3} AtomicSetStoppingFlag({:linear} i: One int)
 modifies stoppingFlag;
 {
     // The first assertion ensures that there is at most one stopper.
@@ -169,7 +168,7 @@ modifies stoppingFlag;
     assert !stoppingFlag;
     stoppingFlag := true;
 }
-yield procedure {:layer 0} SetStoppingFlag({:linear "stopper"} i: One int);
+yield procedure {:layer 0} SetStoppingFlag({:linear} i: One int);
 refines AtomicSetStoppingFlag;
 
 atomic action {:layer 1} AtomicDeleteReference()

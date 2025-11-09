@@ -1,6 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear} X;
+
+type X;
 const nil: X;
 
 var {:layer 0,3} A: X;

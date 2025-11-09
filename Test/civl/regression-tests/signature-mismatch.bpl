@@ -1,6 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear "lin"} X = int;
+type {:linear} X = int;
 var {:layer 0,1} x:int;
 var {:layer 0,1} y:bool;
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +29,7 @@ refines atomic_write_x_2;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 1,1} atomic_write_x_3 ({:linear "lin"} x':int)
+atomic action {:layer 1,1} atomic_write_x_3 ({:linear} x':int)
 modifies x;
 { x := x'; }
 

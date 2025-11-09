@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear "lin"} X = int;
+type {:linear} X = int;
 
 var {:layer 0,1} x:int;
 
