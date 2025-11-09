@@ -57,6 +57,8 @@ namespace Microsoft.Boogie
           preserves = preserves.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
           ensures = ensures.Select(ens => new Ensures(ens.tok, true, ens.Condition, ens.Comment, ens.Attributes)).ToList();
         }
+        requires.AddRange(preserves);
+        ensures.AddRange(preserves.Select(req => new Ensures(req.tok, req.Free, req.Condition, req.Comment, req.Attributes)));
         var proc = new Procedure(
           node.tok,
           procName,
@@ -65,11 +67,12 @@ namespace Microsoft.Boogie
           VisitVariableSeq(node.OutParams),
           false,
           requires,
-          preserves,
+          new List<Requires>(),
+          ensures,
           (node.HasMoverType && node.Layer == layerNum
             ? node.ModifiedVars.Select(g => Expr.Ident(g))
-            : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList(),
-          ensures);
+            : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList()
+          );
         procToDuplicate[node] = proc;
         absyMap[proc] = node;
       }
@@ -591,7 +594,7 @@ namespace Microsoft.Boogie
         asyncCallPreconditionCheckers[newCall.Proc.Name] = DeclHelper.Procedure(
           civlTypeChecker.AddNamePrefix($"AsyncCall_{newCall.Proc.Name}_{layerNum}"),
           newCall.Proc.InParams, newCall.Proc.OutParams,
-          procToDuplicate[newCall.Proc].Requires, new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+          procToDuplicate[newCall.Proc].Requires, new List<Requires>(), new List<Ensures>(), new List<IdentifierExpr>());
       }
 
       var asyncCallPreconditionChecker = asyncCallPreconditionCheckers[newCall.Proc.Name];

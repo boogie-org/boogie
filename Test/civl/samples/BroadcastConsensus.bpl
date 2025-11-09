@@ -93,11 +93,6 @@ preserves (forall ii:pid :: channels[ii] == MultisetEmpty);
 preserves values == MultisetEmpty;
 preserves usedPermissions == Set_Empty();
 
-yield invariant {:layer 2} YieldInit#2({:linear} ps: Set Permission);
-preserves ps->val == (lambda {:pool "A"} p: Permission ::IsPid(p->i));
-preserves values == MultisetEmpty;
-preserves usedPermissions == Set_Empty();
-
 yield invariant {:layer 1} YieldCollect();
 preserves (forall i:pid :: MultisetSubsetEq(MultisetEmpty, channels[i]) && MultisetSubsetEq(channels[i], values));
 
@@ -111,7 +106,9 @@ preserves (forall q: Permission:: q is Broadcast && IsPid(q->i) ==> Set_Contains
 
 yield left procedure {:layer 2} Main({:linear_in} ps: Set Permission)
 requires call YieldInit#1(ps);
-requires call YieldInit#2(ps);
+requires {:layer 2} ps->val == (lambda {:pool "A"} p: Permission ::IsPid(p->i));
+requires {:layer 2} values == MultisetEmpty;
+requires {:layer 2} usedPermissions == Set_Empty();
 ensures {:layer 2} (forall j: pid:: IsPid(j) ==> decision[j] == max((lambda v: val:: value_card(v, value, n))));
 modifies values, usedPermissions, decision;
 {

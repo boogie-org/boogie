@@ -180,7 +180,7 @@ namespace Microsoft.Boogie
       duplicateImpl.Attributes = null;
       // in case impl.Proc is ActionDecl, convert to Procedure
       duplicateImpl.Proc = new Procedure(proc.tok, name, proc.TypeParameters, proc.InParams,
-        proc.OutParams, proc.IsPure, new List<Requires>(), new List<Requires>(), proc.Modifies, new List<Ensures>());
+        proc.OutParams, proc.IsPure, new List<Requires>(), new List<Requires>(), new List<Ensures>(), proc.Modifies);
       CivlUtil.AddInlineAttribute(duplicateImpl.Proc);
       return duplicateImpl;
     }
@@ -221,7 +221,7 @@ namespace Microsoft.Boogie
 
       var proc = checkerImpl.Proc;
       checkerImpl.Proc = new Procedure(proc.tok, checkerName, proc.TypeParameters, proc.InParams,
-        proc.OutParams, proc.IsPure, requires, new List<Requires>(), proc.Modifies, new List<Ensures>());
+        proc.OutParams, proc.IsPure, requires, new List<Requires>(), new List<Ensures>(), proc.Modifies);
       gateSufficiencyCheckerDecls.AddRange(new Declaration[] { checkerImpl.Proc, checkerImpl });
 
       Wlp.HoistAsserts(Impl, civlTypeChecker.Options);

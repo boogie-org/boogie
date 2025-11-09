@@ -126,7 +126,7 @@ namespace Microsoft.Boogie
           : $"Wrapper_YieldToYield_NoninterferenceChecker_{layerNum}";
       wrapperYieldToYieldNoninterferenceCheckerProc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix(wrapperYieldToYieldNoninterferenceCheckerProcName),
-        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<IdentifierExpr>());
       CivlUtil.AddInlineAttribute(wrapperYieldToYieldNoninterferenceCheckerProc);
       
       var wrapperGlobalNoninterferenceCheckerProcName =
@@ -135,7 +135,7 @@ namespace Microsoft.Boogie
           : $"Wrapper_Global_NoninterferenceChecker_{layerNum}";
       wrapperGlobalNoninterferenceCheckerProc = DeclHelper.Procedure(
         civlTypeChecker.AddNamePrefix(wrapperGlobalNoninterferenceCheckerProcName),
-        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<IdentifierExpr>(), new List<Ensures>());
+        wrapperNoninterferenceCheckerFormals, new List<Variable>(), new List<Requires>(), new List<Requires>(), new List<Ensures>(), new List<IdentifierExpr>());
       CivlUtil.AddInlineAttribute(wrapperGlobalNoninterferenceCheckerProc);
 
       if (civlTypeChecker.Options.TrustNoninterference)
@@ -720,7 +720,7 @@ namespace Microsoft.Boogie
 
         parallelCallAggregators[procName] = DeclHelper.Procedure(
           procName, inParams, outParams, doRefinementCheck ? new List<Requires>() : requiresSeq, new List<Requires>(),
-          civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList(), ensuresSeq);
+          ensuresSeq, civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v)).ToList());
       }
 
       Procedure proc = parallelCallAggregators[procName];
@@ -793,7 +793,7 @@ namespace Microsoft.Boogie
         var blocks = new List<Block> { BlockHelper.Block("init", cmds) };
 
         var name = civlTypeChecker.AddNamePrefix($"{checkerNamePrefix}_NoninterferenceChecker_{action.Name}_{layerNum}");
-        var proc = DeclHelper.Procedure(name, inputs, outputs, requires, preserves, modifies, ensures);
+        var proc = DeclHelper.Procedure(name, inputs, outputs, requires, preserves, ensures, modifies);
         var impl = DeclHelper.Implementation(proc, inputs, outputs, locals, blocks);
         yield return proc;
         yield return impl;

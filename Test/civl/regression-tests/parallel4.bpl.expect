@@ -1,6 +1,6 @@
-parallel4.bpl(26,3): Error: this assertion could not be proved
+parallel4.bpl(21,3): Error: this assertion could not be proved
 Execution trace:
-    parallel4.bpl(24,5): anon0
-    parallel4.bpl(24,5): anon0_0
+    parallel4.bpl(19,5): anon0
+    parallel4.bpl(19,5): anon0_0
 
 Boogie program verifier finished with 3 verified, 1 error

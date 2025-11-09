@@ -136,6 +136,11 @@ enable the informal proof of linearizability of ReadClient and WriteClient.
 //////////////////////////////////////////////////////////////////////////
 // Yield invariants
 
+function {:inline} ValueStorePredicate(value_store: Map TimeStamp Value, ts: TimeStamp, value: Value) : bool
+{
+    Map_Contains(value_store, ts) && Map_At(value_store, ts) == value
+}
+
 yield invariant {:layer 1} Monotonic#1(cond: bool, ts: TimeStamp, rid: ReplicaId);
 preserves cond ==> le(ts, replica_store[rid]->ts);
 
@@ -156,7 +161,7 @@ preserves lt(TimeStamp(last_write[one_pid->val], one_pid->val), pid_last_ts);
 preserves (forall ts: TimeStamp:: Map_Contains(value_store, ts) && ts->pid == one_pid->val ==> le(ts, pid_last_ts));
 
 yield invariant {:layer 1} ValueStoreInv#1(ts: TimeStamp, value: Value);
-preserves Map_Contains(value_store, ts) && Map_At(value_store, ts) == value;
+preserves ValueStorePredicate(value_store, ts, value);
 
 yield invariant {:layer 1} AddToValueStoreInv({:linear} one_pid: One ProcessId, ts: TimeStamp);
 preserves one_pid->val == ts->pid;
@@ -175,7 +180,7 @@ yield invariant {:layer 2} ValidTimeStamp();
 preserves (forall rid: ReplicaId :: le(LeastTimeStamp(), replica_ts[rid]));
 
 yield invariant {:layer 3} ValueStoreInv#3(ts: TimeStamp, value: Value);
-preserves Map_Contains(value_store, ts) && Map_At(value_store, ts) == value;
+preserves ValueStorePredicate(value_store, ts, value);
 
 yield invariant {:layer 4} Yield#4();
 
@@ -306,7 +311,7 @@ preserves call MonotonicInduction#2(tsq, old_ts, 0);
 preserves call ValidTimeStamp();
 preserves call TimeStampQuorum();
 requires {:layer 3} IsQuorum(tsq);
-preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
+preserves {:layer 3} ValueStorePredicate(value_store, LeastTimeStamp(), InitValue);
 ensures {:layer 3} le(old_ts, max_ts);
 ensures {:layer 3} Map_Contains(value_store, max_ts) && Map_At(value_store, max_ts) == max_value;
 {
@@ -326,7 +331,7 @@ ensures {:layer 1} (forall rid: ReplicaId:: q[rid] && i <= rid && rid < numRepli
 preserves call MonotonicInduction#2(tsq, old_ts, 0);
 preserves call ValidTimeStamp();
 preserves call TimeStampQuorum();
-preserves call ValueStoreInv#3(LeastTimeStamp(), InitValue);
+preserves {:layer 3} ValueStorePredicate(value_store, LeastTimeStamp(), InitValue);
 ensures {:layer 3} (exists rid: ReplicaId:: i <= rid && rid < numReplicas && q[rid] && tsq[rid]) ==> le(old_ts, max_ts);
 ensures {:layer 3} Map_Contains(value_store, max_ts) && Map_At(value_store, max_ts) == max_value;
 {

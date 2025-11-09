@@ -4,7 +4,6 @@ using System.Collections;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Security.Cryptography;
 using Microsoft.BaseTypes;
 
 namespace Microsoft.Boogie
@@ -2547,30 +2546,29 @@ namespace Microsoft.Boogie
 
     public List<Requires> Preserves;
 
+    public List<Ensures> Ensures;
+
     public List<IdentifierExpr> Modifies;
     
     public IEnumerable<Variable> ModifiedVars => Modifies.Select(ie => ie.Decl).Distinct();
-    
-    public List<Ensures> Ensures;
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> requires, List<Requires> preserves, List<IdentifierExpr> modifies, List<Ensures> ensures)
-      : this(tok, name, typeParams, inParams, outParams, isPure, requires, preserves, modifies, ensures, null)
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<IdentifierExpr> modifies)
+      : this(tok, name, typeParams, inParams, outParams, isPure, requires, preserves, ensures, modifies, null)
     {
     }
 
     public Procedure(IToken tok, string name, List<TypeVariable> typeParams,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<Requires> requires, List<Requires> preserves, List<IdentifierExpr> modifies, List<Ensures> ensures, QKeyValue kv
-    )
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<IdentifierExpr> modifies, QKeyValue kv)
       : base(tok, name, typeParams, inParams, outParams)
     {
       this.IsPure = isPure;
       this.Requires = requires;
       this.Preserves = preserves;
-      this.Modifies = modifies;
       this.Ensures = ensures;
+      this.Modifies = modifies;
       this.Attributes = kv;
     }
 
@@ -2719,22 +2717,29 @@ namespace Microsoft.Boogie
       }
       tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
 
+      void TypecheckSpec(List<int> layers, Action<TypecheckingContext> f)
+      {
+        var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
+        if (this is YieldProcedureDecl yieldProcedureDecl &&
+            (!yieldProcedureDecl.HasMoverType || layers.Any(layer => layer < yieldProcedureDecl.Layer)))
+        {
+          tc.GlobalAccessOnlyInOld = true;
+        }
+        f(tc);
+        tc.GlobalAccessOnlyInOld = oldGlobalAccessOnlyInOld;
+      }
+
       foreach (Requires e in Requires)
       {
-        Contract.Assert(e != null);
-        e.Typecheck(tc);
+        TypecheckSpec(e.Layers, e.Typecheck);
       }
-
       foreach (Requires e in Preserves)
       {
-        Contract.Assert(e != null);
-        e.Typecheck(tc);
+        TypecheckSpec(e.Layers, e.Typecheck);
       }
-
       foreach (Ensures e in Ensures)
       {
-        Contract.Assert(e != null);
-        e.Typecheck(tc);
+        TypecheckSpec(e.Layers, e.Typecheck);
       }
     }
 
@@ -2752,7 +2757,7 @@ namespace Microsoft.Boogie
 
     public YieldInvariantDecl(IToken tok, string name, List<Variable> inParams, List<Requires> preserves, QKeyValue kv) :
       base(tok, name, new List<TypeVariable>(), inParams, new List<Variable>(), false,
-            new List<Requires>(), preserves, new List<IdentifierExpr>(), new List<Ensures>(), kv)
+            new List<Requires>(), preserves, new List<Ensures>(), new List<IdentifierExpr>(), kv)
     {
       IsGlobal = true;
     }
@@ -2864,10 +2869,10 @@ namespace Microsoft.Boogie
     public ActionDecl(IToken tok, string name, MoverType moverType,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
       List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
-      List<Requires> requires, List<CallCmd> yieldRequires, List<AssertCmd> asserts,
-      List<IdentifierExpr> modifies, DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
+      List<Requires> requires, List<IdentifierExpr> modifies, List<CallCmd> yieldRequires, List<AssertCmd> asserts,
+      DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
-      isPure, requires, new List<Requires>(), modifies, new List<Ensures>(), kv)
+      isPure, requires, new List<Requires>(), new List<Ensures>(), modifies, kv)
     {
       this.MoverType = moverType;
       this.Creates = creates;
@@ -3194,8 +3199,8 @@ namespace Microsoft.Boogie
   {
     public MoverType MoverType;
     public List<CallCmd> YieldRequires;
-    public List<CallCmd> YieldEnsures;
     public List<CallCmd> YieldPreserves;
+    public List<CallCmd> YieldEnsures;
     public ActionDeclRef RefinedAction;
 
     public int Layer; // set during registration
@@ -3204,15 +3209,15 @@ namespace Microsoft.Boogie
 
     public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams,
       List<Variable> outParams,
-      List<Requires> requires, List<Requires> preserves, List<IdentifierExpr> modifies, List<Ensures> ensures,
-      List<CallCmd> yieldRequires, List<CallCmd> yieldEnsures, List<CallCmd> yieldPreserves,
+      List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<IdentifierExpr> modifies,
+      List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures,
       ActionDeclRef refinedAction, QKeyValue kv) : base(tok, name, new List<TypeVariable>(), inParams, outParams,
-      false, requires, preserves, modifies, ensures, kv)
+      false, requires, preserves, ensures, modifies, kv)
     {
       this.MoverType = moverType;
       this.YieldRequires = yieldRequires;
-      this.YieldEnsures = yieldEnsures;
       this.YieldPreserves = yieldPreserves;
+      this.YieldEnsures = yieldEnsures;
       this.RefinedAction = refinedAction;
       
       this.YieldingLoops = new Dictionary<Block, YieldingLoop>();
@@ -3311,12 +3316,13 @@ namespace Microsoft.Boogie
 
       var oldProc = tc.Proc;
       tc.Proc = this;
-      tc.GlobalAccessOnlyInOld = !HasMoverType;
       base.Typecheck(tc);
-      tc.GlobalAccessOnlyInOld = false;
+      Debug.Assert(!tc.GlobalAccessOnlyInOld);
       YieldRequires.ForEach(callCmd => callCmd.Typecheck(tc));
-      YieldEnsures.ForEach(callCmd => callCmd.Typecheck(tc));
+      tc.GlobalAccessOnlyInOld = true;
       YieldPreserves.ForEach(callCmd => callCmd.Typecheck(tc));
+      YieldEnsures.ForEach(callCmd => callCmd.Typecheck(tc));
+      tc.GlobalAccessOnlyInOld = false;
       Contract.Assert(tc.Proc == this);
       tc.Proc = oldProc;
     }
@@ -3458,7 +3464,7 @@ namespace Microsoft.Boogie
       List<Variable> inputs, List<Variable> outputs, List<IdentifierExpr> globalMods)
       : base(Token.NoToken, impl.Name + "_loop_" + header.ToString(),
         new List<TypeVariable>(), inputs, outputs, false,
-        new List<Requires>(), new List<Requires>(), globalMods, new List<Ensures>())
+        new List<Requires>(), new List<Requires>(), new List<Ensures>(), globalMods)
     {
       enclosingImpl = impl;
     }
