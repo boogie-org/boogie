@@ -2735,7 +2735,22 @@ namespace Microsoft.Boogie
       }
       foreach (Requires e in Preserves)
       {
-        TypecheckSpec(e.Layers, e.Typecheck);
+        if (this is YieldProcedureDecl yieldProcedureDecl &&
+            (!yieldProcedureDecl.HasMoverType || e.Layers.Any(layer => layer < yieldProcedureDecl.Layer)))
+        {
+          if (yieldProcedureDecl.HasMoverType)
+          {
+            tc.Error(e, $"only layer {yieldProcedureDecl.Layer} allowed for preserves clause");
+          }
+          else
+          {
+            tc.Error(e, $"unexpected preserves clause");
+          }
+        }
+        else
+        {
+          e.Typecheck(tc);
+        }
       }
       foreach (Ensures e in Ensures)
       {

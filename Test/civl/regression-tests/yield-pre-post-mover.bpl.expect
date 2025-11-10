@@ -1,7 +1,7 @@
 yield-pre-post-mover.bpl(11,20): Error: global variable must be accessed inside old expression: g
 yield-pre-post-mover.bpl(14,22): Error: global variable must be accessed inside old expression: g
-yield-pre-post-mover.bpl(12,21): Error: global variable must be accessed inside old expression: g
-yield-pre-post-mover.bpl(15,23): Error: global variable must be accessed inside old expression: g
+yield-pre-post-mover.bpl(12,0): Error: only layer 2 allowed for preserves clause
+yield-pre-post-mover.bpl(15,0): Error: only layer 2 allowed for preserves clause
 yield-pre-post-mover.bpl(13,19): Error: global variable must be accessed inside old expression: g
 yield-pre-post-mover.bpl(16,21): Error: global variable must be accessed inside old expression: g
 yield-pre-post-mover.bpl(23,9): Error: layer of callee must be less than layer of caller
