@@ -127,6 +127,53 @@ public class Program : Absy
         constructor.Resolve(rc);
       }
     }
+
+    CheckDatatypesWellFounded(rc);
+  }
+
+  private void CheckDatatypesWellFounded(ResolutionContext rc)
+  {
+    var allTypeCtorDecls = TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>();
+    var constructibleTypeCtorDecls = new HashSet<DatatypeTypeCtorDecl>();
+
+    bool IsConstructible(Type type)
+    {
+      if (type is CtorType ctorType)
+      {
+        return ctorType.Decl is not DatatypeTypeCtorDecl decl || constructibleTypeCtorDecls.Contains(decl);
+      }
+      else if (type is MapType mapType)
+      {
+        return mapType.Arguments.All(IsConstructible) && IsConstructible(mapType.Result);
+      }
+      else
+      {
+        return true;
+      }
+    }
+
+    int count = 0;
+    do
+    {
+      count = constructibleTypeCtorDecls.Count;
+      foreach (var datatypeTypeCtorDecl in allTypeCtorDecls.Except(constructibleTypeCtorDecls))
+      {
+        foreach (var constructor in datatypeTypeCtorDecl.Constructors)
+        {
+          if (constructor.InParams.Select(inParam => inParam.TypedIdent.Type).All(IsConstructible))
+          {
+            constructibleTypeCtorDecls.Add(datatypeTypeCtorDecl);
+            break;
+          }
+        }
+      }
+    }
+    while (count < constructibleTypeCtorDecls.Count);
+    if (count < allTypeCtorDecls.Count())
+    {
+      var names = string.Join(", ", allTypeCtorDecls.Except(constructibleTypeCtorDecls).Select(decl => $"{decl.Name}"));
+      rc.Error(Token.NoToken, $"Datatype declarations are not well-founded: {names}");
+    }
   }
 
   public int Typecheck(CoreOptions options)

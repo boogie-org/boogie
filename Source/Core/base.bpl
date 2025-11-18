@@ -344,10 +344,8 @@ procedure create_asyncs<T>(PAs: [T]bool);
 procedure create_multi_asyncs<T>(PAs: [T]int);
 procedure set_choice<T>(choice: T);
 
-pure procedure {:inline 1} Copy<T>(v: T) returns (copy_v: T)
-{
-  copy_v := v;
-}
+pure procedure Copy<T>(v: T) returns (v': T);
+ensures v' == v;
 
 pure procedure Assume(b: bool);
 ensures b;

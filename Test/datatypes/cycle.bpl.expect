@@ -1,0 +1,2 @@
+(0,-1): Error: Datatype declarations are not well-founded: List1, List2, Foo, List3, List4
+1 name resolution errors detected in cycle.bpl
