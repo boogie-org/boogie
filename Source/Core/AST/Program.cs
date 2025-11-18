@@ -128,11 +128,10 @@ public class Program : Absy
       }
     }
 
-    // Check cycle in declaration of datatypes
-    CheckCycles(rc);
+    CheckDatatypesWellFounded(rc);
   }
 
-  private void CheckCycles(ResolutionContext rc)
+  private void CheckDatatypesWellFounded(ResolutionContext rc)
   {
     var allTypeCtorDecls = TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>();
     var constructibleTypeCtorDecls = new HashSet<DatatypeTypeCtorDecl>();
