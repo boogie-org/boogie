@@ -47,8 +47,10 @@ requires call YieldMain(cid, handles);
   var {:linear} send_handle, receive_handle: One ChannelHandle;
 
   handles' := handles;
-  call send_handle := One_Get(handles', Send(cid));
-  call receive_handle := One_Get(handles', Receive(cid));
+  send_handle := One(Send(cid));
+  call One_Split(handles', send_handle);
+  receive_handle := One(Receive(cid));
+  call One_Split(handles', receive_handle);
   async call producer(1, send_handle);
   async call consumer(1, receive_handle);
 }

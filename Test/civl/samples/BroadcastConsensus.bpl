@@ -128,7 +128,8 @@ modifies values, usedPermissions, decision;
   invariant {:layer 2} MultisetSubsetEq(MultisetEmpty, values) && values == (lambda v: val:: value_card(v, value, i-1)) && card(values) == i-1;
   invariant {:layer 2} Set((lambda p: Permission:: p is Broadcast && IsPid(p->i))) == Set_Union(usedPermissions, psb);
   {
-    call s := One_Get(psb, Broadcast(i));
+    s := One(Broadcast(i));
+    call One_Split(psb, s);
     async call {:sync} Broadcast(s, i);
     i := i + 1;
   }
@@ -142,7 +143,8 @@ modifies values, usedPermissions, decision;
   invariant {:layer 2} (forall q: Permission:: q is Broadcast && IsPid(q->i) ==> Set_Contains(usedPermissions, q));
   invariant {:layer 2} (forall j: pid:: 1 <= j && j < i ==> decision[j] == max(values));
   {
-    call r := One_Get(psc, Collect(i));
+    r := One(Collect(i));
+    call One_Split(psc, r);
     async call {:sync} Collect(r, i);
     i := i + 1;
   }

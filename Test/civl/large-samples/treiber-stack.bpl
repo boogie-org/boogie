@@ -70,7 +70,8 @@ atomic action {:layer 5} AtomicAlloc() returns ({:linear} tagged_loc: One (Tagge
   var {:linear} tagged_locs: Set (TaggedLocTreiber X);
 
   call one_loc_t, tagged_locs := TaggedLocSet_New(UnitSet());
-  call tagged_loc := One_Get(tagged_locs, TaggedLoc(one_loc_t->val, Unit()));
+  tagged_loc := One(TaggedLoc(one_loc_t->val, Unit()));
+  call One_Split(tagged_locs, tagged_loc);
   assume !Map_Contains(TreiberPool, one_loc_t->val);
   TreiberPool := Map_Update(TreiberPool, one_loc_t->val, Vec_Empty());
 }
@@ -90,7 +91,8 @@ preserves call StackDom();
   call stack := Map_MakeEmpty();
   treiber := Treiber(top, stack);
   call one_loc_t, tagged_locs := TaggedLocSet_New(UnitSet());
-  call tagged_loc := One_Get(tagged_locs, TaggedLoc(one_loc_t->val, Unit()));
+  tagged_loc := One(TaggedLoc(one_loc_t->val, Unit()));
+  call One_Split(tagged_locs, tagged_loc);
   call AllocTreiber#0(one_loc_t, treiber);
   call {:layer 4} TreiberPool := Copy(Map_Update(TreiberPool, one_loc_t->val, Vec_Empty()));
   call {:layer 4} AbsLemma(treiber);
@@ -176,7 +178,8 @@ asserts Map_Contains(TreiberPoolLow, loc_t);
   assume loc_n is None || Map_Contains(stack, loc_n->t);
   call one_loc_n, tagged_locs := TaggedLocSet_New(UnitSet());
   new_loc_n := one_loc_n->val;
-  call tagged_loc := One_Get(tagged_locs, TaggedLoc(new_loc_n, Unit()));
+  tagged_loc := One(TaggedLoc(new_loc_n, Unit()));
+  call One_Split(tagged_locs, tagged_loc);
   call Map_Put(stack, one_loc_n, Node(loc_n, x));
   treiber := Treiber(top, stack);
   call Map_Put(TreiberPoolLow, one_loc_t, treiber);
@@ -193,7 +196,8 @@ refines AtomicCreateNewTopOfStack;
   call loc_n := ReadTopOfStack#Push(loc_t);
   call one_loc_n, tagged_locs := TaggedLocSet_New(UnitSet());
   new_loc_n := one_loc_n->val;
-  call tagged_loc := One_Get(tagged_locs, TaggedLoc(new_loc_n, Unit()));
+  tagged_loc := One(TaggedLoc(new_loc_n, Unit()));
+  call One_Split(tagged_locs, tagged_loc);
   call AllocNode#0(loc_t, one_loc_n, Node(loc_n, x));
 }
 

@@ -43,7 +43,8 @@ atomic action {:layer 2,2} AtomicAllocate() returns ({:linear} tid: One int, i: 
 modifies unallocated;
 {
   assume Set_Contains(unallocated, i);
-  call tid := One_Get(unallocated, i);
+  tid := One(i);
+  call One_Split(unallocated, tid);
 }
 
 yield procedure {:layer 1}
@@ -121,5 +122,6 @@ pure action MakeLinear(i: int, {:linear_in} unallocated: Set int)
 returns ({:linear} tid: One int, {:linear} unallocated': Set int)
 {
   unallocated' := unallocated;
-  call tid := One_Get(unallocated', i);
+  tid := One(i);
+  call One_Split(unallocated', tid);
 }

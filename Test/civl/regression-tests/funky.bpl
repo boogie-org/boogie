@@ -82,7 +82,8 @@ modifies unallocated;
 {
   var x: X;
   assume x != nil && Set_Contains(unallocated, x);
-  call tid := One_Get(unallocated, x);
+  tid := One(x);
+  call One_Split(unallocated, tid);
 }
 
 yield procedure {:layer 0} AllocTid() returns ({:linear} tid: One X);

@@ -61,8 +61,10 @@ requires call YieldMain(cid, handles);
   var {:linear} right: One ChannelHandle;
 
   handles' := handles;
-  call left := One_Get(handles', Left(cid));
-  call right := One_Get(handles', Right(cid));
+  left := One(Left(cid));
+  call One_Split(handles', left);
+  right := One(Right(cid));
+  call One_Split(handles', right);
   call send(left->val, 1);
   async call ping(1, left);
   async call pong(1, right);

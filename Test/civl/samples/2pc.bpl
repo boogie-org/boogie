@@ -112,7 +112,8 @@ modifies locked_transactions;
     vrs' := vrs;
     if (1 <= i)
     {
-        call vr := One_Get(vrs', VoteRequest(xid, i));
+        vr := One(VoteRequest(xid, i));
+        call One_Split(vrs', vr);
         call votes, vrs' := vote_all(xid, vrs', i-1) |  out := vote(vr);
         votes[i] := out;
         call One_Put(vrs', vr);
@@ -145,7 +146,8 @@ modifies locked_transactions;
     invariant {:layer 1} !Set_Contains(committed_transactions, xid->val);
     invariant {:layer 1} (forall j:int, xid0 : TransactionId :: 1 <= j && j < n+1 && xid0 != xid->val && Set_Contains(old(locked_transactions)[j], xid0) ==> Set_Contains(locked_transactions[j], xid0));
     {
-        call vr := One_Get(vrs', VoteRequest(xid->val, i));
+        vr := One(VoteRequest(xid->val, i));
+        call One_Split(vrs', vr);
         async call {:sync} finalize(d, vr);
         i := i + 1;
     }

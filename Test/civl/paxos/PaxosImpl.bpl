@@ -91,7 +91,8 @@ ensures {:layer 2} Set_Size(joinPerms) == numNodes;
   invariant {:layer 2} JoinLt(r, joinChannelPermissions, usedPermissions);
   invariant {:layer 2} Set_IsSubset(JoinPermissionsUpto(r, n), Set_Union(joinChannelPermissions, usedPermissions));
   {
-    call {:layer 1,2} p := One_Get(joinPermissions', JoinPerm(r, n));
+    p := One(JoinPerm(r, n));
+    call {:layer 1,2} One_Split(joinPermissions', p);
     assert {:layer 2} JoinLt(r, joinChannelPermissions, usedPermissions);
     async call {:sync} Join(r, n, p);
     call {:layer 2} joinPerms := Lemma_SetSize_Add(joinPerms, p->val);
@@ -225,7 +226,8 @@ ensures {:layer 2} SpecLe(r, status);
   invariant {:layer 2} VoteLt(r, voteChannelPermissions, usedPermissions);
   invariant {:layer 2} Set_IsSubset(VotePermissionsUpto(r, n), Set_Union(voteChannelPermissions, usedPermissions));
   {
-    call {:layer 1,2} p := One_Get(ps', VotePerm(r, n));
+    p := One(VotePerm(r, n));
+    call {:layer 1,2} One_Split(ps', p);
     async call {:sync} Vote(r, n, v, p);
     call {:layer 2} votePerms := Lemma_SetSize_Add(votePerms, p->val);
     n := n + 1;
@@ -425,7 +427,8 @@ returns ({:linear} roundPermission: One Permission, {:linear} joinPermissions: S
   var {:linear} ps: Set Permission;
 
   ps := allRoundPermissions;
-  call roundPermission := One_Get(ps, RoundPerm(r));
+  roundPermission := One(RoundPerm(r));
+  call One_Split(ps, roundPermission);
   joinPermissions := JoinPermissions(r);
   call Set_Split(ps, joinPermissions);
   votePermissions := VotePermissions(r);
@@ -439,6 +442,7 @@ returns ({:linear} from': Set Permission, {:linear} to': Set Permission)
 
   from' := from;
   to' := to;
-  call one_p := One_Get(from', p);
+  one_p := One(p);
+  call One_Split(from', one_p);
   call One_Put(to', one_p);
 }
