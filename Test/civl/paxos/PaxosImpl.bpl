@@ -21,7 +21,8 @@ preserves call YieldInv();
   invariant {:layer 2} VoteQuorumLt(r, status, voteInfo);
   invariant {:layer 2} SpecLt(r, status);
   {
-    call {:layer 1,2} allRoundPermissions := Set_Get(ps', AllPermissions(r)->val);
+    allRoundPermissions := AllPermissions(r);
+    call {:layer 1,2} Set_Split(ps', allRoundPermissions);
     async call {:sync} ExecuteRound(r, allRoundPermissions);
     r := r + 1;
   }
@@ -425,8 +426,10 @@ returns ({:linear} roundPermission: One Permission, {:linear} joinPermissions: S
 
   ps := allRoundPermissions;
   call roundPermission := One_Get(ps, RoundPerm(r));
-  call joinPermissions := Set_Get(ps, JoinPermissions(r)->val);
-  call votePermissions := Set_Get(ps, VotePermissions(r)->val);
+  joinPermissions := JoinPermissions(r);
+  call Set_Split(ps, joinPermissions);
+  votePermissions := VotePermissions(r);
+  call Set_Split(ps, votePermissions);
 }
 
 pure action MovePermission(p: Permission, {:linear_in} from: Set Permission, {:linear_in} to: Set Permission)

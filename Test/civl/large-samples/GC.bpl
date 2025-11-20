@@ -1771,7 +1771,8 @@ modifies mutatorsInRootScanBarrier;
 {
     var {:linear} ps: Set Piece;
     assert tidHasLock(tid_left, absLock) && !rootScanOn && mutatorTidLeft(tid_left) && Set_Contains(mutatorsInRootScanBarrier, Right(tid_left->i));
-    call ps := Set_Get(mutatorsInRootScanBarrier, MapOne(Right(tid_left->i)));
+    ps := Set_Singleton(Right(tid_left->i));
+    call Set_Split(mutatorsInRootScanBarrier, ps);
     tid_right := Tid(tid_left->i, ps);
 }
 
@@ -2103,7 +2104,8 @@ pure action PrimitiveMutatorsInRootScanBarrierRemove({:linear} tid_left: Tid, {:
     var {:linear} ps: Set Piece;
     assert mutatorTidLeft(tid_left);
     mutatorsInRootScanBarrier' := mutatorsInRootScanBarrier;
-    call ps := Set_Get(mutatorsInRootScanBarrier', MapOne(Right(tid_left->i)));
+    ps := Set_Singleton(Right(tid_left->i));
+    call Set_Split(mutatorsInRootScanBarrier', ps);
     tid_right := Tid(tid_left->i, ps);
 }
 

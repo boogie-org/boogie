@@ -119,7 +119,8 @@ modifies values, usedPermissions, decision;
 
   assume {:add_to_pool "A", Broadcast(1)} true;
   psc := ps;
-  call psb := Set_Get(psc, (lambda p: Permission:: p is Broadcast && IsPid(p->i)));
+  psb := Set((lambda p: Permission:: p is Broadcast && IsPid(p->i)));
+  call Set_Split(psc, psb);
   i := 1;
   while (i <= n)
   invariant {:layer 1,2} 1 <= i && i <= n + 1;

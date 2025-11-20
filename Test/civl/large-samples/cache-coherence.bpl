@@ -257,7 +257,8 @@ refines atomic action {:layer 2} _ {
   call drp := Set_MakeEmpty();
   if (*) {
     assume Set_Contains(cachePermissions, CachePermission(i, ca));
-    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    drp := Set_Singleton(CachePermission(i, ca));
+    call Set_Split(cachePermissions, drp);
     line := cache[i][ca];
     ma := line->ma;
     value := line->value;
@@ -268,7 +269,8 @@ refines atomic action {:layer 2} _ {
   call result, ma, value := cache_evict_req#0(i, ca);
   call {:layer 1} drp := Set_MakeEmpty();
   if (result == Ok()) {
-    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    drp := Set_Singleton(CachePermission(i, ca));
+    call {:layer 1} Set_Split(cachePermissions, drp);
   }
 }
 
@@ -285,7 +287,8 @@ refines atomic action {:layer 2} _ {
   if (*) {
     assume line->state == Invalid();
     assume Set_Contains(cachePermissions, CachePermission(i, ca));
-    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    drp := Set_Singleton(CachePermission(i, ca));
+    call Set_Split(cachePermissions, drp);
     cache[i][ca]->ma := ma;
     result := Ok();
   }
@@ -294,7 +297,8 @@ refines atomic action {:layer 2} _ {
   call result := cache_read_shd_req#0(i, ma);
   call {:layer 1} drp := Set_MakeEmpty();
   if (result == Ok()) {
-    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
+    drp := Set_Singleton(CachePermission(i, Hash(ma)));
+    call {:layer 1} Set_Split(cachePermissions, drp);
   }
 }
 
@@ -311,7 +315,8 @@ refines atomic action {:layer 2} _ {
   if (*) {
     assume line->state == Invalid() || (line->ma == ma && line->state == Shared());
     assume Set_Contains(cachePermissions, CachePermission(i, ca));
-    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    drp := Set_Singleton(CachePermission(i, ca));
+    call Set_Split(cachePermissions, drp);
     cache[i][ca]->ma := ma;
     result := Ok();
   }
@@ -320,7 +325,8 @@ refines atomic action {:layer 2} _ {
   call result := cache_read_exc_req#0(i, ma);
   call {:layer 1} drp := Set_MakeEmpty();
   if (result == Ok()) {
-    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
+    drp := Set_Singleton(CachePermission(i, Hash(ma)));
+    call {:layer 1} Set_Split(cachePermissions, drp);
   }
 }
 
@@ -673,11 +679,13 @@ yield procedure {:layer 1} get_victim(victim: CacheId, ma: MemAddr, {:layer 1} {
 returns ({:linear} {:layer 1} dpOne: Set DirPermission, {:linear} {:layer 1} dp': Set DirPermission)
 refines both action {:layer 2} _ {
   dp' := dp;
-  call dpOne := Set_Get(dp', MapOne(DirPermission(victim, ma)));
+  dpOne := Set_Singleton(DirPermission(victim, ma));
+  call Set_Split(dp', dpOne);
 }
 {
   dp' := dp;
-  call {:layer 1} dpOne := Set_Get(dp', MapOne(DirPermission(victim, ma)));
+  dpOne := Set_Singleton(DirPermission(victim, ma));
+  call {:layer 1} Set_Split(dp', dpOne);
 }
 
 yield procedure {:layer 1} put_victim({:linear_in} {:layer 1} dpOne: Set DirPermission, {:layer 1} {:linear_in} dp: Set DirPermission)
@@ -696,11 +704,13 @@ preserves call YieldInv#1();
 refines right action {:layer 2} _ {
   assume Set_IsSubset(WholeDirPermission(ma), dirPermissions);
   dirState := dir[ma];
-  call dp := Set_Get(dirPermissions, WholeDirPermission(ma)->val);
+  dp := WholeDirPermission(ma);
+  call Set_Split(dirPermissions, dp);
 }
 {
   call dirState := dir_req_begin#0(ma);
-  call {:layer 1} dp := Set_Get(dirPermissions, WholeDirPermission(ma)->val);
+  dp := WholeDirPermission(ma);
+  call {:layer 1} Set_Split(dirPermissions, dp);
 }
 
 yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: Set DirPermission)
