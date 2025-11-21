@@ -666,13 +666,6 @@ namespace Microsoft.Boogie
               Error(node, $"Keys must be collected");
             }
           }
-          else if (originalProc.Name == "Map_GetValue" || originalProc.Name == "Map_PutValue")
-          {
-            if (AreKeysCollected(modifiedArgument))
-            {
-              Error(node, $"Keys must not be collected");
-            }
-          }
         }
         else if (originalProc.Name == "Map_Unpack")
         {

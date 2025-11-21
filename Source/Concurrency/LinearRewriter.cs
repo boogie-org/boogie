@@ -470,8 +470,7 @@ public class LinearRewriter
     var range = instantiation["V"];
     var mapContainsFunc = MapContains(domain, range);
     var mapUpdateFunc = MapUpdate(domain, range);
-    var attribute = new QKeyValue(Token.NoToken, "linear", new List<object>(), null);
-    cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, Val(l))), attribute));
+    cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, Val(l)))));
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, Val(l), v)));
 
@@ -493,7 +492,6 @@ public class LinearRewriter
     var mapRemoveFunc = MapRemove(domain, range);
     var mapAtFunc = MapAt(domain, range);
     cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(mapContainsFunc, path, k), "Map_GetValue failed"));
-    var oneConstructor = OneConstructor(domain);
     cmdSeq.Add(CmdHelper.AssignCmd(v.Decl, ExprHelper.FunctionCall(mapAtFunc, path, k)));
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapRemoveFunc, path, k)));
@@ -512,8 +510,12 @@ public class LinearRewriter
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     var domain = instantiation["K"];
     var range = instantiation["V"];
-    var mapContainsFunc = MapContains(domain, range);
     var mapUpdateFunc = MapUpdate(domain, range);
+    if (k is IdentifierExpr ie && LinearTypeChecker.FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
+    {
+      var mapContainsFunc = MapContains(domain, range);
+      cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, k))));
+    }
     cmdSeq.Add(
       CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(mapUpdateFunc, path, k, v)));
 

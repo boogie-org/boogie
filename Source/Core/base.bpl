@@ -321,8 +321,8 @@ pure procedure Map_Split<K,V>({:linear} path: Map K V, s: Set K) returns ({:line
 pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} m: Map K V);
 pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} l: One K, {:linear} v: V);
 pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} l: One K, {:linear_in} v: V);
-pure procedure Map_GetValue<K,V>({:linear} path: Map K V, k: K) returns ({:linear} v: V);
-pure procedure Map_PutValue<K,V>({:linear} path: Map K V, k: K, {:linear_in} v: V);
+pure procedure Map_GetValue<K,V>({:linear} path: Map K V, {:linear_out} k: K) returns ({:linear} v: V);
+pure procedure Map_PutValue<K,V>({:linear} path: Map K V, {:linear_in} k: K, {:linear_in} v: V);
 
 type Loc _;
 
