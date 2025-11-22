@@ -148,8 +148,6 @@ public class LinearRewriter
       case "TaggedLocs_New":
       case "Set_MakeEmpty":
       case "Map_MakeEmpty":
-      case "Map_Pack":
-      case "Map_Unpack":
         return new List<Cmd>{callCmd};
       case "Set_Split":
         return RewriteSetSplit(callCmd);

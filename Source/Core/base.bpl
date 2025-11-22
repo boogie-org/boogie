@@ -306,15 +306,6 @@ pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 {
   m := Map_Empty();
 }
-pure procedure {:inline 1} Map_Pack<K,V>({:linear_in} dom: Set K, val: [K]V) returns ({:linear} m: Map K V)
-{
-  m := Map(dom, MapIte(dom->val, val, MapConst(Default())));
-}
-pure procedure {:inline 1} Map_Unpack<K,V>({:linear_in} m: Map K V) returns ({:linear} dom: Set K, val: [K]V)
-{
-  dom := m->dom;
-  val := m->val;
-}
 pure procedure Map_GetValue<K,V>({:linear} path: Map K V, {:linear_out} k: K) returns ({:linear} v: V);
 pure procedure Map_PutValue<K,V>({:linear} path: Map K V, {:linear_in} k: K, {:linear_in} v: V);
 
