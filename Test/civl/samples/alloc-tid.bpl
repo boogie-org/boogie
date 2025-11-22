@@ -44,7 +44,7 @@ modifies unallocated;
 {
   assume Set_Contains(unallocated, One(i));
   tid := One(i);
-  call One_Split(unallocated, tid);
+  call One_Get(unallocated, tid);
 }
 
 yield procedure {:layer 1}
@@ -123,5 +123,5 @@ returns ({:linear} tid: One int, {:linear} unallocated': Set (One int))
 {
   unallocated' := unallocated;
   tid := One(i);
-  call One_Split(unallocated', tid);
+  call One_Get(unallocated', tid);
 }

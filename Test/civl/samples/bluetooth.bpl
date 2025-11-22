@@ -109,7 +109,7 @@ pure action B({:linear_in} usersInDriver: Set (One Perm), {:linear_out} l: Set (
 {
     assert Set_IsSubset(l, usersInDriver);
     usersInDriver' := usersInDriver;
-    call Set_Split(usersInDriver', l);
+    call Set_Get(usersInDriver', l);
 }
 
 // stopper code

@@ -81,7 +81,7 @@ right action {:layer 1,3} AtomicAllocTid() returns ({:linear} tid: One X)
 modifies unallocated;
 {
   assume Set_Contains(unallocated, tid) && tid->val != nil;
-  call One_Split(unallocated, tid);
+  call One_Get(unallocated, tid);
 }
 
 yield procedure {:layer 0} AllocTid() returns ({:linear} tid: One X);

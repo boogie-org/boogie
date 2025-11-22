@@ -62,9 +62,9 @@ requires call YieldMain(cid, handles);
 
   handles' := handles;
   left := One(Left(cid));
-  call One_Split(handles', left);
+  call One_Get(handles', left);
   right := One(Right(cid));
-  call One_Split(handles', right);
+  call One_Get(handles', right);
   call send(left->val, 1);
   async call ping(1, left);
   async call pong(1, right);

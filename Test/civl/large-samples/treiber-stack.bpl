@@ -76,7 +76,7 @@ atomic action {:layer 5} AtomicAlloc() returns ({:linear} tagged_loc: One (Tagge
 
   call one_loc_t, tagged_locs := TaggedLocs_New(UnitSet());
   tagged_loc := One(TaggedLoc(one_loc_t->val, Unit()));
-  call One_Split(tagged_locs, tagged_loc);
+  call One_Get(tagged_locs, tagged_loc);
   assume !Map_Contains(TreiberPool, one_loc_t);
   TreiberPool := Map_Update(TreiberPool, one_loc_t, Vec_Empty());
 }
@@ -97,7 +97,7 @@ preserves call StackDom();
   treiber := Treiber(top, stack);
   call one_loc_t, tagged_locs := TaggedLocs_New(UnitSet());
   tagged_loc := One(TaggedLoc(one_loc_t->val, Unit()));
-  call One_Split(tagged_locs, tagged_loc);
+  call One_Get(tagged_locs, tagged_loc);
   call AllocTreiber#0(one_loc_t, treiber);
   call {:layer 4} TreiberPool := Copy(Map_Update(TreiberPool, one_loc_t, Vec_Empty()));
   call {:layer 4} AbsLemma(treiber);
@@ -179,16 +179,16 @@ asserts Map_Contains(TreiberPoolLow, One(loc_t));
   var {:linear} tagged_locs: Set (One (TaggedLocNode X));
   
   one_loc_t := One(loc_t);
-  call treiber := Map_GetValue(TreiberPoolLow, one_loc_t);
+  call treiber := Map_Get(TreiberPoolLow, one_loc_t);
   Treiber(top, stack) := treiber;
   assume loc_n is None || Map_Contains(stack, One(loc_n->t));
   call one_loc_n, tagged_locs := TaggedLocs_New(UnitSet());
   new_loc_n := one_loc_n->val;
   tagged_loc := One(TaggedLoc(new_loc_n, Unit()));
-  call One_Split(tagged_locs, tagged_loc);
-  call Map_PutValue(stack, one_loc_n, Node(loc_n, x));
+  call One_Get(tagged_locs, tagged_loc);
+  call Map_Put(stack, one_loc_n, Node(loc_n, x));
   treiber := Treiber(top, stack);
-  call Map_PutValue(TreiberPoolLow, one_loc_t, treiber);
+  call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 yield procedure {:layer 3} CreateNewTopOfStack(loc_t: LocTreiber X, x: X)
   returns (loc_n: Option (LocNode X), new_loc_n: LocNode X, {:linear} tagged_loc: One (TaggedLocNode X))
@@ -203,7 +203,7 @@ refines AtomicCreateNewTopOfStack;
   call one_loc_n, tagged_locs := TaggedLocs_New(UnitSet());
   new_loc_n := one_loc_n->val;
   tagged_loc := One(TaggedLoc(new_loc_n, Unit()));
-  call One_Split(tagged_locs, tagged_loc);
+  call One_Get(tagged_locs, tagged_loc);
   call AllocNode#0(loc_t, one_loc_n, Node(loc_n, x));
 }
 
@@ -219,12 +219,12 @@ atomic action {:layer 4} AtomicPopIntermediate(loc_t: LocTreiber X) returns (suc
   assert Map_Contains(TreiberPoolLow, One(loc_t));
   if (*) {
     one_loc_t := One(loc_t);
-    call treiber := Map_GetValue(TreiberPoolLow, one_loc_t);
+    call treiber := Map_Get(TreiberPoolLow, one_loc_t);
     Treiber(top, stack) := treiber;
     assume top is Some && Map_Contains(stack, One(top->t));
     Node(loc_n, x) := Map_At(stack, One(top->t));
     treiber := Treiber(loc_n, stack);
-    call Map_PutValue(TreiberPoolLow, one_loc_t, treiber);
+    call Map_Put(TreiberPoolLow, one_loc_t, treiber);
     x_opt := Some(x);
     success := true;
   }
@@ -305,13 +305,13 @@ refines AtomicLoadNode#1;
   var {:linear} one_loc_n: One (LocNode X);
 
   one_loc_t := One(loc_t);
-  call treiber := Map_GetValue(TreiberPoolLow, one_loc_t);
+  call treiber := Map_Get(TreiberPoolLow, one_loc_t);
   Treiber(top, stack) := treiber;
   one_loc_n := One(loc_n);
-  call node := Map_GetValue(stack, one_loc_n);
-  call Map_PutValue(stack, one_loc_n, node);
+  call node := Map_Get(stack, one_loc_n);
+  call Map_Put(stack, one_loc_n, node);
   treiber := Treiber(top, stack);
-  call Map_PutValue(TreiberPoolLow, one_loc_t, treiber);
+  call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 yield procedure {:layer 0} LoadNode#0(loc_t: LocTreiber X, loc_n: LocNode X) returns (node: Node X);
 refines AtomicLoadNode#0;
@@ -323,9 +323,9 @@ refines atomic action {:layer 1,2} _
   var {:linear} treiber: Treiber X;
 
   one_loc_t := One(loc_t);
-  call treiber := Map_GetValue(TreiberPoolLow, one_loc_t);
+  call treiber := Map_Get(TreiberPoolLow, one_loc_t);
   loc_n := treiber->top;
-  call Map_PutValue(TreiberPoolLow, one_loc_t, treiber);
+  call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 
 yield procedure {:layer 0} WriteTopOfStack#0(
@@ -336,14 +336,14 @@ refines atomic action {:layer 1,4} _
   var {:linear} treiber: Treiber X;
 
   one_loc_t := One(loc_t);
-  call treiber := Map_GetValue(TreiberPoolLow, one_loc_t);
+  call treiber := Map_Get(TreiberPoolLow, one_loc_t);
   if (old_loc_n == treiber->top) {
     treiber->top := new_loc_n;
     success := true;
   } else {
     success := false;
   }
-  call Map_PutValue(TreiberPoolLow, one_loc_t, treiber);
+  call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 
 yield procedure {:layer 0} AllocNode#0(loc_t: LocTreiber X, {:linear_in} one_loc_n: One (LocNode X), node: Node X);
@@ -353,15 +353,15 @@ refines atomic action {:layer 1,3} _
   var {:linear} treiber: Treiber X;
 
   one_loc_t := One(loc_t);
-  call treiber := Map_GetValue(TreiberPoolLow, one_loc_t);
-  call Map_PutValue(treiber->nodes, one_loc_n, node);
-  call Map_PutValue(TreiberPoolLow, one_loc_t, treiber);
+  call treiber := Map_Get(TreiberPoolLow, one_loc_t);
+  call Map_Put(treiber->nodes, one_loc_n, node);
+  call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 
 yield procedure {:layer 0} AllocTreiber#0({:linear_in} one_loc_t: One (LocTreiber X), {:linear_in} treiber: Treiber X);
 refines atomic action {:layer 1,4} _
 {
-  call Map_PutValue(TreiberPoolLow, one_loc_t, treiber);
+  call Map_Put(TreiberPoolLow, one_loc_t, treiber);
 }
 
 /// Proof of abstraction with a manual encoding of termination

@@ -40,7 +40,7 @@ modifies barrierCounter, mutatorsInBarrier;
     assert IsMutator(i);
     tid' := tid;
     p := One(Left(i));
-    call One_Split(tid'->ps, p);
+    call One_Get(tid'->ps, p);
     call One_Put(mutatorsInBarrier, p);
     barrierCounter := barrierCounter - 1;
 }
@@ -58,7 +58,7 @@ modifies barrierCounter, mutatorsInBarrier;
     assert Set_Contains(mutatorsInBarrier, One(Left(i)));
     assume !barrierOn;
     p := One(Left(i));
-    call One_Split(mutatorsInBarrier, p);
+    call One_Get(mutatorsInBarrier, p);
     tid' := tid;
     call One_Put(tid'->ps, p);
     barrierCounter := barrierCounter + 1;

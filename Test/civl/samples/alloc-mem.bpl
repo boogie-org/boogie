@@ -121,7 +121,7 @@ pure action AllocLinear (i: int, {:linear_in} pool: Set (One int))
   var m: int;
   pool' := pool;
   one_i := One(i);
-  call One_Split(pool', one_i);
+  call One_Get(pool', one_i);
   l := Cell(one_i, m);
 }
 

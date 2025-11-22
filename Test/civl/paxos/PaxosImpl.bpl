@@ -22,7 +22,7 @@ preserves call YieldInv();
   invariant {:layer 2} SpecLt(r, status);
   {
     allRoundPermissions := AllPermissions(r);
-    call {:layer 1,2} Set_Split(ps', allRoundPermissions);
+    call {:layer 1,2} Set_Get(ps', allRoundPermissions);
     async call {:sync} ExecuteRound(r, allRoundPermissions);
     r := r + 1;
   }
@@ -92,7 +92,7 @@ ensures {:layer 2} Set_Size(joinPerms) == numNodes;
   invariant {:layer 2} Set_IsSubset(JoinPermissionsUpto(r, n), Set_Union(joinChannelPermissions, usedPermissions));
   {
     p := One(JoinPerm(r, n));
-    call {:layer 1,2} One_Split(joinPermissions', p);
+    call {:layer 1,2} One_Get(joinPermissions', p);
     assert {:layer 2} JoinLt(r, joinChannelPermissions, usedPermissions);
     async call {:sync} Join(r, n, p);
     call {:layer 2} joinPerms := Lemma_SetSize_Add(joinPerms, p);
@@ -227,7 +227,7 @@ ensures {:layer 2} SpecLe(r, status);
   invariant {:layer 2} Set_IsSubset(VotePermissionsUpto(r, n), Set_Union(voteChannelPermissions, usedPermissions));
   {
     p := One(VotePerm(r, n));
-    call {:layer 1,2} One_Split(ps', p);
+    call {:layer 1,2} One_Get(ps', p);
     async call {:sync} Vote(r, n, v, p);
     call {:layer 2} votePerms := Lemma_SetSize_Add(votePerms, p);
     n := n + 1;
@@ -428,11 +428,11 @@ returns ({:linear} roundPermission: One Permission, {:linear} joinPermissions: S
 
   ps := allRoundPermissions;
   roundPermission := One(RoundPerm(r));
-  call One_Split(ps, roundPermission);
+  call One_Get(ps, roundPermission);
   joinPermissions := JoinPermissions(r);
-  call Set_Split(ps, joinPermissions);
+  call Set_Get(ps, joinPermissions);
   votePermissions := VotePermissions(r);
-  call Set_Split(ps, votePermissions);
+  call Set_Get(ps, votePermissions);
 }
 
 pure action MovePermission(p: Permission, {:linear_in} from: Set (One Permission), {:linear_in} to: Set (One Permission))
@@ -443,6 +443,6 @@ returns ({:linear} from': Set (One Permission), {:linear} to': Set (One Permissi
   from' := from;
   to' := to;
   one_p := One(p);
-  call One_Split(from', one_p);
+  call One_Get(from', one_p);
   call One_Put(to', one_p);
 }

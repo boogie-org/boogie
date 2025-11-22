@@ -145,8 +145,8 @@ both action {:layer 1,3} AtomicStore({:linear_in} l_in: Map (One int) int, a: in
 
   l_out := l_in;
   one_a := One(a);
-  call _v := Map_GetValue(l_out, one_a);
-  call Map_PutValue(l_out, one_a, v);
+  call _v := Map_Get(l_out, one_a);
+  call Map_Put(l_out, one_a, v);
 }
 
 yield procedure {:layer 0} Store({:linear_in} l_in: Map (One int) int, a: int, v: int) returns ({:linear} l_out: Map (One int) int);

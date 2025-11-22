@@ -48,9 +48,9 @@ requires call YieldMain(cid, handles);
 
   handles' := handles;
   send_handle := One(Send(cid));
-  call One_Split(handles', send_handle);
+  call One_Get(handles', send_handle);
   receive_handle := One(Receive(cid));
-  call One_Split(handles', receive_handle);
+  call One_Get(handles', receive_handle);
   async call producer(1, send_handle);
   async call consumer(1, receive_handle);
 }

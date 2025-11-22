@@ -1314,7 +1314,7 @@ modifies rootScanBarrier, mutatorsInRootScanBarrier;
     rootScanBarrier := rootScanBarrier - 1;
     tid_left := tid;
     p := One(Right(tid_left->i));
-    call One_Split(tid_left->ps, p);
+    call One_Get(tid_left->ps, p);
     call One_Put(mutatorsInRootScanBarrier, p);
 }
 
@@ -1341,7 +1341,7 @@ modifies rootScanBarrier, mutatorsInRootScanBarrier;
     assume !rootScanOn;
     rootScanBarrier := rootScanBarrier + 1;
     p := One(Right(tid_left->i));
-    call One_Split(mutatorsInRootScanBarrier, p);
+    call One_Get(mutatorsInRootScanBarrier, p);
     tid := tid_left;
     call One_Put(tid->ps, p);
 }
@@ -1759,7 +1759,7 @@ modifies mutatorsInRootScanBarrier;
     assert tidHasLock(tid_left, absLock) && mutatorTidRight(tid_right);
     Tid(i, ps) := tid_right;
     p := One(Right(i));
-    call One_Split(ps, p);
+    call One_Get(ps, p);
     call One_Put(mutatorsInRootScanBarrier, p);
 }
 
@@ -1775,7 +1775,7 @@ modifies mutatorsInRootScanBarrier;
     var {:linear} ps: Set (One Piece);
     assert tidHasLock(tid_left, absLock) && !rootScanOn && mutatorTidLeft(tid_left) && Set_Contains(mutatorsInRootScanBarrier, One(Right(tid_left->i)));
     ps := Set_Singleton(One(Right(tid_left->i)));
-    call Set_Split(mutatorsInRootScanBarrier, ps);
+    call Set_Get(mutatorsInRootScanBarrier, ps);
     tid_right := Tid(tid_left->i, ps);
 }
 
@@ -1978,7 +1978,7 @@ pure action TidSplit({:linear_in} tid:Tid) returns({:linear} tid_left:Tid, {:lin
     i := tid->i;
     tid_left := tid;
     ps_right := Set_Singleton(One(Right(i)));
-    call Set_Split(tid_left->ps, ps_right);
+    call Set_Get(tid_left->ps, ps_right);
     tid_right := Tid(i, ps_right);
 }
 
@@ -1991,7 +1991,7 @@ pure action TidCombine({:linear_in} tid_left:Tid, {:linear_in} tid_right:Tid) re
     tid := tid_left;
     Tid(i, ps_right) := tid_right;
     p := One(Right(i));
-    call One_Split(ps_right, p);
+    call One_Get(ps_right, p);
     call One_Put(tid->ps, p);
 }
 
@@ -2098,7 +2098,7 @@ pure action PrimitiveMutatorsInRootScanBarrierAdd({:linear_in} tid_right: Tid, {
     assert mutatorTidRight(tid_right);
     Tid(i, ps) := tid_right;
     p := One(Right(i));
-    call One_Split(ps, p);
+    call One_Get(ps, p);
     mutatorsInRootScanBarrier' := mutatorsInRootScanBarrier;
     call One_Put(mutatorsInRootScanBarrier', p);
 }
@@ -2110,7 +2110,7 @@ pure action PrimitiveMutatorsInRootScanBarrierRemove({:linear} tid_left: Tid, {:
     assert mutatorTidLeft(tid_left);
     mutatorsInRootScanBarrier' := mutatorsInRootScanBarrier;
     ps := Set_Singleton(One(Right(tid_left->i)));
-    call Set_Split(mutatorsInRootScanBarrier', ps);
+    call Set_Get(mutatorsInRootScanBarrier', ps);
     tid_right := Tid(tid_left->i, ps);
 }
 

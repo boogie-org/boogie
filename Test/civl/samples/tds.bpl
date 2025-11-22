@@ -43,7 +43,7 @@ refines AtomicFinishTask;
 yield procedure {:layer 0} Alloc(i: int, {:linear_in} tidq: Set (One int)) returns ({:linear} id: One int, {:linear} tidq': Set (One int));
 refines AtomicAlloc;
 both action {:layer 1} AtomicAlloc(i: int, {:linear_in} tidq: Set (One int)) returns ({:linear} id: One int, {:linear} tidq': Set (One int))
-{ tidq' := tidq; id := One(i); call One_Split(tidq', id); }
+{ tidq' := tidq; id := One(i); call One_Get(tidq', id); }
 
 atomic action {:layer 2} AtomicMain({:linear_in} tids: Set (One int))
 modifies status;

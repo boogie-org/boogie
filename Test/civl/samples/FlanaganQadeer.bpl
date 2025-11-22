@@ -49,7 +49,7 @@ refines AtomicSet;
 
 atomic action {:layer 1} AtomicAllocateLow() returns ({:linear} xl: One X)
 modifies unallocated;
-{ assume xl->val != nil; assume Set_Contains(unallocated, xl); call One_Split(unallocated, xl); }
+{ assume xl->val != nil; assume Set_Contains(unallocated, xl); call One_Get(unallocated, xl); }
 
 yield procedure {:layer 0} AllocateLow() returns ({:linear} xl: One X);
 refines AtomicAllocateLow;

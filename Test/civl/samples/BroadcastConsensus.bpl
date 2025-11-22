@@ -120,7 +120,7 @@ modifies values, usedPermissions, decision;
   assume {:add_to_pool "A", Broadcast(1)} true;
   psc := ps;
   psb := Set((lambda p: One Permission:: p->val is Broadcast && IsPid(p->val->i)));
-  call Set_Split(psc, psb);
+  call Set_Get(psc, psb);
   i := 1;
   while (i <= n)
   invariant {:layer 1,2} 1 <= i && i <= n + 1;
@@ -129,7 +129,7 @@ modifies values, usedPermissions, decision;
   invariant {:layer 2} Set((lambda p: One Permission:: p->val is Broadcast && IsPid(p->val->i))) == Set_Union(usedPermissions, psb);
   {
     s := One(Broadcast(i));
-    call One_Split(psb, s);
+    call One_Get(psb, s);
     async call {:sync} Broadcast(s, i);
     i := i + 1;
   }
@@ -144,7 +144,7 @@ modifies values, usedPermissions, decision;
   invariant {:layer 2} (forall j: pid:: 1 <= j && j < i ==> decision[j] == max(values));
   {
     r := One(Collect(i));
-    call One_Split(psc, r);
+    call One_Get(psc, r);
     async call {:sync} Collect(r, i);
     i := i + 1;
   }

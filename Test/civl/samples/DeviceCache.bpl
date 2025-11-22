@@ -186,7 +186,7 @@ refines atomic_release;
 
 atomic action {:layer 1} AtomicAllocateLow() returns ({:linear} tid: One X)
 modifies unallocated;
-{ assume tid->val != nil; assume Set_Contains(unallocated, tid); call One_Split(unallocated, tid); }
+{ assume tid->val != nil; assume Set_Contains(unallocated, tid); call One_Get(unallocated, tid); }
 
 yield procedure {:layer 0} AllocateLow() returns ({:linear} tid: One X);
 refines AtomicAllocateLow;

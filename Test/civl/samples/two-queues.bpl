@@ -97,19 +97,19 @@ refines action {:layer 1} _
     var node: Node int;
 
     one_loc_q := One(loc_q);
-    call queue := Map_GetValue(queues, one_loc_q);
+    call queue := Map_Get(queues, one_loc_q);
     Queue(head, tail, nodes) := queue;
 
     call new_one_loc_n := Loc_New();
-    call Map_PutValue(nodes, new_one_loc_n, Node(None(), 0));
+    call Map_Put(nodes, new_one_loc_n, Node(None(), 0));
 
     one_loc_n := One(tail);
-    call node := Map_GetValue(nodes, one_loc_n);
+    call node := Map_Get(nodes, one_loc_n);
     node := Node(Some(new_one_loc_n->val), i);
-    call Map_PutValue(nodes, one_loc_n, node);
+    call Map_Put(nodes, one_loc_n, node);
 
     queue := Queue(head, new_one_loc_n->val, nodes);
-    call Map_PutValue(queues, one_loc_q, queue);
+    call Map_Put(queues, one_loc_q, queue);
 }
 
 yield procedure {:layer 0} Dequeue(loc_q: LocQueue int) returns (i: int);
@@ -124,15 +124,15 @@ refines action {:layer 1} _
     var next: Option (LocNode int);
 
     one_loc_q := One(loc_q);
-    call queue := Map_GetValue(queues, one_loc_q);
+    call queue := Map_Get(queues, one_loc_q);
     Queue(head, tail, nodes) := queue;
 
     assume head != tail;
     one_loc_n := One(head);
-    call node := Map_GetValue(nodes, one_loc_n);
+    call node := Map_Get(nodes, one_loc_n);
     Node(next, i) := node;
 
     assert next is Some;
     queue := Queue(next->t, tail, nodes);
-    call Map_PutValue(queues, one_loc_q, queue);
+    call Map_Put(queues, one_loc_q, queue);
 }
