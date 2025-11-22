@@ -7,7 +7,7 @@ var {:layer 0,1} ghostLock: X;
 var {:layer 0,1} lock: X;
 var {:layer 0,1} currsize: int;
 var {:layer 0,1} newsize: int;
-var {:layer 0,1}{:linear} unallocated: Set X;
+var {:layer 0,1}{:linear} unallocated: Set (One X);
 
 function {:inline} Inv(ghostLock: X, currsize: int, newsize: int) : (bool)
 {
@@ -30,7 +30,7 @@ ensures {:layer 1} xl->val != nil;
     call xl := AllocateLow();
 }
 
-yield procedure {:layer 1} main({:linear_in} xls: Set X)
+yield procedure {:layer 1} main({:linear_in} xls: Set (One X))
 requires {:layer 1} xls->val == MapConst(true);
 {
     var {:linear} tid: One X;
@@ -125,11 +125,11 @@ preserves call YieldToReadCache(tid, old(currsize));
     }
 }
 
-atomic action {:layer 1} AtomicInit({:linear_in} xls: Set X)
+atomic action {:layer 1} AtomicInit({:linear_in} xls: Set (One X))
 modifies currsize, newsize, lock, ghostLock;
 { assert xls->val == MapConst(true); currsize := 0; newsize := 0; lock := nil; ghostLock := nil; }
 
-yield procedure {:layer 0} Init({:linear_in} xls: Set X);
+yield procedure {:layer 0} Init({:linear_in} xls: Set (One X));
 refines AtomicInit;
 
 right action {:layer 1} AtomicReadCurrsize({:linear} tid: One X) returns (val: int)
@@ -186,7 +186,7 @@ refines atomic_release;
 
 atomic action {:layer 1} AtomicAllocateLow() returns ({:linear} tid: One X)
 modifies unallocated;
-{ assume tid->val != nil; assume Set_Contains(unallocated, tid->val); call One_Split(unallocated, tid); }
+{ assume tid->val != nil; assume Set_Contains(unallocated, tid); call One_Split(unallocated, tid); }
 
 yield procedure {:layer 0} AllocateLow() returns ({:linear} tid: One X);
 refines AtomicAllocateLow;

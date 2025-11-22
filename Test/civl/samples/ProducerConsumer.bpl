@@ -10,15 +10,15 @@ type ChannelId;
 // permission for sending to or receiving from a channel
 datatype ChannelHandle { Send(cid: ChannelId), Receive(cid: ChannelId) }
 
-function {:inline} BothHandles(cid: ChannelId): Set ChannelHandle
-{ Set_Add(Set_Singleton(Send(cid)), Receive(cid)) }
+function {:inline} BothHandles(cid: ChannelId): Set (One ChannelHandle)
+{ Set_Add(Set_Singleton(One(Send(cid))), One(Receive(cid))) }
 
 // pool of FIFO channels
 var {:layer 0,1} channels: [ChannelId]Channel;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set ChannelHandle);
+yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set (One ChannelHandle));
 preserves handles == BothHandles(cid);
 preserves channels[cid]->head == 0;
 preserves channels[cid]->tail == 0;
@@ -40,10 +40,10 @@ preserves (var channel := channels[receive_handle->val->cid];
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-main (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
+main (cid: ChannelId, {:linear_in} handles: Set (One ChannelHandle))
 requires call YieldMain(cid, handles);
 {
-  var {:linear} handles': Set ChannelHandle;
+  var {:linear} handles': Set (One ChannelHandle);
   var {:linear} send_handle, receive_handle: One ChannelHandle;
 
   handles' := handles;

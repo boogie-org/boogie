@@ -943,7 +943,11 @@ namespace Microsoft.Boogie
       {
         var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
         var typeName = originalTypeCtorDecl.Name;
-        if (typeName == "Map" || typeName == "Set" || typeName == "One")
+        if (typeName == "One")
+        {
+          return type;
+        }
+        if (typeName == "Map" || typeName == "Set")
         {
           var actualTypeParams = program.monomorphizer.GetTypeInstantiation(datatypeTypeCtorDecl);
           return actualTypeParams[0];

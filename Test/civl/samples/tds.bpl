@@ -40,25 +40,25 @@ modifies status;
 yield procedure {:layer 0} FinishTask({:linear} tid: One int);
 refines AtomicFinishTask;
 
-yield procedure {:layer 0} Alloc(i: int, {:linear_in} tidq: Set int) returns ({:linear} id: One int, {:linear} tidq': Set int);
+yield procedure {:layer 0} Alloc(i: int, {:linear_in} tidq: Set (One int)) returns ({:linear} id: One int, {:linear} tidq': Set (One int));
 refines AtomicAlloc;
-both action {:layer 1} AtomicAlloc(i: int, {:linear_in} tidq: Set int) returns ({:linear} id: One int, {:linear} tidq': Set int)
+both action {:layer 1} AtomicAlloc(i: int, {:linear_in} tidq: Set (One int)) returns ({:linear} id: One int, {:linear} tidq': Set (One int))
 { tidq' := tidq; id := One(i); call One_Split(tidq', id); }
 
-atomic action {:layer 2} AtomicMain({:linear_in} tids: Set int)
+atomic action {:layer 2} AtomicMain({:linear_in} tids: Set (One int))
 modifies status;
 {
-    assert (forall i: int :: 0 <= i && i < n <==> Set_Contains(tids, i));
+    assert (forall i: int :: 0 <= i && i < n <==> Set_Contains(tids, One(i)));
     assert (forall i: int :: 0 <= i && i < n ==> status[i] == DEFAULT);
     status := (lambda j: int :: if (0 <= j && j < n) then FINISHED else status[j]);
 }
 
-yield procedure {:layer 1} Main({:linear_in} tids: Set int)
+yield procedure {:layer 1} Main({:linear_in} tids: Set (One int))
 refines AtomicMain;
 {
     var i: int;
     var {:layer 1} snapshot: [int]int;
-    var {:linear} tids': Set int;
+    var {:linear} tids': Set (One int);
     var {:linear} tid: One int;
 
     i := 0;
@@ -66,7 +66,7 @@ refines AtomicMain;
     call {:layer 1} snapshot := Copy(status);
     while (i < n)
     invariant {:layer 1} 0 <= i && i <= n;
-    invariant {:layer 1} (forall j: int :: i <= j && j < n <==> Set_Contains(tids', j));
+    invariant {:layer 1} (forall j: int :: i <= j && j < n <==> Set_Contains(tids', One(j)));
     invariant {:layer 1} status == (lambda j: int :: if (0 <= j && j < i) then FINISHED else snapshot[j]);
     {
         call tid, tids' := Alloc(i, tids');

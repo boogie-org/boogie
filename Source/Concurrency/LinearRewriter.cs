@@ -145,7 +145,7 @@ public class LinearRewriter
     switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
     {
       case "Loc_New":
-      case "TaggedLocSet_New":
+      case "TaggedLocs_New":
       case "Set_MakeEmpty":
       case "Map_MakeEmpty":
       case "Map_Pack":
@@ -350,9 +350,9 @@ public class LinearRewriter
     var type = instantiation["K"];
     var setContainsFunc = SetContains(type);
     var setRemoveFunc = SetRemove(type);
-    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(setContainsFunc, path, Val(l)), "One_Split failed"));
+    cmdSeq.Add(AssertCmd(callCmd.tok, ExprHelper.FunctionCall(setContainsFunc, path, l), "One_Split failed"));
     cmdSeq.Add(
-      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setRemoveFunc, path, Val(l))));
+      CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setRemoveFunc, path, l)));
 
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;
@@ -388,7 +388,7 @@ public class LinearRewriter
     var instantiation = monomorphizer.GetTypeInstantiation(callCmd.Proc);
     var type = instantiation["K"];
     var setAddFunc = SetAdd(type);
-    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setAddFunc, path, Val(l))));
+    cmdSeq.Add(CmdHelper.AssignCmd(CmdHelper.ExprToAssignLhs(path), ExprHelper.FunctionCall(setAddFunc, path, l)));
 
     ResolveAndTypecheck(options, cmdSeq);
     return cmdSeq;

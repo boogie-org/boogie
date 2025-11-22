@@ -1,9 +1,9 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-function {:inline} PoolInv(unallocated: [int]bool, pool: Set int): (bool)
+function {:inline} PoolInv(unallocated: [int]bool, pool: Set (One int)): (bool)
 {
-  (forall x: int :: unallocated[x] ==> Set_Contains(pool, x))
+  (forall x: int :: unallocated[x] ==> Set_Contains(pool, One(x)))
 }
 
 yield procedure {:layer 2} Main ()
@@ -46,7 +46,7 @@ requires {:layer 1,2} local_in->key == One(i);
 right action {:layer 2} atomic_Alloc() returns ({:linear} l: Cell int int, i: int)
 modifies pool;
 {
-  assume Set_Contains(pool, i);
+  assume Set_Contains(pool, One(i));
   call l, pool := AllocLinear(i, pool);
 }
 
@@ -114,8 +114,8 @@ ensures call YieldMem(l', i);
   call {:layer 1} l' := WriteLinear(l, i, o);
 }
 
-pure action AllocLinear (i: int, {:linear_in} pool: Set int)
-  returns ({:linear} l: Cell int int, {:linear} pool': Set int)
+pure action AllocLinear (i: int, {:linear_in} pool: Set (One int))
+  returns ({:linear} l: Cell int int, {:linear} pool': Set (One int))
 {
   var {:linear} one_i: One int;
   var m: int;
@@ -125,8 +125,8 @@ pure action AllocLinear (i: int, {:linear_in} pool: Set int)
   l := Cell(one_i, m);
 }
 
-pure action FreeLinear ({:linear_in} l: Cell int int, i: int, {:linear_in} pool: Set int)
-  returns ({:linear} pool': Set int)
+pure action FreeLinear ({:linear_in} l: Cell int int, i: int, {:linear_in} pool: Set (One int))
+  returns ({:linear} pool': Set (One int))
 {
   var {:linear} one_i: One int;
   var _v: int;
@@ -151,7 +151,7 @@ yield invariant {:layer 1} YieldMem ({:layer 1} {:linear} l: Cell int int, i: in
 preserves PoolInv(unallocated, pool);
 preserves l->key == One(i) && l->val == mem[i];
 
-var {:layer 1, 2} {:linear} pool: Set int;
+var {:layer 1, 2} {:linear} pool: Set (One int);
 var {:layer 0, 1} mem: [int]int;
 var {:layer 0, 1} unallocated: [int]bool;
 

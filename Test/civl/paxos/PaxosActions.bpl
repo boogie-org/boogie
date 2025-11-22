@@ -1,16 +1,16 @@
-function {:inline} JoinLt(r: Round, joinChannelPermissions: Set Permission, usedPermissions: Set Permission): bool {
+function {:inline} JoinLt(r: Round, joinChannelPermissions: Set (One Permission), usedPermissions: Set (One Permission)): bool {
   (forall r': Round:: Round(r') && r' < r ==> Set_IsSubset(JoinPermissions(r'), Set_Union(joinChannelPermissions, usedPermissions)))
 }
 
-function {:inline} VoteLt(r: Round, voteChannelPermissions: Set Permission, usedPermissions: Set Permission): bool {
+function {:inline} VoteLt(r: Round, voteChannelPermissions: Set (One Permission), usedPermissions: Set (One Permission)): bool {
   (forall r': Round:: Round(r') && r' < r ==> Set_IsSubset(VotePermissions(r'), Set_Union(voteChannelPermissions, usedPermissions)))
 }
 
-function {:inline} JoinLe(r: Round, joinChannelPermissions: Set Permission, usedPermissions: Set Permission): bool {
+function {:inline} JoinLe(r: Round, joinChannelPermissions: Set (One Permission), usedPermissions: Set (One Permission)): bool {
   (forall r': Round:: Round(r') && r' <= r ==> Set_IsSubset(JoinPermissions(r'), Set_Union(joinChannelPermissions, usedPermissions)))
 }
 
-function {:inline} VoteLe(r: Round, voteChannelPermissions: Set Permission, usedPermissions: Set Permission): bool {
+function {:inline} VoteLe(r: Round, voteChannelPermissions: Set (One Permission), usedPermissions: Set (One Permission)): bool {
   (forall r': Round:: Round(r') && r' <= r ==> Set_IsSubset(VotePermissions(r'), Set_Union(voteChannelPermissions, usedPermissions)))
 }
 
@@ -22,7 +22,7 @@ invariant {:layer 2} JoinResponsePre(r: Round, {:linear} roundPermission: One Pe
 preserves roundPermission->val == RoundPerm(r);
 preserves JoinLe(r, joinChannelPermissions, usedPermissions);
 preserves VoteLt(r, voteChannelPermissions, usedPermissions);
-preserves (exists joinPerm: Permission :: joinPerm->r == r && Node(joinPerm->n) && Set_Contains(joinChannelPermissions, joinPerm));
+preserves (exists joinPerm: Permission :: joinPerm->r == r && Node(joinPerm->n) && Set_Contains(joinChannelPermissions, One(joinPerm)));
 
 invariant {:layer 2} VotePre(r: Round);
 preserves JoinLe(r, joinChannelPermissions, usedPermissions);
@@ -32,7 +32,7 @@ invariant {:layer 2} VoteResponsePre(r: Round, {:linear} roundPermission: One Pe
 preserves roundPermission->val == RoundPerm(r);
 preserves JoinLe(r, joinChannelPermissions, usedPermissions);
 preserves VoteLe(r, voteChannelPermissions, usedPermissions);
-preserves (exists n: Node :: Node(n) && Set_Contains(voteChannelPermissions, VotePerm(r, n)));
+preserves (exists n: Node :: Node(n) && Set_Contains(voteChannelPermissions, One(VotePerm(r, n))));
 
 left action {:layer 2} A_Join(r: Round, n: Node, {:linear_in} p: One Permission)
 requires call JoinPre(r);
@@ -52,7 +52,7 @@ requires call JoinPre(r);
   call One_Put(joinChannelPermissions, p);
 }
 
-left action {:layer 2} A_ProcessJoinResponse(r: Round, {:linear} roundPermission: One Permission, {:linear} votePermissions: Set Permission)
+left action {:layer 2} A_ProcessJoinResponse(r: Round, {:linear} roundPermission: One Permission, {:linear} votePermissions: Set (One Permission))
 returns (joinResponse: JoinResponse)
 requires call JoinResponsePre(r, roundPermission);
 {
@@ -63,7 +63,7 @@ requires call JoinResponsePre(r, roundPermission);
 
   assert Round(r) && roundPermission->val == RoundPerm(r) && votePermissions == VotePermissions(r);
   joinPerm := JoinPerm(r, n);
-  assume Node(n) && Set_Contains(joinChannelPermissions, joinPerm);
+  assume Node(n) && Set_Contains(joinChannelPermissions, One(joinPerm));
   call joinChannelPermissions, usedPermissions := MovePermission(joinPerm, joinChannelPermissions, usedPermissions);
   if (*) {
     assume joinInfo[r][n];
@@ -107,7 +107,7 @@ requires call VoteResponsePre(r, roundPermission);
 
   assert Round(r) && roundPermission->val == RoundPerm(r);
   votePerm := VotePerm(r, n);
-  assume Node(n) && Set_Contains(voteChannelPermissions, votePerm);
+  assume Node(n) && Set_Contains(voteChannelPermissions, One(votePerm));
   call voteChannelPermissions, usedPermissions := MovePermission(votePerm, voteChannelPermissions, usedPermissions);
   if (voteInfo[r][n]) {
     voteResponse := VoteAccept(n);

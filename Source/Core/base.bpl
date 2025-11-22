@@ -279,17 +279,17 @@ function {:inline} Map_Collector<T,U>(a: Map T U): [T]bool
 /// singleton set
 datatype One<T> { One(val: T) }
 
-function {:inline} One_Collector<T>(a: One T): [T]bool
+function {:inline} One_Collector<T>(a: One T): [One T]bool
 {
-  MapOne(a->val)
+  MapOne(a)
 }
 
 /// singleton map
 datatype Cell<T,U> { Cell({:linear} key: One T, val: U) }
 
-function {:inline} Cell_Collector<T,U>(a: Cell T U): [T]bool
+function {:inline} Cell_Collector<T,U>(a: Cell T U): [One T]bool
 {
-  MapOne(a->key->val)
+  One_Collector(a->key)
 }
 
 /// linear primitives
@@ -300,9 +300,9 @@ pure procedure {:inline 1} Set_MakeEmpty<K>() returns ({:linear} l: Set K)
 pure procedure Set_Split<K>({:linear} path: Set K, {:linear_out} l: Set K);
 pure procedure Set_Get<K>({:linear} path: Set K, k: [K]bool) returns ({:linear} l: Set K);
 pure procedure Set_Put<K>({:linear} path: Set K, {:linear_in} l: Set K);
-pure procedure One_Split<K>({:linear} path: Set K, {:linear_out} l: One K);
+pure procedure One_Split<K>({:linear} path: Set K, {:linear_out} l: K);
 pure procedure One_Get<K>({:linear} path: Set K, k: K) returns ({:linear} l: One K);
-pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: One K);
+pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: K);
 
 pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 {
@@ -333,10 +333,10 @@ pure procedure {:inline 1} Loc_New<V>() returns ({:linear} {:pool "Loc_New"} l: 
 
 datatype TaggedLoc<V,T> { TaggedLoc(loc: Loc V, tag: T) }
 
-pure procedure {:inline 1} TaggedLocSet_New<V,T>(tags: Set T) returns ({:linear} {:pool "Loc_New"} l: One (Loc V), {:linear} tagged_locs: Set (TaggedLoc V T))
+pure procedure {:inline 1} TaggedLocs_New<V,T>(tags: Set T) returns ({:linear} {:pool "Loc_New"} l: One (Loc V), {:linear} tagged_locs: Set (One (TaggedLoc V T)))
 {
   assume {:add_to_pool "Loc_New", l} true;
-  tagged_locs := Set((lambda x: TaggedLoc V T :: x->loc == l->val && Set_Contains(tags, x->tag)));
+  tagged_locs := Set((lambda x: One (TaggedLoc V T) :: x->val->loc == l->val && Set_Contains(tags, x->val->tag)));
 }
 
 procedure create_async<T>(PA: T);

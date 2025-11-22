@@ -11,30 +11,30 @@
 //   - For a fraction, either Left(i) or Right(i) is in ps.
 // In other words, Tid(i, { Left(i), Right(i) }) can be be split into Tid(i, { Left(i) }), Tid(i, { Right(i) }).
 datatype Piece { Left(i:int), Right(i:int) }
-datatype Tid { Tid(i:int, {:linear} ps: Set Piece) }
+datatype Tid { Tid(i:int, {:linear} ps: Set (One Piece)) }
 
 const numMutators: int;
 axiom 0 < numMutators;
 const GcTid: Tid;
 axiom numMutators < GcTid->i;
-axiom Set_Contains(GcTid->ps, Left(GcTid->i)) && Set_Contains(GcTid->ps, Right(GcTid->i));
+axiom Set_Contains(GcTid->ps, One(Left(GcTid->i))) && Set_Contains(GcTid->ps, One(Right(GcTid->i)));
 
 function mutatorId(i: int) : bool { 1 <= i && i <= numMutators }
 function mutatorTid(tid: Tid) : bool { mutatorId(tid->i) }
-function mutatorTidLeft(tid: Tid) : bool { mutatorTid(tid) && Set_Contains(tid->ps, Left(tid->i)) }
-function mutatorTidRight(tid: Tid) : bool { mutatorTid(tid) && Set_Contains(tid->ps, Right(tid->i)) }
-function mutatorTidWhole(tid: Tid) : bool { mutatorTid(tid) && Set_Contains(tid->ps, Left(tid->i)) && Set_Contains(tid->ps, Right(tid->i)) }
-function gcAndMutatorTids(tid: Tid, mutatorTids: Set Piece) : bool
+function mutatorTidLeft(tid: Tid) : bool { mutatorTid(tid) && Set_Contains(tid->ps, One(Left(tid->i))) }
+function mutatorTidRight(tid: Tid) : bool { mutatorTid(tid) && Set_Contains(tid->ps, One(Right(tid->i))) }
+function mutatorTidWhole(tid: Tid) : bool { mutatorTid(tid) && Set_Contains(tid->ps, One(Left(tid->i))) && Set_Contains(tid->ps, One(Right(tid->i))) }
+function gcAndMutatorTids(tid: Tid, mutatorTids: Set (One Piece)) : bool
 {
-    tid == GcTid && (forall i:int :: mutatorId(i) ==> Set_Contains(mutatorTids, Left(i)) && Set_Contains(mutatorTids, Right(i)))
+    tid == GcTid && (forall i:int :: mutatorId(i) ==> Set_Contains(mutatorTids, One(Left(i))) && Set_Contains(mutatorTids, One(Right(i))))
 }
 
-const Mutators: Set Piece;
+const Mutators: Set (One Piece);
 axiom Set_Size(Mutators) == numMutators;
-axiom Mutators->val == (lambda x: Piece :: x is Right && 1 <= x->i && x->i <= numMutators);
-axiom (forall X, Y: Set Piece :: Set_IsSubset(X, Y) ==> Set_Size(X) < Set_Size(Y) || X == Y);
+axiom Mutators->val == (lambda x: One Piece :: x->val is Right && 1 <= x->val->i && x->val->i <= numMutators);
+axiom (forall X, Y: Set (One Piece) :: Set_IsSubset(X, Y) ==> Set_Size(X) < Set_Size(Y) || X == Y);
 
-function {:inline} RootScanBarrierInv(mutatorsInRootScanBarrier: Set Piece, rootScanBarrier: int) : bool
+function {:inline} RootScanBarrierInv(mutatorsInRootScanBarrier: Set (One Piece), rootScanBarrier: int) : bool
 {
     Set_Size(mutatorsInRootScanBarrier) + rootScanBarrier == numMutators &&
     Set_IsSubset(mutatorsInRootScanBarrier, Mutators)
@@ -77,7 +77,7 @@ var {:layer 0,100} sweepPtr: int;
 // Next layer
 var {:layer 0,99} rootScanOn: bool;
 var {:layer 0,99} rootScanBarrier: int;
-var {:linear} {:layer 95,99} mutatorsInRootScanBarrier: Set Piece;
+var {:linear} {:layer 95,99} mutatorsInRootScanBarrier: Set (One Piece);
 var {:layer 0,98} MarkStack: [int]int;
 var {:layer 0,98} MarkStackPtr: int;
 
@@ -86,7 +86,7 @@ var {:layer 0,98} MarkStackPtr: int;
 var {:layer 95,96} absLock: int; // 0 if unheld; thread number of holder if held
 var {:layer 0,95} lock: bool; // false if unheld; true if held
 
-function tidHasLock(tid:Tid, lock:int):bool { (tid == GcTid || mutatorTid(tid)) && lock == tid->i && Set_Contains(tid->ps, Left(tid->i)) }
+function tidHasLock(tid:Tid, lock:int):bool { (tid == GcTid || mutatorTid(tid)) && lock == tid->i && Set_Contains(tid->ps, One(Left(tid->i))) }
 
 const memLo: int;
 const memHi: int;
@@ -238,12 +238,12 @@ preserves sweepPtr == memHi;
 preserves SweepInv(root, rootAbs, mem, memAbs, Color, toAbs, allocSet);
 preserves (forall x: int :: memAddr(x) ==> !Black(Color[x]));
 
-yield invariant {:layer 100} Yield_Initialize_100({:linear} tid:Tid, {:linear} mutatorTids:Set Piece);
+yield invariant {:layer 100} Yield_Initialize_100({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece));
 preserves gcAndMutatorTids(tid, mutatorTids);
 preserves (forall x: idx :: rootAddr(x) ==> rootAbs[x] == Int(0));
 
 yield procedure {:layer 100}
-Initialize({:layer 95, 100} {:linear_in} tid:Tid, {:layer 95, 100} {:linear} mutatorTids:Set Piece)
+Initialize({:layer 95, 100} {:linear_in} tid:Tid, {:layer 95, 100} {:linear} mutatorTids:Set (One Piece))
 requires {:layer 97,98,99} gcAndMutatorTids(tid, mutatorTids);
 requires call Yield_Initialize_100(tid, mutatorTids);
 requires call Yield_InitVars99(mutatorTids, Set_Empty(), old(rootScanBarrier));
@@ -503,8 +503,8 @@ preserves tick_sweepPtr == sweepPtr;
 yield invariant {:layer 99} Yield_RootScanBarrierInv();
 preserves RootScanBarrierInv(mutatorsInRootScanBarrier, rootScanBarrier);
 
-yield invariant {:layer 99} Yield_InitVars99({:linear} mutatorTids:Set Piece, tick_mutatorsInRootScanBarrier: Set Piece, tick_rootScanBarrier: int);
-preserves (forall i:int :: mutatorId(i) ==> Set_Contains(mutatorTids, Left(i)) && Set_Contains(mutatorTids, Right(i)));
+yield invariant {:layer 99} Yield_InitVars99({:linear} mutatorTids:Set (One Piece), tick_mutatorsInRootScanBarrier: Set (One Piece), tick_rootScanBarrier: int);
+preserves (forall i:int :: mutatorId(i) ==> Set_Contains(mutatorTids, One(Left(i))) && Set_Contains(mutatorTids, One(Right(i))));
 preserves mutatorsInRootScanBarrier == tick_mutatorsInRootScanBarrier;
 preserves rootScanBarrier == tick_rootScanBarrier;
 
@@ -514,14 +514,14 @@ preserves rootScanOn == tick_rootScanOn;
 
 yield invariant {:layer 99} Yield_RootScanBarrierEnter({:linear} tid: Tid);
 preserves mutatorTidWhole(tid);
-preserves !Set_Contains(mutatorsInRootScanBarrier, Right(tid->i));
+preserves !Set_Contains(mutatorsInRootScanBarrier, One(Right(tid->i)));
 
 yield invariant {:layer 99} Yield_RootScanBarrierWait({:linear} tid: Tid);
 preserves mutatorTidLeft(tid);
-preserves Set_Contains(mutatorsInRootScanBarrier, Right(tid->i));
+preserves Set_Contains(mutatorsInRootScanBarrier, One(Right(tid->i)));
 
 yield procedure {:layer 99}
-InitVars99({:layer 95, 99} {:linear} tid:Tid, {:layer 95, 99} {:linear} mutatorTids:Set Piece)
+InitVars99({:layer 95, 99} {:linear} tid:Tid, {:layer 95, 99} {:linear} mutatorTids:Set (One Piece))
 requires {:layer 98,99} gcAndMutatorTids(tid, mutatorTids);
 ensures call Yield_InitVars98(tid, mutatorTids, 0);
 requires call Yield_InitVars99(mutatorTids, old(mutatorsInRootScanBarrier), old(rootScanBarrier));
@@ -545,10 +545,10 @@ preserves call Yield_Lock();
     call Yield_RootScanBarrierInv() | Yield_RootScanBarrierEnter(tid) | Yield_97() | Yield_98();
     if (isRootScanOn)
     {
-        assert{:layer 99} !Set_Contains(mutatorsInRootScanBarrier, Right(tid->i));
+        assert{:layer 99} !Set_Contains(mutatorsInRootScanBarrier, One(Right(tid->i)));
         call tid_tmp := MutatorRootScanBarrierEnter(tid);
         call Yield_RootScanBarrierInv() | Yield_RootScanBarrierWait(tid_tmp) | Yield_97() | Yield_98();
-        assert{:layer 99} Set_Contains(mutatorsInRootScanBarrier, Right(tid_tmp->i));
+        assert{:layer 99} Set_Contains(mutatorsInRootScanBarrier, One(Right(tid_tmp->i)));
         call tid_tmp := MutatorRootScanBarrierWait(tid_tmp);
         call {:layer 99} Move(tid_tmp, tid);
     }
@@ -742,12 +742,12 @@ preserves MarkPhase(mutatorPhase[tid->i]);
 
 yield invariant {:layer 98} Yield_98();
 
-yield invariant {:layer 98} Yield_InitVars98({:linear} tid:Tid, {:linear} mutatorTids:Set Piece, tick_MarkStackPtr: int);
+yield invariant {:layer 98} Yield_InitVars98({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece), tick_MarkStackPtr: int);
 preserves gcAndMutatorTids(tid, mutatorTids);
 preserves MarkStackPtr == tick_MarkStackPtr;
 
 yield procedure {:layer 98}
-InitVars98({:layer 95, 98} {:linear} tid:Tid, {:layer 95, 98} {:linear} mutatorTids:Set Piece)
+InitVars98({:layer 95, 98} {:linear} tid:Tid, {:layer 95, 98} {:linear} mutatorTids:Set (One Piece))
 requires call Yield_InitVars98(tid, mutatorTids, old(MarkStackPtr));
 ensures call Yield_InitVars98(tid, mutatorTids, 0);
 {
@@ -964,11 +964,11 @@ requires call Yield_WaitForMutators(tid, nextPhase, false, 0);
 // Layer 96
 //////////////////////////////////////////////////////////////////////////////
 
-atomic action {:layer 97,100} AtomicInitVars100({:linear} tid:Tid, {:linear} mutatorTids:Set Piece)
+atomic action {:layer 97,100} AtomicInitVars100({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece))
 modifies mutatorPhase, root, toAbs, Color, mem, collectorPhase, sweepPtr;
 {
     assert tid == GcTid;
-    assert (forall i:int :: mutatorId(i) ==> Set_Contains(mutatorTids, Left(i)) && Set_Contains(mutatorTids, Right(i)));
+    assert (forall i:int :: mutatorId(i) ==> Set_Contains(mutatorTids, One(Left(i))) && Set_Contains(mutatorTids, One(Right(i))));
     havoc mem, root, Color, mutatorPhase;
     assume (forall x: int, f: fld :: memAddr(x) && fieldAddr(f) ==> mem[x][f] == x);
     assume (forall x: idx :: rootAddr(x) ==> root[x] == 0);
@@ -979,7 +979,7 @@ modifies mutatorPhase, root, toAbs, Color, mem, collectorPhase, sweepPtr;
     sweepPtr := memHi;
 }
 
-yield procedure {:layer 96} InitVars100({:layer 95, 96} {:linear} tid:Tid, {:layer 95, 96} {:linear} mutatorTids:Set Piece)
+yield procedure {:layer 96} InitVars100({:layer 95, 96} {:linear} tid:Tid, {:layer 95, 96} {:linear} mutatorTids:Set (One Piece))
 refines AtomicInitVars100;
 {
     var n:int;
@@ -1337,7 +1337,7 @@ atomic action {:layer 97,99} AtomicMutatorRootScanBarrierWait({:linear_in} tid_l
 modifies rootScanBarrier, mutatorsInRootScanBarrier;
 {
     var {:linear} p: One Piece; 
-    assert mutatorTidLeft(tid_left) && Set_Contains(mutatorsInRootScanBarrier, Right(tid_left->i));
+    assert mutatorTidLeft(tid_left) && Set_Contains(mutatorsInRootScanBarrier, One(Right(tid_left->i)));
     assume !rootScanOn;
     rootScanBarrier := rootScanBarrier + 1;
     p := One(Right(tid_left->i));
@@ -1482,11 +1482,11 @@ refines AtomicLockedClearToAbsWhite;
     call {:layer 95} toAbs := Copy((lambda x: int :: if memAddr(x) && White(Color[x]) then nil else toAbs[x]));
 }
 
-both action {:layer 96,99} AtomicInitField({:linear} tid:Tid, {:linear} mutatorTids:Set Piece, x: int, f: int)
+both action {:layer 96,99} AtomicInitField({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece), x: int, f: int)
 modifies mem;
 { assert gcAndMutatorTids(tid, mutatorTids) && memAddr(x) && fieldAddr(f); mem[x][f] := x; }
 
-yield procedure {:layer 95} InitField({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set Piece, x: int, f: int)
+yield procedure {:layer 95} InitField({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set (One Piece), x: int, f: int)
 refines AtomicInitField;
 {
     call PrimitiveWriteField(x, f, x);
@@ -1539,11 +1539,11 @@ refines AtomicReadMarkStackPtr;
     call val := PrimitiveReadMarkStackPtr();
 }
 
-atomic action {:layer 96,98} AtomicInitMarkStackPtr({:linear} tid:Tid, {:linear} mutatorTids:Set Piece)
+atomic action {:layer 96,98} AtomicInitMarkStackPtr({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece))
 modifies MarkStackPtr;
 { assert gcAndMutatorTids(tid, mutatorTids); MarkStackPtr := 0; }
 
-yield procedure {:layer 95} InitMarkStackPtr({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set Piece)
+yield procedure {:layer 95} InitMarkStackPtr({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set (One Piece))
 refines AtomicInitMarkStackPtr;
 {
     call PrimitiveSetMarkStackPtr(0);
@@ -1578,11 +1578,11 @@ refines AtomicWriteMarkStack;
     call PrimitiveWriteMarkStack(ptr, val);
 }
 
-both action {:layer 96,99} AtomicInitCollectorPhase({:linear} tid:Tid, {:linear} mutatorTids:Set Piece)
+both action {:layer 96,99} AtomicInitCollectorPhase({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece))
 modifies collectorPhase;
 { assert gcAndMutatorTids(tid, mutatorTids); collectorPhase := IDLE(); }
 
-yield procedure {:layer 95} InitCollectorPhase({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set Piece)
+yield procedure {:layer 95} InitCollectorPhase({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set (One Piece))
 refines AtomicInitCollectorPhase;
 {
     call PrimitiveSetCollectorPhase(IDLE());
@@ -1616,11 +1616,11 @@ refines AtomicSetCollectorPhase;
     call PrimitiveSetCollectorPhase(phase);
 }
 
-both action {:layer 96,99} AtomicInitMutatorPhase({:linear} tid:Tid, {:linear} mutatorTids:Set Piece, id: int)
+both action {:layer 96,99} AtomicInitMutatorPhase({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece), id: int)
 modifies mutatorPhase;
 { assert gcAndMutatorTids(tid, mutatorTids); mutatorPhase[id] := IDLE(); }
 
-yield procedure {:layer 95} InitMutatorPhase({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set Piece, id: int)
+yield procedure {:layer 95} InitMutatorPhase({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set (One Piece), id: int)
 refines AtomicInitMutatorPhase;
 {
     call PrimitiveSetMutatorPhase(id, IDLE());
@@ -1654,11 +1654,11 @@ refines AtomicSetMutatorPhaseLocked;
     call PrimitiveSetMutatorPhase(i, phase);
 }
 
-both action {:layer 96,99} AtomicInitSweepPtr({:linear} tid:Tid, {:linear} mutatorTids:Set Piece)
+both action {:layer 96,99} AtomicInitSweepPtr({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece))
 modifies sweepPtr;
 { assert gcAndMutatorTids(tid, mutatorTids); sweepPtr := memHi; }
 
-yield procedure {:layer 95} InitSweepPtr({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set Piece)
+yield procedure {:layer 95} InitSweepPtr({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set (One Piece))
 refines AtomicInitSweepPtr;
 {
     call PrimitiveSetSweepPtr(memHi);
@@ -1721,11 +1721,11 @@ refines AtomicPollMutatorReadBarrierOn;
     call val := PrimitiveReadRootScanOn();
 }
 
-atomic action {:layer 96,99} AtomicInitRootScanBarrier({:linear} tid:Tid, {:linear} mutatorTids:Set Piece)
+atomic action {:layer 96,99} AtomicInitRootScanBarrier({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece))
 modifies rootScanBarrier;
 { assert gcAndMutatorTids(tid, mutatorTids); rootScanBarrier := numMutators; }
 
-yield procedure {:layer 95} InitRootScanBarrier({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set Piece)
+yield procedure {:layer 95} InitRootScanBarrier({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set (One Piece))
 refines AtomicInitRootScanBarrier;
 {
     call PrimitiveSetRootScanBarrier(numMutators);
@@ -1754,7 +1754,7 @@ right action {:layer 96} AtomicMutatorsInRootScanBarrierAdd({:linear} tid_left: 
 modifies mutatorsInRootScanBarrier;
 {
     var i: int;
-    var {:linear} ps: Set Piece;
+    var {:linear} ps: Set (One Piece);
     var {:linear} p: One Piece;
     assert tidHasLock(tid_left, absLock) && mutatorTidRight(tid_right);
     Tid(i, ps) := tid_right;
@@ -1772,9 +1772,9 @@ refines AtomicMutatorsInRootScanBarrierAdd;
 both action {:layer 96} AtomicMutatorsInRootScanBarrierRemove({:linear} tid_left: Tid) returns({:linear} tid_right: Tid)
 modifies mutatorsInRootScanBarrier;
 {
-    var {:linear} ps: Set Piece;
-    assert tidHasLock(tid_left, absLock) && !rootScanOn && mutatorTidLeft(tid_left) && Set_Contains(mutatorsInRootScanBarrier, Right(tid_left->i));
-    ps := Set_Singleton(Right(tid_left->i));
+    var {:linear} ps: Set (One Piece);
+    assert tidHasLock(tid_left, absLock) && !rootScanOn && mutatorTidLeft(tid_left) && Set_Contains(mutatorsInRootScanBarrier, One(Right(tid_left->i)));
+    ps := Set_Singleton(One(Right(tid_left->i)));
     call Set_Split(mutatorsInRootScanBarrier, ps);
     tid_right := Tid(tid_left->i, ps);
 }
@@ -1782,16 +1782,16 @@ modifies mutatorsInRootScanBarrier;
 yield procedure {:layer 95} MutatorsInRootScanBarrierRemove({:layer 95} {:linear} tid_left: Tid) returns({:layer 95} {:linear} tid_right: Tid)
 refines AtomicMutatorsInRootScanBarrierRemove;
 ensures {:layer 95} tid_left->i == tid_right->i;
-ensures {:layer 95} Set_Contains(tid_left->ps, Left(tid_left->i)) && Set_Contains(tid_right->ps, Right(tid_right->i));
+ensures {:layer 95} Set_Contains(tid_left->ps, One(Left(tid_left->i))) && Set_Contains(tid_right->ps, One(Right(tid_right->i)));
 {
     call {:layer 95} tid_right, mutatorsInRootScanBarrier := PrimitiveMutatorsInRootScanBarrierRemove(tid_left, mutatorsInRootScanBarrier);
 }
 
-both action {:layer 96,99} AtomicInitRoot({:linear} tid:Tid, {:linear} mutatorTids:Set Piece, x: int)
+both action {:layer 96,99} AtomicInitRoot({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece), x: int)
 modifies root;
 { assert gcAndMutatorTids(tid, mutatorTids) && rootAddr(x); root[x] := 0; }
 
-yield procedure {:layer 95} InitRoot({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set Piece, x: int)
+yield procedure {:layer 95} InitRoot({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set (One Piece), x: int)
 refines AtomicInitRoot;
 {
     call PrimitiveWriteRoot(x, 0);
@@ -1825,11 +1825,11 @@ refines AtomicReadRoot;
     call val := PrimitiveReadRoot(i);
 }
 
-both action {:layer 96,99} AtomicInitColor({:linear} tid:Tid, {:linear} mutatorTids:Set Piece, x: int)
+both action {:layer 96,99} AtomicInitColor({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece), x: int)
 modifies Color;
 { assert gcAndMutatorTids(tid, mutatorTids) && memAddr(x); Color[x] := UNALLOC(); }
 
-yield procedure {:layer 95} InitColor({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set Piece, x: int)
+yield procedure {:layer 95} InitColor({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set (One Piece), x: int)
 refines AtomicInitColor;
 {
     call PrimitiveSetColor(x, UNALLOC());
@@ -1914,14 +1914,14 @@ refines AtomicSetColorInAlloc;
     call {:layer 95} toAbs := Copy(toAbs[i := o]);
 }
 
-both action {:layer 96,99} AtomicInitToAbs({:linear} tid:Tid, {:linear} mutatorTids:Set Piece)
+both action {:layer 96,99} AtomicInitToAbs({:linear} tid:Tid, {:linear} mutatorTids:Set (One Piece))
 modifies toAbs;
 {
     assert gcAndMutatorTids(tid, mutatorTids);
     toAbs := (lambda i:int :: if memAddr(i) then nil else Int(i));
 }
 
-yield procedure {:layer 95} InitToAbs({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set Piece)
+yield procedure {:layer 95} InitToAbs({:layer 95} {:linear} tid:Tid, {:layer 95} {:linear} mutatorTids:Set (One Piece))
 refines AtomicInitToAbs;
 {
     call {:layer 95} toAbs := Copy((lambda i:int :: if memAddr(i) then nil else Int(i)));
@@ -1974,10 +1974,10 @@ preserves lock <==> absLock != 0;
 pure action TidSplit({:linear_in} tid:Tid) returns({:linear} tid_left:Tid, {:linear} tid_right:Tid)
 {
     var i: int;
-    var {:linear} ps_right: Set Piece;
+    var {:linear} ps_right: Set (One Piece);
     i := tid->i;
     tid_left := tid;
-    ps_right := Set_Singleton(Right(i));
+    ps_right := Set_Singleton(One(Right(i)));
     call Set_Split(tid_left->ps, ps_right);
     tid_right := Tid(i, ps_right);
 }
@@ -1985,7 +1985,7 @@ pure action TidSplit({:linear_in} tid:Tid) returns({:linear} tid_left:Tid, {:lin
 pure action TidCombine({:linear_in} tid_left:Tid, {:linear_in} tid_right:Tid) returns({:linear} tid:Tid)
 {
     var i: int;
-    var {:linear} ps_right: Set Piece;
+    var {:linear} ps_right: Set (One Piece);
     var {:linear} p: One Piece;
     assert tid_left->i == tid_right->i;
     tid := tid_left;
@@ -2089,11 +2089,11 @@ modifies rootScanBarrier;
 yield procedure {:layer 0} PrimitiveAddRootScanBarrier(val: int);
 refines AtomicPrimitiveAddRootScanBarrier;
 
-pure action PrimitiveMutatorsInRootScanBarrierAdd({:linear_in} tid_right: Tid, {:linear_in} mutatorsInRootScanBarrier: Set Piece)
-    returns ({:linear} mutatorsInRootScanBarrier': Set Piece)
+pure action PrimitiveMutatorsInRootScanBarrierAdd({:linear_in} tid_right: Tid, {:linear_in} mutatorsInRootScanBarrier: Set (One Piece))
+    returns ({:linear} mutatorsInRootScanBarrier': Set (One Piece))
 {
     var i: int;
-    var {:linear} ps: Set Piece;
+    var {:linear} ps: Set (One Piece);
     var {:linear} p: One Piece;
     assert mutatorTidRight(tid_right);
     Tid(i, ps) := tid_right;
@@ -2103,13 +2103,13 @@ pure action PrimitiveMutatorsInRootScanBarrierAdd({:linear_in} tid_right: Tid, {
     call One_Put(mutatorsInRootScanBarrier', p);
 }
 
-pure action PrimitiveMutatorsInRootScanBarrierRemove({:linear} tid_left: Tid, {:linear_in} mutatorsInRootScanBarrier: Set Piece)
-    returns({:linear} tid_right: Tid, {:linear} mutatorsInRootScanBarrier': Set Piece)
+pure action PrimitiveMutatorsInRootScanBarrierRemove({:linear} tid_left: Tid, {:linear_in} mutatorsInRootScanBarrier: Set (One Piece))
+    returns({:linear} tid_right: Tid, {:linear} mutatorsInRootScanBarrier': Set (One Piece))
 {
-    var {:linear} ps: Set Piece;
+    var {:linear} ps: Set (One Piece);
     assert mutatorTidLeft(tid_left);
     mutatorsInRootScanBarrier' := mutatorsInRootScanBarrier;
-    ps := Set_Singleton(Right(tid_left->i));
+    ps := Set_Singleton(One(Right(tid_left->i)));
     call Set_Split(mutatorsInRootScanBarrier', ps);
     tid_right := Tid(tid_left->i, ps);
 }

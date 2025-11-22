@@ -3,7 +3,7 @@
 
 var {:layer 0,2} a: [int]int;
 var {:layer 0,1} count: int;
-var {:layer 1,2} {:linear} unallocated: Set int;
+var {:layer 1,2} {:linear} unallocated: Set (One int);
 
 yield invariant {:layer 1} Yield1();
 preserves AllocInv(count, unallocated);
@@ -42,7 +42,7 @@ ensures call Yield2(tid, old(a)[tid->val] + 1);
 atomic action {:layer 2,2} AtomicAllocate() returns ({:linear} tid: One int, i: int)
 modifies unallocated;
 {
-  assume Set_Contains(unallocated, i);
+  assume Set_Contains(unallocated, One(i));
   tid := One(i);
   call One_Split(unallocated, tid);
 }
@@ -86,9 +86,9 @@ preserves call Yield1();
   call WriteLow(i, val);
 }
 
-function {:inline} AllocInv(count: int, unallocated: Set int): bool
+function {:inline} AllocInv(count: int, unallocated: Set (One int)): bool
 {
-  (forall x: int :: Set_Contains(unallocated, x) || x < count)
+  (forall x: int :: Set_Contains(unallocated, One(x)) || x < count)
 }
 
 atomic action {:layer 1,1} AtomicReadLow(i: int) returns (val: int)
@@ -118,8 +118,8 @@ refines AtomicWriteLow;
 yield procedure {:layer 0} AllocateLow() returns (i: int);
 refines AtomicAllocateLow;
 
-pure action MakeLinear(i: int, {:linear_in} unallocated: Set int)
-returns ({:linear} tid: One int, {:linear} unallocated': Set int)
+pure action MakeLinear(i: int, {:linear_in} unallocated: Set (One int))
+returns ({:linear} tid: One int, {:linear} unallocated': Set (One int))
 {
   unallocated' := unallocated;
   tid := One(i);

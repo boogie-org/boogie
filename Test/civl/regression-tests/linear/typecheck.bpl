@@ -9,11 +9,11 @@ yield procedure {:layer 1} D()
 {
     var {:linear} a: One X;
     var {:linear} x: One X;
-    var {:linear} b: Set X;
+    var {:linear} b: Set (One X);
     var c: One X;
     var {:linear} d: One X;
 
-    b->val[a->val] := true;
+    b->val[a] := true;
 
     a := c;
 

@@ -1,11 +1,11 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-var {:layer 0,1} {:linear} usedPermissions: Set int;
+var {:layer 0,1} {:linear} usedPermissions: Set (One int);
 var {:layer 0,1} g: int;
 
 invariant {:layer 1} Inv();
-preserves Set_Contains(usedPermissions, 0);
+preserves Set_Contains(usedPermissions, One(0));
 preserves g == 0;
 
 yield procedure {:layer 1} Foo()

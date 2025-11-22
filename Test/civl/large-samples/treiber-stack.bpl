@@ -72,9 +72,9 @@ preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Map_At(t->nodes, One(new
 atomic action {:layer 5} AtomicAlloc() returns ({:linear} tagged_loc: One (TaggedLocTreiber X))
 {
   var {:linear} one_loc_t: One (LocTreiber X);
-  var {:linear} tagged_locs: Set (TaggedLocTreiber X);
+  var {:linear} tagged_locs: Set (One (TaggedLocTreiber X));
 
-  call one_loc_t, tagged_locs := TaggedLocSet_New(UnitSet());
+  call one_loc_t, tagged_locs := TaggedLocs_New(UnitSet());
   tagged_loc := One(TaggedLoc(one_loc_t->val, Unit()));
   call One_Split(tagged_locs, tagged_loc);
   assume !Map_Contains(TreiberPool, one_loc_t);
@@ -87,7 +87,7 @@ ensures call ReachInStack(tagged_loc->val->loc);
 preserves call StackDom();
 {
   var {:linear} one_loc_t: One (LocTreiber X);
-  var {:linear} tagged_locs: Set (TaggedLocTreiber X);
+  var {:linear} tagged_locs: Set (One (TaggedLocTreiber X));
   var top: Option (LocNode X);
   var {:linear} stack: Map (One (LocNode X)) (Node X);
   var {:linear} treiber: Treiber X;
@@ -95,7 +95,7 @@ preserves call StackDom();
   top := None();
   call stack := Map_MakeEmpty();
   treiber := Treiber(top, stack);
-  call one_loc_t, tagged_locs := TaggedLocSet_New(UnitSet());
+  call one_loc_t, tagged_locs := TaggedLocs_New(UnitSet());
   tagged_loc := One(TaggedLoc(one_loc_t->val, Unit()));
   call One_Split(tagged_locs, tagged_loc);
   call AllocTreiber#0(one_loc_t, treiber);
@@ -176,13 +176,13 @@ asserts Map_Contains(TreiberPoolLow, One(loc_t));
   var top: Option (LocNode X);
   var {:linear} stack: Map (One (LocNode X)) (Node X);
   var {:linear} one_loc_n: One (LocNode X);
-  var {:linear} tagged_locs: Set (TaggedLocNode X);
+  var {:linear} tagged_locs: Set (One (TaggedLocNode X));
   
   one_loc_t := One(loc_t);
   call treiber := Map_GetValue(TreiberPoolLow, one_loc_t);
   Treiber(top, stack) := treiber;
   assume loc_n is None || Map_Contains(stack, One(loc_n->t));
-  call one_loc_n, tagged_locs := TaggedLocSet_New(UnitSet());
+  call one_loc_n, tagged_locs := TaggedLocs_New(UnitSet());
   new_loc_n := one_loc_n->val;
   tagged_loc := One(TaggedLoc(new_loc_n, Unit()));
   call One_Split(tagged_locs, tagged_loc);
@@ -197,10 +197,10 @@ ensures call LocInStackOrNone(loc_t, Some(new_loc_n));
 refines AtomicCreateNewTopOfStack;
 {
   var {:linear} one_loc_n: One (LocNode X);
-  var {:linear} tagged_locs: Set (TaggedLocNode X);
+  var {:linear} tagged_locs: Set (One (TaggedLocNode X));
 
   call loc_n := ReadTopOfStack#Push(loc_t);
-  call one_loc_n, tagged_locs := TaggedLocSet_New(UnitSet());
+  call one_loc_n, tagged_locs := TaggedLocs_New(UnitSet());
   new_loc_n := one_loc_n->val;
   tagged_loc := One(TaggedLoc(new_loc_n, Unit()));
   call One_Split(tagged_locs, tagged_loc);

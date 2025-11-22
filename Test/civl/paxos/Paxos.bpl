@@ -46,42 +46,42 @@ function {:inline} IsActive(rs: RoundStatus, v: Value): bool { rs == Proposed(v)
 function {:inline} NoNodes(): NodeSet { MapConst(false) }
 function {:inline} SingletonNode(node: Node): NodeSet { NoNodes()[node := true] }
 
-function {:inline} AllPermissions(r: Round) : Set Permission
+function {:inline} AllPermissions(r: Round) : Set (One Permission)
 {
-  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p->r == r))
+  Set((lambda {:pool "Permission"} p: One Permission :: {:add_to_pool "Permission", p} p->val->r == r))
 }
 
-function {:inline} JoinPermissions(r: Round) : Set Permission
+function {:inline} JoinPermissions(r: Round) : Set (One Permission)
 {
-  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is JoinPerm && p->r == r && Node(p->n)))
+  Set((lambda {:pool "Permission"} p: One Permission :: {:add_to_pool "Permission", p} p->val is JoinPerm && p->val->r == r && Node(p->val->n)))
 }
 
-function {:inline} VotePermissions(r: Round) : Set Permission
+function {:inline} VotePermissions(r: Round) : Set (One Permission)
 {
-  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is VotePerm && p->r == r && Node(p->n)))
+  Set((lambda {:pool "Permission"} p: One Permission :: {:add_to_pool "Permission", p} p->val is VotePerm && p->val->r == r && Node(p->val->n)))
 }
 
-function {:inline} JoinPermissionsUpto(r: Round, n: Node) : Set Permission
+function {:inline} JoinPermissionsUpto(r: Round, n: Node) : Set (One Permission)
 {
-  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is JoinPerm && p->r == r && Node(p->n) && p->n < n))
+  Set((lambda {:pool "Permission"} p: One Permission :: {:add_to_pool "Permission", p} p->val is JoinPerm && p->val->r == r && Node(p->val->n) && p->val->n < n))
 }
 
-function {:inline} VotePermissionsUpto(r: Round, n: Node) : Set Permission
+function {:inline} VotePermissionsUpto(r: Round, n: Node) : Set (One Permission)
 {
-  Set((lambda {:pool "Permission"} p:Permission :: {:add_to_pool "Permission", p} p is VotePerm && p->r == r && Node(p->n) && p->n < n))
+  Set((lambda {:pool "Permission"} p: One Permission :: {:add_to_pool "Permission", p} p->val is VotePerm && p->val->r == r && Node(p->val->n) && p->val->n < n))
 }
 
-function {:inline} ToVotePermissions(r: Round, ns: NodeSet): Set Permission
+function {:inline} ToVotePermissions(r: Round, ns: NodeSet): Set (One Permission)
 {
-  Set((lambda p: Permission:: p is VotePerm && p->r == r && ns[p->n]))
+  Set((lambda p: One Permission:: p->val is VotePerm && p->val->r == r && ns[p->val->n]))
 }
 
-function IsJoinQuorum(r: Round, ps: Set Permission): bool
+function IsJoinQuorum(r: Round, ps: Set (One Permission)): bool
 {
   2 * Set_Size(ps) > numNodes && Set_IsSubset(ps, JoinPermissions(r))
 }
 
-function IsVoteQuorum(r: Round, ps: Set Permission): bool
+function IsVoteQuorum(r: Round, ps: Set (One Permission)): bool
 {
   2 * Set_Size(ps) > numNodes && Set_IsSubset(ps, VotePermissions(r))
 }
@@ -113,9 +113,9 @@ var {:layer 1,2} status: [Round]RoundStatus;
 var {:layer 1,2} joinInfo: [Round]NodeSet;
 var {:layer 1,2} voteInfo: [Round]NodeSet;
 
-var {:layer 1,2} {:linear} joinChannelPermissions: Set Permission;
-var {:layer 1,2} {:linear} voteChannelPermissions: Set Permission;
-var {:layer 1,2} {:linear} usedPermissions: Set Permission;
+var {:layer 1,2} {:linear} joinChannelPermissions: Set (One Permission);
+var {:layer 1,2} {:linear} voteChannelPermissions: Set (One Permission);
+var {:layer 1,2} {:linear} usedPermissions: Set (One Permission);
 
 var {:layer 0,1} acceptorState: [Node]AcceptorState;
 var {:layer 0,1} joinChannel: [Round][JoinResponse]int;
@@ -139,15 +139,15 @@ function {:inline} MaxRoundPredicate(r: Round, n: Node, voteInfo: [Round]NodeSet
 }
 
 function {:inline} Inv(status: [Round]RoundStatus, joinInfo: [Round]NodeSet, voteInfo: [Round]NodeSet, acceptorState: [Node]AcceptorState,
-              joinChannel: [Round][JoinResponse]int, joinChannelPermissions: Set Permission,
-              voteChannel: [Round][VoteResponse]int, voteChannelPermissions: Set Permission) : bool
+              joinChannel: [Round][JoinResponse]int, joinChannelPermissions: Set (One Permission),
+              voteChannel: [Round][VoteResponse]int, voteChannelPermissions: Set (One Permission)) : bool
 {
   (forall r: Round, jr: JoinResponse :: 0 <= joinChannel[r][jr] && joinChannel[r][jr] <= 1)
   &&
   (forall r: Round, jr1: JoinResponse, jr2: JoinResponse :: jr1->from == jr2->from && joinChannel[r][jr1] > 0 && joinChannel[r][jr2] > 0 ==> jr1 == jr2)
   &&
   (forall r: Round, jr: JoinResponse :: joinChannel[r][jr] > 0 ==> 
-    Round(r) && Node(jr->from) && Set_Contains(joinChannelPermissions, JoinPerm(r, jr->from)) &&
+    Round(r) && Node(jr->from) && Set_Contains(joinChannelPermissions, One(JoinPerm(r, jr->from))) &&
     (jr is JoinAccept ==> joinInfo[r][jr->from] &&
                           MaxRoundPredicate(r, jr->from, voteInfo, jr->lastVoteRound) &&
                           r <= acceptorState[jr->from]->lastJoinRound &&
@@ -159,7 +159,7 @@ function {:inline} Inv(status: [Round]RoundStatus, joinInfo: [Round]NodeSet, vot
   &&
   (forall r: Round, vr1: VoteResponse, vr2: VoteResponse :: vr1->from == vr2->from && voteChannel[r][vr1] > 0 && voteChannel[r][vr2] > 0 ==> vr1 == vr2)
   &&
-  (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] > 0 ==> Round(r) && Node(vr->from) && Set_Contains(voteChannelPermissions, VotePerm(r, vr->from)) &&
+  (forall r: Round, vr: VoteResponse :: voteChannel[r][vr] > 0 ==> Round(r) && Node(vr->from) && Set_Contains(voteChannelPermissions, One(VotePerm(r, vr->from))) &&
     (vr is VoteAccept <==> voteInfo[r][vr->from])
   )
 
@@ -182,14 +182,14 @@ preserves Inv(status, joinInfo, voteInfo, acceptorState, joinChannel, joinChanne
 ////////////////////////////////////////////////////////////////////////////////
 //// Quorum
 
-pure procedure Lemma_Quorum_Intersection(r: Round, joinAcceptPerms: Set Permission, status: [Round]RoundStatus, voteInfo: [Round]NodeSet);
+pure procedure Lemma_Quorum_Intersection(r: Round, joinAcceptPerms: Set (One Permission), status: [Round]RoundStatus, voteInfo: [Round]NodeSet);
 requires Round(r);
 requires IsJoinQuorum(r, joinAcceptPerms);
 requires VoteQuorumLt(r, status, voteInfo);
 ensures  (forall r': Round:: Round(r') && r' < r && status[r'] is Decided ==>
-            (exists n: Node:: Node(n) && Set_Contains(joinAcceptPerms, JoinPerm(r, n)) && voteInfo[r'][n]));
+            (exists n: Node:: Node(n) && Set_Contains(joinAcceptPerms, One(JoinPerm(r, n))) && voteInfo[r'][n]));
 
-pure procedure Lemma_Quorum_Monotonic(r: Round, voteAcceptPerms: Set Permission, ns: NodeSet);
+pure procedure Lemma_Quorum_Monotonic(r: Round, voteAcceptPerms: Set (One Permission), ns: NodeSet);
 requires Round(r);
 requires IsVoteQuorum(r, voteAcceptPerms);
 requires Set_IsSubset(voteAcceptPerms, ToVotePermissions(r, ns));
