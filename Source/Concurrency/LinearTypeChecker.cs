@@ -644,28 +644,6 @@ namespace Microsoft.Boogie
             Error(node,
               $"primitive assigns to a global variable that is not in the enclosing {str} modifies clause: {modifiedArgument}");
           }
-
-          if (originalProc.Name == "Map_Split")
-          {
-            if (InvalidAssignmentWithKeyCollection(node.Outs[0].Decl, modifiedArgument))
-            {
-              Error(node.Outs[0], $"Mismatch in key collection between source and target");
-            }
-          }
-          else if (originalProc.Name == "Map_Join")
-          {
-            if (node.Ins[1] is IdentifierExpr ie && InvalidAssignmentWithKeyCollection(modifiedArgument, ie.Decl))
-            {
-              Error(node.Ins[1], $"Mismatch in key collection between source and target");
-            }
-          }
-          else if (originalProc.Name == "Map_Get" || originalProc.Name == "Map_Put")
-          {
-            if (!AreKeysCollected(modifiedArgument))
-            {
-              Error(node, $"Keys must be collected");
-            }
-          }
         }
         else if (originalProc.Name == "Map_Unpack")
         {

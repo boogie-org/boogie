@@ -298,10 +298,8 @@ pure procedure {:inline 1} Set_MakeEmpty<K>() returns ({:linear} l: Set K)
   l := Set_Empty();
 }
 pure procedure Set_Split<K>({:linear} path: Set K, {:linear_out} l: Set K);
-pure procedure Set_Get<K>({:linear} path: Set K, k: [K]bool) returns ({:linear} l: Set K);
 pure procedure Set_Put<K>({:linear} path: Set K, {:linear_in} l: Set K);
 pure procedure One_Split<K>({:linear} path: Set K, {:linear_out} l: K);
-pure procedure One_Get<K>({:linear} path: Set K, k: K) returns ({:linear} l: One K);
 pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: K);
 
 pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
@@ -317,10 +315,6 @@ pure procedure {:inline 1} Map_Unpack<K,V>({:linear_in} m: Map K V) returns ({:l
   dom := m->dom;
   val := m->val;
 }
-pure procedure Map_Split<K,V>({:linear} path: Map K V, s: Set K) returns ({:linear} m: Map K V);
-pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} m: Map K V);
-pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} l: One K, {:linear} v: V);
-pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} l: One K, {:linear_in} v: V);
 pure procedure Map_GetValue<K,V>({:linear} path: Map K V, {:linear_out} k: K) returns ({:linear} v: V);
 pure procedure Map_PutValue<K,V>({:linear} path: Map K V, {:linear_in} k: K, {:linear_in} v: V);
 
