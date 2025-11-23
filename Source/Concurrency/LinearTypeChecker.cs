@@ -645,13 +645,6 @@ namespace Microsoft.Boogie
               $"primitive assigns to a global variable that is not in the enclosing {str} modifies clause: {modifiedArgument}");
           }
         }
-        else if (originalProc.Name == "Map_Unpack")
-        {
-          if (node.Ins[0] is IdentifierExpr ie && !AreKeysCollected(ie.Decl))
-          {
-            Error(node.Ins[0], $"Mismatch in key collection between source and target");
-          }
-        }
       }
 
       if (originalProc.Name == "create_multi_asyncs" || originalProc.Name == "create_asyncs")
