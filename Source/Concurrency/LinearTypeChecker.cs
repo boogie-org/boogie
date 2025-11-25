@@ -41,7 +41,7 @@ namespace Microsoft.Boogie
       checkingContext.Error(node, message);
     }
     
-    private bool IsOrdinaryType(Type type)
+    public bool IsOrdinaryType(Type type)
     {
       return !collectors.ContainsKey(type);
     }
@@ -85,10 +85,9 @@ namespace Microsoft.Boogie
       return IsLegalAssignmentTarget(fieldAssignLhs.Datatype);
     }
 
-    private static void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
+    private void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
     {
-      callCmd.Outs.Where(ie => FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
-        .ForEach(ie => start.Add(ie.Decl));
+      callCmd.Outs.Where(ie => !IsOrdinaryType(ie.Type)).ForEach(ie => start.Add(ie.Decl));
       for (int i = 0; i < callCmd.Proc.InParams.Count; i++)
       {
         if (callCmd.Ins[i] is IdentifierExpr ie)
@@ -101,7 +100,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private static void AddAvailableVars(ParCallCmd parCallCmd, HashSet<Variable> start)
+    private void AddAvailableVars(ParCallCmd parCallCmd, HashSet<Variable> start)
     {
       foreach (CallCmd callCmd in parCallCmd.CallCmds)
       {
@@ -244,11 +243,11 @@ namespace Microsoft.Boogie
             for (int i = 0; i < parCallCallCmd.Proc.InParams.Count; i++)
             {
               Variable param = parCallCallCmd.Proc.InParams[i];
-              LinearKind paramKind = FindLinearKind(param);
-              if (paramKind == LinearKind.ORDINARY)
+              if (IsOrdinary(param))
               {
                 continue;
               }
+              LinearKind paramKind = FindLinearKind(param);
               IdentifierExpr ie = parCallCallCmd.Ins[i] as IdentifierExpr;
               if (start.Contains(ie.Decl))
               {
@@ -275,8 +274,7 @@ namespace Microsoft.Boogie
         }
         else if (cmd is HavocCmd havocCmd)
         {
-          havocCmd.Vars.Where(ie => FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
-            .ForEach(ie => start.Remove(ie.Decl));
+          havocCmd.Vars.ForEach(ie => start.Remove(ie.Decl));
         }
       }
 
@@ -682,11 +680,13 @@ namespace Microsoft.Boogie
 
     public override Variable VisitVariable(Variable node)
     {
-      var kind = FindLinearKind(node);
-      if ((kind == LinearKind.LINEAR_IN || kind == LinearKind.LINEAR_OUT) && 
-          (node is GlobalVariable || node is LocalVariable || (node is Formal formal && !formal.InComing)))
+      if (node is GlobalVariable || (node is Formal formal && !formal.InComing))
       {
-        checkingContext.Error(node, "variable must be declared linear (as opposed to linear_in or linear_out)");
+        var kind = FindLinearKind(node);
+        if (kind == LinearKind.LINEAR_IN || kind == LinearKind.LINEAR_OUT)
+        {
+          checkingContext.Error(node, "variable must be declared linear (as opposed to linear_in or linear_out)");
+        }
       }
       return node;
     }
@@ -837,8 +837,7 @@ namespace Microsoft.Boogie
 
     private IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> scope)
     {
-      return scope.Where(v => 
-        FindLinearKind(v) != LinearKind.ORDINARY &&
+      return scope.Where(v =>
         collectors.ContainsKey(v.TypedIdent.Type) &&
         collectors[v.TypedIdent.Type].ContainsKey(domain.permissionType));
     }

@@ -8,6 +8,8 @@ public class LinearRewriter
 {
   private CivlTypeChecker civlTypeChecker;
 
+  private LinearTypeChecker linearTypeChecker => civlTypeChecker.linearTypeChecker;
+
   private Monomorphizer monomorphizer => civlTypeChecker.program.monomorphizer;
 
   private ConcurrencyOptions options => civlTypeChecker.Options;
@@ -66,7 +68,7 @@ public class LinearRewriter
 
     var sources = attr.Params.OfType<Expr>();
     var pendingAsyncType = civlTypeChecker.program.monomorphizer.GetTypeInstantiation(callCmd.Proc)["T"];
-    var actionDecl = civlTypeChecker.linearTypeChecker.GetActionDeclFromCreateAsyncs(callCmd);
+    var actionDecl = linearTypeChecker.GetActionDeclFromCreateAsyncs(callCmd);
     var iter = Enumerable.Range(0, actionDecl.InParams.Count).Where(i => {
       var inParam = actionDecl.InParams[i];
       if (LinearTypeChecker.FindLinearKind(inParam) == LinearKind.ORDINARY)
@@ -372,7 +374,7 @@ public class LinearRewriter
     var domain = instantiation["K"];
     var range = instantiation["V"];
     var mapUpdateFunc = MapUpdate(domain, range);
-    if (k is IdentifierExpr ie && LinearTypeChecker.FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
+    if (k is IdentifierExpr ie && !linearTypeChecker.IsOrdinaryType(ie.Decl.TypedIdent.Type))
     {
       var mapContainsFunc = MapContains(domain, range);
       cmdSeq.Add(new AssumeCmd(Token.NoToken, Expr.Not(ExprHelper.FunctionCall(mapContainsFunc, path, k))));
