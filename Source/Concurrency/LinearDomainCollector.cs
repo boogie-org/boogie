@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace Microsoft.Boogie
 {
@@ -120,48 +121,74 @@ namespace Microsoft.Boogie
         return;
       }
       visitedTypes.Add(type);
-      if (!(type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl))
+
+      if (type is MapType mapType)
       {
+        mapType.Arguments.ForEach(RegisterType);
+        RegisterType(mapType.Result);
         return;
       }
-      var permissionType = linearTypeChecker.GetPermissionType(type);
-      if (permissionType == null)
+
+      static bool IsOneType(Type type)
       {
-        RegisterDatatype(ctorType);
-        return;
+        if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+        {
+          var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
+          return originalTypeCtorDecl.Name == "One";
+        }
+        return false;
       }
-      if (!permissionTypeToLinearDomain.ContainsKey(permissionType))
+
+      if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
       {
-        permissionTypeToLinearDomain[permissionType] = new LinearDomain(program, permissionType);
-      }
-      collectors.Add(type, new Dictionary<Type, Function>());
-      var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
-      var typeName = originalTypeCtorDecl.Name;
-      var actualTypeParams = program.monomorphizer.GetTypeInstantiation(datatypeTypeCtorDecl);
-      if (typeName == "Map")
-      {
-        var typeParamInstantiationMap = new Dictionary<string, Type> { { "T", actualTypeParams[0] }, { "U", actualTypeParams[1] } };
-        var collector = program.monomorphizer.InstantiateFunction("Map_Collector", typeParamInstantiationMap);
-        collectors[type][permissionType] = collector;
-      }
-      else if (typeName == "Set")
-      {
-        var typeParamInstantiationMap = new Dictionary<string, Type> { { "T", actualTypeParams[0] } };
-        var collector = program.monomorphizer.InstantiateFunction("Set_Collector", typeParamInstantiationMap);
-        collectors[type][permissionType] = collector;
-      }
-      else if (typeName == "Cell")
-      {
-        var typeParamInstantiationMap = new Dictionary<string, Type> { { "T", actualTypeParams[0] }, { "U", actualTypeParams[1] } };
-        var collector = program.monomorphizer.InstantiateFunction("Cell_Collector", typeParamInstantiationMap);
-        collectors[type][permissionType] = collector;
-      }
-      else
-      {
-        Debug.Assert(typeName == "One");
-        var typeParamInstantiationMap = new Dictionary<string, Type> { { "T", actualTypeParams[0] } };
-        var collector = program.monomorphizer.InstantiateFunction("One_Collector", typeParamInstantiationMap);
-        collectors[type][permissionType] = collector;
+        var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
+        var typeName = originalTypeCtorDecl.Name;
+        if (!(typeName == "One" || typeName == "Set" || typeName == "Map"))
+        {
+          RegisterDatatype(ctorType);
+          return;
+        }
+        var actualTypeParams = program.monomorphizer.GetTypeInstantiation(datatypeTypeCtorDecl);
+        RegisterType(actualTypeParams[0]);
+        if (typeName == "Map")
+        {
+          RegisterType(actualTypeParams[1]);
+        }
+        var permissionType = typeName == "One" ? type : actualTypeParams[0];
+        if (!IsOneType(permissionType))
+        {
+          if (typeName == "Map" && collectors.ContainsKey(actualTypeParams[1]))
+          {
+            // keys are not being collected but type may contain permissions
+            collectors.Add(type, new Dictionary<Type, Function>());
+          }
+          return;
+        }
+        if (!permissionTypeToLinearDomain.ContainsKey(permissionType))
+        {
+          permissionTypeToLinearDomain[permissionType] = new LinearDomain(program, permissionType);
+        }
+        collectors.Add(type, new Dictionary<Type, Function>());
+        if (typeName == "Map")
+        {
+          // Permission collection for values stored in Map is unbounded and is not being done.
+          var typeParamInstantiationMap = new Dictionary<string, Type> { { "T", actualTypeParams[0] }, { "U", actualTypeParams[1] } };
+          var collector = program.monomorphizer.InstantiateFunction("Map_Collector", typeParamInstantiationMap);
+          collectors[type][permissionType] = collector;
+        }
+        else if (typeName == "Set")
+        {
+          var typeParamInstantiationMap = new Dictionary<string, Type> { { "T", actualTypeParams[0] } };
+          var collector = program.monomorphizer.InstantiateFunction("Set_Collector", typeParamInstantiationMap);
+          collectors[type][permissionType] = collector;
+        }
+        else
+        {
+          Debug.Assert(typeName == "One");
+          var typeParamInstantiationMap = new Dictionary<string, Type> { { "T", actualTypeParams[0] } };
+          var collector = program.monomorphizer.InstantiateFunction("One_Collector", typeParamInstantiationMap);
+          collectors[type][permissionType] = collector;
+        }
       }
     }
 
@@ -176,11 +203,11 @@ namespace Microsoft.Boogie
         {
           var formalType = formal.TypedIdent.Type;
           RegisterType(formalType);
-          if (LinearTypeChecker.FindLinearKind(formal) == LinearKind.ORDINARY || !collectors.ContainsKey(formalType))
+          if (!collectors.ContainsKey(formalType))
           {
             continue;
           }
-          var permissionTypeToCollector = collectors[formal.TypedIdent.Type];
+          var permissionTypeToCollector = collectors[formalType];
           permissionTypeToCollector.Keys.ForEach(permissionType => {
             var permissionExpr = ExprHelper.FunctionCall(
               permissionTypeToCollector[permissionType], 
@@ -197,7 +224,8 @@ namespace Microsoft.Boogie
           });
         }
       }
-      if (constructorsWithPermissions.Count > 0)
+      if (datatypeTypeCtorDecl.Constructors.Any(constructor =>
+            constructor.InParams.Any(formal => collectors.ContainsKey(formal.TypedIdent.Type))))
       {
         collectors.Add(ctorType, new Dictionary<Type, Function>());
         constructorsWithPermissions.Keys.ForEach(permissionType => {

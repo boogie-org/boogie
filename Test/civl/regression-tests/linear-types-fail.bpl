@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie -lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype A { A({:linear} x: One int) }
+datatype A { A(x: One int) }
 
 procedure P0(a: A) returns ({:linear} a': One A) {
     a' := One(a);

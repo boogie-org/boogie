@@ -285,12 +285,7 @@ function {:inline} One_Collector<T>(a: One T): [One T]bool
 }
 
 /// singleton map
-datatype Cell<T,U> { Cell({:linear} key: One T, val: U) }
-
-function {:inline} Cell_Collector<T,U>(a: Cell T U): [One T]bool
-{
-  One_Collector(a->key)
-}
+datatype Cell<T,U> { Cell(key: One T, val: U) }
 
 /// linear primitives
 pure procedure {:inline 1} Set_MakeEmpty<K>() returns ({:linear} l: Set K)
@@ -324,11 +319,13 @@ pure procedure {:inline 1} TaggedLocs_New<V,T>(tags: Set T) returns ({:linear} {
   tagged_locs := Set((lambda x: One (TaggedLoc V T) :: x->val->loc == l->val && Set_Contains(tags, x->val->tag)));
 }
 
+/// Async primitives
 procedure create_async<T>(PA: T);
 procedure create_asyncs<T>(PAs: [T]bool);
 procedure create_multi_asyncs<T>(PAs: [T]int);
 procedure set_choice<T>(choice: T);
 
+/// Helpers
 pure procedure Copy<T>(v: T) returns (v': T);
 ensures v' == v;
 

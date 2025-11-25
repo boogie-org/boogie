@@ -31,24 +31,6 @@ namespace Microsoft.Boogie
 
     #region Visitor Implementation
 
-    private bool IsLegalAssignmentTarget(AssignLhs assignLhs)
-    {
-      if (assignLhs is SimpleAssignLhs)
-      {
-        return true;
-      }
-      if (assignLhs is MapAssignLhs mapAssignLhs)
-      {
-        return IsLegalAssignmentTarget(mapAssignLhs.Map);
-      }
-      var fieldAssignLhs = (FieldAssignLhs)assignLhs;
-      if (GetPermissionType(fieldAssignLhs.Datatype.Type) != null)
-      {
-        return false;
-      }
-      return IsLegalAssignmentTarget(fieldAssignLhs.Datatype);
-    }
-
     private IEnumerable<Variable> LinearGlobalVariables =>
       program.GlobalVariables.Where(v => FindLinearKind(v) != LinearKind.ORDINARY);
     
@@ -59,34 +41,28 @@ namespace Microsoft.Boogie
       checkingContext.Error(node, message);
     }
     
-    private bool IsOrdinary(Variable target)
+    private bool IsOrdinaryType(Type type)
     {
-      if (!collectors.ContainsKey(target.TypedIdent.Type))
-      {
-        return true;
-      }
-      return FindLinearKind(target) == LinearKind.ORDINARY;
+      return !collectors.ContainsKey(type);
     }
 
-    private bool IsOrdinary(AssignLhs assignLhs)
+    private bool IsOrdinary(Variable v)
     {
-      if (!collectors.ContainsKey(assignLhs.Type))
-      {
-        return true;
-      }
-      if (assignLhs is SimpleAssignLhs simpleAssignLhs)
-      {
-        return FindLinearKind(simpleAssignLhs.AssignedVariable.Decl) == LinearKind.ORDINARY;
-      }
-      if (assignLhs is FieldAssignLhs fieldAssignLhs &&
-          fieldAssignLhs.FieldAccess.Fields.Any(f => FindLinearKind(f) != LinearKind.ORDINARY))
-      {
-        return IsOrdinary(fieldAssignLhs.Datatype);
-      }
-      return true;
+      return IsOrdinaryType(v.TypedIdent.Type) || FindLinearKind(v) == LinearKind.ORDINARY;
     }
 
-    private void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
+    private static bool IsPrimitiveLinearType(Type type)
+    {
+      if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
+      {
+        var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
+        var typeName = originalTypeCtorDecl.Name;
+        return typeName == "One" || typeName == "Set" || typeName == "Map";
+      }
+      return false;
+    }
+
+    private static void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
     {
       callCmd.Outs.Where(ie => FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
         .ForEach(ie => start.Add(ie.Decl));
@@ -102,7 +78,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    private void AddAvailableVars(ParCallCmd parCallCmd, HashSet<Variable> start)
+    private static void AddAvailableVars(ParCallCmd parCallCmd, HashSet<Variable> start)
     {
       foreach (CallCmd callCmd in parCallCmd.CallCmds)
       {
@@ -122,34 +98,32 @@ namespace Microsoft.Boogie
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
             var lhs = assignCmd.Lhss[i];
-            if (IsOrdinary(lhs))
-            {
-              continue;
-            }
             var lhsVar = lhs.DeepAssignedVariable;
             // assignment may violate the disjointness invariant
             // therefore, drop lhsVar from the set of available variables
-            // but possibly add it in lhsVarsToAdd later
+            // but possibly add it to lhsVarsToAdd (added to start later)
             start.Remove(lhsVar);
+            if (lhs is not SimpleAssignLhs || IsOrdinaryType(lhs.Type))
+            {
+              continue;
+            }
             var rhsExpr = assignCmd.Rhss[i];
             if (rhsExpr is IdentifierExpr ie)
             {
               if (start.Contains(ie.Decl))
               {
                 start.Remove(ie.Decl);
+                lhsVarsToAdd.Add(lhsVar);
               }
-              else
-              {
-                Error(ie, "unavailable source for a linear read");
-              }
-              lhsVarsToAdd.Add(lhsVar); // add always to prevent cascading error messages
             }
-            else if (rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor constructor } } nAryExpr)
+            else if (rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor constructor } } nAryExpr &&
+                      !IsPrimitiveLinearType(rhsExpr.Type))
             {
               // pack
               for (int j = 0; j < constructor.InParams.Count; j++)
               {
-                if (FindLinearKind(constructor.InParams[j]) == LinearKind.ORDINARY)
+                var field = constructor.InParams[j];
+                if (IsOrdinaryType(field.TypedIdent.Type))
                 {
                   continue;
                 }
@@ -158,34 +132,23 @@ namespace Microsoft.Boogie
                 {
                   start.Remove(v);
                 }
-                else
-                {
-                  Error(arg, "unavailable source for a linear read");
-                }
               }
-              if (GetPermissionType(rhsExpr.Type) == null)
-              {
-                lhsVarsToAdd.Add(lhsVar); // add always to prevent cascading error messages
-              }
+              lhsVarsToAdd.Add(lhsVar);
             }
           }
           start.UnionWith(lhsVarsToAdd);
         }
         else if (cmd is UnpackCmd unpackCmd)
         {
-          if (unpackCmd.UnpackedLhs.Any(arg => FindLinearKind(arg.Decl) != LinearKind.ORDINARY))
+          if (!IsOrdinaryType(unpackCmd.Rhs.Type))
           {
             var ie = unpackCmd.Rhs as IdentifierExpr;
             if (start.Contains(ie.Decl))
             {
               start.Remove(ie.Decl);
               unpackCmd.UnpackedLhs
-                .Where(arg => FindLinearKind(arg.Decl) != LinearKind.ORDINARY)
+                .Where(arg => !IsOrdinaryType(arg.Type))
                 .ForEach(arg => start.Add(arg.Decl));
-            }
-            else
-            {
-              Error(ie, "unavailable source for a linear read");
             }
           }
         }
@@ -437,47 +400,34 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitAssignCmd(AssignCmd node)
     {
-      node.Lhss.Where(lhs => !IsLegalAssignmentTarget(lhs)).ForEach(lhs =>
-      {
-        Error(lhs, "illegal assignment target");
-      });
-
       HashSet<Variable> rhsVars = new HashSet<Variable>();
       for (int i = 0; i < node.Lhss.Count; i++)
       {
         var lhs = node.Lhss[i];
-        if (IsOrdinary(lhs))
+        if (lhs is not SimpleAssignLhs || IsOrdinaryType(lhs.Type))
         {
           continue;
         }
         var rhsExpr = node.Rhss[i];
         if (rhsExpr is IdentifierExpr rhs)
         {
-          var rhsKind = FindLinearKind(rhs.Decl);
-          if (rhsKind == LinearKind.ORDINARY)
-          {
-            Error(rhs, $"source of assignment must be linear");
-          }
-          else if (rhsVars.Contains(rhs.Decl))
+          if (rhsVars.Contains(rhs.Decl))
           {
             Error(rhs, $"linear variable {rhs.Decl.Name} can occur at most once as the source of an assignment");
-          }
-          else if (InvalidAssignmentWithKeyCollection(lhs.DeepAssignedVariable, rhs.Decl))
-          {
-            Error(rhs, $"Mismatch in key collection between source and target");
           }
           else
           {
             rhsVars.Add(rhs.Decl);
           }
         }
-        else if (rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor constructor } } nAryExpr)
+        else if (rhsExpr is NAryExpr { Fun: FunctionCall { Func: DatatypeConstructor constructor } } nAryExpr &&
+                  !IsPrimitiveLinearType(rhsExpr.Type))
         {
           // pack
           for (int j = 0; j < constructor.InParams.Count; j++)
           {
             var field = constructor.InParams[j];
-            if (FindLinearKind(field) == LinearKind.ORDINARY)
+            if (IsOrdinaryType(field.TypedIdent.Type))
             {
               continue;
             }
@@ -489,10 +439,6 @@ namespace Microsoft.Boogie
             else if (rhsVars.Contains(ie.Decl))
             {
               Error(arg, $"linear variable {ie.Decl.Name} can occur at most once as the source of an assignment");
-            }
-            else if (InvalidAssignmentWithKeyCollection(field, ie.Decl))
-            {
-              Error(arg, $"Mismatch in key collection between source and target");
             }
             else
             {
@@ -506,32 +452,9 @@ namespace Microsoft.Boogie
 
     public override Cmd VisitUnpackCmd(UnpackCmd node)
     {
-      var isLinearUnpack = false;
-      var unpackedLhs = node.UnpackedLhs.ToList();
-      for (int j = 0; j < unpackedLhs.Count; j++)
+      if (!IsOrdinaryType(node.Rhs.Type) && node.Rhs is not IdentifierExpr)
       {
-        if (FindLinearKind(unpackedLhs[j].Decl) == LinearKind.ORDINARY)
-        {
-          continue;
-        }
-        isLinearUnpack = true;
-        var field = node.Constructor.InParams[j];
-        if (FindLinearKind(field) == LinearKind.ORDINARY)
-        {
-          Error(unpackedLhs[j], $"source of unpack must be linear field: {field}");
-        }
-        else if (InvalidAssignmentWithKeyCollection(unpackedLhs[j].Decl, field))
-        {
-          Error(unpackedLhs[j], $"Mismatch in key collection between source and target");
-        }
-      }
-      if (isLinearUnpack)
-      {
-        IdentifierExpr rhs = node.Rhs as IdentifierExpr;
-        if (rhs == null || FindLinearKind(rhs.Decl) == LinearKind.ORDINARY)
-        {
-          Error(node, $"source for unpack must be a linear variable");
-        }
+        Error(node, $"source for unpack must be a linear variable");
       }
       return base.VisitUnpackCmd(node);
     }
@@ -565,12 +488,6 @@ namespace Microsoft.Boogie
           }
           continue;
         }
-        var actualKind = FindLinearKind(actual.Decl);
-        if (actualKind == LinearKind.ORDINARY)
-        {
-          Error(node, $"only linear variable can be passed to linear parameter: {actual}");
-          continue;
-        }
         if (actual.Decl is GlobalVariable && !node.Proc.IsPure)
         {
           Error(node, $"only local linear variable can be an argument to a procedure call: {actual}");
@@ -581,47 +498,18 @@ namespace Microsoft.Boogie
           Error(node, $"linear variable {actual.Decl.Name} can occur only once as an input parameter");
           continue;
         }
-        if (!isPrimitive && InvalidAssignmentWithKeyCollection(formal, actual.Decl))
-        {
-          Error(node, $"Mismatch in key collection between source and target");
-          continue;
-        }
         inVars.Add(actual.Decl);
-        if (actual.Decl is GlobalVariable && actualKind == LinearKind.LINEAR_IN)
+        if (actual.Decl is GlobalVariable && formalKind == LinearKind.LINEAR_IN)
         {
           globalInVars.Add(actual.Decl);
         }
       }
 
-      for (int i = 0; i < node.Proc.OutParams.Count; i++)
-      {
-        IdentifierExpr actual = node.Outs[i];
-        var actualKind = FindLinearKind(actual.Decl);
-        if (actualKind == LinearKind.ORDINARY)
-        {
-          continue;
-        }
-        Variable formal = node.Proc.OutParams[i];
-        var formalKind = FindLinearKind(formal);
-        if (formalKind == LinearKind.ORDINARY)
-        {
-          Error(node, $"only linear parameter can be assigned to a linear variable: {formal}");
-          continue;
-        }
-        if (!isPrimitive && InvalidAssignmentWithKeyCollection(actual.Decl, formal))
-        {
-          Error(node, $"Mismatch in key collection between source and target");
-          continue;
-        }
-      }
-
       var globalOutVars = node.Outs.Select(ie => ie.Decl).ToHashSet();
-      globalInVars.Where(v => !globalOutVars.Contains(v)).ForEach(v =>
+      globalInVars.Except(globalOutVars).ForEach(v =>
       {
         Error(node, $"global variable passed as input to pure call but not received as output: {v}");
       });
-
-      var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(node.Proc);
 
       if (isPrimitive)
       {
@@ -647,6 +535,7 @@ namespace Microsoft.Boogie
         }
       }
 
+      var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(node.Proc);
       if (originalProc.Name == "create_multi_asyncs" || originalProc.Name == "create_asyncs")
       {
         var actionDecl = GetActionDeclFromCreateAsyncs(node);
@@ -710,7 +599,6 @@ namespace Microsoft.Boogie
           }
         }
       }
-
       return base.VisitCallCmd(node);
     }
 
@@ -771,76 +659,6 @@ namespace Microsoft.Boogie
         checkingContext.Error(node, "variable must be declared linear (as opposed to linear_in or linear_out)");
       }
       return node;
-    }
-
-    private bool AreKeysCollected(Variable v)
-    {
-      var attr = QKeyValue.FindAttribute(v.Attributes, x => x.Key == "linear");
-      var attrParams = attr == null ? new List<object>() : attr.Params;
-      foreach (var param in attrParams)
-      {
-        if (param is string s && s == "no_collect_keys")
-        {
-          return false;
-        }
-      }
-      return true;
-    }
-
-    private bool InvalidAssignmentWithKeyCollection(Variable target, Variable source)
-    {
-      return AreKeysCollected(target) && !AreKeysCollected(source);
-    }
-
-    private void CheckLinearStoreAccessInGuards()
-    {
-      program.Implementations.ForEach(impl => {
-        if (CivlPrimitives.IsPrimitive(impl))
-        {
-          return;
-        }
-        Stack<StmtList> stmtLists = new Stack<StmtList>();
-        if (impl.StructuredStmts != null)
-        {
-          stmtLists.Push(impl.StructuredStmts);
-        }
-        while (stmtLists.Count > 0)
-        {
-          var stmtList = stmtLists.Pop();
-          stmtList.BigBlocks.Where(bigBlock => bigBlock.ec != null).ForEach(bigBlock => {
-            switch (bigBlock.ec) {
-              case IfCmd ifCmd:
-                void ProcessIfCmd(IfCmd ifCmd)
-                {
-                  if (ifCmd.Guard != null && LinearStoreVisitor.HasLinearStoreAccess(ifCmd.Guard))
-                  {
-                    checkingContext.Error(ifCmd.tok, "access to linear store not allowed");
-                  }
-                  stmtLists.Push(ifCmd.Thn);
-                  if (ifCmd.ElseIf != null)
-                  {
-                    ProcessIfCmd(ifCmd.ElseIf);
-                  }
-                  else if (ifCmd.ElseBlock != null)
-                  {
-                    stmtLists.Push(ifCmd.ElseBlock);
-                  }
-                }
-                ProcessIfCmd(ifCmd);
-                break;
-              case WhileCmd whileCmd:
-                if (whileCmd.Guard != null && LinearStoreVisitor.HasLinearStoreAccess(whileCmd.Guard))
-                {
-                  checkingContext.Error(whileCmd.tok, "access to linear store not allowed");
-                }
-                stmtLists.Push(whileCmd.Body);
-                break;
-              default:
-                break;
-            }
-          });
-        }
-      });
     }
 
     #endregion
@@ -908,25 +726,6 @@ namespace Microsoft.Boogie
       }
     }
 
-    public Type GetPermissionType(Type type)
-    {
-      if (type is CtorType ctorType && ctorType.Decl is DatatypeTypeCtorDecl datatypeTypeCtorDecl)
-      {
-        var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
-        var typeName = originalTypeCtorDecl.Name;
-        if (typeName == "One")
-        {
-          return type;
-        }
-        if (typeName == "Map" || typeName == "Set")
-        {
-          var actualTypeParams = program.monomorphizer.GetTypeInstantiation(datatypeTypeCtorDecl);
-          return actualTypeParams[0];
-        }
-      }
-      return null;
-    }
-
     public ISet<Variable> AvailableLinearVars(Absy absy)
     {
       if (availableLinearVars.ContainsKey(absy))
@@ -943,13 +742,6 @@ namespace Microsoft.Boogie
     {
       return FilterVariables(domain, scope)
         .Select(v => ExprHelper.FunctionCall(collectors[v.TypedIdent.Type][domain.permissionType], Expr.Ident(v)));
-    }
-
-    public IEnumerable<Expr> PermissionExprs(LinearDomain domain, IEnumerable<Expr> availableExprs)
-    {
-      return availableExprs
-        .Where(expr => collectors.ContainsKey(expr.Type) && collectors[expr.Type].ContainsKey(domain.permissionType))
-        .Select(expr => ExprHelper.FunctionCall(collectors[expr.Type][domain.permissionType], expr));
     }
 
     public IEnumerable<Expr> DisjointnessExprForEachDomain(IEnumerable<Variable> scope)
@@ -1013,16 +805,10 @@ namespace Microsoft.Boogie
       return expr;
     }
 
-    public Expr SubsetExprForPermissions(LinearDomain domain, Expr lhs, Expr rhs)
-    {
-      return Expr.Eq(ExprHelper.FunctionCall(domain.mapImp, lhs, rhs), ExprHelper.FunctionCall(domain.mapConstBool, Expr.True));
-    }
-
     private IEnumerable<Variable> FilterVariables(LinearDomain domain, IEnumerable<Variable> scope)
     {
       return scope.Where(v => 
         FindLinearKind(v) != LinearKind.ORDINARY &&
-        AreKeysCollected(v) &&
         collectors.ContainsKey(v.TypedIdent.Type) &&
         collectors[v.TypedIdent.Type].ContainsKey(domain.permissionType));
     }

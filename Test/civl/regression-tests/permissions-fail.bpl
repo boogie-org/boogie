@@ -9,14 +9,14 @@ var {:linear} {:layer 0,1} A : Set (One int);
 pure procedure Lemma (set: Set (One int), i: One int);
 requires !Set_Contains(set, i);
 
-datatype D { D1({:linear} x: One int), D2(x: One int) }
+datatype D { D1(x: One int), D2(x: One int) }
 
 yield procedure {:layer 1} Proc1 ({:linear} d: D)
 {
   call {:layer 1} Lemma(A, d->x);
 }
 
-datatype E { E({:linear} x: One int) }
+datatype E { E(x: One int) }
 
 yield procedure {:layer 1} Proc2 (e: E)
 {
