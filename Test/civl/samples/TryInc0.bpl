@@ -4,19 +4,20 @@
 var {:layer 0, 2} count: int;
 const retry_limit: int;
 
-yield procedure {:layer 1} TryInc() returns (status: bool)
+yield procedure {:layer 1} TryInc() returns (ok: bool)
 refines atomic action {:layer 2} _ {
-    status := false;
+    ok := false;
     if(*) {
         count := count + 1;
-        status := true;
+        ok := true;
     }
 }
 {
     var n: int;
+    ok := false;
     call n := Read();
     call Yield();
-    call status := CAS(n, n+1);
+    call ok := CAS(n, n+1);
     return;
 }
 
