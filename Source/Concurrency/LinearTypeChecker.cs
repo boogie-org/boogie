@@ -62,6 +62,29 @@ namespace Microsoft.Boogie
       return false;
     }
 
+    // This method checks that assignLhs does not modify the contents of a
+    // One, Set, or Map value directly.
+    // Legality of the target simplifies type checking of an assignment.
+    // If the type of the lhs/rhs is ordinary, the assignment is safe and there
+    // is no permission transfer from rhs to lhs.
+    private static bool IsLegalAssignmentTarget(AssignLhs assignLhs)
+    {
+      if (assignLhs is SimpleAssignLhs)
+      {
+        return true;
+      }
+      if (assignLhs is MapAssignLhs mapAssignLhs)
+      {
+        return IsLegalAssignmentTarget(mapAssignLhs.Map);
+      }
+      var fieldAssignLhs = (FieldAssignLhs)assignLhs;
+      if (IsPrimitiveLinearType(fieldAssignLhs.Datatype.Type))
+      {
+        return false;
+      }
+      return IsLegalAssignmentTarget(fieldAssignLhs.Datatype);
+    }
+
     private static void AddAvailableVars(CallCmd callCmd, HashSet<Variable> start)
     {
       callCmd.Outs.Where(ie => FindLinearKind(ie.Decl) != LinearKind.ORDINARY)
@@ -98,15 +121,15 @@ namespace Microsoft.Boogie
           for (int i = 0; i < assignCmd.Lhss.Count; i++)
           {
             var lhs = assignCmd.Lhss[i];
-            var lhsVar = lhs.DeepAssignedVariable;
-            // assignment may violate the disjointness invariant
-            // therefore, drop lhsVar from the set of available variables
-            // but possibly add it to lhsVarsToAdd (added to start later)
-            start.Remove(lhsVar);
-            if (lhs is not SimpleAssignLhs || IsOrdinaryType(lhs.Type))
+            if (IsOrdinaryType(lhs.Type))
             {
               continue;
             }
+            // assignment may violate the disjointness invariant
+            // therefore, drop lhsVar from the set of available variables
+            // but possibly add it to lhsVarsToAdd (added to start later)
+            var lhsVar = lhs.DeepAssignedVariable;
+            start.Remove(lhsVar);
             var rhsExpr = assignCmd.Rhss[i];
             if (rhsExpr is IdentifierExpr ie)
             {
@@ -404,8 +427,15 @@ namespace Microsoft.Boogie
       for (int i = 0; i < node.Lhss.Count; i++)
       {
         var lhs = node.Lhss[i];
-        if (lhs is not SimpleAssignLhs || IsOrdinaryType(lhs.Type))
+        if (!IsLegalAssignmentTarget(lhs))
         {
+          Error(lhs, "illegal assignment target");
+          continue;
+        }
+        if (IsOrdinaryType(lhs.Type))
+        {
+          // assignment leaves availability of lhs unchanged
+          // there is no permission transfer from rhs to lhs
           continue;
         }
         var rhsExpr = node.Rhss[i];
