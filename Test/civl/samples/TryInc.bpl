@@ -3,27 +3,31 @@
 
 var {:layer 0, 2} count: int;
 const retry_limit: int;
+axiom retry_limit > 0;
 
-yield procedure {:layer 1} TryInc()
+yield procedure {:layer 1} TryInc() returns (ok: bool)
 refines atomic action {:layer 2} _ {
+    ok := false;
     if(*) {
         count := count + 1;
+        ok := true;
     }
 }
 {
     var n: int;
     var success: bool;
 
-    // Start recursion with 0 retries
-    call HelperInc(0);
+    call ok :=  HelperInc(0);  // Start recursion with 0 retries
     return;
 }
 
 // Helper recursive procedure
-yield procedure {:layer 1} HelperInc(tries: int)
+yield procedure {:layer 1} HelperInc(tries: int) returns (ok: bool)
 refines atomic action {:layer 2} _ {
+    ok := false;
     if(*) {
         count := count + 1;
+        ok := true;
     }
 }
 {
@@ -31,6 +35,7 @@ refines atomic action {:layer 2} _ {
     var success: bool;
 
     if (retry_limit > tries) {
+        ok := false;
         return; // retry limit reached
     }
 
@@ -39,11 +44,11 @@ refines atomic action {:layer 2} _ {
     call success := CAS(n, n+1);
 
     if (success) {
+        ok := true;
         return; // CAS succeeded
     }
 
-    // CAS failed => recurse with incremented retry count
-    call HelperInc(tries + 1);
+    call ok := HelperInc(tries + 1); // CAS failed => recurse with incremented retry count
     return;
 }
 
