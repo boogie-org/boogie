@@ -16,7 +16,9 @@ refines atomic action {:layer 2} _ {
     var n: int;
     ok := false;
     call n := Read();
+
     call Yield();
+    
     call ok := CAS(n, n+1);
     return;
 }

@@ -2,8 +2,6 @@
 // RUN: %diff "%s.expect" "%t"
 
 var {:layer 0, 2} count: int;
-const retry_limit: int;
-axiom retry_limit > 0;
 
 yield procedure {:layer 1} TryInc() returns (ok: bool)
 refines atomic action {:layer 2} _ {
@@ -16,13 +14,20 @@ refines atomic action {:layer 2} _ {
 {
     var n: int;
     var success: bool;
+    var retry_limit: int;
 
-    call ok :=  HelperInc(0);  // Start recursion with 0 retries
+    call retry_limit := ComputeLimit();
+    call ok :=  HelperInc(0, retry_limit);  // Start recursion with 0 retries
     return;
 }
 
+yield procedure {:layer 1} ComputeLimit() returns (retry_limit: int)
+{
+   assume retry_limit > 0;
+}
+
 // Helper recursive procedure
-yield procedure {:layer 1} HelperInc(tries: int) returns (ok: bool)
+yield procedure {:layer 1} HelperInc(tries: int, retry_limit: int) returns (ok: bool)
 refines atomic action {:layer 2} _ {
     ok := false;
     if(*) {
@@ -34,9 +39,9 @@ refines atomic action {:layer 2} _ {
     var n: int;
     var success: bool;
 
-    if (retry_limit > tries) {
-        ok := false;
-        return; // retry limit reached
+    if (tries > retry_limit) {
+        ok := false; // retry limit reached
+        return; 
     }
 
     call n := Read();
@@ -48,8 +53,7 @@ refines atomic action {:layer 2} _ {
         return; // CAS succeeded
     }
 
-    call ok := HelperInc(tries + 1); // CAS failed => recurse with incremented retry count
-    return;
+    call ok := HelperInc(tries + 1, retry_limit); // CAS failed => recurse with incremented retry count
 }
 
 yield procedure {:layer 0} CAS(prev: int, next: int) returns (status: bool);
