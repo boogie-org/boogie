@@ -3,7 +3,7 @@
 
 type TaggedLocNode V = TaggedLoc (Node V) Unit;
 
-datatype Treiber<V> { Treiber(top: Option (LocNode V), {:linear} nodes: Map (One (LocNode V)) (Node V)) }
+datatype Treiber<V> { Treiber(top: Option (LocNode V), nodes: Map (One (LocNode V)) (Node V)) }
 type LocTreiber V = Loc (Treiber V);
 type TaggedLocTreiber V = TaggedLoc (Treiber V) Unit;
 

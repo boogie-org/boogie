@@ -441,16 +441,9 @@ namespace Microsoft.Boogie
             {
               checkingContext.Error(formals1[i], $"mismatched type of {inout}-parameter {name1} in {decl2.Name}");
             }
-            else if (checkLinearity &&
-                (QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR) !=
-                 QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR) ||
-                 QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_IN) !=
-                 QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_IN) ||
-                 QKeyValue.FindStringAttribute(formals1[i].Attributes, CivlAttributes.LINEAR_OUT) !=
-                 QKeyValue.FindStringAttribute(formals2[i].Attributes, CivlAttributes.LINEAR_OUT)))
+            else if (checkLinearity && LinearTypeChecker.FindLinearKind(formals1[i]) != LinearTypeChecker.FindLinearKind(formals2[i]))
             {
-              checkingContext.Error(formals1[i],
-                $"mismatched linearity annotation of {inout}-parameter {name1} in {decl2.Name}");
+              checkingContext.Error(formals1[i], $"mismatched linearity annotation of {inout}-parameter {name1} in {decl2.Name}");
             }
           }
         }

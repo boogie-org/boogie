@@ -8,8 +8,8 @@ var {:layer 2, 3} IntArrayPool: Map (One (Loc IntArray)) (Vec int);
 
 datatype IntArray {
   IntArray(
-    {:linear "no_collect_keys"} mutexes: Map int (One (Loc int)),
-    {:linear "no_collect_keys"} values: Map int (Cell (Loc int) int)
+    mutexes: Map int (One (Loc int)),
+    values: Map int (Cell (Loc int) int)
   )
 }
 
@@ -43,8 +43,8 @@ preserves call IntArrayDom();
 {
   var {:linear} one_loc_mutex: One (Loc int);
   var {:linear} cell_int: Cell (Loc int) int;
-  var {:linear "no_collect_keys"} mutexes: Map int (One (Loc int));
-  var {:linear "no_collect_keys"} values: Map int (Cell (Loc int) int);
+  var {:linear} mutexes: Map int (One (Loc int));
+  var {:linear} values: Map int (Cell (Loc int) int);
   var {:linear} intvec: IntArray;
   var i: int;
   var {:linear} one_loc_i: One (Loc int);
@@ -209,8 +209,8 @@ modifies IntArrayPoolLow;
 {
   var {:linear} one_loc_iv: One (Loc IntArray);
   var {:linear} intvec: IntArray;
-  var {:linear "no_collect_keys"} mutexes: Map int (One (Loc int));
-  var {:linear "no_collect_keys"} values: Map int (Cell (Loc int) int);
+  var {:linear} mutexes: Map int (One (Loc int));
+  var {:linear} values: Map int (Cell (Loc int) int);
 
   one_loc_iv := One(loc_iv);
   call intvec := Map_Get(IntArrayPoolLow, one_loc_iv);
@@ -235,8 +235,8 @@ modifies IntArrayPoolLow;
 {
   var {:linear} one_loc_iv: One (Loc IntArray);
   var {:linear} intvec: IntArray;
-  var {:linear "no_collect_keys"} mutexes: Map int (One (Loc int));
-  var {:linear "no_collect_keys"} values: Map int (Cell (Loc int) int);
+  var {:linear} mutexes: Map int (One (Loc int));
+  var {:linear} values: Map int (Cell (Loc int) int);
 
   one_loc_iv := One(loc_iv);
   call intvec := Map_Get(IntArrayPoolLow, one_loc_iv);
@@ -261,8 +261,8 @@ refines right action {:layer 1, 2} _
 {
   var {:linear} one_loc_iv: One (Loc IntArray);
   var {:linear} intvec: IntArray;
-  var {:linear "no_collect_keys"} mutexes: Map int (One (Loc int));
-  var {:linear "no_collect_keys"} values: Map int (Cell (Loc int) int);
+  var {:linear} mutexes: Map int (One (Loc int));
+  var {:linear} values: Map int (Cell (Loc int) int);
   var {:linear} one_loc_mutex: One (Loc int);
 
   one_loc_iv := One(loc_iv);
@@ -280,8 +280,8 @@ refines atomic action {:layer 1, 1} _
 {
   var {:linear} one_loc_iv: One (Loc IntArray);
   var {:linear} intvec: IntArray;
-  var {:linear "no_collect_keys"} mutexes: Map int (One (Loc int));
-  var {:linear "no_collect_keys"} values: Map int (Cell (Loc int) int);
+  var {:linear} mutexes: Map int (One (Loc int));
+  var {:linear} values: Map int (Cell (Loc int) int);
 
   one_loc_iv := One(loc_iv);
   call intvec := Map_Get(IntArrayPoolLow, one_loc_iv);
@@ -296,8 +296,8 @@ refines atomic action {:layer 1, 1} _
 {
   var {:linear} one_loc_iv: One (Loc IntArray);
   var {:linear} intvec: IntArray;
-  var {:linear "no_collect_keys"} mutexes: Map int (One (Loc int));
-  var {:linear "no_collect_keys"} values: Map int (Cell (Loc int) int);
+  var {:linear} mutexes: Map int (One (Loc int));
+  var {:linear} values: Map int (Cell (Loc int) int);
 
   one_loc_iv := One(loc_iv);
   call intvec := Map_Get(IntArrayPoolLow, one_loc_iv);

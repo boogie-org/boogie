@@ -33,7 +33,7 @@ atomic action {:layer 1,1} atomic_write_x_3 ({:linear} x':int)
 modifies x;
 { x := x'; }
 
-yield procedure {:layer 0} write_x_3 ({:linear_in "lin"} x':int);
+yield procedure {:layer 0} write_x_3 ({:linear_in} x':int);
 refines atomic_write_x_3;
 
 ////////////////////////////////////////////////////////////////////////////////

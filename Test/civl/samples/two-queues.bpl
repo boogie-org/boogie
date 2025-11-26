@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype Queue<V> { Queue(head: LocNode V, tail: LocNode V, {:linear} nodes: Map (One (LocNode V)) (Node V)) }
+datatype Queue<V> { Queue(head: LocNode V, tail: LocNode V, nodes: Map (One (LocNode V)) (Node V)) }
 
 type LocQueue V = Loc (Queue V);
 

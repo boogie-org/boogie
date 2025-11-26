@@ -1744,13 +1744,11 @@ namespace Microsoft.Boogie
      {:sync}
        Synchronized async call.
 
-     {:linear ""domain""}
-       Permission type for domain.
-       Collector function for domain.
-       Linear variable (both global and local).
+     {:linear}
+       Linear variable (both global and input/output parameter).
 
-     {:linear_in ""domain""}
-     {:linear_out ""domain""}
+     {:linear_in}
+     {:linear_out}
        Linear input/output parameter.";
 
     protected override string HelpHeader =>
