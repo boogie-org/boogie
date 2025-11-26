@@ -8,7 +8,7 @@ datatype List {
     )
 }
 
-procedure append({:linear_in} l: List, {:linear_in} m: List) returns ({:linear} l': List)
+procedure append(l: List, m: List) returns ({:linear} l': List)
 {
     var data: int;
     var next: Option (Cell (Loc List) List);
@@ -18,8 +18,8 @@ procedure append({:linear_in} l: List, {:linear_in} m: List) returns ({:linear} 
 
     List(data, next) := l;
     
-    if (next is Some)
-    { Some(cell) := next; Cell(loc_p, tl) := cell; call tl' := append(tl, m); cell := Cell(loc_p, tl'); }
+    if (next == Some(cell)) 
+    { Cell(loc_p, tl) := cell; call tl' := append(tl, m); cell := Cell(loc_p, tl'); }
     else
     { call loc_p := Loc_New(); cell := Cell(loc_p, m); }
     

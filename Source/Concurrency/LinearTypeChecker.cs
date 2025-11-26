@@ -143,6 +143,7 @@ namespace Microsoft.Boogie
                       !IsPrimitiveLinearType(rhsExpr.Type))
             {
               // pack
+              bool addLhsVar = true;
               for (int j = 0; j < constructor.InParams.Count; j++)
               {
                 var field = constructor.InParams[j];
@@ -150,13 +151,20 @@ namespace Microsoft.Boogie
                 {
                   continue;
                 }
-                var arg = nAryExpr.Args[j];
-                if (arg is IdentifierExpr { Decl: Variable v })
+                var arg = (IdentifierExpr)nAryExpr.Args[j];
+                if (start.Contains(arg.Decl))
                 {
-                  start.Remove(v);
+                  start.Remove(arg.Decl);
+                }
+                else
+                {
+                  addLhsVar = false;
                 }
               }
-              lhsVarsToAdd.Add(lhsVar);
+              if (addLhsVar)
+              {
+                lhsVarsToAdd.Add(lhsVar);
+              }
             }
           }
           start.UnionWith(lhsVarsToAdd);
