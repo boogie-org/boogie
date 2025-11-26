@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -699,6 +700,7 @@ namespace Microsoft.Boogie
     
     public static LinearKind FindLinearKind(Variable v)
     {
+      Debug.Assert(v is GlobalVariable || v is Formal);
       if (QKeyValue.FindAttribute(v.Attributes, x => x.Key == CivlAttributes.LINEAR) != null)
       {
         return LinearKind.LINEAR;
