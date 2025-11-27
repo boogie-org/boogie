@@ -11,6 +11,7 @@ namespace Microsoft.Boogie
 
     public Program program;
     private CheckingContext checkingContext;
+    private HashSet<(Absy, string)> errors;
     private CivlTypeChecker civlTypeChecker;
     private Dictionary<Type, ActionDecl> pendingAsyncTypeToActionDecl;
     private Dictionary<Type, LinearDomain> permissionTypeToLinearDomain;
@@ -22,6 +23,7 @@ namespace Microsoft.Boogie
       this.civlTypeChecker = civlTypeChecker;
       this.program = civlTypeChecker.program;
       this.checkingContext = civlTypeChecker.checkingContext;
+      this.errors = new ();
       this.pendingAsyncTypeToActionDecl = new ();
       foreach (var actionDecl in program.TopLevelDeclarations.OfType<ActionDecl>().Where(actionDecl => actionDecl.MaybePendingAsync))
       {
@@ -39,6 +41,11 @@ namespace Microsoft.Boogie
 
     private void Error(Absy node, string message)
     {
+      if (errors.Contains((node, message)))
+      {
+        return;
+      }
+      errors.Add((node, message));
       checkingContext.Error(node, message);
     }
     
@@ -125,15 +132,13 @@ namespace Microsoft.Boogie
             {
               continue;
             }
-            // assignment may violate the disjointness invariant
-            // therefore, drop lhsVar from the set of available variables
-            // but possibly add it to lhsVarsToAdd (added to start later)
             var lhsVar = lhs.DeepAssignedVariable;
-            start.Remove(lhsVar);
             var rhsExpr = assignCmd.Rhss[i];
             if (rhsExpr is IdentifierExpr ie)
             {
-              if (start.Contains(ie.Decl))
+              var rhsIsAvailable = start.Contains(ie.Decl);
+              start.Remove(lhsVar);
+              if (rhsIsAvailable)
               {
                 start.Remove(ie.Decl);
                 lhsVarsToAdd.Add(lhsVar);
@@ -143,28 +148,20 @@ namespace Microsoft.Boogie
                       !IsPrimitiveLinearType(rhsExpr.Type))
             {
               // pack
-              bool addLhsVar = true;
-              for (int j = 0; j < constructor.InParams.Count; j++)
+              var linearArgs = constructor.InParams.Zip(nAryExpr.Args)
+                                .Where(x => !IsOrdinaryType(x.First.TypedIdent.Type))
+                                .Select(x => x.Second).OfType<IdentifierExpr>();
+              bool rhsIsAvailable = linearArgs.All(ie => start.Contains(ie.Decl));
+              start.Remove(lhsVar);
+              if (rhsIsAvailable)
               {
-                var field = constructor.InParams[j];
-                if (IsOrdinaryType(field.TypedIdent.Type))
-                {
-                  continue;
-                }
-                var arg = (IdentifierExpr)nAryExpr.Args[j];
-                if (start.Contains(arg.Decl))
-                {
-                  start.Remove(arg.Decl);
-                }
-                else
-                {
-                  addLhsVar = false;
-                }
-              }
-              if (addLhsVar)
-              {
+                linearArgs.ForEach(ie => { start.Remove(ie.Decl); });
                 lhsVarsToAdd.Add(lhsVar);
               }
+            }
+            else
+            {
+              start.Remove(lhsVar);
             }
           }
           start.UnionWith(lhsVarsToAdd);
@@ -173,8 +170,10 @@ namespace Microsoft.Boogie
         {
           if (!IsOrdinaryType(unpackCmd.Rhs.Type))
           {
-            var ie = unpackCmd.Rhs as IdentifierExpr;
-            if (start.Contains(ie.Decl))
+            var ie = (IdentifierExpr)unpackCmd.Rhs;
+            var rhsIsAvailable = start.Contains(ie.Decl);
+            unpackCmd.UnpackedLhs.ForEach(arg => start.Remove(arg.Decl));
+            if (rhsIsAvailable)
             {
               start.Remove(ie.Decl);
               unpackCmd.UnpackedLhs
@@ -217,7 +216,7 @@ namespace Microsoft.Boogie
             }
             else
             {
-              Error(ie, $"unavailable source {ie} for linear parameter at position {i}");
+              Error(callCmd, $"unavailable source {ie} for linear parameter at position {i}");
             }
           }
           var originalProc = (Procedure)Monomorphizer.GetOriginalDecl(callCmd.Proc);
@@ -273,7 +272,7 @@ namespace Microsoft.Boogie
                 }
                 else
                 {
-                  Error(ie, $"unavailable source {ie} for linear parameter at position {i}");
+                  Error(parCallCallCmd, $"unavailable source {ie} for linear parameter at position {i}");
                 }
               }
             }
@@ -727,15 +726,17 @@ namespace Microsoft.Boogie
     public int CheckLinearParameters(CallCmd callCmd, HashSet<Variable> availableLinearVarsAtCallCmd)
     {
       int errorCount = 0;
-      foreach (var (ie, formal) in callCmd.Ins.Zip(callCmd.Proc.InParams))
+      for (int i = 0; i < callCmd.Ins.Count; i++)
       {
+        var ie = callCmd.Ins[i];
+        var formal = callCmd.Proc.InParams[i];
         if (FindLinearKind(formal) == LinearKind.ORDINARY)
         {
           continue;
         }
         if (ie is IdentifierExpr actual && !availableLinearVarsAtCallCmd.Contains(actual.Decl))
         {
-          Error(actual, "argument must be available");
+          Error(callCmd, $"unavailable source {ie} for linear parameter at position {i}");
           errorCount++;
         }
       }
