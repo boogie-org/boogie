@@ -80,33 +80,6 @@ namespace Microsoft.Boogie
       collector.VisitProgram(linearTypeChecker.program);
       return (collector.permissionTypeToLinearDomain, collector.collectors);
     }
-  
-    public override Implementation VisitImplementation(Implementation node)
-    {
-      // Boogie parser strips the attributes from the parameters of the implementation
-      // leaving them only on the parameters of the corresponding procedures.
-      // This override exists only to patch this problem.
-      var proc = node.Proc;
-      for (int i = 0; i < proc.InParams.Count; i++)
-      {
-        var procInParam = proc.InParams[i];
-        if (procInParam.Attributes != null)
-        {
-          var implInParam = node.InParams[i];
-          implInParam.Attributes = (QKeyValue)procInParam.Attributes.Clone();
-        }
-      }
-      for (int i = 0; i < proc.OutParams.Count; i++)
-      {
-        var procOutParam = proc.OutParams[i];
-        if (procOutParam.Attributes != null)
-        {
-          var implOutParam = node.OutParams[i];
-          implOutParam.Attributes = (QKeyValue)procOutParam.Attributes.Clone();
-        }
-      }
-      return base.VisitImplementation(node);
-    }
 
     public override Variable VisitVariable(Variable node)
     {

@@ -41,6 +41,9 @@ namespace Microsoft.Boogie
 
     private void Error(Absy node, string message)
     {
+      // Availability checking might process each command multiple times
+      // potentially reporting the same error multiple times.
+      // The errors dictionary ensures that each error is reported exactly once.
       if (errors.Contains((node, message)))
       {
         return;
