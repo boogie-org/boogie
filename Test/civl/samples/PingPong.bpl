@@ -23,8 +23,8 @@ var {:layer 0,1} channels: [ChannelId]ChannelPair;
 // Right permission is used to receive from the right channel and send to the left channel.
 datatype ChannelHandle { Left(cid: ChannelId), Right(cid: ChannelId) }
 
-function {:inline} BothHandles(cid: ChannelId): Set ChannelHandle
-{ Set_Add(Set_Singleton(Left(cid)), Right(cid)) }
+function {:inline} BothHandles(cid: ChannelId): Set (One ChannelHandle)
+{ Set_Add(Set_Singleton(One(Left(cid))), One(Right(cid))) }
 
 function {:inline} Empty() : [int]int { MapConst(0) }
 
@@ -32,7 +32,7 @@ function {:inline} Singleton(x: int): [int]int { Empty()[x := 1] }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set ChannelHandle);
+yield invariant {:layer 1} YieldMain(cid: ChannelId, {:linear} handles: Set (One ChannelHandle));
 preserves handles == BothHandles(cid);
 preserves channels[cid] == ChannelPair(Empty(), Empty());
 
@@ -53,16 +53,18 @@ preserves (var left_channel, right_channel := channels[p->val->cid]->left, chann
 ////////////////////////////////////////////////////////////////////////////////
 
 yield procedure {:layer 1}
-main (cid: ChannelId, {:linear_in} handles: Set ChannelHandle)
+main (cid: ChannelId, {:linear_in} handles: Set (One ChannelHandle))
 requires call YieldMain(cid, handles);
 {
-  var {:linear} handles': Set ChannelHandle;
-  var {:linear} left: One ChannelHandle;
-  var {:linear} right: One ChannelHandle;
+  var handles': Set (One ChannelHandle);
+  var left: One ChannelHandle;
+  var right: One ChannelHandle;
 
   handles' := handles;
-  call left := One_Get(handles', Left(cid));
-  call right := One_Get(handles', Right(cid));
+  left := One(Left(cid));
+  call One_Get(handles', left);
+  right := One(Right(cid));
+  call One_Get(handles', right);
   call send(left->val, 1);
   async call ping(1, left);
   async call pong(1, right);

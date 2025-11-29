@@ -49,17 +49,22 @@ function noConflicts(xids: (Set TransactionId), xid: TransactionId) : bool
     !(exists x: TransactionId :: Set_Contains(xids, x) && Conflict[x][xid])
 }
 
-function allVoteRequests(xid: TransactionId) : Set VoteRequest
+function {:inline} VoteRequests(xid: TransactionId, i: int, j: int) : Set (One VoteRequest)
 {
-    Set((lambda vr:VoteRequest :: vr->xid == xid &&  1 <= vr->rid && vr->rid < n+1))
+    Set((lambda vr: One VoteRequest :: vr->val->xid == xid &&  i <= vr->val->rid && vr->val->rid <= j))
 }
 
-function remainingVoteRequests(xid: TransactionId, i:int) : Set VoteRequest
+function allVoteRequests(xid: TransactionId) : Set (One VoteRequest)
 {
-    Set((lambda vr:VoteRequest :: vr->xid == xid &&  i <= vr->rid && vr->rid < n+1))
+    VoteRequests(xid, 1, n)
 }
 
-yield procedure {:layer 1} TPC({:linear} xid: One TransactionId, {:linear_in} vrs: (Set VoteRequest))
+function remainingVoteRequests(xid: TransactionId, i: int) : Set (One VoteRequest)
+{
+    VoteRequests(xid, i, n)
+}
+
+yield procedure {:layer 1} TPC({:linear} xid: One TransactionId, {:linear_in} vrs: (Set (One VoteRequest)))
 requires {:layer 1} vrs == allVoteRequests(xid->val);
 requires call LockedNoConflicts();
 requires call CommittedSubsetLocked();
@@ -67,7 +72,7 @@ requires call XidNotInCommitted(xid);
 {
     var d: Decision;
     var votes: [ReplicaId]Vote;
-    var {:linear} vrs': Set VoteRequest;
+    var vrs': Set (One VoteRequest);
     var i: int;
 
     d := COMMIT();
@@ -96,30 +101,31 @@ requires call XidNotInCommitted(xid);
     }
 }
 
-yield right procedure {:layer 1} vote_all(xid: TransactionId, {:linear_in} vrs: Set VoteRequest, i: int) returns (votes: [ReplicaId]Vote, {:linear} vrs': Set VoteRequest)
-requires {:layer 1} vrs == Set((lambda vr:VoteRequest :: vr->xid == xid && 1 <= vr->rid && vr->rid < i+1));
+yield right procedure {:layer 1} vote_all(xid: TransactionId, {:linear_in} vrs: Set (One VoteRequest), i: int) returns (votes: [ReplicaId]Vote, {:linear} vrs': Set (One VoteRequest))
+requires {:layer 1} vrs == VoteRequests(xid, 1, i);
 ensures {:layer 1} (forall j:int :: 1 <= j && j < i+1 && votes[j] == YES() ==> Set_Contains(locked_transactions[j], xid));
-ensures {:layer 1} vrs' ==Set((lambda vr:VoteRequest :: vr->xid == xid && 1 <= vr->rid && vr->rid < i+1));
+ensures {:layer 1} vrs' == VoteRequests(xid, 1, i);
 preserves {:layer 1} LockedNoConflicts(locked_transactions);
 preserves {:layer 1} CommittedSubsetLocked(locked_transactions, committed_transactions);
 ensures {:layer 1} (forall j:int :: 1 <= j && j < n+1 ==> IsSubset(old(locked_transactions)[j]->val, locked_transactions[j]->val));
 ensures {:layer 1} (forall j:int :: 1 <= j && j < i+1 ==> votes[j] != NONE());
 modifies locked_transactions;
 {
-    var {:linear} vr: One VoteRequest;
+    var vr: One VoteRequest;
     var out: Vote;
 
     vrs' := vrs;
     if (1 <= i)
     {
-        call vr := One_Get(vrs', VoteRequest(xid, i));
+        vr := One(VoteRequest(xid, i));
+        call One_Get(vrs', vr);
         call votes, vrs' := vote_all(xid, vrs', i-1) |  out := vote(vr);
         votes[i] := out;
         call One_Put(vrs', vr);
     }
 }
 
-yield left procedure {:layer 1} finalize_all(d: Decision, {:linear} xid: One TransactionId, {:linear_in} vrs: Set VoteRequest)
+yield left procedure {:layer 1} finalize_all(d: Decision, {:linear} xid: One TransactionId, {:linear_in} vrs: Set (One VoteRequest))
 requires {:layer 1} vrs == allVoteRequests(xid->val);
 requires {:layer 1}  (forall j:int :: {:add_to_pool "J", j} d == COMMIT() &&  1 <= j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
 ensures {:layer 1}  (forall j:int :: d == COMMIT() && 1 <=j && j < n+1 ==> Set_Contains(locked_transactions[j], xid->val));
@@ -130,8 +136,8 @@ ensures {:layer 1} (forall j:int, xid0 : TransactionId :: 1 <= j && j < n+1 && x
 modifies locked_transactions;
 {
     var i: int;
-    var {:linear} vr: One VoteRequest;
-    var {:linear} vrs': Set VoteRequest;
+    var vr: One VoteRequest;
+    var vrs': Set (One VoteRequest);
 
     vrs' := vrs;
     i := 1;
@@ -145,7 +151,8 @@ modifies locked_transactions;
     invariant {:layer 1} !Set_Contains(committed_transactions, xid->val);
     invariant {:layer 1} (forall j:int, xid0 : TransactionId :: 1 <= j && j < n+1 && xid0 != xid->val && Set_Contains(old(locked_transactions)[j], xid0) ==> Set_Contains(locked_transactions[j], xid0));
     {
-        call vr := One_Get(vrs', VoteRequest(xid->val, i));
+        vr := One(VoteRequest(xid->val, i));
+        call One_Get(vrs', vr);
         async call {:sync} finalize(d, vr);
         i := i + 1;
     }

@@ -7,13 +7,13 @@ function f(One X): One X;
 
 yield procedure {:layer 1} D()
 {
-    var {:linear} a: One X;
-    var {:linear} x: One X;
-    var {:linear} b: Set X;
+    var a: One X;
+    var x: One X;
+    var b: Set (One X);
     var c: One X;
-    var {:linear} d: One X;
+    var d: One X;
 
-    b->val[a->val] := true;
+    b->val[a] := true;
 
     a := c;
 
@@ -49,18 +49,18 @@ yield procedure {:layer 1} E({:linear_in} a: One X, {:linear_in} b: One X) retur
 
 var {:linear} g: One int;
 
-procedure G(i:int) returns({:linear} r: One int)
+procedure G(i:int) returns ({:linear} r: One int)
 {
   r := g;
 }
 
-procedure H(i:int) returns({:linear} r: One int)
+procedure H(i:int) returns ({:linear} r: One int)
 modifies g;
 {
   g := r;
 }
 
-yield procedure {:layer 1} I({:linear_in} x: One int) returns({:linear} x': One int)
+yield procedure {:layer 1} I({:linear_in} x: One int) returns ({:linear} x': One int)
 {
   x' := x;
 }
@@ -69,13 +69,13 @@ yield procedure {:layer 1} J()
 {
 }
 
-yield procedure {:layer 1} P1({:linear_in} x: One int) returns({:linear} x': One int)
+yield procedure {:layer 1} P1({:linear_in} x: One int) returns ({:linear} x': One int)
 {
   call x' := I(x) | J();
   call x' := I(x');
 }
 
-yield procedure {:layer 1} P2({:linear_in} x: One int) returns({:linear} x': One int)
+yield procedure {:layer 1} P2({:linear_in} x: One int) returns ({:linear} x': One int)
 {
   call x' := I(x);
   call x' := I(x') | J();

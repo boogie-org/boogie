@@ -1,4 +1,4 @@
-yield-requires-ensures-errors-4.bpl(15,29): Error: argument must be available
-yield-requires-ensures-errors-4.bpl(16,28): Error: argument must be available
-yield-requires-ensures-errors-4.bpl(17,30): Error: argument must be available
+yield-requires-ensures-errors-4.bpl(15,9): Error: unavailable source c for linear parameter at position 0
+yield-requires-ensures-errors-4.bpl(16,8): Error: unavailable source b for linear parameter at position 0
+yield-requires-ensures-errors-4.bpl(17,10): Error: unavailable source c for linear parameter at position 0
 3 type checking errors detected in yield-requires-ensures-errors-4.bpl

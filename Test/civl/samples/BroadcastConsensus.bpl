@@ -47,7 +47,7 @@ This precondition is used to show that COLLECT is a left mover.
 
 // processes deposit Broadcast and Collect permissions in this global
 // variable once they are finished with the respective operations
-var {:layer 0,2} {:linear} usedPermissions: Set Permission;
+var {:layer 0,2} {:linear} usedPermissions: Set (One Permission);
 
 // array of values in the processes
 // each process broadcasts its value to all other processes
@@ -87,8 +87,8 @@ function value_card(v:val, value:[pid]val, j:pid) : int
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield invariant {:layer 1} YieldInit#1({:linear} ps: Set Permission);
-preserves ps->val == (lambda {:pool "A"} p: Permission ::IsPid(p->i));
+yield invariant {:layer 1} YieldInit#1({:linear} ps: Set (One Permission));
+preserves ps->val == (lambda {:pool "A"} p: One Permission ::IsPid(p->val->i));
 preserves (forall ii:pid :: channels[ii] == MultisetEmpty);
 preserves values == MultisetEmpty;
 preserves usedPermissions == Set_Empty();
@@ -100,34 +100,36 @@ invariant {:layer 2} CollectPre();
 preserves values == (lambda v:val :: value_card(v, value, n));
 preserves card(values) == n;
 preserves MultisetSubsetEq(MultisetEmpty, values);
-preserves (forall q: Permission:: q is Broadcast && IsPid(q->i) ==> Set_Contains(usedPermissions, q));
+preserves (forall q: One Permission:: q->val is Broadcast && IsPid(q->val->i) ==> Set_Contains(usedPermissions, q));
 
 ////////////////////////////////////////////////////////////////////////////////
 
-yield left procedure {:layer 2} Main({:linear_in} ps: Set Permission)
+yield left procedure {:layer 2} Main({:linear_in} ps: Set (One Permission))
 requires call YieldInit#1(ps);
-requires {:layer 2} ps->val == (lambda {:pool "A"} p: Permission ::IsPid(p->i));
+requires {:layer 2} ps->val == (lambda {:pool "A"} p: One Permission ::IsPid(p->val->i));
 requires {:layer 2} values == MultisetEmpty;
 requires {:layer 2} usedPermissions == Set_Empty();
 ensures {:layer 2} (forall j: pid:: IsPid(j) ==> decision[j] == max((lambda v: val:: value_card(v, value, n))));
 modifies values, usedPermissions, decision;
 {
   var i: pid;
-  var {:linear} s: One Permission;
-  var {:linear} r: One Permission;
-  var {:linear} psb, psc: Set Permission;
+  var s: One Permission;
+  var r: One Permission;
+  var psb, psc: Set (One Permission);
 
   assume {:add_to_pool "A", Broadcast(1)} true;
   psc := ps;
-  call psb := Set_Get(psc, (lambda p: Permission:: p is Broadcast && IsPid(p->i)));
+  psb := Set((lambda p: One Permission:: p->val is Broadcast && IsPid(p->val->i)));
+  call Set_Get(psc, psb);
   i := 1;
   while (i <= n)
   invariant {:layer 1,2} 1 <= i && i <= n + 1;
-  invariant {:layer 1,2} psb->val == (lambda p: Permission:: p is Broadcast && i <= p->i && p->i <= n);
+  invariant {:layer 1,2} psb->val == (lambda p: One Permission:: p->val is Broadcast && i <= p->val->i && p->val->i <= n);
   invariant {:layer 2} MultisetSubsetEq(MultisetEmpty, values) && values == (lambda v: val:: value_card(v, value, i-1)) && card(values) == i-1;
-  invariant {:layer 2} Set((lambda p: Permission:: p is Broadcast && IsPid(p->i))) == Set_Union(usedPermissions, psb);
+  invariant {:layer 2} Set((lambda p: One Permission:: p->val is Broadcast && IsPid(p->val->i))) == Set_Union(usedPermissions, psb);
   {
-    call s := One_Get(psb, Broadcast(i));
+    s := One(Broadcast(i));
+    call One_Get(psb, s);
     async call {:sync} Broadcast(s, i);
     i := i + 1;
   }
@@ -137,11 +139,12 @@ modifies values, usedPermissions, decision;
   i := 1;
   while (i <= n)
   invariant {:layer 1,2} 1 <= i && i <= n + 1;
-  invariant {:layer 1,2} psc->val == (lambda p: Permission:: p is Collect && i <= p->i && p->i <= n);
-  invariant {:layer 2} (forall q: Permission:: q is Broadcast && IsPid(q->i) ==> Set_Contains(usedPermissions, q));
+  invariant {:layer 1,2} psc->val == (lambda p: One Permission:: p->val is Collect && i <= p->val->i && p->val->i <= n);
+  invariant {:layer 2} (forall q: One Permission:: q->val is Broadcast && IsPid(q->val->i) ==> Set_Contains(usedPermissions, q));
   invariant {:layer 2} (forall j: pid:: 1 <= j && j < i ==> decision[j] == max(values));
   {
-    call r := One_Get(psc, Collect(i));
+    r := One(Collect(i));
+    call One_Get(psc, r);
     async call {:sync} Collect(r, i);
     i := i + 1;
   }

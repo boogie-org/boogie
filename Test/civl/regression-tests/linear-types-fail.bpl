@@ -1,10 +1,12 @@
 // RUN: %parallel-boogie -lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype A { A({:linear} x: One int) }
+datatype A { A(x: One int) }
 
-procedure P0(a: A) returns ({:linear} a': One A) {
-    a' := One(a);
+datatype B { B(a: A) }
+
+procedure P0(a: A) returns ({:linear} b: B) {
+    b := B(a);
 }
 
 procedure P1({:linear_in} a: A) returns ({:linear} a': A) {
@@ -24,12 +26,12 @@ procedure P4(a: int) returns ({:linear} a': int) {
     a' := a;
 }
 
-procedure P5({:linear} a: Set int, {:linear_in} b: One int) {
+procedure P5({:linear} a: Set (One int), {:linear_in} b: One int) {
     call One_Put(a, b);
 }
 
-procedure P6({:linear_in} a: Set int, {:linear} b: One int) {
-    var {:linear} a': Set int;
+procedure P6({:linear_in} a: Set (One int), {:linear} b: One int) {
+    var a': Set (One int);
     a' := a;
     call One_Put(a', b);
 }

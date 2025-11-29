@@ -4,7 +4,7 @@ type X;
 const nil: X;
 var {:layer 0,1} l: X;
 var {:layer 0,1} x: int;
-var {:layer 0,1}{:linear} unallocated: Set X;
+var {:layer 0,1}{:linear} unallocated: Set (One X);
 
 yield procedure {:layer 1} Allocate() returns ({:linear} xl: One X)
 ensures {:layer 1} xl->val != nil;
@@ -14,7 +14,7 @@ ensures {:layer 1} xl->val != nil;
 
 yield procedure {:layer 1} main()
 {
-    var {:linear} tid: One X;
+    var tid: One X;
     var val: int;
 
     while (*)
@@ -49,7 +49,7 @@ refines AtomicSet;
 
 atomic action {:layer 1} AtomicAllocateLow() returns ({:linear} xl: One X)
 modifies unallocated;
-{ assume xl->val != nil; assume Set_Contains(unallocated, xl->val); call One_Split(unallocated, xl); }
+{ assume xl->val != nil; assume Set_Contains(unallocated, xl); call One_Get(unallocated, xl); }
 
 yield procedure {:layer 0} AllocateLow() returns ({:linear} xl: One X);
 refines AtomicAllocateLow;

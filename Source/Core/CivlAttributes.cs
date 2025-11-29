@@ -208,10 +208,10 @@ namespace Microsoft.Boogie
   {
     public static HashSet<string> LinearPrimitives = new()
     {
-      "Loc_New", "TaggedLocSet_New",
-      "Map_MakeEmpty", "Map_Pack", "Map_Unpack", "Map_Split", "Map_Join",
-      "Map_Get", "Map_Put", "Map_GetValue", "Map_PutValue",
-      "Set_MakeEmpty", "Set_Split", "Set_Get", "Set_Put", "One_Split", "One_Get", "One_Put"
+      "Loc_New", "TaggedLocs_New",
+      "Map_MakeEmpty", "Map_Get", "Map_Put",
+      "Set_MakeEmpty", "Set_Get", "Set_Put",
+      "One_Get", "One_Put"
     };
 
     public static bool IsPrimitive(DeclWithFormals decl)
@@ -240,11 +240,9 @@ namespace Microsoft.Boogie
       switch (Monomorphizer.GetOriginalDecl(callCmd.Proc).Name)
       {
         case "Loc_New":
-        case "TaggedLocSet_New":
+        case "TaggedLocs_New":
         case "Set_MakeEmpty":
         case "Map_MakeEmpty":
-        case "Map_Pack":
-        case "Map_Unpack":
           return null;
         default:
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);

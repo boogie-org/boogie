@@ -1,11 +1,11 @@
-// RUN: %parallel-boogie -lib:base -lib:node -vcsSplitOnEveryAssert "%s" > "%t"
+// RUN: %parallel-boogie -lib:base -lib:node "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-datatype Queue<V> { Queue(head: LocNode V, tail: LocNode V, {:linear} nodes: Map (LocNode V) (Node V)) }
+datatype Queue<V> { Queue(head: LocNode V, tail: LocNode V, nodes: Map (One (LocNode V)) (Node V)) }
 
 type LocQueue V = Loc (Queue V);
 
-var {:linear} {:layer 0, 1} queues: Map (LocQueue int) (Queue int);
+var {:linear} {:layer 0, 1} queues: Map (One (LocQueue int)) (Queue int);
 var {:linear} {:layer 0, 1} pos: One (TaggedLoc (Queue int) Unit);
 var {:linear} {:layer 0, 1} neg: One (TaggedLoc (Queue int) Unit);
 
@@ -20,21 +20,21 @@ function {:inline} QueueElems(q: Queue int): [LocNode int]bool
 }
 
 yield invariant {:layer 1} PosInv();
-preserves Map_Contains(queues, pos->val->loc);
-preserves (var q := Map_At(queues, pos->val->loc); IsAcyclic(q) &&
+preserves Map_Contains(queues, One(pos->val->loc));
+preserves (var q := Map_At(queues, One(pos->val->loc)); IsAcyclic(q) &&
             (forall loc_n: LocNode int:: QueueElems(q)[loc_n] ==>
-                Map_Contains(q->nodes, loc_n) &&
-                (loc_n == q->tail || (var node := Map_At(q->nodes, loc_n); node->val > 0))));
+                Map_Contains(q->nodes, One(loc_n)) &&
+                (loc_n == q->tail || (var node := Map_At(q->nodes, One(loc_n)); node->val > 0))));
 
 yield invariant {:layer 1} NegInv();
-preserves Map_Contains(queues, neg->val->loc);
-preserves (var q := Map_At(queues, neg->val->loc); IsAcyclic(q) &&
+preserves Map_Contains(queues, One(neg->val->loc));
+preserves (var q := Map_At(queues, One(neg->val->loc)); IsAcyclic(q) &&
             (forall loc_n: LocNode int:: QueueElems(q)[loc_n] ==>
-                Map_Contains(q->nodes, loc_n) &&
-                (loc_n == q->tail || (var node := Map_At(q->nodes, loc_n); node->val < 0))));
+                Map_Contains(q->nodes, One(loc_n)) &&
+                (loc_n == q->tail || (var node := Map_At(q->nodes, One(loc_n)); node->val < 0))));
 
 
-yield procedure {:layer 1} Producer(i: int)
+yield procedure {:layer 1} {:vcs_split_on_every_assert} Producer(i: int)
 preserves call PosInv();
 preserves call NegInv();
 {
@@ -89,20 +89,22 @@ refines both action {:layer 1} _ {
 yield procedure {:layer 0} Enqueue(loc_q: LocQueue int, i: int);
 refines action {:layer 1} _
 {
-    var {:linear} one_loc_q: One (LocQueue int);
-    var {:linear} queue: Queue int;
+    var one_loc_q: One (LocQueue int);
+    var queue: Queue int;
     var head, tail: LocNode int;
-    var {:linear} nodes: Map (LocNode int) (Node int);
-    var {:linear} one_loc_n, new_one_loc_n: One (LocNode int);
+    var nodes: Map (One (LocNode int)) (Node int);
+    var one_loc_n, new_one_loc_n: One (LocNode int);
     var node: Node int;
 
-    call one_loc_q, queue := Map_Get(queues, loc_q);
+    one_loc_q := One(loc_q);
+    call queue := Map_Get(queues, one_loc_q);
     Queue(head, tail, nodes) := queue;
 
     call new_one_loc_n := Loc_New();
     call Map_Put(nodes, new_one_loc_n, Node(None(), 0));
 
-    call one_loc_n, node := Map_Get(nodes, tail);
+    one_loc_n := One(tail);
+    call node := Map_Get(nodes, one_loc_n);
     node := Node(Some(new_one_loc_n->val), i);
     call Map_Put(nodes, one_loc_n, node);
 
@@ -113,19 +115,21 @@ refines action {:layer 1} _
 yield procedure {:layer 0} Dequeue(loc_q: LocQueue int) returns (i: int);
 refines action {:layer 1} _
 {
-    var {:linear} one_loc_q: One (LocQueue int);
-    var {:linear} queue: Queue int;
+    var one_loc_q: One (LocQueue int);
+    var queue: Queue int;
     var head, tail: LocNode int;
-    var {:linear} nodes: Map (LocNode int) (Node int);
-    var {:linear} one_loc_n: One (LocNode int);
+    var nodes: Map (One (LocNode int)) (Node int);
+    var one_loc_n: One (LocNode int);
     var node: Node int;
     var next: Option (LocNode int);
 
-    call one_loc_q, queue := Map_Get(queues, loc_q);
+    one_loc_q := One(loc_q);
+    call queue := Map_Get(queues, one_loc_q);
     Queue(head, tail, nodes) := queue;
 
     assume head != tail;
-    call one_loc_n, node := Map_Get(nodes, head);
+    one_loc_n := One(head);
+    call node := Map_Get(nodes, one_loc_n);
     Node(next, i) := node;
 
     assert next is Some;

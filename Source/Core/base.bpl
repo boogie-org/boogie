@@ -276,53 +276,38 @@ function {:inline} Map_Collector<T,U>(a: Map T U): [T]bool
   Set_Collector(a->dom)
 }
 
+function {:inline} Map_Collector_Empty<T,U,P>(a: Map T U): [P]bool
+{
+  MapConst(false)
+}
+
 /// singleton set
 datatype One<T> { One(val: T) }
 
-function {:inline} One_Collector<T>(a: One T): [T]bool
+function {:inline} One_Collector<T>(a: One T): [One T]bool
 {
-  MapOne(a->val)
+  MapOne(a)
 }
 
 /// singleton map
-datatype Cell<T,U> { Cell({:linear} key: One T, val: U) }
-
-function {:inline} Cell_Collector<T,U>(a: Cell T U): [T]bool
-{
-  MapOne(a->key->val)
-}
+datatype Cell<T,U> { Cell(key: One T, val: U) }
 
 /// linear primitives
 pure procedure {:inline 1} Set_MakeEmpty<K>() returns ({:linear} l: Set K)
 {
   l := Set_Empty();
 }
-pure procedure Set_Split<K>({:linear} path: Set K, {:linear_out} l: Set K);
-pure procedure Set_Get<K>({:linear} path: Set K, k: [K]bool) returns ({:linear} l: Set K);
+pure procedure Set_Get<K>({:linear} path: Set K, {:linear_out} l: Set K);
 pure procedure Set_Put<K>({:linear} path: Set K, {:linear_in} l: Set K);
-pure procedure One_Split<K>({:linear} path: Set K, {:linear_out} l: One K);
-pure procedure One_Get<K>({:linear} path: Set K, k: K) returns ({:linear} l: One K);
-pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: One K);
+pure procedure One_Get<K>({:linear} path: Set K, {:linear_out} l: K);
+pure procedure One_Put<K>({:linear} path: Set K, {:linear_in} l: K);
 
 pure procedure {:inline 1} Map_MakeEmpty<K,V>() returns ({:linear} m: Map K V)
 {
   m := Map_Empty();
 }
-pure procedure {:inline 1} Map_Pack<K,V>({:linear_in} dom: Set K, val: [K]V) returns ({:linear} m: Map K V)
-{
-  m := Map(dom, MapIte(dom->val, val, MapConst(Default())));
-}
-pure procedure {:inline 1} Map_Unpack<K,V>({:linear_in} m: Map K V) returns ({:linear} dom: Set K, val: [K]V)
-{
-  dom := m->dom;
-  val := m->val;
-}
-pure procedure Map_Split<K,V>({:linear} path: Map K V, s: Set K) returns ({:linear} m: Map K V);
-pure procedure Map_Join<K,V>({:linear} path: Map K V, {:linear_in} m: Map K V);
-pure procedure Map_Get<K,V>({:linear} path: Map K V, k: K) returns ({:linear} l: One K, {:linear} v: V);
-pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} l: One K, {:linear_in} v: V);
-pure procedure Map_GetValue<K,V>({:linear} path: Map K V, k: K) returns ({:linear} v: V);
-pure procedure Map_PutValue<K,V>({:linear} path: Map K V, k: K, {:linear_in} v: V);
+pure procedure Map_Get<K,V>({:linear} path: Map K V, {:linear_out} k: K) returns ({:linear} v: V);
+pure procedure Map_Put<K,V>({:linear} path: Map K V, {:linear_in} k: K, {:linear_in} v: V);
 
 type Loc _;
 
@@ -333,17 +318,19 @@ pure procedure {:inline 1} Loc_New<V>() returns ({:linear} {:pool "Loc_New"} l: 
 
 datatype TaggedLoc<V,T> { TaggedLoc(loc: Loc V, tag: T) }
 
-pure procedure {:inline 1} TaggedLocSet_New<V,T>(tags: Set T) returns ({:linear} {:pool "Loc_New"} l: One (Loc V), {:linear} tagged_locs: Set (TaggedLoc V T))
+pure procedure {:inline 1} TaggedLocs_New<V,T>(tags: Set T) returns ({:linear} {:pool "Loc_New"} l: One (Loc V), {:linear} tagged_locs: Set (One (TaggedLoc V T)))
 {
   assume {:add_to_pool "Loc_New", l} true;
-  tagged_locs := Set((lambda x: TaggedLoc V T :: x->loc == l->val && Set_Contains(tags, x->tag)));
+  tagged_locs := Set((lambda x: One (TaggedLoc V T) :: x->val->loc == l->val && Set_Contains(tags, x->val->tag)));
 }
 
+/// Async primitives
 procedure create_async<T>(PA: T);
 procedure create_asyncs<T>(PAs: [T]bool);
 procedure create_multi_asyncs<T>(PAs: [T]int);
 procedure set_choice<T>(choice: T);
 
+/// Helpers
 pure procedure Copy<T>(v: T) returns (v': T);
 ensures v' == v;
 

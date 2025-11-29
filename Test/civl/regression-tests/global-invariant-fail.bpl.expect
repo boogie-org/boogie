@@ -1,6 +1,6 @@
 global-invariant-fail.bpl(7,1): Error: Non-interference check failed
 Execution trace:
-    (0,0): init
+    global-invariant-fail.bpl(24,14): inline$AnonymousAction_64$0$Entry
     global-invariant-fail.bpl(26,7): inline$AnonymousAction_64$0$anon0
     global-invariant-fail.bpl(24,14): inline$AnonymousAction_64$0$Return
 

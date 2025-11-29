@@ -8,9 +8,9 @@ procedure Allocate() returns ({:linear} x: [int]bool);
 
 procedure main()
 {
-   var {:linear} x: [int] bool;
-   var {:linear} x1: [int] bool;
-   var {:linear} x2: [int] bool;
+   var x: [int] bool;
+   var x1: [int] bool;
+   var x2: [int] bool;
 
    call x := Allocate();
    assume x == MapConst(true);

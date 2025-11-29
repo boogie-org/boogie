@@ -7,7 +7,7 @@ const nil: X;
 var {:layer 0,3} A: X;
 var {:layer 0,3} B: X;
 var {:layer 0,3} counter: int;
-var {:layer 0,3}{:linear} unallocated: Set X;
+var {:layer 0,3}{:linear} unallocated: Set (One X);
 
 right action {:layer 1,3} AtomicLockA({:linear} tid: One X)
 modifies A;
@@ -80,9 +80,8 @@ refines AtomicAssertB;
 right action {:layer 1,3} AtomicAllocTid() returns ({:linear} tid: One X)
 modifies unallocated;
 {
-  var x: X;
-  assume x != nil && Set_Contains(unallocated, x);
-  call tid := One_Get(unallocated, x);
+  assume Set_Contains(unallocated, tid) && tid->val != nil;
+  call One_Get(unallocated, tid);
 }
 
 yield procedure {:layer 0} AllocTid() returns ({:linear} tid: One X);
@@ -148,7 +147,7 @@ yield procedure {:layer 3} main({:linear} tid: One X)
 requires {:layer 3} tid->val != nil;
 requires call YieldCounter();
 {
-    var {:linear} cid: One X;
+    var cid: One X;
 
     while (*)
     invariant {:yields} true;

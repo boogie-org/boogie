@@ -50,8 +50,8 @@ datatype DirPermission {
   DirPermission(i: CacheId, ma: MemAddr)
 }
 
-function {:inline} WholeDirPermission(ma: MemAddr): Set DirPermission {
-  Set((lambda {:pool "DirPermission"} x: DirPermission :: x->ma == ma))
+function {:inline} WholeDirPermission(ma: MemAddr): Set (One DirPermission) {
+  Set((lambda {:pool "DirPermission"} x: One DirPermission :: x->val->ma == ma))
 }
 
 // Implementation state
@@ -62,8 +62,8 @@ var {:layer 0,2} cache: [CacheId][CacheAddr]CacheLine;
 var {:layer 0,1} cacheBusy: [CacheId][CacheAddr]bool;
 
 // Auxiliary state to replace dirBusy and cacheBusy
-var {:linear} {:layer 1,2} cachePermissions: Set CachePermission;
-var {:linear} {:layer 1,2} dirPermissions: Set DirPermission;
+var {:linear} {:layer 1,2} cachePermissions: Set (One CachePermission);
+var {:linear} {:layer 1,2} dirPermissions: Set (One DirPermission);
 
 // Specification state
 var {:layer 1,3} absMem: [MemAddr]Value;
@@ -92,7 +92,7 @@ The yield invariant at this level is a global invariant connecting directory and
 
 /// Yield invariants
 yield invariant {:layer 1} YieldInv#1();
-preserves (forall i: CacheId, ca: CacheAddr:: Set_Contains(cachePermissions, CachePermission(i, ca)) || cacheBusy[i][ca]);
+preserves (forall i: CacheId, ca: CacheAddr:: Set_Contains(cachePermissions, One(CachePermission(i, ca))) || cacheBusy[i][ca]);
 preserves (forall ma: MemAddr:: Set_IsSubset(WholeDirPermission(ma), dirPermissions) || dirBusy[ma]);
 
 yield invariant {:layer 2} YieldInv#2();
@@ -109,12 +109,12 @@ preserves (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==>
             (forall i: CacheId:: cache[i][Hash(ma)]->ma == ma ==> Set_Contains(dir[ma]->iset, i) || cache[i][Hash(ma)]->state == Invalid()));
 preserves (forall ma: MemAddr:: {dir[ma]} dir[ma] is Sharers ==> mem[ma] == absMem[ma]);
 
-yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: Set CachePermission);
-preserves Set_Contains(drp, CachePermission(i, Hash(ma)));
+yield invariant {:layer 2} YieldEvict(i: CacheId, ma: MemAddr, value: Value, {:linear} drp: Set (One CachePermission));
+preserves Set_Contains(drp, One(CachePermission(i, Hash(ma))));
 preserves value == cache[i][Hash(ma)]->value;
 
-yield invariant {:layer 2} YieldRead(i: CacheId, ma: MemAddr, {:linear} drp: Set CachePermission);
-preserves Set_Contains(drp, CachePermission(i, Hash(ma)));
+yield invariant {:layer 2} YieldRead(i: CacheId, ma: MemAddr, {:linear} drp: Set (One CachePermission));
+preserves Set_Contains(drp, One(CachePermission(i, Hash(ma))));
 preserves (var line := cache[i][Hash(ma)]; (line->state == Invalid() || line->state == Shared()) && line->ma == ma);
 
 /// Cache
@@ -169,7 +169,7 @@ preserves call YieldInv#2();
 {
   var ma: MemAddr;
   var value: Value;
-  var {:linear} {:layer 1,2} drp: Set CachePermission;
+  var {:layer 1,2} drp: Set (One CachePermission);
   
   call result, ma, value, drp := cache_evict_req#1(i, ca);
   if (result == Ok()) {
@@ -182,7 +182,7 @@ preserves call YieldInv#1();
 preserves call YieldInv#2();
 {
   var line: CacheLine;
-  var {:linear} {:layer 1,2} drp: Set CachePermission;
+  var {:layer 1,2} drp: Set (One CachePermission);
 
   call result, drp := cache_read_shd_req#1(i, ma);
   if (result == Ok()) {
@@ -194,7 +194,7 @@ yield procedure {:layer 2} cache_read_exc_req(i: CacheId, ma: MemAddr) returns (
 preserves call YieldInv#1();
 preserves call YieldInv#2();
 {
-  var {:linear} {:layer 1,2} drp: Set CachePermission;
+  var {:layer 1,2} drp: Set (One CachePermission);
 
   call result, drp := cache_read_exc_req#1(i, ma);
   if (result == Ok()) {
@@ -235,7 +235,7 @@ refines atomic action {:layer 2} _ {
     result := Ok();
     ca := Hash(ma);
     line := cache[i][ca];
-    assume {:add_to_pool "X", i} line->state != Invalid() && line->state != Shared() && line->ma == ma && Set_Contains(cachePermissions, CachePermission(i, ca));
+    assume {:add_to_pool "X", i} line->state != Invalid() && line->state != Shared() && line->ma == ma && Set_Contains(cachePermissions, One(CachePermission(i, ca)));
     cache[i][ca]->value := v;
     cache[i][ca]->state := Modified();
     absMem[ma] := v;
@@ -248,7 +248,7 @@ refines atomic action {:layer 2} _ {
   }
 }
 
-yield procedure {:layer 1} cache_evict_req#1(i: CacheId, ca: CacheAddr) returns (result: Result, ma: MemAddr, value: Value, {:linear} {:layer 1} drp: Set CachePermission)
+yield procedure {:layer 1} cache_evict_req#1(i: CacheId, ca: CacheAddr) returns (result: Result, ma: MemAddr, value: Value, {:linear} {:layer 1} drp: Set (One CachePermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
   var line: CacheLine;
@@ -256,8 +256,9 @@ refines atomic action {:layer 2} _ {
   result := Fail();
   call drp := Set_MakeEmpty();
   if (*) {
-    assume Set_Contains(cachePermissions, CachePermission(i, ca));
-    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    assume Set_Contains(cachePermissions, One(CachePermission(i, ca)));
+    drp := Set_Singleton(One(CachePermission(i, ca)));
+    call Set_Get(cachePermissions, drp);
     line := cache[i][ca];
     ma := line->ma;
     value := line->value;
@@ -268,11 +269,12 @@ refines atomic action {:layer 2} _ {
   call result, ma, value := cache_evict_req#0(i, ca);
   call {:layer 1} drp := Set_MakeEmpty();
   if (result == Ok()) {
-    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    drp := Set_Singleton(One(CachePermission(i, ca)));
+    call {:layer 1} Set_Get(cachePermissions, drp);
   }
 }
 
-yield procedure {:layer 1} cache_read_shd_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set CachePermission)
+yield procedure {:layer 1} cache_read_shd_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set (One CachePermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
   var ca: CacheAddr;
@@ -284,8 +286,9 @@ refines atomic action {:layer 2} _ {
   call drp := Set_MakeEmpty();
   if (*) {
     assume line->state == Invalid();
-    assume Set_Contains(cachePermissions, CachePermission(i, ca));
-    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    assume Set_Contains(cachePermissions, One(CachePermission(i, ca)));
+    drp := Set_Singleton(One(CachePermission(i, ca)));
+    call Set_Get(cachePermissions, drp);
     cache[i][ca]->ma := ma;
     result := Ok();
   }
@@ -294,11 +297,12 @@ refines atomic action {:layer 2} _ {
   call result := cache_read_shd_req#0(i, ma);
   call {:layer 1} drp := Set_MakeEmpty();
   if (result == Ok()) {
-    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
+    drp := Set_Singleton(One(CachePermission(i, Hash(ma))));
+    call {:layer 1} Set_Get(cachePermissions, drp);
   }
 }
 
-yield procedure {:layer 1} cache_read_exc_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set CachePermission)
+yield procedure {:layer 1} cache_read_exc_req#1(i: CacheId, ma: MemAddr) returns (result: Result, {:linear} {:layer 1} drp: Set (One CachePermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
   var ca: CacheAddr;
@@ -310,8 +314,9 @@ refines atomic action {:layer 2} _ {
   call drp := Set_MakeEmpty();
   if (*) {
     assume line->state == Invalid() || (line->ma == ma && line->state == Shared());
-    assume Set_Contains(cachePermissions, CachePermission(i, ca));
-    call drp := Set_Get(cachePermissions, MapOne(CachePermission(i, ca)));
+    assume Set_Contains(cachePermissions, One(CachePermission(i, ca)));
+    drp := Set_Singleton(One(CachePermission(i, ca)));
+    call Set_Get(cachePermissions, drp);
     cache[i][ca]->ma := ma;
     result := Ok();
   }
@@ -320,14 +325,15 @@ refines atomic action {:layer 2} _ {
   call result := cache_read_exc_req#0(i, ma);
   call {:layer 1} drp := Set_MakeEmpty();
   if (result == Ok()) {
-    call {:layer 1} drp := Set_Get(cachePermissions, MapOne(CachePermission(i, Hash(ma))));
+    drp := Set_Singleton(One(CachePermission(i, Hash(ma))));
+    call {:layer 1} Set_Get(cachePermissions, drp);
   }
 }
 
-yield procedure {:layer 1} cache_nop_resp#1(i: CacheId, ma: MemAddr, {:linear_in} {:layer 1} drp: Set CachePermission, {:linear} {:layer 1} dp: Set DirPermission)
+yield procedure {:layer 1} cache_nop_resp#1(i: CacheId, ma: MemAddr, {:linear_in} {:layer 1} drp: Set (One CachePermission), {:linear} {:layer 1} dp: Set (One DirPermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
-  assert Set_Contains(drp, CachePermission(i, Hash(ma)));
+  assert Set_Contains(drp, One(CachePermission(i, Hash(ma))));
   assert dp == WholeDirPermission(ma);
   call Set_Put(cachePermissions, drp);
 }
@@ -335,7 +341,7 @@ refines atomic action {:layer 2} _ {
   call {:layer 1} Set_Put(cachePermissions, drp);
 }
 
-yield procedure {:layer 1} cache_evict_resp#1(i: CacheId, ma: MemAddr, {:linear_in} {:layer 1} drp: Set CachePermission, {:linear} {:layer 1} dp: Set DirPermission)
+yield procedure {:layer 1} cache_evict_resp#1(i: CacheId, ma: MemAddr, {:linear_in} {:layer 1} drp: Set (One CachePermission), {:linear} {:layer 1} dp: Set (One DirPermission))
 preserves call YieldInv#1();
 refines atomic action {:layer 2} _ {
   var ca: CacheAddr;
@@ -343,15 +349,15 @@ refines atomic action {:layer 2} _ {
 
   ca := Hash(ma);
   line := cache[i][ca];
-  assert Set_Contains(drp, CachePermission(i, ca));
+  assert Set_Contains(drp, One(CachePermission(i, ca)));
   assert dp == WholeDirPermission(ma);
   assert line->ma == ma;
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
+  assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;
   cache[i][ca]->state := Invalid();
   call Set_Put(cachePermissions, drp);
 }
 {
-  assert {:layer 1} Set_Contains(drp, CachePermission(i, Hash(ma)));
+  assert {:layer 1} Set_Contains(drp, One(CachePermission(i, Hash(ma))));
   call cache_evict_resp#0(i, ma);
   call {:layer 1} Set_Put(cachePermissions, drp);
 }
@@ -369,7 +375,7 @@ We get a contradiction because both invocations are referring to the same cache 
 but asserting that ma field of this cache line are equal to ma1 and ma2, respectively.
 */
 
-yield procedure {:layer 1} cache_read_resp#1(i: CacheId, ma: MemAddr, v: Value, s: State, {:linear_in} {:layer 1} drp: Set CachePermission, {:linear} {:layer 1} dp: Set DirPermission)
+yield procedure {:layer 1} cache_read_resp#1(i: CacheId, ma: MemAddr, v: Value, s: State, {:linear_in} {:layer 1} drp: Set (One CachePermission), {:linear} {:layer 1} dp: Set (One DirPermission))
 preserves call YieldInv#1();
 refines left action {:layer 2} _ {
   var ca: CacheAddr;
@@ -378,11 +384,11 @@ refines left action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);  
   assert s == Shared() || s == Exclusive();
   ca := Hash(ma);
-  assert Set_Contains(drp, CachePermission(i, ca));
+  assert Set_Contains(drp, One(CachePermission(i, ca)));
   line := cache[i][ca];
   assert line->state == Invalid() || line->state == Shared();
   assert line->ma == ma;
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
+  assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;
   if (line->state == Invalid()) {
     cache[i][ca] := CacheLine(ma, v, s);
   } else {
@@ -391,17 +397,17 @@ refines left action {:layer 2} _ {
   call Set_Put(cachePermissions, drp);
 }
 {
-  assert {:layer 1} Set_Contains(drp, CachePermission(i, Hash(ma)));
+  assert {:layer 1} Set_Contains(drp, One(CachePermission(i, Hash(ma))));
   call cache_read_resp#0(i, ma, v, s);
   call {:layer 1} Set_Put(cachePermissions, drp);
 }
 
-yield procedure {:layer 1} cache_invalidate_shd#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set DirPermission)
+yield procedure {:layer 1} cache_invalidate_shd#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set (One DirPermission))
 refines left action {:layer 2} _ {
   var ca: CacheAddr;
 
-  assert Set_Contains(dp, DirPermission(i, ma));
-  assume {:add_to_pool "DirPermission", DirPermission(i, ma)} true;
+  assert Set_Contains(dp, One(DirPermission(i, ma)));
+  assume {:add_to_pool "DirPermission", One(DirPermission(i, ma))} true;
   ca := Hash(ma);
   assert (forall {:pool "X"} j: CacheId :: {:add_to_pool "X", j} (var line := cache[j][ca]; line->ma == ma ==> line->state == Invalid() || line->state == Shared()));
   // this assertion accompanies the relaxation in cache_read#1 to allow cache_invalidate_shd#1 to commute to the left of cache_read#1
@@ -412,10 +418,10 @@ refines left action {:layer 2} _ {
   call cache_invalidate_shd#0(i, ma, s);
 }
 
-yield procedure {:layer 1} cache_invalidate_exc#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set DirPermission) returns (value: Value)
+yield procedure {:layer 1} cache_invalidate_exc#1(i: CacheId, ma: MemAddr, s: State, {:linear} {:layer 1} dp: Set (One DirPermission)) returns (value: Value)
 refines atomic action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
+  assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;
   call value := primitive_cache_invalidate_exc(i, ma, s);
 }
 {
@@ -574,13 +580,13 @@ action {:layer 1,2} primitive_cache_invalidate_exc(i: CacheId, ma: MemAddr, s: S
 }
 
 /// Directory
-yield procedure {:layer 2} dir_evict_req(i: CacheId, ma: MemAddr, value: Value, {:layer 1,2} {:linear_in} drp: Set CachePermission)
+yield procedure {:layer 2} dir_evict_req(i: CacheId, ma: MemAddr, value: Value, {:layer 1,2} {:linear_in} drp: Set (One CachePermission))
 preserves call YieldInv#1();
 preserves call YieldInv#2();
 requires call YieldEvict(i, ma, value, drp);
 {
   var dirState: DirState;
-  var {:linear} {:layer 1,2} dp: Set DirPermission;
+  var {:layer 1,2} dp: Set (One DirPermission);
 
   call dirState, dp := dir_req_begin(ma);
   // do not change dirState in case this is a stale evict request due to a race condition with an invalidate
@@ -597,13 +603,13 @@ requires call YieldEvict(i, ma, value, drp);
   call dir_req_end(ma, dirState, dp);
 }
 
-yield procedure {:layer 2} dir_read_shd_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: Set CachePermission)
+yield procedure {:layer 2} dir_read_shd_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: Set (One CachePermission))
 preserves call YieldInv#1();
 preserves call YieldInv#2();
 requires call YieldRead(i, ma, drp);
 {
   var dirState: DirState;
-  var {:linear} {:layer 1,2} dp: Set DirPermission;
+  var {:layer 1,2} dp: Set (One DirPermission);
   var value: Value;
 
   call dirState, dp := dir_req_begin(ma);
@@ -619,13 +625,13 @@ requires call YieldRead(i, ma, drp);
   }
 }
 
-yield procedure {:layer 2} dir_read_exc_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: Set CachePermission)
+yield procedure {:layer 2} dir_read_exc_req(i: CacheId, ma: MemAddr, {:layer 1,2} {:linear_in} drp: Set (One CachePermission))
 preserves call YieldInv#1();
 preserves call YieldInv#2();
 requires call YieldRead(i, ma, drp);
 {
   var dirState: DirState;
-  var {:linear} {:layer 1,2} dp: Set DirPermission;
+  var {:layer 1,2} dp: Set (One DirPermission);
   var value: Value;
 
   call dirState, dp := dir_req_begin(ma);
@@ -640,10 +646,10 @@ requires call YieldRead(i, ma, drp);
   call dir_req_end(ma, Owner(i), dp);
 }
 
-yield left procedure {:layer 2} invalidate_sharers(ma: MemAddr, victims: Set CacheId, {:linear_in} {:layer 1,2} dp: Set DirPermission)
-  returns ({:linear} {:layer 1,2} dp': Set DirPermission)
+yield left procedure {:layer 2} invalidate_sharers(ma: MemAddr, victims: Set CacheId, {:linear_in} {:layer 1,2} dp: Set (One DirPermission))
+  returns ({:linear} {:layer 1,2} dp': Set (One DirPermission))
 modifies cache;
-requires {:layer 2} Set_IsSubset(Set((lambda x: DirPermission :: Set_Contains(victims, x->i) && x->ma == ma)), dp);
+requires {:layer 2} Set_IsSubset(Set((lambda x: One DirPermission :: Set_Contains(victims, x->val->i) && x->val->ma == ma)), dp);
 requires {:layer 2} (forall i: CacheId, ca: CacheAddr:: (var line := cache[i][ca];
                       line->state == Invalid() ||
                       (line->value == absMem[line->ma] && if line->state == Shared() then dir[line->ma] is Sharers else dir[line->ma] is Owner)));
@@ -655,7 +661,7 @@ ensures {:layer 2} dp == dp';
 {
   var victim: CacheId;
   var victims': Set CacheId;
-  var {:linear} {:layer 1,2} dpOne: Set DirPermission;
+  var {:layer 1,2} dpOne: Set (One DirPermission);
 
   dp' := dp;
   if (victims == Set_Empty())
@@ -669,19 +675,21 @@ ensures {:layer 2} dp == dp';
   call dp' := put_victim(dpOne, dp');
 }
 
-yield procedure {:layer 1} get_victim(victim: CacheId, ma: MemAddr, {:layer 1} {:linear_in} dp: Set DirPermission)
-returns ({:linear} {:layer 1} dpOne: Set DirPermission, {:linear} {:layer 1} dp': Set DirPermission)
+yield procedure {:layer 1} get_victim(victim: CacheId, ma: MemAddr, {:layer 1} {:linear_in} dp: Set (One DirPermission))
+returns ({:linear} {:layer 1} dpOne: Set (One DirPermission), {:linear} {:layer 1} dp': Set (One DirPermission))
 refines both action {:layer 2} _ {
   dp' := dp;
-  call dpOne := Set_Get(dp', MapOne(DirPermission(victim, ma)));
+  dpOne := Set_Singleton(One(DirPermission(victim, ma)));
+  call Set_Get(dp', dpOne);
 }
 {
   dp' := dp;
-  call {:layer 1} dpOne := Set_Get(dp', MapOne(DirPermission(victim, ma)));
+  dpOne := Set_Singleton(One(DirPermission(victim, ma)));
+  call {:layer 1} Set_Get(dp', dpOne);
 }
 
-yield procedure {:layer 1} put_victim({:linear_in} {:layer 1} dpOne: Set DirPermission, {:layer 1} {:linear_in} dp: Set DirPermission)
-returns ({:linear} {:layer 1} dp': Set DirPermission)
+yield procedure {:layer 1} put_victim({:linear_in} {:layer 1} dpOne: Set (One DirPermission), {:layer 1} {:linear_in} dp: Set (One DirPermission))
+returns ({:linear} {:layer 1} dp': Set (One DirPermission))
 refines both action {:layer 2} _ {
   dp' := dp;
   call Set_Put(dp', dpOne);
@@ -691,23 +699,25 @@ refines both action {:layer 2} _ {
   call {:layer 1} Set_Put(dp', dpOne);
 }
 
-yield procedure {:layer 1} dir_req_begin(ma: MemAddr) returns (dirState: DirState, {:linear} {:layer 1} dp: Set DirPermission)
+yield procedure {:layer 1} dir_req_begin(ma: MemAddr) returns (dirState: DirState, {:linear} {:layer 1} dp: Set (One DirPermission))
 preserves call YieldInv#1();
 refines right action {:layer 2} _ {
   assume Set_IsSubset(WholeDirPermission(ma), dirPermissions);
   dirState := dir[ma];
-  call dp := Set_Get(dirPermissions, WholeDirPermission(ma)->val);
+  dp := WholeDirPermission(ma);
+  call Set_Get(dirPermissions, dp);
 }
 {
   call dirState := dir_req_begin#0(ma);
-  call {:layer 1} dp := Set_Get(dirPermissions, WholeDirPermission(ma)->val);
+  dp := WholeDirPermission(ma);
+  call {:layer 1} Set_Get(dirPermissions, dp);
 }
 
-yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: Set DirPermission)
+yield procedure {:layer 1} dir_req_end(ma: MemAddr, dirState: DirState, {:layer 1} {:linear_in} dp: Set (One DirPermission))
 preserves call YieldInv#1();
 refines left action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
+  assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;
   dir[ma] := dirState;
   call Set_Put(dirPermissions, dp);
 }
@@ -732,20 +742,20 @@ refines atomic action {:layer 1} _ {
 }
 
 /// Memory
-yield procedure {:layer 1} read_mem(ma: MemAddr, {:linear} {:layer 1} dp: Set DirPermission) returns (value: Value)
+yield procedure {:layer 1} read_mem(ma: MemAddr, {:linear} {:layer 1} dp: Set (One DirPermission)) returns (value: Value)
 refines both action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
+  assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;
   value := mem[ma];
 }
 {
   call value := read_mem#0(ma);
 }
 
-yield procedure {:layer 1} write_mem(ma: MemAddr, value: Value, {:linear} {:layer 1} dp: Set DirPermission)
+yield procedure {:layer 1} write_mem(ma: MemAddr, value: Value, {:linear} {:layer 1} dp: Set (One DirPermission))
 refines both action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
-  assume {:add_to_pool "DirPermission", DirPermission(i0, ma)} true;
+  assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;
   mem[ma] := value;
 }
 {

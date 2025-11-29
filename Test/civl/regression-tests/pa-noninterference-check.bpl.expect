@@ -1,6 +1,6 @@
 pa-noninterference-check.bpl(26,1): Error: Non-interference check failed
 Execution trace:
-    (0,0): init
+    pa-noninterference-check.bpl(16,34): inline$A_Incr$0$Entry
     pa-noninterference-check.bpl(19,7): inline$A_Incr$0$anon0
     pa-noninterference-check.bpl(16,34): inline$A_Incr$0$Return
 

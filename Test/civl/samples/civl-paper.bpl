@@ -6,7 +6,7 @@ const nil: X;
 
 type Y = int;
 
-var {:layer 0,3} {:linear} g: Map int int;
+var {:layer 0,3} {:linear} g: Map (One int) int;
 var {:layer 0,3} lock: X;
 var {:layer 0,1} b: bool;
 
@@ -16,7 +16,7 @@ yield invariant {:layer 1} InvLock();
 preserves lock != nil <==> b;
 
 yield invariant {:layer 3} InvMem();
-preserves Map_Contains(g, p) && Map_Contains(g, p+4) && Map_At(g, p) == Map_At(g, p+4);
+preserves Map_Contains(g, One(p)) && Map_Contains(g, One(p+4)) && Map_At(g, One(p)) == Map_At(g, One(p+4));
 
 yield procedure {:layer 3} P({:linear} tid: One X)
 requires {:layer 1,3} tid->val != nil;
@@ -24,7 +24,7 @@ preserves call InvLock();
 preserves call InvMem();
 {
     var t: int;
-    var {:linear} l: Map int int;
+    var l: Map (One int) int;
 
     call AcquireProtected(tid);
     call l := TransferFromGlobalProtected(tid);
@@ -36,24 +36,24 @@ preserves call InvMem();
     call ReleaseProtected(tid);
 }
 
-both action {:layer 3} AtomicTransferToGlobalProtected({:linear} tid: One X, {:linear_in} l: Map int int)
+both action {:layer 3} AtomicTransferToGlobalProtected({:linear} tid: One X, {:linear_in} l: Map (One int) int)
 modifies g;
 { assert tid->val != nil && lock == tid->val; g := l; }
 
 yield procedure {:layer 2}
-TransferToGlobalProtected({:linear} tid: One X, {:linear_in} l: Map int int)
+TransferToGlobalProtected({:linear} tid: One X, {:linear_in} l: Map (One int) int)
 refines AtomicTransferToGlobalProtected;
 preserves call InvLock();
 {
   call TransferToGlobal(tid, l);
 }
 
-both action {:layer 3} AtomicTransferFromGlobalProtected({:linear} tid: One X) returns ({:linear} l: Map int int)
+both action {:layer 3} AtomicTransferFromGlobalProtected({:linear} tid: One X) returns ({:linear} l: Map (One int) int)
 modifies g;
 { assert tid->val != nil && lock == tid->val; l := g; call g := Map_MakeEmpty(); }
 
 yield procedure {:layer 2}
-TransferFromGlobalProtected({:linear} tid: One X) returns ({:linear} l: Map int int)
+TransferFromGlobalProtected({:linear} tid: One X) returns ({:linear} l: Map (One int) int)
 refines AtomicTransferFromGlobalProtected;
 preserves call InvLock();
 {
@@ -117,38 +117,39 @@ preserves call InvLock();
   call CLEAR(tid->val, false);
 }
 
-atomic action {:layer 1,2} AtomicTransferToGlobal({:linear} tid: One X, {:linear_in} l: Map int int)
+atomic action {:layer 1,2} AtomicTransferToGlobal({:linear} tid: One X, {:linear_in} l: Map (One int) int)
 modifies g;
 { g := l; }
 
-yield procedure {:layer 0} TransferToGlobal({:linear} tid: One X, {:linear_in} l: Map int int);
+yield procedure {:layer 0} TransferToGlobal({:linear} tid: One X, {:linear_in} l: Map (One int) int);
 refines AtomicTransferToGlobal;
 
-atomic action {:layer 1,2} AtomicTransferFromGlobal({:linear} tid: One X) returns ({:linear} l: Map int int)
+atomic action {:layer 1,2} AtomicTransferFromGlobal({:linear} tid: One X) returns ({:linear} l: Map (One int) int)
 modifies g;
 { l := g; call g := Map_MakeEmpty(); }
 
-yield procedure {:layer 0} TransferFromGlobal({:linear} tid: One X) returns ({:linear} l: Map int int);
+yield procedure {:layer 0} TransferFromGlobal({:linear} tid: One X) returns ({:linear} l: Map (One int) int);
 refines AtomicTransferFromGlobal;
 
-both action {:layer 1,3} AtomicLoad({:linear} l: Map int int, a: int) returns (v: int)
-{ v := l->val[a]; }
+both action {:layer 1,3} AtomicLoad({:linear} l: Map (One int) int, a: int) returns (v: int)
+{ v := l->val[One(a)]; }
 
-yield procedure {:layer 0} Load({:linear} l: Map int int, a: int) returns (v: int);
+yield procedure {:layer 0} Load({:linear} l: Map (One int) int, a: int) returns (v: int);
 refines AtomicLoad;
 
-both action {:layer 1,3} AtomicStore({:linear_in} l_in: Map int int, a: int, v: int)
-  returns ({:linear} l_out: Map int int)
+both action {:layer 1,3} AtomicStore({:linear_in} l_in: Map (One int) int, a: int, v: int)
+  returns ({:linear} l_out: Map (One int) int)
 {
-  var {:linear} one_a: One int;
+  var one_a: One int;
   var _v: int;
 
   l_out := l_in;
-  call one_a, _v := Map_Get(l_out, a);
+  one_a := One(a);
+  call _v := Map_Get(l_out, one_a);
   call Map_Put(l_out, one_a, v);
 }
 
-yield procedure {:layer 0} Store({:linear_in} l_in: Map int int, a: int, v: int) returns ({:linear} l_out: Map int int);
+yield procedure {:layer 0} Store({:linear_in} l_in: Map (One int) int, a: int, v: int) returns ({:linear} l_out: Map (One int) int);
 refines AtomicStore;
 
 atomic action {:layer 1} AtomicCAS(tid: X, prev: bool, next: bool) returns (status: bool)

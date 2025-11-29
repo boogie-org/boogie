@@ -1,11 +1,9 @@
 typecheck.bpl(16,10): Error: illegal assignment target
-typecheck.bpl(18,9): Error: source of assignment must be linear
 typecheck.bpl(28,15): Error: linear variable x can occur at most once as the source of an assignment
 typecheck.bpl(32,4): Error: linear variable a can occur only once as an input parameter
 typecheck.bpl(34,4): Error: only variable can be passed to linear parameter: f(a)
-typecheck.bpl(40,4): Error: only linear variable can be passed to linear parameter: c
 typecheck.bpl(48,0): Error: output variable d must be available at a return
 typecheck.bpl(55,0): Error: global variable g must be available at a return
-typecheck.bpl(60,7): Error: unavailable source for a linear read
+typecheck.bpl(61,0): Error: global variable g must be available at a return
 typecheck.bpl(61,0): Error: output variable r must be available at a return
-10 type checking errors detected in typecheck.bpl
+8 type checking errors detected in typecheck.bpl

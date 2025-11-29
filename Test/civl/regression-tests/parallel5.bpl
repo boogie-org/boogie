@@ -14,8 +14,8 @@ refines AtomicWrite;
 
 yield procedure {:layer 1} main()
 {
-    var {:linear} i: One int;
-    var {:linear} j: One int;
+    var i: One int;
+    var j: One int;
     call i := Allocate();
     call j := Allocate();
     call i := t(i) | Yield(j, a);

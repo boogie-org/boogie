@@ -2,7 +2,7 @@
 // RUN: %diff "%s.expect" "%t"
 
 var {:layer 0,1} n : int;
-var {:linear} {:layer 0,1} S : Set int;
+var {:linear} {:layer 0,1} S : Set (One int);
 
 // This test exposed a bug in the commutativity checker. Since t is linear_in,
 // it does not have to be available after the atomic action executed. However,
