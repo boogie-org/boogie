@@ -14,7 +14,7 @@ preserves a[tid->val] == v;
 yield procedure {:layer 2} main()
 requires call Yield1();
 {
-  var {:layer 1,2} {:linear} tid: One int;
+  var {:layer 1,2} tid: One int;
   var i: int;
 
   while (true)

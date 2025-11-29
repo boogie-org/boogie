@@ -9,7 +9,7 @@ function {:inline} PoolInv(unallocated: [int]bool, pool: Set (One int)): (bool)
 yield procedure {:layer 2} Main ()
 preserves call Yield();
 {
-  var {:layer 1,2} {:linear} l: Cell int int;
+  var {:layer 1,2} l: Cell int int;
   var i: int;
   while (*)
     invariant {:yields} true;
@@ -25,8 +25,8 @@ preserves call Yield();
 requires {:layer 1,2} local_in->key == One(i);
 {
   var y, o: int;
-  var {:layer 1,2} {:linear} local: Cell int int;
-  var {:layer 1,2} {:linear} l: Cell int int;
+  var {:layer 1,2} local: Cell int int;
+  var {:layer 1,2} l: Cell int int;
 
   call local := Write(local_in, i, 42);
   call o := Read(local, i);
@@ -63,7 +63,7 @@ ensures {:layer 1} l->key == One(i);
 left action {:layer 2} atomic_Free({:linear_in} l: Cell int int, i: int)
 modifies pool;
 {
-  var {:linear} one_i: One int;
+  var one_i: One int;
   var _v: int;
   Cell(one_i, _v) := l;
   call One_Put(pool, one_i);
@@ -87,7 +87,7 @@ both action {:layer 2} atomic_Read ({:linear} l: Cell int int, i: int) returns (
 both action {:layer 2} atomic_Write ({:linear_in} l: Cell int int, i: int, o: int)
   returns ({:linear} l': Cell int int)
 {
-  var {:linear} one_i: One int;
+  var one_i: One int;
   var _v: int;
   Cell(one_i, _v) := l;
   l' := Cell(one_i, o);
@@ -117,7 +117,7 @@ ensures call YieldMem(l', i);
 pure action AllocLinear (i: int, {:linear_in} pool: Set (One int))
   returns ({:linear} l: Cell int int, {:linear} pool': Set (One int))
 {
-  var {:linear} one_i: One int;
+  var one_i: One int;
   var m: int;
   pool' := pool;
   one_i := One(i);
@@ -128,7 +128,7 @@ pure action AllocLinear (i: int, {:linear_in} pool: Set (One int))
 pure action FreeLinear ({:linear_in} l: Cell int int, i: int, {:linear_in} pool: Set (One int))
   returns ({:linear} pool': Set (One int))
 {
-  var {:linear} one_i: One int;
+  var one_i: One int;
   var _v: int;
   Cell(one_i, _v) := l;
   pool' := pool;
@@ -138,7 +138,7 @@ pure action FreeLinear ({:linear_in} l: Cell int int, i: int, {:linear_in} pool:
 pure action WriteLinear ({:layer 1} {:linear_in} l: Cell int int, i: int, o: int)
   returns ({:layer 1} {:linear} l': Cell int int)
 {
-  var {:linear} one_i: One int;
+  var one_i: One int;
   var _v: int;
   Cell(one_i, _v) := l;
   l' := Cell(one_i, o);

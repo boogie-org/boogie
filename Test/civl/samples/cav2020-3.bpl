@@ -3,7 +3,7 @@
 
 datatype Perm { Left(i: int), Right(i: int) }
 
-datatype Tid { Tid(i: int, {:linear} ps: Set (One Perm)) }
+datatype Tid { Tid(i: int, ps: Set (One Perm)) }
 
 function {:inline} All(i: int): Tid {
     Tid(i, Set_Add(Set_Singleton(One(Left(i))), One(Right(i))))
@@ -33,7 +33,7 @@ refines AtomicIsBarrierOn;
 atomic action {:layer 1} AtomicEnterBarrier({:linear_in} tid: Tid) returns ({:linear} tid': Tid)
 modifies barrierCounter, mutatorsInBarrier;
 {
-    var {:linear} p: One Perm;
+    var p: One Perm;
     var i: int;
 
     i := tid->i;
@@ -50,7 +50,7 @@ refines AtomicEnterBarrier;
 atomic action {:layer 1} AtomicWaitForBarrierRelease({:linear_in} tid: Tid) returns ({:linear} tid': Tid)
 modifies barrierCounter, mutatorsInBarrier;
 {
-    var {:linear} p: One Perm;
+    var p: One Perm;
     var i: int;
 
     i := tid->i;
@@ -87,7 +87,7 @@ preserves call BarrierInv();
 {
     var b: bool;
     var i: int;
-    var {:linear} tid': Tid;
+    var tid': Tid;
 
     call b := IsBarrierOn();
     if (b) {

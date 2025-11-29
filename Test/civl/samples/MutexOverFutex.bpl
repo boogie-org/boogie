@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear} Tid; // thread identifiers
+type Tid; // thread identifiers
 
 type Mutex = Option Tid;
 

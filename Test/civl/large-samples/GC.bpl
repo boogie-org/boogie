@@ -1309,7 +1309,7 @@ refines AtomicCollectorRootScanBarrierWait;
 atomic action {:layer 97,99} AtomicMutatorRootScanBarrierEnter({:linear_in} tid: Tid) returns({:linear} tid_left: Tid)
 modifies rootScanBarrier, mutatorsInRootScanBarrier;
 {
-    var {:linear} p: One Piece;
+    var p: One Piece;
     assert mutatorTidWhole(tid);
     rootScanBarrier := rootScanBarrier - 1;
     tid_left := tid;
@@ -1336,7 +1336,7 @@ preserves call Yield_Lock();
 atomic action {:layer 97,99} AtomicMutatorRootScanBarrierWait({:linear_in} tid_left: Tid) returns({:linear} tid: Tid)
 modifies rootScanBarrier, mutatorsInRootScanBarrier;
 {
-    var {:linear} p: One Piece; 
+    var p: One Piece; 
     assert mutatorTidLeft(tid_left) && Set_Contains(mutatorsInRootScanBarrier, One(Right(tid_left->i)));
     assume !rootScanOn;
     rootScanBarrier := rootScanBarrier + 1;
@@ -1754,8 +1754,8 @@ right action {:layer 96} AtomicMutatorsInRootScanBarrierAdd({:linear} tid_left: 
 modifies mutatorsInRootScanBarrier;
 {
     var i: int;
-    var {:linear} ps: Set (One Piece);
-    var {:linear} p: One Piece;
+    var ps: Set (One Piece);
+    var p: One Piece;
     assert tidHasLock(tid_left, absLock) && mutatorTidRight(tid_right);
     Tid(i, ps) := tid_right;
     p := One(Right(i));
@@ -1772,7 +1772,7 @@ refines AtomicMutatorsInRootScanBarrierAdd;
 both action {:layer 96} AtomicMutatorsInRootScanBarrierRemove({:linear} tid_left: Tid) returns({:linear} tid_right: Tid)
 modifies mutatorsInRootScanBarrier;
 {
-    var {:linear} ps: Set (One Piece);
+    var ps: Set (One Piece);
     assert tidHasLock(tid_left, absLock) && !rootScanOn && mutatorTidLeft(tid_left) && Set_Contains(mutatorsInRootScanBarrier, One(Right(tid_left->i)));
     ps := Set_Singleton(One(Right(tid_left->i)));
     call Set_Get(mutatorsInRootScanBarrier, ps);
@@ -1974,7 +1974,7 @@ preserves lock <==> absLock != 0;
 pure action TidSplit({:linear_in} tid:Tid) returns({:linear} tid_left:Tid, {:linear} tid_right:Tid)
 {
     var i: int;
-    var {:linear} ps_right: Set (One Piece);
+    var ps_right: Set (One Piece);
     i := tid->i;
     tid_left := tid;
     ps_right := Set_Singleton(One(Right(i)));
@@ -1985,8 +1985,8 @@ pure action TidSplit({:linear_in} tid:Tid) returns({:linear} tid_left:Tid, {:lin
 pure action TidCombine({:linear_in} tid_left:Tid, {:linear_in} tid_right:Tid) returns({:linear} tid:Tid)
 {
     var i: int;
-    var {:linear} ps_right: Set (One Piece);
-    var {:linear} p: One Piece;
+    var ps_right: Set (One Piece);
+    var p: One Piece;
     assert tid_left->i == tid_right->i;
     tid := tid_left;
     Tid(i, ps_right) := tid_right;
@@ -2093,8 +2093,8 @@ pure action PrimitiveMutatorsInRootScanBarrierAdd({:linear_in} tid_right: Tid, {
     returns ({:linear} mutatorsInRootScanBarrier': Set (One Piece))
 {
     var i: int;
-    var {:linear} ps: Set (One Piece);
-    var {:linear} p: One Piece;
+    var ps: Set (One Piece);
+    var p: One Piece;
     assert mutatorTidRight(tid_right);
     Tid(i, ps) := tid_right;
     p := One(Right(i));
@@ -2106,7 +2106,7 @@ pure action PrimitiveMutatorsInRootScanBarrierAdd({:linear_in} tid_right: Tid, {
 pure action PrimitiveMutatorsInRootScanBarrierRemove({:linear} tid_left: Tid, {:linear_in} mutatorsInRootScanBarrier: Set (One Piece))
     returns({:linear} tid_right: Tid, {:linear} mutatorsInRootScanBarrier': Set (One Piece))
 {
-    var {:linear} ps: Set (One Piece);
+    var ps: Set (One Piece);
     assert mutatorTidLeft(tid_left);
     mutatorsInRootScanBarrier' := mutatorsInRootScanBarrier;
     ps := Set_Singleton(One(Right(tid_left->i)));

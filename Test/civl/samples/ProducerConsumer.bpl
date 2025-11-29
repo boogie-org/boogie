@@ -43,8 +43,8 @@ yield procedure {:layer 1}
 main (cid: ChannelId, {:linear_in} handles: Set (One ChannelHandle))
 requires call YieldMain(cid, handles);
 {
-  var {:linear} handles': Set (One ChannelHandle);
-  var {:linear} send_handle, receive_handle: One ChannelHandle;
+  var handles': Set (One ChannelHandle);
+  var send_handle, receive_handle: One ChannelHandle;
 
   handles' := handles;
   send_handle := One(Send(cid));

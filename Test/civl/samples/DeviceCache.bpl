@@ -33,7 +33,7 @@ ensures {:layer 1} xl->val != nil;
 yield procedure {:layer 1} main({:linear_in} xls: Set (One X))
 requires {:layer 1} xls->val == MapConst(true);
 {
-    var {:linear} tid: One X;
+    var tid: One X;
 
     call Init(xls);
     while (*)

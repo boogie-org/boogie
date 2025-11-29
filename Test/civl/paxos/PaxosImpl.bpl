@@ -7,8 +7,8 @@ requires {:layer 2} (forall r: Round :: Round(r) ==> status[r] == Inactive() && 
 preserves call YieldInv();
 {
   var r: int;
-  var {:layer 1,2}{:linear} ps': Set (One Permission);
-  var {:layer 1,2}{:linear} allRoundPermissions: Set (One Permission);
+  var {:layer 1,2} ps': Set (One Permission);
+  var {:layer 1,2} allRoundPermissions: Set (One Permission);
 
   r := 1;
   ps' := ps;
@@ -45,9 +45,9 @@ requires {:layer 2} SpecLt(r, status);
 ensures {:layer 2} VoteQuorumLe(r, status, voteInfo);
 ensures {:layer 2} SpecLe(r, status);
 {
-  var {:layer 1,2}{:linear} roundPermission: One Permission;
-  var {:layer 1,2}{:linear} joinPermissions: Set (One Permission);
-  var {:layer 1,2}{:linear} votePermissions: Set (One Permission);
+  var {:layer 1,2} roundPermission: One Permission;
+  var {:layer 1,2} joinPermissions: Set (One Permission);
+  var {:layer 1,2} votePermissions: Set (One Permission);
   var {:layer 2} joinPerms: Set (One Permission);
   var maxRound: Round;
   var maxValue: Value;
@@ -77,8 +77,8 @@ ensures {:layer 2} joinPerms == Set_Intersection(JoinPermissions(r), joinChannel
 ensures {:layer 2} Set_Size(joinPerms) == numNodes;
 {
   var n: int;
-  var {:layer 1,2}{:linear} joinPermissions': Set (One Permission);
-  var {:layer 1,2}{:linear} p: One Permission;
+  var {:layer 1,2} joinPermissions': Set (One Permission);
+  var {:layer 1,2} p: One Permission;
 
   joinPermissions' := joinPermissions;
   n := 1;
@@ -206,8 +206,8 @@ ensures {:layer 2} VoteQuorumLe(r, status, voteInfo);
 ensures {:layer 2} SpecLe(r, status);
 {
   var n: int;
-  var {:layer 1,2}{:linear} ps': Set (One Permission);
-  var {:layer 1,2}{:linear} p: One Permission;
+  var {:layer 1,2} ps': Set (One Permission);
+  var {:layer 1,2} p: One Permission;
   var {:layer 2} votePerms: Set (One Permission);
   var count: int;
   var {:layer 2} voteAcceptPerms: Set (One Permission);
@@ -424,7 +424,7 @@ refines left action {:layer 1} _
 pure action SplitPermissions(r: Round, {:linear_in} allRoundPermissions: Set (One Permission))
 returns ({:linear} roundPermission: One Permission, {:linear} joinPermissions: Set (One Permission), {:linear} votePermissions: Set (One Permission))
 {
-  var {:linear} ps: Set (One Permission);
+  var ps: Set (One Permission);
 
   ps := allRoundPermissions;
   roundPermission := One(RoundPerm(r));
@@ -438,7 +438,7 @@ returns ({:linear} roundPermission: One Permission, {:linear} joinPermissions: S
 pure action MovePermission(p: Permission, {:linear_in} from: Set (One Permission), {:linear_in} to: Set (One Permission))
 returns ({:linear} from': Set (One Permission), {:linear} to': Set (One Permission))
 {
-  var {:linear} one_p: One Permission;
+  var one_p: One Permission;
 
   from' := from;
   to' := to;

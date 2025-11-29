@@ -6,7 +6,7 @@ var {:layer 0,1} g:int;
 yield procedure {:layer 1} PB({:linear_in} permVar_in: Set (One int))
 requires call Yield(permVar_in, 0);
 {
-  var {:linear} permVar_out: Set (One int);
+  var permVar_out: Set (One int);
   permVar_out := permVar_in;
   call IncrG();
   call Yield(permVar_out, 1);

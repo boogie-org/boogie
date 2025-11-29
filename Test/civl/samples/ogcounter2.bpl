@@ -67,8 +67,8 @@ modifies x;
 yield procedure {:layer 4} IncrBy2()
 refines AtomicIncrBy2;
 {
-  var {:linear} tid1: One X;
-  var {:linear} tid2: One X;
+  var tid1: One X;
+  var tid2: One X;
 
   call tid1 := AllocTid();
   call tid2 := AllocTid();

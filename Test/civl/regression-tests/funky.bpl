@@ -147,7 +147,7 @@ yield procedure {:layer 3} main({:linear} tid: One X)
 requires {:layer 3} tid->val != nil;
 requires call YieldCounter();
 {
-    var {:linear} cid: One X;
+    var cid: One X;
 
     while (*)
     invariant {:yields} true;

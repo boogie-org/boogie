@@ -68,8 +68,8 @@ requires {:layer 1} perms->val == all_perms();
 ensures call YieldAllDecided();
 {
   var s:int;
-  var {:linear} perms': Set (One Perm);
-  var {:linear} perms'': Set (One Perm);
+  var perms': Set (One Perm);
+  var perms'': Set (One Perm);
   s := 1;
   perms' := perms;
   while (s <= N)
@@ -92,8 +92,8 @@ modifies col_dom, col_val, dec_dom, dec_val;
 {
   var r:int;
   var v:int;
-  var {:linear} p: One Perm;
-  var {:linear} perms': Set (One Perm);
+  var p: One Perm;
+  var perms': Set (One Perm);
 
   perms' := perms;
   r := 1;

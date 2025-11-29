@@ -89,11 +89,11 @@ refines both action {:layer 1} _ {
 yield procedure {:layer 0} Enqueue(loc_q: LocQueue int, i: int);
 refines action {:layer 1} _
 {
-    var {:linear} one_loc_q: One (LocQueue int);
-    var {:linear} queue: Queue int;
+    var one_loc_q: One (LocQueue int);
+    var queue: Queue int;
     var head, tail: LocNode int;
-    var {:linear} nodes: Map (One (LocNode int)) (Node int);
-    var {:linear} one_loc_n, new_one_loc_n: One (LocNode int);
+    var nodes: Map (One (LocNode int)) (Node int);
+    var one_loc_n, new_one_loc_n: One (LocNode int);
     var node: Node int;
 
     one_loc_q := One(loc_q);
@@ -115,11 +115,11 @@ refines action {:layer 1} _
 yield procedure {:layer 0} Dequeue(loc_q: LocQueue int) returns (i: int);
 refines action {:layer 1} _
 {
-    var {:linear} one_loc_q: One (LocQueue int);
-    var {:linear} queue: Queue int;
+    var one_loc_q: One (LocQueue int);
+    var queue: Queue int;
     var head, tail: LocNode int;
-    var {:linear} nodes: Map (One (LocNode int)) (Node int);
-    var {:linear} one_loc_n: One (LocNode int);
+    var nodes: Map (One (LocNode int)) (Node int);
+    var one_loc_n: One (LocNode int);
     var node: Node int;
     var next: Option (LocNode int);
 

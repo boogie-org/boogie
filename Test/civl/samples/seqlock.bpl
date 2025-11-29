@@ -1,7 +1,7 @@
 // RUN: %parallel-boogie /lib:base "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
 
-type {:linear} Tid;
+type Tid;
 
 var {:layer 0,2} lock:Option Tid;
 var {:layer 0,2} seq:int;

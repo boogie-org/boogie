@@ -113,9 +113,9 @@ ensures {:layer 2} (forall j: pid:: IsPid(j) ==> decision[j] == max((lambda v: v
 modifies values, usedPermissions, decision;
 {
   var i: pid;
-  var {:linear} s: One Permission;
-  var {:linear} r: One Permission;
-  var {:linear} psb, psc: Set (One Permission);
+  var s: One Permission;
+  var r: One Permission;
+  var psb, psc: Set (One Permission);
 
   assume {:add_to_pool "A", Broadcast(1)} true;
   psc := ps;

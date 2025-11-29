@@ -7,8 +7,8 @@ yield procedure {:layer 1} Allocate() returns ({:linear} tid: int);
 
 yield procedure {:layer 1} main()
 {
-  var {:linear} i: int;
-  var {:linear} j: int;
+  var i: int;
+  var j: int;
   call i := Allocate();
   call j := Allocate();
   call i := t(i) | j := t(j);

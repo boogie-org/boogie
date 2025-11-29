@@ -7,7 +7,7 @@ yield procedure {:layer 1}
 mainE({:linear_in} permVar_in: Set (One int))
 requires call Yield(permVar_in, 0);
 {
-    var {:linear} permVar_out: Set (One int);
+    var permVar_out: Set (One int);
 
     permVar_out := permVar_in;
 
@@ -18,7 +18,7 @@ yield procedure {:layer 1}
 foo({:linear_in} permVar_in: Set (One int))
 requires call Yield(permVar_in, 0);
 {
-  var {:linear} permVar_out: Set (One int);
+  var permVar_out: Set (One int);
   permVar_out := permVar_in;
   call Incr();
   call Yield(permVar_out, 1);

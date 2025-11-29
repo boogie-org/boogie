@@ -30,7 +30,7 @@ preserves
 atomic action {:layer 3} Atomic_IntArray_Alloc(v: Vec int) returns (loc_iv: Loc IntArray)
 modifies IntArrayPool;
 {
-  var {:linear} one_loc_iv: One (Loc IntArray);
+  var one_loc_iv: One (Loc IntArray);
   call one_loc_iv := Loc_New();
   loc_iv := one_loc_iv->val;
   assume !Map_Contains(IntArrayPool, One(loc_iv));
@@ -41,14 +41,14 @@ refines Atomic_IntArray_Alloc;
 ensures call Yield(loc_iv);
 preserves call IntArrayDom();
 {
-  var {:linear} one_loc_mutex: One (Loc int);
-  var {:linear} cell_int: Cell (Loc int) int;
-  var {:linear} mutexes: Map int (One (Loc int));
-  var {:linear} values: Map int (Cell (Loc int) int);
-  var {:linear} intvec: IntArray;
+  var one_loc_mutex: One (Loc int);
+  var cell_int: Cell (Loc int) int;
+  var mutexes: Map int (One (Loc int));
+  var values: Map int (Cell (Loc int) int);
+  var intvec: IntArray;
   var i: int;
-  var {:linear} one_loc_i: One (Loc int);
-  var {:linear} one_loc_iv: One (Loc IntArray);
+  var one_loc_i: One (Loc int);
+  var one_loc_iv: One (Loc IntArray);
   var {:layer 2} OldMutexPool: Map (Loc int) Mutex;
 
   call mutexes := Map_MakeEmpty();
@@ -93,8 +93,8 @@ preserves call IntArrayDom();
 preserves call Yield(loc_iv);
 {
   var loc_mutex: Loc int;
-  var {:linear} cell_int: Cell (Loc int) int;
-  var {:linear} one_loc_int: One (Loc int);
+  var cell_int: Cell (Loc int) int;
+  var one_loc_int: One (Loc int);
 
   call loc_mutex := GetLocMutex(loc_iv, i);
   call Mutex_Acquire(tid, loc_mutex);
@@ -121,8 +121,8 @@ preserves call IntArrayDom();
 preserves call Yield(loc_iv);
 {
   var loc_mutex: Loc int;
-  var {:linear} cell_int: Cell (Loc int) int;
-  var {:linear} one_loc_int: One (Loc int);
+  var cell_int: Cell (Loc int) int;
+  var one_loc_int: One (Loc int);
   var v': int;
 
   call loc_mutex := GetLocMutex(loc_iv, i);
@@ -189,8 +189,8 @@ ensures {:layer 2} MutexPool == old(MutexPool);
 {
   var loc_mutex_i: Loc int;
   var loc_mutex_j: Loc int;
-  var {:linear} cell_int_i: Cell (Loc int) int;
-  var {:linear} cell_int_j: Cell (Loc int) int;
+  var cell_int_i: Cell (Loc int) int;
+  var cell_int_j: Cell (Loc int) int;
 
   call loc_mutex_i := GetLocMutex(loc_iv, i);
   call loc_mutex_j := GetLocMutex(loc_iv, j);
@@ -207,10 +207,10 @@ ensures {:layer 2} MutexPool == old(MutexPool);
 both action {:layer 2} Atomic_Locked_GetOwnedLocInt({:linear} tid: One Tid, loc_iv: Loc IntArray, i: int) returns ({:linear} cell_int: Cell (Loc int) int)
 modifies IntArrayPoolLow;
 {
-  var {:linear} one_loc_iv: One (Loc IntArray);
-  var {:linear} intvec: IntArray;
-  var {:linear} mutexes: Map int (One (Loc int));
-  var {:linear} values: Map int (Cell (Loc int) int);
+  var one_loc_iv: One (Loc IntArray);
+  var intvec: IntArray;
+  var mutexes: Map int (One (Loc int));
+  var values: Map int (Cell (Loc int) int);
 
   one_loc_iv := One(loc_iv);
   call intvec := Map_Get(IntArrayPoolLow, one_loc_iv);
@@ -233,10 +233,10 @@ refines Atomic_Locked_GetOwnedLocInt;
 both action {:layer 2} Atomic_Locked_PutOwnedLocInt({:linear} tid: One Tid, loc_iv: Loc IntArray, i: int, {:linear_in} cell_int: Cell (Loc int) int)
 modifies IntArrayPoolLow;
 {
-  var {:linear} one_loc_iv: One (Loc IntArray);
-  var {:linear} intvec: IntArray;
-  var {:linear} mutexes: Map int (One (Loc int));
-  var {:linear} values: Map int (Cell (Loc int) int);
+  var one_loc_iv: One (Loc IntArray);
+  var intvec: IntArray;
+  var mutexes: Map int (One (Loc int));
+  var values: Map int (Cell (Loc int) int);
 
   one_loc_iv := One(loc_iv);
   call intvec := Map_Get(IntArrayPoolLow, one_loc_iv);
@@ -259,11 +259,11 @@ refines Atomic_Locked_PutOwnedLocInt;
 yield procedure {:layer 0} GetLocMutex(loc_iv: Loc IntArray, i: int) returns (loc_mutex: Loc int);
 refines right action {:layer 1, 2} _
 {
-  var {:linear} one_loc_iv: One (Loc IntArray);
-  var {:linear} intvec: IntArray;
-  var {:linear} mutexes: Map int (One (Loc int));
-  var {:linear} values: Map int (Cell (Loc int) int);
-  var {:linear} one_loc_mutex: One (Loc int);
+  var one_loc_iv: One (Loc IntArray);
+  var intvec: IntArray;
+  var mutexes: Map int (One (Loc int));
+  var values: Map int (Cell (Loc int) int);
+  var one_loc_mutex: One (Loc int);
 
   one_loc_iv := One(loc_iv);
   call intvec := Map_Get(IntArrayPoolLow, one_loc_iv);
@@ -278,10 +278,10 @@ refines right action {:layer 1, 2} _
 yield procedure {:layer 0} GetOwnedLocInt(loc_iv: Loc IntArray, i: int) returns ({:linear} cell_int: Cell (Loc int) int);
 refines atomic action {:layer 1, 1} _
 {
-  var {:linear} one_loc_iv: One (Loc IntArray);
-  var {:linear} intvec: IntArray;
-  var {:linear} mutexes: Map int (One (Loc int));
-  var {:linear} values: Map int (Cell (Loc int) int);
+  var one_loc_iv: One (Loc IntArray);
+  var intvec: IntArray;
+  var mutexes: Map int (One (Loc int));
+  var values: Map int (Cell (Loc int) int);
 
   one_loc_iv := One(loc_iv);
   call intvec := Map_Get(IntArrayPoolLow, one_loc_iv);
@@ -294,10 +294,10 @@ refines atomic action {:layer 1, 1} _
 yield procedure {:layer 0} PutOwnedLocInt(loc_iv: Loc IntArray, i: int, {:linear_in} cell_int: Cell (Loc int) int);
 refines atomic action {:layer 1, 1} _
 {
-  var {:linear} one_loc_iv: One (Loc IntArray);
-  var {:linear} intvec: IntArray;
-  var {:linear} mutexes: Map int (One (Loc int));
-  var {:linear} values: Map int (Cell (Loc int) int);
+  var one_loc_iv: One (Loc IntArray);
+  var intvec: IntArray;
+  var mutexes: Map int (One (Loc int));
+  var values: Map int (Cell (Loc int) int);
 
   one_loc_iv := One(loc_iv);
   call intvec := Map_Get(IntArrayPoolLow, one_loc_iv);

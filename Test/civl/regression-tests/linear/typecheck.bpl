@@ -7,11 +7,11 @@ function f(One X): One X;
 
 yield procedure {:layer 1} D()
 {
-    var {:linear} a: One X;
-    var {:linear} x: One X;
-    var {:linear} b: Set (One X);
+    var a: One X;
+    var x: One X;
+    var b: Set (One X);
     var c: One X;
-    var {:linear} d: One X;
+    var d: One X;
 
     b->val[a] := true;
 

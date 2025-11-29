@@ -25,7 +25,7 @@ procedure main({:linear_in} x_in: [int]bool)
   requires b0 ==> x_in == MapConst(true);
   requires b1 ==> x_in != MapConst(false);
 {
-   var {:linear} x: [int] bool;
+   var x: [int] bool;
    x := x_in;
 
    call foo(x);
@@ -39,7 +39,7 @@ procedure foo({:linear_in} x_in: [int]bool)
   requires b2 ==> x_in == MapConst(true);
   requires b3 ==> x_in != MapConst(false);
 {
-   var {:linear} x: [int] bool;
+   var x: [int] bool;
    x := x_in;
 
    assert b4 ==> x == MapConst(true);

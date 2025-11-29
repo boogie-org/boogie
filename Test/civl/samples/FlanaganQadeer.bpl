@@ -14,7 +14,7 @@ ensures {:layer 1} xl->val != nil;
 
 yield procedure {:layer 1} main()
 {
-    var {:linear} tid: One X;
+    var tid: One X;
     var val: int;
 
     while (*)

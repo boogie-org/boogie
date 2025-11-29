@@ -24,7 +24,7 @@ preserves call InvLock();
 preserves call InvMem();
 {
     var t: int;
-    var {:linear} l: Map (One int) int;
+    var l: Map (One int) int;
 
     call AcquireProtected(tid);
     call l := TransferFromGlobalProtected(tid);
@@ -140,7 +140,7 @@ refines AtomicLoad;
 both action {:layer 1,3} AtomicStore({:linear_in} l_in: Map (One int) int, a: int, v: int)
   returns ({:linear} l_out: Map (One int) int)
 {
-  var {:linear} one_a: One int;
+  var one_a: One int;
   var _v: int;
 
   l_out := l_in;

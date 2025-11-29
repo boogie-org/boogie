@@ -71,8 +71,8 @@ preserves (var t := Map_At(TreiberPoolLow, One(loc_t)); Map_At(t->nodes, One(new
 
 atomic action {:layer 5} AtomicAlloc() returns ({:linear} tagged_loc: One (TaggedLocTreiber X))
 {
-  var {:linear} one_loc_t: One (LocTreiber X);
-  var {:linear} tagged_locs: Set (One (TaggedLocTreiber X));
+  var one_loc_t: One (LocTreiber X);
+  var tagged_locs: Set (One (TaggedLocTreiber X));
 
   call one_loc_t, tagged_locs := TaggedLocs_New(UnitSet());
   tagged_loc := One(TaggedLoc(one_loc_t->val, Unit()));
@@ -86,11 +86,11 @@ ensures call TopInStack(tagged_loc->val->loc);
 ensures call ReachInStack(tagged_loc->val->loc);
 preserves call StackDom();
 {
-  var {:linear} one_loc_t: One (LocTreiber X);
-  var {:linear} tagged_locs: Set (One (TaggedLocTreiber X));
+  var one_loc_t: One (LocTreiber X);
+  var tagged_locs: Set (One (TaggedLocTreiber X));
   var top: Option (LocNode X);
-  var {:linear} stack: Map (One (LocNode X)) (Node X);
-  var {:linear} treiber: Treiber X;
+  var stack: Map (One (LocNode X)) (Node X);
+  var treiber: Treiber X;
 
   top := None();
   call stack := Map_MakeEmpty();
@@ -120,7 +120,7 @@ preserves call StackDom();
 {
   var loc_n: Option (LocNode X);
   var new_loc_n: LocNode X;
-  var {:linear} tagged_loc: One (TaggedLocNode X);
+  var tagged_loc: One (TaggedLocNode X);
   var {:layer 4} old_treiber: Treiber X;
 
   call {:layer 4} old_treiber := Copy(TreiberPoolLow->val[One(loc_t)]);
@@ -171,12 +171,12 @@ atomic action {:layer 4} AtomicCreateNewTopOfStack(loc_t: LocTreiber X, x: X)
   returns (loc_n: Option (LocNode X), new_loc_n: LocNode X, {:linear} tagged_loc: One (TaggedLocNode X))
 asserts Map_Contains(TreiberPoolLow, One(loc_t));
 {
-  var {:linear} one_loc_t: One (LocTreiber X);
-  var {:linear} treiber: Treiber X;
+  var one_loc_t: One (LocTreiber X);
+  var treiber: Treiber X;
   var top: Option (LocNode X);
-  var {:linear} stack: Map (One (LocNode X)) (Node X);
-  var {:linear} one_loc_n: One (LocNode X);
-  var {:linear} tagged_locs: Set (One (TaggedLocNode X));
+  var stack: Map (One (LocNode X)) (Node X);
+  var one_loc_n: One (LocNode X);
+  var tagged_locs: Set (One (TaggedLocNode X));
   
   one_loc_t := One(loc_t);
   call treiber := Map_Get(TreiberPoolLow, one_loc_t);
@@ -196,8 +196,8 @@ preserves call TopInStack(loc_t);
 ensures call LocInStackOrNone(loc_t, Some(new_loc_n));
 refines AtomicCreateNewTopOfStack;
 {
-  var {:linear} one_loc_n: One (LocNode X);
-  var {:linear} tagged_locs: Set (One (TaggedLocNode X));
+  var one_loc_n: One (LocNode X);
+  var tagged_locs: Set (One (TaggedLocNode X));
 
   call loc_n := ReadTopOfStack#Push(loc_t);
   call one_loc_n, tagged_locs := TaggedLocs_New(UnitSet());
@@ -209,11 +209,11 @@ refines AtomicCreateNewTopOfStack;
 
 atomic action {:layer 4} AtomicPopIntermediate(loc_t: LocTreiber X) returns (success: bool, x_opt: Option X)
 {
-  var {:linear} one_loc_t: One (LocTreiber X);
+  var one_loc_t: One (LocTreiber X);
   var loc_n: Option (LocNode X);
-  var {:linear} treiber: Treiber X;
+  var treiber: Treiber X;
   var top: Option (LocNode X);
-  var {:linear} stack: Map (One (LocNode X)) (Node X);
+  var stack: Map (One (LocNode X)) (Node X);
   var x: X;
 
   assert Map_Contains(TreiberPoolLow, One(loc_t));
@@ -298,11 +298,11 @@ right action {:layer 2,3} AtomicLoadNode#1(loc_t: LocTreiber X, loc_n: LocNode X
 atomic action {:layer 1} AtomicLoadNode#0(loc_t: LocTreiber X, loc_n: LocNode X) returns (node: Node X)
 refines AtomicLoadNode#1;
 {
-  var {:linear} one_loc_t: One (LocTreiber X);
-  var {:linear} treiber: Treiber X;
+  var one_loc_t: One (LocTreiber X);
+  var treiber: Treiber X;
   var top: Option (LocNode X);
-  var {:linear} stack: Map (One (LocNode X)) (Node X);
-  var {:linear} one_loc_n: One (LocNode X);
+  var stack: Map (One (LocNode X)) (Node X);
+  var one_loc_n: One (LocNode X);
 
   one_loc_t := One(loc_t);
   call treiber := Map_Get(TreiberPoolLow, one_loc_t);
@@ -319,8 +319,8 @@ refines AtomicLoadNode#0;
 yield procedure {:layer 0} ReadTopOfStack#0(loc_t: LocTreiber X) returns (loc_n: Option (LocNode X));
 refines atomic action {:layer 1,2} _
 {
-  var {:linear} one_loc_t: One (LocTreiber X);
-  var {:linear} treiber: Treiber X;
+  var one_loc_t: One (LocTreiber X);
+  var treiber: Treiber X;
 
   one_loc_t := One(loc_t);
   call treiber := Map_Get(TreiberPoolLow, one_loc_t);
@@ -332,8 +332,8 @@ yield procedure {:layer 0} WriteTopOfStack#0(
   loc_t: LocTreiber X, old_loc_n: Option (LocNode X), new_loc_n: Option (LocNode X)) returns (success: bool);
 refines atomic action {:layer 1,4} _
 {
-  var {:linear} one_loc_t: One (LocTreiber X);
-  var {:linear} treiber: Treiber X;
+  var one_loc_t: One (LocTreiber X);
+  var treiber: Treiber X;
 
   one_loc_t := One(loc_t);
   call treiber := Map_Get(TreiberPoolLow, one_loc_t);
@@ -349,8 +349,8 @@ refines atomic action {:layer 1,4} _
 yield procedure {:layer 0} AllocNode#0(loc_t: LocTreiber X, {:linear_in} one_loc_n: One (LocNode X), node: Node X);
 refines atomic action {:layer 1,3} _
 {
-  var {:linear} one_loc_t: One (LocTreiber X);
-  var {:linear} treiber: Treiber X;
+  var one_loc_t: One (LocTreiber X);
+  var treiber: Treiber X;
 
   one_loc_t := One(loc_t);
   call treiber := Map_Get(TreiberPoolLow, one_loc_t);

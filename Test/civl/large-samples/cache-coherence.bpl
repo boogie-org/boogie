@@ -169,7 +169,7 @@ preserves call YieldInv#2();
 {
   var ma: MemAddr;
   var value: Value;
-  var {:linear} {:layer 1,2} drp: Set (One CachePermission);
+  var {:layer 1,2} drp: Set (One CachePermission);
   
   call result, ma, value, drp := cache_evict_req#1(i, ca);
   if (result == Ok()) {
@@ -182,7 +182,7 @@ preserves call YieldInv#1();
 preserves call YieldInv#2();
 {
   var line: CacheLine;
-  var {:linear} {:layer 1,2} drp: Set (One CachePermission);
+  var {:layer 1,2} drp: Set (One CachePermission);
 
   call result, drp := cache_read_shd_req#1(i, ma);
   if (result == Ok()) {
@@ -194,7 +194,7 @@ yield procedure {:layer 2} cache_read_exc_req(i: CacheId, ma: MemAddr) returns (
 preserves call YieldInv#1();
 preserves call YieldInv#2();
 {
-  var {:linear} {:layer 1,2} drp: Set (One CachePermission);
+  var {:layer 1,2} drp: Set (One CachePermission);
 
   call result, drp := cache_read_exc_req#1(i, ma);
   if (result == Ok()) {
@@ -586,7 +586,7 @@ preserves call YieldInv#2();
 requires call YieldEvict(i, ma, value, drp);
 {
   var dirState: DirState;
-  var {:linear} {:layer 1,2} dp: Set (One DirPermission);
+  var {:layer 1,2} dp: Set (One DirPermission);
 
   call dirState, dp := dir_req_begin(ma);
   // do not change dirState in case this is a stale evict request due to a race condition with an invalidate
@@ -609,7 +609,7 @@ preserves call YieldInv#2();
 requires call YieldRead(i, ma, drp);
 {
   var dirState: DirState;
-  var {:linear} {:layer 1,2} dp: Set (One DirPermission);
+  var {:layer 1,2} dp: Set (One DirPermission);
   var value: Value;
 
   call dirState, dp := dir_req_begin(ma);
@@ -631,7 +631,7 @@ preserves call YieldInv#2();
 requires call YieldRead(i, ma, drp);
 {
   var dirState: DirState;
-  var {:linear} {:layer 1,2} dp: Set (One DirPermission);
+  var {:layer 1,2} dp: Set (One DirPermission);
   var value: Value;
 
   call dirState, dp := dir_req_begin(ma);
@@ -661,7 +661,7 @@ ensures {:layer 2} dp == dp';
 {
   var victim: CacheId;
   var victims': Set CacheId;
-  var {:linear} {:layer 1,2} dpOne: Set (One DirPermission);
+  var {:layer 1,2} dpOne: Set (One DirPermission);
 
   dp' := dp;
   if (victims == Set_Empty())

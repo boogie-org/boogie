@@ -1,6 +1,6 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-type {:linear} Tid = int;
+type Tid = int;
 var {:layer 0,1} x:int;
 
 yield procedure {:layer 1} P({:linear_in} tid1:int, {:linear} tid2:int)

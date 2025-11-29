@@ -58,8 +58,8 @@ refines AtomicMain;
 {
     var i: int;
     var {:layer 1} snapshot: [int]int;
-    var {:linear} tids': Set (One int);
-    var {:linear} tid: One int;
+    var tids': Set (One int);
+    var tid: One int;
 
     i := 0;
     tids' := tids;

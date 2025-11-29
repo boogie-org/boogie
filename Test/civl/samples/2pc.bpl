@@ -72,7 +72,7 @@ requires call XidNotInCommitted(xid);
 {
     var d: Decision;
     var votes: [ReplicaId]Vote;
-    var {:linear} vrs': Set (One VoteRequest);
+    var vrs': Set (One VoteRequest);
     var i: int;
 
     d := COMMIT();
@@ -111,7 +111,7 @@ ensures {:layer 1} (forall j:int :: 1 <= j && j < n+1 ==> IsSubset(old(locked_tr
 ensures {:layer 1} (forall j:int :: 1 <= j && j < i+1 ==> votes[j] != NONE());
 modifies locked_transactions;
 {
-    var {:linear} vr: One VoteRequest;
+    var vr: One VoteRequest;
     var out: Vote;
 
     vrs' := vrs;
@@ -136,8 +136,8 @@ ensures {:layer 1} (forall j:int, xid0 : TransactionId :: 1 <= j && j < n+1 && x
 modifies locked_transactions;
 {
     var i: int;
-    var {:linear} vr: One VoteRequest;
-    var {:linear} vrs': Set (One VoteRequest);
+    var vr: One VoteRequest;
+    var vrs': Set (One VoteRequest);
 
     vrs' := vrs;
     i := 1;
