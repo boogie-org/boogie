@@ -38,9 +38,24 @@ namespace Microsoft.Boogie
       }
     }
 
+    private Type OriginalType(Type type)
+    {
+      if (type is not CtorType ctorType)
+      {
+        return type;
+      }
+      var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(ctorType.Decl);
+      var actualTypeParams = program.monomorphizer.GetTypeInstantiation(ctorType.Decl);
+      if (actualTypeParams == null)
+      {
+        return type;
+      }
+      return new CtorType(Token.NoToken, originalTypeCtorDecl, actualTypeParams.Select(t => OriginalType(t)).ToList());
+    }
+
     private void Check()
     {
-      foreach (var datatypeTypeCtorDecl in linearTypes.Keys.OfType<CtorType>().Select(ctorType => ctorType.Decl).OfType<DatatypeTypeCtorDecl>())
+      foreach (var datatypeTypeCtorDecl in program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
       {
         var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
         var actualTypeParams = program.monomorphizer.GetTypeInstantiation(datatypeTypeCtorDecl);
@@ -50,7 +65,7 @@ namespace Microsoft.Boogie
           var innerType = actualTypeParams[0];
           if (linearTypes.ContainsKey(innerType))
           {
-            checkingContext.Error(originalTypeCtorDecl, "One instantiated with a linear type");
+            checkingContext.Error(originalTypeCtorDecl, $"One instantiated with a linear type: {OriginalType(innerType)}");
           }
         }
         else if (typeName == "Map")
@@ -58,7 +73,7 @@ namespace Microsoft.Boogie
           var keyType = actualTypeParams[0];
           if (!IsOneType(keyType) && linearTypes.ContainsKey(keyType))
           {
-            checkingContext.Error(originalTypeCtorDecl, "Map instantiated with a key type that is neither One _ nor ordinary");
+            checkingContext.Error(originalTypeCtorDecl, $"Map instantiated with a key type that is neither One _ nor ordinary: {OriginalType(keyType)}");
           }
         }
       }

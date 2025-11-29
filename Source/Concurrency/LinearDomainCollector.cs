@@ -57,7 +57,7 @@ namespace Microsoft.Boogie
     }
   }
 
-  class LinearDomainCollector : ReadOnlyVisitor
+  class LinearDomainCollector
   {
     private LinearTypeChecker linearTypeChecker;
     private Program program => linearTypeChecker.program;
@@ -137,8 +137,7 @@ namespace Microsoft.Boogie
                 [],
                 [collectionTarget],
                 VarHelper.Formal("perm", TypeHelper.MapType(permissionType, Type.Bool), false),
-                null,
-                new QKeyValue(Token.NoToken, "inline", new List<object>(), null));
+                null);
             collectors[ctorType].Add(permissionType, collectorFunction);
             program.AddTopLevelDeclaration(collectorFunction);
           }
