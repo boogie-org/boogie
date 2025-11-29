@@ -55,6 +55,10 @@ namespace Microsoft.Boogie
 
     private void Check()
     {
+      if (program.monomorphizer == null)
+      {
+        return;
+      }
       foreach (var datatypeTypeCtorDecl in program.TopLevelDeclarations.OfType<DatatypeTypeCtorDecl>())
       {
         var originalTypeCtorDecl = Monomorphizer.GetOriginalDecl(datatypeTypeCtorDecl);
