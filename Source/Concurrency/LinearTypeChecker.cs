@@ -750,7 +750,12 @@ namespace Microsoft.Boogie
 
     public void TypeCheck()
     {
-      (this.permissionTypeToLinearDomain, this.collectors) = LinearDomainCollector.Collect(this);
+      var linearTypes = LinearTypeCollector.CollectLinearTypes(program, checkingContext);
+      if (linearTypes == null)
+      {
+        return;
+      }
+      (this.permissionTypeToLinearDomain, this.collectors) = LinearDomainCollector.Collect(this, linearTypes);
       this.availableLinearVars = new Dictionary<Absy, HashSet<Variable>>();
       this.VisitProgram(program);
       foreach (var absy in this.availableLinearVars.Keys)

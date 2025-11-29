@@ -276,6 +276,11 @@ function {:inline} Map_Collector<T,U>(a: Map T U): [T]bool
   Set_Collector(a->dom)
 }
 
+function {:inline} Map_Collector_Empty<T,U,P>(a: Map T U): [P]bool
+{
+  MapConst(false)
+}
+
 /// singleton set
 datatype One<T> { One(val: T) }
 

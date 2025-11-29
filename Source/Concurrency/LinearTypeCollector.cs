@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Microsoft.Boogie
@@ -6,15 +7,16 @@ namespace Microsoft.Boogie
   class LinearTypeCollector
   {
     private readonly Program program;
-    private readonly TypecheckingContext checkingContext;
+    private readonly CheckingContext checkingContext;
     private readonly Dictionary<Type, HashSet<Type>> linearTypes;
 
-    public static Dictionary<Type, HashSet<Type>> CollectLinearTypes(Program program, TypecheckingContext checkingContext)
+    public static Dictionary<Type, HashSet<Type>> CollectLinearTypes(Program program, CheckingContext checkingContext)
     {
       var linearTypeCollector = new LinearTypeCollector(program, checkingContext);
       linearTypeCollector.Collect();
+      Debug.Assert(checkingContext.ErrorCount == 0);
       linearTypeCollector.Check();
-      return linearTypeCollector.linearTypes;
+      return checkingContext.ErrorCount == 0 ? linearTypeCollector.linearTypes : null;
     }
 
     private void Collect()
@@ -35,6 +37,7 @@ namespace Microsoft.Boogie
         }
       }
     }
+
     private void Check()
     {
       foreach (var datatypeTypeCtorDecl in linearTypes.Keys.OfType<CtorType>().Select(ctorType => ctorType.Decl).OfType<DatatypeTypeCtorDecl>())
@@ -61,9 +64,7 @@ namespace Microsoft.Boogie
       }
     }
 
-    
-
-    private LinearTypeCollector(Program program, TypecheckingContext checkingContext)
+    private LinearTypeCollector(Program program, CheckingContext checkingContext)
     {
       this.program = program;
       this.checkingContext = checkingContext;

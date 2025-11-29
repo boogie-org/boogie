@@ -3,8 +3,10 @@
 
 datatype A { A(x: One int) }
 
-procedure P0(a: A) returns ({:linear} a': One A) {
-    a' := One(a);
+datatype B { B(a: A) }
+
+procedure P0(a: A) returns ({:linear} b: B) {
+    b := B(a);
 }
 
 procedure P1({:linear_in} a: A) returns ({:linear} a': A) {
