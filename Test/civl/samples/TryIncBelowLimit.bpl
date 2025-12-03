@@ -27,13 +27,13 @@ refines atomic action {:layer 2} _ {
 
     call Yield3(n);
 
-    call ok := CAS(n, n+1) | Yield1();
+    call ok := CAS(n, n+1);
 
     if (ok) {
         return;
     }
 
-    call ok := TryIncBelowLimit(); // CAS failed => recurse with incremented retry 
+    call ok := TryIncBelowLimit();
 }
 
 yield procedure {:layer 0} CAS(prev: int, next: int) returns (status: bool);
@@ -53,8 +53,8 @@ refines atomic action {:layer 1} _ {
     val := count;
 }
 
-yield invariant {:layer 1} Yield2(c: int);
-preserves c < limit;
+// yield invariant {:layer 1} Yield2(c: int);
+// preserves c < limit;
 
 
 yield invariant {:layer 1} Yield1();
