@@ -25,7 +25,7 @@ refines atomic action {:layer 2} _ {
         return; 
     }
 
-    call Yield3(n);
+    call Yield1();
 
     call ok := CAS(n, n+1);
 
@@ -53,14 +53,8 @@ refines atomic action {:layer 1} _ {
     val := count;
 }
 
-// yield invariant {:layer 1} Yield2(c: int);
-// preserves c < limit;
-
-
 yield invariant {:layer 1} Yield1();
 preserves count <= limit;
 
-yield invariant {:layer 1} Yield3(c: int);
-preserves c < limit;
-preserves count <= limit;
+
 
