@@ -18,7 +18,6 @@ refines atomic action {:layer 2} _{
     return;
 }
 
-
 // Helper recursive procedure
 yield procedure {:layer 1} HelperInc(tries: int, limit: int) returns (ok: bool)
 refines atomic action {:layer 2} _{
@@ -52,8 +51,6 @@ refines AtomicComputeLimit;
 action {:layer 2} AtomicComputeLimit() returns (limit: int) {
     assume limit > 0;
 }
-
-
 
 yield procedure {:layer 0} CAS(prev: int, next: int) returns (ok: bool);
 refines atomic action {:layer 1} _ {
