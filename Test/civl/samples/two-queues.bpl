@@ -5,6 +5,15 @@ datatype Queue<V> { Queue(head: LocNode V, tail: LocNode V, nodes: Map (One (Loc
 
 type LocQueue V = Loc (Queue V);
 
+/*
+We want to model queues, a pool of (Queue int) values, and two indices pos and neg
+into that pool such that: (1) the domain of pool is linear, and
+(2) the indices pos and neg are distinct by virtue of being linear.
+We cannot model pos and neg as One (LocQueue int) because those values
+are already earmarked for the domain of queues.
+Instead, we model each of pos and neg as a One (TaggedLoc (Queue int) Unit) value,
+which allows us to achieve both goals.
+*/
 var {:linear} {:layer 0, 1} queues: Map (One (LocQueue int)) (Queue int);
 var {:linear} {:layer 0, 1} pos: One (TaggedLoc (Queue int) Unit);
 var {:linear} {:layer 0, 1} neg: One (TaggedLoc (Queue int) Unit);
