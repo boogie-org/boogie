@@ -4,7 +4,7 @@
 var {:layer 0, 2} count: int;
 const max: int;
 
-yield procedure {:layer 1} TryIncBelowNMax() returns (ok: bool)
+yield procedure {:layer 1} TryIncNBelowMax() returns (ok: bool)
 requires call Yield();
 refines atomic action {:layer 2} _ {
     if (ok) {
