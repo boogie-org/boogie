@@ -37,7 +37,7 @@ refines atomic action {:layer 2} _ {
     }
 
     call n := Read();
-    if (n >= max) {
+    if (n == max) {
         ok := false; 
         return; 
     }
