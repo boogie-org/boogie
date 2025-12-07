@@ -17,7 +17,7 @@ refines atomic action {:layer 2} _ {
 
     call limit := ComputeLimit() | Yield1();
     async call backgroundMaintenance();
-    call ok := HelperInc(1, limit);
+    call ok := HelperInc(0, limit);
 }
 
 yield procedure {:layer 1} HelperInc(tries: int, limit: int) returns (ok: bool)
