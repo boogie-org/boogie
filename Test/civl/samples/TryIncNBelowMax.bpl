@@ -5,7 +5,7 @@ var {:layer 0, 2} count: int;
 const max: int;
 
 yield procedure {:layer 1} TryIncBelowNMax() returns (ok: bool)
-requires call Yield1();
+requires call Yield();
 refines atomic action {:layer 2} _ {
     if (ok) {
         assume count < max;
@@ -15,13 +15,13 @@ refines atomic action {:layer 2} _ {
 {
     var limit: int;
 
-    call limit := ComputeLimit() | Yield1();
+    call limit := ComputeLimit() | Yield();
     async call BackgroundTask();
     call ok := HelperInc(0, limit);
 }
 
 yield procedure {:layer 1} HelperInc(tries: int, limit: int) returns (ok: bool)
-requires call Yield1();
+requires call Yield();
 refines atomic action {:layer 2} _ {
     if (ok) {
         assume count < max;
@@ -42,7 +42,7 @@ refines atomic action {:layer 2} _ {
         return; 
     }
 
-    call Yield1();
+    call Yield();
 
     call ok := CAS(n, n+1);
     if (ok) {
@@ -61,7 +61,7 @@ refines atomic action {:layer 2} _ {
 
 
 yield procedure {:layer 1} BackgroundTask() 
-requires call Yield1();
+requires call Yield();
 {
     assert {:layer 1} count <= max; 
 }
@@ -81,5 +81,5 @@ refines atomic action {:layer 1} _ {
     val := count;
 }
 
-yield invariant {:layer 1} Yield1();
+yield invariant {:layer 1} Yield();
 preserves count <= max;
