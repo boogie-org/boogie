@@ -14,7 +14,7 @@ refines atomic action {:layer 2} _{
 
     call limit := ComputeLimit();
     // Start recursion with 0 retries
-    call ok := HelperInc(0, limit);  
+    call ok := HelperInc(1, limit);  
     return;
 }
 
