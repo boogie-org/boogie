@@ -16,7 +16,7 @@ refines atomic action {:layer 2} _ {
     var limit: int;
 
     call limit := ComputeLimit() | Yield1();
-    async call backgroundMaintenance();
+    async call BackgroundTask();
     call ok := HelperInc(0, limit);
 }
 
@@ -60,7 +60,7 @@ refines atomic action {:layer 2} _ {
 }
 
 
-yield procedure {:layer 1} backgroundMaintenance() 
+yield procedure {:layer 1} BackgroundTask() 
 requires call Yield1();
 {
     assert {:layer 1} count <= max; 
