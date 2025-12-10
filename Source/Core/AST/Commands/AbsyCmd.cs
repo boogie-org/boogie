@@ -1555,23 +1555,33 @@ namespace Microsoft.Boogie
       }
 
       var callerDecl = (YieldProcedureDecl)tc.Proc;
-      var callCount = CallCmds.Count(callCmd =>
-          callCmd.Proc is YieldProcedureDecl calleeDecl &&
-          callerDecl.Layer == calleeDecl.Layer &&
-          calleeDecl.RefinedAction != null);
+      if (callerDecl.HasMoverType)
+      {
+        return;
+      }
+
+      bool NeedsRefinementChecking(CallCmd callCmd)
+      {
+        if (callCmd.Proc is not YieldProcedureDecl calleeDecl)
+        {
+          return false;
+        }
+        if (callerDecl.Layer != calleeDecl.Layer)
+        {
+          return false;
+        }
+        var visibleFormalNames = callerDecl.VisibleFormals.Select(v =>v.Name);
+        var visibleOutFormalNames = callerDecl.OutParams.Select(v => v.Name).Intersect(visibleFormalNames);
+        var callOutParamNames = callCmd.Outs.Select(ie => ie.Decl.Name);
+        var isCallSkippable = calleeDecl.RefinedAction == null &&
+                              visibleOutFormalNames.Intersect(callOutParamNames).Count() == 0;
+        return !isCallSkippable;
+      }
+
+      var callCount = CallCmds.Count(NeedsRefinementChecking);
       if (callCount > 1)
       {
-        tc.Error(this, "callees in multiple arms at caller's layer refine an action");
-      }
-      if (callCount == 1)
-      {
-        var sameLayerCallCount = CallCmds.Count(callCmd =>
-            callCmd.Proc is YieldProcedureDecl calleeDecl &&
-            callerDecl.Layer == calleeDecl.Layer);
-        if (sameLayerCallCount > 1)
-        {
-          tc.Error(this, "callees in multiple arms at caller's layer");
-        }
+        tc.Error(this, "callees in multiple non-skippable arms at caller's layer refine an action");
       }
     }
 

@@ -125,6 +125,49 @@ namespace Microsoft.Boogie
       YieldSufficiencyChecker.TypeCheck(this);
     }
 
+    public static List<Requires> InlineYieldRequires(YieldProcedureDecl yieldProcedureDecl, int layerNum)
+    {
+      var requires = new List<Requires>();
+      foreach (var callCmd in yieldProcedureDecl.DesugaredYieldRequires)
+      {
+        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
+        if (layerNum == yieldInvariant.Layer)
+        {
+          Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
+            .ToDictionary(x => x.Item1, x => x.Item2);
+          Substitution subst = Substituter.SubstitutionFromDictionary(map);
+          foreach (Requires req in yieldInvariant.Preserves)
+          {
+            requires.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
+              null,
+              req.Attributes));
+          }
+        }
+      }
+      return requires;
+    }
+
+    public static List<Ensures> InlineYieldEnsures(YieldProcedureDecl yieldProcedureDecl, int layerNum, bool isFree)
+    {
+      var ensures = new List<Ensures>();
+      foreach (var callCmd in yieldProcedureDecl.DesugaredYieldEnsures)
+      {
+        var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
+        if (layerNum == yieldInvariant.Layer)
+        {
+          Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
+            .ToDictionary(x => x.Item1, x => x.Item2);
+          Substitution subst = Substituter.SubstitutionFromDictionary(map);
+          foreach (Requires req in yieldInvariant.Preserves)
+          {
+            ensures.Add(new Ensures(req.tok, req.Free || isFree, Substituter.Apply(subst, req.Condition),
+              null,
+              req.Attributes));
+          }
+        }
+      }
+      return ensures;
+    }
     private HashSet<ActionDecl> TypeCheckActions()
     {
       var actionDecls = program.Procedures.OfType<ActionDecl>().ToHashSet();
