@@ -430,13 +430,22 @@ namespace Microsoft.Boogie
         {
           return;
         }
-        var callCmd = callCmds.Find(NeedsRefinementChecking);
-        if (doRefinementCheck && callCmd != null)
+        CallCmd callCmd = null;
+        if (doRefinementCheck)
         {
-          AddParallelCall(callCmd, []);
-          AddActionCall((CallCmd)VisitCallCmd(callCmd), (YieldProcedureDecl)callCmd.Proc);
-          RedirectCallToRefinementHelper(callCmd);
+          callCmd = callCmds.Find(NeedsRefinementChecking);
+          if (callCmd != null)
+          {
+            AddParallelCall(callCmd, []);
+            AddActionCall((CallCmd)VisitCallCmd(callCmd), (YieldProcedureDecl)callCmd.Proc);
+            RedirectCallToRefinementHelper(callCmd);
+          }
         }
+        callCmds.Where(iter => iter != callCmd && iter.Proc is YieldProcedureDecl)
+                .ForEach(iter => {
+                  iter.Proc = procToDuplicate[iter.Proc];
+                  iter.callee = iter.Proc.Name;
+                });
         AddParallelCall(newParCall, callCmds);
         callCmds = [];
       }
@@ -452,11 +461,6 @@ namespace Microsoft.Boogie
             ProcessCallCmd(callCmd);
             continue;
           }
-        }
-        if (procToDuplicate.ContainsKey(callCmd.Proc))
-        {
-          callCmd.Proc = procToDuplicate[callCmd.Proc];
-          callCmd.callee = callCmd.Proc.Name;
           callCmds.Add(callCmd);
         }
         else
