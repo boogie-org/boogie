@@ -29,7 +29,7 @@ refines atomic action {:layer 2} _{
     var n: int;
 
     if (tries >= limit) {
-        ok := false; // retry limit reached
+        ok := false; // limit reached
         return; 
     }
     call n := Read();
@@ -41,16 +41,10 @@ refines atomic action {:layer 2} _{
     call ok := HelperInc(tries + 1, limit);
 }
 
-
-yield procedure {:layer 1} ComputeLimit() returns (limit: int)
+yield procedure {:layer 1} ComputeLimit() returns (limit: int);
 refines AtomicComputeLimit;
-{
-   assume limit > 0;
-}
 
-action {:layer 2} AtomicComputeLimit() returns (limit: int) {
-    assume limit > 0;
-}
+action {:layer 2} AtomicComputeLimit() returns (limit: int) { }
 
 yield procedure {:layer 0} CAS(prev: int, next: int) returns (ok: bool);
 refines atomic action {:layer 1} _ {

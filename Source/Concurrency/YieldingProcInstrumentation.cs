@@ -342,39 +342,8 @@ namespace Microsoft.Boogie
       foreach (var impl in absyMap.Keys.OfType<Implementation>())
       {
         var yieldingProc = GetYieldingProc(impl);
-        foreach (var callCmd in yieldingProc.DesugaredYieldRequires)
-        {
-          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-          if (layerNum == yieldInvariant.Layer)
-          {
-            Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
-              .ToDictionary(x => x.Item1, x => x.Item2);
-            Substitution subst = Substituter.SubstitutionFromDictionary(map);
-            foreach (Requires req in yieldInvariant.Preserves)
-            {
-              impl.Proc.Requires.Add(new Requires(req.tok, req.Free, Substituter.Apply(subst, req.Condition),
-                null,
-                req.Attributes));
-            }
-          }
-        }
-
-        foreach (var callCmd in yieldingProc.DesugaredYieldEnsures)
-        {
-          var yieldInvariant = (YieldInvariantDecl)callCmd.Proc;
-          if (layerNum == yieldInvariant.Layer)
-          {
-            Dictionary<Variable, Expr> map = yieldInvariant.InParams.Zip(callCmd.Ins)
-              .ToDictionary(x => x.Item1, x => x.Item2);
-            Substitution subst = Substituter.SubstitutionFromDictionary(map);
-            foreach (Requires req in yieldInvariant.Preserves)
-            {
-              impl.Proc.Ensures.Add(new Ensures(req.tok, req.Free || doRefinementCheck, Substituter.Apply(subst, req.Condition),
-                null,
-                req.Attributes));
-            }
-          }
-        }
+        impl.Proc.Requires.AddRange(CivlTypeChecker.InlineYieldRequires(yieldingProc, layerNum));
+        impl.Proc.Ensures.AddRange(CivlTypeChecker.InlineYieldEnsures(yieldingProc, layerNum, doRefinementCheck));
       }
     }
 

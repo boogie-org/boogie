@@ -17,7 +17,7 @@ namespace Microsoft.Boogie
         {
           continue;
         }
-        YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum, false);
+        var duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum, false);
         foreach (var yieldProcedureDecl in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldProcedureDecl>())
         {
           if (yieldProcedureDecl.Layer >= layerNum)
@@ -51,7 +51,7 @@ namespace Microsoft.Boogie
         {
           continue;
         }
-        YieldingProcDuplicator duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum, true);
+        var duplicator = new YieldingProcDuplicator(civlTypeChecker, layerNum, true);
         foreach (var yieldProcedureDecl in civlTypeChecker.program.TopLevelDeclarations.OfType<YieldProcedureDecl>())
         {
           if (yieldProcedureDecl.Layer == layerNum)
