@@ -263,7 +263,7 @@ namespace Microsoft.Boogie
       return newCmdSeq;
     }
 
-    private void AddParallelCall(Absy absy, List<CallCmd> callCmds)
+    private void AddParallelCall(List<CallCmd> callCmds, Absy absy)
     {
       var parCallCmd = new ParCallCmd(absy.tok, callCmds);
       absyMap[parCallCmd] = absyMap[absy];
@@ -284,7 +284,7 @@ namespace Microsoft.Boogie
       var visibleOutFormalNames = enclosingYieldingProc.OutParams.Select(v => v.Name).Intersect(visibleFormalNames);
       var callOutParamNames = callCmd.Outs.Select(ie => ie.Decl.Name);
       var isCallSkippable = yieldingProc.RefinedAction.ActionDecl == civlTypeChecker.SkipActionDecl &&
-                            visibleOutFormalNames.Intersect(callOutParamNames).Count() == 0;
+                            !visibleOutFormalNames.Intersect(callOutParamNames).Any();
       return !isCallSkippable;
     }
 
@@ -340,7 +340,7 @@ namespace Microsoft.Boogie
       {
         if (layerNum == yieldInvariant.Layer)
         {
-          AddParallelCall(newCall, [newCall]);
+          AddParallelCall([newCall], newCall);
         }
         return;
       }
@@ -398,7 +398,7 @@ namespace Microsoft.Boogie
         {
           if (doRefinementCheck && NeedsRefinementChecking(newCall))
           {
-            AddParallelCall(newCall, []);
+            AddParallelCall([], newCall);
             var copyCall = PrepareCallCmd(newCall);
             AddActionCall(copyCall, yieldingProc);
             AddDuplicateCall(newCall, true);
@@ -417,6 +417,16 @@ namespace Microsoft.Boogie
     {
       var callCmds = new List<CallCmd>();
 
+      void AddParallelCallWrapper()
+      {
+        callCmds.Where(iter => iter.Proc is YieldProcedureDecl)
+                .ForEach(iter => {
+                  iter.Proc = procToDuplicate[iter.Proc];
+                  iter.callee = iter.Proc.Name;
+                });
+        AddParallelCall(callCmds, newParCall);
+      }
+
       void ProcessPendingCallCmds()
       {
         if (callCmds.Count == 0)
@@ -426,25 +436,15 @@ namespace Microsoft.Boogie
         CallCmd callCmd = doRefinementCheck ? callCmds.Find(NeedsRefinementChecking) : null;
         if (callCmd != null)
         {
-          AddParallelCall(callCmd, []);
+          AddParallelCall([], callCmd);
           var copyCall = PrepareCallCmd(callCmd);
           AddActionCall(copyCall, (YieldProcedureDecl)callCmd.Proc);
-          callCmds.Where(iter => iter.Proc is YieldProcedureDecl)
-                .ForEach(iter => {
-                  iter.Proc = procToDuplicate[iter.Proc];
-                  iter.callee = iter.Proc.Name;
-                });
-          AddParallelCall(newParCall, callCmds);
+          AddParallelCallWrapper();
           newCmdSeq.AddRange(callCmd.Outs.Zip(copyCall.Outs).Select(x => CmdHelper.AssumeCmd(Expr.Eq(x.First, x.Second))));
         }
         else
         {
-          callCmds.Where(iter => iter.Proc is YieldProcedureDecl)
-                .ForEach(iter => {
-                  iter.Proc = procToDuplicate[iter.Proc];
-                  iter.callee = iter.Proc.Name;
-                });
-          AddParallelCall(newParCall, callCmds);
+          AddParallelCallWrapper();
         }
         callCmds = [];
       }
@@ -546,7 +546,7 @@ namespace Microsoft.Boogie
         return;
       }
 
-      Dictionary<Variable, Expr> map = new Dictionary<Variable, Expr>();
+      Dictionary<Variable, Expr> map = [];
       for (int i = 0; i < action.Impl.InParams.Count; i++)
       {
         // Parameters come from the implementation that defines the action
@@ -617,7 +617,7 @@ namespace Microsoft.Boogie
       newCall.callee = newCall.Proc.Name;
       if (makeParallel)
       {
-        AddParallelCall(newCall, [newCall]);
+        AddParallelCall([newCall], newCall);
       }
       else
       {
@@ -632,7 +632,7 @@ namespace Microsoft.Boogie
         asyncCallPreconditionCheckers[newCall.Proc.Name] = DeclHelper.Procedure(
           civlTypeChecker.AddNamePrefix($"AsyncCall_{newCall.Proc.Name}_{layerNum}"),
           newCall.Proc.InParams, newCall.Proc.OutParams,
-          procToDuplicate[newCall.Proc].Requires, new List<Requires>(), new List<Ensures>(), new List<IdentifierExpr>());
+          procToDuplicate[newCall.Proc].Requires, [], [], []);
       }
 
       var asyncCallPreconditionChecker = asyncCallPreconditionCheckers[newCall.Proc.Name];
@@ -699,7 +699,7 @@ namespace Microsoft.Boogie
 
     public AbsyMap()
     {
-      this.absyMap = new Dictionary<Absy, Absy>();
+      this.absyMap = [];
     }
 
     public Absy this[Absy absy]
