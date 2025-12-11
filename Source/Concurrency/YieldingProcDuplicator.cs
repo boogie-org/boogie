@@ -288,6 +288,11 @@ namespace Microsoft.Boogie
       return !isCallSkippable;
     }
 
+    // Create a duplicate of callCmd and update the outputs of callCmd to fresh local variables.
+    // The duplicate call, returned by this method, is rewritten to call the refined action.
+    // The original callCmd with rewritten outputs is used as normal in the parallel call that models
+    // the yield after the call to the refined action.
+    // Assumes constraining each output to the corresponding fresh output are added after the parallel call.
     private CallCmd PrepareCallCmd(CallCmd callCmd)
     {
       var copyCallCmd = (CallCmd)VisitCallCmd(callCmd);
