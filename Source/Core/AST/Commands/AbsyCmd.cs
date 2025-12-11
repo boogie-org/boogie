@@ -1581,7 +1581,7 @@ namespace Microsoft.Boogie
       var callCount = CallCmds.Count(NeedsRefinementChecking);
       if (callCount > 1)
       {
-        tc.Error(this, "callees in multiple non-skippable arms at caller's layer refine an action");
+        tc.Error(this, "multiple non-skippable arms in parallel call at caller's layer");
       }
     }
 
