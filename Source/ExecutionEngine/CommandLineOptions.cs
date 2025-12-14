@@ -443,6 +443,11 @@ namespace Microsoft.Boogie
       set => trustRefinement = value;
     }
 
+    public bool TrustInvariants {
+      get => trustInvariants;
+      set => trustInvariants = value;
+    }
+
     public int TrustLayersUpto { get; set; } = -1;
     
     public int TrustLayersDownto { get; set; } = int.MaxValue;
@@ -593,6 +598,7 @@ namespace Microsoft.Boogie
     private bool trustMoverTypes = false;
     private bool trustNoninterference = false;
     private bool trustRefinement = false;
+    private bool trustInvariants = false;
     private bool trustSequentialization = false;
     private int enhancedErrorMessages = 0;
     private int stagedHoudiniThreads = 1;
@@ -1384,6 +1390,7 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustMoverTypes", x => trustMoverTypes = x) ||
               ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
               ps.CheckBooleanFlag("trustRefinement", x => trustRefinement = x) ||
+              ps.CheckBooleanFlag("trustInvariants", x => trustInvariants = x) ||
               ps.CheckBooleanFlag("trustSequentialization", x => trustSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
@@ -1891,6 +1898,8 @@ namespace Microsoft.Boogie
                 do not perform noninterference checks
   /trustRefinement
                 do not perform refinement checks
+  /trustInvariants
+                do not perform invariant checks
   /trustLayersUpto:<n>
                 do not verify layers <n> and below
   /trustLayersDownto:<n>

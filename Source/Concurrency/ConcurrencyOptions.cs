@@ -8,5 +8,6 @@ public interface ConcurrencyOptions : CoreOptions
   int TrustLayersUpto { get; }
   bool TrustNoninterference { get; }
   bool TrustRefinement { get; }
+  bool TrustInvariants { get; }
   bool WarnNotEliminatedVars { get; }
 }
