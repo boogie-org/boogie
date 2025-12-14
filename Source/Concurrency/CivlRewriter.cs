@@ -43,9 +43,17 @@ namespace Microsoft.Boogie
       }
 
       // Desugaring of yielding procedures
-      YieldingProcChecker.AddCheckers(civlTypeChecker, decls);
-
-      if (!options.TrustSequentialization)
+      if (!options.TrustInvariants)
+      {
+         YieldingProcChecker.AddInvariantCheckers(civlTypeChecker, decls);
+      }
+      
+      if (!options.TrustRefinement)
+      {
+         YieldingProcChecker.AddRefinementCheckers(civlTypeChecker, decls);
+      }
+      
+      if (!options.TrustSequentialization && !options.TrustRefinement)
       {
         Sequentialization.AddCheckers(civlTypeChecker, decls);
       }

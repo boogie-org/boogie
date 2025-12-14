@@ -10,10 +10,6 @@ namespace Microsoft.Boogie
       Program program = civlTypeChecker.program;
 
       // Generate the invariant checks for every layer
-      if (civlTypeChecker.Options.TrustInvariants)
-      {
-        return;
-      }
       foreach (int layerNum in civlTypeChecker.AllRefinementLayers)
       {
         if (civlTypeChecker.Options.TrustLayersDownto <= layerNum ||
@@ -49,10 +45,6 @@ namespace Microsoft.Boogie
       Program program = civlTypeChecker.program;
 
       // Generate the refinement checks for every layer
-      if (civlTypeChecker.Options.TrustRefinement)
-      {
-        return;
-      }
       foreach (int layerNum in civlTypeChecker.AllRefinementLayers)
       {
         if (civlTypeChecker.Options.TrustLayersDownto <= layerNum ||
