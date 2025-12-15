@@ -5,11 +5,11 @@ namespace Microsoft.Boogie
 {
   public class YieldingProcChecker
   {
-    public static void AddCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+    public static void AddInvariantCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
     {
       Program program = civlTypeChecker.program;
 
-      // Generate the noninterference checks for every layer
+      // Generate the invariant checks for every layer
       foreach (int layerNum in civlTypeChecker.AllRefinementLayers)
       {
         if (civlTypeChecker.Options.TrustLayersDownto <= layerNum ||
@@ -38,12 +38,13 @@ namespace Microsoft.Boogie
         }
         decls.AddRange(duplicator.Collect());
       }
+    }
+
+    public static void AddRefinementCheckers(CivlTypeChecker civlTypeChecker, List<Declaration> decls)
+    {
+      Program program = civlTypeChecker.program;
 
       // Generate the refinement checks for every layer
-      if (civlTypeChecker.Options.TrustRefinement)
-      {
-        return;
-      }
       foreach (int layerNum in civlTypeChecker.AllRefinementLayers)
       {
         if (civlTypeChecker.Options.TrustLayersDownto <= layerNum ||
