@@ -26,7 +26,6 @@ namespace Microsoft.Boogie
       // Gate sufficiency checks
       Action.AddGateSufficiencyCheckers(civlTypeChecker, decls);
 
-      // Commutativity checks
       civlTypeChecker.AtomicActions.ForEach(x =>
       {
         decls.AddRange(new Declaration[] { x.Impl, x.Impl.Proc, x.InputOutputRelation });
@@ -37,6 +36,7 @@ namespace Microsoft.Boogie
         }
       });
 
+      // Commutativity checks
       if (!options.TrustMoverTypes)
       {
         MoverCheck.AddCheckers(civlTypeChecker, decls);
@@ -51,13 +51,12 @@ namespace Microsoft.Boogie
       if (!options.TrustRefinement)
       {
          YieldingProcChecker.AddRefinementCheckers(civlTypeChecker, decls);
+         if (!options.TrustSequentialization)
+         {
+            Sequentialization.AddCheckers(civlTypeChecker, decls);
+         }
       }
       
-      if (!options.TrustSequentialization && !options.TrustRefinement)
-      {
-        Sequentialization.AddCheckers(civlTypeChecker, decls);
-      }
-
       foreach (var action in civlTypeChecker.AtomicActions)
       {
         action.AddTriggerAssumes(program, options);
