@@ -46,8 +46,11 @@ requires {:layer 1,2} local_in->key == One(i);
 right action {:layer 2} atomic_Alloc() returns ({:linear} l: Cell int int, i: int)
 modifies pool;
 {
-  assume Set_Contains(pool, One(i));
-  call l, pool := AllocLinear(i, pool);
+  var one_i: One int;
+  one_i := One(i);
+  assume Set_Contains(pool, one_i);
+  call One_Get(pool, one_i);
+  l := Cell(one_i, 0);
 }
 
 yield procedure {:layer 1}
@@ -118,11 +121,10 @@ pure action AllocLinear (i: int, {:linear_in} pool: Set (One int))
   returns ({:linear} l: Cell int int, {:linear} pool': Set (One int))
 {
   var one_i: One int;
-  var m: int;
   pool' := pool;
   one_i := One(i);
   call One_Get(pool', one_i);
-  l := Cell(one_i, m);
+  l := Cell(one_i, 0);
 }
 
 pure action FreeLinear ({:linear_in} l: Cell int int, i: int, {:linear_in} pool: Set (One int))

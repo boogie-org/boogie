@@ -91,7 +91,7 @@ left action {:layer 2} AtomicExit(i: int, {:linear_out} l: Set (One Perm), {:lin
 modifies usersInDriver;
 {
     assert Split(i, l, r);
-    call usersInDriver := B(usersInDriver, l);
+    call Set_Get(usersInDriver, l);
 }
 yield procedure {:layer 1}
 Exit(i: int, {:layer 1} {:linear_out} l: Set (One Perm), {:layer 1} {:linear} r: Set (One Perm))

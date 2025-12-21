@@ -79,23 +79,6 @@ preserves call YieldInvariant#1();
     }
 }
 
-pure action Alloc(tid: Tid, ptr: int, allocMap: Bijection) returns (allocMap': Bijection)
-{
-    var tid': Tid;
-    var ptr': int;
-    assert Map_Contains(allocMap->tidToPtr, tid);
-    allocMap' := allocMap;
-    if (Map_Contains(allocMap'->ptrToTid, ptr)) {
-        // swap
-        tid' := Map_At(allocMap'->ptrToTid, ptr);
-        ptr' := Map_At(allocMap'->tidToPtr, tid);
-        allocMap' := Bijection(Map_Swap(allocMap'->tidToPtr, tid, tid'), Map_Swap(allocMap'->ptrToTid, ptr, ptr'));
-    }
-    // alloc
-    ptr' := Map_At(allocMap'->tidToPtr, tid);
-    allocMap' := Bijection(Map_Remove(allocMap'->tidToPtr, tid), Map_Remove(allocMap'->ptrToTid, ptr'));
-}
-
 pure action PreAlloc({:linear} tid: One Tid, set: Set int, allocMap: Bijection) returns (allocMap': Bijection)
 {
     var ptr: int;
@@ -127,6 +110,23 @@ modifies freeSpace;
 }
 yield procedure {:layer 0} DecrementFreeSpace#0({:linear} tid: One Tid);
 refines AtomicDecrementFreeSpace#0;
+
+pure action Alloc(tid: Tid, ptr: int, allocMap: Bijection) returns (allocMap': Bijection)
+{
+    var tid': Tid;
+    var ptr': int;
+    assert Map_Contains(allocMap->tidToPtr, tid);
+    allocMap' := allocMap;
+    if (Map_Contains(allocMap'->ptrToTid, ptr)) {
+        // swap
+        tid' := Map_At(allocMap'->ptrToTid, ptr);
+        ptr' := Map_At(allocMap'->tidToPtr, tid);
+        allocMap' := Bijection(Map_Swap(allocMap'->tidToPtr, tid, tid'), Map_Swap(allocMap'->ptrToTid, ptr, ptr'));
+    }
+    // alloc
+    ptr' := Map_At(allocMap'->tidToPtr, tid);
+    allocMap' := Bijection(Map_Remove(allocMap'->tidToPtr, tid), Map_Remove(allocMap'->ptrToTid, ptr'));
+}
 
 atomic action {:layer 2} AtomicAllocIfPtrFree#1({:linear} tid: One Tid, ptr: int) returns (spaceFound:bool)
 modifies isFreeSet, allocMap;

@@ -57,14 +57,15 @@ returns (joinResponse: JoinResponse)
 requires call JoinResponsePre(r, roundPermission);
 {
   var {:pool "A"} n: Node;
-  var joinPerm: Permission;
+  var joinPerm: One Permission;
   var {:pool "C"} lastVoteRound: int;
   var {:pool "B"} lastVoteValue: Value;
 
   assert Round(r) && roundPermission->val == RoundPerm(r) && votePermissions == VotePermissions(r);
-  joinPerm := JoinPerm(r, n);
-  assume Node(n) && Set_Contains(joinChannelPermissions, One(joinPerm));
-  call joinChannelPermissions, usedPermissions := MovePermission(joinPerm, joinChannelPermissions, usedPermissions);
+  joinPerm := One(JoinPerm(r, n));
+  assume Node(n) && Set_Contains(joinChannelPermissions, joinPerm);
+  call One_Get(joinChannelPermissions, joinPerm);
+  call One_Put(usedPermissions, joinPerm);
   if (*) {
     assume joinInfo[r][n];
     assume MaxRoundPredicate(r, n, voteInfo, lastVoteRound);
@@ -103,12 +104,13 @@ left action {:layer 2} A_ProcessVoteResponse(r: Round, {:linear} roundPermission
 requires call VoteResponsePre(r, roundPermission);
 {
   var {:pool "A"} n: Node;
-  var votePerm: Permission;
+  var votePerm: One Permission;
 
   assert Round(r) && roundPermission->val == RoundPerm(r);
-  votePerm := VotePerm(r, n);
-  assume Node(n) && Set_Contains(voteChannelPermissions, One(votePerm));
-  call voteChannelPermissions, usedPermissions := MovePermission(votePerm, voteChannelPermissions, usedPermissions);
+  votePerm := One(VotePerm(r, n));
+  assume Node(n) && Set_Contains(voteChannelPermissions, votePerm);
+  call One_Get(voteChannelPermissions, votePerm);
+  call One_Put(usedPermissions, votePerm);
   if (voteInfo[r][n]) {
     voteResponse := VoteAccept(n);
   } else {
