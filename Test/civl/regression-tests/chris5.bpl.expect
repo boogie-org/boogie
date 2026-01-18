@@ -1,6 +1,5 @@
-chris5.bpl(11,3): Error: this assertion could not be proved
+chris5.bpl(8,3): Error: this gate of P could not be proved
 Execution trace:
-    chris5.bpl(16,3): anon0
-    chris5.bpl(11,3): inline$P$0$anon0
+    chris5.bpl(13,3): anon0
 
-Boogie program verifier finished with 0 verified, 1 error
+Boogie program verifier finished with 1 verified, 1 error

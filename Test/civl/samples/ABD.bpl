@@ -396,7 +396,7 @@ preserves call TimeStampQuorum();
     assert {:layer 2} (exists q: ReplicaSet:: IsQuorum(q) && IsSubset(q, tsq));
 }
 
-pure procedure {:inline 1} CalculateQuorum(replica_ts: [ReplicaId]TimeStamp, ts: TimeStamp) returns (w: ReplicaSet)
+pure action CalculateQuorum(replica_ts: [ReplicaId]TimeStamp, ts: TimeStamp) returns (w: ReplicaSet)
 {
     // calculate the set of all replica ids whose timestamp is at least ts
     w := (lambda rid: ReplicaId:: IsReplica(rid) && le(ts, replica_ts[rid]));
