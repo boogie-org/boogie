@@ -47,6 +47,7 @@ requires {:layer 1} tid->val != nil;
   var c:int;   // value read from count
   var {:layer 1} _A:[int]int;
 
+  call {:layer 1} Assert(0 <= count);
   call {:layer 1} _A := Copy(A);
   call acquire(tid);
 
@@ -76,7 +77,7 @@ requires {:layer 1} tid->val != nil;
   call write_count(tid, c+1);
 
   // let's see if we can prove that A is still sorted
-  assert {:layer 1} sorted(A, count);
+  call {:layer 1} Assert(sorted(A, count));
 
   call release(tid);
 }

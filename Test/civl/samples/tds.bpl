@@ -61,6 +61,7 @@ refines AtomicMain;
     var tids': Set (One int);
     var tid: One int;
 
+    call {:layer 1} Assert((forall i: int :: 0 <= i && i < n <==> Set_Contains(tids, One(i))));
     i := 0;
     tids' := tids;
     call {:layer 1} snapshot := Copy(status);

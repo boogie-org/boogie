@@ -1,8 +1,0 @@
-Pure2.bpl(8,3): Error: this gate of P could not be proved
-Execution trace:
-    Pure2.bpl(13,3): anon0
-Pure2.bpl(18,3): Error: this assertion could not be proved
-Execution trace:
-    Pure2.bpl(18,3): anon0
-
-Boogie program verifier finished with 2 verified, 2 errors

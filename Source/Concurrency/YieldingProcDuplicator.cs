@@ -173,19 +173,7 @@ namespace Microsoft.Boogie
         assertCmd.Expr = Expr.True;
         return assertCmd;
       }
-      if (layerNum != enclosingYieldingProc.Layer)
-      {
-        return assertCmd;
-      }
-      bool insideLoopInvariantOfYieldingLoop = enclosingYieldingProc.IsYieldingLoopHeaderAtProcedureLayer(enclosingBlock) && inPredicatePhase;
-      if (insideLoopInvariantOfYieldingLoop)
-      {
-        return doRefinementCheck ? new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes) : assertCmd;
-      }
-      else
-      {
-        return doRefinementCheck ? assertCmd : new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes);
-      }
+      return doRefinementCheck ? new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes) : assertCmd;
     }
 
     public override Cmd VisitCallCmd(CallCmd call)

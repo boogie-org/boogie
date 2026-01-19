@@ -301,7 +301,7 @@ preserves call Yield_Iso();
 preserves call Yield_Lock();
 requires {:layer 95, 96, 99} tid->i == i;
 {
-    assert {:layer 100} mutatorTidWhole(tid) && rootAddr(x) && tidOwns(tid, x) && fieldAddr(f) && rootAddr(y) && tidOwns(tid, y) && memAddrAbs(rootAbs[x]);
+    call {:layer 100} Assert(mutatorTidWhole(tid) && rootAddr(x) && tidOwns(tid, x) && fieldAddr(f) && rootAddr(y) && tidOwns(tid, y) && memAddrAbs(rootAbs[x]));
     call WriteBarrier(tid, i, y);
     call Yield_Iso() | Yield_WriteField(tid, x, y);
     call WriteFieldRaw(tid, x, f, y) | Yield_Lock();
@@ -1936,7 +1936,8 @@ refines AtomicLockAcquire;
 preserves call Yield_Lock();
 {
     var status:bool;
-    assert {:layer 95} tid->i != 0;
+
+    call {:layer 95} Assert(tid->i != 0);
     while (true)
         invariant {:yields} true;
         invariant call Yield_Lock();
