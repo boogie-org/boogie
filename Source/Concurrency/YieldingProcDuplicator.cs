@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Diagnostics;
@@ -129,12 +128,9 @@ namespace Microsoft.Boogie
 
     #region Implementation duplication
 
-    private Implementation enclosingImpl;
     private YieldProcedureDecl enclosingYieldingProc;
     private Block enclosingBlock;
     private bool inPredicatePhase;
-
-    private Action RefinedAction => civlTypeChecker.Action(enclosingYieldingProc.RefinedAction.ActionDecl);
 
     private List<Cmd> newCmdSeq;
 
@@ -142,31 +138,9 @@ namespace Microsoft.Boogie
 
     private Dictionary<string, Variable> addedLocalVariables;
 
-    private Variable ReturnedPAs(CtorType pendingAsyncType)
-    {
-      if (!returnedPAs.ContainsKey(pendingAsyncType))
-      {
-        returnedPAs[pendingAsyncType] = civlTypeChecker.LocalVariable($"returnedPAs_{pendingAsyncType.Decl.Name}",
-          TypeHelper.MapType(pendingAsyncType, Type.Int));
-      }
-      return returnedPAs[pendingAsyncType];
-    }
-
-    private Variable CollectedPAs(CtorType pendingAsyncType)
-    {
-      if (!civlTypeChecker.PendingAsyncCollectors(enclosingImpl).TryGetValue(pendingAsyncType, out var collectedPAs))
-      {
-        collectedPAs = civlTypeChecker.LocalVariable($"collectedPAs_{pendingAsyncType.Decl.Name}",
-          TypeHelper.MapType(pendingAsyncType, Type.Int));
-        civlTypeChecker.PendingAsyncCollectors(enclosingImpl)[pendingAsyncType] = collectedPAs;
-      }
-      return collectedPAs;
-    }
-
     public override Implementation VisitImplementation(Implementation impl)
     {
       enclosingYieldingProc = (YieldProcedureDecl)impl.Proc;
-      enclosingImpl = impl;
       Debug.Assert(layerNum <= enclosingYieldingProc.Layer);
 
       returnedPAs = new Dictionary<CtorType, Variable>();
@@ -177,13 +151,6 @@ namespace Microsoft.Boogie
       
       newImpl.LocVars.AddRange(returnedPAs.Values);
       newImpl.LocVars.AddRange(addedLocalVariables.Values);
-
-      if (!enclosingYieldingProc.HasMoverType && RefinedAction.HasPendingAsyncs && doRefinementCheck)
-      {
-        var assumeExpr = EmptyPendingAsyncMultisetExpr(CollectedPAs, RefinedAction.PendingAsyncs);
-        newImpl.LocVars.AddRange(civlTypeChecker.PendingAsyncCollectors(impl).Values.Except(impl.LocVars));
-        newImpl.Blocks.First().Cmds.Insert(0, CmdHelper.AssumeCmd(assumeExpr));
-      }
 
       absyMap[newImpl] = impl;
       return newImpl;
@@ -363,10 +330,6 @@ namespace Microsoft.Boogie
             // synchronize the called atomic action
             AddActionCall(newCall, yieldingProc);
           }
-          else if (doRefinementCheck)
-          {
-            AddPendingAsync(newCall, yieldingProc);
-          }
         }
         else
         {
@@ -378,7 +341,6 @@ namespace Microsoft.Boogie
           else if (doRefinementCheck)
           {
             Debug.Assert(!yieldingProc.HasMoverType);
-            AddPendingAsync(newCall, yieldingProc);
           }
           else
           {
@@ -521,12 +483,6 @@ namespace Microsoft.Boogie
       InjectPreconditions(calleeRefinedAction, newCall);
       InjectGate(calleeRefinedAction, newCall, !doRefinementCheck);
       newCmdSeq.Add(newCall);
-
-      if (calleeRefinedAction.HasPendingAsyncs)
-      {
-        Debug.Assert(newCall.Outs.Count == newCall.Proc.OutParams.Count - calleeRefinedAction.PendingAsyncs.Count());
-        CollectReturnedPendingAsyncs(newCall, calleeRefinedAction);
-      }
     }
 
     private void InjectPreconditions(Action action, CallCmd callCmd)
@@ -580,41 +536,6 @@ namespace Microsoft.Boogie
       newCmdSeq.Add(new CommentCmd("injected gate >>>"));
     }
 
-    private void CollectReturnedPendingAsyncs(CallCmd newCall, Action calleeRefinedAction)
-    {
-      // Inject pending async collection
-      newCall.Outs.AddRange(calleeRefinedAction.PendingAsyncs.Select(decl => Expr.Ident(ReturnedPAs(decl.PendingAsyncType))));
-      if (!doRefinementCheck)
-      {
-        return;
-      }
-
-      calleeRefinedAction.PendingAsyncs.ForEach(decl =>
-      {
-        if (RefinedAction.PendingAsyncs.Contains(decl))
-        {
-          newCmdSeq.Add(CmdHelper.AssignCmd(CollectedPAs(decl.PendingAsyncType),
-            ExprHelper.FunctionCall(decl.PendingAsyncAdd, Expr.Ident(CollectedPAs(decl.PendingAsyncType)),
-              Expr.Ident(ReturnedPAs(decl.PendingAsyncType)))));
-        }
-        else
-        {
-          newCmdSeq.Add(CmdHelper.AssertCmd(newCall.tok,
-            Expr.Eq(Expr.Ident(ReturnedPAs(decl.PendingAsyncType)), ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0))),
-            $"Pending asyncs to action {decl.Name} created by this call are not summarized"));
-        }
-      });
-    }
-
-    private Expr EmptyPendingAsyncMultisetExpr(Func<CtorType, Variable> pendingAsyncMultisets, IEnumerable<ActionDecl> asyncActions)
-    {
-      var returnExpr = Expr.And(asyncActions.Select(decl =>
-        Expr.Eq(Expr.Ident(pendingAsyncMultisets(decl.PendingAsyncType)),
-          ExprHelper.FunctionCall(decl.PendingAsyncConst, Expr.Literal(0)))).ToList());
-      returnExpr.Typecheck(new TypecheckingContext(null, civlTypeChecker.Options));
-      return returnExpr;
-    }
-
     private void AddDuplicateCall(CallCmd newCall, bool makeParallel)
     {
       newCall.IsAsync = false;
@@ -645,39 +566,6 @@ namespace Microsoft.Boogie
       newCall.Proc = asyncCallPreconditionChecker;
       newCall.callee = newCall.Proc.Name;
       newCmdSeq.Add(newCall);
-    }
-
-    private void AddPendingAsync(CallCmd newCall, YieldProcedureDecl calleeProc)
-    {
-      if (calleeProc.RefinedAction.ActionDecl == civlTypeChecker.SkipActionDecl)
-      {
-        return;
-      }
-      var calleeRefinedAction = calleeProc.Layer == enclosingYieldingProc.Layer
-        ? calleeProc.RefinedAction.ActionDecl
-        : calleeProc.RefinedActionAtLayer(layerNum);
-
-      if (RefinedAction.PendingAsyncs.Contains(calleeRefinedAction))
-      {
-        Expr[] newIns = new Expr[calleeRefinedAction.InParams.Count];
-        for (int i = 0, j = 0; i < calleeProc.InParams.Count; i++)
-        {
-          if (calleeProc.VisibleFormals.Contains(calleeProc.InParams[i]))
-          {
-            newIns[j] = newCall.Ins[i];
-            j++;
-          }
-        }
-        var collectedPAs = CollectedPAs(calleeRefinedAction.PendingAsyncType);
-        var pa = ExprHelper.FunctionCall(calleeRefinedAction.PendingAsyncCtor, newIns);
-        var inc = Expr.Add(Expr.Select(Expr.Ident(collectedPAs), pa), Expr.Literal(1));
-        var add = CmdHelper.AssignCmd(collectedPAs, Expr.Store(Expr.Ident(collectedPAs), pa, inc));
-        newCmdSeq.Add(add);
-      }
-      else
-      {
-        newCmdSeq.Add(CmdHelper.AssertCmd(newCall.tok, Expr.False, "This pending async is not summarized"));
-      }
     }
 
     #endregion

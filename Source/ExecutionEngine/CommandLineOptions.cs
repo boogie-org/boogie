@@ -452,11 +452,6 @@ namespace Microsoft.Boogie
     
     public int TrustLayersDownto { get; set; } = int.MaxValue;
 
-    public bool TrustSequentialization {
-      get => trustSequentialization;
-      set => trustSequentialization = value;
-    }
-
     public bool RemoveEmptyBlocks { get; set; } = true;
     public bool CoalesceBlocks { get; set; } = true;
     public bool PruneInfeasibleEdges { get; set; } = true;
@@ -599,7 +594,6 @@ namespace Microsoft.Boogie
     private bool trustNoninterference = false;
     private bool trustRefinement = false;
     private bool trustInvariants = false;
-    private bool trustSequentialization = false;
     private int enhancedErrorMessages = 0;
     private int stagedHoudiniThreads = 1;
     private uint timeLimitPerAssertionInPercent = 10;
@@ -1391,7 +1385,6 @@ namespace Microsoft.Boogie
               ps.CheckBooleanFlag("trustNoninterference", x => trustNoninterference = x) ||
               ps.CheckBooleanFlag("trustRefinement", x => trustRefinement = x) ||
               ps.CheckBooleanFlag("trustInvariants", x => trustInvariants = x) ||
-              ps.CheckBooleanFlag("trustSequentialization", x => trustSequentialization = x) ||
               ps.CheckBooleanFlag("useBaseNameForFileName", x => UseBaseNameForFileName = x) ||
               ps.CheckBooleanFlag("freeVarLambdaLifting", x => FreeVarLambdaLifting = x) ||
               ps.CheckBooleanFlag("warnNotEliminatedVars", x => WarnNotEliminatedVars = x) ||
@@ -1745,9 +1738,6 @@ namespace Microsoft.Boogie
      {:hide}
        Hidden input/output parameter.
 
-     {:pending_async}
-       Local variable collecting pending asyncs in yielding procedure.
-
      {:sync}
        Synchronized async call.
 
@@ -1904,8 +1894,6 @@ namespace Microsoft.Boogie
                 do not verify layers <n> and below
   /trustLayersDownto:<n>
                 do not verify layers <n> and above
-  /trustSequentialization
-                do not perform sequentialization checks
   /civlDesugaredFile:<file>
                 print plain Boogie program to <file>
 

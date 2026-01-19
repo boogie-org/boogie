@@ -324,12 +324,6 @@ pure procedure {:inline 1} TaggedLocs_New<V,T>(tags: Set T) returns ({:linear} {
   tagged_locs := Set((lambda x: One (TaggedLoc V T) :: x->val->loc == l->val && Set_Contains(tags, x->val->tag)));
 }
 
-/// Async primitives
-procedure create_async<T>(PA: T);
-procedure create_asyncs<T>(PAs: [T]bool);
-procedure create_multi_asyncs<T>(PAs: [T]int);
-procedure set_choice<T>(choice: T);
-
 /// Helpers
 pure procedure Copy<T>(v: T) returns (v': T);
 ensures v' == v;

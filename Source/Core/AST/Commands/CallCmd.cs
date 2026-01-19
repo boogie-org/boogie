@@ -304,10 +304,6 @@ public class CallCmd : CallCommonality
             }
             else
             {
-              if (callerDecl.HasMoverType && highestRefinedActionDecl.Creates.Any())
-              {
-                tc.Error(this, "caller must not be a mover procedure");
-              }
               if (IsAsync)
               {
                 if (isSynchronized)
@@ -356,10 +352,6 @@ public class CallCmd : CallCommonality
               if (highestRefinedAction == null)
               {
                 tc.Error(this, $"called action is not available at layer {callerDecl.Layer + 1}");
-              }
-              else if (!highestRefinedAction.MaybePendingAsync)
-              {
-                tc.Error(this, $"action {highestRefinedAction.Name} refined by callee must be eligible to be a pending async");
               }
             }
           }
@@ -448,41 +440,12 @@ public class CallCmd : CallCommonality
     {
       // ok
     }
-    else if (Proc.OriginalDeclWithFormals != null && CivlPrimitives.Async.Contains(Proc.OriginalDeclWithFormals.Name))
-    {
-      // ok
-    }
     else if (IsAsync)
     {
-      if (callerActionDecl.Creates.All(x => x.ActionName != Proc.Name))
-      {
-        tc.Error(this, "pending async must be in the creates clause of caller");
-      }
-    }
-    else if (CivlPrimitives.Async.Contains(Proc.Name))
-    {
-      var type = TypeProxy.FollowProxy(TypeParameters[Proc.TypeParameters[0]].Expanded);
-      if (type is CtorType { Decl: DatatypeTypeCtorDecl datatypeTypeCtorDecl })
-      {
-        if (callerActionDecl.Creates.All(x => x.ActionName != datatypeTypeCtorDecl.Name))
-        {
-          tc.Error(this, "primitive call must be instantiated with a pending async type in the creates clause of caller");
-        }
-      }
-      else
-      {
-        tc.Error(this, "primitive call must be instantiated with a pending async type");
-      }
+      tc.Error(this, "async call not allowed in atomic action");
     }
     else if (Proc is ActionDecl calleeActionDecl)
     {
-      foreach (var actionDeclRef in calleeActionDecl.Creates)
-      {
-        if (callerActionDecl.Creates.All(x => x.ActionDecl != actionDeclRef.ActionDecl))
-        {
-          tc.Error(actionDeclRef, "callee creates a pending async not in the creates clause of caller");
-        }
-      }
       if (!callerActionDecl.LayerRange.Subset(calleeActionDecl.LayerRange))
       {
         tc.Error(this,

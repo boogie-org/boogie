@@ -672,17 +672,9 @@ namespace Microsoft.Boogie
 
     public virtual Procedure VisitActionDecl(ActionDecl node)
     {
-      for (int i = 0; i < node.Creates.Count; i++)
-      {
-        node.Creates[i] = VisitActionDeclRef(node.Creates[i]);
-      }
       if (node.RefinedAction != null)
       {
         node.RefinedAction = VisitActionDeclRef(node.RefinedAction);
-      }
-      if (node.InvariantAction != null)
-      {
-        node.InvariantAction = VisitActionDeclRef(node.InvariantAction);
       }
       node.YieldRequires = VisitCallCmdSeq(node.YieldRequires);
       node.Asserts = VisitAssertCmdSeq(node.Asserts);
