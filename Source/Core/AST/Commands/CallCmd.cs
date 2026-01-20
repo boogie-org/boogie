@@ -402,7 +402,7 @@ public class CallCmd : CallCommonality
         }
         else
         {
-          // Check global outputs only; the checking of local outputs is done later
+          // Check global outputs only; the checking of local outputs is done separately
           var calleeLayer = Layers[0];
           var globalOutputs = Outs.Select(ie => ie.Decl).OfType<GlobalVariable>().Cast<Variable>();
           if (CivlPrimitives.LinearPrimitives.Contains(Proc.Name))
@@ -513,7 +513,8 @@ public class CallCmd : CallCommonality
         var actual = Outs[i];
         if (actual.Decl is GlobalVariable)
         {
-          if (!Proc.IsPure) // global outputs of pure calls already checked
+          // layer range for global outputs of pure calls checked in TypecheckCallCmdInYieldProcedureDecl
+          if (!Proc.IsPure)
           {
             tc.Error(actual, $"global variable directly modified in a yield procedure: {actual.Decl.Name}");
           }
@@ -537,7 +538,7 @@ public class CallCmd : CallCommonality
         }
         else if (modifiedArgument is { Decl: GlobalVariable })
         {
-          // already done in TypecheckCallCmdInYieldProcedureDecl
+          // checked in TypecheckCallCmdInYieldProcedureDecl
         }
         else
         {
