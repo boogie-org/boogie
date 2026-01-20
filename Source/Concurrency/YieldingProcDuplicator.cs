@@ -129,12 +129,8 @@ namespace Microsoft.Boogie
     #region Implementation duplication
 
     private YieldProcedureDecl enclosingYieldingProc;
-    private Block enclosingBlock;
-    private bool inPredicatePhase;
 
     private List<Cmd> newCmdSeq;
-
-    private Dictionary<CtorType, Variable> returnedPAs;
 
     private Dictionary<string, Variable> addedLocalVariables;
 
@@ -143,13 +139,11 @@ namespace Microsoft.Boogie
       enclosingYieldingProc = (YieldProcedureDecl)impl.Proc;
       Debug.Assert(layerNum <= enclosingYieldingProc.Layer);
 
-      returnedPAs = new Dictionary<CtorType, Variable>();
       addedLocalVariables = new Dictionary<string, Variable>();
 
       Implementation newImpl = base.VisitImplementation(impl);
       newImpl.Name = newImpl.Proc.Name;
       
-      newImpl.LocVars.AddRange(returnedPAs.Values);
       newImpl.LocVars.AddRange(addedLocalVariables.Values);
 
       absyMap[newImpl] = impl;
@@ -158,9 +152,7 @@ namespace Microsoft.Boogie
 
     public override Block VisitBlock(Block node)
     {
-      enclosingBlock = node;
       var block = base.VisitBlock(node);
-      enclosingBlock = null;
       absyMap[block] = node;
       return block;
     }
@@ -197,7 +189,6 @@ namespace Microsoft.Boogie
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
       newCmdSeq = new List<Cmd>();
-      inPredicatePhase = true;
       foreach (var cmd in cmdSeq)
       {
         Cmd newCmd = (Cmd) Visit(cmd);
@@ -213,7 +204,6 @@ namespace Microsoft.Boogie
         {
           newCmdSeq.Add(newCmd);
         }
-        inPredicatePhase = inPredicatePhase && (cmd is PredicateCmd || cmd is CallCmd callCmd && callCmd.Proc is YieldInvariantDecl);
       }
       return newCmdSeq;
     }

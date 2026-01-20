@@ -3301,11 +3301,6 @@ namespace Microsoft.Boogie
       }
       return layerNum <= YieldingLoops[block].Layer;
     }
-
-    public bool IsYieldingLoopHeaderAtProcedureLayer(Block block)
-    {
-      return IsYieldingLoopHeader(block, Layer);
-    }
   }
 
   public class LoopProcedure : Procedure
