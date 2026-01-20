@@ -307,36 +307,35 @@ public class CallCmd : CallCommonality
     // check layers
     if (Proc is YieldProcedureDecl calleeDecl)
     {
-      var isSynchronized = this.HasAttribute(CivlAttributes.SYNC);
       if (calleeDecl.Layer > callerDecl.Layer)
       {
         tc.Error(this, "layer of callee must not be more than layer of caller");
+        return;
       }
-      else if (!calleeDecl.HasMoverType)
+      if (!calleeDecl.HasMoverType && calleeDecl.RefinedAction == null)
       {
+        return;
+      }
+      var isSynchronized = this.HasAttribute(CivlAttributes.SYNC);
+      if (IsAsync && !isSynchronized)
+      {
+        tc.Error(this, "async call must be synchronized");
+        return;
+      }
+      // call is synchronous or synchronized
+      if (!calleeDecl.HasMoverType)
+      {
+        Debug.Assert(calleeDecl.RefinedAction != null);
         if (callerDecl.Layer > calleeDecl.Layer)
         {
-          if (calleeDecl.RefinedAction != null)
+          var highestRefinedActionDecl = calleeDecl.RefinedActionAtLayer(callerDecl.Layer);
+          if (highestRefinedActionDecl == null)
           {
-            var highestRefinedActionDecl = calleeDecl.RefinedActionAtLayer(callerDecl.Layer);
-            if (highestRefinedActionDecl == null)
-            {
-              tc.Error(this, $"called action is not available at layer {callerDecl.Layer}");
-            }
-            else
-            {
-              if (IsAsync)
-              {
-                if (isSynchronized)
-                {
-                  CheckRefinedChainIsLeftMover(callerDecl, calleeDecl);
-                }
-                else if (callerDecl.HasMoverType)
-                {
-                  tc.Error(this, "async call must be synchronized in mover procedure");
-                }
-              }
-            }
+            tc.Error(this, $"called action is not available at layer {callerDecl.Layer}");
+          }
+          else if (IsAsync)
+          {
+            CheckRefinedChainIsLeftMover(callerDecl, calleeDecl);
           }
         }
         else // callerDecl.Layer == calleeDecl.Layer
@@ -345,20 +344,9 @@ public class CallCmd : CallCommonality
           {
             tc.Error(this, "caller must not be a mover procedure");
           }
-          else if (IsAsync && calleeDecl.RefinedAction != null)
+          else if (IsAsync)
           {
-            if (isSynchronized)
-            {
-              tc.Error(this, "layer of callee in synchronized call must be less than layer of caller");
-            }
-            else
-            {
-              var highestRefinedAction = calleeDecl.RefinedActionAtLayer(callerDecl.Layer + 1);
-              if (highestRefinedAction == null)
-              {
-                tc.Error(this, $"called action is not available at layer {callerDecl.Layer + 1}");
-              }
-            }
+            tc.Error(this, "layer of callee in synchronized call must be less than layer of caller");
           }
         }
       }
@@ -368,18 +356,12 @@ public class CallCmd : CallCommonality
         {
           tc.Error(this, "layer of caller must be equal to layer of callee");
         }
-        else
+        else if (IsAsync)
         {
-          if (IsAsync)
+          Debug.Assert(isSynchronized);
+          if (!calleeDecl.IsLeftMover)
           {
-            if (!isSynchronized)
-            {
-              tc.Error(this, "async call to mover procedure must be synchronized");
-            }
-            else if (!calleeDecl.IsLeftMover)
-            {
-              tc.Error(this, "callee in synchronized call must be a left mover");
-            }
+            tc.Error(this, "callee in synchronized call must be a left mover");
           }
         }
       }
