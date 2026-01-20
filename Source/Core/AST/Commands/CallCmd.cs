@@ -283,6 +283,27 @@ public class CallCmd : CallCommonality
       return;
     }
 
+    void CheckRefinedChainIsLeftMover(YieldProcedureDecl callerDecl, YieldProcedureDecl calleeDecl)
+    {
+      var highestRefinedActionDecl = calleeDecl.RefinedActionAtLayer(callerDecl.Layer);
+      var calleeRefinedAction = calleeDecl.RefinedAction;
+      while (calleeRefinedAction != null)
+      {
+        var calleeActionDecl = calleeRefinedAction.ActionDecl;
+        if (!calleeActionDecl.IsLeftMover)
+        {
+          tc.Error(this,
+            $"callee abstraction in synchronized call must be a left mover: {calleeActionDecl.Name}");
+          break;
+        }
+        if (calleeActionDecl == highestRefinedActionDecl)
+        {
+          break;
+        }
+        calleeRefinedAction = calleeActionDecl.RefinedAction;
+      }
+    }
+
     // check layers
     if (Proc is YieldProcedureDecl calleeDecl)
     {
@@ -308,23 +329,7 @@ public class CallCmd : CallCommonality
               {
                 if (isSynchronized)
                 {
-                  // check that entire chain of refined actions all the way to highestRefinedAction is comprised of left movers
-                  var calleeRefinedAction = calleeDecl.RefinedAction;
-                  while (calleeRefinedAction != null)
-                  {
-                    var calleeActionDecl = calleeRefinedAction.ActionDecl;
-                    if (!calleeActionDecl.IsLeftMover)
-                    {
-                      tc.Error(this,
-                        $"callee abstraction in synchronized call must be a left mover: {calleeActionDecl.Name}");
-                      break;
-                    }
-                    if (calleeActionDecl == highestRefinedActionDecl)
-                    {
-                      break;
-                    }
-                    calleeRefinedAction = calleeActionDecl.RefinedAction;
-                  }
+                  CheckRefinedChainIsLeftMover(callerDecl, calleeDecl);
                 }
                 else if (callerDecl.HasMoverType)
                 {
