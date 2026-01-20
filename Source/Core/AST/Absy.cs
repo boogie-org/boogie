@@ -2870,12 +2870,9 @@ namespace Microsoft.Boogie
   public class ActionDecl : Procedure
   {
     public MoverType MoverType;
-    public List<ActionDeclRef> Creates;
     public ActionDeclRef RefinedAction;
-    public ActionDeclRef InvariantAction;
     public List<CallCmd> YieldRequires;
     public List<AssertCmd> Asserts;
-    public DatatypeTypeCtorDecl PendingAsyncCtorDecl;
     public bool IsAnonymous;
 
     public Implementation Impl; // set when the implementation of this action is resolved
@@ -2883,19 +2880,16 @@ namespace Microsoft.Boogie
 
     public ActionDecl(IToken tok, string name, MoverType moverType,
       List<Variable> inParams, List<Variable> outParams, bool isPure,
-      List<ActionDeclRef> creates, ActionDeclRef refinedAction, ActionDeclRef invariantAction,
+      ActionDeclRef refinedAction,
       List<Requires> requires, List<IdentifierExpr> modifies, List<CallCmd> yieldRequires, List<AssertCmd> asserts,
-      DatatypeTypeCtorDecl pendingAsyncCtorDecl, QKeyValue kv) : base(tok, name,
+      QKeyValue kv) : base(tok, name,
       new List<TypeVariable>(), inParams, outParams,
       isPure, requires, new List<Requires>(), new List<Ensures>(), modifies, kv)
     {
       this.MoverType = moverType;
-      this.Creates = creates;
       this.RefinedAction = refinedAction;
-      this.InvariantAction = invariantAction;
       this.YieldRequires = yieldRequires;
       this.Asserts = asserts;
-      this.PendingAsyncCtorDecl = pendingAsyncCtorDecl;
       this.IsAnonymous = name == null;
       if (IsAnonymous)
       {
@@ -2925,25 +2919,6 @@ namespace Microsoft.Boogie
       Asserts.ForEach(assertCmd => assertCmd.Resolve(rc));
       rc.PopVarContext();
       rc.Proc = null;
-      if (Creates.Any())
-      {
-        if (IsPure)
-        {
-          rc.Error(this, "unnecessary creates clause for pure action");
-        }
-        else if (MoverType == MoverType.Right || MoverType == MoverType.Both)
-        {
-          rc.Error(this, "right mover may not create pending asyncs");
-        }
-      }
-      Creates.ForEach(create =>
-      {
-        create.Resolve(rc);
-        if (create.ActionDecl is { MaybePendingAsync: false })
-        {
-          rc.Error(create, $"{create.ActionName} must be an async action");
-        }
-      });
       if (RefinedAction != null)
       {
         RefinedAction.Resolve(rc);
@@ -2955,10 +2930,6 @@ namespace Microsoft.Boogie
         {
           RefinedAction.ActionDecl.MoverType = MoverType.Atomic;
         }
-      }
-      if (InvariantAction != null)
-      {
-        InvariantAction.Resolve(rc);
       }
     }
 
@@ -2999,72 +2970,13 @@ namespace Microsoft.Boogie
         }
       }
 
-      Creates.ForEach(actionDeclRef =>
-      {
-        var pendingAsync = actionDeclRef.ActionDecl;
-        if (!LayerRange.Subset(pendingAsync.LayerRange))
-        {
-          tc.Error(this, $"pending async {pendingAsync.Name} is not available on all layers of {Name}");
-        }
-      });
-
       if (RefinedAction != null)
       {
-        EliminatedActionDecls().Where(actionDecl => !actionDecl.IsLeftMover).ForEach(actionDecl => {
-          tc.Error(actionDecl, $"eliminated action must be a left mover");
-        });
         var layer = LayerRange.UpperLayer;
         var refinedActionDecl = RefinedAction.ActionDecl;
         if (!refinedActionDecl.LayerRange.Contains(layer + 1))
         {
           tc.Error(refinedActionDecl, $"refined action does not exist at layer {layer + 1}");
-        }
-        if (InvariantAction != null)
-        {
-          var actionCreates = CreateActionDecls.ToHashSet();
-          var refinedActionCreates = refinedActionDecl.CreateActionDecls.ToHashSet();
-          var invariantActionDecl = InvariantAction.ActionDecl;
-          if (!invariantActionDecl.LayerRange.Contains(layer))
-          {
-            tc.Error(invariantActionDecl, $"invariant action does not exist at layer {layer}");
-          }
-          var invariantCreates = invariantActionDecl.CreateActionDecls.ToHashSet();
-          if (!actionCreates.IsSubsetOf(invariantCreates))
-          {
-            tc.Error(this,
-              $"each pending async created by refining action must also be created by invariant action {invariantActionDecl.Name}");
-          }
-          if (!refinedActionCreates.IsSubsetOf(invariantCreates))
-          {
-            tc.Error(this,
-              $"each pending async created by refined action must also be created by invariant action {invariantActionDecl.Name}");
-          }
-          var actionModifies = new HashSet<Variable>(Modifies.Select(ie => ie.Decl));
-          var refinedActionModifies = new HashSet<Variable>(refinedActionDecl.Modifies.Select(ie => ie.Decl));
-          var invariantModifies = new HashSet<Variable>(invariantActionDecl.Modifies.Select(ie => ie.Decl));
-          if (!actionModifies.IsSubsetOf(invariantModifies))
-          {
-            tc.Error(this, $"modifies of {Name} must be subset of modifies of {invariantActionDecl.Name}");
-          }
-          if (!refinedActionModifies.IsSubsetOf(invariantModifies))
-          {
-            tc.Error(this,
-              $"modifies of {refinedActionDecl.Name} must be subset of modifies of {invariantActionDecl.Name}");
-          }
-          foreach (var elimProc in invariantCreates.Except(refinedActionCreates))
-          {
-            var elimCreates = elimProc.CreateActionDecls.ToHashSet();
-            if (!elimCreates.IsSubsetOf(invariantCreates))
-            {
-              tc.Error(this,
-                $"each pending async created by eliminated action {elimProc.Name} must also be created by invariant action {invariantActionDecl.Name}");
-            }
-            var targetModifies = new HashSet<Variable>(elimProc.Modifies.Select(ie => ie.Decl));
-            if (!targetModifies.IsSubsetOf(invariantModifies))
-            {
-              tc.Error(this, $"modifies of {elimProc.Name} must be subset of modifies of {invariantActionDecl.Name}");
-            }
-          }
         }
       }
     }
@@ -3074,10 +2986,6 @@ namespace Microsoft.Boogie
       if (IsPure)
       {
         stream.Write(this, level, "pure ");
-      }
-      if (MaybePendingAsync)
-      {
-        stream.Write(level, "async ");
       }
       if (!IsPure)
       {
@@ -3105,92 +3013,23 @@ namespace Microsoft.Boogie
       if (RefinedAction != null)
       {
         stream.Write(level, $"refines {RefinedAction.ActionName}");
-        if (InvariantAction == null)
-        {
-          stream.WriteLine(";");
-        }
-        else
-        {
-          stream.WriteLine($" using {InvariantAction.ActionName};");
-        }
-      }
-      if (Creates.Any())
-      {
-        stream.WriteLine(level, $"creates {string.Join(",", Creates.Select(x => x.ActionName))};");
+        stream.WriteLine(";");
       }
       base.EmitEnd(stream, level);
     }
 
-    public IEnumerable<ActionDecl> EliminatedActionDecls()
-    {
-      var refinedProc = RefinedAction.ActionDecl;
-      var refinedActionCreates = refinedProc.CreateActionDecls.ToHashSet();
-      HashSet<ActionDecl> FixpointCreates()
-      {
-        var currCreates = new HashSet<ActionDecl>(refinedActionCreates);
-        var frontier = CreateActionDecls.ToHashSet().Except(currCreates);
-        while (frontier.Any())
-        {
-          currCreates.UnionWith(frontier);
-          frontier = frontier.SelectMany(actionDecl => actionDecl.CreateActionDecls).Except(currCreates);
-        }
-        return currCreates;
-      }
-      var allCreates = InvariantAction == null
-        ? FixpointCreates()
-        : InvariantAction.ActionDecl.CreateActionDecls;
-      return allCreates.Except(refinedActionCreates);
-    }
-
     public IEnumerable<ActionDeclRef> ActionDeclRefs()
     {
-      return Creates.Append(RefinedAction).Append(InvariantAction);
+      return [RefinedAction];
     }
 
     public bool HasPreconditions => Requires.Count > 0 || YieldRequires.Count > 0;
-
-    public IEnumerable<ActionDecl> CreateActionDecls => Creates.Select(x => x.ActionDecl);
-
-    public bool MaybePendingAsync => PendingAsyncCtorDecl != null;
 
     public bool HasMoverType => MoverType != MoverType.None;
     
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
     public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
-    
-    public DatatypeConstructor PendingAsyncCtor => PendingAsyncCtorDecl.GetConstructor(Name);
-
-    public CtorType PendingAsyncType => new (PendingAsyncCtorDecl.tok, PendingAsyncCtorDecl, new List<Type>());
-
-    public MapType PendingAsyncMultisetType => new(Token.NoToken, new List<TypeVariable>(),
-      new List<Type> { PendingAsyncType }, Type.Int);
-
-    public Function PendingAsyncAdd => pendingAsyncAdd;
-    private Function pendingAsyncAdd;
-
-    public Function PendingAsyncConst => pendingAsyncConst;
-    private Function pendingAsyncConst;
-
-    public Function PendingAsyncIte => pendingAsyncIte;
-    private Function pendingAsyncIte;
-
-    // This method is needed to ensure that all support monomorphized functions can be generated during Civl type checking.
-    // Otherwise, during later passes, monomorphization might be invoked and cause program.TopLevelDeclarations to be modified
-    // while an iteration is being done on it.
-    public void Initialize(Monomorphizer monomorphizer)
-    {
-      if (PendingAsyncCtorDecl == null)
-      {
-        return;
-      }
-      pendingAsyncAdd =
-        monomorphizer.InstantiateFunction("MapAdd", new Dictionary<string, Type> { { "T", PendingAsyncType } });
-      pendingAsyncConst = monomorphizer.InstantiateFunction("MapConst",
-        new Dictionary<string, Type> { { "T", PendingAsyncType }, { "U", Type.Int } });
-      pendingAsyncIte = monomorphizer.InstantiateFunction("MapIte",
-        new Dictionary<string, Type> { { "T", PendingAsyncType }, { "U", Type.Int } });
-    }
     
     public override Absy StdDispatch(StandardVisitor visitor)
     {

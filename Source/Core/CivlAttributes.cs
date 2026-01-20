@@ -83,10 +83,9 @@ namespace Microsoft.Boogie
     public const string LAYER = "layer";
     public const string YIELDS = "yields";
     public const string HIDE = "hide";
-    public const string PENDING_ASYNC = "pending_async";
     public const string SYNC = "sync";
 
-    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, HIDE, PENDING_ASYNC, SYNC };
+    private static string[] CIVL_ATTRIBUTES = { LAYER, YIELDS, HIDE, SYNC };
 
     public const string LINEAR = "linear";
     public const string LINEAR_IN = "linear_in";
@@ -248,10 +247,5 @@ namespace Microsoft.Boogie
           return ExtractRootFromAccessPathExpr(callCmd.Ins[0]);
       }
     }
-
-    public static HashSet<string> Async = new()
-    {
-      "create_asyncs", "create_multi_asyncs", "set_choice"
-    };
   }
 }

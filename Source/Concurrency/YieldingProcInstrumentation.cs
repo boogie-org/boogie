@@ -46,12 +46,7 @@ namespace Microsoft.Boogie
       decls.Add(yieldingProcInstrumentation.WrapperNoninterferenceCheckerImpl(
         yieldingProcInstrumentation.wrapperGlobalNoninterferenceCheckerProc,
         globalNoninterferenceCheckerProcs));
-      if (yieldToYieldNoninterferenceCheckerProcs.Count() > 0)
-      {
-        decls.AddRange(yieldingProcInstrumentation.ActionNoninterferenceCheckers(
-          civlTypeChecker.MoverActions.Where(a => a.LayerRange.Contains(layerNum) && a.ActionDecl.MaybePendingAsync),
-          false));
-      }
+
       if (globalNoninterferenceCheckerProcs.Count() > 0)
       {
         decls.AddRange(yieldingProcInstrumentation.ActionNoninterferenceCheckers(

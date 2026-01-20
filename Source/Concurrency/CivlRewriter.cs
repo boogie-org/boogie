@@ -29,11 +29,6 @@ namespace Microsoft.Boogie
       civlTypeChecker.AtomicActions.ForEach(x =>
       {
         decls.AddRange(new Declaration[] { x.Impl, x.Impl.Proc, x.InputOutputRelation });
-        if (x.ImplWithChoice != null)
-        {
-          decls.AddRange(new Declaration[]
-            { x.ImplWithChoice, x.ImplWithChoice.Proc, x.InputOutputRelationWithChoice });
-        }
       });
 
       // Commutativity checks
@@ -51,10 +46,7 @@ namespace Microsoft.Boogie
       if (!options.TrustRefinement)
       {
          YieldingProcChecker.AddRefinementCheckers(civlTypeChecker, decls);
-         if (!options.TrustSequentialization)
-         {
-            Sequentialization.AddCheckers(civlTypeChecker, decls);
-         }
+         ActionRefinement.AddCheckers(civlTypeChecker, decls);
       }
       
       foreach (var action in civlTypeChecker.AtomicActions)

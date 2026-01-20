@@ -127,19 +127,6 @@ namespace Microsoft.Boogie
         }
       }
 
-      if (atomicAction.HasPendingAsyncs)
-      {
-        atomicAction.PendingAsyncs.ForEach(decl =>
-        {
-          Variable collectedPAs =
-            civlTypeChecker.PendingAsyncCollectors(originalImpl)[decl.PendingAsyncType];
-          alwaysMap[atomicAction.PAs(decl.PendingAsyncType)] = Expr.Ident(collectedPAs);
-          LocalVariable copy = Old(collectedPAs);
-          newLocalVars.Add(copy);
-          oldOutputMap[collectedPAs] = copy;
-        });
-      }
-
       Substitution always = Substituter.SubstitutionFromDictionary(alwaysMap);
       Substitution forold = Substituter.SubstitutionFromDictionary(foroldMap);
       Expr transitionRelationExpr = GetTransitionRelation(atomicAction);
