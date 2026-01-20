@@ -874,7 +874,7 @@ namespace Microsoft.Boogie
       public void AddBinding(string varname, Element value)
       {
         vars.Add(varname);
-        valuations.Add(varname, value);
+        valuations.Add(varname, value); // SQ: exception occurs if a global variable and a local variable have the same name
       }
 
       // Change name of the state

@@ -1,6 +1,5 @@
 // RUN: %parallel-boogie "%s" > "%t"
 // RUN: %diff "%s.expect" "%t"
-// UNSUPPORTED: batch_mode
 
 var {:layer 0,2} x : int;
 
@@ -33,7 +32,7 @@ asserts {:add_to_pool "A", i+1} true;
   assume j > i;
 }
 
-pure action intro (x:int)
+pure action intro (k: int)
 {
-  assume x == 0;
+  assume k == 0;
 }
