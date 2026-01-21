@@ -282,8 +282,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            var dropRequires = layerNum == enclosingYieldingProc.Layer && doRefinementCheck;
-            DesugarPureCall(newCall, dropRequires);
+            DesugarPureCall(newCall);
           }
         }
         return;
@@ -548,9 +547,9 @@ namespace Microsoft.Boogie
       newCmdSeq.Add(newCall);
     }
 
-    private void DesugarPureCall(CallCmd newCall, bool dropRequires)
+    private void DesugarPureCall(CallCmd newCall)
     {
-      if (dropRequires)
+      if (doRefinementCheck)
       {
         if (!noRequiresPureProcedures.TryGetValue(newCall.Proc.Name, out Procedure checker))
         {
