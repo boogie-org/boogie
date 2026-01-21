@@ -19,6 +19,7 @@ namespace Microsoft.Boogie
     private Dictionary<Procedure, Procedure> procToDuplicate; /* Original -> Duplicate */
     private AbsyMap absyMap; /* Duplicate -> Original */
     private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
+    private Dictionary<string, Procedure> noRequiresPureProcedures;
 
     private LinearRewriter linearRewriter;
 
@@ -31,6 +32,7 @@ namespace Microsoft.Boogie
       this.procToDuplicate = [];
       this.absyMap = new AbsyMap();
       this.asyncCallPreconditionCheckers = [];
+      this.noRequiresPureProcedures = [];
       this.linearRewriter = new LinearRewriter(civlTypeChecker);
       this.doRefinementCheck = doRefinementCheck;
     }
@@ -280,7 +282,8 @@ namespace Microsoft.Boogie
           }
           else
           {
-            newCmdSeq.Add(newCall);
+            var dropRequires = layerNum == enclosingYieldingProc.Layer && doRefinementCheck;
+            DesugarPureCall(newCall, dropRequires);
           }
         }
         return;
@@ -531,18 +534,36 @@ namespace Microsoft.Boogie
 
     private void DesugarAsyncCall(CallCmd newCall)
     {
-      if (!asyncCallPreconditionCheckers.ContainsKey(newCall.Proc.Name))
+      if (!asyncCallPreconditionCheckers.TryGetValue(newCall.Proc.Name, out Procedure checker))
       {
-        asyncCallPreconditionCheckers[newCall.Proc.Name] = DeclHelper.Procedure(
+        checker = DeclHelper.Procedure(
           civlTypeChecker.AddNamePrefix($"AsyncCall_{newCall.Proc.Name}_{layerNum}"),
           newCall.Proc.InParams, newCall.Proc.OutParams,
           procToDuplicate[newCall.Proc].Requires, [], [], []);
+        asyncCallPreconditionCheckers[newCall.Proc.Name] = checker;
       }
-
-      var asyncCallPreconditionChecker = asyncCallPreconditionCheckers[newCall.Proc.Name];
       newCall.IsAsync = false;
-      newCall.Proc = asyncCallPreconditionChecker;
+      newCall.Proc = checker;
       newCall.callee = newCall.Proc.Name;
+      newCmdSeq.Add(newCall);
+    }
+
+    private void DesugarPureCall(CallCmd newCall, bool dropRequires)
+    {
+      if (dropRequires)
+      {
+        if (!noRequiresPureProcedures.TryGetValue(newCall.Proc.Name, out Procedure checker))
+        {
+          checker = DeclHelper.Procedure(
+            civlTypeChecker.AddNamePrefix($"NoRequires_{newCall.Proc.Name}_{layerNum}"),
+            newCall.Proc.InParams, newCall.Proc.OutParams,
+            [], [], new List<Ensures>(newCall.Proc.Ensures), []);
+          noRequiresPureProcedures[newCall.Proc.Name] = checker;
+        }
+        newCall.IsAsync = false;
+        newCall.Proc = checker;
+        newCall.callee = newCall.Proc.Name;
+      }
       newCmdSeq.Add(newCall);
     }
 
@@ -555,6 +576,7 @@ namespace Microsoft.Boogie
       var newImpls = absyMap.Keys.OfType<Implementation>();
       decls.AddRange(newImpls);
       decls.AddRange(asyncCallPreconditionCheckers.Values);
+      decls.AddRange(noRequiresPureProcedures.Values);
       decls.AddRange(YieldingProcInstrumentation.TransformImplementations(
         civlTypeChecker,
         layerNum,

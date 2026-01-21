@@ -1,0 +1,13 @@
+Pure.bpl(11,5): Error: a precondition for this call could not be proved
+Pure.bpl(5,1): Related location: this is the precondition that could not be proved
+Execution trace:
+    Pure.bpl(11,5): anon0
+Pure.bpl(16,5): Error: a precondition for this call could not be proved
+Pure.bpl(5,1): Related location: this is the precondition that could not be proved
+Execution trace:
+    Pure.bpl(16,5): anon0
+Pure.bpl(21,3): Error: this gate of B could not be proved
+Execution trace:
+    Pure.bpl(32,3): anon0
+
+Boogie program verifier finished with 7 verified, 3 errors
