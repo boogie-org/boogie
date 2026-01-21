@@ -157,8 +157,8 @@ preserves call Yield(loc_iv);
     return;
   }
 
-  assert {:layer 2} Map_Contains(IntArrayPool, One(loc_iv));
-  assert {:layer 2} (var vec := Map_At(IntArrayPool, One(loc_iv)); Vec_Contains(vec, i) && Vec_Contains(vec, j));
+  call {:layer 2} Assert(Map_Contains(IntArrayPool, One(loc_iv)));
+  call {:layer 2} Assert((var vec := Map_At(IntArrayPool, One(loc_iv)); Vec_Contains(vec, i) && Vec_Contains(vec, j)));
 
   // deadlock avoidance
   if (i < j) {

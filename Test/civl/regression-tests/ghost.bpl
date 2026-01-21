@@ -9,7 +9,7 @@ modifies x;
 yield procedure {:layer 0} Incr();
 refines AtomicIncr;
 
-pure procedure {:inline 1} ghost(y: int) returns (z: int)
+pure action ghost(y: int) returns (z: int)
 {
   z := y + 1;
 }

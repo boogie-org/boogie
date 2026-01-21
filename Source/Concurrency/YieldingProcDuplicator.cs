@@ -19,6 +19,7 @@ namespace Microsoft.Boogie
     private Dictionary<Procedure, Procedure> procToDuplicate; /* Original -> Duplicate */
     private AbsyMap absyMap; /* Duplicate -> Original */
     private Dictionary<string, Procedure> asyncCallPreconditionCheckers;
+    private Dictionary<string, Procedure> noRequiresPureProcedures;
 
     private LinearRewriter linearRewriter;
 
@@ -31,6 +32,7 @@ namespace Microsoft.Boogie
       this.procToDuplicate = [];
       this.absyMap = new AbsyMap();
       this.asyncCallPreconditionCheckers = [];
+      this.noRequiresPureProcedures = [];
       this.linearRewriter = new LinearRewriter(civlTypeChecker);
       this.doRefinementCheck = doRefinementCheck;
     }
@@ -129,12 +131,8 @@ namespace Microsoft.Boogie
     #region Implementation duplication
 
     private YieldProcedureDecl enclosingYieldingProc;
-    private Block enclosingBlock;
-    private bool inPredicatePhase;
 
     private List<Cmd> newCmdSeq;
-
-    private Dictionary<CtorType, Variable> returnedPAs;
 
     private Dictionary<string, Variable> addedLocalVariables;
 
@@ -143,13 +141,11 @@ namespace Microsoft.Boogie
       enclosingYieldingProc = (YieldProcedureDecl)impl.Proc;
       Debug.Assert(layerNum <= enclosingYieldingProc.Layer);
 
-      returnedPAs = new Dictionary<CtorType, Variable>();
       addedLocalVariables = new Dictionary<string, Variable>();
 
       Implementation newImpl = base.VisitImplementation(impl);
       newImpl.Name = newImpl.Proc.Name;
       
-      newImpl.LocVars.AddRange(returnedPAs.Values);
       newImpl.LocVars.AddRange(addedLocalVariables.Values);
 
       absyMap[newImpl] = impl;
@@ -158,9 +154,7 @@ namespace Microsoft.Boogie
 
     public override Block VisitBlock(Block node)
     {
-      enclosingBlock = node;
       var block = base.VisitBlock(node);
-      enclosingBlock = null;
       absyMap[block] = node;
       return block;
     }
@@ -173,19 +167,7 @@ namespace Microsoft.Boogie
         assertCmd.Expr = Expr.True;
         return assertCmd;
       }
-      if (layerNum != enclosingYieldingProc.Layer)
-      {
-        return assertCmd;
-      }
-      bool insideLoopInvariantOfYieldingLoop = enclosingYieldingProc.IsYieldingLoopHeaderAtProcedureLayer(enclosingBlock) && inPredicatePhase;
-      if (insideLoopInvariantOfYieldingLoop)
-      {
-        return doRefinementCheck ? new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes) : assertCmd;
-      }
-      else
-      {
-        return doRefinementCheck ? assertCmd : new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes);
-      }
+      return doRefinementCheck ? new AssumeCmd(node.tok, assertCmd.Expr, node.Attributes) : assertCmd;
     }
 
     public override Cmd VisitCallCmd(CallCmd call)
@@ -209,7 +191,6 @@ namespace Microsoft.Boogie
     public override List<Cmd> VisitCmdSeq(List<Cmd> cmdSeq)
     {
       newCmdSeq = new List<Cmd>();
-      inPredicatePhase = true;
       foreach (var cmd in cmdSeq)
       {
         Cmd newCmd = (Cmd) Visit(cmd);
@@ -225,7 +206,6 @@ namespace Microsoft.Boogie
         {
           newCmdSeq.Add(newCmd);
         }
-        inPredicatePhase = inPredicatePhase && (cmd is PredicateCmd || cmd is CallCmd callCmd && callCmd.Proc is YieldInvariantDecl);
       }
       return newCmdSeq;
     }
@@ -302,7 +282,7 @@ namespace Microsoft.Boogie
           }
           else
           {
-            newCmdSeq.Add(newCall);
+            DesugarPureCall(newCall);
           }
         }
         return;
@@ -553,18 +533,36 @@ namespace Microsoft.Boogie
 
     private void DesugarAsyncCall(CallCmd newCall)
     {
-      if (!asyncCallPreconditionCheckers.ContainsKey(newCall.Proc.Name))
+      if (!asyncCallPreconditionCheckers.TryGetValue(newCall.Proc.Name, out Procedure checker))
       {
-        asyncCallPreconditionCheckers[newCall.Proc.Name] = DeclHelper.Procedure(
+        checker = DeclHelper.Procedure(
           civlTypeChecker.AddNamePrefix($"AsyncCall_{newCall.Proc.Name}_{layerNum}"),
           newCall.Proc.InParams, newCall.Proc.OutParams,
           procToDuplicate[newCall.Proc].Requires, [], [], []);
+        asyncCallPreconditionCheckers[newCall.Proc.Name] = checker;
       }
-
-      var asyncCallPreconditionChecker = asyncCallPreconditionCheckers[newCall.Proc.Name];
       newCall.IsAsync = false;
-      newCall.Proc = asyncCallPreconditionChecker;
+      newCall.Proc = checker;
       newCall.callee = newCall.Proc.Name;
+      newCmdSeq.Add(newCall);
+    }
+
+    private void DesugarPureCall(CallCmd newCall)
+    {
+      if (doRefinementCheck)
+      {
+        if (!noRequiresPureProcedures.TryGetValue(newCall.Proc.Name, out Procedure checker))
+        {
+          checker = DeclHelper.Procedure(
+            civlTypeChecker.AddNamePrefix($"NoRequires_{newCall.Proc.Name}_{layerNum}"),
+            newCall.Proc.InParams, newCall.Proc.OutParams,
+            [], [], new List<Ensures>(newCall.Proc.Ensures), []);
+          noRequiresPureProcedures[newCall.Proc.Name] = checker;
+        }
+        newCall.IsAsync = false;
+        newCall.Proc = checker;
+        newCall.callee = newCall.Proc.Name;
+      }
       newCmdSeq.Add(newCall);
     }
 
@@ -577,6 +575,7 @@ namespace Microsoft.Boogie
       var newImpls = absyMap.Keys.OfType<Implementation>();
       decls.AddRange(newImpls);
       decls.AddRange(asyncCallPreconditionCheckers.Values);
+      decls.AddRange(noRequiresPureProcedures.Values);
       decls.AddRange(YieldingProcInstrumentation.TransformImplementations(
         civlTypeChecker,
         layerNum,

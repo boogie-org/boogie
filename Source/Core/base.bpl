@@ -338,3 +338,8 @@ datatype Unit { Unit() }
 function {:inline} UnitSet(): Set Unit {
   Set_Add(Set_Empty(), Unit())
 }
+
+pure action Assert(b: bool)
+{
+  assert b;
+}

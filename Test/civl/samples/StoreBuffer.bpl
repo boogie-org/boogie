@@ -75,8 +75,7 @@ requires {:layer 1} mutatorOrGcTid(tid->val);
 preserves call YieldLock();
 preserves call YieldStoreBufferLockAddrAbsent(tid);
 {
-    assert {:layer 1} mutatorOrGcTid(tid->val);
-    assert {:layer 1} lock == tid->val;
+    call {:layer 1} Assert(lock == tid->val);
     call LockZero(tid->val);
     call YieldLock() | YieldStoreBufferLockAddrPresent(tid);
     call FlushStoreBufferEntryForLock(tid->val);
@@ -114,9 +113,8 @@ refines AtomicSetCollectorPhase;
 requires {:layer 1} mutatorOrGcTid(tid->val);
 preserves call YieldLock();
 {
-    assert {:layer 1} mutatorOrGcTid(tid->val);
-    assert {:layer 1} lock == tid->val;
-    assert {:layer 1} collectorPhase == collectorPhaseDelayed;
+    call {:layer 1} Assert(lock == tid->val);
+    call {:layer 1} Assert(collectorPhase == collectorPhaseDelayed);
     call PrimitiveSetCollectorPhase(tid->val, phase);
 }
 

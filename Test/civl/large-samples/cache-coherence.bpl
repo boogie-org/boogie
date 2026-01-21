@@ -357,7 +357,7 @@ refines atomic action {:layer 2} _ {
   call Set_Put(cachePermissions, drp);
 }
 {
-  assert {:layer 1} Set_Contains(drp, One(CachePermission(i, Hash(ma))));
+  call {:layer 1} Assert(Set_Contains(drp, One(CachePermission(i, Hash(ma)))));
   call cache_evict_resp#0(i, ma);
   call {:layer 1} Set_Put(cachePermissions, drp);
 }
@@ -397,7 +397,7 @@ refines left action {:layer 2} _ {
   call Set_Put(cachePermissions, drp);
 }
 {
-  assert {:layer 1} Set_Contains(drp, One(CachePermission(i, Hash(ma))));
+  call {:layer 1} Assert(Set_Contains(drp, One(CachePermission(i, Hash(ma)))));
   call cache_read_resp#0(i, ma, v, s);
   call {:layer 1} Set_Put(cachePermissions, drp);
 }
@@ -722,7 +722,7 @@ refines left action {:layer 2} _ {
   call Set_Put(dirPermissions, dp);
 }
 {
-  assert {:layer 1} dp == WholeDirPermission(ma);
+  call {:layer 1} Assert(dp == WholeDirPermission(ma));
   call dir_req_end#0(ma, dirState);
   call {:layer 1} Set_Put(dirPermissions, dp);
 }

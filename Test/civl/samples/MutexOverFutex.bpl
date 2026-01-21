@@ -66,7 +66,7 @@ preserves call YieldInv();
 preserves call YieldWait(tid);
 {
   var oldValue: int;
-  assert {:layer 1} mutex == Some(tid->val);
+  call {:layer 1} Assert(mutex == Some(tid->val));
   call oldValue := FetchSub(1);
   if (oldValue == 1) {
     call {:layer 1} mutex := Copy(None());
