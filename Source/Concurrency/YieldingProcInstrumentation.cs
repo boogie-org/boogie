@@ -354,7 +354,7 @@ namespace Microsoft.Boogie
         // For mover procedures, simply add disjointness assumptions at the beginning of the first block.
         linearPermissionInstrumentation.AddDisjointnessAndWellFormedAssumptions(impl);
         var yieldingProc = GetYieldingProc(impl);
-        if (yieldingProc.HasMoverType && yieldingProc.Layer == layerNum)
+        if (yieldingProc.MoverType.HasValue && yieldingProc.Layer == layerNum)
         {
           impl.Blocks[0].Cmds.InsertRange(0, linearPermissionInstrumentation.DisjointnessAndWellFormedAssumeCmds(impl, true));
         }

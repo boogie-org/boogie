@@ -312,7 +312,7 @@ public class CallCmd : CallCommonality
         tc.Error(this, "layer of callee must not be more than layer of caller");
         return;
       }
-      if (!calleeDecl.HasMoverType && calleeDecl.RefinedAction == null)
+      if (!calleeDecl.MoverType.HasValue && calleeDecl.RefinedAction == null)
       {
         return;
       }
@@ -323,7 +323,7 @@ public class CallCmd : CallCommonality
         return;
       }
       // call is synchronous or synchronized
-      if (!calleeDecl.HasMoverType)
+      if (!calleeDecl.MoverType.HasValue)
       {
         Debug.Assert(calleeDecl.RefinedAction != null);
         if (callerDecl.Layer > calleeDecl.Layer)
@@ -340,7 +340,7 @@ public class CallCmd : CallCommonality
         }
         else // callerDecl.Layer == calleeDecl.Layer
         {
-          if (callerDecl.HasMoverType)
+          if (callerDecl.MoverType.HasValue)
           {
             tc.Error(this, "caller must not be a mover procedure");
           }
@@ -350,7 +350,7 @@ public class CallCmd : CallCommonality
           }
         }
       }
-      else // calleeDecl.HasMoverType
+      else // calleeDecl.MoverType.HasValue
       {
         if (callerDecl.Layer > calleeDecl.Layer)
         {
@@ -372,7 +372,7 @@ public class CallCmd : CallCommonality
       {
         tc.Error(this, "layer of callee must not be more than layer of caller");
       }
-      else if (yieldInvariantDecl.Layer == callerDecl.Layer && callerDecl.HasMoverType)
+      else if (yieldInvariantDecl.Layer == callerDecl.Layer && callerDecl.MoverType.HasValue)
       {
         tc.Error(this, "layer of callee must be less than layer of caller");
       }
@@ -627,7 +627,7 @@ public class CallCmd : CallCommonality
       case YieldProcedureDecl yieldProcedureDecl:
       {
         formalLayerRange = calleeFormal.LayerRange;
-        if (!yieldProcedureDecl.HasMoverType && yieldProcedureDecl.VisibleFormals.Contains(calleeFormal))
+        if (!yieldProcedureDecl.MoverType.HasValue && yieldProcedureDecl.VisibleFormals.Contains(calleeFormal))
         {
           formalLayerRange = new LayerRange(formalLayerRange.LowerLayer, callerDecl.Layer);
         }

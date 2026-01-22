@@ -31,7 +31,7 @@ namespace Microsoft.Boogie
         {
           var yieldProcedureDecl = (YieldProcedureDecl)impl.Proc;
           if (yieldProcedureDecl.Layer > layerNum ||
-              yieldProcedureDecl.Layer == layerNum && !yieldProcedureDecl.HasMoverType)
+              yieldProcedureDecl.Layer == layerNum && !yieldProcedureDecl.MoverType.HasValue)
           {
             duplicator.VisitImplementation(impl);
           }

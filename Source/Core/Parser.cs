@@ -592,7 +592,7 @@ private class BvBounds : Expr {
 	void YieldProcedureDecl(out YieldProcedureDecl ypDecl, out Implementation impl) {
 		IToken name;
 		List<Variable> ins, outs = new List<Variable>();
-		MoverType moverType = MoverType.None;
+		MoverType? moverType = null;
 		ActionDeclRef refinedAction = null;
 		List<Requires> pre = new List<Requires>();
 		List<Requires> preserves = new List<Requires>();
@@ -676,7 +676,7 @@ private class BvBounds : Expr {
 
 	void ActionDecl(bool isPure, out ActionDecl actionDecl, out Implementation impl, out DatatypeTypeCtorDecl datatypeTypeCtorDecl) {
 		IToken name = null;
-		MoverType moverType = MoverType.None;
+		MoverType? moverType = null;
 		List<Variable> ins, outs = new List<Variable>();
 		List<IdentifierExpr> mods = new List<IdentifierExpr>();
 		ActionDeclRef refinedAction = null;
@@ -716,17 +716,13 @@ private class BvBounds : Expr {
 			                              locals, stmtList, kv == null ? null : (QKeyValue)kv.Clone());
 			
 		} else SynErr(130);
-		if (isPure) {
-		 if (moverType == MoverType.None)
-		 {
-		   moverType = MoverType.Both;
-		 }
-		 else
-		 {
-		   this.SemErr("mover type unnecessary for pure action since it is a both mover");
-		 }
+		if (isPure && moverType.HasValue) {
+		  this.SemErr("mover type unnecessary for pure action since it is a both mover");
 		}
-		actionDecl = new ActionDecl(name, name.val, moverType, ins, outs, isPure, refinedAction, requires, mods, yieldRequires, asserts, kv);
+		if (!moverType.HasValue) {
+		  moverType = isPure ? MoverType.Both : MoverType.Atomic;
+		}
+		actionDecl = new ActionDecl(name, name.val, moverType.Value, ins, outs, isPure, refinedAction, requires, mods, yieldRequires, asserts, kv);
 		
 	}
 
@@ -1120,7 +1116,7 @@ private class BvBounds : Expr {
 		invariants.Add(new Requires(tok, false, e, null, kv)); 
 	}
 
-	void MoverQualifier(ref MoverType moverType) {
+	void MoverQualifier(ref MoverType? moverType) {
 		if (la.kind == 41) {
 			Get();
 			moverType = MoverType.Left; 
@@ -1174,7 +1170,7 @@ private class BvBounds : Expr {
 	}
 
 	void SpecRefinedActionForYieldProcedure(ref ActionDeclRef refinedAction, IToken name, List<Variable> ins, List<Variable> outs) {
-		IToken tok, m; QKeyValue kv = null, akv = null; MoverType moverType = MoverType.Atomic; List<Variable> locals; StmtList stmtList; 
+		IToken tok, m; QKeyValue kv = null, akv = null; MoverType? moverType = MoverType.Atomic; List<Variable> locals; StmtList stmtList; 
 		Expect(40);
 		while (la.kind == 26) {
 			Attribute(ref kv);
@@ -1196,7 +1192,7 @@ private class BvBounds : Expr {
 			 inParams.RemoveAll(x => x.HasAttribute(CivlAttributes.HIDE));
 			 var outParams = new List<Variable>(outs);
 			 outParams.RemoveAll(x => x.HasAttribute(CivlAttributes.HIDE));
-			 var actionDecl = new ActionDecl(tok, actionName, moverType, Formal.StripWhereClauses(inParams), Formal.StripWhereClauses(outParams),
+			 var actionDecl = new ActionDecl(tok, actionName, moverType.Value, Formal.StripWhereClauses(inParams), Formal.StripWhereClauses(outParams),
 			                               false, null,
 			                               new List<Requires>(), new List<IdentifierExpr>(), new List<CallCmd>(), new List<AssertCmd>(), akv);
 			 Pgm.AddTopLevelDeclaration(actionDecl);

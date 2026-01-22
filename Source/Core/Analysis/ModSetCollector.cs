@@ -23,7 +23,7 @@ public class ModSetCollector : ReadOnlyVisitor
   {
     var implementedProcs = new HashSet<Procedure>(program.Implementations.Where(impl => impl.Proc != null).Select(impl => impl.Proc));
     program.Procedures.Where(proc =>
-      proc.GetType() == typeof(Procedure) || proc is ActionDecl || (proc is YieldProcedureDecl yieldProcedureDecl && yieldProcedureDecl.HasMoverType))
+      proc.GetType() == typeof(Procedure) || proc is ActionDecl || (proc is YieldProcedureDecl yieldProcedureDecl && yieldProcedureDecl.MoverType.HasValue))
       .ForEach(proc =>
       {
         modSets.Add(proc, new HashSet<Variable>());
@@ -138,7 +138,7 @@ public class ModSetCollector : ReadOnlyVisitor
     Procedure callee = callCmd.Proc;
     Debug.Assert(callee != null);
     if (enclosingProc is YieldProcedureDecl callerDecl &&
-        callee is YieldProcedureDecl calleeDecl && !calleeDecl.HasMoverType && calleeDecl.RefinedAction != null)
+        callee is YieldProcedureDecl calleeDecl && !calleeDecl.MoverType.HasValue && calleeDecl.RefinedAction != null)
     {
       callee = calleeDecl.RefinedActionAtLayer(callerDecl.Layer);
     }

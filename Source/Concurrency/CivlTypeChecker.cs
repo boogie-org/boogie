@@ -67,7 +67,7 @@ namespace Microsoft.Boogie
         program.AddTopLevelDeclaration(skipImplementation);
       }
       program.TopLevelDeclarations.OfType<YieldProcedureDecl>()
-        .Where(decl => !decl.HasMoverType && decl.RefinedAction == null).ForEach(decl =>
+        .Where(decl => !decl.MoverType.HasValue && decl.RefinedAction == null).ForEach(decl =>
         {
           decl.RefinedAction = new ActionDeclRef(Token.NoToken, SkipActionDecl.Name)
           {
@@ -358,8 +358,7 @@ namespace Microsoft.Boogie
       return GlobalVariables.Where(v => v.LayerRange.LowerLayer <= layerNum && layerNum < v.LayerRange.UpperLayer);
     }
 
-    public IEnumerable<Action> MoverActions => actionDeclToAction.Keys
-      .Where(actionDecl => actionDecl.HasMoverType).Select(actionDecl => actionDeclToAction[actionDecl]);
+    public IEnumerable<Action> MoverActions => actionDeclToAction.Keys.Select(actionDecl => actionDeclToAction[actionDecl]);
 
     public IEnumerable<Action> AtomicActions => actionDeclToAction.Values;
 
