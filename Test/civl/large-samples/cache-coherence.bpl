@@ -412,7 +412,7 @@ refines left action {:layer 2} _ {
   assert (forall {:pool "X"} j: CacheId :: {:add_to_pool "X", j} (var line := cache[j][ca]; line->ma == ma ==> line->state == Invalid() || line->state == Shared()));
   // this assertion accompanies the relaxation in cache_read#1 to allow cache_invalidate_shd#1 to commute to the left of cache_read#1
   assert cache[i][ca]->value == absMem[ma];
-  call primitive_cache_invalidate_shd(i, ma, s);
+  call cache := primitive_cache_invalidate_shd(cache, i, ma, s);
 }
 {
   call cache_invalidate_shd#0(i, ma, s);
@@ -422,7 +422,7 @@ yield procedure {:layer 1} cache_invalidate_exc#1(i: CacheId, ma: MemAddr, s: St
 refines atomic action {:layer 2} _ {
   assert dp == WholeDirPermission(ma);
   assume {:add_to_pool "DirPermission", One(DirPermission(i0, ma))} true;
-  call value := primitive_cache_invalidate_exc(i, ma, s);
+  call cache, value := primitive_cache_invalidate_exc(cache, i, ma, s);
 }
 {
   call value := cache_invalidate_exc#0(i, ma, s);
@@ -544,10 +544,11 @@ refines atomic action {:layer 1} _ {
 
 yield procedure {:layer 0} cache_invalidate_shd#0(i: CacheId, ma: MemAddr, s: State);
 refines atomic action {:layer 1} _ {
-  call primitive_cache_invalidate_shd(i, ma, s);
+  call cache := primitive_cache_invalidate_shd(cache, i, ma, s);
 }
 
-action {:layer 1,2} primitive_cache_invalidate_shd(i: CacheId, ma: MemAddr, s: State)
+pure action primitive_cache_invalidate_shd(cache: [CacheId][CacheAddr]CacheLine, i: CacheId, ma: MemAddr, s: State)
+  returns (cache': [CacheId][CacheAddr]CacheLine)
 {
   var ca: CacheAddr;
   var line: CacheLine;
@@ -557,15 +558,17 @@ action {:layer 1,2} primitive_cache_invalidate_shd(i: CacheId, ma: MemAddr, s: S
   line := cache[i][ca];
   assert line->state == Shared();
   assert line->ma == ma;
-  cache[i][ca]->state := s;
+  cache' := cache;
+  cache'[i][ca]->state := s;
 }
 
 yield procedure {:layer 0} cache_invalidate_exc#0(i: CacheId, ma: MemAddr, s: State) returns (value: Value);
 refines atomic action {:layer 1} _ {
-  call value := primitive_cache_invalidate_exc(i, ma, s);
+  call cache, value := primitive_cache_invalidate_exc(cache, i, ma, s);
 }
 
-action {:layer 1,2} primitive_cache_invalidate_exc(i: CacheId, ma: MemAddr, s: State) returns (value: Value)
+pure action primitive_cache_invalidate_exc(cache: [CacheId][CacheAddr]CacheLine, i: CacheId, ma: MemAddr, s: State)
+  returns (cache': [CacheId][CacheAddr]CacheLine, value: Value)
 {
   var ca: CacheAddr;
   var line: CacheLine;
@@ -576,7 +579,8 @@ action {:layer 1,2} primitive_cache_invalidate_exc(i: CacheId, ma: MemAddr, s: S
   assert line->state == Exclusive() || line->state == Modified();
   assert line->ma == ma;
   value := line->value;
-  cache[i][ca]->state := s;
+  cache' := cache;
+  cache'[i][ca]->state := s;
 }
 
 /// Directory

@@ -52,7 +52,7 @@ namespace Microsoft.Boogie
         var requires = VisitRequiresSeq(node.Requires);
         var preserves = VisitRequiresSeq(node.Preserves);
         var ensures = VisitEnsuresSeq(node.Ensures);
-        if (node.HasMoverType && layerNum == node.Layer && !doRefinementCheck)
+        if (node.MoverType.HasValue && layerNum == node.Layer && !doRefinementCheck)
         {
           requires = requires.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
           preserves = preserves.Select(req => new Requires(req.tok, true, req.Condition, req.Comment, req.Attributes)).ToList();
@@ -70,7 +70,7 @@ namespace Microsoft.Boogie
           requires,
           [],
           ensures,
-          (node.HasMoverType && node.Layer == layerNum
+          (node.MoverType.HasValue && node.Layer == layerNum
             ? node.ModifiedVars.Select(Expr.Ident)
             : civlTypeChecker.GlobalVariables.Select(v => Expr.Ident(v))).ToList()
           );
@@ -304,7 +304,7 @@ namespace Microsoft.Boogie
       {
         if (yieldingProc.Layer < layerNum)
         {
-          Debug.Assert(!yieldingProc.HasMoverType);
+          Debug.Assert(!yieldingProc.MoverType.HasValue);
           if (newCall.HasAttribute(CivlAttributes.SYNC))
           {
             // synchronize the called atomic action
@@ -313,14 +313,14 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (yieldingProc.HasMoverType && yieldingProc.Layer == layerNum)
+          if (yieldingProc.MoverType.HasValue && yieldingProc.Layer == layerNum)
           {
             // synchronize the called mover procedure
             AddDuplicateCall(newCall, false);
           }
           else if (doRefinementCheck)
           {
-            Debug.Assert(!yieldingProc.HasMoverType);
+            Debug.Assert(!yieldingProc.MoverType.HasValue);
           }
           else
           {
@@ -331,7 +331,7 @@ namespace Microsoft.Boogie
       }
 
       // handle synchronous calls to yielding procedures
-      if (yieldingProc.HasMoverType)
+      if (yieldingProc.MoverType.HasValue)
       {
         AddDuplicateCall(newCall, yieldingProc.Layer > layerNum);
       }
@@ -400,8 +400,8 @@ namespace Microsoft.Boogie
       {
         if (callCmd.Proc is YieldProcedureDecl yieldingProc)
         {
-          Debug.Assert(layerNum <= yieldingProc.Layer || !yieldingProc.HasMoverType);
-          if (layerNum > yieldingProc.Layer || layerNum == yieldingProc.Layer && yieldingProc.HasMoverType)
+          Debug.Assert(layerNum <= yieldingProc.Layer || !yieldingProc.MoverType.HasValue);
+          if (layerNum > yieldingProc.Layer || layerNum == yieldingProc.Layer && yieldingProc.MoverType.HasValue)
           {
             ProcessPendingCallCmds();
             ProcessCallCmd(callCmd);

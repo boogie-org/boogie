@@ -1555,7 +1555,7 @@ namespace Microsoft.Boogie
       }
 
       var callerDecl = (YieldProcedureDecl)tc.Proc;
-      if (callerDecl.HasMoverType)
+      if (callerDecl.MoverType.HasValue)
       {
         return;
       }

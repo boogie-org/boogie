@@ -2721,7 +2721,7 @@ namespace Microsoft.Boogie
       {
         var oldGlobalAccessOnlyInOld = tc.GlobalAccessOnlyInOld;
         if (this is YieldProcedureDecl yieldProcedureDecl &&
-            (!yieldProcedureDecl.HasMoverType || layers.Any(layer => layer < yieldProcedureDecl.Layer)))
+            (!yieldProcedureDecl.MoverType.HasValue || layers.Any(layer => layer < yieldProcedureDecl.Layer)))
         {
           tc.GlobalAccessOnlyInOld = true;
         }
@@ -2736,9 +2736,9 @@ namespace Microsoft.Boogie
       foreach (Requires e in Preserves)
       {
         if (this is YieldProcedureDecl yieldProcedureDecl &&
-            (!yieldProcedureDecl.HasMoverType || e.Layers.Any(layer => layer < yieldProcedureDecl.Layer)))
+            (!yieldProcedureDecl.MoverType.HasValue || e.Layers.Any(layer => layer < yieldProcedureDecl.Layer)))
         {
-          if (yieldProcedureDecl.HasMoverType)
+          if (yieldProcedureDecl.MoverType.HasValue)
           {
             tc.Error(e, $"only layer {yieldProcedureDecl.Layer} allowed for preserves clause");
           }
@@ -2864,7 +2864,6 @@ namespace Microsoft.Boogie
     Right,
     Left,
     Both,
-    None
   }
 
   public class ActionDecl : Procedure
@@ -2922,14 +2921,6 @@ namespace Microsoft.Boogie
       if (RefinedAction != null)
       {
         RefinedAction.Resolve(rc);
-        if (!HasMoverType)
-        {
-          MoverType = MoverType.Atomic;
-        }
-        if (RefinedAction.ActionDecl is { HasMoverType: false })
-        {
-          RefinedAction.ActionDecl.MoverType = MoverType.Atomic;
-        }
       }
     }
 
@@ -3025,8 +3016,6 @@ namespace Microsoft.Boogie
 
     public bool HasPreconditions => Requires.Count > 0 || YieldRequires.Count > 0;
 
-    public bool HasMoverType => MoverType != MoverType.None;
-    
     public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
 
     public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
@@ -3051,7 +3040,7 @@ namespace Microsoft.Boogie
   
   public class YieldProcedureDecl : Procedure
   {
-    public MoverType MoverType;
+    public MoverType? MoverType;
     public List<CallCmd> YieldRequires;
     public List<CallCmd> YieldPreserves;
     public List<CallCmd> YieldEnsures;
@@ -3061,7 +3050,7 @@ namespace Microsoft.Boogie
     public HashSet<Variable> VisibleFormals; // set during resolution
     public Dictionary<Block, YieldingLoop> YieldingLoops; // empty initially, filled up during type checking
 
-    public YieldProcedureDecl(IToken tok, string name, MoverType moverType, List<Variable> inParams,
+    public YieldProcedureDecl(IToken tok, string name, MoverType? moverType, List<Variable> inParams,
       List<Variable> outParams,
       List<Requires> requires, List<Requires> preserves, List<Ensures> ensures, List<IdentifierExpr> modifies,
       List<CallCmd> yieldRequires, List<CallCmd> yieldPreserves, List<CallCmd> yieldEnsures,
@@ -3117,7 +3106,7 @@ namespace Microsoft.Boogie
       rc.StateMode = oldStateMode;
       rc.Proc = null;
 
-      if (!HasMoverType)
+      if (!MoverType.HasValue)
       {
         VisibleFormals = RefinedAction == null
           ? new HashSet<Variable>()
@@ -3128,13 +3117,9 @@ namespace Microsoft.Boogie
       if (RefinedAction != null)
       {
         RefinedAction.Resolve(rc);
-        if (RefinedAction.ActionDecl is { HasMoverType: false })
-        {
-          RefinedAction.ActionDecl.MoverType = MoverType.Atomic;
-        }
       }
 
-      if (!HasMoverType)
+      if (!MoverType.HasValue)
       {
         if (Modifies.Any())
         {
@@ -3160,7 +3145,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      if (HasMoverType)
+      if (MoverType.HasValue)
       {
         Modifies.Where(ie => !ie.Decl.LayerRange.Contains(Layer)).ForEach(ie =>
         {
@@ -3219,12 +3204,10 @@ namespace Microsoft.Boogie
     {
       return YieldEnsures.Union(YieldPreserves).Union(YieldRequires);
     }
-
-    public bool HasMoverType => MoverType != MoverType.None;
     
-    public bool IsRightMover => MoverType == MoverType.Right || MoverType == MoverType.Both;
+    public bool IsRightMover => MoverType.HasValue && (MoverType.Value == Boogie.MoverType.Right || MoverType.Value == Boogie.MoverType.Both);
 
-    public bool IsLeftMover => MoverType == MoverType.Left || MoverType == MoverType.Both;
+    public bool IsLeftMover => MoverType.HasValue && (MoverType.Value == Boogie.MoverType.Left || MoverType.Value == Boogie.MoverType.Both);
 
     public ActionDecl RefinedActionAtLayer(int layer)
     {

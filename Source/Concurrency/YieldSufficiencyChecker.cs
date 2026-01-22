@@ -225,7 +225,7 @@ namespace Microsoft.Boogie
         }
       }
 
-      private bool IsMoverProcedure => yieldingProc.HasMoverType && yieldingProc.Layer == currLayerNum;
+      private bool IsMoverProcedure => yieldingProc.MoverType.HasValue && yieldingProc.Layer == currLayerNum;
 
       private bool CheckAtomicity(Dictionary<Absy, HashSet<int>> simulationRelation)
       {
@@ -331,12 +331,12 @@ namespace Microsoft.Boogie
         var callee = (YieldProcedureDecl)callCmd.Proc;
         if (callCmd.IsAsync)
         {
-          if (callee.HasMoverType && callee.Layer == currLayerNum)
+          if (callee.MoverType.HasValue && callee.Layer == currLayerNum)
           {
-            return MoverTypeToLabel(callee.MoverType);
+            return MoverTypeToLabel(callee.MoverType.Value);
           }
 
-          if (!callee.HasMoverType && callee.Layer < currLayerNum && callCmd.HasAttribute(CivlAttributes.SYNC))
+          if (!callee.MoverType.HasValue && callee.Layer < currLayerNum && callCmd.HasAttribute(CivlAttributes.SYNC))
           {
             return MoverTypeToLabel(callee.RefinedActionAtLayer(currLayerNum).MoverType);
           }
@@ -345,12 +345,12 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (callee.HasMoverType && callee.Layer == currLayerNum)
+          if (callee.MoverType.HasValue && callee.Layer == currLayerNum)
           {
-            return MoverTypeToLabel(callee.MoverType);
+            return MoverTypeToLabel(callee.MoverType.Value);
           }
 
-          if (!callee.HasMoverType && callee.Layer < currLayerNum)
+          if (!callee.MoverType.HasValue && callee.Layer < currLayerNum)
           {
             return MoverTypeToLabel(callee.RefinedActionAtLayer(currLayerNum).MoverType);
           }
@@ -400,12 +400,12 @@ namespace Microsoft.Boogie
         var callee = (YieldProcedureDecl)callCmd.Proc;
         if (callCmd.IsAsync)
         {
-          if (callee.HasMoverType && callee.Layer == currLayerNum)
+          if (callee.MoverType.HasValue && callee.Layer == currLayerNum)
           {
             return ModifiesGlobalLabel(callee.Modifies);
           }
 
-          if (!callee.HasMoverType && callee.Layer < currLayerNum)
+          if (!callee.MoverType.HasValue && callee.Layer < currLayerNum)
           {
             if (callCmd.HasAttribute(CivlAttributes.SYNC))
             {
@@ -428,12 +428,12 @@ namespace Microsoft.Boogie
         }
         else
         {
-          if (callee.HasMoverType && callee.Layer == currLayerNum)
+          if (callee.MoverType.HasValue && callee.Layer == currLayerNum)
           {
             return ModifiesGlobalLabel(callee.Modifies);
           }
 
-          if (!callee.HasMoverType && callee.Layer < currLayerNum)
+          if (!callee.MoverType.HasValue && callee.Layer < currLayerNum)
           {
             return ModifiesGlobalLabel(callee.RefinedActionAtLayer(currLayerNum).ModifiedVars);
           }
