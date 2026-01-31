@@ -238,8 +238,15 @@ namespace Microsoft.Boogie
 
     public static AssertCmd AssertCmd(IToken tok, Expr expr, string msg)
     {
-      return new AssertCmd(tok, expr)
-        { Description = new FailureOnlyDescription(msg) };
+      return new AssertCmd(tok, expr){ Description = new FailureOnlyDescription(msg) };
+    }
+
+    public static AssertRequiresCmd AssertGateCmd(IToken tok, CallCmd callCmd, Expr expr)
+    {
+      callCmd.Description = new ActionGateCheckDescription();
+      var requires = new Requires(tok, false, expr, null);
+      requires.Description = new ActionGateDescription();
+      return new AssertRequiresCmd(callCmd, requires);
     }
 
     public static SimpleAssignLhs SimpleAssignLhs(Variable v)

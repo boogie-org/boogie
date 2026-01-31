@@ -1,4 +1,5 @@
-assert-not-first-4.bpl(15,5): Error: this gate of FOO could not be proved
+assert-not-first-4.bpl(8,5): Error: an assertion for this call could not be proved
+assert-not-first-4.bpl(15,5): Related location: this is the assertion that could not be proved
 Execution trace:
     assert-not-first-4.bpl(8,5): anon0
 

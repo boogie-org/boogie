@@ -39,6 +39,28 @@ public class AssertionDescription : ProofObligationDescription
   public override string ShortDescription => "assert";
 }
 
+public class ActionGateCheckDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "all assertions hold for this call";
+
+  public override string FailureDescription =>
+    "an assertion for this call could not be proved";
+
+  public override string ShortDescription => "assert";
+}
+
+public class ActionGateDescription : ProofObligationDescription
+{
+  public override string SuccessDescription =>
+    "this assertion holds";
+
+  public override string FailureDescription =>
+    "this is the assertion that could not be proved";
+
+  public override string ShortDescription => "assert";
+}
+
 public class PreconditionDescription : ProofObligationDescription
 {
   public override string SuccessDescription =>

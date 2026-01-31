@@ -1,4 +1,5 @@
-chris5.bpl(8,3): Error: this gate of P could not be proved
+chris5.bpl(13,3): Error: an assertion for this call could not be proved
+chris5.bpl(8,3): Related location: this is the assertion that could not be proved
 Execution trace:
     chris5.bpl(13,3): anon0
 
