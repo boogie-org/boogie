@@ -10,7 +10,7 @@ namespace Microsoft.Boogie
       Program program = civlTypeChecker.program;
 
       // Generate the invariant checks for every layer
-      foreach (int layerNum in civlTypeChecker.AllRefinementLayers)
+      foreach (int layerNum in civlTypeChecker.AllInvariantLayers)
       {
         if (civlTypeChecker.Options.TrustLayersDownto <= layerNum ||
             layerNum <= civlTypeChecker.Options.TrustLayersUpto)
