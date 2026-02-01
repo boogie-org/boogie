@@ -40,10 +40,15 @@ namespace Microsoft.Boogie
     public static readonly string[]
       BplKeywords =
       {
+        "action",
         "assert",
+        "asserts",
         "assume",
+        "async",
+        "atomic",
         "axiom",
         "bool",
+        "both",
         "break",
         "call",
         "cast",
@@ -61,13 +66,16 @@ namespace Microsoft.Boogie
         "implementation",
         "int",
         "invariant",
+        "left",
         "modifies",
         "old",
+        "preserves",
         "procedure",
         "public",
         "requires",
         "return",
         "returns",
+        "right",
         "rmode",
         "true",
         "type",
@@ -75,6 +83,7 @@ namespace Microsoft.Boogie
         "var",
         "where",
         "while",
+        "yield",
       };
 
     // "Pretty" printing: not very efficient, and not necessarily very pretty, but helps a bit 
