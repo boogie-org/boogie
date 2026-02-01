@@ -508,8 +508,7 @@ namespace Microsoft.Boogie
         }
         else
         {
-          newCmdSeq.Add(CmdHelper.AssertCmd(assertCmd.tok, expr,
-            $"this gate of {action.Name} could not be proved"));
+          newCmdSeq.Add(CmdHelper.AssertGateCmd(assertCmd.tok, callCmd, expr));
         }
       }
 
