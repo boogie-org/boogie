@@ -1,0 +1,14 @@
+assert-check-fail.bpl(7,3): Error: this assertion could not be proved
+Execution trace:
+    assert-check-fail.bpl(7,3): anon0
+assert-check-fail.bpl(8,3): Error: a precondition for this call could not be proved
+assert-check-fail.bpl(12,1): Related location: this is the precondition that could not be proved
+Execution trace:
+    assert-check-fail.bpl(7,3): anon0
+    assert-check-fail.bpl(7,3): anon0_0
+assert-check-fail.bpl(9,1): Error: a postcondition could not be proved on this return path
+assert-check-fail.bpl(5,1): Related location: this is the postcondition that could not be proved
+Execution trace:
+    assert-check-fail.bpl(7,3): anon0
+
+Boogie program verifier finished with 7 verified, 3 errors

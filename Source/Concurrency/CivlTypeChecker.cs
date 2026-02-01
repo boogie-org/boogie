@@ -11,6 +11,7 @@ namespace Microsoft.Boogie
     public Program program;
     public LinearTypeChecker linearTypeChecker;
     public List<int> AllRefinementLayers;
+    public List<int> AllInvariantLayers;
     public ActionDecl SkipActionDecl;
     
     private Dictionary<ActionDecl, Action> actionDeclToAction;
@@ -30,6 +31,10 @@ namespace Microsoft.Boogie
         .Where(actionDecl => actionDecl.RefinedAction != null)
         .Select(actionDecl => actionDecl.LayerRange.UpperLayer);
       this.AllRefinementLayers = yieldingProcRefinementLayers.Union(actionRefinementLayers)
+        .OrderBy(layer => layer).Distinct().ToList();
+      var yieldInvariantLayers = program.TopLevelDeclarations.OfType<YieldInvariantDecl>().Select(decl => decl.Layer);
+      var assertionLayers = LayerCollector.Collect(program);
+      this.AllInvariantLayers = yieldingProcRefinementLayers.Union(actionRefinementLayers).Union(yieldInvariantLayers).Union(assertionLayers)
         .OrderBy(layer => layer).Distinct().ToList();
       
       this.actionDeclToAction = new Dictionary<ActionDecl, Action>();
@@ -378,7 +383,7 @@ namespace Microsoft.Boogie
 
     private class VariableNameCollector : ReadOnlyVisitor
     {
-      private HashSet<string> localVarNames = new HashSet<string>();
+      private HashSet<string> localVarNames = [];
 
       public static HashSet<string> Collect(Program program)
       {
@@ -391,6 +396,54 @@ namespace Microsoft.Boogie
       {
         localVarNames.Add(node.Name);
         return node;
+      }
+    }
+
+    private class LayerCollector : ReadOnlyVisitor
+    {
+      private HashSet<int> layers = [];
+
+      public static HashSet<int> Collect(Program program)
+      {
+        var collector = new LayerCollector();
+        collector.VisitProgram(program);
+        return collector.layers;
+      }
+
+      public override Procedure VisitProcedure(Procedure node)
+      {
+        if (node is not YieldProcedureDecl)
+        {
+          return node;
+        }
+        return base.VisitProcedure(node);
+      }
+
+      public override Implementation VisitImplementation(Implementation node)
+      {
+        if (node.Proc is not YieldProcedureDecl)
+        {
+          return node;
+        }
+        return base.VisitImplementation(node);
+      }
+
+      public override Cmd VisitAssertCmd(AssertCmd node)
+      {
+        layers.UnionWith(node.Layers);
+        return base.VisitAssertCmd(node);
+      }
+
+      public override Requires VisitRequires(Requires requires)
+      {
+        layers.UnionWith(requires.Layers);
+        return base.VisitRequires(requires);
+      }
+
+      public override Ensures VisitEnsures(Ensures ensures)
+      {
+        layers.UnionWith(ensures.Layers);
+        return base.VisitEnsures(ensures);
       }
     }
     
