@@ -172,6 +172,8 @@ namespace Microsoft.Boogie
       return ensures;
     }
 
+// Should we add something for Decreases here?
+
     private HashSet<ActionDecl> TypeCheckActions()
     {
       var actionDecls = program.Procedures.OfType<ActionDecl>().ToHashSet();
